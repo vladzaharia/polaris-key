@@ -163,6 +163,9 @@ export interface ReleaseMetadataRow {
   seq: number | null;
   /** The channel a release was published to (0027_d). NULL ⇒ derive from GitHub, as today. */
   channel: string | null;
+  /** An app release's `content.contentApi` (0045_a); NULL for a pack release or an app release
+   *  published before its product declared packs. Optional: rows built in code omit it. */
+  content_api?: number | null;
 }
 
 export interface ReleaseArtifactRow {

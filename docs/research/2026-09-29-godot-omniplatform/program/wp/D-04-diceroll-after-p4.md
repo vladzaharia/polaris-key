@@ -1,16 +1,16 @@
 # D-04 Diceroll: packs as release deliverables, with `PKeyBoot` driving the boot shell
 
-| Field       | Value                                                                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P4"                                                                                   |
-| Size        | 1.5–2 engineer-weeks                                                                                                                            |
-| Depends on  | [P4-08](P4-08-godot-packs.md), [P4-12](P4-12-compat-resolution.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-05](P4-05-pack-transports-cdn.md) |
-| Unblocks    | none                                                                                                                                            |
-| Role        | `pkey-godot-engineer`                                                                                                                           |
-| Plan mode   | no                                                                                                                                              |
-| Gates       | `pkey validate` clean; the publish-time checks P4-12 adds (dry run first); Diceroll's CI including its asset rules                              |
-| Human input | none                                                                                                                                            |
-| Repo        | `vladzaharia/diceroll`                                                                                                                          |
+| Field       | Value                                                                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P4"                                                                                                                             |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                      |
+| Depends on  | [P4-08](P4-08-godot-packs.md), [P4-12](P4-12-compat-resolution.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-24](P4-24-content-decision-godot.md) |
+| Unblocks    | none                                                                                                                                                                                      |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                     |
+| Plan mode   | no                                                                                                                                                                                        |
+| Gates       | `pkey validate` clean; the publish-time checks P4-12 adds (dry run first); Diceroll's CI including its asset rules                                                                        |
+| Human input | none                                                                                                                                                                                      |
+| Repo        | `vladzaharia/diceroll`                                                                                                                                                                    |
 
 > **Re-verify first.** Diceroll paths below come from [notes/A4](../../notes/A4-diceroll-mapping.md)
 > (Diceroll `4e78bb6`, 2026-09-29), including its summary of Diceroll's own content-streaming
@@ -146,3 +146,8 @@ D-05 relies on the pack deliverables and their `contentApi` levels, which it rou
 `apple-ba`, `play-pad` and `steam-depot`. The lead sets
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set D-04 done` in the Polaris
 Key repo when the Diceroll PR merges.
+
+## Plan amendments (P4-13)
+
+The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

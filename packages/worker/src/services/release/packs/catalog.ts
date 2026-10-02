@@ -17,14 +17,24 @@ import { parseFilesIndex, variantKey } from "@polaris-key/client-core/packs";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import type {
+  CatalogHold,
   CatalogBuildEmbeds,
   CatalogPackDeliverable,
   CatalogPackFile,
+  CatalogPackFloor,
   CatalogPackRelease,
   CatalogPin,
   CatalogRelease,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
+import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
+import { canonicalChannel } from "../resolve.js";
+import {
+  canonicalPackChannel,
+  loadResolutionState,
+  readStoredSets,
+} from "./sets.js";
+import { PackResolver } from "./resolve.js";
 import type { Db, Env } from "../../../core/platform.js";
 import { blobKey } from "../../../core/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
@@ -38,9 +48,32 @@ type PackCatalog = Pick<
   | "pins"
   | "pinnedBy"
   | "embeds"
+  | "liveLevels"
+  | "packSets"
+  | "packFloors"
+  | "holdsFor"
+  | "heldBy"
   | "pinnedByMany"
   | "embedsOf"
 >;
+
+interface HoldRow {
+  app_release_id: string;
+  pack_deliverable: string;
+  pack_release_id: string;
+  record_sha256: string;
+  reason: string | null;
+}
+
+function holdRecord(r: HoldRow): CatalogHold {
+  return {
+    appReleaseId: r.app_release_id,
+    pack: r.pack_deliverable,
+    packReleaseId: r.pack_release_id,
+    recordSha256: r.record_sha256,
+    reason: r.reason,
+  };
+}
 
 /** Ids per `IN` list: one parameter is the product, D1 binds at most 100. */
 const IN_IDS = 90;
@@ -89,37 +122,32 @@ function pinRecord(r: PinRow): CatalogPin {
   };
 }
 
-/** A pack release's stored record and release row, or null. */
-async function packRecordOf(
-  db: Db,
-  product: string,
-  releaseId: string,
-): Promise<{
+interface PackRecordRow {
+  release_id: string;
+  jws: string;
+  record_sha256: string;
+  deliverable_id: string;
+  version: string;
+  seq: number | null;
+  channel: string | null;
+  published_at: number | null;
+  yanked: number;
+}
+
+interface FoundPackRecord {
   record: PackRecordDoc;
   sha256: string;
   release: CatalogRelease;
-} | null> {
-  const row = await db.first<{
-    jws: string;
-    record_sha256: string;
-    deliverable_id: string;
-    version: string;
-    seq: number | null;
-    channel: string | null;
-    published_at: number | null;
-    yanked: number;
-  }>(
-    `SELECT r.jws, r.record_sha256, m.deliverable_id, m.version, m.seq, m.channel,
-            m.published_at,
+}
+
+const PACK_RECORD_SELECT = `SELECT r.release_id, r.jws, r.record_sha256, m.deliverable_id, m.version, m.seq,
+            m.channel, m.published_at,
             EXISTS (SELECT 1 FROM release_yanks y
                      WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked
        FROM release_records r
-       JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id
-      WHERE r.product = ? AND r.release_id = ? AND r.kind = 'pack'`,
-    product,
-    releaseId,
-  );
-  if (!row) return null;
+       JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id`;
+
+function foundOf(row: PackRecordRow): FoundPackRecord | null {
   const payload = storedRecordPayload(row.jws);
   if (!payload || payload.kind !== "pack") return null;
   return {
@@ -127,7 +155,7 @@ async function packRecordOf(
     sha256: row.record_sha256,
     release: {
       deliverableId: row.deliverable_id,
-      releaseId,
+      releaseId: row.release_id,
       version: row.version,
       seq: row.seq,
       channel: row.channel,
@@ -135,6 +163,84 @@ async function packRecordOf(
       yanked: Boolean(row.yanked),
     },
   };
+}
+
+/** A pack release's stored record and release row, or null. */
+async function packRecordOf(
+  db: Db,
+  product: string,
+  releaseId: string,
+): Promise<FoundPackRecord | null> {
+  const row = await db.first<PackRecordRow>(
+    `${PACK_RECORD_SELECT}
+      WHERE r.product = ? AND r.release_id = ? AND r.kind = 'pack'`,
+    product,
+    releaseId,
+  );
+  return row ? foundOf(row) : null;
+}
+
+/** The hook's view of one stored pack record: its variants and the objects each names. */
+function packReleaseView(found: FoundPackRecord): CatalogPackRelease {
+  const { record } = found;
+  const objects = packObjects(record);
+  return {
+    release: found.release,
+    recordSha256: found.sha256,
+    type: record.type,
+    formatVersion: record.formatVersion,
+    entitlement: record.entitlement ?? null,
+    handler: record.handler ?? null,
+    variants: record.variants.map((v) => {
+      const buildId = variantBuildId(v.variant);
+      return {
+        variantKey: variantKey(v.variant),
+        buildId,
+        variant: v.variant,
+        payload: v.payload,
+        engine:
+          typeof v.requires?.engine === "string" ? v.requires.engine : null,
+        objects: objects
+          .filter((o) => o.buildId === buildId)
+          .map((o) => ({
+            role: o.role,
+            sha256: o.sha256,
+            bytes: o.bytes,
+            key: o.key,
+            meta: o.meta,
+          })),
+      };
+    }),
+  };
+}
+
+/**
+ * `packRelease` for many releases of one pack in bounded queries (P4-09's pack page): one
+ * chunked `IN` per `IN_IDS` ids, keyed by release id. A release of another deliverable, or one
+ * whose record does not read back, is absent.
+ */
+export async function packReleasesMany(
+  db: Db,
+  product: string,
+  deliverableId: string,
+  releaseIds: readonly string[],
+): Promise<Map<string, CatalogPackRelease>> {
+  const out = new Map<string, CatalogPackRelease>();
+  for (const ids of chunked(releaseIds)) {
+    const rows = await db.all<PackRecordRow>(
+      `${PACK_RECORD_SELECT}
+        WHERE r.product = ? AND r.kind = 'pack'
+          AND r.release_id IN (${ids.map(() => "?").join(", ")})`,
+      product,
+      ...ids,
+    );
+    for (const row of rows) {
+      const found = foundOf(row);
+      if (found && found.release.deliverableId === deliverableId)
+        out.set(row.release_id, packReleaseView(found));
+    }
+  }
+  return out;
 }
 
 export function packCatalog(ctx: {
@@ -161,37 +267,7 @@ export function packCatalog(ctx: {
     async packRelease(deliverableId, releaseId) {
       const found = await packRecordOf(db, slug, releaseId);
       if (!found || found.release.deliverableId !== deliverableId) return null;
-      const { record } = found;
-      const objects = packObjects(record);
-      const out: CatalogPackRelease = {
-        release: found.release,
-        recordSha256: found.sha256,
-        type: record.type,
-        formatVersion: record.formatVersion,
-        entitlement: record.entitlement ?? null,
-        handler: record.handler ?? null,
-        variants: record.variants.map((v) => {
-          const buildId = variantBuildId(v.variant);
-          return {
-            variantKey: variantKey(v.variant),
-            buildId,
-            variant: v.variant,
-            payload: v.payload,
-            engine:
-              typeof v.requires?.engine === "string" ? v.requires.engine : null,
-            objects: objects
-              .filter((o) => o.buildId === buildId)
-              .map((o) => ({
-                role: o.role,
-                sha256: o.sha256,
-                bytes: o.bytes,
-                key: o.key,
-                meta: o.meta,
-              })),
-          };
-        }),
-      };
-      return out;
+      return packReleaseView(found);
     },
 
     async packFiles(releaseId, key): Promise<CatalogPackFile[] | null> {
@@ -259,6 +335,76 @@ export function packCatalog(ctx: {
           packReleaseId,
         )
       ).map(pinRecord);
+    },
+
+    async liveLevels(appDeliverable, channel) {
+      if (appDeliverable !== APP_DELIVERABLE_ID) return [];
+      const state = await loadResolutionState(db, slug);
+      if (!state) return [];
+      const canonical = canonicalChannel(channel, state.input.app.manual);
+      if (!canonical || !state.input.channels.includes(canonical)) return [];
+      const levels = new Map<number, string[]>();
+      for (const r of new PackResolver(state.input).live(canonical)) {
+        const list = levels.get(r.contentApi) ?? [];
+        list.push(r.releaseId);
+        levels.set(r.contentApi, list);
+      }
+      return [...levels.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([contentApi, appReleases]) => ({ contentApi, appReleases }));
+    },
+
+    async packSets(channel) {
+      return readStoredSets(db, slug, channel);
+    },
+
+    async packFloors(channel): Promise<CatalogPackFloor[]> {
+      const canonical = await canonicalPackChannel(db, slug, channel);
+      return (
+        await db.all<{
+          deliverable_id: string;
+          channel: string;
+          content_api: number;
+          min_version: string;
+          modified_at: number;
+        }>(
+          `SELECT deliverable_id, channel, content_api, min_version, modified_at
+             FROM release_pack_floors WHERE product = ? AND channel = ?
+            ORDER BY deliverable_id, content_api`,
+          slug,
+          canonical,
+        )
+      ).map((r) => ({
+        deliverableId: r.deliverable_id,
+        channel: r.channel,
+        contentApi: r.content_api,
+        minSupported: r.min_version,
+        modifiedAt: r.modified_at,
+      }));
+    },
+
+    async holdsFor(appReleaseId) {
+      return (
+        await db.all<HoldRow>(
+          `SELECT app_release_id, pack_deliverable, pack_release_id, record_sha256, reason
+             FROM release_holds WHERE product = ? AND app_release_id = ?
+            ORDER BY pack_deliverable`,
+          slug,
+          appReleaseId,
+        )
+      ).map(holdRecord);
+    },
+
+    async heldBy(packReleaseId) {
+      return (
+        await db.all<HoldRow>(
+          `SELECT app_release_id, pack_deliverable, pack_release_id, record_sha256, reason
+             FROM release_holds WHERE product = ? AND pack_release_id = ?
+            ORDER BY app_release_id`,
+          slug,
+          packReleaseId,
+        )
+      ).map(holdRecord);
     },
 
     async embeds(appReleaseId, buildId) {

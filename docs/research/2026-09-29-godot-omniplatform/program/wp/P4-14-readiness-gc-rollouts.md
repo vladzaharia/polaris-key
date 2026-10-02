@@ -195,3 +195,8 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Plan amendments (P4-13)
+
+The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

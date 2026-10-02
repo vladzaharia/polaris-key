@@ -535,7 +535,8 @@ describe("releaseCatalog (Release)", () => {
     const catalog = await catalogFor(db, env, product);
     // P2b-04 added the five byte-delivery methods: still readers. `openSource` answers with
     // bytes (Release's GitHub-located ones) rather than records, and writes nothing either.
-    // P2b-05 added `channelReleases`, the feeds' history read. P4-02 added the six pack reads. P6-03 added `knownChannels`.
+    // P2b-05 added `channelReleases`, the feeds' history read. P4-02 added the six pack reads.
+    // P6-03 added `knownChannels`, P4-12 the five pack-set reads.
     expect(Object.keys(catalog).sort()).toEqual([
       "accessSelector",
       "artifacts",
@@ -545,13 +546,18 @@ describe("releaseCatalog (Release)", () => {
       "deliverables",
       "embeds",
       "embedsOf",
+      "heldBy",
+      "holdsFor",
       "installScript",
       "knownChannels",
+      "liveLevels",
       "metadataAccess",
       "openSource",
       "packDeliverables",
       "packFiles",
+      "packFloors",
       "packRelease",
+      "packSets",
       "pinnedBy",
       "pinnedByMany",
       "pins",
@@ -568,6 +574,8 @@ describe("releaseCatalog (Release)", () => {
     await catalog.releases("app");
     await catalog.yanks();
     await catalog.channelReleases("app", "beta");
+    await catalog.liveLevels("app", "stable");
+    await catalog.packSets("stable");
     expect(await db.all("SELECT * FROM release_metadata")).toEqual(before);
   });
 

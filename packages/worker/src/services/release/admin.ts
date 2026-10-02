@@ -11,6 +11,13 @@
  *     POST   …/release/releases/<releaseId>/yank        { "reason": "…" }
  *     DELETE …/release/releases/<releaseId>/yank
  *
+ * and the pack read model (P4-09, `packs/adminView.ts`):
+ *
+ *     GET    …/release/deliverables                     the app and every pack, with latest release
+ *     GET    …/release/deliverables/<id>/releases       a pack's releases and who pins each
+ *     GET    …/release/deliverables/<id>/releases/<releaseId>/files?variant=<key>
+ *                                                        one variant's files, from its index
+ *
  * All of them are narrative-only (the console's API is not in the wire spec), audited with the
  * session's subject, and invalidate the product's cached resolutions.
  *
@@ -66,6 +73,13 @@ import {
 } from "./resolve.js";
 import { resyncRepo } from "./resync.js";
 import {
+  appPinsByRelease,
+  deliverablesView,
+  embedsOf,
+  packFilesView,
+  packReleasesView,
+} from "./packs/adminView.js";
+import {
   channelNames,
   clearChannelFloor,
   getChannelFloor,
@@ -98,6 +112,8 @@ export async function handleReleaseAdmin(
     return handleChannelFloor(ctx, rest[1] as string);
   const policyRoute = await handlePolicyRoutes(ctx);
   if (policyRoute) return policyRoute;
+  const packRoute = await handlePackViews(ctx);
+  if (packRoute) return packRoute;
   if (rest.length !== 1) return null;
   const slug = product.slug;
 
@@ -119,6 +135,13 @@ export async function handleReleaseAdmin(
     const yanks = new Map(
       (await listYanks(db, slug)).map((y) => [y.release_id, y]),
     );
+    // P4-09: what each app release pins (one query for the product), beside its contentApi.
+    const pins = await appPinsByRelease(
+      db,
+      slug,
+      releases.map((r) => r.release_id),
+      yanks,
+    );
     return adminJson({
       releases: await Promise.all(
         releases.map(async (row) => {
@@ -136,6 +159,8 @@ export async function handleReleaseAdmin(
             yank: yanked
               ? { reason: yanked.reason, at: yanked.at, by: yanked.by }
               : null,
+            contentApi: row.content_api ?? null,
+            pins: pins.get(row.release_id) ?? [],
             // P2-05: the builds a descriptor declared (P2-04); empty for a legacy release.
             builds: (await listBuilds(db, slug, row.release_id)).map((b) => ({
               buildId: b.build_id,
@@ -144,6 +169,8 @@ export async function handleReleaseAdmin(
               format: b.format,
               buildNumber: b.build_number,
               minOs: b.min_os,
+              // P4-09: the packs this build ships embedded; null when its descriptor said nothing.
+              embeds: embedsOf(b.embeds_json),
             })),
             artifacts: (
               await listReleaseArtifacts(db, slug, row.release_id)
@@ -225,6 +252,7 @@ export async function handleReleaseAdmin(
     slug,
     updated: result.updated,
     ...(result.refused ? { refused: result.refused } : {}),
+    ...(result.packSets ? { packSets: result.packSets } : {}),
   });
 }
 
@@ -346,6 +374,48 @@ async function handleChannelFloor(
   });
 }
 
+// ── Pack views (P4-09) ──────────────────────────────────────────────────────────────────────
+
+/**
+ * The read-only pack routes, or `null` when the path is not one of them. Both read Release's own
+ * `releaseCatalog` hook (null only while Release is off, which never reaches here) and the
+ * delivery gate through Distribution's `delivery` hook (null while Distribution is off).
+ */
+async function handlePackViews(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response | null> {
+  const { req, db, product, rest, hooks } = ctx;
+  if (rest[0] !== "deliverables") return null;
+  const isList = rest.length === 1;
+  const isReleases = rest.length === 3 && rest[2] === "releases";
+  const isFiles =
+    rest.length === 5 && rest[2] === "releases" && rest[4] === "files";
+  if (!isList && !isReleases && !isFiles) return null;
+  if (req.method !== "GET")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const catalog = hooks.releaseCatalog();
+  if (!catalog) return adminNotFound();
+  const slug = product.slug;
+  if (isList)
+    return adminJson(
+      await deliverablesView(db, slug, catalog, hooks.delivery()),
+    );
+  const deliverable = segment(rest[1] as string);
+  if (deliverable === null) return adminNotFound();
+  if (isFiles) {
+    const releaseId = segment(rest[3] as string);
+    // The variant key (`""` for an unvaried pack) rides in the query: it is not a path segment.
+    const variant = new URL(req.url).searchParams.get("variant");
+    if (releaseId === null || variant === null) return adminNotFound();
+    const files = await packFilesView(catalog, deliverable, releaseId, variant);
+    if (!files) return adminNotFound();
+    return adminJson({ deliverable, releaseId, variant, ...files });
+  }
+  const releases = await packReleasesView(db, slug, catalog, deliverable);
+  if (!releases) return adminNotFound();
+  return adminJson({ deliverable, releases });
+}
+
 // ── Channel policy (P2-05) ───────────────────────────────────────────────────────────────────
 
 /** `locations_json` for the console, as stored (an array) or `null`. */
@@ -461,7 +531,11 @@ async function handlePolicyRoutes(
       now,
     );
     return result.ok
-      ? adminJson({ ok: true, policy: result.policy })
+      ? adminJson({
+          ok: true,
+          policy: result.policy,
+          packSets: result.packSets,
+        })
       : policyRefusal(result);
   }
 
@@ -482,7 +556,11 @@ async function handlePolicyRoutes(
       now,
     );
     return result.ok
-      ? adminJson({ ok: true, policy: result.policy })
+      ? adminJson({
+          ok: true,
+          policy: result.policy,
+          packSets: result.packSets,
+        })
       : policyRefusal(result);
   }
 
@@ -501,13 +579,13 @@ async function handlePolicyRoutes(
         now,
       );
       return result.ok
-        ? adminJson({ ok: true, yank: result.yank })
+        ? adminJson({ ok: true, yank: result.yank, packSets: result.packSets })
         : policyRefusal(result);
     }
     if (req.method === "DELETE") {
       const result = await unyank(env, db, slug, releaseId, actor, now);
       return result.ok
-        ? adminJson({ ok: true, yank: result.yank })
+        ? adminJson({ ok: true, yank: result.yank, packSets: result.packSets })
         : policyRefusal(result);
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");

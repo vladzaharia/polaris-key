@@ -79,21 +79,36 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       descriptor (`pkey-release.json`, `release-descriptor.schema.json`) whose builds must
       match this map.
 - [ ] If the product ships content packs, declare each as `deliverables.<packId>` with
-      `kind: pack` (at most 64, `too_many_pack_deliverables`) in the v1 subset: `type`
-      (`godot.pck` | `files.tree`, required), `binding: pinned` (the only value), `baseline`
+      `kind: pack` (at most 64, `too_many_pack_deliverables`): `type`
+      (`godot.pck` | `files.tree`, required), `binding` (`pinned`, the default: each app release
+      pins the pack release; `compatible`: Release resolves the newest release whose
+      `requires.contentApi` range holds each live contentApi level; `standalone`: the newest
+      release for every level), `baseline`
       (`embedded` | `none`), `required` (then `delivery: essential` and no `entitlement`),
       `delivery` (`essential` | `prefetch` | `on-demand`), `contentPolicy: { dataOnly: true }`,
       `handler` (`mountOrder` 0–1000, `prefixes` of `res://…/` directories, `activation`
       `restart` | `hot`; a `godot.pck` needs `prefixes` and `requires.engine: godot-4.7`, a
       `files.tree` takes neither `prefixes` nor `mountOrder`), `variants` (`texture` /
-      `locale` / `quality` → values, ≤ 32 combinations), `requires: { engine }`, `patch`
+      `locale` / `quality` → values, ≤ 32 combinations),
+      `requires: { engine?, contentApi?, packs? }` (`contentApi: { app: ">=3 <5" }` is
+      required for `compatible`
+      — `missing_content_api_range` — and refused for `standalone` —
+      `standalone_with_content_api`; its only key is `app`, `unknown_content_api_app`;
+      `packs: { <packId>: ">=1.2.0 <2.0.0" }` names other compatible or standalone packs),
+      `conflicts` (other declared packs, `invalid_pack_conflicts`), `channels` (canonical
+      channels beyond `stable` and `beta` the pack's releases go to, `invalid_channel`), `patch`
       (`strategies` ⊆ `delta`, `file`; `deltaBases` 0–8), `versioning.scheme`, and
       `entitlement`, which must name a `flag` of `.pkey/schema` and only ASSERTS the gate an
       operator sets under Distribution → Access (a publish whose gate differs is refused).
-      `channels`, `conflicts`, `provides` and `removes` are refused (`pack_field_not_supported`).
-      `deliverables.app.content: { contentApi: <int> }` is then required (`invalid_app_content`).
+      `provides` and `removes` are refused (`pack_field_not_supported`).
+      `deliverables.app.content: { contentApi: <int>, packChannels? }` is then required
+      (`invalid_app_content`); `packChannels` maps a pack id or `prefix.*` to a channel the
+      matched packs publish to (`invalid_pack_channels`, `unknown_pack_channels_target`). Holds
+      are never declared: an app release holds a compatible pack at publish.
       Codes: `invalid_pack_type`, `invalid_pack_binding`, `invalid_pack_policy`,
       `invalid_pack_handler`, `invalid_pack_variants`, `invalid_pack_requires`,
+      `missing_content_api_range`, `standalone_with_content_api`, `unknown_content_api_app`,
+      `invalid_pack_conflicts`, `invalid_pack_channels`, `unknown_pack_channels_target`,
       `invalid_pack_patch`, `unknown_entitlement_ref`. Details:
       `packages/docs/src/content/docs/services/release/packs.md`.
 - [ ] If CI should publish releases (P2-02 trusted publishing), declare the publisher in

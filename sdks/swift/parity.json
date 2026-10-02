@@ -70,16 +70,40 @@
       "status": "implemented",
       "note": "PolarisKeyCore detectOutlet over PolarisKeyUpdate readOutletSignals: AppDistributor.current behind #available(iOS 17.4) (web from 17.5) raced against the 2 s deadline, AltStore's ALTBundleIdentifier, embedded.mobileprovision, the macOS _MASReceipt and ProductionSandbox, the signing leaf (SecCodeCopySigningInformation) and the product's Caskroom link. UpdateClient detects at its first decision when the host names no outlet."
     },
-    "packs.record": { "status": "planned", "wp": "P4-07" },
-    "packs.plan": { "status": "planned", "wp": "P4-07" },
-    "packs.index.files": { "status": "planned", "wp": "P4-07" },
+    "packs.record": {
+      "status": "implemented",
+      "note": "PolarisKeyCore's verifyReleaseRecord with pin.kind (pack records fetched by the content stamp's pin) and PolarisKeyPacks' verifyMarker for embedded baselines; PackRecordConformanceTests drives every packRecordCases and markerCases vector."
+    },
+    "packs.plan": {
+      "status": "implemented",
+      "note": "PolarisKeyPacks' plan, selectVariant and planTarget; every plan-matrix.json row, variant case and target case in PlanMatrixTests."
+    },
+    "packs.index.files": {
+      "status": "implemented",
+      "note": "PolarisKeyPacks' parseFilesIndex, checkPaths and treeDigest; filesIndexCases in ContentConformanceTests, read from the checkout."
+    },
     "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
-    "packs.apply.full": { "status": "planned", "wp": "P4-07" },
-    "packs.apply.file": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.full": {
+      "status": "implemented",
+      "note": "applyFull, streamed through libzstd's ZSTD_decompressStream (and one-shot without it); applyCases under both paths."
+    },
+    "packs.apply.file": {
+      "status": "implemented",
+      "note": "applyFile with the type-neutral container rebuild; applyCases under both paths."
+    },
     "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
-    "packs.apply.delta": { "status": "planned", "wp": "P4-07" },
-    "packs.state": { "status": "planned", "wp": "P4-07" },
-    "packs.handlers": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.delta": {
+      "status": "implemented",
+      "note": "libzstd 1.5.7 (facebook/zstd SwiftPM package): ZSTD_DCtx_refPrefix with ZSTD_d_windowLogMax; the window check runs in the applier before every prefix decode, macOS and iOS alike."
+    },
+    "packs.state": {
+      "status": "implemented",
+      "note": "PackEngine over DirPackStorage in the platform data directory (excluded from backups): journal, resume with Range/If-Range, atomic pointer swap with F_FULLFSYNC, confirm, rollback, GC roots, embedded baselines, a torn state.json held aside, an unreadable one refusing every write; packSetId on devices/report."
+    },
+    "packs.handlers": {
+      "status": "implemented",
+      "note": "update.packs.registerHandler; files.tree (hot: versioned directory plus pointer swap) built in."
+    },
     "packs.provides": { "status": "planned", "wp": "P4-20" },
     "packs.transport.apple": {
       "status": "planned",

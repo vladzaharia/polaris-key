@@ -139,6 +139,8 @@ class DevicesClient:
         caps: Optional[Callable[[], List[str]]] = None,
     ) -> None:
         self._caps = caps
+        #: The active pack set's id for the report's ``content`` (P4-07), set by the facade.
+        self.pack_set_id: Callable[[], Optional[str]] = lambda: None
         self._ctx = ctx
         self._cache = cache
         self._tokens = tokens
@@ -273,7 +275,7 @@ class DevicesClient:
         if not token:
             return False
         return report_snapshot(
-            self._ctx, token, build_snapshot(self._cache, self._probes, self._caps)
+            self._ctx, token, build_snapshot(self._cache, self._probes, self._caps, self.pack_set_id)
         )
 
     def _require_token(self) -> str:

@@ -200,6 +200,8 @@ from .update.client import (
     UpdateError,
     VersionCheck,
 )
+from .update.packs import PackError, PackHandler
+from .update.packs.client import EmbeddedPack, PacksClient, PacksOptions
 
 __all__ = [
     "__version__",
@@ -306,6 +308,11 @@ __all__ = [
     "VersionCheck",
     # wire v4: the signed feed, the release record and the update decision
     "UpdateClientOptions",
+    "PackError",
+    "PackHandler",
+    "EmbeddedPack",
+    "PacksClient",
+    "PacksOptions",
     "UpdateError",
     "FeedCheck",
     "ReleaseRecordCheck",

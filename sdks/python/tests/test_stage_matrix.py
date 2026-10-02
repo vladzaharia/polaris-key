@@ -1,4 +1,4 @@
-# @pkey-feature ui.stages
+# @pkey-feature ui.stages packs.state
 """Cross-SDK boot stage machine conformance.
 
 Drives the shared ``conformance/corpus/v2/stage-matrix.json`` through

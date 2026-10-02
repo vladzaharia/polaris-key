@@ -37,6 +37,12 @@ export interface Db {
   runChanges(sql: string, ...params: DbParam[]): Promise<number>;
   /** Atomic batch (D1 batch / SQLite transaction). */
   batch(statements: DbStatement[]): Promise<void>;
+  /**
+   * `batch`, answering each statement's changed-row count (D1 `meta.changes`, better-sqlite3
+   * `info.changes`): a conditional first statement then tells its caller whether the whole
+   * guarded batch applied. Both real engines implement it; a test double may not.
+   */
+  batchChanges?(statements: DbStatement[]): Promise<number[]>;
 }
 
 /** Normalize a bound param to what both D1 and better-sqlite3 accept (no undefined/boolean). */

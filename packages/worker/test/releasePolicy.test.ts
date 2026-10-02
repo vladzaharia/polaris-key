@@ -574,8 +574,12 @@ describe("admin routes", () => {
         format: "binary",
         buildNumber: null,
         minOs: null,
+        // P4-09: no descriptor said what this build embeds.
+        embeds: null,
       },
     ]);
+    // P4-09: a release published before its product declared packs pins nothing.
+    expect(v1).toMatchObject({ contentApi: null, pins: [] });
     expect(v1.artifacts.find((a) => a.artifactId === "101")).toMatchObject({
       buildId: "cli-arm64",
       role: "payload",
