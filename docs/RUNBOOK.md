@@ -401,6 +401,28 @@ and never roll back the migration. Devices that already learned a revocation kee
 target. Every SDK release note must state that SDKs older than P4-13 keep using revoked content
 until upgraded.
 
+## The blob collector (P4-14)
+
+The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:
+per live product it drops the refs no live pack release needs (and restores ones a live release
+lacks), marks objects no product references, and deletes at most 1,000 objects a night that have
+been unreferenced for the grace period **and** are older than the 180-day bucket lock. Failures
+surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep`,
+`blobGcLog`).
+
+- **Stop it:** set `BLOB_GC_MODE = "off"` under the environment's `[vars]` and deploy. Nothing is
+  deleted while it is off; turning it back on resumes where it stopped.
+- **Grace period:** `BLOB_GC_GRACE_DAYS` (default 30, never under 1). The lock age, not the grace,
+  bounds how soon anything goes.
+- **Before trusting it on a product:** read the dry run, `GET /manage/api/products/<slug>/blob-gc`
+  (the live pack releases, the refs the next tick drops, the earliest deletion date).
+- **What happened:** `blob_gc_log` (one row per dropped or restored ref and per deleted object;
+  `delete-failed` rows carry R2's refusal) and the product's audit (`core.blob_gc.refs_dropped`,
+  `core.blob_gc.refs_restored`).
+- **An R2 lock refusal** (`blobSweep: … object is locked`) means an object was attempted before
+  its lock age: stop the collector and escalate. Never shorten or remove the bucket lock to make
+  it pass.
+
 ## CI gates
 
 `.github/workflows/ci.yml` runs on PRs and `main` pushes:

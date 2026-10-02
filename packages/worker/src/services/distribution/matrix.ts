@@ -22,8 +22,10 @@
  * `test/distributionMatrix.test.ts` checks the two agree cell by cell.
  *
  * A pack deliverable's cells derive by the pack rule (`packDerivedAvailability`, P4-05), the one
- * `availabilityFor` applies; pack readiness holds are P4-14's; store-mirrored states are P5-02 to P5-04's
- * (they arrive here through the same tables).
+ * `availabilityFor` applies; store-mirrored states are P5-02 to P5-04's (they arrive here through
+ * the same tables). An app release's cells carry P4-14's readiness (`readiness.ts`): the blockers,
+ * the hold (applied to the records exactly as `availabilityFor` applies it) and, on a store outlet
+ * Polaris Key cannot hold, the warning.
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
@@ -66,6 +68,11 @@ import {
   type RolloutVerb,
 } from "./rollouts.js";
 import { DEFAULT_TRANSPORT } from "../../core/hooks.js";
+import {
+  applyReadinessHold,
+  readinessReader,
+  type OutletReadiness,
+} from "./readiness.js";
 
 export const MATRIX_DEFAULT_LIMIT = 20;
 export const MATRIX_MAX_LIMIT = 50;
@@ -126,6 +133,13 @@ export interface MatrixCell {
   submission: SubmissionRecord | null;
   /** Rollouts of this release on this outlet (one per channel). */
   rollouts: MatrixRollout[];
+  /**
+   * P4-14: the app release's readiness on this outlet — its required pack set's blockers, whether
+   * Polaris Key holds it here (then its `live` records read `pending`, as `availabilityFor`
+   * answers), and on a store outlet it cannot hold, the warning. `null` for a pack deliverable's
+   * cells and for a product that declares no pack.
+   */
+  readiness: OutletReadiness | null;
 }
 
 export interface Matrix {
@@ -245,8 +259,18 @@ export async function buildMatrix(
         )
       : new Map<string, AvailabilityRecord[]>();
 
+  // P4-14: readiness of each app release, one reader for the page (shared reads), applied to the
+  // cells exactly as `availabilityFor` applies it.
+  const readiness =
+    deliverableId === APP_DELIVERABLE_ID
+      ? readinessReader({ db, product, hooks: ctx.hooks })
+      : null;
+
   const cells: MatrixCell[] = [];
   for (const release of releases) {
+    const ready = readiness
+      ? await readiness.forRelease(release.releaseId)
+      : null;
     // Derived records need the builds and artifacts; a yanked release derives nothing.
     const anyDerives = !release.yanked && outlets.some((o) => o.derives);
     const packRecords = packRecordsOf.get(release.releaseId) ?? [];
@@ -303,12 +327,18 @@ export async function buildMatrix(
         )
           derived.push(record(""));
       }
-      const records = [
+      const merged = [
         ...own,
         ...derived.filter(
           (d) => !own.some((s) => s.buildId === "" || s.buildId === d.buildId),
         ),
-      ].sort(
+      ];
+      const cellReadiness =
+        ready?.find((r) => r.outletId === outlet.outletId) ?? null;
+      const records = applyReadinessHold(
+        merged,
+        cellReadiness ? [cellReadiness] : null,
+      ).sort(
         (a, b) =>
           (a.buildId < b.buildId ? -1 : a.buildId > b.buildId ? 1 : 0) ||
           Number(a.derived) - Number(b.derived) ||
@@ -345,6 +375,7 @@ export async function buildMatrix(
                   Object.keys(TRANSITIONS) as Exclude<RolloutVerb, "set">[]
                 ).filter((v) => TRANSITIONS[v].from.includes(r.state)),
           })),
+        readiness: cellReadiness,
       });
     }
   }

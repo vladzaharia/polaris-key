@@ -584,6 +584,10 @@ describe("R11-05 product scoping", () => {
       // lives in `blob_refs`, which IS product-first (checked below by this same loop), and
       // every byte route asks `hasRef(db, product, key)` before serving.
       "blob_objects",
+      // 0048_a (P4-14) — the blob collector's trail. An object's deletion belongs to no product
+      // (the object was shared), so the row is keyed by an autoincrement id with `product`
+      // nullable; it is written only by the nightly collector and read by no tenant route.
+      "blob_gc_log",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

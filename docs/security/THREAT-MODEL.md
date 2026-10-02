@@ -1854,6 +1854,66 @@ Residuals, stated rather than defended:
   packs are stopped until a binary pins a rotated key; on load, an entry whose key is no longer
   pinned is forgotten.
 
+### Readiness holds, pack gates and the blob collector (P4-14)
+
+P4-14 adds Distribution's outlet readiness (`dist_readiness`), per-outlet pack gates in the signed
+feed (`packSets.outlets.<id>.gates`, a member P4-13 froze), and Core's blob collector
+(`core/blobGc.ts`, run nightly from `scheduled.ts`). It adds no route outside the console's admin
+API and no wire member.
+
+- **The collector deletes only what nothing can serve.** Every read of the blob store is gated on
+  the reading product holding a ref (`hasRef`), so an object with no ref from any product is
+  unservable; the sweep deletes only such objects, re-checked (`NOT EXISTS` on `blob_refs`) in
+  the claim, and again in the row delete. Refs are dropped only for pack releases the hooks call
+  dead (never `artifact` or `feed` refs), never for a key any live release's record or index
+  names (an index may list a file held only by a dead release's ref), only once older than the
+  grace period (30 days, at least one day, `BLOB_GC_GRACE_DAYS`), and — for both `pack-object` and
+  `pack-upload` refs — only when the whole live set was read in that tick: an unreadable record
+  or index, Release being off, or a spent budget all mean keep. Revoked releases are never live;
+  only `kind: record` revocations are read as naming a release. While a pack rollout is not
+  complete, every release of that pack below its target is live, so a gate's fallback (which may
+  sit at another contentApi level) keeps its bytes.
+- **The bucket lock is not weakened.** The sweep never attempts a delete before an object's
+  `created_at` is older than the 180-day lock, so a lock refusal means a bug, which fails the step
+  and releases the claims (`blob_gc_log` `delete-failed`). An indefinite lock would make the
+  collector fail every night; escalate instead of shortening it.
+- **No publish can earn a ref to bytes being deleted.** The sweep claims an object
+  (`gc_claimed_at`, one conditional statement) before the R2 delete; `promote`'s `recordObject`
+  refuses a claimed object (`changed`, retryable) and clears `unreferenced_since` otherwise, so a
+  re-promote restarts the grace period. A promote that confirmed existing bytes looks again after
+  recording the row (no claim can follow inside the grace period then) and re-puts the staged
+  copy if a sweep deleted them in between, so it never answers success for missing bytes.
+  Re-earning an existing ref moves its `created_at` forward. A ref the collector itself dropped
+  from a release that is live again (a plan computed before a concurrent ingest) is RESTORED on the
+  next tick, long inside the grace period, so the sweep never reaches it.
+- **Restoring is not earning.** The collector restores only a ref it took from the same product
+  (a `ref-dropped` row in `blob_gc_log`), for a key a live release's own verified record or files
+  index names, on an object still stored and unclaimed. It can never give a product a ref to
+  bytes it never held, even ones another product holds.
+- **No cross-tenant oracle.** The console's dry run (`GET …/blob-gc`) lists only this product's
+  refs and never says whether another product holds the same bytes.
+- **Readiness holds fail closed.** The hold is computed on read: an app release whose required
+  pack set is not available through a holdable outlet's transport (or cannot be computed yet)
+  reads `pending` there in availability, so the signed feed's `live` and the storefront feeds stay
+  on the previous release. Only an operator override (audited, with a reason, operator-owned,
+  surviving resync) releases it. On a store outlet Polaris Key cannot hold, it warns.
+- **Pack gates only narrow.** A gate can send a device to its `fallback` (the previous set's
+  release, a key of the signed `releases` table) or keep it where it is; it never names a release
+  the device would not accept (a downgrade is not installed, P4-13 §2.6). A mirrored (store)
+  rollout composes no rollout gate.
+
+Residuals, stated rather than defended:
+
+- **A dead release stops being served at once.** Once a pack release leaves every live reference
+  (and is older than the three newest), the tick drops its refs and the blob route stops serving
+  it; a device still mid-way to it falls back to the feed's current set.
+- **A deleted product's objects are never collected.** Its refs are kept (fail closed), so its
+  objects stay until an operator removes them.
+- **The bundle hook point.** Until Release implements `packChunks` (P4-22), every ref to a
+  `bundles/` key is kept, and bundle storage only grows.
+- **`blob_gc_log` names keys, not tenants, for deletions.** An object's deletion is attributed to
+  no product; the `ref-dropped` rows say which product dropped the last ref.
+
 ### Packs on the wire (packs v1, P4-21)
 
 Packs v1 (`plans/P4-01.md`; WIRE-CONTRACT-V4 §2.5.1–§2.7, §3.7) adds no `typ`, no feed field and
@@ -2301,7 +2361,10 @@ operator action or to leave stored sets in place, or its bounds (`MAX_SELECTORS`
 `MAX_RESOLUTION_WORK`) are raised (P4-12); a route other than the blob route serves a pack's object
 or reads a `gated/` key, a ref kind other than `pack-upload` or `pack-object` authorises a
 `gated/` key, or a gated object is authorised by anything but the pack's current
-`dist_access.entitlement` (P4-05);
+`dist_access.entitlement` (P4-05); the blob collector drops a ref kind other than `pack-object` or
+`pack-upload`, deletes an object that has a ref, deletes before the bucket lock's age, restores a
+ref no live release's verified record or index names, or its claim stops being checked by
+`recordObject`; or anything but an operator's audited override releases a readiness hold (P4-14);
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store

@@ -117,6 +117,27 @@ writes `source: auto-halt` and `updated_by: system:auto-halt`, and its one
 `distribution.rollout.halt` audit row names the numbers that tripped it. Nothing automatic ever
 resumes, ramps, completes or starts a rollout; lifting the halt is your `resume`.
 
+## Pack rollouts and halts
+
+A pack release rolls out, pauses, resumes and halts per outlet through the same rows and the
+same controls as the app: pass the pack's id as the deliverable
+(`pkey distribution rollout --deliverable <packId> …`, `{ "deliverable": "<packId>" }` on the
+routes). The signed channel feed carries them as **gates** under
+`packSets.outlets.<outletId>.gates`, keyed by the target release's record hash, for every rollout
+on the feed's channel whose release a stored pack set offers, on an outlet where the pack floats:
+
+| Rollout state                    | Gate                                                 |
+| -------------------------------- | ---------------------------------------------------- |
+| `active` or `paused`, below 100% | `{ halted: false, rollout: { bp, salt }, fallback }` |
+| `halted`                         | `{ halted: true, fallback }`: a pack-only rollback   |
+| `complete`, at 100%, or mirrored | none (a mirrored rollout gates only when halted)     |
+
+A device outside the bucket, or on a halted gate, takes `fallback` instead: the release the sets
+name **without** the gated releases (the previous set), or `null` when its rows disagree, in which
+case the device keeps what it has. A device never downgrades a pack it already installed. Other
+outlets carry no gate. A pack whose transport cannot float on an outlet (`pinned` there) gets
+none either.
+
 ## Store rollouts
 
 A store's own staged rollout — Apple's seven-day phased release, Play's `userFraction` — is

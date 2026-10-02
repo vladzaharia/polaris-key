@@ -29,6 +29,15 @@ import {
 } from "../src/repo.js";
 import { CONNECTOR_EVENT_RETENTION_SECONDS } from "../src/services/distribution/connectors/state.js";
 import { portalAudit } from "../src/services/identity/portal/repo.js";
+import { createHash } from "node:crypto";
+import { asR2, R2Mock } from "./r2Mock.js";
+import { enableServices } from "./releaseRoutesFixture.js";
+import {
+  BLOB_LOCK_AGE_SECONDS,
+  DEFAULT_GC_GRACE_SECONDS,
+  MIN_GC_GRACE_SECONDS,
+  blobGcSettings,
+} from "../src/core/blobGc.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The NEWEST index assertion is the live one: each successor (0018, then 0027_i) re-runs the
@@ -528,5 +537,298 @@ describe("required-index assertion", () => {
       .at(-1);
     expect(newest).toBe(ASSERTION_FILE);
     expect(ASSERTION_FILE).not.toBe("0018_index_assertion.sql");
+  });
+});
+
+// ── P4-14: the blob collector ─────────────────────────────────────────────────────────────────
+
+describe("scheduled() blob collector (P4-14)", () => {
+  const GRACE = DEFAULT_GC_GRACE_SECONDS;
+  /** Objects are created at NOW; this tick is the first past the bucket lock. */
+  const PAST_LOCK = NOW + BLOB_LOCK_AGE_SECONDS + 1;
+
+  function hex(seed: string): string {
+    return createHash("sha256").update(seed).digest("hex");
+  }
+
+  async function seedObject(
+    db: Db,
+    r2: R2Mock,
+    key: string,
+    o: { createdAt?: number; kind?: string; size?: number } = {},
+  ): Promise<void> {
+    const bytes = new TextEncoder().encode(key);
+    await db.run(
+      `INSERT INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
+       VALUES (?, ?, ?, ?, 0, ?, ?)`,
+      key,
+      hex(key),
+      bytes.length,
+      o.kind ?? "blob",
+      o.createdAt ?? NOW,
+      o.createdAt ?? NOW,
+    );
+    r2.seed(key, bytes);
+  }
+
+  async function gcWorld() {
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    await enableServices(db, true, "acme");
+    const r2 = new R2Mock();
+    const env = { BLOBS: asR2(r2) } as Env;
+    return { db, r2, env };
+  }
+
+  const exists = (db: Db, key: string) =>
+    count(
+      db,
+      "SELECT COUNT(*) AS n FROM blob_objects WHERE storage_key = ?",
+      key,
+    );
+
+  it("keeps a referenced object, whatever its age", async () => {
+    const { db, r2, env } = await gcWorld();
+    const key = `blobs/sha256/${hex("kept")}`;
+    await seedObject(db, r2, key);
+    await db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES ('acme', ?, 'artifact', 'r1/a1', ?)`,
+      key,
+      NOW,
+    );
+    for (const at of [PAST_LOCK, PAST_LOCK + GRACE, PAST_LOCK + 10 * GRACE])
+      await runScheduledMaintenance(db, at, env);
+    expect(await exists(db, key)).toBe(1);
+    expect(r2.has(key)).toBe(true);
+  });
+
+  it("keeps an unreferenced object inside the grace period, deletes it from R2 and D1 past grace and lock, and a second run deletes nothing", async () => {
+    const { db, r2, env } = await gcWorld();
+    const key = `blobs/sha256/${hex("orphan")}`;
+    await seedObject(db, r2, key);
+    const first = await runScheduledMaintenance(db, PAST_LOCK, env);
+    expect(first.failures).toEqual({});
+    expect(first.counts.blobMark).toBe(1);
+    expect(
+      await db.first(
+        "SELECT unreferenced_since FROM blob_objects WHERE storage_key = ?",
+        key,
+      ),
+    ).toEqual({ unreferenced_since: PAST_LOCK });
+    // One second short of the grace period: kept.
+    const inside = await runScheduledMaintenance(
+      db,
+      PAST_LOCK + GRACE - 1,
+      env,
+    );
+    expect(inside.counts.blobSweep).toBe(0);
+    expect(r2.has(key)).toBe(true);
+    // At the grace period: deleted from R2 and from D1, and logged.
+    const past = await runScheduledMaintenance(db, PAST_LOCK + GRACE, env);
+    expect(past.failures).toEqual({});
+    expect(past.counts.blobSweep).toBe(1);
+    expect(r2.has(key)).toBe(false);
+    expect(await exists(db, key)).toBe(0);
+    expect(
+      await db.first(
+        "SELECT action, storage_key FROM blob_gc_log WHERE action = 'deleted'",
+      ),
+    ).toEqual({ action: "deleted", storage_key: key });
+    // Idempotent: the same clock again deletes, stamps and drops nothing.
+    const again = await runScheduledMaintenance(db, PAST_LOCK + GRACE, env);
+    expect(again.counts.blobSweep).toBe(0);
+    expect(again.counts.blobMark).toBe(0);
+    expect(again.counts["blobRefs:acme"]).toBe(0);
+  });
+
+  it("never deletes before the bucket lock's age, however long it was unreferenced", async () => {
+    const { db, r2, env } = await gcWorld();
+    const key = `blobs/sha256/${hex("young")}`;
+    await seedObject(db, r2, key, { createdAt: NOW });
+    await runScheduledMaintenance(db, NOW + 1, env);
+    const r = await runScheduledMaintenance(db, NOW + 1 + GRACE, env);
+    expect(r.counts.blobSweep).toBe(0);
+    expect(r2.has(key)).toBe(true);
+    expect(GRACE).toBeLessThan(BLOB_LOCK_AGE_SECONDS);
+    const later = await runScheduledMaintenance(db, PAST_LOCK, env);
+    expect(later.counts.blobSweep).toBe(1);
+    expect(r2.has(key)).toBe(false);
+  });
+
+  it("a delta whose base is collectable (or collected) goes without waiting for its own grace period", async () => {
+    const { db, r2, env } = await gcWorld();
+    const base = hex("base");
+    const target = hex("target");
+    const baseKey = `blobs/sha256/${base}`;
+    const deltaKey = `deltas/${base}/${target}.zstd-patch`;
+    const delta2 = `deltas/${base}/${hex("other")}.zstd-patch`;
+    await seedObject(db, r2, baseKey);
+    await seedObject(db, r2, deltaKey, { kind: "delta" });
+    await seedObject(db, r2, delta2, { kind: "delta" });
+    // Both deltas are referenced until just before the base's grace period ends.
+    for (const k of [deltaKey, delta2])
+      await db.run(
+        `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+         VALUES ('acme', ?, 'artifact', ?, ?)`,
+        k,
+        `r1/${k}`,
+        NOW,
+      );
+    await runScheduledMaintenance(db, PAST_LOCK, env);
+    // The base is collected at its grace period; one delta is still referenced then.
+    await db.run("DELETE FROM blob_refs WHERE storage_key = ?", deltaKey);
+    const r = await runScheduledMaintenance(db, PAST_LOCK + GRACE, env);
+    expect(r.counts.blobSweep).toBe(1);
+    expect(r2.has(baseKey)).toBe(false);
+    expect(r2.has(deltaKey)).toBe(true); // stamped this tick, so not yet a candidate
+    // The next tick, a day later and far inside the deltas' own grace period: the delta whose
+    // base was collected goes; the still-referenced one stays.
+    const next = await runScheduledMaintenance(
+      db,
+      PAST_LOCK + GRACE + 86400,
+      env,
+    );
+    expect(next.counts.blobSweep).toBe(1);
+    expect(r2.has(deltaKey)).toBe(false);
+    expect(r2.has(delta2)).toBe(true);
+  });
+
+  it("an R2 failure releases the claims, logs it and fails the step; the next tick retries", async () => {
+    const { db, r2, env } = await gcWorld();
+    const key = `blobs/sha256/${hex("stuck")}`;
+    await seedObject(db, r2, key);
+    await runScheduledMaintenance(db, PAST_LOCK, env);
+    const refusing = {
+      ...asR2(r2),
+      delete: async () => {
+        throw new Error("object is locked");
+      },
+    } as unknown as R2Bucket;
+    const r = await runScheduledMaintenance(db, PAST_LOCK + GRACE, {
+      BLOBS: refusing,
+    } as Env);
+    expect(r.failures.blobSweep).toMatch(/object is locked/);
+    expect(
+      await db.first(
+        "SELECT gc_claimed_at FROM blob_objects WHERE storage_key = ?",
+        key,
+      ),
+    ).toEqual({ gc_claimed_at: null });
+    expect(
+      await count(
+        db,
+        "SELECT COUNT(*) AS n FROM blob_gc_log WHERE action = 'delete-failed'",
+      ),
+    ).toBe(1);
+    const retry = await runScheduledMaintenance(db, PAST_LOCK + GRACE, env);
+    expect(retry.counts.blobSweep).toBe(1);
+    expect(r2.has(key)).toBe(false);
+  });
+
+  it("the gated/ prefix follows the same rules", async () => {
+    const { db, r2, env } = await gcWorld();
+    const kept = `gated/blobs/sha256/${hex("gated-kept")}`;
+    const gone = `gated/blobs/sha256/${hex("gated-gone")}`;
+    await seedObject(db, r2, kept);
+    await seedObject(db, r2, gone);
+    await db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES ('acme', ?, 'pack-upload', 'acme.pack', ?)`,
+      kept,
+      NOW,
+    );
+    await runScheduledMaintenance(db, PAST_LOCK, env);
+    await runScheduledMaintenance(db, PAST_LOCK + GRACE, env);
+    expect(r2.has(kept)).toBe(true);
+    expect(r2.has(gone)).toBe(false);
+    expect(await exists(db, gone)).toBe(0);
+  });
+
+  it("finishes a claim a dead tick left behind, and releases one that gained a ref", async () => {
+    const { db, r2, env } = await gcWorld();
+    const orphan = `blobs/sha256/${hex("stale")}`;
+    const reffed = `blobs/sha256/${hex("stale-reffed")}`;
+    await seedObject(db, r2, orphan);
+    await seedObject(db, r2, reffed);
+    // Both claimed two hours ago by a tick that died; one has since gained a ref.
+    const stale = (PAST_LOCK - 7200) * 1000;
+    await db.run(
+      "UPDATE blob_objects SET gc_claimed_at = ?, unreferenced_since = ?",
+      stale,
+      PAST_LOCK - 7200,
+    );
+    await db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES ('acme', ?, 'artifact', 'r/z', ?)`,
+      reffed,
+      NOW,
+    );
+    const r = await runScheduledMaintenance(db, PAST_LOCK, env);
+    expect(r.counts.blobSweep).toBe(1);
+    expect(r2.has(orphan)).toBe(false);
+    expect(await exists(db, orphan)).toBe(0);
+    expect(r2.has(reffed)).toBe(true);
+    expect(
+      await db.first(
+        "SELECT gc_claimed_at FROM blob_objects WHERE storage_key = ?",
+        reffed,
+      ),
+    ).toEqual({ gc_claimed_at: null });
+  });
+
+  it("is off with BLOB_GC_MODE=off or without the BLOBS binding", async () => {
+    const { db, r2 } = await gcWorld();
+    const key = `blobs/sha256/${hex("off")}`;
+    await seedObject(db, r2, key);
+    const off = await runScheduledMaintenance(db, PAST_LOCK, {
+      BLOBS: asR2(r2),
+      BLOB_GC_MODE: "off",
+    } as unknown as Env);
+    expect(off.counts.blobMark).toBeUndefined();
+    const none = await runScheduledMaintenance(db, PAST_LOCK, {} as Env);
+    expect(none.counts.blobMark).toBeUndefined();
+    expect(r2.has(key)).toBe(true);
+  });
+
+  it("one product's failure does not stop the others or the sweep", async () => {
+    const { db, r2, env } = await gcWorld();
+    await seedProduct(db, "other");
+    await enableServices(db, true, "other");
+    const key = `blobs/sha256/${hex("swept")}`;
+    await seedObject(db, r2, key);
+    await runScheduledMaintenance(db, PAST_LOCK, env);
+    const failing: Db = {
+      ...db,
+      all: async (sql: string, ...params) => {
+        if (/ref_kind = 'pack-object'/.test(sql) && params[0] === "acme")
+          throw new Error("simulated D1 failure");
+        return db.all(sql, ...params);
+      },
+      first: db.first.bind(db),
+      run: db.run.bind(db),
+      batch: db.batch.bind(db),
+      runChanges: db.runChanges.bind(db),
+    };
+    const r = await runScheduledMaintenance(failing, PAST_LOCK + GRACE, env);
+    expect(r.failures["blobRefs:acme"]).toMatch(/simulated D1 failure/);
+    expect(r.counts["blobRefs:other"]).toBe(0);
+    expect(r.counts.blobSweep).toBe(1);
+    expect(r2.has(key)).toBe(false);
+  });
+
+  it("blobGcSettings: the grace period defaults to 30 days and is never under one day", () => {
+    expect(blobGcSettings({} as Env)).toEqual({
+      enabled: true,
+      graceSeconds: DEFAULT_GC_GRACE_SECONDS,
+    });
+    expect(
+      blobGcSettings({ BLOB_GC_GRACE_DAYS: "0.01" } as unknown as Env)
+        .graceSeconds,
+    ).toBe(MIN_GC_GRACE_SECONDS);
+    expect(
+      blobGcSettings({ BLOB_GC_GRACE_DAYS: "nope" } as unknown as Env)
+        .graceSeconds,
+    ).toBe(DEFAULT_GC_GRACE_SECONDS);
   });
 });

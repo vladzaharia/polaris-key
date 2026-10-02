@@ -74,6 +74,40 @@ A stored record wins. A report for (release, build, outlet) replaces the derived
 that build, and a per-release report replaces every derived record on that outlet — so a CI job
 can mark a self-hosted build `removed`.
 
+## Outlet readiness
+
+An app release must not go live on an outlet before its **required pack set** is available
+through that outlet's transport (CONTENT §6.4). Distribution computes readiness per
+(app release, outlet): the app release's `required` pins and holds, plus the `required` compatible
+and standalone packs of the stored pack sets at its contentApi level on every channel it is live
+on, for the platforms the outlet serves. Then, per required pack release and its transport there:
+
+| Transport                             | Ready when                                                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `embedded`, `play-pad`, `steam-depot` | always: the build carries it                                                                                              |
+| `pkey-cdn`, `web`                     | every object its record names is stored and held, and the pack is fetchable (an `entitled` pack with no gate is not)      |
+| `apple-ba`                            | a stored availability record on the outlet says `approved` or `live`, for the level's asset pack (`<pack>-c<contentApi>`) |
+| `msix-optional`, `flatpak-ext`        | a stored availability record says `approved` or `live`                                                                    |
+| anything else                         | never (fail closed)                                                                                                       |
+
+The state is `pending` (the set cannot be computed yet, for example while sets are unresolved),
+`blocked` (with the first blocking pack release), `ready` or `overridden`. On an outlet Polaris
+Key controls (`direct`, `web`, `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`,
+`app-installer`, `flathub`) a `pending` or `blocked` release is **held**: its `live` records read
+`pending`, so the signed feed's per-outlet `live` stays on the previous release and the storefront
+feeds skip it. On a store outlet it cannot hold, readiness records the blocker and a **warning**;
+hold the release in the store yourself (P5-08 adds connector holds).
+
+The hold is computed on every read, so a new app release is held from its first request.
+`dist_readiness` keeps the snapshot the console reads: an availability report refreshes the app
+releases it can affect, and the connector cron refreshes all live ones (every state change is
+audited as `distribution.readiness.<state>`). The [matrix](/docs/admin/distribution-matrix/) shows each
+app release's readiness per cell.
+
+An operator can **override** a hold (`POST …/readiness/<appReleaseId>/<outletId>/override` with a
+`reason`, audited as `distribution.readiness.override`). The override survives every recompute
+and resync until it is cleared (`…/clear`).
+
 ## Submissions
 
 One record per (release, outlet), in `dist_submissions`:
@@ -164,13 +198,16 @@ Every operator change is audited (`distribution.key.upsert`, `distribution.key.d
 
 Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distribution`:
 
-| Method   | Path                         | Does                                                                                                                                             |
-| -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`    | `availability?release=<id>`  | the release on every outlet: stored and derived records, records on removed outlets flagged `outletRemoved`                                      |
-| `GET`    | `submissions[?release=<id>]` | submission records, newest first                                                                                                                 |
-| `GET`    | `keys`                       | `{ purposes, keys, observations }` — the inventory and the CI observations outside it                                                            |
-| `PUT`    | `keys`                       | `{ purpose, sha256, outlet?, notes?, registered? }` — add or update an entry by purpose and fingerprint (adopting an observation); `null` clears |
-| `DELETE` | `keys/<purpose>/<sha256>`    | remove an entry, or dismiss an observation                                                                                                       |
+| Method   | Path                                           | Does                                                                                                                                             |
+| -------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `availability?release=<id>`                    | the release on every outlet: stored and derived records, records on removed outlets flagged `outletRemoved`                                      |
+| `GET`    | `submissions[?release=<id>]`                   | submission records, newest first                                                                                                                 |
+| `GET`    | `keys`                                         | `{ purposes, keys, observations }` — the inventory and the CI observations outside it                                                            |
+| `PUT`    | `keys`                                         | `{ purpose, sha256, outlet?, notes?, registered? }` — add or update an entry by purpose and fingerprint (adopting an observation); `null` clears |
+| `DELETE` | `keys/<purpose>/<sha256>`                      | remove an entry, or dismiss an observation                                                                                                       |
+| `GET`    | `readiness[?release=<id>]`                     | the readiness snapshot, or one app release's readiness computed now, per outlet                                                                  |
+| `POST`   | `readiness/refresh`                            | recompute the snapshot                                                                                                                           |
+| `POST`   | `readiness/<id>/<outlet>/override` · `…/clear` | `{ reason }` — release the hold (audited), or hand it back to the computation                                                                    |
 
 Availability and submissions are read-only in the console: CI reports them, and store connectors
 write them (`source: asc` for App Store Connect).

@@ -12,7 +12,9 @@
  *               client-core's `packSetId` of its members.
  *   outlets     per live outlet, `pinned`: the compatible and standalone packs whose transport on
  *               that outlet cannot float (`TRANSPORT_FLOATS`, only `play-pad` today, decision 16).
- *               No `gates` (P4-14 composes per-outlet pack rollouts and halts).
+ *               `gates` (P4-14, `composeGates`): Distribution's pack rollouts and halts on that
+ *               outlet, keyed by the target's hash, each with the previous set's release as
+ *               `fallback` (rows C11–C13).
  *   packFloors  per declared pack (pinned packs included) and live level, the higher of the
  *               level-free `min_supported` and the level's `release_pack_floors` row on the pack's
  *               channel (the level's `packChannels` routing, as resolution reads it), with the
@@ -38,6 +40,7 @@ import {
 import { MAX_FEED_REVOCATIONS } from "@polaris-key/protocol/core";
 import type {
   FeedPackFloor,
+  FeedPackGate,
   FeedPackOutlet,
   FeedPackRelease,
   FeedPackRow,
@@ -57,8 +60,13 @@ import type {
 } from "../../core/hooks.js";
 import { readPackDeliverables } from "../release/packs/deliverables.js";
 import { loadResolutionState, readStoredSets } from "../release/packs/sets.js";
-import { PackResolver } from "../release/packs/resolve.js";
+import { PackResolutionError, PackResolver } from "../release/packs/resolve.js";
+import { rowKey } from "../release/packs/sets.js";
+import type { ResolvedSet } from "../release/packs/resolve.js";
 import type { ReleaseConfigRow } from "../release/config.js";
+
+/** Basis points in a whole rollout (`dist_rollouts.rollout_bp`). */
+const FULL_ROLLOUT_BP = 10000;
 
 /** The content part one composition produced, before any shedding. */
 export interface ComposedPackParts {
@@ -156,6 +164,184 @@ function truncateRevocations(
   };
 }
 
+/**
+ * The per-outlet pack GATES (P4-14, plans/P4-13.md §2.2 and §2.6 rows C11–C13): Distribution's
+ * rollouts and halts of pack releases, keyed by the target's record hash, under
+ * `packSets.outlets.<outletId>.gates`. For every rollout row of a declared pack on `channel` whose
+ * release a stored row offers (a key of `releases`), on a live outlet where the pack floats:
+ *
+ *   active | paused   `{halted: false, rollout: {bp, salt}, fallback}`: a device outside the bucket
+ *                     (`u32(sha256(salt ‖ installId)[0..4]) mod 10000 >= bp`, evaluated on the
+ *                     device) takes `fallback` instead (C11, C12). Skipped when `bp` is 10000
+ *                     (everyone is in), and for a MIRRORED row (a store connector owns it, P5-*);
+ *   halted            `{halted: true, fallback}`: every device takes `fallback` (C13) — a
+ *                     pack-only rollback (CONTENT §6.7 item 5);
+ *   complete          no gate: the release is out to everyone.
+ *
+ * `fallback` is the release the rows would name WITHOUT the releases gated ON THAT OUTLET: one
+ * more resolution of the channel per distinct set of gated releases, with those removed from their
+ * packs' candidates (the outlet's "previous set").
+ * When the rows that offer the target disagree on it, or name none, it is `null` (a device keeps
+ * what it has). Each fallback joins `releases`, so it is always a key there. Mutates `packSets`.
+ */
+async function composeGates(
+  hooks: ServiceHooks,
+  channel: string,
+  stored: readonly {
+    channel: string;
+    contentApi: number;
+    platform: string;
+    engine: string;
+    variant: string;
+    packs: readonly { pack: string; releaseId: string; sha256: string }[];
+  }[],
+  packSets: FeedPackSets,
+  bindings: Record<string, Record<string, string>>,
+  declaredIds: ReadonlySet<string>,
+  state: Awaited<ReturnType<typeof loadResolutionState>>,
+): Promise<{ audits: ComposedPackParts["audits"] }> {
+  const audits: ComposedPackParts["audits"] = [];
+  const delivery = hooks.delivery();
+  if (!delivery) return { audits };
+  // A release a row offers, by release id.
+  const offered = new Map<string, { pack: string; sha256: string }>();
+  for (const s of stored)
+    for (const m of s.packs)
+      offered.set(m.releaseId, { pack: m.pack, sha256: m.sha256 });
+  const rows = (await delivery.rollouts()).filter(
+    (r) =>
+      r.channel === channel &&
+      r.deliverableId !== APP_DELIVERABLE_ID &&
+      declaredIds.has(r.deliverableId) &&
+      offered.get(r.releaseId)?.pack === r.deliverableId &&
+      Object.hasOwn(bindings, r.outletId) &&
+      bindings[r.outletId]![r.deliverableId] !== "pinned",
+  );
+  const gates: {
+    outlet: string;
+    releaseId: string;
+    target: string;
+    gate: FeedPackGate;
+  }[] = [];
+  for (const r of rows) {
+    const target = offered.get(r.releaseId)!.sha256;
+    if (r.state === "halted") {
+      gates.push({
+        outlet: r.outletId,
+        releaseId: r.releaseId,
+        target,
+        gate: { halted: true, fallback: null },
+      });
+      continue;
+    }
+    if (r.mirrored || (r.state !== "active" && r.state !== "paused")) continue;
+    if (
+      !Number.isSafeInteger(r.rolloutBp) ||
+      r.rolloutBp < 0 ||
+      r.rolloutBp >= FULL_ROLLOUT_BP ||
+      !/^[0-9a-f]{32}$/.test(r.rolloutSalt)
+    )
+      continue;
+    gates.push({
+      outlet: r.outletId,
+      releaseId: r.releaseId,
+      target,
+      gate: {
+        halted: false,
+        rollout: { bp: r.rolloutBp, salt: r.rolloutSalt },
+        fallback: null,
+      },
+    });
+  }
+  if (gates.length === 0) return { audits };
+
+  // The previous set, PER OUTLET: the channel resolved without the releases gated on that outlet
+  // (an outlet's devices see only its own gates). Outlets gating the same releases share one
+  // resolution.
+  const fallbacks = new Map<string, string | null>(); // `${outlet}\u0000${target}` → fallback
+  if (state) {
+    const byOutlet = new Map<string, Set<string>>();
+    for (const g of gates) {
+      const set = byOutlet.get(g.outlet) ?? new Set<string>();
+      set.add(g.releaseId);
+      byOutlet.set(g.outlet, set);
+    }
+    const resolved = new Map<string, Map<string, ResolvedSet> | null>();
+    for (const [outlet, without] of byOutlet) {
+      const key = [...without].sort().join("\u0000");
+      if (!resolved.has(key)) {
+        try {
+          const alt = new PackResolver({
+            ...state.input,
+            channels: [channel],
+            packs: state.input.packs.map((p) => ({
+              ...p,
+              candidates: p.candidates.filter((c) => !without.has(c.releaseId)),
+            })),
+          }).resolve();
+          resolved.set(key, new Map(alt.sets.map((s) => [rowKey(s), s])));
+        } catch (e) {
+          if (!(e instanceof PackResolutionError)) throw e;
+          resolved.set(key, null);
+          audits.push({
+            action: "update.feed.gate_fallback_omitted",
+            summary:
+              `The ${channel} feed's pack gates on ${outlet} carry no fallback: resolving the previous set failed (${e.message})`.slice(
+                0,
+                1000,
+              ),
+          });
+        }
+      }
+      const altRows = resolved.get(key);
+      if (!altRows) continue;
+      for (const target of new Set(
+        gates.filter((g) => g.outlet === outlet).map((g) => g.target),
+      )) {
+        const named = new Set<string>();
+        let pack: string | null = null;
+        for (const s of stored) {
+          const m = s.packs.find((x) => x.sha256 === target);
+          if (!m) continue;
+          pack = m.pack;
+          const e = altRows
+            .get(rowKey(s))
+            ?.entries.find((x) => x.pack === m.pack);
+          named.add(e ? e.recordSha256 : "");
+          if (e && !Object.hasOwn(packSets.releases, e.recordSha256))
+            packSets.releases[e.recordSha256] = {
+              pack: e.pack,
+              version: e.version,
+              seq: e.seq,
+            };
+        }
+        const only = named.size === 1 ? [...named][0]! : "";
+        fallbacks.set(
+          `${outlet}\u0000${target}`,
+          pack !== null && only !== "" && only !== target ? only : null,
+        );
+      }
+    }
+  }
+  // Drop a fallback release no gate ended up naming (a disagreement leaves it unused).
+  const used = new Set<string>();
+  const outlets = (packSets.outlets ??= {});
+  for (const g of gates.sort(
+    (a, b) => bytesCmp(a.outlet, b.outlet) || bytesCmp(a.target, b.target),
+  )) {
+    const fallback = fallbacks.get(`${g.outlet}\u0000${g.target}`) ?? null;
+    if (fallback !== null) used.add(fallback);
+    const entry = (outlets[g.outlet] ??= {});
+    (entry.gates ??= {})[g.target] = { ...g.gate, fallback };
+  }
+  const listed = new Set<string>();
+  for (const members of Object.values(packSets.sets))
+    for (const h of members) listed.add(h);
+  for (const h of Object.keys(packSets.releases))
+    if (!listed.has(h) && !used.has(h)) delete packSets.releases[h];
+  return { audits };
+}
+
 export interface PackPartsContext {
   db: Db;
   product: string;
@@ -231,6 +417,7 @@ async function compose(
     });
   }
   let packSets: FeedPackSets | null = null;
+  let bindings: Record<string, Record<string, string>> = {};
   if (mismatch) {
     audits.push({
       action: "update.feed.packs_omitted",
@@ -242,7 +429,7 @@ async function compose(
     if (delivery) {
       const outlets = await delivery.outlets();
       const transports = await delivery.transports();
-      const bindings = effectivePackBindings(
+      bindings = effectivePackBindings(
         declared,
         outlets,
         transports,
@@ -261,6 +448,20 @@ async function compose(
 
   // ── packFloors ───────────────────────────────────────────────────────────────────────────
   const state = await loadResolutionState(db, product, ctx.cfg);
+
+  // ── gates (P4-14) ────────────────────────────────────────────────────────────────────────
+  if (packSets) {
+    const gated = await composeGates(
+      hooks,
+      channel,
+      stored,
+      packSets,
+      bindings,
+      new Set(declared.map((d) => d.id)),
+      state,
+    );
+    audits.push(...gated.audits);
+  }
   // level → its newest live app release's packChannels mapping.
   const levels = new Map<number, Record<string, string> | null>();
   const liveIds = new Set<string>();

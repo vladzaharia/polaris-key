@@ -270,7 +270,8 @@ async function promoteRound(
   return null;
 }
 
-/** `(product, key, "pack-upload", <packId>)` refs, 20 rows (100 parameters) per insert. */
+/** `(product, key, "pack-upload", <packId>)` refs, 20 rows (100 parameters) per insert. An existing
+ *  ref's `created_at` moves forward, so the collector's grace period counts from this upload (P4-14). */
 function packUploadRefs(
   product: string,
   deliverable: string,
@@ -283,7 +284,8 @@ function packUploadRefs(
     out.push({
       sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
             VALUES ${chunk.map(() => "(?, ?, 'pack-upload', ?, ?)").join(", ")}
-            ON CONFLICT(product, storage_key, ref_kind, ref_id) DO NOTHING`,
+            ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
+            created_at = MAX(blob_refs.created_at, excluded.created_at)`,
       params: chunk.flatMap((k) => [product, k, deliverable, now]),
     });
   }

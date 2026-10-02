@@ -323,6 +323,7 @@ const TABLE_OWNERS = {
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",
+    "blob_gc_log",
     "ci_publishers",
     "ci_tokens",
     "ci_upload_tickets",
@@ -366,6 +367,7 @@ const TABLE_OWNERS = {
     "dist_connector_events",
     "dist_feed_files",
     "dist_connector_settings",
+    "dist_readiness",
   ],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [

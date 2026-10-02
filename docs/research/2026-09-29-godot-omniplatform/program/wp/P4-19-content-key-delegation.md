@@ -171,3 +171,12 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-19.md`](../plans/P4-19.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Hand-off from P4-14
+
+P4-14 (the blob collector) landed first. `CatalogRevocation.kind` already exists as
+`"record" | "delegation"` in `core/hooks.ts`, and `core/blobGc.ts` `livePackReleases` ignores every
+entry whose kind is not `record`. **This package must** exclude the releases a delegation
+revocation yanks from the collector's live rules (a) pins and holds, (e) rollouts and (f) outlet
+listings, and add a test for it (plan P4-19 §8.5: "releases yanked by a delegation revocation are
+no live GC reference").

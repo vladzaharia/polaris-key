@@ -15,7 +15,9 @@
 //
 // 1. PRODUCT-SCOPED. Every delete names one product (or, for the platform-level `portal_audit`
 //    rows that name no product, `product IS NULL` explicitly). The sweep never issues a
-//    statement whose blast radius is "the table".
+//    statement whose blast radius is "the table". The one shared table, `blob_objects` (P4-14's
+//    collector), belongs to no product: its sweep deletes only rows that NO product references
+//    (the `NOT EXISTS` on `blob_refs` is in every statement), bounded per tick.
 // 2. IDEMPOTENT. Every step is a delete-what-is-already-past or a null-what-is-already-dormant,
 //    so a second run on the same clock removes nothing and changes nothing. Cron delivery is
 //    at-least-once; a duplicate tick must be a no-op, not a double-punishment.
@@ -42,6 +44,16 @@ import {
   purgeDownloadTokensForProduct,
 } from "./services/identity/portal/repo.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
+import { buildHooks } from "./core/hooks.js";
+import {
+  GC_INDEX_READS_PER_TICK,
+  applyProductGc,
+  blobGcSettings,
+  markUnreferenced,
+  planProductGc,
+  pruneGcLog,
+  sweepObjects,
+} from "./core/blobGc.js";
 
 /**
  * How long an audit record is kept before the sweep deletes it.
@@ -187,12 +199,79 @@ async function drain(
 }
 
 /**
+ * The blob collector's nightly pass (P4-14, `core/blobGc.ts`), after the retention steps:
+ *
+ *   1. per LIVE product, fault-isolated (`blobRefs:<slug>`): drop the refs no live release needs,
+ *      deciding liveness through that product's own hooks (so a product with Release off, or a
+ *      soft-deleted one, keeps every ref — fail closed). Product-scoped: every ref statement names
+ *      the product. The order rotates daily so the shared index-read budget reaches every product;
+ *   2. `blobMark`: stamp objects no product references, clear the stamp of re-referenced ones;
+ *   3. `blobSweep`: delete what has been unreferenced for the grace period and is older than the
+ *      bucket lock (one R2 call per tick, at most 1,000 keys), claiming each first;
+ *   4. `blobGcLog`: prune the collector's log past the audit retention.
+ *
+ * Skipped entirely without the BLOBS binding or with `BLOB_GC_MODE=off`. Idempotent: a second run
+ * on the same clock drops, stamps and deletes nothing new. Exported for the tests.
+ */
+export async function runBlobGc(
+  report: MaintenanceReport,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<void> {
+  const settings = blobGcSettings(env);
+  if (!env.BLOBS || !settings.enabled) return;
+  let slugs: string[] = [];
+  try {
+    slugs = (await listProducts(db)).map((p) => p.slug).sort();
+  } catch (e) {
+    report.failures["blobRefs:products"] =
+      e instanceof Error ? e.message : String(e);
+  }
+  const budget = { indexReads: GC_INDEX_READS_PER_TICK };
+  const start = slugs.length > 0 ? Math.floor(now / 86400) % slugs.length : 0;
+  for (const slug of [...slugs.slice(start), ...slugs.slice(0, start)]) {
+    await step(report, `blobRefs:${slug}`, async () => {
+      const product = await loadProductPublic(db, slug);
+      if (!product) return 0;
+      const hooks = buildHooks(SERVICES, product.services, {
+        env,
+        db,
+        product,
+        now,
+      });
+      const plan = await planProductGc({
+        db,
+        product: slug,
+        hooks,
+        now,
+        settings,
+        budget,
+      });
+      return applyProductGc(db, plan, now, settings);
+    });
+  }
+  await step(report, "blobMark", () => markUnreferenced(db, now));
+  const bucket = env.BLOBS;
+  await step(
+    report,
+    "blobSweep",
+    async () => (await sweepObjects(db, bucket, now, settings)).deleted,
+  );
+  await step(report, "blobGcLog", () =>
+    drain((limit) => pruneGcLog(db, now - AUDIT_RETENTION_SECONDS, limit)),
+  );
+}
+
+/**
  * The whole nightly sweep. Exported separately from the handler so it is directly testable
- * against the in-memory SQLite harness, with an injected clock.
+ * against the in-memory SQLite harness, with an injected clock. With `env`, the blob collector
+ * runs after the retention steps (`runBlobGc`).
  */
 export async function runScheduledMaintenance(
   db: Db,
   now: number,
+  env?: Env,
 ): Promise<MaintenanceReport> {
   const report: MaintenanceReport = { counts: {}, failures: {} };
   const cutoff = now - AUDIT_RETENTION_SECONDS;
@@ -246,6 +325,8 @@ export async function runScheduledMaintenance(
   await step(report, "portalAudit:_platform", () =>
     drain((limit) => prunePortalAudit(db, null, cutoff, limit)),
   );
+
+  if (env) await runBlobGc(report, env, db, now);
 
   return report;
 }
@@ -327,7 +408,7 @@ export async function handleScheduled(
   const poll = cron === CONNECTOR_POLL_CRON;
   const report = poll
     ? await runConnectorPolls(env, db, now)
-    : await runScheduledMaintenance(db, now);
+    : await runScheduledMaintenance(db, now, env);
   const failed = Object.entries(report.failures);
   if (failed.length > 0) {
     throw new Error(
