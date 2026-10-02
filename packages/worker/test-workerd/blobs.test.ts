@@ -352,9 +352,9 @@ describe("refHolders on D1 (P4-05)", () => {
     for (const [product, storageKey, refKind, refId] of refs)
       await recordRef(db, { product, storageKey, refKind, refId }, NOW);
     expect(await refHolders(db, "holders-a", [pub, gated])).toEqual([
+      { storageKey: pub, refKind: "artifact", holder: "" },
       { storageKey: gated, refKind: "pack-object", holder: "djdl.skins" },
       { storageKey: gated, refKind: "pack-upload", holder: "djdl.skins" },
-      { storageKey: pub, refKind: "artifact", holder: "" },
     ]);
   });
 });

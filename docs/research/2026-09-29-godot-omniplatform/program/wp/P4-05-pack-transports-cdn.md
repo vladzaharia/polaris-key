@@ -124,19 +124,19 @@ authorised per request because a hash is never a secret
 
 ## Acceptance criteria
 
-- [ ] A fixture pack release becomes `live` on `pkey-cdn` only after its last object is uploaded;
+- [x] A fixture pack release becomes `live` on `pkey-cdn` only after its last object is uploaded;
       removing one object's ref keeps it not live.
-- [ ] `embedded` availability appears for each (app release, outlet) whose build `embeds` the pack.
-- [ ] `GET` with `Range: bytes=100-199` returns 206 with the right bytes; `If-Range` with a wrong
+- [x] `embedded` availability appears for each (app release, outlet) whose build `embeds` the pack.
+- [x] `GET` with `Range: bytes=100-199` returns 206 with the right bytes; `If-Range` with a wrong
       `ETag` returns the full object; `HEAD` returns size, `ETag` and `Repr-Digest`; no response
       carries `Content-Encoding`.
-- [ ] A multi-range request returns the full 200. A cross-origin `OPTIONS` preflight asking for
+- [x] A multi-range request returns the full 200. A cross-origin `OPTIONS` preflight asking for
       `range, if-range` returns 204 with those headers allowed.
-- [ ] A gated object: 401 without a device token, 403 without the flag, 200 with it and
+- [x] A gated object: 401 without a device token, 403 without the flag, 200 with it and
       `Cache-Control: private, no-store`; the same hash on the public path returns 404.
-- [ ] A transport other than the three v1 ones is stored and reported unsupported.
-- [ ] `routeCoverage.test.ts` and `pnpm --filter @polaris-key/docs gen:check` pass.
-- [ ] The green gate passes, including `test:workerd`.
+- [x] A transport other than the three v1 ones is stored and reported unsupported.
+- [x] `routeCoverage.test.ts` and `pnpm --filter @polaris-key/docs gen:check` pass.
+- [x] The green gate passes, including `test:workerd`.
 
 ## Verify
 
