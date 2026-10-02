@@ -195,15 +195,20 @@ func _pack_sets(t: PKeyTestContext, cases: Array) -> void:
 
 func _stamps(t: PKeyTestContext, cases: Array) -> void:
 	var n := 0
+	var holds := 0
 	for c in cases:
 		var got := PKeyPackClaims.parse_content_stamp(c["stamp"])
 		# parse_content_stamp's result is unchanged by P4-13: `expect.holds`, where present, is
-		# holdsOf over the parsed stamp (plans/P4-13.md §2.4), which P4-24 ports and checks.
+		# holds_of over the stamp at its top level with its own pointers (plans/P4-13.md §2.4).
 		var want: Dictionary = (c["expect"] as Dictionary).duplicate()
 		want.erase("holds")
 		S.check_same(t, "stamp %s" % c["id"], got, want)
+		if (c["expect"] as Dictionary).has("holds"):
+			S.check_same(t, "stamp %s holds" % c["id"], PKeyPackClaims.stamp_holds(c["stamp"]), c["expect"]["holds"])
+			holds += 1
 		n += 1
 	t.check("content: stampCases coverage", n == cases.size() and n >= FLOORS["stampCases"], "%d/%d" % [n, cases.size()])
+	t.check("content: stampCases with expect.holds (plans/P4-13.md §4.1: four)", holds >= 4, str(holds))
 
 
 func _windows(t: PKeyTestContext, cases: Array) -> void:

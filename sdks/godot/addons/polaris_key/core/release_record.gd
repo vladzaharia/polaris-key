@@ -11,6 +11,11 @@ extends RefCounted
 ##                                       {ok: false, step}, step "hash" | "jws" | "claims" |
 ##                                       "cross-check"
 ##   reload_release_records(cached, opts)  the reload path for the `releaseRecords` slice
+##   revocation_of(doc, nw)              a revocation body (plans/P4-13.md §2.3), read beside the
+##                                       claims: {pack, target, replacement, reason, issuedAt} or null
+##   verify_revocation(jws, opts)        steps 12–16 against a feed entry (a coroutine):
+##                                       {ok: true, revocation} or {ok: false, step}
+##   newer_revocation(a, b)              the winner of two verified revocations of one target
 ##
 ## Hash before signature: a body over MAX_RECORD_JWS_BYTES (88 844) or with a byte outside ASCII
 ## is refused at step `hash` without hashing, and otherwise its SHA-256 must equal the feed's pin
@@ -203,7 +208,8 @@ static func _fail(step: String) -> Dictionary:
 ##       the pin names none; `pack` for a content stamp's pin, plans/P4-01.md §2.6), and
 ##       `deliverable`, `version` and `seq` equal the pin's.
 ## `body`: a PackedByteArray (the HTTP body) or a String. `opts`: {release_keys, product_trust,
-## expected_aud, expected_hash, pin?, offload?}.
+## expected_aud, expected_hash, pin?, offload?}. Returns {ok: true, record, non_wire_integers} or
+## {ok: false, step}.
 static func verify_release_record(body: Variant, opts: Dictionary) -> Dictionary:
 	# 12. Hash before signature.
 	if not (body is String or body is PackedByteArray):
@@ -254,7 +260,7 @@ static func verify_release_record(body: Variant, opts: Dictionary) -> Dictionary
 			return _fail(STEP_CROSS_CHECK)
 		if not PKeyClaims.is_number(pin.get("seq")) or float(record["seq"]) != float(pin["seq"]):
 			return _fail(STEP_CROSS_CHECK)
-	return {"ok": true, "record": record}
+	return {"ok": true, "record": record, "non_wire_integers": v["non_wire_integers"]}
 
 
 ## The reload path for `releaseRecords` (a coroutine): each `cached[h]` goes through steps 12–14
@@ -279,3 +285,88 @@ static func reload_release_records(cached: Variant, opts: Dictionary) -> Diction
 		if r["ok"]:
 			out[h] = {"jws": cached[h], "record": r["record"]}
 	return out
+
+
+# ── P4-13: the revocation record (plans/P4-13.md §2.3, WIRE-CONTRACT-V4 §2.5.3) ──────────────
+
+const STEP_REVOCATION := "revocation"
+
+
+## The revocation body (plans/P4-13.md §2.3), read beside the claims: usable when `kind` is
+## `revocation`, `deliverable` is a pack id, `revokes` is 64 lowercase hex, `replacement` is absent
+## or {sha256: 64 hex and not revokes, seq: an integer ≥ 1 by token, version}, and `reason` is a
+## string of 1–REVOCATION_REASON_MAX_BYTES bytes. `builds` and `content` are ignored. Returns
+## {pack, target, replacement: {sha256, seq, version} or null, reason, issuedAt}, or null when
+## unusable. `nw`: the verified payload's `non_wire_integers` (null for an object you built).
+static func revocation_of(doc: Variant, nw: PKeyJson.PointerSet = null) -> Variant:
+	_ready_res()
+	if not (doc is Dictionary) or not PKeyPackClaims.same(doc.get("kind"), "revocation"):
+		return null
+	if not PKeyPackClaims.is_pack_id(doc.get("deliverable")):
+		return null
+	if not PKeyClaims.matches_whole_re(_sha256_re, doc.get("revokes")):
+		return null
+	var replacement = null
+	if doc.has("replacement"):
+		var r = doc["replacement"]
+		if not (r is Dictionary):
+			return null
+		if not PKeyClaims.matches_whole_re(_sha256_re, r.get("sha256")):
+			return null
+		if r["sha256"] == doc["revokes"]:
+			return null
+		if not PKeyClaims.is_wire_integer(r.get("seq"), "/replacement/seq", 1, nw):
+			return null
+		if not PKeyClaims.matches_whole_re(_version_re, r.get("version")):
+			return null
+		replacement = {"sha256": r["sha256"], "seq": r["seq"], "version": r["version"]}
+	var reason = doc.get("reason")
+	if not (reason is String):
+		return null
+	var n := (reason as String).to_utf8_buffer().size()
+	if n < 1 or n > PKeyConstants.REVOCATION_REASON_MAX_BYTES:
+		return null
+	if not PKeyClaims.is_number(doc.get("issuedAt")):
+		return null
+	return {"pack": doc["deliverable"], "target": doc["revokes"], "replacement": replacement, "reason": reason, "issuedAt": doc["issuedAt"]}
+
+
+## Verify a revocation record against a feed entry (plans/P4-13.md §2.3), a coroutine: steps 12–14
+## with `entry.record` as the pin hash, step 15 with the pin {kind: "revocation", deliverable:
+## entry.pack, version: entry.version, seq: entry.seq}, and step 16 (`revocation`): the body is
+## usable (revocation_of) and `revokes` equals `entry.target`. `opts`: {release_keys (the PINNED
+## release keys only), product_trust, expected_aud, entry: {record, pack, target, version, seq},
+## offload?}. Returns {ok: true, revocation: {pack, target, replacement, reason, issuedAt, record,
+## version, seq}} or {ok: false, step}: `hash`, `jws`, `claims`, `cross-check` or `revocation`.
+static func verify_revocation(jws: Variant, opts: Dictionary) -> Dictionary:
+	var entry = opts.get("entry")
+	if not (entry is Dictionary) or not (entry.get("record") is String):
+		return _fail(STEP_HASH)
+	var r := await verify_release_record(jws, {
+		"release_keys": opts.get("release_keys", {}),
+		"product_trust": opts.get("product_trust", {}),
+		"expected_aud": opts.get("expected_aud", ""),
+		"expected_hash": entry["record"],
+		"pin": {"kind": "revocation", "deliverable": entry.get("pack"), "version": entry.get("version"), "seq": entry.get("seq")},
+		"offload": opts.get("offload", false),
+	})
+	if not r["ok"]:
+		return r
+	var body = revocation_of(r["record"], r["non_wire_integers"])
+	if body == null or not PKeyPackClaims.same(body["target"], entry.get("target")):
+		return _fail(STEP_REVOCATION)
+	var rev: Dictionary = body
+	rev["record"] = entry["record"]
+	rev["version"] = r["record"]["version"]
+	rev["seq"] = r["record"]["seq"]
+	return {"ok": true, "revocation": rev}
+
+
+## The winner of two verified revocations of one target (plans/P4-13.md §2.3, decision 18): the
+## higher `issuedAt`, else the higher record hash by bytes. The Worker ranks superseding
+## revocations with this same rule. Revocations are permanent: superseding changes the
+## replacement or reason, never the revoked status. Returns `a` or `b` itself.
+static func newer_revocation(a: Dictionary, b: Dictionary) -> Dictionary:
+	if float(a["issuedAt"]) != float(b["issuedAt"]):
+		return a if float(a["issuedAt"]) > float(b["issuedAt"]) else b
+	return a if PKeyPackClaims.compare_bytes(String(a["record"]), String(b["record"])) >= 0 else b

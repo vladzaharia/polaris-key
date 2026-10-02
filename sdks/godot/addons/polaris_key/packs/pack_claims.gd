@@ -14,6 +14,9 @@ extends RefCounted
 ##   compare_bytes(a, b)                 UTF-8 byte order
 ##   pack_set_id(entries)                the active set's id, or null
 ##   parse_content_stamp(bytes|text)     {ok, content} or {ok: false, error: content-stamp-invalid}
+##   holds_of(content, nw, pointer)      `content.holds` (plans/P4-13.md §2.4): [] when absent, the
+##                                       parsed holds, or null when unusable
+##   stamp_holds(bytes|text)             holds_of over a content stamp file, with its own pointers
 ##
 ## Every helper is thread-safe: no const Array is indexed or iterated (README "Writing GDScript
 ## here": the 4.4.1 shared read slot).
@@ -404,3 +407,67 @@ static func parse_content_stamp(input: Variant) -> Dictionary:
 	if not content_claims(doc, parsed["non_wire_integers"], ""):
 		return invalid
 	return {"ok": true, "content": {"contentApi": doc["contentApi"], "pins": doc["pins"], "expects": doc["expects"]}}
+
+
+## The holds of an app record's `content` or a content stamp (plans/P4-13.md §2.4), read beside
+## the claims: `holds` absent reads []; otherwise it must be an Array of 0–256 entries, each
+## {pack: a pack id, unique and not pinned, release {sha256, seq ≥ 1 by token, version}, reason?:
+## String}. Anything else reads null (unusable: the device then takes no feed target for any
+## unpinned pack, decision 9). `pointer` is where the content object sits: `/content` in a record,
+## "" in a stamp, for the token rule over `nw`. The parsed holds carry the known members only.
+static func holds_of(content: Variant, nw: PKeyJson.PointerSet = null, pointer := "/content") -> Variant:
+	if not (content is Dictionary):
+		return null
+	if not content.has("holds"):
+		return []
+	var holds = content["holds"]
+	if not (holds is Array) or (holds as Array).size() > PKeyConstants.MAX_CONTENT_PINS:
+		return null
+	var pinned := {}
+	if content.get("pins") is Array:
+		for p in content["pins"]:
+			if p is Dictionary and p.get("pack") is String:
+				pinned[p["pack"]] = true
+	var seen := {}
+	var out: Array = []
+	var list: Array = holds
+	for i in list.size():
+		var h = list[i]
+		if not (h is Dictionary) or not is_pack_id(h.get("pack")):
+			return null
+		if seen.has(h["pack"]) or pinned.has(h["pack"]):
+			return null
+		seen[h["pack"]] = true
+		var r = h.get("release")
+		if not (r is Dictionary):
+			return null
+		if not is_sha256(r.get("sha256")):
+			return null
+		if not PKeyClaims.is_wire_integer(r.get("seq"), "%s/holds/%d/release/seq" % [pointer, i], 1, nw):
+			return null
+		if not matches(VERSION_PATTERN, r.get("version")):
+			return null
+		if h.has("reason") and not (h["reason"] is String):
+			return null
+		var hold := {"pack": h["pack"], "release": {"sha256": r["sha256"], "seq": r["seq"], "version": r["version"]}}
+		if h.has("reason"):
+			hold["reason"] = h["reason"]
+		out.append(hold)
+	return out
+
+
+## The holds of a content stamp file (plans/P4-13.md §2.4): strict JSON (PKeyJson), then holds_of
+## at the stamp's top level with its own non-wire pointers. parse_content_stamp's result is
+## unchanged and carries no holds; a host that runs the content decision reads them with this.
+## null when the stamp does not parse or its holds are unusable.
+static func stamp_holds(input: Variant) -> Variant:
+	var parsed: Dictionary
+	if input is PackedByteArray:
+		parsed = PKeyJson.parse_bytes(input)
+	elif input is String:
+		parsed = PKeyJson.parse(input)
+	else:
+		return null
+	if not parsed.get("ok", false):
+		return null
+	return holds_of(parsed["value"], parsed["non_wire_integers"], "")

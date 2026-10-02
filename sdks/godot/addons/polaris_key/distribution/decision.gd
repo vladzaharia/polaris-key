@@ -10,8 +10,13 @@ extends RefCounted
 ##                                            dataUpdates, channelSwitch, commerce,
 ##                                            downloadedScripts}
 ##   resolve_update_outlet(opts)              {id, kind, subkind}, or null for an invalid host
-##   decide_update(input)                     the decision (a Dictionary, compared by value)
-##   boot_decision(decision)                  "none" | "optional" (never "required" in v4)
+##   decide_update(input)                     the decision (a Dictionary, compared by value);
+##                                            with `input.content`, plans/P4-13.md §2.6's content
+##                                            decision (`update-matrix.json#/contentRows`)
+##   select_pack_rows(pack_sets, sel)         §2.6 steps 1–4: the feed target per pack
+##   boot_decision(decision)                  "none" | "optional" | "required": floors never stop
+##                                            play; a CI-signed revocation of a REQUIRED pack can
+##                                            (plans/P4-13.md decision 4)
 ##   is_undismissable(decision)               a prompt the player cannot dismiss
 ##
 ## PURE: no OS, file or network call happens here, and nothing throws. The service gathers the
@@ -28,6 +33,9 @@ const ROLLOUT_BUCKETS := 10000
 
 const BOOT_NONE := "none"
 const BOOT_OPTIONAL := "optional"
+## plans/P4-13.md decision 4: only `blocked {revoked-content}` (or an answer carrying
+## `contentBlock: "revoked-content"`) maps here: a REQUIRED pack revoked with no fix.
+const BOOT_REQUIRED := "required"
 
 ## Who installs a new build, narrowest first.
 static var BINARY_UPDATES_ORDER := PackedStringArray(["none", "store", "self"])
@@ -278,6 +286,24 @@ static func outlet_entry(target: Variant, outlet: Dictionary) -> Variant:
 	return of_kind[0] if of_kind.size() == 1 else null
 
 
+## The key of the install's entry in a target (outlet_entry's rule), or null.
+static func outlet_entry_id(target: Variant, outlet: Dictionary) -> Variant:
+	if not (target is Dictionary) or not (target.get("outlets") is Dictionary):
+		return null
+	var kind = outlet.get("kind")
+	if not (kind is String) or kind == OUTLET_UNKNOWN:
+		return null
+	var outlets: Dictionary = target["outlets"]
+	var id = outlet.get("id")
+	if id is String and outlets.has(id) and outlets[id] is Dictionary and _str_eq(outlets[id].get("kind"), kind):
+		return id
+	var of_kind: Array = []
+	for k in outlets:
+		if outlets[k] is Dictionary and _str_eq(outlets[k].get("kind"), kind):
+			of_kind.append(k)
+	return of_kind[0] if of_kind.size() == 1 else null
+
+
 static func _arch_rank(b: Dictionary, arch: String) -> int:
 	if _str_eq(b.get("arch"), arch):
 		return 0
@@ -323,19 +349,36 @@ static func _eligible(b: Variant, platform: String, arch: String, scheme: String
 	return true
 
 
-## The update decision (plans/P3-01.md §2.8): the first of eleven rules that applies decides.
-## `input` is `update-matrix.json`'s row input: {now, feed, record, installed: {version,
-## binaryVersion?, buildNumber, platform, arch, format, engine}, outlet: {id, kind}, subkind,
-## staged: {version, channel} or null, skipVersion, bucket, methods}. Synchronous and total; each
-## answer has exactly the members §2.8's output table lists:
+## The update decision (plans/P3-01.md §2.8, extended by plans/P4-13.md §2.6 when `content` is
+## given): P3-01's eleven rules give the app answer; with `content`, the pack composition, the
+## content blocks and `prestage` refine it in §2.6's order. `input` is `update-matrix.json`'s row
+## input: {now, feed, record, installed: {version, binaryVersion?, buildNumber, platform, arch,
+## format, engine}, outlet: {id, kind}, subkind, staged: {version, channel} or null, skipVersion,
+## bucket, methods, content?}. `content` (plans/P4-13.md §2.6): {stamp: {contentApi, pins,
+## expects, holds (null: unusable)}, active: {pack: {sha256, seq, version}}, axes: {axis:
+## [values]}, revocations: [{target, pack, replacement, replacementUsable}], buckets: {salt: int or
+## null}}. Synchronous and total; each answer has exactly the members the output tables list:
 ##   none      {action, reason, behind, discardStaged}
 ##   code-ready {action, release: {version, seq, sha256}, critical, discardStaged}
 ##   binary    {action, method, release: {version, seq, sha256}, build, mandatory, critical,
-##              prestage: [], discardStaged}
-##   store     {action, release: {version, seq}, listingUrl, mandatory, critical, discardStaged}
-##   platform  {action, release: {version, seq}, mandatory, critical, discardStaged}
-##   blocked   {action, reason, discardStaged}
+##              prestage: [{pack, release}], discardStaged, contentBlock?}
+##   store     {action, release: {version, seq}, listingUrl, mandatory, critical, discardStaged,
+##              contentBlock?}
+##   platform  {action, release: {version, seq}, mandatory, critical, discardStaged, contentBlock?}
+##   blocked   {action, reason (app-floor | content-floor | revoked-content), discardStaged,
+##              contentBlock? (app-floor only)}
+##   packs     {action, install: [{pack, release}], revoke: [pack], set: [{pack, sha256}],
+##              discardStaged}
 static func decide_update(input: Dictionary) -> Dictionary:
+	var app := _decide_app(input)
+	var content = input.get("content")
+	if not (content is Dictionary):
+		return app
+	return _decide_content(input, content, app)
+
+
+## P3-01's decision, unchanged (plans/P3-01.md §2.8).
+static func _decide_app(input: Dictionary) -> Dictionary:
 	var feed: Dictionary = input["feed"]
 	var app: Dictionary = feed["app"]
 	var scheme: String = app["versionScheme"]
@@ -497,11 +540,23 @@ static func _binary(method: String, release: Dictionary, build: Dictionary, mand
 	}
 
 
-## The stage machine's `decide.done` for a decision (§2.8 "bootDecision"). No v4 answer stops
-## play: `none`, and a `platform` answer that is not mandatory, give "none"; every other answer
-## gives "optional". "required" comes from no v4 answer.
+## The stage machine's `decide.done` for a decision (plans/P3-01.md §2.8 "bootDecision", amended
+## by plans/P4-13.md §2.6 and decision 4). Floors never stop play; a CI-signed revocation of a
+## REQUIRED pack can:
+##   - `blocked {revoked-content}`, or any answer with `contentBlock: "revoked-content"`, gives
+##     "required": the boot stops at a confirmed `blocked {update-required}` (a revoked required
+##     pack cannot be mounted, so continuing would end in an error and a rollback loop);
+##   - `packs` gives "none" (the boot's FETCH applies it);
+##   - `blocked {content-floor}`, and any answer with `contentBlock: "content-floor"`, give
+##     "optional";
+##   - otherwise P3-01's rule: `none`, and a `platform` answer that is not mandatory, give "none";
+##     every other answer gives "optional", a prompt over a game that keeps running.
 static func boot_decision(decision: Dictionary) -> String:
 	var action = decision.get("action")
+	if (_str_eq(action, "blocked") and _str_eq(decision.get("reason"), "revoked-content")) or _str_eq(decision.get("contentBlock"), "revoked-content"):
+		return BOOT_REQUIRED
+	if _str_eq(action, "packs"):
+		return BOOT_NONE
 	if _str_eq(action, "none"):
 		return BOOT_NONE
 	if _str_eq(action, "platform") and not PKeyClaims.is_true(decision.get("mandatory")):
@@ -518,3 +573,379 @@ static func is_undismissable(decision: Dictionary) -> bool:
 	if _str_eq(action, "binary") or _str_eq(action, "store") or _str_eq(action, "platform"):
 		return PKeyClaims.is_true(decision.get("mandatory"))
 	return false
+
+
+# ── P4-13: the content decision (plans/P4-13.md §2.6) ────────────────────────────────────────
+
+## Lexicographic comparison of two equal-length index tuples.
+static func _tuple_cmp(a: Array, b: Array) -> int:
+	for i in a.size():
+		if a[i] != b[i]:
+			return int(a[i]) - int(b[i])
+	return 0
+
+
+## Row selection (plans/P4-13.md §2.6 steps 1–4): the candidate rows of `pack_sets` (feed_content's
+## parsed `packSets`) at (`contentApi`, `platform`) whose `engine` equals `engine` exactly (no
+## fallback to ""), grouped by their sorted axis names; in each group the row select_variant's
+## rule picks (every axis in `axes`, the lowest tuple of preference indexes over axis names in byte
+## order). `sel`: {contentApi, platform, engine, axes: {axis: [values]}}. Returns the feed target
+## per pack ({pack: record sha256}), a pack named by two selected rows left out.
+static func select_pack_rows(pack_sets: Dictionary, sel: Dictionary) -> Dictionary:
+	var groups := {}
+	var order: Array = []
+	var axes = sel.get("axes")
+	if not (axes is Dictionary):
+		axes = {}
+	if not PKeyClaims.is_number(sel.get("contentApi")):
+		return {}
+	for row in pack_sets.get("rows", []):
+		if float(row["contentApi"]) != float(sel["contentApi"]) or not _str_eq(row["platform"], sel.get("platform")) or not _str_eq(row["engine"], sel.get("engine")):
+			continue
+		var names: Array = (row["variant"] as Dictionary).keys()
+		names.sort_custom(func(a, b): return PKeyPackClaims.compare_bytes(String(a), String(b)) < 0)
+		var key: Array = []
+		var eligible := true
+		for axis in names:
+			var list = axes.get(axis)
+			var k := -1
+			if list is Array or list is PackedStringArray:
+				k = list.find(row["variant"][axis])
+			if k < 0:
+				eligible = false
+				break
+			key.append(k)
+		if not eligible:
+			continue
+		var group := JSON.stringify(names)
+		var best = groups.get(group)
+		if best == null:
+			order.append(group)
+		if best == null or _tuple_cmp(key, best["key"]) < 0:
+			groups[group] = {"set": row["set"], "key": key}
+	var targets := {}
+	var twice := {}
+	var sets: Dictionary = pack_sets.get("sets", {})
+	var releases: Dictionary = pack_sets.get("releases", {})
+	for group in order:
+		var members: Array = sets.get(groups[group]["set"], [])
+		for h in members:
+			if not releases.has(h):
+				continue
+			var pack: String = releases[h]["pack"]
+			if targets.has(pack):
+				twice[pack] = true
+			targets[pack] = h
+	for pack in twice:
+		targets.erase(pack)
+	return targets
+
+
+static func _pin_from(sets: Dictionary, h: String) -> Dictionary:
+	var r: Dictionary = sets["releases"][h]
+	return {"sha256": h, "seq": r["seq"], "version": r["version"]}
+
+
+## The feed targets at one level, after the outlet's narrowing and gates (§2.6 step 5):
+## {pack: {sha256, seq, version}}.
+static func _feed_targets(env: Dictionary, content_api: Variant, engine: String) -> Dictionary:
+	var out := {}
+	var sets = env["packSets"]
+	if not (sets is Dictionary):
+		return out
+	var targets := select_pack_rows(sets, {"contentApi": content_api, "platform": env["platform"], "engine": engine, "axes": env["content"].get("axes")})
+	var buckets = env["content"].get("buckets")
+	if not (buckets is Dictionary):
+		buckets = {}
+	for pack in targets:
+		if env["pinned"].has(pack):
+			continue
+		var h0: String = targets[pack]
+		var h = h0
+		if env["gates"].has(h0):
+			var gate: Dictionary = env["gates"][h0]
+			var gated_out: bool = gate["halted"] == true
+			if not gated_out and gate.get("rollout") is Dictionary:
+				var b = buckets.get(gate["rollout"]["salt"])
+				gated_out = not (PKeyClaims.is_number(b) and float(b) < float(gate["rollout"]["bp"]))
+			if gated_out:
+				h = gate["fallback"]
+		if h is String and sets["releases"].has(h):
+			out[pack] = _pin_from(sets, h)
+	return out
+
+
+## The revocation entries by target (`content.revocations`).
+static func _revoked_map(content: Dictionary) -> Dictionary:
+	var out := {}
+	var list = content.get("revocations")
+	if list is Array:
+		for r in list:
+			if r is Dictionary and r.get("target") is String:
+				out[r["target"]] = r
+	return out
+
+
+static func _is_revoked(x: Variant, revoked: Dictionary) -> bool:
+	return x is Dictionary and revoked.has(x.get("sha256"))
+
+
+## `rep(x)`: x when it is not revoked; else the revocation's replacement when it is usable, not
+## itself revoked, data updates are on and the pack is not narrowed; else null.
+static func _rep(x: Variant, revoked: Dictionary, data_updates: bool, narrowed: bool) -> Variant:
+	if not (x is Dictionary):
+		return null
+	if not _is_revoked(x, revoked):
+		return x
+	var r: Dictionary = revoked[x["sha256"]]
+	var rep = r.get("replacement")
+	if r.get("replacementUsable") == true and rep is Dictionary and not _is_revoked(rep, revoked) and data_updates and not narrowed:
+		return rep
+	return null
+
+
+## A pin map {pack: release} from an Array of {pack, release}.
+static func _release_map(list: Variant) -> Dictionary:
+	var out := {}
+	if list is Array:
+		for p in list:
+			if p is Dictionary and p.get("pack") is String and p.get("release") is Dictionary:
+				out[p["pack"]] = p["release"]
+	return out
+
+
+static func _sorted_bytes(keys: Array) -> Array:
+	var out := keys.duplicate()
+	out.sort_custom(func(a, b): return PKeyPackClaims.compare_bytes(String(a), String(b)) < 0)
+	return out
+
+
+## The pack composition (§2.6 "Composition, per pack p"): {install, revoke, set, revokedRequired,
+## floor}.
+static func _compose(env: Dictionary) -> Dictionary:
+	var content: Dictionary = env["content"]
+	var stamp: Dictionary = content["stamp"]
+	var L = stamp["contentApi"]
+	var revoked := _revoked_map(content)
+	var pins := _release_map(stamp.get("pins"))
+	# `holds` absent reads []; a present null is unusable (decision 9).
+	var hold_list = stamp["holds"] if stamp.has("holds") else []
+	var holds := _release_map(hold_list)
+	var required := {}
+	var essential := {}
+	var expects: Array = stamp.get("expects", []) if stamp.get("expects") is Array else []
+	for e in expects:
+		if PKeyClaims.is_true(e.get("required")):
+			required[e["pack"]] = true
+		if _str_eq(e.get("delivery"), "essential"):
+			essential[e["pack"]] = true
+	var active: Dictionary = content["active"] if content.get("active") is Dictionary else {}
+	var targets := _feed_targets(env, L, env["engine"])
+
+	var known := {}
+	for p in pins:
+		known[p] = true
+	for p in holds:
+		known[p] = true
+	for e in expects:
+		known[e["pack"]] = true
+	for p in active:
+		known[p] = true
+	for p in targets:
+		known[p] = true
+
+	var data_updates: bool = env["dataUpdates"]
+	var out := {"install": [], "revoke": [], "set": [], "revokedRequired": false, "floor": false}
+	for p in _sorted_bytes(known.keys()):
+		var narrowed: bool = env["pinned"].has(p)
+		var base = null
+		if pins.has(p):
+			base = pins[p]
+		elif holds.has(p):
+			base = holds[p]
+		elif narrowed or hold_list == null or not data_updates or env["packSets"] == null:
+			base = null
+		else:
+			base = targets.get(p)
+		var act = active.get(p)
+		var cand = _rep(base, revoked, data_updates, narrowed)
+		if cand == null and _is_revoked(act, revoked):
+			cand = _rep(act, revoked, data_updates, narrowed)
+		var wanted: bool = act is Dictionary or required.has(p) or essential.has(p)
+		var install: bool = cand is Dictionary and not (act is Dictionary and _str_eq(act.get("sha256"), cand["sha256"])) and wanted \
+				and (pins.has(p) or holds.has(p) or not (act is Dictionary) or _is_revoked(act, revoked) or float(cand["seq"]) > float(act["seq"]))
+		if install:
+			out["install"].append({"pack": p, "release": cand})
+		var eff = null
+		if install:
+			eff = cand
+		elif act is Dictionary and not _is_revoked(act, revoked):
+			eff = act
+		else:
+			eff = cand
+		if eff is Dictionary:
+			out["set"].append({"pack": p, "sha256": eff["sha256"]})
+
+		var no_fix: bool = cand == null and (_is_revoked(act, revoked) or (_is_revoked(base, revoked) and not (act is Dictionary)))
+		if no_fix and required.has(p):
+			out["revokedRequired"] = true
+		if no_fix and not required.has(p) and act is Dictionary:
+			out["revoke"].append(p)
+
+		if not no_fix and (act is Dictionary or required.has(p)):
+			for f in env["floors"]:
+				if f["pack"] == p and float(f["contentApi"]) == float(L):
+					var c = null
+					if eff is Dictionary:
+						c = PKeyVersion.compare_versions(f["versionScheme"], eff["version"], f["minVersion"])
+					if c == null or int(c) < 0:
+						out["floor"] = true
+					break
+	return out
+
+
+## §2.6 "Prestage": the new level's required and essential packs, minus the build's embeds.
+static func _prestage_of(env: Dictionary, input: Dictionary, build_id: Variant) -> Array:
+	var record = input.get("record")
+	var rc = record.get("content") if record is Dictionary else null
+	if not (record is Dictionary) or not (rc is Dictionary):
+		return []
+	var L2 = rc.get("contentApi")
+	if PKeyClaims.is_number(L2) and float(L2) == float(env["content"]["stamp"]["contentApi"]):
+		return []
+	var build = null
+	if record.get("builds") is Array:
+		for b in record["builds"]:
+			if b is Dictionary and _str_eq(b.get("id"), build_id):
+				build = b
+				break
+	var embeds := {}
+	if build is Dictionary and build.get("embeds") is Array:
+		for x in build["embeds"]:
+			embeds[x] = true
+	var req = build.get("requires") if build is Dictionary else null
+	var engine: String = req["engine"] if req is Dictionary and req.get("engine") is String else env["engine"]
+	var revoked := _revoked_map(env["content"])
+	var pins := _release_map(rc.get("pins"))
+	var record_holds = PKeyPackClaims.holds_of(rc)
+	var holds := _release_map(record_holds)
+	var data_updates: bool = env["dataUpdates"]
+	var targets := {} if record_holds == null or not data_updates else _feed_targets(env, L2, engine)
+	var active: Dictionary = env["content"]["active"] if env["content"].get("active") is Dictionary else {}
+
+	var out: Array = []
+	var expects: Array = rc.get("expects", []) if rc.get("expects") is Array else []
+	for e in expects:
+		var p = e.get("pack")
+		if not (PKeyClaims.is_true(e.get("required")) or _str_eq(e.get("delivery"), "essential")) or embeds.has(p):
+			continue
+		var narrowed: bool = env["pinned"].has(p)
+		var pick = pins.get(p)
+		if pick == null:
+			pick = holds.get(p)
+		if pick == null:
+			pick = targets.get(p)
+		var release = _rep(pick, revoked, data_updates, narrowed)
+		if release == null:
+			continue
+		var act = active.get(p)
+		if act is Dictionary and _str_eq(act.get("sha256"), release["sha256"]):
+			continue
+		out.append({"pack": p, "release": release})
+	out.sort_custom(func(a, b): return PKeyPackClaims.compare_bytes(String(a["pack"]), String(b["pack"])) < 0)
+	return out
+
+
+static func _content_env(input: Dictionary, content: Dictionary, fc: Dictionary, outlet_cfg: Variant, pack_sets: Variant, data_updates: bool) -> Dictionary:
+	var pinned := {}
+	var gates := {}
+	if pack_sets != null and outlet_cfg is Dictionary:
+		for p in outlet_cfg.get("pinned", []):
+			pinned[p] = true
+		gates = outlet_cfg.get("gates", {})
+	var installed: Dictionary = input["installed"]
+	var engine = installed.get("engine")
+	return {
+		"content": content,
+		"packSets": pack_sets,
+		"floors": fc["packFloors"] if fc["packFloors"] is Array else [],
+		"pinned": pinned,
+		"gates": gates,
+		"dataUpdates": data_updates,
+		"platform": installed["platform"],
+		"engine": engine if engine is String else "",
+	}
+
+
+## §2.6 "Order": the content refinement of P3-01's answer `app`.
+static func _decide_content(input: Dictionary, content: Dictionary, app: Dictionary) -> Dictionary:
+	var feed: Dictionary = input["feed"]
+	var installed: Dictionary = input["installed"]
+	var outlet: Dictionary = input["outlet"]
+	var target = feed_target(feed["app"].get("targets"), installed["platform"])
+	var entry = outlet_entry(target, outlet)
+	var entry_id = outlet_entry_id(target, outlet)
+	var caps := effective_capabilities(outlet.get("kind"), {
+		"platform": installed["platform"],
+		"subkind": input.get("subkind"),
+		"server": entry.get("capabilities") if entry is Dictionary else null,
+	})
+	var data_updates: bool = PKeyClaims.is_true(caps["dataUpdates"])
+	var fc := PKeyFeed.feed_content(feed)
+	var outlet_cfg = null
+	var ps = fc["packSets"]
+	if ps is Dictionary and ps.get("outlets") is Dictionary and entry_id is String and ps["outlets"].has(entry_id):
+		outlet_cfg = ps["outlets"][entry_id]
+	var staged = input.get("staged")
+	var discard: bool = staged != null
+
+	# 1. Stale or unknown version: only revoked required content can change the answer.
+	if _str_eq(app.get("action"), "none") and (_str_eq(app.get("reason"), "stale") or _str_eq(app.get("reason"), "unknown-version")):
+		var c0 := _compose(_content_env(input, content, fc, outlet_cfg, null, data_updates))
+		if c0["revokedRequired"]:
+			return {"action": "blocked", "reason": "revoked-content", "discardStaged": discard}
+		return app
+
+	var full := _content_env(input, content, fc, outlet_cfg, ps, data_updates)
+	var c := _compose(full)
+	var block = null
+	if c["revokedRequired"]:
+		block = "revoked-content"
+	elif c["floor"]:
+		block = "content-floor"
+
+	var action = app.get("action")
+	# 2. The app floor.
+	if _str_eq(action, "blocked"):
+		if block == null:
+			return app
+		var with_block := app.duplicate()
+		with_block["contentBlock"] = block
+		return with_block
+
+	# 3. Offers.
+	if _str_eq(action, "binary") or _str_eq(action, "store") or _str_eq(action, "platform"):
+		var offer := app.duplicate()
+		if _str_eq(action, "binary"):
+			offer["prestage"] = _prestage_of(full, input, app.get("build"))
+		if block != null:
+			offer["mandatory"] = true
+			offer["contentBlock"] = block
+			return offer
+		if PKeyClaims.is_true(app.get("mandatory")) or _str_eq(action, "binary"):
+			return offer
+
+	# 4. A content block.
+	if block != null:
+		return {"action": "blocked", "reason": block, "discardStaged": discard}
+
+	# 5. code-ready.
+	if _str_eq(action, "code-ready"):
+		return app
+
+	# 6. packs.
+	if data_updates and (not c["install"].is_empty() or not c["revoke"].is_empty()):
+		return {"action": "packs", "install": c["install"], "revoke": c["revoke"], "set": c["set"], "discardStaged": discard}
+
+	# 7. Otherwise P3-01's answer.
+	return app
