@@ -108,6 +108,23 @@ def test_expected_services_decide_product_before_discovery() -> None:
     assert on.supports(Feature.RELEASE_CHANGELOG).supported
 
 
+def test_a_service_that_is_off_refuses_with_the_product_fields_and_code_service_unavailable() -> None:
+    c = make_client(_offline, expected_services=["license", "config"])
+    with pytest.raises(UnsupportedError) as caught:
+        c.release.changelog()
+    e = caught.value
+    assert isinstance(e, PolarisError)
+    assert e.code == ErrorCode.SERVICE_UNAVAILABLE
+    assert (e.feature, e.reason) == (Feature.RELEASE_CHANGELOG, UnsupportedReason.PRODUCT)
+    assert e.detail == "the product does not run the release service"
+    # The same fields supports() answers.
+    assert c.supports(Feature.RELEASE_CHANGELOG) == e.unsupported
+    with pytest.raises(UnsupportedError) as sign_in:
+        c.identity.begin_sign_in()
+    assert sign_in.value.code == ErrorCode.SERVICE_UNAVAILABLE
+    assert sign_in.value.feature == Feature.IDENTITY_DEVICECODE
+
+
 class _FakeKeyring:
     def __init__(self, module: str = "keyring.backends.macOS") -> None:
         cls = type("Keyring", (), {})

@@ -54,6 +54,7 @@ from ..constants_generated import (
     MAX_RECORD_JWS_BYTES,
     PLATFORM_VALUES,
     ErrorCode,
+    Feature,
 )
 from ..core.b64url import b64url_decode
 from ..core.check import FetchOutcome, run_update_check
@@ -394,7 +395,7 @@ class UpdateClient:
         APPLICATION's version, not the SDK's: the SDK ships inside the thing being
         updated.
         """
-        self._ctx.require_service("update")
+        self._ctx.require_service("update", Feature.UPDATE_CHECK)
         url = self._ctx.url("update/version")
         if channel:
             parts = urlsplit(url)
@@ -475,7 +476,7 @@ class UpdateClient:
         with self._lock:
             c = self._require_configured()
             cache, trust = self._require_custody()
-            self._ctx.require_service("update")
+            self._ctx.require_service("update", Feature.UPDATE_DECIDE)
             self._ctx.http()  # a local-only client refuses here, before anything is built
             installed = self._installed()
             ep = self._endpoints(feed=True, record=True)
@@ -511,7 +512,7 @@ class UpdateClient:
         way and falls back to the committed feed the same way; it needs no release keys."""
         with self._lock:
             cache, trust = self._require_custody()
-            self._ctx.require_service("update")
+            self._ctx.require_service("update", Feature.UPDATE_FEED)
             self._ctx.http()
             installed = self._installed()
             ep = self._endpoints(feed=True, record=False)
@@ -554,7 +555,7 @@ class UpdateClient:
         with self._lock:
             c = self._require_configured()
             cache, trust = self._require_custody()
-            self._ctx.require_service("release")
+            self._ctx.require_service("release", Feature.RELEASE_RECORD)
             self._ctx.http()
             installed = self._installed()
             ep = self._endpoints(feed=False, record=True)

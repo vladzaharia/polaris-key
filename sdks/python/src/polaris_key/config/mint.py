@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 import httpx
 
+from ..constants_generated import Feature
 from ..core.errors import PolarisError
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -68,7 +69,7 @@ def mint_token(
     cache: MintCache,
     recipe_id: str,
 ) -> MintedToken:
-    ctx.require_service("config")
+    ctx.require_service("config", Feature.CONFIG_MINT)
     if not isinstance(recipe_id, str) or not MINT_ID.fullmatch(recipe_id):
         raise PolarisError(
             "bad_request",

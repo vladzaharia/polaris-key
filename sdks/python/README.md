@@ -169,8 +169,10 @@ have a `supported` property. `reason` is an `UnsupportedReason` value:
 The answer comes from the capability table generated from this SDK's parity manifest
 (`CAPABILITIES`), the services the client believes the product runs, and the environment. It is
 offline and side-effect free: it never calls the network and never reads the keyring. A call
-into an unsupported feature raises `UnsupportedError`, a `PolarisError` with code
-`unsupported` and the same `feature`, `reason` and `detail`.
+into an unsupported feature raises `UnsupportedError`, a `PolarisError` carrying the same
+`feature`, `reason` and `detail`. Its code is `unsupported`, except for a sub-client whose
+service is off. That refusal is the `product` reason and keeps the code `service-unavailable`,
+which existing callers match on.
 
 Without the `keyring` extra (or with a `fail`/`null` backend) the token still persists, in a
 0600 file. `store_status()` then reports `keyring-unavailable`, and

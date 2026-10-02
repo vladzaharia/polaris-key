@@ -2,14 +2,18 @@
 
 Every SDK answers one query, ``client.supports(feature)``, with :class:`Supported` or
 :class:`Unsupported` ``(feature, reason, detail)``, and every call into an unsupported feature
-raises :class:`UnsupportedError` carrying the same three fields and the shared code
-``unsupported``. The reasons:
+raises :class:`UnsupportedError` carrying the same three fields (code ``unsupported``, or
+``service-unavailable`` for a ``product`` refusal, below). The reasons:
 
   runtime     the runtime cannot do it at all (declared in the parity registry)
   outlet      the outlet forbids it
   product     the product disabled the service that owns it (discovery)
   dependency  an optional dependency is missing (the ``keyring`` extra)
   version     this SDK version does not implement the feature yet, or does not know it
+
+A ``runtime`` refusal raises with code ``unsupported``. A ``product`` refusal (a sub-client whose
+service is off, :meth:`CoreContext.require_service`) raises the same :class:`UnsupportedError`
+fields with the older code ``service-unavailable``, which existing callers match on.
 
 THE TABLE IS DATA. ``CAPABILITIES`` is generated from ``sdks/python/parity.json`` into
 :mod:`polaris_key.constants_generated` by ``pnpm gen:constants``; ``pnpm parity:check`` fails
@@ -82,12 +86,14 @@ Support = Union[Supported, Unsupported]
 
 
 class UnsupportedError(PolarisError):
-    """Raised by a call into a feature that is not supported here. ``code`` is
-    ``unsupported``; ``feature``, ``reason`` and ``detail`` are :class:`Unsupported`'s."""
+    """Raised by a call into a feature that is not supported here. ``feature``, ``reason`` and
+    ``detail`` are :class:`Unsupported`'s. ``code`` is ``unsupported``, except for a ``product``
+    refusal from a sub-client whose service is off, which keeps ``service-unavailable`` so
+    callers matching on that code still work."""
 
-    def __init__(self, unsupported: Unsupported) -> None:
+    def __init__(self, unsupported: Unsupported, code: str = ErrorCode.UNSUPPORTED) -> None:
         super().__init__(
-            ErrorCode.UNSUPPORTED,
+            code,
             f"{unsupported.feature} is not supported here ({unsupported.reason}): {unsupported.detail}",
         )
         self.unsupported = unsupported
