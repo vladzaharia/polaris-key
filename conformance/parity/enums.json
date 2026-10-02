@@ -1,6 +1,6 @@
 {
   "$schema": "./enums.schema.json",
-  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values. Transports, pack types, patch strategies and bindings are added when their owners define them (P4-01). The outlet and update vocabularies are plans/P3-01.md §2.8's tables, in their order, and equal the constants in `@polaris-key/protocol/distribution` and `/update` (a reserved value such as `packs` joins an enum only with its own plan-mode package). The version schemes are not an enum: `semver+build` and `4part` are not identifiers.",
+  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values. Pack types (P4-21), patch strategies and transports (P4-04) come from plans/P4-01.md; bindings are added when their owner defines them. The outlet and update vocabularies are plans/P3-01.md §2.8's tables, in their order, and equal the constants in `@polaris-key/protocol/distribution` and `/update` (a reserved value such as `packs` joins an enum only with its own plan-mode package). The version schemes are not an enum: `semver+build` and `4part` are not identifiers.",
   "enums": [
     {
       "name": "platform",
@@ -165,6 +165,25 @@
       "name": "variantAxis",
       "description": "The variant axis names a v1 manifest may declare (`VARIANT_AXES`, plans/P4-01.md §2.2). A record may name any `VARIANT_AXIS_PATTERN` axis; a variant on an axis the host has no preferences for is ineligible.",
       "values": ["texture", "locale", "quality"]
+    },
+    {
+      "name": "patchStrategy",
+      "description": "The install planner's strategies (plans/P4-01.md §2.9, A7 §4.2): a plan result's `strategy` and a host's `caps.strategies`. `plan-matrix.json` pins them.",
+      "values": ["noop", "platform", "delta", "chunk", "file", "full"]
+    },
+    {
+      "name": "transport",
+      "description": "How a deliverable's bytes arrive (`TRANSPORTS` in `@polaris-key/manifest`, P2b-02; README §3.1): the planner's `caps.transports` and a platform target's `transport` (plans/P4-01.md §2.9).",
+      "values": [
+        "embedded",
+        "pkey-cdn",
+        "apple-ba",
+        "play-pad",
+        "steam-depot",
+        "msix-optional",
+        "flatpak-ext",
+        "web"
+      ]
     }
   ]
 }

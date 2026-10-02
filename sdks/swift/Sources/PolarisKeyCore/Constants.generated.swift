@@ -103,6 +103,19 @@ public enum ErrorCode {
     public static let filesPathConflict = "files-path-conflict"
     public static let filesLayoutMismatch = "files-layout-mismatch"
     public static let contentStampInvalid = "content-stamp-invalid"
+    public static let fullCorrupt = "full-corrupt"
+    public static let deltaArtifactMismatch = "delta-artifact-mismatch"
+    public static let deltaBaseMismatch = "delta-base-mismatch"
+    public static let deltaApplyFailed = "delta-apply-failed"
+    public static let fileCorrupt = "file-corrupt"
+    public static let fileSourceMissing = "file-source-missing"
+    public static let payloadHashMismatch = "payload-hash-mismatch"
+    public static let planTransportUnsupported = "plan-transport-unsupported"
+    public static let planInsufficientDisk = "plan-insufficient-disk"
+    public static let planNoStrategy = "plan-no-strategy"
+    public static let packNoVariant = "pack-no-variant"
+    public static let packTypeUnsupported = "pack-type-unsupported"
+    public static let markerRejected = "marker-rejected"
 }
 
 /// Every `ErrorCode` value, in source order.
@@ -199,6 +212,19 @@ public let ERROR_CODE_VALUES: [String] = [
     "files-path-conflict",
     "files-layout-mismatch",
     "content-stamp-invalid",
+    "full-corrupt",
+    "delta-artifact-mismatch",
+    "delta-base-mismatch",
+    "delta-apply-failed",
+    "file-corrupt",
+    "file-source-missing",
+    "payload-hash-mismatch",
+    "plan-transport-unsupported",
+    "plan-insufficient-disk",
+    "plan-no-strategy",
+    "pack-no-variant",
+    "pack-type-unsupported",
+    "marker-rejected",
 ]
 
 /// The registry: every error code and its kind (`wire` or `client`).
@@ -295,6 +321,19 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "files-path-conflict": "client",
     "files-layout-mismatch": "client",
     "content-stamp-invalid": "client",
+    "full-corrupt": "client",
+    "delta-artifact-mismatch": "client",
+    "delta-base-mismatch": "client",
+    "delta-apply-failed": "client",
+    "file-corrupt": "client",
+    "file-source-missing": "client",
+    "payload-hash-mismatch": "client",
+    "plan-transport-unsupported": "client",
+    "plan-insufficient-disk": "client",
+    "plan-no-strategy": "client",
+    "pack-no-variant": "client",
+    "pack-type-unsupported": "client",
+    "marker-rejected": "client",
 ]
 
 /// Every feature id in the parity registry (conformance/parity/features.json).
@@ -340,7 +379,8 @@ public enum Feature {
     public static let outletDetect = "outlet.detect"
     public static let packsRecord = "packs.record"
     public static let packsPlan = "packs.plan"
-    public static let packsIndex = "packs.index"
+    public static let packsIndexFiles = "packs.index.files"
+    public static let packsIndexChunks = "packs.index.chunks"
     public static let packsApplyFull = "packs.apply.full"
     public static let packsApplyFile = "packs.apply.file"
     public static let packsApplyChunk = "packs.apply.chunk"
@@ -401,7 +441,8 @@ public let FEATURE_VALUES: [String] = [
     "outlet.detect",
     "packs.record",
     "packs.plan",
-    "packs.index",
+    "packs.index.files",
+    "packs.index.chunks",
     "packs.apply.full",
     "packs.apply.file",
     "packs.apply.chunk",
@@ -765,6 +806,50 @@ public let VARIANT_AXIS_VALUES: [String] = [
     "quality",
 ]
 
+/// The install planner's strategies (plans/P4-01.md §2.9, A7 §4.2): a plan result's `strategy` and a host's `caps.strategies`. `plan-matrix.json` pins them.
+public enum PatchStrategy {
+    public static let noop = "noop"
+    public static let platform = "platform"
+    public static let delta = "delta"
+    public static let chunk = "chunk"
+    public static let file = "file"
+    public static let full = "full"
+}
+
+/// Every `PatchStrategy` value, in source order.
+public let PATCH_STRATEGY_VALUES: [String] = [
+    "noop",
+    "platform",
+    "delta",
+    "chunk",
+    "file",
+    "full",
+]
+
+/// How a deliverable's bytes arrive (`TRANSPORTS` in `@polaris-key/manifest`, P2b-02; README §3.1): the planner's `caps.transports` and a platform target's `transport` (plans/P4-01.md §2.9).
+public enum Transport {
+    public static let embedded = "embedded"
+    public static let pkeyCdn = "pkey-cdn"
+    public static let appleBa = "apple-ba"
+    public static let playPad = "play-pad"
+    public static let steamDepot = "steam-depot"
+    public static let msixOptional = "msix-optional"
+    public static let flatpakExt = "flatpak-ext"
+    public static let web = "web"
+}
+
+/// Every `Transport` value, in source order.
+public let TRANSPORT_VALUES: [String] = [
+    "embedded",
+    "pkey-cdn",
+    "apple-ba",
+    "play-pad",
+    "steam-depot",
+    "msix-optional",
+    "flatpak-ext",
+    "web",
+]
+
 /// The `X-PKey-*` request header names (wire contract v3 §5).
 public enum HeaderName {
     public static let arch = "X-PKey-Arch"
@@ -800,13 +885,19 @@ public let GATE_MATRIX_VERSION = 2
 public let FINGERPRINT_VERSION = 1
 
 /// `stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json.
-public let STAGE_MATRIX_VERSION = 2
+public let STAGE_MATRIX_VERSION = 3
 
 /// `updateMatrixVersion` of conformance/corpus/v2/update-matrix.json.
 public let UPDATE_MATRIX_VERSION = 1
 
 /// `outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json.
 public let OUTLET_MATRIX_VERSION = 1
+
+/// `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
+public let PLAN_MATRIX_VERSION = 1
+
+/// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
+public let CONTENT_CORPUS_VERSION = 1
 
 /// Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
 public let MAX_WIRE_INTEGER = 9007199254740991
@@ -849,6 +940,9 @@ public let MARKER_FORMAT = "pkey-marker/1"
 
 /// Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 public let CONTENT_STAMP_FORMAT = "pkey-content/1"
+
+/// Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let PLAN_REQUEST_WEIGHT = 16384
 
 /// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 public let CHANNEL_ALIASES: [String: String] = [

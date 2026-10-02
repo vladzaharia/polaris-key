@@ -2,7 +2,7 @@
 title: "The conformance corpus"
 description: "One generator signs every vector; every language runner verifies them; a CI drift gate keeps the committed files and their generator-owned mirrors honest."
 sidebar:
-  order: 10
+  order: 11
 ---
 
 The corpus is the only automated cross-language enforcement this contract has. The spec is
@@ -25,8 +25,15 @@ tools/sign-corpus.ts  →  conformance/corpus/v2/cases.json
                          conformance/corpus/v2/stage-matrix.json
                          conformance/corpus/v2/headers.json
                          conformance/corpus/v2/config-matrix.json
+                         conformance/corpus/v2/update-matrix.json
+                         conformance/corpus/v2/outlet-matrix.json
                       →  sdks/swift/Tests/PolarisKeyTests/Resources/v2/   (Swift mirror)
                       →  sdks/godot/tests/corpus/v2/                      (Godot mirror)
+
+tools/gen-content-corpus.ts (called from sign-corpus.ts's main)
+  reads   conformance/corpus/v2/content/blobs/            (inputs: zstd blobs, refs.json)
+  writes  conformance/corpus/v2/content/cases.json        (source only, not mirrored)
+          conformance/corpus/v2/plan-matrix.json          (mirrored like every top-level file)
 ```
 
 One signer produces the canonical vectors. Ed25519 is deterministic, so re-signing the same
@@ -49,7 +56,7 @@ into the v2 generator before deletion. Fourteen are still carried; the fifteenth
 the dev-build bypass R3-01 removed, was retired by an approved plan (P0-04), and its successor
 row pins the opt-in bypass instead.
 
-## The six files
+## The files
 
 | File                 | What it pins                                                                                                                                                                                       | Contract section                              |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
@@ -59,17 +66,40 @@ row pins the opt-in bypass instead.
 | `stage-matrix.json`  | The boot stage machine: rows of host events with the exact emits each produces, and guard cases                                                                                                    | client boot behaviour, not a contract section |
 | `headers.json`       | Each runtime spelling of a platform or arch and its canonical `X-PKey-Platform` / `X-PKey-Arch` value, or none (`platformCases`, `archCases`)                                                      | §5.2                                          |
 | `config-matrix.json` | Config precedence, the environment variable name, the strict environment value and the user-visible list (`resolveCases`, `envValueCases`, `listCases`), with each no-environment answer           | §2.2.1                                        |
+| `update-matrix.json` | The update decision: version comparison, capability narrowing, the outlet, the rollout bucket and every decision row                                                                               | §11.1 (client behaviour)                      |
+| `outlet-matrix.json` | Outlet capability defaults and narrowing, listing-URL prefixes, and outlet detection                                                                                                               | §11.2 (client behaviour)                      |
+| `plan-matrix.json`   | The install planner (`rows`), variant selection (`variantCases`) and target mapping (`targetCases`)                                                                                                | §11.4 (client behaviour)                      |
+| `content/cases.json` | The content corpus: path rules, the files index, full, delta and file apply, `packSetId`, the content stamp and `frameWindow`, over the committed blobs in `content/blobs/`                        | §2.6, §2.7                                    |
 
 ### The case families in `cases.json`
 
-| Family            | Contract section | What it drives                                                                        |
-| ----------------- | ---------------- | ------------------------------------------------------------------------------------- |
-| `jwsCases`        | §1–§2            | Raw compact-JWS verification: alphabet, caps, duplicate keys, `alg`, `typ`, tampering |
-| `licenseDocCases` | §3               | Claim validation on `pkey-license+jws`                                                |
-| `configDocCases`  | §3               | Claim validation on `pkey-config+jws`, including "no license fields"                  |
-| `trustCases`      | §1               | Trust merge, prune, substitution, revocation                                          |
-| `clockFloorCases` | §4.2             | The reload path and the monotonic floor over three artifacts                          |
-| `bundleCases`     | §7               | Offline bundle import, pinned to the **numbered step** that refuses                   |
+| Family               | Contract section | What it drives                                                                                                                                    |
+| -------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jwsCases`           | §1–§2            | Raw compact-JWS verification: alphabet, caps, duplicate keys, `alg`, `typ`, tampering                                                             |
+| `licenseDocCases`    | §3               | Claim validation on `pkey-license+jws`                                                                                                            |
+| `configDocCases`     | §3               | Claim validation on `pkey-config+jws`, including "no license fields"                                                                              |
+| `trustCases`         | §1               | Trust merge, prune, substitution, revocation                                                                                                      |
+| `clockFloorCases`    | §4.2             | The reload path and the monotonic floor over three artifacts                                                                                      |
+| `bundleCases`        | §7               | Offline bundle import, pinned to the **numbered step** that refuses                                                                               |
+| `feedCases`          | §2.4, §3.4       | Channel feeds: signature, claims, the canonical channel and the `seq` floor                                                                       |
+| `releaseRecordCases` | §2.5, §3.5       | Release records: the hash before the signature, the release keys, the claims, the pin                                                             |
+| `packRecordCases`    | §2.5.1, §2.5.2   | `kind: pack` records and an app record's `content` and `builds[].embeds`, one case per registered claim check, over the content set's object refs |
+| `markerCases`        | §2.7, §3.7       | Embedded-pack markers, in the marker verification order                                                                                           |
+
+### The content corpus
+
+`content/` is the one part of the corpus that holds bytes rather than signed text. Its blobs
+(a real v1 → v2 pack pair, its file blobs, a whole-payload delta, the packed per-file delta set,
+the same files as trees, and a small tree pair) are **inputs**: zstd output is not stable across
+libzstd versions, so a normal or `--check` run never compresses. It decodes the blobs with
+`@polaris-key/zstd-wasm`, checks each against the `blobs` table in `content/cases.json`, and
+rebuilds `content/cases.json` and `plan-matrix.json` from them. `content/blobs/refs.json` holds
+the refs of the few objects the signed records pin but the corpus does not ship (they would pass
+the 5 MB budget). Only `pnpm gen:corpus -- --rebuild-content-blobs`, which refuses any zstd but
+1.5.7, writes the blobs or `refs.json`; a rebuild changes hashes, so it is a PR of its own.
+`content/` is not mirrored: every runner reads it from the checkout. `.prettierignore` and
+`.gitattributes` (`binary`) keep formatters and line-ending conversion away from the hashed
+bytes.
 
 Live case counts are generated from the corpus files themselves and published at
 [Conformance corpus v2](/docs/reference/corpus/). The fingerprint constants those vectors pin
@@ -233,3 +263,4 @@ Worth stating plainly, so it is not over-trusted:
 - [Trust](/docs/build/wire/trust/) — `trustCases`.
 - [Cache and clock](/docs/build/wire/cache-and-clock/) — `clockFloorCases`.
 - [Offline bundles](/docs/build/wire/bundles/) — `bundleCases`.
+- [Pack byte formats](/docs/build/wire/packs/) — the content corpus.

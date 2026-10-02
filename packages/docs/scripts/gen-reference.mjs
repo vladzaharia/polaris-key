@@ -484,6 +484,19 @@ function corpusInventory() {
   const outletMatrix = JSON.parse(
     read("conformance", "corpus", "v2", "outlet-matrix.json"),
   );
+  const planMatrix = JSON.parse(
+    read("conformance", "corpus", "v2", "plan-matrix.json"),
+  );
+  const content = JSON.parse(
+    read("conformance", "corpus", "v2", "content", "cases.json"),
+  );
+  const contentSections = Object.entries(content)
+    .filter(([, v]) => Array.isArray(v))
+    .map(([k, v]) => [`\`${k}\``, String(v.length)]);
+  const blobBytes = Object.values(content.blobs ?? {}).reduce(
+    (n, b) => n + b.size,
+    0,
+  );
   return page(
     "Conformance corpus v2",
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
@@ -498,14 +511,15 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`,
 \`stageMatrixVersion ${stages.stageMatrixVersion}\`, \`headersVersion ${headers.headersVersion}\`,
 \`configMatrixVersion ${configMatrix.configMatrixVersion}\`,
-\`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`.
+\`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`,
+\`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`contentCorpusVersion ${content.contentCorpusVersion}\`.
 Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
 \`releaseRecordCases\` families, the strict-verifier \`jwsCases\`, a \`nonWireIntegers\` member
 beside \`expect\` on every case whose payload holds a number that cannot be a wire integer, and the
 two decision tables below. Packs v1 (\`plans/P4-01.md\` §4.6) adds \`packRecordCases\` (\`kind: pack\`
-records and an app record's \`content\` and \`builds[].embeds\`, signed over a fixed object-ref
-table until the content corpus lands) and \`markerCases\` (embedded-pack markers), two JWS
-families that the record runners of SDKs predating packs never read.`,
+records and an app record's \`content\` and \`builds[].embeds\`, whose object refs are the content
+corpus's own) and \`markerCases\` (embedded-pack markers), two JWS families that the record
+runners of SDKs predating packs never read, and the content corpus and \`plan-matrix.json\` below.`,
     [
       "## Case families (`cases.json`)",
       "",
@@ -520,7 +534,7 @@ families that the record runners of SDKs predating packs never read.`,
       `## Stage matrix (\`stage-matrix.json\`): ${stages.rows?.length ?? "?"} rows, ${stages.guardCases?.length ?? "?"} guard cases, ${stages.confirmCases?.length ?? 0} confirm cases`,
       "",
       "Client boot behaviour, not a wire-contract section: the boot stage machine of `@polaris-key/client-core/stages`. Every runner replays each row and sends every probe at every state the rows reach. Version 2's confirm cases pin `bootConfirmation(outcome)`, with `bootOkSeconds` " +
-        `${stages.bootOkSeconds ?? "?"}.`,
+        `${stages.bootOkSeconds ?? "?"}. Version 3 (WIRE-CONTRACT-V4 §11.3) adds the pack rows: \`essentialPacks\`, download consent and progress, a declined download as \`blocked\`, and a playable \`offline\` stop.`,
       "",
       `## Header values (\`headers.json\`): ${headers.platformCases?.length ?? "?"} platform and ${headers.archCases?.length ?? "?"} arch spellings`,
       "",
@@ -537,6 +551,16 @@ families that the record runners of SDKs predating packs never read.`,
       `## Outlets (\`outlet-matrix.json\`): ${Object.keys(outletMatrix.kinds ?? {}).length} kinds (with \`unknown\`), ${outletMatrix.signals?.length ?? "?"} signals, ${outletMatrix.rows?.length ?? "?"} detection rows`,
       "",
       "WIRE-CONTRACT-V4 §11.2: the capability defaults per outlet kind and their narrowing, the listing-URL prefixes, and `detectOutlet`. The generator recomputes every detection row.",
+      "",
+      `## Install planner (\`plan-matrix.json\`): ${planMatrix.rows?.length ?? "?"} planner rows, ${planMatrix.variantCases?.length ?? "?"} variant and ${planMatrix.targetCases?.length ?? "?"} target cases`,
+      "",
+      `WIRE-CONTRACT-V4 §11.4: \`plan\` (request weight ${planMatrix.requestWeight ?? "?"}), \`selectVariant\` and \`planTarget\`. Chunk targets are inline, so the planner never parses an index; the \`plan-real-*\` rows are the content set's own menu. The generator recomputes every row and case.`,
+      "",
+      `## Content corpus (\`content/cases.json\`): ${Object.keys(content.blobs ?? {}).length} blobs, ${blobBytes.toLocaleString("en-US")} bytes`,
+      "",
+      "WIRE-CONTRACT-V4 §2.6: the files index and its path rules, full, `payload`-delta and `file` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen:corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.",
+      "",
+      table(["Section", "Cases"], contentSections),
     ].join("\n"),
   );
 }

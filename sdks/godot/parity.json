@@ -124,9 +124,13 @@
       "status": "planned",
       "wp": "P4-08"
     },
-    "packs.index": {
+    "packs.index.files": {
       "status": "planned",
       "wp": "P4-08"
+    },
+    "packs.index.chunks": {
+      "status": "planned",
+      "wp": "P4-11"
     },
     "packs.apply.full": {
       "status": "planned",
