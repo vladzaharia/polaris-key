@@ -68,6 +68,32 @@ config-only product boots usable instead of sitting on "needs activation" foreve
 `expectedServices` for what the build actually ships against: an unreachable control plane
 should never be able to silently take a service away by omission.
 
+## `supports()`: typed "unsupported here"
+
+Every SDK answers `supports(feature)` for any parity feature id, using the generated `Feature`
+constants. The answer is Supported, or Unsupported with a `feature`, a `reason` and a human
+`detail`. It makes no network call and has no side effects. The reasons are the generated
+`UnsupportedReason` values:
+
+| Reason       | Meaning                                                                        |
+| ------------ | ------------------------------------------------------------------------------ |
+| `runtime`    | the runtime cannot do it at all (a browser holds no secrets and no keyring)    |
+| `outlet`     | the outlet forbids it (iOS: no self-update, only a store link)                 |
+| `product`    | the owning service is off, by the capability precedence above                  |
+| `dependency` | an optional dependency is missing (Node or Python without a usable OS keyring) |
+| `version`    | this SDK version does not implement the feature yet, or does not know the id   |
+
+Each SDK reads a capability table generated from its own `parity.json`, so its answers always
+match the [SDK parity matrix](/docs/reference/parity/). Calling into an unsupported feature
+fails with the same fields, in each language's idiom:
+
+- Node, React and Python throw `UnsupportedError` with code `unsupported`.
+- Swift throws `UnsupportedError`.
+- Godot returns a `PKeyResult` with code `unsupported` and the fields in `detail`.
+
+React's `getSecret()` is an example: it throws instead of returning `null`. `caps()` lists the
+supported ids, and each device report sends that list as `caps`.
+
 ## The `PKEY_CONFIG_*` env convention
 
 Every SDK layers an environment override into config resolution at the same precedence:

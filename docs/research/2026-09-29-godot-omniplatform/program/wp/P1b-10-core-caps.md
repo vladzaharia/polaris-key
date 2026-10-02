@@ -93,16 +93,16 @@ P1b-01 and P1b-02 both record `core.caps` as unowned. This package owns it.
 
 ## Acceptance criteria
 
-- [ ] `supports(Feature.ConfigSecret)` returns `Unsupported{reason: "runtime"}` in the React
+- [x] `supports(Feature.ConfigSecret)` returns `Unsupported{reason: "runtime"}` in the React
       browser adapter and `Supported` in Node, Python and Swift. Tests cover both.
-- [ ] Calling `getSecret` in the browser raises the typed `Unsupported`, not `undefined`.
-- [ ] With a service disabled in discovery, `supports()` reports `product` for that service's
+- [x] Calling `getSecret` in the browser raises the typed `Unsupported`, not `undefined`.
+- [x] With a service disabled in discovery, `supports()` reports `product` for that service's
       features in all four SDKs.
-- [ ] A missing optional dependency (Python without `keyring`) reports `dependency` for `core.store`.
-- [ ] `caps` is accepted by `/devices/report` and appears in the stored report; the Worker tests
+- [x] A missing optional dependency (Python without `keyring`) reports `dependency` for `core.store`.
+- [x] `caps` is accepted by `/devices/report` and appears in the stored report; the Worker tests
       cover the allowlist change.
-- [ ] `core.caps` is `implemented` in each SDK's `parity.json`; `pnpm parity:check` passes.
-- [ ] The green gate passes.
+- [x] `core.caps` is `implemented` in each SDK's `parity.json`; `pnpm parity:check` passes.
+- [x] The green gate passes.
 
 ## Verify
 
@@ -113,6 +113,48 @@ mise exec node@22 -- pnpm parity:check
 ( cd sdks/python && .venv/bin/python -m pytest -q )
 ( cd sdks/swift && swift test )
 ```
+
+## Corrections from implementation
+
+- **Godot is in scope.** `sdks/godot` exists, so it gained the same surface. It keeps the result
+  shape it already had, a `PKeyResult` with code `unsupported`, and `detail` grows to
+  `{feature, reason, detail}`.
+- **The capability table is generated, not hand-written.** `tools/capabilities.ts` builds one
+  table per SDK from its `parity.json` (status, owning service, every declared runtime/reason
+  N/A, traits expanded). `pnpm gen:constants` writes it into each constants module as
+  `CAPABILITIES` plus a `CAPABILITY_DIGEST`. `parity:check` gains rule 7: a module whose digest
+  is not its manifest's fails. To support this, the registry's `sdks[]` gains a required
+  `constants` path.
+- **Conditional reasons are declared in the manifest.** A non-`runtime` `except` entry, such as
+  Swift's `update.driver` `ios:outlet` or the new Node and Python `core.store` `dependency`
+  entries, names a detector the SDK implements. Each SDK refuses to construct a client whose
+  detectors and table disagree. `core.store` needed `node:dependency` and `python:dependency`
+  added to its `allowedNa`, because without them rule 3 rejects the `except`.
+- **`product` and `version` are never declared.** `product` applies to every feature an opt-in
+  service owns. `version` also covers a feature the SDK does not implement yet (`planned`) or an
+  id it does not know, because no other reason fits.
+- **Names.** In every language the result types are `Supported` / `Unsupported` (Swift:
+  `Support.supported` / `.unsupported(Unsupported)`) and the thrown type is `UnsupportedError`.
+  The list is `caps()` everywhere. Swift's `supports` and `caps` are `async` because services
+  live on the `CoreContext` actor.
+- **The error code is the existing `unsupported`.** It was Godot-only, and is now described for
+  every SDK. React's browser device-management verbs and `report()` throw `UnsupportedError`
+  but keep their older codes (`device-management-unsupported`, `report-unsupported`), so
+  existing `.code` checks still match.
+- **`caps` rides every report, not only on change.** `/devices/report` overwrites the stored
+  report, so a list sent only when it changed would vanish at the next report. The Worker keeps
+  at most 128 strings shaped like a feature id, each at most 64 characters, and drops
+  duplicates. The OpenAPI text and the transcripts' report allowlist (`pnpm gen:transcripts`)
+  follow. Privacy impact: `caps` adds one bit, whether an optional dependency such as an OS
+  keyring is present. Everything else in it follows from facts already reported (SDK, version,
+  runtime, services, outlet). `docs/PRIVACY.md` says so.
+- **React sends no `caps`.** A browser holds no device token, and on desktop the host's Node
+  SDK reports with its own list.
+- **Outlet.** P3-11 had landed, so the hook is real in one place. Swift's `update.driver`
+  outlet detector answers on iOS, where self-update is always forbidden.
+- **Not converted.** The sub-clients' `service-unavailable` refusals for a disabled service stay
+  as they are. `supports()` reports `product` for them, but changing the thrown code would
+  change recorded transcripts and existing callers. This is a follow-up.
 
 ## Hand-off
 

@@ -92,7 +92,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. |
 | `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. |
 | `not-configured` | `core` | A call needs configuration it does not have: in Godot, a call that ran before configure(); in every SDK, update.decide() with no pinned release keys. |
-| `unsupported` | `core` | Godot: The capability is not available on this platform or build (a stub where a native plugin is absent). |
+| `unsupported` | `core` | Every SDK: the feature is not supported here, as `supports(feature)` reports it. Carries `feature`, `reason` (`runtime`, `outlet`, `product`, `dependency` or `version`) and `detail` (PARITY §2.2, P1b-10). Godot also returns it from a stub where a native plugin is absent. |
 | `timeout` | `core` | Godot: The request got no complete answer within its wall-clock budget, every redirect hop included. |
 | `response-too-large` | `core` | Godot: The response body exceeded the client's cap (512 KiB for API calls). |
 | `too-many-redirects` | `core` | Godot: The request was redirected more times than the client follows. |
