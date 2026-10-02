@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v1)                                                                                                                                                            |
 | Size        | 1.5–2 engineer-weeks                                                                                                                                                      |
-| Depends on  | [P4-01](P4-01-packs-plan.md)                                                                                                                                              |
+| Depends on  | [P4-01](P4-01-packs-plan.md), [P3-02](P3-02-wire-v4-contract-corpus.md), [P4-21](P4-21-packs-wire-core.md)                                                                |
 | Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-10](P4-10-chunk-indexes.md)                                 |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                     |
 | Plan mode   | yes: `pkey-wire-planner` writes a short execution plan, `program/plans/P4-04.md`, against the approved P4-01 plan; a human approves it before code                        |
@@ -184,3 +184,8 @@ mirrors through their real code paths; the case ids, verdict shapes and version 
 are their contract. P4-10 extends the same generator with `chunkIndexCases`, chunk apply cases
 and index-blob plan rows, bumping `contentCorpusVersion` if its plan says so. Then
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-04 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

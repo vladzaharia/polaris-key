@@ -1,16 +1,16 @@
 # P4-03 CI: files index with gaps blob, per-entry deltas, pack lint and marker in `pkey release publish`
 
-| Field       | Value                                                                                                          |
-| ----------- | -------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v1)                                                                                                 |
-| Size        | 1–1.5 engineer-weeks                                                                                           |
-| Depends on  | [P4-01](P4-01-packs-plan.md), [P2-06](P2-06-publish-cli-action.md), [P3-03](P3-03-feed-composition.md)         |
-| Unblocks    | [P4-10](P4-10-chunk-indexes.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md) |
-| Role        | `pkey-implementer`                                                                                             |
-| Plan mode   | no: it implements the formats in the approved `program/plans/P4-01.md`                                         |
-| Gates       | CLI tests; no Worker change. End-to-end submission needs [P4-02](P4-02-pack-deliverables.md) deployed          |
-| Human input | none (tests sign with a committed test release key; the Action runs against a fixture product)                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                      |
+| Field       | Value                                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P4: Packs (v1)                                                                                                                                                                 |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                           |
+| Depends on  | [P4-01](P4-01-packs-plan.md), [P2-06](P2-06-publish-cli-action.md), [P3-03](P3-03-feed-composition.md), [P4-21](P4-21-packs-wire-core.md), [P4-02](P4-02-pack-deliverables.md) |
+| Unblocks    | [P4-10](P4-10-chunk-indexes.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md)                                                                 |
+| Role        | `pkey-implementer`                                                                                                                                                             |
+| Plan mode   | no: it implements the formats in the approved `program/plans/P4-01.md`                                                                                                         |
+| Gates       | CLI tests; no Worker change. End-to-end submission needs [P4-02](P4-02-pack-deliverables.md) deployed                                                                          |
+| Human input | none (tests sign with a committed test release key; the Action runs against a fixture product)                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                      |
 
 ## Goal
 
@@ -220,3 +220,8 @@ P4-10 adds `pkey-chunks/1` and chunk bundles to the same command, reusing its di
 (file-aware chunking needs PCK entry offsets) and upload path. P4-08's device-side directory check
 must agree with this lint. Diceroll (D-04) publishes through this command. Then
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-03 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

@@ -3,9 +3,9 @@
 | Field       | Value                                                                                                                                                     |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v1)                                                                                                                                            |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                      |
-| Depends on  | [P4-01](P4-01-packs-plan.md), [P3-03](P3-03-feed-composition.md)                                                                                          |
-| Unblocks    | [P4-05](P4-05-pack-transports-cdn.md), [P4-09](P4-09-console-pack-views.md), [P4-12](P4-12-compat-resolution.md)                                          |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                      |
+| Depends on  | [P4-01](P4-01-packs-plan.md), [P3-03](P3-03-feed-composition.md), [P4-21](P4-21-packs-wire-core.md)                                                       |
+| Unblocks    | [P4-03](P4-03-ci-patch-artifacts.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-09](P4-09-console-pack-views.md), [P4-12](P4-12-compat-resolution.md)    |
 | Role        | `pkey-implementer`                                                                                                                                        |
 | Plan mode   | no: it executes the approved `program/plans/P4-01.md`; a deviation needs a plan amendment first                                                           |
 | Gates       | rule 9 (validator rule + mutation-table entry + JSON schema); D1 migration + `TABLE_OWNERS` (`data-model.mdx`); `validation-codes.mdx` (`docs gen:check`) |
@@ -177,3 +177,8 @@ P4-05 relies on the hook's pack releases, objects and per-build `embeds`; P4-09 
 ingest with holds and resolution. Record the final table, column and role names in the PR
 description if they differ from the plan, and amend the plan. Then
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-02 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.
