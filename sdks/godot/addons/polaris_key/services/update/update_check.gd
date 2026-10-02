@@ -8,15 +8,17 @@ extends PKeyResult
 ##                  `staged.channel`, never the name it asked for
 ##   decision       the update decision (PKeyDecision.decide_update): a Dictionary with
 ##                  `update-matrix.json`'s members, `action` one of none, code-ready, binary,
-##                  store, platform, blocked
+##                  store, platform, blocked, packs (plans/P4-13.md §2.6: with a content stamp)
 ##   feed           "network" when the fetched feed was committed or equals the committed one;
 ##                  "committed" when the decision used the earlier copy instead
 ##   record         "network", "cache" or "none"
 ##   errors         Array of {code, detail}: what went wrong on the way without stopping the
 ##                  decision (a transport code, `feed-rejected` with its step, `feed-rollback`,
 ##                  `record-rejected` with its step, `record-mismatch`)
-##   boot           PKeyDecision.boot_decision(decision): "none" or "optional" (never "required":
-##                  no v4 answer stops play)
+##   boot           PKeyDecision.boot_decision(decision): "none", "optional" or "required".
+##                  Floors never stop play; "required" comes only from a CI-signed revocation of a
+##                  REQUIRED pack (`blocked {revoked-content}`, or `contentBlock:
+##                  "revoked-content"`; plans/P4-13.md decision 4, amending P3-01 decision 1)
 ##   undismissable  a mandatory binary, store or platform answer, or any blocked answer: a prompt
 ##                  the player cannot dismiss over a game that keeps running
 ##   feed_doc       the verified feed the decision used;  record_doc  the verified record, or null

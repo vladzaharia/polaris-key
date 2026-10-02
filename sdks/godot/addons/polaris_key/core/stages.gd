@@ -37,7 +37,8 @@ const BOOT_EVENT_TYPES := ["start", "shell.done", "guard.done", "sync.done", "sy
 const BOOT_EMIT_TYPES := ["stage_changed", "waiting", "update_available", "blocked", "offline", "error", "boot_rolled_back", "boot_ready", "consent_needed", "fetch_progress"]
 ## What `boot_guard_action` decides at launch.
 const BOOT_GUARD_ACTIONS := ["none", "apply-staged", "roll-back"]
-## What `decide.done` carries. `required` is P1-09's; no v4 update decision maps to it.
+## What `decide.done` carries. `required` is P1-09's; the one v4 answer that maps to it is revoked
+## REQUIRED content (plans/P4-13.md decision 4): floors never do.
 const BOOT_DECISIONS := ["none", "optional", "required"]
 ## When a launch is confirmed, by outcome (`boot_confirmation`).
 const BOOT_CONFIRMATIONS := ["now", "after-ok-seconds", "never"]

@@ -29,6 +29,21 @@ extends RefCounted
 ## `previous` alike; a fresh commit over a deferred active install carries it over to `previous`,
 ## re-verified before a rollback uses it. A listing that fails is never planned from.
 ##
+## Revocations (plans/P4-13.md §2.5) live in the sibling `revocations.json` (PKeyPackRevocations,
+## PKeyPackStorage's `revocations_*`), never inside `state.json`. A release a verified revocation
+## names is never installed, activated or mounted (`pack-revoked`), embedded baselines and pinned
+## packs included, and a rollback never goes back to one. The file is written only once the first
+## entry is stored (`revocationsStored: true` in `state.json` first, then the file); absent is the
+## empty document. Can't-read is never missing: an unreadable file writes nothing this process and,
+## with `revocationsStored` set, refuses the embedded mount of every pack the stamp pins or the host
+## embeds (`pack-revoked`, detail `relearn`); a torn one is quarantined and replaced by a fresh
+## document whose `relearn` holds those packs. Each entry is re-verified at load against the pinned
+## release keys; a dropped entry adds its pack to `relearn` unless its key is simply no longer
+## pinned. A pack in `relearn` has its embedded baseline refused at every boot (online the pack is
+## fetched instead) until a fresh feed re-teaches it or `recover_state()` clears it; at most 256
+## targets are kept (the oldest dropped first). A product with no revocations has no file, no flag
+## and no `relearn`, so nothing here can refuse a mount: it behaves exactly as before.
+##
 ## Every call is a coroutine returning a PKeyResult (or a Dictionary for `estimate`); calls are
 ## serialised. Progress: `progress(event)` with {packId, phase: download | apply | done |
 ## state-issue, done, total, issue?}.
@@ -80,6 +95,14 @@ var state_issue := ""
 var doc: Variant = null
 ## Every pack record verified this process, by its SHA-256 (the mount reads `handler`).
 var records := {}
+## The sibling `revocations.json` (plans/P4-13.md §2.5). Off: revocations live in memory for the
+## life of the process only.
+var revocations_enabled := true
+## The revocations document as loaded and updated (PKeyPackRevocations).
+var rev_doc := PKeyPackRevocations.empty()
+## Why `revocations.json` could not be trusted: "", "torn" (quarantined and replaced) or
+## "unreadable" (nothing is written to it this process).
+var rev_issue := ""
 
 var _embedded := {}
 var _unverifiable := {}
@@ -89,6 +112,12 @@ var _hold_snapshot: Variant = null
 var _unverified_previous := {}
 var _preflight_plans := {}
 var _busy := false
+## Every revocation verified in this process (loaded or learned), by target.
+var _rev_verified := {}
+## The JWS of each revocation learned in this process, by target.
+var _rev_jws := {}
+## Whether `revocations.json` exists (it is never created empty).
+var _rev_file := false
 ## The last object fetch was refused with 403 (P4-05: `delivery_gate_missing`, `not_entitled`).
 var _denied := false
 
@@ -227,12 +256,15 @@ func load_state(embedded: Array = []) -> Dictionary:
 	for id in parsed["previous"]:
 		if verifier.deferred.has(parsed["previous"][id]):
 			_deferred["previous"][id] = parsed["previous"][id]
+	# plans/P4-13.md §2.5: the sibling revocations, before anything mounts.
+	await _load_revocations(unreadable)
 	# This boot's set: every active install (restart packs mount at this boot), else the embedded
-	# baseline.
+	# baseline. A revoked release never activates or mounts (`pack-revoked`).
 	for id in doc["active"]:
-		await _activate(doc["active"][id])
+		if not is_revoked(doc["active"][id]["recordSha256"]):
+			await _activate(doc["active"][id])
 	for id in _embedded:
-		if not running.has(id):
+		if not running.has(id) and not _embedded_refused(_embedded[id]):
 			await _activate(_embedded[id])
 	if not unreadable:
 		_persist()
@@ -366,6 +398,9 @@ func _rollback_one(pack_id: String) -> PKeyResult:
 		return _result(bad["error"])
 	var before = doc["active"].get(pack_id)
 	var prev = doc["previous"].get(pack_id)
+	# plans/P4-13.md §2.5: never back to a revoked release.
+	if prev is Dictionary and is_revoked(prev["recordSha256"]):
+		return PKeyResult.success(false)
 	if prev is Dictionary and _unverified_previous.has(pack_id):
 		var ok: bool = await _verify_stored_record(prev["record"], prev["recordSha256"], pack_id, prev)
 		if ok:
@@ -440,26 +475,69 @@ func ensure(pack_ids: Array) -> PKeyResult:
 	return PKeyResult.success(out)
 
 
+## Install exact releases (a `packs` decision's `install`, plans/P4-13.md §2.6): each pack's named
+## release ({pack, release: {sha256, seq, version}}), verified against the pinned release keys with
+## that pin, instead of the stamp's pin. A coroutine with `ensure`'s answers, plus `pack-revoked`
+## for a release a verified revocation names.
+func ensure_releases(targets: Array) -> PKeyResult:
+	await _enter()
+	var bad = _refuse_unreadable()
+	if bad != null:
+		_leave()
+		return _result(bad["error"])
+	var out: Array = []
+	for t in targets:
+		var pack_id := String(t.get("pack", "")) if t is Dictionary else ""
+		var release = t.get("release") if t is Dictionary else null
+		if pack_id == "" or not (release is Dictionary):
+			_leave()
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "ensure_releases needs [{pack, release: {sha256, seq, version}}].")
+		var r: Dictionary = await _ensure_one(pack_id, release)
+		if r.has("error"):
+			_leave()
+			return _result(r["error"])
+		out.append(r["install"])
+	_leave()
+	return PKeyResult.success(out)
+
+
 ## Preflight each pack without downloading its payload and sum the chosen strategies' bytes: the
 ## size a consent dialog discloses (Apple 4.2.3(ii)). The index each tree stages is reused by
 ## `ensure`. A coroutine returning {bytes, packs, refused: [{packId, code}]}.
 func estimate(pack_ids: Array) -> Dictionary:
+	var items: Array = []
+	for id in pack_ids:
+		items.append({"pack": String(id)})
+	return await _estimate_all(items)
+
+
+## `estimate` for exact releases (a `packs` decision's `install`, plans/P4-13.md §2.6).
+func estimate_releases(targets: Array) -> Dictionary:
+	var items: Array = []
+	for t in targets:
+		if t is Dictionary:
+			items.append({"pack": String(t.get("pack", "")), "release": t.get("release")})
+	return await _estimate_all(items)
+
+
+func _estimate_all(items: Array) -> Dictionary:
 	await _enter()
 	var out := {"bytes": 0, "packs": [], "refused": []}
 	var bad = _refuse_unreadable()
 	if bad != null:
-		for id in pack_ids:
-			out["refused"].append({"packId": String(id), "code": bad["error"]["code"]})
+		for it in items:
+			out["refused"].append({"packId": it["pack"], "code": bad["error"]["code"]})
 		_leave()
 		return out
-	for id in pack_ids:
-		var pre: Dictionary = await _preflight(String(id))
+	for it in items:
+		var id: String = it["pack"]
+		var pre: Dictionary = await _preflight(id, it.get("release"))
 		if pre.has("error"):
-			out["refused"].append({"packId": String(id), "code": pre["error"]["code"]})
+			out["refused"].append({"packId": id, "code": pre["error"]["code"]})
 			continue
 		if pre["kind"] == "current" or pre["kind"] == "held" or pre["plan"]["strategy"] == "noop":
 			continue
-		out["packs"].append(String(id))
+		out["packs"].append(id)
 		if pre["plan"].has("bytes"):
 			out["bytes"] += int(pre["plan"]["bytes"])
 	_leave()
@@ -480,9 +558,193 @@ func recover_state() -> PKeyResult:
 	state_issue = ""
 	_gc_hold = false
 	_hold_snapshot = null
+	# plans/P4-13.md §2.5: `relearn` is cleared wholesale and a quarantined `revocations.json`
+	# released; revocations are re-learned from the next feed.
+	if revocations_enabled and rev_issue != "unreadable":
+		storage.revocations_clear_quarantine()
+		if not (rev_doc["relearn"] as Array).is_empty():
+			rev_doc = {"v": PKeyPackRevocations.VERSION, "revoked": rev_doc["revoked"], "relearn": []}
+			if _rev_file:
+				storage.revocations_replace(PKeyPackRevocations.serialize(rev_doc))
+		if rev_issue == "torn":
+			rev_issue = ""
 	_collect()
 	_leave()
 	return PKeyResult.success()
+
+
+# ── Revocations (plans/P4-13.md §2.5) ───────────────────────────────────────────────────────
+
+## The stored and this process's verified revocations: {revoked: {target: {jws, pack, version,
+## seq, record, issuedAt}}, verified: {target: verified revocation}, relearn: [packId], issue: ""
+## | "torn" | "unreadable"}.
+func revocations() -> Dictionary:
+	var revoked: Dictionary = (rev_doc["revoked"] as Dictionary).duplicate(true)
+	for t in _rev_verified:
+		if not revoked.has(t):
+			var r: Dictionary = _rev_verified[t]
+			revoked[t] = {"jws": _rev_jws.get(t, ""), "pack": r["pack"], "version": r["version"], "seq": r["seq"], "record": r["record"], "issuedAt": r["issuedAt"]}
+	return {"revoked": revoked, "verified": _rev_verified.duplicate(true), "relearn": (rev_doc["relearn"] as Array).duplicate(), "issue": rev_issue}
+
+
+## Keep revocations a fresh check verified (plans/P4-13.md §2.5 step 11): `learned` is
+## [{revocation, jws}]; each is stored when its target is new, or when newer_revocation ranks it
+## above the stored one. `relearn_cleared` names the packs a fresh, network-verified feed with a
+## usable `revocations` member re-taught. A revoked install stops running at once (a `hot` handler
+## is deactivated; a `restart` pack is not mounted). Writes `state.json`'s `revocationsStored`
+## before the sibling file the first time; writes nothing while either document is unreadable (the
+## revocations still apply for the life of the process). A coroutine.
+func record_revocations(learned: Array, relearn_cleared: Array = []) -> PKeyResult:
+	await _enter()
+	if doc == null:
+		_leave()
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call load() before using packs.")
+	var next: Dictionary = rev_doc
+	var changed := false
+	for l in learned:
+		var rev: Dictionary = l["revocation"]
+		var jws: String = l["jws"]
+		var t: String = rev["target"]
+		var prev = _rev_verified.get(t)
+		if not (prev is Dictionary) or is_same(PKeyReleaseRecord.newer_revocation(rev, prev), rev):
+			_rev_verified[t] = rev
+			_rev_jws[t] = jws
+		var r := PKeyPackRevocations.store(next, rev, jws, prev)
+		next = r["doc"]
+		changed = changed or r["changed"]
+	var c := PKeyPackRevocations.clear_relearn(next, relearn_cleared)
+	next = c["doc"]
+	changed = changed or c["changed"]
+	# The cap may have dropped a target: it is forgotten here too.
+	for t in _rev_verified.keys():
+		if not next["revoked"].has(t) and rev_doc["revoked"].has(t):
+			_rev_verified.erase(t)
+	rev_doc = next
+	if changed:
+		_persist_revocations()
+	_unmount_revoked()
+	_leave()
+	return PKeyResult.success()
+
+
+## Whether a release is revoked (stored, or verified in this process).
+func is_revoked(record_sha256: Variant) -> bool:
+	return record_sha256 is String and (rev_doc["revoked"].has(record_sha256) or _rev_verified.has(record_sha256))
+
+
+## The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in `relearn`;
+## with an unreadable `revocations.json` and `revocationsStored` set, every pack the stamp pins or
+## the host embeds. They apply at every boot and every mount, online or offline, until a fresh
+## feed clears `relearn` (or recover_state()); online, the pack is fetched instead. A product with
+## no revocations refuses nothing.
+func _embedded_refused(e: Dictionary) -> bool:
+	if is_revoked(e["recordSha256"]):
+		return true
+	if (rev_doc["relearn"] as Array).has(e["packId"]):
+		return true
+	if rev_issue == "unreadable" and doc is Dictionary and PKeyClaims.is_true(doc.get("revocationsStored")) \
+			and (_stamp_packs().has(e["packId"]) or _embedded.has(e["packId"])):
+		return true
+	return false
+
+
+## The packs the content stamp pins (Dictionary used as a set).
+func _stamp_packs() -> Dictionary:
+	var out := {}
+	if stamp is Dictionary and stamp.get("pins") is Array:
+		for p in stamp["pins"]:
+			if p is Dictionary and p.get("pack") is String:
+				out[p["pack"]] = true
+	return out
+
+
+## Load `revocations.json` (§2.5): absent is empty; unreadable writes nothing this process; torn
+## is quarantined and replaced by a fresh document whose `relearn` holds the stamp's pinned and
+## embedded packs; each entry is re-verified against the pinned release keys. A coroutine.
+func _load_revocations(state_unreadable: bool) -> void:
+	if not revocations_enabled:
+		return
+	var read := storage.revocations_read()
+	if not read["ok"]:
+		rev_issue = "unreadable"
+		return
+	if not (read["text"] is String):
+		return
+	var text: String = read["text"]
+	_rev_file = true
+	var parsed = PKeyPackRevocations.parse(text)
+	if parsed == null:
+		# Torn: held aside, then a fresh document that re-learns the stamp's packs.
+		if not storage.revocations_quarantine(text):
+			rev_issue = "unreadable"
+			return
+		rev_issue = "torn"
+		var packs := _stamp_packs()
+		for id in _embedded:
+			packs[id] = true
+		var relearn: Array = packs.keys()
+		relearn.sort_custom(func(a, b): return PKeyPackClaims.compare_bytes(String(a), String(b)) < 0)
+		rev_doc = {"v": PKeyPackRevocations.VERSION, "revoked": {}, "relearn": relearn}
+		if not state_unreadable:
+			_write_revocations()
+		return
+	var r: Dictionary = await PKeyPackRevocations.reload(parsed, {
+		"release_keys": release_keys, "product_trust": product_trust.call() if product_trust.is_valid() else {},
+		"expected_aud": product, "offload": offload,
+	})
+	rev_doc = r["doc"]
+	for t in r["verified"]:
+		_rev_verified[t] = r["verified"][t]
+	if r["changed"] and not state_unreadable:
+		_write_revocations()
+	elif not state_unreadable and not PKeyPackRevocations.is_empty(rev_doc) and not PKeyClaims.is_true(doc.get("revocationsStored")):
+		# A torn (or replaced) `state.json` lost the flag while the sibling file kept its entries:
+		# set it again, so an unreadable `revocations.json` later still refuses.
+		doc = doc.duplicate(true)
+		doc["revocationsStored"] = true
+		_persist()
+
+
+## Persist the revocations: `revocationsStored` in `state.json` first, then the sibling file. Never
+## creates an empty file; never writes while a document is unreadable.
+func _persist_revocations() -> void:
+	if not revocations_enabled:
+		return
+	if rev_issue == "unreadable" or state_issue == "unreadable":
+		return
+	if not _rev_file and PKeyPackRevocations.is_empty(rev_doc):
+		return
+	_write_revocations()
+
+
+func _write_revocations() -> bool:
+	if not PKeyClaims.is_true(doc.get("revocationsStored")):
+		doc = doc.duplicate(true)
+		doc["revocationsStored"] = true
+		if _persist() != "":
+			# Without the flag on disk the sibling file is not written: an unreadable file later
+			# must never be read as "no revocations" while it holds some.
+			return false
+	if not storage.revocations_replace(PKeyPackRevocations.serialize(rev_doc)):
+		return false
+	_rev_file = true
+	return true
+
+
+## Stop running every revoked release (a hot handler is deactivated; a restart pack not yet mounted
+## is withdrawn from this boot's mount; a mounted pack cannot be unmounted and stays until restart).
+func _unmount_revoked() -> void:
+	for id in running.keys():
+		var i: Dictionary = running[id]
+		if not is_revoked(i["recordSha256"]):
+			continue
+		var h = handlers.get(i["type"])
+		if h != null:
+			if i["activation"] == "hot":
+				h.deactivate(i)
+			elif h.has_method("withdraw"):
+				h.withdraw(i)
+		running.erase(id)
 
 
 # ── Internals ───────────────────────────────────────────────────────────────────────────────
@@ -582,18 +844,26 @@ func _stamp_pin(pack_id: String) -> Variant:
 
 
 ## Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
-## seeds, the index and the plan. A coroutine.
-func _preflight(pack_id: String) -> Dictionary:
+## seeds, the index and the plan. `want` ({sha256, seq, version}): an exact release (a `packs`
+## decision's target) instead of the stamp's pin. A coroutine.
+func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 	if not (stamp is Dictionary):
 		return _err(String(PKeyErrors.NOT_CONFIGURED), "This build ships no content stamp, so it has no packs.", pack_id)
-	var pin = _stamp_pin(pack_id)
+	var pin = {"pack": pack_id, "release": want} if want is Dictionary else _stamp_pin(pack_id)
 	if pin == null:
 		return _err(PKeyConstants.ErrorCode.PACK_NOT_PINNED, "The content stamp pins no release of %s." % pack_id, pack_id)
+	if not PKeyPackClaims.is_sha256(pin["release"].get("sha256")):
+		return _err(String(PKeyErrors.INVALID_OPTIONS), "%s's release is not a record SHA-256." % pack_id, pack_id)
 	var pin_sha: String = pin["release"]["sha256"]
+	# plans/P4-13.md §2.5: a revoked release is never installed, activated or mounted.
+	if is_revoked(pin_sha):
+		return _err(PKeyConstants.ErrorCode.PACK_REVOKED, "%s@%s was revoked by its developer." % [pack_id, str(pin["release"].get("version"))], pack_id)
 	var current = doc["active"].get(pack_id)
 	if current is Dictionary and current["recordSha256"] == pin_sha:
 		return {"kind": "current", "install": current}
 	var emb = _embedded.get(pack_id)
+	if emb is Dictionary and _embedded_refused(emb):
+		emb = null
 	if emb is Dictionary and emb["recordSha256"] == pin_sha and not (current is Dictionary):
 		return {"kind": "current", "install": emb}
 	# A release the boot guard rolled back is not installed again while the stamp still pins it;
@@ -698,8 +968,27 @@ func _preflight(pack_id: String) -> Dictionary:
 	}
 
 
-func _ensure_one(pack_id: String) -> Dictionary:
-	var pre: Dictionary = await _preflight(pack_id)
+func _ensure_one(pack_id: String, target: Variant = null) -> Dictionary:
+	var r: Dictionary = await _ensure_one_inner(pack_id, target)
+	if not r.has("error"):
+		return r
+	# plans/P4-13.md §2.5: when the only copy is an embedded baseline refused for `relearn` (or for
+	# `revocationsStored` with an unreadable `revocations.json`) and the fetch cannot proceed, the
+	# typed refusal is `pack-revoked` with detail `relearn`.
+	var code := String(r["error"]["code"])
+	var want = target["sha256"] if target is Dictionary else null
+	if want == null:
+		var pin = _stamp_pin(pack_id)
+		want = pin["release"]["sha256"] if pin is Dictionary else null
+	var emb = _embedded.get(pack_id)
+	if code != PKeyConstants.ErrorCode.PACK_REVOKED and emb is Dictionary and PKeyPackClaims.same(emb["recordSha256"], want) \
+			and not is_revoked(emb["recordSha256"]) and _embedded_refused(emb):
+		return _err(PKeyConstants.ErrorCode.PACK_REVOKED, "%s's embedded copy is refused until a fresh feed re-teaches its revocations, and it cannot be fetched (%s)." % [pack_id, code], pack_id, {"detail": "relearn"})
+	return r
+
+
+func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
+	var pre: Dictionary = await _preflight(pack_id, target)
 	if pre.has("error"):
 		return pre
 	if pre["kind"] == "held":

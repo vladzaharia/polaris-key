@@ -73,6 +73,31 @@ static func sign_record(record: Dictionary) -> Dictionary:
 	return {"jws": jws, "sha256": sha(jws.to_utf8_buffer()), "record": record}
 
 
+## Any document signed with the corpus's TEST key `kid` (a release or product key) and `typ`.
+static func sign_with(doc: Dictionary, kid: String, typ: String) -> String:
+	_load_keys()
+	var seed := PKeyTestSigner.seed_from_pem(_keys[kid]["privateKeyPkcs8Pem"])
+	return PKeyTestSigner.sign_jws(JSON.stringify(ints(doc)), seed, kid, typ)
+
+
+## A `kind: revocation` record (plans/P4-13.md §2.3) revoking `target` (a tree_pack), signed with
+## the release key (or `opts.kid`'s), and its feed entry: {jws, record, entry}. `opts`:
+## replacement (a tree_pack), issuedAt, reason, kid.
+static func revocation_for(target: Dictionary, opts: Dictionary = {}) -> Dictionary:
+	var doc := {
+		"schemaVersion": 1, "aud": PRODUCT, "deliverable": target["packId"], "kind": "revocation",
+		"version": target["version"], "seq": target["seq"], "issuedAt": int(opts.get("issuedAt", 1759350000)),
+		"revokes": target["recordSha256"],
+	}
+	var rep = opts.get("replacement")
+	if rep is Dictionary:
+		doc["replacement"] = {"sha256": rep["recordSha256"], "seq": rep["seq"], "version": rep["version"]}
+	doc["reason"] = String(opts.get("reason", "Withdrawn in a test."))
+	var jws := sign_with(doc, String(opts.get("kid", RELEASE_KID)), "pkey-release+jws")
+	var record := sha(jws.to_utf8_buffer())
+	return {"jws": jws, "record": record, "entry": {"record": record, "pack": target["packId"], "target": target["recordSha256"], "version": target["version"], "seq": target["seq"]}}
+
+
 static func probe_base() -> PackedByteArray:
 	var s := ""
 	for i in 6:

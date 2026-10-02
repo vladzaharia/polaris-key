@@ -40,6 +40,14 @@ extends RefCounted
 ##                                 signals; the boot guard rolls a failed pack set back with the
 ##                                 binary
 ##
+## The content decision (plans/P4-13.md §2.5, §2.6; P4-24): with a content stamp, decide() hands
+## the flow `packs.content_input()` (the stamp and its holds, the running set, the variant
+## preferences and the stored revocations), so the answer may be `packs` (applied by the boot's
+## FETCH), carry `prestage` or a `contentBlock`, or be `blocked {content-floor | revoked-content}`;
+## the revocations the check verified are kept through `packs.record_revocations()`. Floors never
+## stop play; a CI-signed revocation of a REQUIRED pack does (boot "required", decision 4). A build
+## without a stamp decides exactly as before.
+##
 ## While the updater is active (not in the editor, a headless run or a debug build, unless
 ## enabled), decide() fills in the staged update, the skipped version and the binary version from
 ## the slots when the caller passes none, narrows `methods` to what this install can do, drops
@@ -74,8 +82,8 @@ extends RefCounted
 ## checks once per boot). A periodic caller must not let a failed check consume its interval.
 
 ## Something to show the player. From decide(): a PKeyUpdateCheck whose decision is code-ready,
-## binary, store, a mandatory platform answer, or blocked (boot "optional"); never `none`, never
-## a failure. From the v3 check(): a PKeyVersionCheck that found a newer version than this build
+## binary, store, a mandatory platform answer, or blocked (boot "optional"), or the revoked-content
+## hard stop (boot "required"); never `none` or `packs`, never a failure. From the v3 check(): a PKeyVersionCheck that found a newer version than this build
 ## (PKeyOptions.version). Test the type (`result is PKeyUpdateCheck`) when connecting both.
 signal update_available(result: PKeyResult)
 
@@ -196,7 +204,13 @@ func decide(channel := "", staged: Variant = null, skip_version: Variant = null)
 	if ready is PKeyResult:
 		_end()
 		return PKeyUpdateCheck.failed(ready.code, ready.message, ready.detail)
-	var flow := await PKeyUpdateFlow.run(_flow_opts(ready, channel, staged, skip_version))
+	var opts := _flow_opts(ready, channel, staged, skip_version)
+	# plans/P4-13.md §2.5: a build with a content stamp runs the content decision. A pack facet that
+	# cannot start (an unreadable stamp) decides without it, as before P4-13.
+	var content = await packs.content_input()
+	if content is Dictionary:
+		opts["content"] = content
+	var flow := await PKeyUpdateFlow.run(opts)
 	if not flow["ok"]:
 		_end()
 		var e: Dictionary = flow["error"]
@@ -204,12 +218,17 @@ func decide(channel := "", staged: Variant = null, skip_version: Variant = null)
 	var core: PKeyCore = ready["core"]
 	if not core.cache.apply_update(flow["committed"], flow["records"]):
 		push_warning("PolarisKey: the update slices could not be written (%s)." % str(core.last_store_error))
+	if flow.get("revocations") is Dictionary:
+		var kept: PKeyResult = await packs.record_revocations(flow["revocations"])
+		if not kept.ok:
+			push_warning("PolarisKey: the revocations could not be kept (%s)." % kept.code)
 	_end()
 	var result := PKeyUpdateCheck.of(flow)
 	if updater.active() and result.decision.get("discardStaged") == true:
 		updater.drop_staged("decision")
-	last_available = result if result.boot == PKeyDecision.BOOT_OPTIONAL else null
-	if result.boot == PKeyDecision.BOOT_OPTIONAL:
+	var show: bool = result.boot == PKeyDecision.BOOT_OPTIONAL or result.boot == PKeyDecision.BOOT_REQUIRED
+	last_available = result if show else null
+	if show:
 		update_available.emit(result)
 	if auto_stage and updater.active() and result.decision.get("action") == "binary" and result.decision.get("method") == "sidecar-pck":
 		_stage_in_background(result)
