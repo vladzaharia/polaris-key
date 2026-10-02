@@ -130,3 +130,35 @@ describe("decodeWithPrefix: the window check of plans/P4-01.md §2.7 rule 3", ()
       );
   });
 });
+
+// P4-04 (plans/P4-01.md §8.4): the same window check over the content corpus's real
+// `zstd --patch-from` frame, v1 → v2. Its window is its content size, 5,256,232 bytes, above
+// 2^22 and at most 2^23: refused at 22 before a byte is decoded, decoded to v2 at 23.
+describe("decodeWithPrefix over content/blobs/deltas/v1-v2.pf.zst", () => {
+  const content = new URL(
+    "../../../conformance/corpus/v2/content/",
+    import.meta.url,
+  );
+  const cases = JSON.parse(
+    readFileSync(new URL("cases.json", content), "utf8"),
+  ) as {
+    payloads: Record<"v1" | "v2", { size: number; sha256: string }>;
+  };
+  const blob = (name: string): Uint8Array =>
+    new Uint8Array(readFileSync(new URL(`blobs/${name}`, content)));
+  const { v1, v2 } = cases.payloads;
+  const frame = blob("deltas/v1-v2.pf.zst");
+  const sha = (b: Uint8Array): string =>
+    createHash("sha256").update(b).digest("hex");
+
+  it("refuses the frame at windowLogMax 22 and decodes it to v2 at 23", () => {
+    const base = decode(blob("payload/v1.full.zst"), v1.size);
+    expect(sha(base)).toBe(v1.sha256);
+    expect(codeOf(() => decodeWithPrefix(frame, base, v2.size, 22))).toBe(
+      "window",
+    );
+    const out = decodeWithPrefix(frame, base, v2.size, 23);
+    expect(out.length).toBe(v2.size);
+    expect(sha(out)).toBe(v2.sha256);
+  });
+});

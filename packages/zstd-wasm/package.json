@@ -13,7 +13,12 @@
       "workerd": "./dist/workerd.js",
       "node": "./dist/node.js",
       "default": "./dist/node.js"
-    }
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "default": "./dist/core.js"
+    },
+    "./zdec.wasm": "./dist/zdec.wasm"
   },
   "files": [
     "dist",
