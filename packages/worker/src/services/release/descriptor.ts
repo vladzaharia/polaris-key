@@ -83,6 +83,9 @@ import {
   type BuildInput,
 } from "./model.js";
 import { guardStatement, RELEASE_DESCRIBED_BY_SQL } from "./guard.js";
+import { readPackDeliverableIds } from "./packs/deliverables.js";
+import { appContentStatements, planAppContent } from "./packs/content.js";
+import { RELEASE_RECORD_REJECTED } from "./records.js";
 import {
   artifactContentType,
   artifactKind,
@@ -133,6 +136,15 @@ const REFUSALS_RETRIED_EVERY_SYNC: ReadonlySet<string> =
     "release_exists",
     "r2_object_missing",
     "r2_ref_not_owned",
+    // A pinned pack release published, unyanked or re-declared since clears these.
+    "content-api",
+    "pin-unknown",
+    "pin-mismatch",
+    "pin-yanked",
+    "pin-missing",
+    "pin-gated",
+    // A resync that rewrites the unreadable declaration clears this.
+    "pack-unreadable",
   ]);
 
 /**
@@ -161,7 +173,16 @@ export type IngestRefusalReason =
   | "github_asset_missing"
   | "digest_mismatch"
   | "r2_object_missing"
-  | "r2_ref_not_owned";
+  | "r2_ref_not_owned"
+  // P4-02: an app release's packs (`packs/content.ts`), answered as `release_record_rejected`.
+  | "content-api"
+  | "pin-unknown"
+  | "pin-mismatch"
+  | "pin-yanked"
+  | "pin-missing"
+  | "pin-gated"
+  | "embeds"
+  | "pack-unreadable";
 
 export interface PlannedArtifact {
   artifactId: string;
@@ -404,11 +425,12 @@ export async function planDescriptorIngest(
 ): Promise<Plan> {
   const { product, source, now, cfg, app, github } = input;
 
-  // 1. Shape and the declared map.
+  // 1. Shape and the declared map (and, P4-02, the declared packs `content` and `embeds` name).
   const manual = parseManualChannels(cfg?.manual_channels_json);
+  const packs = await readPackDeliverableIds(db, product);
   const v = validateReleaseDescriptor(input.descriptor, {
     product: { slug: product },
-    release: { app, manualChannels: manual },
+    release: { app, manualChannels: manual, packs },
   });
   if (!v.ok)
     return refuse(
@@ -592,6 +614,17 @@ export async function planDescriptorIngest(
     }
   }
 
+  // 5b. The release's packs (P4-02): its `content` and `embeds` against the stored records.
+  const content = await planAppContent(db, product, d);
+  if (!content.ok)
+    return {
+      ok: false,
+      status: 400,
+      code: RELEASE_RECORD_REJECTED,
+      reason: content.reason as IngestRefusalReason,
+      message: content.message,
+    };
+
   // 6. The rows.
   const policy = cfg ? artifactPolicy(cfg) : null;
   const metadataAccess = storeAccess(policy?.access.metadata ?? "public");
@@ -628,6 +661,7 @@ export async function planDescriptorIngest(
       minOs: b.minOS ?? null,
       requiresJson: b.requires ? JSON.stringify(b.requires) : null,
       metadataJson: b.metadata ? JSON.stringify(b.metadata) : null,
+      embedsJson: b.embeds ? JSON.stringify(b.embeds) : null,
     });
     for (const a of b.artifacts) {
       const asset = assets.get(a.name);
@@ -790,6 +824,7 @@ export async function planDescriptorIngest(
     );
   }
   for (const ref of planned.blobRefs) tail.push(stmtRecordRef(ref, now));
+  tail.push(...appContentStatements(product, releaseId, content, now));
 
   // Every row after the head is written only while THIS descriptor is the release's: if another
   // one was ingested between this plan's read and its batch, the head wrote nothing (see

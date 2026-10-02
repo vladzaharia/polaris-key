@@ -787,3 +787,47 @@ describe("rule 7 — the generated capability table is the manifest's", () => {
     expect(run({ manifest: m }).violations).toEqual([]);
   });
 });
+
+describe("a directory corpus proof with a family", () => {
+  it("is active when one of the directory's JSON files carries the family", () => {
+    const r = registry();
+    const verify = (r.features as Json[])[0]!;
+    verify.proof = [
+      {
+        kind: "corpus",
+        file: "content/",
+        family: "packSetIdCases",
+        wp: "P9-02",
+      },
+    ];
+    const root = fixture({
+      registry: r,
+      tests: {
+        ...TESTS,
+        "verify.test.ts": `// @pkey-feature demo.verify\nconst c = load("content/"); c.packSetIdCases;\n`,
+      },
+    });
+    write(root, "conformance/corpus/v2/content/cases.json", {
+      packSetIdCases: [],
+    });
+    expect(checkParity({ root }).violations).toEqual([]);
+  });
+
+  it("is inactive (and its done owner fails rule 4) while no file carries it", () => {
+    const r = registry();
+    const verify = (r.features as Json[])[0]!;
+    verify.proof = [
+      {
+        kind: "corpus",
+        file: "content/",
+        family: "packSetIdCases",
+        wp: "P9-02",
+      },
+    ];
+    const root = fixture({ registry: r });
+    write(root, "conformance/corpus/v2/content/cases.json", { other: [] });
+    expect(checkParity({ root }).violations).toEqual([
+      "[rule 4] demo.verify: corpus proof names P9-02, which is done, but conformance/corpus/v2/content/ does not exist (or lacks packSetIdCases)",
+    ]);
+  });
+});

@@ -12,7 +12,11 @@
  *                                      release's `seq` in `seqs`
  *   POST /<p>/release/publish/submit   `pkeyci_` + release:publish, `{ticket, descriptor, record?,
  *                                      dryRun?}` → verify every staged object, check the
- *                                      CI-signed release record (P3-03), promote, ingest
+ *                                      CI-signed release record (P3-03), promote, ingest; or
+ *                                      (P4-02) `{ticket?, record, dryRun?}` with no descriptor:
+ *                                      a pack release (`packs/publish.ts`)
+ *   POST /<p>/release/publish/stage    `pkeyci_` + release:publish, `{ticket, deliverable}` → a
+ *                                      stage round of a pack's objects (P4-02)
  *
  * Binaries never transit the Worker: CI PUTs them to R2 with the ticket's credentials, and the
  * Worker only verifies and promotes (`core/blobs.ts`). The credential store, the OIDC checks and
@@ -86,6 +90,12 @@ import {
   type IngestResult,
 } from "./descriptor.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
+import { readPackDeliverableIds } from "./packs/deliverables.js";
+import {
+  distributionDisabled,
+  handlePackSubmit,
+  handleStageRound,
+} from "./packs/publish.js";
 import { getReleaseConfig } from "./config.js";
 import {
   checkReleaseRecord,
@@ -131,7 +141,21 @@ export async function handlePublishRoute(
   if (action === "token") return handleToken(ctx);
   if (action === "uploads") return handleUploads(ctx);
   if (action === "submit") return handleSubmit(ctx);
+  if (action === "stage") return handleStage(ctx);
   return null;
+}
+
+// ── POST /<p>/release/publish/stage (P4-02) ─────────────────────────────────────────────────
+
+/** A stage round of a pack's objects (`packs/publish.ts`); same token, scope and body cap as
+ *  `uploads`. */
+async function handleStage(ctx: ServiceContext): Promise<Response> {
+  if (!ctx.env.BLOBS) return notFound();
+  const holder = await requirePublisher(ctx);
+  if (holder instanceof Response) return holder;
+  const body = await readCiJson(ctx.req, MAX_UPLOADS_BODY_BYTES);
+  if (body instanceof Response) return body;
+  return handleStageRound(ctx, holder, body);
 }
 
 function refusal(
@@ -270,14 +294,23 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
   if (holder instanceof Response) return holder;
   const body = await readCiJson(req, MAX_UPLOADS_BODY_BYTES);
   if (body instanceof Response) return body;
-  const objects = parseTicketObjects(body.objects);
-  if ("error" in objects)
-    return refusal(400, ErrorCode.BadRequest, "bad_objects", objects.error);
   const releases = parseTicketReleases(body.releases);
   if ("error" in releases)
     return refusal(400, ErrorCode.BadRequest, "bad_releases", releases.error);
+  // The preflight (P4-02, plans/P4-01.md §6): a request naming releases may omit `objects`, and
+  // then issues no ticket and answers only `seqs` — each release's seq, its record's hash when it
+  // exists, and a pack's delivery gate, all before CI builds or uploads anything. An `objects`
+  // array that is present stays non-empty (P2-02).
+  const preflight = body.objects === undefined && releases.length > 0;
+  const objects = preflight ? [] : parseTicketObjects(body.objects);
+  if ("error" in objects)
+    return refusal(400, ErrorCode.BadRequest, "bad_objects", objects.error);
+  const gates = await packGatesFor(ctx, releases);
+  if (gates instanceof Response) return gates;
 
   const nextSeq = await nextSeqByDeliverable(ctx);
+  if (preflight)
+    return json({ seqs: await seqsFor(ctx, releases, nextSeq, gates) });
   const issued = await issueUploadTicket(env, db, {
     product: product.slug,
     holder,
@@ -314,8 +347,31 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
       present: owned.has(targets[i]!),
     })),
     nextSeq,
-    seqs: await seqsFor(ctx, releases, nextSeq),
+    seqs: await seqsFor(ctx, releases, nextSeq, gates),
   });
+}
+
+/**
+ * The delivery gate of every PACK among `releases` (P4-02, decision 35), by pack id, read
+ * through Distribution's `delivery.entitlement` (never `dist_access` directly: rule 6). A
+ * release of a pack while Distribution is off is refused `distribution_disabled`: the pack could
+ * not be served anyway, and its gate is unknown.
+ */
+async function packGatesFor(
+  ctx: ServiceContext,
+  releases: readonly { deliverable: string }[],
+): Promise<Map<string, string | null> | Response> {
+  const gates = new Map<string, string | null>();
+  const packIds = new Set(
+    await readPackDeliverableIds(ctx.db, ctx.product.slug),
+  );
+  for (const r of releases) {
+    if (!packIds.has(r.deliverable) || gates.has(r.deliverable)) continue;
+    const delivery = ctx.hooks.delivery();
+    if (!delivery) return distributionDisabled(r.deliverable);
+    gates.set(r.deliverable, await delivery.entitlement(r.deliverable));
+  }
+  return gates;
 }
 
 /** `releases` (P3-03): the releases CI is about to publish, so it can sign each one's `seq`. */
@@ -359,27 +415,56 @@ async function seqsFor(
   ctx: ServiceContext,
   releases: readonly { deliverable: string; version: string }[],
   nextSeq: Record<string, number>,
-): Promise<{ deliverable: string; version: string; seq: number }[]> {
-  const out: { deliverable: string; version: string; seq: number }[] = [];
+  gates: ReadonlyMap<string, string | null>,
+): Promise<SeqAnswer[]> {
+  const out: SeqAnswer[] = [];
   const next = { ...nextSeq };
   for (const r of releases) {
-    const row = await ctx.db.first<{ seq: number | null }>(
-      `SELECT seq FROM release_metadata
-        WHERE product = ? AND deliverable_id = ? AND version = ? AND seq IS NOT NULL
-        ORDER BY seq DESC LIMIT 1`,
+    // A pack's entry carries its delivery gate (P4-02): CI stages under it and signs it.
+    const gate = gates.has(r.deliverable)
+      ? { entitlement: gates.get(r.deliverable) ?? null }
+      : {};
+    const row = await ctx.db.first<{
+      seq: number | null;
+      record: string | null;
+    }>(
+      `SELECT m.seq AS seq,
+              (SELECT record_sha256 FROM release_records x
+                WHERE x.product = m.product AND x.release_id = m.release_id) AS record
+         FROM release_metadata m
+        WHERE m.product = ? AND m.deliverable_id = ? AND m.version = ? AND m.seq IS NOT NULL
+        ORDER BY m.seq DESC LIMIT 1`,
       ctx.product.slug,
       r.deliverable,
       r.version,
     );
     if (row?.seq != null) {
-      out.push({ ...r, seq: row.seq });
+      // An existing release's record hash (P4-02): resolves `--pin <packId>@<version>` and
+      // proves CI's cached delta bases.
+      out.push({
+        ...r,
+        seq: row.seq,
+        ...(row.record ? { recordSha256: row.record } : {}),
+        ...gate,
+      });
       continue;
     }
     const seq = next[r.deliverable] ?? 1;
     next[r.deliverable] = seq + 1;
-    out.push({ ...r, seq });
+    out.push({ ...r, seq, ...gate });
   }
   return out;
+}
+
+/** One `seqs[]` entry of the uploads answer. */
+interface SeqAnswer {
+  deliverable: string;
+  version: string;
+  seq: number;
+  /** The stored release's record hash, when it has one (P4-02). */
+  recordSha256?: string;
+  /** A pack's delivery gate, `null` when ungated (P4-02, decision 35). */
+  entitlement?: string | null;
 }
 
 /** Each deliverable's highest seq + 1 at issue time (`app` always present). */
@@ -472,6 +557,9 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       "bad_body",
       "dryRun must be a boolean",
     );
+  // A pack release (P4-02): a record and no descriptor, the record being the whole truth.
+  if (body.descriptor === undefined && body.record !== undefined)
+    return handlePackSubmit(ctx, holder, body);
   if (!body.descriptor || typeof body.descriptor !== "object")
     return refusal(
       400,

@@ -60,6 +60,10 @@ __all__ = [
     "PATCH_SCOPE_VALUES",
     "VariantAxis",
     "VARIANT_AXIS_VALUES",
+    "PatchStrategy",
+    "PATCH_STRATEGY_VALUES",
+    "Transport",
+    "TRANSPORT_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -72,6 +76,8 @@ __all__ = [
     "STAGE_MATRIX_VERSION",
     "UPDATE_MATRIX_VERSION",
     "OUTLET_MATRIX_VERSION",
+    "PLAN_MATRIX_VERSION",
+    "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
     "MAX_RECORD_JWS_BYTES",
@@ -86,6 +92,7 @@ __all__ = [
     "PATCH_FORMAT",
     "MARKER_FORMAT",
     "CONTENT_STAMP_FORMAT",
+    "PLAN_REQUEST_WEIGHT",
     "CHANNEL_ALIASES",
     "CHANNEL_BETA",
     "CHANNEL_DEV",
@@ -142,6 +149,7 @@ class ErrorCode:
     SERVER_MISCONFIGURED: Final = "server_misconfigured"
     INTERNAL_ERROR: Final = "internal_error"
     RELEASE_RECORD_REJECTED: Final = "release_record_rejected"
+    RELEASE_TAG_IS_PACK_RELEASE: Final = "release_tag_is_pack_release"
     FEED_NOT_COMPOSABLE: Final = "feed_not_composable"
     SERVICE_UNAVAILABLE: Final = "service-unavailable"
     SERVICE_DISABLED: Final = "service-disabled"
@@ -200,6 +208,19 @@ class ErrorCode:
     FILES_PATH_CONFLICT: Final = "files-path-conflict"
     FILES_LAYOUT_MISMATCH: Final = "files-layout-mismatch"
     CONTENT_STAMP_INVALID: Final = "content-stamp-invalid"
+    FULL_CORRUPT: Final = "full-corrupt"
+    DELTA_ARTIFACT_MISMATCH: Final = "delta-artifact-mismatch"
+    DELTA_BASE_MISMATCH: Final = "delta-base-mismatch"
+    DELTA_APPLY_FAILED: Final = "delta-apply-failed"
+    FILE_CORRUPT: Final = "file-corrupt"
+    FILE_SOURCE_MISSING: Final = "file-source-missing"
+    PAYLOAD_HASH_MISMATCH: Final = "payload-hash-mismatch"
+    PLAN_TRANSPORT_UNSUPPORTED: Final = "plan-transport-unsupported"
+    PLAN_INSUFFICIENT_DISK: Final = "plan-insufficient-disk"
+    PLAN_NO_STRATEGY: Final = "plan-no-strategy"
+    PACK_NO_VARIANT: Final = "pack-no-variant"
+    PACK_TYPE_UNSUPPORTED: Final = "pack-type-unsupported"
+    MARKER_REJECTED: Final = "marker-rejected"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -238,6 +259,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "server_misconfigured",
     "internal_error",
     "release_record_rejected",
+    "release_tag_is_pack_release",
     "feed_not_composable",
     "service-unavailable",
     "service-disabled",
@@ -296,6 +318,19 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "files-path-conflict",
     "files-layout-mismatch",
     "content-stamp-invalid",
+    "full-corrupt",
+    "delta-artifact-mismatch",
+    "delta-base-mismatch",
+    "delta-apply-failed",
+    "file-corrupt",
+    "file-source-missing",
+    "payload-hash-mismatch",
+    "plan-transport-unsupported",
+    "plan-insufficient-disk",
+    "plan-no-strategy",
+    "pack-no-variant",
+    "pack-type-unsupported",
+    "marker-rejected",
 )
 
 
@@ -336,6 +371,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "server_misconfigured": "wire",
         "internal_error": "wire",
         "release_record_rejected": "wire",
+        "release_tag_is_pack_release": "wire",
         "feed_not_composable": "wire",
         "service-unavailable": "client",
         "service-disabled": "client",
@@ -394,6 +430,19 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "files-path-conflict": "client",
         "files-layout-mismatch": "client",
         "content-stamp-invalid": "client",
+        "full-corrupt": "client",
+        "delta-artifact-mismatch": "client",
+        "delta-base-mismatch": "client",
+        "delta-apply-failed": "client",
+        "file-corrupt": "client",
+        "file-source-missing": "client",
+        "payload-hash-mismatch": "client",
+        "plan-transport-unsupported": "client",
+        "plan-insufficient-disk": "client",
+        "plan-no-strategy": "client",
+        "pack-no-variant": "client",
+        "pack-type-unsupported": "client",
+        "marker-rejected": "client",
     }
 )
 
@@ -442,7 +491,8 @@ class Feature:
     OUTLET_DETECT: Final = "outlet.detect"
     PACKS_RECORD: Final = "packs.record"
     PACKS_PLAN: Final = "packs.plan"
-    PACKS_INDEX: Final = "packs.index"
+    PACKS_INDEX_FILES: Final = "packs.index.files"
+    PACKS_INDEX_CHUNKS: Final = "packs.index.chunks"
     PACKS_APPLY_FULL: Final = "packs.apply.full"
     PACKS_APPLY_FILE: Final = "packs.apply.file"
     PACKS_APPLY_CHUNK: Final = "packs.apply.chunk"
@@ -503,7 +553,8 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "outlet.detect",
     "packs.record",
     "packs.plan",
-    "packs.index",
+    "packs.index.files",
+    "packs.index.chunks",
     "packs.apply.full",
     "packs.apply.file",
     "packs.apply.chunk",
@@ -950,6 +1001,54 @@ VARIANT_AXIS_VALUES: Tuple[str, ...] = (
 )
 
 
+class PatchStrategy:
+    """The install planner's strategies (plans/P4-01.md §2.9, A7 §4.2): a plan result's `strategy` and a host's `caps.strategies`. `plan-matrix.json` pins them."""
+
+    NOOP: Final = "noop"
+    PLATFORM: Final = "platform"
+    DELTA: Final = "delta"
+    CHUNK: Final = "chunk"
+    FILE: Final = "file"
+    FULL: Final = "full"
+
+
+#: Every ``PatchStrategy`` value, in source order.
+PATCH_STRATEGY_VALUES: Tuple[str, ...] = (
+    "noop",
+    "platform",
+    "delta",
+    "chunk",
+    "file",
+    "full",
+)
+
+
+class Transport:
+    """How a deliverable's bytes arrive (`TRANSPORTS` in `@polaris-key/manifest`, P2b-02; README §3.1): the planner's `caps.transports` and a platform target's `transport` (plans/P4-01.md §2.9)."""
+
+    EMBEDDED: Final = "embedded"
+    PKEY_CDN: Final = "pkey-cdn"
+    APPLE_BA: Final = "apple-ba"
+    PLAY_PAD: Final = "play-pad"
+    STEAM_DEPOT: Final = "steam-depot"
+    MSIX_OPTIONAL: Final = "msix-optional"
+    FLATPAK_EXT: Final = "flatpak-ext"
+    WEB: Final = "web"
+
+
+#: Every ``Transport`` value, in source order.
+TRANSPORT_VALUES: Tuple[str, ...] = (
+    "embedded",
+    "pkey-cdn",
+    "apple-ba",
+    "play-pad",
+    "steam-depot",
+    "msix-optional",
+    "flatpak-ext",
+    "web",
+)
+
+
 class HeaderName:
     """The `X-PKey-*` request header names (wire contract v3 §5)."""
 
@@ -1013,7 +1112,7 @@ FINGERPRINT_VERSION: Final[int] = 1
 
 
 #: `stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json.
-STAGE_MATRIX_VERSION: Final[int] = 2
+STAGE_MATRIX_VERSION: Final[int] = 3
 
 
 #: `updateMatrixVersion` of conformance/corpus/v2/update-matrix.json.
@@ -1022,6 +1121,14 @@ UPDATE_MATRIX_VERSION: Final[int] = 1
 
 #: `outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json.
 OUTLET_MATRIX_VERSION: Final[int] = 1
+
+
+#: `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
+PLAN_MATRIX_VERSION: Final[int] = 1
+
+
+#: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
+CONTENT_CORPUS_VERSION: Final[int] = 1
 
 
 #: Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
@@ -1078,6 +1185,10 @@ MARKER_FORMAT: Final[str] = "pkey-marker/1"
 
 #: Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 CONTENT_STAMP_FORMAT: Final[str] = "pkey-content/1"
+
+
+#: Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+PLAN_REQUEST_WEIGHT: Final[int] = 16384
 
 
 #: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
@@ -1222,7 +1333,8 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "outlet.detect": CapabilityRow("implemented", "update", ()),
         "packs.record": CapabilityRow("planned", "release", ()),
         "packs.plan": CapabilityRow("planned", "release", ()),
-        "packs.index": CapabilityRow("planned", "release", ()),
+        "packs.index.files": CapabilityRow("planned", "release", ()),
+        "packs.index.chunks": CapabilityRow("planned", "release", ()),
         "packs.apply.full": CapabilityRow("planned", "release", ()),
         "packs.apply.file": CapabilityRow("planned", "release", ()),
         "packs.apply.chunk": CapabilityRow("planned", "release", ()),
@@ -1242,4 +1354,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "673943e49a337f4ced469a127be9bee6e7dfb29ecb9e386fba4c2f5000d46d9f"
+CAPABILITY_DIGEST: Final[str] = "32d87da1750aeed5dce08d6dc2bb542604de8d86f7c6537d69deaf28bfa0c89b"

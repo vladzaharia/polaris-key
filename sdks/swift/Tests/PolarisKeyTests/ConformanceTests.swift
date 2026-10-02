@@ -20,8 +20,8 @@
 //   releaseRecordCases §2.4, steps 12–15 the release record          → releaseRecordClaims,
 //                                                                      verifyReleaseRecord
 //
-// v4's pointer-set section (§4.1), over the seven JWS families with `feedCases` and
-// `releaseRecordCases`, is `PointerSetTests.swift`.
+// v4's pointer-set section (§4.1), over the JWS families with `feedCases`,
+// `releaseRecordCases`, `packRecordCases` and `markerCases`, is `PointerSetTests.swift`.
 //
 // Everything reads `Resources/v2/`, which mirrors `conformance/corpus/v2/` path-for-path.
 // The wire-v2 corpus is gone; there is one corpus.

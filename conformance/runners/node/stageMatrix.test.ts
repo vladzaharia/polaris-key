@@ -69,11 +69,17 @@ const matrix = JSON.parse(
   ),
 ) as StageMatrix;
 
-/** The `accepts` key of a state: `gate:waiting` while the gate waits, otherwise the stage. */
+/** The `accepts` key of a state: `gate:waiting` while the gate waits, `fetch:waiting` while
+ *  the fetch waits for consent, `offline:playable` at a playable offline stop (v3), otherwise
+ *  the stage. */
 function acceptsKey(state: BootState): string {
-  return state.stage === "gate" && state.outcome === "waiting"
-    ? "gate:waiting"
-    : state.stage;
+  if (state.stage === "gate" && state.outcome === "waiting")
+    return "gate:waiting";
+  if (state.stage === "fetch" && state.outcome === "waiting")
+    return "fetch:waiting";
+  if (state.stage === "offline" && state.canPlayOffline)
+    return "offline:playable";
+  return state.stage;
 }
 
 /** Sends every probe from `state` and returns how many it sent. */
@@ -98,7 +104,7 @@ function probe(state: BootState, where: string): number {
 
 describe(`stage-matrix v${matrix.stageMatrixVersion} (the boot stage machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(matrix.stageMatrixVersion).toBe(2);
+    expect(matrix.stageMatrixVersion).toBe(3);
     expect(matrix.maxFailedBoots).toBe(MAX_FAILED_BOOTS);
     expect(matrix.bootOkSeconds).toBe(BOOT_OK_SECONDS);
   });
@@ -131,6 +137,11 @@ describe(`stage-matrix v${matrix.stageMatrixVersion} (the boot stage machine)`, 
         for (const emit of result.emits)
           if (emit.type === "stage_changed") stages.push(emit.stage);
         state = result.state;
+        // v3: canPlayOffline is true exactly at an offline stop whose emit said so.
+        const off = result.emits.find((e) => e.type === "offline");
+        if (off) expect(state.canPlayOffline, where).toBe(off.canPlayOffline);
+        else if (result.emits.length > 0)
+          expect(state.canPlayOffline, where).toBe(false);
         probes += probe(state, `${where}, after`);
       }
       expect(stages).toEqual(row.expect.stages);

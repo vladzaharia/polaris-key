@@ -151,18 +151,28 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
 
 ## Acceptance criteria
 
-- [ ] `pnpm gen:corpus -- --check` passes, and fails after a one-byte edit to any committed
-      content file or mirror.
-- [ ] Every blob matches the `blobs` table's size and SHA-256; the source set is under 5 MB.
-- [ ] `cases.json` holds the 12 apply cases and 17 path cases named above plus `packSetIdCases`;
-      `plan-matrix.json` holds the 23 A7 rows by id.
-- [ ] Pack-kind `releaseRecordCases` and `markerCases` pass in Node, React (`client-core`),
-      Python, Swift and Godot.
-- [ ] The prototype reference runner passes every content case and plan row (output in the PR).
-- [ ] `pnpm format` leaves the blob directory untouched.
-- [ ] `pnpm --filter @polaris-key/docs gen:check` passes with the new corpus inventory.
-- [ ] The green gate passes.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] `pnpm gen:corpus -- --check` passes, and fails after a one-byte edit to any committed
+      content file or mirror (checked on a blob, `refs.json`, `content/cases.json`,
+      `plan-matrix.json`, a Godot mirror, and a stray file in `content/`).
+- [x] Every blob matches the `blobs` table's size and SHA-256; the source set is under 5 MB
+      (`content/` 2,978,450 bytes, `plan-matrix.json` 300,281 bytes).
+- [x] `cases.json` holds the 12 apply cases and 17 path cases named above plus `packSetIdCases`;
+      `plan-matrix.json` holds the 23 A7 rows by id. As amended by plans/P4-01.md §4.4–§4.5:
+      19 apply, 18 path, 15 files-index, 7 pack-set, 6 stamp and 13 frame-window cases; 25 plan
+      rows, 11 variant and 14 target cases.
+- [x] Pack-kind `releaseRecordCases` and `markerCases` pass in Node, React (`client-core`),
+      Python, Swift and Godot. As amended by plans/P4-01.md §8.4: P4-21 landed them as
+      `packRecordCases` and `markerCases` with the Node claims section; P4-04 re-signed them over
+      the content set's refs and added the pointer-set sections in Python, Swift and Godot. Full
+      record and marker sections are P4-06 to P4-08's.
+- [x] The prototype reference runner passes every content case and plan row (output in the PR):
+      `runners/python/runcorpus.py`, a new port to plans/P4-01.md's formats beside A7's runner.
+- [x] `pnpm format` leaves the blob directory untouched.
+- [x] `pnpm --filter @polaris-key/docs gen:check` passes with the new corpus inventory.
+- [x] The green gate passes (the Godot release-template leg needs a Linux x86_64 host; it ran on
+      the editor only here).
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed):
+      `packs.index` split into `packs.index.files` and `packs.index.chunks` in all five.
 
 ## Verify
 
@@ -190,6 +200,11 @@ and index-blob plan rows, bumping `contentCorpusVersion` if its plan says so. Th
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
 
+- Two Scope bullets above are overridden by the amendment: the stage matrix goes to
+  `stageMatrixVersion: 3`, not 2 (P3-02 took version 2; plans/P4-01.md §2.10, §4.7), and
+  `content/` is not mirrored (§4.1), so the Godot runner reads `conformance/corpus/v2/content/`
+  from the checkout and the `Conformance (Linux)` preset's `include_filter` is unchanged.
+
 ## Notes from P4-21's review
 
 - P4-21 already wrote a "Decoding is bounded before it starts" bullet in `docs/security/THREAT-MODEL.md`
@@ -203,3 +218,21 @@ package, and every decision in §8.1 that names it as owner, override this brief
   figures; you re-sign everything over the real content-set refs.
 - `packages/docs/src/content/docs/build/wire/corpus.md`'s hand-written family table is stale (no
   `feedCases`, `releaseRecordCases`, `packRecordCases`, `markerCases`); plan §4.8 gives it to you.
+
+## Notes from the build (P4-04)
+
+- The Node runner's content sections live in `conformance/runners/node/suites.ts`
+  (`defineContentSuites`), which P1b-05 made shared, so the browser runner runs them too:
+  `pathCases`, `filesIndexCases`, `packSetIdCases`, `stampCases` and `frameWindowCases`. The
+  browser runner reads the blobs through Vitest's `readFile` command (Vite's dev server cannot
+  serve an extensionless file raw) and decodes with `@polaris-key/zstd-wasm`, which gained two
+  additive exports for it, `./core` (`createZstdWasm`) and `./zdec.wasm`. `applyCases` and the
+  plan matrix wait for P4-06's appliers and planner.
+- `client-core/src/packs/` gained `set.ts` (`packSetId`) and `window.ts` (`frameWindow`,
+  `windowLogMax`, and `windowAllowed`, the check itself, for P4-06's appliers).
+- Godot's stage machine landed with P1-10, so P4-04 ported version 3 to `core/stages.gd`; the
+  minimum of PKeyBoot needed to replay the 13 new rows in `suite_boot` came with it (the
+  `essential_packs` option, the `consent_needed` and `fetch_progress` signals, Play offline at a
+  playable stop). The consent screen stays P4-08's.
+- `PLAN_REQUEST_WEIGHT` joined `@polaris-key/protocol/core` and `PACK_LIMIT_EXPORTS`, which
+  moved the Action bundle by one chunk name.

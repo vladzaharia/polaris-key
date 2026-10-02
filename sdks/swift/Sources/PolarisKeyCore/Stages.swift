@@ -4,15 +4,18 @@
 // SwiftUI boot view, Godot's PKeyBoot, a terminal): the host does the work of each stage and
 // reports its result as an event; the machine decides the next stage and what to emit. It does
 // no I/O, reads no clock and uses no randomness, so the same inputs reach the same stages,
-// emits and outcome in every language. `conformance/corpus/v2/stage-matrix.json` pins it, and
+// emits and outcome in every language. `conformance/corpus/v2/stage-matrix.json` (version 3)
+// pins it, and
 // `StageMatrixTests` replays every row and every probe of its `accepts` table over the mirror in
 // `Tests/PolarisKeyTests/Resources/v2/`.
 //
 // The normal path is idle → shell → guard → sync → gate → decide → fetch → mount → ready, and
 // every stage is entered even when it has nothing to do. An event the current stage does not
 // accept is IGNORED: the input state comes back unchanged with no emits. Every accepted event
-// emits something, so an empty `emits` always means the event was ignored. Malformed events
-// cannot be expressed: `BootEvent` and `BootEmit` are closed enums.
+// emits something, so an empty `emits` always means the event was ignored. Most malformed events
+// cannot be expressed (`BootEvent` and `BootEmit` are closed enums); v3's `fetchConsent` and
+// `fetchProgress` carry integers, and a value the corpus calls malformed (negative, at or above
+// 2^53, `done > total`) is ignored like any unaccepted event.
 //
 // The corpus strings (dotted events, snake_case emits, kebab-case payload values) are each
 // case's `type` or raw value; no port renames a string.
@@ -26,11 +29,13 @@ public let BOOT_EVENT_TYPES: [String] = [
     "start", "shell.done", "guard.done", "sync.done", "sync.timeout", "gate.status", "decide.done",
     "fetch.done", "mount.done", "background.start", "background.done", "retry", "play-offline",
     "fail",
+    // Stage matrix v3 (plans/P4-01.md §2.10): download consent and progress.
+    "fetch.consent", "fetch.progress",
 ]
 /// The emits the machine produces, snake_case: the signal names renderers expose.
 public let BOOT_EMIT_TYPES: [String] = [
     "stage_changed", "waiting", "update_available", "blocked", "offline", "error",
-    "boot_rolled_back", "boot_ready",
+    "boot_rolled_back", "boot_ready", "consent_needed", "fetch_progress",
 ]
 /// What `bootGuardAction` decides at launch.
 public let BOOT_GUARD_ACTIONS: [String] = BootGuardAction.allCases.map(\.rawValue)
@@ -94,6 +99,11 @@ public enum BootEvent: Sendable, Equatable {
     case playOffline
     /// The host's own work for the current stage failed in a way its event cannot express.
     case fail(code: String)
+    /// v3: the download needs the player's consent (the size disclosure and the cellular
+    /// choice). `bytes` an integer ≥ 0.
+    case fetchConsent(bytes: Int, metered: Bool)
+    /// v3: download progress, integers with `0 <= done <= total`.
+    case fetchProgress(done: Int, total: Int)
 
     public enum GuardResult: String, Sendable, Equatable, CaseIterable {
         case ok, applied
@@ -106,7 +116,7 @@ public enum BootEvent: Sendable, Equatable {
         case none, optional, required
     }
     public enum FetchResult: String, Sendable, Equatable, CaseIterable {
-        case ok, offline, failed
+        case ok, offline, failed, declined
     }
 
     /// The corpus's dotted event type.
@@ -126,6 +136,8 @@ public enum BootEvent: Sendable, Equatable {
         case .retry: "retry"
         case .playOffline: "play-offline"
         case .fail: "fail"
+        case .fetchConsent: "fetch.consent"
+        case .fetchProgress: "fetch.progress"
         }
     }
 }
@@ -137,16 +149,22 @@ public enum BootEmit: Sendable, Equatable {
     case waiting(status: LicenseStatus)
     case updateAvailable
     case blocked(reason: BlockedReason)
-    /// `canPlayOffline` is `false` on every v1 path.
+    /// `canPlayOffline` is true only when the required packs are present and an essential one
+    /// could not download (v3).
     case offline(canPlayOffline: Bool)
     /// `sync-failed`, `fetch-failed`, or the code of the host's `fail`.
     case error(code: String)
     case bootRolledBack
     case bootReady
+    /// v3: the fetch waits for the player's consent.
+    case consentNeeded(bytes: Int, metered: Bool)
+    /// v3: download progress.
+    case fetchProgress(done: Int, total: Int)
 
     public enum BlockedReason: String, Sendable, Equatable, CaseIterable {
         case updateRequired = "update-required"
         case notAvailable = "not-available"
+        case contentDeclined = "content-declined"
     }
 
     /// The corpus's snake_case emit type.
@@ -160,6 +178,8 @@ public enum BootEmit: Sendable, Equatable {
         case .error: "error"
         case .bootRolledBack: "boot_rolled_back"
         case .bootReady: "boot_ready"
+        case .consentNeeded: "consent_needed"
+        case .fetchProgress: "fetch_progress"
         }
     }
 }
@@ -171,11 +191,18 @@ public struct BootOptions: Sendable, Equatable {
     public var allowGrace: Bool
     /// Pack ids that must be installed before `mount`.
     public var requiredPacks: [String]
+    /// v3: pack ids the boot wants before `ready` but can play without (`delivery: essential`,
+    /// `required: false`).
+    public var essentialPacks: [String]
 
-    public init(allowOffline: Bool = true, allowGrace: Bool = true, requiredPacks: [String] = []) {
+    public init(
+        allowOffline: Bool = true, allowGrace: Bool = true, requiredPacks: [String] = [],
+        essentialPacks: [String] = []
+    ) {
         self.allowOffline = allowOffline
         self.allowGrace = allowGrace
         self.requiredPacks = requiredPacks
+        self.essentialPacks = essentialPacks
     }
 }
 
@@ -187,6 +214,9 @@ public struct BootState: Sendable, Equatable {
     public let sync: Sync
     /// Where `retry` goes: `shell` before `shell.done`, `guard` before `guard.done`, then `sync`.
     public let resume: Resume
+    /// v3: true only at `offline` reached with every required pack present and an essential one
+    /// missing, where `play-offline` is accepted.
+    public let canPlayOffline: Bool
 
     public enum Sync: String, Sendable, Equatable, CaseIterable {
         case pending, ok, offline, error
@@ -196,13 +226,15 @@ public struct BootState: Sendable, Equatable {
     }
 
     public init(
-        stage: BootStage, outcome: BootOutcome, options: BootOptions, sync: Sync, resume: Resume
+        stage: BootStage, outcome: BootOutcome, options: BootOptions, sync: Sync, resume: Resume,
+        canPlayOffline: Bool = false
     ) {
         self.stage = stage
         self.outcome = outcome
         self.options = options
         self.sync = sync
         self.resume = resume
+        self.canPlayOffline = canPlayOffline
     }
 }
 
@@ -216,7 +248,7 @@ public struct BootTransition: Sendable, Equatable {
     }
 }
 
-/// Stage `idle`, outcome `running`, sync `pending`, resume `shell`.
+/// Stage `idle`, outcome `running`, sync `pending`, resume `shell`, `canPlayOffline` false.
 public func initialBootState(_ options: BootOptions = BootOptions()) -> BootState {
     BootState(stage: .idle, outcome: .running, options: options, sync: .pending, resume: .shell)
 }
@@ -232,20 +264,28 @@ public func bootGuardAction(staged: Bool, failedBoots: Int) -> BootGuardAction {
 /// the current stage does not accept returns the input state and no emits.
 public func bootTransition(_ state: BootState, _ event: BootEvent) -> BootTransition {
     let waiting = state.stage == .gate && state.outcome == .waiting
+    let fetching = state.stage == .fetch
+    let consentWaiting = fetching && state.outcome == .waiting
 
+    /// `canPlayOffline` resets unless the caller sets it.
     func go(
         _ stage: BootStage, _ outcome: BootOutcome, _ extra: BootEmit? = nil,
-        sync: BootState.Sync? = nil, resume: BootState.Resume? = nil
+        sync: BootState.Sync? = nil, resume: BootState.Resume? = nil, canPlayOffline: Bool = false
     ) -> BootTransition {
         var emits: [BootEmit] = []
         if stage != state.stage { emits.append(.stageChanged(stage: stage, previous: state.stage)) }
         if let extra { emits.append(extra) }
         let next = BootState(
             stage: stage, outcome: outcome, options: state.options, sync: sync ?? state.sync,
-            resume: resume ?? state.resume)
+            resume: resume ?? state.resume, canPlayOffline: canPlayOffline)
         return BootTransition(state: next, emits: emits)
     }
     let ignore = BootTransition(state: state, emits: [])
+    /// A non-negative integer below 2^53 (v3's consent and progress payloads).
+    func count(_ n: Int) -> Bool { n >= 0 && n <= 9_007_199_254_740_991 }
+    func missing(_ ids: [String], _ installed: [String]) -> Bool {
+        !ids.allSatisfy(installed.contains)
+    }
 
     /// The stop a failed sync leads to: offline after no answer, error after an unusable one.
     func syncStop(_ result: BootState.Sync, recording: Bool) -> BootTransition {
@@ -315,12 +355,26 @@ public func bootTransition(_ state: BootState, _ event: BootEvent) -> BootTransi
         }
 
     case .fetchDone(let result, let installed):
-        guard state.stage == .fetch else { return ignore }
-        if state.options.requiredPacks.allSatisfy(installed.contains) {
-            return go(.mount, .running)
+        guard fetching else { return ignore }
+        if missing(state.options.requiredPacks, installed) {
+            if result == .offline { return go(.offline, .offline, .offline(canPlayOffline: false)) }
+            if result == .declined {
+                return go(.blocked, .blocked, .blocked(reason: .contentDeclined))
+            }
+            return go(.error, .error, .error(code: "fetch-failed"))
         }
-        if result == .offline { return go(.offline, .offline, .offline(canPlayOffline: false)) }
-        return go(.error, .error, .error(code: "fetch-failed"))
+        if result == .offline && missing(state.options.essentialPacks, installed) {
+            return go(.offline, .offline, .offline(canPlayOffline: true), canPlayOffline: true)
+        }
+        return go(.mount, .running)
+
+    case .fetchConsent(let bytes, let metered):
+        guard fetching, !consentWaiting, count(bytes) else { return ignore }
+        return go(.fetch, .waiting, .consentNeeded(bytes: bytes, metered: metered))
+
+    case .fetchProgress(let done, let total):
+        guard fetching, count(done), count(total), done <= total else { return ignore }
+        return go(.fetch, .running, .fetchProgress(done: done, total: total))
 
     case .mountDone:
         return state.stage == .mount ? go(.ready, .ready, .bootReady) : ignore
@@ -342,12 +396,12 @@ public func bootTransition(_ state: BootState, _ event: BootEvent) -> BootTransi
         return go(target, .running, sync: .pending)
 
     case .playOffline:
-        // Accepted nowhere in v1: `canPlayOffline` is never true.
-        return ignore
+        // v3: only at a playable offline stop.
+        return state.stage == .offline && state.canPlayOffline ? go(.mount, .running) : ignore
 
     case .fail(let code):
         let failing: Set<BootStage> = [.shell, .guard, .sync, .gate, .decide, .fetch, .mount]
-        guard failing.contains(state.stage), !waiting else { return ignore }
+        guard failing.contains(state.stage), !waiting, !consentWaiting else { return ignore }
         return go(.error, .error, .error(code: code))
     }
 }

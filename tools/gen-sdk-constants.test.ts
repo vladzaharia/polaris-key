@@ -137,9 +137,11 @@ describe("the sources", () => {
       corpusVersion: 2,
       gateMatrixVersion: 2,
       fingerprintVersion: 1,
-      stageMatrixVersion: 2,
+      stageMatrixVersion: 3,
       updateMatrixVersion: 1,
       outletMatrixVersion: 1,
+      planMatrixVersion: 1,
+      contentCorpusVersion: 1,
     });
     expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
     expect(SOURCES.protocol.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);

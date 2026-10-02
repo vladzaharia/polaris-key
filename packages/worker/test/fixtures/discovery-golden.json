@@ -159,7 +159,8 @@
           "blobs": "https://key.plrs.im/full/release/blobs/sha256/{sha256}",
           "record": "https://key.plrs.im/full/release/records/{sha256}"
         },
-        "releaseKeyFingerprints": []
+        "releaseKeyFingerprints": [],
+        "packs": true
       },
       "distribution": {
         "enabled": true,

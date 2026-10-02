@@ -59,7 +59,7 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 ## What's in the corpus
 
-Eight files, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+Nine files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
 | File                 | Contents                                                                                                                                                                                                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -71,12 +71,15 @@ Eight files, one directory, so a runner can point at `corpus/v2/` and find every
 | `config-matrix.json` | WIRE-CONTRACT-V4 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                                                                                            |
 | `update-matrix.json` | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                          |
 | `outlet-matrix.json` | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
+| `plan-matrix.json`   | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                  |
+| `content/`           | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, full, delta and file apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                                         |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
-`stageMatrixVersion` **2**, `headersVersion` **1**, `configMatrixVersion` **1**,
-`updateMatrixVersion` **1**, `outletMatrixVersion` **1** — and case counts, generated straight from the corpus files, live at
+`stageMatrixVersion` **3**, `headersVersion` **1**, `configMatrixVersion` **1**,
+`updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **1**,
+`contentCorpusVersion` **1** — and case counts, generated straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
 ## The Swift resource mirror
@@ -99,11 +102,38 @@ the check as a stray; it is never deleted automatically.
 A GDScript `String` cannot hold U+0000, so `jwsCases` documents carry one generated annotation
 for that platform, `expect.docNulReplaced` (WIRE-CONTRACT-V4 §10). Other runners ignore it.
 
+## The content corpus's inputs
+
+`content/blobs/` is the exception to "everything is output". Its zstd blobs and `refs.json` are
+**inputs** to `tools/gen-content-corpus.ts`, which `sign-corpus.ts`'s `main` calls: zstd output
+is not stable across libzstd versions, so a normal or `--check` run never compresses. It reads
+the blobs, decodes them with `@polaris-key/zstd-wasm` (the same decoder on every Node), checks
+each against the `blobs` table, recomputes every verdict with its own reference appliers and
+planner, and writes `content/cases.json` and `plan-matrix.json`. `--check` also fails on a
+missing blob, a blob not in the table, a stray file in `content/`, or a `content/` directory in
+a mirror.
+
+`content/blobs/refs.json` holds the object refs (`{sha256, bytes, size, codec}`) of the four
+frames the signed pack records and the `plan-real-*` rows pin but the corpus does not ship (v2 as
+one frame, v1's gaps, and the two trees as one frame each): shipping them would pass the 5 MB
+budget for bytes no case decodes. It is in the `blobs` table like any blob.
+
+The only writer of either is the explicit rebuild mode, never part of the gate:
+
+```sh
+pnpm gen:corpus -- --rebuild-content-blobs   # needs `zstd -V` to report exactly 1.5.7
+pnpm gen:corpus                              # then rebuild cases.json, plan-matrix.json and the signed records
+```
+
+A rebuild changes hashes, so the records and markers signed over them change too; land it as a
+PR of its own. `.prettierignore` and `.gitattributes` (`binary`) cover `content/blobs/` so that
+`pnpm format` and `core.autocrlf` never change a hashed byte.
+
 ## Never hand-edit the generated files
 
 `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
-`config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, and both mirrors are all
-output.
+`config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`,
+`content/cases.json`, and both mirrors are all output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
 committed file differs — mirrors included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:

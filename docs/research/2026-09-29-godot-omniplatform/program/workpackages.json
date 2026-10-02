@@ -1235,7 +1235,7 @@
       "optional": false,
       "refs": ["CONTENT §3 §6.1 §6.9 §9", "README §3.4 §3.7"],
       "brief": "wp/P4-02-pack-deliverables.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-03",
@@ -1271,7 +1271,7 @@
       "optional": false,
       "refs": ["notes/A7 §2 §5 §11.5", "prototype/content/"],
       "brief": "wp/P4-04-content-corpus-v1.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-05",

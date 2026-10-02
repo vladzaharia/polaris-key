@@ -81,6 +81,7 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
 | POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |
 | POST | `/{product}/release/channels/{channel}/unpin` | release | Unpin a channel (CI) |
+| POST | `/{product}/release/publish/stage` | release | A stage round of a pack's objects (trusted publishing) |
 | POST | `/{product}/release/publish/submit` | release | Submit a release descriptor against an upload ticket (trusted publishing) |
 | POST | `/{product}/release/publish/token` | release | Exchange a GitHub Actions OIDC token for a pkeyci_ token (trusted publishing) |
 | POST | `/{product}/release/publish/uploads` | release | Obtain an upload ticket and R2 temporary credentials (trusted publishing) |

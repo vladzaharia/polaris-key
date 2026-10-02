@@ -787,25 +787,38 @@ describe("the capability table is wire contract v4's (P3-12, plans/P3-01.md §2.
 });
 
 describe("the ingest's cost is bounded for untrusted input (R10)", () => {
-  it("thousands of declared packs across 32 outlets stay at one transport row per outlet", () => {
-    const deliverables: Record<string, unknown> = {
-      app: JSON.parse(RELEASE).release.deliverables.app,
-    };
-    for (let i = 0; i < 2400; i++) deliverables[`p${i}`] = { kind: "pack" };
+  it("thousands of declared packs are refused, and 64 across 32 outlets stay at one transport row per outlet", () => {
     const outletsDoc: Record<string, unknown> = {};
     for (let i = 0; i < 32; i++) outletsDoc[`site-${i}`] = { kind: "web" };
-    const parsed = parseManifest({
-      product: PRODUCT(),
-      schema: SCHEMA,
-      release: JSON.stringify({
-        release: { ...JSON.parse(RELEASE).release, deliverables },
-      }),
-      distribution: JSON.stringify({ outlets: outletsDoc }),
-    });
+    const parse = (packs: number) => {
+      const deliverables: Record<string, unknown> = {
+        app: {
+          ...JSON.parse(RELEASE).release.deliverables.app,
+          content: { contentApi: 1 },
+        },
+      };
+      for (let i = 0; i < packs; i++)
+        deliverables[`p${i}`] = { kind: "pack", type: "files.tree" };
+      return parseManifest({
+        product: PRODUCT(),
+        schema: SCHEMA,
+        release: JSON.stringify({
+          release: { ...JSON.parse(RELEASE).release, deliverables },
+        }),
+        distribution: JSON.stringify({ outlets: outletsDoc }),
+      });
+    };
+    // P4-02's MAX_PACK_DELIVERABLES: an oversized map is refused whole, before any routing.
+    const spam = parse(1000);
+    expect(spam.ok).toBe(false);
+    if (spam.ok) return;
+    expect(spam.errors.join("\n")).toContain("at most 64 pack deliverables");
+    const parsed = parse(64);
     expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
     if (!parsed.ok) return;
     const stmts = distributionIngestStatements(parsed.manifest, SLUG, NOW);
-    // 32 outlet upserts + 1 removal sweep + 1 transport delete + 32 transport inserts.
+    // 32 outlet upserts + 1 removal sweep + 1 transport delete + 32 transport inserts: only the
+    // app is routed until P4-05 routes packs (then at most (1 + 64) × 32 rows).
     expect(stmts).toHaveLength(32 + 1 + 1 + 32);
   });
 });

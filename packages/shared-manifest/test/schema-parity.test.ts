@@ -38,8 +38,20 @@ import {
   validateIngestDocuments,
   validateManifestDocuments,
   validateReleaseDescriptor,
+  MAX_PACK_DELIVERABLES,
+  PACK_BASELINES,
+  PACK_BINDINGS,
+  PACK_FIELDS_NOT_SUPPORTED,
+  PACK_PATCH_STRATEGIES,
+  type DescriptorManifest,
   type ParsedManifest,
 } from "../src/index.js";
+import {
+  PACK_ACTIVATIONS,
+  PACK_DELIVERIES,
+  PACK_TYPES,
+  VARIANT_AXES,
+} from "@polaris-key/protocol/packs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const schemasDir = join(here, "..", "schemas", "v1");
@@ -221,6 +233,8 @@ function base(): Docs {
           app: {
             kind: "app",
             versioning: { scheme: "semver", buildNumber: "descriptor" },
+            // P4-02: the content shape the app's code expects (required once a pack exists).
+            content: { contentApi: 3 },
             channels: { beta: { includes: ["stable"] }, nightly: {} },
             artifacts: [
               {
@@ -229,6 +243,8 @@ function base(): Docs {
                 arch: "universal",
                 format: "dmg",
                 match: "Acme-*-macos.dmg",
+                // P4-02: the store build ships the core pack embedded.
+                embeds: ["acme.core3d"],
               },
               {
                 id: "win-zip",
@@ -254,6 +270,35 @@ function base(): Docs {
                 match: "Acme-*-ios-sideload.ipa",
               },
             ],
+          },
+          // P4-02: pack deliverables in the v1 subset (plans/P4-01.md §3): a required,
+          // embedded godot.pck pack with two texture variants, and a gated files.tree pack
+          // whose entitlement assertion names the schema's flag.
+          "acme.core3d": {
+            kind: "pack",
+            type: "godot.pck",
+            binding: "pinned",
+            baseline: "embedded",
+            required: true,
+            delivery: "essential",
+            contentPolicy: { dataOnly: true },
+            handler: {
+              mountOrder: 1,
+              prefixes: ["res://assets/core/"],
+              activation: "restart",
+            },
+            variants: { texture: ["s3tc", "etc2"] },
+            requires: { engine: "godot-4.7" },
+            patch: { strategies: ["delta", "file"], deltaBases: 1 },
+            versioning: { scheme: "semver" },
+          },
+          "acme.l10n": {
+            kind: "pack",
+            type: "files.tree",
+            delivery: "prefetch",
+            handler: { activation: "hot" },
+            variants: { locale: ["en", "fr"] },
+            entitlement: "acmeVpn",
           },
         },
       },
@@ -391,6 +436,8 @@ const p = (d: Docs) => d.product as Record<string, any>;
 const rel = (d: Docs) => (d.release as Record<string, any>).release;
 const mint = (d: Docs) => (d.release as Record<string, any>).edgeMint[0];
 const app = (d: Docs) => rel(d).deliverables.app;
+const core3d = (d: Docs) => rel(d).deliverables["acme.core3d"];
+const l10n = (d: Docs) => rel(d).deliverables["acme.l10n"];
 const entry = (d: Docs) => app(d).artifacts[0];
 const dist = (d: Docs) => d.distribution as Record<string, any>;
 const outlet = (d: Docs, id: string) => dist(d).outlets[id];
@@ -1032,16 +1079,228 @@ const MUTATIONS: Mutation[] = [
     // ...and no other id may be kind app.
     mutate: (d) => (rel(d).deliverables["acme.tools"] = { kind: "app" }),
   },
+  // ── pack deliverables (P4-02, plans/P4-01.md §3) ──
   {
-    // A warning: the document stays valid and the pack is ignored until P4-02.
-    code: "pack_deliverables_not_supported",
+    // Counted before any pack is validated: one error for the whole map.
+    code: "too_many_pack_deliverables",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => {
+      for (let i = 0; i < 64; i++)
+        rel(d).deliverables[`acme.extra${i}`] = {
+          kind: "pack",
+          type: "files.tree",
+        };
+    },
+  },
+  {
+    code: "invalid_pack_type",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).type = "l10n.table"),
+  },
+  {
+    code: "invalid_pack_type",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => delete l10n(d).type,
+  },
+  {
+    // Only pinned delivers in v1; P4-12 adds compatible and standalone.
+    code: "invalid_pack_binding",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).binding = "compatible"),
+  },
+  {
+    code: "invalid_pack_policy",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).delivery = "onDemand"),
+  },
+  {
+    code: "invalid_pack_policy",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).baseline = "bundled"),
+  },
+  {
+    // A data-only pack only: script policy false is refused in v1 (S-07 row 13).
+    code: "invalid_pack_policy",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).contentPolicy = { dataOnly: false }),
+  },
+  {
+    code: "invalid_pack_policy",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).required = "yes"),
+  },
+  {
+    // A required pack is essential and ungated.
+    code: "invalid_pack_policy",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (l10n(d).required = true),
+  },
+  {
+    code: "invalid_pack_handler",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).handler.mountOrder = 1001),
+  },
+  {
+    code: "invalid_pack_handler",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).handler.prefixes = ["assets/core/"]),
+  },
+  {
+    code: "invalid_pack_handler",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).handler.activation = "reload"),
+  },
+  {
+    // A godot.pck pack mounts directories and activates on restart.
+    code: "invalid_pack_handler",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (core3d(d).handler.activation = "hot"),
+  },
+  {
+    // A files.tree pack mounts nothing into res://.
+    code: "invalid_pack_handler",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (l10n(d).handler.mountOrder = 2),
+  },
+  {
+    code: "invalid_pack_variants",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).variants = { gpu: ["adreno"] }),
+  },
+  {
+    code: "invalid_pack_variants",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).variants.texture = ["s3tc", "s3tc"]),
+  },
+  {
+    // 3 × 3 × 4 = 36 combinations, over the 32-variant bound.
+    code: "invalid_pack_variants",
     file: "release",
     schema: "accepts",
     mutate: (d) =>
-      (rel(d).deliverables["acme.core3d"] = {
-        kind: "pack",
-        type: "godot.pck",
+      (core3d(d).variants = {
+        texture: ["s3tc", "etc2", "astc"],
+        locale: ["en", "fr", "de"],
+        quality: ["low", "mid", "high", "ultra"],
       }),
+  },
+  {
+    // contentApi, packs and features wait for P4-12.
+    code: "invalid_pack_requires",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).requires.contentApi = { app: ">=3" }),
+  },
+  {
+    code: "invalid_pack_requires",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).requires.engine = "4.7"),
+  },
+  {
+    code: "invalid_pack_requires",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => delete core3d(d).requires,
+  },
+  {
+    code: "unknown_entitlement_ref",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).entitlement = "extras diceSkins"),
+  },
+  {
+    // An assertion must name a flag of the product's schema.
+    code: "unknown_entitlement_ref",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (l10n(d).entitlement = "extras.diceSkins"),
+  },
+  {
+    code: "invalid_pack_patch",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).patch.strategies = ["chunk"]),
+  },
+  {
+    code: "invalid_pack_patch",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).patch.deltaBases = 9),
+  },
+  {
+    code: "pack_field_not_supported",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).channels = ["events"]),
+  },
+  {
+    code: "pack_field_not_supported",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (l10n(d).provides = ["res://x/"]),
+  },
+  {
+    // The pack path of the existing code.
+    code: "invalid_version_scheme",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).versioning.scheme = "calver"),
+  },
+  {
+    code: "invalid_app_content",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).content = { contentApi: 0 }),
+  },
+  {
+    code: "invalid_app_content",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (app(d).content = { contentApi: 3, packChannels: { "acme.*": "x" } }),
+  },
+  {
+    // Required whenever a pack is declared.
+    code: "invalid_app_content",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => delete app(d).content,
+  },
+  {
+    code: "invalid_build_embeds",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (entry(d).embeds = ["app"]),
+  },
+  {
+    code: "invalid_build_embeds",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (entry(d).embeds = ["acme.core3d", "acme.core3d"]),
+  },
+  {
+    // Each names a declared pack.
+    code: "invalid_build_embeds",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (entry(d).embeds = ["acme.audio"]),
   },
   {
     code: "invalid_version_scheme",
@@ -1897,6 +2156,31 @@ describe("valid manifests pass both validators", () => {
   });
 });
 
+describe("the pack schema's vocabularies are the validator's constants (P4-02)", () => {
+  it("packDeliverable enums", () => {
+    const schema = JSON.parse(
+      readFileSync(join(schemasDir, "release.schema.json"), "utf8"),
+    );
+    const pack = schema.$defs.packDeliverable.properties;
+    expect(pack.type.enum).toEqual([...PACK_TYPES]);
+    expect(pack.binding.enum).toEqual([...PACK_BINDINGS]);
+    expect(pack.baseline.enum).toEqual([...PACK_BASELINES]);
+    expect(pack.delivery.enum).toEqual([...PACK_DELIVERIES]);
+    expect(pack.handler.properties.activation.enum).toEqual([
+      ...PACK_ACTIVATIONS,
+    ]);
+    expect(pack.variants.propertyNames.enum).toEqual([...VARIANT_AXES]);
+    expect(pack.patch.properties.strategies.items.enum).toEqual([
+      ...PACK_PATCH_STRATEGIES,
+    ]);
+    expect(schema.$defs.deliverables.maxProperties).toBe(
+      MAX_PACK_DELIVERABLES + 1,
+    );
+    for (const field of PACK_FIELDS_NOT_SUPPORTED)
+      expect(pack[field]).toBe(false);
+  });
+});
+
 describe("every validator code has a mutation, and the schemas catch what they claim", () => {
   it("the mutation table covers every code the validator source emits", () => {
     // `.pkey/distribution`'s rules live in their own module (P2b-02) but are part of the same
@@ -1962,8 +2246,10 @@ const validateDescriptorSchema = ajv.compile(
   ),
 );
 
-/** The base manifest, parsed — the declaration every descriptor below is checked against. */
-function descriptorManifest(): ParsedManifest {
+/** The base manifest, parsed — the declaration every descriptor below is checked against —
+ *  with its declared pack ids as the validator context's `release.packs` (P4-02), the way the
+ *  CLI's `descriptorManifestOf` and the Worker's `planDescriptorIngest` fill it. */
+function descriptorManifest(): DescriptorManifest {
   const docs = base();
   const res = parseManifest({
     product: JSON.stringify(docs.product),
@@ -1971,8 +2257,28 @@ function descriptorManifest(): ParsedManifest {
     release: JSON.stringify(docs.release),
   });
   if (!res.ok) throw new Error(res.errors.join("\n"));
-  return res.manifest;
+  const m: ParsedManifest = res.manifest;
+  return {
+    product: m.product,
+    release: {
+      app: m.release?.app ?? null,
+      manualChannels: m.release?.manualChannels ?? [],
+      packs: (m.release?.packDeliverables ?? []).map((p) => p.id),
+    },
+  };
 }
+
+/** A well-formed `content` for the base manifest (P4-02). */
+const CONTENT = (): Record<string, any> => ({
+  contentApi: 3,
+  pins: [
+    {
+      pack: "acme.core3d",
+      release: { sha256: SHA_A, seq: 12, version: "1.4.0" },
+    },
+  ],
+  expects: [{ pack: "acme.core3d", required: true, delivery: "essential" }],
+});
 
 const SHA_A = "a".repeat(64);
 const SHA_B = "b".repeat(64);
@@ -2117,6 +2423,51 @@ const DESCRIPTOR_MUTATIONS: DescriptorMutation[] = [
     code: "unsupported_deliverable_kind",
     schema: "rejects",
     mutate: (d) => (d.kind = "pack"),
+  },
+  // ── content and embeds (P4-02, plans/P4-01.md §3 decision 37) ──
+  {
+    code: "invalid_descriptor_content",
+    schema: "rejects",
+    mutate: (d) => (d.content = { ...CONTENT(), contentApi: 0 }),
+  },
+  {
+    code: "invalid_descriptor_content",
+    schema: "rejects",
+    mutate: (d) => (d.content = { ...CONTENT(), holds: [] }),
+  },
+  {
+    code: "invalid_descriptor_content",
+    schema: "rejects",
+    mutate: (d) => {
+      d.content = CONTENT();
+      d.content.pins[0].release.seq = 0;
+    },
+  },
+  {
+    // contentApi must be the one .pkey/release declares.
+    code: "invalid_descriptor_content",
+    schema: "accepts",
+    mutate: (d) => (d.content = { ...CONTENT(), contentApi: 4 }),
+  },
+  {
+    // A pin names a declared pack.
+    code: "invalid_descriptor_content",
+    schema: "accepts",
+    mutate: (d) => {
+      d.content = CONTENT();
+      d.content.pins[0].pack = "acme.audio";
+    },
+  },
+  {
+    code: "invalid_descriptor_embeds",
+    schema: "rejects",
+    mutate: (d) => (mac(d).embeds = ["app"]),
+  },
+  {
+    // Each names a declared pack.
+    code: "invalid_descriptor_embeds",
+    schema: "accepts",
+    mutate: (d) => (mac(d).embeds = ["acme.audio"]),
   },
   {
     code: "invalid_descriptor_field",
@@ -2409,6 +2760,29 @@ describe("release descriptor: valid stays valid", () => {
       validateDescriptorSchema(d),
       JSON.stringify(validateDescriptorSchema.errors),
     ).toBe(true);
+  });
+
+  it("content and embeds (P4-02) pass both the validator and the schema", () => {
+    const d = baseDescriptor();
+    d.content = CONTENT();
+    mac(d).embeds = ["acme.core3d"];
+    const res = validateReleaseDescriptor(d, descriptorManifest());
+    expect(res.ok ? [] : res.errors).toEqual([]);
+    expect(
+      validateDescriptorSchema(d),
+      JSON.stringify(validateDescriptorSchema.errors),
+    ).toBe(true);
+  });
+
+  it("the over-cap refusal names the bytes content and metadata take", () => {
+    const d = baseDescriptor();
+    d.content = CONTENT();
+    mac(d).requires = { blob: "x".repeat(70000) };
+    const res = validateReleaseDescriptor(d, descriptorManifest());
+    const msg = res.ok ? "" : (res.errors[0]?.message ?? "");
+    expect(msg).toMatch(
+      /content takes \d+ bytes and builds\[\]\.metadata 0 in all/,
+    );
   });
 
   it("ios and android build metadata pass both the validator's shape check and the schema", () => {

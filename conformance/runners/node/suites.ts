@@ -24,7 +24,7 @@
 //
 // and, for wire contract v4 (docs/security/WIRE-CONTRACT-V4.md, plans/P3-01.md §5 order 0):
 //
-//   the pointer sets  §4.1 nonWireIntegers over the seven JWS families → verifyJws
+//   the pointer sets  §4.1 nonWireIntegers over the nine JWS families  → verifyJws
 //   versionCases      update-matrix.json, the version comparator      → compareVersions
 //   feedCases         steps 4–6 over every case that reaches them     → feedClaims
 //   releaseRecordCases step 14 over every case that reaches it        → releaseRecordClaims
@@ -53,6 +53,18 @@
 // with the signal table and platform data asserted against client-core's compiled
 // `OUTLET_SIGNALS` and `OUTLET_PLATFORM_DATA`.
 //
+// And `content/cases.json`, the content corpus (plans/P4-01.md §4.4, §5 order 0, P4-04), through
+// `defineContentSuites`, which takes the blobs and a zstd decoder from its runner:
+//
+//   blobs             every file under content/blobs/ against the `blobs` table (harness check)
+//   pathCases         §2.7's path rules                               → checkPaths
+//   filesIndexCases   §2.7's parseFilesIndex, steps 1–5                → parseFilesIndex
+//   packSetIdCases    §2.9's packSetId                                 → packSetId
+//   stampCases        §2.8's content stamp                             → parseContentStamp
+//   frameWindowCases  §2.7 rule 3's header window                      → frameWindow
+//
+// `applyCases` and `plan-matrix.json` need the appliers and the planner, which are P4-06's.
+//
 // `stage-matrix.json` (the boot stage machine, client boot behaviour outside the wire contract)
 // has its own Node runner: `stageMatrix.test.ts`, through
 // `@polaris-key/client-core/stages`. `fingerprint.json` likewise runs in `fingerprint.test.ts`.
@@ -63,7 +75,7 @@
 // The step attribution is the whole point of the section, so the shipped API reports it
 // (`BundleRefusalReason`) rather than collapsing every failure into a bare null.
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { base64UrlDecode, verifyJws, type TrustSet } from "@polaris-key/jws";
 import {
   LISTING_URL_PREFIXES,
@@ -131,9 +143,17 @@ import {
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
+  checkPaths,
+  frameWindow,
+  packSetId,
+  parseContentStamp,
+  parseFilesIndex,
   type BlockedState,
   type BundleRefusalReason,
+  type FilesIndexRef,
+  type PackSetEntry,
   type VerifyOptions,
+  type ZstdDecode,
 } from "@polaris-key/client-core";
 
 type TypV3 =
@@ -1288,5 +1308,186 @@ export function defineCorpusSuites({
       for (const row of updateMatrix.rows)
         expect(["none", "optional"]).toContain(row.expect.boot);
     });
+  });
+}
+
+// ── plans/P4-01.md §5 order 0 (P4-04) — the content corpus's pure sections ───────────────────
+
+/** A `<ref>` (content/cases.json's description): a named blob, decoded when `codec` is `zstd`,
+ *  then mutated; or `{text}`, its UTF-8 bytes. */
+export interface ContentRef {
+  blob?: string;
+  text?: string;
+  codec?: string;
+  size?: number;
+  mutate?: (
+    | { op: "truncate"; length: number }
+    | { op: "xor"; offset: number; value: number }
+  )[];
+}
+
+interface ContentCase {
+  id: string;
+  description: string;
+}
+
+/** `content/cases.json` (contentCorpusVersion 1): the sections this module drives. */
+export interface ContentCorpus {
+  contentCorpusVersion: number;
+  blobs: Record<string, { size: number; sha256: string }>;
+  pathCases: (ContentCase & {
+    paths: string[];
+    expect: { ok: boolean; error?: string; path?: string };
+  })[];
+  filesIndexCases: (ContentCase & {
+    stored: ContentRef;
+    files: FilesIndexRef;
+    payload: { size: number; sha256: string };
+    expect:
+      | { ok: true; files: number }
+      | { ok: false; error: string; path?: string };
+  })[];
+  packSetIdCases: (ContentCase & {
+    entries: PackSetEntry[];
+    expect: { packSetId: string | null };
+  })[];
+  stampCases: (ContentCase & { stamp: string; expect: unknown })[];
+  frameWindowCases: (ContentCase & {
+    header: string;
+    expect: { window: number | null };
+  })[];
+}
+
+/** What a runner hands `defineContentSuites`: the corpus, every file under `content/blobs/` by
+ *  its path there (read raw), and a zstd decoder for one frame with its content size. */
+export interface ContentFiles {
+  content: ContentCorpus;
+  loadBlobs: () => Promise<Map<string, Uint8Array>>;
+  decode: ZstdDecode;
+}
+
+function hexBytes(h: string): Uint8Array {
+  const out = new Uint8Array(h.length / 2);
+  for (let i = 0; i < out.length; i++)
+    out[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
+async function sha256Of(bytes: Uint8Array): Promise<string> {
+  const d = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", bytes.slice().buffer),
+  );
+  return Array.from(d, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Materialise a `<ref>`: the blob (decoded when `codec` is `zstd`) or the text, then mutated. */
+async function materialise(
+  ref: ContentRef,
+  blobs: Map<string, Uint8Array>,
+  decode: ZstdDecode,
+): Promise<Uint8Array> {
+  let bytes: Uint8Array;
+  if (ref.text !== undefined) bytes = new TextEncoder().encode(ref.text);
+  else {
+    const raw = blobs.get(ref.blob ?? "");
+    if (raw === undefined) throw new Error(`no blob ${String(ref.blob)}`);
+    bytes = ref.codec === "zstd" ? await decode(raw, ref.size!) : raw.slice();
+  }
+  for (const m of ref.mutate ?? []) {
+    if (m.op === "truncate") bytes = bytes.slice(0, m.length);
+    else if (m.op === "xor") {
+      bytes = bytes.slice();
+      bytes[m.offset] = bytes[m.offset]! ^ m.value;
+    } else throw new Error(`unknown mutation ${JSON.stringify(m)}`);
+  }
+  return bytes;
+}
+
+/**
+ * Registers the content corpus's pure sections. Call it once per runner, at module top level.
+ * The blobs load once, in `beforeAll`; a blob that differs from the `blobs` table, a missing one
+ * or a stray file fails the first test, which every other test in the block then follows.
+ */
+export function defineContentSuites({
+  content,
+  loadBlobs,
+  decode,
+}: ContentFiles): void {
+  let blobs = new Map<string, Uint8Array>();
+
+  // @pkey-feature packs.index.files
+  describe(`content corpus v${content.contentCorpusVersion} — blobs and the files index (plans/P4-01.md §2.7)`, () => {
+    beforeAll(async () => {
+      blobs = await loadBlobs();
+    });
+    it("has its version and every section of plans/P4-01.md §4.4", () => {
+      expect(content.contentCorpusVersion).toBe(1);
+      expect(content.pathCases.length).toBe(18);
+      expect(content.filesIndexCases.length).toBe(15);
+      expect(content.packSetIdCases.length).toBe(7);
+      expect(content.stampCases.length).toBe(6);
+      expect(content.frameWindowCases.length).toBe(13);
+    });
+    it("every file under content/blobs/ matches the blobs table, and nothing else is there", async () => {
+      expect([...blobs.keys()].sort()).toEqual(
+        Object.keys(content.blobs).sort(),
+      );
+      for (const [name, want] of Object.entries(content.blobs)) {
+        const got = blobs.get(name)!;
+        expect(got.byteLength, name).toBe(want.size);
+        expect(await sha256Of(got), name).toBe(want.sha256);
+      }
+    });
+    for (const c of content.pathCases) {
+      it(`paths ${c.id}`, () => {
+        expect(checkPaths(c.paths), c.description).toEqual(c.expect);
+      });
+    }
+    for (const c of content.filesIndexCases) {
+      it(`files index ${c.id}`, async () => {
+        const stored = await materialise(c.stored, blobs, decode);
+        const r = await parseFilesIndex(
+          stored,
+          c.files,
+          { payload: c.payload },
+          { decode },
+        );
+        const verdict = r.ok ? { ok: true, files: r.index.files.length } : r;
+        expect(verdict, c.description).toEqual(c.expect);
+      });
+    }
+  });
+
+  // @pkey-feature packs.state
+  describe(`content corpus v${content.contentCorpusVersion} — packSetId (plans/P4-01.md §2.9)`, () => {
+    for (const c of content.packSetIdCases) {
+      it(`pack set ${c.id}`, async () => {
+        expect(
+          { packSetId: await packSetId(c.entries) },
+          c.description,
+        ).toEqual(c.expect);
+      });
+    }
+  });
+
+  // @pkey-feature packs.record
+  describe(`content corpus v${content.contentCorpusVersion} — content stamps (plans/P4-01.md §2.8)`, () => {
+    for (const c of content.stampCases) {
+      it(`stamp ${c.id}`, () => {
+        expect(parseContentStamp(c.stamp), c.description).toEqual(c.expect);
+      });
+    }
+  });
+
+  // @pkey-feature packs.apply.delta
+  describe(`content corpus v${content.contentCorpusVersion} — frameWindow (plans/P4-01.md §2.7 rule 3)`, () => {
+    for (const c of content.frameWindowCases) {
+      it(`frame window ${c.id}`, () => {
+        expect(
+          { window: frameWindow(hexBytes(c.header)) },
+          c.description,
+        ).toEqual(c.expect);
+      });
+    }
   });
 }

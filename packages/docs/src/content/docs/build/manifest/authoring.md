@@ -304,9 +304,8 @@ release:
           }
 ```
 
-- **`kind`** is required. `app` is the only deliverable implemented; any other id must be
-  `kind: pack`, which is accepted with the warning `pack_deliverables_not_supported` and
-  ignored until pack deliverables land.
+- **`kind`** is required. `app` is the product's application; any other id must be
+  `kind: pack`, a content pack (below).
 - **`versioning.stableTagPattern`** and **`versioning.ignoreTags`** are the same two fields
   the release root already accepts (same rules, same `release_config` columns). Spell them in
   one place: declaring them both at the root and here is `conflicting_versioning`.
@@ -324,6 +323,75 @@ release:
 - A file named `<payload>.sig` or `<payload>.sha256` is that build's signature or checksum.
   An entry that matches two files of one release classifies neither (it is ambiguous), and a
   file no entry matches has no build.
+
+- **`embeds`** (optional, on an `artifacts` entry) lists the packs that build ships inside
+  it: declared pack ids, at most 64 (`invalid_build_embeds`). Omitted means every
+  `baseline: embedded` pack; `[]` means none, as for a lean web build.
+
+### Pack deliverables
+
+Any deliverable other than `app` is a content pack (`kind: pack`): data the app loads at run
+time, released on its own versions and pinned by app releases. See
+[Packs](/docs/services/release/packs/) for what Release does with them. v1 accepts this
+subset, so a manifest never declares behaviour v1 does not deliver:
+
+```yaml
+deliverables:
+  app:
+    kind: app
+    content: { contentApi: 3 } # required once any pack is declared
+    artifacts:
+      - {
+          id: macos,
+          platform: macos,
+          arch: universal,
+          format: dmg,
+          match: "Diceroll-*-macos.dmg",
+          embeds: [diceroll.core3d],
+        }
+  diceroll.core3d:
+    kind: pack
+    type: godot.pck # or files.tree
+    binding: pinned # the only v1 binding (the default)
+    baseline: embedded # store builds ship it; default none
+    required: true # a required pack is essential and ungated
+    delivery: essential # essential | prefetch | on-demand (default)
+    handler: { mountOrder: 2, prefixes: ["res://assets/kaykit/"] }
+    variants: { texture: [s3tc, etc2, astc] }
+    requires: { engine: godot-4.7 }
+    patch: { strategies: [delta, file], deltaBases: 1 }
+  diceroll.supporter.skins:
+    kind: pack
+    type: godot.pck
+    delivery: on-demand
+    handler: { prefixes: ["res://skins/"] }
+    requires: { engine: godot-4.7 }
+    entitlement: extras.diceSkins # an assertion of the operator's gate (below)
+```
+
+- At most **64** packs (`too_many_pack_deliverables`).
+- **`type`** is required: `godot.pck` or `files.tree` (`invalid_pack_type`). A `godot.pck`
+  pack declares `handler.prefixes` (the `res://` directories it mounts, each ending in `/`),
+  activates on `restart`, and declares `requires.engine` (`godot-<major>.<minor>`). A
+  `files.tree` pack takes no `prefixes` or `mountOrder` and activates `hot` by default
+  (`invalid_pack_handler`, `invalid_pack_requires`).
+- **`binding`** is `pinned` only (`invalid_pack_binding`): each app release pins the exact pack
+  release it ships with. `compatible` and `standalone` come later.
+- **`baseline`**, **`required`**, **`delivery`** and **`contentPolicy`** (`{ dataOnly: true }`,
+  the only v1 value) are `invalid_pack_policy` when malformed; a `required` pack must be
+  `delivery: essential` and carry no `entitlement`.
+- **`variants`** maps an axis (`texture`, `locale`, `quality`) to 1–16 values; the product of
+  the counts is at most 32 (`invalid_pack_variants`). CI publishes one variant per combination.
+- **`requires`** is `{ engine }` only in v1 (`invalid_pack_requires`).
+- **`entitlement`** asserts the licence flag that gates the pack; it must name a `flag` entry of
+  `.pkey/schema` (`unknown_entitlement_ref`). It is **not** the gate: an operator gates a pack
+  under Distribution → Access, and a publish whose gate differs from the assertion is refused.
+  No push can gate, un-gate or re-flag a pack.
+- **`patch`**: `strategies`, a non-empty subset of `delta` and `file`; `deltaBases`, 0–8
+  (default 1) (`invalid_pack_patch`).
+- **`versioning.scheme`** as for the app (default `semver`).
+- **`channels`**, **`conflicts`**, **`provides`** and **`removes`** are refused for now
+  (`pack_field_not_supported`).
 
 Resync writes the declaration to `release_deliverables.def_json` (and each channel's
 `includes` to its channel policy, unless an operator owns that channel). The map also defines

@@ -632,7 +632,9 @@ export async function resolveBuild(
 /**
  * The channels a product can serve: the built-ins, its manual rules, and any channel a release
  * of it was published to. The one definition of "a declared channel" — the policy routes
- * (`resolvePolicyChannel`), the admin view and the storefront feeds all ask this.
+ * (`resolvePolicyChannel`), the admin view and the storefront feeds all ask this. Only an `app`
+ * release declares a channel: a pack record's channel (P4-02) is learned from nothing, so a
+ * pack can never widen the set the policy routes and feeds accept (P2b-05).
  */
 export async function knownChannels(
   db: Db,
@@ -642,8 +644,10 @@ export async function knownChannels(
   const manual = parseManualChannels(cfg?.manual_channels_json);
   const published = await db.all<{ channel: string }>(
     `SELECT DISTINCT channel FROM release_metadata
-      WHERE product = ? AND channel IS NOT NULL ORDER BY channel ASC`,
+      WHERE product = ? AND deliverable_id = ? AND channel IS NOT NULL
+      ORDER BY channel ASC`,
     product,
+    APP_DELIVERABLE_ID,
   );
   const out = new Set<string>(BUILT_IN_CHANNELS);
   for (const m of manual) out.add(m.name);

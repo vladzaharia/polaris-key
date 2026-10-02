@@ -79,6 +79,10 @@ export const releaseService: ServiceDescriptor = {
       // P3-03: lowercase hex SHA-256 of each declared release key's raw bytes, for tooling
       // (`pkey release keys check`). No SDK reads it: apps pin their release keys at build time.
       releaseKeyFingerprints: await releaseKeyFingerprints(cfg),
+      // P4-02: this Worker ingests pack records and mirrors app releases' pins. The CLI refuses
+      // to publish a pack or stamp `content` without it, so no app record carries pins a Worker
+      // did not mirror.
+      packs: true,
     };
   },
 };

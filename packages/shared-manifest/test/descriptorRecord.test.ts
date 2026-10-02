@@ -3,7 +3,11 @@
  * object and the Worker's ingest refuses any other (`descriptor-mismatch`).
  */
 import { describe, expect, it } from "vitest";
-import { descriptorToRecord, type ReleaseDescriptor } from "../src/index.js";
+import {
+  canonicalDescriptorJson,
+  descriptorToRecord,
+  type ReleaseDescriptor,
+} from "../src/index.js";
 
 const SHA = "a".repeat(64);
 
@@ -122,6 +126,37 @@ describe("descriptorToRecord", () => {
       "minSupportedSeq",
     ])
       expect(Object.hasOwn(r, k), k).toBe(false);
+  });
+
+  it("moves content and builds[].embeds unchanged (P4-02, plans/P4-01.md decision 37)", () => {
+    const content = {
+      contentApi: 4,
+      pins: [
+        {
+          pack: "acme.core3d",
+          release: { sha256: "c".repeat(64), seq: 12, version: "1.4.0" },
+        },
+      ],
+      expects: [{ pack: "acme.core3d", required: true, delivery: "essential" }],
+    };
+    const d = descriptor();
+    d.content = structuredClone(content);
+    d.builds[0]!.embeds = ["acme.core3d"];
+    d.builds[1]!.embeds = [];
+    const r = descriptorToRecord(d, { seq: 7, issuedAt: 1700000000 });
+    // Byte for byte: the same canonical JSON as the descriptor's members.
+    expect(canonicalDescriptorJson(r.content)).toBe(
+      canonicalDescriptorJson(content),
+    );
+    expect(r.builds?.[0]?.embeds).toEqual(["acme.core3d"]);
+    expect(r.builds?.[1]?.embeds).toEqual([]);
+  });
+
+  it("a descriptor without content or embeds gives today's record", () => {
+    const r = descriptorToRecord(descriptor(), { seq: 7, issuedAt: 1 });
+    expect(Object.hasOwn(r, "content")).toBe(false);
+    for (const b of r.builds ?? [])
+      expect(Object.hasOwn(b, "embeds")).toBe(false);
   });
 });
 

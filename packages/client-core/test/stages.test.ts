@@ -236,9 +236,15 @@ describe("stages — defaults", () => {
     expect(initialBootState()).toEqual({
       stage: "idle",
       outcome: "running",
-      options: { allowOffline: true, allowGrace: true, requiredPacks: [] },
+      options: {
+        allowOffline: true,
+        allowGrace: true,
+        requiredPacks: [],
+        essentialPacks: [],
+      },
       sync: "pending",
       resume: "shell",
+      canPlayOffline: false,
     });
     expect(initialBootState({})).toEqual(initialBootState());
   });
@@ -249,11 +255,13 @@ describe("stages — defaults", () => {
         allowOffline: false,
         allowGrace: false,
         requiredPacks: ["core"],
+        essentialPacks: ["hd"],
       }).options,
     ).toEqual({
       allowOffline: false,
       allowGrace: false,
       requiredPacks: ["core"],
+      essentialPacks: ["hd"],
     });
   });
 
@@ -297,4 +305,59 @@ describe("stages — the gate's pass set is isUsable", () => {
       }
     });
   }
+});
+
+describe("stages — v3 consent and progress payloads", () => {
+  const fetching = (): BootState => run(TO_FETCH, { requiredPacks: ["core"] });
+
+  it("ignores a malformed fetch.consent", () => {
+    const state = fetching();
+    for (const bad of [
+      { bytes: -1, metered: false },
+      { bytes: 1.5, metered: false },
+      { bytes: 2 ** 53, metered: false },
+      { bytes: 10, metered: "no" },
+      { bytes: "10", metered: true },
+    ]) {
+      const r = bootTransition(state, {
+        type: "fetch.consent",
+        ...bad,
+      } as unknown as BootEvent);
+      expect(r.state).toBe(state);
+      expect(r.emits).toEqual([]);
+    }
+  });
+
+  it("ignores a malformed fetch.progress", () => {
+    const state = fetching();
+    for (const bad of [
+      { done: 2, total: 1 },
+      { done: -1, total: 1 },
+      { done: 0.5, total: 1 },
+      { done: 0, total: "1" },
+    ]) {
+      const r = bootTransition(state, {
+        type: "fetch.progress",
+        ...bad,
+      } as unknown as BootEvent);
+      expect(r.state).toBe(state);
+      expect(r.emits).toEqual([]);
+    }
+  });
+
+  it("resets canPlayOffline when the playable offline stop is left", () => {
+    let state = run(TO_FETCH, {
+      requiredPacks: ["core"],
+      essentialPacks: ["hd"],
+    });
+    state = bootTransition(state, {
+      type: "fetch.done",
+      result: "offline",
+      installed: ["core"],
+    }).state;
+    expect(state.canPlayOffline).toBe(true);
+    state = bootTransition(state, { type: "play-offline" }).state;
+    expect(state.stage).toBe("mount");
+    expect(state.canPlayOffline).toBe(false);
+  });
 });

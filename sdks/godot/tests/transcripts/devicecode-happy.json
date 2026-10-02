@@ -386,6 +386,7 @@
                   "timestamp",
                   "engine",
                   "outlet",
+                  "content",
                   "caps"
                 ]
               }
