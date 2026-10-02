@@ -631,6 +631,8 @@ export interface DistributionMatrix {
     kind: string;
     transport: string;
     derives: boolean;
+    /** Whether v1 acts on the transport (P4-05); an unsupported one is stored, not served. */
+    supported: boolean;
   }>;
   releases: Array<{
     releaseId: string;

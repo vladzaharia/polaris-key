@@ -145,6 +145,7 @@ class ErrorCode:
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_NOT_CONFIGURED: Final = "email_not_configured"
     DOWNLOAD_AUTH_REQUIRED: Final = "download_auth_required"
+    DELIVERY_GATE_MISSING: Final = "delivery_gate_missing"
     UPSTREAM_RATE_LIMITED: Final = "upstream_rate_limited"
     SERVER_MISCONFIGURED: Final = "server_misconfigured"
     INTERNAL_ERROR: Final = "internal_error"
@@ -258,6 +259,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "auth_method_disabled",
     "email_not_configured",
     "download_auth_required",
+    "delivery_gate_missing",
     "upstream_rate_limited",
     "server_misconfigured",
     "internal_error",
@@ -373,6 +375,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "auth_method_disabled": "wire",
         "email_not_configured": "wire",
         "download_auth_required": "wire",
+        "delivery_gate_missing": "wire",
         "upstream_rate_limited": "wire",
         "server_misconfigured": "wire",
         "internal_error": "wire",

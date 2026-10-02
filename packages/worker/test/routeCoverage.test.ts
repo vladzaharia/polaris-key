@@ -96,7 +96,7 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/dl/{version}/{asset}", ["get"]],
   ["/{product}/distribution/builds/{selector}/{buildId}", ["get"]],
   ["/{product}/distribution/files/{releaseId}/{name}", ["get"]],
-  ["/{product}/distribution/blobs/sha256/{sha256}", ["get"]],
+  ["/{product}/distribution/blobs/sha256/{sha256}", ["get", "head"]],
   ["/{product}/distribution/rollouts/{outlet}/{channel}", ["post"]],
   ["/{product}/distribution/rollouts/{outlet}/{channel}/pause", ["post"]],
   ["/{product}/distribution/rollouts/{outlet}/{channel}/resume", ["post"]],
@@ -166,7 +166,7 @@ function specMethods(path: string): string[] {
   const entry = spec.paths[path];
   if (!entry) return [];
   return Object.keys(entry).filter((k) =>
-    ["get", "post", "put", "patch", "delete"].includes(k),
+    ["get", "head", "post", "put", "patch", "delete"].includes(k),
   );
 }
 

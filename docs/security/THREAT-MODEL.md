@@ -123,10 +123,11 @@ uploads. Its write paths, and nothing else:
 - **Every read goes through the Worker.** No R2 public domain and no `r2.dev`: only the Worker
   sets `ETag` to the SHA-256, adds `Repr-Digest` (RFC 9530), and checks that **this** product
   holds a ref to the key (`hasRef`) before serving it. A hash is never treated as a secret:
-  gated content is authorised per request and served `private, no-store`. Until that per-request
-  check exists (P4-05), the build and file routes (Distribution's since P2b-04) refuse a location
-  under `gated/` outright, whatever the deliverable's delivery access, and the blob route reads only the
-  ungated key and, under `entitled`, re-checks the licence against every release that carries
+  gated content is authorised per request and served `private, no-store`. The build and file
+  routes (Distribution's since P2b-04) serve the `app` deliverable only and refuse a location
+  under `gated/` outright, whatever its delivery access; only the blob route reads a `gated/`
+  key, and only for a pack, against the pack's current gate (P4-05, "Pack bytes" below). Its
+  app side still re-checks the licence under `entitled` against every app release that carries
   the hash (§5; P2-05).
 - **Clients verify against the signed manifest, not the headers.** `Repr-Digest` and the ETag
   help resumption; integrity rests on the hash in a signed document.
@@ -498,16 +499,15 @@ only a record that does nothing until its service is turned on.
 
 **The ingest's cost is bounded for untrusted input (the R10 class).** Every row Distribution
 writes comes from one push to a third party's repo and lands in the shared D1 batch, so its count
-is bounded by the validator, not by the push: at most 32 outlets (`MAX_OUTLETS`), and transport
-routes only for `app` today. P4-02 bounds the pack count: a release document declares at most 64
-packs (`MAX_PACK_DELIVERABLES`, `too_many_pack_deliverables`, refused whole before any pack is
-validated), so routing every pack would cost at most (1 + 64) × 32 = 2,080 transport rows,
-where an unbounded 64 KiB `release.yaml` of `{kind: pack}` entries could have multiplied into
-~90,000 statements. Packs are not routed yet, so a link or resync still writes at most 32 outlet
-upserts, one removal sweep, one transport delete and 32 transport inserts
-(`test/distributionOutlets.test.ts`, "the ingest's cost is bounded"); P4-05 routes packs and
-rewrites this paragraph to that worst case. Manifest sync writes one `release_deliverables` row
-per pack, at most 64.
+is bounded by the validator, not by the push: at most 32 outlets (`MAX_OUTLETS`), and at most 64
+packs (P4-02's `MAX_PACK_DELIVERABLES`, `too_many_pack_deliverables`, refused whole before any
+pack is validated). P4-05 routes every deliverable, so a link or resync resolves at most
+(1 + 64) × 32 = 2,080 transport rows, where an unbounded 64 KiB `release.yaml` of
+`{kind: pack}` entries could have multiplied into ~90,000 statements. They are written as
+multi-row inserts of 25 rows (four parameters each, inside D1's 100), so the worst case is 32
+outlet upserts, one removal sweep, one transport delete and 84 transport inserts
+(`test/distributionOutlets.test.ts`, "the ingest's cost is bounded"). Manifest sync writes one
+`release_deliverables` row per pack, at most 64.
 
 **Residual risk.** Identity and listing fields are manifest-owned and written verbatim (validated
 patterns, https-only URLs, no control characters); a repo writer can point a listing's `iconUrl`
@@ -584,8 +584,8 @@ the old column.
 - **Inheritance fails toward the app, then closed.** A deliverable with no row inherits the `app`
   row; no row at all reads as `entitled`, never `public` — reached only by a product no ingest
   has touched since 0038 backfilled every configured product. A stored mode outside the CHECK
-  reads as `entitled` too. The blob route uses the strictest mode of the deliverables whose
-  releases carry the digest.
+  reads as `entitled` too. The blob route's app side uses the strictest mode of the deliverables
+  whose releases carry the digest; a pack's objects follow the pack (below).
 - **The portal asks the same question of licences.** A portal account has no device token, so
   `licensed` needs a usable linked licence and `entitled` one whose own grant
   (`core/entitledAccess.ts` `licenseEntitled`, the device decision without the device layer)
@@ -606,6 +606,60 @@ the old column.
   selector and serve the channel's current release, cached as moving. A build's URL is its
   payload's, and only when the `files` route resolves that name to that same artifact; otherwise
   `null`.
+
+**Pack bytes (P4-05).** Every object a pack release names, and every file blob its indexes
+name, is served by the blob route alone, by its stored SHA-256 (`services/distribution/
+blobAccess.ts`); `files/<packRelease>/…` and `builds/…?deliverable=<pack>` answer not-found,
+and `deliveryUrl` mints no URL for a pack release. That closes P4-02's interim exposure, under
+which `files/` served a pack's ungated objects under the pack's (or the app's) mode and an
+`entitled` app window was checked against a pack's version. A hash is never the authorisation;
+the object's HOLDERS in this product are:
+
+- **The public path never reads `gated/`.** An object lives under `blobs/sha256/<h>` (published
+  while its pack was ungated, or an app artifact) or `gated/blobs/sha256/<h>` (published while
+  gated; P4-02's stage round and ingest hold the prefix to the gate). The public key is decided
+  by its own holders; the gated key is tried only when the public one is not held or refuses,
+  and only a pack's ref (`pack-upload`, `pack-object`) authorises a gated key — an app artifact
+  or feed ref there admits nothing. A ref of another product never counts (`refHolders` reads
+  this product's rows only); more than 512 distinct holders refuses rather than guess.
+- **No byte under `gated/` without the current gate's flag while the pack is gated.** The flag is
+  the `entitlement` of the pack's own `dist_access` row, read at each request through
+  `delivery.entitlement` — never the manifest's assertion and never a record's `entitlement`,
+  which is a publish-time snapshot — and checked by `core/entitledAccess.ts`
+  `entitlementFlagRefusal` against the grant the licence document would carry
+  (`resolveMergedPayload` + `injectAdminPolicy`): `401 unauthorized` without a usable licence,
+  `403 not_entitled` without the flag. Renaming the flag moves who may download at once. Every
+  such response is `private, no-store, no-transform` (`blobResponse` forces it for a `gated/` key).
+- **A pack's mode, never the app's window.** An ungated object follows the pack's delivery mode
+  (`public`; a usable licence under `authenticated`/`licensed`; the gate under `entitled`). The
+  app's version window is an app rule and never applies to a pack. `entitled` without a gate is
+  **fail-closed**: there is no grant to check, so the object is refused (`403
+delivery_gate_missing`) until the operator sets a gate or a looser mode. A pack with no row
+  inherits the app's mode, so a paid app's packs are refused until an operator decides; that is
+  deliberate (P4-05's answer to P4-01's open question).
+- **A gate set after a release leaves that release's `blobs/` objects where they were.** Objects
+  never move between prefixes; the earlier public responses were cacheable and cannot be
+  recalled, so a gate protects only the bytes published after it is set. A pack un-gated later
+  serves its `gated/` objects under its mode, still `private, no-store`.
+- **Residual: holder existence.** The route's status tells a caller whether the product holds a
+  hash, and how it is gated. What is actually public: the hashes a pack RECORD names (each
+  variant's `full`, files index, gaps and deltas) are readable by anyone the record route serves
+  under the metadata mode. A FILE BLOB's hash is named only inside a files index, which is itself
+  a gated object for a gated pack, so it is disclosed only to a caller who already holds the
+  index's bytes. Against a hash so learned: an anonymous request answers `401` where an unknown
+  hash may answer `404`; a closed pack (`entitled`, no gate) answers `403
+delivery_gate_missing` to anyone; and a licensed caller WITHOUT the flag gets `403
+not_entitled` rather than `404`, which confirms the product holds that gated content. None of
+  this reveals the bytes or anything about other tenants (another product's refs never count).
+- **Refusals are rate-limited and cheap.** The byte routes count a request against the client's
+  artifact lane BEFORE the access decision (P4-05 moved it), and a blob decision costs a fixed
+  number of reads: one `refHolders` query, one `dist_access` read for every holder's mode and
+  gate, at most one read of the releases carrying the digest, and the licence check.
+- **Availability reads the same possession, at a bounded cost.** A pack variant is derived `live`
+  on `pkey-cdn`/`web` only while every object its record names is stored with its recorded hash
+  and length and held by this product (bulk reads for a whole matrix page: one record read per
+  pack release plus a fixed set of bulk queries, inside D1's per-invocation cap); `embedded` is derived from the signed pins and the builds' `embeds`. A
+  transport v1 does not act on is stored and reported unsupported, never silently served by CDN.
 
 **Edge caching stays off.** The byte routes are not cached (no Workers Caching entrypoint, no
 `caches.default`), so S-02's open question — whether a public response to a request carrying
@@ -2102,7 +2156,10 @@ domain-separation note in the audit report — the two realms share HMAC key mat
 a CI scope is added, the publisher policy gains a field, a manifest is allowed to set any part of
 it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02); a new
 way to earn a blob ref is added (P4-02's stage round is the second), or the Worker's index bound
-(`MAX_PUBLISHED_INDEX_BYTES`) is raised;
+(`MAX_PUBLISHED_INDEX_BYTES`) is raised; a route other than the blob route serves a pack's object
+or reads a `gated/` key, a ref kind other than `pack-upload` or `pack-object` authorises a
+`gated/` key, or a gated object is authorised by anything but the pack's current
+`dist_access.entitlement` (P4-05);
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store

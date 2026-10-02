@@ -110,21 +110,23 @@ GET /<product>/distribution/blobs/sha256/<hash>
 
 Each also answers at its `/<product>/release/…` alias, on both hosts.
 
-- **builds** resolves `<selector>` for a deliverable (default `app`) and serves the payload of
+- **builds** resolves `<selector>` for the app (`?deliverable=` naming a pack answers
+  not-found: a pack's bytes are on the blob route only) and serves the payload of
   the build `<buildId>` — an id from the deliverable's artifact map, such as `macos` or `apk`.
   Resolution is per platform: a release that lacks this build is skipped, so a release with no
   iOS build does not blank iOS; iOS gets the newest release that has one. The rules — channel
   membership, `includes`, pointers and pins, yanks, the version scheme and the tag filter — are
   on [Channels and policy](/docs/services/release/channels/). `?checksum=sha256` answers the
   payload's SHA-256 as bare hex, like the download route.
-- **files** serves one exact file of one release by name, sidecars included (`.sig`,
+- **files** serves one exact file of one app release by name, sidecars included (`.sig`,
   `.sha256`, an index). The release id and the name fix the bytes, so the response is
-  immutable.
+  immutable. A pack release's files answer not-found.
 - **blobs** serves a content-addressed object only when an artifact of **this** product
   references it. Another product holding the same bytes does not count, and the answer is the
   same not-found as for an unknown hash, so the route reveals nothing about other tenants.
   Under `entitled` the object must also belong to a release the caller's licence covers
-  ([Access modes](#access-modes)).
+  ([Access modes](#access-modes)). It is also the only route for a pack's objects, under the
+  pack's own access and gate ([Pack bytes](/docs/services/distribution/delivery/#pack-bytes)).
 
 An artifact's bytes are taken from the first location that has them, in this order:
 
@@ -242,7 +244,7 @@ stable-only licence.
 
 A blob URL names a hash, not a release, and a hash is no secret: signed manifests publish it.
 Under `entitled`, `/release/blobs` therefore serves an object only if at least one release of
-this product with an artifact of that digest passes the same check `/release/files` applies to
+this product's app with an artifact of that digest passes the same check `/release/files` applies to
 that release's stored version. Otherwise it answers that release's refusal (`version_blocked`, say),
 or the plain not-found when no release artifact carries the hash at all.
 

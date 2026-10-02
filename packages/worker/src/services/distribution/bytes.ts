@@ -24,11 +24,12 @@
  *
  * ── THE PIPELINE ────────────────────────────────────────────────────────────────────────────
  *
- * The release gateway's, in the same order: the product's release configuration must exist
- * (`releaseCatalog.metadataAccess()` is `null` without one) → the access mode is enforced →
- * the request counts against the same rate-limit lane as before (`releaseArtifact` for bytes,
- * `release` for the installer: one product's GitHub quota is still the budget defended) →
- * compute → harden. Nothing here is put in the edge cache.
+ * The product's release configuration must exist (`releaseCatalog.metadataAccess()` is `null`
+ * without one) → the request counts against the same rate-limit lane as before
+ * (`releaseArtifact` for bytes, `release` for the installer: one product's GitHub quota is still
+ * the budget defended) → the access mode is enforced → compute → harden. P4-05 moved the rate
+ * limit ahead of the access decision, so a refused request spends budget too and the reads an
+ * access decision costs stay bounded per client. Nothing here is put in the edge cache.
  *
  * ── ONE ACCESS ANSWER ───────────────────────────────────────────────────────────────────────
  *
@@ -44,15 +45,26 @@
  *     `stable`, `beta`, `pr-5` or a manual channel's name cannot pass as a moving channel (the
  *     P2-05 fixedVersion rule); a missing release row is checked as an empty fixed version
  *     (refused under a bounded window) and then answers not-found;
- *   - `blobs` names no version, so the request-level check proves only a usable licence; under
- *     `entitled` the object is served only if a release of THIS product carrying the digest
- *     passes the `files` check (`entitledBlobRefusal`). The mode is the strictest of the
- *     deliverables whose releases carry the digest (the `app` mode when none do).
+ *   - `blobs` names no version: it authorises the HOLDERS of the object's key instead
+ *     (`blobAccess.ts`, P4-05). The app side keeps P2b-04's rule (under `entitled` a release
+ *     of THIS product carrying the digest must pass the `files` check); a pack's objects are
+ *     authorised by the pack's own delivery access and, under `gated/`, by its CURRENT gate
+ *     (P4-01 decision 35).
+ *
+ * ── PACKS: THE BLOB ROUTE ONLY ──────────────────────────────────────────────────────────────
+ *
+ * Every pack object (a variant's `full`, its files index and gaps, deltas, file blobs) is reached
+ * by its stored SHA-256 on the blob route and nowhere else (plans/P4-01.md §6). `files` and
+ * `builds` serve the `app` deliverable only: a pack release's file or build answers the plain
+ * not-found there, so no pack byte is ever authorised by the app's version window or served
+ * outside its pack's gate (closing P4-02's hand-off, under which `files/<packRelease>/<name>`
+ * served a pack's ungated objects under the pack's or the app's mode).
  *
  * ── WHERE THE BYTES COME FROM ───────────────────────────────────────────────────────────────
  *
  * An artifact's locations, in README §3.5 order: R2 (Core's `blobResponse`, only for a key this
- * product holds a ref to, and never a `gated/` key until P4-05's per-request authorisation) →
+ * product holds a ref to, and never a `gated/` key on `builds`/`files`: only the blob route
+ * authorises gated bytes, per request, and only for a pack) →
  * GitHub (`releaseCatalog.openSource`: Release streams with its own installation token and SSRF
  * guard; Distribution never holds a GitHub token and never imports `github.ts`) → an external
  * `https://` URL (302). `?redirect=1` is honoured only for a PUBLIC deliverable (and Release
@@ -71,13 +83,7 @@ import type {
   ServiceHooks,
 } from "../../core/hooks.js";
 import { errorResponse, notFound } from "../../core/errors.js";
-import {
-  BLOB_CSP,
-  blobKey,
-  blobResponse,
-  hasRef,
-  parseKey,
-} from "../../core/blobs.js";
+import { BLOB_CSP, blobResponse, hasRef, parseKey } from "../../core/blobs.js";
 import { isBytesHost } from "../../core/bytesHost.js";
 import type { ByteRoute, ByteRouteMatch } from "../../core/bytesHost.js";
 import {
@@ -86,7 +92,7 @@ import {
   type EntitledSelector,
 } from "../../core/entitledAccess.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
-import { strictestAccess } from "./access.js";
+import { decideBlob, type BlobDecision } from "./blobAccess.js";
 
 // ── Targets ──────────────────────────────────────────────────────────────────────────────────
 
@@ -206,9 +212,10 @@ export interface ByteContext {
 interface Cleared {
   catalog: ReleaseCatalog;
   mode: ReleaseAccess;
-  /** For `file`/`blob`: the resolution already read to decide access. */
+  /** For `file`: the resolution already read to decide access. */
   file?: Awaited<ReturnType<typeof resolveFile>>;
-  blob?: Awaited<ReturnType<typeof resolveBlob>>;
+  /** For `blob`: which key to serve, decided from its holders (`blobAccess.ts`). */
+  blob?: Exclude<BlobDecision, { kind: "refused" }>;
 }
 
 async function resolveFile(
@@ -223,11 +230,6 @@ async function resolveFile(
   return r?.kind === "file"
     ? r
     : { kind: "file" as const, release: null, artifact: null };
-}
-
-async function resolveBlob(catalog: ReleaseCatalog, sha256: string) {
-  const r = await catalog.resolve({ kind: "blob", sha256 });
-  return r?.kind === "blob" ? r : { kind: "blob" as const, releases: [] };
 }
 
 /** Serve one byte target for `product`, on either host. */
@@ -258,67 +260,9 @@ export async function serveDistributionBytes(
   const metadataMode = await catalog.metadataAccess();
   if (metadataMode === null) return harden(notFound());
 
-  // The access decision, per surface (see the file header).
-  let mode: ReleaseAccess;
-  let selector: EntitledSelector;
-  let pinned: boolean;
-  const cleared: Partial<Cleared> = { catalog };
-  switch (target.kind) {
-    case "install":
-      mode = metadataMode;
-      selector = await catalog.accessSelector(undefined);
-      pinned = Boolean(selector.version);
-      break;
-    case "dl":
-      mode = await delivery.accessMode(APP_DELIVERABLE_ID);
-      selector = await catalog.accessSelector(target.version);
-      pinned = Boolean(selector.version);
-      break;
-    case "build": {
-      const deliverable =
-        new URL(req.url).searchParams.get("deliverable") ?? APP_DELIVERABLE_ID;
-      mode = await delivery.accessMode(deliverable);
-      selector = await catalog.accessSelector(target.selector);
-      pinned = Boolean(selector.version);
-      break;
-    }
-    case "file": {
-      const file = await resolveFile(catalog, target);
-      cleared.file = file;
-      mode = await delivery.accessMode(
-        file.release?.deliverableId ?? APP_DELIVERABLE_ID,
-      );
-      // The release's STORED version, pinned — never re-read as a selector (`fixedVersion`).
-      selector = fixedReleaseSelector(file.release?.version ?? "");
-      pinned = true;
-      break;
-    }
-    case "blob": {
-      const blob = await resolveBlob(catalog, target.sha256);
-      cleared.blob = blob;
-      mode = await strictestAccess(
-        delivery,
-        blob.releases.map((r) => r.deliverableId),
-      );
-      selector = await catalog.accessSelector(undefined);
-      pinned = false;
-      break;
-    }
-  }
-  cleared.mode = mode;
-
-  const denied = await accessRefusal(
-    env,
-    db,
-    product,
-    bearer(req),
-    mode,
-    selector,
-    pinned,
-    now,
-  );
-  if (denied) return harden(denied);
-
+  // The rate limit counts every request BEFORE the access decision (P4-05): a refused request
+  // (an anonymous probe of a gated hash, say) still spends the client's budget, so the reads an
+  // access decision costs are bounded per client like any download's.
   const isArtifact = target.kind !== "install";
   if (
     !(await rateLimitOk(
@@ -336,6 +280,74 @@ export async function serveDistributionBytes(
       errorResponse(429, "rate_limited", "too many release requests"),
     );
   }
+
+  // The access decision, per surface (see the file header).
+  let mode: ReleaseAccess = "public";
+  let selector: EntitledSelector = {};
+  let pinned = false;
+  const cleared: Partial<Cleared> = { catalog };
+  let decided: Response | null | undefined;
+  switch (target.kind) {
+    case "install":
+      mode = metadataMode;
+      selector = await catalog.accessSelector(undefined);
+      pinned = Boolean(selector.version);
+      break;
+    case "dl":
+      mode = await delivery.accessMode(APP_DELIVERABLE_ID);
+      selector = await catalog.accessSelector(target.version);
+      pinned = Boolean(selector.version);
+      break;
+    case "build": {
+      const deliverable =
+        new URL(req.url).searchParams.get("deliverable") ?? APP_DELIVERABLE_ID;
+      // The app deliverable only: a pack's variants are reached through the blob route (P4-05).
+      if (deliverable !== APP_DELIVERABLE_ID) return harden(notFound());
+      mode = await delivery.accessMode(deliverable);
+      selector = await catalog.accessSelector(target.selector);
+      pinned = Boolean(selector.version);
+      break;
+    }
+    case "file": {
+      const file = await resolveFile(catalog, target);
+      // The app deliverable only: a pack release's objects are reached through the blob route,
+      // under the pack's gate, never here under the app's version window (P4-05).
+      if (file.release && file.release.deliverableId !== APP_DELIVERABLE_ID)
+        return harden(notFound());
+      cleared.file = file;
+      mode = await delivery.accessMode(APP_DELIVERABLE_ID);
+      // The release's STORED version, pinned — never re-read as a selector (`fixedVersion`).
+      selector = fixedReleaseSelector(file.release?.version ?? "");
+      pinned = true;
+      break;
+    }
+    case "blob": {
+      // Decided from the holders of the object's keys, not from one mode (`blobAccess.ts`).
+      const blob = await decideBlob(ctx, catalog, target.sha256);
+      if (blob.kind === "refused") decided = blob.response;
+      else {
+        cleared.blob = blob;
+        decided = null;
+      }
+      break;
+    }
+  }
+  cleared.mode = mode;
+
+  const denied =
+    decided !== undefined
+      ? decided
+      : await accessRefusal(
+          env,
+          db,
+          product,
+          bearer(req),
+          mode,
+          selector,
+          pinned,
+          now,
+        );
+  if (denied) return harden(denied);
 
   return harden(await compute(ctx, target, cleared as Cleared));
 }
@@ -430,10 +442,10 @@ async function serveArtifact(
       // product must hold a ref to it (a ref is earned per product, THREAT-MODEL §3).
       if (!env.BLOBS || !artifact.sha256 || !loc.key) continue;
       const parsed = parseKey(loc.key);
-      // A `gated/` key is entitlement-gated content, authorised PER REQUEST (THREAT-MODEL §3) —
-      // and that per-request check (P4-05) does not exist yet. The deliverable's access mode is
-      // not it: under a `public` deliverable it would hand gated bytes to anyone. So these
-      // routes fail closed on a gated location until that check lands.
+      // A `gated/` key is entitlement-gated content, authorised PER REQUEST (THREAT-MODEL §3) by
+      // the blob route alone, against a pack's current gate (`blobAccess.ts`). These routes serve
+      // the app deliverable, whose access mode is not that check: under a `public` deliverable
+      // it would hand gated bytes to anyone. So they never serve a gated location.
       if (
         !parsed ||
         parsed.area !== "locked" ||
@@ -561,58 +573,20 @@ async function computeFile(
   );
 }
 
-/**
- * `entitled` on the blob route. The request-level decision names no channel and no version, so
- * it proves only that the device holds a usable licence — and a hash is never a secret
- * (THREAT-MODEL §3: signed manifests publish it). Without a per-release decision every R2-held
- * payload the build and file routes window-check would be one hash away. So the blob is served
- * only if at least one release of THIS product whose artifact has this digest passes the same
- * check `files` applies (its stored version as a fixed, pinned version). A hash no release
- * artifact carries (only a pack object, say) answers the flat not-found until per-request
- * authorisation exists (P4-05). Returns `null` to serve, or the refusal.
- */
-async function entitledBlobRefusal(
-  ctx: ByteContext,
-  releases: ReadonlyArray<{ version: string }>,
-): Promise<Response | null> {
-  const { req, env, db, product, now } = ctx;
-  let first: Response | null = null;
-  for (const { version } of releases) {
-    const denied = await accessRefusal(
-      env,
-      db,
-      product,
-      bearer(req),
-      "entitled",
-      fixedReleaseSelector(version),
-      true,
-      now,
-    );
-    if (!denied) return null;
-    first ??= denied;
-  }
-  return first ?? notFound();
-}
-
 async function computeBlob(
   ctx: ByteContext,
-  { mode, blob }: Cleared,
+  { blob }: Cleared,
   target: Extract<ByteTarget, { kind: "blob" }>,
 ): Promise<Response> {
-  const { req, env, db, product } = ctx;
-  if (!env.BLOBS) return notFound();
-  const key = blobKey(target.sha256);
-  // Cross-tenant: served only when an artifact (or pack object) of THIS product references it.
-  // Another product's copy of the same bytes does not count, and the answer is the plain
+  const { req, env } = ctx;
+  // Cross-tenant: only a key THIS product holds a ref to was decided servable (`decideBlob`);
+  // another product's copy of the same bytes does not count, and the answer is the plain
   // not-found either way, so the route is no oracle for what other tenants store.
-  if (!(await hasRef(db, product.slug, key))) return notFound();
-  if (mode === "entitled") {
-    const refused = await entitledBlobRefusal(ctx, blob?.releases ?? []);
-    if (refused) return refused;
-  }
-  return blobResponse(req, env.BLOBS, key, {
+  if (!env.BLOBS || blob?.kind !== "serve") return notFound();
+  return blobResponse(req, env.BLOBS, blob.key, {
     sha256: target.sha256,
-    gated: mode !== "public",
+    // A `gated/` key is private whatever this says (`blobResponse`).
+    gated: !blob.publicCache,
     env,
   });
 }
