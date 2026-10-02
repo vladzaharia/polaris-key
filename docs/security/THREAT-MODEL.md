@@ -1865,9 +1865,14 @@ API and no wire member.
   the reading product holding a ref (`hasRef`), so an object with no ref from any product is
   unservable; the sweep deletes only such objects, re-checked (`NOT EXISTS` on `blob_refs`) in
   the claim, and again in the row delete. Refs are dropped only for pack releases the hooks call
-  dead (never `artifact` or `feed` refs), only once older than the grace period (30 days, at least
-  one day, `BLOB_GC_GRACE_DAYS`), and only when the whole live set was read: an unreadable record
-  or index, Release being off, or a spent budget all mean keep. Revoked releases are never live.
+  dead (never `artifact` or `feed` refs), never for a key any live release's record or index
+  names (an index may list a file held only by a dead release's ref), only once older than the
+  grace period (30 days, at least one day, `BLOB_GC_GRACE_DAYS`), and — for both `pack-object` and
+  `pack-upload` refs — only when the whole live set was read in that tick: an unreadable record
+  or index, Release being off, or a spent budget all mean keep. Revoked releases are never live;
+  only `kind: record` revocations are read as naming a release. While a pack rollout is not
+  complete, every release of that pack below its target is live, so a gate's fallback (which may
+  sit at another contentApi level) keeps its bytes.
 - **The bucket lock is not weakened.** The sweep never attempts a delete before an object's
   `created_at` is older than the 180-day lock, so a lock refusal means a bug, which fails the step
   and releases the claims (`blob_gc_log` `delete-failed`). An indefinite lock would make the
@@ -1875,13 +1880,16 @@ API and no wire member.
 - **No publish can earn a ref to bytes being deleted.** The sweep claims an object
   (`gc_claimed_at`, one conditional statement) before the R2 delete; `promote`'s `recordObject`
   refuses a claimed object (`changed`, retryable) and clears `unreferenced_since` otherwise, so a
-  re-promote restarts the grace period. Re-earning an existing ref moves its `created_at`
-  forward. A ref a plan computed before a concurrent ingest dropped from a live release is
-  RESTORED on the next tick (possession was proven at that release's ingest), long inside the
-  grace period, so the sweep never reaches it.
-- **Restoring is not earning.** The collector restores only refs a live release's own verified
-  record or files index names, for the same product, on objects still stored and unclaimed. It
-  can never give a product a ref its ingest did not already check.
+  re-promote restarts the grace period. A promote that confirmed existing bytes looks again after
+  recording the row (no claim can follow inside the grace period then) and re-puts the staged
+  copy if a sweep deleted them in between, so it never answers success for missing bytes.
+  Re-earning an existing ref moves its `created_at` forward. A ref the collector itself dropped
+  from a release that is live again (a plan computed before a concurrent ingest) is RESTORED on the
+  next tick, long inside the grace period, so the sweep never reaches it.
+- **Restoring is not earning.** The collector restores only a ref it took from the same product
+  (a `ref-dropped` row in `blob_gc_log`), for a key a live release's own verified record or files
+  index names, on an object still stored and unclaimed. It can never give a product a ref to
+  bytes it never held, even ones another product holds.
 - **No cross-tenant oracle.** The console's dry run (`GET …/blob-gc`) lists only this product's
   refs and never says whether another product holds the same bytes.
 - **Readiness holds fail closed.** The hold is computed on read: an app release whose required

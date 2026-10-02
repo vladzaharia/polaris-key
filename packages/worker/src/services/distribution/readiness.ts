@@ -25,9 +25,10 @@
  *                                     null) is fetchable by no device (P4-05 N4), so it blocks
  *   apple-ba                          a stored (CI or connector) availability record of the pack
  *                                     release on O in `approved` or `live`; when it names an
- *                                     `assetPackIdentifier`, that must be the level's asset pack
- *                                     (`…-c<contentApi>`, CONTENT §6.6). Until P5-02/P5-08 feed
- *                                     ASC states, CI reports stand in
+ *                                     `assetPackIdentifier`, that must be exactly the level's asset
+ *                                     pack (`<pack leaf>-c<contentApi>`), for EVERY level the pack is
+ *                                     required at (one asset pack per level, CONTENT §6.6). Until
+ *                                     P5-02/P5-08 feed ASC states, CI reports stand in
  *   msix-optional, flatpak-ext        a stored availability record in `approved` or `live`
  *   anything else                     blocked (fail closed)
  *
@@ -144,6 +145,9 @@ export interface RequiredPack {
   transport: string;
   /** `pin`, `hold` or `set`. */
   via: "pin" | "hold" | "set";
+  /** The contentApi levels it is required at: its set rows' levels, or every level the app
+   *  release is live at for a pin or hold (`apple-ba` needs one asset pack per level). */
+  levels: number[];
 }
 
 export interface ReadinessOverride {
@@ -401,7 +405,7 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
         if (!APPROVED_STATES.includes(r.state)) return false;
         if (t !== "apple-ba" || level === null) return true;
         const named = objectOf(r.platform_ref_json).assetPackIdentifier;
-        return typeof named !== "string" || named.endsWith(`-c${level}`);
+        return typeof named !== "string" || named === wanted;
       });
       if (ok) return null;
       return {
@@ -474,7 +478,6 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
         ),
       });
     }
-    const level = live.length > 0 ? live[0]!.level : null;
     const pendingReason =
       requiredDecl.size > 0
         ? (live
@@ -491,29 +494,39 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
       const platforms = new Set(outletPlatformsOf(outlet));
       const required: RequiredPack[] = [];
       const blockers: ReadinessBlocker[] = [];
-      const seen = new Set<string>();
       const add = async (
         pack: string,
         packReleaseId: string,
         version: string,
         via: RequiredPack["via"],
+        levels: readonly number[],
       ) => {
-        if (seen.has(`${pack}\u0000${packReleaseId}`)) return;
-        seen.add(`${pack}\u0000${packReleaseId}`);
+        const existing = required.find(
+          (r) => r.pack === pack && r.packReleaseId === packReleaseId,
+        );
+        if (existing) {
+          for (const l of levels)
+            if (!existing.levels.includes(l)) existing.levels.push(l);
+          existing.levels.sort((a, b) => a - b);
+          return;
+        }
         required.push({
           pack,
           packReleaseId,
           version,
           transport: await transportOf(pack, outlet.outlet_id),
           via,
+          levels: [...new Set(levels)].sort((a, b) => a - b),
         });
       };
+      const allLevels = live.map((l) => l.level);
       for (const p of pins)
         await add(
           p.pack,
           p.packReleaseId,
           pinVersions.get(p.packReleaseId) ?? "",
           "pin",
+          allLevels,
         );
       for (const h of holds)
         if (!pinned.has(h.pack))
@@ -522,6 +535,7 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
             h.packReleaseId,
             holdVersions.get(h.packReleaseId) ?? "",
             "hold",
+            allLevels,
           );
       for (const l of live)
         for (const s of l.sets) {
@@ -532,7 +546,7 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
               !held.has(m.pack) &&
               !pinned.has(m.pack)
             )
-              await add(m.pack, m.releaseId, m.version, "set");
+              await add(m.pack, m.releaseId, m.version, "set", [l.level]);
           for (const u of s.unsatisfied)
             if (
               requiredDecl.has(u.pack) &&
@@ -552,8 +566,16 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
               });
         }
       for (const r of required) {
-        const b = await evaluate(r, outlet, level);
-        if (b) blockers.push(b);
+        // Per level: an `apple-ba` pack needs each level's asset pack approved.
+        for (const lv of r.transport === "apple-ba" && r.levels.length > 0
+          ? r.levels
+          : [null]) {
+          const b = await evaluate(r, outlet, lv);
+          if (b) {
+            blockers.push(b);
+            break;
+          }
+        }
       }
       const computed: ComputedReadiness =
         pendingReason !== null

@@ -394,6 +394,12 @@ export interface CatalogHold {
  * the replacement it names. A superseding revocation replaces it in place; none is ever removed.
  */
 export interface CatalogRevocation {
+  /**
+   * `record` (absent: P4-13's revocation of one pack release) or, from P4-19, `delegation` (whose
+   * target is a delegation hash, not a release). A consumer that reads `targetReleaseId` as a
+   * release must ignore every other kind.
+   */
+  kind?: "record" | "delegation";
   /** The revoked pack's id. */
   deliverableId: string;
   targetReleaseId: string;

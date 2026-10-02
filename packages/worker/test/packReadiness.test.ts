@@ -475,3 +475,67 @@ describe("pack rollouts and halts per outlet (plans/P4-13.md rows C11–C13)", (
     ).toBeUndefined();
   });
 });
+
+describe("review fixes: readiness (P4-14 S3, S6, nits)", () => {
+  it("is pending (and holds) while the release's level has no resolved set", async () => {
+    const { w } = await world();
+    const id = await appReleaseId(w);
+    await w.db.run("DELETE FROM release_sets WHERE product = ?", SLUG);
+    const r = await readiness(w, id, "web");
+    expect(r).toMatchObject({ state: "pending", holds: true });
+    expect(r.pendingReason).toMatch(/no resolved pack set for contentApi 4/);
+  });
+
+  it("msix-optional and flatpak-ext wait for a reported approval", async () => {
+    for (const transport of ["msix-optional", "flatpak-ext"]) {
+      const { w, foes } = await world();
+      const id = await appReleaseId(w);
+      await w.setTransport(FOES, "web", transport);
+      const before = await readiness(w, id, "web");
+      expect(before.blockers[0]).toMatchObject({
+        reason: "awaiting-approval",
+        transport,
+      });
+      expect(before.blockers[0]!.assetPack).toBeUndefined();
+      await reportDistribution({
+        ...cli(w),
+        type: "availability",
+        outlet: "web",
+        releaseId: foes.releaseId,
+        state: "live",
+      });
+      expect((await readiness(w, id, "web")).state).toBe("ready");
+      vi.useRealTimers();
+    }
+  });
+
+  it("apple-ba matches the asset pack name exactly", async () => {
+    const { w, foes } = await world();
+    const id = await appReleaseId(w);
+    await reportDistribution({
+      ...cli(w),
+      type: "availability",
+      outlet: "app-store",
+      releaseId: foes.releaseId,
+      state: "approved",
+      platformRef: '{"assetPackIdentifier":"badfoes-c4"}',
+    });
+    expect((await readiness(w, id, "app-store")).state).toBe("blocked");
+  });
+
+  it("an override or a clear changes the storefront cache stamp at once", async () => {
+    const { w, foes } = await world();
+    const id = await appReleaseId(w);
+    await unpublishOne(w, foes);
+    const stamp = async () => (await w.hooks()).delivery()!.feedStamp();
+    const before = await stamp();
+    await w.admin("POST", `/distribution/readiness/${id}/web/override`, {
+      reason: "shipping anyway",
+    });
+    const overridden = await stamp();
+    expect(overridden).not.toBe(before);
+    vi.setSystemTime((NOW + 60) * 1000);
+    await w.admin("POST", `/distribution/readiness/${id}/web/clear`);
+    expect(await stamp()).not.toBe(overridden);
+  });
+});

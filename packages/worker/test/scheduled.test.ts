@@ -726,6 +726,57 @@ describe("scheduled() blob collector (P4-14)", () => {
     expect(r2.has(key)).toBe(false);
   });
 
+  it("the gated/ prefix follows the same rules", async () => {
+    const { db, r2, env } = await gcWorld();
+    const kept = `gated/blobs/sha256/${hex("gated-kept")}`;
+    const gone = `gated/blobs/sha256/${hex("gated-gone")}`;
+    await seedObject(db, r2, kept);
+    await seedObject(db, r2, gone);
+    await db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES ('acme', ?, 'pack-upload', 'acme.pack', ?)`,
+      kept,
+      NOW,
+    );
+    await runScheduledMaintenance(db, PAST_LOCK, env);
+    await runScheduledMaintenance(db, PAST_LOCK + GRACE, env);
+    expect(r2.has(kept)).toBe(true);
+    expect(r2.has(gone)).toBe(false);
+    expect(await exists(db, gone)).toBe(0);
+  });
+
+  it("finishes a claim a dead tick left behind, and releases one that gained a ref", async () => {
+    const { db, r2, env } = await gcWorld();
+    const orphan = `blobs/sha256/${hex("stale")}`;
+    const reffed = `blobs/sha256/${hex("stale-reffed")}`;
+    await seedObject(db, r2, orphan);
+    await seedObject(db, r2, reffed);
+    // Both claimed two hours ago by a tick that died; one has since gained a ref.
+    const stale = (PAST_LOCK - 7200) * 1000;
+    await db.run(
+      "UPDATE blob_objects SET gc_claimed_at = ?, unreferenced_since = ?",
+      stale,
+      PAST_LOCK - 7200,
+    );
+    await db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES ('acme', ?, 'artifact', 'r/z', ?)`,
+      reffed,
+      NOW,
+    );
+    const r = await runScheduledMaintenance(db, PAST_LOCK, env);
+    expect(r.counts.blobSweep).toBe(1);
+    expect(r2.has(orphan)).toBe(false);
+    expect(await exists(db, orphan)).toBe(0);
+    expect(r2.has(reffed)).toBe(true);
+    expect(
+      await db.first(
+        "SELECT gc_claimed_at FROM blob_objects WHERE storage_key = ?",
+        reffed,
+      ),
+    ).toEqual({ gc_claimed_at: null });
+  });
+
   it("is off with BLOB_GC_MODE=off or without the BLOBS binding", async () => {
     const { db, r2 } = await gcWorld();
     const key = `blobs/sha256/${hex("off")}`;

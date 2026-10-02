@@ -202,12 +202,12 @@ published command, so it moved to `/<p>/release/changelog` outright.
 
 One worker, with four platform primitives behind it:
 
-| Primitive                 | Role                                                                                                                                                |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **D1**                    | relational metadata — products, licenses, devices, release state, portal accounts, audit                                                            |
-| **KV** (`HOT`)            | hot-path token and key lookups                                                                                                                      |
-| **Durable Object** (`RL`) | `RateLimitDO`, SQLite-backed rather than the legacy KV-backed class                                                                                 |
-| **Cron** (`17 3 * * *`)   | daily maintenance: audit and portal-audit retention, expired download tokens, dormant device seats, and a re-run of the deploy-time index assertion |
+| Primitive                 | Role                                                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1**                    | relational metadata — products, licenses, devices, release state, portal accounts, audit                                                                                        |
+| **KV** (`HOT`)            | hot-path token and key lookups                                                                                                                                                  |
+| **Durable Object** (`RL`) | `RateLimitDO`, SQLite-backed rather than the legacy KV-backed class                                                                                                             |
+| **Cron** (`17 3 * * *`)   | daily maintenance: audit and portal-audit retention, expired download tokens, dormant device seats, a re-run of the deploy-time index assertion, and the blob collector (P4-14) |
 
 Every D1 row, KV key, DO shard and signature is **product-scoped**, and the URL carries the scope:
 `key.plrs.im/<product>/…`. The worker also serves a single assets root assembled from two built

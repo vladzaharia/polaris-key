@@ -88,6 +88,11 @@ product being disabled: [deleting a product](/docs/admin/products/#what-deleting
 tombstones the row and scrubs license PII, but never touches `audit`. A scheduled sweep prunes
 rows older than **180 days**, the same cutoff applied to the customer portal's own audit table.
 
+The blob collector's trail, `blob_gc_log` (every ref it dropped or restored and every object it
+deleted), follows the same **180-day** cutoff. It is platform-wide, not product-scoped: it has no
+foreign key to `products` (an object's deletion belongs to no single product; a `ref-dropped` row
+names the product whose ref it dropped), and it carries storage keys, never personal data.
+
 ## Reference
 
 - [D1 data model](/docs/reference/data-model/) — the `audit` table's columns, under `core`.

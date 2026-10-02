@@ -62,6 +62,7 @@ import { readPackDeliverables } from "../release/packs/deliverables.js";
 import { loadResolutionState, readStoredSets } from "../release/packs/sets.js";
 import { PackResolutionError, PackResolver } from "../release/packs/resolve.js";
 import { rowKey } from "../release/packs/sets.js";
+import type { ResolvedSet } from "../release/packs/resolve.js";
 import type { ReleaseConfigRow } from "../release/config.js";
 
 /** Basis points in a whole rollout (`dist_rollouts.rollout_bp`). */
@@ -177,8 +178,9 @@ function truncateRevocations(
  *                     pack-only rollback (CONTENT §6.7 item 5);
  *   complete          no gate: the release is out to everyone.
  *
- * `fallback` is the release the rows would name WITHOUT the gated releases: one more resolution of
- * the channel with every gated release removed from its pack's candidates (the "previous set").
+ * `fallback` is the release the rows would name WITHOUT the releases gated ON THAT OUTLET: one
+ * more resolution of the channel per distinct set of gated releases, with those removed from their
+ * packs' candidates (the outlet's "previous set").
  * When the rows that offer the target disagree on it, or name none, it is `null` (a device keeps
  * what it has). Each fallback joins `releases`, so it is always a key there. Mutates `packSets`.
  */
@@ -253,21 +255,49 @@ async function composeGates(
   }
   if (gates.length === 0) return { audits };
 
-  // The previous set: the channel resolved without the gated releases.
-  const fallbacks = new Map<string, string | null>();
+  // The previous set, PER OUTLET: the channel resolved without the releases gated on that outlet
+  // (an outlet's devices see only its own gates). Outlets gating the same releases share one
+  // resolution.
+  const fallbacks = new Map<string, string | null>(); // `${outlet}\u0000${target}` → fallback
   if (state) {
-    const without = new Set(gates.map((g) => g.releaseId));
-    try {
-      const alt = new PackResolver({
-        ...state.input,
-        channels: [channel],
-        packs: state.input.packs.map((p) => ({
-          ...p,
-          candidates: p.candidates.filter((c) => !without.has(c.releaseId)),
-        })),
-      }).resolve();
-      const altRows = new Map(alt.sets.map((s) => [rowKey(s), s]));
-      for (const target of new Set(gates.map((g) => g.target))) {
+    const byOutlet = new Map<string, Set<string>>();
+    for (const g of gates) {
+      const set = byOutlet.get(g.outlet) ?? new Set<string>();
+      set.add(g.releaseId);
+      byOutlet.set(g.outlet, set);
+    }
+    const resolved = new Map<string, Map<string, ResolvedSet> | null>();
+    for (const [outlet, without] of byOutlet) {
+      const key = [...without].sort().join("\u0000");
+      if (!resolved.has(key)) {
+        try {
+          const alt = new PackResolver({
+            ...state.input,
+            channels: [channel],
+            packs: state.input.packs.map((p) => ({
+              ...p,
+              candidates: p.candidates.filter((c) => !without.has(c.releaseId)),
+            })),
+          }).resolve();
+          resolved.set(key, new Map(alt.sets.map((s) => [rowKey(s), s])));
+        } catch (e) {
+          if (!(e instanceof PackResolutionError)) throw e;
+          resolved.set(key, null);
+          audits.push({
+            action: "update.feed.gate_fallback_omitted",
+            summary:
+              `The ${channel} feed's pack gates on ${outlet} carry no fallback: resolving the previous set failed (${e.message})`.slice(
+                0,
+                1000,
+              ),
+          });
+        }
+      }
+      const altRows = resolved.get(key);
+      if (!altRows) continue;
+      for (const target of new Set(
+        gates.filter((g) => g.outlet === outlet).map((g) => g.target),
+      )) {
         const named = new Set<string>();
         let pack: string | null = null;
         for (const s of stored) {
@@ -287,20 +317,10 @@ async function composeGates(
         }
         const only = named.size === 1 ? [...named][0]! : "";
         fallbacks.set(
-          target,
+          `${outlet}\u0000${target}`,
           pack !== null && only !== "" && only !== target ? only : null,
         );
       }
-    } catch (e) {
-      if (!(e instanceof PackResolutionError)) throw e;
-      audits.push({
-        action: "update.feed.gate_fallback_omitted",
-        summary:
-          `The ${channel} feed's pack gates carry no fallback: resolving the previous set failed (${e.message})`.slice(
-            0,
-            1000,
-          ),
-      });
     }
   }
   // Drop a fallback release no gate ended up naming (a disagreement leaves it unused).
@@ -309,7 +329,7 @@ async function composeGates(
   for (const g of gates.sort(
     (a, b) => bytesCmp(a.outlet, b.outlet) || bytesCmp(a.target, b.target),
   )) {
-    const fallback = fallbacks.get(g.target) ?? null;
+    const fallback = fallbacks.get(`${g.outlet}\u0000${g.target}`) ?? null;
     if (fallback !== null) used.add(fallback);
     const entry = (outlets[g.outlet] ??= {});
     (entry.gates ??= {})[g.target] = { ...g.gate, fallback };

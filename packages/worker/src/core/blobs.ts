@@ -421,6 +421,31 @@ export async function promote(
   // a moment from now, so no ref may be earned to it. Retryable: once the sweep has deleted it, a
   // fresh promote stores the bytes again.
   if (!recorded) return { ok: false, reason: "changed" };
+  if (alreadyStored) {
+    // The bytes were confirmed BEFORE the row was recorded, and the sweep may have claimed and
+    // deleted the object in between (then `recordObject` inserted a fresh row for bytes that are
+    // gone). Now that `recordObject` has cleared `unreferenced_since`, no claim can happen within
+    // the grace period, so this second look is authoritative. Gone: put the staged copy back.
+    const again = await bucket.head(targetKey);
+    if (!again) {
+      const retry = await bucket.get(fromStagingKey, {
+        onlyIf: { etagMatches: verified.etag },
+      });
+      if (!retry || !("body" in retry)) return { ok: false, reason: "changed" };
+      const restored = await putVerified(
+        bucket,
+        targetKey,
+        retry.body,
+        expected,
+      );
+      if (!restored.ok) return { ok: false, reason: "changed" };
+      alreadyStored = false;
+    } else if (
+      again.size !== expected.size ||
+      checksumHex(again) !== expected.sha256
+    )
+      return { ok: false, reason: "conflict" };
+  }
   return { ok: true, key: targetKey, alreadyStored, verifiedBy: verified };
 }
 

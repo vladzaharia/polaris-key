@@ -264,4 +264,27 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `BLOB_GC_MODE=off`, `BLOB_GC_GRACE_DAYS`.
 - **Console rendering** of readiness in the matrix is not in this package: the matrix API carries
   a `readiness` object per app-release cell; P4-15 renders it with its overlay.
-||||||| b891d49c
+  ||||||| b891d49c
+- **Review fixes (B1–B4, S1–S6).**
+  - `promote` heads the target again after `recordObject` when it confirmed existing bytes, and
+    re-puts the staged copy if a sweep deleted them in between (B1).
+  - Rule (e) keeps, while a pack rollout is not complete, every not-revoked release of that pack
+    below its target: a gate's fallback may sit at another contentApi level (B2).
+  - `pack-object` refs are dropped only when the plan read the whole live set, and never for a key
+    a live release names (B3). Restores put back only refs the collector took from the same
+    product (`blob_gc_log` `ref-dropped`), never a ref to bytes only another product holds.
+  - The live-release walk starts at a release that rotates daily, so an over-budget product's
+    files are all read (and restored) over successive ticks (S2).
+  - Gate fallbacks are resolved per outlet, removing only that outlet's gated releases (S4); no
+    wire or corpus change.
+  - The partial index on `blob_objects(gc_claimed_at)` is its own migration,
+    `0048_c_blob_gc_claim_index.sql`: the column is added by 0048_b's ALTER, which must stay that
+    file's last statement, so the index cannot precede it there (S5).
+  - The storefront cache stamp includes the readiness rows (overrides and clears take effect at
+    once), the transports and delivery access (S6).
+  - `apple-ba` checks the asset pack per level the pack is required at, by exact name.
+- **P4-19 (delegation revocations), B4.** `CatalogRevocation` gains an optional
+  `kind?: "record" | "delegation"`; the collector reads only `record` entries whose target is a
+  release of the product, and ignores every other kind (tested). **Whichever of P4-14 and P4-19
+  lands second** excludes releases yanked by a delegation revocation from the collector's live
+  rules (a), (e) and (f) (`core/blobGc.ts` `livePackReleases`), with a test.

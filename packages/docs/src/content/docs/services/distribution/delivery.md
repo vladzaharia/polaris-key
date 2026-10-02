@@ -221,9 +221,11 @@ collector runs on the nightly maintenance cron:
    chunk index names. Live means pinned or held by a live app release, in a current pack set,
    the previous release of a set member, a pack pointer, named by a rollout, listed on an outlet,
    a revocation's replacement, newer than every live release, or one of the three newest.
-   Revoked releases are never live. `artifact` and `feed` refs are never dropped. A ref is
-   dropped only once older than the grace period, and a ref a live release lacks is
-   restored.
+   While a pack rollout is not complete, every release of that pack below its target is live
+   too (a gate's fallback). Revoked releases are never live. `artifact` and `feed` refs are never
+   dropped, nor is any ref to a key a live release names. A ref is dropped only once older than
+   the grace period and only when the whole live set was read that night; a ref the collector
+   took from a release that is live again is restored.
 2. It **marks** objects no product references and clears the mark of re-referenced ones.
 3. It **sweeps** objects unreferenced for the grace period (30 days, `BLOB_GC_GRACE_DAYS`, at
    least one) **and** older than the 180-day bucket lock, at most 1,000 per night: it claims

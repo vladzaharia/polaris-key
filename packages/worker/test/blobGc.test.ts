@@ -22,6 +22,7 @@ import {
   BLOB_LOCK_AGE_SECONDS,
   DEFAULT_GC_GRACE_SECONDS,
   blobGcSettings,
+  livePackReleases,
   planProductGc,
   GC_INDEX_READS_PER_TICK,
 } from "../src/core/blobGc.js";
@@ -29,6 +30,7 @@ import { runBlobGc, type MaintenanceReport } from "../src/scheduled.js";
 import { promote, stagingKey } from "../src/core/blobs.js";
 import { asR2 } from "./r2Mock.js";
 import type { Env } from "../src/env.js";
+import { seedProduct } from "./seed.js";
 
 afterEach(() => vi.useRealTimers());
 
@@ -245,13 +247,23 @@ describe("concurrent publishes (P4-14)", () => {
     const { w, foes } = await world();
     await tick(w, T);
     const liveFile = key(foes[5]!.objects[2]!.sha256);
-    // As if an apply computed before the ingest dropped it (or an operator's mistake).
+    // An operator's (or anything else's) delete is NOT restored: only what the collector took.
     await w.db.run(
       "DELETE FROM blob_refs WHERE product = ? AND storage_key = ?",
       SLUG,
       liveFile,
     );
-    const healed = await tick(w, T + 1);
+    expect((await tick(w, T + 1)).counts[`blobRefs:${SLUG}`]).toBe(0);
+    // As an apply computed before the ingest would have dropped it: the ref goes, and is logged.
+    await w.db.run(
+      `INSERT INTO blob_gc_log (at, action, storage_key, product, ref_kind, ref_id)
+       VALUES (?, 'ref-dropped', ?, ?, 'pack-upload', ?)`,
+      T + 1,
+      liveFile,
+      SLUG,
+      FOES,
+    );
+    const healed = await tick(w, T + 2);
     expect(healed.counts[`blobRefs:${SLUG}`]).toBe(1);
     expect(
       await w.db.first(
@@ -327,5 +339,243 @@ describe("the P4-22 hook point and the console views (P4-14)", () => {
         bundle,
       ),
     ).toEqual({ ref_kind: "pack-upload" });
+  });
+});
+
+async function plan(
+  w: PackWorld,
+  at: number,
+  indexReads = GC_INDEX_READS_PER_TICK,
+) {
+  return planProductGc({
+    db: w.db,
+    product: SLUG,
+    hooks: await w.hooks(at),
+    now: at,
+    settings: blobGcSettings(w.env),
+    budget: { indexReads },
+  });
+}
+
+describe("review fixes: nothing live is ever deleted (P4-14 B1–B4)", () => {
+  it("B1: a sweep that runs between promote's head and its row write cannot leave a row without bytes", async () => {
+    const { w, foes } = await world();
+    await tick(w, T);
+    const victim = foes[0]!.objects[0]!;
+    const k = key(victim.sha256);
+    expect(await stored(w, k)).toBe(true);
+    let swept = false;
+    const real = asR2(w.r2);
+    const racing = {
+      ...real,
+      get: (x: string, o?: R2GetOptions) => real.get(x, o),
+      put: (...a: Parameters<R2Bucket["put"]>) => real.put(...a),
+      delete: (x: string | string[]) => real.delete(x),
+      head: async (x: string) => {
+        const h = await real.head(x);
+        if (!swept && x === k) {
+          swept = true;
+          // The nightly sweep runs right after promote confirmed the bytes.
+          await tick(w, T + GRACE);
+          expect(w.r2.has(k)).toBe(false);
+        }
+        return h;
+      },
+    } as unknown as R2Bucket;
+    const staged = stagingKey(SLUG, "b1", victim.sha256);
+    w.r2.seed(staged, victim.bytes, { withSha256: true });
+    const r = await promote(
+      racing,
+      staged,
+      k,
+      { sha256: victim.sha256, size: victim.bytes.length },
+      { db: w.db, now: T + GRACE, product: SLUG },
+    );
+    expect(swept).toBe(true);
+    expect(r).toMatchObject({ ok: true, alreadyStored: false });
+    // The bytes are back under the recorded row.
+    expect(await stored(w, k)).toBe(true);
+  });
+
+  it("B2: a halted pack's fallback at another contentApi level keeps its bytes (interleaved levels)", async () => {
+    const w = await packWorld();
+    await w.addOutlet("web", "web");
+    const s: Published[] = [];
+    // s1 s2 s3 serve level 4; s4 s5 need level 5; s6 serves level 4; s7 s8 s9 need level 5.
+    const ranges = ["4", "4", "4", ">=5", ">=5", "4", ">=5", ">=5", ">=5"];
+    for (let i = 0; i < ranges.length; i++)
+      s.push(
+        await w.publishPack(FOES, `1.0.${i + 1}`, { contentApi: ranges[i]! }),
+      );
+    await w.publishPack(L10N, "1.0.0", { contentApi: null });
+    expect((await w.submitApp("1.4.0", 14, appContent())).status).toBe(200);
+    // Level 4's set names s6; halt it on web.
+    const halted = await w.post("distribution/rollouts/web/stable", {
+      deliverable: FOES,
+      releaseId: s[5]!.releaseId,
+      bp: 2500,
+    });
+    expect(halted.status, await halted.clone().text()).toBe(200);
+    expect(
+      (
+        await w.post("distribution/rollouts/web/stable/halt", {
+          deliverable: FOES,
+        })
+      ).status,
+    ).toBe(200);
+    const gates = (await w.feed("web")).packSets.outlets.web.gates;
+    expect(gates[s[5]!.sha256]).toEqual({
+      halted: true,
+      fallback: s[2]!.sha256,
+    });
+    // s3 is neither a set member, the previous release by seq (s5), nor one of the newest three.
+    const p = await plan(w, T);
+    expect(p.liveReleases).toContain(s[2]!.releaseId);
+    await tick(w, T);
+    await tick(w, T + GRACE);
+    await tick(w, T + 3 * GRACE);
+    for (const k of keysOf(s[2]!)) expect(await stored(w, k), k).toBe(true);
+  });
+
+  it("B3: a live index's file held only by a dead release's pack-object ref is never orphaned", async () => {
+    const { w, foes } = await world();
+    // As after a single-file → tree move: the live release's file IS the dead release's object,
+    // and ingest accepted it because the product held that pack-object ref.
+    const file = key(foes[5]!.objects[2]!.sha256);
+    await w.db.run(
+      "DELETE FROM blob_refs WHERE product = ? AND storage_key = ?",
+      SLUG,
+      file,
+    );
+    await w.db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES (?, ?, 'pack-object', ?, ?)`,
+      SLUG,
+      file,
+      foes[0]!.releaseId,
+      NOW,
+    );
+    const p = await plan(w, T);
+    expect(p.complete).toBe(true);
+    expect(p.drops.some((d) => d.storageKey === file)).toBe(false);
+    await tick(w, T);
+    await tick(w, T + GRACE);
+    await tick(w, T + 3 * GRACE);
+    expect(await stored(w, file)).toBe(true);
+    expect(
+      await w.db.first(
+        "SELECT ref_id FROM blob_refs WHERE product = ? AND storage_key = ?",
+        SLUG,
+        file,
+      ),
+    ).toEqual({ ref_id: foes[0]!.releaseId });
+  });
+
+  it("an incomplete plan (budget spent, or an index unreadable) drops nothing at all", async () => {
+    const { w, foes } = await world();
+    const broke = await plan(w, T, 0);
+    expect(broke.complete).toBe(false);
+    expect(broke.incomplete).toMatch(/budget/);
+    expect(broke.drops).toEqual([]);
+    const before = await w.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ?",
+      SLUG,
+    );
+    const report: MaintenanceReport = { counts: {}, failures: {} };
+    // A product whose index cannot be read: the live release's files index is gone from R2.
+    const index = key(foes[5]!.objects[1]!.sha256);
+    w.r2.delete(index);
+    const unreadable = await plan(w, T);
+    expect(unreadable.complete).toBe(false);
+    expect(unreadable.incomplete).toMatch(/files index/);
+    expect(unreadable.drops).toEqual([]);
+    await runBlobGc(report, w.env, w.db, T);
+    expect(report.counts[`blobRefs:${SLUG}`]).toBe(0);
+    expect(
+      await w.db.first(
+        "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ?",
+        SLUG,
+      ),
+    ).toEqual(before);
+  });
+
+  it("B4a: a revocations() entry of another kind is never read as a release id", async () => {
+    const { w, foes } = await world();
+    const hooks = await w.hooks(T);
+    const catalog = hooks.releaseCatalog()!;
+    const delegation = {
+      kind: "delegation" as const,
+      deliverableId: FOES,
+      targetReleaseId: foes[5]!.releaseId,
+      targetSha256: "d".repeat(64),
+      recordSha256: "e".repeat(64),
+      version: "1.0.5",
+      seq: 6,
+      kid: "k",
+      replacement: { releaseId: foes[0]!.releaseId, sha256: foes[0]!.sha256 },
+      reason: "delegation revoked",
+      issuedAt: NOW,
+      ingestedAt: NOW,
+    };
+    const wrapped = {
+      ...hooks,
+      releaseCatalog: () => ({
+        ...catalog,
+        revocations: async () => [delegation],
+      }),
+    };
+    const live = (await livePackReleases(wrapped))!.live;
+    // Not treated as revoking foes 1.0.5, nor as keeping its "replacement" alive.
+    expect(live.has(foes[5]!.releaseId)).toBe(true);
+    expect(live.has(foes[0]!.releaseId)).toBe(false);
+  });
+});
+
+describe("review fixes: tenancy (P4-14 S3)", () => {
+  it("an object another product still references is kept, and a restore never grants a ref only another product holds", async () => {
+    const { w, foes } = await world();
+    await seedProduct(w.db, "other");
+    const shared = key(foes[0]!.objects[0]!.sha256);
+    await w.db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES ('other', ?, 'artifact', 'r/x', ?)`,
+      shared,
+      NOW,
+    );
+    await tick(w, T);
+    // djdl dropped its refs (foes 1.0.0 is dead); the other product still holds one.
+    expect(
+      await w.db.first(
+        "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ? AND storage_key = ?",
+        SLUG,
+        shared,
+      ),
+    ).toEqual({ n: 0 });
+    await tick(w, T + GRACE);
+    await tick(w, T + 3 * GRACE);
+    expect(await stored(w, shared)).toBe(true);
+
+    // A live file whose djdl ref vanished outside the collector, held by the other product: no
+    // restore (the collector puts back only what it took).
+    const file = key(foes[5]!.objects[2]!.sha256);
+    await w.db.run(
+      "DELETE FROM blob_refs WHERE product = ? AND storage_key = ?",
+      SLUG,
+      file,
+    );
+    await w.db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       VALUES ('other', ?, 'artifact', 'r/y', ?)`,
+      file,
+      NOW,
+    );
+    await tick(w, T + 3 * GRACE + 1);
+    expect(
+      await w.db.first(
+        "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ? AND storage_key = ?",
+        SLUG,
+        file,
+      ),
+    ).toEqual({ n: 0 });
   });
 });

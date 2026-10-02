@@ -10,8 +10,9 @@
  *     cannot miss the cache by adding parameters), plus a STAMP of the state that decides what a
  *     feed lists and that must take effect at once: every rollout on the product (a halt or a
  *     pause withdraws a release from the feeds immediately, not five minutes later), the yanks,
- *     the stored availability reports, the outlets, the registered F-Droid files, and whether
- *     release notes are public. A change to any of them is a new key. A new release reaches the
+ *     the stored availability reports, the outlets, the registered F-Droid files, whether
+ *     release notes are public, and what flips P4-14's readiness hold cheaply: the readiness rows
+ *     (an operator's override or clear takes effect at once), the transports and delivery access. A change to any of them is a new key. A new release reaches the
  *     feeds within five minutes.
  *   - THE ACCESS CHECK is never cached: a route reads the delivery access (`feedReaders`) before
  *     it looks here, so a deliverable made non-public has no feed from that request on.
@@ -61,7 +62,18 @@ export async function feedStateStamp(
             (SELECT COALESCE(MAX(updated_at), 0) FROM dist_feed_files WHERE product = ?) AS ft,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(modified_at), 0) || ':' ||
                     COALESCE(MAX(removed_at), 0) || ':' || COUNT(removed_at)
-               FROM dist_outlets WHERE product = ?) AS o`,
+               FROM dist_outlets WHERE product = ?) AS o,
+            (SELECT COUNT(*) || ':' || COALESCE(MAX(updated_at), 0) || ':' ||
+                    COALESCE(SUM(source = 'admin'), 0)
+               FROM dist_readiness WHERE product = ?) AS rd,
+            (SELECT COUNT(*) || ':' || COALESCE(group_concat(deliverable_id || '/' || outlet_id || '=' || transport, ','), '')
+               FROM (SELECT deliverable_id, outlet_id, transport FROM dist_transports
+                      WHERE product = ? ORDER BY deliverable_id, outlet_id)) AS tr,
+            (SELECT COUNT(*) || ':' || COALESCE(MAX(modified_at), 0)
+               FROM dist_access WHERE product = ?) AS ac`,
+    product,
+    product,
+    product,
     product,
     product,
     product,

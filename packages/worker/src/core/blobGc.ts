@@ -29,7 +29,10 @@
  *   c. the previous release (by `seq`, not yanked, not revoked) of each (b) member, so a rollback
  *      to the previous set still finds its bytes;
  *   d. a pack channel's pointer (`channelPolicies`);
- *   e. every release a rollout names (`delivery.rollouts`), so a gate's target and fallback stay;
+ *   e. every release a rollout names (`delivery.rollouts`) and, while a pack rollout is not
+ *      complete, every release of that pack below its target: a gate's `fallback` is the channel
+ *      re-resolved without the gated release, which can be any earlier release at some row's
+ *      contentApi level;
  *   f. every release an outlet lists (`delivery.reportedAvailability`, stored records only: a
  *      derived record is computed FROM the blob store and must not keep itself alive);
  *   g. the replacement of every revocation in force;
@@ -39,13 +42,19 @@
  *   i. the `GC_KEEP_RECENT_RELEASES` newest not-yanked, not-revoked releases of each pack.
  *
  * REVOKED releases are never live (plans/P4-13.md §8.5): no client installs one, whatever pins it.
+ * Only `kind: record` revocations name a release; any other kind (P4-19's `delegation`) is ignored
+ * here. Whichever of P4-14 and P4-19 lands second excludes delegation-revoked releases from (a),
+ * (e) and (f).
  * A yanked release stays live only through (a), (e) or (f).
  *
  * ── WHICH REFS ARE DROPPED ──────────────────────────────────────────────────────────────────
  *
  *   artifact, feed, anything else   never: an app release's artifacts are served as long as its
  *                                   row exists, and the F-Droid relay replaces its own `feed` refs
- *   pack-object (ref id = release)  when the release is a known pack release that is not live
+ *   pack-object (ref id = release)  when the release is a known pack release that is not live,
+ *                                   the key is named by no live release (an index may list a file
+ *                                   held only by a dead release's ref), and the WHOLE live set was
+ *                                   read this tick
  *   pack-upload (ref id = pack)     when the key is in no live pack release's record objects,
  *                                   files index (`packFiles`) or chunk index (`packChunks`), of ANY
  *                                   pack of the product (a key one pack uploaded may be named by
@@ -59,7 +68,8 @@
  * logged (`blob_gc_log`) and summarised in the product's audit.
  *
  * SELF-HEALING. The plan also RESTORES refs a live release needs and lacks: a record object without
- * its `pack-object` ref, or an indexed file this product holds no ref to. That closes the races a
+ * its `pack-object` ref, or an indexed file this product holds no ref to — but only a ref this
+ * collector itself took from this product (a `ref-dropped` row in `blob_gc_log`). That closes the races a
  * plan computed before a concurrent publish could open (an ingest whose files CI skipped as
  * `present` landing between plan and apply, an app release pinning a release that just lost its
  * refs): the next tick, long inside the grace period, puts the ref back and the mark clears the
@@ -231,7 +241,12 @@ export async function livePackReleases(
   for (const list of packs.values())
     for (const r of list) byId.set(r.releaseId, r);
 
-  const revocations = await catalog.revocations();
+  // Only RECORD revocations name a release (P4-19 adds `kind: "delegation"` entries, whose target
+  // is a delegation hash): any other kind, or a target that is no release of this product, is
+  // ignored here, never read as a release id.
+  const revocations = (await catalog.revocations()).filter(
+    (r) => (r.kind ?? "record") === "record" && byId.has(r.targetReleaseId),
+  );
   const revoked = new Set(revocations.map((r) => r.targetReleaseId));
   const live = new Set<string>();
   const add = (id: string | null | undefined) => {
@@ -283,8 +298,25 @@ export async function livePackReleases(
   // (d) pack pointers.
   for (const p of await catalog.channelPolicies())
     if (p.deliverableId !== APP_DELIVERABLE_ID) add(p.pointerReleaseId);
-  // (e) rollouts, (f) listed on an outlet, (g) replacements.
-  for (const r of rollouts) add(r.releaseId);
+  // (e) rollouts: the release a rollout names and, while it is not complete, every release of the
+  // pack below it — a gate's `fallback` is the channel re-resolved without the gated release
+  // (`update/packParts.ts`), which may be any earlier release at some row's contentApi level, so
+  // the collector keeps every candidate rather than guess which one resolution picks.
+  for (const r of rollouts) {
+    add(r.releaseId);
+    if (r.deliverableId === APP_DELIVERABLE_ID || r.state === "complete")
+      continue;
+    const target = byId.get(r.releaseId);
+    for (const x of packs.get(r.deliverableId) ?? [])
+      if (
+        target?.seq === null ||
+        target === undefined ||
+        x.seq === null ||
+        x.seq < (target.seq as number)
+      )
+        add(x.releaseId);
+  }
+  // (f) listed on an outlet, (g) replacements.
   for (const r of listed) add(r.releaseId);
   for (const r of revocations) add(r.replacement?.releaseId);
   // (h) newer than the newest live release of its pack (every release when none is live). A
@@ -352,28 +384,6 @@ export async function planProductGc(
   for (const [id, list] of packs)
     for (const r of list) packOf.set(r.releaseId, id);
 
-  // Dead pack-object refs: a known pack release that is not live, ref older than the grace.
-  const objectRefs = await db.all<{
-    storage_key: string;
-    ref_id: string;
-    created_at: number;
-  }>(
-    `SELECT storage_key, ref_id, created_at FROM blob_refs
-      WHERE product = ? AND ref_kind = 'pack-object' AND created_at <= ?
-      ORDER BY ref_id, storage_key`,
-    product,
-    cutoff,
-  );
-  for (const r of objectRefs) {
-    if (!packOf.has(r.ref_id) || live.has(r.ref_id)) continue;
-    plan.drops.push({
-      storageKey: r.storage_key,
-      refKind: "pack-object",
-      refId: r.ref_id,
-      createdAt: r.created_at,
-    });
-  }
-
   // The live keys: every live release's record objects, files and chunks. Records need no budget;
   // an unreadable one only makes the plan incomplete (no `pack-upload` drops).
   const liveKeys = new Set<string>();
@@ -384,7 +394,12 @@ export async function planProductGc(
     if (plan.complete) plan.incomplete = why;
     plan.complete = false;
   };
-  for (const id of plan.liveReleases) {
+  // The walk starts at a release that rotates daily, so a product whose live set needs more index
+  // reads than the tick's budget still has every release's files read (and restored) over
+  // successive ticks; its drops wait for a tick that reads the whole set.
+  const order = plan.liveReleases;
+  const start = order.length > 0 ? Math.floor(now / 86400) % order.length : 0;
+  for (const id of [...order.slice(start), ...order.slice(0, start)]) {
     const pack = packOf.get(id);
     if (!pack) continue;
     const rec = await catalog.packRelease(pack, id);
@@ -438,6 +453,22 @@ export async function planProductGc(
     }
   }
 
+  // Restores put back only what THIS collector took from THIS product (a `ref-dropped` row in
+  // `blob_gc_log`), so a restore can never grant a ref to bytes the product never held.
+  const takenFrom = async (keys: readonly string[]): Promise<Set<string>> => {
+    const out = new Set<string>();
+    for (let i = 0; i < keys.length; i += JSON_KEYS)
+      for (const r of await db.all<{ storage_key: string }>(
+        `SELECT DISTINCT storage_key FROM blob_gc_log
+          WHERE action = 'ref-dropped' AND product = ?
+            AND storage_key IN (SELECT value FROM json_each(?))`,
+        product,
+        JSON.stringify(keys.slice(i, i + JSON_KEYS)),
+      ))
+        out.add(r.storage_key);
+    return out;
+  };
+
   // Restores: a live release's record object without its pack-object ref.
   if (recordKeys.size > 0) {
     const have = new Set(
@@ -449,15 +480,20 @@ export async function planProductGc(
         )
       ).map((r) => `${r.ref_id}\u0000${r.storage_key}`),
     );
-    for (const [id, keys] of recordKeys)
-      for (const k of keys)
-        if (!have.has(`${id}\u0000${k}`))
-          plan.restores.push({
-            storageKey: k,
-            refKind: "pack-object",
-            refId: id,
-            createdAt: now,
-          });
+    const missing = [...recordKeys].flatMap(([id, keys]) =>
+      [...keys]
+        .filter((k) => !have.has(`${id}\u0000${k}`))
+        .map((k) => [id, k] as const),
+    );
+    const taken = await takenFrom(missing.map(([, k]) => k));
+    for (const [id, k] of missing)
+      if (taken.has(k))
+        plan.restores.push({
+          storageKey: k,
+          refKind: "pack-object",
+          refId: id,
+          createdAt: now,
+        });
   }
   // Restores: a file (or chunk bundle) a live index names that this product holds no ref to.
   if (fileKeys.size > 0) {
@@ -471,8 +507,9 @@ export async function planProductGc(
         JSON.stringify(keys.slice(i, i + JSON_KEYS)),
       ))
         held.add(r.storage_key);
+    const taken = await takenFrom(keys.filter((k) => !held.has(k)));
     for (const k of keys)
-      if (!held.has(k))
+      if (!held.has(k) && taken.has(k))
         plan.restores.push({
           storageKey: k,
           refKind: "pack-upload",
@@ -482,6 +519,34 @@ export async function planProductGc(
   }
   if (plan.restores.length > GC_DROPS_PER_PRODUCT)
     plan.restores = plan.restores.slice(0, GC_DROPS_PER_PRODUCT);
+
+  // Dead pack-object refs: a known pack release that is not live, ref older than the grace — only
+  // when the whole live set was read, and never for a key a live release names (an index may
+  // list a file whose only ref is a dead release's pack-object ref: ingest accepts any ref the
+  // product holds).
+  if (plan.complete) {
+    const objectRefs = await db.all<{
+      storage_key: string;
+      ref_id: string;
+      created_at: number;
+    }>(
+      `SELECT storage_key, ref_id, created_at FROM blob_refs
+        WHERE product = ? AND ref_kind = 'pack-object' AND created_at <= ?
+        ORDER BY ref_id, storage_key`,
+      product,
+      cutoff,
+    );
+    for (const r of objectRefs) {
+      if (!packOf.has(r.ref_id) || live.has(r.ref_id)) continue;
+      if (liveKeys.has(r.storage_key)) continue;
+      plan.drops.push({
+        storageKey: r.storage_key,
+        refKind: "pack-object",
+        refId: r.ref_id,
+        createdAt: r.created_at,
+      });
+    }
+  }
 
   // Dead pack-upload refs, only when the whole live set was read.
   if (plan.complete) {
