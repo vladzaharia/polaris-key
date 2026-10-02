@@ -18,6 +18,7 @@
 import { createSHA256, type IHasher } from "hash-wasm";
 /** `kid` → raw Ed25519 public key, base64url. */
 type TrustSet = Record<string, string>;
+import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { AppContent } from "@polaris-key/protocol/packs";
 import {
   PackEngine,
@@ -46,6 +47,33 @@ import { loadZstdWasm } from "@polaris-key/zstd-wasm/browser";
 import { ErrorCode } from "../constants.generated.js";
 import type { DiscoveryDocument } from "../browser/discovery.js";
 import { opfsPackStore, type DirHandle } from "./opfs.js";
+
+/** At most `limit` bytes of a body as UTF-8; the rest is never read. */
+async function readCapped(res: Response, limit: number): Promise<string> {
+  if (res.body === null) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < limit) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      total += value.byteLength;
+    }
+  } finally {
+    if (total >= limit) await reader.cancel().catch(() => undefined);
+  }
+  const bytes = new Uint8Array(Math.min(total, limit));
+  let at = 0;
+  for (const c of chunks) {
+    const take = Math.min(c.byteLength, bytes.length - at);
+    bytes.set(c.subarray(0, take), at);
+    at += take;
+    if (at >= bytes.length) break;
+  }
+  return new TextDecoder("utf-8").decode(bytes);
+}
 
 /** wasm32's ceiling for one delta frame (plans/P4-01.md §2.7 rule 3). */
 export const WASM_MEM_BUDGET = 2 ** 30;
@@ -171,6 +199,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   const listeners = new Set<(e: PackProgress) => void>();
   const pendingHandlers: PackHandler[] = [...(opts.handlers ?? [])];
   let engine: PackEngine | null = null;
+  let building: PackEngine | null = null;
   let starting: Promise<PackEngine> | null = null;
 
   const discovery = (): DiscoveryDocument | null =>
@@ -235,7 +264,11 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
               headers: { accept: "application/jose", ...(opts.headers ?? {}) },
             });
             if (!res.ok) return { ok: false, code: ErrorCode.networkError };
-            return { ok: true, body: await res.text() };
+            // A record over the bound is refused at step `hash`; never buffer more of it.
+            return {
+              ok: true,
+              body: await readCapped(res, MAX_RECORD_JWS_BYTES + 1),
+            };
           } catch {
             return { ok: false, code: ErrorCode.networkError };
           }
@@ -274,6 +307,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
         newPlanId: randomId,
         handlers: pendingHandlers,
       });
+      building = e;
       e.on((p) => {
         for (const l of listeners) {
           try {
@@ -288,6 +322,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
       return e;
     })().catch((err: unknown) => {
       starting = null;
+      building = null;
       throw err;
     });
     return starting;
@@ -303,7 +338,8 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
       return f ? readAll(f.source) : null;
     },
     registerHandler(handler) {
-      if (engine) engine.registerHandler(handler);
+      const e = engine ?? building;
+      if (e) e.registerHandler(handler);
       else pendingHandlers.push(handler);
     },
     on(listener) {

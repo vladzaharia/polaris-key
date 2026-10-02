@@ -432,3 +432,38 @@ describe("the browser ports", () => {
     ).toBe(sha(PROBE_TARGET));
   });
 });
+
+describe("the OPFS store's commit marker", () => {
+  it("never uses a store directory whose copy did not complete", async () => {
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    const root = memoryDir();
+    const server = byteServer(v1);
+    const a = packs(server, [v1], { storage: "opfs", opfsRoot: root });
+    const [i] = await a.p.ensure(["djdl.l10n"]);
+    // Drop the marker: the directory now looks like a copy interrupted by quota or a crash.
+    const parts = [
+      "polaris-key",
+      PRODUCT,
+      "packs",
+      ...i!.location.split("/"),
+      ".pkey",
+    ];
+    let d = root;
+    for (const p of parts) d = await d.getDirectoryHandle(p);
+    await d.removeEntry("committed");
+    const b = packs(server, [v1], { storage: "opfs", opfsRoot: root });
+    expect((await b.p.state()).active["djdl.l10n"]).toBeUndefined();
+    await b.p.ensure(["djdl.l10n"]);
+    expect(b.calls.some((x) => x.url.endsWith(v1.fullSha256))).toBe(true);
+    expect(
+      new TextDecoder().decode(
+        (await b.p.readFile("djdl.l10n", "fr/strings.json"))!,
+      ),
+    ).toBe('{"hello":"bonjour"}');
+  });
+});

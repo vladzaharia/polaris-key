@@ -59,6 +59,9 @@ export interface FileHandle {
 
 const INDEX = ".pkey";
 const INDEX_FILE = "files.json";
+/** Written into `.pkey/` last: a store directory without it is a partial copy, never used. */
+const COMMITTED_FILE = "committed";
+const CHUNK = 1 << 20;
 const CONTAINER_FILE = "payload.bin";
 const FLUSH_BYTES = 1 << 20;
 
@@ -133,6 +136,22 @@ async function writeAt(
   await w.close();
 }
 
+/** A file's SHA-256, read in 1 MiB slices. */
+async function hashFile(
+  fh: FileHandle,
+  sha256: Sha256Port,
+): Promise<{ size: number; sha256: string }> {
+  const f = await fh.getFile();
+  const h = sha256();
+  for (let at = 0; at < f.size; at += CHUNK)
+    h.update(
+      new Uint8Array(
+        await f.slice(at, Math.min(f.size, at + CHUNK)).arrayBuffer(),
+      ),
+    );
+  return { size: f.size, sha256: await h.digest() };
+}
+
 /** Every file under `d`, as `/`-separated paths, skipping `.pkey/`. */
 async function walk(
   d: DirHandle,
@@ -153,9 +172,23 @@ async function copyDir(from: DirHandle, to: DirHandle): Promise<void> {
     if (h.kind === "directory")
       await copyDir(h, await to.getDirectoryHandle(name, { create: true }));
     else {
+      // Copied in 1 MiB slices: a large payload never sits in memory whole.
       const f = await h.getFile();
-      const bytes = new Uint8Array(await f.slice(0, f.size).arrayBuffer());
-      await writeWhole(await to.getFileHandle(name, { create: true }), bytes);
+      const w = await (
+        await to.getFileHandle(name, { create: true })
+      ).createWritable();
+      try {
+        for (let at = 0; at < f.size; at += CHUNK)
+          await w.write({
+            type: "write",
+            position: at,
+            data: new Uint8Array(
+              await f.slice(at, Math.min(f.size, at + CHUNK)).arrayBuffer(),
+            ),
+          });
+      } finally {
+        await w.close();
+      }
     }
   }
 }
@@ -189,12 +222,6 @@ export async function opfsPackStore(opts: {
     base = (await nav.storage.getDirectory()) as DirHandle;
   }
   const root = (await dir(base, ["polaris-key", opts.product, "packs"], true))!;
-  const sha = async (bytes: Uint8Array): Promise<string> => {
-    const h = opts.sha256();
-    h.update(bytes);
-    return h.digest();
-  };
-
   const readIndex = async (location: string): Promise<FilesIndexDoc | null> => {
     const fh = await fileAt(
       root,
@@ -211,6 +238,13 @@ export async function opfsPackStore(opts: {
       return null;
     }
   };
+
+  const committed = async (location: string): Promise<boolean> =>
+    (await fileAt(
+      root,
+      [...locationParts(location), INDEX, COMMITTED_FILE],
+      false,
+    )) !== null;
 
   // One handle per staged object, so appends buffered by one caller are flushed before another
   // reads the object.
@@ -303,10 +337,22 @@ export async function opfsPackStore(opts: {
           new TextEncoder().encode(JSON.stringify(index)),
         );
       }
-      const existing = await dir(root, locationParts(location), false);
-      if (!existing) {
+      if (!(await committed(location))) {
+        // No rename for directories: copy, then mark the copy complete. A partial copy (quota,
+        // a crash) has no marker, is never used, and is replaced here or collected.
+        await remove(root, locationParts(location));
         const target = (await dir(root, locationParts(location), true))!;
-        await copyDir(out, target);
+        try {
+          await copyDir(out, target);
+          const meta = await target.getDirectoryHandle(INDEX, { create: true });
+          await writeWhole(
+            await meta.getFileHandle(COMMITTED_FILE, { create: true }),
+            new Uint8Array(),
+          );
+        } catch (e) {
+          await remove(root, locationParts(location));
+          throw e;
+        }
       }
       await remove(root, ["staging", planId, "out"]);
       return location;
@@ -314,7 +360,7 @@ export async function opfsPackStore(opts: {
 
     async installed(install: PackInstall): Promise<InstalledPayload | null> {
       const d = await dir(root, locationParts(install.location), false);
-      if (!d) return null;
+      if (!d || !(await committed(install.location))) return null;
       const index = await readIndex(install.location);
       if (install.layout === "tree") {
         const files: InstalledFile[] = [];
@@ -331,15 +377,12 @@ export async function opfsPackStore(opts: {
           }
         } else
           for (const { path, handle } of await walk(d)) {
-            const f = await handle.getFile();
-            const bytes = new Uint8Array(
-              await f.slice(0, f.size).arrayBuffer(),
-            );
+            const m = await hashFile(handle, opts.sha256);
             files.push({
               path,
-              sha256: await sha(bytes),
-              size: f.size,
-              source: source(handle, f.size),
+              sha256: m.sha256,
+              size: m.size,
+              source: source(handle, m.size),
             });
           }
         return { payload: null, files };
@@ -367,31 +410,20 @@ export async function opfsPackStore(opts: {
     },
 
     async verify(install) {
-      try {
-        const d = await dir(root, locationParts(install.location), false);
-        if (!d) return false;
-        if (install.layout === "tree") {
-          const files = [];
-          for (const { path, handle } of await walk(d)) {
-            const f = await handle.getFile();
-            const bytes = new Uint8Array(
-              await f.slice(0, f.size).arrayBuffer(),
-            );
-            files.push({ path, size: f.size, sha256: await sha(bytes) });
-          }
-          return (await treeDigest(files)) === install.payloadSha256;
-        }
-        const fh = await fileAt(d, [CONTAINER_FILE], false);
-        if (!fh) return false;
-        const f = await fh.getFile();
-        return (
-          (await sha(
-            new Uint8Array(await f.slice(0, f.size).arrayBuffer()),
-          )) === install.payloadSha256
-        );
-      } catch {
-        return false;
+      const d = await dir(root, locationParts(install.location), false);
+      if (!d || !(await committed(install.location))) return false;
+      if (install.layout === "tree") {
+        const files = [];
+        for (const { path, handle } of await walk(d))
+          files.push({ path, ...(await hashFile(handle, opts.sha256)) });
+        return (await treeDigest(files)) === install.payloadSha256;
       }
+      const fh = await fileAt(d, [CONTAINER_FILE], false);
+      if (!fh) return false;
+      const m = await hashFile(fh, opts.sha256);
+      return (
+        m.sha256 === install.payloadSha256 && m.size === install.payloadSize
+      );
     },
 
     async remove(location) {
