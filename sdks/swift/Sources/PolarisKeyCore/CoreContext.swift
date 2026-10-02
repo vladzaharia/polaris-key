@@ -494,12 +494,18 @@ public actor CoreContext {
         services()[slug] ?? false
     }
 
-    /// Refuse a sub-client whose service this product does not run (D-21).
-    public func requireService(_ slug: ServiceSlug) throws {
+    /// Refuse a sub-client whose service this product does not run (D-21). The refusal carries
+    /// the typed `product` N/A for `feature` (`PolarisError.unsupported`, P1b-10) and keeps the
+    /// code `service-unavailable`.
+    public func requireService(_ slug: ServiceSlug, feature: String) throws {
         guard enabled(slug) else {
+            let unsupported = Unsupported(
+                feature: feature, reason: UnsupportedReason.product,
+                detail: "the product does not run the \(slug.rawValue) service")
             throw PolarisError(
                 code: PolarisError.serviceUnavailable,
-                message: "The \(slug.rawValue) service is not enabled for \(product).")
+                message: "The \(slug.rawValue) service is not enabled for \(product).",
+                detail: unsupported.detail, unsupported: unsupported)
         }
     }
 

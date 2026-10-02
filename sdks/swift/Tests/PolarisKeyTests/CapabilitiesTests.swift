@@ -74,6 +74,31 @@ final class CapabilitiesTests: XCTestCase {
         XCTAssertEqual(enabled, .supported(feature: Feature.updateDecide))
     }
 
+    func testAServiceThatIsOffRefusesWithTheProductFields() async throws {
+        let c = try client(expected: [.license, .config])
+        do {
+            _ = try await c.release.changelog()
+            XCTFail("changelog() did not refuse")
+        } catch let e as PolarisError {
+            // Still a PolarisError with its old code, so existing catch sites keep matching.
+            XCTAssertEqual(e.code, PolarisError.serviceUnavailable)
+            XCTAssertEqual(
+                e.unsupported,
+                Unsupported(
+                    feature: Feature.releaseChangelog, reason: UnsupportedReason.product,
+                    detail: "the product does not run the release service"))
+            let answer = await c.supports(Feature.releaseChangelog)
+            XCTAssertEqual(answer.unsupported, e.unsupported)
+        }
+        do {
+            _ = try await c.identity.beginSignIn()
+            XCTFail("beginSignIn() did not refuse")
+        } catch let e as PolarisError {
+            XCTAssertEqual(e.unsupported?.feature, Feature.identityDevicecode)
+            XCTAssertEqual(e.unsupported?.reason, UnsupportedReason.product)
+        }
+    }
+
     func testADisabledServiceInDiscoveryIsProduct() async throws {
         let server = StubServer()
         await server.reply(

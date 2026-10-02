@@ -293,7 +293,9 @@ runtime (`macos` or `ios`) is `runtime`; a feature of a service the product does
 `discover()`, else `expectedServices`, else the default) is `product`; `update.driver` on iOS is
 `outlet` (iOS updates through its outlet, so the SDK offers a store link only). A call into an
 unsupported feature throws `UnsupportedError` (code `unsupported`) with the same `feature`,
-`reason` and `detail`. Both calls are `async` because the services live on the `CoreContext`
+`reason` and `detail`. The exception is a sub-client whose service is off. It still throws
+`PolarisError` with code `service-unavailable`, so existing `catch` sites keep matching, and
+`PolarisError.unsupported` carries the `product` fields. Both calls are `async` because the services live on the `CoreContext`
 actor; neither touches the network.
 
 `client.caps()` lists the supported feature ids in registry order. Every device report carries it
