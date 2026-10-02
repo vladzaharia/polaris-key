@@ -432,9 +432,16 @@ options (an unknown outlet or method, a release key that is also a trust pin) ra
 The committed feeds and records live in the cache as two more signed slices (`feeds`, keyed by
 canonical channel, and `releaseRecords`, keyed by hash). They are re-verified on every load, each
 channel's `seq` floor is derived from the feed that survives (never stored), and they survive
-`deactivate()` and a bundle import, so a replayed older feed cannot get past the floor. The
-outlet is the host's to supply until outlet detection lands; without one it is `unknown`, which
-is never offered an update. The pure functions (`verify_feed`, `verify_release_record`,
+`deactivate()` and a bundle import, so a replayed older feed cannot get past the floor. With no
+`outlet`, the client detects one (`UpdateClientOptions(detect=True)`, the default):
+`read_outlet_signals()` reads the environment (Steam, snap, AppImage, `ITCHIO_APP`),
+`sys.executable` and script path conventions (a Homebrew `Cellar`, WinGet, Scoop, Chocolatey),
+`GetCurrentPackageFamilyName` through `ctypes` on Windows, and files the product's identities name
+(a frozen `.app`'s App Store receipt, `Caskroom/<caskToken>/`, the install's Steam
+`appmanifest`, the nearest itch receipt, `/.flatpak-info`); `detect_outlet` maps them with the
+stamp exactly as every SDK does (`tests/test_outlet_matrix.py`). With no stamp and no attested
+evidence the outlet is `unknown`, which is never offered an update. `client.update.outlet` and
+`client.update.detected` expose the answer. The pure functions (`verify_feed`, `verify_release_record`,
 `decide_update`, `effective_capabilities`, `resolve_update_outlet`, `rollout_bucket`,
 `compare_versions`) are exported for hosts that drive their own transport, and
 `tests/test_conformance.py` and `tests/test_update_matrix.py` run every `feedCases`,

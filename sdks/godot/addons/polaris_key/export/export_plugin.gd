@@ -7,8 +7,13 @@ extends EditorExportPlugin
 ## Per-preset options, each overridable from CI through `get_or_env` (headless
 ## `--export-release` included):
 ##
-##   polaris_key/outlet        PKEY_BUILD_OUTLET   report §3.1 outlet id (direct on the desktop,
-##                                                 play on Android, app-store on iOS, web on web)
+##   polaris_key/outlet        PKEY_BUILD_OUTLET   the product's outlet id: a kind or its own id
+##                                                 (direct on the desktop, play on Android,
+##                                                 app-store on iOS, web on web)
+##   polaris_key/outlet_kind   PKEY_BUILD_OUTLET_KIND  one of the 17 kinds; empty means the outlet
+##                                                 when that is a kind (itch-beta needs `itch`)
+##   polaris_key/outlet_subkind PKEY_BUILD_OUTLET_SUBKIND  optional: homebrew, scoop, flatpak, …
+##   polaris_key/format        PKEY_BUILD_FORMAT   optional: the build's format (zip, dmg, exe, …)
 ##   polaris_key/channel       PKEY_BUILD_CHANNEL  §5.1 channel (default stable)
 ##   polaris_key/build_number  PKEY_BUILD_NUMBER   integer build number
 ##   polaris_key/outlet_ids    PKEY_OUTLET_IDS     JSON object of the product's outlet identities
@@ -41,6 +46,21 @@ func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 			"update_visibility": true,
 		},
 		{
+			"option": {"name": S.OPTION_OUTLET_KIND, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM_SUGGESTION, "hint_string": ",".join(S.OUTLETS)},
+			"default_value": "",
+			"update_visibility": true,
+		},
+		{
+			"option": {"name": S.OPTION_OUTLET_SUBKIND, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM_SUGGESTION, "hint_string": ",".join(S.OUTLET_SUBKINDS)},
+			"default_value": "",
+			"update_visibility": true,
+		},
+		{
+			"option": {"name": S.OPTION_FORMAT, "type": TYPE_STRING},
+			"default_value": "",
+			"update_visibility": true,
+		},
+		{
 			"option": {"name": S.OPTION_CHANNEL, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM_SUGGESTION, "hint_string": "stable,beta,dev"},
 			"default_value": S.DEFAULT_CHANNEL,
 			"update_visibility": true,
@@ -62,6 +82,10 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 	match option:
 		S.OPTION_OUTLET:
 			return S.outlet_warning(str(get_option(S.OPTION_OUTLET)))
+		S.OPTION_OUTLET_KIND:
+			return S.outlet_kind_warning(str(get_option(S.OPTION_OUTLET)).strip_edges(), str(get_option(S.OPTION_OUTLET_KIND)).strip_edges())
+		S.OPTION_OUTLET_SUBKIND:
+			return S.outlet_subkind_warning(str(get_option(S.OPTION_OUTLET_SUBKIND)).strip_edges())
 		S.OPTION_CHANNEL:
 			return S.channel_warning(str(get_option(S.OPTION_CHANNEL)), _version())
 		S.OPTION_BUILD_NUMBER:
@@ -75,7 +99,7 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 
 func _get_export_features(platform: EditorExportPlatform, _debug: bool) -> PackedStringArray:
 	var v := _values(S.platform_for(platform.get_os_name(), PackedStringArray()))
-	return S.feature_tags(v["outlet"], v["channel"])
+	return S.feature_tags(v["outlet"], v["channel"], v["outlet_kind"])
 
 
 func _export_begin(features: PackedStringArray, is_debug: bool, _path: String, _flags: int) -> void:
@@ -89,6 +113,9 @@ func _export_begin(features: PackedStringArray, is_debug: bool, _path: String, _
 		"version": _version(),
 		"build": v["build"],
 		"outlet": v["outlet"],
+		"outlet_kind": v["outlet_kind"],
+		"outlet_subkind": v["outlet_subkind"],
+		"format": v["format"],
 		"channel": v["channel"],
 		"platform": platform,
 		"arch": S.arch_for(platform, features),
@@ -99,7 +126,7 @@ func _export_begin(features: PackedStringArray, is_debug: bool, _path: String, _
 
 
 ## The effective values for this export (environment over preset), and every problem with them.
-## {outlet, channel, build, outlet_ids, problems}.
+## {outlet, outlet_kind, outlet_subkind, format, channel, build, outlet_ids, problems}.
 func _values(platform: String) -> Dictionary:
 	var problems: Array[String] = []
 	var version := _version()
@@ -109,6 +136,15 @@ func _values(platform: String) -> Dictionary:
 	var w := S.outlet_warning(outlet)
 	if w != "":
 		problems.append("%s%s" % [w, _from_env(S.ENV_OUTLET)])
+	var kind := str(_get_or_env(S.OPTION_OUTLET_KIND, S.ENV_OUTLET_KIND, "")).strip_edges()
+	w = S.outlet_kind_warning(outlet, kind)
+	if w != "":
+		problems.append("%s%s" % [w, _from_env(S.ENV_OUTLET_KIND)])
+	var subkind := str(_get_or_env(S.OPTION_OUTLET_SUBKIND, S.ENV_OUTLET_SUBKIND, "")).strip_edges()
+	w = S.outlet_subkind_warning(subkind)
+	if w != "":
+		problems.append("%s%s" % [w, _from_env(S.ENV_OUTLET_SUBKIND)])
+	var format := str(_get_or_env(S.OPTION_FORMAT, S.ENV_FORMAT, "")).strip_edges()
 	var raw_channel := str(_get_or_env(S.OPTION_CHANNEL, S.ENV_CHANNEL, S.DEFAULT_CHANNEL)).strip_edges()
 	var channel = S.canonical_channel(raw_channel, version)
 	w = S.channel_warning(raw_channel, version)
@@ -130,7 +166,7 @@ func _values(platform: String) -> Dictionary:
 	var merged: Dictionary = S.merge_bundle_id(ids["ids"], _preset_bundle_id())
 	for p in merged["problems"]:
 		problems.append(p)
-	return {"outlet": outlet, "channel": channel, "build": b["value"], "outlet_ids": merged["ids"], "problems": problems}
+	return {"outlet": outlet, "outlet_kind": kind, "outlet_subkind": subkind, "format": format, "channel": channel, "build": b["value"], "outlet_ids": merged["ids"], "problems": problems}
 
 
 func _get_or_env(option: String, env: String, default: Variant) -> Variant:

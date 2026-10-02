@@ -812,7 +812,7 @@ Copy that file to the air-gapped machine and import it there.
 
 pkey distribution outlet-ids prints the build outlet's store ids from .pkey/distribution as
 one JSON object of strings (steamAppId, itchGameId, flatpakId, snapName, caskToken,
-msixFamilyName), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no
+homebrewFormula, msixFamilyName, bundleId), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no
 .pkey/distribution it prints {}.
 
 Environment:

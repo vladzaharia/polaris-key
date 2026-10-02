@@ -52,6 +52,10 @@ const CONFIG_ENV_NEVER := 2
 ## The installed build's format (`dmg`, `zip`, `exe`, …) when it is known, so a binary update
 ## picks the same kind of build. Empty: the stamp's `format`, else any format.
 @export var update_format := ""
+## Detect the outlet at run time when update_outlet is empty (P3-11): this build's signals
+## (PKeyOutletSignals) and the stamp, through PKeyOutlet.detect_outlet, whose result goes to
+## PKeyDecision.resolve_update_outlet as `detected`. Off: the stamp alone decides.
+@export var update_detect := true
 @export_group("")
 ## The services this build expects when discovery has not been loaded this session (D-21).
 ## Empty: licence and config only.

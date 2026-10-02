@@ -133,7 +133,10 @@
       "unowned": true,
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
-    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "outlet.detect": {
+      "status": "implemented",
+      "note": "client-core's detectOutlet, re-exported; the browser adapter reads the page's display mode (readOutletSignals) and detects over the synthesised web stamp when the host names no outlet. The desktop adapter defers to the host (Node's detection)."
+    },
     "packs.record": { "status": "planned", "wp": "P4-06" },
     "packs.plan": { "status": "planned", "wp": "P4-06" },
     "packs.index": { "status": "planned", "wp": "P4-06" },

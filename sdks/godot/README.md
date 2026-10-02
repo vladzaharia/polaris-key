@@ -137,21 +137,33 @@ sdks/godot/
 ## Build stamp and setup dock (P1-11)
 
 Every export carries `res://.polaris_key/build.json` (`pkeyBuild: 1`, no timestamps, sorted keys,
-so two exports of one preset are byte-identical): product, version, build, outlet, channel,
-engine, engineVersion, platform, arch, packSources, embeddedPacks, debug, sdkVersion and
-outletIds. The export plugin adds per-preset options, each overridable from CI with
-`get_or_env`, so a headless `--export-release` stamps exactly what CI says:
+so two exports of one preset are byte-identical): product, version, build, outlet, outletKind
+(always written; `""` when the outlet is a custom id stamped without a kind), outletSubkind and
+format (written only when set), channel, engine, engineVersion, platform, arch, packSources,
+embeddedPacks, debug, sdkVersion and outletIds. The export plugin adds per-preset options, each
+overridable from CI with `get_or_env`, so a headless `--export-release` stamps exactly what CI
+says:
 
-| Option                     | Environment          | Default                                                                                                                                     |
-| -------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `polaris_key/outlet`       | `PKEY_BUILD_OUTLET`  | `direct` on the desktop, `play`, `app-store`, `web`                                                                                         |
-| `polaris_key/channel`      | `PKEY_BUILD_CHANNEL` | `stable` (stamped canonically: `staging` as `beta`)                                                                                         |
-| `polaris_key/build_number` | `PKEY_BUILD_NUMBER`  | `0`                                                                                                                                         |
-| `polaris_key/outlet_ids`   | `PKEY_OUTLET_IDS`    | `{}`: a JSON object of `steamAppId`, `itchGameId`, `flatpakId`, `snapName`, `caskToken`, `msixFamilyName`, `bundleId`, every value a string |
+| Option                       | Environment                 | Default                                                                                                                                                        |
+| ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `polaris_key/outlet`         | `PKEY_BUILD_OUTLET`         | `direct` on the desktop, `play`, `app-store`, `web`                                                                                                            |
+| `polaris_key/outlet_kind`    | `PKEY_BUILD_OUTLET_KIND`    | empty: the outlet itself when it is one of the 17 kinds. A custom outlet id (`itch-beta`) needs its kind (`itch`)                                              |
+| `polaris_key/outlet_subkind` | `PKEY_BUILD_OUTLET_SUBKIND` | empty (none): `homebrew`, `npm`, `pnpm`, `npx`, `scoop`, `chocolatey`, `flatpak` or `appimage`                                                                 |
+| `polaris_key/format`         | `PKEY_BUILD_FORMAT`         | empty (none): the installed build's format (`zip`, `dmg`, `exe`, ...)                                                                                          |
+| `polaris_key/channel`        | `PKEY_BUILD_CHANNEL`        | `stable` (stamped canonically: `staging` as `beta`)                                                                                                            |
+| `polaris_key/build_number`   | `PKEY_BUILD_NUMBER`         | `0`                                                                                                                                                            |
+| `polaris_key/outlet_ids`     | `PKEY_OUTLET_IDS`           | `{}`: a JSON object of `steamAppId`, `itchGameId`, `flatpakId`, `snapName`, `caskToken`, `homebrewFormula`, `msixFamilyName`, `bundleId`, every value a string |
+
+A custom outlet id must come with `PKEY_BUILD_OUTLET_KIND` (or the `polaris_key/outlet_kind`
+option). Without it the stamp says `outletKind: ""`, the build decides as `unknown` and it is
+never offered an update; the export dialog warns, and a headless export logs a `push_warning`.
 
 ```sh
 PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)" \
 PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
+  godot --headless --export-release "Linux" build/game.x86_64
+
+PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   godot --headless --export-release "Linux" build/game.x86_64
 ```
 
@@ -159,7 +171,8 @@ PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
   repo root). `bundleId` comes from the preset (`application/bundle_identifier`,
   `package/unique_name`) and wins over the option's.
 - `_get_export_features` adds `pkey_outlet_<id>` and `pkey_channel_<channel>`, `-` mapped to `_`
-  (`pkey_outlet_app_store`). Custom feature tags do not exist in the editor.
+  (`pkey_outlet_app_store`), plus `pkey_outlet_<outletKind>` when the id is not itself a kind.
+  Custom feature tags do not exist in the editor.
 - An export plugin cannot fail an export: an unknown outlet, a channel outside the vocabulary, a
   non-semver `application/config/version` and a bad `outlet_ids` value are dialog warnings, and
   at export a `push_warning` (naming `PKEY_OUTLET_IDS` when the environment supplied it) that a
@@ -167,8 +180,10 @@ PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
   stamped channel.
 - `PolarisKey.build_info()` returns the stamp, or in the editor the fallback: the project version,
   build 0, no outlet, the editor channel from `res://polaris_key.tres`, this platform and arch.
-  The core sends the stamped channel as `X-PKey-Channel` (over `default_channel`) and reports the
-  stamped outlet. `PKeyOptions.build_stamp_path = ""` ignores the stamp (the tests do).
+  The core sends the stamped channel as `X-PKey-Channel` (over `default_channel`). The device
+  report carries the detected outlet (`PKeyCore.reported_outlet()`: the stamp moved by run-time
+  detection, see "Outlet detection" below); `PKeyCore.outlet()` is still the stamped id.
+  `PKeyOptions.build_stamp_path = ""` ignores the stamp (the tests do).
 - The setup dock (right dock; `add_dock` on 4.6+, `add_control_to_dock` on 4.4) edits
   `res://polaris_key.tres`: product, base URL, pinned keys pasted from `pkey trust` (its Godot
   line is `const PINNED_TRUST_KEYS := {...}`), editor channel. "Check" verifies the live trust
@@ -363,9 +378,23 @@ fetches the record the target for this platform pins and verifies it hash first,
 - `feed(channel)` runs steps 1–9 alone (a `PKeyUpdateFeed`) and `release_record(sha256)` one
   record by hash (a `PKeyReleaseRecordResult`; cross-checked and kept only when a committed feed
   pins it).
+- **Outlet detection** (P3-11). With `PKeyOptions.update_outlet` empty and `update_detect` on
+  (the default), `PolarisKey.update.outlet()` (`PKeyCore.update_outlet()`) resolves the stamp
+  moved by run-time evidence, and `PolarisKey.update.detected()` (`PKeyCore.detected_outlet()`)
+  returns the detection result, or null when the host names the outlet:
+  `PKeyOutletSignals` reads `/.flatpak-info`, `SNAP_*`, `APPIMAGE`/`APPDIR`, the product's Steam
+  `appmanifest_<steamAppId>.acf` and `SteamAppId`, the itch receipt, the macOS receipt,
+  `ProductionSandbox` and the Mach-O signing leaf, the product's Caskroom link, the Windows
+  WinGet/Scoop/Chocolatey paths, Android's `getInstallSourceInfo` with the initiator's
+  certificate digest (pure GDScript through `JavaClassWrapper`, no plugin) and a web export's
+  display mode; `PKeyOutlet.detect_outlet` maps them, with the stamp, exactly as every SDK does
+  (`outlet-matrix.json`). The iOS `AppDistributor` and Windows package-identity readers are hooks
+  on `PKeyOutletEnv` that answer "unavailable" until P5-05 and a Windows native reader land. A
+  build without `build.json` falls back to its `pkey_outlet_<kind>` feature tag; a web export
+  synthesises `outletKind: web`. The device report carries the detected outlet id
+  (`PKeyCore.reported_outlet()`), never a raw signal.
 - Out of scope here: acting on a decision (the outlet adapters, the sidecar-PCK swap, the boot
-  guard and PKeyBoot's DECIDE stage are P3-10's), outlet detection (P3-11; until then the stamp's
-  outlet is the input) and packs (P4-08).
+  guard and PKeyBoot's DECIDE stage are P3-10's) and packs (P4-08).
 
 **The v3 check (P1-08).** `check()` is today's check, the same as sdk-node's and Python's:
 `GET /<p>/update/version`, informational on every outlet; a Steam, itch or store build must not

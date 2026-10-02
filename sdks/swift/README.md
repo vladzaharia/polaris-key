@@ -404,14 +404,26 @@ The answer is an `UpdateCheck`: `channel` (the canonical channel — record it a
 | `UpdateClientOptions` | Notes                                                                                                                                                                                     |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pinnedReleaseKeys`   | `[kid: raw Ed25519 key, base64url]`: the **only** keys a release record verifies against. Compiled in; never merged with the trust pins, never persisted, never learned from the network. |
-| `outlet`              | `.kind("direct")`, or `.outlet(id:kind:subkind:)` for a product outlet id. Wins over `stamp` and `detected`. Until P3-11 detects the outlet, this is the option that turns offers on.     |
-| `stamp`, `detected`   | The build stamp's outlet fields and a detection result, through `resolveUpdateOutlet`.                                                                                                    |
+| `outlet`              | `.kind("direct")`, or `.outlet(id:kind:subkind:)` for a product outlet id. Wins over `stamp` and `detected`; without it the client detects the outlet (`detect`).                         |
+| `stamp`, `detected`   | The build stamp's outlet fields (with `outletIds`) and a detection result the host computed itself, through `resolveUpdateOutlet`.                                                        |
+| `detect`              | Default `true`: at the first decision, `readOutletSignals()` and `detectOutlet` run over this install and the stamp. `outlet()` and `detected()` expose the answer.                       |
 | `buildNumber`         | Informational in v4. Default: the main bundle's `CFBundleVersion`.                                                                                                                        |
 | `format`              | The installed build's format; a binary build of another format is never offered. Default nil (any).                                                                                       |
 | `methods`             | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["native", "download"]` on macOS, where Sparkle is linked; `["download"]` on iOS.  |
 | `binaryVersion`       | The executable's version when it differs from `CoreOptions.version`. Defaults to `version`.                                                                                               |
 | `engine`              | `godot-<major>.<minor>` for a host that runs Godot code packs; nil otherwise.                                                                                                             |
 | `platform`, `arch`    | Default to this binary's (`macos`/`ios`, `arm64`/`x86_64`).                                                                                                                               |
+
+**Outlet detection** (plans/P3-01.md §2.9). With no `outlet`, the update client detects one at its
+first decision. `readOutletSignals()` reads, on iOS, MarketplaceKit's `AppDistributor.current`
+behind `#available(iOS 17.4, *)` (its `web` case from iOS 17.5) raced against a 2-second deadline
+(it can hang: a timeout records `timeout`, which is no evidence), AltStore's
+`ALTBundleIdentifier` and an `embedded.mobileprovision`; on macOS, the App Store receipt
+(`Contents/_MASReceipt/receipt`), its `ProductionSandbox` marker (TestFlight), the signing leaf
+(`SecCodeCopySigningInformation`; a Developer ID leaf is reported without its team) and the
+product's Caskroom link. `detectOutlet`, the same function every SDK runs over
+`outlet-matrix.json`, maps them with the stamp to `{kind, confidence, source, subkind}`. An App
+Store or TestFlight install is detected without any stamp; nothing is persisted.
 
 - **Refusals.** A bad option, or a release key whose bytes are also a trust pin, makes the
   initializer throw `invalid-options`; an empty `pinnedReleaseKeys` (or `UpdateClient(core:)`)

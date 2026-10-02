@@ -46,7 +46,12 @@
 //   bucketVectors     update-matrix.json, the rollout bucket           → rolloutBucket
 //   rows              update-matrix.json, every decision and boot      → decideUpdate, bootDecision
 //
-// Detection (`outlet-matrix.json`'s rows) is P3-11's.
+// and, from P3-11 (§5 order 3), detection:
+//
+//   rows              outlet-matrix.json, every row                    → detectOutlet
+//
+// with the signal table and platform data asserted against client-core's compiled
+// `OUTLET_SIGNALS` and `OUTLET_PLATFORM_DATA`.
 //
 // `stage-matrix.json` (the boot stage machine, client boot behaviour outside the wire contract)
 // has its own Node runner: `stageMatrix.test.ts`, through
@@ -103,8 +108,12 @@ import {
   compareVersions,
   bootDecision,
   decideUpdate,
+  detectOutlet,
   effectiveCapabilities,
   feedClaims,
+  OUTLET_PLATFORM_DATA,
+  OUTLET_SIGNALS,
+  type DetectionStamp,
   releaseRecordClaims,
   resolveUpdateOutlet,
   rolloutBucket,
@@ -377,7 +386,21 @@ export interface OutletMatrix {
   platformNarrowing: Record<string, Record<string, unknown>>;
   subkinds: Record<string, unknown>;
   vocabulary: Record<string, string[]>;
-  platformData: { listingUrlPrefixes: Record<string, string[]> };
+  signals: { signal: string; confidence: string | null; verified: string }[];
+  platformData: {
+    listingUrlPrefixes: Record<string, string[]>;
+  } & Record<string, unknown>;
+  rows: {
+    name: string;
+    stamp: DetectionStamp | null;
+    signals: Record<string, unknown>;
+    expect: {
+      kind: string;
+      confidence: string | null;
+      source: string | null;
+      subkind: string | null;
+    };
+  }[];
 }
 
 /**
@@ -1016,6 +1039,36 @@ export function defineCorpusSuites({
         ...OUTLET_CONFIDENCES,
       ]);
     });
+  });
+
+  // @pkey-feature outlet.detect
+  describe(`outlet-matrix v${outletMatrix.outletMatrixVersion} — detection (plans/P3-01.md §2.9)`, () => {
+    it("OUTLET_SIGNALS is the signal table, in vocabulary order, with each confidence", () => {
+      expect(OUTLET_SIGNALS.map((s) => s.signal)).toEqual(
+        outletMatrix.vocabulary.signals,
+      );
+      expect(
+        outletMatrix.signals.map(({ signal, confidence }) => ({
+          signal,
+          confidence,
+        })),
+      ).toEqual(OUTLET_SIGNALS);
+    });
+    it("OUTLET_PLATFORM_DATA is the matrix's platform data", () => {
+      const { listingUrlPrefixes: _prefixes, ...rest } =
+        outletMatrix.platformData;
+      expect(rest).toEqual(OUTLET_PLATFORM_DATA);
+    });
+    it("has 48 rows", () => {
+      expect(outletMatrix.rows.length).toBe(48);
+    });
+    for (const row of outletMatrix.rows) {
+      it(`row ${row.name}`, () => {
+        expect(
+          detectOutlet({ stamp: row.stamp, signals: row.signals }),
+        ).toEqual(row.expect);
+      });
+    }
   });
 
   // @pkey-feature update.feed

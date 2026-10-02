@@ -71,8 +71,9 @@ runtime name and version; locale and timezone; and the results of product-declar
 
 A Godot game also reports `engine` (the engine version, the renderer, the graphics adapter's
 name, vendor and API version, the display server, and whether it is a debug build) and `outlet`
-(the store the build was published through, such as `steam` or `itch`, when the build declares
-one).
+(where the install came from: the build's stamped outlet, refined on the device by outlet
+detection, such as `steam`, `itch` or `app-store`; only the outlet id or kind, never a raw
+signal, and nothing when it is unknown).
 
 Used for: admin visibility, compatibility gating, and targeting configuration at the machines
 that need it.
