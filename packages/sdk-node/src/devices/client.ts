@@ -61,11 +61,15 @@ export interface DevicesClientOptions {
   /** Collect a hardware fingerprint when registering. Defaults to true; the server records an
    *  opted-out device as `unverified` rather than refusing it. */
   fingerprint?: boolean;
+  /** The capability list every report carries as `caps` (P1b-10). `PolarisKeyClient` wires it to
+   *  its own `caps()`; a standalone `DevicesClient` without it sends no `caps`. */
+  caps?: () => string[];
 }
 
 export class DevicesClient {
   private readonly probes: ProbeDeclaration[];
   private readonly fingerprintEnabled: boolean;
+  private readonly caps?: () => string[];
   /** The active pack set's id for the report's `content` (P4-06), set by the facade. */
   packSetId: () => Promise<string | null> = async () => null;
 
@@ -77,6 +81,7 @@ export class DevicesClient {
   ) {
     this.probes = opts.probes ?? [];
     this.fingerprintEnabled = opts.fingerprint !== false;
+    if (opts.caps) this.caps = opts.caps;
   }
 
   /** This machine's hashed hardware components, or null when collection is disabled or
@@ -202,7 +207,7 @@ export class DevicesClient {
     return reportSnapshot(
       this.ctx,
       token,
-      buildSnapshot(this.cache, this.probes, packSetId),
+      buildSnapshot(this.cache, this.probes, this.caps?.(), packSetId),
     );
   }
 

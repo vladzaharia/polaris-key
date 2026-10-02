@@ -39,6 +39,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from ..constants_generated import ErrorCode, UnsupportedReason
+from .caps import Unsupported, UnsupportedError
 from .clock import effective_now
 from .errors import InsecureBaseUrlError, PolarisError
 from .models import (
@@ -320,12 +322,21 @@ class CoreContext:
     def enabled(self, slug: str) -> bool:
         return bool(self.services().get(slug, {}).get("enabled", False))
 
-    def require_service(self, slug: str) -> None:
-        """Refuse a sub-client whose service this product does not run (D-21)."""
+    def require_service(self, slug: str, feature: str) -> None:
+        """Refuse a sub-client whose service this product does not run (D-21).
+
+        The refusal is the typed ``product`` N/A (PARITY §2.2, P1b-10): an
+        :class:`~polaris_key.core.caps.UnsupportedError` with ``feature``, ``reason="product"``
+        and ``detail``, as ``client.supports(feature)`` reports it, keeping the code
+        ``service-unavailable`` that callers already match on."""
         if not self.enabled(slug):
-            raise PolarisError(
-                "service-unavailable",
-                f"The {slug} service is not enabled for {self.product}.",
+            raise UnsupportedError(
+                Unsupported(
+                    feature,
+                    UnsupportedReason.PRODUCT,
+                    f"the product does not run the {slug} service",
+                ),
+                ErrorCode.SERVICE_UNAVAILABLE,
             )
 
     # ── Transport ───────────────────────────────────────────────────────────────────

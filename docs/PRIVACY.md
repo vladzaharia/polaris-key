@@ -75,6 +75,13 @@ name, vendor and API version, the display server, and whether it is a debug buil
 detection, such as `steam`, `itch` or `app-store`; only the outlet id or kind, never a raw
 signal, and nothing when it is unknown).
 
+Every SDK that reports also sends `caps`: the parity feature ids its `supports()` answers
+Supported for right now, such as `core.verify` or `update.decide`. The list follows from the
+SDK, its version, the runtime, the product's enabled services and the build's outlet, which are
+reported or known already. It adds one bit about the device: whether an optional dependency is
+present. For example, `core.store` is missing from a Node or Python install without a usable OS
+keyring. It names features only. It never names a library, a path or a version.
+
 Used for: admin visibility, compatibility gating, and targeting configuration at the machines
 that need it.
 

@@ -20,6 +20,7 @@
 // (`confirmIdentity`, then `attachLicense` with the device's bearer); this client sends neither.
 
 import { PolarisError } from "@polaris-key/client-core";
+import { Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import { redactOnPrint } from "../core/redact.js";
@@ -122,7 +123,7 @@ export class IdentityClient {
    * credential, and the server binds the flow to this device by its id.
    */
   async beginSignIn(opts: { deviceName?: string } = {}): Promise<SignInPrompt> {
-    this.ctx.requireService("identity");
+    this.ctx.requireService("identity", Feature.identityDevicecode);
     const body: Record<string, string> = { deviceId: this.ctx.deviceId };
     const name = opts.deviceName?.trim();
     if (name) body.deviceName = name;
@@ -179,7 +180,7 @@ export class IdentityClient {
     prompt: SignInPrompt,
     current: number,
   ): Promise<SignInPoll> {
-    this.ctx.requireService("identity");
+    this.ctx.requireService("identity", Feature.identityDevicecode);
     const res = await this.post("identity/auth/device/poll", {
       deviceCode: prompt.deviceCode,
       deviceId: this.ctx.deviceId,
@@ -239,7 +240,7 @@ export class IdentityClient {
     prompt: SignInPrompt,
     opts: WaitForSignInOptions = {},
   ): Promise<SignInResult> {
-    this.ctx.requireService("identity");
+    this.ctx.requireService("identity", Feature.identityDevicecode);
     const { signal } = opts;
     let interval = prompt.interval;
     for (;;) {

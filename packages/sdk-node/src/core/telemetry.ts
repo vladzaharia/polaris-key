@@ -23,6 +23,10 @@ import type { CoreContext } from "./context.js";
 export type ReportSnapshot = {
   config: Record<string, JSONValue>;
   entitlements: Record<string, JSONValue>;
+  /** The feature ids `supports()` answers Supported for (P1b-10). Sent with every report: the
+   *  Worker overwrites the stored report each time, so a list sent only on change would vanish
+   *  from it at the next report. */
+  caps?: string[];
   /** The active pack set (plans/P4-01.md §2.11): its `packSetId`, when the host has packs. */
   content?: { packSetId: string };
 } & Partial<DeviceFacts>;
@@ -31,6 +35,7 @@ export type ReportSnapshot = {
 export function buildSnapshot(
   cache: CacheManager,
   probes: ProbeDeclaration[],
+  caps?: string[],
   packSetId: string | null = null,
 ): ReportSnapshot {
   const config: Record<string, JSONValue> = {};
@@ -54,6 +59,7 @@ export function buildSnapshot(
     ...facts,
     config,
     entitlements,
+    ...(caps ? { caps } : {}),
     ...(packSetId !== null ? { content: { packSetId } } : {}),
   };
 }

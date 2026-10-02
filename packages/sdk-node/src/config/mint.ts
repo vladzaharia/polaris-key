@@ -18,6 +18,7 @@
 // path, which refuses with `unauthorized` before any request when no token is held.
 
 import { PolarisError } from "@polaris-key/client-core";
+import { Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import { redactOnPrint } from "../core/redact.js";
@@ -56,7 +57,7 @@ export async function mintToken(
   cache: MintCache,
   recipeId: string,
 ): Promise<MintedToken> {
-  ctx.requireService("config");
+  ctx.requireService("config", Feature.configMint);
   if (!MINT_ID.test(recipeId)) {
     throw new PolarisError(
       "bad_request",

@@ -64,6 +64,39 @@ It is never all-true. A product that does not run the identity service gets no O
 one that does not run the license service gets `status: "not-applicable"` and a `<LicenseGate>`
 that renders children straight through (D-08).
 
+## `supports()`: typed "unsupported here"
+
+`adapter.supports(feature)` (also `usePolarisKey().supports`) says whether a parity feature works
+through this adapter. It is offline, synchronous and side-effect free:
+
+```tsx
+import { Feature, usePolarisKey } from "@polaris-key/react";
+
+const { supports } = usePolarisKey();
+const secret = supports(Feature.configSecret);
+// { supported: false, feature: "config.secret", reason: "runtime", detail: "…" }
+```
+
+The browser adapter answers as runtime `web` and the desktop adapter as `desktop-bridge`, from a
+capability table generated from `parity.json`. `reason` is one of the generated
+`UnsupportedReason` values:
+
+- `runtime`: this transport cannot do it at all. On both transports this covers `config.secret`,
+  `core.store`, `license.enroll`, `license.reregister`, the device fingerprint, facts and
+  register, and the platform pack transports. On `web` only, it also covers `devices.manage`,
+  `devices.report` and `identity.devicecode`.
+- `product`: the owning service is off in the capability map above.
+- `version`: this SDK version does not implement the feature yet, or does not know the id.
+
+A verb whose feature is unsupported here throws `UnsupportedError`, which is a `PolarisError`
+carrying `feature`, `reason` and `detail`. `getSecret()` throws it with code `unsupported`; it
+used to return `null`. The browser's device-management verbs and `report()` keep their codes,
+`device-management-unsupported` and `report-unsupported`. `adapter.caps()` lists the feature ids
+`supports()` answers Supported for.
+
+React does not send `caps` telemetry itself. A browser holds no device token, and on desktop
+the host's Node SDK sends the report with its own `caps`.
+
 ## Subpath exports
 
 Two axes, and they compose — a **transport** entry says how you talk to the control plane, a

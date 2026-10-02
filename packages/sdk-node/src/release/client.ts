@@ -12,7 +12,7 @@
 // code — rather than inventing a retry (pinned by the release-changelog transcripts).
 
 import { PolarisError } from "@polaris-key/client-core";
-import { ErrorCode } from "../constants.generated.js";
+import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 
@@ -39,7 +39,7 @@ export class ReleaseClient {
    * client that has not been told the service exists must not probe for it (D-21).
    */
   async changelog(): Promise<ChangelogEntry[]> {
-    this.ctx.requireService("release");
+    this.ctx.requireService("release", Feature.releaseChangelog);
     const res = await this.get("release/changelog");
     const body = (await res.json()) as { entries?: ChangelogEntry[] };
     return Array.isArray(body.entries) ? body.entries : [];
@@ -47,7 +47,7 @@ export class ReleaseClient {
 
   /** The canonical install-script URL, for a host that wants to print it rather than run it. */
   installUrl(): string {
-    this.ctx.requireService("release");
+    this.ctx.requireService("release", Feature.releaseDownload);
     return this.ctx.url("release/install.sh");
   }
 
@@ -59,7 +59,7 @@ export class ReleaseClient {
     arch: string,
     opts: { checksum?: boolean; dmg?: boolean } = {},
   ): string {
-    this.ctx.requireService("release");
+    this.ctx.requireService("release", Feature.releaseDownload);
     const name = `${binary}-${arch}${opts.dmg ? ".dmg" : ""}`;
     const url = new URL(
       this.ctx.url(

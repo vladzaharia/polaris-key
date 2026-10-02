@@ -9,6 +9,9 @@
 //   conformance/parity/errors.json      the error-code registry (+ errors.schema.json)
 //   conformance/parity/enums.json       platform, arch, … (+ enums.schema.json)
 //   conformance/parity/features.json    feature ids and the supports() reason enum (P1b-01)
+//   <sdk>/parity.json                   each SDK's manifest, for its capability table (P1b-10,
+//                                       tools/capabilities.ts): `CAPABILITIES`, the table
+//                                       `supports()` reads, and its `CAPABILITY_DIGEST`
 //   tools/services.json                 the service slugs (P0-09)
 //   @polaris-key/protocol/core          PROTOCOL_VERSION, the HEADER_* names, every
 //                                       CHANNEL_* / PR_* channel constant (P0-04) and the
@@ -59,6 +62,12 @@ import { fileURLToPath } from "node:url";
 import * as protocolCore from "@polaris-key/protocol/core";
 import Ajv2020Module from "ajv/dist/2020.js";
 import * as prettier from "prettier";
+import {
+  capabilityDigest,
+  capabilityTable,
+  type CapabilityManifest,
+  type SdkCapabilities,
+} from "./capabilities.js";
 import { loadTable, SWIFT_KEYWORDS } from "./gen-services.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -98,6 +107,8 @@ export interface Sources {
   features: string[];
   reasons: string[];
   services: string[];
+  /** Each SDK's capability table (tools/capabilities.ts), keyed by registry SDK id. */
+  capabilities?: Record<string, SdkCapabilities>;
   /** The `@polaris-key/protocol/core` module namespace (or a stand-in with the same exports). */
   protocol: Record<string, unknown>;
   corpus: {
@@ -396,7 +407,17 @@ export function loadSources(root = ROOT): Sources {
   }
   const features = readJson(
     join(root, "conformance", "parity", "features.json"),
-  ) as { reasons: string[]; features: { id: string }[] };
+  ) as {
+    reasons: string[];
+    features: { id: string; service: string }[];
+    sdks: { id: string; manifest: string }[];
+  };
+  const capabilities: Record<string, SdkCapabilities> = {};
+  for (const sdk of features.sdks)
+    capabilities[sdk.id] = capabilityTable(
+      features,
+      readJson(join(root, sdk.manifest)) as CapabilityManifest,
+    );
   const corpus = (file: string, key: string): number => {
     const value = (
       readJson(join(root, "conformance", "corpus", "v2", file)) as Record<
@@ -413,6 +434,7 @@ export function loadSources(root = ROOT): Sources {
     enums: enums.enums,
     features: features.features.map((f) => f.id),
     reasons: features.reasons,
+    capabilities,
     services: loadTable(join(root, "tools", "services.json")).services.map(
       (r) => r.slug,
     ),
@@ -500,6 +522,8 @@ export interface Model {
   /** Registry order, code → kind. */
   errorKinds: [string, ErrorKind][];
   scalars: Scalar[];
+  /** Each SDK's capability table, keyed by registry SDK id. */
+  capabilities: Record<string, SdkCapabilities>;
 }
 
 function group(
@@ -743,6 +767,7 @@ export function buildModel(sources: Sources): Model {
     groups,
     errorKinds: sources.errors.map((e) => [e.code, e.kind]),
     scalars,
+    capabilities: sources.capabilities ?? {},
   };
 }
 
@@ -774,7 +799,47 @@ function tsScalar(s: Scalar): string {
     .join("\n")}\n} as const;`;
 }
 
-export function renderTs(model: Model): string {
+const CAPS_DOC =
+  "This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2).";
+
+function tsCaps(caps: SdkCapabilities): string {
+  return `/** The parity-registry id of the SDK this module belongs to. */
+export const CAPABILITY_SDK = ${q(caps.sdk)};
+
+/** The runtimes this SDK's manifest lists. */
+export const CAPABILITY_RUNTIMES = [${caps.runtimes.map(q).join(", ")}] as const;
+
+/** One declared N/A: on \`runtime\`, the feature is unsupported for \`reason\`. */
+export interface CapabilityNa {
+  readonly runtime: string;
+  readonly reason: UnsupportedReason;
+}
+
+/** One feature's row in \`CAPABILITIES\`. */
+export interface CapabilityRow {
+  readonly status: "implemented" | "planned" | "na";
+  readonly service: string;
+  readonly na: readonly CapabilityNa[];
+}
+
+/** ${CAPS_DOC} */
+export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
+${caps.rows
+  .map(
+    (r) =>
+      `  ${q(r.feature)}: { status: ${q(r.status)}, service: ${q(r.service)}, na: [${r.na
+        .map((n) => `{ runtime: ${q(n.runtime)}, reason: ${q(n.reason)} }`)
+        .join(", ")}] },`,
+  )
+  .join("\n")}
+};
+
+/** SHA-256 of the canonical table; \`pnpm parity:check\` recomputes it from the manifest. */
+export const CAPABILITY_DIGEST = ${q(capabilityDigest(caps))};
+`;
+}
+
+export function renderTs(model: Model, caps?: SdkCapabilities): string {
   const out: string[] = [banner("//")];
   for (const g of model.groups) {
     out.push(`/** ${g.doc} */
@@ -798,6 +863,7 @@ ${model.errorKinds.map(([code, kind]) => `  ${q(code)}: ${q(kind)},`).join("\n")
     }
   }
   for (const s of model.scalars) out.push(`/** ${s.doc} */\n${tsScalar(s)}\n`);
+  if (caps) out.push(tsCaps(caps));
   return out.join("\n");
 }
 
@@ -820,11 +886,63 @@ function pyType(v: ScalarValue): string {
   return "Mapping[str, str]";
 }
 
-export function renderPython(model: Model): string {
+function pyCaps(caps: SdkCapabilities): string {
+  return `
+
+class CapabilityNa(NamedTuple):
+    """One declared N/A: on \`\`runtime\`\`, the feature is unsupported for \`\`reason\`\`."""
+
+    runtime: str
+    reason: str
+
+
+class CapabilityRow(NamedTuple):
+    """One feature's row in \`\`CAPABILITIES\`\`."""
+
+    status: str
+    service: str
+    na: Tuple[CapabilityNa, ...]
+
+
+#: The parity-registry id of the SDK this module belongs to.
+CAPABILITY_SDK: Final[str] = ${q(caps.sdk)}
+
+#: The runtimes this SDK's manifest lists.
+CAPABILITY_RUNTIMES: Tuple[str, ...] = ${pyLiteral(caps.runtimes)}
+
+#: ${CAPS_DOC}
+CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
+    {
+${caps.rows
+  .map(
+    (r) =>
+      `        ${q(r.feature)}: CapabilityRow(${q(r.status)}, ${q(r.service)}, (${r.na
+        .map((n) => `CapabilityNa(${q(n.runtime)}, ${q(n.reason)}),`)
+        .join(" ")})),\n`,
+  )
+  .join("")}    }
+)
+
+#: SHA-256 of the canonical table; \`\`pnpm parity:check\`\` recomputes it from the manifest.
+CAPABILITY_DIGEST: Final[str] = ${q(capabilityDigest(caps))}
+`;
+}
+
+const PY_CAPS_EXPORTS = [
+  "CapabilityNa",
+  "CapabilityRow",
+  "CAPABILITY_SDK",
+  "CAPABILITY_RUNTIMES",
+  "CAPABILITIES",
+  "CAPABILITY_DIGEST",
+];
+
+export function renderPython(model: Model, caps?: SdkCapabilities): string {
   const exported = [
     ...model.groups.flatMap((g) => [g.name, valuesName(g)]),
     "ERROR_CODE_KINDS",
     ...model.scalars.map((s) => s.name),
+    ...(caps ? PY_CAPS_EXPORTS : []),
   ];
   const out: string[] = [
     `${banner("#")}"""Polaris Key's shared constants: error codes, header names, enums, feature ids, versions."""
@@ -832,7 +950,7 @@ export function renderPython(model: Model): string {
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Final, Mapping, Tuple
+from typing import Final, Mapping, ${caps ? "NamedTuple, " : ""}Tuple
 
 __all__ = [
 ${exported.map((n) => `    ${q(n)},`).join("\n")}
@@ -866,6 +984,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = ${pyLiteral(Object.fromEntries(model.error
 ${s.name}: ${pyType(s.value)} = ${pyLiteral(s.value)}
 `);
   }
+  if (caps) out.push(pyCaps(caps));
   return out.join("");
 }
 
@@ -893,7 +1012,59 @@ export const SWIFT_DECLARED: ReadonlySet<string> = new Set([
   "StoreDegradedReason", // Store.swift (P1b-09)
 ]);
 
-export function renderSwift(model: Model): string {
+function swiftCaps(caps: SdkCapabilities): string {
+  return `
+/// One declared N/A: on \`runtime\`, the feature is unsupported for \`reason\`.
+public struct CapabilityNa: Sendable, Equatable {
+    public let runtime: String
+    public let reason: String
+
+    public init(runtime: String, reason: String) {
+        self.runtime = runtime
+        self.reason = reason
+    }
+}
+
+/// One feature's row in \`CAPABILITIES\`.
+public struct CapabilityRow: Sendable, Equatable {
+    public let status: String
+    public let service: String
+    public let na: [CapabilityNa]
+
+    public init(status: String, service: String, na: [CapabilityNa]) {
+        self.status = status
+        self.service = service
+        self.na = na
+    }
+}
+
+/// The parity-registry id of the SDK this module belongs to.
+public let CAPABILITY_SDK = ${q(caps.sdk)}
+
+/// The runtimes this SDK's manifest lists.
+public let CAPABILITY_RUNTIMES: [String] = [${caps.runtimes.map(q).join(", ")}]
+
+/// ${CAPS_DOC}
+public let CAPABILITIES: [String: CapabilityRow] = [
+${caps.rows
+  .map(
+    (r) =>
+      `    ${q(r.feature)}: CapabilityRow(status: ${q(r.status)}, service: ${q(r.service)}, na: [${r.na
+        .map(
+          (n) =>
+            `CapabilityNa(runtime: ${q(n.runtime)}, reason: ${q(n.reason)})`,
+        )
+        .join(", ")}]),`,
+  )
+  .join("\n")}
+]
+
+/// SHA-256 of the canonical table; \`pnpm parity:check\` recomputes it from the manifest.
+public let CAPABILITY_DIGEST = ${q(capabilityDigest(caps))}
+`;
+}
+
+export function renderSwift(model: Model, caps?: SdkCapabilities): string {
   const out: string[] = [
     `${banner("//")}
 // \`ServiceSlug\` is not here: ServiceSlug.generated.swift (pnpm gen:services) declares it.
@@ -925,6 +1096,7 @@ ${model.errorKinds.map(([code, kind]) => `    ${q(code)}: ${q(kind)},`).join("\n
   }
   for (const s of model.scalars)
     out.push(`\n/// ${s.doc}\n${swiftScalar(s)}\n`);
+  if (caps) out.push(swiftCaps(caps));
   return out.join("");
 }
 
@@ -941,7 +1113,35 @@ function gdLiteral(v: ScalarValue): string {
 /** The GDScript module's global class name. */
 export const GDSCRIPT_CLASS = "PKeyConstants";
 
-export function renderGdscript(model: Model): string {
+function gdCaps(caps: SdkCapabilities): string {
+  return `
+## The parity-registry id of the SDK this module belongs to.
+const CAPABILITY_SDK := ${q(caps.sdk)}
+
+## The runtimes this SDK's manifest lists.
+const CAPABILITY_RUNTIMES := ${gdLiteral(caps.runtimes)}
+
+## ${CAPS_DOC}
+## Each row is {status, service, na: [{runtime, reason}]}. A function, not a const, so every call
+## builds a fresh Dictionary that any thread may read.
+static func capabilities() -> Dictionary:
+\treturn {
+${caps.rows
+  .map(
+    (r) =>
+      `\t\t${q(r.feature)}: {"status": ${q(r.status)}, "service": ${q(r.service)}, "na": [${r.na
+        .map((n) => `{"runtime": ${q(n.runtime)}, "reason": ${q(n.reason)}}`)
+        .join(", ")}]},`,
+  )
+  .join("\n")}
+\t}
+
+## SHA-256 of the canonical table; \`pnpm parity:check\` recomputes it from the manifest.
+const CAPABILITY_DIGEST := ${q(capabilityDigest(caps))}
+`;
+}
+
+export function renderGdscript(model: Model, caps?: SdkCapabilities): string {
   const out: string[] = [
     `${banner("#")}class_name ${GDSCRIPT_CLASS}
 extends RefCounted
@@ -969,6 +1169,7 @@ const ERROR_CODE_KINDS := ${gdLiteral(Object.fromEntries(model.errorKinds))}
   }
   for (const s of model.scalars)
     out.push(`\n## ${s.doc}\nconst ${s.name} := ${gdLiteral(s.value)}\n`);
+  if (caps) out.push(gdCaps(caps));
   return out.join("");
 }
 
@@ -977,7 +1178,9 @@ const ERROR_CODE_KINDS := ${gdLiteral(Object.fromEntries(model.errorKinds))}
 export interface Target {
   /** Repo-relative path. */
   path: string;
-  render: (model: Model) => string;
+  render: (model: Model, caps?: SdkCapabilities) => string;
+  /** The registry SDK id whose capability table this module carries. */
+  sdk: string;
   /** Prettier parser, for the targets `pnpm lint` checks. */
   parser?: "typescript";
   /** Written only while this repo-relative directory exists. */
@@ -987,24 +1190,29 @@ export interface Target {
 export const TARGETS: readonly Target[] = [
   {
     path: "packages/sdk-node/src/constants.generated.ts",
+    sdk: "node",
     render: renderTs,
     parser: "typescript",
   },
   {
     path: "packages/sdk-react/src/constants.generated.ts",
+    sdk: "react",
     render: renderTs,
     parser: "typescript",
   },
   {
     path: "sdks/python/src/polaris_key/constants_generated.py",
+    sdk: "python",
     render: renderPython,
   },
   {
     path: "sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift",
+    sdk: "swift",
     render: renderSwift,
   },
   {
     path: "sdks/godot/addons/polaris_key/core/constants_generated.gd",
+    sdk: "godot",
     render: renderGdscript,
     onlyIfDir: "sdks/godot/addons/polaris_key",
   },
@@ -1018,7 +1226,7 @@ export async function renderAll(
   const out = new Map<string, string>();
   for (const target of TARGETS) {
     if (target.onlyIfDir && !existsSync(join(root, target.onlyIfDir))) continue;
-    let content = target.render(model);
+    let content = target.render(model, model.capabilities[target.sdk]);
     if (target.parser) {
       const options =
         (await prettier.resolveConfig(join(ROOT, target.path))) ?? {};

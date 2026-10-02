@@ -30,6 +30,7 @@ from typing import Any, Callable, Dict, Optional
 
 import httpx
 
+from ..constants_generated import Feature
 from ..core.context import CoreContext
 from ..core.errors import PolarisError
 from ..core.token import TokenManager
@@ -139,7 +140,7 @@ class IdentityClient:
         a sign-in asks for the IDENTITY's credential, and the server binds the flow to this
         device by its id.
         """
-        self._ctx.require_service("identity")
+        self._ctx.require_service("identity", Feature.IDENTITY_DEVICECODE)
         body: Dict[str, str] = {"deviceId": self._ctx.device_id}
         name = (device_name or "").strip()
         if name:
@@ -185,7 +186,7 @@ class IdentityClient:
     def _poll(self, prompt: SignInPrompt, current: int) -> SignInPoll:
         """One poll, where an interval-less ``slow_down`` lengthens ``current`` — the interval
         the caller is pacing at — rather than the prompt's original one."""
-        self._ctx.require_service("identity")
+        self._ctx.require_service("identity", Feature.IDENTITY_DEVICECODE)
         res = self._post(
             "identity/auth/device/poll",
             {"deviceCode": prompt.deviceCode, "deviceId": self._ctx.device_id},
@@ -243,7 +244,7 @@ class IdentityClient:
         :class:`TimeoutError` when it runs out first. Setting ``cancel`` stops polling and
         raises ``PolarisError("cancelled")``.
         """
-        self._ctx.require_service("identity")
+        self._ctx.require_service("identity", Feature.IDENTITY_DEVICECODE)
         deadline = None if timeout is None else time.time() + timeout
         interval = prompt.interval
         while True:

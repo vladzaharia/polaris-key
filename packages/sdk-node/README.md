@@ -151,6 +151,38 @@ A service that is off refuses its sub-client (`PolarisError` code `service-unava
 product with License off reports gate status **`not-applicable`** with `isLicensed() === true` —
 a config-only product boots usable rather than sitting on `needs-activation` forever.
 
+## `supports()`: typed "unsupported here"
+
+`client.supports(feature)` says whether a parity feature works in this client, offline and
+without side effects. Pass a generated `Feature` constant:
+
+```ts
+import { Feature } from "@polaris-key/node";
+
+const s = client.supports(Feature.coreStore);
+if (!s.supported) console.warn(`${s.feature}: ${s.reason} (${s.detail})`);
+```
+
+The answer is `{ supported: true, feature }` or `{ supported: false, feature, reason, detail }`.
+`reason` is one of the generated `UnsupportedReason` values:
+
+- `runtime`: Node cannot do it at all (`ui.kit`, the Apple and Play pack transports).
+- `product`: the owning service is off, per discovery or the fail-closed fallback above.
+- `dependency`: an optional dependency is missing. For `core.store`, this means
+  `@napi-rs/keyring` cannot load, so `storeStatus()` reports `keyring-unavailable` and the token
+  is in a `0600` file.
+- `version`: this SDK version does not implement the feature yet, or does not know the id.
+- `outlet`: the outlet forbids it. Node declares no such N/A.
+
+The answers come from a capability table generated from `parity.json`, so they always match the
+parity matrix. A call into an unsupported feature throws `UnsupportedError`, a `PolarisError`
+carrying the same `feature`, `reason` and `detail`. Its code is `unsupported`, except for a
+sub-client whose service is off. That refusal is the `product` reason and keeps the code
+`service-unavailable`, which existing callers match on.
+
+`client.caps()` lists the feature ids `supports()` answers Supported for. Every device report
+sends this list as `caps`, so the console can show what the fleet can do.
+
 ## `sync()`
 
 One Core pass, in order: trust refresh (Core's own cadence, not a side effect of any document

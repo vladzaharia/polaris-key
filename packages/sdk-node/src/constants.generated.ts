@@ -1094,3 +1094,116 @@ export const PLATFORM_SPELLINGS = {
   web: "web",
   browser: "web",
 } as const;
+
+/** The parity-registry id of the SDK this module belongs to. */
+export const CAPABILITY_SDK = "node";
+
+/** The runtimes this SDK's manifest lists. */
+export const CAPABILITY_RUNTIMES = ["node"] as const;
+
+/** One declared N/A: on `runtime`, the feature is unsupported for `reason`. */
+export interface CapabilityNa {
+  readonly runtime: string;
+  readonly reason: UnsupportedReason;
+}
+
+/** One feature's row in `CAPABILITIES`. */
+export interface CapabilityRow {
+  readonly status: "implemented" | "planned" | "na";
+  readonly service: string;
+  readonly na: readonly CapabilityNa[];
+}
+
+/** This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2). */
+export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
+  "core.verify": { status: "implemented", service: "core", na: [] },
+  "core.cache": { status: "implemented", service: "core", na: [] },
+  "core.bundle": { status: "implemented", service: "core", na: [] },
+  "core.discover": { status: "implemented", service: "core", na: [] },
+  "core.sync": { status: "implemented", service: "core", na: [] },
+  "core.local": { status: "implemented", service: "core", na: [] },
+  "core.headers": { status: "implemented", service: "core", na: [] },
+  "core.errors": { status: "implemented", service: "core", na: [] },
+  "core.caps": { status: "implemented", service: "core", na: [] },
+  "core.store": {
+    status: "implemented",
+    service: "core",
+    na: [{ runtime: "node", reason: "dependency" }],
+  },
+  "license.gate": { status: "implemented", service: "license", na: [] },
+  "license.activate": { status: "implemented", service: "license", na: [] },
+  "license.enroll": { status: "implemented", service: "license", na: [] },
+  "license.deactivate": { status: "implemented", service: "license", na: [] },
+  "license.entitlements": { status: "implemented", service: "license", na: [] },
+  "license.channels": { status: "implemented", service: "license", na: [] },
+  "license.reregister": { status: "implemented", service: "license", na: [] },
+  "config.resolve": { status: "implemented", service: "config", na: [] },
+  "config.list": { status: "implemented", service: "config", na: [] },
+  "config.secret": { status: "implemented", service: "config", na: [] },
+  "config.schema": { status: "implemented", service: "config", na: [] },
+  "config.mint": { status: "implemented", service: "config", na: [] },
+  "config.mirror": { status: "implemented", service: "config", na: [] },
+  "devices.fingerprint": { status: "implemented", service: "core", na: [] },
+  "devices.facts": { status: "implemented", service: "core", na: [] },
+  "devices.register": { status: "implemented", service: "core", na: [] },
+  "devices.manage": { status: "implemented", service: "core", na: [] },
+  "devices.report": { status: "implemented", service: "core", na: [] },
+  "identity.oidc": { status: "planned", service: "identity", na: [] },
+  "identity.devicecode": { status: "implemented", service: "identity", na: [] },
+  "release.changelog": { status: "implemented", service: "release", na: [] },
+  "release.download": { status: "implemented", service: "release", na: [] },
+  "release.record": { status: "implemented", service: "release", na: [] },
+  "update.check": { status: "implemented", service: "update", na: [] },
+  "update.feed": { status: "implemented", service: "update", na: [] },
+  "update.decide": { status: "implemented", service: "update", na: [] },
+  "update.driver": { status: "planned", service: "update", na: [] },
+  "update.bootguard": { status: "planned", service: "update", na: [] },
+  "outlet.detect": { status: "implemented", service: "update", na: [] },
+  "packs.record": { status: "implemented", service: "release", na: [] },
+  "packs.plan": { status: "implemented", service: "release", na: [] },
+  "packs.index.files": { status: "implemented", service: "release", na: [] },
+  "packs.index.chunks": { status: "planned", service: "release", na: [] },
+  "packs.apply.full": { status: "implemented", service: "release", na: [] },
+  "packs.apply.file": { status: "implemented", service: "release", na: [] },
+  "packs.apply.chunk": { status: "planned", service: "release", na: [] },
+  "packs.apply.delta": { status: "implemented", service: "release", na: [] },
+  "packs.state": { status: "implemented", service: "release", na: [] },
+  "packs.handlers": { status: "implemented", service: "release", na: [] },
+  "packs.provides": { status: "planned", service: "release", na: [] },
+  "packs.transport.apple": {
+    status: "na",
+    service: "distribution",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
+  "packs.transport.play": {
+    status: "na",
+    service: "distribution",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
+  "packs.transport.steam": {
+    status: "planned",
+    service: "distribution",
+    na: [],
+  },
+  "packs.transport.msix": {
+    status: "planned",
+    service: "distribution",
+    na: [],
+  },
+  "packs.transport.flatpak": {
+    status: "planned",
+    service: "distribution",
+    na: [],
+  },
+  "ui.stages": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit": {
+    status: "na",
+    service: "sdk",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
+  "commerce.receipt": { status: "planned", service: "license", na: [] },
+};
+
+/** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
+export const CAPABILITY_DIGEST =
+  "8769b5de932a149b1663efffa3bc2335a20dd6f9d9abe25ec00ad1306d7e7043";

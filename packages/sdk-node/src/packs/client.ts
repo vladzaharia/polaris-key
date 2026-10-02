@@ -47,7 +47,7 @@ import {
   serviceEndpoint,
   type ProductDiscoveryDocument,
 } from "../discovery.js";
-import { ErrorCode } from "../constants.generated.js";
+import { ErrorCode, Feature } from "../constants.generated.js";
 import { DirPackStorage, directoryTreeDigest, measureFile } from "./storage.js";
 import { selectNodeZstd, type NodeZstdInfo } from "./zstd.js";
 
@@ -149,7 +149,7 @@ export class PacksClient {
    * or `network-error`, after which the next `ensure` resumes the download).
    */
   async ensure(packIds: readonly string[]): Promise<PackInstall[]> {
-    this.w.ctx.requireService("release");
+    this.w.ctx.requireService("release", Feature.packsState);
     return (await this.start()).ensure(packIds);
   }
 

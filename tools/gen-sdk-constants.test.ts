@@ -34,6 +34,7 @@ import {
   words,
   type Sources,
 } from "./gen-sdk-constants.js";
+import { capabilityDigest } from "./capabilities.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PARITY = join(ROOT, "conformance", "parity");
@@ -448,6 +449,57 @@ describe("renderers", () => {
         withSources({ protocol: { ...protocol, CHANNEL_FN: () => "x" } }),
       ),
     ).toThrow(/cannot render/);
+  });
+});
+
+describe("the capability table (P1b-10)", () => {
+  it("every target carries its own SDK's table, and the digest parity:check recomputes", () => {
+    const registry = JSON.parse(
+      readFileSync(join(PARITY, "features.json"), "utf8"),
+    ) as { sdks: { id: string; manifest: string }[] };
+    expect(TARGETS.map((t) => t.sdk).sort()).toEqual(
+      registry.sdks.map((s) => s.id).sort(),
+    );
+    for (const target of TARGETS) {
+      const caps = MODEL.capabilities[target.sdk];
+      expect(caps, target.sdk).toBeDefined();
+      const text = target.render(MODEL, caps);
+      expect(text).toContain(capabilityDigest(caps!));
+      expect(text).toContain(`CAPABILITY_SDK`);
+      expect(text).toMatch(/CAPABILITIES|static func capabilities\(\)/);
+    }
+  });
+
+  it("renders a row per registry feature, with its N/As, in every language", () => {
+    const caps = MODEL.capabilities["react"]!;
+    expect(caps.rows.map((r) => r.feature)).toEqual(SOURCES.features);
+    const secret = caps.rows.find((r) => r.feature === "config.secret")!;
+    expect(secret).toEqual({
+      feature: "config.secret",
+      status: "na",
+      service: "config",
+      na: [
+        { runtime: "web", reason: "runtime" },
+        { runtime: "desktop-bridge", reason: "runtime" },
+      ],
+    });
+    expect(renderTs(MODEL, caps)).toContain(
+      `"config.secret": { status: "na", service: "config", na: [{ runtime: "web", reason: "runtime" }, { runtime: "desktop-bridge", reason: "runtime" }] },`,
+    );
+    expect(renderPython(MODEL, caps)).toContain(
+      `"config.secret": CapabilityRow("na", "config", (CapabilityNa("web", "runtime"), CapabilityNa("desktop-bridge", "runtime"),)),`,
+    );
+    expect(renderSwift(MODEL, caps)).toContain(
+      `"config.secret": CapabilityRow(status: "na", service: "config", na: [CapabilityNa(runtime: "web", reason: "runtime"), CapabilityNa(runtime: "desktop-bridge", reason: "runtime")]),`,
+    );
+    expect(renderGdscript(MODEL, caps)).toContain(
+      `"config.secret": {"status": "na", "service": "config", "na": [{"runtime": "web", "reason": "runtime"}, {"runtime": "desktop-bridge", "reason": "runtime"}]},`,
+    );
+  });
+
+  it("a renderer without a table emits none", () => {
+    for (const render of Object.values(RENDERERS))
+      expect(render(MODEL)).not.toContain("CAPABILITY_DIGEST");
   });
 });
 

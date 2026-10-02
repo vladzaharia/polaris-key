@@ -33,6 +33,11 @@
 //      id in its `features` no test tagged `@pkey-feature <id>` under that SDK's testRoots
 //      mentions `conformance/transcripts` (the replayer). The replayers apply the same
 //      `applies` rule at run time, so a transcript runs exactly where the gate demands it.
+//   7. an SDK's generated constants module (the registry's `constants` path) does not carry the
+//      capability table its manifest implies: the module's `CAPABILITY_DIGEST` must equal the
+//      digest tools/capabilities.ts computes from the registry and the manifest (P1b-10). The
+//      table is what `supports()` reads, so a manifest edited without `pnpm gen:constants` would
+//      otherwise ship an SDK whose answers disagree with its parity row.
 //
 // A `transcript` proof no transcript lists yet is not enforced; it is listed (with its owner,
 // if it names one), and a warning is printed when the owner is already `done`.
@@ -44,6 +49,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
+import { capabilityDigest, capabilityTable } from "./capabilities.js";
 
 // ── Shapes ─────────────────────────────────────────────────────────────────────────────────
 
@@ -84,7 +90,7 @@ export interface Registry {
   runtimes: { id: string; title: string }[];
   traits: { id: string; title: string }[];
   families: { id: string; title: string }[];
-  sdks: { id: string; title: string; manifest: string }[];
+  sdks: { id: string; title: string; manifest: string; constants: string }[];
   features: Feature[];
 }
 
@@ -261,6 +267,14 @@ function readJson(
     return { data: JSON.parse(readFileSync(abs, "utf8")) };
   } catch (e) {
     return { error: `${file} is not valid JSON: ${(e as Error).message}` };
+  }
+}
+
+function readFileSafe(root: string, file: string): string | null {
+  try {
+    return readFileSync(join(root, file), "utf8");
+  } catch {
+    return null;
   }
 }
 
@@ -528,6 +542,22 @@ export function checkParity(options: ParityOptions): ParityResult {
     }
     const manifest = loaded.data as Manifest;
     const where = sdk.id;
+
+    // Rule 7: the generated capability table is this manifest's. Only once rule 1 holds: a
+    // manifest that lacks a feature has no table to compare.
+    const complete = registry.features.every((f) => f.id in manifest.features);
+    if (complete) {
+      const constants = readFileSafe(root, sdk.constants);
+      const digest = capabilityDigest(capabilityTable(registry, manifest));
+      if (constants === null)
+        violations.push(
+          `[rule 7] ${where}: ${sdk.constants} does not exist (run \`pnpm gen:constants\`)`,
+        );
+      else if (!constants.includes(digest))
+        violations.push(
+          `[rule 7] ${where}: the capability table in ${sdk.constants} is not ${sdk.manifest}'s (CAPABILITY_DIGEST ${digest}); run \`pnpm gen:constants\``,
+        );
+    }
     if (manifest.sdk !== sdk.id)
       violations.push(
         `[manifest] ${sdk.manifest}: "sdk" is "${manifest.sdk}", but the registry lists it as "${sdk.id}"`,

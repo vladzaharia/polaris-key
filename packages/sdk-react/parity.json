@@ -23,75 +23,48 @@
       "status": "implemented",
       "note": "Desktop through the host bridge (protocol v3 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB. The browser runner drives inspectBundle over every bundleCases vector in Chromium, Firefox and WebKit."
     },
-    "core.discover": {
-      "status": "implemented"
-    },
-    "core.sync": {
-      "status": "implemented"
-    },
+    "core.discover": { "status": "implemented" },
+    "core.sync": { "status": "implemented" },
     "core.local": {
       "status": "planned",
       "unowned": true,
       "note": "No local-only client in React; P1b-07 leaves it unowned."
     },
-    "core.headers": {
-      "status": "implemented"
-    },
-    "core.errors": {
-      "status": "implemented"
-    },
-    "core.caps": {
-      "status": "planned",
-      "wp": "P1b-10"
-    },
+    "core.headers": { "status": "implemented" },
+    "core.errors": { "status": "implemented" },
+    "core.caps": { "status": "implemented" },
     "core.store": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host process's store holds the token."
     },
-    "license.gate": {
-      "status": "implemented"
-    },
-    "license.activate": {
-      "status": "implemented"
-    },
+    "license.gate": { "status": "implemented" },
+    "license.activate": { "status": "implemented" },
     "license.enroll": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK enrols."
     },
-    "license.deactivate": {
-      "status": "implemented"
-    },
-    "license.entitlements": {
-      "status": "implemented"
-    },
-    "license.channels": {
-      "status": "implemented"
-    },
+    "license.deactivate": { "status": "implemented" },
+    "license.entitlements": { "status": "implemented" },
+    "license.channels": { "status": "implemented" },
     "license.reregister": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers inside its own sync (P1b-06); test/bridge.test.ts pins the renderer picking up the host's post-re-register state through refresh() and a pushed stateChanged."
     },
-    "config.resolve": {
-      "status": "implemented"
-    },
-    "config.list": {
-      "status": "implemented"
-    },
+    "config.resolve": { "status": "implemented" },
+    "config.list": { "status": "implemented" },
     "config.secret": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). The desktop renderer never holds secrets either; the host reads them with the Node SDK."
     },
-    "config.schema": {
-      "status": "implemented"
-    },
+    "config.schema": { "status": "implemented" },
     "config.mint": {
       "status": "planned",
       "unowned": true,
@@ -121,50 +94,27 @@
     },
     "devices.manage": {
       "status": "implemented",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime"
-        }
-      ],
+      "except": [{ "runtime": "web", "reason": "runtime" }],
       "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
     },
     "devices.report": {
       "status": "implemented",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime"
-        }
-      ],
+      "except": [{ "runtime": "web", "reason": "runtime" }],
       "note": "Desktop through invoke(\"devices\", \"report\"). POST /<p>/devices/report accepts only a device bearer, which a browser session does not hold; the browser adapter throws report-unsupported."
     },
-    "identity.oidc": {
-      "status": "implemented"
-    },
+    "identity.oidc": { "status": "implemented" },
     "identity.devicecode": {
       "status": "implemented",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime"
-        }
-      ],
+      "except": [{ "runtime": "web", "reason": "runtime" }],
       "note": "New web N/A (P1b-01). Through the desktop bridge (beginSignIn/pollSignIn). A browser signs in with the OIDC redirect (identity.oidc)."
     },
-    "release.changelog": {
-      "status": "implemented"
-    },
-    "release.download": {
-      "status": "implemented"
-    },
+    "release.changelog": { "status": "implemented" },
+    "release.download": { "status": "implemented" },
     "release.record": {
       "status": "implemented",
       "note": "client-core verifyReleaseRecord (hash before signature, pinned release keys only); the browser adapter fetches by hash and persists releaseRecords in IndexedDB, desktop through the host's decide()."
     },
-    "update.check": {
-      "status": "implemented"
-    },
+    "update.check": { "status": "implemented" },
     "update.feed": {
       "status": "implemented",
       "note": "client-core verifyFeed with floors keyed by the canonical channel; the browser adapter fetches, verifies and persists the feeds slice in IndexedDB; desktop through invoke(\"update\", \"decide\")."
@@ -199,10 +149,7 @@
       "status": "implemented",
       "note": "client-core parseFilesIndex, checkPaths and treeDigest; filesIndexCases in Chromium through @polaris-key/zstd-wasm's browser entry."
     },
-    "packs.index.chunks": {
-      "status": "planned",
-      "wp": "P4-11"
-    },
+    "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
     "packs.apply.full": {
       "status": "implemented",
       "note": "client-core applyFull; applyCases in Chromium under the WASM decoder."
@@ -211,10 +158,7 @@
       "status": "implemented",
       "note": "client-core applyFile with the type-neutral container rebuild; applyCases in Chromium under the WASM decoder."
     },
-    "packs.apply.chunk": {
-      "status": "planned",
-      "wp": "P4-11"
-    },
+    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
     "packs.apply.delta": {
       "status": "implemented",
       "note": "@polaris-key/zstd-wasm's browser entry (wasm32, P = 30, memBudget at most 2^30); the window check runs in the applier. dcz in Chromium is P4-18."
@@ -227,10 +171,7 @@
       "status": "implemented",
       "note": "update.packs.registerHandler; files.tree built in."
     },
-    "packs.provides": {
-      "status": "planned",
-      "wp": "P4-20"
-    },
+    "packs.provides": { "status": "planned", "wp": "P4-20" },
     "packs.transport.apple": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
@@ -259,12 +200,8 @@
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
-    "ui.stages": {
-      "status": "implemented"
-    },
-    "ui.kit": {
-      "status": "implemented"
-    },
+    "ui.stages": { "status": "implemented" },
+    "ui.kit": { "status": "implemented" },
     "commerce.receipt": {
       "status": "planned",
       "unowned": true,
