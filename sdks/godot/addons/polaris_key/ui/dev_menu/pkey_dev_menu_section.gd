@@ -14,7 +14,8 @@ extends PKeyUiView
 ## key or a secret (PKeyDevMenuController).
 
 ## The player picked another channel. The game persists it and applies it at the next configure
-## (PKeyOptions.default_channel); nothing is switched mid-session here.
+## (PKeyOptions.default_channel); nothing is switched mid-session here, but any staged code from
+## the old channel is dropped at once (PolarisKey.update.drop_staged(), notes/A4 P11).
 signal channel_selected(channel: String)
 ## COPY DIAGNOSTICS put this text on the clipboard.
 signal diagnostics_copied(text: String)
@@ -48,7 +49,7 @@ func _build() -> void:
 	_channel.name = "Channel"
 	_channel.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_channel.set_meta(DATA_META, true)
-	_channel.item_selected.connect(func(i: int): channel_selected.emit(_channels[i]))
+	_channel.item_selected.connect(func(i: int): select_channel(_channels[i]))
 	ch.add_child(_channel)
 	_lock = label(box, "ChannelLock", "PKeyMuted")
 	_facts = GridContainer.new()
@@ -79,9 +80,12 @@ func _entitled() -> Array:
 func rows() -> Array:
 	var t := c()
 	var f := facts()
-	var lock := PKeyDevMenuController.channel_lock(f["outlet"], f["platform"])
+	var lock_kind: String = f.get("outlet_kind", f["outlet"])
+	var lock := PKeyDevMenuController.channel_lock(lock_kind, f["platform"], f.get("outlet_subkind"), f.get("server_caps"))
+	if lock != "" and f["outlet"] != "":
+		lock = f["outlet"]
 	return [
-		{"id": "channel", "label": t.text("dev_channel"), "value": f["channel"], "options": PKeyDevMenuController.channels(f["channel"], _entitled()), "locked": t.text("dev_channel_locked", lock) if lock != "" else "", "action": func(ch: String): channel_selected.emit(ch)},
+		{"id": "channel", "label": t.text("dev_channel"), "value": f["channel"], "options": PKeyDevMenuController.channels(f["channel"], _entitled()), "locked": t.text("dev_channel_locked", lock) if lock != "" else "", "action": select_channel},
 		{"id": "build", "label": t.text("dev_build"), "value": "%s (%s)" % [f["version"], f["build"]]},
 		{"id": "outlet", "label": t.text("dev_outlet"), "value": f["outlet"] if f["outlet"] != "" else "-"},
 		{"id": "sdk", "label": t.text("dev_sdk"), "value": f["sdk"]},
@@ -124,6 +128,18 @@ func _render() -> void:
 
 func _focus_chain() -> Array:
 	return [_channel, _copy, _check]
+
+
+## Switch to `channel` (the picker, or the `channel` row's action): staged code from another
+## channel is dropped, then channel_selected tells the game to persist the choice. Refused while
+## the channel is locked.
+func select_channel(channel: String) -> void:
+	var r := rows()
+	if r[0]["locked"] != "" or channel == r[0]["value"]:
+		return
+	if sdk != null and sdk.get("update") != null and sdk.update.has_method("drop_staged"):
+		sdk.update.drop_staged()
+	channel_selected.emit(channel)
 
 
 ## Put the diagnostics on the clipboard; returns the text.

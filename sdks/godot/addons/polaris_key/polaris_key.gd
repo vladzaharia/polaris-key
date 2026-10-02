@@ -20,7 +20,8 @@ extends Node
 ## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements, entitled
 ## channels, and the 401 re-acquire it installs into Core), `identity` (PKeyIdentity:
 ## device-code sign-in with a QR code; a `ready` stores the token and runs a forced sync),
-## `update` (PKeyUpdate: the version check, its `update_available(check)` signal, the appcast
+## `update` (PKeyUpdate: the signed decision and acting on it — apply, restart_to_update,
+## confirm_boot, the boot guard — the version check, its `update_available(check)` signal, the appcast
 ## URL) and `release` (PKeyRelease: the changelog, the install and download URLs). `config`,
 ## `identity`, `update` and `release` exist before `configure()`, so a signal connected early
 ## survives it.

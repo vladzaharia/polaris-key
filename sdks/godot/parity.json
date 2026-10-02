@@ -108,12 +108,13 @@
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
     "update.driver": {
-      "status": "planned",
-      "wp": "P3-10"
+      "status": "implemented",
+      "except": [{ "runtime": "ios", "reason": "outlet" }],
+      "note": "P3-10: one adapter per outlet kind (distribution/outlets/, PKeyOutletAdapter): store kinds open the https listing or PKeyOptions.update_page_url, platform kinds stay silent with their own message, web reloads, direct dispatches binary.method to the Sparkle, Velopack, WinSparkle or AppImageUpdate bridge (a missing plugin degrades to the build's download link from distribution.endpoints.builds), stages a verified sidecar .pck (updater/sidecar_swap.gd, Range resume through PKeyDownload) and restarts into it without --main-pack. The native plugins are P5-07's; inert in the editor, headless runs and debug builds."
     },
     "update.bootguard": {
-      "status": "planned",
-      "wp": "P3-10"
+      "status": "implemented",
+      "note": "P3-10: updater/slots.gd (staged, current, previous and state.json under user://pkey/<product>/updates/) and updater/boot_guard.gd, run in PKeyBoot's GUARD: bootGuardAction over the host's own count, a restart before guard.done after a swap or a rollback, two failed boots roll back and record skipVersion, BOOT_OK_SECONDS and confirm_boot() per the stage-matrix v2 confirmation rows; boot_rolled_back stays a local event until P6-03 allowlists it on devices/report."
     },
     "outlet.detect": {
       "status": "implemented",

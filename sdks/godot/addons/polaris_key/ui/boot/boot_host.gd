@@ -9,7 +9,10 @@ extends RefCounted
 ##                   configured yet (the build stamp is read there), then start(): the verified
 ##                   cache, offline. shell.done; `fail` only when that cannot run (a bad
 ##                   options file, a store that cannot be read)
-##   guard()         guard.done ok until P3-10 owns slots and rollback
+##   guard()         the boot guard (PolarisKey.update.run_guard(), PKeyBootGuard): guard.done ok,
+##                   applied or rolled-back. When it applied a staged pack or rolled one back it
+##                   has asked for a restart, and it answers null: nothing is sent, and the next
+##                   launch starts a new machine (P1-09 §2.3). Inert updater: ok
 ##   sync(force)     discovery (its failure does not count), then, with no token on a product
 ##                   without License whose registration policy is open, devices.register()
 ##                   first; then PolarisKey.sync(). sync.done: ok when everything counted was
@@ -20,7 +23,9 @@ extends RefCounted
 ##   decide()        decide.done optional when PolarisKey.update.decide() says the decision is one
 ##                   to show (or, without the signed decision, the v3 check found a newer
 ##                   version), otherwise none — also when the check failed or Update is off. Never
-##                   required: no v4 decision stops play (plans/P3-01.md decision 1)
+##                   required: no v4 decision stops play (plans/P3-01.md decision 1). The outlet
+##                   adapter acts through decide() (a sidecar pack starts staging in the
+##                   background, never holding the boot) and through the prompt's action
 ##   fetch(packs)    fetch.done ok with no installed packs until P4-08
 ##   mount()         mount.done after the first frame has been drawn (S-05 §4.1)
 ##
@@ -68,8 +73,13 @@ func shell(opts: Dictionary) -> Dictionary:
 	return {"type": "shell.done"}
 
 
-func guard() -> Dictionary:
-	return {"type": "guard.done", "result": "ok"}
+func guard() -> Variant:
+	if sdk == null or sdk.get("update") == null or not sdk.update.has_method("run_guard"):
+		return {"type": "guard.done", "result": "ok"}
+	var g: Dictionary = await sdk.update.run_guard()
+	if g.get("restart") == true:
+		return null
+	return {"type": "guard.done", "result": String(g.get("result", "ok"))}
 
 
 func sync(force := false) -> Dictionary:

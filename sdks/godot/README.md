@@ -13,7 +13,9 @@ and `sync()`, behind the `PolarisKey` autoload. The service clients build on `Po
 are in, and `identity` (P1-07). Wire v4 (P3-08) adds the signed channel feed and release record,
 verified in pure GDScript, and the conformance-tested update decision behind
 `PolarisKey.update.decide()`. P1-10 adds the boot stage machine (`PKeyStages`), the drop-in boot
-scene (`PKeyBoot`, `PolarisKey.boot()`) and the UI kit v1 under `addons/polaris_key/ui/`.
+scene (`PKeyBoot`, `PolarisKey.boot()`) and the UI kit v1 under `addons/polaris_key/ui/`. P3-10
+acts on the decision: one adapter per outlet, the native-updater hooks, the sidecar-PCK swap and
+the boot guard (see "Updates by outlet").
 
 ## Layout
 
@@ -51,6 +53,16 @@ sdks/godot/
                               `runUpdateCheck`) and the result classes
     distribution/decision.gd  PKeyDecision: rollout_bucket, effective_capabilities (the compiled
                               outlet tables), resolve_update_outlet, decide_update, boot_decision
+    distribution/outlets/     PKeyOutletAdapter and one adapter per outlet kind (direct.gd,
+                              app_store.gd, steam.gd, web.gd, …; adapters.gd maps kinds to them);
+                              the native-updater bridges PKeyNativeBridge, PKeySparkleBridge,
+                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyAppImageBridge
+    updater/                  PKeyUpdater (PolarisKey.update.updater: the adapters' context,
+                              methods, boot confirmation), PKeySlots (staged/current/previous),
+                              PKeyBootGuard, PKeySidecarSwap, PKeyUpdaterEnv (every side effect),
+                              PKeyApplyResult
+    core/download.gd          PKeyDownload: a file download on HTTPClient with Range resume, the
+                              transport's redirect and credential rules, gzip off
     services/release.gd       PKeyRelease (PolarisKey.release): changelog -> PKeyChangelogResult
                               of PKeyChangelogEntry (services/release/), install_url,
                               download_url
@@ -108,6 +120,10 @@ sdks/godot/
     support/transcript_replay.gd  replays conformance/transcripts against the fake server
     support/fake_host.gd      a PKeyHostIo over fixtures/devices-captures.json (any platform)
     support/fake_boot_host.gd a scripted PKeyBootHost: PKeyBoot's stage work answered step by step
+    support/fake_updater_env.gd  a recording PKeyUpdaterEnv: an install anywhere, every hand-off,
+                              link and restart recorded
+    updater/                  the updater suite's groups (adapters, bridges, download, swap,
+                              guard, boot, grep) and their support.gd
     support/ui_snapshot.gd    structural snapshots of a scene, and the focus test's oracle
     ui/                       scenarios.gd (every pinned scene state) and snapshots/*.txt (the
                               committed fixtures; `--pkey-test ui update` rewrites them)
@@ -326,7 +342,7 @@ PolarisKey.update.update_available.connect(_on_update)   # something to show the
 var check := await PolarisKey.update.decide()            # or decide("beta"); a PKeyUpdateCheck
 if check.ok:
     match check.decision["action"]:
-        "binary", "store", "platform", "code-ready", "blocked": show_prompt(check)  # P3-10, P1-10
+        "binary", "store", "platform", "code-ready", "blocked": $PKeyUpdatePrompt.show_result(check)
         "none": pass                                     # check.decision["reason"] says why
 var notes := await PolarisKey.release.changelog()        # notes.entries: Array[PKeyChangelogEntry]
 ```
@@ -393,8 +409,7 @@ fetches the record the target for this platform pins and verifies it hash first,
   build without `build.json` falls back to its `pkey_outlet_<kind>` feature tag; a web export
   synthesises `outletKind: web`. The device report carries the detected outlet id
   (`PKeyCore.reported_outlet()`), never a raw signal.
-- Out of scope here: acting on a decision (the outlet adapters, the sidecar-PCK swap, the boot
-  guard and PKeyBoot's DECIDE stage are P3-10's) and packs (P4-08).
+- Acting on the decision is P3-10's (next section); packs are P4-08's.
 
 **The v3 check (P1-08).** `check()` is today's check, the same as sdk-node's and Python's:
 `GET /<p>/update/version`, informational on every outlet; a Steam, itch or store build must not
@@ -418,6 +433,135 @@ act on it by itself.
   boot). A periodic caller must not let a failed check consume its interval.
 - `download_url` only builds the URL. Fetching it needs the transport's credential-safe redirects
   and no gzip (gzip breaks `Range`); that is P3-10's.
+
+## Updates by outlet (P3-10)
+
+```gdscript
+PolarisKey.update.update_available.connect(func(r):
+	if r is PKeyUpdateCheck: $PKeyUpdatePrompt.show_result(r))   # PKeyBoot does this itself
+var applied := await PolarisKey.update.apply(check)    # what the prompt's button does
+await PolarisKey.update.restart_to_update()            # code-ready: "Restart now"
+PolarisKey.update.confirm_boot()                       # optional: the game is clearly running
+```
+
+The decision says what is on offer; the install's OUTLET says what can be done about it
+(`PolarisKey.update.outlet()`, the stamp moved by detection). Each of the 17 outlet kinds has an
+adapter in `distribution/outlets/` (`PKeyOutletAdapter`: `id()`, `capabilities()`,
+`describe(decision, ctx)`, `apply(decision, host, check)`), and capabilities only narrow: the
+compiled defaults are the ceiling and a feed entry can lower them, so a store, Steam or itch build
+is never talked into self-updating code.
+
+| Outlet                                                        | `store`                                                                                                                      | `platform`                            | `binary`            | `code-ready`  |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------- | ------------- |
+| App Store, Play, Play testing, Microsoft Store                | opens the https `listingUrl` (a `market://`, `itms-apps://` or `ms-windows-store://` link is never opened), else the page    | —                                     | —                   | —             |
+| TestFlight                                                    | opens the TestFlight link                                                                                                    | —                                     | —                   | —             |
+| AltStore, AltStore PAL, Obtainium, F-Droid repo, iOS `direct` | the feed has no listing: opens `PKeyOptions.update_page_url` (the source, repository or web-distribution page), else nothing | —                                     | —                   | —             |
+| Steam, itch, Flathub, Snap, App Installer, winget             | —                                                                                                                            | silent, with the outlet's own message | —                   | —             |
+| Web                                                           | —                                                                                                                            | "Reload"                              | —                   | —             |
+| Direct (desktop, Android)                                     | —                                                                                                                            | package-managed: silent               | per `method`, below | "Restart now" |
+| unknown                                                       | never offered anything                                                                                                       |                                       |                     |               |
+
+`binary` on a direct build dispatches on `method`:
+
+- **`native`**: the platform's native updater through its bridge (`PKeyNativeBridge`:
+  `is_available()`, `check_now()`, `install_and_relaunch()`, with the feed URL from discovery):
+  Sparkle on macOS (the appcast), Velopack on a Velopack install or with its plugin, else
+  WinSparkle, on Windows (`update.endpoints.velopack` up to `releases.`, `…/winsparkle.xml`), and
+  AppImageUpdate in an AppImage, else Velopack, on Linux. The plugins are P5-07's: Engine
+  singletons `PolarisKeySparkle`, `PolarisKeyVelopack`, `PolarisKeyWinSparkle` with
+  `check_now(feed_url)` and `install_and_relaunch(feed_url)`. With no plugin every call is the
+  typed unsupported result (`unsupported`, `detail.reason` `dependency`), `native` is not offered
+  to the decision, and an adapter given `native` anyway opens the download link: a missing plugin
+  never breaks boot. AppImage needs no plugin: with `APPIMAGE` set and `appimageupdatetool` on PATH
+  it runs `appimageupdatetool -O $APPIMAGE` on a worker thread and relaunches `$APPIMAGE` (not the
+  mounted executable).
+- **`download`**: the build's URL from discovery's `distribution.endpoints.builds` (else
+  `release.endpoints.builds`; never the R2-only `blobs`), `{selector}` = the record's version and
+  `{buildId}` = the decision's build, percent-encoded; else `PKeyOptions.update_release_url`.
+- **`sidecar-pck`**: `PKeySidecarSwap` downloads the record's `pck` build from that URL in the
+  background (`auto_stage`; `PKeyDownload`: Range resume, gzip off, the bearer dropped across
+  origins, one wall-clock deadline per request, the record's size as a cap), verifies size and
+  SHA-256 against the verified record, and stages it with its meta (`channel` = the
+  `PKeyUpdateCheck.channel` it was staged under, the canonical one). `update_staged(version)`
+  fires and decide() runs again, so the answer becomes `code-ready`. A size or hash mismatch is
+  `payload-mismatch` and stages nothing.
+
+Every link is https only (`OS.shell_open` would hand anything else to a local handler).
+
+**Methods.** `PKeyOptions.update_methods` (default `["download"]`) is what the game allows; add
+`native` and `sidecar-pck` to opt in. While the updater is active the decision gets that list
+narrowed to what this install can do: `native` only with a usable bridge, `sidecar-pck` only
+where the swap is supported.
+
+**The sidecar-PCK swap** (no `--main-pack`, `--path`, `--scene` or `-s` anywhere: official 4.6+
+templates ignore them, and a test greps the addon). Godot loads `<exe-name>.pck` beside the
+executable before any script runs, so `restart_to_update()` (and the guard, for a pack staged
+earlier) re-verifies the staged pack, copies the running pack into `previous`, copies the new one
+beside the target (`<pck>.pkey-new`), verifies it there, journals the swap in `state.json`, renames
+it over the pack and restarts at once (`OS.set_restart_on_exit` with this process's own arguments):
+the running process still holds the old pack's directory, so it must not load anything more. The
+rename is atomic on POSIX; on Windows Godot removes the target and moves the new file in (two
+calls). A crash between journal and bookkeeping is finished or discarded at the next launch by
+comparing the pack with the journal. The swap is refused (`swap-refused`, `detail.reason`) on a
+platform other than Windows and Linux (and macOS outside an `.app`), inside a macOS `.app`, under
+`Program Files`, under MSIX (a `WindowsApps` path segment, any case, either separator), in Flatpak,
+Snap and AppImage installs, in a Velopack install (`sq.version` beside the executable, or
+`current/` beside `Update.exe`: an update replaces the whole directory), with an embedded pack, and
+where the directory is not writable.
+
+**Windows rename: not measured yet.** No Windows host was available to P3-10 (S-05 §4.4 has the
+same gap). If Windows refuses to rename the open pack, the rename is retried 12 times 250 ms apart;
+then the staged pack is kept, the game restarts anyway, and the next launch's guard applies it and
+restarts once more (the "second restart" fallback; no detached helper). Godot opens the pack per
+resource read rather than holding it, so the rename is expected to succeed when nothing streams
+from it [I]. D-01 or a Windows CI runner records the measurement.
+
+**Slots and the boot guard** (`updater/slots.gd`, `updater/boot_guard.gd`; notes/A4 §1.5, P9–P11).
+`user://pkey/<product>/updates/` holds `staged/` (`payload.pck` + `meta.json`), `current/meta.json`
+(its bytes are the pack beside the executable), `previous/` (the pack the last swap replaced: the
+shipped one after the first swap) and `state.json` (`failedBoots`, `skipVersion`, `binaryVersion`,
+`confirmedVersion`, the journal, local events). A meta is {version, channel, buildNumber, build,
+recordHash, sha256, size, engine, scheme}. PKeyBoot's GUARD runs `PKeyBootGuard.run`:
+
+- a `current` slot whose version is not the running stamp's, or whose size is not the pack's,
+  means the install was replaced from outside: the slots forget it;
+- staged code is dropped when it is incomplete, built for another engine, not newer than the binary
+  (A4 P10), or no longer verifies; a channel switch drops it where it happens (the decision's
+  `discardStaged`, and `PKeyDevMenuSection`'s picker, which shows "locked by <outlet>" where the
+  outlet, its subkind or the committed feed's entry says `channelSwitch: false`);
+- then `PKeyStages.boot_guard_action(staged, failedBoots)`: `roll-back` puts `previous` back,
+  records the bad version as `skipVersion` (a decision input, so `code-ready` and `sidecar-pck`
+  never offer it again) and restarts; `apply-staged` swaps and restarts; `none` counts the launch
+  while an applied update runs. The launch after a swap or rollback sends `guard.done applied` or
+  `rolled-back` (which emits `boot_rolled_back`). Two crashed launches roll back on the third.
+- **Confirmation** (stage matrix v2): PKeyBoot reports each outcome to `PolarisKey.update`.
+  `waiting`, `blocked` and `offline` confirm at once (quitting at the activation screen never rolls
+  back a good update), `ready` after `BOOT_OK_SECONDS` (10) with the process alive or at
+  `confirm_boot()`, and `running` and `error` never. A confirmed launch resets `failedBoots`.
+- While a code pack runs, the decision's `installed.binaryVersion` is the binary's
+  (`binaryVersion`); `installed.version` is the running pack's own stamp.
+- **Telemetry.** `devices/report` has no event key yet, so `update_downloaded`, `update_applied`,
+  `update_confirmed` and `boot_rolled_back` (the `updateEvent` names) stay in `state.json`'s
+  `events` (the last 32) until P6-03 allowlists them.
+- **MSIX.** `user://` is virtualised to `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`, kept across
+  package updates and deleted on uninstall, so uninstalling removes the slots (S-05 §4.4, from
+  Microsoft's documentation). The swap itself is refused under MSIX.
+- **Velopack** builds ship P5-07's launcher shim as `--mainExe`, which answers the `--veloapp-*`
+  hooks in milliseconds without starting the engine. Godot as the main executable also survives
+  the hooks (1.0–1.7 s each when an autoload quits from `_init`) but opens its renderer and window
+  for every hook: a documented fallback only (S-05 §4.5).
+
+**Inert** in the editor, in headless runs (the test runner, a dedicated server) and in debug
+builds, as Diceroll's updater is: nothing is downloaded, swapped, restarted or counted, and the
+decision gets the declared methods unchanged. `PolarisKey.update.updater.enabled = true` turns it
+on (the tests do, with `PKeyFakeUpdaterEnv`).
+
+**Tests** (`updater` suite): every outlet kind × every action through `apply()` with a recording
+host; the bridges with and without their native side; `PKeyDownload` against the fake server; the
+swap's refusals, a verified stage and swap, mismatches that change nothing, a locked rename, crash
+recovery; the guard over successive launches with stage-matrix.json's guard and confirm cases;
+PKeyBoot's GUARD and DECIDE with the real host. About 5 s on an M-series Mac, editor and release
+template alike.
 
 ## Config (`PolarisKey.config`)
 
@@ -505,7 +649,8 @@ func _ready() -> void:
   `offline(can_play_offline)`, `error(code)`, `boot_rolled_back()`, `boot_ready()` (a Control
   cannot redeclare `ready`), plus `boot_finished(result)` at every stop.
 - **What PKeyBoot sends** is plans/P1-09.md §2.2, in PKeyBootHost: shell configures from
-  `res://polaris_key.tres` when needed and starts (offline); guard is `ok` until P3-10; sync runs
+  `res://polaris_key.tres` when needed and starts (offline); guard runs the boot guard (`PolarisKey.update.run_guard()`: `ok`, `applied` or
+  `rolled-back`; nothing at all when it swapped or rolled back a pack and restarted); sync runs
   discovery (not counted), registers first when a product without License has an `open`
   registration policy and no token, then `PolarisKey.sync()`, classified from
   `PKeySyncResult.classify()` (answered 200/304/401/403/429 is `ok`, no answer is `offline`,
@@ -533,8 +678,8 @@ func _ready() -> void:
   view is freed and the prompt stays on its CanvasLayer as `PolarisKey.boot_prompt` (a locked
   answer for good, a dismissable one until dismissed); pass `keep_update_prompt = false` when the
   game shows its own prompt, which replays `PolarisKey.update.last_available`. Grace in
-  `PKeyGate` is the same: only the status strip, and no full-rect control takes the game's input. P1 never downloads: a direct build opens the release page, a store
-  answer its listing, and a store, Steam or itch build the store link or nothing.
+  `PKeyGate` is the same: only the status strip, and no full-rect control takes the game's input.
+  The prompt's action is the outlet adapter's (see "Updates by outlet").
 - **Sliced verifies report progress**: `PolarisKey.verify_progress(fraction)` (web builds without
   threads), which PKeyBoot's progress bar follows; the bar shows once a stage passes 250 ms.
 - **Tests.** `boot` drives every stage-matrix row through `PolarisKey.boot()` with a scripted

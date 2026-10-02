@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(92 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(95 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -106,6 +106,9 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `feed-rollback` | `update` | A fetched channel feed carried a lower `seq` than the committed feed of its canonical channel: a rollback, refused (WIRE-CONTRACT-V4 §2.5 step 8). |
 | `record-rejected` | `update` | A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14). |
 | `record-mismatch` | `update` | A verified release record does not match the feed's pin: its kind, deliverable, version or `seq` differs (WIRE-CONTRACT-V4 §2.5 step 15). |
+| `payload-mismatch` | `update` | Godot: downloaded or staged update bytes do not match the verified release record's payload `size` and `sha256`; nothing was staged or swapped (plans/P3-01.md §2.5 step 19). |
+| `swap-refused` | `update` | Godot: this install cannot take a sidecar-PCK swap; `detail.reason` says why (`platform`, `app-bundle`, `msix`, `program-files`, `flatpak`, `snap`, `appimage`, `velopack`, `no-sidecar`, `not-writable`, `inert`). |
+| `swap-failed` | `update` | Godot: a verified sidecar-PCK swap or rollback could not replace the pack beside the executable (a copy or rename failed); the staged update is kept and retried at the next launch. |
 | `files-index-invalid` | `update` | A pack variant's files index (`pkey-files/1`) was refused: its declared size is over the limit, its stored bytes or decoded length differ from the record's ref, it is not strict JSON, or it breaks a member, payload or tree rule (plans/P4-01.md §2.7; WIRE-CONTRACT-V4 §2.6). |
 | `files-unsafe-path` | `update` | A pack file path breaks the path rules (length, characters, segments, Windows device names, or a first segment `.pkey`); `path` names it. Checked before any byte is written (plans/P4-01.md §2.7). |
 | `files-duplicate-path` | `update` | A pack's files index lists one path twice; `path` names the later one (plans/P4-01.md §2.7). |

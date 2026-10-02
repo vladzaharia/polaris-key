@@ -263,6 +263,13 @@ func update_cases() -> Array:
 		["store", update_check({"action": "store", "release": {"version": "1.5.0", "seq": 15}, "listingUrl": "https://apps.apple.com/app/id1", "mandatory": false, "critical": false, "discardStaged": false}), "app-store", "", false],
 		["platform", update_check({"action": "platform", "release": {"version": "1.5.0", "seq": 15}, "mandatory": false, "critical": false, "discardStaged": false}), "steam", "", false],
 		["blocked (locked)", update_check({"action": "blocked", "reason": "app-floor", "discardStaged": false}), "steam", "", true],
+		["binary native with no plugin (the download link)", update_check({"action": "binary", "method": "native", "release": rel, "build": "macos-dmg", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}), "direct", "https://example.com/download", false],
+		["binary sidecar-pck (a code pack downloads)", update_check({"action": "binary", "method": "sidecar-pck", "release": rel, "build": "linux-pck", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}), "direct", "", false],
+		["store on TestFlight", update_check({"action": "store", "release": {"version": "1.5.0", "seq": 15}, "listingUrl": "https://testflight.apple.com/join/abcd", "mandatory": false, "critical": false, "discardStaged": false}), "testflight", "", false],
+		["store on AltStore with no source page", update_check({"action": "store", "release": {"version": "1.5.0", "seq": 15}, "listingUrl": null, "mandatory": true, "critical": false, "discardStaged": false}), "altstore", "", false],
+		["platform on itch", update_check({"action": "platform", "release": {"version": "1.5.0", "seq": 15}, "mandatory": false, "critical": false, "discardStaged": false}), "itch", "", false],
+		["platform on the web (reload)", update_check({"action": "platform", "release": {"version": "1.5.0", "seq": 15}, "mandatory": false, "critical": false, "discardStaged": false}), "web", "", false],
+		["platform on a package-managed direct build", update_check({"action": "platform", "release": {"version": "1.5.0", "seq": 15}, "mandatory": false, "critical": false, "discardStaged": false}), "direct", "", false],
 	]
 
 
