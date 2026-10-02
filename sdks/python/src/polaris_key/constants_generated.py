@@ -201,6 +201,9 @@ class ErrorCode:
     FEED_ROLLBACK: Final = "feed-rollback"
     RECORD_REJECTED: Final = "record-rejected"
     RECORD_MISMATCH: Final = "record-mismatch"
+    PAYLOAD_MISMATCH: Final = "payload-mismatch"
+    SWAP_REFUSED: Final = "swap-refused"
+    SWAP_FAILED: Final = "swap-failed"
     FILES_INDEX_INVALID: Final = "files-index-invalid"
     FILES_UNSAFE_PATH: Final = "files-unsafe-path"
     FILES_DUPLICATE_PATH: Final = "files-duplicate-path"
@@ -313,6 +316,9 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "feed-rollback",
     "record-rejected",
     "record-mismatch",
+    "payload-mismatch",
+    "swap-refused",
+    "swap-failed",
     "files-index-invalid",
     "files-unsafe-path",
     "files-duplicate-path",
@@ -427,6 +433,9 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "feed-rollback": "client",
         "record-rejected": "client",
         "record-mismatch": "client",
+        "payload-mismatch": "client",
+        "swap-refused": "client",
+        "swap-failed": "client",
         "files-index-invalid": "client",
         "files-unsafe-path": "client",
         "files-duplicate-path": "client",

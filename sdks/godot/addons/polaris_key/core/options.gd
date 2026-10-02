@@ -52,6 +52,13 @@ const CONFIG_ENV_NEVER := 2
 ## The installed build's format (`dmg`, `zip`, `exe`, …) when it is known, so a binary update
 ## picks the same kind of build. Empty: the stamp's `format`, else any format.
 @export var update_format := ""
+## The https release page a direct build opens for a `download` answer when discovery names no
+## builds URL, and for a `blocked` answer (P3-10). Empty: none.
+@export var update_release_url := ""
+## The https page a `store` answer opens when the feed carries no https listing (AltStore and
+## AltStore PAL sources, Obtainium, F-Droid repositories and an iOS web-distribution page carry
+## none): the source, repository or page this build was published through (P3-10). Empty: none.
+@export var update_page_url := ""
 ## Detect the outlet at run time when update_outlet is empty (P3-11): this build's signals
 ## (PKeyOutletSignals) and the stamp, through PKeyOutlet.detect_outlet, whose result goes to
 ## PKeyDecision.resolve_update_outlet as `detected`. Off: the stamp alone decides.
