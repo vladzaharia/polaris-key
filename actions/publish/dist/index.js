@@ -19217,6 +19217,20 @@ var DATA_ONLY_SCRIPT_MARKERS = [
   "script/source",
   "source_code"
 ];
+function asciiEscape(text) {
+  for (let at = text.indexOf("\\"); at >= 0; at = text.indexOf("\\", at + 1)) {
+    const c = text[at + 1];
+    if (c !== "u" && c !== "U")
+      continue;
+    const n = c === "u" ? 4 : 6;
+    const digits = text.slice(at + 2, at + 2 + n);
+    if (!new RegExp(`^[0-9A-Fa-f]{${n}}$`).test(digits))
+      return true;
+    if (parseInt(digits, 16) < 128)
+      return true;
+  }
+  return false;
+}
 function dataOnlyTextRefusal(bytes) {
   let text;
   try {
@@ -19226,7 +19240,7 @@ function dataOnlyTextRefusal(bytes) {
   }
   if (text.includes("\0"))
     return "content";
-  if (/\\[uU]/.test(text))
+  if (asciiEscape(text))
     return "content";
   const bare = text.replaceAll("\\", "");
   for (const m of DATA_ONLY_SCRIPT_MARKERS)
@@ -21525,7 +21539,8 @@ function localDelegatedChecks(pack, files) {
   if (refused.length)
     throw new Error(
       `The data-only rule refused ${refused.length} file${refused.length === 1 ? "" : "s"} (plans/P4-19.md §2.5); nothing was published:
-${refused.map((r) => `  ${r}`).join("\n")}`
+${refused.map((r) => `  ${r}`).join("\n")}
+A text file (json, csv, tsv, po, txt) is refused for a script marker (${DATA_ONLY_SCRIPT_MARKERS.join(", ")}) even in ordinary text, such as a string "Learn GDScript" or a JSON key source_code: rename such keys or reword such text, then publish again.`
     );
 }
 async function contentSigner(o) {
