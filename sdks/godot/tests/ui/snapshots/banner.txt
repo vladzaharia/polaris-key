@@ -1,0 +1,7 @@
+== grace ==
+Lines/Line0: Label "Offline — 3 days left"
+Lines/Line1: Label "Checked 3 hours ago"
+== update available ==
+Lines/Line0: Label "An update is available"
+== nothing to say ==
+<hidden>

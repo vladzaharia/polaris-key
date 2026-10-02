@@ -1,0 +1,48 @@
+== starting ==
+Body/Title: Label "Sign in"
+Body/Status: Label "Starting sign-in…"
+Body/Actions/Cancel: Button "Cancel" [focus 1]
+== pending ==
+Body/Title: Label "Sign in"
+Body/Instructions: Label "Scan the code, or go to key.plrs.im/device and enter:"
+Body/UserCode: Label "WDJB-MJHT"
+Body/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
+Body/Expires: Label "The code expires in 2:05."
+Body/Links/OpenBrowser: Button "Open browser" [focus 1]
+Body/Links/CopyLink: Button "Copy link" [focus 2]
+Body/Actions/Cancel: Button "Cancel" [focus 3]
+== pending, link copied ==
+Body/Title: Label "Sign in"
+Body/Status: Label "Link copied."
+Body/Instructions: Label "Scan the code, or go to key.plrs.im/device and enter:"
+Body/UserCode: Label "WDJB-MJHT"
+Body/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
+Body/Expires: Label "The code expires in 2:05."
+Body/Links/OpenBrowser: Button "Open browser" [focus 1]
+Body/Links/CopyLink: Button "Copy link" [focus 2]
+Body/Actions/Cancel: Button "Cancel" [focus 3]
+== confirm, attachable ==
+Body/Title: Label "Is this you?"
+Body/ConfirmBody: Label "Signed in as Ada Lovelace (ada@example.com)."
+Body/AttachLicense: CheckButton "Also attach this device's license to my account" [focus 1]
+Body/Actions/Continue: Button "Continue" [focus 2]
+Body/Actions/Cancel: Button "Cancel" [focus 3]
+== ok ==
+Body/Title: Label "Sign in"
+Body/Status: Label "Signed in."
+Body/Actions/Cancel: Button "Close" [focus 1]
+== expired ==
+Body/Title: Label "Sign in"
+Body/Status: Label "The code expired before sign-in finished."
+Body/Actions/TryAgain: Button "Try again" [focus 1]
+Body/Actions/Cancel: Button "Close" [focus 2]
+== cancelled ==
+Body/Title: Label "Sign in"
+Body/Status: Label "Sign-in was cancelled."
+Body/Actions/TryAgain: Button "Try again" [focus 1]
+Body/Actions/Cancel: Button "Close" [focus 2]
+== denied ==
+Body/Title: Label "Sign in"
+Body/Status: Label "Sign-in was declined."
+Body/Actions/TryAgain: Button "Try again" [focus 1]
+Body/Actions/Cancel: Button "Close" [focus 2]

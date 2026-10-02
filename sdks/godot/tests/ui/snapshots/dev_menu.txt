@@ -1,0 +1,41 @@
+== editor ==
+Body/Title: Label "Polaris Key"
+Body/ChannelRow/ChannelLabel: Label "Channel"
+Body/ChannelRow/Channel: OptionButton "beta" [items [beta, stable, dev], focus 1]
+Body/Facts/Fact0Name: Label "Build"
+Body/Facts/Fact0Value: Label "1.2.0 (42)"
+Body/Facts/Fact1Name: Label "Outlet"
+Body/Facts/Fact1Value: Label "-"
+Body/Facts/Fact2Name: Label "SDK"
+Body/Facts/Fact2Value: Label "0.1.0"
+Body/Facts/Fact3Name: Label "Engine"
+Body/Facts/Fact3Value: Label "4.7.2"
+Body/Facts/Fact4Name: Label "Device"
+Body/Facts/Fact4Value: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Body/Facts/Fact5Name: Label "License"
+Body/Facts/Fact5Value: Label "ok"
+Body/Facts/Fact6Name: Label "Last sync"
+Body/Facts/Fact6Value: Label "2023-11-14 22:13:20"
+Body/Actions/CopyDiagnostics: Button "COPY DIAGNOSTICS" [focus 2]
+Body/Actions/ForceCheck: Button "Force check" [focus 3]
+== steam build ==
+Body/Title: Label "Polaris Key"
+Body/ChannelRow/ChannelLabel: Label "Channel"
+Body/ChannelRow/Channel: OptionButton "beta" [items [beta, stable, dev], disabled]
+Body/ChannelLock: Label "Locked: this build's channel is set by its outlet (steam)."
+Body/Facts/Fact0Name: Label "Build"
+Body/Facts/Fact0Value: Label "1.2.0 (42)"
+Body/Facts/Fact1Name: Label "Outlet"
+Body/Facts/Fact1Value: Label "steam"
+Body/Facts/Fact2Name: Label "SDK"
+Body/Facts/Fact2Value: Label "0.1.0"
+Body/Facts/Fact3Name: Label "Engine"
+Body/Facts/Fact3Value: Label "4.7.2"
+Body/Facts/Fact4Name: Label "Device"
+Body/Facts/Fact4Value: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Body/Facts/Fact5Name: Label "License"
+Body/Facts/Fact5Value: Label "ok"
+Body/Facts/Fact6Name: Label "Last sync"
+Body/Facts/Fact6Value: Label "2023-11-14 22:13:20"
+Body/Actions/CopyDiagnostics: Button "COPY DIAGNOSTICS" [focus 1]
+Body/Actions/ForceCheck: Button "Force check" [focus 2]

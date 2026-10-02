@@ -1,0 +1,96 @@
+== license on, identity on, enrolment on, native ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/SignIn: Button "Sign in" [focus 3]
+Stack/Main/ContinueFree: Button "Continue free" [focus 4]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 5]
+== license on, identity on, enrolment on, web ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/SignIn: Button "Sign in" [focus 3]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+== license on, identity on, enrolment off, native ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/SignIn: Button "Sign in" [focus 3]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+== license on, identity on, enrolment off, web ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/SignIn: Button "Sign in" [focus 3]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+== license on, identity off, enrolment on, native ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/ContinueFree: Button "Continue free" [focus 3]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+== license on, identity off, enrolment on, web ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+== license on, identity off, enrolment off, native ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+== license on, identity off, enrolment off, web ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+== license off, identity on, enrolment on, native ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Sign in to continue."
+Stack/Main/SignIn: Button "Sign in" [focus 1]
+== license off, identity on, enrolment on, web ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Sign in to continue."
+Stack/Main/SignIn: Button "Sign in" [focus 1]
+== license off, identity on, enrolment off, native ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Sign in to continue."
+Stack/Main/SignIn: Button "Sign in" [focus 1]
+== license off, identity on, enrolment off, web ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Sign in to continue."
+Stack/Main/SignIn: Button "Sign in" [focus 1]
+== license off, identity off, enrolment on, native ==
+Stack/Main/Title: Label "Activate"
+== license off, identity off, enrolment on, web ==
+Stack/Main/Title: Label "Activate"
+== license off, identity off, enrolment off, native ==
+Stack/Main/Title: Label "Activate"
+== license off, identity off, enrolment off, web ==
+Stack/Main/Title: Label "Activate"
+== device limit ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/SignIn: Button "Sign in" [focus 3]
+Stack/Main/ContinueFree: Button "Continue free" [focus 4]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 5]
+Stack/Main/Message: Label "This license has reached its device limit (3 of 3 devices)."

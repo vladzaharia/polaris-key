@@ -46,6 +46,9 @@ static var mode: Mode = Mode.AUTO
 ## The per-frame budget for sliced verification, in microseconds (default 6 ms; 4–8 ms).
 static var slice_budget_usec := 6000
 static var _keys: Dictionary = {}
+## Called on the main thread with the job's progress (0.0 to 1.0) after every slice of a sliced
+## verify (no-threads web): PolarisKey forwards it as `verify_progress`. Empty: nobody listens.
+static var progress_listener: Callable = Callable()
 
 
 ## Sets the slice budget, clamped to 4–8 ms.
@@ -108,7 +111,11 @@ static func run_job(job: PKeyEd25519Job, offload: bool) -> void:
 			WorkerThreadPool.wait_for_task_completion(id)
 		Mode.SLICED:
 			while not job.step(slice_budget_usec):
+				if progress_listener.is_valid():
+					progress_listener.call(job.progress())
 				await tree.process_frame
+			if progress_listener.is_valid():
+				progress_listener.call(1.0)
 		_:
 			job.run()
 
