@@ -1578,7 +1578,7 @@
       "optional": false,
       "refs": ["README §3.3", "README §11 decision 15", "plans/P4-19.md"],
       "brief": "wp/P4-19-content-key-delegation.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-20",
