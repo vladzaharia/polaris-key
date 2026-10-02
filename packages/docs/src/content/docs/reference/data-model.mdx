@@ -65,7 +65,7 @@ this page or fails the freshness gate.
 | `release_channel_policy` | 0027_a_release_model.sql | `product`, `deliverable_id`, `channel`, `pointer_release_id`, `pinned`, `includes_json`, `min_supported`, `critical`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `release_yanks` | 0027_a_release_model.sql | `product`, `release_id`, `reason`, `at`, `by` |
 | `release_records` | 0044_release_records_update_feeds.sql | `product`, `deliverable_id`, `release_id`, `seq`, `kind`, `record_sha256`, `kid`, `jws`, `ingested_at` |
-| `release_pins` | 0045_pack_deliverables.sql | `product`, `app_release_id`, `pack_deliverable`, `pack_release_id`, `record_sha256`, `required`, `delivery`, `created_at` |
+| `release_pins` | 0045_a_pack_deliverables.sql | `product`, `app_release_id`, `pack_deliverable`, `pack_release_id`, `record_sha256`, `required`, `delivery`, `created_at` |
 
 ## distribution
 

@@ -1283,9 +1283,7 @@ describe("a GitHub release tagged with a pack release id (B1)", () => {
 describe("app-only readers ignore pack releases (B2, N6)", () => {
   it("sync health's stored ids are the app's only (no absentUpstream on a pack release)", async () => {
     await publishCore("1.4.0", 12);
-    expect(await listStoredReleaseIds(db, SLUG)).not.toContain(
-      `${CORE}@1.4.0`,
-    );
+    expect(await listStoredReleaseIds(db, SLUG)).not.toContain(`${CORE}@1.4.0`);
     const gh = github({ releases: [] });
     await syncReleaseStore(env, db, SLUG, NOW + 100, gh.fetchImpl);
     expect(

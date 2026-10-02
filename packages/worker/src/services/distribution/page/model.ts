@@ -214,6 +214,8 @@ function memoCatalog(c: ReleaseCatalog): ReleaseCatalog {
     return p as Promise<T>;
   };
   return {
+    // Readers the page does not repeat (P4-02's pack readers among them) pass straight through.
+    ...c,
     deliverables: () => once(["d"], () => c.deliverables()),
     releases: (d) => once(["r", d], () => c.releases(d)),
     builds: (r) => once(["b", r], () => c.builds(r)),

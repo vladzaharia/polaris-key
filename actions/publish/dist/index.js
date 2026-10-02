@@ -12029,7 +12029,7 @@ function isHttpsUrl(v) {
 function isPackIdString(v) {
   return typeof v === "string" && v !== APP_DELIVERABLE_ID && v.length <= 64 && DELIVERABLE_RE.test(v);
 }
-function contentProblem(c) {
+function descriptorContentProblem(c) {
   if (!isRecord2(c)) return "content must be an object";
   if (c.holds !== void 0 || c.packChannels !== void 0)
     return "content.holds and content.packChannels come with P4-12";
@@ -12174,7 +12174,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
       "publishedAt must be an RFC 3339 timestamp."
     );
   if (d.content !== void 0) {
-    const problem = contentProblem(d.content);
+    const problem = descriptorContentProblem(d.content);
     if (problem) err("/content", "invalid_descriptor_content", `${problem}.`);
   }
   if (d.provenance !== void 0) {

@@ -39,7 +39,10 @@ export async function readPackDeliverables(
   db: Db,
   product: string,
 ): Promise<PackDeliverables> {
-  const rows = await db.all<{ deliverable_id: string; def_json: string | null }>(
+  const rows = await db.all<{
+    deliverable_id: string;
+    def_json: string | null;
+  }>(
     `SELECT deliverable_id, def_json FROM release_deliverables
       WHERE product = ? AND kind = 'pack' ORDER BY deliverable_id`,
     product,

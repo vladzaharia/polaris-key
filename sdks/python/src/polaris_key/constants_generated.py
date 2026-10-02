@@ -136,6 +136,7 @@ class ErrorCode:
     SERVER_MISCONFIGURED: Final = "server_misconfigured"
     INTERNAL_ERROR: Final = "internal_error"
     RELEASE_RECORD_REJECTED: Final = "release_record_rejected"
+    RELEASE_TAG_IS_PACK_RELEASE: Final = "release_tag_is_pack_release"
     FEED_NOT_COMPOSABLE: Final = "feed_not_composable"
     SERVICE_UNAVAILABLE: Final = "service-unavailable"
     SERVICE_DISABLED: Final = "service-disabled"
@@ -232,6 +233,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "server_misconfigured",
     "internal_error",
     "release_record_rejected",
+    "release_tag_is_pack_release",
     "feed_not_composable",
     "service-unavailable",
     "service-disabled",
@@ -330,6 +332,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "server_misconfigured": "wire",
         "internal_error": "wire",
         "release_record_rejected": "wire",
+        "release_tag_is_pack_release": "wire",
         "feed_not_composable": "wire",
         "service-unavailable": "client",
         "service-disabled": "client",

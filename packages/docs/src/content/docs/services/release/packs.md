@@ -98,16 +98,16 @@ build its `embeds`. They live in the release descriptor and move unchanged into 
 record, so the record's packs are exactly the descriptor's. Ingest refuses with
 `release_record_rejected`:
 
-| Reason         | When                                                                             |
-| -------------- | -------------------------------------------------------------------------------- |
-| `content-api`  | the product declares packs and the release has no `content`                      |
-| `pin-unknown`  | a pin names no ingested record                                                   |
-| `pin-mismatch` | the pinned record is not that pack, version or `seq`                             |
-| `pin-yanked`   | the pinned pack release is yanked                                                |
-| `pin-missing`  | an expected, `required` or embedded-baseline pack has no pin, or a pin no expect |
-| `pin-gated`    | a `required` expect pins a gated pack release                                    |
-| `embeds`       | a build embeds a pack the release does not pin                                   |
-| `pack-unreadable` | a declared pack's stored declaration does not read back; resync the manifest  |
+| Reason            | When                                                                             |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `content-api`     | the product declares packs and the release has no `content`                      |
+| `pin-unknown`     | a pin names no ingested record                                                   |
+| `pin-mismatch`    | the pinned record is not that pack, version or `seq`                             |
+| `pin-yanked`      | the pinned pack release is yanked                                                |
+| `pin-missing`     | an expected, `required` or embedded-baseline pack has no pin, or a pin no expect |
+| `pin-gated`       | a `required` expect pins a gated pack release                                    |
+| `embeds`          | a build embeds a pack the release does not pin                                   |
+| `pack-unreadable` | a declared pack's stored declaration does not read back; resync the manifest     |
 
 Release mirrors the pins into `release_pins` (never edited afterwards), the `contentApi` into
 the release and each build's `embeds`. **Yanking** a pinned pack release stops new pins; app

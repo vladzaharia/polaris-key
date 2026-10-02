@@ -1041,23 +1041,23 @@ export function releaseStoreStatements(
     health.push(
       guardStatement(
         stmtUpsertHealth({
-        product,
-        subject_kind: "release",
-        subject_id: releaseId,
-        // "Has anything to download at all" is the only judgement this pass can make honestly:
-        // whether the RIGHT assets are present is a per-product policy question, and answering
-        // it is `checkReleaseHealth`'s job (it fetches sidecars and checks the Sparkle key). A
-        // refused `pkey-release.json` (P2-04) degrades the release, with the reason.
-        status: refused
-          ? "degraded"
-          : release.assets.length > 0
-            ? "healthy"
-            : "degraded",
-        checked_at: now,
-        details_json: JSON.stringify({
-          assetCount: release.assets.length,
-          ...(refused ? { descriptor: { refused } } : {}),
-        }),
+          product,
+          subject_kind: "release",
+          subject_id: releaseId,
+          // "Has anything to download at all" is the only judgement this pass can make honestly:
+          // whether the RIGHT assets are present is a per-product policy question, and answering
+          // it is `checkReleaseHealth`'s job (it fetches sidecars and checks the Sparkle key). A
+          // refused `pkey-release.json` (P2-04) degrades the release, with the reason.
+          status: refused
+            ? "degraded"
+            : release.assets.length > 0
+              ? "healthy"
+              : "degraded",
+          checked_at: now,
+          details_json: JSON.stringify({
+            assetCount: release.assets.length,
+            ...(refused ? { descriptor: { refused } } : {}),
+          }),
         }),
         RELEASE_NOT_FOREIGN_DELIVERABLE_SQL,
         [product, releaseId],
