@@ -13,49 +13,110 @@
       "status": "implemented",
       "note": "Verification is client-core's, which the Node SDK consumes directly; the Node runner drives it on Node 22 and again on the engines.node floor (CI node-floor)."
     },
-    "core.cache": { "status": "implemented" },
-    "core.bundle": { "status": "implemented" },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
-    "core.local": { "status": "implemented" },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "planned", "wp": "P1b-10" },
-    "core.store": { "status": "implemented" },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
-    "license.enroll": { "status": "implemented" },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
-    "license.reregister": { "status": "implemented" },
-    "config.resolve": { "status": "implemented" },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
+    "core.cache": {
+      "status": "implemented"
+    },
+    "core.bundle": {
+      "status": "implemented"
+    },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
+    "core.local": {
+      "status": "implemented"
+    },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "planned",
+      "wp": "P1b-10"
+    },
+    "core.store": {
+      "status": "implemented"
+    },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
+    "license.enroll": {
+      "status": "implemented"
+    },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
+    "license.reregister": {
+      "status": "implemented"
+    },
+    "config.resolve": {
+      "status": "implemented"
+    },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
     "config.mirror": {
       "status": "implemented",
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": { "status": "implemented" },
-    "devices.facts": { "status": "implemented" },
-    "devices.register": { "status": "implemented" },
-    "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "devices.fingerprint": {
+      "status": "implemented"
+    },
+    "devices.facts": {
+      "status": "implemented"
+    },
+    "devices.register": {
+      "status": "implemented"
+    },
+    "devices.manage": {
+      "status": "implemented"
+    },
+    "devices.report": {
+      "status": "implemented"
+    },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
       "note": "No browser sign-in in the Node SDK, and no work package ports it."
     },
-    "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
+    "identity.devicecode": {
+      "status": "implemented"
+    },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
     "release.record": {
       "status": "implemented",
       "note": "client.update.releaseRecord(hash) and decide() over client-core's verifyReleaseRecord: hash before signature, pinned release keys only; persisted in the releaseRecords cache slice while a committed feed pins it."
     },
-    "update.check": { "status": "implemented" },
+    "update.check": {
+      "status": "implemented"
+    },
     "update.feed": {
       "status": "implemented",
       "note": "client.update.feed() and decide() over client-core's verifyFeed; the feeds cache slice is keyed by the canonical channel and re-verified on load, so each seq floor survives a restart."
@@ -78,17 +139,50 @@
       "status": "implemented",
       "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. Windows SignatureKind needs WinRT and is not read."
     },
-    "packs.record": { "status": "planned", "wp": "P4-06" },
-    "packs.plan": { "status": "planned", "wp": "P4-06" },
-    "packs.index.files": { "status": "planned", "wp": "P4-06" },
-    "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
-    "packs.apply.full": { "status": "planned", "wp": "P4-06" },
-    "packs.apply.file": { "status": "planned", "wp": "P4-06" },
-    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
-    "packs.apply.delta": { "status": "planned", "wp": "P4-06" },
-    "packs.state": { "status": "planned", "wp": "P4-06" },
-    "packs.handlers": { "status": "planned", "wp": "P4-06" },
-    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.record": {
+      "status": "implemented",
+      "note": "client-core verifyReleaseRecord with pin.kind (pack records fetched by the content stamp's pin) and verifyMarker for embedded baselines; the Node runner drives every packRecordCases and markerCases vector."
+    },
+    "packs.plan": {
+      "status": "implemented",
+      "note": "client-core plan, selectVariant and planTarget; every plan-matrix.json row, variant case and target case in the Node runner."
+    },
+    "packs.index.files": {
+      "status": "implemented",
+      "note": "client-core parseFilesIndex, checkPaths and treeDigest; filesIndexCases under the WASM decoder, node:zlib and a failed probe."
+    },
+    "packs.index.chunks": {
+      "status": "planned",
+      "wp": "P4-11"
+    },
+    "packs.apply.full": {
+      "status": "implemented",
+      "note": "client-core applyFull (streamed through node:zlib when it has zstd); applyCases under every backend."
+    },
+    "packs.apply.file": {
+      "status": "implemented",
+      "note": "client-core applyFile with the type-neutral container rebuild; applyCases under every backend."
+    },
+    "packs.apply.chunk": {
+      "status": "planned",
+      "wp": "P4-11"
+    },
+    "packs.apply.delta": {
+      "status": "implemented",
+      "note": "node:zlib for --patch-from frames when its start-up probe decodes, else @polaris-key/zstd-wasm (Node 22.0-22.14 have no zstd; 22.15-22.18 ignore the dictionary); the window check runs in the applier whatever the decoder."
+    },
+    "packs.state": {
+      "status": "implemented",
+      "note": "client-core's install-state machine and PackEngine over DirPackStorage in the platform data directory: journal, resume with Range/If-Range, atomic pointer swap, confirm, rollback, GC roots, embedded baselines; packSetId on devices/report."
+    },
+    "packs.handlers": {
+      "status": "implemented",
+      "note": "client.update.packs.registerHandler; files.tree (hot: versioned directory plus pointer swap) built in."
+    },
+    "packs.provides": {
+      "status": "planned",
+      "wp": "P4-20"
+    },
     "packs.transport.apple": {
       "status": "na",
       "runtime": "node",
@@ -114,8 +208,14 @@
       "unowned": true,
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
-    "ui.stages": { "status": "implemented" },
-    "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
+    "ui.stages": {
+      "status": "implemented"
+    },
+    "ui.kit": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
     "commerce.receipt": {
       "status": "planned",
       "unowned": true,

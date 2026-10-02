@@ -35,6 +35,13 @@
 //   packRecordCases   step 14 over every case that reaches it         → releaseRecordClaims
 //   markerCases       step 14 over every marker release that reaches it → releaseRecordClaims
 //
+// and, from P4-06 (plans/P4-01.md §5 order 1), the full pack verifiers and the planner:
+//
+//   packRecordCases   steps 12–15 with `pin.kind`, every case           → verifyReleaseRecord
+//   markerCases       V4 §3.7, every case                               → verifyMarker
+//   plan-matrix.json  rows, variantCases, targetCases                   → plan, selectVariant,
+//                                                                         planTarget
+//
 // with `outlet-matrix.json`'s capability tables asserted against `@polaris-key/protocol/
 // distribution`; and, from P3-05 (plans/P3-01.md §5 order 1), the full verifiers and the rest
 // of the update matrix:
@@ -62,8 +69,12 @@
 //   packSetIdCases    §2.9's packSetId                                 → packSetId
 //   stampCases        §2.8's content stamp                             → parseContentStamp
 //   frameWindowCases  §2.7 rule 3's header window                      → frameWindow
+//   applyCases        §2.9's appliers, verdicts and counters (P4-06)   → applyFull, applyDelta,
+//                                                                         applyFile
 //
-// `applyCases` and `plan-matrix.json` need the appliers and the planner, which are P4-06's.
+// `filesIndexCases` and `applyCases` run once per zstd backend the runner hands over (the Node
+// runner: the WASM decoder, `node:zlib` where its probe passes, and a failed probe; the browser:
+// the WASM decoder), so a verdict cannot depend on the decoder.
 //
 // `stage-matrix.json` (the boot stage machine, client boot behaviour outside the wire contract)
 // has its own Node runner: `stageMatrix.test.ts`, through
@@ -143,18 +154,32 @@ import {
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
+  applyDelta,
+  applyFile,
+  applyFull,
   checkPaths,
   frameWindow,
+  memorySource,
   packSetId,
   parseContentStamp,
   parseFilesIndex,
+  plan,
+  planTarget,
+  selectVariant,
+  sliceSource,
+  verifyMarker,
   type BlockedState,
   type BundleRefusalReason,
   type FilesIndexRef,
+  type InstalledFile,
   type PackSetEntry,
+  type PlanInput,
+  type PlanTarget,
+  type VariantPrefs,
   type VerifyOptions,
-  type ZstdDecode,
+  type ZstdPort,
 } from "@polaris-key/client-core";
+import type { FilesIndexDoc, PackVariant } from "@polaris-key/protocol/packs";
 
 type TypV3 =
   | "pkey-license+jws"
@@ -434,6 +459,7 @@ export const CORPUS_FILES = {
   matrix: "gate-matrix.json",
   updateMatrix: "update-matrix.json",
   outletMatrix: "outlet-matrix.json",
+  planMatrix: "plan-matrix.json",
 } as const;
 
 /** The parsed files, keyed as in `CORPUS_FILES`. */
@@ -442,6 +468,34 @@ export interface CorpusFiles {
   matrix: GateMatrix;
   updateMatrix: UpdateMatrix;
   outletMatrix: OutletMatrix;
+  planMatrix: PlanMatrix;
+}
+
+/** `plan-matrix.json` (planMatrixVersion 1, plans/P4-01.md §4.5). */
+export interface PlanMatrix {
+  planMatrixVersion: number;
+  requestWeight: number;
+  rows: {
+    id: string;
+    description: string;
+    input: PlanInput;
+    expect: unknown;
+  }[];
+  variantCases: {
+    id: string;
+    description: string;
+    variants: unknown[];
+    prefs: VariantPrefs;
+    expect: { index: number } | { error: string };
+  }[];
+  targetCases: {
+    id: string;
+    description: string;
+    recordSha256: string;
+    variant: PackVariant;
+    filesIndex: FilesIndexDoc | null;
+    expect: PlanTarget;
+  }[];
 }
 
 /** The rows P0-04 appended to gate-matrix v2 (WIRE-CONTRACT-V3 §5.1). */
@@ -646,6 +700,7 @@ export function defineCorpusSuites({
   matrix,
   updateMatrix,
   outletMatrix,
+  planMatrix,
 }: CorpusFiles): void {
   // @pkey-feature core.verify
   describe(`conformance corpus v${corpus.corpusVersion} — JWS (§1–§2)`, () => {
@@ -1188,6 +1243,93 @@ export function defineCorpusSuites({
     }
   });
 
+  // ── plans/P4-01.md §5 order 1 (P4-06) — the full pack verifiers and the planner ───────────
+
+  // @pkey-feature packs.record
+  describe(`conformance corpus v${corpus.corpusVersion} — pack records and markers (V4 §3.5 steps 12–15 with pin.kind, §3.7)`, () => {
+    for (const c of corpus.packRecordCases) {
+      const want = c.expect.verify === "ok" ? "ok" : c.expect.step;
+      it(`${c.id} → ${want}`, async () => {
+        const r = await verifyReleaseRecord(c.jws, {
+          releaseKeys: c.releaseKeys,
+          productTrust: c.productTrust,
+          expectedAud: c.expectedAud,
+          expectedHash: c.expectedHash,
+          ...(c.pin ? { pin: c.pin } : {}),
+        });
+        if (c.expect.verify === "ok") {
+          expect(r, c.description).toMatchObject({ ok: true });
+          if (!r.ok) return;
+          expect(r.record.kind).toBe(c.expect.kind);
+          if (c.expect.doc !== undefined)
+            expect(r.record).toEqual(c.expect.doc);
+        } else {
+          expect(r.ok, c.description).toBe(false);
+          if (r.ok) return;
+          expect(r.step, c.description).toBe(c.expect.step);
+        }
+      });
+    }
+    for (const c of corpus.markerCases) {
+      const want = c.expect.verify === "ok" ? "ok" : c.expect.step;
+      it(`marker ${c.id} → ${want}`, async () => {
+        const r = await verifyMarker(c.marker, {
+          releaseKeys: c.releaseKeys,
+          productTrust: c.productTrust,
+          expectedAud: c.expectedAud,
+        });
+        if (c.expect.verify === "ok") {
+          expect(r, c.description).toMatchObject({ ok: true });
+          if (!r.ok) return;
+          expect({
+            verify: "ok",
+            packId: r.packId,
+            version: r.version,
+            recordSha256: r.recordSha256,
+          }).toEqual(c.expect);
+          expect(r.record.kind).toBe("pack");
+        } else {
+          expect(r, c.description).toEqual({
+            ok: false,
+            error: "marker-rejected",
+            step: c.expect.step,
+          });
+        }
+      });
+    }
+  });
+
+  // @pkey-feature packs.plan
+  describe(`plan-matrix v${planMatrix.planMatrixVersion} — the planner, variant selection and target mapping (plans/P4-01.md §2.9)`, () => {
+    it("has every row and case of plans/P4-01.md §4.5", () => {
+      expect(planMatrix.planMatrixVersion).toBe(1);
+      expect(planMatrix.requestWeight).toBe(16384);
+      expect(planMatrix.rows.length).toBe(25);
+      expect(planMatrix.variantCases.length).toBe(11);
+      expect(planMatrix.targetCases.length).toBe(14);
+    });
+    for (const row of planMatrix.rows) {
+      it(`row ${row.id}`, () => {
+        expect(plan(row.input), row.description).toEqual(row.expect);
+      });
+    }
+    for (const c of planMatrix.variantCases) {
+      it(`variant ${c.id}`, () => {
+        expect(selectVariant(c.variants, c.prefs), c.description).toEqual(
+          c.expect,
+        );
+      });
+    }
+    for (const c of planMatrix.targetCases) {
+      it(`target ${c.id}`, () => {
+        expect(
+          planTarget(c.variant, c.recordSha256, c.filesIndex),
+          c.description,
+        ).toEqual(c.expect);
+      });
+    }
+  });
+
   // ── plans/P3-01.md §5 order 1 (P3-05) — the full verifiers and the rest of the update matrix ──
 
   // @pkey-feature update.feed
@@ -1356,14 +1498,34 @@ export interface ContentCorpus {
     header: string;
     expect: { window: number | null };
   })[];
+  applyCases: (ContentCase & {
+    strategy: "full" | "delta" | "file";
+    variant: PackVariant;
+    delta?: number;
+    installed?: { payload: ContentRef; files: ContentRef };
+    objects: Record<string, ContentRef>;
+    skipBaseCheck?: boolean;
+    expect: unknown;
+  })[];
+}
+
+/** The content corpus's directory under `conformance/corpus/v2/` (not mirrored: every runner
+ *  reads it from the checkout, plans/P4-01.md §4.1). */
+export const CONTENT_DIR = "content/";
+
+/** One zstd backend the content sections run under, by name. */
+export interface ContentBackend {
+  label: string;
+  zstd: ZstdPort;
 }
 
 /** What a runner hands `defineContentSuites`: the corpus, every file under `content/blobs/` by
- *  its path there (read raw), and a zstd decoder for one frame with its content size. */
+ *  its path there (read raw), and the zstd backends to run the decoding sections under (the
+ *  first also materialises the inputs). */
 export interface ContentFiles {
   content: ContentCorpus;
   loadBlobs: () => Promise<Map<string, Uint8Array>>;
-  decode: ZstdDecode;
+  backends: readonly ContentBackend[];
 }
 
 function hexBytes(h: string): Uint8Array {
@@ -1384,7 +1546,7 @@ async function sha256Of(bytes: Uint8Array): Promise<string> {
 async function materialise(
   ref: ContentRef,
   blobs: Map<string, Uint8Array>,
-  decode: ZstdDecode,
+  decode: ZstdPort["decode"],
 ): Promise<Uint8Array> {
   let bytes: Uint8Array;
   if (ref.text !== undefined) bytes = new TextEncoder().encode(ref.text);
@@ -1411,9 +1573,11 @@ async function materialise(
 export function defineContentSuites({
   content,
   loadBlobs,
-  decode,
+  backends,
 }: ContentFiles): void {
   let blobs = new Map<string, Uint8Array>();
+  const decode = (frame: Uint8Array, size: number) =>
+    backends[0]!.zstd.decode(frame, size);
 
   // @pkey-feature packs.index.files
   describe(`content corpus v${content.contentCorpusVersion} — blobs and the files index (plans/P4-01.md §2.7)`, () => {
@@ -1427,6 +1591,8 @@ export function defineContentSuites({
       expect(content.packSetIdCases.length).toBe(7);
       expect(content.stampCases.length).toBe(6);
       expect(content.frameWindowCases.length).toBe(13);
+      expect(content.applyCases.length).toBe(19);
+      expect(backends.length).toBeGreaterThan(0);
     });
     it("every file under content/blobs/ matches the blobs table, and nothing else is there", async () => {
       expect([...blobs.keys()].sort()).toEqual(
@@ -1443,20 +1609,72 @@ export function defineContentSuites({
         expect(checkPaths(c.paths), c.description).toEqual(c.expect);
       });
     }
-    for (const c of content.filesIndexCases) {
-      it(`files index ${c.id}`, async () => {
-        const stored = await materialise(c.stored, blobs, decode);
-        const r = await parseFilesIndex(
-          stored,
-          c.files,
-          { payload: c.payload },
-          { decode },
-        );
-        const verdict = r.ok ? { ok: true, files: r.index.files.length } : r;
-        expect(verdict, c.description).toEqual(c.expect);
-      });
-    }
   });
+
+  for (const backend of backends) {
+    // @pkey-feature packs.index.files
+    describe(`content corpus v${content.contentCorpusVersion} — filesIndexCases [${backend.label}] (plans/P4-01.md §2.7)`, () => {
+      for (const c of content.filesIndexCases) {
+        it(`files index ${c.id}`, async () => {
+          const stored = await materialise(c.stored, blobs, decode);
+          const r = await parseFilesIndex(
+            stored,
+            c.files,
+            { payload: c.payload },
+            { decode: (f, n) => backend.zstd.decode(f, n) },
+          );
+          const verdict = r.ok ? { ok: true, files: r.index.files.length } : r;
+          expect(verdict, c.description).toEqual(c.expect);
+        });
+      }
+    });
+
+    // @pkey-feature packs.apply.full packs.apply.file packs.apply.delta
+    describe(`content corpus v${content.contentCorpusVersion} — applyCases [${backend.label}] (plans/P4-01.md §2.9)`, () => {
+      it("has every apply case of plans/P4-01.md §4.4", () => {
+        expect(content.applyCases.length).toBe(19);
+      });
+      for (const c of content.applyCases) {
+        it(`apply ${c.id}`, async () => {
+          const store = new Map<string, Uint8Array>();
+          for (const [h, src] of Object.entries(c.objects))
+            store.set(h, await materialise(src, blobs, decode));
+          const objects = async (h: string) => {
+            const b = store.get(h);
+            return b === undefined ? null : memorySource(b);
+          };
+          let base: Uint8Array = new Uint8Array();
+          let installed: InstalledFile[] = [];
+          if (c.installed) {
+            base = await materialise(c.installed.payload, blobs, decode);
+            const idx = JSON.parse(
+              new TextDecoder().decode(
+                await materialise(c.installed.files, blobs, decode),
+              ),
+            ) as FilesIndexDoc;
+            const whole = memorySource(base);
+            installed = idx.files.map((f) => ({
+              path: f.path,
+              sha256: f.sha256,
+              size: f.size,
+              source: sliceSource(whole, f.offset!, f.size),
+            }));
+          }
+          const ports = { objects, zstd: backend.zstd };
+          const r =
+            c.strategy === "full"
+              ? await applyFull(c.variant, ports)
+              : c.strategy === "delta"
+                ? await applyDelta(c.variant, c.delta!, memorySource(base), {
+                    ...ports,
+                    skipBaseCheck: c.skipBaseCheck === true,
+                  })
+                : await applyFile(c.variant, c.delta ?? null, installed, ports);
+          expect(r.verdict, c.description).toEqual(c.expect);
+        });
+      }
+    });
+  }
 
   // @pkey-feature packs.state
   describe(`content corpus v${content.contentCorpusVersion} — packSetId (plans/P4-01.md §2.9)`, () => {
