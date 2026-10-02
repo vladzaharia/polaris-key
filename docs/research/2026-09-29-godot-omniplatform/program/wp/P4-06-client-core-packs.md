@@ -1,16 +1,16 @@
 # P4-06 `client-core` packs: planner, appliers, path rules, install state; Node and React wiring
 
-| Field       | Value                                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P4: Packs (v1)                                                                                                                                   |
-| Size        | 1.5–2.5 engineer-weeks                                                                                                                           |
-| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md)        |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md)                                              |
-| Role        | `pkey-sdk-porter`                                                                                                                                |
-| Plan mode   | no                                                                                                                                               |
-| Gates       | corpus: the content corpus and `plan-matrix.json` pass in Node (lowest and current Node 22) and Chromium; `pnpm gen:corpus -- --check` unchanged |
-| Human input | none                                                                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                        |
+| Field       | Value                                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P4: Packs (v1)                                                                                                                                                           |
+| Size        | 1.75–2.75 engineer-weeks                                                                                                                                                 |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md)                                |
+| Unblocks    | [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                        |
+| Plan mode   | no                                                                                                                                                                       |
+| Gates       | corpus: the content corpus and `plan-matrix.json` pass in Node (lowest and current Node 22) and Chromium; `pnpm gen:corpus -- --check` unchanged                         |
+| Human input | none                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                |
 
 ## Goal
 
@@ -166,3 +166,8 @@ mise exec node@22 -- pnpm typecheck && mise exec node@22 -- pnpm build
 with the chunk applier and chunk-index parser (its planner is already complete). P4-16 adds handler
 types through `registerHandler`; P4-18 adds `dcz` beside the WASM decoder. Then
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-06 done`.
+
+## Plan amendments (P4-01)
+
+The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.
