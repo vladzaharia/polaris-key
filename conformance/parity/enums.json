@@ -125,6 +125,46 @@
         "pack_failed",
         "boot_rolled_back"
       ]
+    },
+    {
+      "name": "packType",
+      "description": "The pack types a v1 SDK can hold (`PACK_TYPES`, plans/P4-01.md §2.2): `files.tree` everywhere, `godot.pck` in Godot. A record may name any `PACK_TYPE_PATTERN` type; an unknown one makes the pack unusable (`pack-type-unsupported`).",
+      "values": ["godot.pck", "files.tree"]
+    },
+    {
+      "name": "packDelivery",
+      "description": "An app record's `content.expects[].delivery` (`PACK_DELIVERIES`, plans/P4-01.md §2.4). Any other `VOCAB_TOKEN_PATTERN` value is read as `on-demand`.",
+      "values": ["essential", "prefetch", "on-demand"]
+    },
+    {
+      "name": "packActivation",
+      "description": "A pack record's `handler.activation` (`PACK_ACTIVATIONS`, plans/P4-01.md §2.3). An unknown value makes the pack unusable.",
+      "values": ["restart", "hot"]
+    },
+    {
+      "name": "filesLayout",
+      "description": "A pack variant's `files.layout` (`FILES_LAYOUTS`, plans/P4-01.md §2.3): a single-file payload with offsets and gaps, or a directory of files. An unknown layout makes the variant unusable.",
+      "values": ["container", "tree"]
+    },
+    {
+      "name": "contentCodec",
+      "description": "An object ref's `codec` (`CONTENT_CODECS`, plans/P4-01.md §2.3): one zstd frame with its content size, or stored raw (`bytes === size`). An unknown codec makes that object unusable.",
+      "values": ["zstd", "none"]
+    },
+    {
+      "name": "patchMethod",
+      "description": "A pack delta's `method` v1 applies (`PATCH_METHODS`, plans/P4-01.md §2.3). `godot-delta-pck`, `hdiffpatch` and `bsdiff` are reserved and not listed; an unknown method makes the delta infeasible.",
+      "values": ["zstd-patch-from"]
+    },
+    {
+      "name": "patchScope",
+      "description": "A pack delta's `scope` (`PATCH_SCOPES`, plans/P4-01.md §2.3): the whole payload, or the per-entry set. A delta of another scope is dropped.",
+      "values": ["payload", "files"]
+    },
+    {
+      "name": "variantAxis",
+      "description": "The variant axis names a v1 manifest may declare (`VARIANT_AXES`, plans/P4-01.md §2.2). A record may name any `VARIANT_AXIS_PATTERN` axis; a variant on an axis the host has no preferences for is ineligible.",
+      "values": ["texture", "locale", "quality"]
     }
   ]
 }

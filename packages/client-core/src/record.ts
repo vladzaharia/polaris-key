@@ -10,12 +10,36 @@ import {
   type NonWireIntegers,
   type TrustSet,
 } from "@polaris-key/jws";
-import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
+import {
+  MAX_BUILD_EMBEDS,
+  MAX_PACK_VARIANTS,
+  MAX_RECORD_JWS_BYTES,
+  MAX_VARIANT_DELTAS,
+} from "@polaris-key/protocol/core";
+import {
+  ENGINE_PATTERN,
+  ENTITLEMENT_PATTERN,
+  HANDLER_PREFIX_PATTERN,
+  OBJECT_FORMAT_PATTERN,
+  PACK_TYPE_PATTERN,
+  VARIANT_AXIS_PATTERN,
+  VARIANT_VALUE_PATTERN,
+  VOCAB_TOKEN_PATTERN,
+} from "@polaris-key/protocol/packs";
 import {
   BUILD_ID_PATTERN,
   type ReleaseRecordDoc,
 } from "@polaris-key/protocol/release";
 import { NO_NON_WIRE_INTEGERS, isWireInteger } from "./claims.js";
+import {
+  contentClaims,
+  isPackId,
+  objectRef,
+  utf8Length,
+} from "./packs/claims.js";
+import { variantKey } from "./packs/variant.js";
+
+export { isPackId, objectRef } from "./packs/claims.js";
 
 export interface ReleaseRecordClaimsOptions {
   /** The product: `aud` must equal it. */
@@ -81,6 +105,16 @@ function claimsOk(
       return false;
   }
 
+  // plans/P4-01.md §2.2: §2.3 applies to `kind: pack` and §2.4 to `kind: app`; a record of any
+  // other kind keeps the common claims only.
+  if (doc.kind === "pack") return packClaimsOk(doc, nonWire);
+  if (
+    doc.kind === "app" &&
+    has(doc, "content") &&
+    !contentClaims(doc.content, { nonWire, pointer: "/content" })
+  )
+    return false;
+
   if (!has(doc, "builds")) return doc.kind !== "app";
   const builds = doc.builds;
   if (!Array.isArray(builds) || builds.length < 1 || builds.length > MAX_BUILDS)
@@ -119,6 +153,160 @@ function claimsOk(
       if (!optString(artifact, "contentType")) return false;
     }
     if (payloads > 1) return false;
+    if (doc.kind === "app" && has(build, "embeds") && !embedsOk(build.embeds))
+      return false;
+  }
+  return true;
+}
+
+/** `builds[].embeds` (plans/P4-01.md §2.4): 0–64 unique pack ids. */
+function embedsOk(embeds: unknown): boolean {
+  if (!Array.isArray(embeds) || embeds.length > MAX_BUILD_EMBEDS) return false;
+  const seen = new Set<string>();
+  for (const id of embeds) {
+    if (!isPackId(id) || seen.has(id)) return false;
+    seen.add(id);
+  }
+  return true;
+}
+
+/** An optional member that must match `re` when present (a present `null` is refused). */
+const optPattern = (
+  o: Record<string, unknown>,
+  key: string,
+  re: RegExp,
+): boolean => !has(o, key) || (typeof o[key] === "string" && re.test(o[key]));
+
+/** A `{sha256, bytes}` member (a delta's `artifact` or `data`): bytes ≥ 1. */
+function hashBytesOk(
+  v: unknown,
+  pointer: string,
+  nonWire: NonWireIntegers,
+): boolean {
+  return (
+    isObject(v) &&
+    typeof v.sha256 === "string" &&
+    SHA256_RE.test(v.sha256) &&
+    isWireInteger(v.bytes, `${pointer}/bytes`, 1, nonWire)
+  );
+}
+
+/**
+ * The pack record's claims (plans/P4-01.md §2.3), after the common ones: the 55 `kind: pack`
+ * checks of §4.6 and the integer rule at §2.5's paths. A value outside a v1 vocabulary is never
+ * refused here; it only makes the governed thing unusable (§2.2).
+ */
+function packClaimsOk(
+  doc: Record<string, unknown>,
+  nonWire: NonWireIntegers,
+): boolean {
+  const int = (v: unknown, pointer: string, min: number): boolean =>
+    isWireInteger(v, pointer, min, nonWire);
+  if (doc.deliverable === "app") return false;
+  if (has(doc, "builds")) return false;
+  if (typeof doc.type !== "string" || !PACK_TYPE_PATTERN.test(doc.type))
+    return false;
+  if (!int(doc.formatVersion, "/formatVersion", 1)) return false;
+  if (has(doc, "handler")) {
+    const h = doc.handler;
+    if (!isObject(h)) return false;
+    if (has(h, "mountOrder") && !int(h.mountOrder, "/handler/mountOrder", 0))
+      return false;
+    if (has(h, "prefixes")) {
+      const p = h.prefixes;
+      if (!Array.isArray(p) || p.length < 1 || p.length > 32) return false;
+      const seen = new Set<string>();
+      for (const prefix of p) {
+        if (typeof prefix !== "string" || !HANDLER_PREFIX_PATTERN.test(prefix))
+          return false;
+        if (utf8Length(prefix) > 256 || seen.has(prefix)) return false;
+        seen.add(prefix);
+      }
+    }
+    if (!optPattern(h, "activation", VOCAB_TOKEN_PATTERN)) return false;
+  }
+  if (!optPattern(doc, "entitlement", ENTITLEMENT_PATTERN)) return false;
+
+  const variants = doc.variants;
+  if (
+    !Array.isArray(variants) ||
+    variants.length < 1 ||
+    variants.length > MAX_PACK_VARIANTS
+  )
+    return false;
+  const keys = new Set<string>();
+  let axes: string | null = null;
+  for (const [i, v] of variants.entries()) {
+    if (!isObject(v)) return false;
+    const at = `/variants/${i}`;
+    const sel = v.variant;
+    if (!isObject(sel)) return false;
+    const names = Object.keys(sel);
+    if (names.length > 4) return false;
+    for (const name of names) {
+      if (!VARIANT_AXIS_PATTERN.test(name)) return false;
+      const value = sel[name];
+      if (typeof value !== "string" || !VARIANT_VALUE_PATTERN.test(value))
+        return false;
+    }
+    const p = v.payload;
+    if (!isObject(p)) return false;
+    if (!int(p.size, `${at}/payload/size`, 0)) return false;
+    if (typeof p.sha256 !== "string" || !SHA256_RE.test(p.sha256)) return false;
+    if (!objectRef(v.full, `${at}/full`, 0, 0, nonWire)) return false;
+    const f = v.files;
+    if (!isObject(f)) return false;
+    if (typeof f.format !== "string" || !OBJECT_FORMAT_PATTERN.test(f.format))
+      return false;
+    if (typeof f.layout !== "string" || !VOCAB_TOKEN_PATTERN.test(f.layout))
+      return false;
+    if (!objectRef(f, `${at}/files`, 1, 1, nonWire)) return false;
+    if (has(f, "gaps")) {
+      if (!isObject(f.gaps)) return false;
+      if (f.layout === "tree") return false;
+      if (!objectRef(f.gaps, `${at}/files/gaps`, 0, 0, nonWire)) return false;
+    } else if (f.layout === "container") return false;
+    if (has(v, "deltas")) {
+      const deltas = v.deltas;
+      if (!Array.isArray(deltas) || deltas.length > MAX_VARIANT_DELTAS)
+        return false;
+      const ids = new Set<string>();
+      for (const [j, d] of deltas.entries()) {
+        if (!isObject(d)) return false;
+        const dt = `${at}/deltas/${j}`;
+        if (typeof d.method !== "string" || !VOCAB_TOKEN_PATTERN.test(d.method))
+          return false;
+        if (typeof d.scope !== "string" || !VOCAB_TOKEN_PATTERN.test(d.scope))
+          return false;
+        if (d.scope === "payload" && f.layout === "tree") return false;
+        if (typeof d.from !== "string" || !SHA256_RE.test(d.from)) return false;
+        if (!int(d.memBytes, `${dt}/memBytes`, 1)) return false;
+        let id: string | null = null;
+        if (d.scope === "payload") {
+          if (!hashBytesOk(d.artifact, `${dt}/artifact`, nonWire)) return false;
+          id = (d.artifact as { sha256: string }).sha256;
+        } else if (d.scope === "files") {
+          if (!objectRef(d.patch, `${dt}/patch`, 1, 1, nonWire)) return false;
+          if (!hashBytesOk(d.data, `${dt}/data`, nonWire)) return false;
+          id = (d.patch as { sha256: string }).sha256;
+        }
+        if (id !== null) {
+          if (ids.has(id)) return false;
+          ids.add(id);
+        }
+      }
+    }
+    if (has(v, "requires")) {
+      const r = v.requires;
+      if (!isObject(r) || !optPattern(r, "engine", ENGINE_PATTERN))
+        return false;
+    }
+    const key = variantKey(sel as Record<string, string>);
+    if (keys.has(key)) return false;
+    keys.add(key);
+    const axisSet = JSON.stringify([...names].sort());
+    if (axes === null) axes = axisSet;
+    else if (axes !== axisSet) return false;
   }
   return true;
 }
@@ -126,8 +314,11 @@ function claimsOk(
 /**
  * Client step 14 over a verified record payload: true when every claim of §2.4 holds. A caller
  * holding a parsed JWS passes `verifyJws`'s `nonWireIntegers`; a caller checking an object it
- * built passes none. Reserved kinds (`pack`, `revocation`, `delegation`) and unknown kinds pass
- * here; the cross-check refuses them where an app record is expected. Never throws.
+ * built passes none. A `kind: pack` record must pass the pack claims (plans/P4-01.md §2.3) and a
+ * `kind: app` record's `content` and `builds[].embeds` the app ones (§2.4); reserved kinds
+ * (`revocation`, `delegation`) and unknown kinds keep the common claims only, ignoring any
+ * `content` or `embeds`. The cross-check refuses them where an app record is expected. The
+ * Worker's ingest and the CLI's self-check run this same function. Never throws.
  */
 export function releaseRecordClaims(
   payload: unknown,

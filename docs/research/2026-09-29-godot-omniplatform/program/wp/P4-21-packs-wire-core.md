@@ -71,9 +71,9 @@ validator and ingest (P4-02); the CLI (P4-03).
 
 ## Acceptance
 
-- [ ] Every case in §4.6 passes in the Node runner; both self-checks pass in `gen:corpus`.
-- [ ] `gen:corpus -- --check`, `gen:constants -- --check`, `parity:check`, docs `gen:check` and
+- [x] Every case in §4.6 passes in the Node runner; both self-checks pass in `gen:corpus`.
+- [x] `gen:corpus -- --check`, `gen:constants -- --check`, `parity:check`, docs `gen:check` and
       `bundle:action -- --check` are current.
-- [ ] `@polaris-key/zstd-wasm` decodes the hand-assembled window test and refuses a window above
+- [x] `@polaris-key/zstd-wasm` decodes the hand-assembled window test and refuses a window above
       the limit before decoding.
-- [ ] The full green gate passes.
+- [x] The full green gate passes.
