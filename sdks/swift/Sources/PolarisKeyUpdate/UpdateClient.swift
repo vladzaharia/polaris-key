@@ -38,6 +38,7 @@
 
 import Foundation
 import PolarisKeyCore
+@_exported import PolarisKeyPacks
 
 /// Wire v4 update inputs. The installed VERSION is `CoreOptions.version`; everything else the
 /// decision needs about this install is here, and is validated when the client is constructed (a
@@ -84,6 +85,10 @@ public struct UpdateClientOptions: Sendable, Equatable {
     public var platform: String?
     /// The device's `Arch` value. Default: this binary's (`arm64`, `x86_64`).
     public var arch: String?
+    /// Packs (`update.packs`, plans/P4-01.md §2.6–§2.9): the content stamp, embedded baselines,
+    /// variant preferences and the store directory. Pack records verify against
+    /// `pinnedReleaseKeys`.
+    public var packs: PacksOptions
 
     public init(
         pinnedReleaseKeys: TrustSet = [:],
@@ -98,7 +103,8 @@ public struct UpdateClientOptions: Sendable, Equatable {
         binaryVersion: String? = nil,
         engine: String? = nil,
         platform: String? = nil,
-        arch: String? = nil
+        arch: String? = nil,
+        packs: PacksOptions = PacksOptions()
     ) {
         self.pinnedReleaseKeys = pinnedReleaseKeys
         self.outlet = outlet
@@ -113,6 +119,7 @@ public struct UpdateClientOptions: Sendable, Equatable {
         self.engine = engine
         self.platform = platform
         self.arch = arch
+        self.packs = packs
     }
 
     /// The main bundle's `CFBundleVersion`, when it has one.
@@ -238,6 +245,9 @@ public struct VersionCheck: Sendable, Equatable {
 }
 
 public actor UpdateClient {
+    /// The pack facet (`ensure`, `state`, `registerHandler`, progress events). Cross-platform:
+    /// it lives in PolarisKeyPacks and links no Sparkle.
+    public nonisolated let packs: PacksClient
     private let core: CoreContext
     private let configured: ConfiguredUpdate?
     /// The in-process detection, once started: never cached past this client (§2.9). The task,
@@ -252,6 +262,7 @@ public actor UpdateClient {
     public init(core: CoreContext) {
         self.core = core
         self.configured = nil
+        self.packs = PacksClient(core: core, releaseKeys: [:])
     }
 
     /// A client for wire v4's signed decision too. Throws `invalid-options` (`PolarisError`) for
@@ -259,7 +270,9 @@ public actor UpdateClient {
     /// arch outside the enums, or a pinned release key whose raw bytes are also a trust pin.
     public init(core: CoreContext, options: UpdateClientOptions) throws {
         self.core = core
-        self.configured = try configure(options, pinnedTrust: core.pinnedTrust)
+        let configured = try configure(options, pinnedTrust: core.pinnedTrust)
+        self.configured = configured
+        self.packs = PacksClient(core: core, releaseKeys: configured.releaseKeys, options: options.packs)
     }
 
     /// The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), detecting it first when the

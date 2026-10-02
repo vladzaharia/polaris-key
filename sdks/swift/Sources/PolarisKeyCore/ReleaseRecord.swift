@@ -11,7 +11,8 @@ import Foundation
 
 /// P2-04's `BUILD_ID_RE`: ASCII, so build-id uniqueness and §2.8's tie-break compare bytes.
 public let BUILD_ID_PATTERN = "[a-z0-9][a-z0-9._-]{0,63}"
-/// The record kinds a v4 client verifies and never acts on (P4-01, P4-13, P4-19).
+/// The record kinds a v4 client verifies and never acts on as an app record (P4-01, P4-13,
+/// P4-19). A `pack` record is acted on only through a content pin (`pin.kind: "pack"`).
 public let RESERVED_RECORD_KINDS: [String] = ["pack", "revocation", "delegation"]
 
 /// `@polaris-key/manifest`'s `DELIVERABLE_ID_PATTERN`; at most 64 bytes.
@@ -216,7 +217,17 @@ private func recordClaimsHold(
         else { return false }
     }
 
-    guard let rawBuilds = doc["builds"] else { return doc["kind"]?.stringValue != "app" }
+    // plans/P4-01.md §2.2: §2.3 applies to `kind: pack` and §2.4 to `kind: app`; a record of any
+    // other kind keeps the common claims only.
+    let kind = doc["kind"]?.stringValue
+    if kind == "pack" { return packRecordClaims(doc, nonWire: nonWire) }
+    if kind == "app", let content = doc["content"],
+        !contentClaims(content, nonWire: nonWire, pointer: "/content")
+    {
+        return false
+    }
+
+    guard let rawBuilds = doc["builds"] else { return kind != "app" }
     guard let builds = rawBuilds.arrayValue, builds.count >= 1, builds.count <= MAX_BUILDS else {
         return false
     }
@@ -251,14 +262,17 @@ private func recordClaimsHold(
             guard optionalString(artifact, "contentType") else { return false }
         }
         if payloads > 1 { return false }
+        if kind == "app", let embeds = build["embeds"], !embedsClaims(embeds) { return false }
     }
     return true
 }
 
 /// Client step 14 over a verified record payload: true when every claim of §2.4 holds. A caller
 /// holding a verified JWS passes its `nonWireIntegers`; a caller checking a value it built
-/// passes none. Reserved and unknown kinds pass here; the cross-check refuses them where an app
-/// record is expected.
+/// passes none. A `kind: pack` record must pass the pack claims (plans/P4-01.md §2.3) and a
+/// `kind: app` record's `content` and `builds[].embeds` the app ones (§2.4); reserved and unknown
+/// kinds keep the common claims only, and the cross-check refuses them where an app record is
+/// expected.
 public func releaseRecordClaims(
     _ payload: JSONValue, expectedAud: String, nonWire: NonWireIntegers = []
 ) -> Bool {
@@ -277,11 +291,15 @@ public func recordHash(_ jws: String) -> String {
 
 /// What a target pins, for the cross-check (step 15).
 public struct ReleaseRecordPin: Sendable, Equatable {
+    /// The record kind the pin names: `app` for a feed target, `pack` for a content pin
+    /// (plans/P4-01.md §2.6).
+    public let kind: String
     public let deliverable: String
     public let version: String
     public let seq: Int
 
-    public init(deliverable: String = "app", version: String, seq: Int) {
+    public init(kind: String = "app", deliverable: String = "app", version: String, seq: Int) {
+        self.kind = kind
         self.deliverable = deliverable
         self.version = version
         self.seq = seq
@@ -351,7 +369,8 @@ private func headerKid(_ jws: String) -> String? {
 ///  13. the key is selected by `kid` from `releaseKeys` only, refused if its raw bytes are also
 ///      in `productTrust`, then `verify` with that one key and `typ` `pkey-release+jws`;
 ///  14. the claims (`releaseRecordClaims`);
-///  15. with a `pin`: `kind` is `app`, and `deliverable`, `version` and `seq` equal the pin's.
+///  15. with a `pin`: `kind` equals the pin's `kind` (`app` unless it names another), and
+///      `deliverable`, `version` and `seq` equal the pin's (plans/P4-01.md §2.6).
 ///
 /// Never throws.
 public func verifyReleaseRecord(
@@ -382,7 +401,7 @@ public func verifyReleaseRecord(
 
     // 15. The cross-check against the pin.
     if let pin = opts.pin {
-        guard record.kind == "app", record.deliverable == pin.deliverable,
+        guard record.kind == pin.kind, record.deliverable == pin.deliverable,
             record.version == pin.version, record.seq == pin.seq
         else { return .refused(.crossCheck) }
     }

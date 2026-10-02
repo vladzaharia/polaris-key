@@ -15,16 +15,17 @@ Polaris Key is a suite of opt-in services over an always-on Core, and on Apple p
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product              | Contents                                                                                                                                             | Depends on                               |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import                                                        | Core, License, Config, Identity, Release |
-| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles, and wire v4's feed and record verifiers and update decision | —                                        |
-| `PolarisKeyLicense`  | the gate, activation, entitlements                                                                                                                   | Core                                     |
-| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch                                                                  | Core                                     |
-| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                                                                       | Core                                     |
-| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                     |
-| `PolarisKeyUpdate`   | wire v4's `UpdateClient` (macOS **and** iOS), and the Sparkle wiring (**macOS only**)                                                                | Core, Sparkle ≥ 2.9.6 (macOS only)       |
-| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                                                                                   | Core, License, Config                    |
+| Product              | Contents                                                                                                                                             | Depends on                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import                                                        | Core, License, Config, Identity, Release  |
+| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles, and wire v4's feed and record verifiers and update decision | —                                         |
+| `PolarisKeyLicense`  | the gate, activation, entitlements                                                                                                                   | Core                                      |
+| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch                                                                  | Core                                      |
+| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                                                                       | Core                                      |
+| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                      |
+| `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, and the `update.packs` facet (macOS **and** iOS)                                           | Core, libzstd 1.5.7                       |
+| `PolarisKeyUpdate`   | wire v4's `UpdateClient` and its `packs` facet (macOS **and** iOS), and the Sparkle wiring (**macOS only**)                                          | Core, Packs, Sparkle ≥ 2.9.6 (macOS only) |
+| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                                                                                   | Core, License, Config                     |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -487,6 +488,62 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
   feed pins it); `buildURL(version:buildId:)` is the `distribution/builds` route, never the
   R2-only blob route.
 
+## Packs (`update.packs`)
+
+Content packs (plans/P4-01.md; CONTENT §10) install through `UpdateClient.packs`, a
+`PolarisKeyPacks.PacksClient` over the same `CoreContext`. Pack records verify against
+`pinnedReleaseKeys` only. The running build's pins come from its **content stamp**
+(`pkey-content.json`, written by `pkey release content-stamp` before the build and shipped in the
+app's own read-only resources): a build without one has no packs, and `ensure` throws
+`not-configured`.
+
+```swift
+import PolarisKeyUpdate
+
+let update = try UpdateClient(
+    core: client.core,
+    options: UpdateClientOptions(
+        pinnedReleaseKeys: ["djdl-release-2026": "<raw key, base64url>"],
+        packs: PacksOptions(
+            contentStamp: .file(Bundle.main.url(forResource: "pkey-content", withExtension: "json")!),
+            embedded: [EmbeddedPack(path: Bundle.main.url(forResource: "djdl.l10n", withExtension: nil)!)],
+            axes: ["locale": ["fr", "en"]])))
+
+update.packs.on { p in print(p.phase, p.done, p.total) }    // or `for await p in update.packs.progress()`
+let installs = try await update.packs.ensure(["djdl.l10n"])  // fetch, verify, commit, activate
+let dir = try await update.packs.path("djdl.l10n")           // a files.tree pack's directory
+try await update.packs.confirm()                             // this boot is healthy
+```
+
+- **What it does.** `ensure` fetches the pinned record by hash (`release.endpoints.record`),
+  checks its type (a registered handler; `files.tree` is built in), entitlement and variant
+  (`axes`, `engine`), plans the cheapest strategy (`delta`, `file` or `full`) against what is
+  installed, stages each object from `distribution.endpoints.blobs` with `Range`/`If-Range`
+  (resuming after a dropped connection, re-hashing what is staged), applies and verifies it, and
+  swaps the pointer in `state.json`. `files.tree` is hot: the new directory is live at once.
+- **Where it lives.** `<data dir>/packs` (`CoreOptions.dataDir`, P1b-09), excluded from backups:
+  `staging/`, `store/<pack>/<payload sha256>/` and `state.json`, written by temp file, `F_FULLFSYNC`
+  and rename. A torn `state.json` is held aside as `state.json.torn` (with its snapshot in
+  `state.json.torn.list`) and garbage collection waits for `recoverState()`; one that cannot be read
+  makes every write throw `pack-state-unreadable` this process; an install whose bytes cannot be
+  read is kept, unused, until a later launch can check it. `state().stateIssue` says which.
+- **zstd.** libzstd 1.5.7 from the official facebook/zstd package (Apple's Compression has no
+  zstd); `--patch-from` deltas decode as raw-content prefixes, and every one passes the frame
+  window check before it is decoded.
+- **Memory.** `memBudget` (default 256 MiB) caps one delta frame's `memBytes`: a `--patch-from`
+  decode holds the base, the frame and the output at once. iOS background tasks and app
+  extensions (widgets, share and notification extensions, Background Assets) run under much
+  tighter memory limits than a foreground app, so pass a lower budget there, for example
+  `PacksOptions(memBudget: 32 * 1024 * 1024)`. A delta over the budget is never chosen: the
+  planner falls back to the `file` or `full` strategy, which costs more bytes but less memory.
+- **Boot.** `bootOptions()` gives `BootOptions`' `requiredPacks` and `essentialPacks`;
+  `bootFetch(send:consent:metered:answer:)` drives the stage machine's FETCH stage
+  (`fetch.consent`, `fetch.progress`, `fetch.done`).
+- **Telemetry.** `devices/report` carries `content: {packSetId}` of the running set once a stamp
+  is configured.
+- **Handlers.** `registerHandler(_:)` adds a type (`layout` `tree` or `container`, `activation`
+  `hot` or `restart`, `supports(formatVersion)`, optional `activate`/`deactivate`).
+
 ## Channels
 
 The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a
@@ -542,12 +599,17 @@ verified against `pinnedReleaseKeys` only, after its SHA-256 matches the feed's 
 swift build
 swift test    # includes the cross-language conformance corpus (v2)
 swift test --filter UpdateMatrixTests   # wire v4's update-matrix.json, row for row
+swift test --filter "ContentConformanceTests|PlanMatrixTests|PackRecordConformanceTests"  # packs
 
 # The Sparkle conditioning: PolarisKeyUpdate must build for iOS without linking a macOS framework,
 # and the decision lives in PolarisKeyCore, which iOS needs whole.
 xcodebuild -scheme PolarisKeyCore -destination 'generic/platform=iOS' build
 xcodebuild -scheme PolarisKeyUpdate -destination 'generic/platform=iOS' build
+xcodebuild -scheme PolarisKeyPacks -destination 'generic/platform=iOS' build
 ```
+
+`ContentConformanceTests` reads `conformance/corpus/v2/content/` from the checkout (it is not
+mirrored into the test bundle), so run the suite from a monorepo checkout.
 
 The corpus fixtures under `Tests/PolarisKeyTests/Resources/` are **generated**: run
 `pnpm gen:corpus` from the repo root after any wire change, and `pnpm gen:corpus -- --check` is

@@ -1,4 +1,4 @@
-# @pkey-feature core.verify core.bundle update.feed release.record
+# @pkey-feature core.verify core.bundle update.feed release.record packs.record
 """Cross-language conformance: drive EVERY vector in ``conformance/corpus/v2/`` through
 the production verifiers and assert the expected outcome.
 
@@ -20,6 +20,8 @@ pointer-set section (§4.1) over the seven JWS families, ``feedCases`` and
 ``bundleCases``       §7 offline bundle import                -> ``inspect_bundle``
 ``feedCases``         V4 §2.5 steps 3–8, the channel feed     -> ``verify_feed``
 ``releaseRecordCases`` V4 §2.5 steps 12–15, the release record -> ``verify_release_record``
+``packRecordCases``   V4 §3.5 steps 12–15 with ``pin.kind``     -> ``verify_release_record``
+``markerCases``       V4 §3.7, the embedded-pack marker        -> ``verify_marker``
 ====================  ==========================================================
 
 The two v4 sections also run the claims functions alone (``feed_claims``, steps 4–6, and
@@ -55,6 +57,7 @@ from polaris_key.core.release_record import (
 from polaris_key.core.trust import merge_trust, verify_trust_manifest
 from polaris_key.core.verify import verify_config_doc, verify_license_doc
 from polaris_key.license.gate import license_state
+from polaris_key.update.packs import verify_marker
 
 # tests/ -> python/ -> sdks/ -> repo root -> conformance/corpus/v2/cases.json
 _CORPUS_DIR = Path(__file__).resolve().parents[3] / "conformance" / "corpus" / "v2"
@@ -535,3 +538,88 @@ def test_release_record_claims_case(case: Dict[str, Any]) -> None:
     assert v is not None, f"{case['id']} reaches the claims step"
     ok = release_record_claims(v.payload, expected_aud=case["expectedAud"])
     assert ok == (case["expect"]["verify"] == "ok" or case["expect"]["step"] != "claims")
+
+
+# ── plans/P4-01.md §4.6 (P4-07): pack records (steps 12–15 with ``pin.kind``) and markers ───
+_PACK_RECORD_CASES: List[Dict[str, Any]] = _CORPUS["packRecordCases"]
+_MARKER_CASES: List[Dict[str, Any]] = _CORPUS["markerCases"]
+
+
+def test_pack_record_and_marker_counts() -> None:
+    assert len(_PACK_RECORD_CASES) == 159
+    assert len(_MARKER_CASES) == 17
+
+
+def _pack_claims_cases(cases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [
+        c
+        for c in cases
+        if c["expect"]["verify"] == "ok" or c["expect"]["step"] in ("claims", "cross-check")
+    ]
+
+
+@pytest.mark.parametrize(
+    "case",
+    _PACK_RECORD_CASES,
+    ids=[f"{c['id']} -> {'ok' if c['expect']['verify'] == 'ok' else c['expect']['step']}" for c in _PACK_RECORD_CASES],
+)
+def test_pack_record_case(case: Dict[str, Any]) -> None:
+    pin = case.get("pin")
+    r = verify_release_record(
+        case["jws"],
+        release_keys=case["releaseKeys"],
+        product_trust=case["productTrust"],
+        expected_aud=case["expectedAud"],
+        expected_hash=case["expectedHash"],
+        pin=ReleaseRecordPin(**pin) if pin else None,
+    )
+    want = case["expect"]
+    if want["verify"] == "ok":
+        assert r.ok, f"{case['id']}: {case['description']} (refused at {r.step})"
+        assert r.record is not None
+        assert r.record.kind == want["kind"]
+        if "doc" in want:
+            assert r.record.to_dict() == want["doc"]
+    else:
+        assert not r.ok, f"{case['id']}: {case['description']}"
+        assert r.step == want["step"], case["description"]
+
+
+@pytest.mark.parametrize(
+    "case",
+    _pack_claims_cases(_PACK_RECORD_CASES),
+    ids=[c["id"] for c in _pack_claims_cases(_PACK_RECORD_CASES)],
+)
+def test_pack_record_claims_case(case: Dict[str, Any]) -> None:
+    """Step 14 alone over every pack-record case that reaches it."""
+    kid = json.loads(b64url_decode(case["jws"].split(".")[0]))["kid"]
+    v = verify_jws(case["jws"], {kid: case["releaseKeys"][kid]}, typ="pkey-release+jws", require_typ=True)
+    assert v is not None, f"{case['id']} reaches the claims step"
+    ok = release_record_claims(v.payload, expected_aud=case["expectedAud"])
+    assert ok == (case["expect"]["verify"] == "ok" or case["expect"]["step"] != "claims")
+
+
+@pytest.mark.parametrize(
+    "case",
+    _MARKER_CASES,
+    ids=[f"{c['id']} -> {'ok' if c['expect']['verify'] == 'ok' else c['expect']['step']}" for c in _MARKER_CASES],
+)
+def test_marker_case(case: Dict[str, Any]) -> None:
+    r = verify_marker(
+        case["marker"],
+        release_keys=case["releaseKeys"],
+        product_trust=case["productTrust"],
+        expected_aud=case["expectedAud"],
+    )
+    want = case["expect"]
+    if want["verify"] == "ok":
+        assert r.ok, f"{case['id']}: {case['description']} (refused at {r.step})"
+        assert {
+            "verify": "ok",
+            "packId": r.pack_id,
+            "version": r.version,
+            "recordSha256": r.record_sha256,
+        } == want
+        assert r.record is not None and r.record["kind"] == "pack"
+    else:
+        assert (r.ok, r.error, r.step) == (False, "marker-rejected", want["step"]), case["description"]

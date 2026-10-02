@@ -82,17 +82,41 @@
       "status": "implemented",
       "note": "core/detection.py detect_outlet over update/outlet.py read_outlet_signals (environment, sys.executable and script path conventions, product-named markers, GetCurrentPackageFamilyName through ctypes); the update client detects when the host names no outlet. PEP 376 INSTALLER names no v4 signal and is not read."
     },
-    "packs.record": { "status": "planned", "wp": "P4-07" },
+    "packs.record": {
+      "status": "implemented",
+      "note": "core.release_record verify_release_record with pin.kind (pack records fetched by the content stamp's pin, app content and builds[].embeds claims) and update.packs.verify_marker for embedded baselines; test_conformance drives every packRecordCases and markerCases vector, test_content_conformance the stampCases."
+    },
     "packs.revoke": { "status": "planned", "wp": "P4-23" },
-    "packs.plan": { "status": "planned", "wp": "P4-07" },
-    "packs.index.files": { "status": "planned", "wp": "P4-07" },
+    "packs.plan": {
+      "status": "implemented",
+      "note": "update.packs plan, select_variant and plan_target; every plan-matrix.json row, variant case and target case in test_plan_matrix."
+    },
+    "packs.index.files": {
+      "status": "implemented",
+      "note": "update.packs parse_files_index, check_paths and tree_digest; filesIndexCases under compression.zstd (3.14+) and zstandard."
+    },
     "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
-    "packs.apply.full": { "status": "planned", "wp": "P4-07" },
-    "packs.apply.file": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.full": {
+      "status": "implemented",
+      "note": "update.packs apply_full (streamed through decode_stream); applyCases under every backend the interpreter has."
+    },
+    "packs.apply.file": {
+      "status": "implemented",
+      "note": "update.packs apply_file with the type-neutral container rebuild; applyCases under every backend."
+    },
     "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
-    "packs.apply.delta": { "status": "planned", "wp": "P4-07" },
-    "packs.state": { "status": "planned", "wp": "P4-07" },
-    "packs.handlers": { "status": "planned", "wp": "P4-07" },
+    "packs.apply.delta": {
+      "status": "implemented",
+      "note": "compression.zstd's ZstdDict(base, is_raw=True).as_prefix on 3.14+, zstandard's DICT_TYPE_RAWCONTENT below (a hard dependency there), window_log_max always set; the window check runs in the applier whatever the decoder, and a start-up probe gates zstd-patch-from."
+    },
+    "packs.state": {
+      "status": "implemented",
+      "note": "update.packs PackEngine and the install-state machine over DirPackStorage in the platform data directory: journal, resume with Range/If-Range, atomic pointer swap with fsync, confirm, rollback, GC roots, a torn state.json held aside, an unreadable one refused, embedded baselines; packSetId on devices/report."
+    },
+    "packs.handlers": {
+      "status": "implemented",
+      "note": "client.update.packs.register_handler; files.tree (hot: versioned directory plus pointer swap) built in."
+    },
     "packs.provides": { "status": "planned", "wp": "P4-20" },
     "packs.transport.apple": {
       "status": "na",

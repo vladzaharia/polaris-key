@@ -17,12 +17,32 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from typing import Any, Collection, Dict, Mapping, Optional
+from typing import Any, Collection, Dict, Mapping, Optional, Tuple
 
-from ..constants_generated import MAX_RECORD_JWS_BYTES
+from ..constants_generated import (
+    MAX_BUILD_EMBEDS,
+    MAX_PACK_VARIANTS,
+    MAX_RECORD_JWS_BYTES,
+    MAX_VARIANT_DELTAS,
+)
 from .b64url import b64url_decode
 from .jws import TrustSet, verify_jws
 from .models import TYP_RELEASE, ReleaseRecordDoc, _wire_int
+from .pack_claims import (
+    ENGINE_PATTERN,
+    ENTITLEMENT_PATTERN,
+    HANDLER_PREFIX_PATTERN,
+    OBJECT_FORMAT_PATTERN,
+    PACK_TYPE_PATTERN,
+    VARIANT_AXIS_PATTERN,
+    VARIANT_VALUE_PATTERN,
+    VOCAB_TOKEN_PATTERN,
+    content_claims,
+    is_pack_id,
+    object_ref,
+    utf8_length,
+    variant_key,
+)
 from .patterns import _full_match
 
 __all__ = [
@@ -91,6 +111,13 @@ def _claims_ok(doc: Dict[str, Any], expected_aud: str) -> bool:
         ):
             return False
 
+    # plans/P4-01.md §2.2: §2.3 applies to `kind: pack` and §2.4 to `kind: app`; a record of
+    # any other kind keeps the common claims only.
+    if doc["kind"] == "pack":
+        return _pack_claims_ok(doc)
+    if doc["kind"] == "app" and "content" in doc and not content_claims(doc["content"]):
+        return False
+
     if "builds" not in doc:
         return doc["kind"] != "app"
     builds = doc["builds"]
@@ -135,13 +162,171 @@ def _claims_ok(doc: Dict[str, Any], expected_aud: str) -> bool:
                 return False
         if payloads > 1:
             return False
+        if doc["kind"] == "app" and "embeds" in build and not _embeds_ok(build["embeds"]):
+            return False
+    return True
+
+
+def _embeds_ok(embeds: Any) -> bool:
+    """``builds[].embeds`` (plans/P4-01.md §2.4): 0–64 unique pack ids."""
+    if not isinstance(embeds, list) or len(embeds) > MAX_BUILD_EMBEDS:
+        return False
+    seen = set()
+    for pack_id in embeds:
+        if not is_pack_id(pack_id) or pack_id in seen:
+            return False
+        seen.add(pack_id)
+    return True
+
+
+def _opt_pattern(o: Dict[str, Any], key: str, pattern: "re.Pattern[str]") -> bool:
+    """An optional member that must match ``pattern`` when present (``null`` is refused)."""
+    return key not in o or _full_match(pattern, o[key]) is not None
+
+
+def _hash_bytes_ok(v: Any) -> bool:
+    """A ``{sha256, bytes}`` member (a delta's ``artifact`` or ``data``): bytes ≥ 1."""
+    return (
+        isinstance(v, dict)
+        and _full_match(_SHA256_RE, v.get("sha256")) is not None
+        and _wire_int(v.get("bytes"), 1) is not None
+    )
+
+
+def _pack_claims_ok(doc: Dict[str, Any]) -> bool:
+    """The pack record's claims (plans/P4-01.md §2.3), after the common ones. A value outside a
+    v1 vocabulary is never refused here; it only makes the governed thing unusable (§2.2)."""
+    if doc["deliverable"] == "app":
+        return False
+    if "builds" in doc:
+        return False
+    if _full_match(PACK_TYPE_PATTERN, doc.get("type")) is None:
+        return False
+    if _wire_int(doc.get("formatVersion"), 1) is None:
+        return False
+    if "handler" in doc:
+        h = doc["handler"]
+        if not isinstance(h, dict):
+            return False
+        if "mountOrder" in h and _wire_int(h["mountOrder"], 0) is None:
+            return False
+        if "prefixes" in h:
+            p = h["prefixes"]
+            if not isinstance(p, list) or len(p) < 1 or len(p) > 32:
+                return False
+            seen = set()
+            for prefix in p:
+                if _full_match(HANDLER_PREFIX_PATTERN, prefix) is None:
+                    return False
+                if utf8_length(prefix) > 256 or prefix in seen:
+                    return False
+                seen.add(prefix)
+        if not _opt_pattern(h, "activation", VOCAB_TOKEN_PATTERN):
+            return False
+    if not _opt_pattern(doc, "entitlement", ENTITLEMENT_PATTERN):
+        return False
+
+    variants = doc.get("variants")
+    if not isinstance(variants, list) or len(variants) < 1 or len(variants) > MAX_PACK_VARIANTS:
+        return False
+    keys = set()
+    axes: Optional[Tuple[str, ...]] = None
+    for v in variants:
+        if not isinstance(v, dict):
+            return False
+        sel = v.get("variant")
+        if not isinstance(sel, dict):
+            return False
+        names = list(sel.keys())
+        if len(names) > 4:
+            return False
+        for name in names:
+            if _full_match(VARIANT_AXIS_PATTERN, name) is None:
+                return False
+            if _full_match(VARIANT_VALUE_PATTERN, sel[name]) is None:
+                return False
+        p = v.get("payload")
+        if not isinstance(p, dict):
+            return False
+        if _wire_int(p.get("size"), 0) is None:
+            return False
+        if _full_match(_SHA256_RE, p.get("sha256")) is None:
+            return False
+        if not object_ref(v.get("full"), 0, 0):
+            return False
+        f = v.get("files")
+        if not isinstance(f, dict):
+            return False
+        if _full_match(OBJECT_FORMAT_PATTERN, f.get("format")) is None:
+            return False
+        if _full_match(VOCAB_TOKEN_PATTERN, f.get("layout")) is None:
+            return False
+        if not object_ref(f, 1, 1):
+            return False
+        if "gaps" in f:
+            if not isinstance(f["gaps"], dict):
+                return False
+            if f["layout"] == "tree":
+                return False
+            if not object_ref(f["gaps"], 0, 0):
+                return False
+        elif f["layout"] == "container":
+            return False
+        if "deltas" in v:
+            deltas = v["deltas"]
+            if not isinstance(deltas, list) or len(deltas) > MAX_VARIANT_DELTAS:
+                return False
+            ids = set()
+            for d in deltas:
+                if not isinstance(d, dict):
+                    return False
+                if _full_match(VOCAB_TOKEN_PATTERN, d.get("method")) is None:
+                    return False
+                if _full_match(VOCAB_TOKEN_PATTERN, d.get("scope")) is None:
+                    return False
+                if d["scope"] == "payload" and f["layout"] == "tree":
+                    return False
+                if _full_match(_SHA256_RE, d.get("from")) is None:
+                    return False
+                if _wire_int(d.get("memBytes"), 1) is None:
+                    return False
+                delta_id: Optional[str] = None
+                if d["scope"] == "payload":
+                    if not _hash_bytes_ok(d.get("artifact")):
+                        return False
+                    delta_id = d["artifact"]["sha256"]
+                elif d["scope"] == "files":
+                    if not object_ref(d.get("patch"), 1, 1):
+                        return False
+                    if not _hash_bytes_ok(d.get("data")):
+                        return False
+                    delta_id = d["patch"]["sha256"]
+                if delta_id is not None:
+                    if delta_id in ids:
+                        return False
+                    ids.add(delta_id)
+        if "requires" in v:
+            r = v["requires"]
+            if not isinstance(r, dict) or not _opt_pattern(r, "engine", ENGINE_PATTERN):
+                return False
+        key = variant_key(sel)
+        if key in keys:
+            return False
+        keys.add(key)
+        axis_set = tuple(sorted(names))
+        if axes is None:
+            axes = axis_set
+        elif axes != axis_set:
+            return False
     return True
 
 
 def release_record_claims(payload: Any, *, expected_aud: str) -> bool:
     """Client step 14 over a verified record payload: true when every claim of §2.4 holds.
 
-    Reserved kinds (``pack``, ``revocation``, ``delegation``) and unknown kinds pass here; the
+    A ``kind: pack`` record must pass the pack claims (plans/P4-01.md §2.3) and a ``kind: app``
+    record's ``content`` and ``builds[].embeds`` the app ones (§2.4); reserved kinds
+    (``revocation``, ``delegation``) and unknown kinds keep the common claims only. The
     cross-check refuses them where an app record is expected. Never raises.
     """
     if not isinstance(payload, dict):
@@ -173,11 +358,14 @@ def record_hash(jws: str) -> str:
 
 @dataclass(frozen=True)
 class ReleaseRecordPin:
-    """What a target pins, for the cross-check (step 15)."""
+    """What a target pins, for the cross-check (step 15). ``kind`` is the record kind the pin
+    names: ``app`` for a feed target (the default), ``pack`` for a content pin
+    (plans/P4-01.md §2.6)."""
 
     deliverable: str
     version: str
     seq: int
+    kind: str = "app"
 
 
 @dataclass(frozen=True)
@@ -237,7 +425,7 @@ def verify_release_record(
         refused if its raw bytes are also in ``product_trust`` (the effective product trust
         set), then ``verify_jws`` with that one key and ``typ`` ``pkey-release+jws``;
     14. the claims (:func:`release_record_claims`);
-    15. with a ``pin``: ``kind`` is ``app``, and ``deliverable``, ``version`` and ``seq`` equal
+    15. with a ``pin``: ``kind`` equals the pin's ``kind`` (``app`` by default), and ``deliverable``, ``version`` and ``seq`` equal
         the pin's.
 
     Never raises.
@@ -273,7 +461,7 @@ def verify_release_record(
 
         # 15. The cross-check against the pin.
         if pin is not None:
-            if record.kind != "app" or record.deliverable != pin.deliverable:
+            if record.kind != pin.kind or record.deliverable != pin.deliverable:
                 return _fail("cross-check")
             if record.version != pin.version or record.seq != pin.seq:
                 return _fail("cross-check")

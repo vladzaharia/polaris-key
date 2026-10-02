@@ -1,6 +1,7 @@
 """``polaris_key.update`` — the Update service's client surface: the version check, the Sparkle
 appcast URL, and wire v4's signed update decision (``decide()``, ``feed()``,
-``release_record()``, ``build_url()``). Mirrors ``@polaris-key/node``'s ``update/client.ts``."""
+``release_record()``, ``build_url()``) and the pack facet (``client.update.packs``,
+:mod:`polaris_key.update.packs`). Mirrors ``@polaris-key/node``'s ``update/client.ts``."""
 
 from __future__ import annotations
 
@@ -13,6 +14,8 @@ from .client import (
     VersionCheck,
 )
 from ..core.detection import detect_outlet, detection_stamp
+from .packs import PackError, PackHandler
+from .packs.client import EmbeddedPack, PacksClient, PacksOptions
 from .outlet import (
     OutletFs,
     OutletReaderEnvironment,
@@ -33,4 +36,9 @@ __all__ = [
     "detection_stamp",
     "process_outlet_environment",
     "read_outlet_signals",
+    "PackError",
+    "PackHandler",
+    "EmbeddedPack",
+    "PacksClient",
+    "PacksOptions",
 ]

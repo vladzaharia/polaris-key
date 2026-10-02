@@ -1376,17 +1376,17 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "update.driver": CapabilityRow("planned", "update", ()),
         "update.bootguard": CapabilityRow("planned", "update", ()),
         "outlet.detect": CapabilityRow("implemented", "update", ()),
-        "packs.record": CapabilityRow("planned", "release", ()),
+        "packs.record": CapabilityRow("implemented", "release", ()),
         "packs.revoke": CapabilityRow("planned", "release", ()),
-        "packs.plan": CapabilityRow("planned", "release", ()),
-        "packs.index.files": CapabilityRow("planned", "release", ()),
+        "packs.plan": CapabilityRow("implemented", "release", ()),
+        "packs.index.files": CapabilityRow("implemented", "release", ()),
         "packs.index.chunks": CapabilityRow("planned", "release", ()),
-        "packs.apply.full": CapabilityRow("planned", "release", ()),
-        "packs.apply.file": CapabilityRow("planned", "release", ()),
+        "packs.apply.full": CapabilityRow("implemented", "release", ()),
+        "packs.apply.file": CapabilityRow("implemented", "release", ()),
         "packs.apply.chunk": CapabilityRow("planned", "release", ()),
-        "packs.apply.delta": CapabilityRow("planned", "release", ()),
-        "packs.state": CapabilityRow("planned", "release", ()),
-        "packs.handlers": CapabilityRow("planned", "release", ()),
+        "packs.apply.delta": CapabilityRow("implemented", "release", ()),
+        "packs.state": CapabilityRow("implemented", "release", ()),
+        "packs.handlers": CapabilityRow("implemented", "release", ()),
         "packs.provides": CapabilityRow("planned", "release", ()),
         "packs.transport.apple": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
         "packs.transport.play": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
@@ -1400,4 +1400,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "47aad6ea686f79c4b689a205a051b8a639388ad107f8b0f08368689ac4b810e3"
+CAPABILITY_DIGEST: Final[str] = "dfd6402b6d6a0da2dec3eef94177b0c6b5db85bafba715c3c8bef6b9407b87ba"

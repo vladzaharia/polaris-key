@@ -1,0 +1,1271 @@
+// The pack pipeline (CONTENT §10; plans/P4-01.md §2.6, §2.9): preflight, journal, fetch,
+// verify, commit, activate, confirm and resume, over injected ports. client-core
+// `packs/engine.ts` (P4-06) is the reference, ported with its four review rounds of state
+// safety: a state read is "missing" only on not-found; a torn document is quarantined with GC
+// held and the hold's snapshot persisted and reused; an unreadable document blocks every write;
+// an install whose payload check throws stays in the document, out of use and out of GC (active
+// and previous alike); and a fresh commit carries such an active over to previous, re-verified at
+// rollback.
+//
+// For each pack id `ensure` asks for:
+//
+//  1. the content stamp's pin (a host without a stamp has no packs, §2.8);
+//  2. the pinned pack record, fetched by hash and verified against the pinned release keys with
+//     `pin: {kind: "pack", deliverable, version, seq}` (V4 §3.5 steps 12–15);
+//  3. its type (a registered handler for `type` and `formatVersion`), its entitlement, and
+//     `selectVariant`;
+//  4. the target files index when the layout is `tree` or a release of the pack is installed;
+//     `planTarget` and `plan`, with the host's free disk and memory budget;
+//  5. a journal, then each object fetched with `Range`/`If-Range` into staging, resumed from what
+//     is staged (re-hashed, never trusted), checkpointed;
+//  6. the applier; on a refusal, the next fallback (`full` always last);
+//  7. commit (the payload moves into the store, then the state's pointer swap), activation
+//     (`hot` now; `restart` at the next boot), and garbage collection of what no root holds.
+
+import Foundation
+import PolarisKeyCore
+
+// ── Ports ────────────────────────────────────────────────────────────────────────────────────
+
+/// A pack type's handler (CONTENT §4.1). `files.tree` is built in; P4-16 and games add more
+/// through `registerHandler`.
+public protocol PackHandler: Sendable {
+    var type: String { get }
+    /// The layout of the payloads it installs: `tree` or `container`.
+    var layout: String { get }
+    /// The activation when the record names none: `hot` or `restart`.
+    var activation: String { get }
+    /// Whether it can install and activate this `formatVersion`.
+    func supports(_ formatVersion: Int) -> Bool
+    /// A committed install becomes live: at commit for `hot`, at load for a boot's `restart`.
+    func activate(_ install: PackInstall) async throws
+    /// A live `hot` install is replaced or rolled back.
+    func deactivate(_ install: PackInstall) async throws
+}
+
+extension PackHandler {
+    public func activate(_ install: PackInstall) async throws {}
+    public func deactivate(_ install: PackInstall) async throws {}
+}
+
+/// `files.tree` (CONTENT §4.2): a directory tree, hot (versioned directory plus pointer swap),
+/// format version 1.
+public struct FilesTreeHandler: PackHandler {
+    public init() {}
+    public var type: String { "files.tree" }
+    public var layout: String { "tree" }
+    public var activation: String { "hot" }
+    public func supports(_ formatVersion: Int) -> Bool { formatVersion == 1 }
+}
+
+public let FILES_TREE_HANDLER: any PackHandler = FilesTreeHandler()
+
+/// An object download as the engine reads it (the host adapts its HTTP client).
+public struct ObjectResponse: Sendable {
+    public var status: Int
+    /// `Content-Range`, or nil.
+    public var contentRange: String?
+    public var chunks: AsyncThrowingStream<[UInt8], Error>
+
+    public init(status: Int, contentRange: String?, chunks: AsyncThrowingStream<[UInt8], Error>) {
+        self.status = status
+        self.contentRange = contentRange
+        self.chunks = chunks
+    }
+}
+
+/// `GET` of one stored object by its SHA-256, from `offset`; `ifRange` is the strong ETag
+/// (`"<sha256>"`) whenever `offset > 0`, so a resume never splices two versions.
+public struct ObjectRequest: Sendable, Equatable {
+    public var sha256: String
+    public var offset: Int
+    public var ifRange: String?
+
+    public init(sha256: String, offset: Int, ifRange: String?) {
+        self.sha256 = sha256
+        self.offset = offset
+        self.ifRange = ifRange
+    }
+}
+
+public typealias ObjectFetch = @Sendable (ObjectRequest) async throws -> ObjectResponse
+
+/// `GET` of one release record by hash: the body, or the failure's code.
+public enum RecordFetchResult: Sendable, Equatable {
+    case ok(String)
+    case failed(String)
+}
+
+public typealias RecordFetch = @Sendable (String) async -> RecordFetchResult
+
+/// One object being staged for a plan.
+public protocol StagedObject: Sendable {
+    func size() throws -> Int
+    func source() throws -> any ByteSource
+    func append(_ bytes: [UInt8]) throws
+    func reset() throws
+}
+
+/// An install's bytes, for reuse as a delta base or a file seed.
+public struct InstalledPayload: Sendable {
+    /// A container's whole payload.
+    public var payload: (any ByteSource)?
+    /// Its files, from the index kept at install (or, for an embedded tree, its listing).
+    public var files: [InstalledFile]?
+
+    public init(payload: (any ByteSource)?, files: [InstalledFile]?) {
+        self.payload = payload
+        self.files = files
+    }
+}
+
+/// The plan's output area: a byte sink for a container, a tree sink for a tree.
+public struct PackOutput: Sendable {
+    public var sink: (any ByteSink)?
+    public var tree: (any TreeSink)?
+
+    public init(sink: (any ByteSink)? = nil, tree: (any TreeSink)? = nil) {
+        self.sink = sink
+        self.tree = tree
+    }
+}
+
+/// Where a host keeps staging and the store. Locations and plan ids are opaque to the engine.
+public protocol PackStorage: Sendable {
+    func stagedObject(_ planId: String, _ sha256: String) throws -> any StagedObject
+    func output(_ planId: String, _ layout: String) throws -> PackOutput
+    /// Move the plan's verified output into the store, keeping the decoded files index beside it
+    /// (never inside the payload's own paths), and return its location.
+    func commit(
+        _ planId: String, _ packId: String, _ payloadSha256: String, _ layout: String,
+        _ index: FilesIndexDoc?
+    ) throws -> String
+    /// The install's bytes, or nil when its payload is gone.
+    func installed(_ install: PackInstall) throws -> InstalledPayload?
+    /// Re-check an install's payload on load: false when it is missing or differs; throws when it
+    /// cannot be read.
+    func verify(_ install: PackInstall) throws -> Bool
+    func remove(_ location: String) throws
+    func removeStaging(_ planId: String) throws
+    /// Every stored location and staging plan. Never a partial answer: an unreadable directory
+    /// throws.
+    func list() throws -> (locations: [String], plans: [String])
+    func freeDisk() throws -> Int
+}
+
+/// An embedded baseline the host ships: its marker's bytes and its measured payload.
+public struct EmbeddedBaseline: Sendable {
+    public var marker: [UInt8]
+    public var payload: EmbeddedPayload
+    /// Where its payload is (the host reads it back through `PackStorage.installed`).
+    public var location: String
+
+    public init(marker: [UInt8], payload: EmbeddedPayload, location: String) {
+        self.marker = marker
+        self.payload = payload
+        self.location = location
+    }
+}
+
+/// One progress event. `state-issue` is emitted once at `load` when the state document cannot be
+/// trusted (then `packId` is empty, the counts are 0 and `issue` says why).
+public struct PackProgress: Sendable, Equatable {
+    public var packId: String
+    /// `download`, `apply`, `done` or `state-issue`.
+    public var phase: String
+    public var done: Int
+    public var total: Int
+    /// `torn` or `unreadable`, on `state-issue`.
+    public var issue: String?
+
+    public init(packId: String, phase: String, done: Int, total: Int, issue: String? = nil) {
+        self.packId = packId
+        self.phase = phase
+        self.done = done
+        self.total = total
+        self.issue = issue
+    }
+}
+
+/// The engine's options.
+public struct PackEngineOptions: Sendable {
+    /// The product: every record's `aud`.
+    public var product: String
+    /// The PINNED release keys, the only keys a pack record verifies against.
+    public var releaseKeys: TrustSet
+    /// The effective product trust set (a release key also in it is refused).
+    public var productTrust: @Sendable () async -> TrustSet
+    /// The running build's content stamp, or nil: no packs.
+    public var stamp: AppContent?
+    public var prefs: VariantPrefs
+    public var zstd: any ZstdPort
+    /// `zstd-patch-from` when the decoder passed its start-up probe; empty otherwise.
+    public var patchMethods: [String]
+    /// The memory budget for one delta frame (`memBytes`).
+    public var memBudget: Int
+    /// The strategies to cost. Default `["delta", "file", "full"]` (v1 lists no `chunk`).
+    public var strategies: [String]
+    public var transports: [String]
+    public var storage: any PackStorage
+    public var state: any PackStateStore
+    public var fetchRecord: RecordFetch
+    public var fetchObject: ObjectFetch
+    /// The licence's granted flags, or nil when the product runs no License service.
+    public var entitlements: @Sendable () async -> Set<String>?
+    /// Epoch seconds.
+    public var now: @Sendable () async -> Int
+    /// Fresh plan ids (`[A-Za-z0-9_-]{1,64}`).
+    public var newPlanId: @Sendable () -> String
+    public var handlers: [any PackHandler]
+    /// Write the journal every this many staged bytes (default 8 MiB).
+    public var checkpointBytes: Int
+    /// The most one buffered decode may hold (the stored `full` frame plus its payload). When set
+    /// and the zstd port cannot stream, a larger `full` candidate is dropped before planning.
+    public var oneShotBudget: Int?
+
+    public init(
+        product: String, releaseKeys: TrustSet, productTrust: @escaping @Sendable () async -> TrustSet,
+        stamp: AppContent?, prefs: VariantPrefs = VariantPrefs(), zstd: any ZstdPort,
+        patchMethods: [String], memBudget: Int, strategies: [String] = ["delta", "file", "full"],
+        transports: [String] = ["pkey-cdn"], storage: any PackStorage, state: any PackStateStore,
+        fetchRecord: @escaping RecordFetch, fetchObject: @escaping ObjectFetch,
+        entitlements: @escaping @Sendable () async -> Set<String>? = { nil },
+        now: @escaping @Sendable () async -> Int = { Int(Date().timeIntervalSince1970) },
+        newPlanId: @escaping @Sendable () -> String = {
+            UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        },
+        handlers: [any PackHandler] = [], checkpointBytes: Int = 8 << 20, oneShotBudget: Int? = nil
+    ) {
+        self.product = product
+        self.releaseKeys = releaseKeys
+        self.productTrust = productTrust
+        self.stamp = stamp
+        self.prefs = prefs
+        self.zstd = zstd
+        self.patchMethods = patchMethods
+        self.memBudget = memBudget
+        self.strategies = strategies
+        self.transports = transports
+        self.storage = storage
+        self.state = state
+        self.fetchRecord = fetchRecord
+        self.fetchObject = fetchObject
+        self.entitlements = entitlements
+        self.now = now
+        self.newPlanId = newPlanId
+        self.handlers = handlers
+        self.checkpointBytes = checkpointBytes
+        self.oneShotBudget = oneShotBudget
+    }
+}
+
+/// The error the pipeline raises when it cannot proceed. `code` is a registered client code
+/// (`conformance/parity/errors.json`); `detail` names a step, `path` a file.
+public struct PackError: Error, Sendable, Equatable, CustomStringConvertible {
+    public let code: String
+    public let message: String
+    public let detail: String?
+    public let path: String?
+    public let packId: String?
+
+    public init(
+        _ code: String, _ message: String, detail: String? = nil, path: String? = nil,
+        packId: String? = nil
+    ) {
+        self.code = code
+        self.message = message
+        self.detail = detail
+        self.path = path
+        self.packId = packId
+    }
+
+    public var description: String { "PackError(\(code)): \(message)" }
+}
+
+/// What `state()` reports.
+public struct PacksSnapshot: Sendable, Equatable {
+    public struct Inflight: Sendable, Equatable {
+        public var planId: String
+        public var strategy: String
+        public var done: Int
+        public var total: Int
+    }
+    public var active: [String: PackInstall]
+    public var previous: [String: PackInstall]
+    public var inflight: [String: Inflight]
+    /// The pack releases activated in this process: restart packs mounted at this boot, hot packs
+    /// active, embedded baselines included. `packSetId` hashes this set.
+    public var running: [String: PackInstall]
+    public var confirmedBootSeq: Int
+    public var bootSeq: Int
+    /// Why this load could not trust the state document: `torn` (held aside; garbage collection
+    /// waits for `recoverState()`), `unreadable` (nothing is written or installed this process),
+    /// or nil.
+    public var stateIssue: String?
+}
+
+/// What `estimate` reports for a set of packs (the consent dialog's size disclosure).
+public struct PackEstimate: Sendable, Equatable {
+    /// The bytes the chosen strategies would download, summed over the packs not yet current.
+    public var bytes = 0
+    /// The packs that would download.
+    public var packs: [String] = []
+    /// Packs that cannot be planned, with the code `ensure` would raise.
+    public var refused: [(packId: String, code: String)] = []
+
+    public static func == (a: PackEstimate, b: PackEstimate) -> Bool {
+        a.bytes == b.bytes && a.packs == b.packs
+            && a.refused.map { "\($0.packId) \($0.code)" } == b.refused.map { "\($0.packId) \($0.code)" }
+    }
+}
+
+/// A value behind a lock, for the engine's synchronous members.
+final class Locked<T>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: T
+    init(_ value: T) { self.value = value }
+    func with<R>(_ body: (inout T) throws -> R) rethrows -> R {
+        lock.lock()
+        defer { lock.unlock() }
+        return try body(&value)
+    }
+}
+
+/// SHA-256 of the empty string: an empty object is legitimately zero bytes long.
+private let EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+/// `preflight`'s answer.
+private enum Preflight {
+    case current(PackInstall)
+    case plan(Planned)
+}
+
+private struct Planned {
+    var body: String
+    var recordSha256: String
+    var record: PackRecordDoc
+    var variant: PackVariant
+    var installs: [PackInstall]
+    var seeds: [String: InstalledPayload]
+    var planId: String
+    var index: FilesIndexDoc?
+    var plan: PlanResult
+}
+
+// ── The engine ───────────────────────────────────────────────────────────────────────────────
+
+public actor PackEngine {
+    private let opts: PackEngineOptions
+    private nonisolated let handlerTable: Locked<[String: any PackHandler]>
+    private nonisolated let listeners: Locked<[UUID: @Sendable (PackProgress) -> Void]>
+    private var embedded: [String: PackInstall] = [:]
+    private var running: [String: PackInstall] = [:]
+    /// Locations whose payload could not be read at load: kept out of use and out of GC.
+    private var unverifiable = Set<String>()
+    /// Stored installs whose payload check threw: kept in the written document, out of use.
+    private var deferredActive: [String: PackInstall] = [:]
+    private var deferredPrevious: [String: PackInstall] = [:]
+    private var stateIssue: String?
+    /// No garbage collection while a torn document is held or the state is unreadable.
+    private var gcHold = false
+    /// While a torn document is held: what existed when the hold started, never collected.
+    private var holdSnapshot: (locations: Set<String>, plans: Set<String>)?
+    /// Packs whose `previous` was carried over from an entry whose check could not run:
+    /// re-verified before a rollback uses it.
+    private var unverifiedPrevious = Set<String>()
+    private var doc: PackStateDoc?
+    /// Plan ids `estimate` staged an index under, reused by the next `ensure`.
+    private var preflightPlans: [String: (planId: String, recordSha256: String)] = [:]
+    private var tail: Task<Void, Never>?
+
+    public init(_ opts: PackEngineOptions) {
+        self.opts = opts
+        var table: [String: any PackHandler] = [FILES_TREE_HANDLER.type: FILES_TREE_HANDLER]
+        for h in opts.handlers { table[h.type] = h }
+        self.handlerTable = Locked(table)
+        self.listeners = Locked([:])
+    }
+
+    /// Add or replace a handler for a pack type (CONTENT §4.1 custom types). Throws
+    /// `invalid-options` for a handler whose layout or activation is outside the vocabulary.
+    public nonisolated func registerHandler(_ handler: any PackHandler) throws {
+        guard !handler.type.isEmpty, handler.layout == "tree" || handler.layout == "container",
+            handler.activation == "hot" || handler.activation == "restart"
+        else {
+            throw PackError(
+                ErrorCode.invalidOptions,
+                "registerHandler needs {type, layout tree|container, activation hot|restart, supports}.")
+        }
+        handlerTable.with { $0[handler.type] = handler }
+    }
+
+    /// Progress events; returns the unsubscribe function.
+    @discardableResult
+    public nonisolated func on(_ listener: @escaping @Sendable (PackProgress) -> Void) -> @Sendable () -> Void {
+        let id = UUID()
+        listeners.with { $0[id] = listener }
+        return { [listeners] in listeners.with { $0[id] = nil } }
+    }
+
+    private func handler(_ type: String) -> (any PackHandler)? { handlerTable.with { $0[type] } }
+
+    /// Load the state (re-verifying every entry), register the host's embedded baselines (each
+    /// marker verified once, its bytes matched, its pin checked against the stamp), activate what
+    /// this boot runs, persist the document and collect garbage. Run once, before `ensure`.
+    /// Returns the embedded baselines that were refused, by marker step.
+    public func load(_ embedded: [EmbeddedBaseline] = []) async throws -> [(location: String, step: String)] {
+        try await serialised { try await self.loadNow(embedded) }
+    }
+
+    private func loadNow(_ embeddedList: [EmbeddedBaseline]) async throws -> [(location: String, step: String)] {
+        var refused: [(location: String, step: String)] = []
+        for e in embeddedList {
+            switch await verifyEmbedded(e) {
+            case .success(let install): embedded[install.packId] = install
+            case .failure(let r): refused.append((e.location, r.step))
+            }
+        }
+        // The state. `read` is nil only for "no document"; anything else it throws means the
+        // document is unknown, so nothing may be written over it or collected this process.
+        let st = opts.state
+        var text: String?
+        var unreadable = false
+        do {
+            text = try st.read()
+        } catch {
+            unreadable = true
+        }
+        // A document that exists but does not parse (a torn write) is not the empty state: it is
+        // held aside before anything replaces it, and nothing is collected while it is held.
+        let torn: Bool = {
+            guard !unreadable, let text else { return false }
+            return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !looksLikeState(text)
+        }()
+        if torn {
+            // A store that cannot keep the torn text aside is treated as unreadable: nothing is
+            // written over the text.
+            do { try st.quarantine(text!) } catch { unreadable = true }
+        }
+        let held = !unreadable && (torn || ((try? st.quarantined()) ?? true))
+        stateIssue = unreadable ? "unreadable" : held ? "torn" : nil
+        gcHold = unreadable
+        if held {
+            // Bound the hold: what exists now may belong to the lost document and is kept; what
+            // this process creates and drops later is collected as usual. The first hold's
+            // snapshot is kept beside the quarantine and reused by later loads; one that cannot
+            // be read holds GC entirely.
+            if let listed = holdList(st) {
+                holdSnapshot = (Set(listed.locations), Set(listed.plans))
+            } else {
+                gcHold = true
+            }
+        }
+        if let issue = stateIssue {
+            emit(PackProgress(packId: "", phase: "state-issue", done: 0, total: 0, issue: issue))
+        }
+        let parsed = parsePackState(torn ? nil : text)
+        let deferred = Locked(Set<PackInstall>())
+        let unverifiableNow = Locked(Set<String>())
+        let storage = opts.storage
+        let reloaded = await reloadPackState(
+            parsed,
+            PackStateVerifier(
+                install: { i in
+                    guard await self.verifyStoredRecord(i.record, i.recordSha256, i.packId, i) else {
+                        return false
+                    }
+                    do {
+                        return try storage.verify(i)
+                    } catch {
+                        // The payload could not be read (an I/O error, not a mismatch): kept in
+                        // the document and out of GC, but out of the running set and the planner.
+                        unverifiableNow.with { _ = $0.insert(i.location) }
+                        deferred.with { _ = $0.insert(i) }
+                        return false
+                    }
+                },
+                journal: { j in await self.verifyStoredRecord(j.record, j.recordSha256, j.packId, nil) }))
+        unverifiable.formUnion(unverifiableNow.with { $0 })
+        let deferredSet = deferred.with { $0 }
+        for (id, i) in parsed.active where deferredSet.contains(i) { deferredActive[id] = i }
+        for (id, i) in parsed.previous where deferredSet.contains(i) { deferredPrevious[id] = i }
+        doc = reloaded
+        // This boot's set: every active install (restart packs mount now), else the embedded
+        // baseline.
+        for id in reloaded.active.keys.sorted() { try await activate(reloaded.active[id]!) }
+        for (id, e) in embedded where running[id] == nil { running[id] = e }
+        if !unreadable { try persist() }
+        collect()
+        return refused
+    }
+
+    /// The install state and this process's running set.
+    public func state() throws -> PacksSnapshot {
+        let doc = try requireLoaded()
+        var inflight: [String: PacksSnapshot.Inflight] = [:]
+        for (id, j) in doc.inflight {
+            inflight[id] = .init(
+                planId: j.planId, strategy: j.strategy, done: j.objects.reduce(0) { $0 + $1.done },
+                total: j.objects.reduce(0) { $0 + $1.bytes })
+        }
+        return PacksSnapshot(
+            active: doc.active, previous: doc.previous, inflight: inflight, running: running,
+            confirmedBootSeq: doc.confirmedBootSeq, bootSeq: doc.bootSeq, stateIssue: stateIssue)
+    }
+
+    /// The bytes of a pack's running install (its files, its payload), or nil.
+    public func open(_ packId: String) throws -> InstalledPayload? {
+        guard let i = running[packId] else { return nil }
+        return try opts.storage.installed(i)
+    }
+
+    /// `packSetId` of the running set (plans/P4-01.md §2.9), for `devices/report`'s `content`.
+    public func packSetId() -> String? {
+        PolarisKeyPacks.packSetId(
+            running.values.map { PackSetEntry(packId: $0.packId, releaseSha256: $0.recordSha256) })
+    }
+
+    /// Mark this boot healthy (CONTENT §10 step 7).
+    public func confirm() async throws {
+        try await serialised {
+            try await self.refuseUnreadable()
+            try await self.confirmNow()
+        }
+    }
+
+    private func confirmNow() throws {
+        doc = confirmBoot(try requireLoaded())
+        try persist()
+    }
+
+    /// Re-point a pack at `previous`. A hot pack switches now; a restart pack at the next boot.
+    public func rollback(_ packId: String) async throws -> Bool {
+        try await serialised { try await self.rollbackNow(packId) }
+    }
+
+    private func rollbackNow(_ packId: String) async throws -> Bool {
+        try refuseUnreadable()
+        let doc = try requireLoaded()
+        let before = doc.active[packId]
+        if let prev = doc.previous[packId], unverifiedPrevious.contains(packId) {
+            // Carried over from an entry whose check could not run: verify it now.
+            var ok = await verifyStoredRecord(prev.record, prev.recordSha256, packId, prev)
+            if ok { ok = (try? opts.storage.verify(prev)) ?? false }
+            if !ok { return false }
+            unverifiedPrevious.remove(packId)
+        }
+        let r = rollbackInstall(doc, packId: packId)
+        if !r.rolledBack { return false }
+        self.doc = r.state
+        try persist()
+        let now = r.state.active[packId]!
+        if now.activation == "hot" {
+            if let before, let h = handler(now.type) { try await h.deactivate(before) }
+            try await activate(now)
+        }
+        return true
+    }
+
+    /// Install the pinned release of each pack, in order. Returns the installs (already-current
+    /// packs included); throws a `PackError` for the first pack that cannot be installed.
+    public func ensure(_ packIds: [String]) async throws -> [PackInstall] {
+        try await serialised {
+            try await self.refuseUnreadable()
+            var out: [PackInstall] = []
+            for id in packIds { out.append(try await self.ensureOne(id)) }
+            return out
+        }
+    }
+
+    /// Preflight each pack (CONTENT §10 step 1) without downloading the payload, and sum the
+    /// chosen strategies' bytes: the size a consent dialog discloses. The index each tree stages
+    /// is reused by `ensure`.
+    public func estimate(_ packIds: [String]) async throws -> PackEstimate {
+        try await serialised {
+            try await self.refuseUnreadable()
+            var out = PackEstimate()
+            for id in packIds {
+                do {
+                    switch try await self.preflight(id) {
+                    case .current: continue
+                    case .plan(let p):
+                        if case .chosen(let c, _, _) = p.plan {
+                            if c.strategy == "noop" { continue }
+                            out.packs.append(id)
+                            out.bytes += c.bytes
+                        } else {
+                            out.packs.append(id)
+                        }
+                    }
+                } catch let e as PackError {
+                    out.refused.append((id, e.code))
+                } catch let e as PolarisError {
+                    out.refused.append((id, e.code))
+                } catch {
+                    out.refused.append((id, ErrorCode.networkError))
+                }
+            }
+            return out
+        }
+    }
+
+    /// Operator recovery after a torn state document: drop the copy held aside and resume garbage
+    /// collection, which then removes the payloads no install names. The installs the torn
+    /// document held are not recovered; `ensure` reinstalls them.
+    public func recoverState() async throws {
+        try await serialised { try await self.recoverNow() }
+    }
+
+    private func recoverNow() throws {
+        _ = try requireLoaded()
+        if stateIssue == "unreadable" {
+            throw PackError(
+                ErrorCode.packStateUnreadable,
+                "The pack state could not be read; restart once the store is readable.")
+        }
+        try opts.state.clearQuarantine()
+        stateIssue = nil
+        gcHold = false
+        holdSnapshot = nil
+        collect()
+    }
+
+    // ── Internals ──────────────────────────────────────────────────────────────────────────
+
+    private func serialised<T: Sendable>(_ work: @escaping @Sendable () async throws -> T) async throws -> T {
+        let previous = tail
+        let task = Task { () async throws -> T in
+            await previous?.value
+            return try await work()
+        }
+        tail = Task { _ = try? await task.value }
+        return try await task.value
+    }
+
+    private func requireLoaded() throws -> PackStateDoc {
+        guard let doc else {
+            throw PackError(ErrorCode.notConfigured, "Call load() before using packs.")
+        }
+        return doc
+    }
+
+    private nonisolated func emit(_ e: PackProgress) {
+        // A listener never fails an install.
+        for l in listeners.with({ Array($0.values) }) { l(e) }
+    }
+
+    /// The torn hold's snapshot: the saved one, else `storage.list()` now (saved when the store
+    /// keeps it). Nil when it cannot be known (an unreadable snapshot or listing).
+    private func holdList(_ st: any PackStateStore) -> (locations: [String], plans: [String])? {
+        if st.keepsHoldList {
+            let saved: String?
+            do { saved = try st.readHoldList() } catch { return nil }
+            if let saved {
+                guard let d = parseJSON(saved)?.objectValue,
+                    let locs = d["locations"]?.arrayValue, let plans = d["plans"]?.arrayValue
+                else { return nil }
+                let ls = locs.compactMap(\.stringValue)
+                let ps = plans.compactMap(\.stringValue)
+                // Torn too (a non-string member): fall through to the full hold.
+                guard ls.count == locs.count, ps.count == plans.count else { return nil }
+                return (ls, ps)
+            }
+        }
+        let listed: (locations: [String], plans: [String])
+        do { listed = try opts.storage.list() } catch { return nil }
+        if st.keepsHoldList {
+            let text = canonicalJSON(
+                .object([
+                    "locations": .array(listed.locations.map { .string($0) }),
+                    "plans": .array(listed.plans.map { .string($0) }),
+                ]))
+            do { try st.writeHoldList(text) } catch { return nil }
+        }
+        return listed
+    }
+
+    private func refuseUnreadable() throws {
+        _ = try requireLoaded()
+        if stateIssue == "unreadable" {
+            throw PackError(
+                ErrorCode.packStateUnreadable,
+                "The pack state could not be read, so nothing is fetched, written or installed this process.")
+        }
+    }
+
+    private func persist() throws {
+        if stateIssue == "unreadable" {
+            throw PackError(
+                ErrorCode.packStateUnreadable,
+                "The pack state could not be read, so nothing is written or installed this process.")
+        }
+        var out = try requireLoaded()
+        // Entries whose payload check threw stay in the document for the next load.
+        out.active = deferredActive.merging(out.active) { _, b in b }
+        out.previous = deferredPrevious.merging(out.previous) { _, b in b }
+        for id in out.active.keys where out.previous[id]?.recordSha256 == out.active[id]?.recordSha256 {
+            out.previous[id] = nil
+        }
+        try opts.state.replace(serializePackState(out))
+    }
+
+    private func activate(_ i: PackInstall) async throws {
+        if let h = handler(i.type) { try await h.activate(i) }
+        running[i.packId] = i
+    }
+
+    /// Steps 12–15 again over a stored record, with its own pack id as the pin.
+    private func verifyStoredRecord(
+        _ jws: String, _ sha256: String, _ packId: String, _ install: PackInstall?
+    ) async -> Bool {
+        let r = verifyReleaseRecord(
+            jws,
+            options: VerifyReleaseRecordOptions(
+                releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
+                expectedAud: opts.product, expectedHash: sha256))
+        guard let rec = r.record, rec.kind == "pack", rec.deliverable == packId,
+            let pack = PackRecordDoc(json: rec.json)
+        else { return false }
+        if let install {
+            guard pack.version == install.version, pack.seq == install.seq,
+                let v = pack.variants.first(where: { variantKey($0.variant) == install.variant }),
+                v.payload.sha256 == install.payloadSha256, v.payload.size == install.payloadSize,
+                pack.type == install.type
+            else { return false }
+        }
+        return true
+    }
+
+    private func verifyEmbedded(_ e: EmbeddedBaseline) async -> Result<PackInstall, MarkerRefusal> {
+        let m = verifyMarker(
+            e.marker, releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
+            expectedAud: opts.product)
+        guard case .ok(let packId, let version, let release, let record, let recordSha256) = m else {
+            if case .rejected(let step) = m { return .failure(MarkerRefusal(step: step)) }
+            return .failure(MarkerRefusal(step: "format"))
+        }
+        let match = matchEmbedded(
+            packId: packId, record: record, recordSha256: recordSha256, payload: e.payload,
+            stamp: opts.stamp)
+        switch match {
+        case .failure(let r): return .failure(r)
+        case .success(let k):
+            let v = record.variants[k]
+            return .success(
+                PackInstall(
+                    packId: packId, record: release, recordSha256: recordSha256, version: version,
+                    seq: record.seq, type: record.type, variant: variantKey(v.variant),
+                    layout: v.files.layout, payloadSha256: v.payload.sha256,
+                    payloadSize: v.payload.size,
+                    activation: activationOf(record, handler(record.type)), location: e.location,
+                    embedded: true, installedAt: record.issuedAt))
+        }
+    }
+
+    /// The installs of a pack the planner can reuse: active, previous and the embedded copy.
+    private func installsOf(_ packId: String) throws -> [PackInstall] {
+        let doc = try requireLoaded()
+        var out: [PackInstall] = []
+        var seen = Set<String>()
+        for i in [doc.active[packId], embedded[packId], doc.previous[packId]] {
+            if let i, seen.insert(i.location).inserted { out.append(i) }
+        }
+        return out
+    }
+
+    /// Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
+    /// seeds, the index and the plan.
+    private func preflight(_ packId: String) async throws -> Preflight {
+        let doc = try requireLoaded()
+        guard let stamp = opts.stamp else {
+            throw PackError(
+                ErrorCode.notConfigured, "This build ships no content stamp, so it has no packs.",
+                packId: packId)
+        }
+        guard let pin = stamp.pins.first(where: { $0.pack == packId }) else {
+            throw PackError(
+                ErrorCode.packNotPinned, "The content stamp pins no release of \(packId).",
+                packId: packId)
+        }
+
+        // Already current: the active install, or the embedded copy, is the pinned release.
+        let current = doc.active[packId]
+        if let current, current.recordSha256 == pin.sha256 { return .current(current) }
+        if let emb = embedded[packId], emb.recordSha256 == pin.sha256, current == nil {
+            return .current(emb)
+        }
+
+        // 2. The pinned record, by hash, against the pinned release keys.
+        let body: String
+        switch await opts.fetchRecord(pin.sha256) {
+        case .ok(let b): body = b
+        case .failed(let code):
+            throw PackError(code, "Fetching \(packId)'s record failed (\(code)).", packId: packId)
+        }
+        let v = verifyReleaseRecord(
+            body,
+            options: VerifyReleaseRecordOptions(
+                releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
+                expectedAud: opts.product, expectedHash: pin.sha256,
+                pin: ReleaseRecordPin(kind: "pack", deliverable: packId, version: pin.version, seq: pin.seq)))
+        let record: PackRecordDoc
+        switch v {
+        case .refused(.crossCheck):
+            throw PackError(
+                ErrorCode.recordMismatch, "\(packId)'s record is not the pinned release.", packId: packId)
+        case .refused(let step):
+            throw PackError(
+                ErrorCode.recordRejected, "\(packId)'s record was refused at \(step.rawValue).",
+                detail: step.rawValue, packId: packId)
+        case .ok(let rec):
+            guard let p = PackRecordDoc(json: rec.json) else {
+                throw PackError(
+                    ErrorCode.recordRejected, "\(packId)'s record was refused at claims.",
+                    detail: "claims", packId: packId)
+            }
+            record = p
+        }
+
+        // 3. Type, entitlement, variant.
+        guard let h = handler(record.type), h.supports(record.formatVersion),
+            record.activation == nil || record.activation == "hot" || record.activation == "restart"
+        else {
+            throw PackError(
+                ErrorCode.packTypeUnsupported,
+                "\(packId) is a \(record.type) v\(record.formatVersion) pack, which this SDK cannot hold.",
+                packId: packId)
+        }
+        if let ent = record.entitlement, let granted = await opts.entitlements(), !granted.contains(ent) {
+            throw PackError(
+                ErrorCode.packNotEntitled, "\(packId) needs the \(ent) entitlement.", packId: packId)
+        }
+        let rawVariants = record.json.objectValue?["variants"]?.arrayValue ?? []
+        guard case .index(let k) = selectVariant(rawVariants, opts.prefs) else {
+            throw PackError(ErrorCode.packNoVariant, "No variant of \(packId) is eligible here.", packId: packId)
+        }
+        let variant = record.variants[k]
+        if variant.files.layout != h.layout {
+            throw PackError(
+                ErrorCode.packTypeUnsupported,
+                "\(packId)'s variant is a \(variant.files.layout), not a \(h.layout).", packId: packId)
+        }
+
+        // 4. The index (a tree, or any installed release), the target, the plan. Only installs
+        // whose bytes can be opened count as installed: the planner must not choose a delta from
+        // a base the appliers cannot read.
+        var seeds: [String: InstalledPayload] = [:]
+        var installs: [PackInstall] = []
+        for i in try installsOf(packId) {
+            if let p = (try? opts.storage.installed(i)) ?? nil {
+                seeds[i.location] = p
+                installs.append(i)
+            }
+        }
+        let prior = doc.inflight[packId]
+        let early = preflightPlans[packId]
+        let planId: String
+        if let prior, prior.recordSha256 == pin.sha256, prior.variant == variantKey(variant.variant) {
+            planId = prior.planId
+        } else if let early, early.recordSha256 == pin.sha256 {
+            planId = early.planId
+        } else {
+            planId = opts.newPlanId()
+        }
+        preflightPlans[packId] = (planId, pin.sha256)
+        var index: FilesIndexDoc?
+        let needIndex = variant.files.layout == "tree" || seeds.values.contains { $0.files != nil }
+        // Bound the index before a byte of it is staged (plans/P4-01.md §2.7 step 1).
+        let indexOk = indexReadable(variant.files) && variant.files.bytes <= MAX_FILES_INDEX_BYTES
+        if needIndex && !indexOk && variant.files.layout == "tree" {
+            throw PackError(
+                ErrorCode.filesIndexInvalid,
+                "\(packId)'s files index is unreadable here or over the size limit.", packId: packId)
+        }
+        if needIndex && indexOk {
+            var noProgress: (done: Int, total: Int)? = nil
+            let ok = await downloadInto(
+                planId, packId, (variant.files.sha256, variant.files.bytes), &noProgress)
+            if ok {
+                let staged = try opts.storage.stagedObject(planId, variant.files.sha256)
+                let zstd = opts.zstd
+                let r = parseFilesIndex(
+                    try readAll(try staged.source()), ref: variant.files, payload: variant.payload,
+                    decode: { try zstd.decode($0, size: $1) })
+                switch r {
+                case .ok(let i): index = i
+                case .refused(let error, let path):
+                    if variant.files.layout == "tree" {
+                        throw PackError(error, "\(packId)'s files index was refused.", path: path, packId: packId)
+                    }
+                }
+            } else if variant.files.layout == "tree" {
+                throw PackError(
+                    ErrorCode.networkError, "Fetching \(packId)'s files index failed.", packId: packId)
+            }
+        }
+        var target = planTarget(variant, recordSha256: pin.sha256, filesIndex: index)
+        if let budget = opts.oneShotBudget, target.full != nil, let full = variant.full,
+            !(full.codec == "zstd" && opts.zstd.canStream), full.bytes + full.size > budget
+        {
+            target.full = nil
+        }
+        let plannerInstalled = installs.map {
+            PlanInstalled(
+                release: $0.recordSha256, payloadSha256: $0.payloadSha256,
+                files: seeds[$0.location]?.files?.map(\.sha256))
+        }
+        let caps = PlanCaps(
+            strategies: opts.strategies, patchMethods: opts.patchMethods, transports: opts.transports,
+            memBudget: opts.memBudget, freeDisk: (try? opts.storage.freeDisk()) ?? 0)
+        let p = plan(target: target, installed: plannerInstalled, caps: caps)
+        if case .error(let e) = p {
+            throw PackError(e, "No way to install \(packId): \(e).", packId: packId)
+        }
+        return .plan(
+            Planned(
+                body: body, recordSha256: pin.sha256, record: record, variant: variant,
+                installs: installs, seeds: seeds, planId: planId, index: index, plan: p))
+    }
+
+    private func ensureOne(_ packId: String) async throws -> PackInstall {
+        let pre: Planned
+        switch try await preflight(packId) {
+        case .current(let current):
+            if current.embedded != true, running[packId] == nil, current.activation == "hot" {
+                try await activate(current)
+            }
+            return current
+        case .plan(let p): pre = p
+        }
+        let variant = pre.variant
+        preflightPlans[packId] = nil
+        var candidates: [PlanCandidate] = []
+        switch pre.plan {
+        case .chosen(let c, _, let fallbacks):
+            if c.strategy == "noop" {
+                let same = pre.installs.first { $0.payloadSha256 == variant.payload.sha256 }!
+                return try await commit(
+                    packId, pre.body, pre.recordSha256, pre.record, variant, same.location,
+                    stagingPlan: pre.planId, reused: true)
+            }
+            candidates = [c] + fallbacks
+        case .platform:
+            throw PackError(ErrorCode.planTransportUnsupported, "\(packId) is platform-bound.", packId: packId)
+        case .error(let e):
+            throw PackError(e, "No way to install \(packId): \(e).", packId: packId)
+        }
+
+        // 5–6. Each candidate in turn: journal, fetch, apply.
+        var firstFailure: PackError?
+        for cand in candidates {
+            guard let objects = objectsFor(cand.strategy, cand.delta, variant, pre.index, pre.seeds)
+            else { continue }
+            let journal = PackJournal(
+                planId: pre.planId, packId: packId, record: pre.body, recordSha256: pre.recordSha256,
+                variant: variantKey(variant.variant), strategy: cand.strategy, delta: cand.delta,
+                objects: objects.map { JournalObject(sha256: $0.sha256, bytes: $0.bytes, done: 0) },
+                startedAt: await opts.now())
+            doc = beginInstall(try requireLoaded(), journal)
+            try persist()
+            let total = objects.reduce(0) { $0 + $1.bytes }
+            var progress = (done: 0, total: total)
+            emit(PackProgress(packId: packId, phase: "download", done: 0, total: total))
+            for o in objects {
+                let ok = await download(pre.planId, packId, o, progress: &progress)
+                if !ok {
+                    // The journal and what is staged stay for the next `ensure`, which resumes.
+                    throw PackError(
+                        ErrorCode.networkError,
+                        "Fetching \(packId)'s objects failed; the next ensure resumes.", packId: packId)
+                }
+            }
+            emit(PackProgress(packId: packId, phase: "apply", done: total, total: total))
+            let result = try apply(pre.planId, packId, cand.strategy, cand.delta, variant, pre.seeds)
+            if result.verdict.ok {
+                let location = try opts.storage.commit(
+                    pre.planId, packId, variant.payload.sha256, variant.files.layout,
+                    result.index ?? pre.index)
+                let install = try await commit(
+                    packId, pre.body, pre.recordSha256, pre.record, variant, location,
+                    stagingPlan: pre.planId, reused: false)
+                emit(PackProgress(packId: packId, phase: "done", done: total, total: total))
+                return install
+            }
+            if case .failed(let error, let path) = result.verdict, firstFailure == nil {
+                firstFailure = PackError(
+                    error, "Installing \(packId) by \(cand.strategy) failed: \(error).",
+                    detail: cand.strategy, path: path, packId: packId)
+            }
+            try? opts.storage.removeStaging(pre.planId)
+        }
+        doc = abandonInstall(try requireLoaded(), packId: packId)
+        try persist()
+        try? opts.storage.removeStaging(pre.planId)
+        throw firstFailure
+            ?? PackError(ErrorCode.planNoStrategy, "No way to install \(packId).", packId: packId)
+    }
+
+    /// The objects a strategy fetches, in order; nil when the strategy cannot run here.
+    private func objectsFor(
+        _ strategy: String, _ delta: String?, _ variant: PackVariant, _ index: FilesIndexDoc?,
+        _ seeds: [String: InstalledPayload]
+    ) -> [(sha256: String, bytes: Int)]? {
+        let files = variant.files
+        let idx = (sha256: files.sha256, bytes: files.bytes)
+        var gaps: [(sha256: String, bytes: Int)] = []
+        if files.layout == "container", let g = files.gaps { gaps = [(g.sha256, g.bytes)] }
+        switch strategy {
+        case "full":
+            guard let full = variant.full else { return nil }
+            return files.layout == "tree" ? [idx, (full.sha256, full.bytes)] : [(full.sha256, full.bytes)]
+        case "delta":
+            guard let d = variant.deltas.first(where: { $0.id == delta && $0.id != nil }) else {
+                return nil
+            }
+            switch d {
+            case .payload(_, _, _, let a): return [(a.sha256, a.bytes)]
+            case .files(_, _, _, let patch, let data):
+                return [idx] + gaps + [(patch.sha256, patch.bytes), (data.sha256, data.bytes)]
+            case .other: return nil
+            }
+        case "file":
+            guard let index else { return nil }
+            var held = Set<String>()
+            for s in seeds.values { for f in s.files ?? [] { held.insert(f.sha256) } }
+            var blobs: [(sha256: String, bytes: Int)] = []
+            var seen = Set<String>()
+            for f in index.files where !held.contains(f.sha256) && !seen.contains(f.blob.sha256) {
+                seen.insert(f.blob.sha256)
+                blobs.append((f.blob.sha256, f.blob.bytes))
+            }
+            return [idx] + gaps + blobs
+        default:
+            return nil
+        }
+    }
+
+    private func apply(
+        _ planId: String, _ packId: String, _ strategy: String, _ delta: String?,
+        _ variant: PackVariant, _ seeds: [String: InstalledPayload]
+    ) throws -> ApplyResult {
+        let storage = opts.storage
+        let objects: ObjectPort = { sha256 in
+            let o = try storage.stagedObject(planId, sha256)
+            return try o.size() > 0 || sha256 == EMPTY_SHA256 ? try o.source() : nil
+        }
+        let out = try storage.output(planId, variant.files.layout)
+        let ports = ApplyPorts(objects: objects, zstd: opts.zstd, sink: out.sink, tree: out.tree)
+        if strategy == "full" { return applyFull(variant, ports) }
+        var installed: [InstalledFile] = []
+        for s in seeds.values { installed += s.files ?? [] }
+        if strategy == "file" { return applyFile(variant, nil, installed: installed, ports) }
+        guard let k = variant.deltas.firstIndex(where: { $0.id == delta && $0.id != nil }) else {
+            return ApplyResult(verdict: .failed(error: ErrorCode.deltaArtifactMismatch, path: nil), index: nil)
+        }
+        if case .files = variant.deltas[k] { return applyFile(variant, k, installed: installed, ports) }
+        // A payload delta's base: the installed payload whose hash is `from`.
+        var base: (any ByteSource)?
+        for i in try installsOf(packId) {
+            if base == nil, i.payloadSha256 == variant.deltas[k].from, let p = seeds[i.location]?.payload {
+                base = p
+            }
+        }
+        guard let base else {
+            return ApplyResult(verdict: .failed(error: ErrorCode.deltaBaseMismatch, path: nil), index: nil)
+        }
+        return applyDelta(variant, k, base: base, ports)
+    }
+
+    /// Commit: the pointer swap, activation, garbage collection.
+    private func commit(
+        _ packId: String, _ recordJws: String, _ recordSha256: String, _ record: PackRecordDoc,
+        _ variant: PackVariant, _ location: String, stagingPlan: String, reused: Bool
+    ) async throws -> PackInstall {
+        let install = PackInstall(
+            packId: packId, record: recordJws, recordSha256: recordSha256, version: record.version,
+            seq: record.seq, type: record.type, variant: variantKey(variant.variant),
+            layout: variant.files.layout, payloadSha256: variant.payload.sha256,
+            payloadSize: variant.payload.size, activation: activationOf(record, handler(record.type)),
+            location: location, embedded: embedded[packId]?.location == location ? true : nil,
+            installedAt: await opts.now())
+        // A fresh commit supersedes this pack's entries whose check could not run; an active one
+        // becomes `previous`, re-verified before a rollback uses it.
+        let carried = deferredActive[packId]
+        deferredActive[packId] = nil
+        deferredPrevious[packId] = nil
+        let before = running[packId]
+        var next = commitInstall(try requireLoaded(), install)
+        if let carried, carried.recordSha256 != install.recordSha256 {
+            next.previous[packId] = carried
+            unverifiedPrevious.insert(packId)
+        } else {
+            unverifiedPrevious.remove(packId)
+        }
+        doc = next
+        try persist()
+        if !reused { try? opts.storage.removeStaging(stagingPlan) }
+        if install.activation == "hot" {
+            if let before, before.location != location, let h = handler(record.type) {
+                try await h.deactivate(before)
+            }
+            try await activate(install)
+        }
+        collect()
+        return install
+    }
+
+    /// Remove every stored location and staging area no root holds.
+    private func collect() {
+        if gcHold { return }
+        guard let doc else { return }
+        var roots = gcRoots(doc, embedded: Array(embedded.values) + Array(running.values))
+        roots.locations.formUnion(unverifiable)
+        // A listing that fails collects nothing (never a partial answer).
+        guard let listed = try? opts.storage.list() else { return }
+        let held = holdSnapshot
+        for loc in listed.locations
+        where !roots.locations.contains(loc) && !(held?.locations.contains(loc) ?? false) {
+            try? opts.storage.remove(loc)
+        }
+        for plan in listed.plans where !roots.plans.contains(plan) && !(held?.plans.contains(plan) ?? false) {
+            try? opts.storage.removeStaging(plan)
+        }
+    }
+
+    /// Stage one object: resume from what is staged (its bytes re-hashed, never trusted), fetch
+    /// the rest with `Range` and `If-Range`, checkpoint the journal. True when the staged object
+    /// then has the ref's length and SHA-256; a mismatch resets it and refetches once.
+    private func download(
+        _ planId: String, _ packId: String, _ ref: (sha256: String, bytes: Int),
+        progress: inout (done: Int, total: Int)
+    ) async -> Bool {
+        var local: (done: Int, total: Int)? = progress
+        let ok = await downloadInto(planId, packId, ref, &local)
+        progress = local!
+        return ok
+    }
+
+    private func downloadInto(
+        _ planId: String, _ packId: String, _ ref: (sha256: String, bytes: Int),
+        _ progress: inout (done: Int, total: Int)?
+    ) async -> Bool {
+        guard let staged = try? opts.storage.stagedObject(planId, ref.sha256) else { return false }
+        for _ in 0..<2 {
+            do {
+                var have = try staged.size()
+                if have > ref.bytes {
+                    try staged.reset()
+                    have = 0
+                }
+                // Resume: what is staged is hashed again, never taken on trust.
+                var hasher = PackHasher()
+                if have > 0 {
+                    let src = try staged.source()
+                    var at = 0
+                    while at < have {
+                        let chunk = try src.read(at, Swift.min(READ_CHUNK, have - at))
+                        if chunk.isEmpty { break }
+                        hasher.update(chunk)
+                        at += chunk.count
+                    }
+                }
+                let counted = progress != nil ? have : 0
+                if progress != nil {
+                    progress!.done += counted
+                    emit(PackProgress(packId: packId, phase: "download", done: progress!.done, total: progress!.total))
+                }
+                var outcome: FetchOutcome
+                if have < ref.bytes {
+                    let res: ObjectResponse
+                    do {
+                        res = try await opts.fetchObject(
+                            ObjectRequest(
+                                sha256: ref.sha256, offset: have,
+                                ifRange: have > 0 ? "\"\(ref.sha256)\"" : nil))
+                    } catch {
+                        return false
+                    }
+                    if res.status == 200 && have > 0 {
+                        // The validator moved, so the server sent the whole object: start over.
+                        if progress != nil { progress!.done -= counted }
+                        try staged.reset()
+                        outcome = await fetchInto(staged, res, ref, PackHasher(), 0, planId, packId, &progress)
+                    } else if res.status == 206 && have > 0 && rangeStartsAt(res.contentRange, have) {
+                        outcome = await fetchInto(staged, res, ref, hasher, have, planId, packId, &progress)
+                    } else if res.status == 200 {
+                        outcome = await fetchInto(staged, res, ref, hasher, 0, planId, packId, &progress)
+                    } else {
+                        return false
+                    }
+                } else {
+                    outcome = hasher.digest() == ref.sha256 ? .ok : .mismatch
+                }
+                switch outcome {
+                case .ok: return true
+                // An interrupted transfer keeps what is staged for the next resume.
+                case .interrupted: return false
+                case .mismatch:
+                    if progress != nil { progress!.done -= Swift.min((try? staged.size()) ?? 0, ref.bytes) }
+                    try staged.reset()
+                }
+            } catch {
+                return false
+            }
+        }
+        return false
+    }
+
+    private enum FetchOutcome { case ok, interrupted, mismatch }
+
+    private func fetchInto(
+        _ staged: any StagedObject, _ res: ObjectResponse, _ ref: (sha256: String, bytes: Int),
+        _ hasherIn: PackHasher, _ from: Int, _ planId: String, _ packId: String,
+        _ progress: inout (done: Int, total: Int)?
+    ) async -> FetchOutcome {
+        var hasher = hasherIn
+        var have = from
+        var sinceCheckpoint = 0
+        let every = opts.checkpointBytes
+        func save() throws {
+            guard let doc, doc.inflight[packId]?.planId == planId else { return }
+            self.doc = checkpoint(doc, packId: packId, sha256: ref.sha256, done: have)
+            try persist()
+        }
+        do {
+            for try await chunk in res.chunks {
+                if have + chunk.count > ref.bytes { return .mismatch }
+                hasher.update(chunk)
+                try staged.append(chunk)
+                have += chunk.count
+                sinceCheckpoint += chunk.count
+                if progress != nil {
+                    progress!.done += chunk.count
+                    emit(PackProgress(packId: packId, phase: "download", done: progress!.done, total: progress!.total))
+                }
+                if sinceCheckpoint >= every {
+                    sinceCheckpoint = 0
+                    try save()
+                }
+            }
+        } catch {
+            try? save()
+            return .interrupted
+        }
+        do { try save() } catch { return .interrupted }
+        return have == ref.bytes && hasher.digest() == ref.sha256 ? .ok : .mismatch
+    }
+}
+
+private func rangeStartsAt(_ contentRange: String?, _ offset: Int) -> Bool {
+    guard let cr = contentRange?.trimmingCharacters(in: .whitespaces),
+        let m = wholeMatches(#"bytes ([0-9]+)-[0-9]+/[0-9]+"#, cr), let start = m[1]
+    else { return false }
+    return Int(start) == offset
+}
+
+/// A record's activation, else its handler's default.
+private func activationOf(_ record: PackRecordDoc, _ handler: (any PackHandler)?) -> String {
+    if let a = record.activation, a == "hot" || a == "restart" { return a }
+    return handler?.activation ?? "restart"
+}

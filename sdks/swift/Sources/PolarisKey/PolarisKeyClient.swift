@@ -327,10 +327,13 @@ public actor PolarisKeyClient {
         // `caps` rides EVERY report: the Worker overwrites the stored report each time, so a
         // report without it would erase the fleet's capability view (P1b-10).
         let caps = engine.caps(services: await core.services())
+        // The active pack set (plans/P4-01.md §2.11), when the host runs `update.packs`.
+        let packSetId = await core.packSetId()
         let body = SnapshotBody(
             os: facts.os, hardware: facts.hardware, runtime: facts.runtime,
             locale: facts.locale, timezone: facts.timezone, probes: facts.probes,
-            config: config, entitlements: entitlements, caps: caps)
+            config: config, entitlements: entitlements, caps: caps,
+            content: packSetId.map { SnapshotContent(packSetId: $0) })
         return await core.reportSnapshot((try? JSONEncoder().encode(body)) ?? Data("{}".utf8))
     }
 
@@ -505,6 +508,12 @@ private struct SnapshotBody: Encodable {
     let entitlements: [String: JSONValue]
     /// The supported feature ids (P1b-10).
     let caps: [String]
+    /// `{packSetId}` of the running pack set; omitted when the host has no packs.
+    let content: SnapshotContent?
+}
+
+private struct SnapshotContent: Encodable {
+    let packSetId: String
 }
 
 // ── The §7.3 local-only profile ────────────────────────────────────────────────────

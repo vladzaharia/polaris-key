@@ -1118,17 +1118,17 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "update.driver": CapabilityRow(status: "implemented", service: "update", na: [CapabilityNa(runtime: "ios", reason: "outlet")]),
     "update.bootguard": CapabilityRow(status: "planned", service: "update", na: []),
     "outlet.detect": CapabilityRow(status: "implemented", service: "update", na: []),
-    "packs.record": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.revoke": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.plan": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.index.files": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.plan": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.index.files": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.chunks": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.apply.full": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.apply.file": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.apply.full": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.apply.file": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.apply.chunk": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.apply.delta": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.state": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.handlers": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.apply.delta": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.state": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.handlers": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.provides": CapabilityRow(status: "planned", service: "release", na: []),
     "packs.transport.apple": CapabilityRow(status: "planned", service: "distribution", na: []),
     "packs.transport.play": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1141,4 +1141,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "1e7975e6b50e2cf8cf7f572853f8e31ad0284677ae971ed4a6801d59b55b5cd7"
+public let CAPABILITY_DIGEST = "3082dea9c921c30577b8647b4e95931ce8f2556870b27a842bba1e795ec92671"
