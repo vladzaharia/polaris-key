@@ -493,7 +493,7 @@ function isPackIdString(v: unknown): v is string {
  * descriptor that passes never moves into a record ingest refuses at `claims`), and `holds` and
  * `packChannels` refused until P4-12, as in the manifest.
  */
-function contentProblem(c: unknown): string | null {
+export function descriptorContentProblem(c: unknown): string | null {
   if (!isRecord(c)) return "content must be an object";
   if (c.holds !== undefined || c.packChannels !== undefined)
     return "content.holds and content.packChannels come with P4-12";
@@ -711,7 +711,7 @@ export function validateReleaseDescriptor(
       "publishedAt must be an RFC 3339 timestamp.",
     );
   if (d.content !== undefined) {
-    const problem = contentProblem(d.content);
+    const problem = descriptorContentProblem(d.content);
     if (problem) err("/content", "invalid_descriptor_content", `${problem}.`);
   }
   if (d.provenance !== undefined) {

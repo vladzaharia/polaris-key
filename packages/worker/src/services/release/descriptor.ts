@@ -143,6 +143,8 @@ const REFUSALS_RETRIED_EVERY_SYNC: ReadonlySet<string> =
     "pin-yanked",
     "pin-missing",
     "pin-gated",
+    // A resync that rewrites the unreadable declaration clears this.
+    "pack-unreadable",
   ]);
 
 /**
@@ -179,7 +181,8 @@ export type IngestRefusalReason =
   | "pin-yanked"
   | "pin-missing"
   | "pin-gated"
-  | "embeds";
+  | "embeds"
+  | "pack-unreadable";
 
 export interface PlannedArtifact {
   artifactId: string;

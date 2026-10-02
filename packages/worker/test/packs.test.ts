@@ -16,6 +16,8 @@ import {
   call,
   CONSOLE,
   envFor,
+  github,
+  release,
   seedReleaseProduct,
   SLUG,
 } from "./releaseRoutesFixture.js";
@@ -45,6 +47,19 @@ import { serializeServices } from "../src/core/services.js";
 import { loadProduct } from "../src/core/products.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
+import {
+  syncReleaseStore,
+  syncReleaseStoreReport,
+} from "../src/services/release/sync.js";
+import {
+  listReleaseMetadata,
+  listStoredReleaseIds,
+  releaseStoreStatements,
+} from "../src/services/release/store.js";
+import { getReleaseConfig } from "../src/services/release/config.js";
+import { knownChannels } from "../src/services/release/resolve.js";
+import { listPortalReleases } from "../src/services/identity/portal/repo.js";
+import { checkPackAgainstDeclaration } from "../src/services/release/packs/ingest.js";
 
 installDigestStream();
 
@@ -1144,5 +1159,224 @@ describe("the object check batches", () => {
     expect(await firstMissingObject(db, "other", [[key, 10]], 1)).toBe(key);
     const many = Array.from({ length: 25 }, () => [key, 10] as const);
     expect(await firstMissingObject(db, SLUG, many, 10)).toBeNull();
+  });
+});
+
+// ── Round-1 review: the GitHub sync, app-only readers, fail-closed declarations ──
+
+/** A GitHub release whose tag is `tag`, with one asset. */
+function ghRelease(tag: string, assetId: number, name: string) {
+  return release(tag, [
+    {
+      id: assetId,
+      name,
+      size: 10,
+      content_type: "application/octet-stream",
+      browser_download_url: `https://github.com/acme/djdl/releases/download/${tag}/${name}`,
+    } as never,
+  ]);
+}
+
+/** The pack release's rows that a GitHub sync must never touch. */
+async function packRows(releaseId: string) {
+  return {
+    metadata: await db.first(
+      "SELECT * FROM release_metadata WHERE product = ? AND release_id = ?",
+      SLUG,
+      releaseId,
+    ),
+    builds: await db.all(
+      "SELECT * FROM release_builds WHERE product = ? AND release_id = ? ORDER BY build_id",
+      SLUG,
+      releaseId,
+    ),
+    artifacts: await db.all(
+      "SELECT * FROM release_artifacts WHERE product = ? AND release_id = ? ORDER BY artifact_id",
+      SLUG,
+      releaseId,
+    ),
+    health: await db.first(
+      "SELECT * FROM release_health WHERE product = ? AND subject_kind = 'release' AND subject_id = ?",
+      SLUG,
+      releaseId,
+    ),
+  };
+}
+
+describe("a GitHub release tagged with a pack release id (B1)", () => {
+  it("is skipped and reported; the pack row, its record marker and builds are unchanged, and a later pin still verifies", async () => {
+    const core = await publishCore("1.4.0", 12);
+    const packId = `${CORE}@1.4.0`;
+    const before = await packRows(packId);
+    expect(
+      (before.metadata as { metadata_json: string }).metadata_json,
+    ).toContain(core);
+    expect(before.builds.length).toBeGreaterThan(0);
+
+    const gh = github({
+      releases: [
+        ghRelease(packId, 9001, "djdl-1.4.0-web.zip"),
+        ghRelease("v1.3.0", 9002, "djdl-1.3.0-web.zip"),
+      ],
+    });
+    const report = await syncReleaseStoreReport(
+      env,
+      db,
+      SLUG,
+      NOW + 100,
+      gh.fetchImpl,
+    );
+    expect(report.statements).toBeGreaterThan(0);
+    expect(report.packTagConflicts).toEqual([packId]);
+    expect(await packRows(packId)).toEqual(before);
+    expect(
+      await db.first<{ m: string }>(
+        "SELECT json_extract(metadata_json, '$.record.sha256') AS m FROM release_metadata WHERE product = ? AND release_id = ?",
+        SLUG,
+        packId,
+      ),
+    ).toEqual({ m: core });
+    // The app release beside it synced as usual.
+    expect(
+      await db.first(
+        "SELECT deliverable_id FROM release_metadata WHERE product = ? AND release_id = 'v1.3.0'",
+        SLUG,
+      ),
+    ).toEqual({ deliverable_id: "app" });
+
+    // A pin to the pack release still verifies against its record, version and seq.
+    const res = await submitApp(
+      appDescriptor(
+        "1.5.0",
+        15,
+        content([{ pack: CORE, sha256: core, seq: 12, version: "1.4.0" }]),
+      ),
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+  });
+
+  it("the write-time guards hold even when the plan did not skip it (a pack ingested after the sync read the store)", async () => {
+    const core = await publishCore("1.4.0", 12);
+    const packId = `${CORE}@1.4.0`;
+    const before = await packRows(packId);
+    const cfg = (await getReleaseConfig(db, SLUG))!;
+    // The statement builder handed the colliding release directly, as a stale plan would.
+    await db.batch(
+      releaseStoreStatements(
+        SLUG,
+        cfg,
+        [ghRelease(packId, 9001, "djdl-1.4.0-web.zip")],
+        NOW + 100,
+      ),
+    );
+    expect(await packRows(packId)).toEqual(before);
+    expect(
+      await db.first<{ m: string }>(
+        "SELECT json_extract(metadata_json, '$.record.sha256') AS m FROM release_metadata WHERE product = ? AND release_id = ?",
+        SLUG,
+        packId,
+      ),
+    ).toEqual({ m: core });
+  });
+});
+
+describe("app-only readers ignore pack releases (B2, N6)", () => {
+  it("sync health's stored ids are the app's only (no absentUpstream on a pack release)", async () => {
+    await publishCore("1.4.0", 12);
+    expect(await listStoredReleaseIds(db, SLUG)).not.toContain(
+      `${CORE}@1.4.0`,
+    );
+    const gh = github({ releases: [] });
+    await syncReleaseStore(env, db, SLUG, NOW + 100, gh.fetchImpl);
+    expect(
+      await db.first(
+        "SELECT 1 AS n FROM release_health WHERE product = ? AND subject_kind = 'release' AND subject_id = ?",
+        SLUG,
+        `${CORE}@1.4.0`,
+      ),
+    ).toBeNull();
+  });
+
+  it("the customer portal never lists a pack release", async () => {
+    await publishCore("1.4.0", 12);
+    await db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, metadata_access, artifacts_access, created_at,
+          modified_at, deliverable_id, seq)
+       VALUES (?, 'v9.0.0', '9.0.0', 'public', 'public', ?, ?, 'app', 99)`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    const rows = await listPortalReleases(db, [SLUG]);
+    expect(rows.map((r) => r.release_id)).toEqual(["v9.0.0"]);
+  });
+
+  it("the console Releases list is the app's only (pack views are P4-09's)", async () => {
+    await publishCore("1.4.0", 12);
+    expect(
+      (await listReleaseMetadata(db, SLUG)).map((r) => r.release_id),
+    ).not.toContain(`${CORE}@1.4.0`);
+  });
+
+  it("knownChannels learns no channel from a pack release", async () => {
+    await publishCore("1.4.0", 12);
+    await db.run(
+      "UPDATE release_metadata SET channel = 'dlc-nightly' WHERE product = ? AND release_id = ?",
+      SLUG,
+      `${CORE}@1.4.0`,
+    );
+    const cfg = await getReleaseConfig(db, SLUG);
+    expect(await knownChannels(db, SLUG, cfg)).not.toContain("dlc-nightly");
+    // An app release on the same channel does declare it.
+    await db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, metadata_access, artifacts_access, created_at,
+          modified_at, deliverable_id, seq, channel)
+       VALUES (?, 'v9.0.0', '9.0.0', 'public', 'public', ?, ?, 'app', 99, 'dlc-nightly')`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    expect(await knownChannels(db, SLUG, cfg)).toContain("dlc-nightly");
+  });
+});
+
+describe("pack declarations are checked closed (N1, N4)", () => {
+  it("a variant axis named constructor is a pack-variant refusal, not a 500", async () => {
+    const pack = parsed().release!.packDeliverables.find((p) => p.id === CORE)!;
+    const record = coreRecord("1.0.0", 1, [
+      containerVariant({ constructor: "x" } as never, "ctor", {
+        engine: "godot-4.7",
+      }),
+    ]);
+    expect(
+      checkPackAgainstDeclaration(record as never, pack, null)?.reason,
+    ).toBe("pack-variant");
+    const r = await submitRefused(record);
+    expect(r.status).toBe(400);
+    expect(r.reason).toBe("pack-variant");
+  });
+
+  it("an unreadable pack declaration refuses an app release's ingest (pack-unreadable)", async () => {
+    const core = await publishCore("1.4.0", 12);
+    await db.run(
+      "UPDATE release_deliverables SET def_json = '{not json' WHERE product = ? AND deliverable_id = ?",
+      SLUG,
+      SKINS,
+    );
+    const res = await submitApp(
+      appDescriptor(
+        "1.5.0",
+        15,
+        content([{ pack: CORE, sha256: core, seq: 12, version: "1.4.0" }]),
+      ),
+    );
+    expect([res.status, res.body.error, res.body.reason]).toEqual([
+      400,
+      "release_record_rejected",
+      "pack-unreadable",
+    ]);
+    expect(res.body.message).toContain(SKINS);
   });
 });

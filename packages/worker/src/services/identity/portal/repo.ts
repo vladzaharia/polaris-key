@@ -685,6 +685,11 @@ export async function portalAuthCapabilities(
   };
 }
 
+/**
+ * The releases the customer portal lists: the `app` deliverable's only. A pack release (P4-02)
+ * and its content objects are game content a client fetches through its pin, never a download
+ * a customer picks from the portal.
+ */
 export async function listPortalReleases(
   db: Db,
   products: string[],
@@ -696,6 +701,7 @@ export async function listPortalReleases(
        FROM release_metadata r
        JOIN products p ON p.slug = r.product
       WHERE r.product IN (${placeholders})
+        AND r.deliverable_id = 'app'
       ORDER BY COALESCE(r.published_at, 0) DESC, r.version DESC`,
     ...products,
   );

@@ -1,5 +1,7 @@
 -- P4-02 — pack deliverables: pins, an app release's contentApi, each build's embedded packs
--- (plans/P4-01.md §6, decision 24).
+-- (plans/P4-01.md §6, decision 24). Two files, one bare ALTER each and nothing after it
+-- (0018_index_assertion.sql): this one creates `release_pins` and adds
+-- `release_metadata.content_api` LAST; 0045_b adds `release_builds.embeds_json`.
 --
 -- Pack releases need no new release table: a pack release is a `release_metadata` row of its pack
 -- deliverable (`deliverable_id`, `seq`), one `release_builds` row per variant (`build_id` the
@@ -37,7 +39,3 @@ CREATE INDEX IF NOT EXISTS idx_release_pins_pack
 -- The `content.contentApi` of an app release (NULL for a pack release, or an app release published
 -- before its product declared packs). P4-12 resolves compatible packs by it.
 ALTER TABLE release_metadata ADD COLUMN content_api INTEGER;
-
--- A build's `embeds` (the packs it ships embedded), as a JSON array of pack ids; NULL when the
--- descriptor omits it.
-ALTER TABLE release_builds ADD COLUMN embeds_json TEXT;

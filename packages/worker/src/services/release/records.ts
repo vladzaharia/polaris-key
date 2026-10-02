@@ -45,8 +45,8 @@ import type { ReleaseConfigRow } from "./config.js";
 export const RELEASE_RECORD_REJECTED = "release_record_rejected";
 
 /** Why a record was refused, in the order the checks run. The `pack-*` reasons are a pack
- *  record's (P4-02, `packs/ingest.ts`); `content-api`, `pin-*` and `embeds` an app release's
- *  `content` (`packs/content.ts`). */
+ *  record's (P4-02, `packs/ingest.ts`); `content-api`, `pin-*`, `embeds` and `pack-unreadable` an
+ *  app release's `content` (`packs/content.ts`). */
 export type RecordRefusalReason =
   | "typ"
   | "kid"
@@ -68,7 +68,8 @@ export type RecordRefusalReason =
   | "pin-yanked"
   | "pin-missing"
   | "pin-gated"
-  | "embeds";
+  | "embeds"
+  | "pack-unreadable";
 
 export type RecordCheck =
   | {

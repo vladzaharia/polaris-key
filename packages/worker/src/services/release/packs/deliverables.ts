@@ -23,21 +23,32 @@ export async function readPackDeliverableIds(
   return rows.map((r) => r.deliverable_id);
 }
 
-/** Every declared pack with its persisted declaration, by id. A row whose `def_json` does not
- *  read back is skipped (it cannot be published to until a resync rewrites it). */
+/** The declared packs as persisted, and the ids of any whose declaration does not read back. */
+export interface PackDeliverables {
+  packs: ManifestPackDeliverable[];
+  /**
+   * Declared pack ids whose `def_json` does not parse (a hand-edited or truncated row). A caller
+   * that enforces the declaration FAILS CLOSED on any of these: skipping one would silently drop
+   * its `required` or embedded-baseline rule (`content.ts`). A resync rewrites the row.
+   */
+  unreadable: string[];
+}
+
+/** Every declared pack with its persisted declaration, by id. */
 export async function readPackDeliverables(
   db: Db,
   product: string,
-): Promise<ManifestPackDeliverable[]> {
-  const rows = await db.all<{ def_json: string | null }>(
-    `SELECT def_json FROM release_deliverables
+): Promise<PackDeliverables> {
+  const rows = await db.all<{ deliverable_id: string; def_json: string | null }>(
+    `SELECT deliverable_id, def_json FROM release_deliverables
       WHERE product = ? AND kind = 'pack' ORDER BY deliverable_id`,
     product,
   );
-  const out: ManifestPackDeliverable[] = [];
+  const out: PackDeliverables = { packs: [], unreadable: [] };
   for (const r of rows) {
     const p = parseManifestPackDeliverable(r.def_json);
-    if (p) out.push(p);
+    if (p && p.id === r.deliverable_id) out.packs.push(p);
+    else out.unreadable.push(r.deliverable_id);
   }
   return out;
 }

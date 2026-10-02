@@ -19,7 +19,9 @@
  *                 or a pin has no expect (in v1 every expected pack is pinned);
  *   pin-gated     a `required` expect pins a record that carries an `entitlement` (a required
  *                 pack is never gated);
- *   embeds        a build embeds a pack the release does not pin.
+ *   embeds        a build embeds a pack the release does not pin;
+ *   pack-unreadable  a declared pack's stored declaration does not read back, so the rules above
+ *                 cannot all be checked (fail closed; a resync rewrites it).
  *
  * Pins are SIGNED: `release_pins` mirrors them for queries ("which app releases pin pack release
  * X") and is never edited afterwards.
@@ -60,7 +62,15 @@ export async function planAppContent(
   product: string,
   d: ReleaseDescriptor,
 ): Promise<ContentPlan> {
-  const packs = await readPackDeliverables(db, product);
+  const declared = await readPackDeliverables(db, product);
+  // Fail closed: a declaration that does not read back could be the `required` pack this release
+  // omits, so nothing below is decided without every one of them.
+  if (declared.unreadable.length > 0)
+    return refuse(
+      "pack-unreadable",
+      `${product}'s stored declaration of ${declared.unreadable.join(", ")} does not read back; resync the product's manifest, then publish again.`,
+    );
+  const packs = declared.packs;
   const content = d.content;
   const pinnedPacks = new Set((content?.pins ?? []).map((p) => p.pack));
   if (!content) {

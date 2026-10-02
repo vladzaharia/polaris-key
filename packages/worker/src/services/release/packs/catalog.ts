@@ -115,7 +115,8 @@ export function packCatalog(ctx: {
   const { db, env, slug } = ctx;
   return {
     async packDeliverables(): Promise<CatalogPackDeliverable[]> {
-      return (await readPackDeliverables(db, slug)).map((p) => ({
+      // Discovery lists what reads back; a publish refuses while any declaration does not.
+      return (await readPackDeliverables(db, slug)).packs.map((p) => ({
         id: p.id,
         packType: p.type,
         binding: p.binding,

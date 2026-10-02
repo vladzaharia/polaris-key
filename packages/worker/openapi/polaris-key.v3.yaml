@@ -3859,7 +3859,8 @@ paths:
         `descriptor-mismatch` comparison covers them), and the release's packs are checked
         against the stored records, refused as `release_record_rejected` with `content-api`
         (packs declared, no `content`), `pin-unknown`, `pin-mismatch`, `pin-yanked`,
-        `pin-missing`, `pin-gated` or `embeds`; a descriptor submitted without a record is
+        `pin-missing`, `pin-gated`, `embeds` or `pack-unreadable` (a declared pack's stored
+        declaration does not read back; resync the manifest); a descriptor submitted without a record is
         checked the same way. A PACK release is `{ticket?, record, dryRun?}` with NO
         descriptor (the body at most 92,940 bytes): a `kind: pack` record, refused after the
         shared checks with `pack-unknown`, `scheme`, `seq` (409), `pack-type`,

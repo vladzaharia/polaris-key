@@ -107,6 +107,7 @@ record, so the record's packs are exactly the descriptor's. Ingest refuses with
 | `pin-missing`  | an expected, `required` or embedded-baseline pack has no pin, or a pin no expect |
 | `pin-gated`    | a `required` expect pins a gated pack release                                    |
 | `embeds`       | a build embeds a pack the release does not pin                                   |
+| `pack-unreadable` | a declared pack's stored declaration does not read back; resync the manifest  |
 
 Release mirrors the pins into `release_pins` (never edited afterwards), the `contentApi` into
 the release and each build's `embeds`. **Yanking** a pinned pack release stops new pins; app

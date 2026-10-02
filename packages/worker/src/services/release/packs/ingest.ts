@@ -74,8 +74,10 @@ export function variantBuildId(
   return variantKey(variant) || "default";
 }
 
-/** The release id of a pack release: `<packId>@<version>`, never the record's `tag`, so a pack
- *  release can never collide with a GitHub-tagged app release of the same name. */
+/** The release id of a pack release: `<packId>@<version>`, never the record's `tag`. Git allows
+ *  `@` in a tag, so a GitHub release CAN carry the same id; the truth-store sync skips such a
+ *  release and reports it (`packTagConflicts`), and its writes are guarded so they never touch a
+ *  non-app row (`RELEASE_NOT_FOREIGN_DELIVERABLE_SQL`). */
 export function packReleaseId(
   record: Pick<PackRecordDoc, "deliverable" | "version">,
 ): string {
@@ -101,10 +103,11 @@ export function checkPackAgainstDeclaration(
     );
   for (const [i, v] of record.variants.entries()) {
     for (const [axis, value] of Object.entries(v.variant)) {
-      const declared = (pack.variants as Record<string, string[] | undefined>)[
-        axis
-      ];
-      if (!declared || !declared.includes(value))
+      // Own keys only: an axis named `constructor` or `__proto__` is not declared.
+      const declared = Object.hasOwn(pack.variants, axis)
+        ? (pack.variants as Record<string, string[] | undefined>)[axis]
+        : undefined;
+      if (!Array.isArray(declared) || !declared.includes(value))
         return refuse(
           "pack-variant",
           `variants[${i}] (${variantKey(v.variant) || "default"}) is outside ${record.deliverable}'s declared variants (${packVariantKeys(pack).join(", ") || "default"}).`,
