@@ -70,15 +70,15 @@ resource, and record the date and the person.
       reports still store `updates` and nothing is counted (the funnel says so).
 - [ ] **Sentry (optional): store a real client secret.** In the Sentry organisation, create an
       internal integration with webhooks and the alert-rule action, webhook URL
-      `https://key.plrs.im/<product>/distribution/hooks/sentry`; store its client secret on the
-      product as an outlet credential of kind `sentry-integration` (Secrets tab, or
-      `PUT …/outlet-credentials/<id>` with `{"kind": "sentry-integration", "value":
-    {"clientSecret": "…"}}`). Never commit it; the tests use a placeholder. Then add the
-      integration to an issue alert rule, trigger it on a release tagged
-      `release = app@<version>`, `environment = <channel>`, `pkey.outlet = <outlet>`, and confirm
-      one halt candidate appears on Distribution → Update health (and that `Sentry-Hook-Resource`
-      really is `event_alert` for an issue alert rule action: the hook was written from Sentry's
-      documented webhook shape, not a live delivery).
+      `https://key.plrs.im/<product>/distribution/hooks/sentry`. Store its client secret on the
+      product as an outlet credential of kind `sentry-integration` (Secrets tab, or a `PUT` on
+      `…/outlet-credentials/<id>` with kind `sentry-integration` and value `clientSecret`). Never
+      commit it; the tests use a placeholder. Then add the integration to an issue alert rule,
+      trigger it on a release tagged `release = app@<version>`, `environment = <channel>` and
+      `pkey.outlet = <outlet>`, and confirm one halt candidate appears on Distribution → Update
+      health. Also confirm that `Sentry-Hook-Resource` really is `event_alert` for an issue alert
+      rule action: the hook was written from Sentry's documented webhook shape, not a live
+      delivery.
 - [ ] **Auto-halt stays off** until an operator turns it on per product on the Update health tab.
       Before turning it on for a real product, check the funnel shows sensible numbers for a
       release (the Godot updater, P3-10, is the only emitter today).
