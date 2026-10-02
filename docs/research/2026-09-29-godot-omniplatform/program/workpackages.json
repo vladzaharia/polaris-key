@@ -1076,7 +1076,7 @@
       "optional": false,
       "refs": ["README §3.6", "PARITY §5.5"],
       "brief": "wp/P3-06-v4-python.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P3-07",
