@@ -97,10 +97,12 @@ def tree_pack(
     entitlement: Optional[str] = None,
     type: str = "files.tree",
     index_bytes: Optional[int] = None,
+    record_extra: Optional[Dict[str, Any]] = None,
 ) -> TreePack:
     """A ``files.tree`` pack release over ``files``, every object raw; optionally a ``files``
     delta set from ``from_pack``, whose entries are ``delta`` (the probe frame, when the base file
-    is the probe base) or raw ``blob`` entries."""
+    is the probe base) or raw ``blob`` entries. ``record_extra`` adds record-level members (a
+    reserved ``provides``, say) after the variants."""
     fs = {p: (b.encode("utf-8") if isinstance(b, str) else b) for p, b in files.items()}
     paths = sorted(fs, key=lambda p: p.encode("utf-8"))
     entries = [
@@ -219,6 +221,8 @@ def tree_pack(
     if entitlement is not None:
         record["entitlement"] = entitlement
     record["variants"] = [variant]
+    if record_extra:
+        record.update(record_extra)
     jws = sign_jws(record, _key(RELEASE_KID)["privateKeyPkcs8Pem"], RELEASE_KID, "pkey-release+jws")
     return TreePack(
         pack_id=pack_id,

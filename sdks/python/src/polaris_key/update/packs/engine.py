@@ -33,6 +33,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Seque
 from ...constants_generated import MAX_FILES_INDEX_BYTES, ErrorCode
 from ...core.errors import PolarisError
 from ...core.jws import TrustSet
+from ...core.models import ReleasePin
 from ...core.pack_claims import variant_key
 from ...core.release_record import (
     ReleaseRecordPin,
@@ -44,6 +45,7 @@ from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
 from .files import parse_files_index
 from .marker import match_embedded, verify_marker
 from .plan import plan
+from .provides import PackProvider, ProvidesFacts, ProvidesMemo, entitled
 from .revocations import (
     clear_relearn,
     empty_revocations,
@@ -403,6 +405,8 @@ class PackEngine:
         self._rev_jws: Dict[str, str] = {}
         self._rev_issue: Optional[str] = None
         self._rev_file = False
+        #: P4-20: ``provides_facts`` of verified records, by record hash.
+        self._provides = ProvidesMemo()
         self._lock = threading.RLock()
 
     # ── Public surface ─────────────────────────────────────────────────────────────────────
@@ -563,6 +567,52 @@ class PackEngine:
         return pack_set_id(
             [{"packId": i["packId"], "releaseSha256": i["recordSha256"]} for i in self._running.values()]
         )
+
+    def is_available(self, content_id: str) -> bool:
+        """Save compatibility (P4-20, CONTENT §6.7 item 8): whether a pack release in the ACTIVE
+        set provides ``content_id`` (its record's ``provides``, ``provides.py``). The active set
+        is the running set: restart packs mounted at this boot, hot packs active, embedded
+        baselines included; a revoked release is never in it. A pack whose ``entitlement`` the
+        licence lacks never answers."""
+        with self._lock:
+            self._require_loaded()
+            granted = self._entitlements() if self._entitlements is not None else None
+            for i in self._running.values():
+                f = self._provides.facts_of(i["recordSha256"], i["record"])
+                if content_id in f.provides and entitled(f, granted):
+                    return True
+            return False
+
+    def pack_for(
+        self, content_id: str, targets: Optional[Sequence[Any]] = None
+    ) -> Optional[PackProvider]:
+        """The pack whose TARGET release provides ``content_id``, so a game can ``estimate`` and
+        ``ensure`` it. The target set is ``targets`` (a ``packs`` decision's install list) or, by
+        default, the content stamp's pins; each target's record is the verified record of an
+        install or embedded baseline with its hash, else fetched by hash and verified as
+        ``ensure`` verifies it. The first target, in list order, that provides the id answers. A
+        target that cannot be fetched or verified, a revoked one and an unentitled one (CONTENT
+        §6.7 item 9) never answer. ``None`` when no target provides it."""
+        with self._lock:
+            self._require_loaded()
+            items = (
+                [_target(t) for t in targets]
+                if targets is not None
+                else [_target(p) for p in ((self._stamp or {}).get("pins") or ())]
+            )
+            granted = self._entitlements() if self._entitlements is not None else None
+            for pack_id, release in items:
+                if self.is_revoked(release["sha256"]):
+                    continue
+                f = self._target_facts(pack_id, release)
+                if f is not None and content_id in f.provides and entitled(f, granted):
+                    return PackProvider(
+                        pack_id=pack_id,
+                        release=ReleasePin(
+                            sha256=release["sha256"], seq=release["seq"], version=release["version"]
+                        ),
+                    )
+            return None
 
     def confirm(self) -> None:
         """Mark this boot healthy (CONTENT §10 step 7)."""
@@ -1057,37 +1107,7 @@ class PackEngine:
             return emb
 
         # 2. The pinned record, by hash, against the pinned release keys.
-        got = self._fetch_record(want)
-        if not got.get("ok"):
-            code = got.get("code") or ErrorCode.NETWORK_ERROR
-            raise PackError(code, f"Fetching {pack_id}'s record failed ({code}).", pack_id=pack_id)
-        v = verify_release_record(
-            got["body"],
-            release_keys=self._release_keys,
-            product_trust=self._product_trust(),
-            expected_aud=self._product,
-            expected_hash=want,
-            pin=ReleaseRecordPin(
-                kind="pack",
-                deliverable=pack_id,
-                version=pin["release"]["version"],
-                seq=pin["release"]["seq"],
-            ),
-        )
-        if not v.ok or v.record is None:
-            if v.step == "cross-check":
-                raise PackError(
-                    ErrorCode.RECORD_MISMATCH,
-                    f"{pack_id}'s record is not the pinned release.",
-                    pack_id=pack_id,
-                )
-            raise PackError(
-                ErrorCode.RECORD_REJECTED,
-                f"{pack_id}'s record was refused at {v.step}.",
-                pack_id=pack_id,
-                detail=v.step,
-            )
-        record = v.record.to_dict()
+        body, record = self._fetch_verified(pack_id, pin["release"])
 
         # 3. Type, entitlement, variant.
         handler = self._handlers.get(record["type"])
@@ -1214,7 +1234,7 @@ class PackEngine:
         if "error" in p:
             raise PackError(p["error"], f"No way to install {pack_id}: {p['error']}.", pack_id=pack_id)
         return _Plan(
-            body=got["body"],
+            body=body,
             record_sha256=want,
             record=record,
             variant=variant,
@@ -1224,6 +1244,64 @@ class PackEngine:
             index=index,
             plan=p,
         )
+
+    def _target_facts(self, pack_id: str, release: Mapping[str, Any]) -> Optional[ProvidesFacts]:
+        """A target's facts (P4-20): from an install or embedded baseline of that release, else
+        its record fetched and verified (``_fetch_verified``); ``None`` when that fails."""
+        sha256 = release["sha256"]
+        hit = self._provides.get(sha256)
+        if hit is not None:
+            return hit
+        doc = self._require_loaded()
+        for i in (
+            doc["active"].get(pack_id),
+            doc["previous"].get(pack_id),
+            self._running.get(pack_id),
+            self._embedded.get(pack_id),
+        ):
+            if i is not None and i["recordSha256"] == sha256 and i["packId"] == pack_id:
+                return self._provides.facts_of(sha256, i["record"])
+        try:
+            body, _ = self._fetch_verified(pack_id, release)
+        except Exception:
+            return None
+        return self._provides.facts_of(sha256, body)
+
+    def _fetch_verified(self, pack_id: str, release: Mapping[str, Any]) -> Tuple[str, Dict[str, Any]]:
+        """Step 2 for one pin: the record fetched by hash and verified against the pinned
+        release keys. Returns ``(body, record)``; raises a :class:`PackError`."""
+        want = release["sha256"]
+        got = self._fetch_record(want)
+        if not got.get("ok"):
+            code = got.get("code") or ErrorCode.NETWORK_ERROR
+            raise PackError(code, f"Fetching {pack_id}'s record failed ({code}).", pack_id=pack_id)
+        v = verify_release_record(
+            got["body"],
+            release_keys=self._release_keys,
+            product_trust=self._product_trust(),
+            expected_aud=self._product,
+            expected_hash=want,
+            pin=ReleaseRecordPin(
+                kind="pack",
+                deliverable=pack_id,
+                version=release["version"],
+                seq=release["seq"],
+            ),
+        )
+        if not v.ok or v.record is None:
+            if v.step == "cross-check":
+                raise PackError(
+                    ErrorCode.RECORD_MISMATCH,
+                    f"{pack_id}'s record is not the pinned release.",
+                    pack_id=pack_id,
+                )
+            raise PackError(
+                ErrorCode.RECORD_REJECTED,
+                f"{pack_id}'s record was refused at {v.step}.",
+                pack_id=pack_id,
+                detail=v.step,
+            )
+        return got["body"], v.record.to_dict()
 
     def _ensure_one(
         self, pack_id: str, target: Optional[Mapping[str, Any]] = None

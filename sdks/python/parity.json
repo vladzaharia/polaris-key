@@ -124,7 +124,10 @@
       "status": "implemented",
       "note": "client.update.packs.register_handler; files.tree (hot: versioned directory plus pointer swap) built in."
     },
-    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.provides": {
+      "status": "implemented",
+      "note": "update.packs.provides reads the record-level provides (CONTENT_ID_PATTERN, MAX_PROVIDES; an unusable list provides nothing); client.update.packs.is_available over the running set and pack_for over a packs decision's targets or the stamp's pins, unentitled and revoked releases never answering."
+    },
     "packs.transport.apple": {
       "status": "na",
       "runtime": "python",

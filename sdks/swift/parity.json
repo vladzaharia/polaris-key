@@ -113,7 +113,7 @@
       "status": "implemented",
       "note": "update.packs.registerHandler; files.tree (hot: versioned directory plus pointer swap) built in."
     },
-    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.provides": { "status": "implemented" },
     "packs.transport.apple": {
       "status": "planned",
       "unowned": true,

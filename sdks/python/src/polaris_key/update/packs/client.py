@@ -43,6 +43,7 @@ from .engine import (
     PacksSnapshot,
     RevocationsSnapshot,
 )
+from .provides import PackProvider
 from .sets import parse_content_stamp, stamp_holds
 from .storage import DirPackStorage, directory_tree_digest, measure_file
 from .zstd import ZstdInfo, select_python_zstd
@@ -261,6 +262,24 @@ class PacksClient:
             return self._start().pack_set_id()
         except Exception:
             return None
+
+    def is_available(self, content_id: str) -> bool:
+        """Save compatibility (P4-20, CONTENT §6.7 item 8): whether a pack release in the
+        running set (restart packs mounted at this boot, hot packs active in this process,
+        embedded baselines included) provides ``content_id`` in its record's ``provides``.
+        ``False`` without a content stamp."""
+        if not self.configured:
+            return False
+        return self._start().is_available(content_id)
+
+    def pack_for(self, content_id: str, targets: Optional[Sequence[Any]] = None) -> Optional[PackProvider]:
+        """The pack whose target release provides ``content_id`` (the stamp's pins, or
+        ``targets``: a ``packs`` decision's install list), to ``estimate`` and ``ensure`` before a
+        save that needs it. Reads only records (fetched by hash and verified); ``None`` when no
+        target provides it or without a content stamp."""
+        if not self.configured:
+            return None
+        return self._start().pack_for(content_id, targets)
 
     def confirm(self) -> None:
         """Mark this boot healthy (CONTENT §10 step 7)."""

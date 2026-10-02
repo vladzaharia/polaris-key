@@ -272,6 +272,23 @@ public actor PacksClient {
         return try await start().ensureReleases(targets)
     }
 
+    /// Save compatibility (CONTENT §6.7 item 8): whether a pack release in the active set (mounted
+    /// or active in this process, embedded baselines included) provides `contentId` in its
+    /// record's `provides`. False without a content stamp.
+    public func isAvailable(_ contentId: String) async throws -> Bool {
+        guard configured else { return false }
+        return try await start().isAvailable(contentId)
+    }
+
+    /// The pack whose target release provides `contentId` (the stamp's pins, or `targets`: a
+    /// `packs` decision's install list), to `estimate` and `ensure` before a save that needs it.
+    /// Reads only records (fetched by hash and verified); nil when no target provides it or
+    /// without a content stamp.
+    public func packFor(_ contentId: String, targets: [PackTarget]? = nil) async throws -> PackProvider? {
+        guard configured else { return nil }
+        return try await start().packFor(contentId, targets: targets)
+    }
+
     /// The stored and this process's verified revocations, and `relearn` (plans/P4-13.md §2.5).
     public func revocations() async throws -> RevocationsSnapshot { try await start().revocations() }
 

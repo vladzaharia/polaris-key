@@ -403,6 +403,8 @@ public actor PackEngine {
     /// Plan ids `estimate` staged an index under, reused by the next `ensure`.
     private var preflightPlans: [String: (planId: String, recordSha256: String)] = [:]
     private var tail: Task<Void, Never>?
+    /// Save compatibility's record facts, by record hash (`Provides.swift`).
+    private var providesMemo = ProvidesMemo()
 
     public init(_ opts: PackEngineOptions) {
         self.opts = opts
@@ -554,6 +556,59 @@ public actor PackEngine {
     public func packSetId() -> String? {
         PolarisKeyPacks.packSetId(
             running.values.map { PackSetEntry(packId: $0.packId, releaseSha256: $0.recordSha256) })
+    }
+
+    /// Save compatibility (P4-20, CONTENT §6.7 item 8): whether a pack release in the ACTIVE set
+    /// provides `contentId` (its record's `provides`, `Provides.swift`). The active set is the
+    /// running set: restart packs mounted at this boot, hot packs active, embedded baselines
+    /// included; a revoked release is never in it. A pack whose `entitlement` the licence lacks
+    /// never answers.
+    public func isAvailable(_ contentId: String) async throws -> Bool {
+        _ = try requireLoaded()
+        let granted = await opts.entitlements()
+        for i in running.values where providesMemo.facts(i.recordSha256, i.record).answers(contentId, granted) {
+            return true
+        }
+        return false
+    }
+
+    /// The pack whose TARGET release provides `contentId`, so a game can `estimate` and `ensure`
+    /// it. The target set is `targets` (a `packs` decision's install list) or, by default, the
+    /// content stamp's pins; each target's record is the verified record of an install or embedded
+    /// baseline with its hash, else fetched by hash and verified as `ensure` verifies it. The first
+    /// target, in list order, that provides the id answers. A target that cannot be fetched or
+    /// verified, a revoked one and an unentitled one (CONTENT §6.7 item 9) never answer. Nil when
+    /// no target provides it.
+    public func packFor(_ contentId: String, targets: [PackTarget]? = nil) async throws -> PackProvider? {
+        try await serialised { try await self.packForNow(contentId, targets) }
+    }
+
+    private func packForNow(_ contentId: String, _ targets: [PackTarget]?) async throws -> PackProvider? {
+        _ = try requireLoaded()
+        let list = targets ?? (opts.stamp?.pins ?? []).map {
+            PackTarget(pack: $0.pack, release: ReleasePin(sha256: $0.sha256, seq: $0.seq, version: $0.version))
+        }
+        let granted = await opts.entitlements()
+        for t in list where !isRevoked(t.release.sha256) {
+            if let f = await targetFacts(t), f.answers(contentId, granted) {
+                return PackProvider(packId: t.pack, release: t.release)
+            }
+        }
+        return nil
+    }
+
+    /// A target's facts: from an install or embedded baseline of that release, else its record
+    /// fetched and verified (`fetchVerified`); nil when that fails.
+    private func targetFacts(_ t: PackTarget) async -> ProvidesFacts? {
+        let sha = t.release.sha256
+        if let hit = providesMemo.get(sha) { return hit }
+        guard let doc else { return nil }
+        for case let i? in [doc.active[t.pack], doc.previous[t.pack], running[t.pack], embedded[t.pack]]
+        where i.recordSha256 == sha && i.packId == t.pack {
+            return providesMemo.facts(sha, i.record)
+        }
+        guard let (body, _) = try? await fetchVerified(t.pack, t.release) else { return nil }
+        return providesMemo.facts(sha, body)
     }
 
     /// Mark this boot healthy (CONTENT §10 step 7).
@@ -995,6 +1050,41 @@ public actor PackEngine {
 
     /// Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
     /// seeds, the index and the plan.
+    /// Step 2 for one release: the record fetched by hash and verified against the pinned release
+    /// keys with `pin: {kind: "pack", deliverable, version, seq}`. Throws a `PackError`.
+    private func fetchVerified(_ packId: String, _ release: ReleasePin) async throws -> (String, PackRecordDoc) {
+        let body: String
+        switch await opts.fetchRecord(release.sha256) {
+        case .ok(let b): body = b
+        case .failed(let code):
+            throw PackError(code, "Fetching \(packId)'s record failed (\(code)).", packId: packId)
+        }
+        let v = verifyReleaseRecord(
+            body,
+            options: VerifyReleaseRecordOptions(
+                releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
+                expectedAud: opts.product, expectedHash: release.sha256,
+                pin: ReleaseRecordPin(kind: "pack", deliverable: packId, version: release.version, seq: release.seq)))
+        let record: PackRecordDoc
+        switch v {
+        case .refused(.crossCheck):
+            throw PackError(
+                ErrorCode.recordMismatch, "\(packId)'s record is not the pinned release.", packId: packId)
+        case .refused(let step):
+            throw PackError(
+                ErrorCode.recordRejected, "\(packId)'s record was refused at \(step.rawValue).",
+                detail: step.rawValue, packId: packId)
+        case .ok(let rec):
+            guard let p = PackRecordDoc(json: rec.json) else {
+                throw PackError(
+                    ErrorCode.recordRejected, "\(packId)'s record was refused at claims.",
+                    detail: "claims", packId: packId)
+            }
+            record = p
+        }
+        return (body, record)
+    }
+
     private func preflight(_ packId: String, want: ReleasePin? = nil) async throws -> Preflight {
         let doc = try requireLoaded()
         guard let stamp = opts.stamp else {
@@ -1025,35 +1115,8 @@ public actor PackEngine {
         }
 
         // 2. The pinned record, by hash, against the pinned release keys.
-        let body: String
-        switch await opts.fetchRecord(pin.sha256) {
-        case .ok(let b): body = b
-        case .failed(let code):
-            throw PackError(code, "Fetching \(packId)'s record failed (\(code)).", packId: packId)
-        }
-        let v = verifyReleaseRecord(
-            body,
-            options: VerifyReleaseRecordOptions(
-                releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
-                expectedAud: opts.product, expectedHash: pin.sha256,
-                pin: ReleaseRecordPin(kind: "pack", deliverable: packId, version: pin.version, seq: pin.seq)))
-        let record: PackRecordDoc
-        switch v {
-        case .refused(.crossCheck):
-            throw PackError(
-                ErrorCode.recordMismatch, "\(packId)'s record is not the pinned release.", packId: packId)
-        case .refused(let step):
-            throw PackError(
-                ErrorCode.recordRejected, "\(packId)'s record was refused at \(step.rawValue).",
-                detail: step.rawValue, packId: packId)
-        case .ok(let rec):
-            guard let p = PackRecordDoc(json: rec.json) else {
-                throw PackError(
-                    ErrorCode.recordRejected, "\(packId)'s record was refused at claims.",
-                    detail: "claims", packId: packId)
-            }
-            record = p
-        }
+        let (body, record) = try await fetchVerified(
+            packId, ReleasePin(sha256: pin.sha256, seq: pin.seq, version: pin.version))
 
         // 3. Type, entitlement, variant.
         guard let h = handler(record.type), h.supports(record.formatVersion),

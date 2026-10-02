@@ -94,7 +94,7 @@ struct TreePack: Sendable {
 func treePack(
     packId: String, version: String, seq: Int, files rawFiles: [String: Any], from: TreePack? = nil,
     activation: String = "hot", entitlement: String? = nil, type: String = "files.tree",
-    indexBytes: Int? = nil
+    indexBytes: Int? = nil, recordExtra: [String: JSONValue] = [:]
 ) -> TreePack {
     var files: [String: [UInt8]] = [:]
     for (p, b) in rawFiles { files[p] = (b as? [UInt8]) ?? Array((b as! String).utf8) }
@@ -189,6 +189,8 @@ func treePack(
         "variants": .array([.object(variant)]),
     ]
     if let entitlement { record["entitlement"] = .string(entitlement) }
+    // Record-level members beyond the claims (P4-20's reserved `provides`).
+    for (k, v) in recordExtra { record[k] = v }
     let jws = PackFixtures.sign(.object(record))
     return TreePack(
         packId: packId, version: version, seq: seq, jws: jws, recordSha256: recordHash(jws), treeDigest: digest,

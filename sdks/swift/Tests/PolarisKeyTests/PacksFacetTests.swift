@@ -1,4 +1,4 @@
-// @pkey-feature packs.state packs.handlers packs.record
+// @pkey-feature packs.state packs.handlers packs.record packs.provides
 //
 // `update.packs` end to end against a fake control plane (the port of the Node SDK's
 // `test/packs.test.ts`): a `files.tree` pack installed from its pinned record into the platform
@@ -289,6 +289,31 @@ final class PacksFacetTests: XCTestCase {
         (c, update) = try await client(stamp: .bytes(Array(#"{"format":"pkey-content/2"}"#.utf8)))
         (failure, _) = await code { _ = try await update.packs.ensure(["djdl.l10n"]) }
         XCTAssertEqual(failure, ErrorCode.contentStampInvalid)
+        await c.close()
+    }
+
+    func testIsAvailableAndPackForThroughTheFacet() async throws {
+        var (c, update) = try await client(stamp: nil)
+        var available = try await update.packs.isAvailable("foe.goblin")
+        XCTAssertFalse(available)
+        var p = try await update.packs.packFor("foe.goblin")
+        XCTAssertNil(p)
+        await c.close()
+
+        let foes = treePack(
+            packId: "djdl.foes", version: "1.0.0", seq: 1, files: ["foes.txt": "foes"],
+            recordExtra: ["provides": .array([.string("foe.goblin")])])
+        await serve([foes])
+        (c, update) = try await client(stamp: try stampFile(foes))
+        available = try await update.packs.isAvailable("foe.goblin")
+        XCTAssertFalse(available)
+        p = try await update.packs.packFor("foe.goblin")
+        XCTAssertEqual(
+            p, PackProvider(packId: "djdl.foes", release: ReleasePin(sha256: foes.recordSha256, seq: 1, version: "1.0.0")))
+        XCTAssertTrue(blobs.seen.isEmpty)
+        _ = try await update.packs.ensure(["djdl.foes"])
+        available = try await update.packs.isAvailable("foe.goblin")
+        XCTAssertTrue(available)
         await c.close()
     }
 
