@@ -1,6 +1,6 @@
 ---
 title: "Publishing from CI"
-description: "pkey release publish and the polaris-key/publish GitHub Action — publishing a release from a release job with no secret in the repository, dry runs, channel commands and troubleshooting."
+description: "pkey release publish and the polaris-key/publish GitHub Action — publishing a release or a content pack from a release job with no secret in the repository, content stamps, dry runs, channel commands and troubleshooting."
 sidebar:
   order: 3.7
 ---
@@ -77,20 +77,25 @@ Until the Action is listed as `polaris-key/publish@v1`, reference it by a full c
 repository, as above. It runs on the current Node runtime GitHub supports and needs no install
 step.
 
-| Input               | Default               | Meaning                                                                                                              |
-| ------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `product`           | (required)            | The product slug; must equal `.pkey/product`'s.                                                                      |
-| `dir`               | (required)            | The built files, searched recursively, relative to the workspace.                                                    |
-| `tag`               |                       | The git tag, which is also the release id. It must spell the version (the tag minus a leading `v`).                  |
-| `version`           | `tag` without its `v` | The version; must parse under the deliverable's version scheme.                                                      |
-| `channel`           |                       | The canonical channel the release is published to: `stable`, `beta`, or one the product declares.                    |
-| `deliverable`       | `app`                 | Only `app` until pack releases land.                                                                                 |
-| `source`            | `r2`                  | `r2` uploads the bytes to Polaris Key. `github` uploads nothing and locates every file on the tagged GitHub release. |
-| `meta`              |                       | A JSON file of per-build facts (below).                                                                              |
-| `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                              |
-| `release-key`       |                       | The release key's PEM (an environment secret). Required when `.pkey/release` declares `releaseKeys`.                 |
-| `min-supported-seq` |                       | The record's `minSupportedSeq`: installs below that release on its platforms are prompted (never blocked).           |
-| `dry-run`           | `false`               | `true` prints the descriptor (and the release record, unsigned) and the server's verdict, and writes nothing.        |
+| Input               | Default               | Meaning                                                                                                                   |
+| ------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `product`           | (required)            | The product slug; must equal `.pkey/product`'s.                                                                           |
+| `dir`               | (required)            | The built files, searched recursively, relative to the workspace.                                                         |
+| `tag`               |                       | The git tag, which is also the release id. It must spell the version (the tag minus a leading `v`).                       |
+| `version`           | `tag` without its `v` | The version; must parse under the deliverable's version scheme.                                                           |
+| `channel`           |                       | The canonical channel the release is published to: `stable`, `beta`, or one the product declares.                         |
+| `deliverable`       | `app`                 | `app`, or a pack id `.pkey/release` declares ([Publishing a pack](#publishing-a-pack)).                                   |
+| `source`            | `r2`                  | `r2` uploads the bytes to Polaris Key. `github` uploads nothing and locates every file on the tagged GitHub release.      |
+| `meta`              |                       | A JSON file of per-build facts (below).                                                                                   |
+| `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                                   |
+| `release-key`       |                       | The release key's PEM (an environment secret). Required when `.pkey/release` declares `releaseKeys`.                      |
+| `min-supported-seq` |                       | The record's `minSupportedSeq`: installs below that release on its platforms are prompted (never blocked).                |
+| `content-stamp`     |                       | App only, when packs are declared: the `pkey-content.json` the build embedded ([App releases](#app-releases-with-packs)). |
+| `embedded`          |                       | App only: compute the content from the pack markers under this directory instead of `content-stamp`.                      |
+| `pins`              |                       | App only: `<packId>@<version>` pins for packs the build does not embed, separated by spaces, commas or newlines.          |
+| `out`               |                       | Pack only: keep the signed record and payloads at `<out>/<packId>/<version>/` for the next publish's `bases`.             |
+| `bases`             |                       | Pack only: the earlier releases `out` kept; the newest ones Polaris Key confirms get deltas.                              |
+| `dry-run`           | `false`               | `true` prints the descriptor (and the release record, unsigned) and the server's verdict, and writes nothing.             |
 
 The step sets two outputs: `release-id` and `outcome` (`created`, `enriched`, or `unchanged`). A
 refusal fails the step with the server's reason as an error annotation.
@@ -184,6 +189,111 @@ With `source: github` nothing is uploaded: every file is located as an asset of 
 release. That release must be an **immutable release**, and Polaris Key checks that each asset's
 GitHub digest and size match the descriptor. Use it when GitHub releases already carry your files.
 
+## Publishing a pack
+
+A content pack ([Packs](/docs/services/release/packs/)) is published by the same step with
+`deliverable: <packId>` (or `--deliverable <packId>`). A pack release is one **signed release
+record** (`kind: pack`), so the step needs `release-key`, and the zstd CLI 1.5.5 or later on the
+runner (GitHub's hosted runners carry it; the Action installs it with `apt-get` when it is
+missing on Linux).
+
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: pack-cache
+    key: pkey-pack-diceroll.core3d-${{ github.run_id }}
+    restore-keys: pkey-pack-diceroll.core3d-
+- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
+  with:
+    product: diceroll
+    deliverable: diceroll.core3d
+    version: 1.4.0
+    dir: packs/diceroll.core3d # <variant key or "default">/ per variant
+    out: pack-cache
+    bases: pack-cache
+    release-key: ${{ secrets.PKEY_RELEASE_KEY }}
+```
+
+**Where the payloads are.** Each variant the pack declares has its payload at
+`<dir>/<variant key>/`, or `<dir>/default/` for a pack without variants: for `godot.pck` the one
+`.pck` file there (your `--export-pack` output), for `files.tree` the directory itself. The
+variant key is the variant's `axis=value` pairs sorted by axis and joined with `;`, for example
+`texture=s3tc` or `locale=fr;texture=astc`.
+
+What the step does, in order:
+
+1. **Check, strip and lint.** A `godot.pck` must be a PCK v2–v4 with no encrypted directory, no
+   sparse bundle and no encrypted or patch entry. The step removes the two files `--export-pack`
+   always adds, `project.binary` and `.godot/global_script_class_cache.cfg` (mounted, they replace
+   the game's own copies), keeping the PCK's header, and then admits only: entries under the
+   pack's `handler.prefixes` with their `.remap` and `.import` files, the `.godot/exported/` and
+   `.godot/imported/` files those name, and `.godot/uid_cache.bin`. Scripts (`.gd`, `.gdc`, `.cs`,
+   a `.remap` of one), native libraries, GDExtensions and anything outside the prefixes fail with
+   their path: a pack carries data only. The header's engine must be `requires.engine`; more than
+   1,000 entries warns and more than 20,000 fails, because mounting stalls longer with the entry
+   count. A `files.tree` must keep the [path rules](/docs/build/wire/packs/#path-rules) and hold no symbolic links.
+2. **Build the objects.** A `full` object (the whole payload, one zstd frame), the `pkey-files/1`
+   index with a blob per file, the gaps object of a PCK (every byte no entry covers), and against
+   each delta base a whole-payload `zstd --patch-from` delta and a packed per-file delta set. Every
+   object is stored raw when compressing does not make it smaller. The step proves the index and
+   the gaps rebuild the payload byte for byte, and that every delta decodes to its target, before
+   anything is sent; an index above 8 MiB is refused.
+3. **Ask first.** Before uploading anything, the step asks Polaris Key for the release's `seq`,
+   the pack's **delivery gate** and the record hashes of the cached releases. If `.pkey/release`
+   asserts an `entitlement` the gate does not have, it stops: an operator gates a pack under
+   Distribution → Access first. Otherwise every object is uploaded under the gate and the gate is
+   signed into the record.
+4. **Delta bases** come from your own cache: `out` keeps each release's record and payloads, and
+   `bases` reads them back. A cached release counts only when its record's SHA-256 is the one
+   Polaris Key stores and its payload matches that record, and `patch.deltaBases` (default 1) of
+   the newest such releases get deltas. A missing cache only means bigger downloads for that
+   release, never a failed publish. The step lists entries that look like re-import noise (a Godot
+   cache rewritten in another order, a few changed bytes) as warnings.
+5. **Upload and submit.** Objects go up in rounds of at most 256, each object only when the
+   product does not hold it yet, so an unchanged file costs nothing; then the record is submitted.
+6. **Write the marker.** The stripped PCK is written back in place, and a marker
+   (`pkey-marker/1`, the signed record) is written beside each payload: `X.pck.pkey.json` beside
+   a PCK, `D/.pkey/pack.json` inside a tree. Embed both in the app export.
+
+`dry-run: true` prints the lint results, the strip, the gate, the objects (new and already
+stored), the bytes each update strategy costs, skipped deltas and the unsigned record, and
+uploads, signs and writes nothing. A published pack version is never rewritten: publish a new
+version.
+
+## App releases with packs
+
+When `.pkey/release` declares packs, every app release states which pack releases it pins. The
+build learns them from a **content stamp** (`pkey-content.json`) it embeds, so write the stamp
+before the export:
+
+```sh
+node pkey.mjs release content-stamp --product diceroll --out pkey-content.json \
+  --embedded packs --pin diceroll.l10n@2.0.1
+```
+
+The stamp's pins come from the markers under `--embedded` (each verified against your
+`releaseKeys`, and refused when the payload beside it is not one of the record's variants) and
+from `--pin <packId>@<version>` for packs the build does not embed, which Polaris Key resolves to
+the stored record. `contentApi` comes from `deliverables.app.content`, and each pin's `required`
+and `delivery` from the pack's declaration. Every `required` and every `baseline: embedded` pack
+must be pinned. Then publish the app with the same stamp:
+
+```yaml
+- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
+  with:
+    product: diceroll
+    tag: ${{ github.ref_name }}
+    dir: dist
+    content-stamp: pkey-content.json
+    release-key: ${{ secrets.PKEY_RELEASE_KEY }}
+```
+
+The stamp becomes the release descriptor's `content`, and each build's `embeds` comes from the
+artifact map (`artifacts[].embeds`, or every `baseline: embedded` pack when omitted); the signed
+record is moved from that descriptor, so it carries both. `embedded` and `pins` compute the same
+content inside the publish instead, for a build that embeds no stamp. Polaris Key must advertise
+`release.packs` in its discovery document, or the step refuses to stamp or publish a pack.
+
 ## Channel commands
 
 The same credential drives channel policy from CI:
@@ -197,7 +307,7 @@ pkey release yank v0.3.0 --reason "crashes on launch" --product your-product
 
 Promote, pin and unpin need the `release:promote` scope, which the default grant includes. Yank
 needs `release:yank`, which an operator adds to the product's publisher policy in the console.
-`--deliverable` selects another deliverable once packs exist.
+`--deliverable` selects a pack's channel pointers.
 
 ## Distribution commands
 
@@ -273,6 +383,7 @@ any detail the reason carries.
 | `release_exists`                                  | The release already exists from a different descriptor. If the refusal says it is retryable (another writer won a race), the step resends it on its own.                                                                                                                                                                                       |
 | `staged_object_missing`, `staged_object_mismatch` | An upload did not arrive, or arrived with other bytes. Re-run the job; if it recurs, check that nothing rewrites the files between the build and this step.                                                                                                                                                                                    |
 | `ticket_expired`, `ticket_redeemed`               | The ticket outlived its token (30 minutes for an OIDC token) or was already used. Re-run the step; it requests a fresh ticket.                                                                                                                                                                                                                 |
+| `gated_mismatch`, `distribution_disabled`         | A pack's objects were requested under another delivery gate than the pack's, or Distribution is off for the product. Re-run the step; it asks for the gate first.                                                                                                                                                                              |
 | `promote_failed`                                  | A transient failure moving an upload into the blob store. The step retries it automatically.                                                                                                                                                                                                                                                   |
 | 404 on the uploads call                           | The blob store is not configured on this Polaris Key, or Release is off for the product.                                                                                                                                                                                                                                                       |
 
