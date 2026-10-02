@@ -1743,6 +1743,32 @@ blob store, and stores it. What the Worker newly does is parse CI-supplied bytes
   denial of publish, not a takeover: a repo writer who pushes the tag first makes that pack
   version's publish refuse with `release_exists` (409).
 
+**Pack-set resolution (P4-12).** Release now resolves `compatible` and `standalone` packs into
+stored sets (`release_sets`) on every publish, pointer move, floor change, yank and resync. The
+Worker still signs nothing; what changes:
+
+- **Resolution reads only signed inputs and operator policy.** A pack release's `contentApi`
+  range, dependencies (`requires.packs`) and `conflicts` are read from its CI-signed record (the
+  variants' reserved members, mirrored into `release_builds` at ingest), never from the request
+  or the current manifest, so a push cannot re-range a published release. Holds are the signed
+  `content.holds` of the app record (`descriptor-mismatch` holds the descriptor to it), mirrored
+  into `release_holds` and never edited. Floors per contentApi line (`release_pack_floors`) are
+  operator-owned (the admin PUT, `source = 'admin'`); no resync and no CI route writes them. The
+  Worker cannot add a release to a set that no CI signed, so P4-13's feed carries only signed
+  pack records, and the two-signer property holds.
+- **A floor or a yank is never refused for leaving a line empty.** That is the operator's
+  deliberate block (`unsatisfied: content-floor`), so a resolution outcome can never pin a
+  dangerous release in place by refusing its yank.
+- **Bounded computation per request.** Resolution is pure computation over D1 rows inside the
+  triggering request: at most `MAX_SELECTORS` (4,096) sets per product and `MAX_SOLVER_STEPS`
+  (20,000) candidate tries per distinct problem, after dependency pruning; past either bound a
+  publish is refused (`pack-sets-bound`) and a trigger leaves the stored sets as they were. The
+  inputs are bounded already: at most 64 declared packs, 32 variant combinations each, and
+  conflicts and dependencies lists of at most 64. A repo writer who can publish can make
+  resolution slow only up to those bounds, and only for their own product.
+- **Release never reads Distribution.** Which app releases are live is the channel floor's
+  answer, not store availability, so the chain release ← distribution ← update stays one-way.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -2001,7 +2027,8 @@ domain-separation note in the audit report — the two realms share HMAC key mat
 a CI scope is added, the publisher policy gains a field, a manifest is allowed to set any part of
 it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02); a new
 way to earn a blob ref is added (P4-02's stage round is the second), or the Worker's index bound
-(`MAX_PUBLISHED_INDEX_BYTES`) is raised;
+(`MAX_PUBLISHED_INDEX_BYTES`) is raised; pack-set resolution reads an input that is neither
+signed nor operator-owned, or its bounds (`MAX_SELECTORS`, `MAX_SOLVER_STEPS`) are raised (P4-12);
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store

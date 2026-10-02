@@ -312,10 +312,12 @@ Content packs are deliverables like the app (see [Packs](/docs/services/release/
 - **files index** — `pkey-files/1`, the hash-pinned list of a variant's files, each with its own
   stored blob, so a device can update file by file. The Worker reads one at a time, at most
   8 MiB.
-- **binding** — how app releases bind a pack. v1 has one: **pinned** (each app release pins the
-  exact pack release it ships with).
+- **binding** — how app releases bind a pack: **pinned** (each app release pins the exact pack
+  release it ships with), **compatible** (the newest release whose `requires.contentApi` range
+  holds the app's contentApi) or **standalone** (the newest release, whatever the contentApi).
 - **contentApi** — an integer the app declares for the content shape its code expects
-  (`deliverables.app.content.contentApi`), stamped into every app release.
+  (`deliverables.app.content.contentApi`), stamped into every app release. The **live levels**
+  of a channel are the contentApi values of the app releases it serves at or above its floor.
 - **pin** — the exact pack release an app release names in its signed `content.pins`; Release
   mirrors pins into `release_pins` and never edits them. A yank stops new pins only.
 - **embedded baseline** — a pack (`baseline: embedded`) that app builds ship inside them, so a
@@ -324,8 +326,14 @@ Content packs are deliverables like the app (see [Packs](/docs/services/release/
   can verify what it ships offline.
 - **content stamp** — `pkey-content/1`, the app record's `content` embedded in every build: how
   the running build learns its own pins without the network.
+- **hold** — a compatible pack release an app release keeps in its signed `content.holds`
+  instead of the resolved one; mirrored into `release_holds`.
 - **pack set** — the pack releases active in a running build; its **pack set id** (`packSetId`)
-  is what a device reports.
+  is what a device reports. Release also stores a **resolved** pack set per (channel, contentApi
+  level, platform, variant) over the compatible and standalone packs, with the same id function;
+  a pack nothing satisfies there is listed as **unsatisfied** with a reason.
+- **pack floor** — the lowest pack release a channel resolves for one contentApi line ("foes ≥
+  1.3.4 for contentApi 3"), set by an operator, so a fix can be backported to an older line.
 - **delivery gate** — the licence flag (`entitlement`) of a pack's own `dist_access` row, set by
   an operator: the only thing that gates a pack. `.pkey/release` may assert it, never set it.
 
