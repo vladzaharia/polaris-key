@@ -20343,6 +20343,11 @@ function lintPck(dir, bytes, opts) {
       continue;
     }
     if (p === ".godot/uid_cache.bin") continue;
+    const code = embeddedCode(p, bytes.subarray(e.offset, e.offset + e.size));
+    if (code !== null) {
+      errors.push(`${p}: ${code}; a pack carries data only.`);
+      continue;
+    }
     if (inPrefix(p)) {
       if (p.endsWith(".remap") || p.endsWith(".import")) {
         const targets = remapTargets(
@@ -20374,6 +20379,45 @@ function lintPck(dir, bytes, opts) {
         `${p}: no in-prefix .remap or .import names it, so nothing in the pack could load it.`
       );
   return { errors, warnings };
+}
+var TEXT_RESOURCE_RE = /\.(tscn|tres|escn)$/i;
+var BINARY_RESOURCE_RE = /\.(scn|res)$/i;
+var SCRIPT_TYPES = ["GDScript", "CSharpScript"];
+function embeddedCode(p, data) {
+  if (TEXT_RESOURCE_RE.test(p)) return textResourceCode(data);
+  if (!BINARY_RESOURCE_RE.test(p) && !p.startsWith(".godot/exported/"))
+    return null;
+  const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
+  if (magic === "RSCC")
+    return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed";
+  if (magic !== "RSRC") {
+    const text = Buffer.from(data.subarray(0, 64)).toString("latin1");
+    if (/^\s*\[gd_(scene|resource)\b/.test(text)) return textResourceCode(data);
+    return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
+  }
+  const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  for (const s of [...SCRIPT_TYPES, "script/source"]) {
+    const str = Buffer.from(`${s}\0`, "utf8");
+    for (const le of [true, false]) {
+      const len = Buffer.alloc(4);
+      if (le) len.writeUInt32LE(str.length);
+      else len.writeUInt32BE(str.length);
+      if (buf.indexOf(Buffer.concat([len, str])) !== -1)
+        return s === "script/source" ? "a binary resource with an embedded script's source (script/source)" : `a binary resource with an embedded ${s} sub-resource`;
+    }
+  }
+  return null;
+}
+function textResourceCode(data) {
+  const text = new TextDecoder("utf-8", { fatal: false }).decode(data);
+  for (const m of text.matchAll(/^\s*\[([a-z_]+)\b[^\]\n]*\]/gm)) {
+    const t = /\btype\s*=\s*"([^"]*)"/.exec(m[0]);
+    if (t && SCRIPT_TYPES.includes(t[1]))
+      return `an embedded script ([${m[1]} type="${t[1]}"])`;
+  }
+  if (/^\s*script\/source\s*=/m.test(text))
+    return "an embedded script's source (script/source)";
+  return null;
 }
 function lintTreePaths(paths) {
   const r = checkPaths(paths);
@@ -21043,6 +21087,14 @@ async function requestTicket(client, objects, gated, opts) {
 async function stageRound(client, round, gated, packId, objDir, opts, result) {
   const ticket = await requestTicket(client, round, gated, opts);
   const bySha = new Map(round.map((o) => [o.sha256, o]));
+  const answered = new Set(ticket.objects.map((o) => o.sha256));
+  const missing = round.filter((o) => !answered.has(o.sha256));
+  if (missing.length)
+    throw new Error(
+      `${client.url("release/publish/uploads")} answered a ticket without ${missing.length} of the ${round.length} requested objects (${missing.slice(0, 3).map((o) => `${o.sha256.slice(0, 12)}…`).join(
+        ", "
+      )}${missing.length > 3 ? ", …" : ""}); nothing of this round was staged.`
+    );
   const uploaded = [];
   const skipped = [];
   for (const o of ticket.objects) {
@@ -21942,6 +21994,7 @@ function parseArgs(argv2) {
   const [command = "help", ...rest] = argv2;
   const flags = {};
   const multi = {};
+  const bare = /* @__PURE__ */ new Set();
   const positional = [];
   const add3 = (key, value) => {
     flags[key] = value;
@@ -21964,9 +22017,10 @@ function parseArgs(argv2) {
       i += 1;
     } else {
       flags[rawKey] = true;
+      bare.add(rawKey);
     }
   }
-  return { command, flags, multi, positional };
+  return { command, flags, multi, bare, positional };
 }
 async function cmdInit(parsed, cwd, stdout) {
   const basename = path9.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
@@ -22244,7 +22298,14 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         "utf8"
       ) : void 0;
       const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
+      if (parsed.bare.has("pin"))
+        throw new Error("--pin needs a value: --pin <packId>@<version>.");
       if (deliverable && deliverable !== "app") {
+        refuseFlags(
+          parsed,
+          ["content-stamp", "embedded", "pin"],
+          `--deliverable ${deliverable} is a pack; these stamp an app release's packs`
+        );
         await publishPack({
           ...common,
           cwd,
@@ -22262,6 +22323,11 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         });
         return 0;
       }
+      refuseFlags(
+        parsed,
+        ["out", "bases"],
+        "they keep and read a pack's earlier releases; the app takes neither"
+      );
       await publishRelease({
         ...common,
         cwd,
@@ -22284,6 +22350,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       return 0;
     }
     case "content-stamp": {
+      if (parsed.bare.has("pin"))
+        throw new Error("--pin needs a value: --pin <packId>@<version>.");
       const outFile = flagString(parsed, "out");
       if (!product || !outFile) throw new Error(CONTENT_STAMP_USAGE);
       await writeContentStampFile({
@@ -22379,6 +22447,13 @@ async function cmdManifest(parsed, cwd, stdout) {
 function flagString(parsed, name) {
   const value = parsed.flags[name];
   return typeof value === "string" && value.trim() ? value : void 0;
+}
+function refuseFlags(parsed, names, why) {
+  const given = names.filter((n) => parsed.flags[n] !== void 0);
+  if (given.length)
+    throw new Error(
+      `${given.map((n) => `--${n}`).join(", ")} ${given.length === 1 ? "does" : "do"} not apply here: ${why}.`
+    );
 }
 function flagBool(parsed, name) {
   return parsed.flags[name] === true || parsed.flags[name] === "true";
@@ -22512,17 +22587,38 @@ function ensureZstd(io) {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   }));
+  const version = () => {
+    try {
+      return /v(\d+\.\d+\.\d+)/.exec(exec("zstd", ["-V"]))?.[1] ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const ok = (v) => v !== null && versionAtLeast(v, MIN_ZSTD_VERSION);
+  const found = version();
+  if (ok(found)) return;
+  const need = `A pack publish needs zstd ≥ ${MIN_ZSTD_VERSION}`;
+  if ((io.platform ?? process.platform) !== "linux")
+    throw new Error(
+      `${need}; ${found ? `this runner has ${found}` : "it is not on PATH"}. Install it before this step (brew install zstd).`
+    );
+  io.stdout.write(
+    `zstd ${found ? `${found} is older than ${MIN_ZSTD_VERSION}` : "is not on PATH"}; installing it with apt-get
+`
+  );
   try {
-    exec("zstd", ["-V"]);
-    return;
-  } catch {
-  }
-  if (process.platform !== "linux") return;
-  io.stdout.write("zstd is not on PATH; installing it with apt-get\n");
-  try {
+    exec("sudo", ["-n", "apt-get", "update", "-q"]);
     exec("sudo", ["-n", "apt-get", "install", "-y", "-q", "zstd"]);
-  } catch {
+  } catch (e) {
+    throw new Error(
+      `${need}, and installing it with apt-get failed (${e.message.split("\n")[0]}). Install it before this step.`
+    );
   }
+  const after = version();
+  if (!ok(after))
+    throw new Error(
+      `${need}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`
+    );
 }
 function escapeData(s) {
   return s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
@@ -22542,7 +22638,13 @@ async function runAction(io) {
     const deliverable = input("deliverable");
     const releaseKeyPem = input("release-key");
     const minSupportedSeq = input("min-supported-seq") !== void 0 ? Number(input("min-supported-seq")) : void 0;
+    const given = (names) => names.filter((n) => input(n) !== void 0);
     if (deliverable && deliverable !== "app") {
+      const wrong2 = given(["content-stamp", "embedded", "pins"]);
+      if (wrong2.length)
+        throw new Error(
+          `${wrong2.join(", ")} ${wrong2.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`
+        );
       ensureZstd(io);
       const result2 = await publishPack({
         cwd: io.cwd,
@@ -22567,6 +22669,11 @@ async function runAction(io) {
       await writeOutputs(io, result2.releaseId, result2.server);
       return 0;
     }
+    const wrong = given(["out", "bases"]);
+    if (wrong.length)
+      throw new Error(
+        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases.`
+      );
     const result = await publishRelease({
       cwd: io.cwd,
       product,
