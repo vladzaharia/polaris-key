@@ -6694,9 +6694,10 @@ components:
           type: string
           maxLength: 64
           description: >
-            The store or channel the build was published through (`direct`, `steam`, `itch`,
-            `app-store`, …), from the build stamp. Truncated to 64 characters; the id itself
-            is not validated.
+            Where the install came from (`direct`, `steam`, `itch`, `app-store`, …): the
+            build stamp's outlet, refined on the device by outlet detection. An outlet id or
+            kind only, never a raw signal, and absent when unknown. Truncated to 64
+            characters; the id itself is not validated.
     RegistrationResult:
       type: object
       description: Keyless registration's answer — the token and the device id it is bound to.
