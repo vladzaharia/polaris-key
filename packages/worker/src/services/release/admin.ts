@@ -18,6 +18,11 @@
  *     GET    …/release/deliverables/<id>/releases/<releaseId>/files?variant=<key>
  *                                                        one variant's files, from its index
  *
+ * and the compatibility matrix (P4-15, `packs/compat.ts`):
+ *
+ *     GET    …/release/compat[?limit=N]                 app releases × pack releases, a cell
+ *                                                        state per pair, the live levels
+ *
  * All of them are narrative-only (the console's API is not in the wire spec), audited with the
  * session's subject, and invalidate the product's cached resolutions.
  *
@@ -79,6 +84,11 @@ import {
   packFilesView,
   packReleasesView,
 } from "./packs/adminView.js";
+import {
+  COMPAT_MAX_LIMIT,
+  compatView,
+  parseCompatLimit,
+} from "./packs/compat.js";
 import {
   channelNames,
   clearChannelFloor,
@@ -197,6 +207,21 @@ export async function handleReleaseAdmin(
       })),
       floors: (await listChannelFloors(db, slug)).map(floorView),
     });
+  }
+
+  if (rest[0] === "compat") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const limit = parseCompatLimit(new URL(req.url).searchParams.get("limit"));
+    if (limit === null)
+      return err(
+        400,
+        ErrorCode.BadRequest,
+        `limit must be an integer from 1 to ${COMPAT_MAX_LIMIT}`,
+      );
+    return adminJson(
+      await compatView(db, slug, await getReleaseConfig(db, slug), limit),
+    );
   }
 
   if (rest[0] !== "resync") return adminNotFound();

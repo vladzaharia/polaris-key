@@ -49,7 +49,34 @@ export { SLUG, CONSOLE, NOW };
 export const FOES = "djdl.foes";
 export const L10N = "djdl.l10n";
 
-function releaseDoc() {
+/** `android`: the app also ships an Android build (a Play outlet serves it; P4-15). */
+export interface PackWorldOptions {
+  android?: boolean;
+}
+
+/** The manifest documents the world declares, with the app at `contentApi`. */
+function manifestOf(o: PackWorldOptions, contentApi = 4) {
+  const doc = releaseDoc(o);
+  doc.release.deliverables.app.content.contentApi = contentApi;
+  const res = parseManifest({
+    product: JSON.stringify({
+      slug: SLUG,
+      name: "djdl",
+      modules: {
+        license: { enabled: true },
+        release: { enabled: true },
+        distribution: { enabled: true },
+        update: { enabled: true },
+      },
+    }),
+    schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
+    release: JSON.stringify(doc),
+  });
+  if (!res.ok) throw new Error(res.errors.join("\n"));
+  return res.manifest.release!;
+}
+
+function releaseDoc(o: PackWorldOptions = {}) {
   return {
     release: {
       provider: { type: "github", owner: "acme", repo: "djdl" },
@@ -77,6 +104,18 @@ function releaseDoc() {
               match: "djdl-*.ipa",
               embeds: [],
             },
+            ...(o.android
+              ? [
+                  {
+                    id: "android",
+                    platform: "android",
+                    arch: "arm64",
+                    format: "aab",
+                    match: "djdl-*.aab",
+                    embeds: [],
+                  },
+                ]
+              : []),
           ],
         },
         [FOES]: {
@@ -143,6 +182,8 @@ export interface PackWorld {
   ): Promise<void>;
   admin(method: string, path: string, body?: unknown): Promise<Response>;
   feed(platform: string): Promise<Record<string, any>>;
+  /** Re-declare the app's `content.contentApi` (a resync of a changed `.pkey/release`). */
+  declareContentApi(level: number): Promise<void>;
 }
 
 export function pinOf(p: Published) {
@@ -164,7 +205,9 @@ export function appContent(): Record<string, unknown> {
   };
 }
 
-export async function packWorld(): Promise<PackWorld> {
+export async function packWorld(
+  opts: PackWorldOptions = {},
+): Promise<PackWorld> {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
   const db = makeTestDb();
   const env = envFor({ kv: new KvMock() });
@@ -173,22 +216,7 @@ export async function packWorld(): Promise<PackWorld> {
   env.BLOBS = asR2(r2);
   Object.assign(env, R2_ENV);
   await seedReleaseProduct(db, { release_keys_json: releaseKeysJson() });
-  const res = parseManifest({
-    product: JSON.stringify({
-      slug: SLUG,
-      name: "djdl",
-      modules: {
-        license: { enabled: true },
-        release: { enabled: true },
-        distribution: { enabled: true },
-        update: { enabled: true },
-      },
-    }),
-    schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
-    release: JSON.stringify(releaseDoc()),
-  });
-  if (!res.ok) throw new Error(res.errors.join("\n"));
-  const rel = res.manifest.release!;
+  const rel = manifestOf(opts);
   await db.batch(
     manifestDeliverableStatements(SLUG, rel.app, NOW, rel.packDeliverables),
   );
@@ -287,6 +315,7 @@ export async function packWorld(): Promise<PackWorld> {
   ) {
     const WEB = new TextEncoder().encode(`web build ${version}`);
     const IPA = new TextEncoder().encode(`ios build ${version}`);
+    const AAB = new TextEncoder().encode(`android build ${version}`);
     const descriptor = {
       descriptorVersion: 1,
       product: SLUG,
@@ -329,17 +358,42 @@ export async function packWorld(): Promise<PackWorld> {
             },
           ],
         },
+        ...(opts.android
+          ? [
+              {
+                id: "android",
+                platform: "android",
+                arch: "arm64",
+                format: "aab",
+                embeds: [],
+                artifacts: [
+                  {
+                    name: `djdl-${version}.aab`,
+                    role: "payload",
+                    sha256: sha(AAB),
+                    size: AAB.length,
+                    locations: [
+                      { provider: "r2", key: `blobs/sha256/${sha(AAB)}` },
+                    ],
+                  },
+                ],
+              },
+            ]
+          : []),
       ],
     };
     const up = await post("release/publish/uploads", {
       objects: [
         { sha256: sha(WEB), size: WEB.length },
         { sha256: sha(IPA), size: IPA.length },
+        ...(opts.android ? [{ sha256: sha(AAB), size: AAB.length }] : []),
       ],
     });
     const body = (await up.json()) as { ticket: string; prefix: string };
     r2.seed(`${body.prefix}${sha(WEB)}`, WEB, { withSha256: true });
     r2.seed(`${body.prefix}${sha(IPA)}`, IPA, { withSha256: true });
+    if (opts.android)
+      r2.seed(`${body.prefix}${sha(AAB)}`, AAB, { withSha256: true });
     const jws = await signRecord(
       recordFor(descriptor, {
         seq,
@@ -444,7 +498,15 @@ export async function packWorld(): Promise<PackWorld> {
     ) as Record<string, any>;
   }
 
+  async function declareContentApi(level: number) {
+    const m = manifestOf(opts, level);
+    await db.batch(
+      manifestDeliverableStatements(SLUG, m.app, NOW, m.packDeliverables),
+    );
+  }
+
   return {
+    declareContentApi,
     db,
     env,
     r2,
