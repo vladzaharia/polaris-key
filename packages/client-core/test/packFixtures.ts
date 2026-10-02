@@ -88,6 +88,8 @@ export async function treePack(o: {
   /** Sign with this key and kid instead of the release key (a delegated content key). */
   signer?: { pem: string; kid: string };
   issuedAt?: number;
+  /** Extra members of the variant (a `chunks` index ref, say). */
+  variantExtra?: Record<string, unknown>;
 }): Promise<TreePack> {
   const files: Record<string, Uint8Array> = {};
   for (const [p, b] of Object.entries(o.files))
@@ -226,6 +228,7 @@ export async function treePack(o: {
           codec: "none",
         },
         ...(deltas.length ? { deltas } : {}),
+        ...(o.variantExtra ?? {}),
       },
     ],
   };

@@ -61,8 +61,13 @@
  *                                   pack of the product (a key one pack uploaded may be named by
  *                                   another's index), and the WHOLE live set was read this tick.
  *                                   A `pack-upload` ref means possession, not liveness (P4-02).
- *                                   A key under `bundles/` is kept while Release has no
- *                                   `packChunks` (the P4-22 hook point, P4-10 decision 16)
+ *                                   A pack's chunk bundles are blobs (P4-10 decision 4): a
+ *                                   bundle stays live while any live release's chunk index
+ *                                   names it, through Release's `packChunks` (P4-22), even when
+ *                                   the release that uploaded it is dead. A live variant whose
+ *                                   chunk index cannot be read makes the plan incomplete. A key
+ *                                   under `bundles/` is kept against a catalog without
+ *                                   `packChunks` (fail closed)
  *
  * and only once the ref is older than the grace period, so an upload or an ingest in flight is
  * never undercut (re-earning a ref moves its `created_at` forward, `core/blobs.ts`). Each drop is
@@ -442,7 +447,15 @@ export async function planProductGc(
           if (!fileKeys.has(f.blob.key)) fileKeys.set(f.blob.key, pack);
         }
       }
-      if (hasChunks) {
+      // P4-22: the bundles a live chunk index names (P4-10 decision 16). Only a variant whose
+      // record names a chunk index costs a read; one that cannot be read keeps every ref.
+      if (v.objects.some((o) => o.role === "chunk-index")) {
+        if (!hasChunks) {
+          incomplete(
+            `live release ${id} has a chunk index, and Release reads no chunk indexes`,
+          );
+          continue;
+        }
         if (ctx.budget.indexReads <= 0) {
           incomplete(
             "the tick's index-read budget is spent; the next tick resumes",
@@ -451,11 +464,16 @@ export async function planProductGc(
         }
         ctx.budget.indexReads--;
         const chunks = await catalog.packChunks!(id, v.variantKey);
-        if (chunks)
-          for (const c of chunks) {
-            liveKeys.add(c.bundleKey);
-            if (!fileKeys.has(c.bundleKey)) fileKeys.set(c.bundleKey, pack);
-          }
+        if (!chunks) {
+          incomplete(
+            `the chunk index of live release ${id} (${v.variantKey || "default"}) could not be read`,
+          );
+          continue;
+        }
+        for (const c of chunks) {
+          liveKeys.add(c.bundleKey);
+          if (!fileKeys.has(c.bundleKey)) fileKeys.set(c.bundleKey, pack);
+        }
       }
     }
   }
@@ -576,7 +594,7 @@ export async function planProductGc(
       for (const r of page) {
         if (liveKeys.has(r.storage_key) || !declared.has(r.ref_id)) continue;
         const parsed = parseKey(r.storage_key);
-        // The P4-22 hook point: a bundle's liveness needs `packChunks`.
+        // Against a catalog without `packChunks`, a `bundles/` key's liveness cannot be decided.
         if (
           !parsed ||
           (parsed.area === "locked" && parsed.kind === "bundle" && !hasChunks)
@@ -1099,8 +1117,11 @@ export interface BundleLiveness {
 
 /**
  * Every chunk bundle the product holds a ref to, with the share of its bytes that live releases
- * still read. Until Release implements `packChunks` (P4-22) the ratio cannot be known and reads
- * `null`. Never another product's refs.
+ * still read. Without `packChunks` the ratio cannot be known and reads `null`. A pack's bundles
+ * are blobs (P4-10 decision 4), told apart from file blobs only by an index naming them, so the
+ * list is the `bundles/` objects plus every blob a live release's chunk index names (a bundle no
+ * live index names any more is not listed: nothing marks it as a bundle). Never another
+ * product's refs.
  */
 export async function bundleLiveness(
   db: Db,
@@ -1142,6 +1163,22 @@ export async function bundleLiveness(
       }
     }
   }
+  // The blob-keyed bundles live indexes name, that this product holds a ref to.
+  const listed = new Set(held.map((b) => b.storage_key));
+  const named = [...chunks.keys()].filter((k) => !listed.has(k));
+  for (let i = 0; i < named.length && held.length < 1000; i += JSON_KEYS)
+    held.push(
+      ...(await db.all<{ storage_key: string; size: number }>(
+        `SELECT DISTINCT o.storage_key, o.size FROM blob_refs r
+           JOIN blob_objects o ON o.storage_key = r.storage_key
+          WHERE r.product = ? AND o.storage_key IN (SELECT value FROM json_each(?))
+          ORDER BY o.storage_key`,
+        product,
+        JSON.stringify(named.slice(i, i + JSON_KEYS)),
+      )),
+    );
+  held.sort((a, b) => cmp(a.storage_key, b.storage_key));
+  held.splice(1000);
   return {
     available: true,
     bundles: held.map((b) => {

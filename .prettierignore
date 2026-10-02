@@ -17,6 +17,9 @@ sdks/godot/tests/vectors/
 # The QR fixtures, written by sdks/godot/tests/qr/gen_fixtures.py from a reference encoder; kept
 # byte-for-byte as the generator emits them.
 sdks/godot/tests/qr/fixtures.json
+# P4-08's pack fixtures (the device-side directory check's PCKs and lint verdicts, the kaykit
+# update objects), written by packages/cli/test/godotFixtures.test.ts and byte-compared by it.
+sdks/godot/tests/fixtures/packs/
 # Local outputs of the research experiments (all git-ignored by their own .gitignore, which Prettier
 # does not read): content vector sets (byte-exact, drift-checked by regenerating), the patching
 # exports and generated projects, the platform-mechanics packs, exports, logs and template copies, and the toolchains, fetched sources and npm installs their READMEs

@@ -384,6 +384,44 @@ describe("PackEngine and delegated releases (plans/P4-19.md §2.4, §2.5)", () =
     });
   });
 
+  it("a delegated variant carrying a chunk index still passes every written file through the data-only sink", async () => {
+    // P4-22 lets a variant carry `chunks`; whatever strategy installs it, the engine's applier
+    // writes through the wrapped tree sink, so the head sniff still sees the file.
+    const ck = contentKeyPair();
+    const d = await delegationFor({
+      deliverable: "djdl.events",
+      publicKey: ck.pub,
+    });
+    const pack = await treePack({
+      packId: "djdl.events.halloween",
+      version: "1.0.0",
+      seq: 1,
+      files: { "a.json": "{}", "b.json": "[gd_resource]" },
+      issuedAt: 1759250000,
+      signer: { pem: ck.pem, kid: d.kid },
+      variantExtra: {
+        chunks: {
+          format: "pkey-chunks/1",
+          sha256: sha("chunk index"),
+          bytes: 64,
+          size: 64,
+          codec: "none",
+        },
+      },
+    });
+    const e = engine({
+      server: byteServer(pack),
+      delegations: new Map([[d.sha256, d.jws]]),
+      strategies: ["chunk", "delta", "file", "full"],
+    });
+    await e.load();
+    await expect(e.ensureReleases([target(pack)])).rejects.toMatchObject({
+      code: "pack-not-data-only",
+      detail: "content",
+      path: "b.json",
+    });
+  });
+
   it("refuses a delegated record whose delegation cannot be fetched, with the fetch's code", async () => {
     const { pack, server } = await fixture();
     const e = engine({ server, delegations: new Map() });

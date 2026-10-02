@@ -1,0 +1,19 @@
+---
+sidebar:
+  order: 5
+title: "Godot"
+description: "The Godot addon — pure-GDScript verification, the PolarisKey autoload, PKeyBoot and the UI kit, updates by outlet, and packs (godot.pck and files.tree) with the device-side directory check."
+---
+
+import { Content as GodotReadme } from "../../../../../../../sdks/godot/README.md";
+
+The Godot SDK — a pure-GDScript addon (the engine has no Ed25519 or SHA-512, so it carries its
+own) behind the `PolarisKey` autoload, with the drop-in `PKeyBoot` scene and UI kit, updates by
+outlet, and packs: `PolarisKey.update.packs` installs `godot.pck` and `files.tree` releases, checks
+every `godot.pck` against the same admission list as `pkey release publish` before it commits or
+mounts it, and mounts packs at a boot. **A build that ships no content stamp has no packs**: the
+documented setup is the stamp at `res://pkey_packs/pkey-content.json` and embedded baselines (each
+with its marker) in `res://pkey_packs/`. This page renders `sdks/godot/README.md` whole, so there
+is exactly one copy to keep current.
+
+<GodotReadme />

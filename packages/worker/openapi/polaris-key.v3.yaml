@@ -185,6 +185,7 @@ paths:
                             d8f1a6a3f0b2a1c7e6d9b4c3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3,
                           ]
                         packs: true
+                        chunks: true
                         revocations: true
                         delegations: true
                       distribution:
@@ -3941,6 +3942,13 @@ paths:
         record. A request with a non-empty `releases` may omit `objects`: the PREFLIGHT, which
         issues no ticket and answers only `seqs`. An `objects` array that is present stays
         non-empty. A pack named while Distribution is off is `distribution_disabled` (409).
+        P4-22: a pack's ticket names its pack in `deliverable`, and `present` then means that
+        PACK already uploaded the object (a `pack-upload` ref of that pack id), not merely the
+        product: a pack's stage round skips only those, and ingest requires the pack's own ref on
+        a chunk index and its bundles. An object another pack of the product holds is uploaded
+        and promoted again (the bytes are not rewritten) and earns this pack's ref. `deliverable`
+        must be a pack the product declares (`unknown_pack_deliverable`, 400); it never reveals
+        another product's objects.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3967,6 +3975,11 @@ paths:
                       sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
                       size: { type: integer, minimum: 0, maximum: 5363466240 }
                       gated: { type: boolean }
+                deliverable:
+                  description: "P4-22: the pack this ticket uploads for; `present` is then that pack's own uploads."
+                  type: string
+                  pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+                  maxLength: 64
                 releases:
                   type: array
                   maxItems: 16
@@ -4260,6 +4273,14 @@ paths:
         prefix, or a `full` whose size is not its payload's). The optional ticket is promoted as
         a stage round first; a dry run checks without promoting and lists in `unverified` the
         ticket objects not uploaded yet. The release id is `<packId>@<version>`.
+        P4-22 (plans/P4-10.md §6): a variant's `chunks` (a `pkey-chunks/1` index) is refused as
+        `pack-index` when its `size` or `bytes` is over 8 MiB or its `format` is not
+        `pkey-chunks/1` (before anything is read), or when client-core's `parseChunkIndex`
+        refuses it bound to the variant's payload; and as `pack-object` unless the index and
+        every bundle in its table are stored with that length and held by a `pack-upload` ref
+        of THIS pack under its prefix (another pack's or a release's ref does not count). A
+        dry run lists an index neither stored nor staged, and a bundle not yet held, in
+        `unverified`. Discovery advertises this as `services.release.chunks: true`.
         P4-12 (compatible and standalone packs): a pack record is also refused with
         `pack-requires` (a variant's signed `requires.contentApi`, `requires.packs` or
         `conflicts` disagrees with the pack's binding or names an undeclared pack),

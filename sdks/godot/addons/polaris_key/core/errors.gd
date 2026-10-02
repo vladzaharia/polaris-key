@@ -50,6 +50,19 @@ const RECORD_MISMATCH := &"record-mismatch"
 const PAYLOAD_MISMATCH := &"payload-mismatch"
 const SWAP_REFUSED := &"swap-refused"
 const SWAP_FAILED := &"swap-failed"
+## Packs (P4-08, PolarisKey.update.packs): the codes PKeyPackEngine raises beyond the appliers',
+## planner's and files index's (PKeyConstants.ErrorCode carries those): the pack state could not
+## be read; the content stamp is invalid; a pack is not pinned, not entitled, of a type or
+## variant this SDK cannot hold; the `godot.pck` device-side directory and header checks.
+const PACK_STATE_UNREADABLE := &"pack-state-unreadable"
+const CONTENT_STAMP_INVALID := &"content-stamp-invalid"
+const PACK_NOT_PINNED := &"pack-not-pinned"
+const PACK_NOT_ENTITLED := &"pack-not-entitled"
+const PACK_TYPE_UNSUPPORTED := &"pack-type-unsupported"
+const PACK_NO_VARIANT := &"pack-no-variant"
+const PACK_ROLLED_BACK := &"pack-rolled-back"
+const PCK_DIRECTORY_REFUSED := &"pck-directory-refused"
+const PCK_ENGINE_MISMATCH := &"pck-engine-mismatch"
 ## Device management (rename, deauthorize) needs a device token this client does not hold.
 const DEVICE_MANAGEMENT_UNSUPPORTED := &"device-management-unsupported"
 ## The four §7 bundle steps (PKeyBundle).

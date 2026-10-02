@@ -256,6 +256,9 @@ class ErrorCode:
     PACK_NOT_PINNED: Final = "pack-not-pinned"
     PACK_NOT_ENTITLED: Final = "pack-not-entitled"
     PACK_STATE_UNREADABLE: Final = "pack-state-unreadable"
+    PCK_DIRECTORY_REFUSED: Final = "pck-directory-refused"
+    PCK_ENGINE_MISMATCH: Final = "pck-engine-mismatch"
+    PACK_ROLLED_BACK: Final = "pack-rolled-back"
     PACK_REVOKED: Final = "pack-revoked"
     PACK_NOT_DATA_ONLY: Final = "pack-not-data-only"
     MARKER_REJECTED: Final = "marker-rejected"
@@ -390,6 +393,9 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "pack-not-pinned",
     "pack-not-entitled",
     "pack-state-unreadable",
+    "pck-directory-refused",
+    "pck-engine-mismatch",
+    "pack-rolled-back",
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
@@ -526,6 +532,9 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "pack-not-pinned": "client",
         "pack-not-entitled": "client",
         "pack-state-unreadable": "client",
+        "pck-directory-refused": "client",
+        "pck-engine-mismatch": "client",
+        "pack-rolled-back": "client",
         "pack-revoked": "client",
         "pack-not-data-only": "client",
         "marker-rejected": "client",

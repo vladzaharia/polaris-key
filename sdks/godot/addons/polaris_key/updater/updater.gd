@@ -55,6 +55,9 @@ var space_hook := Callable()
 var rename_wait_msec := PKeySidecarSwap.RENAME_WAIT_MSEC
 ## The last boot guard's answer ({} before it ran).
 var last_guard: Dictionary = {}
+## PolarisKey.update.packs (P4-08): the guard counts and rolls back a new pack set with the
+## binary, and a confirmed launch confirms the running pack set.
+var packs: Object = null
 ## Restart requests this session (the fake env records the restart itself).
 var restart_reason := ""
 
@@ -460,6 +463,8 @@ func _confirm() -> void:
 	if not active() or _confirmed:
 		return
 	_confirmed = true
+	if packs != null and packs.has_method("confirm") and packs.get("engine") != null:
+		packs.confirm()
 	var st := slots.load_state()
 	var cur = slots.meta("current")
 	if float(st["failedBoots"]) != 0.0 or (cur is Dictionary and st.get("confirmedVersion") != cur["version"]):

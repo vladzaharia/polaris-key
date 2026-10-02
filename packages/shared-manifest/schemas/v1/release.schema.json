@@ -456,7 +456,7 @@
               "minItems": 1,
               "uniqueItems": true,
               "items": {
-                "enum": ["delta", "file"]
+                "enum": ["delta", "file", "chunk"]
               }
             },
             "deltaBases": {

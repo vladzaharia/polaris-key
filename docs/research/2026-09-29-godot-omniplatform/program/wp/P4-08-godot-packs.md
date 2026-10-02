@@ -1,16 +1,16 @@
 # P4-08 Godot packs: `godot.pck` handler, delta bake, directory check, `PKeyBoot` pack stages
 
-| Field       | Value                                                                                                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v1)                                                                                                                                                                                                               |
-| Size        | 2.75–3.25 engineer-weeks                                                                                                                                                                                                     |
-| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P1-10](P1-10-godot-ui-kit.md), [P3-08](P3-08-v4-godot.md), [P3-10](P3-10-godot-updater.md), [S-05](S-05-godot-platform-mechanics.md), [P4-06](P4-06-client-core-packs.md)              |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md), [P4-24](P4-24-content-decision-godot.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md) |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                                                        |
-| Plan mode   | no                                                                                                                                                                                                                           |
-| Gates       | corpus: the content corpus and `plan-matrix.json` pass on the Godot **editor and an official release template** (the delta route uses engine internals)                                                                      |
-| Human input | none (Godot 4.7.2 editor and export templates are downloaded in CI, as P1-01 set up)                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v1)                                                                                                                                                                                                                                                                                       |
+| Size        | 2.75–3.25 engineer-weeks                                                                                                                                                                                                                                                                             |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P1-10](P1-10-godot-ui-kit.md), [P3-08](P3-08-v4-godot.md), [P3-10](P3-10-godot-updater.md), [S-05](S-05-godot-platform-mechanics.md), [P4-06](P4-06-client-core-packs.md)                                                                                      |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md), [P4-24](P4-24-content-decision-godot.md), [P4-27](P4-27-rscc-scan.md), [P4-28](P4-28-script-attach-allowlist.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md) |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                                                                |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                   |
+| Gates       | corpus: the content corpus and `plan-matrix.json` pass on the Godot **editor and an official release template** (the delta route uses engine internals)                                                                                                                                              |
+| Human input | none (Godot 4.7.2 editor and export templates are downloaded in CI, as P1-01 set up)                                                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                            |
 
 Milestone: **Diceroll's content-streaming phases 1–3 run on Polaris Key** (with D-04).
 
@@ -196,25 +196,28 @@ leave delta overlays mounted (+2.9 ms per open, forever), check the directory in
 
 ## Acceptance criteria
 
-- [ ] Every content case and plan row passes on the Godot 4.7.2 editor and the official
-      `linux_release` template in CI.
-- [ ] A v1→v2 `godot.pck` update by `delta`, by `file` and by `full` each produces a pack whose
+- [x] Every content case and plan row passes on the Godot 4.7.2 editor and the official
+      `linux_release` template in CI. (Locally: the 4.7.2 editor and the official macOS release
+      template; CI's `godot` job runs the same `run_tests.sh` on `linux_release`. The 4.4.1 floor
+      passes too, with the delta decode cases held to fail closed.)
+- [x] A v1→v2 `godot.pck` update by `delta`, by `file` and by `full` each produces a pack whose
       SHA-256 equals CI's, mounted at the next boot from `user://pkey/store/<sha256>.pck`.
-- [ ] The bake over a base that is currently mounted leaves the running session's reads correct
-      and restores the base byte for byte (SHA-256 re-checked).
-- [ ] The directory check refuses a pack with a script, `project.binary`,
+      (`engine` group: the payload delta and the files delta separately.)
+- [x] The bake over a base that is currently mounted leaves the running session's reads correct
+      and restores the base byte for byte (SHA-256 re-checked). (`bake` group.)
+- [x] The directory check refuses a pack with a script, `project.binary`,
       `.godot/global_script_class_cache.cfg` or an out-of-prefix path before mounting, and admits
       a stripped `--export-pack` pack (in-prefix `.remap`/`.import` files, the `.godot/exported/`
       and `.godot/imported/` files they name, `.godot/uid_cache.bin`); a tampered unpatched entry
       fails the whole-pack hash.
-- [ ] Two independently built, stripped packs mounted with `replace_files=true` resolve their own
+- [x] Two independently built, stripped packs mounted with `replace_files=true` resolve their own
       and the main pack's `uid://` references, and `get_global_class_list()` is unchanged (S-05
       §4.6's `f_uid` case, on the release template).
-- [ ] After two failed boots with a new set, `previous` is active again and a report says so.
-- [ ] `PKeyBoot` with a missing required pack goes FETCH → MOUNT → READY with size disclosure,
+- [x] After two failed boots with a new set, `previous` is active again and a report says so.
+- [x] `PKeyBoot` with a missing required pack goes FETCH → MOUNT → READY with size disclosure,
       and offline with the required set present goes to READY; the four signals fire in order.
-- [ ] The green gate passes (plus the Godot CI job).
-- [ ] The Godot `parity.json` marks the v1 pack features implemented (once P1b-01 has landed).
+- [x] The green gate passes (plus the Godot CI job).
+- [x] The Godot `parity.json` marks the v1 pack features implemented (once P1b-01 has landed).
 
 ## Verify
 
@@ -242,3 +245,112 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+- **The container index after a `full` install.** client-core's engine keeps a files index only
+  for trees and for installs planned from seeds, so a container installed by `full` (or embedded)
+  has no files, and its next release can only come by a payload delta or `full`. Godot's storage
+  derives a `godot.pck`'s files from its own PCK directory (each entry hashed once, from the
+  payload whose SHA-256 was verified at load, kept beside it as `store/<sha256>.files.json`), so
+  `file` and a `files` delta work after any install. Node and React keep the reference behaviour;
+  whether client-core should keep the target index at commit is a follow-up.
+- **A restart pack fetched at boot mounts at this boot.** `fetch.done.installed` counts the running
+  set, and a `godot.pck` is `restart`, so a required pack fetched in FETCH would never count.
+  `PKeyGodotPckHandler.can_activate_now` lets a commit (or a guard rollback) join this boot while
+  its id has not been mounted in this process; a later commit activates at the next boot, from its
+  new path, as the brief requires.
+- **The delta bake.** Prefix decodes are batched: every frame of a `files` set goes through one
+  mount pair (a private namespace per batch). A prefix inside an installed store pack is exposed by
+  A6's trailer (journalled for crash repair, truncated back and length-checked); anything else,
+  including a tree's live files and an embedded `res://` pack, is copied into a helper host pack.
+  The trailer over the **mounted** base was tested (`bake` group, editor and release template): the
+  running session's reads are unchanged and the base comes back byte for byte, so A6's copy-host
+  fallback was not needed for it.
+- **Engine floor.** 4.4.1 has no `PACK_FILE_DELTA` and writes PCK v2, so `zstd-patch-from` is
+  advertised only on `PATCH_FROM_ENGINES` (4.6, 4.7) after a start-up probe. On 4.4 the corpus's
+  delta cases are held to their own verdict or a closed `delta-apply-failed`, and the kaykit update
+  cases meet `pck-engine-mismatch` (a 4.7.2 pack) before anything commits.
+- **The 4.4.1 exporter's `uid_cache.bin`** names the whole project's UIDs, excluded files included
+  (4.7.2 names only what it exports). Mounted with `replace_files=true`, such a pack re-points a UID
+  it shares with the main project. The f_uid case passes in full on 4.7.2 (editor and template);
+  on 4.4.1 the suite pins the measured behaviour. After review (N6) the device check and the lint
+  both refuse a `uid_cache.bin` entry naming a path outside the pack, so such a 4.4.1 pack is now
+  `pck-directory-refused` at `.godot/uid_cache.bin`; the suite still mounts it unchecked to keep
+  measuring why.
+- **The header check** adds a device-only rule to the lint's `requires.engine`: a pack built by a
+  newer engine than the running one is `pck-engine-mismatch`.
+- **Shared fixtures.** `packages/cli/test/godotFixtures.test.ts` writes P4-03's fixture PCKs and
+  `lintPck`'s verdicts (`sdks/godot/tests/fixtures/packs/check/`) and the kaykit v1→v2 objects
+  (`update/`); the PCKs and verdicts are byte-compared, the zstd objects held to what they decode
+  to. The device check's lines equal the lint's exactly.
+- **The install state** gains one Godot member, `confirmed` (pack id → the record SHA-256 running
+  at the last confirmed launch): the shared boot guard counts while an active install differs from
+  it and rolls those packs back to `previous` with the binary. A packs-only rollback needs no
+  restart (GUARD runs before MOUNT) and reports `rolled-back`.
+- **PKeyBoot.** The host gained `fetch_with(required, send, opts)` (FETCH's intermediate events),
+  `mount(required)` (a required pack that cannot mount is `fail`), `boot_options()`,
+  `background_packs()` and `background(ids)`. The consent card is part of the boot view; the
+  `theme` option applies a pack's Theme after MOUNT; BACKGROUND keeps the boot view alive as a
+  transparent, input-free corner pill. `boot_fetch` sends `fetch.progress {0, 0}` when nothing is
+  missing, as client-core's `runBootFetch` does.
+- **Godot cannot stream a zstd decode** (`decompress` needs the whole frame), so `apply_full` is
+  buffered and `PKeyPacks.one_shot_budget` may drop a `full` too large for the device.
+- **Web.** The Cache Storage shell (S-05 §4.3) is not built: on web the mount cap applies and
+  `PKeyPacks.root` may be a MEMFS path (`/pkey`), so packs re-download after a reload. A follow-up.
+- **P4-10.** P4-10 landed before this branch merged (§8.5): the Godot runners accept content
+  corpus v2 and plan matrix v2; `chunkIndexCases` and the eight `strategy: chunk` apply cases are
+  declared planned for P4-11 by exact id and checked against `parity.json`
+  (`packs.index.chunks`, `packs.apply.chunk`: planned, P4-11), their inputs (the `put*` mutations
+  included) materialised against their refs; `plan_target` takes `chunk_index` and applies the
+  §2.5 chunk rule; the pack claims apply checks 81–83 on `chunks`.
+- **Review round (B1–B4, N1–N6).** The review made downloaded GDScript run on 4.7.2 and 4.4.1
+  through two holes the CLI lint shared, now closed on both sides with permanent fixtures:
+  (B1) Godot simplifies pack paths at mount, so `packs/a/../../x` and `packs/a/evil.gd/.` escaped
+  the prefix or the extension rule. `PKeyPck.path_ok` and the CLI's `pckPathOk` refuse any path
+  that is not already normal, and duplicates, in the reader (`path-dotdot`, `path-trailing-dot`,
+  `path-dot-segment`). (B2) the binary loader takes `.material`, `.mesh`, `.anim`…, so resources
+  are judged by content: an `RSRC` head gets the binary scan, a `[gd_scene`/`[gd_resource` head the
+  text scan, `RSCC` is refused under any name (`content-binary-extensions`), and `files.tree`
+  outputs get the same scan (N5, `PKeyPck.tree_check`). (B3) a packs-only rollback re-fetched the
+  same record on the next FETCH and looped. The install state gains `held` (pack id → {record SHA,
+  count}); a held record is not planned or fetched until the stamp pins another (committing a different
+  release clears the hold; re-review), the restored
+  install counts as active, and `ensure` fails with the new code `pack-rolled-back`. (B4)
+  THREAT-MODEL.md gains "Pack bytes on the device (P4-08)". N1: `on_bake` returns bool and a
+  journal that cannot be written uses a copy host. N2/N3: the bake journal is a list naming only
+  `store/<64 hex>.pck`. N4: a 403 from the blob route is `pack-not-entitled`. N6: `.remap`/`.import`
+  targets and uid cache entries must be in the pack (`remap-outside-pack`,
+  `uid-cache-outside-pack`).
+- **Validator audit (GAP 1–6).** Both validators replaced their regex scans with fail-closed
+  content rules, with identical verdicts pinned by new `audit-*` fixtures in `verdicts.json`:
+  any script marker (`GDScript`, `CSharpScript`, `ScriptExtension`, `script/source`,
+  `source_code`) anywhere in a text or binary resource, without the binary length prefix; a NUL,
+  invalid UTF-8 (one explicit validator) or a `\u` escape in a text resource; a NUL, invalid UTF-8,
+  a BOM or a non-strict `path…` line in a `.remap`/`.import`; a NUL in a uid-cache path;
+  explicit whitespace classes and hand-split lines after CR → LF. The device also refuses what its
+  engine counts as a script (`ResourceLoader.get_recognized_extensions_for_type("Script")` minus
+  the resource containers, `ClassDB.get_inheriters_from_class("Script")` as markers), proved with a
+  test loader; the CLI takes `scriptExtensions`/`scriptTypes`. `audit-binary-extref` and
+  `ext-script-ok` pin the admitted residual (references to app scripts), restated in the threat
+  model. `audit-x-bin` (a 0x85 byte before a `[gd_resource` head) is admitted by both: neither side
+  sees a resource, and nothing loads a `.bin`.
+- **Audit re-review (GAP A, GAP B).** Text resources: the marker search runs a second time on a
+  copy with every backslash removed (an unknown escape keeps its character), pinned by
+  `passthrough.tres` and `passthrough-src.tres`. `.remap`/`.import`: any control byte but
+  TAB/LF/CR, any backslash, and a `path` key anywhere in a line (after `[remap]`, another key or a
+  metadata `}`) unless the whole line is strict, pinned by `c`–`g` in `audit-remap-dodges`;
+  `kaykit-v1`'s Godot-shaped `.import` (`[remap]`, `path.s3tc`, multi-line `metadata`, `[deps]`,
+  `dest_files`) stays admitted. The static `_kinds` is written only by `warm()` /
+  `refresh_script_kinds()`; before that, `_script_kinds()` returns an unstored built-in set.
+- **GAP C and real imports.** The path-key rule's leading class is now `(^|[^A-Za-z0-9_/.-])`, so
+  `import_script/path=""` (every scene import's `[params]`) is no longer a path key. Real 4.7.2
+  imports (`--headless --import` of a script-written `.glb` and `.png`, files verbatim in
+  `packages/cli/test/fixtures/godot-real-imports/`) pin it: `audit-real-import-texture` is
+  admitted; in `audit-real-import-model` the `.glb.import` passes but the imported `.scn` is
+  `RSCC` (FileAccessCompressed, zstd blocks of 4096) and is refused by the RSCC rule. Every
+  imported model is therefore refused today: a decision is needed on inspecting RSCC
+  (decompress the zstd blocks, bounded, and scan) in both validators.
+- **BOM before a text head (P4-22 review).** Both sniffers skip a leading UTF-8 BOM before the
+  `[gd_scene`/`[gd_resource` head test (the device reads 67 bytes so its window equals the CLI's),
+  pinned by `audit-bom-head` (`level.bin`, refused on both sides).

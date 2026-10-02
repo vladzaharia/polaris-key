@@ -3,6 +3,10 @@
  * index and `files` descriptor have the same structure as the committed ones
  * (`conformance/corpus/v2/content/blobs/`), read through the zstd CLI. The corpus is the
  * contract's [C] form, so a CLI that drifted from it would publish what devices cannot apply.
+ *
+ * P4-22 (plans/P4-10.md risk 2): the CLI's chunker reproduces the corpus's chunk indexes
+ * (`chunks/v1.pkc`, `chunks/v2.pkc`) id for id and length for length. `clen` and the bundle
+ * hashes depend on the zstd build (and the corpus bundles at 256 KiB), so they are not compared.
  */
 
 import { execFileSync } from "node:child_process";
@@ -12,8 +16,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import type { FilesIndexDoc, PatchDoc } from "@polaris-key/protocol/packs";
+import { parseChunkIndexBytes } from "@polaris-key/client-core/packs";
 import {
   buildFilesDelta,
+  chunkContainer,
+  CHUNK_PARAMS,
   buildPayload,
   containerPayload,
   readPck,
@@ -130,4 +137,30 @@ describe("the CLI against the content corpus (P4-04)", () => {
     for (const [k, e] of fd.doc.entries.entries())
       expect(shape(e)).toEqual(shape(corpus.entries[k]!));
   }, 120_000);
+});
+
+describe("the CLI chunker against the content corpus (P4-22)", () => {
+  const { v1, v2 } = corpusPayloads();
+
+  it("reproduces (id, len) of chunks/v1.pkc and chunks/v2.pkc", () => {
+    for (const [bytes, name] of [
+      [v1, "chunks/v1.pkc"],
+      [v2, "chunks/v2.pkc"],
+    ] as const) {
+      const corpus = parseChunkIndexBytes(blob(name), {
+        size: bytes.byteLength,
+        sha256: sha(bytes),
+      });
+      if (!corpus.ok) throw new Error(`${name}: ${corpus.error}`);
+      expect(corpus.index.fileAware).toBe(CHUNK_PARAMS.fileAware);
+      const p = containerPayload(bytes, readPck(bytes));
+      const chunks = chunkContainer(
+        (p as { bytes: Uint8Array }).bytes,
+        p.files,
+      );
+      expect(chunks.map((c) => [c.id, c.len])).toEqual(
+        corpus.index.records.map(([id, len]) => [id, len]),
+      );
+    }
+  });
 });

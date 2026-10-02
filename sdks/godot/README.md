@@ -15,7 +15,10 @@ verified in pure GDScript, and the conformance-tested update decision behind
 `PolarisKey.update.decide()`. P1-10 adds the boot stage machine (`PKeyStages`), the drop-in boot
 scene (`PKeyBoot`, `PolarisKey.boot()`) and the UI kit v1 under `addons/polaris_key/ui/`. P3-10
 acts on the decision: one adapter per outlet, the native-updater hooks, the sidecar-PCK swap and
-the boot guard (see "Updates by outlet").
+the boot guard (see "Updates by outlet"). P4-08 adds packs, `PolarisKey.update.packs`: a GDScript
+port of client-core's pack core and pipeline, the `godot.pck` and `files.tree` handlers, the delta
+bake through the engine's own decoder, the device-side directory check, and PKeyBoot's FETCH,
+MOUNT and BACKGROUND stages (see "Packs").
 
 ## Layout
 
@@ -63,6 +66,22 @@ sdks/godot/
                               PKeyApplyResult
     core/download.gd          PKeyDownload: a file download on HTTPClient with Range resume, the
                               transport's redirect and credential rules, gzip off
+    services/packs.gd         PKeyPacks (PolarisKey.update.packs, P4-08): start, ensure, estimate,
+                              mount, boot_fetch, background, state, path, rollback, confirm,
+                              packSetId; the pack signals
+    packs/                    the pack core, ported from client-core `packs/`: pack_claims.gd
+                              (PKeyPackClaims: pack ids, object refs, content claims, the pack
+                              record claims, variant keys, packSetId, the content stamp), files.gd
+                              (PKeyPackFiles: the files index, path rules, treeDigest), select.gd
+                              (PKeyPackSelect: selectVariant, planTarget, the planner), patch.gd,
+                              apply.gd (PKeyPackApply: full, delta, file), marker.gd, state.gd
+                              (PKeyPackState), engine.gd (PKeyPackEngine: the pipeline), and the
+                              Godot ports: zstd.gd (PKeyPackZstd: decompress, the window rule,
+                              GDDL prefix decodes), pck.gd (PKeyPck: the PCK reader, the header and
+                              directory checks, helper packs, the trailer), storage.gd
+                              (PKeyPackStorage: user://pkey), byte_source.gd, job.gd, http.gd
+                              (Range/If-Range on HTTPClient), transport*.gd (pkey-cdn, embedded),
+                              handler.gd, godot_pck_handler.gd, files_tree_handler.gd
     services/release.gd       PKeyRelease (PolarisKey.release): changelog -> PKeyChangelogResult
                               of PKeyChangelogEntry (services/release/), install_url,
                               download_url
@@ -124,6 +143,16 @@ sdks/godot/
                               link and restart recorded
     updater/                  the updater suite's groups (adapters, bridges, download, swap,
                               guard, boot, grep) and their support.gd
+    packs/                    the packs suite's groups (content, plan, records, pck, bake, engine,
+                              state, http, boot, guard, uid), support.gd and fixtures.gd (pack
+                              records signed with the corpus's test release key by
+                              support/test_signer.gd, a fake pack transport)
+    fixtures/packs/           P4-03's PCK fixtures and lint verdicts (check/) and the kaykit v1/v2
+                              update objects (update/), written by
+                              packages/cli/test/godotFixtures.test.ts — never edit; that test
+                              byte-compares them
+    fixtures/uid_packs/       two data-pack projects (dataA, dataB; `.gdignore`d) run_tests.sh
+                              exports for the f_uid case
     support/ui_snapshot.gd    structural snapshots of a scene, and the focus test's oracle
     ui/                       scenarios.gd (every pinned scene state) and snapshots/*.txt (the
                               committed fixtures; `--pkey-test ui update` rewrites them)
@@ -262,6 +291,9 @@ PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, wit
   `build/pkey_conformance.x86_64`, and the same suites run from the pack. On macOS, a template
   binary extracted from `macos.zip` (`godot_macos_release.universal`) works the same way.
 - `PKEY_TEST_SUITES` defaults to `ci`; `PKEY_TEST_TIMEOUT` is per step, default 300 s.
+- The packs suite reads the content corpus from the checkout (`PKEY_CONTENT_CORPUS`, defaulting to
+  `conformance/corpus/v2/content`; `content/` is not mirrored) and the f_uid data packs that
+  run_tests.sh exports into `build/uid_packs/` (`PKEY_UID_PACKS`). Run directly, export both.
 - Logs land in `build/logs/<step>.log` (`build/` is git-ignored).
 
 CI (`.github/workflows/ci.yml`, job `godot`) runs two Linux legs: the 4.7.2 editor plus the
@@ -351,6 +383,8 @@ those strings against the generator's `expect.docNulReplaced`.
 | non-tool script in the editor         | static vars and `_static_init` skipped; a loaded Resource is a placeholder | not measured (the `@tool` fix is green there)                | `@tool` on what the export plugin and dock reach                            |
 | two threads reading one `const` Array | correct                                                                    | wrong values now and then (shared read slot)                 | convert to a packed array first; never index a constant off the main thread |
 | `HTTPRequest.timeout`                 | a Timer on process delta: a long frame before the request spends it        | same                                                         | `PKeyTransport` times out on the wall clock, one budget per request         |
+| `--export-pack`'s `uid_cache.bin`     | names only the files it exports                                            | names the whole project's UIDs, excluded files included      | a 4.4 data pack must not share a UID with the main project (packs suite)    |
+| `PACK_FILE_DELTA` (GDDL) entries      | decoded by the engine on read                                              | absent (pack format v2)                                      | `zstd-patch-from` advertised on 4.6+ only (`PATCH_FROM_ENGINES`)            |
 
 So every `run_tests.sh` step fails on `SCRIPT ERROR`, `Parse Error`, `Failed to load script`,
 `Cannot get class` or `Invalid MainLoop` in its log, on its timeout, on a non-zero exit, and (for
@@ -433,7 +467,7 @@ fetches the record the target for this platform pins and verifies it hash first,
   build without `build.json` falls back to its `pkey_outlet_<kind>` feature tag; a web export
   synthesises `outletKind: web`. The device report carries the detected outlet id
   (`PKeyCore.reported_outlet()`), never a raw signal.
-- Acting on the decision is P3-10's (next section); packs are P4-08's.
+- Acting on the decision is P3-10's (next section); packs are P4-08's ("Packs").
 
 **The v3 check (P1-08).** `check()` is today's check, the same as sdk-node's and Python's:
 `GET /<p>/update/version`, informational on every outlet; a Steam, itch or store build must not
@@ -598,6 +632,154 @@ recovery; the guard over successive launches with stage-matrix.json's guard and 
 PKeyBoot's GUARD and DECIDE with the real host. About 5 s on an M-series Mac, editor and release
 template alike.
 
+## Packs (`PolarisKey.update.packs`, P4-08)
+
+```gdscript
+# res://pkey_packs/pkey-content.json: the content stamp CI writes before the export (P4-03); a
+# build without one has no packs. Embedded baselines sit beside it with their markers.
+var boot := await PolarisKey.boot()            # FETCH, MOUNT and BACKGROUND drive packs
+PolarisKey.update.packs.pack_ready.connect(func(id): print(id, " is usable"))
+var r := await PolarisKey.update.packs.ensure(["diceroll.core3d"])   # outside PKeyBoot
+await PolarisKey.update.packs.mount()          # this boot's godot.pck packs (PKeyBoot does it)
+var dir := PolarisKey.update.packs.path("diceroll.l10n")             # a running files.tree
+```
+
+`PKeyPacks` is client-core's PackEngine (`packs/engine.gd`, PKeyPackEngine) with the Godot ports.
+Every verdict of the pack core is client-core's: the packs suite runs every content case
+(`PKEY_CONTENT_CORPUS`, the checkout's `conformance/corpus/v2/content`), every plan-matrix row,
+variant and target case, and every pack-record and marker case on the editor and the release
+template.
+
+**Setup.** The content stamp is `res://pkey_packs/pkey-content.json` (`stamp_path`); without it
+`ensure` answers `not-configured` and the boot has nothing to fetch. Embedded baselines live in
+the same directory (`embedded_dir`): a single-file payload `X` with its marker `X.pkey.json`
+beside it, or a tree `D/` with `D/.pkey/pack.json`. Each marker is verified once per process
+(steps 12–14 against `pinned_release_keys`, the bytes matched, the stamp's pin checked) and the
+baseline then counts as installed and as a delta base. An export preset must ship them: add
+`pkey_packs/*` to "Filters to export non-resource files". `pinned_release_keys` must be set (pack
+records verify against them only), and Release must be on (`service-unavailable` otherwise).
+`axes` overrides the variant preferences (default: the texture families `OS.has_feature` reports,
+`astc`, `bptc`, `s3tc`, `etc2`, `etc`, in that order, and the TranslationServer locale);
+`mem_budget` bounds one delta frame (256 MiB); `root` is the store (`user://pkey`).
+
+**Storage** (`PKeyPackStorage`): `user://pkey/staging/<planId>/` (objects, the output, a bake
+journal), `user://pkey/store/<sha256>.pck` (a committed `godot.pck`, never overwritten, its index
+beside it as `<sha256>.files.json`), `user://pkey/trees/<sha256>/` (a committed `files.tree`,
+hot: the state's pointer swaps to it), `user://pkey/content/state.json`. Every FileAccess and
+DirAccess error is checked and never read as "missing" (only ERR_FILE_NOT_FOUND is); every write
+checks `store_buffer` and `get_error()`, and a file is read back from disk and compared before it
+is renamed. Whole-pack hashes, the directory check and rebuilds that touch no engine state run on a
+WorkerThreadPool task.
+
+**The install state** is P4-06's, hardened the same way: a torn `state.json` is held aside as
+`state.json.torn` with garbage collection held (its snapshot of the store saved as
+`state.json.torn.list` and reused by later loads) until `recover_state()`; an unreadable state
+refuses every write path with `pack-state-unreadable`; an install whose payload check raises stays
+in the document, out of use and out of GC (active and previous alike), a fresh commit carries such
+an active over as `previous` and a rollback re-verifies it; a listing that fails never drives GC.
+
+**`godot.pck`** (`PKeyGodotPckHandler`, a container, `restart`): strategies `delta` (a whole-
+payload `--patch-from` or a `files` set of per-entry frames), `file` (gaps plus blobs; a pack
+installed without a kept index derives its files from its own PCK directory, once) and `full`.
+Before a rebuilt pack is committed its whole-pack SHA-256 already equals the record's; then the
+header (PCK v2–v4, no encryption, no sparse bundle; the engine at most the running one and inside
+`requires.engine`: `pck-engine-mismatch`) and **the directory check** (S-05 §5 (f), the admission
+list P4-03's publish lint applies, over the record's `handler.prefixes`: in-prefix entries and
+their `.remap`/`.import`, the `.godot/exported/` and `.godot/imported/` files those name,
+`.godot/uid_cache.bin` naming only the pack's own files; refused with its path,
+`pck-directory-refused`: `project.binary`, the class cache, scripts and a `.remap` to one, native
+libraries and `.gdextension`, out-of-prefix paths, orphaned exported files, a `.remap`/`.import`
+target outside the pack, a uid cache entry outside the pack (a 4.4/4.5 exporter writes the whole
+project's), and resources that embed GDScript or CSharpScript or cannot be inspected). Paths must
+already be normal: the reader refuses a `..`, `.` or empty segment, a trailing `/` and a duplicate,
+because Godot simplifies a path at mount. Resources are judged by **content**, not extension, with fail-closed rules that do not depend
+on parser details: an `RSRC` entry is refused if a script marker (`GDScript`, `CSharpScript`,
+`ScriptExtension`, `script/source`, `source_code`, plus every class this engine says inherits
+`Script`) occurs anywhere in its bytes; a text resource (a `.tres`/`.tscn`/`.escn` name or a
+`[gd_scene`/`[gd_resource` head) also for a NUL, invalid UTF-8 or a `\u` escape, and for a
+marker found again once every backslash is removed (an unknown escape keeps its character);
+`RSCC` under any name. An in-prefix `.remap`/`.import` is refused for a NUL or other control byte,
+a backslash, invalid UTF-8, a byte-order mark, or a line with a `path` key anywhere in it that is
+not exactly `path[.<x>] = "<plain literal>"`. Besides `.gd`/`.gdc`/`.cs`, the
+device refuses every extension a loader claims for `Script` (`PKeyPck.refresh_script_kinds`, run by
+`warm()`); the CLI takes `scriptExtensions`/`scriptTypes` for another script language. A
+`files.tree` output's files get the same scan. The device check is held to the CLI's verdicts line for line
+over P4-03's fixture PCKs. Packs are data-only on every build (S-07 row 13; `downloadedScripts` is
+not in v1; docs/security/THREAT-MODEL.md, "Pack bytes on the device").
+
+**Mounting** (`mount()`, PKeyBoot's MOUNT): after the first frame is drawn
+(`RenderingServer.frame_post_draw`; one process frame headless), only the running set's
+content-addressed paths, in `mountOrder` (then pack id), one per frame, each after the header and
+directory checks again, with `replace_files=true` (S-05 §4.6: with `false` a pack's UIDs never
+register), never twice in a process. A restart pack committed before its id was mounted in this
+process (the boot's FETCH) mounts at this boot; one committed later activates at the next boot,
+from its new path: an overwritten mounted pack corrupts reads, and a same-session remount serves
+stale resources (A6 §2.7). A mount over 100 ms warns (more than ~1,000 entries belong under a
+loading screen, S-05 §4.1). On web the mounted bytes are capped (150 MB on mobile browsers, 300 MB
+on desktop: `web_cap`).
+
+**Deltas through the engine.** `PackedByteArray.decompress` cannot take a prefix, so a
+`--patch-from` frame is decoded by Godot's own delta decoder (A6 §2.4): the prefix is exposed under
+a private path (`__pkey/<session>/<n>/b<i>`, never a path a game loads), a helper pack lists
+`GDDL\x01` + the frame as a `PACK_FILE_DELTA` entry for it, and reading the path decodes. A prefix
+inside an installed store pack is exposed by a trailer appended to that very file (mounted at its
+own offset, truncated back after the reads; its size is journalled first, so a crash in between is
+repaired by truncation at the next load: the journal is a list and names only
+`user://pkey/store/<sha256>.pck` files, and a journal that cannot be written sends the frame to a
+copy host instead); any other prefix is copied into a helper "host" pack. All
+of a `files` set's frames go through one mount pair. The window check (§2.7 rule 3) and the
+dictionary-magic rule run before any frame reaches the decoder, which enforces no window limit of
+its own. `zstd-patch-from` is advertised only on the engines in `PKeyPackZstd.PATCH_FROM_ENGINES`
+(4.6, 4.7: `PACK_FILE_DELTA` arrived in 4.6) whose start-up probe decodes; on the 4.4 floor the
+planner never chooses a delta, and the corpus's decode cases are held to fail closed. `chunk` is
+never advertised in v1.
+
+**HTTP** (`PKeyPackCdnTransport`, `PKeyPackHttp`): the record from discovery's
+`release.endpoints.record`, objects from `distribution.endpoints.blobs`, on HTTPClient (never
+`download_file`, which truncates and, on web, deletes its file); `Accept-Encoding: identity`;
+`Range` with `If-Range: "<sha256>"` on a resume (staged bytes re-hashed, never trusted; a 200
+starts the object over); redirects followed by hand, the bearer sent only to the control plane's
+origin and dropped on any cross-origin hop; one wall-clock deadline per request (`object_timeout`,
+600 s; a timeout resumes at the next ensure). A 403 from the blob route (`delivery_gate_missing`,
+`not_entitled`) fails with `pack-not-entitled`. A transport is an interface (`PKeyPackTransport`): P5-08 adds
+the platform ones behind it.
+
+**PKeyBoot.** `required_packs` and `essential_packs` default to the stamp's expects. FETCH runs
+`boot_fetch`: it estimates what is missing and, when the `consent` option says so (`metered`, the
+default, asks only with `metered: true`; `always`; `never`), shows the consent card with the size
+before a byte downloads (Download / Not now; `answer_consent(bool)` from a game's own UI); a
+decline stops at BLOCKED `content-declined`, never ERROR. MOUNT mounts and then applies the
+`theme` option (a Theme a pack provides). After READY, BACKGROUND installs the `prefetch` packs
+behind a corner pill that never takes input. Offline with the required set present reaches READY;
+an essential pack missing offline offers "Play offline".
+
+**Signals**: `pack_progress(id, bytes, total)`, `set_changed(activation)` (a commit or rollback
+changed the active set: `hot` now, `restart` at this boot's mount or the next boot),
+`pack_ready(id)` (usable in this process: a hot commit, or a mount), `pack_failed(id, err)`.
+
+**Rollback.** The shared boot guard (P3-10) also counts while a pack set the last confirmed launch
+did not run is active, and its `roll-back` puts each such pack back to `previous` together with
+the binary; a packs-only rollback needs no restart (the guard runs before MOUNT). Each pack rolled
+back queues `boot_rolled_back` with the pack id and the restored `packSetId`, and its record is
+**held** (`held` in the install state, with a count): the restored install stays active and the
+held record is not fetched again until the stamp pins a different one (installing that one
+clears the hold) (an explicit `ensure` of it
+fails with `pack-rolled-back`), so a broken pack costs two failed boots once. A pack that cannot
+install (any code but a transient `network-error`) queues `pack_failed` with its code, both on the
+device report's `updates` while the updater is active. A confirmed launch confirms the running
+set. The device report carries `content: {packSetId}`.
+
+**Tests** (`packs` suite): content, plan and records (the corpus); pck (the device checks over the
+CLI's fixtures and verdicts); bake (both delta kinds decoded through a trailer on a MOUNTED base:
+the running session's reads stay correct and the base comes back byte for byte); engine (a tree
+install, update and rollback; resume; refusals; kaykit v1→v2 by the payload delta, the files
+delta, file and full, each committing CI's v2 at `store/<sha256>.pck`, mounted by the next boot);
+state (the hardened state); http (the real transport against PKeyFakeServer); boot (the stages
+and signal order); guard (two failed boots roll the set back, with and without the binary); uid
+(two independently built, stripped packs resolve their own and this project's `uid://` with
+`replace_files=true`, the class list unchanged). About 6 s in the editor and 5 s on the macOS
+release template (M-series Mac, 4.7.2).
+
 ## Config (`PolarisKey.config`)
 
 ```gdscript
@@ -693,8 +875,8 @@ func _ready() -> void:
   answer); gate sends `PolarisKey.status()` and sends it again while it waits whenever the
   licence state changes; decide is `optional` when `PolarisKey.update.decide()` has something to
   show (or, without the signed decision, the v3 check found a newer version), otherwise `none` —
-  never `required`, so no update floor stops play; fetch and mount are immediate until P4-08
-  (mount after the first frame). `fail` is only for a store failure or an options file that
+  never `required`, so no update floor stops play; fetch and mount drive packs (P4-08, see
+  "Packs"). `fail` is only for a store failure or an options file that
   cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or
   45 s on a build without threads where a bundle verify runs in frame slices), after which the
   machine gets `sync.timeout` and a late answer is dropped.

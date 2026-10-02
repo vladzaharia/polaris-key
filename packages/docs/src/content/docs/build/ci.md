@@ -235,13 +235,20 @@ What the step does, in order:
    pack's `handler.prefixes` with their `.remap` and `.import` files, the `.godot/exported/` and
    `.godot/imported/` files those name, and `.godot/uid_cache.bin`. Scripts (`.gd`, `.gdc`, `.cs`,
    a `.remap` of one), native libraries, GDExtensions and anything outside the prefixes fail with
-   their path: a pack carries data only. So does a resource with a script inside it: a text
-   scene or resource with a `GDScript` sub-resource or a `script/source` property, and a binary
-   `.scn`/`.res` (or any `.godot/exported/` file) whose strings name `GDScript`, `CSharpScript`
-   or `script/source`, or that cannot be inspected (compressed `RSCC`). A binary scene that only
-   references a script of the game is refused too, because the binary format cannot be told apart;
-   export such scenes as text (turn off the preset's "convert text resources to binary"), where
-   `[ext_resource type="Script" …]` passes. The header's engine must be `requires.engine`; more than
+   their path: a pack carries data only. So does a resource that may carry a script, judged by content with rules
+   that fail closed: any entry whose bytes start `RSRC` (a binary resource under any extension)
+   and any text scene or resource (`.tscn`, `.tres`, `.escn`, or a `[gd_scene`/`[gd_resource`
+   head) that names `GDScript`, `CSharpScript`, `ScriptExtension`, `script/source` or
+   `source_code` anywhere; a text resource with a NUL byte, invalid UTF-8 or a `\u` escape; and a
+   compressed `RSCC` resource, which cannot be inspected. A `.remap` or `.import` whose `path` lines
+   are not plain `path[.<x>] = "res://…"` literals fails too, and so does one with a backslash or a
+   control byte anywhere: an escaped quote in a node name under `_subresources` is enough, so
+   rename that node in the source asset and re-import. Godot writes an imported 3D scene
+   (`.glb`, `.gltf`, `.blend`, `.fbx`) as a compressed `.scn` (`RSCC`), which the lint cannot
+   inspect, so packs that carry imported models are refused for now. A reference to a script the game
+   already ships (`[ext_resource type="Script" …]`) names none of these and passes. The lint knows
+   the built-in script set only; for another script language (a GDExtension) the device check,
+   which asks its engine what a script is, is the one that refuses it. The header's engine must be `requires.engine`; more than
    1,000 entries warns and more than 20,000 fails, because mounting stalls longer with the entry
    count. A `files.tree` must keep the [path rules](/docs/build/wire/packs/#path-rules) and hold no symbolic links.
 2. **Build the objects.** A `full` object (the whole payload, one zstd frame), the `pkey-files/1`
@@ -261,14 +268,23 @@ What the step does, in order:
    the newest such releases get deltas. A missing cache only means bigger downloads for that
    release, never a failed publish. The step lists entries that look like re-import noise (a Godot
    cache rewritten in another order, a few changed bytes) as warnings.
-5. **Upload and submit.** Objects go up in rounds of at most 256, each object only when the
+5. **Chunk indexes.** A PCK variant of 4 MiB or more also gets a chunk index and chunk bundles
+   ([Chunk indexes and shared bundles](/docs/services/release/packs/#chunk-indexes-and-shared-bundles))
+   when `patch.strategies` lists `chunk` (the default) and Polaris Key advertises
+   `release.chunks`. `out` keeps each index (`<variant>/chunks.<sha256>`) and `bases` continues
+   its chain, so an update uploads only the bundles of the chunks that changed; a bundle Polaris
+   Key no longer holds is packed again. The step proves every new chunk decodes to its bytes with
+   the device decoder and the index parses against the payload; an index above 8 MiB is left out
+   with a warning.
+6. **Upload and submit.** Objects go up in rounds of at most 256, each object only when the
    product does not hold it yet, so an unchanged file costs nothing; then the record is submitted.
-6. **Write the marker.** The stripped PCK is written back in place, and a marker
+7. **Write the marker.** The stripped PCK is written back in place, and a marker
    (`pkey-marker/1`, the signed record) is written beside each payload: `X.pck.pkey.json` beside
    a PCK, `D/.pkey/pack.json` inside a tree. Embed both in the app export.
 
 `dry-run: true` prints the lint results, the strip, the gate, the objects (new and already
-stored), the bytes each update strategy costs, skipped deltas and the unsigned record, and
+stored), the bytes each update strategy costs, the chunks (with the new bundles and the bytes
+reused from earlier bundles), skipped deltas and the unsigned record, and
 uploads, signs and writes nothing. It submits nothing either, so there is no server verdict on
 the record: the checks it shows are the CLI's own, the preflight's (seq, gate, cached bases) and
 the tickets' `present` answers, for which it mints one upload ticket per 256 objects (rows that

@@ -234,3 +234,90 @@ export function packRecord(r: {
     variants: r.variants,
   };
 }
+
+/** One `pkey-chunks/1` record: `[id (hex), len, clen, bundle, offset]`. */
+export type ChunkRec = [string, number, number, number, number];
+
+/** The `pkey-chunks/1` bytes of an index (plans/P4-10.md §2.3): header, records, bundle table. */
+export function writeChunkIndex(doc: {
+  payloadSize: number;
+  payloadSha256: string;
+  records: readonly ChunkRec[];
+  bundles: readonly (readonly [string, number])[];
+}): Uint8Array {
+  const n = doc.records.length;
+  const nb = doc.bundles.length;
+  const out = new Uint8Array(64 + 48 * (n + nb));
+  const dv = new DataView(out.buffer);
+  out.set(new TextEncoder().encode("PKEYCHNK"), 0);
+  dv.setUint16(8, 1, true);
+  dv.setUint16(10, 48, true);
+  dv.setUint32(12, 1, true);
+  dv.setUint32(16, n, true);
+  dv.setUint32(20, nb, true);
+  dv.setUint32(24, doc.payloadSize % 2 ** 32, true);
+  dv.setUint32(28, Math.floor(doc.payloadSize / 2 ** 32), true);
+  out.set(Buffer.from(doc.payloadSha256, "hex"), 32);
+  doc.records.forEach(([id, len, clen, bi, bo], i) => {
+    const o = 64 + 48 * i;
+    out.set(Buffer.from(id, "hex"), o);
+    dv.setUint32(o + 32, len, true);
+    dv.setUint32(o + 36, clen, true);
+    dv.setUint32(o + 40, bi, true);
+    dv.setUint32(o + 44, bo, true);
+  });
+  doc.bundles.forEach(([s, size], j) => {
+    const o = 64 + 48 * (n + j);
+    out.set(Buffer.from(s, "hex"), o);
+    dv.setUint32(o + 32, size % 2 ** 32, true);
+    dv.setUint32(o + 36, Math.floor(size / 2 ** 32), true);
+  });
+  return out;
+}
+
+/**
+ * A variant's chunks (P4-22): `full` (the payload's bytes) cut in two raw chunks at `cut`, laid
+ * into a new bundle (an 8-byte seed prefix, then the chunks, so it is never the `full` blob);
+ * with `reuse`, the second chunk is read from that earlier bundle at offset 0 instead (a shared
+ * chain). The index is stored raw. Returns the variant's `chunks` member and its two objects.
+ */
+export function chunksFor(
+  full: Uint8Array,
+  payload: { size: number; sha256: string },
+  seed: string,
+  o: { cut?: number; reuse?: Obj } = {},
+): { chunks: Record<string, unknown>; index: Obj; bundle: Obj } {
+  const cut = o.cut ?? Math.floor(full.length / 2);
+  const a = full.subarray(0, cut);
+  const b = full.subarray(cut);
+  const prefix = bytesFrom(`${seed}/bundle`, 8);
+  const own = obj(
+    new Uint8Array(Buffer.concat(o.reuse ? [prefix, a] : [prefix, a, b])),
+  );
+  const bundles: [string, number][] = [[own.sha256, own.bytes.length]];
+  const records: ChunkRec[] = [[sha(a), a.length, a.length, 0, prefix.length]];
+  if (o.reuse) {
+    bundles.push([o.reuse.sha256, o.reuse.bytes.length]);
+    records.push([sha(b), b.length, b.length, 1, 0]);
+  } else records.push([sha(b), b.length, b.length, 0, prefix.length + cut]);
+  const index = obj(
+    writeChunkIndex({
+      payloadSize: payload.size,
+      payloadSha256: payload.sha256,
+      records,
+      bundles,
+    }),
+  );
+  return {
+    chunks: {
+      format: "pkey-chunks/1",
+      sha256: index.sha256,
+      bytes: index.bytes.length,
+      size: index.bytes.length,
+      codec: "none",
+      params: { chunker: "fastcdc-2016-nc1", bundleLayout: "fresh" },
+    },
+    index,
+    bundle: own,
+  };
+}

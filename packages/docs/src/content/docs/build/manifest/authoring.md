@@ -362,7 +362,7 @@ deliverables:
     handler: { mountOrder: 2, prefixes: ["res://assets/kaykit/"] }
     variants: { texture: [s3tc, etc2, astc] }
     requires: { engine: godot-4.7 }
-    patch: { strategies: [delta, file], deltaBases: 1 }
+    patch: { strategies: [delta, file, chunk], deltaBases: 1 }
   diceroll.supporter.skins:
     kind: pack
     type: godot.pck
@@ -421,8 +421,11 @@ deliverables:
   `.pkey/schema` (`unknown_entitlement_ref`). It is **not** the gate: an operator gates a pack
   under Distribution → Access, and a publish whose gate differs from the assertion is refused.
   No push can gate, un-gate or re-flag a pack.
-- **`patch`**: `strategies`, a non-empty subset of `delta` and `file`; `deltaBases`, 0–8
-  (default 1) (`invalid_pack_patch`).
+- **`patch`**: `strategies`, a non-empty subset of `delta`, `file` and `chunk` (default: all
+  three; `chunk` gives every container variant of 4 MiB or more a chunk index and shared chunk
+  bundles, and an explicit list without it opts out); `deltaBases`, 0–8 (default 1)
+  (`invalid_pack_patch`). List `chunk` explicitly only once your Worker and CLI support it: an
+  older Worker's resync and an older CLI's validation refuse it.
 - **`versioning.scheme`** as for the app (default `semver`).
 - **`provides`** and **`removes`** are refused for now (`pack_field_not_supported`).
 - **`deliverables.app.content.packChannels`** maps 1–64 pack ids or `prefix.*` patterns to a

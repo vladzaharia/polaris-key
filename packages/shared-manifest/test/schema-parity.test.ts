@@ -289,7 +289,7 @@ function base(): Docs {
             },
             variants: { texture: ["s3tc", "etc2"] },
             requires: { engine: "godot-4.7" },
-            patch: { strategies: ["delta", "file"], deltaBases: 1 },
+            patch: { strategies: ["delta", "file", "chunk"], deltaBases: 1 },
             versioning: { scheme: "semver" },
           },
           "acme.l10n": {
@@ -1320,7 +1320,7 @@ const MUTATIONS: Mutation[] = [
     code: "invalid_pack_patch",
     file: "release",
     schema: "rejects",
-    mutate: (d) => (core3d(d).patch.strategies = ["chunk"]),
+    mutate: (d) => (core3d(d).patch.strategies = ["bsdiff"]),
   },
   {
     code: "invalid_pack_patch",

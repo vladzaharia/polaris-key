@@ -6,10 +6,12 @@
  *
  *   POST /<p>/release/publish/token    GitHub OIDC JWT in → `{token, expiresAt, scopes}`
  *   POST /<p>/release/publish/uploads  `pkeyci_` + release:publish, `{objects:[{sha256,size}],
- *                                      releases?:[{deliverable,version}]}` → a ticket, R2
- *                                      temporary credentials for `staging/<p>/<ticketId>/`, which
- *                                      objects are `present`, `nextSeq`, and (P3-03) each named
- *                                      release's `seq` in `seqs`
+ *                                      releases?:[{deliverable,version}], deliverable?}` → a
+ *                                      ticket, R2 temporary credentials for
+ *                                      `staging/<p>/<ticketId>/`, which objects are `present`,
+ *                                      `nextSeq`, and (P3-03) each named release's `seq` in
+ *                                      `seqs`. With `deliverable` (a pack id, P4-22), `present`
+ *                                      means that pack uploaded the object itself
  *   POST /<p>/release/publish/submit   `pkeyci_` + release:publish, `{ticket, descriptor, record?,
  *                                      dryRun?}` → verify every staged object, check the
  *                                      CI-signed release record (P3-03), promote, ingest; or
@@ -91,6 +93,7 @@ import {
 } from "./descriptor.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { readPackDeliverableIds } from "./packs/deliverables.js";
+import { packUploadedKeys } from "./packs/ingest.js";
 import type { CheckCache } from "./packs/checks.js";
 import {
   distributionDisabled,
@@ -327,6 +330,19 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
     return refusal(400, ErrorCode.BadRequest, "bad_objects", objects.error);
   const gates = await packGatesFor(ctx, releases);
   if (gates instanceof Response) return gates;
+  // P4-22: a pack's ticket names its pack, and `present` then means a `pack-upload` ref of THAT
+  // pack (what its stage round skips and its chunk ingest requires), never only the product's.
+  const deliverable = body.deliverable;
+  if (deliverable !== undefined) {
+    const packIds = await readPackDeliverableIds(db, product.slug);
+    if (typeof deliverable !== "string" || !packIds.includes(deliverable))
+      return refusal(
+        400,
+        ErrorCode.BadRequest,
+        "unknown_pack_deliverable",
+        "deliverable, when given, must be a pack deliverable this product declares in .pkey/release",
+      );
+  }
 
   const nextSeq = await nextSeqByDeliverable(ctx);
   if (preflight)
@@ -340,7 +356,10 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
   const targets = objects.map((o) => blobKey(o.sha256, { gated: o.gated }));
   // THIS product's refs only — never `blob_objects` (THREAT-MODEL §3: a ref is earned per
   // product, and another product's copy must neither be revealed nor skip the upload).
-  const owned = await referencedKeys(db, product.slug, targets);
+  const owned =
+    typeof deliverable === "string"
+      ? await packUploadedKeys(db, product.slug, deliverable, targets)
+      : await referencedKeys(db, product.slug, targets);
   const credentials = await mintUploadCredentials(
     parent,
     ticketPrefix(product.slug, issued.ticketId),

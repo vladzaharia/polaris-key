@@ -262,7 +262,7 @@ export interface CatalogPackDeliverable {
 /** One object of a pack release's variant, as its signed record names it. */
 export interface CatalogPackObject {
   /** `PACK_OBJECT_ROLES`: `payload` (the `full` object), `files-index`, `files-gaps`, `delta`,
-   *  `patch`, `patch-data`. */
+   *  `patch`, `patch-data`, `chunk-index` (P4-22). */
   role: string;
   /** SHA-256 and length of the STORED bytes (the blob route's ETag and Repr-Digest). */
   sha256: string;
@@ -556,19 +556,16 @@ export interface ReleaseCatalog {
    */
   revocations(): Promise<CatalogRevocation[]>;
 
-  // ── Chunk bundles (P4-10 decision 16): the HOOK POINT P4-22 fills ──
+  // ── Chunk bundles (P4-10 decision 16; P4-22 implements it) ──
   /**
    * The chunks one variant of a pack release reads from chunk bundles, decoded from its stored
    * chunk index (one index per call, at most `MAX_PUBLISHED_INDEX_BYTES`; a caller walking many
-   * releases drops each before the next). Null when the release, the variant or its readable chunk
-   * index does not exist.
+   * releases drops each before the next): one entry per stored location, duplicate ids sharing
+   * one. Null when the release, the variant, its `chunks` or its readable index does not exist.
    *
-   * OPTIONAL, and not implemented yet: whichever of P4-14 and P4-22 lands second implements it
-   * (P4-10 decision 16). P4-14 landed first, so until Release implements it the collector
-   * (`core/blobGc.ts`) KEEPS every ref to a key under `bundles/` (fail closed: it cannot tell a live
-   * bundle from a dead one) and the bundle live-data ratio reads `null`. P4-22 implements it here,
-   * in `services/release/packs/catalog.ts`, and adds the test that every bundle a live index names
-   * is kept.
+   * Release implements it (`services/release/packs/catalog.ts`, P4-22). It stays optional in the
+   * type so the collector (`core/blobGc.ts`) still fails closed against a catalog without it: it
+   * then KEEPS every ref to a key under `bundles/` and the bundle live-data ratio reads `null`.
    */
   packChunks?(
     releaseId: string,
@@ -578,7 +575,10 @@ export interface ReleaseCatalog {
 
 /** One chunk a pack variant reads from a chunk bundle (`ReleaseCatalog.packChunks`, P4-22). */
 export interface CatalogPackChunk {
-  /** The bundle's blob-store key (`bundles/sha256/<hex>`, or under `gated/`). */
+  /**
+   * The bundle's blob-store key. A pack's bundles are blobs (plans/P4-10.md decision 4):
+   * `blobs/sha256/<hex>`, or under `gated/`; P2-01's `bundles/` keys stay unused by packs.
+   */
   bundleKey: string;
   /** The chunk's byte offset in the bundle (a chunk is identified by bundle and offset). */
   offset: number;

@@ -18,7 +18,9 @@
  * only additive members: P3-03's `endpoints.record` and `releaseKeyFingerprints`, then P4-02's
  * `packs: true` (plans/P4-01.md §6, decision 24: the CLI refuses to publish a pack without it),
  * then P4-13's `revocations: true` (plans/P4-13.md §6.3: the CLI refuses `revoke` without it),
- * then P4-19's `delegations: true` (plans/P4-19.md §6.3: `pkey release delegate` requires it).
+ * P4-22's `chunks: true` between those two (plans/P4-10.md §6: the CLI publishes no `chunks`
+ * without it), and P4-19's `delegations: true` last (plans/P4-19.md §6.3: `pkey release
+ * delegate` requires it).
  * P3-03 added Update's `endpoints.feed`, and P3-09 the four app-updater feed templates after it
  * (`winsparkle`, `velopack`, `appInstaller`, `zsync`): additive keys a client ignores.
  */

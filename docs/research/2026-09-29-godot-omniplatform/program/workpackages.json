@@ -1343,7 +1343,7 @@
       "optional": false,
       "refs": ["README §5.7 §5.8", "CONTENT §4 §8.3", "notes/A6"],
       "brief": "wp/P4-08-godot-packs.md",
-      "status": "todo",
+      "status": "done",
       "milestone": "Diceroll's content-streaming phases 1–3 run on Polaris Key"
     },
     {
@@ -1471,7 +1471,7 @@
       "optional": false,
       "refs": ["CONTENT §6.4 §6.7 §11", "README §3.8"],
       "brief": "wp/P4-14-readiness-gc-rollouts.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-15",
@@ -1649,7 +1649,7 @@
       "optional": false,
       "refs": ["plans/P4-10.md §2.4 §3 §6"],
       "brief": "wp/P4-22-ci-chunk-indexes.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "P4-10"
     },
     {
@@ -1727,6 +1727,42 @@
       "brief": "wp/P4-26-delegation-godot.md",
       "status": "todo",
       "planRef": "P4-19"
+    },
+    {
+      "id": "P4-27",
+      "title": "Scan compressed (RSCC) resources in packs so imported models are admitted",
+      "phase": "P4",
+      "stage": "v3",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.5, 0.75],
+      "deps": ["P4-08", "P4-22"],
+      "planMode": false,
+      "gates": ["all-sdks", "cli-bundle", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["wp/P4-08-godot-packs.md"],
+      "brief": "wp/P4-27-rscc-scan.md",
+      "status": "todo"
+    },
+    {
+      "id": "P4-28",
+      "title": "Script attachment allow-list and publish script-kind settings",
+      "phase": "P4",
+      "stage": "v3",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.5, 1],
+      "deps": ["P4-08"],
+      "planMode": false,
+      "gates": ["all-sdks", "cli-bundle", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["wp/P4-08-godot-packs.md"],
+      "brief": "wp/P4-28-script-attach-allowlist.md",
+      "status": "todo"
     },
     {
       "id": "P5-01",

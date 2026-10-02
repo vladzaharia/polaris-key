@@ -1957,8 +1957,8 @@ API and no wire member.
   from a release that is live again (a plan computed before a concurrent ingest) is RESTORED on the
   next tick, long inside the grace period, so the sweep never reaches it.
 - **Restoring is not earning.** The collector restores only a ref it took from the same product
-  (a `ref-dropped` row in `blob_gc_log`), for a key a live release's own verified record or files
-  index names, on an object still stored and unclaimed. It can never give a product a ref to
+  (a `ref-dropped` row in `blob_gc_log`), for a key a live release's own verified record, files
+  index or chunk index names, on an object still stored and unclaimed. It can never give a product a ref to
   bytes it never held, even ones another product holds.
 - **No cross-tenant oracle.** The console's dry run (`GET …/blob-gc`) lists only this product's
   refs and never says whether another product holds the same bytes.
@@ -2059,7 +2059,7 @@ markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ing
   verdict. A `Range` is only ever answered from a bundle the signed index names (the request
   names the bundle by its SHA-256 and carries `If-Range` on it), and a short or clipped answer is
   `chunk-bundle-truncated`, never a partial install. Applying chunks lands in P4-11; ingest of
-  `chunks` in P4-22.
+  `chunks` in P4-22 (below, "Pack ingest").
 
 **Pack ingest (P4-02).** The Worker still signs no record: a pack record is CI-signed, and ingest
 (`services/release/packs/`) only verifies it, checks it against the pack's declaration and the
@@ -2080,6 +2080,30 @@ blob store, and stores it. What the Worker newly does is parse CI-supplied bytes
   in a stage round, in this submit's ticket, or for an earlier release. The check is a
   `json_each` join of at most 10,000 `[key, bytes]` pairs per query against `blob_objects` and
   this product's `blob_refs`, so another product's copy of the bytes never counts.
+- **Chunk indexes at ingest (P4-22, plans/P4-10.md §6).** Ingest parses one CI-supplied binary
+  `pkey-chunks/1` index at a time: its declared `size` and `bytes` are checked against
+  `MAX_PUBLISHED_INDEX_BYTES` (8 MiB) and its `format` against `pkey-chunks/1` before anything is
+  read, the stored object is read bounded by its recorded length, decoded by a fresh WASM
+  instance and parsed by client-core's `parseChunkIndex` bound to the variant's payload, which
+  compares the index length in exact arithmetic and reads every u64 as two saturated u32s, so no
+  length or offset in the index is trusted before it is bounded. The parsed records and bundle
+  entries (48 bytes each on the wire, at most 174,761 together: 174,760 records with one
+  bundle) are held for that index only and dropped before the next;
+  chunk indexes count toward `MAX_INGEST_INDEX_BYTES`. The bundles the index's table names get the
+  stricter possession check: the index and every bundle must be stored with the recorded length
+  AND held by a `pack-upload` ref of THIS pack (`ref_id` = the pack id) under the pack's prefix.
+  A ref held by another pack or by a release does not count, so a record may name an earlier
+  release's bundle only when the same pack uploaded it, and a pack cannot borrow (and so serve,
+  and pay for) bytes another of the product's packs, or another gating class, uploaded. A pack's
+  upload ticket and stage round use the same rule for `present` (the ticket names its pack in
+  `deliverable`): an object only another pack holds reads absent, is uploaded again and promoted
+  through the already-stored path, so a renamed pack or two packs sharing bytes still publish;
+  the answer reads only this product's refs, so it reveals nothing of another product. A gated
+  and a free chain never share an object: the key is derived from the record's own gate. Bundles
+  get no artifact rows; the collector keeps a bundle while any live release's chunk index names
+  it (`packChunks`), and a live variant whose index cannot be read keeps every `pack-upload` ref
+  that tick. The CLI publishes no `chunks` unless discovery advertises `release.chunks`, so no
+  record carrying one lands on a Worker that does not check it.
 - **Pins are signed, mirrored, never edited.** An app release's pins come from its signed
   `content` (the descriptor's, which `descriptor-mismatch` holds to the record); ingest refuses a
   pin to an unknown, mismatched or yanked pack release, an unpinned required or embedded pack, a
@@ -2153,11 +2177,122 @@ libraries and GDExtensions by extension, it refuses every resource that carries 
 a text resource (`.tscn`, `.tres`, `.escn`) whose section headers name `GDScript` or
 `CSharpScript` or that sets `script/source`, and a binary resource (`.scn`, `.res`, anything under
 `.godot/exported/`) containing `GDScript`, `CSharpScript` or `script/source` as a Godot
-length-prefixed string, or that is compressed (`RSCC`) or otherwise not inspectable. The binary
-scan fails closed (it also refuses a binary scene that merely references an app script). The CLI
-lint is a publisher-side guard, not a trust boundary: a repo writer with the release key can sign
+length-prefixed string, or that is compressed (`RSCC`) or otherwise not inspectable. (P4-08's
+audit replaced both scans with the fail-closed content rules below.) The CLI lint is a
+publisher-side guard, not a trust boundary: a repo writer with the release key can sign
 any record, so P4-08's device-side directory check must apply the same rule (the same fixtures,
 `packages/cli/test/packFixtures.ts`) before a pack is mounted.
+
+**Pack bytes on the device (P4-08).** The Godot SDK is where a `godot.pck` payload becomes
+mounted resources, so it is the trust boundary the P4-03 lint is not. A mounted pack cannot be
+unmounted and, with `replace_files=true` (needed for `uid://` references), its entries replace
+the app's own files of the same path, so the device decides by itself, before anything is
+committed or mounted:
+
+- **The data-only invariant.** No pack a device mounts may carry code or change what code runs:
+  no script file (`.gd`, `.gdc`, `.cs`, a `.remap` naming one), no native library or
+  `.gdextension`, no resource with an embedded script, no `project.binary` and no
+  `.godot/global_script_class_cache.cfg`. A delivered pack is downloaded code on a store build
+  otherwise (S-07 row 13), and the review found that a pack the CLI admitted could run GDScript
+  on both 4.7.2 and 4.4.1; both bypasses below are now refused on the device and in the lint.
+- **The directory check runs before commit, and so before mount.** The handler reads the PCK
+  directory and checks every entry against the record's `handler.prefixes` and the admission list
+  (`PKeyPck.directory_check`, the same rules and the same fixtures as `packLint.ts`) over the
+  hash-verified output in staging. A refusal abandons the install (`pck-directory-refused`) and
+  nothing reaches the store, the install state or the mount list; a `files.tree` output's files
+  get the same content scan (`PKeyPck.tree_check`). Later boots mount only an install whose
+  payload digest still matches the one checked, so the check is not repeated per boot.
+- **Paths are refused unless already normal.** Godot simplifies a pack path when it mounts it,
+  so `res://packs/a/../../x` lands at `res://x` and `res://packs/a/evil.gd/.` at
+  `res://packs/a/evil.gd`, outside the prefix (or under an extension) the check matched. The
+  reader (`PKeyPck.read_directory`, the CLI's `readPck`) refuses any path with a `..`, `.` or
+  empty segment, a trailing `/`, or one that `simplify_path` would change, and a path the
+  directory names twice, before a rule is evaluated. Every `.remap` and `.import` target must
+  itself be such a path, under `res://`, and an entry of this pack: a target in the base game's
+  `.godot/imported/` or `.godot/exported/` is refused, so a pack loads only its own files.
+- **The extension never exempts a resource from the scan.** Godot picks a loader by extension:
+  in 4.x its runtime text loader takes `.tres` and `.tscn`, and its binary loader takes `.res`,
+  `.scn` and every resource type's own extension (`.material`, `.mesh`, `.anim`, …), then
+  requires the `RSRC` magic. So the binary scan runs on every entry whose bytes start `RSRC`,
+  whatever it is called. The text scan runs on the text-resource extensions (`.tres`, `.tscn`,
+  and `.escn`, which is an import format rather than a runtime text-loader extension in 4.x and is
+  scanned because stricter is free) and, as a defensive extra, on any entry with a sniffed
+  `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) cannot be scanned and is
+  refused under any name.
+- **The scans are fail-closed content rules, not parsers (P4-08 validator audit).** As
+  recalled from the engine source rather than measured here, Godot's VariantParser reads newlines
+  as whitespace and fields as Variants (StringName `&"…"`, `\u` escapes, an inline
+  `Object(GDScript, …)`) and keeps the character after an unknown escape (`"GD\Script"` reads as
+  `GDScript`), and its binary string reader stops at the first NUL. No rule depends on how a
+  header is spelled, an escape is written or a length is stored. A text resource is refused when
+  it holds a NUL byte, is not valid UTF-8 (one explicit validator on both sides), or contains
+  anywhere a script marker (`GDScript`, `CSharpScript`, `ScriptExtension`, `script/source`,
+  `source_code`, and on the device every class the running engine says inherits `Script`). The
+  marker search runs twice: on the bytes as they are, and on a copy with every backslash removed.
+  Any `\u` / `\U` escape is also refused. A binary resource is refused when the raw bytes of any
+  marker occur anywhere in it, without the length prefix. A `.remap` or `.import` is refused for a
+  NUL, any other control byte but TAB, LF and CR, any backslash, invalid UTF-8 or a byte-order
+  mark. It is also refused for any line with a `path` key anywhere in it (quoted or not, after
+  `[remap]`, another key or a metadata `}`) unless the whole line is exactly
+  `path[.<x>] = "<plain literal>"`: the engine's tag parser does not need a key to start a line.
+  A key that ends in `/path`, `.path` or `-path` (`import_script/path` in every scene import's
+  `[params]`) is a different key to the engine and is excluded from that rule.
+  Lines are split by hand after CR → LF and whitespace is an explicit class, because JS and PCRE2
+  disagree on `\s`, `\v` and line breaks. A uid-cache path with a NUL is refused. Every rule has
+  fixtures (`audit-*` in `verdicts.json`) that both validators must give the same verdict on, run
+  on 4.7.2 and 4.4.1; they pin the validators' verdicts, not the engine behaviour recalled above.
+- **What counts as a script comes from the engine on the device.** Besides `.gd`, `.gdc` and
+  `.cs`, the device refuses every extension a loader recognises for `Script`
+  (`ResourceLoader.get_recognized_extensions_for_type`, minus the generic `tres`/`res`/`tscn`/`scn`
+  containers whose content is scanned) and uses every `Script` subclass as a marker, so a
+  GDExtension script language installed in the app is covered on the device. The CLI cannot ask
+  an engine: `lintPck` takes `scriptExtensions` and `scriptTypes` for such a language, but
+  `pkey release publish` does not expose them yet, so today the device check alone refuses it.
+- **A pack's uid cache may name only the pack's own files.** A 4.4/4.5 exporter writes the whole
+  project's `uid_cache.bin` into a pack, excluded files included; mounted with
+  `replace_files=true`, a foreign entry re-points one of the app's own UIDs at the pack's file
+  (measured on 4.4.1). An entry naming a path outside the pack is refused on the device and in
+  the lint, so such packs must be exported from 4.6+ or have the cache stripped.
+- **A delta trailer briefly mutates an installed store pack.** A Godot delta decodes through
+  the engine by appending a trailer directory to the store pack that holds the patch base, mounting
+  it under a private `res://__pkey/<session>/` namespace, and truncating the file back after the
+  decode. A journal written before the append (`bake.json` in the plan's staging directory, a
+  list of `{file, size}`) lets the next boot truncate a pack a crash left long, and names only a
+  file of the form `<store>/<64 hex>.pck`, so a forged journal cannot truncate anything else.
+  The decoded bytes are hash-checked against the signed variant before the directory check runs.
+  If the journal cannot be written the decode uses a copy host instead of touching the store.
+- **A pack that fails its boots is not offered again.** When the shared boot guard rolls a pack
+  set back, each rolled-back pack's record SHA is recorded in the install state (`held`, with a
+  count). The SDK does not reinstall it until the content stamp pins a different record, and
+  treats the restored install as active (`pack-rolled-back` on an explicit `ensure`). A broken
+  pack therefore costs two failed boots once, not on every launch.
+
+Residuals not closed by P4-08:
+
+- **A pack may attach and configure scripts the app already ships.** A reference to an app
+  script names no marker, in either format: `[ext_resource type="Script" path="res://…gd"]` in a
+  text resource, or a binary resource's external-resource table entry typed `Script` (the binary
+  loader resolves it by the path's extension). Both pass the scan (pinned by the `ext-script-ok`
+  and `audit-binary-extref` fixtures). A pack can therefore instantiate any script class the build
+  contains, including debug or tool scripts, with exported property values it chooses, and run
+  whatever side effects their `_init` or `_ready` have. That is not downloaded code, but the app
+  must treat pack data as untrusted input. Integrity rests on the release-key signature over the
+  record. Follow-up: an app-declared allow-list of the script paths or UIDs a pack may attach.
+- **Another script language is refused on the device only.** The device asks its engine what a
+  script is; the CLI lint only knows `.gd`, `.gdc`, `.cs` and the built-in markers. An app with a
+  GDExtension script language must declare its extensions and types for CI to refuse them too.
+  Follow-up: expose `scriptExtensions`/`scriptTypes` as a publish setting.
+- **Data replacement under a pack-chosen name.** An in-pack `.godot/imported/…` or
+  `.godot/exported/…` file whose name equals the base game's replaces it under
+  `replace_files=true`. That changes data, not code, and the record is release-key signed.
+- **Shaders are admitted.** `.gdshader` and shader resources are GPU programs, not scripts the
+  store rules cover, and they pass the check.
+- **Embedded packs are trusted as the build.** A pack embedded in `res://pkey_packs/` is bound
+  by its marker and signed record but not directory-checked: it is part of the build, which is
+  the running code.
+- **The store sits in the attacker's trust domain.** An attacker who can write `user://` can
+  replace a store pack and the digest the install state holds for it. That is the same boundary
+  as the SDK cache (below), and it is no worse than replacing the game itself.
 
 ### Boundaries that are weaker than they look
 
