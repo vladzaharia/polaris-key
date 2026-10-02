@@ -52,7 +52,9 @@ from .models import (
 from .release_record import (
     ReleaseRecordPin,
     VerifiedRevocation,
+    covers_pack,
     newer_revocation,
+    record_revoked,
     reload_release_records,
     verify_release_record,
     verify_revocation,
@@ -97,6 +99,11 @@ class UpdateCheckContent:
     revoked: Mapping[str, VerifiedRevocation] = field(default_factory=dict)
     #: Packs whose revocations must be re-learned (the engine's ``relearn``).
     relearn: Sequence[str] = ()
+    #: The delegated releases the pack engine knows (``delegated_releases()``, plans/P4-19.md
+    #: §2.7): record hash -> ``{"pack", "delegation"}``. A delegation entry naming one of these
+    #: delegations is relevant at step 11, and each release whose delegation is revoked joins
+    #: the decision's revocations.
+    delegated: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -420,6 +427,14 @@ def _content_steps(
         h_set.add(p["release"]["sha256"])
     for h in c.holds or ():
         h_set.add(h["release"]["sha256"])
+    # plans/P4-19.md §2.7: H's pack set (the stamp's expects, pins and holds, the active installs
+    # and the feed targets), for the relevance of delegation entries.
+    packs_h: Set[str] = set(c.active.keys())
+    packs_h.update(p["pack"] for p in c.stamp.get("pins") or ())
+    packs_h.update(e["pack"] for e in c.stamp.get("expects") or ())
+    packs_h.update(h["pack"] for h in c.holds or ())
+    delegated = c.delegated or {}
+    delegations: Set[str] = {d["delegation"] for d in delegated.values()}
     ps = fc.packSets
     if ps is not None:
         targets = select_pack_rows(
@@ -429,6 +444,7 @@ def _content_steps(
             engine=engine,
             axes=c.axes,
         )
+        packs_h.update(targets.keys())
         for target in targets.values():
             h_set.add(target)
             for o in (ps.get("outlets") or {}).values():
@@ -436,7 +452,16 @@ def _content_steps(
                     if g == target and gate["fallback"] is not None:
                         h_set.add(gate["fallback"])
 
-    # Step 11.
+    # Step 11. A pack-record entry is relevant when its target is in H; a delegation entry
+    # (plans/P4-19.md §2.7) when its target is the delegation of a delegated release this host
+    # knows, or its scope root covers, by whole segments, a pack in H's pack set.
+    def relevant(entry: Mapping[str, Any]) -> bool:
+        if entry.get("kind") == "delegation":
+            return entry["target"] in delegations or any(
+                covers_pack(entry["pack"], p) for p in packs_h
+            )
+        return entry["target"] in h_set
+
     stored: Dict[str, VerifiedRevocation] = dict(c.revoked)
     learned: List[LearnedRevocation] = []
     # The feed entries step 11 considers (target in H) that are now known: already stored with
@@ -444,7 +469,7 @@ def _content_steps(
     known: Set[str] = set()
     fetches = 0
     for e in fc.revocations or ():
-        if e["target"] not in h_set:
+        if not relevant(e):
             continue
         have = stored.get(e["target"])
         if have is not None and have.record == e["record"]:
@@ -477,7 +502,8 @@ def _content_steps(
     rev_input: List[ContentRevocationInput] = []
     for target, rev in stored.items():
         usable = False
-        rep = rev.replacement
+        # A delegation target has no replacement (plans/P4-19.md §2.6): one is ignored.
+        rep = None if target in delegations else rev.replacement
         if rep is not None and target in h_set and rep.sha256 not in stored:
             rep_hash = rep.sha256
             got = _safe_fetch(lambda: fetch_record(rep_hash), ErrorCode.NETWORK_ERROR)
@@ -502,6 +528,15 @@ def _content_steps(
                 target=target, pack=rev.pack, replacement=rep, replacementUsable=usable
             )
         )
+    # plans/P4-19.md §2.7: each known delegated release whose delegation is revoked is revoked
+    # for the decision, with no replacement.
+    for record, d in delegated.items():
+        if record_revoked(record, d["delegation"], set(stored)) == "delegation":
+            rev_input.append(
+                ContentRevocationInput(
+                    target=record, pack=d["pack"], replacement=None, replacementUsable=False
+                )
+            )
 
     # Step 13: the bucket of every gate salt.
     buckets: Dict[str, Optional[int]] = {}
@@ -523,7 +558,7 @@ def _content_steps(
             if all(
                 e["record"] in known
                 for e in fc.revocations
-                if e["pack"] == p and e["target"] in h_set
+                if e["pack"] == p and relevant(e)
             ):
                 relearn_cleared.append(p)
 

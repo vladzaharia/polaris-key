@@ -216,6 +216,8 @@ class PacksClient:
             axes={k: list(v) for k, v in self._opts.axes.items()},
             revoked=revs.verified,
             relearn=revs.relearn,
+            # plans/P4-19.md §2.7: the delegated releases the engine knows.
+            delegated=engine.delegated_releases(),
         )
 
     def record_revocations(self, revocations: Any) -> None:

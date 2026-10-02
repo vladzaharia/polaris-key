@@ -30,17 +30,26 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
-from ...constants_generated import MAX_FILES_INDEX_BYTES, ErrorCode
+from ...constants_generated import MAX_DELEGATIONS_PER_CHECK, MAX_FILES_INDEX_BYTES, ErrorCode
 from ...core.errors import PolarisError
 from ...core.jws import TrustSet
 from ...core.pack_claims import variant_key
 from ...core.release_record import (
     ReleaseRecordPin,
     VerifiedRevocation,
+    delegation_hash_of,
     newer_revocation,
+    record_hash,
+    record_revoked,
     verify_release_record,
 )
 from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
+from .dataonly import (
+    DataOnlyRefusalSeen,
+    data_only_file_refusal,
+    data_only_path_refusal,
+    data_only_tree_sink,
+)
 from .files import parse_files_index
 from .marker import match_embedded, verify_marker
 from .plan import plan
@@ -315,6 +324,8 @@ class _Plan:
     plan_id: str
     index: Optional[Dict[str, Any]]
     plan: Dict[str, Any]
+    #: The delegation's compact JWS when a content key signed the record (plans/P4-19.md §2.3).
+    delegation: Optional[str] = None
 
 
 # ── The engine ───────────────────────────────────────────────────────────────────────────────
@@ -403,6 +414,13 @@ class PackEngine:
         self._rev_jws: Dict[str, str] = {}
         self._rev_issue: Optional[str] = None
         self._rev_file = False
+        # plans/P4-19.md §2.3: delegation records fetched in this process, by hash (each bound to
+        # its hash and re-verified at every use against the current trust inputs); the distinct
+        # delegations this call may still fetch; the delegated releases verified in this process
+        # (record hash -> pack and delegation hash).
+        self._delegation_bodies: Dict[str, str] = {}
+        self._delegation_budget = MAX_DELEGATIONS_PER_CHECK
+        self._delegated_known: Dict[str, Dict[str, str]] = {}
         self._lock = threading.RLock()
 
     # ── Public surface ─────────────────────────────────────────────────────────────────────
@@ -495,7 +513,9 @@ class PackEngine:
             deferred: List[Dict[str, Any]] = []
 
             def verify_install(i: Dict[str, Any]) -> bool:
-                if not self._verify_stored_record(i["record"], i["recordSha256"], i["packId"], i):
+                if not self._verify_stored_record(
+                    i["record"], i["recordSha256"], i["packId"], i, i.get("delegation")
+                ):
                     return False
                 try:
                     return bool(self._storage.verify(i))
@@ -507,7 +527,9 @@ class PackEngine:
                     return False
 
             def verify_journal(j: Dict[str, Any]) -> bool:
-                return self._verify_stored_record(j["record"], j["recordSha256"], j["packId"])
+                return self._verify_stored_record(
+                    j["record"], j["recordSha256"], j["packId"], None, j.get("delegation")
+                )
 
             doc = reload_pack_state(parsed, verify_install, verify_journal)
             for slot in ("active", "previous"):
@@ -520,7 +542,7 @@ class PackEngine:
             # This boot's set: every active install, else the embedded baseline. A revoked
             # release never activates or mounts (`pack-revoked`).
             for i in list(doc["active"].values()):
-                if not self.is_revoked(i["recordSha256"]):
+                if not self._install_revoked(i):
                     self._activate(i)
             for pid, emb in self._embedded.items():
                 if pid not in self._running and not self._embedded_refused(emb):
@@ -580,13 +602,13 @@ class PackEngine:
             before = doc["active"].get(pack_id)
             prev = doc["previous"].get(pack_id)
             # plans/P4-13.md §2.5: never back to a revoked release.
-            if prev is not None and self.is_revoked(prev["recordSha256"]):
+            if prev is not None and self._install_revoked(prev):
                 return False
             if prev is not None and pack_id in self._unverified_previous:
                 # Carried over from an entry whose check could not run: verify it now.
                 try:
                     ok = self._verify_stored_record(
-                        prev["record"], prev["recordSha256"], pack_id, prev
+                        prev["record"], prev["recordSha256"], pack_id, prev, prev.get("delegation")
                     ) and bool(self._storage.verify(prev))
                 except Exception:
                     ok = False
@@ -612,6 +634,7 @@ class PackEngine:
         cannot be installed."""
         with self._lock:
             self._refuse_unreadable()
+            self._delegation_budget = MAX_DELEGATIONS_PER_CHECK
             return [self._ensure_one(pid) for pid in pack_ids]
 
     def ensure_releases(self, targets: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
@@ -621,6 +644,7 @@ class PackEngine:
         stamp's. Raises ``pack-revoked`` for a release a verified revocation names."""
         with self._lock:
             self._refuse_unreadable()
+            self._delegation_budget = MAX_DELEGATIONS_PER_CHECK
             return [self._ensure_one(*_target(t)) for t in targets]
 
     def estimate(self, pack_ids: Sequence[str]) -> PackEstimate:
@@ -637,6 +661,7 @@ class PackEngine:
     def _estimate_all(self, items: Sequence[Tuple[str, Optional[Dict[str, Any]]]]) -> PackEstimate:
         with self._lock:
             self._refuse_unreadable()
+            self._delegation_budget = MAX_DELEGATIONS_PER_CHECK
             out = PackEstimate()
             for pid, release in items:
                 try:
@@ -751,6 +776,37 @@ class PackEngine:
         """Whether a release is revoked (stored, or verified in this process)."""
         return record_sha256 in self._rev_doc["revoked"] or record_sha256 in self._rev_verified
 
+    def revoked_by(self, record_sha256: str, delegation_sha256: Optional[str]) -> Optional[str]:
+        """Why a release is revoked (plans/P4-19.md §2.3 ``record_revoked``): ``record`` when its
+        own hash is a target, ``delegation`` when the delegation it was signed under is, else
+        ``None``."""
+        targets = set(self._rev_doc["revoked"]) | set(self._rev_verified)
+        return record_revoked(record_sha256, delegation_sha256, targets)
+
+    def _install_revoked(self, i: Mapping[str, Any]) -> bool:
+        """Whether an install is revoked: its record, or the delegation it was signed under."""
+        return self.revoked_by(i["recordSha256"], _install_delegation(i)) is not None
+
+    def delegated_releases(self) -> Dict[str, Dict[str, str]]:
+        """The delegated releases this engine knows (plans/P4-19.md §2.7): every stored or
+        running install signed by a content key, and every delegated feed target verified in
+        this process, as record hash -> ``{"pack", "delegation"}``. The update check adds a
+        decision revocation for each one whose delegation is revoked, and treats a delegation
+        entry naming one of these delegations as relevant (step 11)."""
+        with self._lock:
+            out: Dict[str, Dict[str, str]] = {k: dict(v) for k, v in self._delegated_known.items()}
+            doc = self._doc or {}
+            installs = (
+                list((doc.get("active") or {}).values())
+                + list((doc.get("previous") or {}).values())
+                + list(self._running.values())
+            )
+            for i in installs:
+                h = _install_delegation(i)
+                if h is not None:
+                    out[i["recordSha256"]] = {"pack": i["packId"], "delegation": h}
+            return out
+
     def _embedded_refused(self, e: Mapping[str, Any]) -> bool:
         """The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in
         ``relearn``; with an unreadable ``revocations.json`` and ``revocationsStored`` set,
@@ -854,7 +910,7 @@ class PackEngine:
     def _unmount_revoked(self) -> None:
         """Stop running every revoked release (a hot handler is deactivated)."""
         for pid, i in list(self._running.items()):
-            if not self.is_revoked(i["recordSha256"]):
+            if not self._install_revoked(i):
                 continue
             h = self._handlers.get(i["type"])
             if i.get("activation") == "hot" and h is not None and h.deactivate is not None:
@@ -945,15 +1001,23 @@ class PackEngine:
         self._running[i["packId"]] = i
 
     def _verify_stored_record(
-        self, jws: str, sha256: str, pack_id: str, install: Optional[Dict[str, Any]] = None
+        self,
+        jws: str,
+        sha256: str,
+        pack_id: str,
+        install: Optional[Dict[str, Any]] = None,
+        delegation: Optional[str] = None,
     ) -> bool:
-        """Steps 12–15 again over a stored record, with its own pack id as the pin."""
+        """Steps 12–16 again over a stored record, with its own pack id as the pin; a delegated
+        record through its stored delegation (plans/P4-19.md §2.4: an installed release stays
+        valid after its window)."""
         r = verify_release_record(
             jws,
             release_keys=self._release_keys,
             product_trust=self._product_trust(),
             expected_aud=self._product,
             expected_hash=sha256,
+            delegation=delegation if isinstance(delegation, str) else None,
         )
         if not r.ok or r.record is None:
             return False
@@ -1046,6 +1110,16 @@ class PackEngine:
             )
         current = doc["active"].get(pack_id)
         if current is not None and current["recordSha256"] == want:
+            # plans/P4-19.md §2.6: a release under a revoked delegation is refused like a revoked
+            # one.
+            if self._install_revoked(current):
+                raise PackError(
+                    ErrorCode.PACK_REVOKED,
+                    f"{pack_id}@{pin['release']['version']} was signed under a delegation its "
+                    "developer revoked.",
+                    pack_id=pack_id,
+                    detail="delegation",
+                )
             return current
         emb = self._embedded.get(pack_id)
         if (
@@ -1061,6 +1135,15 @@ class PackEngine:
         if not got.get("ok"):
             code = got.get("code") or ErrorCode.NETWORK_ERROR
             raise PackError(code, f"Fetching {pack_id}'s record failed ({code}).", pack_id=pack_id)
+        # plans/P4-19.md §2.3, §2.4: a `pkd1-` kid names its delegation, fetched by hash, only on
+        # the delegated surface (a feed target that is neither the stamp's pin or hold for this
+        # pack nor a stored revocation's replacement). Elsewhere step 13 refuses it at `jws`.
+        delegation_hash = delegation_hash_of(got["body"])
+        delegation: Optional[str] = (
+            self._fetch_delegation(pack_id, delegation_hash)
+            if delegation_hash is not None and self._delegated_allowed(pack_id, want)
+            else None
+        )
         v = verify_release_record(
             got["body"],
             release_keys=self._release_keys,
@@ -1073,6 +1156,7 @@ class PackEngine:
                 version=pin["release"]["version"],
                 seq=pin["release"]["seq"],
             ),
+            delegation=delegation,
         )
         if not v.ok or v.record is None:
             if v.step == "cross-check":
@@ -1088,6 +1172,17 @@ class PackEngine:
                 detail=v.step,
             )
         record = v.record.to_dict()
+        if v.delegation is not None:
+            self._delegated_known[want] = {"pack": pack_id, "delegation": v.delegation.sha256}
+            if self.revoked_by(want, v.delegation.sha256) is not None:
+                raise PackError(
+                    ErrorCode.PACK_REVOKED,
+                    f"{pack_id}@{pin['release']['version']} was signed under a delegation its "
+                    "developer revoked.",
+                    pack_id=pack_id,
+                    detail="delegation",
+                )
+        delegated = delegation if v.delegation is not None else None
 
         # 3. Type, entitlement, variant.
         handler = self._handlers.get(record["type"])
@@ -1176,6 +1271,24 @@ class PackEngine:
                     f"Fetching {pack_id}'s files index failed.",
                     pack_id=pack_id,
                 )
+        # plans/P4-19.md §2.5: a delegated release's extension rule over the files index, before
+        # any payload object is fetched.
+        if delegated is not None:
+            if index is None:
+                raise PackError(
+                    ErrorCode.FILES_INDEX_INVALID,
+                    f"{pack_id}'s files index is required for a delegated release.",
+                    pack_id=pack_id,
+                )
+            for f in index["files"]:
+                if data_only_path_refusal(f["path"]) is not None:
+                    raise PackError(
+                        ErrorCode.PACK_NOT_DATA_ONLY,
+                        f"{pack_id} holds {f['path']}, which a delegated content key may not ship.",
+                        pack_id=pack_id,
+                        path=f["path"],
+                        detail="extension",
+                    )
         target = plan_target(variant, want, index)
         budget = self._one_shot_budget
         full = variant["full"]
@@ -1223,7 +1336,60 @@ class PackEngine:
             plan_id=plan_id,
             index=index,
             plan=p,
+            delegation=delegated,
         )
+
+    def _delegated_allowed(self, pack_id: str, sha256: str) -> bool:
+        """§2.4's delegated surface: never the stamp's pin or hold for the pack, never a stored
+        revocation's replacement (release-key surfaces vouch for exact bytes)."""
+        stamp = self._stamp or {}
+        for p in stamp.get("pins") or ():
+            if p.get("pack") == pack_id and (p.get("release") or {}).get("sha256") == sha256:
+                return False
+        holds = stamp.get("holds")
+        if isinstance(holds, list):
+            for h in holds:
+                if (
+                    isinstance(h, dict)
+                    and h.get("pack") == pack_id
+                    and isinstance(h.get("release"), dict)
+                    and h["release"].get("sha256") == sha256
+                ):
+                    return False
+        for r in self._rev_verified.values():
+            if r.replacement is not None and r.replacement.sha256 == sha256:
+                return False
+        return True
+
+    def _fetch_delegation(self, pack_id: str, h: str) -> str:
+        """A delegation record by hash: this process's copy, else fetched (at most
+        ``MAX_DELEGATIONS_PER_CHECK`` distinct ones per call; a target beyond that waits)."""
+        have = self._delegation_bodies.get(h)
+        if have is not None:
+            return have
+        if self._delegation_budget <= 0:
+            raise PackError(
+                ErrorCode.NETWORK_ERROR,
+                f"{pack_id}'s delegation was not fetched: this call reached its delegation bound; "
+                "the next one retries.",
+                pack_id=pack_id,
+                detail="delegation",
+            )
+        self._delegation_budget -= 1
+        got = self._fetch_record(h)
+        if not got.get("ok"):
+            code = got.get("code") or ErrorCode.NETWORK_ERROR
+            raise PackError(
+                code,
+                f"Fetching {pack_id}'s delegation failed ({code}).",
+                pack_id=pack_id,
+                detail="delegation",
+            )
+        body = got["body"]
+        # Kept only when it is the record the hash names; `verify_release_record` checks it again.
+        if isinstance(body, str) and record_hash(body) == h:
+            self._delegation_bodies[h] = body
+        return body
 
     def _ensure_one(
         self, pack_id: str, target: Optional[Mapping[str, Any]] = None
@@ -1281,9 +1447,44 @@ class PackEngine:
         )
         p = pre.plan
         self._preflight_plans.pop(pack_id, None)
+        delegation = pre.delegation
         if p["strategy"] == "noop":
             same = next(i for i in pre.installs if i["payloadSha256"] == variant["payload"]["sha256"])
-            return self._commit(pack_id, pre.body, pre.record_sha256, record, variant, same["location"], plan_id, True)
+            # plans/P4-19.md Amendment A1: a delegated release that reuses an install holding the
+            # same payload re-sniffs that install's files, so the data-only rule holds whatever
+            # admitted the bytes first.
+            if delegation is not None:
+                seed = seeds.get(same["location"])
+                files = seed.files if seed is not None else None
+                if files is None:
+                    raise PackError(
+                        ErrorCode.PACK_NOT_DATA_ONLY,
+                        f"{pack_id}'s reused install cannot be re-checked by the data-only rule.",
+                        pack_id=pack_id,
+                        detail="content",
+                    )
+                for f in files:
+                    rule = data_only_file_refusal(f.path, read_all(f.source))
+                    if rule is not None:
+                        raise PackError(
+                            ErrorCode.PACK_NOT_DATA_ONLY,
+                            f"{pack_id} holds {f.path}, which a delegated content key may not "
+                            f"ship ({rule}).",
+                            pack_id=pack_id,
+                            path=f.path,
+                            detail=rule,
+                        )
+            return self._commit(
+                pack_id,
+                pre.body,
+                pre.record_sha256,
+                record,
+                variant,
+                same["location"],
+                plan_id,
+                True,
+                delegation,
+            )
         if p["strategy"] == "platform":
             raise PackError(
                 ErrorCode.PLAN_TRANSPORT_UNSUPPORTED, f"{pack_id} is platform-bound.", pack_id=pack_id
@@ -1306,6 +1507,8 @@ class PackEngine:
                 journal["delta"] = cand["delta"]
             journal["objects"] = [{"sha256": s, "bytes": b, "done": 0} for s, b in objects]
             journal["startedAt"] = self._now()
+            if delegation is not None:
+                journal["delegation"] = delegation
             self._doc = begin_install(self._require_loaded(), journal)
             self._persist()
             total = sum(b for _, b in objects)
@@ -1320,7 +1523,31 @@ class PackEngine:
                         pack_id=pack_id,
                     )
             self._emit(PackProgress(pack_id, "apply", total, total))
-            result = self._apply(plan_id, pack_id, cand["strategy"], cand.get("delta"), variant, seeds)
+            # plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
+            seen: Dict[str, Optional[DataOnlyRefusalSeen]] = {"refusal": None}
+            result = self._apply(
+                plan_id,
+                pack_id,
+                cand["strategy"],
+                cand.get("delta"),
+                variant,
+                seeds,
+                seen if delegation is not None else None,
+            )
+            refusal = seen["refusal"]
+            if refusal is not None:
+                # A refusal aborts the plan: no fallback, staging discarded.
+                self._doc = abandon_install(self._require_loaded(), pack_id)
+                self._persist()
+                self._quiet(lambda: self._storage.remove_staging(plan_id))
+                raise PackError(
+                    ErrorCode.PACK_NOT_DATA_ONLY,
+                    f"{pack_id} holds {refusal.path}, which a delegated content key may not ship "
+                    f"({refusal.rule}).",
+                    pack_id=pack_id,
+                    path=refusal.path,
+                    detail=refusal.rule,
+                )
             if result.verdict.get("ok"):
                 location = self._storage.commit(
                     plan_id,
@@ -1330,7 +1557,15 @@ class PackEngine:
                     result.index if result.index is not None else index,
                 )
                 install = self._commit(
-                    pack_id, pre.body, pre.record_sha256, record, variant, location, plan_id, False
+                    pack_id,
+                    pre.body,
+                    pre.record_sha256,
+                    record,
+                    variant,
+                    location,
+                    plan_id,
+                    False,
+                    delegation,
                 )
                 self._emit(PackProgress(pack_id, "done", total, total))
                 return install
@@ -1426,6 +1661,7 @@ class PackEngine:
         delta: Optional[str],
         variant: Mapping[str, Any],
         seeds: Mapping[str, InstalledPayload],
+        data_only: Optional[Dict[str, Optional[DataOnlyRefusalSeen]]] = None,
     ) -> ApplyResult:
         storage = self._storage
 
@@ -1434,8 +1670,11 @@ class PackEngine:
             return o.source() if o.size() > 0 or sha256 == _EMPTY_SHA256 else None
 
         out = storage.output(plan_id, variant["files"]["layout"])
+        tree = out.tree
+        if data_only is not None and tree is not None:
+            tree = data_only_tree_sink(tree, data_only)
         ports = ApplyPorts(
-            objects=objects, zstd=self._zstd, sha256=self._sha256, sink=out.sink, tree=out.tree
+            objects=objects, zstd=self._zstd, sha256=self._sha256, sink=out.sink, tree=tree
         )
         if strategy == "full":
             return apply_full(variant, ports)
@@ -1476,6 +1715,7 @@ class PackEngine:
         location: str,
         staging_plan: str,
         reused: bool,
+        delegation: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Commit: the pointer swap, activation, garbage collection."""
         install: Dict[str, Any] = {
@@ -1496,6 +1736,8 @@ class PackEngine:
         if emb is not None and emb["location"] == location:
             install["embedded"] = True
         install["installedAt"] = self._now()
+        if delegation is not None:
+            install["delegation"] = delegation
         # A fresh commit supersedes this pack's entries whose check could not run; an active one
         # becomes `previous`, re-verified before a rollback uses it.
         carried = self._deferred["active"].pop(pack_id, None)
@@ -1669,3 +1911,9 @@ def _target(t: Any) -> Tuple[str, Dict[str, Any]]:
     if not isinstance(release, Mapping):
         release = {"sha256": release.sha256, "seq": release.seq, "version": release.version}
     return pack, {"sha256": release["sha256"], "seq": release["seq"], "version": release["version"]}
+
+
+def _install_delegation(i: Mapping[str, Any]) -> Optional[str]:
+    """The delegation hash of a delegated install (its stored delegation and the record's kid),
+    or ``None`` for a release-signed one."""
+    return delegation_hash_of(i.get("record")) if isinstance(i.get("delegation"), str) else None
