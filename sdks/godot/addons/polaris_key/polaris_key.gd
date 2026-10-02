@@ -12,7 +12,8 @@ extends Node
 ## `state_changed(state)` when the licence state changes, `sync_finished(result)` after every
 ## sync, `store_error(err)` when the store fails to read or write (also `last_store_error`).
 ## `core` is the PKeyCore every service client builds on. `build_info()` says which build this is
-## (the export plugin's stamp, or the editor fallback).
+## (the export plugin's stamp, or the editor fallback). `supports(feature)` and `caps()` say which
+## parity features work here, and why not (PKeyCaps, P1b-10).
 ##
 ## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
 ## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
@@ -187,6 +188,26 @@ func sync(force := false) -> PKeySyncResult:
 	sync_finished.emit(r)
 	_emit_state()
 	return r
+
+
+## Whether a parity feature (a `PKeyConstants.Feature` id) works here (P1b-10, PARITY §2.2):
+## ok with detail {feature}, or `code == &"unsupported"` with detail {feature, reason, detail},
+## `reason` one of runtime, outlet, product, dependency, version. Offline and side-effect free;
+## `product` follows capabilities(). Works before configure() (default capabilities).
+func supports(feature: String) -> PKeyResult:
+	return _capability_engine().supports(feature)
+
+
+## The feature ids supports() answers ok for right now, in registry order: the `caps` every
+## device report carries.
+func caps() -> Array:
+	return _capability_engine().caps()
+
+
+func _capability_engine() -> PKeyCaps:
+	if core != null:
+		return core.capability_engine()
+	return PKeyCaps.new(Callable(), SDK_VERSION)
 
 
 ## A snapshot of everything a UI renders from.

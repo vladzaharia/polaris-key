@@ -50,6 +50,7 @@ var discovery_manifest = null
 
 var _expected_services = null
 var _discovered_services = null
+var _caps: PKeyCaps = null
 
 
 ## Validate `opts` and build a Core. ok with detail = the PKeyCore, or a failure:
@@ -166,6 +167,15 @@ func services() -> Dictionary:
 	if _expected_services != null:
 		return PKeyDiscovery.services_from_list(_expected_services)
 	return PKeyDiscovery.default_services()
+
+
+## The `supports()` engine (PKeyCaps, P1b-10), reading this Core's capability map.
+func capability_engine() -> PKeyCaps:
+	if _caps == null:
+		_caps = PKeyCaps.new(services, sdk_version)
+		for problem in _caps.validate():
+			push_error("PolarisKey capability table: " + problem)
+	return _caps
 
 
 func enabled(slug: String) -> bool:
