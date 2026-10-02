@@ -48,9 +48,9 @@ name, so every pack with an imported `.glb`/`.gltf`/`.blend`/`.fbx` is refused t
 
 ## Acceptance
 
-- [ ] A pack with an engine-imported model is admitted on both sides; every hostile RSCC fixture is
+- [x] A pack with an engine-imported model is admitted on both sides; every hostile RSCC fixture is
       refused with identical lines.
-- [ ] The full green gate passes, including Godot 4.7.2 (editor and template) and 4.4.1.
+- [x] The full green gate passes, including Godot 4.7.2 (editor and template) and 4.4.1.
 
 ## Corrections from implementation
 
@@ -79,6 +79,10 @@ name, so every pack with an imported `.glb`/`.gltf`/`.blend`/`.fbx` is refused t
 - **4.4.1's framing is 4.7.2's.** A script-written 20×20 grid `.glb` imported by both engines
   (`godot-real-imports/` and `godot-real-imports-4.4.1/`) gives the same RSCC layout with other
   bodies; both are admitted.
-- **Timings.** The CLI decodes the 4.7.2 import of a 96×96 grid (446 kB, 164 blocks) in about
-  6 ms. The device decodes 4 MiB (1025 blocks, half random) in a few ms on 4.7.2 and 4.4.1 (the
-  `pck rscc` info line in the packs suite).
+- **Timings.** The CLI (wasm decoder, one instance per block) decodes the 4.7.2 import of a
+  96×96 grid (446 kB, 164 blocks, 670 kB body) in about 6 ms. The device's `rscc_body` decodes
+  4 MiB (1025 blocks, half zeros, half random) in 2 ms on the 4.7.2 editor and release template
+  and 5 ms on the 4.4.1 editor (the `pck rscc` info line in the packs suite).
+- **Gate note.** `updater guard: ready confirms after BOOT_OK_SECONDS` (P3-10's 0.2 s timer
+  test, untouched here) failed once in the editor while the JS gate loaded the machine and once
+  in the template; a third full 4.7.2 run (editor and template) was green.
