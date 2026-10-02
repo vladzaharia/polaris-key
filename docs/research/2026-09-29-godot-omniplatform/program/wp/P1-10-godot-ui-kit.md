@@ -263,10 +263,11 @@ Where the code and this brief differ, the code is right; these are the correctio
   (`PKeyEd25519Job.progress()`, reported by `PKeyJws.run_job` in sliced mode).
 - **Fixtures.** One snapshot file per scene with a section per state, under
   `tests/ui/snapshots/`, included in the exported pack so the template runs them too.
-- **Timings** (M-series Mac, 4.7.2, editor / macOS release template): `stage_matrix` 15 / 13 ms
-  (56 rows, 6,594 probe transitions); `boot` 6.4 / 6.3 s (five deliberate 1 s request deadlines);
-  `ui` 11.6 / 11.9 s (67 states, each snapshotted, focus-walked and copy-checked). The new suites
-  also pass on the 4.4.1 floor editor.
+- **Timings** (M-series Mac, 4.7.2, editor / macOS release template, after the review fixes):
+  `stage_matrix` 16 / 15 ms (56 rows, 6,594 probe transitions); `boot` 6.8 / 7.4 s (five
+  deliberate 1 s request deadlines, plus the drop-in group); `ui` 13.6 / 11.7 s (67 states, each
+  snapshotted, focus-walked and copy-checked, plus the measured never-covering checks). The new
+  suites also pass on the 4.4.1 floor editor.
 - **Screenshots.** `sdks/godot/tools/ui_screenshots.gd` renders all 67 pinned states with the
   default theme (needs a display). The branch is not pushed here, so attaching them to the PR is
   left to whoever opens it.
