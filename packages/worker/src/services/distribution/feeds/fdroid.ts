@@ -76,7 +76,7 @@ import {
 } from "../../../core/publisher.js";
 import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
 import type { Delivery, ReleaseCatalog } from "../../../core/hooks.js";
-import { strictestAccess } from "../access.js";
+import { publicKeyIsPublic } from "../blobAccess.js";
 import { appendAudit } from "../../../core/data.js";
 import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
 import {
@@ -156,25 +156,21 @@ async function feedFiles(
 }
 
 /**
- * Whether an object may be served to anyone: the blob route's rule (`bytes.ts`), the strictest
- * delivery mode of the deliverables whose releases carry it (the `app` mode when none do) must be
- * `public`. A registered file passes this at registration AND on every relay request, so neither
- * an earlier register nor a later access change can make the relay hand out a non-public
- * deliverable's bytes.
+ * Whether an object may be served to anyone: the blob route's rule (`blobAccess.ts`) at its
+ * loosest — every holder of its public key, app side and pack alike (P4-05), requires nothing;
+ * the app side is the strictest delivery mode of the deliverables whose releases carry it (the
+ * `app` mode when none do). A registered file passes this at registration AND on every relay
+ * request, so neither an earlier register nor a later access change can make the relay hand out
+ * a non-public deliverable's bytes.
  */
-export async function objectIsPublic(
+export function objectIsPublic(
+  db: Db,
+  product: string,
   catalog: ReleaseCatalog,
   delivery: Delivery,
   sha256: string,
 ): Promise<boolean> {
-  const r = await catalog.resolve({ kind: "blob", sha256 });
-  const releases = r?.kind === "blob" ? r.releases : [];
-  return (
-    (await strictestAccess(
-      delivery,
-      releases.map((rel) => rel.deliverableId),
-    )) === "public"
-  );
+  return publicKeyIsPublic(db, product, catalog, delivery, sha256);
 }
 
 /** Whether this product already holds a `feed` ref to `key` — an object an earlier register
@@ -248,7 +244,13 @@ export async function serveFdroidRelay(
     if (
       !env.BLOBS ||
       !(await hasRef(db, product.slug, key)) ||
-      !(await objectIsPublic(readers.catalog, readers.delivery, file.sha256))
+      !(await objectIsPublic(
+        db,
+        product.slug,
+        readers.catalog,
+        readers.delivery,
+        file.sha256,
+      ))
     )
       return harden(notFound());
     const res = await blobResponse(req, env.BLOBS, key, {
@@ -512,7 +514,7 @@ export async function registerFdroid(
   // The relay serves every file to anyone, so no file may be an object a non-public deliverable's
   // release carries (the blob route's strictest-mode rule; the relay re-checks it per request).
   for (const f of files)
-    if (!(await objectIsPublic(catalog, delivery, f.sha256)))
+    if (!(await objectIsPublic(db, product.slug, catalog, delivery, f.sha256)))
       return errorResponse(
         403,
         ErrorCode.Forbidden,

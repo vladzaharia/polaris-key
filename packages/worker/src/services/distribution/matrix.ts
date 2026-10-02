@@ -21,7 +21,8 @@
  * first-artifact-by-name rule `availabilityFor` reaches through `resolve`;
  * `test/distributionMatrix.test.ts` checks the two agree cell by cell.
  *
- * Packs in the matrix and readiness holds are P4-14's; store-mirrored states are P5-02 to P5-04's
+ * A pack deliverable's cells derive by the pack rule (`packDerivedAvailability`, P4-05), the one
+ * `availabilityFor` applies; pack readiness holds are P4-14's; store-mirrored states are P5-02 to P5-04's
  * (they arrive here through the same tables).
  */
 
@@ -41,13 +42,20 @@ import {
   DERIVED_TRANSPORTS,
   SUBMISSION_STATES,
   availabilityRecord,
+  embeddedIn,
   hasServingLocation,
+  packDerivedAvailability,
   outletMatches,
   submissionRecord,
   type DistAvailabilityRow,
   type DistSubmissionRow,
 } from "./availability.js";
-import { listOutlets, listTransports, parseJsonColumn } from "./outlets.js";
+import {
+  listOutlets,
+  listTransports,
+  parseJsonColumn,
+  transportSupported,
+} from "./outlets.js";
 import {
   ROLLOUT_STATES,
   TRANSITIONS,
@@ -88,6 +96,9 @@ export interface MatrixOutlet {
   transport: string;
   /** Self-hosted on a transport we serve: `live` is derived without a report. */
   derives: boolean;
+  /** Whether Polaris Key acts on the transport in v1 (`SUPPORTED_TRANSPORTS`, P4-05); an
+   *  unsupported one is stored and shown "not supported yet". */
+  supported: boolean;
 }
 
 export interface MatrixRelease {
@@ -189,6 +200,7 @@ export async function buildMatrix(
       derives:
         DERIVED_OUTLET_KINDS.includes(o.kind) &&
         DERIVED_TRANSPORTS.includes(transport),
+      supported: transportSupported(transport),
     };
   });
   const identities = new Map(
@@ -219,10 +231,23 @@ export async function buildMatrix(
   for (const release of releases) {
     // Derived records need the builds and artifacts; a yanked release derives nothing.
     const anyDerives = !release.yanked && outlets.some((o) => o.derives);
-    const builds = anyDerives ? await catalog.builds(release.releaseId) : [];
-    const artifacts = anyDerives
-      ? await catalog.artifacts(release.releaseId)
-      : [];
+    const isPack = deliverableId !== APP_DELIVERABLE_ID;
+    // A pack release derives by the pack rule, computed once for every outlet (P4-05).
+    const packRecords =
+      anyDerives && isPack
+        ? await packDerivedAvailability(
+            { db, product, hooks: ctx.hooks },
+            catalog,
+            release,
+            outletRows.filter((o) =>
+              outlets.some((m) => m.outletId === o.outlet_id && m.derives),
+            ),
+          )
+        : [];
+    const builds =
+      anyDerives && !isPack ? await catalog.builds(release.releaseId) : [];
+    const artifacts =
+      anyDerives && !isPack ? await catalog.artifacts(release.releaseId) : [];
     const hasBytes = (a: CatalogSourceArtifact) =>
       servedFor(artifacts, a.name)?.artifactId === a.artifactId &&
       hasServingLocation(a);
@@ -235,8 +260,10 @@ export async function buildMatrix(
             r.outlet_id === outlet.outletId,
         )
         .map((r) => availabilityRecord(r, release.deliverableId));
-      const derived: AvailabilityRecord[] = [];
-      if (anyDerives && outlet.derives) {
+      const derived: AvailabilityRecord[] = packRecords.filter(
+        (r) => r.outletId === outlet.outletId,
+      );
+      if (anyDerives && outlet.derives && !isPack) {
         const identity = identities.get(outlet.outletId) ?? {};
         const record = (buildId: string): AvailabilityRecord => ({
           deliverableId: release.deliverableId,
@@ -278,7 +305,12 @@ export async function buildMatrix(
       ].sort(
         (a, b) =>
           (a.buildId < b.buildId ? -1 : a.buildId > b.buildId ? 1 : 0) ||
-          Number(a.derived) - Number(b.derived),
+          Number(a.derived) - Number(b.derived) ||
+          (embeddedIn(a) < embeddedIn(b)
+            ? -1
+            : embeddedIn(a) > embeddedIn(b)
+              ? 1
+              : 0),
       );
       const best =
         AVAILABILITY_RANK.find((s) => records.some((r) => r.state === s)) ??

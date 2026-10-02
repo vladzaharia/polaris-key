@@ -623,6 +623,65 @@ export async function hasRef(
   return row !== null;
 }
 
+/** One holder of a key: what kind of ref and, for the kinds that name one, whose. */
+export interface RefHolder {
+  storageKey: string;
+  refKind: string;
+  /**
+   * `pack-upload`: the ref id (a pack deliverable id). `pack-object`: the ref id up to its first
+   * `@` (a pack release id is `<packId>@<version>`, P4-02, and a deliverable id never holds `@`).
+   * Any other kind: `""` — those holders are counted, not named.
+   */
+  holder: string;
+}
+
+/** The most distinct (key, kind, holder) rows `refHolders` reads before it gives up. */
+export const MAX_REF_HOLDERS = 512;
+
+/**
+ * Who in `product` holds a ref to each of `storageKeys` (a blob's public and gated keys),
+ * collapsed to distinct (key, kind, holder) rows: `artifact` and `feed` refs to one row per key
+ * and kind, `pack-object` refs to one row per pack, however many releases name the object.
+ * Another product's refs never appear. `null` when more than `MAX_REF_HOLDERS` rows would come
+ * back: a caller deciding access from the holders must then refuse, since a holder it did not
+ * read could be the strictest one.
+ */
+export async function refHolders(
+  db: Db,
+  product: string,
+  storageKeys: readonly string[],
+): Promise<RefHolder[] | null> {
+  const keys = [...new Set(storageKeys)];
+  if (keys.length >= IN_CHUNK)
+    throw new BlobKeyError("refHolders: too many keys for one query");
+  if (!keys.length) return [];
+  const rows = await db.all<{
+    storage_key: string;
+    ref_kind: string;
+    holder: string;
+  }>(
+    `SELECT storage_key, ref_kind, holder FROM (
+       SELECT storage_key, ref_kind,
+              CASE ref_kind
+                WHEN 'pack-upload' THEN ref_id
+                WHEN 'pack-object' THEN substr(ref_id, 1, instr(ref_id, '@') - 1)
+                ELSE '' END AS holder
+         FROM blob_refs
+        WHERE product = ? AND storage_key IN (${keys.map(() => "?").join(", ")}))
+      GROUP BY storage_key, ref_kind, holder
+      ORDER BY storage_key, ref_kind, holder
+      LIMIT ${MAX_REF_HOLDERS + 1}`,
+    product,
+    ...keys,
+  );
+  if (rows.length > MAX_REF_HOLDERS) return null;
+  return rows.map((r) => ({
+    storageKey: r.storage_key,
+    refKind: r.ref_kind,
+    holder: r.holder,
+  }));
+}
+
 // ── Serving ─────────────────────────────────────────────────────────────────────────────────
 
 /**

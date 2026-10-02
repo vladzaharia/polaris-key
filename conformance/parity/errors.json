@@ -184,6 +184,12 @@
       "description": "The artifact download needs a device token or licence and none was presented."
     },
     {
+      "code": "delivery_gate_missing",
+      "kind": "wire",
+      "service": "distribution",
+      "description": "The blob route refused a pack object (403, P4-05): the pack's delivery access is `entitled` but the operator has set no gate (the licence flag in its `dist_access` row), so there is no grant to check. Fail-closed: `entitled` never falls back to the app's version window or to a bare licence for a pack. An operator sets a gate, or a looser mode, under Distribution → Access."
+    },
+    {
       "code": "upstream_rate_limited",
       "kind": "wire",
       "service": "release",

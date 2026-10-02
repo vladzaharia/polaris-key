@@ -787,7 +787,7 @@ describe("the capability table is wire contract v4's (P3-12, plans/P3-01.md §2.
 });
 
 describe("the ingest's cost is bounded for untrusted input (R10)", () => {
-  it("thousands of declared packs are refused, and 64 across 32 outlets stay at one transport row per outlet", () => {
+  it("thousands of declared packs are refused, and 64 across 32 outlets cost at most 84 transport inserts", () => {
     const outletsDoc: Record<string, unknown> = {};
     for (let i = 0; i < 32; i++) outletsDoc[`site-${i}`] = { kind: "web" };
     const parse = (packs: number) => {
@@ -817,9 +817,16 @@ describe("the ingest's cost is bounded for untrusted input (R10)", () => {
     expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
     if (!parsed.ok) return;
     const stmts = distributionIngestStatements(parsed.manifest, SLUG, NOW);
-    // 32 outlet upserts + 1 removal sweep + 1 transport delete + 32 transport inserts: only the
-    // app is routed until P4-05 routes packs (then at most (1 + 64) × 32 rows).
-    expect(stmts).toHaveLength(32 + 1 + 1 + 32);
+    // 32 outlet upserts + 1 removal sweep + 1 transport delete + the (1 + 64) × 32 = 2,080
+    // transport rows P4-05 routes, 25 to an INSERT (four parameters each, inside D1's 100): 84.
+    expect(stmts).toHaveLength(32 + 1 + 1 + 84);
+    const inserts = stmts.filter((s) =>
+      s.sql.includes("INSERT INTO dist_transports"),
+    );
+    expect(inserts.reduce((n, s) => n + s.params.length / 4, 0)).toBe(65 * 32);
+    expect(
+      Math.max(...inserts.map((s) => s.params.length)),
+    ).toBeLessThanOrEqual(100);
   });
 });
 
@@ -845,7 +852,7 @@ describe("the operator's capability override (console)", () => {
     expect(web.capabilitiesSource).toBe("default");
     expect(web.capabilities).toEqual(DEFAULT_CAPABILITIES.web);
     expect(web.transports).toEqual([
-      { deliverableId: "app", transport: "web" },
+      { deliverableId: "app", transport: "web", supported: true },
     ]);
   });
 
