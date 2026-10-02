@@ -254,6 +254,15 @@ jobs:
       # than looking like a source error.
       - run: swift --version
       - run: swift test --package-path sdks/swift
+      # P4-07: packs (PolarisKeyPacks, linking libzstd) and the update client that carries
+      # `update.packs` build for iOS without Sparkle, whose product is conditioned to macOS.
+      - name: iOS build (packs, update)
+        working-directory: sdks/swift
+        run: |
+          for scheme in PolarisKeyPacks PolarisKeyUpdate; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO -quiet build
+          done
 
   # The Godot SDK (sdks/godot): pure-GDScript SHA-512, both Ed25519 verifiers and the corpus
   # `jwsCases`, read from the generator-owned res:// mirror. PARITY requires the runner on the

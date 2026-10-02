@@ -101,6 +101,11 @@ the features, because "done" means "done in every SDK".
     `PKeyResult` (ok, or code `unsupported` with `detail = {feature, reason, detail}`). Swift's
     `service-unavailable` refusal stays a `PolarisError`, with the same fields in
     `PolarisError.unsupported`.
+  - **Accepted shape (P4-07):** Swift's `PackError` is a separate `Error` struct (code, message,
+    detail, path, packId), not a `PolarisError`, because a Swift struct cannot subclass one. Its
+    `code` is a registry code like every other error's. `update.packs` calls can throw either:
+    `PackError` for the pack pipeline and `PolarisError` for `service-unavailable` or
+    `local-only`, so Swift callers catch both. Node, Python and Godot raise one error type.
 - **Same verdicts.** Wherever a feature has a corpus file, every SDK reproduces its expected
   outcomes and output bytes.
 - **Same requests.** Wherever a feature talks to the Worker, every SDK produces the same

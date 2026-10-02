@@ -83,6 +83,7 @@ from ..core.semver import compare_semver
 from ..core.token import TokenManager
 from ..discovery import appcast_url_from, update_endpoints_from
 from .outlet import OutletReaderEnvironment, read_outlet_signals
+from .packs.client import PacksClient, PacksOptions
 
 __all__ = [
     "VersionCheck",
@@ -150,6 +151,10 @@ class UpdateClientOptions:
     platform: Optional[str] = None
     #: The device's architecture. Defaults to ``platform.machine()``'s canonical value.
     arch: Optional[str] = None
+    #: Packs (``client.update.packs``, plans/P4-01.md §2.6–§2.9): the content stamp, embedded
+    #: baselines, variant preferences and the store directory. Pack records verify against
+    #: ``pinned_release_keys``.
+    packs: Optional[PacksOptions] = None
 
 
 class UpdateError(PolarisError):
@@ -373,6 +378,26 @@ class UpdateClient:
         )
         #: The v4 calls run one at a time: each is a read-modify-write of the cache slices.
         self._lock = threading.RLock()
+        packs_opts = _coerce_options(options).packs if options is not None else None
+        if packs_opts is not None and not isinstance(packs_opts, PacksOptions):
+            if isinstance(packs_opts, Mapping):
+                try:
+                    packs_opts = PacksOptions(**dict(packs_opts))
+                except TypeError as e:
+                    raise _invalid(f"update.packs: {e}") from None
+            else:
+                raise _invalid("update.packs must be PacksOptions or a mapping of its fields.")
+        #: The pack facet (``ensure``, ``state``, ``register_handler``, progress events).
+        self.packs = PacksClient(
+            ctx,
+            tokens,
+            discovery,
+            release_keys=lambda: dict(self._configured.release_keys) if self._configured else {},
+            discover=discover,
+            cache=cache,
+            trust=trust,
+            options=packs_opts,
+        )
 
     @property
     def outlet(self) -> Optional[ResolvedOutlet]:

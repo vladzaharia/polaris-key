@@ -1352,16 +1352,16 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "update.driver": CapabilityRow("planned", "update", ()),
         "update.bootguard": CapabilityRow("planned", "update", ()),
         "outlet.detect": CapabilityRow("implemented", "update", ()),
-        "packs.record": CapabilityRow("planned", "release", ()),
-        "packs.plan": CapabilityRow("planned", "release", ()),
-        "packs.index.files": CapabilityRow("planned", "release", ()),
+        "packs.record": CapabilityRow("implemented", "release", ()),
+        "packs.plan": CapabilityRow("implemented", "release", ()),
+        "packs.index.files": CapabilityRow("implemented", "release", ()),
         "packs.index.chunks": CapabilityRow("planned", "release", ()),
-        "packs.apply.full": CapabilityRow("planned", "release", ()),
-        "packs.apply.file": CapabilityRow("planned", "release", ()),
+        "packs.apply.full": CapabilityRow("implemented", "release", ()),
+        "packs.apply.file": CapabilityRow("implemented", "release", ()),
         "packs.apply.chunk": CapabilityRow("planned", "release", ()),
-        "packs.apply.delta": CapabilityRow("planned", "release", ()),
-        "packs.state": CapabilityRow("planned", "release", ()),
-        "packs.handlers": CapabilityRow("planned", "release", ()),
+        "packs.apply.delta": CapabilityRow("implemented", "release", ()),
+        "packs.state": CapabilityRow("implemented", "release", ()),
+        "packs.handlers": CapabilityRow("implemented", "release", ()),
         "packs.provides": CapabilityRow("planned", "release", ()),
         "packs.transport.apple": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
         "packs.transport.play": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
@@ -1375,4 +1375,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "32d87da1750aeed5dce08d6dc2bb542604de8d86f7c6537d69deaf28bfa0c89b"
+CAPABILITY_DIGEST: Final[str] = "52713cd757ecdc13483eb93f7acb8b2953b4864da7b5bf1453b23a224d28a2eb"

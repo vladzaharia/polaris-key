@@ -281,6 +281,9 @@ public actor CoreContext {
     private nonisolated let systemClockMillis: @Sendable () -> Int
 
     private let expectedServices: [ServiceSlug]?
+    /// Where the device report reads the active pack set's id (plans/P4-01.md §2.11): set by the
+    /// packs facet (`update.packs`) when it is constructed; nil when no facet exists.
+    private nonisolated let packSetIdSource = PackSetIdSource()
 
     // ── Live state ───────────────────────────────────────────────────────────────────────
     private var deviceIdValue = ""
@@ -978,6 +981,18 @@ public actor CoreContext {
     /// it was granted, which is licence anti-fraud data. Core owns the CALL; the caller owns the
     /// BODY, because assembling it needs both documents and this module verifies rather than
     /// interprets them.
+    /// Register where `devices/report`'s `content.packSetId` comes from (the packs facet does this
+    /// itself; a host never needs to). The latest registration wins.
+    public nonisolated func setPackSetIdSource(_ source: @escaping @Sendable () async -> String?) {
+        packSetIdSource.set(source)
+    }
+
+    /// The active pack set's `packSetId` for the device report, or nil when this host has no packs.
+    public nonisolated func packSetId() async -> String? {
+        guard let source = packSetIdSource.get() else { return nil }
+        return await source()
+    }
+
     @discardableResult
     public func reportSnapshot(_ body: Data) async -> Bool {
         guard let token = tokenValue else { return false }
@@ -1286,5 +1301,24 @@ struct FingerprintBody: Encodable {
     init(fingerprint: HardwareFingerprint) {
         self.fingerprint = Payload(
             components: fingerprint.components, hwid: fingerprint.hwid)
+    }
+}
+
+/// The packs facet's `packSetId` provider, behind a lock so `CoreContext` can hold it without an
+/// actor hop at registration.
+final class PackSetIdSource: @unchecked Sendable {
+    private let lock = NSLock()
+    private var source: (@Sendable () async -> String?)?
+
+    func set(_ s: @escaping @Sendable () async -> String?) {
+        lock.lock()
+        source = s
+        lock.unlock()
+    }
+
+    func get() -> (@Sendable () async -> String?)? {
+        lock.lock()
+        defer { lock.unlock() }
+        return source
     }
 }

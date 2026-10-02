@@ -110,17 +110,17 @@ Background Assets transport later ([A7 §10.1](../../notes/A7-xlang-content.md#1
 
 ## Acceptance criteria
 
-- [ ] Every content case and `plan-matrix.json` row passes in pytest on CPython 3.9 (`zstandard`)
+- [x] Every content case and `plan-matrix.json` row passes in pytest on CPython 3.9 (`zstandard`)
       and 3.14 (stdlib), and in `swift test` on the macOS runner.
-- [ ] Unit tests prove Python decodes a delta whose base starts `37 A4 30 EC` via `as_prefix`
+- [x] Unit tests prove Python decodes a delta whose base starts `37 A4 30 EC` via `as_prefix`
       and `DICT_TYPE_RAWCONTENT`, and decodes a frame with a window over 128 MiB (a synthetic
       frame generated in the test).
-- [ ] The Swift package builds for iOS without linking Sparkle (`swift build` plus an iOS
+- [x] The Swift package builds for iOS without linking Sparkle (`swift build` plus an iOS
       `xcodebuild` build of the new target, or the existing platform check).
-- [ ] Each SDK's `update.packs.ensure([id])` installs a `files.tree` pack from a fake byte server,
+- [x] Each SDK's `update.packs.ensure([id])` installs a `files.tree` pack from a fake byte server,
       survives a simulated crash mid-download by resuming, and reports `packSetId`.
-- [ ] The green gate passes.
-- [ ] `parity.json` manifests for Python and Swift mark the v1 pack features implemented (once
+- [x] The green gate passes.
+- [x] `parity.json` manifests for Python and Swift mark the v1 pack features implemented (once
       P1b-01 has landed).
 
 ## Verify
@@ -148,3 +148,38 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+- **The record claims are in this package, not only the content runners.** P4-04 gave Python and
+  Swift the pointer-set sections only, so P4-07 also ports `releaseRecordClaims`'s `kind: pack`
+  claims, the app record's `content` and `builds[].embeds` claims and `pin.kind` (default `app`)
+  into `polaris_key/core/release_record.py` (with `core/pack_claims.py`) and
+  `PolarisKeyCore/ReleaseRecord.swift` (with `PackClaims.swift`, in Core because Core's verifier
+  needs them). Every `packRecordCases` and `markerCases` vector runs through the full verifiers.
+- **Swift's facet is `update.packs`, as in Node.** `PolarisKeyUpdate` builds for iOS (Sparkle's
+  product is conditioned to macOS and every Sparkle file is guarded), so `UpdateClient` carries
+  `packs` and depends on the new cross-platform `PolarisKeyPacks` target. The umbrella
+  `PolarisKeyClient` has no `update` property today, so the facet is not reachable from it; the
+  device report gets `content.packSetId` through a `CoreContext` hook the facet registers. CI's
+  Swift job gains an iOS `xcodebuild` of `PolarisKeyPacks` and `PolarisKeyUpdate`.
+- **Swift reads `content/` through `#filePath`** (P4-01 §8.4), and `plan-matrix.json` from the
+  `Resources/v2` mirror.
+- **The quarantine members are required at compile time in Swift**, so "a store without them"
+  cannot be expressed; its test is "a store whose quarantine throws", with the same verdict
+  (torn treated as unreadable). Python checks at run time, as client-core does.
+- **Python's engine is synchronous** (one lock) and Swift's is an actor; verdicts are identical.
+  On macOS both SDKs sync with `F_FULLFSYNC`, which is stricter than Node.
+- **The pack patterns** (`PACK_TYPE_PATTERN`, `VARIANT_AXIS_PATTERN`, …) are restated in each SDK
+  from `@polaris-key/protocol/packs`, because the constants generator carries no regexes.
+  Follow-up: generate them.
+- **P4-10 has not landed**, so the runners assert `contentCorpusVersion` 1 and
+  `planMatrixVersion` 1 and dispatch `applyCases` by strategy, failing on an unknown one. P4-10
+  (landing second) adds `plan_target`'s chunk rule, version 2, the planned chunk sections and the
+  `put*` mutate ops (its §5 order 0).
+- **No new error codes**: every code the two SDKs raise was registered by P4-06.
+- **Review B1: a frame's declared content size is checked before decoding.** `zstandard`'s
+  `decompress()` allocates a header's Frame_Content_Size up front and ignores
+  `max_output_size` when one is present, so a 2 MiB frame claiming 1 GiB peaked at about 1 GiB.
+  Every Python decode (plain, prefix, streamed; both backends) now reads the header first and
+  refuses a declared size other than the ref's; an unknown size stays bounded by the ref.
