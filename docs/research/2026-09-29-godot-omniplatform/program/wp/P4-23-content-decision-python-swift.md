@@ -53,6 +53,22 @@ passes there exactly as it does in client-core.
 
 ## Acceptance
 
-- [ ] Every `feedContentCases`, `revocationCases` and `contentRows` row passes.
-- [ ] P4-06-style persistence tests (torn, unreadable, two loads) pass for `revocations.json`.
+- [x] Every `feedContentCases`, `revocationCases` and `contentRows` row passes.
+- [x] P4-06-style persistence tests (torn, unreadable, two loads) pass for `revocations.json`.
 - [ ] The full green gate passes.
+
+## Corrections from implementation
+
+- **Python** reads integers by type (`json.loads` gives a `float` for every non-plain token), so
+  `feed_content`, `revocation_of` and `holds_of` take no non-wire pointer set, and a record whose
+  holds fail the token rule reaches the decision as unusable without a rewritten copy.
+- **Swift** carries `nonWireIntegers` on `ChannelFeedDoc` and `ReleaseRecordDoc` (ignored by
+  equality) instead of a `content` member on `verifyFeed`'s result; `UpdateCheckContent` takes a
+  `selectsVariant` closure because PolarisKeyCore cannot import PolarisKeyPacks. `binary`,
+  `store`, `platform` and `blocked` gain a defaulted `contentBlock`, `binary.prestage` becomes
+  `[PackTarget]`, and `.packs` is a new case (source-breaking for exhaustive positional matches).
+- Both SDKs' directory stores gain a `name` parameter for the sibling `revocations.json`
+  (`revocation_store()` / `revocationStore()`), and `boot_fetch` / `runBootFetch` gain `install`
+  with a `background` result, as in client-core.
+- Online, an embedded baseline refused for `relearn` is fetched and re-verified; the commit
+  reuses the embedded payload's location, as client-core does.
