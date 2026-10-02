@@ -51,6 +51,25 @@ export {
 } from "./record.js";
 
 export {
+  checkPaths,
+  contentClaims,
+  isPackId,
+  objectRef,
+  parseContentStamp,
+  parseFilesIndex,
+  treeDigest,
+  variantKey,
+  type CheckPathsResult,
+  type ContentClaimsOptions,
+  type FilesErrorCode,
+  type FilesIndexRef,
+  type ParseContentStampResult,
+  type ParseFilesIndexOptions,
+  type ParseFilesIndexResult,
+  type ZstdDecode,
+} from "./packs/index.js";
+
+export {
   OUTLET_CAPABILITY_DEFAULTS,
   PLATFORM_NARROWING,
   SUBKIND_NARROWING,

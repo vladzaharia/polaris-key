@@ -44,6 +44,22 @@ __all__ = [
     "BINARY_METHOD_VALUES",
     "UpdateEvent",
     "UPDATE_EVENT_VALUES",
+    "PackType",
+    "PACK_TYPE_VALUES",
+    "PackDelivery",
+    "PACK_DELIVERY_VALUES",
+    "PackActivation",
+    "PACK_ACTIVATION_VALUES",
+    "FilesLayout",
+    "FILES_LAYOUT_VALUES",
+    "ContentCodec",
+    "CONTENT_CODEC_VALUES",
+    "PatchMethod",
+    "PATCH_METHOD_VALUES",
+    "PatchScope",
+    "PATCH_SCOPE_VALUES",
+    "VariantAxis",
+    "VARIANT_AXIS_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -59,6 +75,17 @@ __all__ = [
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
     "MAX_RECORD_JWS_BYTES",
+    "MAX_PACK_VARIANTS",
+    "MAX_VARIANT_DELTAS",
+    "MAX_CONTENT_PINS",
+    "MAX_BUILD_EMBEDS",
+    "MAX_INDEX_FILES",
+    "MAX_FILES_INDEX_BYTES",
+    "MAX_PACK_PATH_BYTES",
+    "FILES_FORMAT",
+    "PATCH_FORMAT",
+    "MARKER_FORMAT",
+    "CONTENT_STAMP_FORMAT",
     "CHANNEL_ALIASES",
     "CHANNEL_BETA",
     "CHANNEL_DEV",
@@ -160,6 +187,13 @@ class ErrorCode:
     FEED_ROLLBACK: Final = "feed-rollback"
     RECORD_REJECTED: Final = "record-rejected"
     RECORD_MISMATCH: Final = "record-mismatch"
+    FILES_INDEX_INVALID: Final = "files-index-invalid"
+    FILES_UNSAFE_PATH: Final = "files-unsafe-path"
+    FILES_DUPLICATE_PATH: Final = "files-duplicate-path"
+    FILES_CASE_COLLISION: Final = "files-case-collision"
+    FILES_PATH_CONFLICT: Final = "files-path-conflict"
+    FILES_LAYOUT_MISMATCH: Final = "files-layout-mismatch"
+    CONTENT_STAMP_INVALID: Final = "content-stamp-invalid"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -249,6 +283,13 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "feed-rollback",
     "record-rejected",
     "record-mismatch",
+    "files-index-invalid",
+    "files-unsafe-path",
+    "files-duplicate-path",
+    "files-case-collision",
+    "files-path-conflict",
+    "files-layout-mismatch",
+    "content-stamp-invalid",
 )
 
 
@@ -340,6 +381,13 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "feed-rollback": "client",
         "record-rejected": "client",
         "record-mismatch": "client",
+        "files-index-invalid": "client",
+        "files-unsafe-path": "client",
+        "files-duplicate-path": "client",
+        "files-case-collision": "client",
+        "files-path-conflict": "client",
+        "files-layout-mismatch": "client",
+        "content-stamp-invalid": "client",
     }
 )
 
@@ -386,6 +434,7 @@ class Feature:
     UPDATE_DRIVER: Final = "update.driver"
     UPDATE_BOOTGUARD: Final = "update.bootguard"
     OUTLET_DETECT: Final = "outlet.detect"
+    PACKS_RECORD: Final = "packs.record"
     PACKS_PLAN: Final = "packs.plan"
     PACKS_INDEX: Final = "packs.index"
     PACKS_APPLY_FULL: Final = "packs.apply.full"
@@ -446,6 +495,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "update.driver",
     "update.bootguard",
     "outlet.detect",
+    "packs.record",
     "packs.plan",
     "packs.index",
     "packs.apply.full",
@@ -780,6 +830,120 @@ UPDATE_EVENT_VALUES: Tuple[str, ...] = (
 )
 
 
+class PackType:
+    """The pack types a v1 SDK can hold (`PACK_TYPES`, plans/P4-01.md §2.2): `files.tree` everywhere, `godot.pck` in Godot. A record may name any `PACK_TYPE_PATTERN` type; an unknown one makes the pack unusable (`pack-type-unsupported`)."""
+
+    GODOT_PCK: Final = "godot.pck"
+    FILES_TREE: Final = "files.tree"
+
+
+#: Every ``PackType`` value, in source order.
+PACK_TYPE_VALUES: Tuple[str, ...] = (
+    "godot.pck",
+    "files.tree",
+)
+
+
+class PackDelivery:
+    """An app record's `content.expects[].delivery` (`PACK_DELIVERIES`, plans/P4-01.md §2.4). Any other `VOCAB_TOKEN_PATTERN` value is read as `on-demand`."""
+
+    ESSENTIAL: Final = "essential"
+    PREFETCH: Final = "prefetch"
+    ON_DEMAND: Final = "on-demand"
+
+
+#: Every ``PackDelivery`` value, in source order.
+PACK_DELIVERY_VALUES: Tuple[str, ...] = (
+    "essential",
+    "prefetch",
+    "on-demand",
+)
+
+
+class PackActivation:
+    """A pack record's `handler.activation` (`PACK_ACTIVATIONS`, plans/P4-01.md §2.3). An unknown value makes the pack unusable."""
+
+    RESTART: Final = "restart"
+    HOT: Final = "hot"
+
+
+#: Every ``PackActivation`` value, in source order.
+PACK_ACTIVATION_VALUES: Tuple[str, ...] = (
+    "restart",
+    "hot",
+)
+
+
+class FilesLayout:
+    """A pack variant's `files.layout` (`FILES_LAYOUTS`, plans/P4-01.md §2.3): a single-file payload with offsets and gaps, or a directory of files. An unknown layout makes the variant unusable."""
+
+    CONTAINER: Final = "container"
+    TREE: Final = "tree"
+
+
+#: Every ``FilesLayout`` value, in source order.
+FILES_LAYOUT_VALUES: Tuple[str, ...] = (
+    "container",
+    "tree",
+)
+
+
+class ContentCodec:
+    """An object ref's `codec` (`CONTENT_CODECS`, plans/P4-01.md §2.3): one zstd frame with its content size, or stored raw (`bytes === size`). An unknown codec makes that object unusable."""
+
+    ZSTD: Final = "zstd"
+    NONE: Final = "none"
+
+
+#: Every ``ContentCodec`` value, in source order.
+CONTENT_CODEC_VALUES: Tuple[str, ...] = (
+    "zstd",
+    "none",
+)
+
+
+class PatchMethod:
+    """A pack delta's `method` v1 applies (`PATCH_METHODS`, plans/P4-01.md §2.3). `godot-delta-pck`, `hdiffpatch` and `bsdiff` are reserved and not listed; an unknown method makes the delta infeasible."""
+
+    ZSTD_PATCH_FROM: Final = "zstd-patch-from"
+
+
+#: Every ``PatchMethod`` value, in source order.
+PATCH_METHOD_VALUES: Tuple[str, ...] = (
+    "zstd-patch-from",
+)
+
+
+class PatchScope:
+    """A pack delta's `scope` (`PATCH_SCOPES`, plans/P4-01.md §2.3): the whole payload, or the per-entry set. A delta of another scope is dropped."""
+
+    PAYLOAD: Final = "payload"
+    FILES: Final = "files"
+
+
+#: Every ``PatchScope`` value, in source order.
+PATCH_SCOPE_VALUES: Tuple[str, ...] = (
+    "payload",
+    "files",
+)
+
+
+class VariantAxis:
+    """The variant axis names a v1 manifest may declare (`VARIANT_AXES`, plans/P4-01.md §2.2). A record may name any `VARIANT_AXIS_PATTERN` axis; a variant on an axis the host has no preferences for is ineligible."""
+
+    TEXTURE: Final = "texture"
+    LOCALE: Final = "locale"
+    QUALITY: Final = "quality"
+
+
+#: Every ``VariantAxis`` value, in source order.
+VARIANT_AXIS_VALUES: Tuple[str, ...] = (
+    "texture",
+    "locale",
+    "quality",
+)
+
+
 class HeaderName:
     """The `X-PKey-*` request header names (wire contract v3 §5)."""
 
@@ -864,6 +1028,50 @@ MAX_JSON_DEPTH: Final[int] = 64
 
 #: Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`).
 MAX_RECORD_JWS_BYTES: Final[int] = 88844
+
+
+#: Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MAX_PACK_VARIANTS: Final[int] = 32
+
+
+#: Packs on the wire: `MAX_VARIANT_DELTAS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MAX_VARIANT_DELTAS: Final[int] = 16
+
+
+#: Packs on the wire: `MAX_CONTENT_PINS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MAX_CONTENT_PINS: Final[int] = 256
+
+
+#: Packs on the wire: `MAX_BUILD_EMBEDS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MAX_BUILD_EMBEDS: Final[int] = 64
+
+
+#: Packs on the wire: `MAX_INDEX_FILES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MAX_INDEX_FILES: Final[int] = 100000
+
+
+#: Packs on the wire: `MAX_FILES_INDEX_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MAX_FILES_INDEX_BYTES: Final[int] = 33554432
+
+
+#: Packs on the wire: `MAX_PACK_PATH_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MAX_PACK_PATH_BYTES: Final[int] = 1024
+
+
+#: Packs on the wire: `FILES_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+FILES_FORMAT: Final[str] = "pkey-files/1"
+
+
+#: Packs on the wire: `PATCH_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+PATCH_FORMAT: Final[str] = "pkey-patch/1"
+
+
+#: Packs on the wire: `MARKER_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+MARKER_FORMAT: Final[str] = "pkey-marker/1"
+
+
+#: Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+CONTENT_STAMP_FORMAT: Final[str] = "pkey-content/1"
 
 
 #: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).

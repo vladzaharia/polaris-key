@@ -96,6 +96,13 @@ public enum ErrorCode {
     public static let feedRollback = "feed-rollback"
     public static let recordRejected = "record-rejected"
     public static let recordMismatch = "record-mismatch"
+    public static let filesIndexInvalid = "files-index-invalid"
+    public static let filesUnsafePath = "files-unsafe-path"
+    public static let filesDuplicatePath = "files-duplicate-path"
+    public static let filesCaseCollision = "files-case-collision"
+    public static let filesPathConflict = "files-path-conflict"
+    public static let filesLayoutMismatch = "files-layout-mismatch"
+    public static let contentStampInvalid = "content-stamp-invalid"
 }
 
 /// Every `ErrorCode` value, in source order.
@@ -185,6 +192,13 @@ public let ERROR_CODE_VALUES: [String] = [
     "feed-rollback",
     "record-rejected",
     "record-mismatch",
+    "files-index-invalid",
+    "files-unsafe-path",
+    "files-duplicate-path",
+    "files-case-collision",
+    "files-path-conflict",
+    "files-layout-mismatch",
+    "content-stamp-invalid",
 ]
 
 /// The registry: every error code and its kind (`wire` or `client`).
@@ -274,6 +288,13 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "feed-rollback": "client",
     "record-rejected": "client",
     "record-mismatch": "client",
+    "files-index-invalid": "client",
+    "files-unsafe-path": "client",
+    "files-duplicate-path": "client",
+    "files-case-collision": "client",
+    "files-path-conflict": "client",
+    "files-layout-mismatch": "client",
+    "content-stamp-invalid": "client",
 ]
 
 /// Every feature id in the parity registry (conformance/parity/features.json).
@@ -317,6 +338,7 @@ public enum Feature {
     public static let updateDriver = "update.driver"
     public static let updateBootguard = "update.bootguard"
     public static let outletDetect = "outlet.detect"
+    public static let packsRecord = "packs.record"
     public static let packsPlan = "packs.plan"
     public static let packsIndex = "packs.index"
     public static let packsApplyFull = "packs.apply.full"
@@ -377,6 +399,7 @@ public let FEATURE_VALUES: [String] = [
     "update.driver",
     "update.bootguard",
     "outlet.detect",
+    "packs.record",
     "packs.plan",
     "packs.index",
     "packs.apply.full",
@@ -644,6 +667,104 @@ public let UPDATE_EVENT_VALUES: [String] = [
     "boot_rolled_back",
 ]
 
+/// The pack types a v1 SDK can hold (`PACK_TYPES`, plans/P4-01.md §2.2): `files.tree` everywhere, `godot.pck` in Godot. A record may name any `PACK_TYPE_PATTERN` type; an unknown one makes the pack unusable (`pack-type-unsupported`).
+public enum PackType {
+    public static let godotPck = "godot.pck"
+    public static let filesTree = "files.tree"
+}
+
+/// Every `PackType` value, in source order.
+public let PACK_TYPE_VALUES: [String] = [
+    "godot.pck",
+    "files.tree",
+]
+
+/// An app record's `content.expects[].delivery` (`PACK_DELIVERIES`, plans/P4-01.md §2.4). Any other `VOCAB_TOKEN_PATTERN` value is read as `on-demand`.
+public enum PackDelivery {
+    public static let essential = "essential"
+    public static let prefetch = "prefetch"
+    public static let onDemand = "on-demand"
+}
+
+/// Every `PackDelivery` value, in source order.
+public let PACK_DELIVERY_VALUES: [String] = [
+    "essential",
+    "prefetch",
+    "on-demand",
+]
+
+/// A pack record's `handler.activation` (`PACK_ACTIVATIONS`, plans/P4-01.md §2.3). An unknown value makes the pack unusable.
+public enum PackActivation {
+    public static let restart = "restart"
+    public static let hot = "hot"
+}
+
+/// Every `PackActivation` value, in source order.
+public let PACK_ACTIVATION_VALUES: [String] = [
+    "restart",
+    "hot",
+]
+
+/// A pack variant's `files.layout` (`FILES_LAYOUTS`, plans/P4-01.md §2.3): a single-file payload with offsets and gaps, or a directory of files. An unknown layout makes the variant unusable.
+public enum FilesLayout {
+    public static let container = "container"
+    public static let tree = "tree"
+}
+
+/// Every `FilesLayout` value, in source order.
+public let FILES_LAYOUT_VALUES: [String] = [
+    "container",
+    "tree",
+]
+
+/// An object ref's `codec` (`CONTENT_CODECS`, plans/P4-01.md §2.3): one zstd frame with its content size, or stored raw (`bytes === size`). An unknown codec makes that object unusable.
+public enum ContentCodec {
+    public static let zstd = "zstd"
+    public static let none = "none"
+}
+
+/// Every `ContentCodec` value, in source order.
+public let CONTENT_CODEC_VALUES: [String] = [
+    "zstd",
+    "none",
+]
+
+/// A pack delta's `method` v1 applies (`PATCH_METHODS`, plans/P4-01.md §2.3). `godot-delta-pck`, `hdiffpatch` and `bsdiff` are reserved and not listed; an unknown method makes the delta infeasible.
+public enum PatchMethod {
+    public static let zstdPatchFrom = "zstd-patch-from"
+}
+
+/// Every `PatchMethod` value, in source order.
+public let PATCH_METHOD_VALUES: [String] = [
+    "zstd-patch-from",
+]
+
+/// A pack delta's `scope` (`PATCH_SCOPES`, plans/P4-01.md §2.3): the whole payload, or the per-entry set. A delta of another scope is dropped.
+public enum PatchScope {
+    public static let payload = "payload"
+    public static let files = "files"
+}
+
+/// Every `PatchScope` value, in source order.
+public let PATCH_SCOPE_VALUES: [String] = [
+    "payload",
+    "files",
+]
+
+/// The variant axis names a v1 manifest may declare (`VARIANT_AXES`, plans/P4-01.md §2.2). A record may name any `VARIANT_AXIS_PATTERN` axis; a variant on an axis the host has no preferences for is ineligible.
+public enum VariantAxis {
+    public static let texture = "texture"
+    public static let locale = "locale"
+    public static let quality = "quality"
+}
+
+/// Every `VariantAxis` value, in source order.
+public let VARIANT_AXIS_VALUES: [String] = [
+    "texture",
+    "locale",
+    "quality",
+]
+
 /// The `X-PKey-*` request header names (wire contract v3 §5).
 public enum HeaderName {
     public static let arch = "X-PKey-Arch"
@@ -695,6 +816,39 @@ public let MAX_JSON_DEPTH = 64
 
 /// Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`).
 public let MAX_RECORD_JWS_BYTES = 88844
+
+/// Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MAX_PACK_VARIANTS = 32
+
+/// Packs on the wire: `MAX_VARIANT_DELTAS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MAX_VARIANT_DELTAS = 16
+
+/// Packs on the wire: `MAX_CONTENT_PINS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MAX_CONTENT_PINS = 256
+
+/// Packs on the wire: `MAX_BUILD_EMBEDS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MAX_BUILD_EMBEDS = 64
+
+/// Packs on the wire: `MAX_INDEX_FILES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MAX_INDEX_FILES = 100000
+
+/// Packs on the wire: `MAX_FILES_INDEX_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MAX_FILES_INDEX_BYTES = 33554432
+
+/// Packs on the wire: `MAX_PACK_PATH_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MAX_PACK_PATH_BYTES = 1024
+
+/// Packs on the wire: `FILES_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let FILES_FORMAT = "pkey-files/1"
+
+/// Packs on the wire: `PATCH_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let PATCH_FORMAT = "pkey-patch/1"
+
+/// Packs on the wire: `MARKER_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let MARKER_FORMAT = "pkey-marker/1"
+
+/// Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+public let CONTENT_STAMP_FORMAT = "pkey-content/1"
 
 /// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 public let CHANNEL_ALIASES: [String: String] = [

@@ -195,6 +195,7 @@ func _happy(t: PKeyTestContext) -> void:
 	t.check("decide: the UpdateCheck names the canonical channel and both sources", r.ok and r.channel == "stable" and r.feed == "network" and r.record == "network" and r.errors.is_empty() and r.boot == "optional" and not r.undismissable)
 	t.check("decide: to_dictionary() carries the five UpdateCheck members", r.ok and _same(r.to_dictionary(), {"channel": "stable", "decision": want, "feed": "network", "record": "network", "errors": []}))
 	t.check("decide: update_available fired once with the check", seen.size() == 1 and seen[0] == r, str(seen.size()))
+	t.check("decide: last_available holds the announced check (a later prompt replays it)", sdk.update.last_available == r)
 	var feed_reqs := _requests("/djdl/update/")
 	t.check("decide: one feed GET of /djdl/update/stable/feed.jws?platform=macos", feed_reqs.size() == 1 and feed_reqs[0]["path"] == "/djdl/update/stable/feed.jws?platform=macos", str(feed_reqs.map(func(q): return q["path"])))
 	t.check("decide: the feed request asks for application/jose and carries X-PKey-Device", feed_reqs.size() == 1 and feed_reqs[0]["headers"].get("accept") == "application/jose" and feed_reqs[0]["headers"].get("x-pkey-device") == "dev_7c1e2d")
@@ -228,6 +229,7 @@ func _happy(t: PKeyTestContext) -> void:
 	got[0].update.update_available.connect(func(c): seen.append(c))
 	r = await got[0].update.decide()
 	t.check("decide: a host outlet wins over the stamp (steam is not on the macOS target here: not-available)", r.ok and r.decision.get("action") == "none" and r.decision.get("reason") == "not-available" and seen.is_empty(), str(r))
+	t.check("decide: an answer with nothing to show leaves last_available null", got[0].update.last_available == null)
 	got[0].queue_free()
 
 

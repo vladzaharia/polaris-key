@@ -97,10 +97,17 @@ class ErrorCode:
 	const FEED_ROLLBACK := "feed-rollback"
 	const RECORD_REJECTED := "record-rejected"
 	const RECORD_MISMATCH := "record-mismatch"
+	const FILES_INDEX_INVALID := "files-index-invalid"
+	const FILES_UNSAFE_PATH := "files-unsafe-path"
+	const FILES_DUPLICATE_PATH := "files-duplicate-path"
+	const FILES_CASE_COLLISION := "files-case-collision"
+	const FILES_PATH_CONFLICT := "files-path-conflict"
+	const FILES_LAYOUT_MISMATCH := "files-layout-mismatch"
+	const CONTENT_STAMP_INVALID := "content-stamp-invalid"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -189,6 +196,13 @@ const ERROR_CODE_KINDS := {
 	"feed-rollback": "client",
 	"record-rejected": "client",
 	"record-mismatch": "client",
+	"files-index-invalid": "client",
+	"files-unsafe-path": "client",
+	"files-duplicate-path": "client",
+	"files-case-collision": "client",
+	"files-path-conflict": "client",
+	"files-layout-mismatch": "client",
+	"content-stamp-invalid": "client",
 }
 
 
@@ -233,6 +247,7 @@ class Feature:
 	const UPDATE_DRIVER := "update.driver"
 	const UPDATE_BOOTGUARD := "update.bootguard"
 	const OUTLET_DETECT := "outlet.detect"
+	const PACKS_RECORD := "packs.record"
 	const PACKS_PLAN := "packs.plan"
 	const PACKS_INDEX := "packs.index"
 	const PACKS_APPLY_FULL := "packs.apply.full"
@@ -253,7 +268,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.driver", "update.bootguard", "outlet.detect", "packs.plan", "packs.index", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.plan", "packs.index", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -455,6 +470,87 @@ class UpdateEvent:
 const UPDATE_EVENT_VALUES := ["update_offered", "update_downloaded", "update_applied", "update_confirmed", "update_reverted", "pack_failed", "boot_rolled_back"]
 
 
+## The pack types a v1 SDK can hold (`PACK_TYPES`, plans/P4-01.md §2.2): `files.tree` everywhere, `godot.pck` in Godot. A record may name any `PACK_TYPE_PATTERN` type; an unknown one makes the pack unusable (`pack-type-unsupported`).
+class PackType:
+	const GODOT_PCK := "godot.pck"
+	const FILES_TREE := "files.tree"
+
+
+## Every `PackType` value, in source order.
+const PACK_TYPE_VALUES := ["godot.pck", "files.tree"]
+
+
+## An app record's `content.expects[].delivery` (`PACK_DELIVERIES`, plans/P4-01.md §2.4). Any other `VOCAB_TOKEN_PATTERN` value is read as `on-demand`.
+class PackDelivery:
+	const ESSENTIAL := "essential"
+	const PREFETCH := "prefetch"
+	const ON_DEMAND := "on-demand"
+
+
+## Every `PackDelivery` value, in source order.
+const PACK_DELIVERY_VALUES := ["essential", "prefetch", "on-demand"]
+
+
+## A pack record's `handler.activation` (`PACK_ACTIVATIONS`, plans/P4-01.md §2.3). An unknown value makes the pack unusable.
+class PackActivation:
+	const RESTART := "restart"
+	const HOT := "hot"
+
+
+## Every `PackActivation` value, in source order.
+const PACK_ACTIVATION_VALUES := ["restart", "hot"]
+
+
+## A pack variant's `files.layout` (`FILES_LAYOUTS`, plans/P4-01.md §2.3): a single-file payload with offsets and gaps, or a directory of files. An unknown layout makes the variant unusable.
+class FilesLayout:
+	const CONTAINER := "container"
+	const TREE := "tree"
+
+
+## Every `FilesLayout` value, in source order.
+const FILES_LAYOUT_VALUES := ["container", "tree"]
+
+
+## An object ref's `codec` (`CONTENT_CODECS`, plans/P4-01.md §2.3): one zstd frame with its content size, or stored raw (`bytes === size`). An unknown codec makes that object unusable.
+class ContentCodec:
+	const ZSTD := "zstd"
+	const NONE := "none"
+
+
+## Every `ContentCodec` value, in source order.
+const CONTENT_CODEC_VALUES := ["zstd", "none"]
+
+
+## A pack delta's `method` v1 applies (`PATCH_METHODS`, plans/P4-01.md §2.3). `godot-delta-pck`, `hdiffpatch` and `bsdiff` are reserved and not listed; an unknown method makes the delta infeasible.
+class PatchMethod:
+	const ZSTD_PATCH_FROM := "zstd-patch-from"
+
+
+## Every `PatchMethod` value, in source order.
+const PATCH_METHOD_VALUES := ["zstd-patch-from"]
+
+
+## A pack delta's `scope` (`PATCH_SCOPES`, plans/P4-01.md §2.3): the whole payload, or the per-entry set. A delta of another scope is dropped.
+class PatchScope:
+	const PAYLOAD := "payload"
+	const FILES := "files"
+
+
+## Every `PatchScope` value, in source order.
+const PATCH_SCOPE_VALUES := ["payload", "files"]
+
+
+## The variant axis names a v1 manifest may declare (`VARIANT_AXES`, plans/P4-01.md §2.2). A record may name any `VARIANT_AXIS_PATTERN` axis; a variant on an axis the host has no preferences for is ineligible.
+class VariantAxis:
+	const TEXTURE := "texture"
+	const LOCALE := "locale"
+	const QUALITY := "quality"
+
+
+## Every `VariantAxis` value, in source order.
+const VARIANT_AXIS_VALUES := ["texture", "locale", "quality"]
+
+
 ## The `X-PKey-*` request header names (wire contract v3 §5).
 class HeaderName:
 	const ARCH := "X-PKey-Arch"
@@ -512,6 +608,39 @@ const MAX_JSON_DEPTH := 64
 
 ## Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`).
 const MAX_RECORD_JWS_BYTES := 88844
+
+## Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MAX_PACK_VARIANTS := 32
+
+## Packs on the wire: `MAX_VARIANT_DELTAS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MAX_VARIANT_DELTAS := 16
+
+## Packs on the wire: `MAX_CONTENT_PINS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MAX_CONTENT_PINS := 256
+
+## Packs on the wire: `MAX_BUILD_EMBEDS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MAX_BUILD_EMBEDS := 64
+
+## Packs on the wire: `MAX_INDEX_FILES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MAX_INDEX_FILES := 100000
+
+## Packs on the wire: `MAX_FILES_INDEX_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MAX_FILES_INDEX_BYTES := 33554432
+
+## Packs on the wire: `MAX_PACK_PATH_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MAX_PACK_PATH_BYTES := 1024
+
+## Packs on the wire: `FILES_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const FILES_FORMAT := "pkey-files/1"
+
+## Packs on the wire: `PATCH_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const PATCH_FORMAT := "pkey-patch/1"
+
+## Packs on the wire: `MARKER_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const MARKER_FORMAT := "pkey-marker/1"
+
+## Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const CONTENT_STAMP_FORMAT := "pkey-content/1"
 
 ## Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 const CHANNEL_ALIASES := {

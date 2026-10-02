@@ -78,6 +78,7 @@
       "status": "implemented",
       "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. Windows SignatureKind needs WinRT and is not read."
     },
+    "packs.record": { "status": "planned", "wp": "P4-06" },
     "packs.plan": { "status": "planned", "wp": "P4-06" },
     "packs.index": { "status": "planned", "wp": "P4-06" },
     "packs.apply.full": { "status": "planned", "wp": "P4-06" },

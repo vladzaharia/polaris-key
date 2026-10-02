@@ -1,0 +1,23 @@
+== offline ==
+Center/Shell/Card/Body/Title: Label "You're offline"
+Center/Shell/Card/Body/Message: Label "Connect to the internet and try again."
+Center/Shell/Card/Body/Actions/Retry: Button "Try again" [focus 1]
+== error ==
+Center/Shell/Card/Body/Title: Label "Something went wrong"
+Center/Shell/Card/Body/Message: Label "The game couldn't finish starting (sync-exception)."
+Center/Shell/Card/Body/Actions/Retry: Button "Try again" [focus 1]
+== blocked update-required ==
+Center/Shell/Card/Body/Title: Label "Update required"
+Center/Shell/Card/Body/Message: Label "This version can no longer be played. Update the game to continue."
+Center/Shell/Card/Body/Actions/Retry: Button "Try again" [focus 1]
+== blocked not-available ==
+Center/Shell/Card/Body/Title: Label "Not available on your license"
+Center/Shell/Card/Body/Message: Label "This build isn't available on your license."
+Center/Shell/Card/Body/Actions/Retry: Button "Try again" [focus 1]
+== waiting needs-activation ==
+PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/Title: Label "Activate"
+PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/Subtitle: Label "Enter a license key to continue."
+PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyLabel: Label "License key"
+PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+PKeyGate/Center/Card/Body/PKeyActivationPanel/Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]

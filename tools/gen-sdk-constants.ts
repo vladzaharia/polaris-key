@@ -16,7 +16,8 @@
 //                                       (WIRE-CONTRACT-V3 §5.2, P1b-04) — read as exports, so a
 //                                       constant added there flows through here
 //                                       and the wire contract v4 limits MAX_WIRE_INTEGER,
-//                                       MAX_JSON_DEPTH and MAX_RECORD_JWS_BYTES
+//                                       MAX_JSON_DEPTH and MAX_RECORD_JWS_BYTES, and the
+//                                       PACK_LIMIT_EXPORTS (plans/P4-01.md §2.13)
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
 //                                       outletMatrixVersion
@@ -546,6 +547,20 @@ export const WIRE_LIMIT_EXPORTS = [
   "MAX_JSON_DEPTH",
   "MAX_RECORD_JWS_BYTES",
 ] as const;
+/** The packs-on-the-wire limits and format strings every SDK applies (plans/P4-01.md §2.13). */
+export const PACK_LIMIT_EXPORTS = [
+  "MAX_PACK_VARIANTS",
+  "MAX_VARIANT_DELTAS",
+  "MAX_CONTENT_PINS",
+  "MAX_BUILD_EMBEDS",
+  "MAX_INDEX_FILES",
+  "MAX_FILES_INDEX_BYTES",
+  "MAX_PACK_PATH_BYTES",
+  "FILES_FORMAT",
+  "PATCH_FORMAT",
+  "MARKER_FORMAT",
+  "CONTENT_STAMP_FORMAT",
+] as const;
 
 function scalarValue(name: string, value: unknown): ScalarValue {
   if (typeof value === "string") return value;
@@ -671,6 +686,21 @@ export function buildModel(sources: Sources): Model {
       return {
         name,
         doc: `Wire contract v4 limit \`${name}\` (\`@polaris-key/protocol/core\`).`,
+        value,
+      };
+    }),
+    ...PACK_LIMIT_EXPORTS.map((name) => {
+      const value = protocol[name];
+      if (
+        typeof value !== "string" &&
+        (typeof value !== "number" || !Number.isSafeInteger(value))
+      )
+        throw new Error(
+          `@polaris-key/protocol/core exports no integer or string ${name}`,
+        );
+      return {
+        name,
+        doc: `Packs on the wire: \`${name}\` (plans/P4-01.md §2.13, \`@polaris-key/protocol/core\`).`,
         value,
       };
     }),

@@ -136,6 +136,7 @@
       "status": "implemented",
       "note": "client-core's detectOutlet, re-exported; the browser adapter reads the page's display mode (readOutletSignals) and detects over the synthesised web stamp when the host names no outlet. The desktop adapter defers to the host (Node's detection)."
     },
+    "packs.record": { "status": "planned", "wp": "P4-06" },
     "packs.plan": { "status": "planned", "wp": "P4-06" },
     "packs.index": { "status": "planned", "wp": "P4-06" },
     "packs.apply.full": { "status": "planned", "wp": "P4-06" },

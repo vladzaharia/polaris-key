@@ -58,3 +58,6 @@ docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/n
 
 # Local Claude Code worktrees (git-excluded via .git/info/exclude, which Prettier does not read).
 .claude/worktrees/
+
+# @polaris-key/zstd-wasm's fetched zstd sources (git-ignored by the package's .gitignore).
+packages/zstd-wasm/wasm/zstd-1.5.7/

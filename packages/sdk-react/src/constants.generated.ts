@@ -92,6 +92,13 @@ export const ErrorCode = {
   feedRollback: "feed-rollback",
   recordRejected: "record-rejected",
   recordMismatch: "record-mismatch",
+  filesIndexInvalid: "files-index-invalid",
+  filesUnsafePath: "files-unsafe-path",
+  filesDuplicatePath: "files-duplicate-path",
+  filesCaseCollision: "files-case-collision",
+  filesPathConflict: "files-path-conflict",
+  filesLayoutMismatch: "files-layout-mismatch",
+  contentStampInvalid: "content-stamp-invalid",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -182,6 +189,13 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "feed-rollback",
   "record-rejected",
   "record-mismatch",
+  "files-index-invalid",
+  "files-unsafe-path",
+  "files-duplicate-path",
+  "files-case-collision",
+  "files-path-conflict",
+  "files-layout-mismatch",
+  "content-stamp-invalid",
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
@@ -274,6 +288,13 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "feed-rollback": "client",
   "record-rejected": "client",
   "record-mismatch": "client",
+  "files-index-invalid": "client",
+  "files-unsafe-path": "client",
+  "files-duplicate-path": "client",
+  "files-case-collision": "client",
+  "files-path-conflict": "client",
+  "files-layout-mismatch": "client",
+  "content-stamp-invalid": "client",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */
@@ -317,6 +338,7 @@ export const Feature = {
   updateDriver: "update.driver",
   updateBootguard: "update.bootguard",
   outletDetect: "outlet.detect",
+  packsRecord: "packs.record",
   packsPlan: "packs.plan",
   packsIndex: "packs.index",
   packsApplyFull: "packs.apply.full",
@@ -378,6 +400,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "update.driver",
   "update.bootguard",
   "outlet.detect",
+  "packs.record",
   "packs.plan",
   "packs.index",
   "packs.apply.full",
@@ -702,6 +725,105 @@ export const UPDATE_EVENT_VALUES: readonly UpdateEvent[] = [
   "boot_rolled_back",
 ];
 
+/** The pack types a v1 SDK can hold (`PACK_TYPES`, plans/P4-01.md §2.2): `files.tree` everywhere, `godot.pck` in Godot. A record may name any `PACK_TYPE_PATTERN` type; an unknown one makes the pack unusable (`pack-type-unsupported`). */
+export const PackType = {
+  godotPck: "godot.pck",
+  filesTree: "files.tree",
+} as const;
+export type PackType = (typeof PackType)[keyof typeof PackType];
+
+/** Every `PackType` value, in source order. */
+export const PACK_TYPE_VALUES: readonly PackType[] = [
+  "godot.pck",
+  "files.tree",
+];
+
+/** An app record's `content.expects[].delivery` (`PACK_DELIVERIES`, plans/P4-01.md §2.4). Any other `VOCAB_TOKEN_PATTERN` value is read as `on-demand`. */
+export const PackDelivery = {
+  essential: "essential",
+  prefetch: "prefetch",
+  onDemand: "on-demand",
+} as const;
+export type PackDelivery = (typeof PackDelivery)[keyof typeof PackDelivery];
+
+/** Every `PackDelivery` value, in source order. */
+export const PACK_DELIVERY_VALUES: readonly PackDelivery[] = [
+  "essential",
+  "prefetch",
+  "on-demand",
+];
+
+/** A pack record's `handler.activation` (`PACK_ACTIVATIONS`, plans/P4-01.md §2.3). An unknown value makes the pack unusable. */
+export const PackActivation = {
+  restart: "restart",
+  hot: "hot",
+} as const;
+export type PackActivation =
+  (typeof PackActivation)[keyof typeof PackActivation];
+
+/** Every `PackActivation` value, in source order. */
+export const PACK_ACTIVATION_VALUES: readonly PackActivation[] = [
+  "restart",
+  "hot",
+];
+
+/** A pack variant's `files.layout` (`FILES_LAYOUTS`, plans/P4-01.md §2.3): a single-file payload with offsets and gaps, or a directory of files. An unknown layout makes the variant unusable. */
+export const FilesLayout = {
+  container: "container",
+  tree: "tree",
+} as const;
+export type FilesLayout = (typeof FilesLayout)[keyof typeof FilesLayout];
+
+/** Every `FilesLayout` value, in source order. */
+export const FILES_LAYOUT_VALUES: readonly FilesLayout[] = [
+  "container",
+  "tree",
+];
+
+/** An object ref's `codec` (`CONTENT_CODECS`, plans/P4-01.md §2.3): one zstd frame with its content size, or stored raw (`bytes === size`). An unknown codec makes that object unusable. */
+export const ContentCodec = {
+  zstd: "zstd",
+  none: "none",
+} as const;
+export type ContentCodec = (typeof ContentCodec)[keyof typeof ContentCodec];
+
+/** Every `ContentCodec` value, in source order. */
+export const CONTENT_CODEC_VALUES: readonly ContentCodec[] = ["zstd", "none"];
+
+/** A pack delta's `method` v1 applies (`PATCH_METHODS`, plans/P4-01.md §2.3). `godot-delta-pck`, `hdiffpatch` and `bsdiff` are reserved and not listed; an unknown method makes the delta infeasible. */
+export const PatchMethod = {
+  zstdPatchFrom: "zstd-patch-from",
+} as const;
+export type PatchMethod = (typeof PatchMethod)[keyof typeof PatchMethod];
+
+/** Every `PatchMethod` value, in source order. */
+export const PATCH_METHOD_VALUES: readonly PatchMethod[] = ["zstd-patch-from"];
+
+/** A pack delta's `scope` (`PATCH_SCOPES`, plans/P4-01.md §2.3): the whole payload, or the per-entry set. A delta of another scope is dropped. */
+export const PatchScope = {
+  payload: "payload",
+  files: "files",
+} as const;
+export type PatchScope = (typeof PatchScope)[keyof typeof PatchScope];
+
+/** Every `PatchScope` value, in source order. */
+export const PATCH_SCOPE_VALUES: readonly PatchScope[] = ["payload", "files"];
+
+/** The variant axis names a v1 manifest may declare (`VARIANT_AXES`, plans/P4-01.md §2.2). A record may name any `VARIANT_AXIS_PATTERN` axis; a variant on an axis the host has no preferences for is ineligible. */
+export const VariantAxis = {
+  texture: "texture",
+  locale: "locale",
+  quality: "quality",
+} as const;
+export type VariantAxis = (typeof VariantAxis)[keyof typeof VariantAxis];
+
+/** Every `VariantAxis` value, in source order. */
+export const VARIANT_AXIS_VALUES: readonly VariantAxis[] = [
+  "texture",
+  "locale",
+  "quality",
+];
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 export const HeaderName = {
   arch: "X-PKey-Arch",
@@ -775,6 +897,39 @@ export const MAX_JSON_DEPTH = 64;
 
 /** Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`). */
 export const MAX_RECORD_JWS_BYTES = 88844;
+
+/** Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MAX_PACK_VARIANTS = 32;
+
+/** Packs on the wire: `MAX_VARIANT_DELTAS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MAX_VARIANT_DELTAS = 16;
+
+/** Packs on the wire: `MAX_CONTENT_PINS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MAX_CONTENT_PINS = 256;
+
+/** Packs on the wire: `MAX_BUILD_EMBEDS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MAX_BUILD_EMBEDS = 64;
+
+/** Packs on the wire: `MAX_INDEX_FILES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MAX_INDEX_FILES = 100000;
+
+/** Packs on the wire: `MAX_FILES_INDEX_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MAX_FILES_INDEX_BYTES = 33554432;
+
+/** Packs on the wire: `MAX_PACK_PATH_BYTES` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MAX_PACK_PATH_BYTES = 1024;
+
+/** Packs on the wire: `FILES_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const FILES_FORMAT = "pkey-files/1";
+
+/** Packs on the wire: `PATCH_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const PATCH_FORMAT = "pkey-patch/1";
+
+/** Packs on the wire: `MARKER_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const MARKER_FORMAT = "pkey-marker/1";
+
+/** Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const CONTENT_STAMP_FORMAT = "pkey-content/1";
 
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {

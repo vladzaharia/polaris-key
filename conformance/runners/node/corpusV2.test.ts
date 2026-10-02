@@ -22,6 +22,12 @@
 //   feedCases         steps 4–6 over every case that reaches them     → feedClaims
 //   releaseRecordCases step 14 over every case that reaches it        → releaseRecordClaims
 //
+// and, for packs on the wire (plans/P4-01.md §5 order 0, P4-21):
+//
+//   the pointer sets  §4.1 over packRecordCases and markerCases       → verifyJws
+//   packRecordCases   step 14 over every case that reaches it         → releaseRecordClaims
+//   markerCases       step 14 over every marker release that reaches it → releaseRecordClaims
+//
 // with `outlet-matrix.json`'s capability tables asserted against `@polaris-key/protocol/
 // distribution`; and, from P3-05 (plans/P3-01.md §5 order 1), the full verifiers and the rest
 // of the update matrix:
@@ -240,6 +246,49 @@ interface RecordCase extends NonWire {
     | { verify: "fail"; step: string };
 }
 
+/** plans/P4-01.md §4.6: one `packRecordCases` vector. `pin.kind` defaults to `app`. */
+interface PackRecordCase extends NonWire {
+  id: string;
+  description: string;
+  jws: string;
+  releaseKeys: TrustSet;
+  productTrust: TrustSet;
+  expectedAud: string;
+  expectedHash: string;
+  pin?: { kind?: string; deliverable: string; version: string; seq: number };
+  expect:
+    | { verify: "ok"; kind: string; doc?: unknown }
+    | { verify: "fail"; step: string };
+}
+
+/** plans/P4-01.md §4.6: one `markerCases` vector; the marker file's exact text, whose JWS is
+ *  its `release` member. */
+interface MarkerCase extends NonWire {
+  id: string;
+  description: string;
+  marker: string;
+  releaseKeys: TrustSet;
+  productTrust: TrustSet;
+  expectedAud: string;
+  expect:
+    | { verify: "ok"; packId: string; version: string; recordSha256: string }
+    | { verify: "fail"; step: string };
+}
+
+/** A marker's `release`, when its text is a JSON object holding a string there. */
+function markerRelease(text: string): string | null {
+  try {
+    const m = JSON.parse(text) as unknown;
+    return typeof m === "object" &&
+      m !== null &&
+      typeof (m as { release?: unknown }).release === "string"
+      ? (m as { release: string }).release
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 interface Corpus {
   corpusVersion: number;
   keys: { kid: string; publicKeyRaw: string }[];
@@ -251,6 +300,8 @@ interface Corpus {
   bundleCases: BundleCase[];
   feedCases: FeedCase[];
   releaseRecordCases: RecordCase[];
+  packRecordCases: PackRecordCase[];
+  markerCases: MarkerCase[];
 }
 
 interface MatrixRow {
@@ -688,7 +739,7 @@ describe(`conformance corpus v${corpus.corpusVersion} — offline bundles (§7)`
   });
 });
 
-// ── WIRE-CONTRACT-V4 §4.1 — the non-wire-integer pointer sets, over the seven JWS families ───
+// ── WIRE-CONTRACT-V4 §4.1 — the non-wire-integer pointer sets, over the nine JWS families ────
 // Every family's JWS goes through this verifier's own `verifyJws` with the family's keys, `typ`
 // and cap. Whenever it accepts, its `nonWireIntegers` must equal the case's member as a set (an
 // absent member is the empty set), and a case that carries the member must be accepted. So
@@ -758,6 +809,27 @@ const POINTER_FAMILIES: [
     corpus.releaseRecordCases,
     (c: RecordCase) => ({
       jws: c.jws,
+      keys: c.releaseKeys,
+      typ: "pkey-release+jws",
+      cap: undefined,
+    }),
+  ],
+  // plans/P4-01.md §4.6 (P4-21): the two pack families; a marker's JWS is its `release`.
+  [
+    "packRecordCases",
+    corpus.packRecordCases,
+    (c: PackRecordCase) => ({
+      jws: c.jws,
+      keys: c.releaseKeys,
+      typ: "pkey-release+jws",
+      cap: undefined,
+    }),
+  ],
+  [
+    "markerCases",
+    corpus.markerCases,
+    (c: MarkerCase) => ({
+      jws: markerRelease(c.marker) ?? "",
       keys: c.releaseKeys,
       typ: "pkey-release+jws",
       cap: undefined,
@@ -978,6 +1050,63 @@ describe(`conformance corpus v${corpus.corpusVersion} — record claims (V4 §2.
         { [kid]: c.releaseKeys[kid]! },
         { typ: "pkey-release+jws" },
       );
+      expect(v, `${c.id} reaches the claims step`).not.toBeNull();
+      const ok = releaseRecordClaims(v!.payload, {
+        expectedAud: c.expectedAud,
+        nonWire: v!.nonWireIntegers,
+      });
+      expect(ok, c.description).toBe(step !== "claims");
+    });
+  }
+});
+
+// ── plans/P4-01.md §5 order 0 (P4-21) — the pack claims P4-02's ingest and P4-03's CLI import ──
+// Step 14 through `releaseRecordClaims` over every pack-record case that reaches it, and over
+// every marker whose `release` reaches it. The full sections (step 15 with `pin.kind`, the
+// marker verifier) are P4-06's.
+
+/** Step 13's key selection from the pinned release keys, then `verifyJws`. */
+async function reachClaims(jws: string, releaseKeys: TrustSet) {
+  const kid = (
+    JSON.parse(
+      new TextDecoder().decode(base64UrlDecode(jws.split(".")[0]!)),
+    ) as {
+      kid: string;
+    }
+  ).kid;
+  return verifyJws(
+    jws,
+    { [kid]: releaseKeys[kid]! },
+    { typ: "pkey-release+jws" },
+  );
+}
+
+// @pkey-feature packs.record
+describe(`conformance corpus v${corpus.corpusVersion} — pack record claims (V4 §2.5 step 14, plans/P4-01.md §2.3–§2.4)`, () => {
+  it("has every pack-record and marker case of plans/P4-01.md §4.6", () => {
+    expect(corpus.packRecordCases.length).toBe(159);
+    expect(corpus.markerCases.length).toBe(17);
+  });
+  for (const c of corpus.packRecordCases) {
+    const step = c.expect.verify === "ok" ? null : c.expect.step;
+    if (step !== null && step !== "claims" && step !== "cross-check") continue;
+    it(`${c.id} → claims ${step === "claims" ? "refused" : "accepted"}`, async () => {
+      const v = await reachClaims(c.jws, c.releaseKeys);
+      expect(v, `${c.id} reaches the claims step`).not.toBeNull();
+      const ok = releaseRecordClaims(v!.payload, {
+        expectedAud: c.expectedAud,
+        nonWire: v!.nonWireIntegers,
+      });
+      expect(ok, c.description).toBe(step !== "claims");
+    });
+  }
+  for (const c of corpus.markerCases) {
+    const step = c.expect.verify === "ok" ? null : c.expect.step;
+    if (step !== null && step !== "claims" && step !== "cross-check") continue;
+    it(`marker ${c.id} → claims ${step === "claims" ? "refused" : "accepted"}`, async () => {
+      const release = markerRelease(c.marker);
+      expect(release, `${c.id} carries a release`).not.toBeNull();
+      const v = await reachClaims(release!, c.releaseKeys);
       expect(v, `${c.id} reaches the claims step`).not.toBeNull();
       const ok = releaseRecordClaims(v!.payload, {
         expectedAud: c.expectedAud,
