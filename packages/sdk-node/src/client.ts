@@ -178,7 +178,9 @@ export class PolarisKeyClient {
       this.core,
       this.cache,
       this.tokens,
-      opts.devices ?? {},
+      // Every report carries `caps`, the explicit `devices.report()` as well as the one after a
+      // sync. Evaluated per report, after the constructor has built the capability context.
+      { ...opts.devices, caps: () => this.caps() },
     );
     this.license = new LicenseClient(
       this.core,

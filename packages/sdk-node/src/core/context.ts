@@ -34,13 +34,14 @@ import {
 import type { AllowedRange, BlockReason } from "@polaris-key/protocol/license";
 import {
   PolarisError,
+  UnsupportedError,
   canonicalArch,
   canonicalPlatform,
   channelForVersion,
   effectiveNow,
   type Store,
 } from "@polaris-key/client-core";
-import { SdkId } from "../constants.generated.js";
+import { ErrorCode, Feature, SdkId } from "../constants.generated.js";
 import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
 import { defaultDirBases, resolveDirs, type ProductDirs } from "./dirs.js";
@@ -266,12 +267,22 @@ export class CoreContext {
     return this.services()[slug].enabled;
   }
 
-  /** Refuse a sub-client whose service this product does not run (D-21). */
-  requireService(slug: ServiceSlug): void {
+  /**
+   * Refuse a sub-client whose service this product does not run (D-21). The refusal is the
+   * typed `product` N/A (PARITY §2.2, P1b-10): an `UnsupportedError` with `feature`, `reason:
+   * "product"` and `detail`, as `client.supports(feature)` reports it, keeping the code
+   * `service-unavailable` that callers already match on.
+   */
+  requireService(slug: ServiceSlug, feature: Feature): void {
     if (!this.enabled(slug)) {
-      throw new PolarisError(
-        "service-unavailable",
-        `The ${slug} service is not enabled for ${this.product}.`,
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature,
+          reason: "product",
+          detail: `the product does not run the ${slug} service`,
+        },
+        ErrorCode.serviceUnavailable,
       );
     }
   }

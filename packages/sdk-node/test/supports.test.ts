@@ -223,6 +223,34 @@ describe("supports() — Node's capability table", () => {
   });
 });
 
+describe("a refused call carries supports()'s fields", () => {
+  it("a sub-client of a service that is off throws UnsupportedError(product), code service-unavailable", async () => {
+    const c = await client({ expectedServices: ["license", "config"] });
+    let thrown: unknown;
+    try {
+      await c.release.changelog();
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(UnsupportedError);
+    expect(thrown).toMatchObject({
+      code: "service-unavailable",
+      feature: "release.changelog",
+      reason: "product",
+      detail: "the product does not run the release service",
+    });
+    // The same fields supports() answers.
+    expect(c.supports(Feature.releaseChangelog)).toEqual(
+      (thrown as UnsupportedError).unsupported,
+    );
+    await expect(c.identity.beginSignIn()).rejects.toMatchObject({
+      code: "service-unavailable",
+      feature: "identity.devicecode",
+      reason: "product",
+    });
+  });
+});
+
 describe("caps in device telemetry", () => {
   it("every report carries caps, re-read from the store status of the moment", async () => {
     let status: StoreStatus = { backend: "keyring" };
@@ -244,5 +272,16 @@ describe("caps in device telemetry", () => {
     await c.sync();
     expect(fetch.reports).toHaveLength(2);
     expect(fetch.reports[1]!.caps).not.toContain("core.store");
+  });
+
+  it("an explicit devices.report() carries caps too", async () => {
+    const store = new InMemoryStore(PRODUCT);
+    await store.setToken("pkeyt_test");
+    const fetch = mockFetch();
+    const c = await client({ store, fetch, expectedServices: [] });
+    expect(await c.devices.report()).toBe(true);
+    expect(fetch.reports).toHaveLength(1);
+    expect(fetch.reports[0]!.caps).toEqual(c.caps());
+    expect(fetch.reports[0]!.caps).toContain("core.verify");
   });
 });

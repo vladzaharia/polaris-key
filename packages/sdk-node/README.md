@@ -174,8 +174,10 @@ The answer is `{ supported: true, feature }` or `{ supported: false, feature, re
 - `outlet`: the outlet forbids it. Node declares no such N/A.
 
 The answers come from a capability table generated from `parity.json`, so they always match the
-parity matrix. A call into an unsupported feature throws `UnsupportedError` (a `PolarisError`
-with code `unsupported`) with the same `feature`, `reason` and `detail`.
+parity matrix. A call into an unsupported feature throws `UnsupportedError`, a `PolarisError`
+carrying the same `feature`, `reason` and `detail`. Its code is `unsupported`, except for a
+sub-client whose service is off. That refusal is the `product` reason and keeps the code
+`service-unavailable`, which existing callers match on.
 
 `client.caps()` lists the feature ids `supports()` answers Supported for. Every device report
 sends this list as `caps`, so the console can show what the fleet can do.
