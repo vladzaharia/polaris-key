@@ -10,6 +10,14 @@ step. This page covers the two feed routes, how architecture selection works, wh
 item actually contains, the server-side signature check that gates what's allowed into it,
 and the four URLs that predate this whole namespace and are kept working forever.
 
+:::note[Products that publish release records]
+This page describes the appcast rendered from GitHub release state, which every product without
+CI-signed release records keeps. A product that publishes release records gets the **extended**
+appcast instead: build numbers, `criticalUpdate`, phased rollouts, deltas,
+`hardwareRequirements` and universal DMGs, rendered from the records. See
+[App-updater feeds](/docs/services/update/updater-feeds/#sparkle-extended).
+:::
+
 ## The two routes
 
 ```
