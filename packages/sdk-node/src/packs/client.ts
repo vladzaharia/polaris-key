@@ -223,6 +223,14 @@ export class PacksClient {
     await (await this.start()).confirm();
   }
 
+  /**
+   * Operator recovery after a torn `state.json` (held aside as `state.json.torn`; garbage
+   * collection waits until this is called). See `state().stateIssue`.
+   */
+  async recoverState(): Promise<void> {
+    await (await this.start()).recoverState();
+  }
+
   /** Re-point a pack at the install it replaced. */
   async rollback(packId: string): Promise<boolean> {
     return (await this.start()).rollback(packId);

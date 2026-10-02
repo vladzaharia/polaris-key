@@ -23,3 +23,11 @@ export {
   walkTree,
   type DirPackStorageOptions,
 } from "./storage.js";
+export {
+  FILES_TREE_HANDLER,
+  PackError,
+  type PackHandler,
+  type PackInstall,
+  type PackProgress,
+  type PacksSnapshot,
+} from "@polaris-key/client-core";

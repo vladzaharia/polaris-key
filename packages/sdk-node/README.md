@@ -436,7 +436,16 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   `@polaris-key/zstd-wasm`. `client.update.packs.zstd()` says which.
 - **Resume and state.** A dropped download keeps its journal; the next `ensure` resumes it, the
   staged bytes re-hashed. The state holds each pack record verbatim and is re-verified on every
-  load, the payload included. `confirm()` marks a healthy boot, `rollback(packId)` restores the
+  load, the payload included: **every load re-hashes the active and previous payloads**, so
+  start-up cost grows with installed content. Payload files and `state.json` are fsynced before
+  their renames.
+- **A state file that cannot be trusted loses nothing.** One that does not parse (a torn write)
+  is moved aside as `state.json.torn`, and garbage collection is suspended while it exists:
+  `state().stateIssue` is `torn`, and only `recoverState()` (an operator action) clears it and
+  resumes collection. One that cannot be read at all (`stateIssue: "unreadable"`) is never
+  written over: `ensure`, `confirm` and `rollback` raise `pack-state-unreadable` until a restart
+  can read it. A payload whose check fails with an I/O error stays in the state and on disk but
+  out of use for that load. `confirm()` marks a healthy boot, `rollback(packId)` restores the
   previous install, and garbage collection keeps active, previous, in-flight and embedded roots.
 - **Boot.** `bootOptions()` gives the stage machine its `requiredPacks` and `essentialPacks`;
   `bootFetch({send, consent, metered, answer})` drives the FETCH stage with `fetch.consent`,
@@ -445,8 +454,9 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   running in this process.
 - **Errors** are `PackError` (a `PolarisError` with `detail` and `path`): `not-configured`,
   `content-stamp-invalid`, `pack-not-pinned`, `record-rejected`, `record-mismatch`,
-  `pack-type-unsupported`, `pack-not-entitled`, `pack-no-variant`, the `plan-*` and applier
-  codes, `network-error`.
+  `pack-type-unsupported`, `pack-not-entitled`, `pack-no-variant`, `pack-state-unreadable`, the
+  `plan-*` and applier codes, `network-error`. `PackError` is exported from `@polaris-key/node`
+  and `@polaris-key/node/packs`.
 
 ## Offline depths
 

@@ -133,6 +133,38 @@ function payloadFile(install: PackInstall): string {
     : join(install.location, CONTAINER_FILE);
 }
 
+/** fsync a directory, so a rename or a new entry in it survives a power loss. Windows cannot
+ *  open a directory for syncing; there it is a no-op. */
+async function syncDir(dir: string): Promise<void> {
+  try {
+    const fh = await open(dir, "r");
+    try {
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  } catch {
+    // Not supported here (Windows): the rename itself is still atomic.
+  }
+}
+
+/** fsync every file under `dir`, then each directory, depth first. */
+async function syncTree(dir: string): Promise<void> {
+  for (const e of await readdir(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) await syncTree(p);
+    else if (e.isFile()) {
+      const fh = await open(p, "r+");
+      try {
+        await fh.sync();
+      } finally {
+        await fh.close();
+      }
+    }
+  }
+  await syncDir(dir);
+}
+
 /** `path` joined under `root`, refusing anything that would land outside it. */
 function inside(root: string, ...parts: string[]): string {
   const p = resolve(root, ...parts);
@@ -161,14 +193,18 @@ export class DirPackStorage implements PackStorage {
   }
 
   /** The atomic-replace state file. */
+  /** The atomic-replace state file, with a torn document's quarantine at `state.json.torn`. */
   stateStore(): PackStateStore {
     const path = join(this.root, "state.json");
+    const torn = `${path}.torn`;
     return {
       read: async () => {
         try {
           return await readFile(path, "utf8");
-        } catch {
-          return null;
+        } catch (e) {
+          // Only a missing file is "no state"; anything else is unknown, never empty.
+          if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw e;
         }
       },
       replace: async (text) => {
@@ -183,6 +219,22 @@ export class DirPackStorage implements PackStorage {
           await fh.close();
         }
         await rename(tmp, path);
+        await syncDir(this.root);
+      },
+      quarantine: async (text) => {
+        if (await exists(torn)) return;
+        const fh = await open(torn, "wx", 0o600);
+        try {
+          await fh.writeFile(text);
+          await fh.sync();
+        } finally {
+          await fh.close();
+        }
+        await syncDir(this.root);
+      },
+      quarantined: async () => exists(torn),
+      clearQuarantine: async () => {
+        await rm(torn, { force: true });
       },
     };
   }
@@ -264,8 +316,11 @@ export class DirPackStorage implements PackStorage {
       await rm(out, { recursive: true, force: true });
       return location;
     }
+    // The payload is durable before the pointer can name it.
+    await syncTree(out);
     await mkdir(dirname(location), { recursive: true });
     await rename(out, location);
+    await syncDir(dirname(location));
     return location;
   }
 

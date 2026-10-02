@@ -480,3 +480,64 @@ describe("DirPackStorage", () => {
     c.close();
   });
 });
+
+describe("state.json that cannot be trusted (Node)", () => {
+  it("holds a torn state.json aside across loads and keeps the store", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    srv.packs = [v1];
+    let c = await client({ stamp: [v1] });
+    await c.update.packs.ensure(["djdl.l10n"]);
+    const root = join(work, "data", PRODUCT, "packs");
+    const dir = (await c.update.packs.path("djdl.l10n"))!;
+    c.close();
+    await writeFile(join(root, "state.json"), '{"v":1,"active":{"djdl');
+    for (let n = 0; n < 2; n++) {
+      c = await client({ stamp: [v1] });
+      expect((await c.update.packs.state()).stateIssue).toBe("torn");
+      expect(await treeOnDisk(dir, v1.files)).toBe(true);
+      c.close();
+    }
+    expect(
+      (await readFile(join(root, "state.json.torn"), "utf8")).startsWith(
+        '{"v":1',
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses to write or install over a state.json it cannot read", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    srv.packs = [v1];
+    let c = await client({ stamp: [v1] });
+    await c.update.packs.ensure(["djdl.l10n"]);
+    const root = join(work, "data", PRODUCT, "packs");
+    const good = await readFile(join(root, "state.json"), "utf8");
+    c.close();
+    // A directory where the file should be: reading it fails with EISDIR, not ENOENT.
+    await rm(join(root, "state.json"));
+    await mkdir(join(root, "state.json"));
+    c = await client({ stamp: [v1] });
+    await expect(c.update.packs.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-state-unreadable",
+    });
+    c.close();
+    await rm(join(root, "state.json"), { recursive: true });
+    await writeFile(join(root, "state.json"), good);
+    c = await client({ stamp: [v1] });
+    expect((await c.update.packs.state()).active["djdl.l10n"]!.version).toBe(
+      "1.0.0",
+    );
+    c.close();
+  });
+});
