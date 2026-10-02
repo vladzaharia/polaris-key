@@ -1325,7 +1325,7 @@
       "optional": false,
       "refs": ["CONTENT §13", "notes/A7 §10 §11.2"],
       "brief": "wp/P4-07-python-swift-packs.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-08",
