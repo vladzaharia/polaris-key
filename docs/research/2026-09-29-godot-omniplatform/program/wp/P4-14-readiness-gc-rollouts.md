@@ -264,7 +264,6 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `BLOB_GC_MODE=off`, `BLOB_GC_GRACE_DAYS`.
 - **Console rendering** of readiness in the matrix is not in this package: the matrix API carries
   a `readiness` object per app-release cell; P4-15 renders it with its overlay.
-  ||||||| b891d49c
 - **Review fixes (B1–B4, S1–S6).**
   - `promote` heads the target again after `recordObject` when it confirmed existing bytes, and
     re-puts the staged copy if a sweep deleted them in between (B1).
