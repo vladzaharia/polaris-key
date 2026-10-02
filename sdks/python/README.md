@@ -131,7 +131,7 @@ Every one is importable on its own, so a config-only daemon never pulls the lice
 | `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                |
 | `polaris_key.identity` | device-code sign-in (RFC 8628): `begin_sign_in` / `poll_sign_in` / `wait_for_sign_in`                                |
 | `polaris_key.release`  | changelog, install script, artifact URLs                                                                             |
-| `polaris_key.update`   | version check + the Sparkle appcast URL                                                                              |
+| `polaris_key.update`   | version check, the Sparkle appcast URL, the signed update decision (`decide`, `feed`, `release_record`, `build_url`) |
 | `polaris_key.local`    | the transportless profile                                                                                            |
 
 `client.license.entitled_channels()` returns the `channels` entitlement's string grants in
@@ -369,6 +369,76 @@ To mount the commands onto your own program, import the adapter you use: the cli
 exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter exposes an `app`
 (`polaris_key.cli.typer_cli.app`); both are thin wrappers over `core`. The argparse hook is
 `polaris_key.cli.register_argparse(subparsers, client_factory=…)`.
+
+## Update decisions (wire v4)
+
+`client.update.decide()` answers "what should this installed app do next?" from two signed
+documents: the channel **feed** (`pkey-feed+jws`, signed by the product key) and the **release
+record** it pins (`pkey-release+jws`, signed in CI by a release key the Worker never holds). The
+host compiles the release keys in, beside its trust pins:
+
+```python
+from polaris_key import PolarisKeyClient, UpdateClientOptions, is_undismissable
+
+client = PolarisKeyClient.create(
+    product_slug="djdl",
+    version="1.2.0",                       # the installed version
+    trust=TRUST,
+    expected_services=["release", "distribution", "update"],
+    update=UpdateClientOptions(
+        # kid -> raw Ed25519 release key (base64url). PLACEHOLDER: your product's release key.
+        pinned_release_keys={"<your-release-key-id>": "<your-release-key-b64url>"},
+        outlet="direct",                   # where this install came from; turns offers on
+        format="dmg",                      # only builds of this format are offered (optional)
+        methods=("download",),             # what this host can do with a `binary` decision
+    ),
+)
+
+check = client.update.decide(channel="latest")   # the REQUESTED name; aliases are fine
+check.channel             # "stable": the canonical channel, the feed's own claim
+check.decision.action     # none | code-ready | binary | store | platform | blocked
+check.decision.to_dict()  # exactly the members that action carries
+check.feed, check.record  # "network" | "committed";  "network" | "cache" | "none"
+check.errors              # (UpdateCheckError(code, detail), ...): what was refused on the way
+if check.decision.action == "binary":
+    url = client.update.build_url(check.decision.release.version, check.decision.build)
+    # download, then check the payload's size and sha256 against the record before staging
+```
+
+What it does, in the contract's order (`docs/security/WIRE-CONTRACT-V4.md` §3.4, §3.5 and §4.4):
+
+- It reads `update.endpoints.feed` and `release.endpoints.record` from discovery (fetching
+  discovery first when this session has not). A Worker without them is `service-unavailable`:
+  fall back to `client.update.check()`.
+- The feed verifies against the **effective** trust set (pins plus verified manifest keys) at
+  the **effective** clock, `max(system, highWaterMark)`, so winding the system clock back cannot
+  revive an expired feed. Its `seq` must not fall below the floor of its own canonical channel:
+  a lower `seq` is `feed-rollback`, and the decision then comes from the committed feed.
+- The record is fetched by its SHA-256 and **hashed before any signature work**; it verifies
+  only against `pinned_release_keys`, and a release key that is also a product key is refused.
+- The decision is `decide_update` over both (the rollout bucket uses the device id). A
+  `mandatory` decision and every `blocked` one is a prompt the player cannot dismiss
+  (`is_undismissable(decision)`): keep it on screen, never cover the running app with it. A
+  stale feed (past `expiresAt` + 300 s) answers `none` with reason `stale`: keep running, never
+  update automatically.
+
+It raises `UpdateError` (a `PolarisError` with a `detail`) only when it has nothing to decide
+from (`feed-rejected` with the step as `detail`, `network-error`, the Worker's wire code), and
+for `not-configured` (no `pinned_release_keys`), `service-unavailable` and `local-only`. Bad
+options (an unknown outlet or method, a release key that is also a trust pin) raise
+`invalid-options` from the constructor. `client.update.feed()` returns the verified feed alone;
+`client.update.release_record(sha256)` one verified record.
+
+The committed feeds and records live in the cache as two more signed slices (`feeds`, keyed by
+canonical channel, and `releaseRecords`, keyed by hash). They are re-verified on every load, each
+channel's `seq` floor is derived from the feed that survives (never stored), and they survive
+`deactivate()` and a bundle import, so a replayed older feed cannot get past the floor. The
+outlet is the host's to supply until outlet detection lands; without one it is `unknown`, which
+is never offered an update. The pure functions (`verify_feed`, `verify_release_record`,
+`decide_update`, `effective_capabilities`, `resolve_update_outlet`, `rollout_bucket`,
+`compare_versions`) are exported for hosts that drive their own transport, and
+`tests/test_conformance.py` and `tests/test_update_matrix.py` run every `feedCases`,
+`releaseRecordCases` and `update-matrix.json` vector through them.
 
 ## Trust, caching, and the offline gate
 

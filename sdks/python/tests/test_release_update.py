@@ -259,3 +259,562 @@ def test_appcast_url_after_discovery() -> None:
     assert c.update.appcast_url(arch="x86_64").endswith("?arch=x86_64")
     assert "/update/beta/appcast.xml" in c.update.appcast_url(channel="beta")
     c.close()
+
+
+# ── Wire v4: client.update.decide(), feed(), release_record() (plans/P3-01.md §2.5–§2.8) ────
+# @pkey-feature update.feed release.record update.decide
+
+import hashlib  # noqa: E402
+import time  # noqa: E402
+
+from polaris_key import (  # noqa: E402
+    InMemoryStore,
+    StagedUpdate,
+    UpdateClientOptions,
+    UpdateError,
+)
+from polaris_key.core import release_record as release_record_module  # noqa: E402
+from polaris_key.core.jws import sign_jws  # noqa: E402
+from polaris_key.core.release_record import verify_release_record  # noqa: E402
+
+from helpers import KID, NOW, PRIVATE_PEM, PUBKEY_RAW, TRUST, new_keypair  # noqa: E402
+
+REL_PEM, REL_PUB = new_keypair()
+REL_KID = "djdl-release-test"
+RELEASE_KEYS = {REL_KID: REL_PUB}
+FEED_PATH = f"/{PRODUCT}/update/{{channel}}/feed.jws"
+RECORDS_PREFIX = f"/{PRODUCT}/release/records/"
+
+
+def record_payload(version: str = "1.3.0", seq: int = 1, **over: Any) -> Dict[str, Any]:
+    p: Dict[str, Any] = {
+        "schemaVersion": 1,
+        "aud": PRODUCT,
+        "deliverable": "app",
+        "kind": "app",
+        "version": version,
+        "seq": seq,
+        "issuedAt": NOW - 600,
+        "builds": [
+            {
+                "id": "macos",
+                "platform": "macos",
+                "arch": "universal",
+                "format": "dmg",
+                "artifacts": [
+                    {"name": "djdl.dmg", "role": "payload", "sha256": "ab" * 32, "size": 1024}
+                ],
+            }
+        ],
+    }
+    p.update(over)
+    return p
+
+
+def sign_record(payload: Dict[str, Any], *, pem: str = REL_PEM, kid: str = REL_KID) -> str:
+    return sign_jws(payload, pem, kid, "pkey-release+jws")
+
+
+def sha(jws: str) -> str:
+    return hashlib.sha256(jws.encode("ascii")).hexdigest()
+
+
+def feed_payload(
+    record_jws: str,
+    *,
+    seq: int = 8,
+    issued: int = NOW,
+    channel: str = "stable",
+    version: str = "1.3.0",
+    record_seq: int = 1,
+) -> Dict[str, Any]:
+    return {
+        "schemaVersion": 1,
+        "iss": "key.plrs.im",
+        "aud": PRODUCT,
+        "channel": channel,
+        "selector": {},
+        "seq": seq,
+        "issuedAt": issued,
+        "expiresAt": issued + 900,
+        "app": {
+            "deliverable": "app",
+            "versionScheme": "semver",
+            "targets": [
+                {
+                    "platform": "macos",
+                    "release": {"sha256": sha(record_jws), "seq": record_seq, "version": version},
+                    "floor": None,
+                    "critical": False,
+                    "outlets": {
+                        "direct": {
+                            "kind": "direct",
+                            "live": {"version": version, "seq": record_seq},
+                            "halted": False,
+                        }
+                    },
+                }
+            ],
+        },
+    }
+
+
+def sign_feed(payload: Dict[str, Any], *, pem: str = PRIVATE_PEM, kid: str = KID) -> str:
+    return sign_jws(payload, pem, kid, "pkey-feed+jws")
+
+
+def v4_discovery(*, feed: bool = True) -> Dict[str, Any]:
+    doc = discovery_doc(release=True, distribution=True, update=True)
+    base = f"{BASE_URL}/{PRODUCT}"
+    if feed:
+        doc["services"]["update"]["endpoints"]["feed"] = f"{base}/update/{{channel}}/feed.jws"
+        doc["services"]["release"]["endpoints"] = {"record": f"{base}/release/records/{{sha256}}"}
+        doc["services"]["distribution"]["endpoints"] = {
+            "builds": f"{base}/distribution/builds/{{selector}}/{{buildId}}"
+        }
+    return doc
+
+
+class Worker:
+    """A fake Worker: discovery, one feed per channel name, records by hash. ``None`` for a
+    feed answers 503; every request is logged."""
+
+    def __init__(self, *, discovery: Any = None) -> None:
+        self.discovery = discovery if discovery is not None else v4_discovery()
+        self.feeds: Dict[str, Any] = {}
+        self.records: Dict[str, str] = {}
+        self.requests: list = []
+
+    def __call__(self, r: httpx.Request) -> httpx.Response:
+        path = r.url.path
+        self.requests.append(str(r.url))
+        if path == f"/{PRODUCT}/.well-known/polaris.json":
+            return httpx.Response(200, json=self.discovery)
+        prefix = f"/{PRODUCT}/update/"
+        if path.startswith(prefix) and path.endswith("/feed.jws"):
+            channel = path[len(prefix) : -len("/feed.jws")]
+            body = self.feeds.get(channel)
+            if body is None:
+                return httpx.Response(503)
+            return httpx.Response(200, text=body, headers={"content-type": "application/jose"})
+        if path.startswith(RECORDS_PREFIX):
+            body = self.records.get(path[len(RECORDS_PREFIX) :])
+            if body is None:
+                return httpx.Response(404, json={"error": {"code": "not_found"}})
+            return httpx.Response(200, text=body, headers={"content-type": "application/jose"})
+        return httpx.Response(404)
+
+    def feed_requests(self) -> list:
+        return [u for u in self.requests if u.endswith("feed.jws?platform=macos")]
+
+    def record_requests(self) -> list:
+        return [u for u in self.requests if RECORDS_PREFIX in u]
+
+
+def options(**over: Any) -> UpdateClientOptions:
+    base: Dict[str, Any] = {
+        "pinned_release_keys": RELEASE_KEYS,
+        "outlet": "direct",
+        "platform": "macos",
+        "arch": "arm64",
+        "format": "dmg",
+    }
+    base.update(over)
+    return UpdateClientOptions(**base)
+
+
+def v4_client(worker: Worker, *, store: Any = None, **over: Any):  # type: ignore[no-untyped-def]
+    return make_client(
+        worker,
+        store=store,
+        version=over.pop("version", "1.2.0"),
+        expected_services=["release", "distribution", "update"],
+        update=over.pop("update", options()),
+        **over,
+    )
+
+
+def seeded(worker: Worker, *, seq: int = 8, issued: int = NOW, channel: str = "stable") -> str:
+    record = sign_record(record_payload())
+    worker.records[sha(record)] = record
+    feed = sign_feed(feed_payload(record, seq=seq, issued=issued, channel=channel))
+    return feed
+
+
+def test_decide_verifies_commits_and_decides() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker)
+    store = InMemoryStore(PRODUCT)
+    c = v4_client(worker, store=store)
+    check = c.update.decide(channel="stable")
+    assert check.to_dict()["decision"] == {
+        "action": "binary",
+        "method": "download",
+        "release": {"version": "1.3.0", "seq": 1, "sha256": next(iter(worker.records))},
+        "build": "macos",
+        "mandatory": False,
+        "critical": False,
+        "prestage": [],
+        "discardStaged": False,
+    }
+    assert (check.channel, check.feed, check.record, check.errors) == (
+        "stable",
+        "network",
+        "network",
+        (),
+    )
+    rec = store.read_cache()
+    assert rec is not None
+    assert rec.feeds == {"stable": worker.feeds["stable"]}
+    assert set(rec.releaseRecords) == set(worker.records)
+    # Signed artifacts only: no floor, no decoded document, is ever stored.
+    assert set(rec.to_dict()) <= {
+        "v", "docs", "etags", "lastSyncUnauthorized", "trustJws", "importedBundle",
+        "blocked", "feeds", "releaseRecords",
+    }
+    # Discovery was loaded first (step 1), then the feed and the record.
+    assert worker.requests[0].endswith("/.well-known/polaris.json")
+    assert len(worker.feed_requests()) == 1 and len(worker.record_requests()) == 1
+    c.close()
+
+
+def test_the_same_feed_bytes_decide_from_the_cache_without_a_record_request() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker)
+    c = v4_client(worker)
+    c.update.decide(channel="stable")
+    check = c.update.decide(channel="stable")
+    assert (check.feed, check.record) == ("network", "cache")
+    assert len(worker.record_requests()) == 1
+    c.close()
+
+
+def test_a_reload_refuses_a_lower_seq_using_the_floor_derived_from_the_cached_jws() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker, seq=8, issued=NOW - 60)
+    store = InMemoryStore(PRODUCT)
+    first = v4_client(worker, store=store)
+    first.update.decide(channel="stable")
+    first.close()
+
+    # A restart: a new client over the same store. The Worker now answers an OLDER seq.
+    worker.feeds["stable"] = seeded(worker, seq=7, issued=NOW)
+    second = v4_client(worker, store=store)
+    check = second.update.decide(channel="stable")
+    assert [e.to_dict() for e in check.errors] == [{"code": "feed-rollback", "detail": None}]
+    assert check.feed == "committed"
+    assert check.decision.action == "binary"
+    # The committed seq-8 feed stays; the seq-7 one was never written.
+    rec = store.read_cache()
+    assert rec is not None and '"seq":8' in _payload_json(rec.feeds["stable"])
+    second.close()
+
+
+def test_a_tampered_cached_feed_sets_no_floor() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker, seq=8, issued=NOW - 60)
+    store = InMemoryStore(PRODUCT)
+    first = v4_client(worker, store=store)
+    first.update.decide(channel="stable")
+    first.close()
+    rec = store.read_cache()
+    assert rec is not None
+    head, payload, sig = rec.feeds["stable"].split(".")
+    # A forged signature: the floor comes from a RE-VERIFIED JWS, so this one sets none.
+    rec.feeds["stable"] = ".".join([head, payload, ("A" if sig[0] != "A" else "B") + sig[1:]])
+    store.write_cache(rec)
+
+    worker.feeds["stable"] = seeded(worker, seq=7, issued=NOW)
+    second = v4_client(worker, store=store)
+    check = second.update.decide(channel="stable")
+    assert (check.feed, check.errors) == ("network", ())
+    second.close()
+
+
+def _payload_json(jws: str) -> str:
+    from polaris_key.core.b64url import b64url_decode
+
+    return b64url_decode(jws.split(".")[1]).decode("utf-8")
+
+
+def test_an_alias_request_commits_under_the_canonical_channel() -> None:
+    worker = Worker()
+    worker.feeds["latest"] = seeded(worker, channel="stable")
+    store = InMemoryStore(PRODUCT)
+    c = v4_client(worker, store=store)
+    check = c.update.decide(channel="latest")
+    assert check.channel == "stable"
+    rec = store.read_cache()
+    assert rec is not None and set(rec.feeds) == {"stable"}
+    c.close()
+
+
+def _no_signature_work(monkeypatch: pytest.MonkeyPatch) -> list:
+    calls: list = []
+
+    def spy(*args: Any, **kwargs: Any) -> None:
+        calls.append(args)
+        return None
+
+    monkeypatch.setattr(release_record_module, "verify_jws", spy)
+    return calls
+
+
+def test_a_record_with_a_mismatched_hash_is_refused_before_signature_verification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _no_signature_work(monkeypatch)
+    record = sign_record(record_payload())
+    r = verify_release_record(
+        record,
+        release_keys=RELEASE_KEYS,
+        product_trust=TRUST,
+        expected_aud=PRODUCT,
+        expected_hash="0" * 64,
+    )
+    assert (r.ok, r.step) == (False, "hash")
+    assert calls == []
+
+
+def test_a_body_over_the_record_bound_is_refused_at_hash_without_signature_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _no_signature_work(monkeypatch)
+    body = "a" * 88_845
+    r = verify_release_record(
+        body,
+        release_keys=RELEASE_KEYS,
+        product_trust=TRUST,
+        expected_aud=PRODUCT,
+        expected_hash=hashlib.sha256(body.encode("ascii")).hexdigest(),
+    )
+    assert (r.ok, r.step) == (False, "hash")
+    assert calls == []
+
+
+def test_a_record_signed_by_the_product_key_is_refused() -> None:
+    record = sign_record(record_payload(), pem=PRIVATE_PEM, kid=KID)
+    # Not a pinned release key: refused at step jws.
+    r = verify_release_record(
+        record,
+        release_keys=RELEASE_KEYS,
+        product_trust=TRUST,
+        expected_aud=PRODUCT,
+        expected_hash=sha(record),
+    )
+    assert (r.ok, r.step) == (False, "jws")
+    # Even pinned as a release key, a product key is refused (the key-separation check).
+    r = verify_release_record(
+        record,
+        release_keys={KID: PUBKEY_RAW},
+        product_trust=TRUST,
+        expected_aud=PRODUCT,
+        expected_hash=sha(record),
+    )
+    assert (r.ok, r.step) == (False, "jws")
+
+
+def test_decide_reports_a_refused_record_and_offers_nothing_self_installed() -> None:
+    worker = Worker()
+    record = sign_record(record_payload(), pem=PRIVATE_PEM, kid=KID)
+    worker.records[sha(record)] = record
+    worker.feeds["stable"] = sign_feed(feed_payload(record))
+    c = v4_client(worker)
+    check = c.update.decide(channel="stable")
+    assert [e.to_dict() for e in check.errors] == [{"code": "record-rejected", "detail": "jws"}]
+    assert check.record == "none"
+    assert check.decision.to_dict() == {
+        "action": "none",
+        "reason": "not-available",
+        "behind": False,
+        "discardStaged": False,
+    }
+    c.close()
+
+
+def test_a_stale_committed_feed_freezes_when_the_network_is_down() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker, issued=NOW - 2000)
+    store = InMemoryStore(PRODUCT)
+    # Commit it while it was fresh.
+    c = v4_client(worker, store=store)
+    real = time.time
+    try:
+        time.time = lambda: float(NOW - 1900)  # type: ignore[assignment]
+        c.update.decide(channel="stable")
+    finally:
+        time.time = real  # type: ignore[assignment]
+    del worker.feeds["stable"]
+    check = c.update.decide(channel="stable")
+    assert [e.to_dict() for e in check.errors] == [{"code": "network-error", "detail": None}]
+    assert check.feed == "committed"
+    assert check.decision.to_dict() == {
+        "action": "none",
+        "reason": "stale",
+        "behind": False,
+        "discardStaged": False,
+    }
+    c.close()
+
+
+def test_the_effective_clock_refuses_an_expired_feed_a_wound_back_clock_would_accept(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker, issued=NOW - 2000)
+    c = v4_client(worker)
+    monkeypatch.setattr(time, "time", lambda: float(NOW - 1900))  # the system clock, wound back
+    c.core.raise_floor(NOW)  # the high-water mark of what this client has verified
+    with pytest.raises(UpdateError) as exc:
+        c.update.decide(channel="stable")
+    assert (exc.value.code, exc.value.detail) == ("feed-rejected", "freshness")
+    c.close()
+
+
+def test_nothing_to_decide_from_raises_the_transport_code() -> None:
+    worker = Worker()
+    c = v4_client(worker)
+    with pytest.raises(UpdateError) as exc:
+        c.update.decide(channel="stable")
+    assert exc.value.code == "network-error"
+    c.close()
+
+
+def test_discovery_without_v4_endpoints_is_service_unavailable_before_dialling() -> None:
+    worker = Worker(discovery=v4_discovery(feed=False))
+    worker.feeds["stable"] = seeded(worker)
+    c = v4_client(worker)
+    with pytest.raises(UpdateError) as exc:
+        c.update.decide(channel="stable")
+    assert exc.value.code == "service-unavailable"
+    assert worker.feed_requests() == []
+    c.close()
+
+
+def test_an_empty_pinned_release_key_map_is_not_configured() -> None:
+    worker = Worker()
+    c = v4_client(worker, update=options(pinned_release_keys={}))
+    with pytest.raises(UpdateError) as exc:
+        c.update.decide()
+    assert exc.value.code == "not-configured"
+    assert worker.requests == []
+    c.close()
+
+
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"pinned_release_keys": {"oops": PUBKEY_RAW}},  # a release key that is a trust pin
+        {"outlet": "epic"},
+        {"outlet": {"id": "Direct Build", "kind": "direct"}},
+        {"methods": ("teleport",)},
+        {"platform": "amiga"},
+        {"arch": "m68k"},
+        {"format": 7},
+        {"detected": {"kind": "epic"}},
+    ],
+)
+def test_bad_update_options_raise_invalid_options_at_construction(over: Dict[str, Any]) -> None:
+    with pytest.raises(UpdateError) as exc:
+        v4_client(Worker(), update=options(**over))
+    assert exc.value.code == "invalid-options"
+
+
+def test_options_may_be_a_mapping() -> None:
+    c = v4_client(
+        Worker(),
+        update={"pinned_release_keys": RELEASE_KEYS, "outlet": {"id": "beta", "kind": "direct"}},
+    )
+    c.close()
+
+
+def test_the_update_slices_survive_deactivate() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker)
+    store = InMemoryStore(PRODUCT)
+    c = v4_client(worker, store=store)
+    c.update.decide(channel="stable")
+    c.deactivate()
+    rec = store.read_cache()
+    assert rec is not None and set(rec.feeds) == {"stable"}
+    assert rec.docs == {}
+    c.close()
+
+
+def test_feed_and_release_record() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker)
+    c = v4_client(worker)
+    fc = c.update.feed(channel="stable")
+    assert (fc.channel, fc.source, fc.errors) == ("stable", "network", ())
+    pin = fc.feed.app.targets[0].release.sha256
+    rc = c.update.release_record(pin)
+    assert (rc.source, rc.pinned, rc.record.version) == ("network", True, "1.3.0")
+    assert c.update.release_record(pin).source == "cache"
+    with pytest.raises(UpdateError) as exc:
+        c.update.release_record("0" * 64)
+    assert exc.value.code == "not_found"
+    c.close()
+
+
+def test_a_staged_code_update_and_a_skipped_version() -> None:
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker)
+    c = v4_client(worker)
+    check = c.update.decide(channel="stable", skip_version="1.3.0")
+    # A skipped version is never re-offered automatically, but the binary still is (native or
+    # download are not code updates).
+    assert check.decision.action == "binary"
+    staged = c.update.decide(
+        channel="stable", staged=StagedUpdate(version="1.3.0", channel="stable")
+    )
+    assert staged.decision.to_dict() == {
+        "action": "code-ready",
+        "release": {"version": "1.3.0", "seq": 1, "sha256": next(iter(worker.records))},
+        "critical": False,
+        "discardStaged": False,
+    }
+    c.close()
+
+
+def test_build_url_uses_the_distribution_builds_route() -> None:
+    worker = Worker()
+    c = v4_client(worker)
+    assert c.update.build_url("1.3.0", "macos") is None  # discovery not loaded
+    c.discover()
+    assert c.update.build_url("1.3.0+b 1", "mac/os") == (
+        f"{BASE_URL}/{PRODUCT}/distribution/builds/1.3.0%2Bb%201/mac%2Fos"
+    )
+    c.close()
+
+
+def test_check_and_appcast_url_are_unchanged_by_the_update_options() -> None:
+    handler = _feed_routes(
+        **{
+            f"/{PRODUCT}/.well-known/polaris.json": httpx.Response(
+                200, json=discovery_doc(release=True, update=True)
+            )
+        }
+    )
+    c = make_client(handler, version="2.0.0", update=options())
+    c.discover()
+    assert c.update.check().updateAvailable is True
+    assert c.update.appcast_url() == f"{BASE_URL}/{PRODUCT}/update/appcast.xml"
+    c.close()
+
+
+def test_a_file_store_restart_keeps_the_floor(tmp_path: Any) -> None:
+    from polaris_key import FileStore
+
+    worker = Worker()
+    worker.feeds["stable"] = seeded(worker, seq=8, issued=NOW - 60)
+    first = v4_client(worker, store=FileStore(PRODUCT, str(tmp_path)))
+    first.update.decide(channel="stable")
+    first.close()
+
+    worker.feeds["stable"] = seeded(worker, seq=7, issued=NOW)
+    second = v4_client(worker, store=FileStore(PRODUCT, str(tmp_path)))
+    check = second.update.decide(channel="stable")
+    assert [e.code for e in check.errors] == ["feed-rollback"]
+    assert check.record == "cache"
+    second.close()
