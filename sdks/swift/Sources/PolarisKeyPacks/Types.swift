@@ -174,6 +174,23 @@ public struct PackPayload: Sendable, Equatable {
 }
 
 /// One variant of a pack record.
+/// A variant's chunk-index reference (plans/P4-10.md §2.2): `format` plus an object ref.
+/// `params` and other members are informative and not kept.
+public struct PackChunksRef: Sendable, Equatable {
+    public var format: String?
+    public var ref: PackObjectRef
+
+    public init(format: String?, ref: PackObjectRef) {
+        self.format = format
+        self.ref = ref
+    }
+
+    public init?(json: JSONValue?) {
+        guard let o = json?.objectValue, let ref = PackObjectRef(json: json) else { return nil }
+        self.init(format: o["format"]?.stringValue, ref: ref)
+    }
+}
+
 public struct PackVariant: Sendable, Equatable {
     public var variant: [String: String]
     public var payload: PackPayload
@@ -181,6 +198,8 @@ public struct PackVariant: Sendable, Equatable {
     public var files: PackFilesRef
     public var deltas: [PackDelta]
     public var requires: [String: JSONValue]?
+    /// plans/P4-10.md §2.2: the chunk index, valid but ignored on a `tree`.
+    public var chunks: PackChunksRef?
 
     public init?(json: JSONValue) {
         guard let o = json.objectValue, let payload = PackPayload(json: o["payload"]) else {
@@ -199,6 +218,7 @@ public struct PackVariant: Sendable, Equatable {
         self.files = files
         self.deltas = (o["deltas"]?.arrayValue ?? []).compactMap { PackDelta(json: $0) }
         self.requires = o["requires"]?.objectValue
+        self.chunks = PackChunksRef(json: o["chunks"])
     }
 }
 

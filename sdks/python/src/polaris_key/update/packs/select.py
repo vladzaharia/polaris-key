@@ -8,7 +8,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-from ...constants_generated import FILES_FORMAT, MAX_FILES_INDEX_BYTES, ErrorCode
+from ...constants_generated import (
+    CHUNKS_FORMAT,
+    FILES_FORMAT,
+    MAX_CHUNK_BYTES,
+    MAX_CHUNK_INDEX_BYTES,
+    MAX_FILES_INDEX_BYTES,
+    ErrorCode,
+)
 
 __all__ = [
     "usable_codec",
@@ -113,11 +120,42 @@ def _lex_less(x: List[int], y: List[int]) -> bool:
     return False
 
 
+def _chunk_target(
+    variant: Mapping[str, Any], chunk_index: Optional[Mapping[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """plans/P4-10.md §2.5: ``{indexBytes: chunks.bytes, records}`` when the variant is a usable
+    ``container``, ``chunks.format`` is ``pkey-chunks/1``, its codec is usable, ``chunks.size`` is
+    at most ``MAX_CHUNK_INDEX_BYTES``, the parsed index is given and bound to the payload, and no
+    record's ``len`` exceeds ``MAX_CHUNK_BYTES``; None otherwise."""
+    c = variant.get("chunks")
+    if chunk_index is None or not isinstance(c, dict):
+        return None
+    if variant["files"].get("layout") != "container":
+        return None
+    if c.get("format") != CHUNKS_FORMAT or not usable_codec(c.get("codec")):
+        return None
+    if not _num(c.get("size")) or c["size"] > MAX_CHUNK_INDEX_BYTES:
+        return None
+    payload = variant["payload"]
+    if (
+        chunk_index.get("payloadSize") != payload["size"]
+        or chunk_index.get("payloadSha256") != payload["sha256"]
+    ):
+        return None
+    records = [list(r) for r in chunk_index["records"]]
+    if any(r[1] > MAX_CHUNK_BYTES for r in records):
+        return None
+    return {"indexBytes": c["bytes"], "records": records}
+
+
 def plan_target(
-    variant: Mapping[str, Any], record_sha256: str, files_index: Optional[Mapping[str, Any]]
+    variant: Mapping[str, Any],
+    record_sha256: str,
+    files_index: Optional[Mapping[str, Any]],
+    chunk_index: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """``planTarget(variant, recordSha256, filesIndex | None)``: a variant onto the planner's
-    input. An unusable variant maps to no candidate at all. ``full`` needs a usable ref whose
+    """``planTarget(variant, recordSha256, filesIndex | None, chunkIndex = None)``: a variant
+    onto the planner's input (``chunks`` per plans/P4-10.md §2.5). An unusable variant maps to no candidate at all. ``full`` needs a usable ref whose
     size is the payload's (a tree's costs its index too, in two requests); ``files`` needs a
     readable (container: rebuildable) index; a ``payload`` delta is kept on a container, a
     ``files`` delta when ``files`` is kept and its ``patch`` ref is usable."""
@@ -191,7 +229,7 @@ def plan_target(
         "payload": payload,
         "full": full_t,
         "platform": None,
-        "chunks": None,
+        "chunks": _chunk_target(variant, chunk_index),
         "files": files_t,
         "deltas": deltas,
     }

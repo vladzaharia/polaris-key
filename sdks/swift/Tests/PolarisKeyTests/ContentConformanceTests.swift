@@ -1,4 +1,4 @@
-// @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record
+// @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record packs.index.chunks packs.apply.chunk
 //
 // The content corpus (`conformance/corpus/v2/content/cases.json`, plans/P4-01.md §4.4, P4-04)
 // through PolarisKeyPacks' production code:
@@ -10,6 +10,11 @@
 //   stampCases        §2.8's content stamp                      → parseContentStamp
 //   frameWindowCases  §2.7 rule 3's header window               → frameWindow
 //   applyCases        §2.9's appliers, verdicts and counters    → applyFull, applyDelta, applyFile
+//   chunkIndexCases   plans/P4-10.md §2.3 (planned: P4-11)      inputs materialised only
+//
+// Content corpus v2 (plans/P4-10.md §4.3) adds `chunkIndexCases` and eight `strategy: chunk`
+// apply cases. Swift's parser and applier are P4-11's: both are declared planned by exact id
+// (and in `parity.json`), never skipped silently.
 //
 // `content/` is not mirrored into the test bundle (plans/P4-01.md §4.1, §8.4): this runner reads
 // it from the checkout through `#filePath`, never `Bundle.module`. Verdicts are compared as JSON
@@ -109,6 +114,12 @@ final class ContentConformanceTests: XCTestCase {
             case "xor":
                 let at = try XCTUnwrap(mo["offset"]?.intValue)
                 bytes[at] ^= UInt8(try XCTUnwrap(mo["value"]?.intValue))
+            case "putU16", "putU32", "putU64":
+                // plans/P4-10.md §4.2: little-endian; a putU64 value is below 2^53.
+                let at = try XCTUnwrap(mo["offset"]?.intValue)
+                let value = UInt64(try XCTUnwrap(mo["value"]?.intValue))
+                let width = mo["op"]?.stringValue == "putU16" ? 2 : mo["op"]?.stringValue == "putU32" ? 4 : 8
+                for k in 0..<width { bytes[at + k] = UInt8((value >> (8 * UInt64(k))) & 0xff) }
             default: throw NSError(domain: "content", code: 1, userInfo: [NSLocalizedDescriptionKey: "unknown mutation \(m)"])
             }
         }
@@ -117,13 +128,62 @@ final class ContentConformanceTests: XCTestCase {
 
     func testVersionAndSections() throws {
         let c = try ContentCorpus.load()
-        XCTAssertEqual(c["contentCorpusVersion"], .int(1))
+        XCTAssertEqual(c["contentCorpusVersion"], .int(2))
         XCTAssertEqual(c["pathCases"]?.arrayValue?.count, 18)
         XCTAssertEqual(c["filesIndexCases"]?.arrayValue?.count, 15)
+        XCTAssertEqual(c["chunkIndexCases"]?.arrayValue?.count, 22)
         XCTAssertEqual(c["packSetIdCases"]?.arrayValue?.count, 7)
         XCTAssertEqual(c["stampCases"]?.arrayValue?.count, 10)
         XCTAssertEqual(c["frameWindowCases"]?.arrayValue?.count, 13)
-        XCTAssertEqual(c["applyCases"]?.arrayValue?.count, 19)
+        XCTAssertEqual(c["applyCases"]?.arrayValue?.count, 27)
+    }
+
+    /// plans/P4-10.md §4.3: the sections Swift declares planned until P4-11, by exact id.
+    static let chunkIndexPlanned = [
+        "chunks-v1-valid", "chunks-v2-valid", "chunks-short-header", "chunks-bad-magic",
+        "chunks-bad-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-bad-length",
+        "chunks-bad-length-count", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref",
+        "chunks-bad-bundle-range", "chunks-reserved-nonzero", "chunks-size-mismatch",
+        "chunks-zero-clen", "chunks-bad-length-wrap", "chunks-size-high-word", "chunks-ref-tampered",
+        "chunks-ref-over-max", "chunks-payload-mismatch", "chunks-bundle-size-saturated",
+    ]
+    static let chunkApplyPlanned = [
+        "chunk-v1-to-v2", "chunk-no-seed", "chunk-tampered-zstd", "chunk-tampered-raw",
+        "chunk-bundle-truncated", "chunk-seed-tampered", "chunk-seed-tampered-repair",
+        "chunk-index-for-other-payload",
+    ]
+
+    func testChunkSectionsAreDeclaredPlannedByExactId() throws {
+        let c = try ContentCorpus.load()
+        let idx = try XCTUnwrap(c["chunkIndexCases"]?.arrayValue).compactMap { $0.objectValue?["id"]?.stringValue }
+        XCTAssertEqual(idx, Self.chunkIndexPlanned)
+        let apply = try XCTUnwrap(c["applyCases"]?.arrayValue).compactMap { $0.objectValue }
+            .filter { $0["strategy"]?.stringValue == "chunk" }.compactMap { $0["id"]?.stringValue }
+        XCTAssertEqual(apply, Self.chunkApplyPlanned)
+        var u = URL(fileURLWithPath: #filePath)
+        for _ in 0..<3 { u.deleteLastPathComponent() }
+        let parity = try JSONDecoder().decode(
+            JSONValue.self, from: Data(contentsOf: u.appendingPathComponent("parity.json")))
+        for fid in ["packs.index.chunks", "packs.apply.chunk"] {
+            let e = parity.objectValue?["features"]?.objectValue?[fid]?.objectValue
+            XCTAssertEqual(e?["status"]?.stringValue, "planned", fid)
+            XCTAssertEqual(e?["wp"]?.stringValue, "P4-11", fid)
+        }
+        print("planned (P4-11): \(idx.count) chunkIndexCases, \(apply.count) chunk applyCases")
+    }
+
+    /// The `<ref>` inputs (the `put*` mutations included) materialise to the bytes each case's
+    /// `chunks` ref names, except in `chunks-ref-tampered`.
+    func testChunkIndexCaseInputs() throws {
+        let blobs = try ContentCorpus.blobs()
+        for c in try XCTUnwrap(ContentCorpus.load()["chunkIndexCases"]?.arrayValue) {
+            let o = try XCTUnwrap(c.objectValue)
+            let id = o["id"]!.stringValue!
+            let stored = try materialise(o["stored"]!, blobs)
+            let ref = try XCTUnwrap(o["chunks"]?.objectValue)
+            let matches = stored.count == ref["bytes"]?.intValue && sha256Of(stored) == ref["sha256"]?.stringValue
+            XCTAssertEqual(matches, id != "chunks-ref-tampered", id)
+        }
     }
 
     func testBlobsMatchTheTableAndNothingElseIsThere() throws {
@@ -169,11 +229,13 @@ final class ContentConformanceTests: XCTestCase {
     func testApplyCases() throws {
         let blobs = try ContentCorpus.blobs()
         let cases = try XCTUnwrap(ContentCorpus.load()["applyCases"]?.arrayValue)
-        XCTAssertEqual(cases.count, 19)
+        XCTAssertEqual(cases.count, 27)
         for (label, zstd) in Self.backends {
         for c in cases {
             let o = try XCTUnwrap(c.objectValue)
             let id = o["id"]!.stringValue!
+            // Planned (P4-11), asserted by exact id in testChunkSectionsAreDeclaredPlannedByExactId.
+            if o["strategy"]?.stringValue == "chunk", Self.chunkApplyPlanned.contains(id) { continue }
             var store: [String: [UInt8]] = [:]
             for (h, src) in o["objects"]?.objectValue ?? [:] { store[h] = try materialise(src, blobs) }
             let objects: ObjectPort = { h in store[h].map { MemorySource($0) } }
