@@ -323,6 +323,57 @@ export interface CatalogPin {
   delivery: string;
 }
 
+/** One live contentApi level of an app deliverable on a channel (P4-12). */
+export interface CatalogLiveLevel {
+  contentApi: number;
+  /** The live app releases at this level, newest first. */
+  appReleases: string[];
+}
+
+/** One resolved pack set (P4-12, `release_sets`): a selector and the releases it resolves. */
+export interface CatalogPackSet {
+  channel: string;
+  appDeliverable: string;
+  contentApi: number;
+  platform: string;
+  /** The variant key over every resolvable pack's axes; `""` for none. */
+  variant: string;
+  /** client-core's `packSetId` over the members: identical sets share it. */
+  packSetId: string;
+  packs: {
+    pack: string;
+    releaseId: string;
+    version: string;
+    seq: number;
+    /** The pack record's hash. */
+    sha256: string;
+  }[];
+  /** Packs no release satisfies at this selector (`content-floor`, `dependency`, …). P4-13
+   *  freezes the wire form. */
+  unsatisfied: { pack: string; reason: string; detail: string }[];
+  resolvedAt: number;
+}
+
+/** A pack floor for one contentApi line (P4-12, `release_pack_floors`). */
+export interface CatalogPackFloor {
+  deliverableId: string;
+  channel: string;
+  contentApi: number;
+  /** The lowest version that resolves for this line. */
+  minSupported: string;
+  modifiedAt: number;
+}
+
+/** One hold: an app release keeping a compatible pack at one release (P4-12, a mirror of the
+ *  signed `content.holds`). */
+export interface CatalogHold {
+  appReleaseId: string;
+  pack: string;
+  packReleaseId: string;
+  recordSha256: string;
+  reason: string | null;
+}
+
 /**
  * Release's read-only view of what exists (README §3.2). Every method reads; none writes.
  * Results are ordered deterministically so a consumer's output is stable.
@@ -414,6 +465,20 @@ export interface ReleaseCatalog {
   /** The packs build `buildId` of app release `appReleaseId` embeds, or null when its
    *  descriptor said nothing (or there is no such build). */
   embeds(appReleaseId: string, buildId: string): Promise<string[] | null>;
+
+  // ── Pack sets (P4-12): what P4-13 composes the feed from, P4-14 checks and P4-15 shows ──
+  /** The live contentApi levels of `appDeliverable` on `channel` (every non-yanked app release
+   *  the channel serves at or above its floor), ascending. `[]` for an unknown channel. */
+  liveLevels(appDeliverable: string, channel: string): Promise<CatalogLiveLevel[]>;
+  /** The stored resolved sets of `channel`, by selector. */
+  packSets(channel: string): Promise<CatalogPackSet[]>;
+  /** The pack floors per contentApi line on `channel`, by pack then level. A level-free floor is
+   *  the pack's `channelPolicies` `minSupported`. */
+  packFloors(channel: string): Promise<CatalogPackFloor[]>;
+  /** What app release `appReleaseId` holds, by pack id. */
+  holdsFor(appReleaseId: string): Promise<CatalogHold[]>;
+  /** Which app releases hold pack release `packReleaseId` (live references for GC). */
+  heldBy(packReleaseId: string): Promise<CatalogHold[]>;
 }
 
 // ── delivery (Distribution) ─────────────────────────────────────────────────────────────────

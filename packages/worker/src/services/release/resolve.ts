@@ -433,7 +433,7 @@ export interface BuildResolution {
 }
 
 /** `metadata_json.prerelease`, as the GitHub sync records it. */
-function prereleaseOf(row: Pick<ReleaseMetadataRow, "metadata_json">): boolean {
+export function prereleaseOf(row: Pick<ReleaseMetadataRow, "metadata_json">): boolean {
   if (!row.metadata_json) return false;
   try {
     return (
@@ -446,7 +446,7 @@ function prereleaseOf(row: Pick<ReleaseMetadataRow, "metadata_json">): boolean {
 }
 
 /** A release id that is a GitHub tag rather than the tagless `<deliverable>@<version>` form. */
-function tagOf(
+export function tagOf(
   row: Pick<ReleaseMetadataRow, "release_id" | "deliverable_id">,
 ): string | null {
   return row.release_id.startsWith(`${row.deliverable_id}@`)
@@ -454,7 +454,7 @@ function tagOf(
     : row.release_id;
 }
 
-function policyView(row: ReleaseChannelPolicyRow): PolicyView {
+export function policyView(row: ReleaseChannelPolicyRow): PolicyView {
   let includes: string[] | null = null;
   if (row.includes_json) {
     try {

@@ -85,6 +85,7 @@ import {
 import { guardStatement, RELEASE_DESCRIBED_BY_SQL } from "./guard.js";
 import { readPackDeliverableIds } from "./packs/deliverables.js";
 import { appContentStatements, planAppContent } from "./packs/content.js";
+import { resolveAndStore, type PackSetReport } from "./packs/sets.js";
 import { RELEASE_RECORD_REJECTED } from "./records.js";
 import {
   artifactContentType,
@@ -232,6 +233,8 @@ export type IngestResult =
       /** The release's `seq`: the stored one, the descriptor's explicit one, or the next one
        *  as of the plan's read. */
       seq: number;
+      /** What the release does to the resolved pack sets (P4-12), or null. */
+      packSets: PackSetReport | null;
     }
   | {
       ok: false;
@@ -404,6 +407,8 @@ export type Plan =
       descriptor: ReleaseDescriptor;
       /** The seq the release holds or takes (the stored, explicit or next one at this read). */
       effectiveSeq: number;
+      /** The pack-set report of the release's content (P4-12), or null. */
+      packSets: PackSetReport | null;
     }
   | Extract<IngestResult, { ok: false }>;
 
@@ -473,6 +478,7 @@ export async function planDescriptorIngest(
         seq: null,
         descriptor: d,
         effectiveSeq: existing?.seq ?? 0,
+        packSets: null,
       };
     return refuse(
       "release_exists",
@@ -615,7 +621,11 @@ export async function planDescriptorIngest(
   }
 
   // 5b. The release's packs (P4-02): its `content` and `embeds` against the stored records.
-  const content = await planAppContent(db, product, d);
+  const content = await planAppContent(db, product, d, {
+    releaseId,
+    seq: seq ?? currentMax + 1,
+    cfg,
+  });
   if (!content.ok)
     return {
       ok: false,
@@ -848,6 +858,7 @@ export async function planDescriptorIngest(
     seq: existing?.seq != null || d.seq === undefined ? null : d.seq,
     descriptor: d,
     effectiveSeq: seq ?? currentMax + 1,
+    packSets: content.report,
   };
 }
 
@@ -1040,6 +1051,9 @@ export async function ingestReleaseDescriptor(
         retryable: true,
       };
     }
+    // A new live app release may add a contentApi level (P4-12): re-resolve the pack sets.
+    if (plan.descriptor.content !== undefined)
+      await resolveAndStore(db, product, opts.now);
   }
   return {
     ok: true,
@@ -1050,6 +1064,7 @@ export async function ingestReleaseDescriptor(
     planned: plan.planned,
     descriptor: plan.descriptor,
     seq: plan.effectiveSeq,
+    packSets: plan.packSets,
   };
 }
 

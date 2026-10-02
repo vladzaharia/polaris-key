@@ -41,6 +41,7 @@ import {
   type ReleaseChannelFloorRow,
 } from "./store.js";
 import { semverOfTag } from "./channels.js";
+import { resolveAndStore } from "./packs/sets.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import type { ManifestAppDeliverable } from "@polaris-key/manifest";
 import { ingestGithubDescriptors, readAppDeliverable } from "./descriptor.js";
@@ -264,6 +265,8 @@ export async function syncReleaseStoreReport(
     await db.batch(sync.statements);
     // What GitHub publishes may have changed: no cached resolution survives a sync (P2-05).
     await bumpReleaseGeneration(env, product, now);
+    // A descriptor ingested from GitHub may add a live contentApi level (P4-12).
+    await resolveAndStore(db, product, now);
   }
   return {
     statements: sync.statements.length,

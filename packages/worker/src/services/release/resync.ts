@@ -48,6 +48,7 @@ import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
 import { releaseStoreSync } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
+import { resolveAndStore } from "./packs/sets.js";
 import { releaseKeysForSync } from "./records.js";
 import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
@@ -655,6 +656,8 @@ async function applyRepoManifest(
     // A resync can change the tag filter, the manual channels and the store: drop every cached
     // resolution of this product (P2-05, `ghCache.ts`).
     await bumpReleaseGeneration(env, slug, now);
+    // ...and may change a pack's binding or channels, or the store's app releases (P4-12).
+    if (rel) await resolveAndStore(db, slug, now);
   }
 
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");

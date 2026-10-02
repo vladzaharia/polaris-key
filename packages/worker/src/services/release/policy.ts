@@ -32,7 +32,13 @@
  *   unyank    lifts the yank.
  *   update    the operator PUT: any of pointer, pinned, minSupported (the DEVICE floor, P2-03 —
  *             not P0-02's anti-rollback floor, which keeps its own `…/floor` endpoint) and
- *             critical.
+ *             critical. With `contentApi` (P4-12, a pack deliverable only) it sets or clears the
+ *             pack's floor for that contentApi line (`release_pack_floors`) and nothing else:
+ *             "foes ≥ 1.3.4 for contentApi 3" backports a fix to an older content line.
+ *
+ * Every change re-resolves the product's pack sets (P4-12, `packs/sets.ts`) after it is written.
+ * A floor that leaves a content line with no release is NOT refused: the set is stored with its
+ * `unsatisfied` marker, which is how an operator deliberately blocks an old line (CONTENT §6.8).
  *   revert    hands the row back to the manifest; the next resync re-applies its declaration.
  *
  * Every write but `revert` claims the row for the operator (`source = 'admin'`), so a resync
@@ -48,6 +54,7 @@ import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import { parseManualChannels } from "./channels.js";
 import type { ReleaseConfigRow } from "./config.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
+import { resolveAndStore } from "./packs/sets.js";
 import {
   getChannelPolicy,
   getDeliverable,
@@ -66,6 +73,7 @@ import {
   parsesInScheme,
   versionSchemeOf,
 } from "./resolve.js";
+import { parseManifestPackDeliverable } from "@polaris-key/manifest";
 
 export { knownChannels };
 import type { ReleaseMetadataRow } from "./store.js";
@@ -157,6 +165,68 @@ export interface ChannelPolicyView {
   source: "manifest" | "admin";
   modifiedAt: number | null;
   modifiedBy: string | null;
+  /** A pack's floors per contentApi line on this channel (P4-12); absent for the app. */
+  packFloors?: PackFloorView[];
+}
+
+/** One pack floor for one contentApi line (`release_pack_floors`). */
+export interface PackFloorView {
+  contentApi: number;
+  minSupported: string;
+  modifiedAt: number;
+  modifiedBy: string | null;
+}
+
+/** A pack deliverable's floors on `channel`, by contentApi (P4-12). */
+export async function packFloorViews(
+  db: Db,
+  product: string,
+  deliverable: string,
+  channel: string,
+): Promise<PackFloorView[]> {
+  return (
+    await db.all<{
+      content_api: number;
+      min_version: string;
+      modified_at: number;
+      modified_by: string | null;
+    }>(
+      `SELECT content_api, min_version, modified_at, modified_by FROM release_pack_floors
+        WHERE product = ? AND deliverable_id = ? AND channel = ? ORDER BY content_api`,
+      product,
+      deliverable,
+      channel,
+    )
+  ).map((r) => ({
+    contentApi: r.content_api,
+    minSupported: r.min_version,
+    modifiedAt: r.modified_at,
+    modifiedBy: r.modified_by,
+  }));
+}
+
+/** The policy view, with a pack's per-contentApi floors. */
+async function viewOf(
+  db: Db,
+  key: { product: string; deliverableId: string; channel: string },
+  deliverable: ReleaseDeliverableRow,
+): Promise<ChannelPolicyView> {
+  const view = policyView(
+    await getChannelPolicy(db, key),
+    key.deliverableId,
+    key.channel,
+  );
+  return deliverable.kind === "pack"
+    ? {
+        ...view,
+        packFloors: await packFloorViews(
+          db,
+          key.product,
+          key.deliverableId,
+          key.channel,
+        ),
+      }
+    : view;
 }
 
 export function policyView(
@@ -207,6 +277,28 @@ export async function resolvePolicyChannel(
   if (!(await knownChannels(db, product, cfg)).includes(channel))
     return refuse(404, "unknown_channel", "no such channel");
   return { ok: true, channel };
+}
+
+/**
+ * `resolvePolicyChannel`, widened for a pack deliverable by the channels it declares (P4-12,
+ * `.pkey/release` `channels: [events]`): a pack may have a policy on a channel the app never
+ * publishes to.
+ */
+async function policyChannelFor(
+  db: Db,
+  product: string,
+  cfg: Pick<ReleaseConfigRow, "manual_channels_json"> | null,
+  raw: string,
+  deliverable: ReleaseDeliverableRow,
+): Promise<PolicyResult<{ channel: string }>> {
+  const ch = await resolvePolicyChannel(db, product, cfg, raw);
+  if (ch.ok || deliverable.kind !== "pack") return ch;
+  const pack = parseManifestPackDeliverable(deliverable.def_json);
+  const channel = canonicalChannel(
+    raw,
+    parseManualChannels(cfg?.manual_channels_json),
+  );
+  return channel && pack?.channels.includes(channel) ? { ok: true, channel } : ch;
 }
 
 async function deliverableOf(
@@ -274,10 +366,13 @@ export async function applyPointerOp(
   actor: PolicyActor,
   now: number,
 ): Promise<PolicyResult<{ policy: ChannelPolicyView }>> {
-  const ch = await resolvePolicyChannel(db, product, cfg, input.channel);
-  if (!ch.ok) return ch;
+  const plain = await resolvePolicyChannel(db, product, cfg, input.channel);
   const d = await deliverableOf(db, product, input.deliverable);
-  if (!d.ok) return d;
+  if (!d.ok) return plain.ok ? d : plain;
+  const ch = plain.ok
+    ? plain
+    : await policyChannelFor(db, product, cfg, input.channel, d.deliverable);
+  if (!ch.ok) return ch;
   const deliverable = d.deliverable.deliverable_id;
   const key = { product, deliverableId: deliverable, channel: ch.channel };
 
@@ -322,14 +417,8 @@ export async function applyPointerOp(
     summary,
   );
   await bumpReleaseGeneration(env, product, now);
-  return {
-    ok: true,
-    policy: policyView(
-      await getChannelPolicy(db, key),
-      deliverable,
-      ch.channel,
-    ),
-  };
+  await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, d.deliverable) };
 }
 
 // ── The operator PUT ─────────────────────────────────────────────────────────────────────────
@@ -355,6 +444,7 @@ export async function updateChannelPolicy(
     "pinned",
     "minSupported",
     "critical",
+    "contentApi",
   ]);
   const unknown = Object.keys(body).filter((k) => !allowed.has(k));
   if (unknown.length > 0)
@@ -365,12 +455,17 @@ export async function updateChannelPolicy(
       unknown,
     );
 
-  const ch = await resolvePolicyChannel(db, product, cfg, rawChannel);
-  if (!ch.ok) return ch;
+  const plain = await resolvePolicyChannel(db, product, cfg, rawChannel);
   const d = await deliverableOf(db, product, body.deliverable);
-  if (!d.ok) return d;
+  if (!d.ok) return plain.ok ? d : plain;
+  const ch = plain.ok
+    ? plain
+    : await policyChannelFor(db, product, cfg, rawChannel, d.deliverable);
+  if (!ch.ok) return ch;
   const deliverable = d.deliverable.deliverable_id;
   const key = { product, deliverableId: deliverable, channel: ch.channel };
+  if (body.contentApi !== undefined)
+    return updatePackFloor(env, db, product, d.deliverable, key, body, actor, now);
   const existing = await getChannelPolicy(db, key);
 
   const patch: ChannelPolicyPatch = {};
@@ -450,14 +545,109 @@ export async function updateChannelPolicy(
     `Set ${deliverable} ${ch.channel}: ${changed.join(", ")}`,
   );
   await bumpReleaseGeneration(env, product, now);
-  return {
-    ok: true,
-    policy: policyView(
-      await getChannelPolicy(db, key),
-      deliverable,
-      ch.channel,
-    ),
-  };
+  await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, d.deliverable) };
+}
+
+/**
+ * The PUT with `contentApi` (P4-12): set (`minSupported` a version in the pack's scheme) or clear
+ * (`minSupported: null`) a pack's floor for one contentApi line on one channel. Operator-owned
+ * (`source = 'admin'`); only `deliverable`, `contentApi` and `minSupported` may ride along. Never
+ * refused because the floor leaves the line without a release: the re-resolved set stores the
+ * `unsatisfied` marker instead.
+ */
+async function updatePackFloor(
+  env: Env,
+  db: Db,
+  product: string,
+  deliverable: ReleaseDeliverableRow,
+  key: { product: string; deliverableId: string; channel: string },
+  body: Record<string, unknown>,
+  actor: PolicyActor,
+  now: number,
+): Promise<PolicyResult<{ policy: ChannelPolicyView }>> {
+  if (deliverable.kind !== "pack")
+    return refuse(
+      422,
+      "bad_content_api",
+      "a floor per contentApi line is a pack's; the app's floor is minSupported alone",
+      ["contentApi", "deliverable"],
+    );
+  const contentApi = body.contentApi;
+  if (
+    typeof contentApi !== "number" ||
+    !Number.isSafeInteger(contentApi) ||
+    contentApi < 1
+  )
+    return refuse(
+      422,
+      "bad_content_api",
+      "contentApi must be an integer of at least 1",
+      ["contentApi"],
+    );
+  const extra = Object.keys(body).filter(
+    (k) => k !== "deliverable" && k !== "contentApi" && k !== "minSupported",
+  );
+  if (extra.length > 0)
+    return refuse(
+      422,
+      "content_api_floor_only",
+      `with contentApi only minSupported may be set (not ${extra.join(", ")})`,
+      extra,
+    );
+  const min = body.minSupported;
+  if (min === undefined)
+    return refuse(422, "empty_update", "nothing to change", ["minSupported"]);
+  const scheme = versionSchemeOf(deliverable);
+  if (min !== null && (typeof min !== "string" || !parsesInScheme(scheme, min)))
+    return refuse(
+      422,
+      "bad_min_supported",
+      `minSupported must be a ${scheme} version or null`,
+      ["minSupported"],
+    );
+  const by = actorId(actor);
+  if (min === null)
+    await db.run(
+      `DELETE FROM release_pack_floors
+        WHERE product = ? AND deliverable_id = ? AND channel = ? AND content_api = ?`,
+      product,
+      key.deliverableId,
+      key.channel,
+      contentApi,
+    );
+  else
+    await db.run(
+      `INSERT INTO release_pack_floors
+         (product, deliverable_id, channel, content_api, min_version, source, created_at,
+          modified_at, modified_by)
+       VALUES (?, ?, ?, ?, ?, 'admin', ?, ?, ?)
+       ON CONFLICT(product, deliverable_id, channel, content_api) DO UPDATE SET
+         min_version = excluded.min_version, source = 'admin',
+         modified_at = excluded.modified_at, modified_by = excluded.modified_by`,
+      product,
+      key.deliverableId,
+      key.channel,
+      contentApi,
+      min,
+      now,
+      now,
+      by,
+    );
+  await auditChange(
+    db,
+    product,
+    actor,
+    now,
+    "release.channel.floor",
+    { kind: "channel", id: `${key.deliverableId}/${key.channel}` },
+    min === null
+      ? `Cleared ${key.deliverableId} ${key.channel}'s floor for contentApi ${contentApi}`
+      : `Set ${key.deliverableId} ${key.channel}'s floor for contentApi ${contentApi} to ${min}`,
+  );
+  await bumpReleaseGeneration(env, product, now);
+  await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, deliverable) };
 }
 
 /** `POST …/release/channels/{channel}/revert`: hand the row back to the manifest. */
@@ -471,10 +661,13 @@ export async function revertChannelPolicy(
   actor: PolicyActor,
   now: number,
 ): Promise<PolicyResult<{ policy: ChannelPolicyView }>> {
-  const ch = await resolvePolicyChannel(db, product, cfg, rawChannel);
-  if (!ch.ok) return ch;
+  const plain = await resolvePolicyChannel(db, product, cfg, rawChannel);
   const d = await deliverableOf(db, product, body.deliverable);
-  if (!d.ok) return d;
+  if (!d.ok) return plain.ok ? d : plain;
+  const ch = plain.ok
+    ? plain
+    : await policyChannelFor(db, product, cfg, rawChannel, d.deliverable);
+  if (!ch.ok) return ch;
   const deliverable = d.deliverable.deliverable_id;
   const key = { product, deliverableId: deliverable, channel: ch.channel };
   if (!(await revertChannelPolicyToManifest(db, key, actorId(actor), now)))
@@ -489,14 +682,8 @@ export async function revertChannelPolicy(
     `Handed ${deliverable} ${ch.channel} back to the manifest`,
   );
   await bumpReleaseGeneration(env, product, now);
-  return {
-    ok: true,
-    policy: policyView(
-      await getChannelPolicy(db, key),
-      deliverable,
-      ch.channel,
-    ),
-  };
+  await resolveAndStore(db, product, now);
+  return { ok: true, policy: await viewOf(db, key, d.deliverable) };
 }
 
 // ── Yanks ────────────────────────────────────────────────────────────────────────────────────
@@ -549,6 +736,7 @@ export async function yank(
     `Yanked ${releaseId}: ${reason.trim()}`,
   );
   await bumpReleaseGeneration(env, product, now);
+  await resolveAndStore(db, product, now);
   return {
     ok: true,
     yank: { releaseId, yanked: true, reason: reason.trim(), at: now, by },
@@ -576,6 +764,7 @@ export async function unyank(
     `Lifted the yank on ${releaseId}`,
   );
   await bumpReleaseGeneration(env, product, now);
+  await resolveAndStore(db, product, now);
   return {
     ok: true,
     yank: { releaseId, yanked: false, reason: null, at: null, by: null },

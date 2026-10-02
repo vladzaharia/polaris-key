@@ -69,7 +69,21 @@ export type RecordRefusalReason =
   | "pin-missing"
   | "pin-gated"
   | "embeds"
-  | "pack-unreadable";
+  | "pack-unreadable"
+  // P4-12: compatible and standalone packs, holds and the publish checks.
+  | "pack-requires"
+  | "pack-channel"
+  | "pack-unsatisfiable"
+  | "pack-sets-bound"
+  | "pin-requires"
+  | "hold-unknown"
+  | "hold-mismatch"
+  | "hold-yanked"
+  | "hold-binding"
+  | "hold-requires"
+  | "hold-unsatisfiable"
+  | "content-unsatisfied"
+  | "pack-channels-conflict";
 
 export type RecordCheck =
   | {

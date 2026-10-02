@@ -712,6 +712,7 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       planned: plan.planned,
       unverified,
       ...(record ? { record: { sha256: record.sha256, kid: record.kid } } : {}),
+      ...(plan.packSets ? { packSets: plan.packSets } : {}),
     });
 
   // 4. Claim, promote, ingest.
@@ -853,6 +854,7 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     outcome: result.outcome,
     descriptorSha256: result.descriptorSha256,
     ...(storedRecord ? { record: storedRecord } : {}),
+    ...(result.packSets ? { packSets: result.packSets } : {}),
   });
 }
 
