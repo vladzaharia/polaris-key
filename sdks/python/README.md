@@ -152,6 +152,34 @@ and Identity are OFF in that default, so their sub-clients raise
 not advertised must not be reachable. License and Config are ON, because an offline-first
 client must not lose its gate to an unreachable control plane.
 
+### supports() and capabilities
+
+`client.supports(feature)` answers whether a feature (a `Feature` id, `Feature.CONFIG_SECRET`)
+works here, right now: `Supported(feature)`, or `Unsupported(feature, reason, detail)`. Both
+have a `supported` property. `reason` is an `UnsupportedReason` value:
+
+| Reason       | Meaning                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| `runtime`    | this runtime cannot do it at all (`ui.kit`: the Python SDK ships no UI toolkit)                  |
+| `outlet`     | the outlet the install came from forbids it                                                      |
+| `product`    | the product does not run the service that owns it (`client.capabilities()`)                      |
+| `dependency` | an optional dependency is missing (`core.store` without the `keyring` extra or a usable backend) |
+| `version`    | this SDK version does not implement the feature yet, or does not know the id                     |
+
+The answer comes from the capability table generated from this SDK's parity manifest
+(`CAPABILITIES`), the services the client believes the product runs, and the environment. It is
+offline and side-effect free: it never calls the network and never reads the keyring. A call
+into an unsupported feature raises `UnsupportedError`, a `PolarisError` with code
+`unsupported` and the same `feature`, `reason` and `detail`.
+
+Without the `keyring` extra (or with a `fail`/`null` backend) the token still persists, in a
+0600 file. `store_status()` then reports `keyring-unavailable`, and
+`supports(Feature.CORE_STORE)` reports `dependency`.
+
+`client.caps()` lists the feature ids `supports()` answers Supported for, in registry order.
+Every device report (`devices/report`, after each sync) carries it as `caps`, so the console
+can see what the fleet can do.
+
 ### Where the trust set comes from
 
 > [!WARNING]
