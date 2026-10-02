@@ -406,7 +406,7 @@ export async function promote(
     alreadyStored = true;
   }
 
-  await recordObject(
+  const recorded = await recordObject(
     record.db,
     {
       storageKey: targetKey,
@@ -417,6 +417,10 @@ export async function promote(
     },
     record.now,
   );
+  // The collector has claimed the object for deletion (P4-14, `blobGc.ts`): its bytes may be gone
+  // a moment from now, so no ref may be earned to it. Retryable: once the sweep has deleted it, a
+  // fresh promote stores the bytes again.
+  if (!recorded) return { ok: false, reason: "changed" };
   return { ok: true, key: targetKey, alreadyStored, verifiedBy: verified };
 }
 
@@ -430,16 +434,27 @@ export interface BlobObjectRow {
   gated: boolean;
 }
 
-/** Record a stored, verified object. Written by `promote` only; a no-op if already recorded. */
+/**
+ * Record a stored, verified object. Written by `promote` only. Already recorded: the row is kept
+ * (its `created_at` is when the LOCK started, so it never moves) and its `unreferenced_since` is
+ * cleared, so the collector's grace period starts again and a publish in flight has the whole of
+ * it to write its ref (P4-14, `blobGc.ts`).
+ *
+ * Answers `false` when the collector has CLAIMED the object (`gc_claimed_at`): its delete is in
+ * progress, and the caller must not earn a ref to it. The claim and this statement are each one
+ * atomic D1 statement, so either the claim comes first (and this answers `false`) or this does
+ * (and the cleared `unreferenced_since` fails the claim's condition).
+ */
 export async function recordObject(
   db: Db,
   row: BlobObjectRow,
   now: number,
-): Promise<void> {
+): Promise<boolean> {
   await db.run(
     `INSERT INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(storage_key) DO NOTHING`,
+     ON CONFLICT(storage_key) DO UPDATE SET unreferenced_since = NULL
+       WHERE blob_objects.gc_claimed_at IS NULL`,
     row.storageKey,
     row.sha256,
     row.size,
@@ -448,6 +463,11 @@ export async function recordObject(
     now,
     now,
   );
+  const claimed = await db.first<{ c: number | null }>(
+    "SELECT gc_claimed_at AS c FROM blob_objects WHERE storage_key = ?",
+    row.storageKey,
+  );
+  return claimed !== null && claimed.c === null;
 }
 
 /**
