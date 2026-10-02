@@ -69,6 +69,11 @@ export {
   objectRef,
   packSetId,
   parseContentStamp,
+  MAX_STORED_REVOCATIONS,
+  stampHolds,
+  type RevocationsDoc,
+  type RevocationsSnapshot,
+  type StoredRevocation,
   parseFilesIndex,
   treeDigest,
   variantKey,
@@ -219,6 +224,7 @@ export {
   type FetchOutcome,
   type RunUpdateCheckOptions,
   type RunUpdateCheckResult,
+  type UpdateCheckContent,
   type UpdateCheckError,
 } from "./check.js";
 

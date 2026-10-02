@@ -57,8 +57,23 @@ export {
   type PacksSnapshot,
   type PackStorage,
   type RecordFetch,
+  type RevocationsSnapshot,
   type StagedObject,
 } from "./engine.js";
+export {
+  MAX_STORED_REVOCATIONS,
+  REVOCATIONS_VERSION,
+  capRevocations,
+  clearRelearn,
+  emptyRevocations,
+  parseRevocations,
+  reloadRevocations,
+  serializeRevocations,
+  stampHolds,
+  storeRevocation,
+  type RevocationsDoc,
+  type StoredRevocation,
+} from "./revocations.js";
 export {
   matchEmbedded,
   verifyMarker,

@@ -6,6 +6,7 @@
 // `stage-matrix.json` pins what the machine does with them.
 
 import type { AppContent } from "@polaris-key/protocol/packs";
+import type { PackTarget } from "@polaris-key/protocol/update";
 import type { BootEvent, BootFetchResult, BootOptions } from "../stages.js";
 import type { PackEngine } from "./engine.js";
 import { PackError } from "./engine.js";
@@ -41,6 +42,13 @@ export interface RunBootFetchOptions {
   metered?: boolean;
   /** The player's answer to `consent_needed`: true to download, false to decline. */
   answer?: (bytes: number, metered: boolean) => Promise<boolean>;
+  /**
+   * A `packs` decision's `install` list (plans/P4-13.md §2.5 "Applying a packs answer"): its
+   * `required` and `essential` entries are installed here, before mount, at exactly the named
+   * release; the others come back in `background` for the host to install after the boot
+   * (`engine.ensureReleases`). Omitted: the stamp's pins, as before.
+   */
+  install?: readonly PackTarget[];
 }
 
 /**
@@ -53,15 +61,29 @@ export interface RunBootFetchOptions {
 export async function runBootFetch(
   engine: PackEngine,
   opts: RunBootFetchOptions,
-): Promise<{ result: BootFetchResult; installed: string[] }> {
+): Promise<{
+  result: BootFetchResult;
+  installed: string[];
+  /** With `install`: its entries that are neither required nor essential (install after
+   *  boot). */
+  background?: PackTarget[];
+}> {
   const { requiredPacks, essentialPacks } = bootPackOptions(opts.stamp);
   const wanted = [...new Set([...requiredPacks, ...essentialPacks])];
+  const blocking = new Set(wanted);
+  const targets = new Map<string, PackTarget>();
+  const background: PackTarget[] = [];
+  for (const t of opts.install ?? []) {
+    if (blocking.has(t.pack)) targets.set(t.pack, t);
+    else background.push(t);
+  }
   const metered = opts.metered === true;
   const installedNow = (): string[] => {
     const running = engine.state().running;
     const pins = new Map(
       (opts.stamp?.pins ?? []).map((p) => [p.pack, p.release.sha256]),
     );
+    for (const [id, t] of targets) pins.set(id, t.release.sha256);
     return wanted.filter(
       (id) =>
         running[id] !== undefined && running[id]!.recordSha256 === pins.get(id),
@@ -70,10 +92,20 @@ export async function runBootFetch(
   const done = (result: BootFetchResult) => {
     const installed = installedNow();
     opts.send({ type: "fetch.done", result, installed });
-    return { result, installed };
+    return opts.install
+      ? { result, installed, background }
+      : { result, installed };
   };
 
-  const est = await engine.estimate(wanted);
+  // The decision's targets install at exactly their release; the other wanted packs at the pin.
+  const pinned = wanted.filter((id) => !targets.has(id));
+  const est = await engine.estimate(pinned);
+  if (targets.size > 0) {
+    const t = await engine.estimateReleases([...targets.values()]);
+    est.bytes += t.bytes;
+    est.packs.push(...t.packs);
+    est.refused.push(...t.refused);
+  }
   const policy = opts.consent ?? "metered";
   const ask =
     est.bytes > 0 && (policy === "always" || (policy === "metered" && metered));
@@ -98,7 +130,9 @@ export async function runBootFetch(
   try {
     for (const id of est.packs) {
       try {
-        await engine.ensure([id]);
+        const t = targets.get(id);
+        if (t) await engine.ensureReleases([t]);
+        else await engine.ensure([id]);
       } catch (e) {
         result =
           e instanceof PackError && e.code === "network-error"

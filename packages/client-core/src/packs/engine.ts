@@ -27,7 +27,22 @@ import type {
   PackVariant,
 } from "@polaris-key/protocol/packs";
 import { PolarisError } from "../errors.js";
-import { verifyReleaseRecord } from "../record.js";
+import {
+  newerRevocation,
+  verifyReleaseRecord,
+  type VerifiedRevocation,
+} from "../record.js";
+import {
+  clearRelearn,
+  emptyRevocations,
+  isEmptyRevocations,
+  parseRevocations,
+  reloadRevocations,
+  serializeRevocations,
+  storeRevocation,
+  type RevocationsDoc,
+  type StoredRevocation,
+} from "./revocations.js";
 import { applyDelta, applyFile, applyFull, type ApplyResult } from "./apply.js";
 import { parseFilesIndex } from "./files.js";
 import { matchEmbedded, verifyMarker, type EmbeddedPayload } from "./marker.js";
@@ -207,6 +222,12 @@ export interface PackEngineOptions {
   transports?: readonly string[];
   storage: PackStorage;
   state: PackStateStore;
+  /**
+   * The sibling `revocations.json` (plans/P4-13.md §2.5): the same store seam with a second key,
+   * its own atomic replace and quarantine. Omit it and revocations live in memory for the life
+   * of the process only. Never created empty: a product with no revocations has no such file.
+   */
+  revocations?: PackStateStore;
   fetchRecord: RecordFetch;
   fetchObject: ObjectFetch;
   /** The licence's granted flags, or null when the product runs no License service (the server
@@ -270,6 +291,19 @@ export interface PacksSnapshot {
   stateIssue: "torn" | "unreadable" | null;
 }
 
+/** What `revocations()` reports (plans/P4-13.md §2.5). */
+export interface RevocationsSnapshot {
+  /** Revoked target hash → the stored winner (persisted, or this process's only). */
+  revoked: Record<string, StoredRevocation>;
+  /** The verified revocation of every revoked target, replacement included. */
+  verified: Record<string, VerifiedRevocation>;
+  /** Packs whose embedded baselines are refused until a fresh feed re-teaches them. */
+  relearn: string[];
+  /** `torn` (quarantined and replaced), `unreadable` (nothing is written this process), or
+   *  null. */
+  issue: "torn" | "unreadable" | null;
+}
+
 /** `preflight`'s answer. */
 type Preflight =
   | { kind: "current"; install: PackInstall }
@@ -321,6 +355,15 @@ export class PackEngine {
    *  re-verified before a rollback uses it. */
   private readonly unverifiedPrevious = new Set<string>();
   private doc: PackStateDoc | null = null;
+  /** The revocations (plans/P4-13.md §2.5): the sibling document as loaded and updated. */
+  private revDoc: RevocationsDoc = emptyRevocations();
+  /** Every revocation verified in this process (loaded or learned), by target. */
+  private readonly revVerified = new Map<string, VerifiedRevocation>();
+  /** The JWS of each revocation learned in this process, by target. */
+  private readonly revJws = new Map<string, string>();
+  private revIssue: "torn" | "unreadable" | null = null;
+  /** Whether `revocations.json` exists (it is never created empty). */
+  private revFile = false;
   /** Plan ids `estimate` staged an index under, reused by the next `ensure`. */
   private readonly preflightPlans = new Map<
     string,
@@ -462,11 +505,15 @@ export class PackEngine {
       for (const [id, i] of Object.entries(parsed.previous))
         if (deferred.has(i)) this.deferred.previous[id] = i;
       this.doc = doc;
+      // plans/P4-13.md §2.5: the sibling revocations, before anything mounts.
+      await this.loadRevocations(unreadable);
       // This boot's set: every active install (restart packs mount now), else the embedded
-      // baseline.
-      for (const i of Object.values(doc.active)) await this.activate(i);
+      // baseline. A revoked release never activates or mounts (`pack-revoked`).
+      for (const i of Object.values(doc.active))
+        if (!this.isRevoked(i.recordSha256)) await this.activate(i);
       for (const [id, e] of this.embedded)
-        if (!this.running.has(id)) this.running.set(id, e);
+        if (!this.running.has(id) && !this.embeddedRefused(e))
+          this.running.set(id, e);
       if (!unreadable) await this.persist();
       await this.collect();
       return { refused };
@@ -527,6 +574,8 @@ export class PackEngine {
       const doc = this.requireLoaded();
       const before = doc.active[packId];
       const prev = doc.previous[packId];
+      // plans/P4-13.md §2.5: never back to a revoked release.
+      if (prev && this.isRevoked(prev.recordSha256)) return false;
       if (prev && this.unverifiedPrevious.has(packId)) {
         // Carried over from an entry whose check could not run: verify it now.
         let ok = false;
@@ -572,17 +621,56 @@ export class PackEngine {
   }
 
   /**
+   * Install exact releases (a `packs` decision's `install`, plans/P4-13.md §2.6): each pack's
+   * named release, verified against the pinned release keys with that pin, instead of the stamp's
+   * pin. Raises `pack-revoked` for a release a verified revocation names.
+   */
+  ensureReleases(
+    targets: readonly {
+      pack: string;
+      release: { sha256: string; seq: number; version: string };
+    }[],
+  ): Promise<PackInstall[]> {
+    return this.serialised(async () => {
+      this.refuseUnreadable();
+      const out: PackInstall[] = [];
+      for (const t of targets)
+        out.push(await this.ensureOne(t.pack, t.release));
+      return out;
+    });
+  }
+
+  /**
    * Preflight each pack (CONTENT §10 step 1: record, type, entitlement, variant, index, plan)
    * without downloading the payload, and sum the chosen strategies' bytes: the size a consent
    * dialog discloses (Apple 4.2.3(ii)). The index each tree stages is reused by `ensure`.
    */
   estimate(packIds: readonly string[]): Promise<PackEstimate> {
+    return this.estimateAll(packIds.map((id) => ({ pack: id })));
+  }
+
+  /** `estimate` for exact releases (a `packs` decision's `install`, plans/P4-13.md §2.6). */
+  estimateReleases(
+    targets: readonly {
+      pack: string;
+      release: { sha256: string; seq: number; version: string };
+    }[],
+  ): Promise<PackEstimate> {
+    return this.estimateAll(targets);
+  }
+
+  private estimateAll(
+    items: readonly {
+      pack: string;
+      release?: { sha256: string; seq: number; version: string };
+    }[],
+  ): Promise<PackEstimate> {
     return this.serialised(async () => {
       this.refuseUnreadable();
       const out: PackEstimate = { bytes: 0, packs: [], refused: [] };
-      for (const id of packIds) {
+      for (const { pack: id, release } of items) {
         try {
-          const pre = await this.preflight(id);
+          const pre = await this.preflight(id, release);
           if (pre.kind === "current") continue;
           if (pre.plan.strategy === "noop") continue;
           out.packs.push(id);
@@ -715,8 +803,197 @@ export class PackEngine {
       this.stateIssue = null;
       this.gcHold = false;
       this.holdSnapshot = null;
+      // plans/P4-13.md §2.5: `relearn` is cleared wholesale and a quarantined
+      // `revocations.json` released; revocations are re-learned from the next feed.
+      const rs = this.opts.revocations;
+      if (rs && this.revIssue !== "unreadable") {
+        await rs.clearQuarantine?.();
+        if (this.revDoc.relearn.length > 0) {
+          this.revDoc = { ...this.revDoc, relearn: [] };
+          if (this.revFile) await rs.replace(serializeRevocations(this.revDoc));
+        }
+        if (this.revIssue === "torn") this.revIssue = null;
+      }
       await this.collect();
     });
+  }
+
+  // ── Revocations (plans/P4-13.md §2.5) ───────────────────────────────────────────────────
+
+  /** The stored and this process's verified revocations. */
+  revocations(): RevocationsSnapshot {
+    const revoked: Record<string, StoredRevocation> = {
+      ...this.revDoc.revoked,
+    };
+    for (const [t, r] of this.revVerified)
+      if (!Object.prototype.hasOwnProperty.call(revoked, t))
+        revoked[t] = {
+          jws: this.revJws.get(t) ?? "",
+          pack: r.pack,
+          version: r.version,
+          seq: r.seq,
+          record: r.record,
+          issuedAt: r.issuedAt,
+        };
+    return {
+      revoked,
+      verified: Object.fromEntries(this.revVerified),
+      relearn: [...this.revDoc.relearn],
+      issue: this.revIssue,
+    };
+  }
+
+  /**
+   * Keep revocations a fresh check verified (plans/P4-13.md §2.5 step 11): each is stored when its
+   * target is new, or when `newerRevocation` ranks it above the stored one. `relearnCleared` names
+   * the packs a fresh, network-verified feed with a usable `revocations` member re-taught. A
+   * revoked install stops running at once (a `hot` handler is deactivated; a `restart` pack is
+   * not mounted at the next boot). Writes `state.json`'s `revocationsStored` before the sibling
+   * file the first time; writes nothing while either document is unreadable (the revocations
+   * still apply for the life of the process).
+   */
+  recordRevocations(
+    learned: readonly { revocation: VerifiedRevocation; jws: string }[],
+    opts: { relearnCleared?: readonly string[] } = {},
+  ): Promise<void> {
+    return this.serialised(async () => {
+      this.requireLoaded();
+      let next = this.revDoc;
+      let changed = false;
+      for (const { revocation, jws } of learned) {
+        const t = revocation.target;
+        const prev = this.revVerified.get(t);
+        if (!prev || newerRevocation(revocation, prev) === revocation) {
+          this.revVerified.set(t, revocation);
+          this.revJws.set(t, jws);
+        }
+        const r = storeRevocation(next, revocation, jws, (target) =>
+          target === t ? prev : undefined,
+        );
+        next = r.doc;
+        changed ||= r.changed;
+      }
+      const c = clearRelearn(next, opts.relearnCleared ?? []);
+      next = c.doc;
+      changed ||= c.changed;
+      // The cap may have dropped a target: it is forgotten here too.
+      for (const t of [...this.revVerified.keys()])
+        if (
+          !Object.prototype.hasOwnProperty.call(next.revoked, t) &&
+          Object.prototype.hasOwnProperty.call(this.revDoc.revoked, t)
+        )
+          this.revVerified.delete(t);
+      this.revDoc = next;
+      if (changed) await this.persistRevocations();
+      await this.unmountRevoked();
+    });
+  }
+
+  /** Whether a release is revoked (stored, or verified in this process). */
+  isRevoked(recordSha256: string): boolean {
+    return (
+      Object.prototype.hasOwnProperty.call(this.revDoc.revoked, recordSha256) ||
+      this.revVerified.has(recordSha256)
+    );
+  }
+
+  /** The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in
+   *  `relearn`; with an unreadable `revocations.json` and `revocationsStored` set, every pack
+   *  the stamp pins or the host embeds. A product with no revocations refuses nothing. */
+  private embeddedRefused(e: PackInstall): boolean {
+    if (this.isRevoked(e.recordSha256)) return true;
+    if (this.revDoc.relearn.includes(e.packId)) return true;
+    if (
+      this.revIssue === "unreadable" &&
+      this.doc?.revocationsStored === true &&
+      (this.stampPacks().has(e.packId) || this.embedded.has(e.packId))
+    )
+      return true;
+    return false;
+  }
+
+  private stampPacks(): Set<string> {
+    return new Set((this.opts.stamp?.pins ?? []).map((p) => p.pack));
+  }
+
+  /** Load `revocations.json` (§2.5): absent is empty; unreadable writes nothing this process;
+   *  torn is quarantined and replaced by a fresh document whose `relearn` holds the stamp's
+   *  pinned and embedded packs; each entry is re-verified against the pinned release keys. */
+  private async loadRevocations(stateUnreadable: boolean): Promise<void> {
+    const rs = this.opts.revocations;
+    if (!rs) return;
+    let text: string | null;
+    try {
+      text = await rs.read();
+    } catch {
+      this.revIssue = "unreadable";
+      return;
+    }
+    if (text === null) return;
+    this.revFile = true;
+    const parsed = text.trim() === "" ? null : parseRevocations(text);
+    if (parsed === null) {
+      // Torn: held aside, then a fresh document that re-learns the stamp's packs.
+      try {
+        if (typeof rs.quarantine !== "function")
+          throw new Error("no quarantine");
+        await rs.quarantine(text);
+      } catch {
+        this.revIssue = "unreadable";
+        return;
+      }
+      this.revIssue = "torn";
+      const relearn = [
+        ...new Set([...this.stampPacks(), ...this.embedded.keys()]),
+      ].sort();
+      this.revDoc = { ...emptyRevocations(), relearn };
+      if (!stateUnreadable) await this.writeRevocations();
+      return;
+    }
+    const r = await reloadRevocations(parsed, {
+      releaseKeys: this.opts.releaseKeys,
+      productTrust: this.opts.productTrust(),
+      expectedAud: this.opts.product,
+    });
+    this.revDoc = r.doc;
+    for (const [t, v] of r.verified) this.revVerified.set(t, v);
+    if (r.changed && !stateUnreadable) await this.writeRevocations();
+  }
+
+  /** Persist the revocations: `revocationsStored` in `state.json` first, then the sibling file.
+   *  Never creates an empty file; never writes while a document is unreadable. */
+  private async persistRevocations(): Promise<void> {
+    if (!this.opts.revocations) return;
+    if (this.revIssue === "unreadable" || this.stateIssue === "unreadable")
+      return;
+    if (!this.revFile && isEmptyRevocations(this.revDoc)) return;
+    await this.writeRevocations();
+  }
+
+  private async writeRevocations(): Promise<void> {
+    const rs = this.opts.revocations!;
+    const doc = this.requireLoaded();
+    if (!doc.revocationsStored) {
+      this.doc = { ...doc, revocationsStored: true };
+      await this.persist();
+    }
+    await rs.replace(serializeRevocations(this.revDoc));
+    this.revFile = true;
+  }
+
+  /** Stop running every revoked release (a hot handler is deactivated). */
+  private async unmountRevoked(): Promise<void> {
+    for (const [id, i] of [...this.running]) {
+      if (!this.isRevoked(i.recordSha256)) continue;
+      const h = this.handlers.get(i.type);
+      if (this.activation(i) === "hot" && h?.deactivate)
+        try {
+          await h.deactivate(i);
+        } catch {
+          // A handler failure never keeps a revoked release running.
+        }
+      this.running.delete(id);
+    }
   }
 
   private activation(i: PackInstall): "hot" | "restart" {
@@ -814,7 +1091,10 @@ export class PackEngine {
 
   /** Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
    *  seeds, the index and the plan. */
-  private async preflight(packId: string): Promise<Preflight> {
+  private async preflight(
+    packId: string,
+    want?: { sha256: string; seq: number; version: string },
+  ): Promise<Preflight> {
     const doc = this.requireLoaded();
     const stamp = this.opts.stamp;
     if (!stamp)
@@ -823,11 +1103,19 @@ export class PackEngine {
         "This build ships no content stamp, so it has no packs.",
         { packId },
       );
-    const pin = stamp.pins.find((p) => p.pack === packId);
+    const stampPin = stamp.pins.find((p) => p.pack === packId);
+    const pin = want ? { pack: packId, release: want } : stampPin;
     if (!pin)
       throw new PackError(
         "pack-not-pinned",
         `The content stamp pins no release of ${packId}.`,
+        { packId },
+      );
+    // plans/P4-13.md §2.5: a revoked release is never installed, activated or mounted.
+    if (this.isRevoked(pin.release.sha256))
+      throw new PackError(
+        "pack-revoked",
+        `${packId}@${pin.release.version} was revoked by its developer.`,
         { packId },
       );
 
@@ -837,7 +1125,12 @@ export class PackEngine {
       return { kind: "current", install: current };
     }
     const emb = this.embedded.get(packId);
-    if (emb && emb.recordSha256 === pin.release.sha256 && !current)
+    if (
+      emb &&
+      emb.recordSha256 === pin.release.sha256 &&
+      !current &&
+      !this.embeddedRefused(emb)
+    )
       return { kind: "current", install: emb };
 
     // 2. The pinned record, by hash, against the pinned release keys.
@@ -1026,8 +1319,11 @@ export class PackEngine {
     };
   }
 
-  private async ensureOne(packId: string): Promise<PackInstall> {
-    const pre = await this.preflight(packId);
+  private async ensureOne(
+    packId: string,
+    target?: { sha256: string; seq: number; version: string },
+  ): Promise<PackInstall> {
+    const pre = await this.preflight(packId, target);
     if (pre.kind === "current") {
       const current = pre.install;
       if (
