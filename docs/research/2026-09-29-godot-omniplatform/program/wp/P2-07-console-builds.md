@@ -100,15 +100,15 @@ operations; this package puts them in front of the operator.
 
 ## Acceptance criteria
 
-- [ ] With a fixture of six builds, the view shows each build's platform, arch, format, build
+- [x] With a fixture of six builds, the view shows each build's platform, arch, format, build
       number and payload SHA-256, and hides sidecars until toggled.
-- [ ] Each action sends the right request to P2-05's admin route and refreshes; yank refuses an
+- [x] Each action sends the right request to P2-05's admin route and refreshes; yank refuses an
       empty reason; revert is offered only when `source` is `admin`.
-- [ ] The channels panel shows a per-platform resolved release that differs by platform when the
+- [x] The channels panel shows a per-platform resolved release that differs by platform when the
       fixture lacks one platform's build in the newest release.
-- [ ] `test/docsLinks.test.ts` (admin) and the worker's docs-link drift test pass.
-- [ ] The green gate passes (`AGENTS.md`), including `pnpm --filter @polaris-key/admin build`.
-- [ ] The console can lower or clear a channel floor and renders the `channel-floor-unverified-<channel>` warning.
+- [x] `test/docsLinks.test.ts` (admin) and the worker's docs-link drift test pass.
+- [x] The green gate passes (`AGENTS.md`), including `pnpm --filter @polaris-key/admin build`.
+- [x] The console can lower or clear a channel floor and renders the `channel-floor-unverified-<channel>` warning.
 
 ## Verify
 
