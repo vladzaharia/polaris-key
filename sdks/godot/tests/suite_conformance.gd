@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers
-# @pkey-feature update.feed release.record update.decide
+# @pkey-feature update.feed release.record update.decide outlet.detect
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
 # `pnpm gen:corpus`; never
