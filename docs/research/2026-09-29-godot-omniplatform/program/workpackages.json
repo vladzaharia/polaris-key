@@ -1289,7 +1289,7 @@
       "optional": false,
       "refs": ["CONTENT §7 §11", "README §3.5"],
       "brief": "wp/P4-05-pack-transports-cdn.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-06",
