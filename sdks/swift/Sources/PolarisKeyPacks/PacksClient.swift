@@ -254,12 +254,51 @@ public actor PacksClient {
     /// `fetch.progress`, and send `fetch.done {result, installed}` through `send`.
     public func bootFetch(
         send: @escaping @Sendable (BootEvent) -> Void, consent: BootConsentPolicy = .metered,
-        metered: Bool = false, answer: (@Sendable (Int, Bool) async -> Bool)? = nil
-    ) async throws -> (result: BootEvent.FetchResult, installed: [String]) {
+        metered: Bool = false, answer: (@Sendable (Int, Bool) async -> Bool)? = nil,
+        install: [PackTarget]? = nil
+    ) async throws -> (result: BootEvent.FetchResult, installed: [String], background: [PackTarget]) {
         let engine = try await start()
         return try await runBootFetch(
             engine,
-            RunBootFetchOptions(stamp: try readStamp(), send: send, consent: consent, metered: metered, answer: answer))
+            RunBootFetchOptions(
+                stamp: try readStamp(), send: send, consent: consent, metered: metered, answer: answer,
+                install: install))
+    }
+
+    /// Install exact releases: a `packs` decision's `install` list (plans/P4-13.md §2.6). Throws
+    /// `pack-revoked` for a release a verified revocation names.
+    public func ensureReleases(_ targets: [PackTarget]) async throws -> [PackInstall] {
+        try await core.requireService(.release, feature: Feature.packsState)
+        return try await start().ensureReleases(targets)
+    }
+
+    /// The stored and this process's verified revocations, and `relearn` (plans/P4-13.md §2.5).
+    public func revocations() async throws -> RevocationsSnapshot { try await start().revocations() }
+
+    /// The update check's content input (plans/P4-13.md §2.5, §2.6): the stamp and its holds, the
+    /// running releases (embedded baselines included), the variant preferences and the stored
+    /// revocations. Nil when the host configured no content stamp.
+    public func contentInput() async throws -> UpdateCheckContent? {
+        guard configured, let bytes = try readStampBytes(), let stamp = try readStamp() else { return nil }
+        let engine = try await start()
+        var active: [String: ReleasePin] = [:]
+        for (id, i) in try await engine.state().running {
+            active[id] = ReleasePin(sha256: i.recordSha256, seq: i.seq, version: i.version)
+        }
+        let revs = await engine.revocations()
+        let prefs = VariantPrefs(engine: opts.engine, axes: opts.axes)
+        return UpdateCheckContent(
+            stamp: UpdateContentStamp(stamp, holds: stampHolds(bytes)), active: active, engine: opts.engine,
+            axes: opts.axes, revoked: revs.verified, relearn: revs.relearn,
+            selectsVariant: { variants in
+                if case .index = selectVariant(variants, prefs) { return true }
+                return false
+            })
+    }
+
+    /// Keep the revocations an update check verified (the engine's `recordRevocations`).
+    public func recordRevocations(_ r: UpdateCheckRevocations) async throws {
+        try await start().recordRevocations(r.learned, relearnCleared: r.relearnCleared)
     }
 
     /// Which decoder serves frames (after the start-up probe).
@@ -307,7 +346,7 @@ public actor PacksClient {
                 product: core.product, releaseKeys: releaseKeys, productTrust: { await core.trust }, stamp: stamp,
                 prefs: VariantPrefs(engine: opts.engine, axes: opts.axes), zstd: z.zstd,
                 patchMethods: z.info.patchMethods, memBudget: opts.memBudget, storage: storage,
-                state: storage.stateStore(),
+                state: storage.stateStore(), revocations: storage.revocationStore(),
                 fetchRecord: { await PacksClient.fetchRecord(core, $0) },
                 fetchObject: { try await PacksClient.fetchObject(core, objectTransport, $0) },
                 entitlements: { await PacksClient.entitlements(core) },
@@ -323,17 +362,20 @@ public actor PacksClient {
         return engine
     }
 
-    private func readStamp() throws -> AppContent? {
+    private func readStampBytes() throws -> [UInt8]? {
         guard let src = opts.contentStamp else { return nil }
-        let bytes: [UInt8]
         switch src {
-        case .bytes(let b): bytes = b
+        case .bytes(let b): return b
         case .file(let url):
             guard let data = try? Data(contentsOf: url) else {
                 throw PackError(ErrorCode.contentStampInvalid, "The content stamp cannot be read.")
             }
-            bytes = [UInt8](data)
+            return [UInt8](data)
         }
+    }
+
+    private func readStamp() throws -> AppContent? {
+        guard let bytes = try readStampBytes() else { return nil }
         guard let content = parseContentStamp(bytes).content else {
             throw PackError(ErrorCode.contentStampInvalid, "The content stamp is not a valid pkey-content/1 document.")
         }
