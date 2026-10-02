@@ -75,7 +75,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P2-04](wp/P2-04-release-descriptor.md)    | Release descriptor ingest and the declared artifact map in `.pkey/release`                  | P2-03               | implementer | 1–1.5 | done   |
 | [P2-05](wp/P2-05-release-routes.md)        | Per-platform resolution, channel policy operations, generic and blob routes, GitHub caching | P2-01, P2-03        | implementer | 1–1.5 | done   |
 | [P2-06](wp/P2-06-publish-cli-action.md) ✋ | `pkey release` publishing commands and the `polaris-key/publish` Action                     | P2-02, P2-04, P2-05 | implementer | 1–1.5 | done   |
-| [P2-07](wp/P2-07-console-builds.md)        | Console: builds and channels view in the Release section                                    | P2-05               | implementer | 0.5–1 | todo   |
+| [P2-07](wp/P2-07-console-builds.md)        | Console: builds and channels view in the Release section                                    | P2-05               | implementer | 0.5–1 | done   |
 
 ## P2b: Distribution core
 

@@ -44,6 +44,7 @@ export type {
   UiHints,
 } from "@polaris-key/catalog";
 import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
+import type { ArtifactRole } from "@polaris-key/manifest";
 import type { ServiceSlug } from "./services.generated.js";
 
 // ── identity ──────────────────────────────────────────────────────────────────
@@ -567,14 +568,51 @@ export interface RolloutsResponse {
 }
 
 // ── release truth store ───────────────────────────────────────────────────────
+/**
+ * Where an artifact's bytes live (`@polaris-key/manifest` `DescriptorLocation`, P2-04). Every
+ * location is pinned by the artifact's SHA-256; `store` carries no bytes of ours.
+ */
+export type ArtifactLocationDto =
+  | { provider: "r2"; key: string }
+  | { provider: "github"; asset: string }
+  | { provider: "store" }
+  | { provider: "external"; url: string };
+
 export interface ReleaseArtifactDto {
   artifactId: string;
   name: string;
-  kind: string;
+  kind: string | null;
   platform: string | null;
   arch: string | null;
   sizeBytes: number | null;
   access: string | null;
+  /** The build this file belongs to (P2-04's descriptor); `null` for a file the GitHub sync
+   *  indexed without one. */
+  buildId: string | null;
+  /** `ARTIFACT_ROLES` in `@polaris-key/manifest`: payload, signature, checksum, … */
+  role: ArtifactRole | (string & {}) | null;
+  sha256: string | null;
+  /** As the descriptor declared them; `null` for a file only the GitHub sync knows. */
+  locations: ArtifactLocationDto[] | null;
+}
+
+/** One build of a release (P2-04 descriptor; worker `release_builds`). */
+export interface ReleaseBuildDto {
+  buildId: string;
+  /** `null` = platform-independent (a pack variant). */
+  platform: string | null;
+  arch: string;
+  format: string | null;
+  buildNumber: string | null;
+  minOs: string | null;
+}
+
+/** A release's yank (P2-05): never offered on a moving selector; resolves only by pin. */
+export interface ReleaseYankDto {
+  reason: string;
+  at: number;
+  /** `admin:<sub>` or `ci:<subject>`. */
+  by: string;
 }
 
 export interface ReleaseDto {
@@ -585,6 +623,14 @@ export interface ReleaseDto {
   sourceUrl: string | null;
   status: string;
   artifacts: ReleaseArtifactDto[];
+  /** The deliverable this is a release of (`app` until packs exist). */
+  deliverable: string;
+  seq: number | null;
+  /** The channel it was published to; `null` = derived from GitHub's prerelease flag. */
+  channel: string | null;
+  yank: ReleaseYankDto | null;
+  /** Empty for a legacy release no descriptor described. */
+  builds: ReleaseBuildDto[];
 }
 
 export interface ReleaseChannelDto {
@@ -593,9 +639,107 @@ export interface ReleaseChannelDto {
   modifiedAt: number | null;
 }
 
+/**
+ * A channel's anti-rollback floor (P0-02, R6-10): the highest version a sync has seen on it. An
+ * operator may lower or clear it (`…/release/channels/<channel>/floor`), never raise it.
+ */
+export interface ReleaseChannelFloorDto {
+  channel: string;
+  version: string;
+  releaseId: string | null;
+  raisedAt: number;
+  loweredBy: string | null;
+  loweredAt: number | null;
+}
+
 export interface ReleaseStoreResponse {
   releases: ReleaseDto[];
   channels: ReleaseChannelDto[];
+  floors: ReleaseChannelFloorDto[];
+}
+
+/**
+ * One channel's policy as `GET …/release/channels` returns it (worker `policy.ts`
+ * `ChannelPolicyView`, plus what it resolves to). The console renders `resolved` and
+ * `byPlatform` as they are: it never recomputes resolution.
+ */
+export interface ChannelPolicyDto {
+  deliverable: string;
+  channel: string;
+  /** A release id, or `null` to follow the newest eligible release. */
+  pointer: string | null;
+  pinned: boolean;
+  /** Channels this one includes; `null` = the default (beta includes stable). */
+  includes: string[] | null;
+  /** The device floor the signed feed carries (P2-03, P3-03). */
+  minSupported: string | null;
+  critical: boolean;
+  /** `manifest` until an operator or CI changes the row; `admin` from then on. */
+  source: SettingsSource;
+  modifiedAt: number | null;
+  modifiedBy: string | null;
+  /** The release the channel resolves to with no platform filter, or `null`. */
+  resolved: string | null;
+  /** Platform → the release the channel resolves to there (`null`: nothing qualifies). */
+  byPlatform: Record<string, string | null>;
+}
+
+export interface ReleaseChannelsResponse {
+  deliverables: Array<{
+    deliverable: string;
+    kind: string;
+    /** Every platform some build of the deliverable declares, sorted. */
+    platforms: string[];
+    channels: ChannelPolicyDto[];
+  }>;
+}
+
+/** `PUT …/release/channels/<channel>`: any of these; an omitted field is left as it is. */
+export interface ChannelPolicyBody {
+  deliverable?: string;
+  pointer?: string | null;
+  pinned?: boolean;
+  minSupported?: string | null;
+  critical?: boolean;
+}
+
+/** `POST …/release/channels/<channel>/floor`: lower to a version, or clear. Never raises. */
+export type ChannelFloorBody = { version: string } | { clear: true };
+
+/**
+ * The stable `reason`s the release policy routes refuse with (worker `release/policy.ts`), as
+ * the console words them. One table, as `SERVICE_ERROR_MESSAGES` is for services; a reason not
+ * listed here falls back to the server's own message.
+ */
+export const RELEASE_POLICY_ERROR_MESSAGES: Record<string, string> = {
+  unknown_channel: "This product cannot serve that channel.",
+  unknown_deliverable: "That deliverable no longer exists.",
+  unknown_release: "That release is not in the store any more — reload.",
+  bad_release: "Choose a release.",
+  release_yanked:
+    "A yanked release cannot be promoted. Unyank it, or pin it explicitly.",
+  pin_without_pointer: "A pinned channel needs a release to point at.",
+  bad_min_supported:
+    "The minimum supported version must be a version in the deliverable's scheme.",
+  bad_reason: "A yank needs a reason (500 characters at most).",
+  not_yanked: "This release is not yanked.",
+  no_policy:
+    "This channel has no operator policy to hand back — it already follows the manifest.",
+  empty_update: "Nothing to change.",
+  unknown_field: "The server refused a field it does not know.",
+};
+
+/** The console's wording for a release policy refusal. */
+export function releasePolicyMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const known = err.reason
+      ? RELEASE_POLICY_ERROR_MESSAGES[err.reason]
+      : undefined;
+    if (known) return known;
+    if (err.message && err.message !== `api ${err.status}`) return err.message;
+    return `Request failed (${err.status}).`;
+  }
+  return err instanceof Error ? err.message : "Request failed.";
 }
 
 // ── managed-payload (overrides / profile payloads) ────────────────────────────
@@ -934,6 +1078,11 @@ export class ApiError extends Error {
      * Only the endpoints that validate a whole object against rules (services, so far) send it.
      */
     public readonly errors?: string[],
+    /**
+     * A machine-readable refusal reason (`unknown_channel`, `release_yanked`, …). The release
+     * policy routes send it beside the generic `code` (worker `release/admin.ts`).
+     */
+    public readonly reason?: string,
   ) {
     super(`api ${status}`);
     this.name = "ApiError";
@@ -961,6 +1110,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let errors: string[] | undefined;
     let code: string | undefined;
     let message: string | undefined;
+    let reason: string | undefined;
     try {
       const body = (await res.json()) as {
         error?:
@@ -970,27 +1120,31 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
               message?: string;
               fields?: string[];
               errors?: string[];
+              reason?: string;
             };
         message?: string;
         fields?: string[];
         errors?: string[];
         code?: string;
+        reason?: string;
       };
       if (typeof body.error === "object" && body.error) {
         fields = body.error.fields ?? body.fields;
         errors = body.error.errors ?? body.errors;
         code = body.error.code ?? body.code;
         message = body.error.message ?? body.message;
+        reason = body.error.reason ?? body.reason;
       } else {
         fields = body.fields;
         errors = body.errors;
         code = body.error ?? body.code;
         message = body.message;
+        reason = body.reason;
       }
     } catch {
       // non-JSON error body
     }
-    const error = new ApiError(res.status, fields, code, errors);
+    const error = new ApiError(res.status, fields, code, errors, reason);
     if (message) error.message = message;
     throw error;
   }
@@ -1039,6 +1193,46 @@ export const api = {
    *  Polaris Key believes the linked repo publishes, without spending a GitHub round-trip. */
   releases: (slug: string) =>
     call<ReleaseStoreResponse>(`${p(slug)}/release/releases`),
+  // ── release channel policy (P2-05 admin routes; worker `release/admin.ts`) ────
+  /** Every deliverable's channels: policy, source, and what each resolves to, per platform. */
+  releaseChannels: (slug: string) =>
+    call<ReleaseChannelsResponse>(`${p(slug)}/release/channels`),
+  /** Promote (`pointer`), pin (`pointer` + `pinned: true`), unpin (`pinned: false`), the device
+   *  floor (`minSupported`) and `critical`. Claims the row for the operator. */
+  updateReleaseChannel: (
+    slug: string,
+    channel: string,
+    body: ChannelPolicyBody,
+  ) =>
+    call<{ ok: true; policy: ChannelPolicyDto }>(
+      `${p(slug)}/release/channels/${enc(channel)}`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  /** Hand the channel back to the manifest. Changes nothing live — the manifest's declaration
+   *  re-applies on the NEXT resync. */
+  revertReleaseChannel: (slug: string, channel: string, deliverable?: string) =>
+    call<{ ok: true; policy: ChannelPolicyDto }>(
+      `${p(slug)}/release/channels/${enc(channel)}/revert`,
+      {
+        method: "POST",
+        body: JSON.stringify(deliverable ? { deliverable } : {}),
+      },
+    ),
+  /** Lower or clear a channel's anti-rollback floor (P0-02). The server refuses a raise. */
+  setChannelFloor: (slug: string, channel: string, body: ChannelFloorBody) =>
+    call<{ ok: true; channel: string; floor: ReleaseChannelFloorDto | null }>(
+      `${p(slug)}/release/channels/${enc(channel)}/floor`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  yankRelease: (slug: string, releaseId: string, reason: string) =>
+    call<{ ok: true }>(`${p(slug)}/release/releases/${enc(releaseId)}/yank`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  unyankRelease: (slug: string, releaseId: string) =>
+    call<{ ok: true }>(`${p(slug)}/release/releases/${enc(releaseId)}/yank`, {
+      method: "DELETE",
+    }),
   portalSettings: (slug: string) =>
     call<{ settings: PortalProductSettings }>(`${p(slug)}/identity/portal`),
   updatePortalSettings: (slug: string, body: UpdatePortalSettingsBody) =>

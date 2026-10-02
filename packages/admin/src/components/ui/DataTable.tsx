@@ -29,6 +29,11 @@ export interface DataTableProps<T> {
   empty?: React.ReactNode;
   onRowClick?: (row: T) => void;
   onRowClickLabel?: (row: T) => string;
+  /**
+   * Content for a full-width row rendered under `row`, or null for none. The caller owns the
+   * open/closed state (and the toggle, usually a button cell), so sorting keeps it attached.
+   */
+  expanded?: (row: T) => React.ReactNode | null;
   className?: string;
 }
 
@@ -57,6 +62,7 @@ export function DataTable<T>({
   empty,
   onRowClick,
   onRowClickLabel,
+  expanded,
   className,
 }: DataTableProps<T>): React.ReactElement {
   const [sort, setSort] = React.useState<SortState>(null);
@@ -184,40 +190,49 @@ export function DataTable<T>({
             ) : (
               sorted.map((row) => {
                 const click = onRowClick ? () => onRowClick(row) : undefined;
+                const detail = expanded?.(row) ?? null;
                 return (
-                  <tr
-                    key={rowKey(row)}
-                    role={onRowClick ? "button" : undefined}
-                    tabIndex={onRowClick ? 0 : undefined}
-                    aria-label={onRowClickLabel?.(row)}
-                    onClick={click}
-                    onKeyDown={
-                      onRowClick
-                        ? (e) => {
-                            if (e.key !== "Enter" && e.key !== " ") return;
-                            e.preventDefault();
-                            onRowClick(row);
-                          }
-                        : undefined
-                    }
-                    className={cn(
-                      "border-b border-border transition-colors last:border-0 hover:bg-muted/40",
-                      onRowClick &&
-                        "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                    )}
-                  >
-                    {columns.map((col) => (
-                      <td
-                        key={col.id}
-                        className={cn(
-                          "px-3 py-2.5 align-middle",
-                          col.className,
-                        )}
-                      >
-                        {col.cell(row)}
-                      </td>
-                    ))}
-                  </tr>
+                  <React.Fragment key={rowKey(row)}>
+                    <tr
+                      role={onRowClick ? "button" : undefined}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      aria-label={onRowClickLabel?.(row)}
+                      onClick={click}
+                      onKeyDown={
+                        onRowClick
+                          ? (e) => {
+                              if (e.key !== "Enter" && e.key !== " ") return;
+                              e.preventDefault();
+                              onRowClick(row);
+                            }
+                          : undefined
+                      }
+                      className={cn(
+                        "border-b border-border transition-colors last:border-0 hover:bg-muted/40",
+                        onRowClick &&
+                          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                      )}
+                    >
+                      {columns.map((col) => (
+                        <td
+                          key={col.id}
+                          className={cn(
+                            "px-3 py-2.5 align-middle",
+                            col.className,
+                          )}
+                        >
+                          {col.cell(row)}
+                        </td>
+                      ))}
+                    </tr>
+                    {detail !== null ? (
+                      <tr className="border-b border-border bg-muted/20 last:border-0">
+                        <td colSpan={columns.length} className="px-3 py-3">
+                          {detail}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </React.Fragment>
                 );
               })
             )}

@@ -29,6 +29,7 @@ import type { Env } from "../src/env.js";
 import {
   getChannelPolicy,
   setChannelPolicy,
+  stmtUpsertBuild,
 } from "../src/services/release/model.js";
 import { syncReleaseStore } from "../src/services/release/sync.js";
 import {
@@ -452,6 +453,49 @@ describe("admin routes", () => {
       modifiedBy: "admin:u1",
       resolved: "v1.1.0",
     });
+  });
+
+  it("GET channels resolves each channel per platform: a release missing a build falls back (P2-07)", async () => {
+    const { env, db } = await setup();
+    // v1.0.0 also shipped Windows; v1.1.0 did not. Stable is v1.1.0 on macOS, but Windows
+    // falls back to the newest release that has a Windows build (README §3.4).
+    const b = stmtUpsertBuild(
+      {
+        product: SLUG,
+        releaseId: "v1.0.0",
+        buildId: "win-x64",
+        platform: "windows",
+        arch: "x86_64",
+        format: "zip",
+      },
+      NOW,
+    );
+    await db.run(b.sql, ...b.params);
+    const body = (await (await admin(env, db, "GET", "/channels")).json()) as {
+      deliverables: Array<{
+        platforms: string[];
+        channels: Array<{
+          channel: string;
+          resolved: string | null;
+          byPlatform: Record<string, string | null>;
+        }>;
+      }>;
+    };
+    const app = body.deliverables[0]!;
+    expect(app.platforms).toEqual(["macos", "windows"]);
+    const stable = app.channels.find((c) => c.channel === "stable")!;
+    expect(stable.resolved).toBe("v1.1.0");
+    expect(stable.byPlatform).toEqual({ macos: "v1.1.0", windows: "v1.0.0" });
+
+    // A yank of the Windows fallback leaves Windows with nothing on a moving selector.
+    await admin(env, db, "POST", "/releases/v1.0.0/yank", { reason: "bad" });
+    const after = (await (
+      await admin(env, db, "GET", "/channels")
+    ).json()) as typeof body;
+    expect(
+      after.deliverables[0]!.channels.find((c) => c.channel === "stable")!
+        .byPlatform,
+    ).toEqual({ macos: "v1.1.0", windows: null });
   });
 
   it("PUT validates its fields and refuses a pin without a pointer", async () => {

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
   api,
+  RELEASE_POLICY_ERROR_MESSAGES,
+  releasePolicyMessage,
   SERVICE_ERROR_MESSAGES,
   setCsrf,
   setLoginRedirectForTests,
@@ -304,6 +306,32 @@ describe("api — every product-scoped resource is under its owning service", ()
     ["releaseHealth", () => api.releaseHealth("djdl"), "release/health"],
     ["resyncProduct", () => api.resyncProduct("djdl"), "release/resync"],
     ["releases", () => api.releases("djdl"), "release/releases"],
+    ["releaseChannels", () => api.releaseChannels("djdl"), "release/channels"],
+    [
+      "updateReleaseChannel",
+      () => api.updateReleaseChannel("djdl", "stable", { critical: true }),
+      "release/channels/stable",
+    ],
+    [
+      "revertReleaseChannel",
+      () => api.revertReleaseChannel("djdl", "beta"),
+      "release/channels/beta/revert",
+    ],
+    [
+      "setChannelFloor",
+      () => api.setChannelFloor("djdl", "stable", { clear: true }),
+      "release/channels/stable/floor",
+    ],
+    [
+      "yankRelease",
+      () => api.yankRelease("djdl", "v1.0.0", "bad"),
+      "release/releases/v1.0.0/yank",
+    ],
+    [
+      "unyankRelease",
+      () => api.unyankRelease("djdl", "v1.0.0"),
+      "release/releases/v1.0.0/yank",
+    ],
     ["updateSettings", () => api.updateSettings("djdl"), "update/settings"],
     ["edgeMintRecipes", () => api.edgeMintRecipes("djdl"), "config/mint"],
     [
@@ -502,5 +530,93 @@ describe("api — every product-scoped resource is under its owning service", ()
       expect(err.fields).toBeUndefined();
       expect(SERVICE_ERROR_MESSAGES[err.errors![0]!]).toContain("Distribution");
     }
+  });
+});
+
+describe("api — release channel policy (P2-07)", () => {
+  it("sends each P2-05 admin operation with its method and body", async () => {
+    setCsrf("tok");
+    stubFetch(() => json({ ok: true }));
+    await api.updateReleaseChannel("diceroll", "stable", {
+      deliverable: "app",
+      pointer: "v0.4.2",
+      pinned: true,
+    });
+    await api.revertReleaseChannel("diceroll", "beta", "app");
+    await api.revertReleaseChannel("diceroll", "beta");
+    await api.setChannelFloor("diceroll", "stable", { version: "0.4.1" });
+    await api.yankRelease("diceroll", "v0.4.2", "crashes");
+    await api.unyankRelease("diceroll", "v0.4.2");
+    const seen = calls.map((c) => [
+      c.init.method,
+      c.url.replace("/manage/api/products/diceroll/release/", ""),
+      c.init.body === undefined ? undefined : JSON.parse(c.init.body as string),
+    ]);
+    expect(seen).toEqual([
+      [
+        "PUT",
+        "channels/stable",
+        { deliverable: "app", pointer: "v0.4.2", pinned: true },
+      ],
+      ["POST", "channels/beta/revert", { deliverable: "app" }],
+      ["POST", "channels/beta/revert", {}],
+      ["POST", "channels/stable/floor", { version: "0.4.1" }],
+      ["POST", "releases/v0.4.2/yank", { reason: "crashes" }],
+      ["DELETE", "releases/v0.4.2/yank", undefined],
+    ]);
+    // Every one is a mutation, so every one echoes the CSRF token.
+    for (const c of calls)
+      expect((c.init.headers as Headers).get("X-PKey-CSRF")).toBe("tok");
+  });
+
+  it("encodes a release id or channel segment", async () => {
+    setCsrf("tok");
+    stubFetch(() => json({ ok: true }));
+    await api.yankRelease("diceroll", "app@1.0.0+build/1", "x");
+    expect(calls[0]!.url).toBe(
+      "/manage/api/products/diceroll/release/releases/app%401.0.0%2Bbuild%2F1/yank",
+    );
+  });
+
+  it("carries the refusal reason the policy routes send, and words it from one table", async () => {
+    setCsrf("tok");
+    // The admin error shape: nested and flat copies of code/message/extra (worker respond.ts).
+    stubFetch(() =>
+      json(
+        {
+          error: {
+            code: "bad_request",
+            message: "a yanked release cannot be promoted",
+            reason: "release_yanked",
+            fields: ["releaseId"],
+          },
+          code: "bad_request",
+          message: "a yanked release cannot be promoted",
+          reason: "release_yanked",
+          fields: ["releaseId"],
+        },
+        409,
+      ),
+    );
+    const err = await api
+      .updateReleaseChannel("diceroll", "stable", { pointer: "v0.4.0" })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).reason).toBe("release_yanked");
+    expect((err as ApiError).fields).toEqual(["releaseId"]);
+    expect(releasePolicyMessage(err)).toBe(
+      RELEASE_POLICY_ERROR_MESSAGES.release_yanked,
+    );
+  });
+
+  it("falls back to the server's message for a reason the table does not know", () => {
+    const err = new ApiError(422, ["version"], "bad_request", undefined);
+    err.message = "a floor can only be lowered; the sync raises it";
+    expect(releasePolicyMessage(err)).toBe(
+      "a floor can only be lowered; the sync raises it",
+    );
+    expect(releasePolicyMessage(new ApiError(500))).toBe(
+      "Request failed (500).",
+    );
   });
 });
