@@ -68,7 +68,7 @@ static func _re(pattern: String) -> RegEx:
 ## Compile every pattern and read the engine's script kinds on the main thread before a worker
 ## runs the directory check.
 static func warm() -> void:
-	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _GD_HEAD, _PATH_KEY, _PATH_LINE, _DEST_LINE, _QUOTED]:
+	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _GD_HEAD, _PATH_ANY, _PATH_LINE, _DEST_LINE, _QUOTED]:
 		_re(p)
 	refresh_script_kinds()
 
@@ -98,9 +98,11 @@ static func script_markers() -> PackedStringArray:
 	return PackedStringArray(["GDScript", "CSharpScript", "ScriptExtension", "script/source", "source_code"])
 
 
+## The kinds `warm()` read, or — before it ran — a local built-in-only set that is never stored,
+## so no worker thread ever writes the static Dictionary.
 static func _script_kinds() -> Dictionary:
 	if _kinds.is_empty():
-		refresh_script_kinds()
+		return {"exts": {}, "markers": script_markers()}
 	return _kinds
 
 
@@ -112,8 +114,9 @@ const _BINARY_RES := "(?i)\\.(scn|res)$"
 # Whitespace is an explicit class in every pattern (never \s or \v, which PCRE2 and JS read
 # differently), and lines are split by hand after CR → LF (P4-08 audit GAP 2, GAP 6).
 const _GD_HEAD := "^[ \\t\\n\\r\\f\\x0B]*\\[gd_(scene|resource)\\b"
-## A .remap/.import line whose key starts with `path` (quoted or not): it must be _PATH_LINE.
-const _PATH_KEY := "^[ \\t\\f\\x0B]*\"?path"
+## A `path` key (quoted or not, with any `.<x>` segments) ANYWHERE in a .remap/.import line
+## (P4-08 audit GAP B: the engine's tag parser needs no line start): the line must be _PATH_LINE.
+const _PATH_ANY := "(^|[^A-Za-z0-9_])\"?path(\\.[A-Za-z0-9_-]+)*\"?[ \\t\\f\\x0B]*="
 const _PATH_LINE := "^[ \\t\\f\\x0B]*path(?:\\.[A-Za-z0-9_-]+)?[ \\t\\f\\x0B]*=[ \\t\\f\\x0B]*\"([^\"\\\\]*)\"[ \\t\\f\\x0B]*$"
 const _DEST_LINE := "^[ \\t\\f\\x0B]*dest_files[ \\t\\f\\x0B]*=[ \\t\\f\\x0B]*\\[([^\\]]*)\\]"
 const _QUOTED := "\"([^\"]*)\""
@@ -335,18 +338,24 @@ static func _lines(text: String) -> PackedStringArray:
 
 
 ## Why a .remap or .import cannot be read the way the engine would read it, or "" (P4-08 audit
-## GAP 4, GAP 6): a NUL byte, invalid UTF-8 or a byte-order mark, or a line whose key starts
-## with `path` (quoted or not) that is not exactly `path[.<x>] = "<plain literal>"` (no
-## StringName `&`, NodePath `^` or escape, no second key segment).
+## GAP 4, GAP 6, GAP B): a NUL byte, any other control byte but TAB, LF and CR, any backslash,
+## invalid UTF-8 or a byte-order mark, or a line with a `path` key anywhere in it (quoted or not)
+## that is not exactly `path[.<x>] = "<plain literal>"` (no StringName `&`, NodePath `^` or
+## escape, no second key segment). Dictionary entries (`metadata={…}`) use `:`, not `=`.
 static func remap_problem(data: PackedByteArray) -> String:
 	if data.find(0) != -1:
 		return "a .remap or .import with a NUL byte"
+	for b in data:
+		if b < 0x20 and b != 0x09 and b != 0x0A and b != 0x0D:
+			return "a .remap or .import with a control byte"
+	if data.find(0x5C) != -1:
+		return "a .remap or .import with a backslash"
 	if not utf8_valid(data):
 		return "a .remap or .import that is not valid UTF-8"
 	if find_bytes(data, PackedByteArray([0xEF, 0xBB, 0xBF])) != -1:
 		return "a .remap or .import with a byte-order mark"
 	for line in _lines(data.get_string_from_utf8()):
-		if _re(_PATH_KEY).search(line) != null and _re(_PATH_LINE).search(line) == null:
+		if _re(_PATH_ANY).search(line) != null and _re(_PATH_LINE).search(line) == null:
 			return "a path line the engine could read differently (%s)" % line
 	return ""
 
@@ -476,6 +485,18 @@ static func _binary_code(data: PackedByteArray) -> String:
 	return "" if m == "" else "a binary resource that names %s (an embedded script or its source)" % m
 
 
+static func _without_backslashes(data: PackedByteArray) -> PackedByteArray:
+	var out := PackedByteArray()
+	var start := 0
+	var at := data.find(0x5C)
+	while at != -1:
+		out.append_array(data.slice(start, at))
+		start = at + 1
+		at = data.find(0x5C, start)
+	out.append_array(data.slice(start))
+	return out
+
+
 ## The first script marker (in `script_markers()` order, then the engine's extra Script classes)
 ## whose UTF-8 bytes occur anywhere in `data`, or "".
 static func _marker(data: PackedByteArray) -> String:
@@ -519,6 +540,14 @@ static func _text_code(data: PackedByteArray) -> String:
 	var m := _marker(data)
 	if m != "":
 		return "a text resource that names %s (an embedded script or its source)" % m
+	# GAP A: the parser keeps the character after an unknown escape (`"GD\Script"` reads as
+	# GDScript), so search again with every backslash removed. Fails closed.
+	var bare := PackedByteArray()
+	if data.find(0x5C) != -1:
+		bare = _without_backslashes(data)
+		m = _marker(bare)
+		if m != "":
+			return "a text resource that names %s behind escapes (an embedded script or its source)" % m
 	if find_bytes(data, PackedByteArray([0x5C, 0x75])) != -1 or find_bytes(data, PackedByteArray([0x5C, 0x55])) != -1:
 		return "a text resource with a \\u escape, which can spell a script type"
 	return ""

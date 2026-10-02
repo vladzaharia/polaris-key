@@ -2125,20 +2125,26 @@ committed or mounted:
   scanned because stricter is free) and, as a defensive extra, on any entry with a sniffed
   `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) cannot be scanned and is
   refused under any name.
-- **The scans are fail-closed content rules, not parsers (P4-08 validator audit).** Godot's
-  VariantParser reads newlines as whitespace and fields as Variants (StringName `&"…"`, `\u`
-  escapes, an inline `Object(GDScript, …)`), and its binary string reader stops at the first NUL,
-  so no rule depends on how a header is spelled or a length is written. A text resource is
-  refused when it holds a NUL byte, is not valid UTF-8 (one explicit validator on both sides), or
-  contains anywhere a script marker (`GDScript`, `CSharpScript`, `ScriptExtension`,
-  `script/source`, `source_code`, and on the device every class the running engine says inherits
-  `Script`) or any `\u` / `\U` escape. A binary resource is refused when the raw bytes of any marker
-  occur anywhere in it, without the length prefix. A `.remap` or `.import` is refused for a NUL,
-  invalid UTF-8 or a byte-order mark, and for any line whose key starts with `path` (quoted or
-  not) that is not exactly `path[.<x>] = "<plain literal>"`. Lines are split by hand after CR →
-  LF and whitespace is an explicit class, because JS and PCRE2 disagree on `\s`, `\v` and line
-  breaks. A uid-cache path with a NUL is refused. Every rule has fixtures that both validators
-  must give the same verdict on, run on 4.7.2 and 4.4.1.
+- **The scans are fail-closed content rules, not parsers (P4-08 validator audit).** As
+  recalled from the engine source rather than measured here, Godot's VariantParser reads newlines
+  as whitespace and fields as Variants (StringName `&"…"`, `\u` escapes, an inline
+  `Object(GDScript, …)`) and keeps the character after an unknown escape (`"GD\Script"` reads as
+  `GDScript`), and its binary string reader stops at the first NUL. No rule depends on how a
+  header is spelled, an escape is written or a length is stored. A text resource is refused when
+  it holds a NUL byte, is not valid UTF-8 (one explicit validator on both sides), or contains
+  anywhere a script marker (`GDScript`, `CSharpScript`, `ScriptExtension`, `script/source`,
+  `source_code`, and on the device every class the running engine says inherits `Script`). The
+  marker search runs twice: on the bytes as they are, and on a copy with every backslash removed.
+  Any `\u` / `\U` escape is also refused. A binary resource is refused when the raw bytes of any
+  marker occur anywhere in it, without the length prefix. A `.remap` or `.import` is refused for a
+  NUL, any other control byte but TAB, LF and CR, any backslash, invalid UTF-8 or a byte-order
+  mark. It is also refused for any line with a `path` key anywhere in it (quoted or not, after
+  `[remap]`, another key or a metadata `}`) unless the whole line is exactly
+  `path[.<x>] = "<plain literal>"`: the engine's tag parser does not need a key to start a line.
+  Lines are split by hand after CR → LF and whitespace is an explicit class, because JS and PCRE2
+  disagree on `\s`, `\v` and line breaks. A uid-cache path with a NUL is refused. Every rule has
+  fixtures (`audit-*` in `verdicts.json`) that both validators must give the same verdict on, run
+  on 4.7.2 and 4.4.1; they pin the validators' verdicts, not the engine behaviour recalled above.
 - **What counts as a script comes from the engine on the device.** Besides `.gd`, `.gdc` and
   `.cs`, the device refuses every extension a loader recognises for `Script`
   (`ResourceLoader.get_recognized_extensions_for_type`, minus the generic `tres`/`res`/`tscn`/`scn`

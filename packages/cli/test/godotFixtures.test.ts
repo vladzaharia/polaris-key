@@ -343,6 +343,19 @@ function checkFixtures(): CheckFixture[] {
             '[gd_resource type="Resource" format=3]\n\n[resource]\nscript = Object(GDScript,"script/source":"extends Resource")\n',
           ),
         ],
+        // GAP A: an unknown escape keeps its character (`\S` reads as `S`).
+        [
+          "assets/kaykit/passthrough.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[sub_resource type="GD\\Script" id="s"]\n',
+          ),
+        ],
+        [
+          "assets/kaykit/passthrough-src.tres",
+          enc(
+            '[gd_resource type="Resource" format=3]\n\n[resource]\n"script\\/source" = "extends Resource"\n',
+          ),
+        ],
       ],
     },
     {
@@ -416,6 +429,27 @@ function checkFixtures(): CheckFixture[] {
         [
           "assets/kaykit/b.tres.remap",
           enc('[remap]\n\npath=&"res://assets/kaykit/data/level_000.json"\n'),
+        ],
+        // GAP B: a path key anywhere in a line, after a metadata `}`, quoted with an escape, or
+        // behind a control byte.
+        ["assets/kaykit/c.png.import", enc('[remap] path="res://main.gd"\n')],
+        [
+          "assets/kaykit/d.png.import",
+          enc('[remap]\n\nimporter="texture" path="res://main.gd"\n'),
+        ],
+        [
+          "assets/kaykit/e.png.import",
+          enc(
+            '[remap]\n\nimporter="texture"\nmetadata={\n"vram_texture": true\n} path="res://main.gd"\n',
+          ),
+        ],
+        [
+          "assets/kaykit/f.tres.remap",
+          enc('[remap]\n\n"pat\\h"="res://main.gd"\n'),
+        ],
+        [
+          "assets/kaykit/g.tres.remap",
+          enc('[remap]\n\n\x01path="res://main.gd"\n'),
         ],
       ],
     },

@@ -128,7 +128,8 @@ export function remapTargets(text: string): string[] {
 // Whitespace is an explicit class in every pattern (never `\s` or `\v`, which JS and PCRE2 read
 // differently), and lines are split by hand after CR → LF, never with the `m` flag (JS breaks
 // lines at CR, U+2028 and U+2029 too) — P4-08 audit GAP 2, GAP 6.
-const PATH_KEY_RE = /^[ \t\f\x0B]*"?path/;
+/** A `path` key anywhere in a line (P4-08 audit GAP B: the engine's tag parser needs no line start). */
+const PATH_ANY_RE = /(^|[^A-Za-z0-9_])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 const PATH_LINE_RE =
   /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 const DEST_LINE_RE =
@@ -159,12 +160,17 @@ export function remapValues(text: string): string[] {
 
 /**
  * Why a `.remap` or `.import` cannot be read the way the engine would read it, or null (P4-08
- * audit GAP 4, GAP 6): a NUL byte, invalid UTF-8 or a byte-order mark, or a line whose key starts
- * with `path` (quoted or not) that is not exactly `path[.<x>] = "<plain literal>"` (no StringName
- * `&`, NodePath `^` or escape, no second key segment).
+ * audit GAP 4, GAP 6, GAP B): a NUL byte, any other control byte but TAB, LF and CR, any
+ * backslash, invalid UTF-8 or a byte-order mark, or a line with a `path` key anywhere in it
+ * (quoted or not) that is not exactly `path[.<x>] = "<plain literal>"` (no StringName `&`,
+ * NodePath `^` or escape, no second key segment). Dictionary entries (`metadata={…}`) use `:`.
  */
 export function remapProblem(data: Uint8Array): string | null {
   if (data.includes(0)) return "a .remap or .import with a NUL byte";
+  for (const b of data)
+    if (b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d)
+      return "a .remap or .import with a control byte";
+  if (data.includes(0x5c)) return "a .remap or .import with a backslash";
   if (!utf8Valid(data)) return "a .remap or .import that is not valid UTF-8";
   if (
     Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM) !==
@@ -173,7 +179,7 @@ export function remapProblem(data: Uint8Array): string | null {
     return "a .remap or .import with a byte-order mark";
   const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
   for (const l of lines(text))
-    if (PATH_KEY_RE.test(l) && !PATH_LINE_RE.test(l))
+    if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
       return `a path line the engine could read differently (${l})`;
   return null;
 }
@@ -475,6 +481,14 @@ function textResourceCode(
   const m = marker(data, markers);
   if (m !== null)
     return `a text resource that names ${m} (an embedded script or its source)`;
+  // GAP A: the parser keeps the character after an unknown escape (`"GD\Script"` reads as
+  // GDScript), so search again with every backslash removed. Fails closed.
+  if (data.includes(0x5c)) {
+    const bare = data.filter((b) => b !== 0x5c);
+    const m2 = marker(bare, markers);
+    if (m2 !== null)
+      return `a text resource that names ${m2} behind escapes (an embedded script or its source)`;
+  }
   const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
   if (buf.indexOf("\\u") !== -1 || buf.indexOf("\\U") !== -1)
     return "a text resource with a \\u escape, which can spell a script type";

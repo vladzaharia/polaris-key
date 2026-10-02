@@ -696,9 +696,11 @@ because Godot simplifies a path at mount. Resources are judged by **content**, n
 on parser details: an `RSRC` entry is refused if a script marker (`GDScript`, `CSharpScript`,
 `ScriptExtension`, `script/source`, `source_code`, plus every class this engine says inherits
 `Script`) occurs anywhere in its bytes; a text resource (a `.tres`/`.tscn`/`.escn` name or a
-`[gd_scene`/`[gd_resource` head) also for a NUL, invalid UTF-8 or a `\u` escape; `RSCC` under any
-name. An in-prefix `.remap`/`.import` is refused for a NUL, invalid UTF-8, a byte-order mark, or a
-`path…` line that is not exactly `path[.<x>] = "<plain literal>"`. Besides `.gd`/`.gdc`/`.cs`, the
+`[gd_scene`/`[gd_resource` head) also for a NUL, invalid UTF-8 or a `\u` escape, and for a
+marker found again once every backslash is removed (an unknown escape keeps its character);
+`RSCC` under any name. An in-prefix `.remap`/`.import` is refused for a NUL or other control byte,
+a backslash, invalid UTF-8, a byte-order mark, or a line with a `path` key anywhere in it that is
+not exactly `path[.<x>] = "<plain literal>"`. Besides `.gd`/`.gdc`/`.cs`, the
 device refuses every extension a loader claims for `Script` (`PKeyPck.refresh_script_kinds`, run by
 `warm()`); the CLI takes `scriptExtensions`/`scriptTypes` for another script language. A
 `files.tree` output's files get the same scan. The device check is held to the CLI's verdicts line for line

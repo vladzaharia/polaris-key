@@ -98,7 +98,9 @@
         "assets/kaykit/bracket.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
         "assets/kaykit/stringname.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
         "assets/kaykit/escaped.tres: a text resource with a \\u escape, which can spell a script type; a pack carries data only.",
-        "assets/kaykit/objinline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
+        "assets/kaykit/objinline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/passthrough.tres: a text resource that names GDScript behind escapes (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/passthrough-src.tres: a text resource that names script/source behind escapes (an embedded script or its source); a pack carries data only."
       ],
       "warnings": []
     },
@@ -125,7 +127,12 @@
     "audit-remap-dodges": {
       "errors": [
         "assets/kaykit/a.png.import: a path line the engine could read differently (path.s3tc.x=\"res://main.gd\"); a pack loads only its own files.",
-        "assets/kaykit/b.tres.remap: a path line the engine could read differently (path=&\"res://assets/kaykit/data/level_000.json\"); a pack loads only its own files."
+        "assets/kaykit/b.tres.remap: a path line the engine could read differently (path=&\"res://assets/kaykit/data/level_000.json\"); a pack loads only its own files.",
+        "assets/kaykit/c.png.import: a path line the engine could read differently ([remap] path=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/d.png.import: a path line the engine could read differently (importer=\"texture\" path=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/e.png.import: a path line the engine could read differently (} path=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/f.tres.remap: a .remap or .import with a backslash; a pack loads only its own files.",
+        "assets/kaykit/g.tres.remap: a .remap or .import with a control byte; a pack loads only its own files."
       ],
       "warnings": []
     },

@@ -20886,7 +20886,7 @@ function remapTargets(text) {
   }
   return [...out];
 }
-var PATH_KEY_RE = /^[ \t\f\x0B]*"?path/;
+var PATH_ANY_RE = /(^|[^A-Za-z0-9_])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
 function lines(text) {
@@ -20907,12 +20907,16 @@ function remapValues(text) {
 }
 function remapProblem(data) {
   if (data.includes(0)) return "a .remap or .import with a NUL byte";
+  for (const b of data)
+    if (b < 32 && b !== 9 && b !== 10 && b !== 13)
+      return "a .remap or .import with a control byte";
+  if (data.includes(92)) return "a .remap or .import with a backslash";
   if (!utf8Valid(data)) return "a .remap or .import that is not valid UTF-8";
   if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM) !== -1)
     return "a .remap or .import with a byte-order mark";
   const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
   for (const l of lines(text))
-    if (PATH_KEY_RE.test(l) && !PATH_LINE_RE.test(l))
+    if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
       return `a path line the engine could read differently (${l})`;
   return null;
 }
@@ -21122,6 +21126,12 @@ function textResourceCode(data, markers) {
   const m = marker(data, markers);
   if (m !== null)
     return `a text resource that names ${m} (an embedded script or its source)`;
+  if (data.includes(92)) {
+    const bare = data.filter((b) => b !== 92);
+    const m2 = marker(bare, markers);
+    if (m2 !== null)
+      return `a text resource that names ${m2} behind escapes (an embedded script or its source)`;
+  }
   const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
   if (buf.indexOf("\\u") !== -1 || buf.indexOf("\\U") !== -1)
     return "a text resource with a \\u escape, which can spell a script type";

@@ -335,3 +335,11 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `ext-script-ok` pin the admitted residual (references to app scripts), restated in the threat
   model. `audit-x-bin` (a 0x85 byte before a `[gd_resource` head) is admitted by both: neither side
   sees a resource, and nothing loads a `.bin`.
+- **Audit re-review (GAP A, GAP B).** Text resources: the marker search runs a second time on a
+  copy with every backslash removed (an unknown escape keeps its character), pinned by
+  `passthrough.tres` and `passthrough-src.tres`. `.remap`/`.import`: any control byte but
+  TAB/LF/CR, any backslash, and a `path` key anywhere in a line (after `[remap]`, another key or a
+  metadata `}`) unless the whole line is strict, pinned by `c`–`g` in `audit-remap-dodges`;
+  `kaykit-v1`'s Godot-shaped `.import` (`[remap]`, `path.s3tc`, multi-line `metadata`, `[deps]`,
+  `dest_files`) stays admitted. The static `_kinds` is written only by `warm()` /
+  `refresh_script_kinds()`; before that, `_script_kinds()` returns an unstored built-in set.
