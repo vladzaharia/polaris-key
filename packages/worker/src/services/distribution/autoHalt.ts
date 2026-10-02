@@ -45,7 +45,7 @@
  *      fight them. Nothing here ever resumes, ramps, completes or starts a rollout.
  *
  * State lives in `dist_connector_objects` (connector `auto-halt`): `trip` and `alert` markers,
- * and one `reading` (`last`) with every rollout judged on the last tick, for the console.
+ * and one `reading` (`last`) with every rollout judged on the last tick, which the console shows.
  */
 
 import type { Db } from "../../core/platform.js";
