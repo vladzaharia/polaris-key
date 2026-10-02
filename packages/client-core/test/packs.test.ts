@@ -117,6 +117,9 @@ describe("contentClaims and parseContentStamp (§2.4, §2.8)", () => {
       ),
     ).toEqual(bad);
     expect(parseContentStamp(`\ufeff${text}`)).toEqual(bad);
+    const bom = enc(`\ufeff${text}`);
+    expect([...bom.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(parseContentStamp(bom)).toEqual(bad);
     expect(parseContentStamp(new Uint8Array([0xff]))).toEqual(bad);
   });
 });
@@ -308,6 +311,29 @@ describe("parseFilesIndex (§2.7)", () => {
         null,
         {},
         text.replace('"offset":20,', '"offset":20.000000000000001,'),
+      ),
+    ).toEqual(invalid);
+  });
+  it("refuses a byte-order mark, stored or decoded (§1.2 rule 2)", async () => {
+    const text = JSON.stringify(container(files));
+    expect(await parse(null, {}, text)).toMatchObject({ ok: true });
+    const bom = enc(`\ufeff${text}`);
+    expect([...bom.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(await parse(null, {}, `\ufeff${text}`)).toEqual(invalid);
+    const frame = new Uint8Array([1, 2, 3]);
+    expect(
+      await parseFilesIndex(
+        frame,
+        {
+          layout: "container",
+          sha256: sha(frame),
+          bytes: 3,
+          size: bom.length,
+          codec: "zstd",
+          gaps: { size: 70 },
+        },
+        variant,
+        { decode: () => bom },
       ),
     ).toEqual(invalid);
   });

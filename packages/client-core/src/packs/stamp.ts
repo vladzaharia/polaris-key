@@ -35,7 +35,10 @@ export function parseContentStamp(
     if (typeof input === "string") text = input;
     else {
       try {
-        text = new TextDecoder("utf-8", { fatal: true }).decode(input);
+        text = new TextDecoder("utf-8", {
+          fatal: true,
+          ignoreBOM: true,
+        }).decode(input);
       } catch {
         return invalid;
       }
