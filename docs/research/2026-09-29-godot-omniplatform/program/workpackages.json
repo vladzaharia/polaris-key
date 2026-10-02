@@ -1442,7 +1442,7 @@
       "optional": false,
       "refs": ["CONTENT §6.7 §6.9", "README §3.3 §3.6"],
       "brief": "wp/P4-13-revocation-floors-decision.md",
-      "status": "todo"
+      "status": "awaiting-approval"
     },
     {
       "id": "P4-14",
