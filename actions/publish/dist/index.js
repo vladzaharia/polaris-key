@@ -18843,19 +18843,19 @@ async function verifyDelegation(jws, opts) {
 // src/releaseKeys.ts
 var RELEASE_KEY_ENV = "PKEY_RELEASE_KEY";
 var KEYS_USAGE = "Usage: pkey release keys generate --kid <kid> --out <file> [--force]";
-function publicKeyOfPem(pem) {
+function publicKeyOfPem(pem, source = RELEASE_KEY_ENV) {
   let key;
   try {
     key = createPrivateKey({ key: pem, format: "pem" });
   } catch {
     throw new Error(
-      `${RELEASE_KEY_ENV} is not a PEM private key (PKCS#8, as pkey release keys generate writes it).`
+      `${source} is not a PEM private key (PKCS#8, as pkey release keys generate writes it).`
     );
   }
   if (key.asymmetricKeyType !== "ed25519")
-    throw new Error(`${RELEASE_KEY_ENV} must be an Ed25519 key.`);
+    throw new Error(`${source} must be an Ed25519 key.`);
   const jwk = createPublicKey(key).export({ format: "jwk" });
-  if (!jwk.x) throw new Error(`${RELEASE_KEY_ENV}: no public key.`);
+  if (!jwk.x) throw new Error(`${source}: no public key.`);
   return jwk.x;
 }
 function fingerprintOf(publicKey) {
@@ -19195,6 +19195,45 @@ function startsWith(bytes, at, magic) {
       return false;
   return true;
 }
+function straddles(bytes, at, magic) {
+  if (at + magic.length <= bytes.length)
+    return false;
+  for (let k = at; k < bytes.length; k++)
+    if (bytes[k] !== magic[k - at])
+      return false;
+  return true;
+}
+var DATA_ONLY_TEXT_EXTENSIONS = [
+  "json",
+  "csv",
+  "tsv",
+  "po",
+  "txt"
+];
+var DATA_ONLY_SCRIPT_MARKERS = [
+  "GDScript",
+  "CSharpScript",
+  "ScriptExtension",
+  "script/source",
+  "source_code"
+];
+function dataOnlyTextRefusal(bytes) {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return "content";
+  }
+  if (text.includes("\0"))
+    return "content";
+  if (/\\[uU]/.test(text))
+    return "content";
+  const bare = text.replaceAll("\\", "");
+  for (const m of DATA_ONLY_SCRIPT_MARKERS)
+    if (text.includes(m) || bare.includes(m))
+      return "content";
+  return null;
+}
 function dataOnlyExtension(path12) {
   const last = path12.slice(path12.lastIndexOf("/") + 1);
   const dot = last.lastIndexOf(".");
@@ -19210,7 +19249,7 @@ function dataOnlyPathRefusal(path12) {
     return "extension";
   return null;
 }
-function dataOnlyRefusal(path12, head, tail) {
+function dataOnlyRefusal(path12, head, tail, full) {
   const p = dataOnlyPathRefusal(path12);
   if (p !== null)
     return p;
@@ -19220,25 +19259,33 @@ function dataOnlyRefusal(path12, head, tail) {
     at = 3;
   while (at < h.length && isWs(h[at]))
     at++;
+  const cut = h.length === DATA_ONLY_HEAD_BYTES;
+  if (cut && at === h.length)
+    return "content";
   for (const m of HEADS)
-    if (startsWith(h, at, m))
+    if (startsWith(h, at, m) || cut && straddles(h, at, m))
       return "content";
   for (const m of WORD_HEADS)
     if (startsWith(h, at, m)) {
       const next = h[at + m.length];
       if (next === 32 || next === 9)
         return "content";
-    }
+      if (next === void 0 && cut)
+        return "content";
+    } else if (cut && straddles(h, at, m))
+      return "content";
   const t = tail.length > DATA_ONLY_TAIL_BYTES ? tail.subarray(tail.length - DATA_ONLY_TAIL_BYTES) : tail;
   if (t.length >= 4 && startsWith(t, t.length - 4, GDPC))
     return "content";
   for (let k = 0; k + 4 <= t.length; k++)
     if (t[k] === 80 && startsWith(t, k, ZIP_EOCD))
       return "content";
+  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path12)))
+    return full === void 0 ? "content" : dataOnlyTextRefusal(full);
   return null;
 }
 function dataOnlyFileRefusal(path12, bytes) {
-  return dataOnlyRefusal(path12, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)));
+  return dataOnlyRefusal(path12, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
 }
 
 // ../client-core/dist/packs/stamp.js
@@ -21237,17 +21284,15 @@ async function listDelegations(client, deliverable) {
     ...nextSeq !== void 0 ? { nextSeq } : {}
   };
 }
-async function fetchRecordByHash(client, sha2564, fetchImpl = fetch) {
-  const url = client.url(`release/records/${sha2564}`);
-  let res;
-  try {
-    res = await fetchImpl(url, { headers: { accept: "application/jose" } });
-  } catch (e) {
-    throw new Error(`Fetching ${url}: ${e.message}`);
-  }
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Fetching ${url} answered ${res.status}.`);
-  return (await res.text()).trim();
+async function storedDelegation(client, sha2564) {
+  const { delegations } = await listDelegations(client);
+  const hit = delegations.find((d) => d.sha256 === sha2564);
+  if (hit === void 0) return null;
+  if (typeof hit.jws !== "string" || sha256Hex3(hit.jws) !== sha2564)
+    throw new Error(
+      `${client.url("release/publish/delegations")} answered delegation ${sha2564.slice(0, 12)}… without its JWS, or with one of another hash.`
+    );
+  return hit.jws;
 }
 var trustOf = (declared) => {
   const trust = {};
@@ -21488,9 +21533,12 @@ async function contentSigner(o) {
     throw new Error(
       "--delegation must be the delegation record's sha256 (64 lowercase hex), as pkey release delegate prints it."
     );
-  const publicKey = publicKeyOfPem(o.key.pem).trim();
+  const publicKey = publicKeyOfPem(
+    o.key.pem,
+    `The content key (${CONTENT_KEY_ENV} or --content-key-file)`
+  ).trim();
   await requireDelegationsDiscovery(o.client, o.fetchImpl);
-  const jws = await fetchRecordByHash(o.client, o.key.delegation, o.fetchImpl);
+  const jws = await storedDelegation(o.client, o.key.delegation);
   if (jws === null)
     throw new Error(
       `Polaris Key stores no record ${o.key.delegation.slice(0, 12)}…: delegate the key first (pkey release delegate).`
@@ -22718,13 +22766,11 @@ ${REVOKE_DELEGATION_USAGE}`
   if (fileJws !== null) {
     jws = fileJws;
     hash = sha256Hex2(jws);
-    const served = await fetchRecordByHash(client, hash, opts.fetchImpl).catch(
-      () => null
-    );
+    const served = await storedDelegation(client, hash).catch(() => null);
     supplied = served !== jws;
   } else {
     hash = opts.delegation;
-    const served = await fetchRecordByHash(client, hash, opts.fetchImpl);
+    const served = await storedDelegation(client, hash);
     if (served === null)
       throw new Error(
         `Polaris Key stores no delegation ${hash.slice(0, 12)}…; to revoke one it never saw, pass the file holding its JWS (--delegation <file>).`
