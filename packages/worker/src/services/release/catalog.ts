@@ -163,6 +163,29 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
       }));
     },
 
+    async release(releaseId: string): Promise<CatalogRelease | null> {
+      const r = await db.first<ReleaseRow>(
+        `SELECT m.deliverable_id, m.release_id, m.version, m.seq, m.channel, m.published_at,
+                EXISTS (SELECT 1 FROM release_yanks y
+                         WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked
+           FROM release_metadata m
+          WHERE m.product = ? AND m.release_id = ?`,
+        slug,
+        releaseId,
+      );
+      return r
+        ? {
+            deliverableId: r.deliverable_id,
+            releaseId: r.release_id,
+            version: r.version,
+            seq: r.seq,
+            channel: r.channel,
+            publishedAt: r.published_at,
+            yanked: Boolean(r.yanked),
+          }
+        : null;
+    },
+
     async builds(releaseId: string): Promise<CatalogBuild[]> {
       return (await listBuilds(db, slug, releaseId)).map(buildRecord);
     },

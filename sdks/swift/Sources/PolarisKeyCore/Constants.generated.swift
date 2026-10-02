@@ -41,6 +41,7 @@ public enum ErrorCode {
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailNotConfigured = "email_not_configured"
     public static let downloadAuthRequired = "download_auth_required"
+    public static let deliveryGateMissing = "delivery_gate_missing"
     public static let upstreamRateLimited = "upstream_rate_limited"
     public static let serverMisconfigured = "server_misconfigured"
     public static let internalError = "internal_error"
@@ -157,6 +158,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "auth_method_disabled",
     "email_not_configured",
     "download_auth_required",
+    "delivery_gate_missing",
     "upstream_rate_limited",
     "server_misconfigured",
     "internal_error",
@@ -273,6 +275,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "auth_method_disabled": "wire",
     "email_not_configured": "wire",
     "download_auth_required": "wire",
+    "delivery_gate_missing": "wire",
     "upstream_rate_limited": "wire",
     "server_misconfigured": "wire",
     "internal_error": "wire",

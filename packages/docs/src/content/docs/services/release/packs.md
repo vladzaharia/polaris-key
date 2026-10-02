@@ -126,6 +126,15 @@ which app releases pin a pack release, and what a build embeds. Discovery's Rele
 carries `packs: true` on a Worker that ingests packs; `pkey release publish` refuses to publish a
 pack or stamp `content` without it.
 
+## Delivering packs
+
+Distribution serves a pack's objects by SHA-256 on the blob route only, under the pack's own
+delivery access and, for a gated pack, its current gate; a pack's files are never served by the
+`files` or `builds` routes. Each outlet's transport for the pack (`pkey-cdn`, `web` or
+`embedded` in v1) decides where it is live. See
+[Pack bytes](/docs/services/distribution/delivery/#pack-bytes) and
+[Availability](/docs/services/distribution/availability/).
+
 ## Installing packs on a device
 
 A build learns its pins from the **content stamp** (`pkey-content.json`) it ships, never from the

@@ -29,6 +29,7 @@
  * Read-only by contract: a hook never writes.
  */
 
+import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import {
   DEFAULT_TRANSPORT,
   type Delivery,
@@ -117,6 +118,8 @@ export function delivery(ctx: HookContext): Delivery {
         const file = await catalog.resolve({ kind: "file", releaseId, name });
         if (file?.kind !== "file" || !file.release || !file.artifact)
           return null;
+        // `files` serves the app deliverable only; a pack's objects are on the blob route (P4-05).
+        if (file.release.deliverableId !== APP_DELIVERABLE_ID) return null;
         if (!(await transportIsOurs(ctx, file.release.deliverableId, outlet)))
           return null;
         return fileDeliveryUrl(ctx.env, slug, releaseId, name);
@@ -135,6 +138,7 @@ export function delivery(ctx: HookContext): Delivery {
           (r) => r.releaseId === releaseId,
         );
         if (!release) continue;
+        if (d.id !== APP_DELIVERABLE_ID) return null;
         if (!(await transportIsOurs(ctx, d.id, outlet))) return null;
         const payload = (
           await catalog.artifacts(releaseId, buildId as string)
