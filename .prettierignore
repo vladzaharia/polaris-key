@@ -2,6 +2,9 @@
 # freshness suite), so prettier must never rewrite them.
 packages/worker/src/docsCsp.generated.ts
 packages/docs/src/content/docs/reference/
+# P2b-05's storefront feed goldens: byte-compared against the rendered feed bodies.
+packages/worker/test/fixtures/feeds/
+packages/cli/test/fixtures/feeds/
 
 # Build caches.
 packages/docs/.astro/
@@ -52,3 +55,6 @@ docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/e_velop
 docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/export/
 docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/profiles/
 docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/node_modules/
+
+# Local Claude Code worktrees (git-excluded via .git/info/exclude, which Prettier does not read).
+.claude/worktrees/

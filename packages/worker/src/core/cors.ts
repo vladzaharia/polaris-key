@@ -92,7 +92,8 @@ export const CORS_MAX_AGE = "600";
  * `identity/auth/device/verify`, `config/mint/{mintId}/auth`, and the CI routes — Release's
  * policy routes (`release/channels/{channel}/{promote,pin,unpin}`,
  * `release/releases/{releaseId}/yank`), its publishing routes and Distribution's rollout routes
- * (`distribution/rollouts/{outlet}/{channel}[/{verb}]`) — which a CI job calls with a `pkeyci_`
+ * (`distribution/rollouts/{outlet}/{channel}[/{verb}]`) and its F-Droid route
+ * (`distribution/feeds/fdroid/{channel}`) — which a CI job calls with a `pkeyci_`
  * bearer and no browser page ever should — and the store webhooks
  * (`distribution/hooks/asc`, P5-02), which only the store's servers call.
  *
@@ -121,6 +122,15 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "distribution/builds/{selector}/{buildId}",
   "distribution/files/{releaseId}/{name}",
   "distribution/blobs/sha256/{sha256}",
+  // P2b-05: the public storefront feeds — web tools (source browsers) read them; native clients
+  // ignore CORS. The F-Droid relay's one-segment files (`entry.jar`, `index-v2.json`) are
+  // covered; the CI route `distribution/feeds/fdroid/{channel}` is not.
+  "distribution/altstore/{channel}/source.json",
+  "distribution/altstore-pal/{channel}/source.json",
+  "distribution/obtainium/{channel}.json",
+  "distribution/fdroid/{channel}/repo/{path}",
+  "distribution/scoop/{channel}.json",
+  "distribution/flathub/{channel}.json",
   "update/appcast.xml",
   "update/{channel}/appcast.xml",
   "update/{channel}/feed.jws",

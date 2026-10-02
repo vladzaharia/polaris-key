@@ -96,6 +96,29 @@ class CacheManager:
             return None
         return self._record.etags.get(slice_name)
 
+    def update_slices(self) -> Dict[str, Dict[str, str]]:
+        """The wire v4 update slices AS STORED: ``{"feeds": …, "releaseRecords": …}``, signed
+        JWSs and nothing else, never a floor. They are UNVERIFIED here — the update client
+        re-verifies every entry before using it (plans/P3-01.md §2.5, "Reload path") and derives
+        the floors from what survives. Copies, so a caller cannot edit the record behind
+        :meth:`patch`'s back."""
+        rec = self._record
+        return {
+            "feeds": dict(rec.feeds) if rec is not None else {},
+            "releaseRecords": dict(rec.releaseRecords) if rec is not None else {},
+        }
+
+    def keep_update_slices(
+        self, *, feeds: Dict[str, str], release_records: Dict[str, str]
+    ) -> None:
+        """Replace the update slices with what the reload path kept. In memory only, like
+        :meth:`_drop_slice`: an entry that failed verification is absent for this session and
+        rewritten out on the next patch, never erased from disk on a read path."""
+        if self._record is None:
+            return
+        self._record.feeds = dict(feeds)
+        self._record.releaseRecords = dict(release_records)
+
     def license_doc(self) -> Optional[LicenseDoc]:
         return self._loaded.license.doc if self._loaded.license else None
 
@@ -216,6 +239,8 @@ class CacheManager:
         blocked: Any = _UNSET,
         last_sync_unauthorized: Any = _UNSET,
         imported_bundle: Any = _UNSET,
+        feeds: Any = _UNSET,
+        release_records: Any = _UNSET,
     ) -> None:
         """Read-modify-write the whole record. The ONLY mutation path (§4.1): a service
         module that wrote the file directly could not be prevented from writing a
@@ -232,6 +257,10 @@ class CacheManager:
         if imported_bundle is not _UNSET:
             rec.importedBundle = imported_bundle
             self._loaded.importedBundle = imported_bundle
+        if feeds is not _UNSET:
+            rec.feeds = dict(feeds or {})
+        if release_records is not _UNSET:
+            rec.releaseRecords = dict(release_records or {})
         self._ctx.store.write_cache(rec)
 
     def flush(self, **patch: Any) -> None:
@@ -244,17 +273,37 @@ class CacheManager:
         """Replace the record wholesale, atomically. Only ``import_bundle`` uses this: §7
         step 5 is an all-or-nothing write of a verified bundle's contents, and merging it
         into whatever was there before would let a stale slice survive an air-gapped
-        re-provisioning."""
+        re-provisioning.
+
+        The wire v4 update slices are the one exception (as in the Node and React SDKs): they
+        are signed public documents, not grants, and they carry each channel's ``seq`` floor.
+        Dropping them would let a replayed older feed past the floor, so they are carried into
+        the new record and re-verified, like everything else, before any use."""
+        carried = self._carried_update_slices()
+        record.feeds = {**record.feeds, **carried["feeds"]}
+        record.releaseRecords = {**record.releaseRecords, **carried["releaseRecords"]}
         self._record = record
         self._ctx.store.write_cache(record)
 
     def clear(self) -> None:
-        """Wipe everything, in memory and on disk."""
+        """Wipe everything, in memory and on disk — except the update slices (see
+        :meth:`replace`): a deactivation removes every credential and grant, not the feeds'
+        ``seq`` floors."""
+        carried = self._carried_update_slices()
         self._record = None
         self._loaded = LoadedCache()
         self._trust.reset()
         self._ctx.reset_floor()
-        self._ctx.store.clear_cache()
+        if not carried["feeds"] and not carried["releaseRecords"]:
+            self._ctx.store.clear_cache()
+            return
+        self._record = CacheRecord(
+            feeds=carried["feeds"], releaseRecords=carried["releaseRecords"]
+        )
+        self._ctx.store.write_cache(self._record)
+
+    def _carried_update_slices(self) -> Dict[str, Dict[str, str]]:
+        return self.update_slices()
 
     def _ensure_record(self) -> CacheRecord:
         if self._record is None:

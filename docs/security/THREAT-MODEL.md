@@ -598,10 +598,21 @@ the **opt-in** `distribution:rollout` scope (not in the default grant). Transiti
 table, applied conditionally on the state read (two concurrent verbs cannot both apply); a
 yanked release cannot be rolled out; a verb may pin the release it means (`stale_release`); a
 `mirrored` row (a store connector's) refuses every direct edit; every change is audited with its
-actor. **What a halt does today:** nothing reads `dist_rollouts` to decide what a device is
-offered until P3-03 composes the signed feed, so a halt is recorded and shown but the legacy
-feeds keep serving. A holder of `distribution:rollout` therefore cannot yet withhold or expose a
-build; the emergency stop is still a yank or a pin (`release:yank`, `release:promote`). The salt
+actor. **What a halt does today:** the storefront feeds that list releases (P2b-05: AltStore,
+AltStore PAL, Scoop, Flathub, and the F-Droid generator inputs and APK redirects) honour holds: a
+release whose rollout on an outlet is paused, halted or active below 10000 bp is left out of
+that outlet's feeds, which list the previous release instead. **Obtainium does not:** its config
+is a pointer that names no release. In FDroidRepo mode it follows the `fdroid-repo` outlet's
+repository, so it obeys that outlet's holds; in Direct mode it follows the moving
+`builds/<channel>/<buildId>` route, which applies yanks and pins but neither holds nor
+availability. A hold on the `obtainium` outlet itself changes nothing unless no release
+qualifies at all, which turns the config into a not-found. Nothing else reads `dist_rollouts`
+until P3-03 composes the signed feed: the Sparkle appcast, `/update/version` and the downloads
+keep serving. So a holder of `distribution:rollout` (or an admin) can WITHHOLD one release per
+outlet and channel from the storefront feeds that list releases, which for new installs there is
+a rollback to the release before it. It cannot EXPOSE a build: a feed lists only releases the
+channel already serves, and a yanked release can be neither rolled out nor listed. The
+emergency stop for every device is still a yank or a pin (`release:yank`, `release:promote`). The salt
 is random per release and the bucket is evaluated on the device, so the Worker serves one feed
 to everyone and a rollout leaks nothing about which devices are in it.
 
@@ -622,9 +633,18 @@ when) and `dist_submissions` (where R stands in O's review) — written by CI th
   answers not-found with Distribution off, and is not on the bytes host.
 - **What a report can and cannot do.** It can make the console, and later the matrix (P2b-06),
   the storefront feeds (P2b-05) and the signed feed (P3-03), show a WRONG STATE: claim a build is
-  `live` on a store where it is not, or `removed` from a self-hosted outlet where it is. It
-  cannot ship code, serve or withhold bytes (nothing on the byte path reads these tables), change
-  a rollout, or change a key. It is recorded as a §5 semi-trusted input. A consumer that turns
+  `live` on a store where it is not, or `removed` from a self-hosted outlet where it is. Since
+  P2b-05 that wrong state also STEERS the storefront feeds: a stored report wins over the derived
+  `live` of a self-hosted outlet, so a non-`live` report hides a release from that outlet's
+  AltStore, F-Droid or Scoop feed (which then lists the previous one), and a `live`
+  report on AltStore PAL lists a release the store may not carry. (An Obtainium config names no
+  release: a report on the `obtainium` outlet only matters when it leaves no release at all,
+  which turns the config into a not-found; see P2b-04 above.) Both are withholding or
+  rollback for new installs, never exposure: a feed lists only releases the channel serves,
+  never a yanked one, and only by their pinned delivery URLs, except Obtainium's Direct link,
+  which is the moving builds route. It cannot ship code, serve or
+  withhold bytes (nothing on the byte path reads these tables), change a rollout, or change a
+  key. It is recorded as a §5 semi-trusted input. A consumer that turns
   availability into an offer to a device (P3-03) must treat a CI-sourced `live` as a claim, not
   as proof — the bytes, their digest and the release's signature remain the authority.
 - **Derived availability reads only Release's truth.** A self-hosted outlet (`direct`, `web`,
@@ -664,6 +684,83 @@ own key could also publish that key as the expected one.
   still fails the job), and availability and submission rows are bounded by the product's
   releases × builds × declared outlets. The `registered` flag is the operator's own record of
   Android developer verification; nothing verifies it against Google.
+
+### Storefront feeds and the F-Droid relay (P2b-05)
+
+**What arrived.** Public per-channel feeds under `/<p>/distribution/` — AltStore/SideStore and
+AltStore PAL sources, Obtainium configs, Scoop manifests, Flathub checker JSON — rendered from
+Release's truth and Distribution's state, and an F-Droid repository relay serving files CI signed
+and registered (`services/distribution/feeds/`; tests: `test/storefrontFeeds.test.ts`). A new
+opt-in CI scope, `distribution:feeds`, reads the generator's inputs, registers a repository's
+files, and buys an upload ticket for them. A new column, `release_builds.metadata_json`, holds
+the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK signer).
+
+- **Public by construction, so public only.** None of these clients can authenticate. Every feed
+  route, the relay included, exists only while the app deliverable's `dist_access` is `public`.
+  Otherwise it answers the plain not-found, so a `licensed` product's release history, notes and
+  byte URLs are never listed. Release notes appear only when the metadata access is public too.
+  The feeds are served on the console host, never on the bytes host, and are read-only.
+- **The relay is not a file host.** It serves only paths registered for (product, `fdroid`,
+  channel). Every path passes `isSafeAssetPath` at registration and on every read, so a `%` or a
+  dot segment never reaches a lookup. Each file is a content-addressed blob that this product
+  holds a `feed` ref to, and `blobResponse` re-checks its stored checksum. On every read the relay
+  also applies the blob route's strictest-mode rule (`objectIsPublic`): the strictest `dist_access`
+  of the deliverables whose releases carry the object (the app's when none do) must be `public`,
+  so an object a pack or other non-public deliverable later carries stops being served at once.
+  The content type comes
+  from a Worker allowlist keyed by extension (`json`, `jar`, `png`, `jpg`, `jpeg`, `webp`, `asc`);
+  CI never supplies it, and HTML, XML and SVG cannot be registered. Every answer carries `nosniff`
+  and the sandbox CSP. `application/json` and `image/*` are served on the console origin, which
+  holds sessions. With `nosniff` and `sandbox`, no browser runs either as a document. An APK name
+  is a 302 to its immutable delivery URL, and only when the registered `index-v2.json` names it
+  and the channel's F-Droid feed still selects its release.
+- **Refs are earned the P2-02 way, and only feed refs count.** A register promotes only objects of
+  the caller's own upload ticket, verified in staging. It skips the ticket only for a key this
+  product already holds a `feed` ref to, which an earlier register earned the same way. A release
+  artifact's or a pack object's ref does NOT count: the relay serves every file to anyone, and
+  the feeds themselves publish payload digests, so accepting any ref would let a token that holds
+  only `distribution:feeds` re-serve bytes it never had. A hash alone never earns a ref (§3, the
+  blob store). Registration also refuses (`not_public`, 403) any object a non-public
+  deliverable's release carries, by the same strictest-mode rule the relay re-applies on every
+  read. So a registered file is never a paid pack's payload, whether the caller names its digest
+  or uploads the bytes. The channel's file set and its `feed` refs are replaced in one batch.
+- **The repo key never reaches the Worker.** CI signs `entry.jar` with `apksigner`. Before it
+  uploads, `pkey feeds fdroid` refuses a signature by any key other than the `fdroid-repo` entries
+  of the operator-owned key inventory. F-Droid clients pin the fingerprint they were given when
+  they added the repository, so a pipeline holding another key cannot get a client to accept its
+  index.
+- **Cost (DoS).** The feed routes are public and unauthenticated, and they read the D1 database
+  that licensing shares across products, so a request's cost is bounded, not proportional to the
+  release history. A selection reads the outlet's availability rows and transport once, then two
+  queries per scanned release (its builds and its artifacts), none for a store outlet's release
+  with no live report, and scans at most the 100 newest releases (`MAX_FEED_SCAN`): about 220 D1
+  reads in the worst case, pinned by a ceiling test over a 120-release history. The rendered
+  answer is then kept in the Workers Cache API for the five minutes `Cache-Control` already
+  promises, keyed by path, `?outlet=` and a stamp of the state a feed must follow at once
+  (rollouts, yanks, availability, outlets, registered files, notes access). Extra query parameters
+  do not miss it. A cached answer costs the access check and the stamp, under a dozen reads. The
+  relay answers an APK name its registered index does not list without any selection. The 60
+  requests per minute per IP limit (which fails open) remains a backstop, not the bound. A new
+  release can take up to five minutes to appear in a feed; a hold, a yank, a report and an
+  access change apply on the next request.
+- **Residual.** A `distribution:feeds` token can replace the repository of a channel the product
+  already declares (a built-in, a manual rule, or a channel a release was published to:
+  `knownChannels`) with any validly shaped files whose bytes it holds itself, and none of them
+  can be a non-public deliverable's object. It cannot create a repository: a well-formed channel
+  name the product never declared is `unknown_channel` (404) at registration, and every feed
+  route, the relay included, is not-found for it, so no file is served and no answer is cached
+  under it. A client that pinned the fingerprint rejects an index signed by another key, but
+  the token can still break the repository: it can register a stale index or a broken one. That is
+  denial of service and a rollback to versions that were listed before, not code execution, since
+  the APKs stay pinned by SHA-256 and Android verifies their signatures. The scope is opt-in for
+  that reason. Two scopes that existed before P2b-05 now steer these feeds too, with the same
+  withholding-or-rollback effect and no exposure: `distribution:rollout` (opt-in) and the console
+  can hold one release per outlet and channel out of every feed on that outlet that lists
+  releases (P2b-04 above; not Obtainium's config, which only points at a source),
+  and `distribution:report`, which is in the DEFAULT grant, decides through availability reports
+  which releases the self-hosted feeds list (P2b-03 above). Build metadata is CI's claim: it
+  decides what a feed lists, never the bytes behind a URL. A wrong `appPermissions` makes AltStore refuse the install, and a wrong `signerSha256`
+  makes F-Droid refuse the APK.
 
 ### Outlet credentials (P5-01)
 

@@ -49,3 +49,6 @@ packages/worker/assets/
 # would silently swallow it (content, not build output).
 !packages/docs/src/content/docs/build/
 !packages/docs/src/content/docs/build/**
+
+# Test fixtures that a global *.jar ignore would otherwise drop.
+!packages/cli/test/fixtures/**/*.jar

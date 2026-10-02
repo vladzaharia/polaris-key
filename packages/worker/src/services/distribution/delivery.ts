@@ -29,16 +29,31 @@ import {
   type HookContext,
 } from "../../core/hooks.js";
 import { bytesHostname } from "../../core/bytesHost.js";
+import type { Env } from "../../core/platform.js";
 import { accessModeOf } from "./access.js";
 import { getRollout, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
 import { listOutlets, parseJsonColumn } from "./outlets.js";
 
 /** The origin byte URLs are minted on: the bytes host when there is one, else none (a path). */
-function bytesOrigin(ctx: HookContext): string {
-  return bytesHostname(ctx.env) && ctx.env.BLOB_ORIGIN
-    ? new URL(ctx.env.BLOB_ORIGIN).origin
+function bytesOrigin(env: Env): string {
+  return bytesHostname(env) && env.BLOB_ORIGIN
+    ? new URL(env.BLOB_ORIGIN).origin
     : "";
+}
+
+/**
+ * The immutable `files/<releaseId>/<name>` URL of one release file — on the bytes host when
+ * there is one, else a path. `deliveryUrl` mints only this shape, and the storefront feeds
+ * (`feeds/select.ts`, which apply the same conditions in bulk) call it directly.
+ */
+export function fileDeliveryUrl(
+  env: Env,
+  slug: string,
+  releaseId: string,
+  name: string,
+): string {
+  return `${bytesOrigin(env)}/${slug}/distribution/files/${encodeURIComponent(releaseId)}/${encodeURIComponent(name)}`;
 }
 
 export function delivery(ctx: HookContext): Delivery {
@@ -85,7 +100,6 @@ export function delivery(ctx: HookContext): Delivery {
       if ((buildId === undefined) === (name === undefined)) return null;
       const catalog = ctx.hooks.releaseCatalog();
       if (!catalog) return null;
-      const base = `${bytesOrigin(ctx)}/${slug}/distribution`;
 
       if (name !== undefined) {
         const file = await catalog.resolve({ kind: "file", releaseId, name });
@@ -93,7 +107,7 @@ export function delivery(ctx: HookContext): Delivery {
           return null;
         if (!(await transportIsOurs(ctx, file.release.deliverableId, outlet)))
           return null;
-        return `${base}/files/${encodeURIComponent(releaseId)}/${encodeURIComponent(name)}`;
+        return fileDeliveryUrl(ctx.env, slug, releaseId, name);
       }
 
       // A build's immutable URL is its PAYLOAD file's `files/<releaseId>/<name>` URL: pinned to
@@ -126,7 +140,7 @@ export function delivery(ctx: HookContext): Delivery {
           served.artifact?.artifactId !== payload.artifactId
         )
           return null;
-        return `${base}/files/${encodeURIComponent(releaseId)}/${encodeURIComponent(payload.name)}`;
+        return fileDeliveryUrl(ctx.env, slug, releaseId, payload.name);
       }
       return null;
     },

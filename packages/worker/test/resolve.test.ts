@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalChannel,
+  channelCandidates,
   channelClosure,
   compareVersions,
   parsesInScheme,
@@ -518,5 +519,49 @@ describe("resolveBuild over D1", () => {
       await resolveBuild(db, SLUG, { deliverable: "nope", selector: "stable" }),
     ).toBeNull();
     expect(await resolveBuild(db, "other", { selector: "stable" })).toBeNull();
+  });
+});
+
+// ── P2b-05: a channel's whole history, newest first ──────────────────────────────────────────
+
+describe("channelCandidates (the storefront feeds' history)", () => {
+  it("lists every member newest first, beta including stable, yanks removed", () => {
+    const releases = [
+      rel("1.0.0", { b: ALL }),
+      rel("1.1.0", { b: ALL }),
+      rel("1.2.0-beta.1", { b: ALL }),
+      rel("1.1.1", { b: NO_IOS }),
+    ];
+    const base = input({ releases, yanked: new Set(["v1.1.1"]) });
+    expect(channelCandidates(base, "stable").map((c) => c.releaseId)).toEqual([
+      "v1.1.0",
+      "v1.0.0",
+    ]);
+    expect(channelCandidates(base, "beta").map((c) => c.releaseId)).toEqual([
+      "v1.2.0-beta.1",
+      "v1.1.0",
+      "v1.0.0",
+    ]);
+  });
+
+  it("a pinned channel lists only releases at or below its pointer, the pointer even if yanked", () => {
+    const releases = [rel("2.0.0"), rel("2.1.0"), rel("2.2.0")];
+    const base = input({
+      releases,
+      yanked: new Set(["v2.1.0"]),
+      policies: new Map([["stable", pol({ pointer: "v2.1.0", pinned: true })]]),
+    });
+    expect(channelCandidates(base, "stable").map((c) => c.releaseId)).toEqual([
+      "v2.1.0",
+      "v2.0.0",
+    ]);
+  });
+
+  it("agrees with resolveCandidates on the head", () => {
+    const releases = [rel("3.0.0", { b: ALL }), rel("3.1.0", { b: ALL })];
+    const base = input({ releases });
+    expect(channelCandidates(base, "stable")[0]!.releaseId).toBe(
+      resolveCandidates(base)!.release.releaseId,
+    );
   });
 });

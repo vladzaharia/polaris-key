@@ -35,17 +35,20 @@ export function ciActor(principal: CiPrincipal): string {
 }
 
 /**
- * Authenticate a CI request for `product` and require `scope`. Returns the principal, or the
- * refusal to send.
+ * Authenticate a CI request for `product` and require `scope` — or, given a list, ANY one of its
+ * scopes (P2-02's uploads route takes `release:publish` or `distribution:feeds`). Returns the
+ * principal, or the refusal to send; a refusal names the first scope of a list.
  */
 export async function requireCiScope(
   req: Request,
   env: Env,
   db: Db,
   product: string,
-  scope: CiScope,
+  scope: CiScope | readonly CiScope[],
   now: number,
 ): Promise<CiPrincipal | Response> {
+  const wanted: readonly CiScope[] =
+    typeof scope === "string" ? [scope] : scope;
   const token = bearer(req);
   if (!token || !token.startsWith(CI_TOKEN_PREFIX)) {
     return errorResponse(
@@ -68,14 +71,15 @@ export async function requireCiScope(
       },
     );
   }
-  if (!principal.scopes.includes(scope)) {
+  if (!wanted.some((s) => principal.scopes.includes(s))) {
+    const first = wanted[0];
     return errorResponse(
       403,
       ErrorCode.Forbidden,
-      `this token lacks the ${scope} scope`,
+      `this token lacks the ${wanted.join(" or ")} scope`,
       {
         reason: "missing_scope",
-        scope,
+        scope: first,
       },
     );
   }

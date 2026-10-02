@@ -1,0 +1,59 @@
+{
+  "name": "Diceroll",
+  "identifier": "test.example.key.diceroll.altstore.stable",
+  "sourceURL": "https://key.example.test/diceroll/distribution/altstore/stable/source.json",
+  "subtitle": "A cozy dice-rolling roguelite",
+  "description": "Roll, reroll, repeat.",
+  "iconURL": "https://cdn.example.test/diceroll/icon.png",
+  "website": "https://diceroll.example.test",
+  "tintColor": "3b1f1f",
+  "apps": [
+    {
+      "name": "Diceroll",
+      "bundleIdentifier": "gg.vlad.diceroll",
+      "developerName": "Vlad",
+      "subtitle": "A cozy dice-rolling roguelite",
+      "localizedDescription": "Roll, reroll, repeat.",
+      "iconURL": "https://cdn.example.test/diceroll/icon.png",
+      "tintColor": "3b1f1f",
+      "category": "games",
+      "versions": [
+        {
+          "version": "1.1.0",
+          "buildVersion": "10100",
+          "date": "2023-10-15T22:13:20Z",
+          "localizedDescription": "What's new in 1.1.0.",
+          "downloadURL": "https://dl.example.test/diceroll/distribution/files/app%401.1.0/Diceroll-1.1.0-ios-sideload.ipa",
+          "size": 41,
+          "sha256": "f3682097f09ea2994f217558fd4b5765b17fd059d423bbf71ca2f92b3247ee08",
+          "minOSVersion": "16.0"
+        },
+        {
+          "version": "1.0.0",
+          "buildVersion": "10000",
+          "date": "2023-10-05T22:13:20Z",
+          "localizedDescription": "What's new in 1.0.0.",
+          "downloadURL": "https://dl.example.test/diceroll/distribution/files/app%401.0.0/Diceroll-1.0.0-ios-sideload.ipa",
+          "size": 41,
+          "sha256": "49af98c3b2f233ed148243958e79d750034bca8c23be9c3996c86d0aea9acbe4",
+          "minOSVersion": "16.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [
+          "com.apple.developer.game-center",
+          "get-task-allow"
+        ],
+        "privacy": {
+          "NSCameraUsageDescription": "Scan a friend's dice code."
+        }
+      },
+      "version": "1.1.0",
+      "versionDate": "2023-10-15T22:13:20Z",
+      "versionDescription": "What's new in 1.1.0.",
+      "downloadURL": "https://dl.example.test/diceroll/distribution/files/app%401.1.0/Diceroll-1.1.0-ios-sideload.ipa",
+      "size": 41
+    }
+  ],
+  "news": []
+}

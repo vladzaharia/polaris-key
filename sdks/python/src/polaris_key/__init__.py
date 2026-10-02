@@ -10,6 +10,7 @@ Core plus one sub-client per service, mirroring ``@polaris-key/node``::
     client.devices.register()            # keyless device mint (§6)
     client.release.changelog()           # the truth store
     client.update.check()                # the feed over it
+    client.update.decide()               # wire v4: the signed feed, the pinned record, the decision
 
 Every subpackage is importable on its own, so a config-only daemon can
 ``from polaris_key.config import ConfigClient`` without pulling the licence module:
@@ -22,7 +23,8 @@ Every subpackage is importable on its own, so a config-only daemon can
     ``polaris_key.devices``  registration, the roster, fingerprint/facts/device-id, the stores
     ``polaris_key.identity`` device-code sign-in (RFC 8628)
     ``polaris_key.release``  changelog / install script / artifact URLs
-    ``polaris_key.update``   version check + the Sparkle appcast URL
+    ``polaris_key.update``   version check, the Sparkle appcast URL, and wire v4's signed
+                         update decision (``decide()``, ``feed()``, ``release_record()``)
     ``polaris_key.local``    the transportless profile
 
 This SDK verifies the SAME cross-language conformance corpus (``conformance/corpus/v2``)
@@ -93,6 +95,40 @@ from .core.models import (
     LicenseDoc,
     ManagedEntry,
 )
+from .core.decide import (
+    OutletCapabilities,
+    ResolvedOutlet,
+    boot_decision,
+    decide_update,
+    effective_capabilities,
+    is_undismissable,
+    is_valid_host_outlet,
+    resolve_update_outlet,
+    rollout_bucket,
+)
+from .core.feed import FeedFloor, VerifyFeedResult, feed_claims, feed_floor, verify_feed
+from .core.models import (
+    ChannelFeedDoc,
+    DecisionRelease,
+    InstalledBuild,
+    ReleaseRecordDoc,
+    StagedUpdate,
+    TYP_FEED,
+    TYP_RELEASE,
+    UpdateCheck,
+    UpdateCheckError,
+    UpdateDecision,
+    UpdateDecisionInput,
+    UpdateOutlet,
+)
+from .core.release_record import (
+    ReleaseRecordPin,
+    VerifyReleaseRecordResult,
+    record_hash,
+    release_record_claims,
+    verify_release_record,
+)
+from .core.version import VERSION_SCHEMES, compare_versions, parse_version
 from .core.semver import (
     ParsedSemver,
     channel_for_version,
@@ -155,7 +191,14 @@ from .license.endpoints import (
 )
 from .license.gate import LicenseState, is_usable, license_state
 from .release.client import ChangelogEntry, ReleaseClient
-from .update.client import UpdateClient, VersionCheck
+from .update.client import (
+    FeedCheck,
+    ReleaseRecordCheck,
+    UpdateClient,
+    UpdateClientOptions,
+    UpdateError,
+    VersionCheck,
+)
 
 __all__ = [
     "__version__",
@@ -255,6 +298,45 @@ __all__ = [
     # release / update
     "ChangelogEntry",
     "VersionCheck",
+    # wire v4: the signed feed, the release record and the update decision
+    "UpdateClientOptions",
+    "UpdateError",
+    "FeedCheck",
+    "ReleaseRecordCheck",
+    "TYP_FEED",
+    "TYP_RELEASE",
+    "VERSION_SCHEMES",
+    "parse_version",
+    "compare_versions",
+    "feed_claims",
+    "verify_feed",
+    "feed_floor",
+    "FeedFloor",
+    "VerifyFeedResult",
+    "record_hash",
+    "release_record_claims",
+    "verify_release_record",
+    "ReleaseRecordPin",
+    "VerifyReleaseRecordResult",
+    "rollout_bucket",
+    "effective_capabilities",
+    "OutletCapabilities",
+    "is_valid_host_outlet",
+    "resolve_update_outlet",
+    "ResolvedOutlet",
+    "decide_update",
+    "boot_decision",
+    "is_undismissable",
+    "ChannelFeedDoc",
+    "ReleaseRecordDoc",
+    "InstalledBuild",
+    "UpdateOutlet",
+    "StagedUpdate",
+    "UpdateDecisionInput",
+    "UpdateDecision",
+    "DecisionRelease",
+    "UpdateCheck",
+    "UpdateCheckError",
     # discovery
     "discover_product",
     "services_from_list",

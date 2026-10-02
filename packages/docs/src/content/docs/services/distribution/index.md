@@ -62,6 +62,9 @@ switched on by a migration, so its stored state keeps serving while its manifest
   `pkey distribution report`, written by store connectors, and derived for self-hosted outlets —
   and the operator-owned **signing-key inventory**; see
   [Availability, submissions and keys](/docs/services/distribution/availability/).
+- **Storefront feeds** per channel — AltStore and SideStore sources, an AltStore PAL source,
+  Obtainium configs, an F-Droid repository signed by CI and relayed here, a Scoop manifest and
+  Flathub checker JSON; see [Storefront feeds](/docs/services/distribution/feeds/).
 - **A discovery fragment** advertising the canonical byte URLs; `configured` is `true` once the
   product has a release configuration:
 

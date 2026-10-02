@@ -24,6 +24,7 @@
  */
 
 import {
+  ANDROID_ABIS,
   APP_DELIVERABLE_ID,
   ARTIFACT_ROLES,
   BUILT_IN_CHANNELS,
@@ -93,8 +94,174 @@ export interface DescriptorBuild {
   buildNumber?: string;
   minOS?: string;
   requires?: Record<string, unknown>;
+  /**
+   * What `pkey release publish` read out of the payload (P2b-05): the storefront feeds' facts,
+   * extracted in CI because the Worker never unzips an archive. Only `ios` and `android` builds
+   * carry it, each in its platform's shape.
+   */
+  metadata?: IosBuildMetadata | AndroidBuildMetadata;
   /** Empty for a store-only build, which still records its version and build number. */
   artifacts: DescriptorArtifact[];
+}
+
+/** An IPA's facts (its `Info.plist` and the main executable's entitlements). */
+export interface IosBuildMetadata {
+  /** `CFBundleIdentifier`. */
+  bundleIdentifier: string;
+  /** `CFBundleShortVersionString`. */
+  version: string;
+  /** `CFBundleVersion`. */
+  buildVersion: string;
+  /** `MinimumOSVersion`. */
+  minOSVersion?: string;
+  /** What AltStore checks the IPA against: the entitlement keys and the `*UsageDescription`s. */
+  appPermissions: {
+    entitlements: string[];
+    privacy: Record<string, string>;
+  };
+}
+
+/** An APK's facts (its binary manifest, its native libraries and its signing certificate). */
+export interface AndroidBuildMetadata {
+  packageName: string;
+  versionCode: number;
+  versionName: string;
+  minSdk?: number;
+  /** `targetSdkVersion`; an F-Droid index states `usesSdk` only when both SDKs are known. */
+  targetSdk?: number;
+  /** ABIs under `lib/`; empty or absent for a pure-JVM APK. */
+  nativecode?: string[];
+  /** Lower-case hex SHA-256 of the signing certificate (DER). */
+  signerSha256: string;
+}
+
+/** The platforms whose builds may carry `metadata`. */
+export const BUILD_METADATA_PLATFORMS = ["ios", "android"] as const;
+const MAX_ENTITLEMENTS = 256;
+const MAX_PRIVACY_KEYS = 64;
+const MAX_PRIVACY_TEXT = 1000;
+const ENTITLEMENT_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
+const PRIVACY_KEY_RE = /^NS[A-Za-z0-9]{1,100}UsageDescription$/;
+const META_BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+const META_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
+const VERSION_NAME_RE = /^[^\u0000-\u001f\u007f]{1,128}$/u;
+const MAX_VERSION_CODE = 2100000000;
+
+/**
+ * What is wrong with a build's `metadata`, or `null`. The shape follows the build's platform;
+ * any other platform carries none.
+ */
+function buildMetadataProblem(platform: unknown, m: unknown): string | null {
+  if (platform !== "ios" && platform !== "android")
+    return "only ios and android builds carry metadata";
+  if (!isRecord(m)) return "metadata must be an object";
+  const allowed =
+    platform === "ios"
+      ? [
+          "bundleIdentifier",
+          "version",
+          "buildVersion",
+          "minOSVersion",
+          "appPermissions",
+        ]
+      : [
+          "packageName",
+          "versionCode",
+          "versionName",
+          "minSdk",
+          "targetSdk",
+          "nativecode",
+          "signerSha256",
+        ];
+  const extra = Object.keys(m).find((k) => !allowed.includes(k));
+  if (extra) return `${extra} is not a ${platform} metadata field`;
+  if (platform === "ios") {
+    if (
+      typeof m.bundleIdentifier !== "string" ||
+      m.bundleIdentifier.length > 155 ||
+      !META_BUNDLE_ID_RE.test(m.bundleIdentifier)
+    )
+      return "bundleIdentifier must be a reverse-DNS bundle id";
+    for (const f of ["version", "buildVersion"] as const)
+      if (typeof m[f] !== "string" || !VERSION_RE.test(m[f] as string))
+        return `${f} must be 1-64 version characters`;
+    if (
+      m.minOSVersion !== undefined &&
+      (typeof m.minOSVersion !== "string" || !MIN_OS_RE.test(m.minOSVersion))
+    )
+      return "minOSVersion must be at most 32 version characters";
+    const p = m.appPermissions;
+    if (
+      !isRecord(p) ||
+      Object.keys(p).some((k) => k !== "entitlements" && k !== "privacy")
+    )
+      return "appPermissions must be { entitlements, privacy }";
+    const ents = p.entitlements;
+    if (
+      !Array.isArray(ents) ||
+      ents.length > MAX_ENTITLEMENTS ||
+      new Set(ents).size !== ents.length ||
+      !ents.every((e) => typeof e === "string" && ENTITLEMENT_RE.test(e))
+    )
+      return `appPermissions.entitlements must be at most ${MAX_ENTITLEMENTS} distinct entitlement keys`;
+    const priv = p.privacy;
+    if (
+      !isRecord(priv) ||
+      Object.keys(priv).length > MAX_PRIVACY_KEYS ||
+      !Object.entries(priv).every(
+        ([k, v]) =>
+          PRIVACY_KEY_RE.test(k) &&
+          typeof v === "string" &&
+          codePoints(v) <= MAX_PRIVACY_TEXT &&
+          !v.includes("\u0000"),
+      )
+    )
+      return `appPermissions.privacy must map at most ${MAX_PRIVACY_KEYS} NS…UsageDescription keys to text`;
+    return null;
+  }
+  if (
+    typeof m.packageName !== "string" ||
+    m.packageName.length > 255 ||
+    !META_PACKAGE_RE.test(m.packageName)
+  )
+    return "packageName must be an Android package name";
+  if (
+    !Number.isSafeInteger(m.versionCode) ||
+    (m.versionCode as number) < 1 ||
+    (m.versionCode as number) > MAX_VERSION_CODE
+  )
+    return `versionCode must be an integer from 1 to ${MAX_VERSION_CODE}`;
+  if (typeof m.versionName !== "string" || !VERSION_NAME_RE.test(m.versionName))
+    return "versionName must be 1-128 characters with no control characters";
+  if (
+    m.minSdk !== undefined &&
+    !(
+      Number.isSafeInteger(m.minSdk) &&
+      (m.minSdk as number) >= 1 &&
+      (m.minSdk as number) <= 1000
+    )
+  )
+    return "minSdk must be an integer from 1 to 1000";
+  if (
+    m.targetSdk !== undefined &&
+    !(
+      Number.isSafeInteger(m.targetSdk) &&
+      (m.targetSdk as number) >= 1 &&
+      (m.targetSdk as number) <= 1000
+    )
+  )
+    return "targetSdk must be an integer from 1 to 1000";
+  const abis: readonly string[] = ANDROID_ABIS;
+  if (
+    m.nativecode !== undefined &&
+    (!Array.isArray(m.nativecode) ||
+      new Set(m.nativecode).size !== m.nativecode.length ||
+      !m.nativecode.every((a) => typeof a === "string" && abis.includes(a)))
+  )
+    return `nativecode must be distinct ABIs from ${ANDROID_ABIS.join(", ")}`;
+  if (typeof m.signerSha256 !== "string" || !SHA256_RE.test(m.signerSha256))
+    return "signerSha256 must be 64 lower-case hex characters";
+  return null;
 }
 
 export interface ReleaseDescriptor {
@@ -177,7 +344,9 @@ export interface RecordFields {
 /**
  * The `pkey-release+jws` payload a descriptor MOVES into (plans/P3-01.md §2.4): `product` becomes
  * `aud`, `descriptorVersion` becomes `schemaVersion: 1`, `publishedAt` and every artifact's
- * `locations` are dropped (locations change after signing), and everything else moves unchanged.
+ * `locations` are dropped (locations change after signing), a build's `metadata` is dropped (CI's
+ * unsigned claim for the storefront feeds, P2b-05; the record's build shape has no such field),
+ * and everything else moves unchanged.
  * An optional field the descriptor omits stays absent, and a store-only build keeps
  * `artifacts: []`. The CLI signs exactly this object (`pkey release publish`), and the Worker's
  * ingest refuses a record that is not this object for the descriptor it arrived with
@@ -520,6 +689,11 @@ export function validateReleaseDescriptor(
         "invalid_descriptor_build",
         "requires must be an object.",
       );
+    if (b.metadata !== undefined) {
+      const problem = buildMetadataProblem(b.platform, b.metadata);
+      if (problem)
+        err(`/builds/${bi}/metadata`, "invalid_build_metadata", `${problem}.`);
+    }
     if (
       !Array.isArray(b.artifacts) ||
       b.artifacts.length > MAX_BUILD_ARTIFACTS

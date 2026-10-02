@@ -66,7 +66,7 @@ from .license.client import LicenseClient
 from .license.endpoints import ActivationOk, reacquire_token
 from .license.gate import LicenseState
 from .release.client import ReleaseClient
-from .update.client import UpdateClient
+from .update.client import UpdateClient, UpdateClientOptions
 
 __all__ = [
     "PolarisKeyClient",
@@ -144,6 +144,8 @@ class PolarisKeyClient:
         # ── licence + devices inputs ─────────────────────────────────────────────────
         fingerprint: bool = True,
         probes: Optional[List[ProbeDeclaration]] = None,
+        # ── update inputs (wire v4) ──────────────────────────────────────────────────
+        update: Optional[UpdateClientOptions] = None,
         # ── lifecycle ────────────────────────────────────────────────────────────────
         refresh_interval_seconds: Optional[float] = None,
         on_change: Optional[Callable[[LicenseState], None]] = None,
@@ -209,7 +211,18 @@ class PolarisKeyClient:
         # syncs the same way.
         self.identity = IdentityClient(self.core, self._tokens, self._on_license_acquired)
         self.release = ReleaseClient(self.core, self._tokens)
-        self.update = UpdateClient(self.core, self._tokens, lambda: self._discovery_doc)
+        # Wire v4's signed decision: the pinned release keys, the outlet, the installed build's
+        # format and build number, the host's methods. Validated here: a bad value, or a
+        # release key that is also a trust pin, raises `invalid-options` from the constructor.
+        self.update = UpdateClient(
+            self.core,
+            self._tokens,
+            lambda: self._discovery_doc,
+            cache=self._cache,
+            trust=self._trust,
+            discover=self.discover,
+            options=update,
+        )
 
         self._discovery_doc: Optional[Dict[str, Any]] = None
         self._refresh_interval = refresh_interval_seconds
@@ -230,6 +243,10 @@ class PolarisKeyClient:
         self.core.init()
         self._tokens.load()
         self._cache.load()
+        # Wire v4's update slices go through the same reload path: every committed feed and
+        # record is re-verified against what this load trusts, and each channel's `seq` floor
+        # comes from the feed that survives.
+        self.update.reload()
         self._start_timer()
 
     def close(self) -> None:

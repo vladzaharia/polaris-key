@@ -112,9 +112,14 @@ describe("pkey release publish — the release record", () => {
       issuedAt: NOW,
       tag: "v0.3.0",
     });
-    // The record's builds are the descriptor's, with every location dropped.
+    // The record's builds are the descriptor's, with every location dropped, and without the
+    // build metadata (P2b-05): CI's unsigned claim for the storefront feeds, never signed.
+    expect(
+      body.descriptor.builds.some((b: any) => b.metadata !== undefined),
+    ).toBe(true);
+    for (const b of record.builds) expect(b).not.toHaveProperty("metadata");
     expect(record.builds).toEqual(
-      body.descriptor.builds.map((b: any) => ({
+      body.descriptor.builds.map(({ metadata: _m, ...b }: any) => ({
         ...b,
         artifacts: b.artifacts.map(({ locations: _l, ...a }: any) => a),
       })),
