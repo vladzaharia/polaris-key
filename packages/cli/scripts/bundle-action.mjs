@@ -28,7 +28,13 @@ const outFile =
   outArg !== -1 && process.argv[outArg + 1]
     ? path.resolve(process.argv[outArg + 1])
     : path.join(repoRoot, "actions", "publish", "dist", "index.js");
-const schemaDir = path.join(repoRoot, "packages", "shared-manifest", "schemas", "v1");
+const schemaDir = path.join(
+  repoRoot,
+  "packages",
+  "shared-manifest",
+  "schemas",
+  "v1",
+);
 
 const BANNER = [
   "#!/usr/bin/env node",
@@ -41,9 +47,12 @@ const BANNER = [
 ].join("\n");
 
 async function schemas() {
-  const names = (await readdir(schemaDir)).filter((n) => n.endsWith(".schema.json")).sort();
+  const names = (await readdir(schemaDir))
+    .filter((n) => n.endsWith(".schema.json"))
+    .sort();
   const out = {};
-  for (const name of names) out[name] = await readFile(path.join(schemaDir, name), "utf8");
+  for (const name of names)
+    out[name] = await readFile(path.join(schemaDir, name), "utf8");
   return out;
 }
 
@@ -87,5 +96,7 @@ if (check) {
 } else {
   await mkdir(path.dirname(outFile), { recursive: true });
   await writeFile(outFile, text, "utf8");
-  console.log(`Wrote ${path.relative(repoRoot, outFile)} (${Buffer.byteLength(text)} bytes).`);
+  console.log(
+    `Wrote ${path.relative(repoRoot, outFile)} (${Buffer.byteLength(text)} bytes).`,
+  );
 }
