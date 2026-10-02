@@ -13,9 +13,16 @@
     "core.local": { "status": "implemented" },
     "core.headers": { "status": "implemented" },
     "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "planned", "wp": "P1b-10" },
+    "core.caps": { "status": "implemented" },
     "core.store": {
       "status": "implemented",
+      "except": [
+        {
+          "runtime": "python",
+          "reason": "dependency",
+          "note": "Without the keyring extra or a usable OS keyring the token is in a 0600 file; store_status() reports keyring-unavailable and supports() reports dependency (P1b-10)."
+        }
+      ],
       "note": "keyring is an optional extra; without it the token is in a 0600 file and store_status() reports keyring-unavailable."
     },
     "license.gate": { "status": "implemented" },

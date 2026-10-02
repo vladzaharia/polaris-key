@@ -20,7 +20,7 @@ is no credential, so there is no roster to ask for.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from ..core.cache import CacheManager
 from ..core.context import CoreContext
@@ -136,7 +136,9 @@ class DevicesClient:
         *,
         probes: Optional[List[ProbeDeclaration]] = None,
         fingerprint: bool = True,
+        caps: Optional[Callable[[], List[str]]] = None,
     ) -> None:
+        self._caps = caps
         self._ctx = ctx
         self._cache = cache
         self._tokens = tokens
@@ -271,7 +273,7 @@ class DevicesClient:
         if not token:
             return False
         return report_snapshot(
-            self._ctx, token, build_snapshot(self._cache, self._probes)
+            self._ctx, token, build_snapshot(self._cache, self._probes, self._caps)
         )
 
     def _require_token(self) -> str:

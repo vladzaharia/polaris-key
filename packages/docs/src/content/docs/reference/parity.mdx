@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 36 | 3 | 12 | 7 |
-| React | `web`, `desktop-bridge` | 28 | 12 | 12 | 6 |
-| Python | `python` | 36 | 3 | 12 | 7 |
-| Swift | `macos`, `ios` | 37 | 3 | 12 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 38 | 0 | 17 | 3 |
+| Node | `node` | 37 | 3 | 11 | 7 |
+| React | `web`, `desktop-bridge` | 29 | 12 | 11 | 6 |
+| Python | `python` | 37 | 3 | 11 | 7 |
+| Swift | `macos`, `ios` | 38 | 3 | 11 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 39 | 0 | 16 | 3 |
 
 ## Core
 
@@ -37,8 +37,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.local` | Local-only client (no network) | unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | — |
 | `core.headers` | Canonical platform, arch and SDK header values | `headers.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.caps` | supports() and capability telemetry | unit | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | planned (P1b-10) | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (P5-05) | web, desktop-bridge: runtime |
+| `core.caps` | supports() and capability telemetry | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | N/A (web, desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (P5-05) | web, desktop-bridge: runtime; node, python: dependency |
 
 ## License
 

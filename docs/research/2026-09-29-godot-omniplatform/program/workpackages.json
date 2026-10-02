@@ -708,7 +708,7 @@
       "optional": false,
       "refs": ["PARITY §2.2", "PARITY §5.1 core.caps"],
       "brief": "wp/P1b-10-core-caps.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-01",
@@ -1809,7 +1809,7 @@
       "optional": false,
       "refs": ["README §3.9", "README §6.2 item 6"],
       "brief": "wp/P6-03-update-funnel-autohalt.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P6-04",

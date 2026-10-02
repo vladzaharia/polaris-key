@@ -158,8 +158,15 @@ describe("DesktopAdapter — bridge method proxying", () => {
     });
     await ready(adapter);
     expect(adapter.getConfig("theme.mode", "x")).toBe("dark");
-    // The renderer never holds secrets, whatever the bridge sends.
-    expect(adapter.getSecret("api.token")).toBeNull();
+    // The renderer never holds secrets, whatever the bridge sends: the typed config.secret
+    // desktop-bridge refusal (P1b-10).
+    expect(() => adapter.getSecret("api.token")).toThrow(
+      expect.objectContaining({
+        code: "unsupported",
+        feature: "config.secret",
+        reason: "runtime",
+      }),
+    );
     expect(adapter.isEntitled("polarisVpn")).toBe(true);
     adapter.dispose();
   });

@@ -112,15 +112,73 @@ halt candidate that an operator confirms.
 
 ## Acceptance criteria
 
-- [ ] Report tests: valid `updates` are counted once even when the same report is retried; malformed
+- [x] Report tests: valid `updates` are counted once even when the same report is retried; malformed
       entries and unknown events are dropped; the 16 KiB cap still holds.
-- [ ] Auto-halt tests: below `minSample` nothing happens; above the threshold one halt and one audit
+- [x] Auto-halt tests: below `minSample` nothing happens; above the threshold one halt and one audit
       row; a mirrored store rollout is never halted by this path.
-- [ ] Sentry hook tests: bad signature refused; a valid alert for a known release opens one
+- [x] Sentry hook tests: bad signature refused; a valid alert for a known release opens one
       candidate; confirming it halts.
-- [ ] The Sentry route is in OpenAPI and `routeCoverage`, or listed narrative-only with a reason.
-- [ ] `PRIVACY.md` describes the events.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] The Sentry route is in OpenAPI and `routeCoverage`, or listed narrative-only with a reason.
+- [x] `PRIVACY.md` describes the events.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
+
+## Corrections from implementation
+
+Where the code disagreed with this brief, the code won:
+
+- **Event shape: P1-05's precedent.** P3-01's plan (§2.10) fixes only the seven names; no plan
+  defines the shape. The `updates` key is in the Worker allowlist (`core/devices.ts`
+  `REPORT_KEYS`, bounded by `core/updateHealth.ts` `boundedUpdates`) and the OpenAPI report
+  schema (`UpdateOutcomeEvent`) only; `shared-protocol`'s `DeviceFacts` is untouched, so no plan
+  mode. The Worker has no generated `updateEvent` constant, so `UPDATE_EVENTS` is spelled once in
+  `core/updateHealth.ts` and pinned to `enums.json` by `test/updateHealth.test.ts`.
+- **No migration (0046 is unused).** The auto-halt settings use P5-03's `dist_connector_settings`
+  (connector `auto-halt`), and halt candidates, trips, store alerts and the last reading use
+  P5-02's `dist_connector_objects` (connectors `sentry` and `auto-halt`); Sentry deliveries are
+  stored in `dist_connector_events`. `dist_rollouts.source` already admitted `auto-halt` (0038).
+- **The auto-halt judges distinct devices, not raw events.** Counters are deduplicated on
+  (device, `eventId`) as asked, and the object also keeps distinct-device counts per event; the
+  rates are `update_reverted` and `boot_rolled_back` devices over `update_applied` devices, and
+  `minSample` is applied devices. One device can move a rate by at most one.
+- **Outlets and channels are checked at ingest** (security review): `handleReport` now receives
+  the product's hooks from `dispatch.ts`, and `core/updateHealth.ts` `updateScope` reads the live
+  outlets (`delivery().outlets()`) and the known channels through a new read-only
+  `ReleaseCatalog.knownChannels()` hook method (Release's one definition). An undeclared outlet
+  or unknown channel is counted in one `unknown` bucket that takes no pair slot. The first
+  version's first-come 32-pair cap per object was removed (one device could push the real pair
+  into overflow). Per device and per object: at most 64 events counted, at most 8 pairs
+  introduced. No per-device rate limit was added on the report: the caps bound storage and a
+  limiter would add a Durable Object hop to every report.
+- **Releases are checked at ingest too** (security review, round 2): an event's (deliverable,
+  release) must be one Release knows (`hooks.releaseCatalog().releases(deliverable)`, once per
+  deliverable per report), or it counts nothing and creates no object; one report touches at
+  most two objects (`MAX_REPORT_GROUPS`), called in parallel and awaited. The real bound is:
+  objects ≤ the product's real releases, each bounded by the per-object caps (devices × one
+  record of ≤ 64 ids and ≤ 8 pairs, plus hours × declared pairs × 7 buckets). The first auto-halt
+  refusal per trip is audited (`distribution.auto_halt.refused`).
+- **Storage is one record per device plus hourly buckets.** Reads are paginated (a 500,000-key
+  ceiling marks `truncated`, which the auto-halt treats as no data). The sweep pages device
+  records with a `startAfter` cursor and a 10 s budget, re-arming in a minute while work remains.
+- **The Sentry events table keeps a reduced record** (`{resource, action, rule, issueId,
+release, environment, outlet}`), never the body.
+- **A refused auto-halt is not a cron failure**: it is recorded on the reading (`refused`) and
+  retried next tick.
+- **Halt-only is enforced in `applyRollout`.** A third `RolloutActor` kind, `system`, is refused
+  every verb but `halt` (`system_halt_only`); its halt records `source: auto-halt`,
+  `updated_by: system:auto-halt` and the numbers in the one audit row.
+- **Trips once.** A `trip` marker per (deliverable, outlet, channel, release) stops a second halt
+  after an operator resumes (P5-03's vitals behaviour). A mirrored store rollout over the
+  threshold gets an `alert` marker and one `distribution.auto_halt.alert` audit row.
+- **The Sentry hook is not a store connector.** It is routed explicitly in `routes.ts`
+  (`/distribution/hooks/sentry`) rather than added to `CONNECTORS`, so it has no poll, no
+  controls and no entry in the connectors list. Only `Sentry-Hook-Resource: event_alert` with
+  `action: triggered` is acted on (it is the resource that carries the event's `release`, `environment` and
+  tags); everything else is stored as `ignored`. Dedupe is on the body's SHA-256.
+- **Console**: a new **Update health** tab in the Distribution section (`distribution-health`,
+  docs `/docs/services/distribution/update-health/`), not a panel on the overview; the admin
+  API is `…/distribution/update-health` (narrative-only).
+- **`UPDATE_HEALTH` is optional in `Env`.** Unbound, reports still store `updates` and nothing is
+  counted; the funnel reports `counting: false` and the auto-halt judges nothing.
 
 ## Verify
 

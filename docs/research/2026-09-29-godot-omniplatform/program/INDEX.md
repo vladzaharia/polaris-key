@@ -61,7 +61,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P1b-07](wp/P1b-07-license-config-release-gaps.md) | Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry | P1b-03               | sdk-porter  | 1.5–2    | done   |
 | [P1b-08](wp/P1b-08-devicecode-edgemint-ports.md)   | Port device-code sign-in and edge-mint to Node, Python and Swift                                                             | P1b-03, P1-06, P0-12 | sdk-porter  | 1–1.5    | done   |
 | [P1b-09](wp/P1b-09-fingerprint-storage-fixes.md) ⚑ | Fix fingerprint and storage issues: `wmic`, Linux anchor, config directories, keyring downgrade, macOS keychain              | P1b-01               | sdk-porter  | 1–1.5    | done   |
-| [P1b-10](wp/P1b-10-core-caps.md)                   | Typed "unsupported here" results and `supports()` in every SDK                                                               | P1b-01, P1b-02       | sdk-porter  | 0.5–1    | todo   |
+| [P1b-10](wp/P1b-10-core-caps.md)                   | Typed "unsupported here" results and `supports()` in every SDK                                                               | P1b-01, P1b-02       | sdk-porter  | 0.5–1    | done   |
 
 ## P2: Release truth and publishing
 
@@ -160,7 +160,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | --------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------ | ----------- | ----- | ------ |
 | [P6-01](wp/P6-01-commerce-bridge.md) ✋       | Commerce bridge: store purchases become licence entitlements per deliverable | P5-02, P5-03, P5-05, S-07            | implementer | 3–4   | todo   |
 | [P6-02](wp/P6-02-trust-tiers.md) ✋           | Device trust tiers from App Attest and Play Integrity                        | P5-05, P5-06, P5-01                  | implementer | 1–1.5 | todo   |
-| [P6-03](wp/P6-03-update-funnel-autohalt.md)   | Update funnel, auto-halt from telemetry, and Sentry integration              | P3-03, P2b-04                        | implementer | 1–1.5 | todo   |
+| [P6-03](wp/P6-03-update-funnel-autohalt.md)   | Update funnel, auto-halt from telemetry, and Sentry integration              | P3-03, P2b-04                        | implementer | 1–1.5 | done   |
 | [P6-04](wp/P6-04-hosted-web.md) ✋ _optional_ | Optional: Polaris-hosted, channel-pinned web builds                          | P2-01, P0-05, P2b-04, P2-05          | implementer | 1–1.5 | todo   |
 | [P6-05](wp/P6-05-kotlin-sdk.md) ✋ _optional_ | Optional: the Kotlin SDK at full parity                                      | P5-06, P1b-01, P3-02, P1b-03, P1b-02 | sdk-porter  | 6–8   | todo   |
 

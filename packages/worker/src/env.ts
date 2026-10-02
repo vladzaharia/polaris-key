@@ -9,6 +9,13 @@ export interface Env {
   DB: D1Database;
   HOT: KVNamespace;
   RL: DurableObjectNamespace;
+  /**
+   * Update-health counters (P6-03, `src/updateHealthDo.ts`): one object per (product,
+   * deliverable, release), reached only through `core/updateHealth.ts`. OPTIONAL: unbound, the
+   * report still stores its `updates` but counts nothing, and the funnel and auto-halt read no
+   * data (auto-halt never trips on missing data).
+   */
+  UPDATE_HEALTH?: DurableObjectNamespace;
   ASSETS?: Fetcher;
   /**
    * The Core blob store (P2-01, `core/blobs.ts`): one R2 bucket per environment holding

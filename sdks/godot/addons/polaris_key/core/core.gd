@@ -50,6 +50,7 @@ var discovery_manifest = null
 
 var _expected_services = null
 var _discovered_services = null
+var _caps: PKeyCaps = null
 
 
 ## Validate `opts` and build a Core. ok with detail = the PKeyCore, or a failure:
@@ -171,15 +172,27 @@ func services() -> Dictionary:
 	return PKeyDiscovery.default_services()
 
 
+## The `supports()` engine (PKeyCaps, P1b-10), reading this Core's capability map.
+func capability_engine() -> PKeyCaps:
+	if _caps == null:
+		_caps = PKeyCaps.new(services, sdk_version)
+		for problem in _caps.validate():
+			push_error("PolarisKey capability table: " + problem)
+	return _caps
+
+
 func enabled(slug: String) -> bool:
 	return PKeyClaims.is_true(services().get(slug, {}).get("enabled", false))
 
 
 ## null when `slug` is enabled, else a `service-unavailable` failure for the caller to return.
-func require_service(slug: String) -> Variant:
+## The failure is the typed `product` N/A for `feature` (PARITY §2.2, P1b-10): `detail` is
+## {feature, reason: "product", detail}, as supports(feature) reports it; the code stays
+## `service-unavailable` so callers matching on it keep working.
+func require_service(slug: String, feature: String) -> Variant:
 	if enabled(slug):
 		return null
-	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The %s service is not enabled for %s." % [slug, product])
+	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The %s service is not enabled for %s." % [slug, product], PKeyResult.product_detail(feature, slug))
 
 
 ## Fetch the discovery document and, when it parses, install its capability map. A coroutine.

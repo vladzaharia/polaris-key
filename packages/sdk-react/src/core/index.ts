@@ -63,6 +63,18 @@ export {
 
 export { createStore, type Store } from "./store.js";
 export {
+  UnsupportedError,
+  capabilityContext,
+  capsIn,
+  refuse,
+  requireSupported,
+  supportsIn,
+  type ReactRuntime,
+  type Support,
+  type Supported,
+  type Unsupported,
+} from "./caps.js";
+export {
   projectState,
   flattenEntries,
   readConfig,

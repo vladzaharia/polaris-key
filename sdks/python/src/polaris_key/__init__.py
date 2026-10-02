@@ -57,6 +57,7 @@ from .core.bundle import (
     verify_bundle,
 )
 from .core.cache import CacheManager
+from .core.caps import Support, Supported, Unsupported, UnsupportedError
 from .core.headers import canonical_arch, canonical_platform
 from .core.clock import effective_now, high_water_mark
 from .core.context import (
@@ -210,6 +211,11 @@ __all__ = [
     "canonical_arch",
     # facade
     "PolarisKeyClient",
+    # supports() and typed "unsupported here" (P1b-10)
+    "Support",
+    "Supported",
+    "Unsupported",
+    "UnsupportedError",
     "SyncState",
     "DeviceInfo",
     # sub-clients

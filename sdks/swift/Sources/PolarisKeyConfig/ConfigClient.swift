@@ -109,7 +109,7 @@ public actor ConfigClient {
     /// `unauthorized` (no token, or still 401 after the re-acquire), or the Worker's code —
     /// `not_found` for an unknown or unapproved recipe, `rate_limited`, `misconfigured`.
     public func mintToken(_ recipeId: String) async throws -> MintedToken {
-        try await core.requireService(.config)
+        try await core.requireService(.config, feature: Feature.configMint)
         guard MintEndpoint.isRecipeId(recipeId) else {
             throw PolarisError(
                 code: "bad_request",

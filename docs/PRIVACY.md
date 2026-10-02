@@ -75,8 +75,31 @@ name, vendor and API version, the display server, and whether it is a debug buil
 detection, such as `steam`, `itch` or `app-store`; only the outlet id or kind, never a raw
 signal, and nothing when it is unknown).
 
+Every SDK that reports also sends `caps`: the parity feature ids its `supports()` answers
+Supported for right now, such as `core.verify` or `update.decide`. The list follows from the
+SDK, its version, the runtime, the product's enabled services and the build's outlet, which are
+reported or known already. It adds one bit about the device: whether an optional dependency is
+present. For example, `core.store` is missing from a Node or Python install without a usable OS
+keyring. It names features only. It never names a library, a path or a version.
+
 Used for: admin visibility, compatibility gating, and targeting configuration at the machines
 that need it.
+
+### Update outcome events — SDKs with an updater (Godot today)
+
+What happened after an update reached the device: one of `update_offered`, `update_downloaded`,
+`update_applied`, `update_confirmed`, `update_reverted`, `pack_failed` or `boot_rolled_back`,
+each with a client-chosen event id, the deliverable and release ids (and the release it came
+from), the outlet and channel, the pack set id for a pack, a timestamp, and an optional short
+machine-readable code such as `boot_failed`. At most 16 per report, sent in the report's
+`updates` key. No hardware value, no user identifier, no free-text message.
+
+Used for: the operator's update funnel per release, outlet and channel, the operator-enabled
+automatic halt of a rollout that reverts or rolls back too often, and nothing else. A Sentry
+alert the operator connects is mapped to a rollout from the release, environment and outlet tags
+only; no crash payload is stored. Of each Sentry delivery the Worker keeps only `{resource, action,
+rule, issueId, release, environment, outlet}` (30 days, with the connector event log), never the
+crash message, exception, user or other tags.
 
 ### Not collected
 
@@ -85,16 +108,23 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 
 ## Where it lives, and for how long
 
-| Data                           | Table                 | Lifetime                              |
-| ------------------------------ | --------------------- | ------------------------------------- |
-| Fingerprint components + hwid  | `device_fingerprints` | Deleted with the device               |
-| Software facts + probe results | `device_facts`        | Deleted with the device               |
-| Drift and mismatch events      | `audit`               | Retained with the product's audit log |
+| Data                                                                                                                                       | Table                                           | Lifetime                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Fingerprint components + hwid                                                                                                              | `device_fingerprints`                           | Deleted with the device                                                                         |
+| Software facts + probe results                                                                                                             | `device_facts`                                  | Deleted with the device                                                                         |
+| Drift and mismatch events                                                                                                                  | `audit`                                         | Retained with the product's audit log                                                           |
+| Update outcome events (latest report's `updates`)                                                                                          | `devices.reported_json`                         | Replaced by the next report; deleted with the device                                            |
+| Update outcome counters (per release, outlet, channel, event) and one record per device (its counted event ids, to count distinct devices) | `UpdateHealthDO` (a Durable Object per release) | 30 days (a device record: 30 days after its last event), then deleted by the object's own sweep |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the
 same operation. Disabling a license purges every one of its devices. This is why no scheduled
-cleanup job exists: there is no orphaned data for one to collect.
+cleanup job exists for these tables: there is no orphaned data for one to collect. The update
+outcome counters are the exception: they are aggregates per release, not per device, so they are
+not purged with a device; each counter object deletes buckets older than 30 days and every device
+record (a device id with the event ids it had counted) idle for 30 days, on its own alarm — it
+resumes within minutes until the whole object has been swept — and deletes itself entirely once
+nothing is left.
 
 ## Per-product opt-out
 

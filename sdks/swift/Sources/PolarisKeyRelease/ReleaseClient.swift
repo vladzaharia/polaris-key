@@ -50,7 +50,7 @@ public struct ReleaseClient: Sendable {
     /// refusal body's code (`unauthorized`, `channel_not_allowed`, `download_auth_required`, …)
     /// for a 401 or 403; `not_found` for any other failure status.
     public func changelog() async throws -> [ChangelogEntry] {
-        try await core.requireService(.release)
+        try await core.requireService(.release, feature: Feature.releaseChangelog)
         var headers = ["accept": "application/json"]
         // Forwarded when held so an `entitled` feed can authenticate; a public feed ignores it.
         if let token = await core.token { headers["authorization"] = "Bearer \(token)" }
@@ -77,7 +77,7 @@ public struct ReleaseClient: Sendable {
 
     /// The canonical install-script URL, for a host that wants to print it rather than run it.
     public func installURL() async throws -> URL {
-        try await core.requireService(.release)
+        try await core.requireService(.release, feature: Feature.releaseDownload)
         return core.endpoints.releaseInstall
     }
 
@@ -87,7 +87,7 @@ public struct ReleaseClient: Sendable {
     public func downloadURL(
         version: String, binary: String, arch: String, checksum: Bool = false, dmg: Bool = false
     ) async throws -> URL {
-        try await core.requireService(.release)
+        try await core.requireService(.release, feature: Feature.releaseDownload)
         let url = core.endpoints.releaseDownload(
             version: version, file: "\(binary)-\(arch)\(dmg ? ".dmg" : "")")
         guard checksum, var parts = URLComponents(url: url, resolvingAgainstBaseURL: false)

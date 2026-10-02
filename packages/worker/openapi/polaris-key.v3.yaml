@@ -598,7 +598,7 @@ paths:
         per report; deleted with the device.
 
 
-        Eighteen top-level keys survive the allowlist; anything else is dropped SILENTLY
+        Twenty top-level keys survive the allowlist; anything else is dropped SILENTLY
         rather than refused, so a newer SDK reporting a field this worker does not know still
         succeeds. `os`/`hardware`/`runtime`/`locale`/`timezone`/`probes` are projected into
         typed columns (strings truncated to 128 chars, probe ids and probe versions to 64);
@@ -606,7 +606,17 @@ paths:
         skipped. `engine` keeps only its known fields (strings truncated to 128 chars,
         `debug` only as a boolean) and `outlet` is truncated to 64 chars; either is dropped
         when it has the wrong type. `content` (P4-02) keeps only `packSetId` and `appRelease`,
-        each only when it is 64 lowercase hex, and is dropped when neither is. An empty body is valid and means `{}`. Auth requires a usable license only
+        each only when it is 64 lowercase hex, and is dropped when neither is. `updates` (P6-03)
+        carries at most 16 update outcome events, each validated strictly (a malformed entry or
+        an unknown `event` is dropped, unknown fields are stripped); after the snapshot is stored
+        they are counted per release, outlet, channel and event in the update-health Durable
+        Object, deduplicated on (device, `eventId`), so a retried report counts nothing twice.
+        Counting fails open: the answer is the same 200 whether or not it worked. `caps`
+        (P1b-10) is the SDK's capability list: the parity feature ids its `supports()` answers
+        Supported for right now (`core.verify`, `update.decide`, …). It keeps only strings
+        shaped like a feature id (at most 64 chars), deduplicated, at most 128; ids are not
+        checked against the registry, so a newer SDK's features survive. A non-array `caps`
+        is dropped. An empty body is valid and means `{}`. Auth requires a usable license only
         when the product enables the License service (D-08).
       security: [{ deviceToken: [] }]
       parameters: [{ $ref: "#/components/parameters/Product" }]
@@ -660,8 +670,32 @@ paths:
                     display: macOS
                     debug: false
                   outlet: steam
+                  caps: [core.verify, core.sync, license.gate, update.decide]
                   config: {}
                   entitlements: {}
+              updates:
+                summary: Update outcome events (test/updateHealth.test.ts)
+                value:
+                  appVersion: 1.4.0
+                  outlet: direct
+                  updates:
+                    - eventId: 0f5c2a9e-offered
+                      event: update_offered
+                      deliverable: app
+                      release: v1.4.0
+                      fromRelease: v1.3.0
+                      outlet: direct
+                      channel: stable
+                      at: 1700000000
+                    - eventId: 0f5c2a9e-reverted
+                      event: update_reverted
+                      deliverable: app
+                      release: v1.4.0
+                      fromRelease: v1.3.0
+                      outlet: direct
+                      channel: stable
+                      at: 1700000600
+                      code: boot_failed
       responses:
         "200":
           description: Recorded.
@@ -2989,6 +3023,122 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "401":
           description: Missing, malformed or wrong `x-apple-signature`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413":
+          description: Body over 64 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many deliveries for this product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+
+  /{product}/distribution/hooks/sentry:
+    post:
+      operationId: sentryWebhook
+      tags: [distribution]
+      summary: Sentry alert webhook — opens a halt candidate (Sentry → Worker)
+      description: >
+        P6-03. Called by a Sentry internal integration, never by a client. `Sentry-Hook-Signature`
+        is the hex HMAC-SHA256 of the raw body with the integration's client secret, stored as
+        the product's `sentry-integration` outlet credential, and compared in constant time. A
+        missing or malformed signature is 401 before anything is opened; deliveries are
+        rate-limited per product BEFORE the secret is opened (429 `rate_limited`). A body seen
+        before (by its SHA-256) answers 200 `{ok, duplicate: true}` and changes nothing. Only
+        `Sentry-Hook-Resource: event_alert` with `action: triggered` is acted on: the event's
+        `release` (`<deliverable>@<version>[+<build>]`), `environment` (the channel) and optional
+        `pkey.outlet` tag are mapped through Release's catalog to the product's active or paused,
+        non-mirrored rollouts of that release, and each gets one halt candidate. A candidate
+        HALTS NOTHING: a platform admin confirms (halts) or dismisses it in the console. Any
+        other resource or action answers 204 and is stored as `ignored`; an alert that maps to
+        no rollout answers 200 with `candidates: 0`. Without an active `sentry-integration`
+        credential — like with Distribution off — the answer is the service not-found shape. No
+        CORS. Errors are LEGACY FLAT.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: Sentry-Hook-Signature
+          in: header
+          required: true
+          schema: { type: string, pattern: "^[0-9a-fA-F]{64}$" }
+        - name: Sentry-Hook-Resource
+          in: header
+          required: true
+          schema:
+            type: string
+            description: "`event_alert` is acted on; `installation`, `issue`, `metric_alert`, `error` and `comment` are stored as `ignored`."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  {
+                    type: string,
+                    description: "`triggered` for an alert rule.",
+                  }
+                data:
+                  type: object
+                  properties:
+                    triggered_rule: { type: string }
+                    event:
+                      type: object
+                      properties:
+                        release:
+                          type: string
+                          description: "`<deliverable>@<version>[+<build>]`, the SDK tagging convention."
+                        environment:
+                          type: string
+                          description: The release channel.
+                        issue_id: { type: string }
+                        tags:
+                          type: array
+                          description: "`[key, value]` pairs; `pkey.outlet` names the outlet."
+                          items: {}
+            examples:
+              eventAlert:
+                summary: test/sentry.test.ts
+                value:
+                  action: triggered
+                  data:
+                    triggered_rule: Crash spike
+                    event:
+                      event_id: 9b1f0c3e5d2a4c8e9f7a6b5c4d3e2f10
+                      issue_id: "4200001"
+                      release: app@1.1.0
+                      environment: stable
+                      tags:
+                        - [environment, stable]
+                        - [pkey.outlet, direct]
+      responses:
+        "200":
+          description: "Handled (`candidates` = halt candidates newly opened), or a duplicate."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+                  candidates: { type: integer, minimum: 0 }
+                  duplicate: { type: boolean, const: true }
+        "204":
+          {
+            description: "A resource or action other than a triggered event alert; stored as `ignored`.",
+          }
+        "400":
+          description: "Not a JSON object (`reason: bad_body`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: Missing, malformed or wrong `Sentry-Hook-Signature`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -7215,10 +7365,10 @@ components:
       type: object
       description: >
         The device's software snapshot. Deliberately narrow: no installed-app enumeration,
-        only product-declared probes. Seventeen top-level keys survive the allowlist and
+        only product-declared probes. Twenty top-level keys survive the allowlist and
         anything else is dropped silently. The first six are projected into typed columns
         (strings truncated to 128 characters); the rest are stored as an opaque blob, with
-        `engine` and `outlet` bounded first.
+        `engine`, `outlet`, `content`, `updates` and `caps` bounded first.
       additionalProperties: false
       properties:
         os:
@@ -7308,6 +7458,81 @@ components:
           properties:
             packSetId: { type: string, pattern: "^[0-9a-f]{64}$" }
             appRelease: { type: string, pattern: "^[0-9a-f]{64}$" }
+        updates:
+          type: array
+          maxItems: 16
+          description: >
+            Update outcome events (P6-03; the names are the `updateEvent` enum of
+            `conformance/parity/enums.json`). At most 16 are read; an entry that does not match
+            this schema, or names another event, is dropped and the rest are kept. Counted per
+            (deliverable, release, outlet, channel, event) and deduplicated on (device,
+            `eventId`). An `at` in the future counts as now; one older than 30 days is not
+            counted. An `outlet` the product does not declare is shown as `unknown` and never
+            trips the auto-halt. No hardware value and no user identifier is carried.
+          items: { $ref: "#/components/schemas/UpdateOutcomeEvent" }
+        caps:
+          type: array
+          maxItems: 128
+          description: >
+            The SDK's capability list (P1b-10, PARITY §2.2): the parity feature ids its
+            `supports()` answers Supported for right now, in registry order. Each kept entry
+            is a feature id of at most 64 characters; other entries and duplicates are
+            dropped, ids are not checked against the registry, and a non-array value is
+            dropped. Sent with every report, since a report overwrites the last one.
+          items:
+            type: string
+            maxLength: 64
+            pattern: "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
+    UpdateOutcomeEvent:
+      type: object
+      description: One update outcome event a device reports (P6-03).
+      required: [eventId, event, deliverable, release, outlet, channel, at]
+      additionalProperties: false
+      properties:
+        eventId:
+          type: string
+          pattern: "^[A-Za-z0-9._:-]{1,64}$"
+          description: Client-chosen, unique per event; the dedupe key with the device id.
+        event:
+          type: string
+          enum:
+            [
+              update_offered,
+              update_downloaded,
+              update_applied,
+              update_confirmed,
+              update_reverted,
+              pack_failed,
+              boot_rolled_back,
+            ]
+        deliverable:
+          type: string
+          maxLength: 64
+          pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+          description: "`app`, or a pack id."
+        release:
+          type: string
+          pattern: "^[A-Za-z0-9._+@:/-]{1,128}$"
+          description: The release id the event is about (the feed's `releaseId`).
+        fromRelease:
+          type: string
+          pattern: "^[A-Za-z0-9._+@:/-]{1,128}$"
+          description: The release the device moved from, when there was one.
+        outlet:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{0,63}$"
+          description: The outlet the build came through (the build stamp's outlet id).
+        channel:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{0,63}$"
+        packSetId:
+          type: string
+          pattern: "^[A-Za-z0-9._:-]{1,128}$"
+        at: { type: integer, minimum: 1, description: Epoch seconds. }
+        code:
+          type: string
+          pattern: "^[A-Za-z0-9._:-]{1,64}$"
+          description: A short machine-readable reason (`pack_failed`, `update_reverted`).
     RegistrationResult:
       type: object
       description: Keyless registration's answer — the token and the device id it is bound to.
