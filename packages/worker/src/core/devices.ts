@@ -865,7 +865,9 @@ export async function handleDevices(
 // licensingEdge.test.ts together. The first six keys are the software-facts additions; the
 // next nine are the original v1 set and must stay; `engine` and `outlet` (P1-05) carry a game
 // engine's build facts and where the install came from (the stamped outlet refined by on-device
-// detection, P3-11; an outlet id or kind only), each with its own bound below.
+// detection, P3-11; an outlet id or kind only), each with its own bound below. `caps` (P1b-10)
+// is the SDK's capability list: the parity feature ids its `supports()` answers Supported for
+// right now (PARITY §2.2), bounded below.
 export const REPORT_KEYS = [
   "os",
   "hardware",
@@ -884,7 +886,28 @@ export const REPORT_KEYS = [
   "timestamp",
   "engine",
   "outlet",
+  "caps",
 ] as const;
+
+/** At most this many `caps` entries are kept; the registry has ~60 feature ids. */
+const MAX_REPORT_CAPS = 128;
+/** A parity feature id (conformance/parity/features.schema.json `featureId`). */
+const CAP_ID = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$/;
+
+/** Bound `caps`: an array of feature-id strings, each at most 64 characters, deduplicated, at
+ *  most {@link MAX_REPORT_CAPS}. Ids are not checked against the registry, because a newer SDK
+ *  knows features this Worker does not; anything not shaped like an id is dropped. Not an
+ *  array: `undefined` (the key is dropped). */
+function boundedCaps(input: unknown): string[] | undefined {
+  if (!Array.isArray(input)) return undefined;
+  const out: string[] = [];
+  for (const id of input) {
+    if (out.length >= MAX_REPORT_CAPS) break;
+    if (typeof id !== "string" || id.length > 64 || !CAP_ID.test(id)) continue;
+    if (!out.includes(id)) out.push(id);
+  }
+  return out;
+}
 
 /** The fields `engine` may carry; anything else in it is dropped. All are strings except
  *  `debug`. Names are proposed by P1-05 (the Godot SDK); P1b-02 generates them later. */
@@ -946,6 +969,11 @@ function boundedReport(input: unknown): Record<string, unknown> {
     const outlet = boundedOutlet(out.outlet);
     if (outlet === undefined) delete out.outlet;
     else out.outlet = outlet;
+  }
+  if (out.caps !== undefined) {
+    const caps = boundedCaps(out.caps);
+    if (caps === undefined) delete out.caps;
+    else out.caps = caps;
   }
   return out;
 }

@@ -18,7 +18,7 @@
     "$schema": { "type": "string" },
     "registryVersion": { "const": 1 },
     "reasons": {
-      "description": "The typed-N/A reason enum (PARITY §2.2). Only `runtime` N/As are declared in manifests; the other reasons are decided at runtime.",
+      "description": "The typed-N/A reason enum (PARITY §2.2). A manifest declares `runtime` N/As, which hold wherever the runtime is. An `except` with another reason (`outlet`, `dependency`, `version`) declares where the SDK decides that N/A at run time, and the SDK's `supports()` consults a detector for exactly those pairs (P1b-10). `product` is never declared: it applies to every feature an opt-in service owns, whenever discovery says the service is off. `supports()` also answers `version` for a feature the SDK does not implement yet (`planned`) or does not know.",
       "type": "array",
       "items": { "$ref": "#/$defs/reason" },
       "minItems": 1,
@@ -55,13 +55,18 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "title", "manifest"],
+        "required": ["id", "title", "manifest", "constants"],
         "properties": {
           "id": { "$ref": "#/$defs/slug" },
           "title": { "type": "string", "minLength": 1 },
           "manifest": {
             "type": "string",
             "pattern": "^[A-Za-z0-9._/-]+/parity\\.json$"
+          },
+          "constants": {
+            "description": "The SDK's generated constants module (`pnpm gen:constants`). It carries the capability table `supports()` reads, generated from the manifest, and its `CAPABILITY_DIGEST`; the checker fails when that digest is not the manifest's (P1b-10).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._/-]+$"
           }
         }
       },

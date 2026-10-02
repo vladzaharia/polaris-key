@@ -204,7 +204,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "caps"
                 ]
               }
             },
@@ -451,7 +452,8 @@
                   "entitlements",
                   "timestamp",
                   "engine",
-                  "outlet"
+                  "outlet",
+                  "caps"
                 ]
               }
             },

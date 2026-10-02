@@ -36,20 +36,33 @@
     {
       "id": "node",
       "title": "Node",
-      "manifest": "packages/sdk-node/parity.json"
+      "manifest": "packages/sdk-node/parity.json",
+      "constants": "packages/sdk-node/src/constants.generated.ts"
     },
     {
       "id": "react",
       "title": "React",
-      "manifest": "packages/sdk-react/parity.json"
+      "manifest": "packages/sdk-react/parity.json",
+      "constants": "packages/sdk-react/src/constants.generated.ts"
     },
     {
       "id": "python",
       "title": "Python",
-      "manifest": "sdks/python/parity.json"
+      "manifest": "sdks/python/parity.json",
+      "constants": "sdks/python/src/polaris_key/constants_generated.py"
     },
-    { "id": "swift", "title": "Swift", "manifest": "sdks/swift/parity.json" },
-    { "id": "godot", "title": "Godot", "manifest": "sdks/godot/parity.json" }
+    {
+      "id": "swift",
+      "title": "Swift",
+      "manifest": "sdks/swift/parity.json",
+      "constants": "sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift"
+    },
+    {
+      "id": "godot",
+      "title": "Godot",
+      "manifest": "sdks/godot/parity.json",
+      "constants": "sdks/godot/addons/polaris_key/core/constants_generated.gd"
+    }
   ],
   "features": [
     {
@@ -131,7 +144,7 @@
       "service": "core",
       "proof": [{ "kind": "unit" }],
       "allowedNa": [],
-      "note": "Also proven by the parity gate: the capability table must agree with the SDK's manifest (P1b-10)."
+      "note": "Also proven by the parity gate: the capability table supports() reads is generated from the SDK's manifest into its constants module, and parity:check fails when the module's CAPABILITY_DIGEST is not the manifest's (P1b-10)."
     },
     {
       "id": "core.store",
@@ -149,6 +162,16 @@
           "runtime": "desktop-bridge",
           "reason": "runtime",
           "why": "The renderer holds no credentials; the host process's Node SDK keeps the token behind the bridge (packages/sdk-react/src/desktop/bridge.ts)."
+        },
+        {
+          "runtime": "node",
+          "reason": "dependency",
+          "why": "The OS keyring is reached through the optional @napi-rs/keyring addon, which cannot load inside a single-executable build or without a Secret Service; the token then lives in a 0600 file, Store.status() says keyring-unavailable and supports() says dependency (P1b-10)."
+        },
+        {
+          "runtime": "python",
+          "reason": "dependency",
+          "why": "The keyring backend is the optional `polaris-key[keyring]` extra; without it, or without a usable OS keyring, the token lives in a 0600 file, Store.status() says keyring-unavailable and supports() says dependency (P1b-10)."
         }
       ]
     },

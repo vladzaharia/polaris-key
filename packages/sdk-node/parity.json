@@ -21,7 +21,16 @@
     "core.headers": { "status": "implemented" },
     "core.errors": { "status": "implemented" },
     "core.caps": { "status": "planned", "wp": "P1b-10" },
-    "core.store": { "status": "implemented" },
+    "core.store": {
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "node",
+          "reason": "dependency",
+          "note": "When @napi-rs/keyring cannot load (a single-executable build, no Secret Service) the token is in a 0600 file; supports() reports dependency (P1b-10)."
+        }
+      ]
+    },
     "license.gate": { "status": "implemented" },
     "license.activate": { "status": "implemented" },
     "license.enroll": { "status": "implemented" },

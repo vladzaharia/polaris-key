@@ -433,7 +433,7 @@
       "code": "unsupported",
       "kind": "client",
       "service": "core",
-      "description": "Godot: The capability is not available on this platform or build (a stub where a native plugin is absent)."
+      "description": "Every SDK: the feature is not supported here, as `supports(feature)` reports it. Carries `feature`, `reason` (`runtime`, `outlet`, `product`, `dependency` or `version`) and `detail` (PARITY §2.2, P1b-10). Godot also returns it from a stub where a native plugin is absent."
     },
     {
       "code": "timeout",

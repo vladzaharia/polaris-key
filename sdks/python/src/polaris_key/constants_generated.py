@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Final, Mapping, Tuple
+from typing import Final, Mapping, NamedTuple, Tuple
 
 __all__ = [
     "ErrorCode",
@@ -96,6 +96,12 @@ __all__ = [
     "PR_NUMBER_MAX_DIGITS",
     "ARCH_SPELLINGS",
     "PLATFORM_SPELLINGS",
+    "CapabilityNa",
+    "CapabilityRow",
+    "CAPABILITY_SDK",
+    "CAPABILITY_RUNTIMES",
+    "CAPABILITIES",
+    "CAPABILITY_DIGEST",
 ]
 
 
@@ -1147,3 +1153,93 @@ PLATFORM_SPELLINGS: Mapping[str, str] = MappingProxyType(
         "browser": "web",
     }
 )
+
+
+class CapabilityNa(NamedTuple):
+    """One declared N/A: on ``runtime``, the feature is unsupported for ``reason``."""
+
+    runtime: str
+    reason: str
+
+
+class CapabilityRow(NamedTuple):
+    """One feature's row in ``CAPABILITIES``."""
+
+    status: str
+    service: str
+    na: Tuple[CapabilityNa, ...]
+
+
+#: The parity-registry id of the SDK this module belongs to.
+CAPABILITY_SDK: Final[str] = "python"
+
+#: The runtimes this SDK's manifest lists.
+CAPABILITY_RUNTIMES: Tuple[str, ...] = (
+    "python",
+)
+
+#: This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2).
+CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
+    {
+        "core.verify": CapabilityRow("implemented", "core", ()),
+        "core.cache": CapabilityRow("implemented", "core", ()),
+        "core.bundle": CapabilityRow("implemented", "core", ()),
+        "core.discover": CapabilityRow("implemented", "core", ()),
+        "core.sync": CapabilityRow("implemented", "core", ()),
+        "core.local": CapabilityRow("implemented", "core", ()),
+        "core.headers": CapabilityRow("implemented", "core", ()),
+        "core.errors": CapabilityRow("implemented", "core", ()),
+        "core.caps": CapabilityRow("planned", "core", ()),
+        "core.store": CapabilityRow("implemented", "core", (CapabilityNa("python", "dependency"),)),
+        "license.gate": CapabilityRow("implemented", "license", ()),
+        "license.activate": CapabilityRow("implemented", "license", ()),
+        "license.enroll": CapabilityRow("implemented", "license", ()),
+        "license.deactivate": CapabilityRow("implemented", "license", ()),
+        "license.entitlements": CapabilityRow("implemented", "license", ()),
+        "license.channels": CapabilityRow("implemented", "license", ()),
+        "license.reregister": CapabilityRow("implemented", "license", ()),
+        "config.resolve": CapabilityRow("implemented", "config", ()),
+        "config.list": CapabilityRow("implemented", "config", ()),
+        "config.secret": CapabilityRow("implemented", "config", ()),
+        "config.schema": CapabilityRow("implemented", "config", ()),
+        "config.mint": CapabilityRow("implemented", "config", ()),
+        "config.mirror": CapabilityRow("implemented", "config", ()),
+        "devices.fingerprint": CapabilityRow("implemented", "core", ()),
+        "devices.facts": CapabilityRow("implemented", "core", ()),
+        "devices.register": CapabilityRow("implemented", "core", ()),
+        "devices.manage": CapabilityRow("implemented", "core", ()),
+        "devices.report": CapabilityRow("implemented", "core", ()),
+        "identity.oidc": CapabilityRow("planned", "identity", ()),
+        "identity.devicecode": CapabilityRow("implemented", "identity", ()),
+        "release.changelog": CapabilityRow("implemented", "release", ()),
+        "release.download": CapabilityRow("implemented", "release", ()),
+        "release.record": CapabilityRow("implemented", "release", ()),
+        "update.check": CapabilityRow("implemented", "update", ()),
+        "update.feed": CapabilityRow("implemented", "update", ()),
+        "update.decide": CapabilityRow("implemented", "update", ()),
+        "update.driver": CapabilityRow("planned", "update", ()),
+        "update.bootguard": CapabilityRow("planned", "update", ()),
+        "outlet.detect": CapabilityRow("implemented", "update", ()),
+        "packs.record": CapabilityRow("planned", "release", ()),
+        "packs.plan": CapabilityRow("planned", "release", ()),
+        "packs.index": CapabilityRow("planned", "release", ()),
+        "packs.apply.full": CapabilityRow("planned", "release", ()),
+        "packs.apply.file": CapabilityRow("planned", "release", ()),
+        "packs.apply.chunk": CapabilityRow("planned", "release", ()),
+        "packs.apply.delta": CapabilityRow("planned", "release", ()),
+        "packs.state": CapabilityRow("planned", "release", ()),
+        "packs.handlers": CapabilityRow("planned", "release", ()),
+        "packs.provides": CapabilityRow("planned", "release", ()),
+        "packs.transport.apple": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
+        "packs.transport.play": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
+        "packs.transport.steam": CapabilityRow("planned", "distribution", ()),
+        "packs.transport.msix": CapabilityRow("planned", "distribution", ()),
+        "packs.transport.flatpak": CapabilityRow("planned", "distribution", ()),
+        "ui.stages": CapabilityRow("implemented", "sdk", ()),
+        "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "commerce.receipt": CapabilityRow("planned", "license", ()),
+    }
+)
+
+#: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
+CAPABILITY_DIGEST: Final[str] = "e77bcd387c889ba640042958da1e9cb37bed147a18b1d4db939e32b1de9b2785"

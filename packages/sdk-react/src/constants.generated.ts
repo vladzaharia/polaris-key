@@ -989,3 +989,183 @@ export const PLATFORM_SPELLINGS = {
   web: "web",
   browser: "web",
 } as const;
+
+/** The parity-registry id of the SDK this module belongs to. */
+export const CAPABILITY_SDK = "react";
+
+/** The runtimes this SDK's manifest lists. */
+export const CAPABILITY_RUNTIMES = ["web", "desktop-bridge"] as const;
+
+/** One declared N/A: on `runtime`, the feature is unsupported for `reason`. */
+export interface CapabilityNa {
+  readonly runtime: string;
+  readonly reason: UnsupportedReason;
+}
+
+/** One feature's row in `CAPABILITIES`. */
+export interface CapabilityRow {
+  readonly status: "implemented" | "planned" | "na";
+  readonly service: string;
+  readonly na: readonly CapabilityNa[];
+}
+
+/** This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2). */
+export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
+  "core.verify": { status: "implemented", service: "core", na: [] },
+  "core.cache": { status: "planned", service: "core", na: [] },
+  "core.bundle": { status: "implemented", service: "core", na: [] },
+  "core.discover": { status: "implemented", service: "core", na: [] },
+  "core.sync": { status: "implemented", service: "core", na: [] },
+  "core.local": { status: "planned", service: "core", na: [] },
+  "core.headers": { status: "implemented", service: "core", na: [] },
+  "core.errors": { status: "implemented", service: "core", na: [] },
+  "core.caps": { status: "planned", service: "core", na: [] },
+  "core.store": {
+    status: "na",
+    service: "core",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "license.gate": { status: "implemented", service: "license", na: [] },
+  "license.activate": { status: "implemented", service: "license", na: [] },
+  "license.enroll": {
+    status: "na",
+    service: "license",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "license.deactivate": { status: "implemented", service: "license", na: [] },
+  "license.entitlements": { status: "implemented", service: "license", na: [] },
+  "license.channels": { status: "implemented", service: "license", na: [] },
+  "license.reregister": {
+    status: "na",
+    service: "license",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "config.resolve": { status: "implemented", service: "config", na: [] },
+  "config.list": { status: "implemented", service: "config", na: [] },
+  "config.secret": {
+    status: "na",
+    service: "config",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "config.schema": { status: "implemented", service: "config", na: [] },
+  "config.mint": { status: "planned", service: "config", na: [] },
+  "config.mirror": { status: "implemented", service: "config", na: [] },
+  "devices.fingerprint": {
+    status: "na",
+    service: "core",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "devices.facts": {
+    status: "na",
+    service: "core",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "devices.register": {
+    status: "na",
+    service: "core",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "devices.manage": {
+    status: "implemented",
+    service: "core",
+    na: [{ runtime: "web", reason: "runtime" }],
+  },
+  "devices.report": {
+    status: "implemented",
+    service: "core",
+    na: [{ runtime: "web", reason: "runtime" }],
+  },
+  "identity.oidc": { status: "implemented", service: "identity", na: [] },
+  "identity.devicecode": {
+    status: "implemented",
+    service: "identity",
+    na: [{ runtime: "web", reason: "runtime" }],
+  },
+  "release.changelog": { status: "implemented", service: "release", na: [] },
+  "release.download": { status: "implemented", service: "release", na: [] },
+  "release.record": { status: "implemented", service: "release", na: [] },
+  "update.check": { status: "implemented", service: "update", na: [] },
+  "update.feed": { status: "implemented", service: "update", na: [] },
+  "update.decide": { status: "implemented", service: "update", na: [] },
+  "update.driver": { status: "planned", service: "update", na: [] },
+  "update.bootguard": { status: "planned", service: "update", na: [] },
+  "outlet.detect": { status: "implemented", service: "update", na: [] },
+  "packs.record": { status: "planned", service: "release", na: [] },
+  "packs.plan": { status: "planned", service: "release", na: [] },
+  "packs.index": { status: "planned", service: "release", na: [] },
+  "packs.apply.full": { status: "planned", service: "release", na: [] },
+  "packs.apply.file": { status: "planned", service: "release", na: [] },
+  "packs.apply.chunk": { status: "planned", service: "release", na: [] },
+  "packs.apply.delta": { status: "planned", service: "release", na: [] },
+  "packs.state": { status: "planned", service: "release", na: [] },
+  "packs.handlers": { status: "planned", service: "release", na: [] },
+  "packs.provides": { status: "planned", service: "release", na: [] },
+  "packs.transport.apple": {
+    status: "na",
+    service: "distribution",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "packs.transport.play": {
+    status: "na",
+    service: "distribution",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "packs.transport.steam": {
+    status: "na",
+    service: "distribution",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "packs.transport.msix": {
+    status: "na",
+    service: "distribution",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "packs.transport.flatpak": {
+    status: "na",
+    service: "distribution",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "ui.stages": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit": { status: "implemented", service: "sdk", na: [] },
+  "commerce.receipt": { status: "planned", service: "license", na: [] },
+};
+
+/** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
+export const CAPABILITY_DIGEST =
+  "eb6ede94ceb4fd004f37e0958e14a0c5ea2bed0478ff1a9526f5d83d8dd35335";
