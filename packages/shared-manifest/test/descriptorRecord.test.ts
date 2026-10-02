@@ -124,3 +124,27 @@ describe("descriptorToRecord", () => {
       expect(Object.hasOwn(r, k), k).toBe(false);
   });
 });
+
+describe("descriptor deltaFrom (P3-09)", () => {
+  it("is accepted on a delta artifact and never reaches the record", async () => {
+    const { validateReleaseDescriptor } = await import("../src/index.js");
+    const d = descriptor();
+    d.builds[0]!.artifacts.push({
+      name: "Acme-1.2.3-from-4021.delta",
+      role: "delta",
+      sha256: "c".repeat(64),
+      size: 4,
+      deltaFrom: "4021",
+      locations: [{ provider: "r2", key: `blobs/sha256/${"c".repeat(64)}` }],
+    });
+    const res = validateReleaseDescriptor(d, {
+      product: { slug: "acme" },
+      release: { app: null },
+    });
+    expect(
+      res.ok ? [] : res.errors.filter((e) => e.code === "invalid_delta_from"),
+    ).toEqual([]);
+    const record = descriptorToRecord(d, { seq: 7, issuedAt: 1700000000 });
+    expect(JSON.stringify(record)).not.toContain("deltaFrom");
+  });
+});

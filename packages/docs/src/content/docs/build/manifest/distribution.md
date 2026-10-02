@@ -94,28 +94,33 @@ what they had.
 Each kind reads only its own fields; any other key on the entry is ignored. Every field is
 optional. A bad value is `invalid_outlet_identity`.
 
-| Kind                       | Fields                                                                                                |
-| -------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token), `scoop` (`{bin, shortcuts}`) |
-| `app-store`                | `appleId` (numeric), `bundleId` (reverse-DNS)                                                         |
-| `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)                                     |
-| `altstore`                 | `artifact`, `bundleId`                                                                                |
-| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                               |
-| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                      |
-| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                             |
-| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                                                      |
-| `app-installer`            | `packageFamilyName`                                                                                   |
-| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                |
-| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                            |
-| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                     |
-| `snap`                     | `name`                                                                                                |
-| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                         |
-| `web`                      | none                                                                                                  |
+| Kind                       | Fields                                                                                                           |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token), `scoop` (`{bin, shortcuts}`)            |
+| `app-store`                | `appleId` (numeric), `bundleId` (reverse-DNS)                                                                    |
+| `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)                                                |
+| `altstore`                 | `artifact`, `bundleId`                                                                                           |
+| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                                          |
+| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                                 |
+| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                        |
+| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                                                                 |
+| `app-installer`            | `packageFamilyName`, `publisher` (the MSIX Publisher, a certificate subject DN starting `CN=`), `updateSettings` |
+| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                           |
+| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                       |
+| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                |
+| `snap`                     | `name`                                                                                                           |
+| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                                    |
+| `web`                      | none                                                                                                             |
 
 - **`publicLink`** is the code after `/join/` in a public TestFlight link: 1–32 letters and
   digits. The signed update feed turns it into the outlet's `listingUrl`
   (`https://testflight.apple.com/join/<publicLink>`); without it a TestFlight outlet has no
   listing link.
+- **`app-installer`** needs both `packageFamilyName` and `publisher` before
+  `/update/<channel>/app.appinstaller` answers. `updateSettings` is optional:
+  `{hoursBetweenUpdateChecks` (0–255)`, showPrompt, updateBlocksActivation` (needs
+  `showPrompt: true`)`, automaticBackgroundTask}`. See
+  [MSIX App Installer](/docs/services/update/updater-feeds/#msix-app-installer).
 - **Numeric ids** (`appleId`, `steam.appId`, `itch.gameId`) accept a positive integer or a
   string of digits with no leading zero, and are stored as the digit string either way.
 - **`appleId` must match the operator's pin.** The App Store Connect connector runs only while

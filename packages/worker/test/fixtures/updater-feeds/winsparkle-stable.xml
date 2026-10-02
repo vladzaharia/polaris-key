@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>djdl</title>
+    <link>https://key.example.test</link>
+    <item>
+      <title>djdl 1.1.0</title>
+      <pubDate>Sun, 15 Oct 2023 22:13:20 GMT</pubDate>
+      <sparkle:version>110</sparkle:version>
+      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>10.0.19041</sparkle:minimumSystemVersion>
+      <description><![CDATA[What&apos;s new in 1.1.0 &lt;b&gt;bold&lt;/b&gt;.]]></description>
+      <enclosure url="https://dl.example.test/djdl/distribution/files/app%401.1.0/djdl-1.1.0-windows-x64-setup.exe" sparkle:version="110" sparkle:shortVersionString="1.1.0" sparkle:os="windows-x64" sparkle:installerArguments="/SILENT /SP- /NOICONS" type="application/octet-stream" length="42" sparkle:edSignature="mzvp+h1PEyvJncCjPtnz45yyx8kOnuFhMqi+jzMHBnTRYTRksjk7fUGodYVkafuJEsjxzxaomyN1M7h5DPDwDg==" />
+      <enclosure url="https://dl.example.test/djdl/distribution/files/app%401.1.0/djdl-1.1.0-windows-arm64.msi" sparkle:version="110" sparkle:shortVersionString="1.1.0" sparkle:os="windows-arm64" sparkle:installerArguments="/passive" type="application/octet-stream" length="38" sparkle:edSignature="Q/b8DISR3qA6NIas7msD+ypaMeYW/qn6UoBxNdhz30fjUkHcTwvX/drm3+x1XNo+DLHR9UV6zYQxTim1adA0CA==" />
+    </item>
+    <item>
+      <title>djdl 1.0.0</title>
+      <pubDate>Thu, 05 Oct 2023 22:13:20 GMT</pubDate>
+      <sparkle:version>100</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>10.0.19041</sparkle:minimumSystemVersion>
+      <description><![CDATA[What&apos;s new in 1.0.0 &lt;b&gt;bold&lt;/b&gt;.]]></description>
+      <enclosure url="https://dl.example.test/djdl/distribution/files/app%401.0.0/djdl-1.0.0-windows-x64-setup.exe" sparkle:version="100" sparkle:shortVersionString="1.0.0" sparkle:os="windows-x64" sparkle:installerArguments="/SILENT /SP- /NOICONS" type="application/octet-stream" length="42" sparkle:edSignature="ePNwS6HgTX4tgs11rXuawoDeqrZ858xqB+UdIPDymCHpRlDz14DhIOPbWAwB1hrKXhkfa+oNf+jt5di5I/pqAA==" />
+      <enclosure url="https://dl.example.test/djdl/distribution/files/app%401.0.0/djdl-1.0.0-windows-arm64.msi" sparkle:version="100" sparkle:shortVersionString="1.0.0" sparkle:os="windows-arm64" sparkle:installerArguments="/passive" type="application/octet-stream" length="38" sparkle:edSignature="7GFO3lHp+wMTTc+dJwLejEF1dxhwJ+yHSs//WRHN5dg6KMdjXwNAfjP3w7jUrShdAe3GgS1TKOKtI8PCdEQWAA==" />
+    </item>
+  </channel>
+</rss>

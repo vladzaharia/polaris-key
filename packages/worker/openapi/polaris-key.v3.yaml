@@ -3995,6 +3995,25 @@ paths:
         (Distribution's `dist_access`, P2b-04 — the same answer the download behind each
         enclosure enforces), not the metadata mode, so a product can leave `/update/version`
         public while closing the feed.
+
+
+        EXTENDED (P3-09) for a product that publishes CI-signed release records: the feed is
+        then rendered from the records and Distribution's per-outlet state, as every app-updater
+        feed is — up to three releases with a macOS build for `?arch=` (a universal DMG serves
+        both architectures; `?outlet=` picks a `direct` outlet), `sparkle:version` the build
+        number, `sparkle:hardwareRequirements` `arm64` for an Apple-silicon-only build,
+        `sparkle:criticalUpdate` (with no attribute for the channel's critical pointer release;
+        with `sparkle:version` = the floor's build number for a release above the channel floor),
+        `sparkle:phasedRolloutInterval` while the direct outlet's rollout on this channel is
+        active (only the channel's own rollout row phases; an active rollout of `bp` opens
+        `ceil(bp × 7 / 10000)` of Sparkle's seven groups and holds them,
+        by a one-year interval and a backdated `pubDate`), and `<sparkle:deltas>` from delta
+        artifacts that name their `deltaFrom`. A paused or halted rollout, or a yank, serves the
+        previous release. Enclosures are the immutable `/distribution/files/…` URLs (on the
+        bytes host), and every `sparkle:edSignature` is CI's sidecar, verified over the stored
+        bytes; an enclosure whose signature does not verify is left out. A strong `ETag`
+        answers `If-None-Match` with 304. A product with no release record keeps the legacy
+        feed above, byte for byte.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - { $ref: "#/components/parameters/Arch" }
@@ -4053,7 +4072,8 @@ paths:
         wins. Under the `entitled`
         access mode this is where a stable-only license is refused a beta feed — 403
         `channel_not_allowed`, with no `allowedRange`. `arch` is part of the edge-cache key,
-        so the two architectures never share a cached body.
+        so the two architectures never share a cached body. Extended for a product that
+        publishes release records exactly as the default feed is (P3-09).
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - { $ref: "#/components/parameters/Channel" }
@@ -4168,6 +4188,207 @@ paths:
         - { $ref: "#/components/parameters/Channel" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/update/{channel}/winsparkle.xml:
+    get:
+      operationId: getWinSparkleAppcast
+      tags: [update]
+      summary: The WinSparkle appcast for a channel
+      description: >
+        P3-09 (README §3.6, notes/E3 §A3.2). A Sparkle-format appcast for Windows installer
+        builds, one URL per channel (WinSparkle has no channels): up to three releases with a
+        stored release record, newest first, each one `<item>` with one `<enclosure>` per
+        Windows installer build (`.exe` / `.msi` payloads only — WinSparkle runs what it
+        downloads), x64 first, each with `sparkle:os` (`windows-x64`, `windows-arm64`,
+        `windows`), `sparkle:version` (the build number) and `sparkle:shortVersionString` on
+        the enclosure, `sparkle:installerArguments` from the build format (`msi` → `/passive`,
+        `inno` → `/SILENT /SP- /NOICONS`, `nsis` → `/S`), and CI's sidecar
+        `sparkle:edSignature`, verified over the stored bytes (an enclosure whose signature
+        does not verify is left out, as on the appcast). No rollout concept: a release whose
+        rollout on the outlet is not complete is held back and the previous one listed; a yank
+        or halt removes a release at once. `?outlet=` picks a `direct` outlet. Governed by the
+        app's delivery access, like the appcast; `public` caches `public, max-age=300`, every
+        other mode `private, no-store`. Strong `ETag`, 304 on `If-None-Match`. Discovery:
+        `update.endpoints.winsparkle`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - name: outlet
+          in: query
+          required: false
+          schema: { type: string, pattern: "^[a-z][a-z0-9-]{0,63}$" }
+      responses:
+        "200":
+          description: "Appcast XML, `application/xml; charset=utf-8`."
+          content:
+            application/xml:
+              schema: { type: string }
+        "304": { description: Not modified. }
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The feed rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /{product}/update/{channel}/velopack/releases.{velopackChannel}.json:
+    get:
+      operationId: getVelopackFeed
+      tags: [update]
+      summary: The Velopack feed for a channel
+      description: >
+        P3-09 (notes/E3 §A3.1). Velopack's `releases.<channel>.json` for an app packed with
+        `vpk pack --channel <velopackChannel>`, served under the Polaris channel's base URL
+        (`…/update/{channel}/velopack/`). The Velopack channel's first token is the OS (`win`,
+        `osx`, `linux`), the second, when it is `x64` or `arm64`, the architecture; else the
+        client's `?arch=` (Velopack appends it), else x64. Velopack's other parameters (`os`,
+        `rid`, `id`, `localVersion`) are ignored and key nothing. `Assets` lists the newest
+        release's `-full.nupkg` payload (`Type: Full`) and the `-delta.nupkg` delta artifacts
+        (`Type: Delta`) of up to ten releases with a stored record, newest first (Velopack
+        applies deltas to the full package it holds, so older full packages are not listed):
+        `PackageId` from the package file name, `Version`, `FileName` as the ABSOLUTE immutable
+        distribution URL, `SHA256` from the record, `SHA1` computed by a streaming digest over
+        the stored bytes (which also checks the recorded SHA-256) and memoised, `Size`, and the
+        release notes. No rollout concept: the previous release until a rollout completes.
+        Access, caching and `ETag` as the WinSparkle appcast. Discovery:
+        `update.endpoints.velopack`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - name: velopackChannel
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[A-Za-z0-9_-]{1,64}$" }
+        - name: arch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: outlet
+          in: query
+          required: false
+          schema: { type: string, pattern: "^[a-z][a-z0-9-]{0,63}$" }
+      responses:
+        "200":
+          description: '`{"Assets": [...]}`, `application/json; charset=utf-8`.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [Assets]
+                properties:
+                  Assets:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [PackageId, Version, Type, FileName, SHA1, SHA256, Size]
+                      properties:
+                        PackageId: { type: string }
+                        Version: { type: string }
+                        Type: { type: string, enum: [Full, Delta] }
+                        FileName: { type: string, format: uri }
+                        SHA1: { type: string, pattern: "^[0-9A-F]{40}$" }
+                        SHA256: { type: string, pattern: "^[0-9A-F]{64}$" }
+                        Size: { type: integer, minimum: 0 }
+                        NotesMarkdown: { type: string }
+                        NotesHTML: { type: string }
+        "304": { description: Not modified. }
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The feed rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /{product}/update/{channel}/app.appinstaller:
+    get:
+      operationId: getAppInstallerFile
+      tags: [update]
+      summary: The MSIX App Installer file for a channel
+      description: >
+        P3-09 (notes/E3 §A2). An `.appinstaller` in the 2021 schema for the newest release with
+        a stored record whose MSIX payload (`.msixbundle`, `.appxbundle`, `.msix`, `.appx`) the
+        `app-installer` outlet delivers: `Uri` is EXACTLY the URL served (App Installer re-polls
+        it), so the route reads at most ONE query pair — `?arch=x64|arm64` or `?outlet=<id>` —
+        and both together are 404; the main package (a `MainBundle` for a bundle, else a
+        `MainPackage` with its `ProcessorArchitecture`) names the outlet's identity — the
+        `<Name>` of `packageFamilyName` and `publisher` from `.pkey/distribution` (an outlet
+        without both has no file) — the build's four-part version (a four-part build number,
+        else `major.minor.patch.0`), and the immutable, Range-capable distribution URL; and
+        `<UpdateSettings>` carries `OnLaunch` (`HoursBetweenUpdateChecks`, `ShowPrompt`,
+        `UpdateBlocksActivation`) and `AutomaticBackgroundTask` as the outlet's
+        `updateSettings` declare them. No rollout concept: the previous release until a rollout
+        on the outlet completes. Access, caching and `ETag` as the WinSparkle appcast. Discovery:
+        `update.endpoints.appInstaller`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - name: arch
+          in: query
+          required: false
+          schema: { type: string, enum: [x64, x86_64, arm64] }
+        - name: outlet
+          in: query
+          required: false
+          schema: { type: string, pattern: "^[a-z][a-z0-9-]{0,63}$" }
+      responses:
+        "200":
+          description: "App Installer XML, `application/appinstaller`."
+          content:
+            application/appinstaller:
+              schema: { type: string }
+        "304": { description: Not modified. }
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The feed rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /{product}/update/{channel}/{buildId}.AppImage.zsync:
+    get:
+      operationId: getAppImageZsync
+      tags: [update]
+      summary: The stable per-channel zsync control file of an AppImage build
+      description: >
+        P3-09 (notes/E3 §B1). The URL an AppImage embeds as its update information
+        (`zsync|<this URL>`), constant across versions: `{buildId}` is the artifact-map id of
+        a Linux build whose payload is an `.AppImage`. The body is CI's `<AppImage>.zsync`
+        control file of the newest release with a stored record (checked against its recorded
+        SHA-256, at most 16 MiB) with its `URL:` header rewritten to the current AppImage's
+        absolute, immutable, Range-capable distribution URL; its `Length:` must equal the
+        AppImage's size or there is no file. The checksum blocks are passed through unchanged.
+        `application/x-zsync` (the type zsync's tooling and AppImageUpdate use). No rollout
+        concept: the previous release until a rollout completes. Access, caching and `ETag` as
+        the WinSparkle appcast. Discovery: `update.endpoints.zsync`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - name: buildId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[a-z0-9][a-z0-9._-]{0,63}$" }
+        - name: outlet
+          in: query
+          required: false
+          schema: { type: string, pattern: "^[a-z][a-z0-9-]{0,63}$" }
+      responses:
+        "200":
+          description: "The control file, `application/x-zsync`."
+          content:
+            application/x-zsync:
+              schema: { type: string, format: binary }
+        "304": { description: Not modified. }
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The feed rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /{product}/update/version:
     get:
       operationId: getLatestVersion
@@ -4178,10 +4399,26 @@ paths:
         `?channel=` accepts the same vocabulary as a channel appcast path segment — held to
         the same `[a-z0-9-]` alphabet, refused 404 beyond it, resolved 404 for a well-formed
         unknown name — and the entitled gate evaluates it exactly as it does a path channel.
-        `?arch=` is accepted and discarded: the answer names a release, not an asset. Gated
-        by the METADATA access mode, which is why a product can leave this open while
-        closing its appcasts. `version` is the tag with one leading `v` stripped; `tag` is
+        Without `?platform=`, `?arch=` is accepted and discarded: the answer names a release,
+        not an asset. Gated by the METADATA access mode, which is why a product can leave this
+        open while closing its appcasts. `version` is the tag with one leading `v` stripped; `tag` is
         GitHub's verbatim.
+
+
+        EXTENDED (P3-09) when the request names `?platform=` (optionally with `?arch=`,
+        `?outlet=` or `?build=`), for a product that publishes release records: the answer is
+        the newest release with a stored record that the outlet (default `direct`; `?outlet=`
+        names any self-hosted outlet) delivers for that platform, by the same rules as every
+        app-updater feed — yanks removed, a release whose rollout on the outlet is not complete
+        held back — with one build of it (the exact `?arch=` over a universal build, or the
+        `?build=` artifact-map id). It keeps `version`, `tag` (the release's tag; `null` for a
+        tagless descriptor release) and `url` (its GitHub release page, else the download URL)
+        and adds `build`, `sha256`, `size`, `downloadUrl` (immutable, on the bytes host),
+        `minOS` and `critical` (the channel's critical pointer release). Documented here only:
+        no SDK reads the extended fields (they read the v3 three in `check()` and the signed
+        feed for everything else). Without `?platform=`, or for a product with no record, the
+        answer is the legacy one above (`?arch=`, `?outlet=` and `?build=` alone are discarded).
+        With records, an unknown `?platform=` or no matching recorded build is 404.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: channel
@@ -4189,6 +4426,27 @@ paths:
           required: false
           description: "Channel to check (default stable): stable, beta (staging is its legacy alias), pr-<n>, or a manifest-declared manual channel."
           schema: { type: string, pattern: "^[a-z0-9-]+$" }
+        - name: platform
+          in: query
+          required: false
+          description: "P3-09: the platform of the extended answer."
+          schema:
+            { type: string, enum: [macos, ios, android, windows, linux, web] }
+        - name: arch
+          in: query
+          required: false
+          description: "P3-09: prefer a build of this arch (a universal build also matches)."
+          schema: { type: string }
+        - name: outlet
+          in: query
+          required: false
+          description: "P3-09: a self-hosted outlet id (default `direct`)."
+          schema: { type: string, pattern: "^[a-z][a-z0-9-]{0,63}$" }
+        - name: build
+          in: query
+          required: false
+          description: "P3-09: one artifact-map build id."
+          schema: { type: string, pattern: "^[a-z0-9][a-z0-9._-]{0,63}$" }
       responses:
         "200":
           description: "Version info. `cache-control: public, max-age=120`."
@@ -7103,14 +7361,39 @@ components:
     VersionCheck:
       type: object
       description: >
-        The newest release on the default selector. One answer per product — this route takes
-        no parameters, so it cannot vary by architecture or channel.
+        The newest release on the requested channel. The legacy answer is the three strings;
+        the extended answer (P3-09, `?platform=` …) adds the build's facts.
       required: [version, tag, url]
       properties:
         version:
           { type: string, description: The tag with one leading `v` stripped. }
-        tag: { type: string }
+        tag: { type: [string, "null"] }
         url: { type: string, format: uri }
+        build:
+          { type: [string, "null"], description: "P3-09: the build number." }
+        sha256:
+          {
+            type: [string, "null"],
+            description: "P3-09: the payload's SHA-256.",
+          }
+        size:
+          { type: [integer, "null"], description: "P3-09: the payload's size." }
+        downloadUrl:
+          {
+            type: string,
+            format: uri,
+            description: "P3-09: the immutable download URL.",
+          }
+        minOS:
+          {
+            type: [string, "null"],
+            description: "P3-09: the build's minimum OS.",
+          }
+        critical:
+          {
+            type: boolean,
+            description: "P3-09: the channel's critical pointer release.",
+          }
     ManagedPayload:
       type: object
       description: >

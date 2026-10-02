@@ -145,6 +145,22 @@ describe("matching files to the artifact map", () => {
     ]);
   });
 
+  it("picks up an AppImage's .zsync control file as a checksum sidecar (P3-09)", async () => {
+    const cwd = await repo({
+      "Diceroll-1-x86_64.AppImage": bytesOf(5, 1),
+      "Diceroll-1-x86_64.AppImage.zsync": bytesOf(5, 2),
+    });
+    const appimage = [
+      { ...entries()[0]!, id: "appimage", match: "Diceroll-*.AppImage" },
+    ];
+    const res = matchArtifacts(await scanDir(path.join(cwd, "dist")), appimage);
+    expect(res.errors).toEqual([]);
+    expect(res.builds[0]!.files.map((f) => [f.name, f.role])).toEqual([
+      ["Diceroll-1-x86_64.AppImage", "payload"],
+      ["Diceroll-1-x86_64.AppImage.zsync", "checksum"],
+    ]);
+  });
+
   it("a sidecar never matches an entry itself, and no match at all is an error", async () => {
     const cwd = await repo({
       "Diceroll-x.zip": bytesOf(5, 1),

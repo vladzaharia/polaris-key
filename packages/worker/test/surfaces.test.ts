@@ -262,6 +262,13 @@ describe("worker surfaces", () => {
         channelAppcast: "https://key.plrs.im/djdl/update/{channel}/appcast.xml",
         // P3-03: the signed channel feed.
         feed: "https://key.plrs.im/djdl/update/{channel}/feed.jws",
+        winsparkle: "https://key.plrs.im/djdl/update/{channel}/winsparkle.xml",
+        velopack:
+          "https://key.plrs.im/djdl/update/{channel}/velopack/releases.{velopackChannel}.json",
+        appInstaller:
+          "https://key.plrs.im/djdl/update/{channel}/app.appinstaller",
+        zsync:
+          "https://key.plrs.im/djdl/update/{channel}/{buildId}.AppImage.zsync",
       },
       archParameter: ["arm64", "x86_64"],
     });

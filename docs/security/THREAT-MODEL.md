@@ -828,6 +828,72 @@ writer can push.
   page through a stale link sees a release up to five minutes old. QR codes carry the same URLs
   the links do; one too long for the encoder (an Obtainium app config) is simply not drawn.
 
+### App-updater feeds (P3-09)
+
+**What arrived.** Update renders the native updaters' feeds from the CI-signed release records and
+Distribution's per-outlet state (`services/update/updaterFeeds.ts`, `updaterRender.ts`,
+`artifactBytes.ts`; tests: `test/updaterFeeds.test.ts`): an extended Sparkle appcast (for a
+product with records), a WinSparkle appcast, a Velopack feed, an MSIX `.appinstaller` and an
+AppImage `.zsync` per channel, and an extended `/update/version`. They are new public routes that
+tell an updater which bytes to install, so they sit next to AT-3. Distribution's `delivery` hook
+gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Update) and
+`feedStamp`. A descriptor `delta` artifact may name its `deltaFrom`, stored in
+`release_artifacts.metadata_json`. The `app-installer` outlet identity gained `publisher` and
+`updateSettings`.
+
+- **Only signed releases, only through the selection.** A feed lists only releases with a stored
+  release record (P3-03's ingest checks), chosen by P2b-05's rules: not yanked, not held by a
+  rollout on the outlet, live there, with an immutable delivery URL. So a halt or a yank removes a
+  release from every feed on the next request, and the cache stamp moves with them. Every file a
+  feed points a client at beside the payload (a Sparkle or Velopack delta, a `.zsync` control
+  file, a `.sig` sidecar) must be one the descriptor named for that build, in that role
+  (`release_artifacts.build_id` and `role`). A release-level row is never used: that is what the
+  GitHub sync writes for an asset the descriptor did not name, with build_id NULL and only
+  GitHub's own digest. So whoever can write to the GitHub release without holding the release key
+  can neither list a release nor add a file to a listed one.
+- **No updater payload is signed or trusted here.** `sparkle:edSignature` is CI's sidecar,
+  verified over the payload's stored bytes against the configured Sparkle key before it is
+  rendered. The verifier is P0-10's streaming one, so nothing is buffered, and verdicts are
+  memoised under the payload's SHA-256, whose stream is pinned to that digest. With a key, an
+  unverifiable enclosure is left out. Velopack's `SHA1` is computed by a streaming digest that
+  checks the recorded SHA-256 and size first. A `.zsync` control file is read whole (at most
+  16 MiB), checked against its recorded SHA-256, and refused unless its `Length:` matches the
+  AppImage. A header that names another source or process (`Z-URL:`, `Z-Map2:`, `Recompress:`)
+  is refused, so `URL:` is the only place a client is sent. Only that header is rewritten, to our
+  own immutable delivery URL. Bytes are read
+  only from R2 (a non-gated content address this product holds a ref to) or from GitHub through
+  Release's `openSource`, never from an external URL.
+- **Access is the appcast's.** Each feed runs the release gateway's access rule. The delivery
+  access governs the feeds, and the metadata mode governs the version check. Only a `public`
+  answer is cached (Core's feed cache, keyed by path, the inputs the renderer reads, and the
+  state stamp) or marked `public`. Any other mode needs a licence on every request and answers
+  `private, no-store`. No CORS is added. Responses carry `nosniff` and the platform headers.
+  `application/appinstaller`, `application/x-zsync` and XML are served on the console origin
+  that holds sessions, with `nosniff` and no HTML type.
+- **Cost (DoS).** Every request to the appcasts, the extended version check and the four new
+  feeds first reads the product's recorded release ids (one narrow `SELECT DISTINCT release_id`
+  on `release_records`, covered by its unique index; never the JWS bytes). A product with no
+  record then takes the legacy appcast path, so a legacy appcast costs that one extra read. For a
+  product with records, the `updateFeed` per-IP limit (60 per minute, fail-open) runs next, before
+  any other read. A cache hit then costs the release config, the delivery access and the stamp:
+  the metadata access, the rollouts, one row of availability and outlet counters, the yanks and
+  the channel policies. That is eight D1 reads beyond the dispatcher's own product lookup. Only a
+  miss renders: one bounded selection (P2b-05's ceiling) plus, per listed build, its `.sig`
+  sidecar (Sparkle and WinSparkle, at most three releases), or, for zsync, one `.zsync` control
+  file (at most 16 MiB). A signature verification or a SHA-1 streams a payload once per release,
+  then is memoised: verdicts for 30 days, negatives for a day, a SHA-1 for a year. A
+  non-public answer is never cached, so it pays the render on every request, behind the licence
+  check. The cache key carries every input the body depends on. That includes the
+  `.appinstaller`'s rendered `Uri`, so one spelling of `?arch=` cannot plant its `Uri` in
+  another's cached answer.
+- **Residual.** The `deltaFrom`, the App Installer identity and update settings, and the build
+  format that picks WinSparkle's installer arguments are CI or manifest claims. A wrong value makes
+  an updater fail or fall back to the full package. It never changes which bytes are served,
+  because every URL is a hash-pinned delivery URL. `UpdateBlocksActivation` can make App Installer
+  block launch on an update, which is a manifest owner's UX choice; `ForceUpdateFromAnyVersion`
+  (downgrades) is not offered. The Sparkle rollout mapping is coarse (seven groups), and a
+  floor-critical item skips phasing for installs below the floor, as Sparkle defines it.
+
 ### Outlet credentials (P5-01)
 
 **What they are.** The keys a store connector authenticates with (A11): an App Store Connect API

@@ -82,6 +82,13 @@ export interface DescriptorArtifact {
   size: number;
   /** What the uploader says it is. Recorded, never served as-is (R6-04). */
   contentType?: string;
+  /**
+   * A `delta` artifact only (P3-09): the build number (Sparkle's `sparkle:version`, else the
+   * version) of the release this delta updates FROM — what the Sparkle appcast renders as
+   * `sparkle:deltaFrom`. Not part of the release record (§2.4 maps artifacts without it); an
+   * updater checks a delta against its own signature or hash, never against this value.
+   */
+  deltaFrom?: string;
   locations: DescriptorLocation[];
 }
 
@@ -760,6 +767,23 @@ export function validateReleaseDescriptor(
           "invalid_descriptor_artifact",
           "contentType must be a lower-case type/subtype.",
         );
+      if (a.deltaFrom !== undefined) {
+        if (a.role !== "delta")
+          err(
+            `/builds/${bi}/artifacts/${ai}/deltaFrom`,
+            "invalid_delta_from",
+            "deltaFrom applies only to an artifact whose role is delta.",
+          );
+        else if (
+          typeof a.deltaFrom !== "string" ||
+          !BUILD_NUMBER_RE.test(a.deltaFrom)
+        )
+          err(
+            `/builds/${bi}/artifacts/${ai}/deltaFrom`,
+            "invalid_delta_from",
+            "deltaFrom must be 1-64 version characters: the build number the delta updates from.",
+          );
+      }
       if (
         !Array.isArray(a.locations) ||
         a.locations.length === 0 ||

@@ -148,3 +148,37 @@ describe("streaming Ed25519 verification on workerd", () => {
     expect(badFetches).toBe(1);
   });
 });
+
+// ── P3-09: the updater feeds' streaming digests ─────────────────────────────────────────────
+//
+// Velopack's `SHA1` is computed by `artifactSha1` with `node:crypto`'s incremental SHA-1 beside a
+// SHA-256 over the same stream, and `verifiedSidecarSignature` pins a payload stream to its
+// recorded SHA-256 through a `TransformStream`. Both must work in workerd's `nodejs_compat`.
+import { createHash } from "node:crypto";
+
+describe("updater feed digests on workerd (P3-09)", () => {
+  it("incremental SHA-1 and SHA-256 agree with WebCrypto over a streamed body", async () => {
+    const whole = await materialise(body(MiB + 17));
+    const s1 = createHash("sha1");
+    const s256 = createHash("sha256");
+    const reader = body(MiB + 17)
+      .pipeThrough(new TransformStream<Uint8Array, Uint8Array>())
+      .getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      s1.update(value);
+      s256.update(value);
+    }
+    const hex = (b: ArrayBuffer) =>
+      [...new Uint8Array(b)]
+        .map((x) => x.toString(16).padStart(2, "0"))
+        .join("");
+    expect(s1.digest("hex")).toBe(
+      hex(await crypto.subtle.digest("SHA-1", whole)),
+    );
+    expect(s256.digest("hex")).toBe(
+      hex(await crypto.subtle.digest("SHA-256", whole)),
+    );
+  });
+});
