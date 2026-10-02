@@ -1652,7 +1652,14 @@ blob store, and stores it. What the Worker newly does is parse CI-supplied bytes
   `content` (the descriptor's, which `descriptor-mismatch` holds to the record); ingest refuses a
   pin to an unknown, mismatched or yanked pack release, an unpinned required or embedded pack, a
   gated pack pinned as required, and an embedded pack not pinned. `release_pins` mirrors them
-  for queries only.
+  for queries only. A declared pack whose stored declaration does not read back fails the app
+  release closed (`pack-unreadable`) rather than skipping its `required` rule.
+- **A GitHub tag cannot overwrite a pack release.** A pack release's id is `<packId>@<version>`
+  and git allows `@` in a tag, so whoever can push a tag to the linked repo can name a GitHub
+  release after a pack release. The truth-store sync skips such a release and reports it
+  (`packTagConflicts`, `release_tag_is_pack_release`), and every row it writes for a release is
+  guarded at write time to an `app` row, so a stale plan cannot overwrite a pack's metadata (its
+  `$.record` marker, which pins verify against), builds or objects either.
 
 ### Boundaries that are weaker than they look
 
