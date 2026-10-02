@@ -2,6 +2,8 @@ import * as React from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   GitBranch,
   Info,
   Package,
@@ -31,19 +33,34 @@ import {
   type ColumnDef,
 } from "../components/ui/index.js";
 import { ResyncButton } from "./releases/ResyncButton.js";
+import { ReleaseBuilds } from "./releases/ReleaseBuilds.js";
+import { ChannelsPanel } from "./releases/ChannelsPanel.js";
+import {
+  PolicyActionDialog,
+  type PolicyAction,
+} from "./releases/PolicyActionDialog.js";
 import { releaseSourceOf } from "./products/util.js";
 
 /**
- * Releases view: the release TRUTH STORE plus the manifest-driven status around it.
+ * Releases view: the release TRUTH STORE, the channels that serve from it, and the
+ * manifest-driven status around them.
  *
- * The store (`release_metadata`/`_artifacts`/`_channels`) is what Polaris Key believes the linked
- * repo publishes. Live feeds (appcast, version, changelog, install, downloads) resolve straight
- * against GitHub and never consult it; what reads it instead is the customer portal's releases
- * view and this console's admin API — so it leads for those two surfaces. Health and sync
- * describe how that belief was formed and whether it is current; they follow it rather than
- * standing in for it, which is what this view did while the store had no reader.
+ * The store (`release_metadata`, `release_builds`, `release_artifacts`, the yanks and the channel
+ * policy) is what Polaris Key believes the product publishes. Since P2-05 it is what resolution
+ * reads: the build, file and blob routes, the download route, the appcast and the version check
+ * all apply its yanks and pins, and the signed channel feed (P3-03) is composed from it. This
+ * view shows it release by release — each release's builds and the files under them — and
+ * channel by channel, with what each channel serves on every platform as the admin API resolves
+ * it (the console never recomputes resolution).
  *
- * Release config itself is still edited in `.pkey/release.*` and applied by a resync.
+ * The operator controls here — promote, pin, unpin, yank, unyank, the minimum supported
+ * version, the critical flag, the rollback floor — are P2-05's admin operations, each behind a
+ * confirmation that states its effect. Every one claims the channel row for the operator, so a
+ * resync leaves it alone until "Revert to manifest" hands it back.
+ *
+ * Release config itself (repo coordinates, channel rules) is still edited in `.pkey/release.*`
+ * and applied by a resync. Health and sync describe how the store's belief was formed and
+ * whether it is current; they follow it rather than standing in for it.
  */
 export function Releases({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
@@ -53,6 +70,10 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
     api.releaseHealth(slug).then((r) => r.health),
   );
   const store = useResource(`releases:${slug}`, () => api.releases(slug));
+  const channels = useResource(`release-channels:${slug}`, () =>
+    api.releaseChannels(slug),
+  );
+  const [action, setAction] = React.useState<PolicyAction | null>(null);
 
   if (loading && !data) return <ReleasesSkeleton />;
 
@@ -95,6 +116,22 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
         loading={store.loading && !store.data}
         error={store.error}
         onRetry={store.reload}
+        onAction={setAction}
+      />
+      <ChannelsPanel
+        data={channels.data}
+        releases={store.data?.releases ?? []}
+        floors={store.data?.floors ?? []}
+        loading={channels.loading && !channels.data}
+        error={channels.error}
+        onRetry={channels.reload}
+        onAction={setAction}
+      />
+      <PolicyActionDialog
+        slug={slug}
+        action={action}
+        releases={store.data?.releases ?? []}
+        onClose={() => setAction(null)}
       />
       <ManifestNote />
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -112,15 +149,16 @@ export function Releases({ slug }: { slug: string }): React.ReactElement {
 }
 
 /**
- * The truth store. Every row is what a feed would be rendered from, so it shows the things a
- * feed decision turns on: the version, whether it is published, how many artifacts were
- * indexed, and which channels currently point at it.
+ * The truth store. Every row is a release a feed could be rendered from, so it shows the things a
+ * feed decision turns on: the version, whether it is published or yanked, how many builds and
+ * files were indexed, and which channels the sync last saw pointing at it. Expanding a row shows
+ * its builds and the files under each (`ReleaseBuilds`).
  *
- * The channel map is rendered twice on purpose — as badges on the release each channel points
- * at, and as a list below. The badges answer "what does this release serve"; the list answers
- * "what does `beta` currently ship", including the case that made the second view necessary: a
- * channel pointing at a release id the store no longer holds, which is invisible in a per-row
- * projection because there is no row to hang it on.
+ * The sync's channel map is rendered twice on purpose — as badges on the release each channel
+ * points at, and as a list below. The badges answer "what does this release serve"; the list
+ * answers "what does `beta` currently ship", including a channel pointing at a release id the
+ * store no longer holds, which is invisible in a per-row projection. What a channel serves NOW,
+ * per platform and after policy, is the Channels panel's job.
  */
 function ReleaseStoreCard({
   releases,
@@ -128,13 +166,23 @@ function ReleaseStoreCard({
   loading,
   error,
   onRetry,
+  onAction,
 }: {
   releases: ReleaseDto[];
   channels: ReleaseChannelDto[];
   loading: boolean;
   error: string | null;
   onRetry: () => void;
+  onAction: (action: PolicyAction) => void;
 }): React.ReactElement {
+  const [open, setOpen] = React.useState<ReadonlySet<string>>(new Set());
+  const toggle = (id: string): void =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const channelsByRelease = React.useMemo(() => {
     const map = new Map<string, string[]>();
     for (const c of channels) {
@@ -150,11 +198,46 @@ function ReleaseStoreCard({
 
   const columns: ColumnDef<ReleaseDto>[] = [
     {
+      id: "expand",
+      header: <span className="sr-only">Builds</span>,
+      className: "w-8 pr-0",
+      cell: (r) => {
+        const expanded = open.has(r.releaseId);
+        return (
+          <button
+            type="button"
+            onClick={() => toggle(r.releaseId)}
+            aria-expanded={expanded}
+            aria-label={`${expanded ? "Hide" : "Show"} builds of ${r.version}`}
+            className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {expanded ? (
+              <ChevronDown className="size-4" aria-hidden />
+            ) : (
+              <ChevronRight className="size-4" aria-hidden />
+            )}
+          </button>
+        );
+      },
+    },
+    {
       id: "version",
       header: "Version",
       accessor: (r) => r.version,
       sortable: true,
-      cell: (r) => <span className="font-mono text-xs">{r.version}</span>,
+      cell: (r) => (
+        <span className="inline-flex flex-wrap items-center gap-1">
+          <span className="font-mono text-xs">{r.version}</span>
+          {r.yank ? (
+            <Badge
+              variant="destructive"
+              title={`Yanked by ${r.yank.by} ${formatStamp(r.yank.at)}`}
+            >
+              Yanked: {r.yank.reason}
+            </Badge>
+          ) : null}
+        </span>
+      ),
     },
     {
       id: "title",
@@ -183,8 +266,15 @@ function ReleaseStoreCard({
       cell: (r) => <StatusBadge status={r.status} />,
     },
     {
+      id: "builds",
+      header: "Builds",
+      accessor: (r) => r.builds.length,
+      sortable: true,
+      cell: (r) => String(r.builds.length),
+    },
+    {
       id: "artifacts",
-      header: "Artifacts",
+      header: "Files",
       accessor: (r) => r.artifacts.length,
       sortable: true,
       cell: (r) => String(r.artifacts.length),
@@ -207,6 +297,30 @@ function ReleaseStoreCard({
         );
       },
     },
+    {
+      id: "actions",
+      header: <span className="sr-only">Actions</span>,
+      cell: (r) =>
+        r.yank ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAction({ kind: "unyank", release: r })}
+            aria-label={`Unyank ${r.version}`}
+          >
+            Unyank
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onAction({ kind: "yank", release: r })}
+            aria-label={`Yank ${r.version}`}
+          >
+            Yank…
+          </Button>
+        ),
+    },
   ];
 
   return (
@@ -217,9 +331,9 @@ function ReleaseStoreCard({
           <CardTitle>Releases</CardTitle>
         </div>
         <CardDescription>
-          What Polaris Key has synced from the linked repo — the store every
-          update feed is rendered from, read without spending a GitHub
-          round-trip.
+          What Polaris Key knows each release ships — builds, files, hashes and
+          where the bytes live — read from the store every download and update
+          feed resolves against, without a GitHub round-trip.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -239,6 +353,9 @@ function ReleaseStoreCard({
               columns={columns}
               rows={releases}
               rowKey={(r) => r.releaseId}
+              expanded={(r) =>
+                open.has(r.releaseId) ? <ReleaseBuilds release={r} /> : null
+              }
               loading={loading}
               filterable={releases.length > 8}
               filterPlaceholder="Filter releases…"
@@ -423,7 +540,23 @@ function HealthCheckRow({
           Missing: {check.missing.join(", ")}
         </p>
       ) : null}
+      {isFloorCheck(check.id) ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Lower or clear the floor from the channel’s actions in the Channels
+          panel above.
+        </p>
+      ) : null}
     </li>
+  );
+}
+
+/** The anti-rollback floor checks (R6-10, P0-02): `channel-regressed[-<channel>]` and
+ *  `channel-floor-unverified-<channel>` — the ones an operator answers with the floor action. */
+function isFloorCheck(id: string): boolean {
+  return (
+    id === "channel-regressed" ||
+    id.startsWith("channel-regressed-") ||
+    id.startsWith("channel-floor-unverified-")
   );
 }
 

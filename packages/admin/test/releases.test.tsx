@@ -9,11 +9,13 @@ import {
 import userEvent from "@testing-library/user-event";
 import type {
   ProductDetail,
+  ReleaseChannelsResponse,
   ReleaseHealth,
   ReleaseStoreResponse,
   ResyncResult,
 } from "../src/api.js";
 import { resetCache } from "../src/context.js";
+import { CHANNELS, sha, STORE } from "./releaseFixture.js";
 
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
@@ -22,12 +24,17 @@ const releaseHealth =
 // P2.T2 gave the truth store a writer, so this view finally has something to read: the card is
 // the PRIMARY one now, which is why every case here has to answer this call.
 const releases = vi.fn<(slug: string) => Promise<ReleaseStoreResponse>>();
-vi.mock("../src/api.js", () => ({
+// P2-07: the channels panel reads the policy model beside the store.
+const releaseChannels =
+  vi.fn<(slug: string) => Promise<ReleaseChannelsResponse>>();
+vi.mock("../src/api.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
     product: (slug: string) => product(slug),
     resyncProduct: (slug: string) => resyncProduct(slug),
     releaseHealth: (slug: string) => releaseHealth(slug),
     releases: (slug: string) => releases(slug),
+    releaseChannels: (slug: string) => releaseChannels(slug),
   },
 }));
 
@@ -89,52 +96,17 @@ const HEALTH: ReleaseHealth = {
   ],
 };
 
-/** One published release with two artifacts, and a channel pointing at it. */
-const STORE: ReleaseStoreResponse = {
-  releases: [
-    {
-      releaseId: "rel_1",
-      version: "1.4.0",
-      title: "Spring release",
-      publishedAt: 1_700_000_000,
-      sourceUrl: "https://github.com/acme/djdl/releases/tag/v1.4.0",
-      status: "ok",
-      artifacts: [
-        {
-          artifactId: "a1",
-          name: "djdl-macos-arm64.dmg",
-          kind: "dmg",
-          platform: "macos",
-          arch: "arm64",
-          sizeBytes: 1024,
-          access: "public",
-        },
-        {
-          artifactId: "a2",
-          name: "djdl-linux-x86_64",
-          kind: "cli",
-          platform: "linux",
-          arch: "x86_64",
-          sizeBytes: 2048,
-          access: "licensed",
-        },
-      ],
-    },
-  ],
-  channels: [
-    { channel: "stable", releaseId: "rel_1", modifiedAt: 1_700_000_100 },
-  ],
-};
-
 beforeEach(() => {
   resetCache();
   product.mockReset();
   resyncProduct.mockReset();
   releaseHealth.mockReset();
   releases.mockReset();
+  releaseChannels.mockReset();
   product.mockResolvedValue({ product: PRODUCT });
   releaseHealth.mockResolvedValue({ health: HEALTH });
   releases.mockResolvedValue(STORE);
+  releaseChannels.mockResolvedValue(CHANNELS);
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
   ).hasPointerCapture = () => false;
@@ -213,25 +185,25 @@ describe("Releases view", () => {
 describe("Releases view — the truth store (P2.T2)", () => {
   it("reads the store rather than re-deriving releases from health", async () => {
     render(<Releases slug="djdl" />);
-    // The version, the channel that points at it, and the artifact count are the three things a
-    // feed decision turns on, so they are the three this pins.
-    // The version appears twice by design — once as the store row, once in the channel map —
-    // so this asserts presence, not cardinality.
-    expect((await screen.findAllByText("1.4.0")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Spring release")).toBeTruthy();
+    // The version, the channel the sync saw pointing at it, and the build and file counts are
+    // what a feed decision turns on, so they are what this pins. The version appears in the
+    // store row, the channel map and the channels panel by design: presence, not cardinality.
+    expect((await screen.findAllByText("0.4.2")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Snake eyes")).toBeTruthy();
     expect(screen.getAllByText(/stable/).length).toBeGreaterThan(0);
     expect(releases).toHaveBeenCalledWith("djdl");
-    // The row reports how many artifacts were indexed — the number a feed selects from.
-    const row = screen.getByText("Spring release").closest("tr")!;
-    expect(within(row).getByText("2")).toBeTruthy();
+    // The row reports how many builds and files were indexed — what a feed selects from.
+    const row = screen.getByText("Loaded dice").closest("tr")!;
+    expect(within(row).getByText("6")).toBeTruthy();
+    expect(within(row).getByText("9")).toBeTruthy();
   });
 
   it("degrades to an empty state when the store has no rows, without hiding health", async () => {
-    releases.mockResolvedValue({ releases: [], channels: [] });
+    releases.mockResolvedValue({ releases: [], channels: [], floors: [] });
     render(<Releases slug="djdl" />);
     // Health still renders: an unsynced store is a fact about the sync, not about the product.
     expect(await screen.findByText("Release health")).toBeTruthy();
-    expect(screen.queryByText("1.4.0")).toBeNull();
+    expect(screen.queryByText("Snake eyes")).toBeNull();
   });
 
   it("moves the compatibility window out of this view — it is Update settings' now", async () => {
@@ -241,5 +213,125 @@ describe("Releases view — the truth store (P2.T2)", () => {
     await screen.findByText("Distribution & compatibility");
     expect(screen.queryByText(/^min 1\.0\.0$/)).toBeNull();
     expect(screen.getByText(/Update settings/)).toBeTruthy();
+  });
+});
+
+describe("Releases view — builds and artifacts (P2-07)", () => {
+  async function expand(version: string): Promise<HTMLElement> {
+    render(<Releases slug="djdl" />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Show builds of ${version}` }),
+    );
+    return screen.findByLabelText(`Builds of ${version}`);
+  }
+
+  it("shows each of six builds' platform, arch, format, build number and payload SHA-256", async () => {
+    const builds = await expand("0.4.1");
+    const rows = within(builds)
+      .getAllByRole("row")
+      .filter((r) => within(r).queryAllByRole("cell").length === 7);
+    expect(rows).toHaveLength(6);
+    const want: Array<[string, string, string, string, string, number]> = [
+      ["macos-universal", "macos", "universal", "zip", "41", 100],
+      ["windows-x86_64", "windows", "x86_64", "zip", "41", 101],
+      ["linux-x86_64", "linux", "x86_64", "tar.gz", "41", 102],
+      ["ios-arm64", "ios", "arm64", "ipa", "1041", 103],
+      ["android-arm64", "android", "arm64", "aab", "4041", 104],
+      ["web-wasm32", "web", "wasm32", "zip", "41", 105],
+    ];
+    for (const [
+      i,
+      [id, platform, arch, format, number, seed],
+    ] of want.entries()) {
+      const cells = within(rows[i]!).getAllByRole("cell");
+      expect(cells.map((c) => c.textContent)).toEqual([
+        id,
+        platform,
+        arch,
+        format,
+        number,
+        expect.any(String),
+        `${sha(seed).slice(0, 12)}…`,
+      ]);
+      // Shortened on screen; the full hash is one copy away and in the title.
+      expect(
+        within(cells[6]!).getByRole("button", {
+          name: `Copy SHA-256 ${sha(seed)}`,
+        }),
+      ).toBeTruthy();
+    }
+    // Minimum OS, where the build declares one.
+    expect(within(rows[0]!).getByText("12.0")).toBeTruthy();
+  });
+
+  it("groups files under their build, says where the bytes live, and hides sidecars until toggled", async () => {
+    const builds = await expand("0.4.1");
+    expect(
+      within(builds).getByText("diceroll-v0.4.1-macos-universal.zip"),
+    ).toBeTruthy();
+    // R2 and GitHub for a self-hosted payload, Store for the iOS one, External for the web one.
+    expect(within(builds).getAllByText("R2").length).toBeGreaterThan(0);
+    expect(within(builds).getAllByText("Store")).toHaveLength(1);
+    expect(within(builds).getAllByText("External")).toHaveLength(1);
+
+    // Two signatures and a checksum file are sidecars: collapsed by default.
+    expect(
+      within(builds).queryByText("diceroll-v0.4.1-macos-universal.sig"),
+    ).toBeNull();
+    expect(within(builds).queryByText("SHA256SUMS")).toBeNull();
+    await userEvent.click(
+      within(builds).getByRole("button", { name: "Show sidecars (3)" }),
+    );
+    expect(
+      within(builds).getByText("diceroll-v0.4.1-macos-universal.sig"),
+    ).toBeTruthy();
+    // A file no descriptor tied to a build is listed on its own.
+    expect(within(builds).getByText("Files not tied to a build")).toBeTruthy();
+    expect(within(builds).getByText("SHA256SUMS")).toBeTruthy();
+    await userEvent.click(
+      within(builds).getByRole("button", { name: "Hide sidecars" }),
+    );
+    expect(within(builds).queryByText("SHA256SUMS")).toBeNull();
+  });
+
+  it("lists a legacy release's synced files with their bytes on GitHub", async () => {
+    const builds = await expand("0.3.0");
+    expect(within(builds).getByText(/No builds declared/)).toBeTruthy();
+    expect(within(builds).getByText("diceroll-macos.zip")).toBeTruthy();
+    expect(within(builds).getByText("GitHub (synced)")).toBeTruthy();
+  });
+
+  it("badges a yanked release with its reason", async () => {
+    render(<Releases slug="djdl" />);
+    expect(
+      await screen.findByText("Yanked: corrupts saves on Android"),
+    ).toBeTruthy();
+  });
+});
+
+describe("Releases view — floor health (P0-02 wave-1 sync)", () => {
+  it("renders the channel-floor-unverified warning and points at the floor action", async () => {
+    releaseHealth.mockResolvedValue({
+      health: {
+        ...HEALTH,
+        status: "healthy",
+        checks: [
+          ...HEALTH.checks,
+          {
+            id: "channel-floor-unverified-beta",
+            label: "Channel floor (beta)",
+            status: "warning",
+            message:
+              "beta is floored at 0.5.0, but the releases read so far do not reach it and the follow-up GitHub lookup failed (rate limited), so whether the floor release still exists is unknown.",
+          },
+        ],
+      },
+    });
+    render(<Releases slug="djdl" />);
+    const label = await screen.findByText("Channel floor (beta)");
+    const item = label.closest("li")!;
+    expect(within(item).getByText("warning")).toBeTruthy();
+    expect(within(item).getByText(/beta is floored at 0\.5\.0/)).toBeTruthy();
+    expect(within(item).getByText(/Lower or clear the floor/)).toBeTruthy();
   });
 });

@@ -100,15 +100,15 @@ operations; this package puts them in front of the operator.
 
 ## Acceptance criteria
 
-- [ ] With a fixture of six builds, the view shows each build's platform, arch, format, build
+- [x] With a fixture of six builds, the view shows each build's platform, arch, format, build
       number and payload SHA-256, and hides sidecars until toggled.
-- [ ] Each action sends the right request to P2-05's admin route and refreshes; yank refuses an
+- [x] Each action sends the right request to P2-05's admin route and refreshes; yank refuses an
       empty reason; revert is offered only when `source` is `admin`.
-- [ ] The channels panel shows a per-platform resolved release that differs by platform when the
+- [x] The channels panel shows a per-platform resolved release that differs by platform when the
       fixture lacks one platform's build in the newest release.
-- [ ] `test/docsLinks.test.ts` (admin) and the worker's docs-link drift test pass.
-- [ ] The green gate passes (`AGENTS.md`), including `pnpm --filter @polaris-key/admin build`.
-- [ ] The console can lower or clear a channel floor and renders the `channel-floor-unverified-<channel>` warning.
+- [x] `test/docsLinks.test.ts` (admin) and the worker's docs-link drift test pass.
+- [x] The green gate passes (`AGENTS.md`), including `pnpm --filter @polaris-key/admin build`.
+- [x] The console can lower or clear a channel floor and renders the `channel-floor-unverified-<channel>` warning.
 
 ## Verify
 
@@ -118,6 +118,34 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin build
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- docsLinks
 mise exec node@22 -- pnpm typecheck
 ```
+
+## Corrections from implementation
+
+Where this brief and the code disagreed when P2-07 was built, the code won:
+
+- **Per-platform resolution was not in the admin model.** `GET …/release/channels` returned one
+  `resolved` release per channel, with no platform filter, so the console could not render
+  per-platform truth without recomputing resolution. P2-07 extended the read model (narrative-only
+  admin route, no OpenAPI or `routeCoverage` change): each deliverable now carries `platforms` and
+  each channel `byPlatform`, resolved server-side through `loadDeliverableState` and
+  `resolveInState`. The worker test is in `test/releasePolicy.test.ts`.
+- **There are no admin promote, pin or unpin routes.** Those are CI routes. The console reaches the
+  same operations through the operator `PUT …/release/channels/<channel>`: promote sends
+  `pointer`, pin sends `pointer` and `pinned: true`, unpin sends `pinned: false`. That PUT does
+  not refuse a yanked pointer the way the CI promote does, so the console offers only unyanked
+  releases for promotion. A yanked release can still be pinned.
+- **"Set floor" means two floors.** The device floor (`minSupported`, P2-03) is set through the
+  PUT. The anti-rollback floor (P0-02) is lowered or cleared through `POST …/channels/<channel>/floor`.
+  The console offers both, under different names ("minimum supported" and "rollback floor").
+- **The signed feed has landed (P3-03).** It carries `minSupported` as the floor and `critical` for
+  the channel's pointer release. The confirmation copy says so, and does not claim that P3 is still
+  ahead.
+- **Line references.** `Releases.tsx` no longer has an artifact count at :185-191 (P2-05 changed
+  the view), and `api.ts:409-412` and `:796` had moved. The doc comment that said live feeds never
+  consult the store has been rewritten.
+- **The health view already rendered every check generically**, including
+  `channel-floor-unverified-<channel>` and `channel-regressed`. P2-07 adds a pointer from those
+  checks to the floor action, plus a test.
 
 ## Hand-off
 
