@@ -141,6 +141,8 @@ static func stage(updater: PKeyUpdater, check: PKeyUpdateCheck) -> PKeyApplyResu
 	var tmp := slots.dir("staged.tmp")
 	DirAccess.make_dir_recursive_absolute(tmp)
 	var dest := tmp.path_join(PKeySlots.PAYLOAD)
+	if not updater.space_ok(tmp, int(art["size"])):
+		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "Not enough free space to download the %d-byte pack." % int(art["size"]), {"reason": "no-space"})
 	var r := await PKeyDownload.fetch(updater.transport(), url, dest, updater.download_headers(), {
 		"expected_size": int(art["size"]),
 		"timeout": updater.download_timeout,
@@ -162,6 +164,7 @@ static func stage(updater: PKeyUpdater, check: PKeyUpdateCheck) -> PKeyApplyResu
 		"buildNumber": build.get("buildNumber"),
 		"build": d["build"],
 		"recordHash": d["release"].get("sha256"),
+		"tag": check.record_doc.get("tag") if check.record_doc is Dictionary and check.record_doc.get("tag") is String else null,
 		"sha256": String(art["sha256"]).to_lower(),
 		"size": int(art["size"]),
 		"engine": req.get("engine"),
@@ -216,11 +219,15 @@ static func apply_staged(updater: PKeyUpdater, state: Dictionary) -> Dictionary:
 		slots.drop("staged")
 		return _fail(PKeyErrors.PAYLOAD_MISMATCH, "The staged pack no longer matches its record; it was discarded.")
 	var pck: String = sup["pck"]
-	# Keep what runs now as `previous`, so a bad update can be rolled back.
-	var copy := await PKeySlots.copy_file(pck, slots.payload("previous.tmp"))
-	if not copy["ok"]:
+	# Keep what runs now as `previous`, so a bad update can be rolled back. The copy is read back
+	# from disk: a truncated previous would make the rollback itself install a broken pack.
+	var live := PKeySlots.file_size(pck)
+	if not updater.space_ok(slots.dir("previous.tmp"), live):
+		return _fail(PKeyErrors.SWAP_FAILED, "Not enough free space to keep the running pack as previous.", "no-space")
+	var copy := await updater.copy(pck, slots.payload("previous.tmp"))
+	if not copy["ok"] or not await PKeySlots.verify_file(slots.payload("previous.tmp"), int(copy["size"]), String(copy["sha256"])):
 		slots.drop("previous.tmp")
-		return _fail(PKeyErrors.SWAP_FAILED, "The running pack could not be kept as previous.")
+		return _fail(PKeyErrors.SWAP_FAILED, "The running pack could not be kept as previous (the copy did not verify on disk).", "short-write")
 	var cur = slots.meta("current")
 	var prev_meta: Dictionary = cur.duplicate() if cur is Dictionary else {"version": state.get("binaryVersion") if state.get("binaryVersion") is String else updater.running_version(), "shipped": true, "engine": PKeyBuildStamp.engine_id()}
 	prev_meta["sha256"] = copy["sha256"]
@@ -259,14 +266,21 @@ static func roll_back(updater: PKeyUpdater, state: Dictionary) -> Dictionary:
 	return r
 
 
-## Copy `src` beside `pck`, verify it there, journal the swap in `state`, and rename it over the
-## pack (retried for Windows file locks). {ok, code, message}. A coroutine.
+## Copy `src` beside `pck`, READ THE COPY BACK FROM DISK and verify its size and SHA-256 against
+## the record, journal the swap in `state`, and rename it over the pack (retried for Windows file
+## locks). A short or failed copy (a full disk, an I/O error) is removed and the live pack is never
+## touched. {ok, code, message}. A coroutine.
 static func replace(updater: PKeyUpdater, src: String, size: int, sha256: String, pck: String, state: Dictionary, kind: String) -> Dictionary:
 	var fresh := pck + NEW_SUFFIX
-	var copy := await PKeySlots.copy_file(src, fresh)
+	if not updater.space_ok(pck.get_base_dir(), size):
+		return _fail(PKeyErrors.SWAP_FAILED, "Not enough free space beside the executable for the %d-byte pack." % size, "no-space")
+	var copy := await updater.copy(src, fresh)
 	if not copy["ok"] or copy["size"] != size or copy["sha256"] != sha256.to_lower():
 		DirAccess.remove_absolute(fresh)
-		return _fail(PKeyErrors.PAYLOAD_MISMATCH if copy["ok"] else PKeyErrors.SWAP_FAILED, "The pack copied beside the executable does not verify.")
+		return _fail(PKeyErrors.PAYLOAD_MISMATCH if copy["ok"] else PKeyErrors.SWAP_FAILED, "The pack copied beside the executable does not verify.", "" if copy["ok"] else "short-write")
+	if not await PKeySlots.verify_file(fresh, size, sha256):
+		DirAccess.remove_absolute(fresh)
+		return _fail(PKeyErrors.SWAP_FAILED, "The pack written beside the executable does not read back as the record's bytes (a short or failed write); the live pack is untouched.", "short-write")
 	state["journal"] = {"kind": kind, "pck": pck, "sha256": sha256.to_lower(), "size": size}
 	updater.slots.save_state(state)
 	var tree := Engine.get_main_loop() as SceneTree
@@ -281,7 +295,7 @@ static func replace(updater: PKeyUpdater, src: String, size: int, sha256: String
 	DirAccess.remove_absolute(fresh)
 	state["journal"] = null
 	updater.slots.save_state(state)
-	return _fail(PKeyErrors.SWAP_FAILED, "The pack beside the executable could not be replaced after %d tries (is it open?)." % RENAME_TRIES)
+	return _fail(PKeyErrors.SWAP_FAILED, "The pack beside the executable could not be replaced after %d tries (is it open?)." % RENAME_TRIES, "locked")
 
 
 static func _fail(code: StringName, message: String, reason := "") -> Dictionary:

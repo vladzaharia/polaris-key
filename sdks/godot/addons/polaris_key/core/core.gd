@@ -45,6 +45,9 @@ var started := false
 var last_store_error: Dictionary = {}
 ## Callables `(core: PKeyCore, result: PKeySyncResult)`, awaited after each sync's write.
 var post_sync_hooks: Array[Callable] = []
+## The update-event queue (PKeyUpdater): pending_events() goes into the device report's `updates`
+## key (P6-03) and mark_reported(ids) runs once the Worker accepted it. Null: none.
+var update_events: Object = null
 ## The last discovery manifest this session, or null.
 var discovery_manifest = null
 

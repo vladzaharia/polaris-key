@@ -23,8 +23,10 @@ extends RefCounted
 const STATE_VERSION := 1
 const PAYLOAD := "payload.pck"
 const META := "meta.json"
-const MAX_EVENTS := 32
+const MAX_EVENTS := 64
 const HASH_CHUNK := 1024 * 1024
+## Headroom space_ok() asks for beyond the bytes it will write.
+const SPACE_MARGIN := 1024 * 1024
 
 var root := ""
 
@@ -70,11 +72,11 @@ func save_state(state: Dictionary) -> bool:
 	return _write_json(root.path_join("state.json"), state)
 
 
-## Append one local update event (the `updateEvent` names; plans/P3-01.md §2.10). They stay on
-## the device until P6-03 allowlists them on devices/report.
-static func add_event(state: Dictionary, event: String, version: Variant, at: int) -> void:
+## Queue one update event (P6-03's `updates` entry, PKeyUpdater.event()). `events` is the queue
+## of events not yet reported on devices/report; the oldest go first past MAX_EVENTS.
+static func add_event(state: Dictionary, entry: Dictionary) -> void:
 	var events: Array = state["events"] if state.get("events") is Array else []
-	events.append({"event": event, "version": version, "at": at})
+	events.append(entry)
 	while events.size() > MAX_EVENTS:
 		events.pop_front()
 	state["events"] = events
@@ -142,6 +144,9 @@ static func copy_file(src: String, dst: String) -> Dictionary:
 	return await _off_thread(func() -> Dictionary: return _digest_sync(src, dst))
 
 
+## Read `src` (and, with `dst`, write it there), hashing what was READ. A failed write (a full
+## disk, an I/O error: `store_buffer` false or the file's error set) fails the copy, but a copy's
+## bytes on disk are still only known after verify_file() reads them back.
 static func _digest_sync(src: String, dst: String) -> Dictionary:
 	var fail := {"ok": false, "size": -1, "sha256": ""}
 	var f := FileAccess.open(src, FileAccess.READ)
@@ -157,20 +162,38 @@ static func _digest_sync(src: String, dst: String) -> Dictionary:
 	ctx.start(HashingContext.HASH_SHA256)
 	var total := 0
 	var length := int(f.get_length())
+	var wrote := true
 	while total < length:
 		var chunk := f.get_buffer(mini(HASH_CHUNK, length - total))
 		if chunk.is_empty():
 			break
 		ctx.update(chunk)
 		if out != null:
-			out.store_buffer(chunk)
+			if not out.store_buffer(chunk) or out.get_error() != OK:
+				wrote = false
+				break
 		total += chunk.size()
 	f.close()
 	if out != null:
+		out.flush()
+		if out.get_error() != OK:
+			wrote = false
 		out.close()
-	if total != length:
+	if total != length or not wrote:
 		return fail
 	return {"ok": true, "size": total, "sha256": ctx.finish().hex_encode()}
+
+
+## Whether the volume holding `dir` has room for `need` bytes (plus 1 MiB). Unknown (no
+## DirAccess, or a platform that answers 0) counts as room: the read-back verification after
+## every copy is the real guard.
+static func space_ok(dir: String, need: int) -> bool:
+	DirAccess.make_dir_recursive_absolute(dir)
+	var d := DirAccess.open(dir)
+	if d == null:
+		return true
+	var left := int(d.get_space_left())
+	return left <= 0 or left >= need + SPACE_MARGIN
 
 
 ## Run `job` (returning a Dictionary) on a WorkerThreadPool task and wait a frame at a time; inline

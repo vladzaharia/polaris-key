@@ -32,18 +32,25 @@ func run(t: PKeyTestContext) -> void:
 		t.check("grep: every addon script was read (%d)" % readable, readable >= 60 and readable == files.size(), "%d/%d" % [readable, files.size()])
 		t.check("grep: no SDK code passes --main-pack, --path, --scene or -s", hits.is_empty(), ", ".join(hits))
 	else:
-		t.check("grep: a template ships the addon as binary tokens (the editor run greps the sources)", files.size() >= 0)
-		t.info("grep: %d scripts listed, none readable as text on this template" % files.size())
+		# The sources are not text here, so prove what is shipped instead: the addon's scripts are
+		# in the pack as compiled tokens, and the updater's scripts load from them.
+		var compiled := _scripts(ROOT, PackedStringArray([".gdc", ".gd.remap"]))
+		var loads := true
+		for path in ["updater/sidecar_swap.gd", "updater/updater_env.gd", "updater/boot_guard.gd", "distribution/outlets/appimage.gd"]:
+			loads = loads and load(ROOT.path_join(path)) is GDScript
+		t.check("grep: on a template the addon ships as compiled scripts (the editor run greps the sources), and the updater's load", compiled.size() >= 60 and loads, "%d compiled, loads=%s" % [compiled.size(), loads])
 
 
-func _scripts(dir: String) -> Array:
+func _scripts(dir: String, suffixes := PackedStringArray([".gd"])) -> Array:
 	var out: Array = []
 	var d := DirAccess.open(dir)
 	if d == null:
 		return out
 	for f in d.get_files():
-		if f.ends_with(".gd"):
-			out.append(dir.path_join(f))
+		for suffix in suffixes:
+			if f.ends_with(suffix):
+				out.append(dir.path_join(f))
+				break
 	for sub in d.get_directories():
-		out.append_array(_scripts(dir.path_join(sub)))
+		out.append_array(_scripts(dir.path_join(sub), suffixes))
 	return out

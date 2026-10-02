@@ -46,6 +46,11 @@ var boot_ok_seconds := float(PKeyStages.BOOT_OK_SECONDS)
 var bridges := {}
 ## Replaces DirAccess.rename_absolute for the swap (tests simulate a locked file).
 var rename_hook := Callable()
+## Replaces PKeySlots.copy_file for the swap's copies: Callable(src, dst) -> {ok, size, sha256}
+## (tests simulate a short write that reports success).
+var copy_hook := Callable()
+## Replaces the free-space check: Callable(dir, need) -> bool (tests simulate a full volume).
+var space_hook := Callable()
 ## The wait between rename attempts (PKeySidecarSwap.RENAME_TRIES of them; tests shorten it).
 var rename_wait_msec := PKeySidecarSwap.RENAME_WAIT_MSEC
 ## The last boot guard's answer ({} before it ran).
@@ -63,6 +68,7 @@ func attach(core: PKeyCore) -> void:
 	_core_ref = weakref(core)
 	slots = PKeySlots.new(root_for(core))
 	bridges = {}
+	core.update_events = self
 
 
 func core() -> PKeyCore:
@@ -155,9 +161,70 @@ func binary_version() -> String:
 	return v if v is String else ""
 
 
-## The local update events (the `updateEvent` names), oldest first.
+## The queued update events not yet reported (P6-03's `updates` entries), oldest first.
 func events() -> Array:
 	return slots.load_state().get("events", []) if slots != null else []
+
+
+## One P6-03 `updates` entry (packages/worker/src/core/updateHealth.ts `boundedUpdates`):
+## {eventId, event, deliverable: "app", release, fromRelease?, outlet, channel, at, code?}.
+## `meta` is the slot meta the event is about, `from_meta` the one the device moved from (null:
+## the running build). A release is its tag when the record names one, else its version.
+func event(name: String, meta: Variant, from_meta: Variant, code := "", at := 0) -> Dictionary:
+	var c := core()
+	var m: Dictionary = meta if meta is Dictionary else {}
+	var e := {
+		"eventId": "%s-%s" % [Crypto.new().generate_random_bytes(8).hex_encode(), name],
+		"event": name,
+		"deliverable": "app",
+		"release": release_id(m) if not m.is_empty() else running_version(),
+		"outlet": "unknown",
+		"channel": c.channel if c != null else "stable",
+		"at": at if at > 0 else int(Time.get_unix_time_from_system()),
+	}
+	if m.get("channel") is String and m["channel"] != "":
+		e["channel"] = m["channel"]
+	if c != null and c.reported_outlet() != "":
+		e["outlet"] = c.reported_outlet()
+	var from := release_id(from_meta) if from_meta is Dictionary else running_version()
+	if from != "" and from != e["release"]:
+		e["fromRelease"] = from
+	if code != "":
+		e["code"] = code
+	return e
+
+
+static func release_id(meta: Dictionary) -> String:
+	if meta.get("tag") is String and meta["tag"] != "":
+		return meta["tag"]
+	return String(meta.get("version", ""))
+
+
+## The queued events for the next device report (devices.snapshot's `updates`): at most 16.
+func pending_events() -> Array:
+	if not active():
+		return []
+	var out: Array = []
+	for e in events().slice(0, 16):
+		if e is Dictionary and PKeyClaims.is_number(e.get("at")):
+			var x: Dictionary = e.duplicate()
+			# state.json reads every number back as a float; the Worker wants an integer `at`.
+			x["at"] = int(x["at"])
+			out.append(x)
+	return out
+
+
+## Drop the events a report delivered (by eventId). The Worker counts a resent event once.
+func mark_reported(ids: Array) -> void:
+	if ids.is_empty() or slots == null:
+		return
+	var st := slots.load_state()
+	var keep: Array = []
+	for e in st["events"]:
+		if not (e is Dictionary and ids.has(e.get("eventId"))):
+			keep.append(e)
+	st["events"] = keep
+	slots.save_state(st)
 
 
 # ── Adapter context ──────────────────────────────────────────────────────────────────────────
@@ -278,7 +345,7 @@ func stage_sidecar(check: PKeyUpdateCheck) -> PKeyApplyResult:
 	var r := await PKeySidecarSwap.stage(self, check)
 	if r.ok:
 		var st := slots.load_state()
-		PKeySlots.add_event(st, PKeyConstants.UpdateEvent.UPDATE_DOWNLOADED, r.version, int(Time.get_unix_time_from_system()))
+		PKeySlots.add_event(st, event(PKeyConstants.UpdateEvent.UPDATE_DOWNLOADED, slots.meta("staged"), slots.meta("current")))
 		slots.save_state(st)
 		update_staged.emit(r.version)
 	return r
@@ -301,11 +368,13 @@ func restart_to_update() -> PKeyApplyResult:
 		st["journal"] = null
 		st["failedBoots"] = 0
 		st["notice"] = "applied"
-		PKeySlots.add_event(st, PKeyConstants.UpdateEvent.UPDATE_APPLIED, staged["version"], int(Time.get_unix_time_from_system()))
+		PKeySlots.add_event(st, event(PKeyConstants.UpdateEvent.UPDATE_APPLIED, staged, slots.meta("previous")))
 		slots.save_state(st)
 		restart("applied")
 		return PKeyApplyResult.of(PKeyApplyResult.RESTART, {"version": staged["version"], "method": "sidecar-pck"})
-	if r["code"] == PKeyErrors.SWAP_FAILED and slots.meta("staged") is Dictionary:
+	# Only a pack Windows holds open defers to the next launch; a short write or a full disk does
+	# not restart (the next launch would fail the same way, and the game keeps running).
+	if r["code"] == PKeyErrors.SWAP_FAILED and r.get("reason") == "locked" and slots.meta("staged") is Dictionary:
 		slots.save_state(st)
 		restart("deferred")
 		return PKeyApplyResult.of(PKeyApplyResult.RESTART, {"version": staged["version"], "method": "sidecar-pck", "deferred": true})
@@ -316,6 +385,20 @@ func restart_to_update() -> PKeyApplyResult:
 func restart(reason: String) -> void:
 	restart_reason = reason
 	env.restart()
+
+
+## Copy `src` to `dst`, hashing what was read ({ok, size, sha256}); callers read the copy back. A
+## coroutine.
+func copy(src: String, dst: String) -> Dictionary:
+	if copy_hook.is_valid():
+		return await copy_hook.call(src, dst)
+	return await PKeySlots.copy_file(src, dst)
+
+
+func space_ok(dir: String, need: int) -> bool:
+	if space_hook.is_valid():
+		return bool(space_hook.call(dir, need))
+	return PKeySlots.space_ok(dir, need)
 
 
 func rename(from: String, to: String) -> int:
@@ -383,7 +466,7 @@ func _confirm() -> void:
 		st["failedBoots"] = 0
 		if cur is Dictionary and st.get("confirmedVersion") != cur["version"]:
 			st["confirmedVersion"] = cur["version"]
-			PKeySlots.add_event(st, PKeyConstants.UpdateEvent.UPDATE_CONFIRMED, cur["version"], int(Time.get_unix_time_from_system()))
+			PKeySlots.add_event(st, event(PKeyConstants.UpdateEvent.UPDATE_CONFIRMED, cur, slots.meta("previous")))
 		slots.save_state(st)
 	boot_confirmed.emit()
 

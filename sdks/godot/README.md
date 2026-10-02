@@ -521,12 +521,17 @@ where the swap is supported.
 templates ignore them, and a test greps the addon). Godot loads `<exe-name>.pck` beside the
 executable before any script runs, so `restart_to_update()` (and the guard, for a pack staged
 earlier) re-verifies the staged pack, copies the running pack into `previous`, copies the new one
-beside the target (`<pck>.pkey-new`), verifies it there, journals the swap in `state.json`, renames
+beside the target (`<pck>.pkey-new`), READS IT BACK from disk and verifies its size and SHA-256
+(so a full disk or an I/O error that truncated the copy is removed and the live pack never
+touched; the copy of the running pack into `previous` is read back the same way, and the rollback
+path uses the same check), journals the swap in `state.json`, renames
 it over the pack and restarts at once (`OS.set_restart_on_exit` with this process's own arguments):
 the running process still holds the old pack's directory, so it must not load anything more. The
 rename is atomic on POSIX; on Windows Godot removes the target and moves the new file in (two
 calls). A crash between journal and bookkeeping is finished or discarded at the next launch by
-comparing the pack with the journal. The swap is refused (`swap-refused`, `detail.reason`) on a
+comparing the pack with the journal. Before downloading and before each copy the free space is
+checked (`DirAccess.get_space_left()`; unknown counts as enough). A short write or a full volume
+does not restart the game; only a pack Windows holds open defers to the next launch. The swap is refused (`swap-refused`, `detail.reason`) on a
 platform other than Windows and Linux (and macOS outside an `.app`), inside a macOS `.app`, under
 `Program Files`, under MSIX (a `WindowsApps` path segment, any case, either separator), in Flatpak,
 Snap and AppImage installs, in a Velopack install (`sq.version` beside the executable, or
@@ -564,9 +569,13 @@ recordHash, sha256, size, engine, scheme}. PKeyBoot's GUARD runs `PKeyBootGuard.
   `confirm_boot()`, and `running` and `error` never. A confirmed launch resets `failedBoots`.
 - While a code pack runs, the decision's `installed.binaryVersion` is the binary's
   (`binaryVersion`); `installed.version` is the running pack's own stamp.
-- **Telemetry.** `devices/report` has no event key yet, so `update_downloaded`, `update_applied`,
-  `update_confirmed` and `boot_rolled_back` (the `updateEvent` names) stay in `state.json`'s
-  `events` (the last 32) until P6-03 allowlists them.
+- **Telemetry** (P6-03). `update_downloaded`, `update_applied`, `update_confirmed` and
+  `boot_rolled_back` ride on the device report's `updates` key (at most 16 per report) in the
+  Worker's `boundedUpdates` shape: `eventId` (random, unique), `event`, `deliverable` (`app`),
+  `release` (the record's tag, else its version), `fromRelease`, `outlet`
+  (`PKeyCore.reported_outlet()`), `channel` (the canonical channel it was staged under), `at` and
+  `code` (`failed-boots` on a rollback). `state.json`'s `events` is the queue (the last 64): an
+  event leaves it once a report carrying it was accepted, and the Worker counts a resent one once.
 - **MSIX.** `user://` is virtualised to `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`, kept across
   package updates and deleted on uninstall, so uninstalling removes the slots (S-05 §4.4, from
   Microsoft's documentation). The swap itself is refused under MSIX.
@@ -577,8 +586,10 @@ recordHash, sha256, size, engine, scheme}. PKeyBoot's GUARD runs `PKeyBootGuard.
 
 **Inert** in the editor, in headless runs (the test runner, a dedicated server) and in debug
 builds, as Diceroll's updater is: nothing is downloaded, swapped, restarted or counted, and the
-decision gets the declared methods unchanged. `PolarisKey.update.updater.enabled = true` turns it
-on (the tests do, with `PKeyFakeUpdaterEnv`).
+decision gets the declared methods unchanged. A link the player presses (a store listing, a source
+page, a download URL) still opens while the updater is inert; only downloads, swaps, restarts, the
+counting and native hand-offs wait for an active updater. `PolarisKey.update.updater.enabled = true`
+turns it on (the tests do, with `PKeyFakeUpdaterEnv`).
 
 **Tests** (`updater` suite): every outlet kind × every action through `apply()` with a recording
 host; the bridges with and without their native side; `PKeyDownload` against the fake server; the

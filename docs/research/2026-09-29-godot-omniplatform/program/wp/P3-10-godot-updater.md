@@ -260,7 +260,16 @@ The code is the fact; where this brief and the code differ, the code and these n
 - **Rollback without a previous pack** (a second update that also fails twice after the first
   rollback consumed `previous`): the version is recorded as skipped and the counting restarts; the
   shipped pack is not kept as a fourth slot.
-- **Telemetry.** `devices/report` has no event key, so `boot_rolled_back` and the other
-  `updateEvent` names stay in `state.json` (last 32) for P6-03.
+- **Telemetry** (after P6-03 landed). `update_downloaded`, `update_applied`, `update_confirmed`
+  and `boot_rolled_back` go out on `devices/report`'s `updates` key in P6-03's `boundedUpdates`
+  shape (`eventId`, `event`, `deliverable: app`, `release` = the record's `tag`, else its version,
+  `fromRelease`, `outlet`, `channel`, `at`, `code`); `state.json` is the queue until a report
+  carrying them is accepted.
+- **Verified copies (security review B1).** Every copy the swap and the rollback make is read
+  back from disk and verified before the rename (a truncated write is removed and the live pack is
+  never touched), `PKeySlots._digest_sync` fails on a failed write, and free space is checked with
+  `DirAccess.get_space_left()` before downloading and copying (unknown counts as enough). Only a
+  locked pack defers with a restart; a short write or a full volume does not restart.
+- **PATH lookup** for `appimageupdatetool` skips relative entries.
 - **Not done here (devices):** opening each listing prefix on a device (plans/P3-01.md §2.9) and
   the Windows rename measurement; both are human hand-offs.

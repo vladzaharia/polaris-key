@@ -79,7 +79,7 @@ static func run(updater: PKeyUpdater) -> Dictionary:
 			st["skipVersion"] = bad
 			st["failedBoots"] = 0
 			st["journal"] = null
-			PKeySlots.add_event(st, PKeyConstants.UpdateEvent.BOOT_ROLLED_BACK, bad, now)
+			PKeySlots.add_event(st, updater.event(PKeyConstants.UpdateEvent.BOOT_ROLLED_BACK, cur, null, "failed-boots", now))
 			if r["ok"]:
 				st["notice"] = "rolled-back"
 				slots.save_state(st)
@@ -98,7 +98,7 @@ static func run(updater: PKeyUpdater) -> Dictionary:
 				st["journal"] = null
 				st["failedBoots"] = 0
 				st["notice"] = "applied"
-				PKeySlots.add_event(st, PKeyConstants.UpdateEvent.UPDATE_APPLIED, staged["version"], now)
+				PKeySlots.add_event(st, updater.event(PKeyConstants.UpdateEvent.UPDATE_APPLIED, staged, cur, "", now))
 				slots.save_state(st)
 				updater.restart("applied")
 				out["result"] = "applied"

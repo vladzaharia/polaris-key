@@ -31,6 +31,8 @@ func run(t: PKeyTestContext) -> void:
 	await _mismatch(t)
 	await _locked(t)
 	await _recovery(t)
+	await _short_writes(t)
+	await _telemetry(t)
 
 
 func _refusals(t: PKeyTestContext) -> void:
@@ -221,5 +223,115 @@ func _recovery(t: PKeyTestContext) -> void:
 	g = await next.update.run_guard()
 	t.check("swap: a journal whose rename never happened is discarded (the half-copied file removed) and the staged pack is applied", g["action"] == "apply-staged" and g["restart"] and S.read(inst["pck"]) == fresh, str(g))
 	next.queue_free()
+	sup.free_server()
+	PKeyTestFixtures.remove_tree(inst["dir"])
+
+
+## A copy hook that writes only the first half of the source beside the pack (`.pkey-new`) or
+## everywhere (`all`) while reporting the full source's size and hash, as a write that silently
+## lost bytes would.
+static func _short_copy(all: bool) -> Callable:
+	return func(src: String, dst: String) -> Dictionary:
+		var full := S.read(src)
+		var d := PKeySlots._digest_sync(src, "")
+		if all or dst.ends_with(PKeySidecarSwap.NEW_SUFFIX):
+			S.write(dst, full.slice(0, full.size() / 2))
+			return d
+		return PKeySlots._digest_sync(src, dst)
+
+
+func _short_writes(t: PKeyTestContext) -> void:
+	var sup := S.new()
+	sup.serve()
+	var old := S.bytes(4000, 1)
+	var fresh := S.bytes(6000, 2)
+	var inst := S.install("swap-short", old)
+	var sdk: Node = await sup.launch(inst, "1.4.0")
+	sup.discovered(sdk)
+	var u: PKeyUpdater = sdk.update.updater
+	sup.plan = {"/djdl/distribution/builds/": [S.ranged(fresh)]}
+	await u.stage_sidecar(S.sidecar_check("1.5.0", fresh))
+	var e: PKeyFakeUpdaterEnv = inst["env"]
+	# The swap: a short write beside the pack is read back, removed, and the live pack untouched.
+	u.copy_hook = _short_copy(false)
+	var r: PKeyApplyResult = await sdk.update.restart_to_update()
+	t.check("swap: a short write beside the pack fails on read-back; the live pack is untouched and nothing restarts", not r.ok and r.code == PKeyErrors.SWAP_FAILED and S.read(inst["pck"]) == old and e.restarts == 0 and not FileAccess.file_exists(inst["pck"] + PKeySidecarSwap.NEW_SUFFIX), str(r))
+	t.check("swap: after a short write the staged pack is kept and no journal or previous is left", u.slots.meta("staged") is Dictionary and u.slots.load_state()["journal"] == null and u.slots.meta("previous") == null and u.slots.meta("current") == null)
+	# A short copy of the running pack into `previous` stops the swap before the pack is touched.
+	u.copy_hook = _short_copy(true)
+	r = await sdk.update.restart_to_update()
+	t.check("swap: a short copy of the running pack into previous stops the swap first", not r.ok and r.code == PKeyErrors.SWAP_FAILED and S.read(inst["pck"]) == old and u.slots.meta("previous") == null, str(r))
+	# A copy that reports failure outright.
+	u.copy_hook = func(_s, _d) -> Dictionary: return {"ok": false, "size": -1, "sha256": ""}
+	r = await sdk.update.restart_to_update()
+	t.check("swap: a failed copy changes nothing", not r.ok and S.read(inst["pck"]) == old and e.restarts == 0)
+	# A full volume: refused before writing anything, and before downloading.
+	u.copy_hook = Callable()
+	u.space_hook = func(_d, _n) -> bool: return false
+	r = await sdk.update.restart_to_update()
+	t.check("swap: no free space beside the pack refuses the swap before writing", not r.ok and r.code == PKeyErrors.SWAP_FAILED and S.read(inst["pck"]) == old and not FileAccess.file_exists(inst["pck"] + PKeySidecarSwap.NEW_SUFFIX), str(r))
+	u.slots.drop("staged")
+	sup.server.requests.clear()
+	r = await u.stage_sidecar(S.sidecar_check("1.5.0", fresh))
+	t.check("swap: no free space for the download refuses it without a request", not r.ok and r.code == PKeyErrors.STORE_FAILED and r.detail.get("reason") == "no-space" and sup.server.requests.is_empty(), str(r))
+	u.space_hook = Callable()
+	# The rollback path: two failed boots on an applied pack, and the copy of previous comes up short.
+	await u.stage_sidecar(S.sidecar_check("1.5.0", fresh))
+	r = await sdk.update.restart_to_update()
+	sdk.queue_free()
+	var l: Node = await sup.launch(inst, "1.5.0")
+	var st: Dictionary = l.update.updater.slots.load_state()
+	st["failedBoots"] = 2
+	st["notice"] = ""
+	l.update.updater.slots.save_state(st)
+	l.update.updater.copy_hook = _short_copy(false)
+	var restarts := e.restarts
+	var g: Dictionary = await l.update.run_guard()
+	t.check("swap: a short write on the rollback path leaves the live pack untouched and does not restart", r.ok and g["action"] == "roll-back" and not g["restart"] and S.read(inst["pck"]) == fresh and e.restarts == restarts and not FileAccess.file_exists(inst["pck"] + PKeySidecarSwap.NEW_SUFFIX) and l.update.updater.slots.meta("previous") is Dictionary, "%s %s" % [g, r])
+	l.queue_free()
+	sup.free_server()
+	PKeyTestFixtures.remove_tree(inst["dir"])
+
+
+## P6-03: the queued events ride on devices/report's `updates` key in boundedUpdates' shape, and
+## leave the queue once the Worker accepted the report.
+func _telemetry(t: PKeyTestContext) -> void:
+	var sup := S.new()
+	sup.serve()
+	var fresh := S.bytes(3000, 2)
+	var inst := S.install("swap-telemetry", S.bytes(2000, 1))
+	var token := "pkeyt_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	var sdk: Node = await sup.launch(inst, "1.4.0", func(o): o.update_outlet = "direct", token)
+	sup.discovered(sdk)
+	sup.plan = {"/djdl/distribution/builds/": [S.ranged(fresh)], "/djdl/devices/report": [{"status": 200, "headers": {"Content-Type": "application/json"}, "body": "{}"}]}
+	var check := S.sidecar_check("1.5.0", fresh, "beta")
+	check.record_doc["tag"] = "v1.5.0"
+	await sdk.update.updater.stage_sidecar(check)
+	await sdk.update.restart_to_update()
+	var snap: Dictionary = sdk.devices.snapshot()
+	var ev: Array = snap.get("updates", [])
+	var names := ev.map(func(x): return x["event"])
+	t.check("telemetry: the report carries update_downloaded and update_applied", names == ["update_downloaded", "update_applied"], str(ev))
+	var id_re := RegEx.create_from_string("^[A-Za-z0-9._:-]{1,64}$")
+	var shape_ok := not ev.is_empty()
+	for x in ev:
+		var keys: Array = x.keys()
+		for k in keys:
+			shape_ok = shape_ok and k in ["eventId", "event", "deliverable", "release", "fromRelease", "outlet", "channel", "at", "code"]
+		shape_ok = shape_ok and id_re.search(x["eventId"]) != null and x["deliverable"] == "app" and x["release"] == "v1.5.0" and x["fromRelease"] == "1.4.0" and x["outlet"] == "direct" and x["channel"] == "beta" and x["at"] is int and x["at"] > 0
+	t.check("telemetry: each entry has boundedUpdates' fields only (release = the record's tag, fromRelease, outlet, the staged channel)", shape_ok, str(ev))
+	var ok: bool = await sdk.devices.report()
+	var sent: Array = sup.requests("/djdl/devices/report")
+	var body = JSON.parse_string((sent[0]["body"] as PackedByteArray).get_string_from_utf8()) if not sent.is_empty() else null
+	t.check("telemetry: devices/report sends them in `updates`", ok and body is Dictionary and body.get("updates") is Array and body["updates"].size() == 2, str(body.get("updates") if body is Dictionary else body))
+	t.check("telemetry: a delivered report empties the queue (state.json kept them until then)", sdk.update.updater.events().is_empty() and not sdk.devices.snapshot().has("updates"))
+	sdk.queue_free()
+	var l: Node = await sup.launch(inst, "1.5.0", func(o): o.update_outlet = "direct", token)
+	await l.update.run_guard()
+	l.update.updater.note_outcome("ready")
+	l.update.confirm_boot()
+	var c: Array = l.devices.snapshot().get("updates", [])
+	t.check("telemetry: update_confirmed for the new release, from the shipped one", c.size() == 1 and c[0]["event"] == "update_confirmed" and c[0]["release"] == "v1.5.0" and c[0]["fromRelease"] == "1.4.0", str(c))
+	l.queue_free()
 	sup.free_server()
 	PKeyTestFixtures.remove_tree(inst["dir"])

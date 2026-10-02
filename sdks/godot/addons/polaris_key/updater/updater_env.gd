@@ -80,10 +80,13 @@ func execute(path: String, args: PackedStringArray) -> int:
 	return OS.execute(path, args, [], false)
 
 
-## The first executable called `name` on PATH, or "".
+## The first executable called `name` in an ABSOLUTE PATH entry, or "".
 func find_program(name: String) -> String:
 	var sep := ";" if platform() == "windows" else ":"
 	for dir in env("PATH").split(sep, false):
+		# A relative entry (`.`, `bin`) would run whatever sits in the working directory.
+		if not dir.is_absolute_path():
+			continue
 		var p := dir.path_join(name)
 		if FileAccess.file_exists(p):
 			return p

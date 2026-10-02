@@ -59,10 +59,10 @@ static func install(tag: String, old: PackedByteArray, os := "linux", exe_name :
 
 ## One launch of `inst`: a configured, started SDK whose running version is `version` (what the
 ## pack's own stamp would say), with the updater enabled on the install's env. `tweak(opts)`.
-func launch(inst: Dictionary, version: String, tweak := Callable()) -> Node:
+func launch(inst: Dictionary, version: String, tweak := Callable(), token := "") -> Node:
 	var s := PKeyTestFixtures.new_sdk()
 	var base := server.base_url() if server != null else "http://127.0.0.1:9"
-	var opts := PKeyTestFixtures.options(base, PKeyMemoryStore.new(DEVICE), [1700000100.0], PRODUCT, {}, version)
+	var opts := PKeyTestFixtures.options(base, PKeyMemoryStore.new(DEVICE, token), [1700000100.0], PRODUCT, {}, version)
 	opts.store_root = inst["user"]
 	opts.update_methods = PackedStringArray(["native", "download", "sidecar-pck"])
 	if tweak.is_valid():

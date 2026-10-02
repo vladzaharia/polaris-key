@@ -87,7 +87,7 @@
     },
     "devices.report": {
       "status": "implemented",
-      "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them); outlet comes only from P1-11's build stamp."
+      "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
     },
     "identity.oidc": {
       "status": "planned",
@@ -111,7 +111,7 @@
     },
     "update.bootguard": {
       "status": "implemented",
-      "note": "P3-10: updater/slots.gd (staged, current, previous and state.json under user://pkey/<product>/updates/) and updater/boot_guard.gd, run in PKeyBoot's GUARD: bootGuardAction over the host's own count, a restart before guard.done after a swap or a rollback, two failed boots roll back and record skipVersion, BOOT_OK_SECONDS and confirm_boot() per the stage-matrix v2 confirmation rows; boot_rolled_back stays a local event until P6-03 allowlists it on devices/report."
+      "note": "P3-10: updater/slots.gd (staged, current, previous and state.json under user://pkey/<product>/updates/) and updater/boot_guard.gd, run in PKeyBoot's GUARD: bootGuardAction over the host's own count, a restart before guard.done after a swap or a rollback, two failed boots roll back and record skipVersion, BOOT_OK_SECONDS and confirm_boot() per the stage-matrix v2 confirmation rows; every copy is read back from disk before a swap or rollback. update_downloaded, update_applied, update_confirmed and boot_rolled_back go out on devices/report's updates key (P6-03's boundedUpdates shape), queued in state.json until reported."
     },
     "outlet.detect": {
       "status": "implemented",
