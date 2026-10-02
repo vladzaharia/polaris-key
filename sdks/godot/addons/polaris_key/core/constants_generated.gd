@@ -116,6 +116,21 @@ class ErrorCode:
 	const FILE_CORRUPT := "file-corrupt"
 	const FILE_SOURCE_MISSING := "file-source-missing"
 	const PAYLOAD_HASH_MISMATCH := "payload-hash-mismatch"
+	const CHUNKS_REF_MISMATCH := "chunks-ref-mismatch"
+	const CHUNKS_BAD_LENGTH := "chunks-bad-length"
+	const CHUNKS_BAD_MAGIC := "chunks-bad-magic"
+	const CHUNKS_UNSUPPORTED_VERSION := "chunks-unsupported-version"
+	const CHUNKS_BAD_RECORD_SIZE := "chunks-bad-record-size"
+	const CHUNKS_BAD_FLAGS := "chunks-bad-flags"
+	const CHUNKS_RESERVED_NONZERO := "chunks-reserved-nonzero"
+	const CHUNKS_ZERO_LENGTH := "chunks-zero-length"
+	const CHUNKS_BAD_CLEN := "chunks-bad-clen"
+	const CHUNKS_BAD_BUNDLE_REF := "chunks-bad-bundle-ref"
+	const CHUNKS_BAD_BUNDLE_RANGE := "chunks-bad-bundle-range"
+	const CHUNKS_SIZE_MISMATCH := "chunks-size-mismatch"
+	const CHUNKS_PAYLOAD_MISMATCH := "chunks-payload-mismatch"
+	const CHUNK_BUNDLE_TRUNCATED := "chunk-bundle-truncated"
+	const CHUNK_CORRUPT := "chunk-corrupt"
 	const PLAN_TRANSPORT_UNSUPPORTED := "plan-transport-unsupported"
 	const PLAN_INSUFFICIENT_DISK := "plan-insufficient-disk"
 	const PLAN_NO_STRATEGY := "plan-no-strategy"
@@ -129,7 +144,7 @@ class ErrorCode:
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pack-revoked", "marker-rejected"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pack-revoked", "marker-rejected"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -237,6 +252,21 @@ const ERROR_CODE_KINDS := {
 	"file-corrupt": "client",
 	"file-source-missing": "client",
 	"payload-hash-mismatch": "client",
+	"chunks-ref-mismatch": "client",
+	"chunks-bad-length": "client",
+	"chunks-bad-magic": "client",
+	"chunks-unsupported-version": "client",
+	"chunks-bad-record-size": "client",
+	"chunks-bad-flags": "client",
+	"chunks-reserved-nonzero": "client",
+	"chunks-zero-length": "client",
+	"chunks-bad-clen": "client",
+	"chunks-bad-bundle-ref": "client",
+	"chunks-bad-bundle-range": "client",
+	"chunks-size-mismatch": "client",
+	"chunks-payload-mismatch": "client",
+	"chunk-bundle-truncated": "client",
+	"chunk-corrupt": "client",
 	"plan-transport-unsupported": "client",
 	"plan-insufficient-disk": "client",
 	"plan-no-strategy": "client",
@@ -681,10 +711,10 @@ const UPDATE_MATRIX_VERSION := 1
 const OUTLET_MATRIX_VERSION := 1
 
 ## `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
-const PLAN_MATRIX_VERSION := 1
+const PLAN_MATRIX_VERSION := 2
 
 ## `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
-const CONTENT_CORPUS_VERSION := 1
+const CONTENT_CORPUS_VERSION := 2
 
 ## Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
 const MAX_WIRE_INTEGER := 9007199254740991
@@ -736,6 +766,15 @@ const CONTENT_STAMP_FORMAT := "pkey-content/1"
 
 ## Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 const PLAN_REQUEST_WEIGHT := 16384
+
+## Packs on the wire: `CHUNKS_FORMAT` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+const CHUNKS_FORMAT := "pkey-chunks/1"
+
+## Packs on the wire: `MAX_CHUNK_INDEX_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+const MAX_CHUNK_INDEX_BYTES := 16777216
+
+## Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+const MAX_CHUNK_BYTES := 4194304
 
 ## Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 const CHANNEL_ALIASES := {

@@ -74,7 +74,7 @@ final class PackRecordConformanceTests: XCTestCase {
 
     func testCounts() throws {
         let c = try corpus()
-        XCTAssertEqual(c.packRecordCases.count, 159)
+        XCTAssertEqual(c.packRecordCases.count, 170)
         XCTAssertEqual(c.markerCases.count, 17)
     }
 

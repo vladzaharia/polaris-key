@@ -281,8 +281,54 @@ public struct PlanTarget: Sendable, Equatable {
 /// readable one (a container: rebuildable); a `payload` delta is kept on a container, a `files`
 /// delta when `files` is kept and its `patch` ref is usable; anything else is dropped. The
 /// method is passed through for the planner's `caps.patchMethods` to decide.
+/// What `planTarget` reads of a parsed chunk index (plans/P4-10.md §2.5).
+public struct PlanChunkIndex: Sendable, Equatable {
+    public var payloadSize: Int
+    public var payloadSha256: String
+    public var records: [PlanChunkRecord]
+
+    public init(payloadSize: Int, payloadSha256: String, records: [PlanChunkRecord]) {
+        self.payloadSize = payloadSize
+        self.payloadSha256 = payloadSha256
+        self.records = records
+    }
+
+    /// From the corpus's JSON (`plan-matrix.json#targetCases[].chunkIndex`).
+    public init?(json: JSONValue?) {
+        guard let o = json?.objectValue, let size = o["payloadSize"]?.intValue,
+            let sha = o["payloadSha256"]?.stringValue
+        else { return nil }
+        var recs: [PlanChunkRecord] = []
+        for r in o["records"]?.arrayValue ?? [] {
+            guard let a = r.arrayValue, a.count == 5, let id = a[0].stringValue,
+                let len = a[1].intValue, let clen = a[2].intValue, let bundle = a[3].intValue,
+                let off = a[4].intValue
+            else { return nil }
+            recs.append(PlanChunkRecord(id: id, len: len, clen: clen, bundle: bundle, offset: off))
+        }
+        self.init(payloadSize: size, payloadSha256: sha, records: recs)
+    }
+}
+
+/// plans/P4-10.md §2.5: the chunk candidate when the variant is a usable `container`,
+/// `chunks.format` is `pkey-chunks/1`, its codec is usable, `chunks.size` ≤
+/// `MAX_CHUNK_INDEX_BYTES`, the parsed index is given and bound to the payload, and no record's
+/// `len` exceeds `MAX_CHUNK_BYTES`; nil otherwise.
+func chunkTarget(_ variant: PackVariant, _ chunkIndex: PlanChunkIndex?) -> PlanTarget.Chunks? {
+    guard let chunkIndex, let c = variant.chunks else { return nil }
+    guard variant.files.layout == "container" else { return nil }
+    guard c.format == CHUNKS_FORMAT, usableCodec(c.ref.codec), c.ref.size <= MAX_CHUNK_INDEX_BYTES
+    else { return nil }
+    guard chunkIndex.payloadSize == variant.payload.size,
+        chunkIndex.payloadSha256 == variant.payload.sha256
+    else { return nil }
+    if chunkIndex.records.contains(where: { $0.len > MAX_CHUNK_BYTES }) { return nil }
+    return PlanTarget.Chunks(indexBytes: c.ref.bytes, records: chunkIndex.records)
+}
+
 public func planTarget(
-    _ variant: PackVariant, recordSha256: String, filesIndex: FilesIndexDoc?
+    _ variant: PackVariant, recordSha256: String, filesIndex: FilesIndexDoc?,
+    chunkIndex: PlanChunkIndex? = nil
 ) -> PlanTarget {
     let payload = variant.payload
     if !variantUsable(variant) {
@@ -324,6 +370,6 @@ public func planTarget(
         }
     }
     return PlanTarget(
-        release: recordSha256, payload: payload, full: fullT, platform: nil, chunks: nil,
-        files: filesT, deltas: deltas)
+        release: recordSha256, payload: payload, full: fullT, platform: nil,
+        chunks: chunkTarget(variant, chunkIndex), files: filesT, deltas: deltas)
 }

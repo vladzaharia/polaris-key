@@ -3,7 +3,8 @@
 // rules and `treeDigest`, the variant key and the content stamp; P4-04's `packSetId`,
 // `windowLogMax` and `frameWindow` (§2.7 rule 3, §2.9); and P4-06's `selectVariant`,
 // `planTarget`, `plan`, the appliers, `parsePatch`, `verifyMarker`, the install-state machine and
-// the pipeline (`PackEngine`), every one over injected ports. Nothing here does I/O.
+// the pipeline (`PackEngine`), every one over injected ports; and P4-10's `parseChunkIndex`
+// (`pkey-chunks/1`). Nothing here does I/O.
 // `releaseRecordClaims` (`../record.ts`) applies the pack and app claims at step 14.
 
 export {
@@ -24,6 +25,15 @@ export {
   type ParseFilesIndexResult,
   type ZstdDecode,
 } from "./files.js";
+export {
+  parseChunkIndex,
+  parseChunkIndexBytes,
+  readU64,
+  type ChunkIndexErrorCode,
+  type ChunkIndexRef,
+  type ParseChunkIndexOptions,
+  type ParseChunkIndexResult,
+} from "./chunks.js";
 export { packSetId, type PackSetEntry } from "./set.js";
 export { parseContentStamp, type ParseContentStampResult } from "./stamp.js";
 export { variantKey } from "./variant.js";
@@ -116,6 +126,7 @@ export {
   indexRebuildable,
   planTarget,
   selectVariant,
+  type PlanChunkIndex,
   usableCodec,
   variantUsable,
   type PlanDelta,

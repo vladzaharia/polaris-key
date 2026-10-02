@@ -564,7 +564,7 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       "",
       `## Content corpus (\`content/cases.json\`): ${Object.keys(content.blobs ?? {}).length} blobs, ${blobBytes.toLocaleString("en-US")} bytes`,
       "",
-      "WIRE-CONTRACT-V4 §2.6: the files index and its path rules, full, `payload`-delta and `file` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen:corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.",
+      "WIRE-CONTRACT-V4 §2.6: the files index and its path rules, the binary chunk index (`pkey-chunks/1`, `chunkIndexCases`, P4-10), full, `payload`-delta, `file` and `chunk` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen:corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7), which may only add blobs (`plans/P4-10.md` decision 15). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.",
       "",
       table(["Section", "Cases"], contentSections),
     ].join("\n"),

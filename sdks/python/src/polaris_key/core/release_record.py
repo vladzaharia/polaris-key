@@ -316,6 +316,18 @@ def _pack_claims_ok(doc: Dict[str, Any]) -> bool:
             r = v["requires"]
             if not isinstance(r, dict) or not _opt_pattern(r, "engine", ENGINE_PATTERN):
                 return False
+        # plans/P4-10.md §2.2: checks 81-83 and the object ref at ``chunks`` (``bytes`` and
+        # ``size`` from 1); other members are ignored (reserved: an index delta).
+        if "chunks" in v:
+            c = v["chunks"]
+            if not isinstance(c, dict):
+                return False
+            if _full_match(OBJECT_FORMAT_PATTERN, c.get("format")) is None:
+                return False
+            if not object_ref(c, 1, 1):
+                return False
+            if "params" in c and not isinstance(c["params"], dict):
+                return False
         key = variant_key(sel)
         if key in keys:
             return False

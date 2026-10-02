@@ -18,7 +18,7 @@ only corpus. `corpusVersion 2`,
 `stageMatrixVersion 3`, `headersVersion 1`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
-`planMatrixVersion 1`, `contentCorpusVersion 1`.
+`planMatrixVersion 2`, `contentCorpusVersion 2`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
 `releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
 beside `expect` on every case whose payload holds a number that cannot be a wire integer, and the
@@ -42,7 +42,7 @@ runners of SDKs predating packs never read, and the content corpus and `plan-mat
 | `feedContentCases` | 48 |
 | `releaseRecordCases` | 49 |
 | `revocationCases` | 27 |
-| `packRecordCases` | 159 |
+| `packRecordCases` | 170 |
 | `markerCases` | 17 |
 
 ## Gate matrix (`gate-matrix.json`): 38 rows
@@ -71,19 +71,20 @@ WIRE-CONTRACT-V4 §11.1, client behaviour beside the contract: `compareVersions`
 
 WIRE-CONTRACT-V4 §11.2: the capability defaults per outlet kind and their narrowing, the listing-URL prefixes, and `detectOutlet`. The generator recomputes every detection row.
 
-## Install planner (`plan-matrix.json`): 25 planner rows, 11 variant and 14 target cases
+## Install planner (`plan-matrix.json`): 28 planner rows, 11 variant and 22 target cases
 
 WIRE-CONTRACT-V4 §11.4: `plan` (request weight 16384), `selectVariant` and `planTarget`. Chunk targets are inline, so the planner never parses an index; the `plan-real-*` rows are the content set's own menu. The generator recomputes every row and case.
 
-## Content corpus (`content/cases.json`): 62 blobs, 2,850,252 bytes
+## Content corpus (`content/cases.json`): 71 blobs, 3,743,530 bytes
 
-WIRE-CONTRACT-V4 §2.6: the files index and its path rules, full, `payload`-delta and `file` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen:corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.
+WIRE-CONTRACT-V4 §2.6: the files index and its path rules, the binary chunk index (`pkey-chunks/1`, `chunkIndexCases`, P4-10), full, `payload`-delta, `file` and `chunk` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen:corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7), which may only add blobs (`plans/P4-10.md` decision 15). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.
 
 | Section | Cases |
 | --- | --- |
-| `applyCases` | 19 |
+| `applyCases` | 27 |
 | `pathCases` | 18 |
 | `filesIndexCases` | 15 |
+| `chunkIndexCases` | 22 |
 | `packSetIdCases` | 7 |
 | `stampCases` | 10 |
 | `frameWindowCases` | 13 |

@@ -48,6 +48,14 @@ export const PATCH_FORMAT = "pkey-patch/1";
 export const MARKER_FORMAT = "pkey-marker/1";
 /** The content stamp's `format`. */
 export const CONTENT_STAMP_FORMAT = "pkey-content/1";
+/** A pack variant's chunk index `format` (plans/P4-10.md §2.3). */
+export const CHUNKS_FORMAT = "pkey-chunks/1";
+/** The largest decoded chunk index a client fetches: 16 MiB (349,523 records). A client limit,
+ *  like `MAX_FILES_INDEX_BYTES` (plans/P4-10.md §2.3). */
+export const MAX_CHUNK_INDEX_BYTES = 16777216;
+/** The longest chunk (`len`) a client allocates for: 4 MiB. `planTarget` treats an index holding
+ *  a longer chunk as unusable, so no SDK fetches or decodes one (plans/P4-10.md §2.3, §2.5). */
+export const MAX_CHUNK_BYTES = 4194304;
 /** The install planner's cost of one request, in bytes (plans/P4-01.md §2.9, A7 §4.2):
  *  `cost = bytes + requests × PLAN_REQUEST_WEIGHT`. `plan-matrix.json` pins it. */
 export const PLAN_REQUEST_WEIGHT = 16384;

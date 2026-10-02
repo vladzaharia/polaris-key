@@ -115,6 +115,21 @@ public enum ErrorCode {
     public static let fileCorrupt = "file-corrupt"
     public static let fileSourceMissing = "file-source-missing"
     public static let payloadHashMismatch = "payload-hash-mismatch"
+    public static let chunksRefMismatch = "chunks-ref-mismatch"
+    public static let chunksBadLength = "chunks-bad-length"
+    public static let chunksBadMagic = "chunks-bad-magic"
+    public static let chunksUnsupportedVersion = "chunks-unsupported-version"
+    public static let chunksBadRecordSize = "chunks-bad-record-size"
+    public static let chunksBadFlags = "chunks-bad-flags"
+    public static let chunksReservedNonzero = "chunks-reserved-nonzero"
+    public static let chunksZeroLength = "chunks-zero-length"
+    public static let chunksBadClen = "chunks-bad-clen"
+    public static let chunksBadBundleRef = "chunks-bad-bundle-ref"
+    public static let chunksBadBundleRange = "chunks-bad-bundle-range"
+    public static let chunksSizeMismatch = "chunks-size-mismatch"
+    public static let chunksPayloadMismatch = "chunks-payload-mismatch"
+    public static let chunkBundleTruncated = "chunk-bundle-truncated"
+    public static let chunkCorrupt = "chunk-corrupt"
     public static let planTransportUnsupported = "plan-transport-unsupported"
     public static let planInsufficientDisk = "plan-insufficient-disk"
     public static let planNoStrategy = "plan-no-strategy"
@@ -233,6 +248,21 @@ public let ERROR_CODE_VALUES: [String] = [
     "file-corrupt",
     "file-source-missing",
     "payload-hash-mismatch",
+    "chunks-ref-mismatch",
+    "chunks-bad-length",
+    "chunks-bad-magic",
+    "chunks-unsupported-version",
+    "chunks-bad-record-size",
+    "chunks-bad-flags",
+    "chunks-reserved-nonzero",
+    "chunks-zero-length",
+    "chunks-bad-clen",
+    "chunks-bad-bundle-ref",
+    "chunks-bad-bundle-range",
+    "chunks-size-mismatch",
+    "chunks-payload-mismatch",
+    "chunk-bundle-truncated",
+    "chunk-corrupt",
     "plan-transport-unsupported",
     "plan-insufficient-disk",
     "plan-no-strategy",
@@ -351,6 +381,21 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "file-corrupt": "client",
     "file-source-missing": "client",
     "payload-hash-mismatch": "client",
+    "chunks-ref-mismatch": "client",
+    "chunks-bad-length": "client",
+    "chunks-bad-magic": "client",
+    "chunks-unsupported-version": "client",
+    "chunks-bad-record-size": "client",
+    "chunks-bad-flags": "client",
+    "chunks-reserved-nonzero": "client",
+    "chunks-zero-length": "client",
+    "chunks-bad-clen": "client",
+    "chunks-bad-bundle-ref": "client",
+    "chunks-bad-bundle-range": "client",
+    "chunks-size-mismatch": "client",
+    "chunks-payload-mismatch": "client",
+    "chunk-bundle-truncated": "client",
+    "chunk-corrupt": "client",
     "plan-transport-unsupported": "client",
     "plan-insufficient-disk": "client",
     "plan-no-strategy": "client",
@@ -931,10 +976,10 @@ public let UPDATE_MATRIX_VERSION = 1
 public let OUTLET_MATRIX_VERSION = 1
 
 /// `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
-public let PLAN_MATRIX_VERSION = 1
+public let PLAN_MATRIX_VERSION = 2
 
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
-public let CONTENT_CORPUS_VERSION = 1
+public let CONTENT_CORPUS_VERSION = 2
 
 /// Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
 public let MAX_WIRE_INTEGER = 9007199254740991
@@ -986,6 +1031,15 @@ public let CONTENT_STAMP_FORMAT = "pkey-content/1"
 
 /// Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 public let PLAN_REQUEST_WEIGHT = 16384
+
+/// Packs on the wire: `CHUNKS_FORMAT` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+public let CHUNKS_FORMAT = "pkey-chunks/1"
+
+/// Packs on the wire: `MAX_CHUNK_INDEX_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+public let MAX_CHUNK_INDEX_BYTES = 16777216
+
+/// Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+public let MAX_CHUNK_BYTES = 4194304
 
 /// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 public let CHANNEL_ALIASES: [String: String] = [

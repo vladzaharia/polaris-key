@@ -72,14 +72,14 @@ Nine files and the content corpus, one directory, so a runner can point at `corp
 | `update-matrix.json` | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                          |
 | `outlet-matrix.json` | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
 | `plan-matrix.json`   | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                  |
-| `content/`           | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, full, delta and file apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                                         |
+| `content/`           | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                 |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
 `stageMatrixVersion` **3**, `headersVersion` **1**, `configMatrixVersion` **1**,
-`updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **1**,
-`contentCorpusVersion` **1** — and case counts, generated straight from the corpus files, live at
+`updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
+`contentCorpusVersion` **2** — and case counts, generated straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
 ## The Swift resource mirror
@@ -118,6 +118,16 @@ frames the signed pack records and the `plan-real-*` rows pin but the corpus doe
 one frame, v1's gaps, and the two trees as one frame each): shipping them would pass the 5 MB
 budget for bytes no case decodes. It is in the `blobs` table like any blob.
 
+Content corpus v2 (`plans/P4-10.md` §4) adds the chunk blobs: `chunks/v1.pkc` (stored raw),
+`chunks/v2.pkc` and its zstd frame `chunks/v2.pkc.zst` (the object `djdl.levels@1.2.0` pins, so
+the two corpora join by hash), the synthetic `chunks/dup.pkc` (t1's first three files with the
+first repeated, so duplicate records exist), and `bundles/<sha256>`: v2's new bundles, the one
+v1 bundle the repair case refetches from, and the dup bundle. The rebuild's reference chunker is
+`fastcdc-2016-nc1` with the file-aware segments and the 64-byte padding rule of `plans/P4-10.md`
+§2.4, at a 64 KiB average, with per-chunk `zstd -19` frames stored raw when not smaller. The
+corpus bundle target is 256 KiB (production CI uses 4 MiB) so request runs cross bundles and
+only one v1 bundle ships; v2's bundles are laid out shared after v1's.
+
 The only writer of either is the explicit rebuild mode, never part of the gate:
 
 ```sh
@@ -125,8 +135,12 @@ pnpm gen:corpus -- --rebuild-content-blobs   # needs `zstd -V` to report exactly
 pnpm gen:corpus                              # then rebuild cases.json, plan-matrix.json and the signed records
 ```
 
-A rebuild changes hashes, so the records and markers signed over them change too; land it as a
-PR of its own. `.prettierignore` and `.gitattributes` (`binary`) cover `content/blobs/` so that
+The rebuild computes every blob in memory and then **adds only**: it throws, writing nothing, when
+an existing blob's bytes would change or disappear, or when an existing `refs.json` entry would
+change (`plans/P4-10.md` decision 15; `tools/gen-content-corpus.test.ts` proves it on a
+temporary copy). A rebuild that reproduces every committed frame adds nothing, so a new blob can
+land with the feature that needs it; changing an existing blob still changes the hashes signed
+over it and needs a PR of its own with the guard deliberately relaxed. `.prettierignore` and `.gitattributes` (`binary`) cover `content/blobs/` so that
 `pnpm format` and `core.autocrlf` never change a hashed byte.
 
 ## Never hand-edit the generated files

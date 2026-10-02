@@ -31,11 +31,11 @@ def _canonical(v: Any) -> Any:
 
 
 def test_plan_matrix_has_every_row_and_case() -> None:
-    assert _MATRIX["planMatrixVersion"] == 1
+    assert _MATRIX["planMatrixVersion"] == 2
     assert _MATRIX["requestWeight"] == 16384
-    assert len(_MATRIX["rows"]) == 25
+    assert len(_MATRIX["rows"]) == 28
     assert len(_MATRIX["variantCases"]) == 11
-    assert len(_MATRIX["targetCases"]) == 14
+    assert len(_MATRIX["targetCases"]) == 22
 
 
 @pytest.mark.parametrize("row", _MATRIX["rows"], ids=[r["id"] for r in _MATRIX["rows"]])
@@ -50,5 +50,6 @@ def test_variant_case(case: Dict[str, Any]) -> None:
 
 @pytest.mark.parametrize("case", _MATRIX["targetCases"], ids=[c["id"] for c in _MATRIX["targetCases"]])
 def test_target_case(case: Dict[str, Any]) -> None:
-    got = plan_target(case["variant"], case["recordSha256"], case["filesIndex"])
+    # plans/P4-10.md §4.4: `chunkIndex` is absent (None) on the cases before P4-10.
+    got = plan_target(case["variant"], case["recordSha256"], case["filesIndex"], case.get("chunkIndex"))
     assert _canonical(got) == _canonical(case["expect"]), case["description"]

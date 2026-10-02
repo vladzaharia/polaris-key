@@ -3,10 +3,18 @@
 // Pure; never throws on a record that passed the claims.
 
 import {
+  CHUNKS_FORMAT,
   FILES_FORMAT,
+  MAX_CHUNK_BYTES,
+  MAX_CHUNK_INDEX_BYTES,
   MAX_FILES_INDEX_BYTES,
 } from "@polaris-key/protocol/core";
-import type { FilesIndexDoc, PackVariant } from "@polaris-key/protocol/packs";
+import type {
+  ChunkIndexDoc,
+  ChunkRecord,
+  FilesIndexDoc,
+  PackVariant,
+} from "@polaris-key/protocol/packs";
 import { has, isObject } from "./claims.js";
 import { compareBytes } from "./variant.js";
 
@@ -110,8 +118,8 @@ export interface PlanTarget {
   payload: { size: number; sha256: string };
   full: { bytes: number; requests?: number } | null;
   platform: { transport: string } | null;
-  /** Chunk candidates (P4-10, P4-11): the index bytes and inline records
-   *  `[id, len, clen, bundle, offset]`. Null in v1. */
+  /** Chunk candidates (plans/P4-10.md §2.5): the index bytes and inline records
+   *  `[id, len, clen, bundle, offset]`, or null when the chunk strategy is unusable. */
   chunks: {
     indexBytes: number;
     records: [string, number, number, number, number][];
@@ -124,9 +132,45 @@ export interface PlanTarget {
   deltas: PlanDelta[];
 }
 
+/** What `planTarget` reads of a parsed chunk index (`parseChunkIndex`'s `index`). */
+export type PlanChunkIndex = Pick<
+  ChunkIndexDoc,
+  "payloadSize" | "payloadSha256" | "records"
+>;
+
 /**
- * `planTarget(variant, recordSha256, filesIndex | null)` (§2.9): a variant onto the planner's
- * input. An unusable variant maps to no candidate at all. `full` needs a usable ref whose size
+ * The chunk candidate of a variant (plans/P4-10.md §2.5): `{indexBytes: chunks.bytes, records}`
+ * when the variant is usable and a `container`, `chunks.format` is `pkey-chunks/1`, its codec is
+ * usable, `chunks.size` ≤ `MAX_CHUNK_INDEX_BYTES`, the parsed index is given and bound to the
+ * variant's payload, and no record's `len` exceeds `MAX_CHUNK_BYTES`; null otherwise.
+ */
+function chunkTarget(
+  variant: PackVariant,
+  chunkIndex: PlanChunkIndex | null,
+): PlanTarget["chunks"] {
+  const c = (variant as { chunks?: unknown }).chunks;
+  if (chunkIndex === null || !isObject(c)) return null;
+  if (variant.files.layout !== "container") return null;
+  if (c.format !== CHUNKS_FORMAT || !usableCodec(c.codec)) return null;
+  if (typeof c.size !== "number" || c.size > MAX_CHUNK_INDEX_BYTES) return null;
+  if (typeof c.bytes !== "number") return null;
+  const payload = variant.payload;
+  if (
+    chunkIndex.payloadSize !== payload.size ||
+    chunkIndex.payloadSha256 !== payload.sha256
+  )
+    return null;
+  const records: ChunkRecord[] = [];
+  for (const r of chunkIndex.records) {
+    if (r[1] > MAX_CHUNK_BYTES) return null;
+    records.push([r[0], r[1], r[2], r[3], r[4]]);
+  }
+  return { indexBytes: c.bytes, records };
+}
+
+/**
+ * `planTarget(variant, recordSha256, filesIndex | null, chunkIndex = null)` (§2.9; plans/P4-10.md
+ * §2.5 for `chunks`): a variant onto the planner's input. An unusable variant maps to no candidate at all. `full` needs a usable ref whose size
  * is the payload's (a tree's costs its index too, in two requests); `files` needs the index, a
  * readable one (a container: rebuildable); a `payload` delta is kept on a container, a `files`
  * delta when `files` is kept and its `patch` ref is usable; anything else is dropped. The method
@@ -136,6 +180,7 @@ export function planTarget(
   variant: PackVariant,
   recordSha256: string,
   filesIndex: FilesIndexDoc | null,
+  chunkIndex: PlanChunkIndex | null = null,
 ): PlanTarget {
   const payload = variant.payload;
   if (!variantUsable(variant))
@@ -204,7 +249,7 @@ export function planTarget(
     payload,
     full: fullT,
     platform: null,
-    chunks: null,
+    chunks: chunkTarget(variant, chunkIndex),
     files: filesT,
     deltas,
   };

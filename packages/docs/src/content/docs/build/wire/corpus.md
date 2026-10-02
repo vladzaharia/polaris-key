@@ -90,13 +90,16 @@ row pins the opt-in bypass instead.
 
 `content/` is the one part of the corpus that holds bytes rather than signed text. Its blobs
 (a real v1 → v2 pack pair, its file blobs, a whole-payload delta, the packed per-file delta set,
-the same files as trees, and a small tree pair) are **inputs**: zstd output is not stable across
+the same files as trees, a small tree pair, and since content corpus v2 the `pkey-chunks/1`
+indexes and the chunk bundles they name) are **inputs**: zstd output is not stable across
 libzstd versions, so a normal or `--check` run never compresses. It decodes the blobs with
 `@polaris-key/zstd-wasm`, checks each against the `blobs` table in `content/cases.json`, and
 rebuilds `content/cases.json` and `plan-matrix.json` from them. `content/blobs/refs.json` holds
 the refs of the few objects the signed records pin but the corpus does not ship (they would pass
 the 5 MB budget). Only `pnpm gen:corpus -- --rebuild-content-blobs`, which refuses any zstd but
-1.5.7, writes the blobs or `refs.json`; a rebuild changes hashes, so it is a PR of its own.
+1.5.7, writes the blobs or `refs.json`, and it may only add them: it throws, writing nothing,
+when an existing blob or `refs.json` entry would change (`plans/P4-10.md` decision 15), so
+changing an existing blob, which changes hashes, is a PR of its own.
 `content/` is not mirrored: every runner reads it from the checkout. `.prettierignore` and
 `.gitattributes` (`binary`) keep formatters and line-ending conversion away from the hashed
 bytes.

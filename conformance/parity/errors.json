@@ -628,6 +628,96 @@
       "description": "A container pack rebuilt by the `file` strategy does not hash to the variant's `payload.sha256` (plans/P4-01.md §2.9)."
     },
     {
+      "code": "chunks-ref-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "A pack variant's chunk index (`pkey-chunks/1`) was refused before parsing: its declared size is over the limit, its stored bytes differ from the `chunks` ref, it does not decode, or its decoded length is not the ref's `size` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-bad-length",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index is shorter than its 64-byte header, or its length is not exactly 64 + 48 × (chunkCount + bundleCount) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-bad-magic",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index does not start with `PKEYCHNK` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-unsupported-version",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's `version` is not 1 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-bad-record-size",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's `recordSize` is not 48 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-bad-flags",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index sets a flag bit other than bit 0 (`fileAware`) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-reserved-nonzero",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's bundle record has a nonzero `reserved` field; `bundle` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-zero-length",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's chunk record has `len` 0; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-bad-clen",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's chunk record has `clen` 0 or above `len`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-bad-bundle-ref",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's chunk record names a bundle at or past `bundleCount`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-bad-bundle-range",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's chunk record runs past its bundle's declared `size` (`offset + clen`); `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-size-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index's chunk lengths do not sum to its `payloadSize` (read by the u64 rule) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunks-payload-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "A chunk index is bound to another payload: its `payloadSha256` or `payloadSize` is not the variant's `payload` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6)."
+    },
+    {
+      "code": "chunk-bundle-truncated",
+      "kind": "client",
+      "service": "update",
+      "description": "Chunk sync: fewer than `clen` bytes arrived for a fetched chunk (a short body, or a range clipped at the bundle's end); `chunk` names it (plans/P4-10.md §2.5)."
+    },
+    {
+      "code": "chunk-corrupt",
+      "kind": "client",
+      "service": "update",
+      "description": "Chunk sync: a fetched chunk does not decode, decodes to the wrong length, or does not hash to its id; `chunk` names it (plans/P4-10.md §2.5)."
+    },
+    {
       "code": "plan-transport-unsupported",
       "kind": "client",
       "service": "update",

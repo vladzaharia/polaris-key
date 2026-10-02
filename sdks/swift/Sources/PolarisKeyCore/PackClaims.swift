@@ -314,6 +314,18 @@ package func packRecordClaims(_ doc: [String: JSONValue], nonWire: NonWireIntege
             guard let r = rawRequires.objectValue, optPattern(r, "engine", PackPatterns.engine)
             else { return false }
         }
+        // plans/P4-10.md §2.2: checks 81–83 and the object ref at `chunks` (`bytes` and `size`
+        // from 1); other members are ignored (reserved: an index delta).
+        if let rawChunks = v["chunks"] {
+            guard let c = rawChunks.objectValue else { return false }
+            guard let format = c["format"]?.stringValue, packMatch(PackPatterns.objectFormat, format)
+            else { return false }
+            guard
+                objectRef(
+                    rawChunks, pointer: "\(at)/chunks", minBytes: 1, minSize: 1, nonWire: nonWire)
+            else { return false }
+            if let params = c["params"], params.objectValue == nil { return false }
+        }
         guard keys.insert(variantKey(selection)).inserted else { return false }
         let names = sel.keys.sorted()
         if let axes {
