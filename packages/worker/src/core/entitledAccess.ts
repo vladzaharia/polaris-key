@@ -317,3 +317,45 @@ export async function accessRefusal(
     );
   return null;
 }
+
+// ── A delivery gate (P4-05) ─────────────────────────────────────────────────────────────────
+
+/**
+ * Refuse a request unless its device token's licence holds one of `flags` — the delivery GATE
+ * of a pack (P4-01 decision 35: the `entitlement` of the pack's own `dist_access` row, a licence
+ * flag the operator names). Returns `null` to serve, or the refusal: `401 unauthorized` without a
+ * usable licence (the `entitled` mode's wire-v3 answer), `403 not_entitled` when the licence holds
+ * none of the flags.
+ *
+ * The grant is the one the licence document would carry — `resolveMergedPayload` then
+ * `injectAdminPolicy`, the composition `entitledAccessCheck` performs — so a device sees in its
+ * own document exactly the flag this check reads. A flag is held when its entry's value is
+ * `true`; any other value (absent, `false`, a string) is not held. The caller passes the gate's
+ * CURRENT values, never a manifest assertion or a signed record's publish-time snapshot, so
+ * renaming a pack's flag moves who may download at once.
+ */
+export async function entitlementFlagRefusal(
+  env: Env,
+  db: Db,
+  product: ProductPublic,
+  token: string | null,
+  flags: readonly string[],
+  now: number,
+): Promise<Response | null> {
+  const valid = await usableLicensedDevice(env, db, product, token, now);
+  if ("error" in valid) return wireError(401, "unauthorized");
+  const { payload, tier } = await resolveMergedPayload(
+    db,
+    product.slug,
+    valid.license,
+    valid.device,
+    now,
+  );
+  injectAdminPolicy(payload, tier, valid.license, tighterMin, tighterMax);
+  const held = flags.some(
+    (f) =>
+      Object.hasOwn(payload.entitlements, f) &&
+      payload.entitlements[f]?.value === true,
+  );
+  return held ? null : wireError(403, "not_entitled");
+}

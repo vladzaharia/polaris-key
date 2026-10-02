@@ -258,6 +258,14 @@ export function DistributionMatrixView({
                             {o.outletId}
                           </span>
                           <span className="font-normal">{o.kind}</span>
+                          {!o.supported && (
+                            <span
+                              className="block font-normal"
+                              title={`${o.transport} is stored; Polaris Key does not deliver by it yet`}
+                            >
+                              {o.transport}: not supported yet
+                            </span>
+                          )}
                         </th>
                       ))}
                     </tr>

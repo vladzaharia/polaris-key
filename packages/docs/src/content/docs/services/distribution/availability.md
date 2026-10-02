@@ -54,6 +54,18 @@ every build of the release that:
 
 A yanked release derives nothing. Derived records carry `source: "derived"` and `derived: true`.
 
+A **pack release** derives by its own rule, per its transport on the outlet:
+
+- `pkey-cdn` and `web`: `live` per variant once every object its signed record names (`full`,
+  the files index and gaps, every delta) is stored with the recorded SHA-256 and length and held
+  by a reference of this product. One object missing, or its reference gone, keeps that variant
+  not live. The file blobs an index names were checked at ingest.
+- `embedded`: ready by construction, with no report: one record per (app release, outlet) for
+  each unyanked app release that pins the pack release and has a build the outlet carries that
+  embeds the pack (its `embeds`, or every `baseline: embedded` pack when it says nothing), with
+  `detail: {appReleaseId, buildIds}`. The SDK still verifies the marker and hash on the device.
+- any other transport: nothing; it is stored and shown "not supported yet".
+
 Every other kind — `app-store`, `testflight`, `play`, `steam`, `itch`, … — shows **nothing until
 it is reported**, whatever its transport: every outlet's default transport is `pkey-cdn`, so the
 transport alone cannot tell a store from our own CDN.

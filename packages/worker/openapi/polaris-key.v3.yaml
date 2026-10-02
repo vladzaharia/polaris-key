@@ -1982,8 +1982,10 @@ paths:
       summary: Download the payload of a declared build
       description: >
         P2-05; P2b-04 moved it to Distribution (`/{product}/release/builds/…` is its permanent
-        alias, on both hosts). Resolves `{selector}` for the deliverable (`?deliverable=`,
-        default `app`) from the release truth store — channel membership and `includes` (beta ⊇ stable), the channel's
+        alias, on both hosts). Serves the `app` deliverable only: `?deliverable=` naming any
+        other deliverable (a pack) answers not-found, because a pack's objects are reached by
+        SHA-256 on `downloadBlob` alone, under the pack's own delivery access and gate (P4-05).
+        Resolves `{selector}` from the release truth store — channel membership and `includes` (beta ⊇ stable), the channel's
         pointer and pin, yanks, the deliverable's version scheme, the tag filter — keeping only
         releases that have the build `{buildId}`, so a release missing one platform's build falls
         back to the newest release that has it. Then serves that build's `payload` artifact from
@@ -2118,9 +2120,12 @@ paths:
         (`.sig`, `.sha256`, an index). Immutable: the release id and the name fix the bytes, so a
         public response is cached `public, max-age=31536000, immutable`. Same locations, `HEAD`,
         `Range`, access mode, rate-limit lane and `?redirect=1` rule as `downloadBuild`; served
-        on the console host and on the bytes host. Access is the release's deliverable's
-        delivery access; under `entitled` the release's STORED version is checked against the
-        caller's window as a fixed, pinned version (never re-read as a selector).
+        on the console host and on the bytes host. Serves the `app` deliverable's releases only:
+        a pack release's files answer not-found here (P4-05), since a pack's objects are reached
+        by SHA-256 on `downloadBlob` alone, under the pack's own delivery access and gate, never
+        under the app's version window. Access is the app's delivery access; under `entitled`
+        the release's STORED version is checked against the caller's window as a fixed, pinned
+        version (never re-read as a selector).
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: releaseId
@@ -2195,15 +2200,30 @@ paths:
       summary: Download a content-addressed object
       description: >
         P2-05; P2b-04 moved it to Distribution (`/{product}/release/blobs/…` is its permanent
-        alias, on both hosts). The object stored under `blobs/sha256/{sha256}` — served only if
-        an artifact (or a pack object) of THIS product references it (`blob_refs`); another product's copy of the
-        same bytes does not count, and the answer is the same plain not-found as an unknown
-        hash. `ETag` is the SHA-256 and `Repr-Digest` covers the whole representation (also on a
-        206); `Range`, `If-Range` and `If-None-Match` are evaluated against it; `HEAD` returns
-        the same headers. A public deliverable gets `public, max-age=31536000, immutable,
-        no-transform`; others `private, no-store, no-transform` after the delivery access (the
-        strictest of the deliverables whose releases carry the digest) admits the caller. Served on the console host (always an octet-stream attachment) and on
-        the bytes host.
+        alias, on both hosts). One content-addressed object of THIS product's blob store, by
+        its stored SHA-256: an app artifact, a registered feed file, or any object of a pack
+        release (its `full` payload, files index and gaps, deltas and file blobs; P4-05 — the
+        ONLY route that serves a pack's bytes). Authorised by the object's HOLDERS (`blob_refs`
+        of this product; another product's copy of the same bytes does not count, and the
+        answer is the same plain not-found as an unknown hash). The public key
+        `blobs/sha256/{sha256}` is tried first and never reads the gated prefix; the gated key
+        `gated/blobs/sha256/{sha256}` holds only the objects of a pack published while it was
+        gated. An app artifact follows the strictest delivery access of the deliverables whose
+        releases carry the digest, as before (under `entitled`, an app release carrying it must
+        pass the caller's window). A pack's object follows the PACK's delivery access
+        (`dist_access`, never the app's version window); under the gated prefix, or under an
+        `entitled` mode, it needs the pack's CURRENT gate — the licence flag in its own
+        `dist_access.entitlement`, never the manifest's assertion or a record's `entitlement` —
+        held by the device token's licence (`401 unauthorized` without a usable licence, `403
+        not_entitled` without the flag). An `entitled` pack with no gate is refused outright
+        (`403 delivery_gate_missing`, fail-closed). `ETag` is the SHA-256 and `Repr-Digest`
+        covers the whole representation (also on a 206); a single `Range`, `If-Range` (on the
+        strong ETag, evaluated by the Worker) and `If-None-Match` are evaluated against it, a
+        multi-range request gets the whole 200, and no response carries `Content-Encoding`;
+        `HEAD` returns the same headers. Only an object every holder of whose public key is
+        `public` is cached `public, max-age=31536000, immutable, no-transform`; anything else,
+        and everything under the gated prefix, is `private, no-store, no-transform`. Served on
+        the console host (always an octet-stream attachment) and on the bytes host.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: sha256
@@ -2233,7 +2253,23 @@ paths:
                 oneOf:
                   - { $ref: "#/components/schemas/FlatError" }
                   - { $ref: "#/components/schemas/WireError" }
-        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "403":
+          description: >
+            A grant refused it: the app's `entitled` window (`channel_not_allowed`,
+            `version_blocked`, see `ReleaseForbidden`), a pack gate the licence does not hold
+            (`not_entitled`), or an `entitled` pack with no gate (`delivery_gate_missing`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                notEntitled:
+                  summary: test/packTransports.test.ts
+                  value: { error: { code: not_entitled } }
+                deliveryGateMissing:
+                  summary: test/packTransports.test.ts
+                  value:
+                    error: { code: delivery_gate_missing }
+                    message: "djdl.core3d's delivery access is entitled, but it has no gate; an operator sets one (or a looser mode) under Distribution → Access."
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405":
           description: "Any method other than `GET` and `HEAD` (`Allow: GET, HEAD`)."
@@ -2244,6 +2280,39 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+    head:
+      operationId: headBlob
+      tags: [distribution]
+      summary: Size, ETag and Repr-Digest of a content-addressed object
+      description: >
+        `downloadBlob` without a body (P4-05 documents it): the same authorisation, the same
+        status and the same headers — `Content-Length`, `ETag` (the SHA-256), `Repr-Digest`,
+        `Accept-Ranges`, `Cache-Control` and, for a `Range`, `Content-Range`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: sha256
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+        - { $ref: "#/components/parameters/Range" }
+        - { $ref: "#/components/parameters/IfNoneMatch" }
+      responses:
+        "200":
+          description: The object's headers, no body.
+        "206":
+          description: The headers of a `Range` answer, no body.
+        "304":
+          description: Not modified (`If-None-Match`).
+        "401":
+          description: The delivery access refused the caller (see `downloadBlob`).
+        "403":
+          description: A grant refused the caller (see `downloadBlob`).
+        "404":
+          description: Not held by this product (or not stored), no body.
+        "416":
+          description: "An unsatisfiable `Range`, with `Content-Range: bytes */<size>`."
+        "429":
+          description: The artifact rate-limit lane.
     options:
       operationId: preflightDownloadBlob
       tags: [distribution]

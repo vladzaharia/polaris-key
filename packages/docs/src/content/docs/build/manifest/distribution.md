@@ -176,7 +176,10 @@ For each deliverable on each outlet, the first of these that applies wins:
 
 A transport map may only name declared outlets (`unknown_outlet_ref`), and only a transport
 that outlet's kind can carry (`transport_not_allowed`). The resolved pairs are stored in
-`dist_transports`, one row per declared deliverable per live outlet.
+`dist_transports`, one row per declared deliverable (the app and every pack) per live outlet.
+Polaris Key delivers by `pkey-cdn`, `web` and `embedded` today; any other transport is stored
+and shown "not supported yet", and nothing is served or derived for it
+([Pack transports](/docs/services/distribution/delivery/#pack-transports)).
 
 ## Listing
 

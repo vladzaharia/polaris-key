@@ -256,7 +256,8 @@ describe("parseManifest and .pkey/distribution", () => {
     expect(spam.errors).toEqual([
       expect.stringContaining("at most 64 pack deliverables"),
     ]);
-    // 64 packs: accepted, and only `app` is routed until P4-05 routes packs.
+    // 64 packs: accepted, and every deliverable is routed (P4-05): (1 + 64) × 32 rows, with the
+    // per-deliverable transport applied and the default elsewhere.
     const res = parse(
       {
         outlets,
@@ -267,8 +268,12 @@ describe("parseManifest and .pkey/distribution", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     const routes = res.manifest.distribution!.routes;
-    expect(routes).toHaveLength(32);
-    expect(routes.every((r) => r.deliverableId === "app")).toBe(true);
+    expect(routes).toHaveLength(65 * 32);
+    expect(routes.filter((r) => r.deliverableId === "app")).toHaveLength(32);
+    expect(
+      routes.find((r) => r.deliverableId === "pack-7" && r.outletId === "web-0")
+        ?.transport,
+    ).toBe("web");
   });
 
   it("carries the implicit document when Distribution is on and the file is absent", () => {
