@@ -127,7 +127,13 @@ function alert(over: Record<string, unknown> = {}, tags?: unknown) {
         release: "app@1.1.0",
         environment: "stable",
         message: "user alice@example.com crashed",
-        user: { email: "alice@example.com" },
+        user: { email: "alice@example.com", ip_address: "203.0.113.7" },
+        exception: {
+          values: [
+            { type: "TypeError", value: "alice's save file at /home/alice" },
+          ],
+        },
+        contexts: { device: { model: "alice-phone" } },
         tags: tags ?? [
           ["environment", "stable"],
           ["pkey.outlet", "direct"],
@@ -327,6 +333,46 @@ describe("POST /<p>/distribution/hooks/sentry", () => {
       "ignored",
       "ignored",
     ]);
+  });
+
+  it("stores only a reduced record of every delivery, never the crash payload", async () => {
+    const w = await setup();
+    await deliver(w, alert()); // applied
+    await deliver(w, alert({ event_id: "e2", release: "app@9.9.9" })); // unresolved
+    await deliver(w, { ...alert({ event_id: "e3" }), action: "resolved" }); // ignored
+    const rows = await w.db.all<{ outcome: string; payload_json: string }>(
+      "SELECT outcome, payload_json FROM dist_connector_events WHERE product = ? AND connector = 'sentry' ORDER BY rowid",
+      SLUG,
+    );
+    expect(rows.map((r) => r.outcome)).toEqual([
+      "applied",
+      "unresolved",
+      "ignored",
+    ]);
+    for (const r of rows) {
+      expect(r.payload_json).not.toContain("alice");
+      expect(r.payload_json).not.toMatch(
+        /exception|TypeError|user|ip_address|203\.0\.113|contexts|message|event_id/,
+      );
+      expect(Object.keys(JSON.parse(r.payload_json)).sort()).toEqual([
+        "action",
+        "environment",
+        "issueId",
+        "outlet",
+        "release",
+        "resource",
+        "rule",
+      ]);
+    }
+    expect(JSON.parse(rows[0]!.payload_json)).toEqual({
+      resource: "event_alert",
+      action: "triggered",
+      rule: "Crash spike",
+      issueId: "4200001",
+      release: "app@1.1.0",
+      environment: "stable",
+      outlet: "direct",
+    });
   });
 
   it("refuses a body that is not a JSON object", async () => {

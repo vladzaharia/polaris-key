@@ -494,6 +494,10 @@ describe("update-health counters on a real Durable Object (P6-03)", () => {
     expect(ns).toBeDefined();
     const workerEnv = env as unknown as WorkerEnv;
     const now = Math.floor(Date.now() / 1000);
+    const scope = {
+      outlets: new Set(["direct"]),
+      channels: new Set(["stable"]),
+    };
     const entry = {
       eventId: "workerd-1",
       event: "update_reverted" as const,
@@ -510,6 +514,7 @@ describe("update-health counters on a real Durable Object (P6-03)", () => {
         "DEVICEWORKERD000000000000000001",
         [entry],
         now,
+        scope,
       ),
     ).toBe(1);
     // The same event again counts nothing; another device's counts once more.
@@ -520,6 +525,7 @@ describe("update-health counters on a real Durable Object (P6-03)", () => {
         "DEVICEWORKERD000000000000000001",
         [entry],
         now,
+        scope,
       ),
     ).toBe(0);
     expect(
@@ -529,6 +535,7 @@ describe("update-health counters on a real Durable Object (P6-03)", () => {
         "DEVICEWORKERD000000000000000002",
         [entry],
         now,
+        scope,
       ),
     ).toBe(1);
     const read = await readUpdateHealth(workerEnv, {

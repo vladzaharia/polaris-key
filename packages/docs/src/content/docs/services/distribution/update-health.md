@@ -73,9 +73,13 @@ hourly buckets, it keeps two numbers:
   events it sends. Rates and the auto-halt use this number, so one device can move a rate by at
   most one.
 
-An event naming an outlet the product does not declare is counted, shown as `unknown`, and never
-judged. Counters, and the device ids they need to count distinct devices, are deleted after 30
-days. See [Privacy](#privacy).
+An event naming an outlet the product does not declare, or a channel it does not know (the
+built-in channels, its manual channels and any channel an app release was published to), is
+counted in one `unknown` bucket: shown, never judged, and unable to crowd out a real outlet. One
+device counts at most 64 events per release and introduces at most 8 (outlet, channel) pairs;
+beyond that its events count nothing, or count as `unknown`. Buckets older than 30 days, and the
+per-device records (the event ids it counted) of a device idle for 30 days, are deleted. See
+[Privacy](#privacy).
 
 ## The funnel
 
@@ -112,7 +116,17 @@ Distribution looks at each `active` rollout of the product:
   `distribution.auto_halt.alert` audit row), and you halt it with the connector.
 - A rollout trips **once** per release, outlet and channel. If you resume it, the auto-halt does
   not halt it again. It never resumes, ramps, completes or starts anything: it can only halt.
-- If the counters cannot be read, nothing is judged.
+- If the counters cannot be read, or a read is incomplete, nothing is judged (the tab's last
+  reading says why). A halt that races a change to the rollout is retried on the next tick.
+
+:::caution[Open registration]
+The auto-halt counts distinct devices, so one device moves a rate by at most one. But under open
+registration devices are cheap: keyless registration allows 10 per minute per IP, so about twenty
+minutes reaches the default `minSample` of 200. Fake devices can then halt a rollout (the safe
+direction), or report fake applies that dilute a real revert rate below the threshold. For an
+open-registration product, raise `minSample` well above what anyone would bother to register, or
+leave the auto-halt off. Either way it is a safety net, not a guarantee: watch the funnel.
+:::
 
 The settings are yours alone: they are saved only from the tab (a platform-admin session, audited
 as `distribution.auto_halt.settings`). No `.pkey/` manifest, resync or CI token can change them,
@@ -141,7 +155,9 @@ issue alert (`Sentry-Hook-Resource: event_alert`) is acted on; other resources a
 ignored. The alert's event is mapped to rollouts by the tags below; every matching active or
 paused, self-hosted rollout of that release gets one candidate, and a repeated alert adds to its
 count. A confirmed or dismissed candidate is not reopened. Of the alert, a candidate keeps only
-the rule name and Sentry's issue id — never the crash message, user or other tags.
+the rule name and Sentry's issue id, and the delivery log keeps only the resource, action, rule,
+issue id, release, environment and outlet — never the crash message, exception, user or other
+tags.
 
 ### Tagging convention for SDKs
 
@@ -164,8 +180,9 @@ offered.
 ## Privacy
 
 An update event carries release identifiers, an outlet, a channel, a time and an optional short
-code. It carries no hardware value, no user identifier and no message text. The counters keep the
-device id — which the Worker already holds for every registered device — only to count distinct
-devices, and delete it with the counters after 30 days. The latest report's `updates` array is
+code. It carries no hardware value, no user identifier and no message text. The counters keep one
+record per device — its device id, which the Worker already holds for every registered device,
+and the event ids it counted — only to count distinct devices and dedupe, and delete it once the
+device has been idle for 30 days. The latest report's `updates` array is
 also kept, like the rest of the report, as part of the device's last snapshot until the next
 report replaces it or the device is deleted. See `docs/PRIVACY.md` in the repository.

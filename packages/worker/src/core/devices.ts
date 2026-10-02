@@ -93,7 +93,12 @@ import {
 } from "../kv.js";
 import { bearer } from "../http.js";
 import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
-import { boundedUpdates, recordUpdateEvents } from "./updateHealth.js";
+import {
+  boundedUpdates,
+  recordUpdateEvents,
+  updateScope,
+} from "./updateHealth.js";
+import type { ServiceHooks } from "./hooks.js";
 
 /**
  * What a valid device token proves, at CORE's level of authority: this token belongs to this
@@ -1059,6 +1064,9 @@ export async function handleReport(
   db: Db,
   product: Product,
   now: number,
+  /** The product's hooks (dispatch builds them): the outlets and channels update events are
+   *  checked against. Absent, every event counts as `unknown`. */
+  hooks?: ServiceHooks,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   const token = bearer(req);
@@ -1102,6 +1110,9 @@ export async function handleReport(
       valid.device.device_id,
       updates,
       now,
+      hooks
+        ? await updateScope(hooks)
+        : { outlets: new Set(), channels: new Set() },
     );
   return json({ ok: true });
 }

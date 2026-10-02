@@ -203,6 +203,12 @@ export interface RolloutReading {
   bootRollbackRate: number | null;
   /** Why it tripped, empty when it did not. */
   trips: string[];
+  /** Why nothing was judged: `no-data` (the counters could not be read) or `truncated` (the
+   *  read hit its key ceiling, so its sums are incomplete). */
+  skipped?: "no-data" | "truncated";
+  /** A halt the rollout code refused this tick (a race: the rollout moved since it was listed);
+   *  judged again next tick. */
+  refused?: string;
 }
 
 const pct = (r: number) => `${(r * 100).toFixed(2)}%`;
@@ -259,13 +265,15 @@ export interface AutoHaltOutcome {
   halted: number;
   /** Store rollouts that crossed a threshold this tick (alert only). */
   alerted: number;
+  /** Halts the rollout code refused this tick (recorded on the reading, retried next tick). */
+  refused?: number;
   error?: string;
 }
 
 /**
- * One auto-halt tick for one product. Never throws for one rollout's failure: a halt the
- * rollout code refuses (it moved since it was read) halts nothing and marks nothing, so the next
- * tick judges it again.
+ * One auto-halt tick for one product. A halt the rollout code refuses (it moved since it was
+ * read) halts nothing, marks nothing and is NOT an error: it is recorded on the reading
+ * (`refused`) and the next tick judges it again.
  */
 export async function runAutoHalt(
   ctx: AutoHaltContext,
@@ -283,7 +291,7 @@ export async function runAutoHalt(
   const readings: RolloutReading[] = [];
   let halted = 0;
   let alerted = 0;
-  const errors: string[] = [];
+  let refused = 0;
 
   for (const row of rows) {
     const key = `${row.deliverable_id}|${row.release_id}`;
@@ -306,7 +314,9 @@ export async function runAutoHalt(
       releaseId: row.release_id,
       mirrored: row.mirrored === 1,
     };
-    if (!read) {
+    // No data, or an incomplete sum: judge nothing (a truncated read could hide the very hours
+    // that would trip, or the applied devices that would not).
+    if (!read || read.truncated) {
       readings.push({
         ...base,
         applied: null,
@@ -315,6 +325,7 @@ export async function runAutoHalt(
         revertRate: null,
         bootRollbackRate: null,
         trips: [],
+        skipped: read ? "truncated" : "no-data",
       });
       continue;
     }
@@ -396,7 +407,11 @@ export async function runAutoHalt(
       },
     );
     if (!result.ok) {
-      errors.push(`${id}: ${result.reason}`);
+      // Recorded on the reading and retried next tick; not a tick failure, so the cron does not
+      // fail on every tick while the race lasts.
+      const reading = readings[readings.length - 1];
+      if (reading) reading.refused = result.reason;
+      refused++;
       continue;
     }
     await upsertObject(write, AUTO_HALT_CONNECTOR, {
@@ -431,12 +446,5 @@ export async function runAutoHalt(
     terminal: false,
   });
 
-  return {
-    ran: true,
-    halted,
-    alerted,
-    // A refusal here is a race (the rollout moved since it was listed), not a failure of the
-    // tick; it is reported so the cron invocation shows it, and judged again next tick.
-    ...(errors.length ? { error: `auto-halt: ${errors.join("; ")}` } : {}),
-  };
+  return { ran: true, halted, alerted, refused };
 }

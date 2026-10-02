@@ -18,6 +18,9 @@
  *      mismatch.
  *   6. **Dedupe** on the body's SHA-256 (`dist_connector_events`, connector `sentry`): a
  *      redelivery answers 200 `{duplicate: true}` and changes nothing.
+ *      What that table keeps of a delivery, whatever its outcome, is a REDUCED record —
+ *      `{resource, action, rule, issueId, release, environment, outlet}` — never the body, which
+ *      carries the crash message, exception, user and tags.
  *   7. **Map** an `event_alert` that `triggered` to rollouts: the event's `release` is
  *      `<deliverable>@<version>[+<build>]` (the SDK tagging convention, docs page
  *      `/docs/services/distribution/update-health/`), `environment` the channel, the
@@ -284,19 +287,8 @@ export async function handleSentryWebhook(
   const resource = (req.headers.get("sentry-hook-resource") ?? "")
     .trim()
     .slice(0, 64);
-  const action = typeof payload.action === "string" ? payload.action : "";
-  const base = {
-    id: eventId,
-    type: `${resource || "(none)"}.${action || "(none)"}`,
-    instanceType: null,
-    instanceId: null,
-    raw,
-  };
-  if (resource !== "event_alert" || action !== "triggered") {
-    await recordEvent(write, SENTRY_CONNECTOR, { ...base, outcome: "ignored" });
-    return new Response(null, { status: 204 });
-  }
-
+  const action =
+    typeof payload.action === "string" ? payload.action.slice(0, 64) : "";
   const data = isObj(payload.data) ? payload.data : {};
   const event = isObj(data.event) ? data.event : {};
   const parsed = parseSentryRelease(event.release);
@@ -306,6 +298,40 @@ export async function handleSentryWebhook(
       : null;
   const outletTag = tagValue(event.tags, "pkey.outlet");
   const outlet = outletTag && OUTLET.test(outletTag) ? outletTag : null;
+  const rule =
+    typeof data.triggered_rule === "string"
+      ? data.triggered_rule.slice(0, 200)
+      : null;
+  const issueId =
+    typeof event.issue_id === "string" && ISSUE_ID.test(event.issue_id)
+      ? event.issue_id
+      : null;
+  // What is STORED of a delivery, whatever its outcome: the mapping inputs, never the body. A
+  // Sentry event carries the crash message, the exception, the user and every tag; none of it
+  // is kept (docs/PRIVACY.md). The dedupe key is the body's hash, computed above.
+  const reduced = JSON.stringify({
+    resource: resource || null,
+    action: action || null,
+    rule,
+    issueId,
+    release: parsed
+      ? `${parsed.deliverable}@${parsed.version}${parsed.build ? `+${parsed.build}` : ""}`
+      : null,
+    environment: channel,
+    outlet,
+  });
+  const base = {
+    id: eventId,
+    type: `${resource || "(none)"}.${action || "(none)"}`,
+    instanceType: null,
+    instanceId: null,
+    raw: reduced,
+  };
+  if (resource !== "event_alert" || action !== "triggered") {
+    await recordEvent(write, SENTRY_CONNECTOR, { ...base, outcome: "ignored" });
+    return new Response(null, { status: 204 });
+  }
+
   const releaseId =
     parsed && channel ? await resolveReleaseId(hooks, parsed) : null;
   const targets =
@@ -328,14 +354,6 @@ export async function handleSentryWebhook(
     return json({ ok: true, candidates: 0 });
   }
 
-  const rule =
-    typeof data.triggered_rule === "string"
-      ? data.triggered_rule.slice(0, 200)
-      : null;
-  const issueId =
-    typeof event.issue_id === "string" && ISSUE_ID.test(event.issue_id)
-      ? event.issue_id
-      : null;
   let opened = 0;
   for (const r of targets) {
     const target = {

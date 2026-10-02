@@ -4,8 +4,9 @@
  *
  * Pinned here: the allowlist keeps valid events and drops malformed ones and unknown events;
  * the same report retried counts nothing twice; the 16 KiB cap still holds; counting fails open;
- * the object counts distinct devices, folds excess (outlet, channel) pairs into overflow, reads a
- * window and sweeps itself; and the event names are exactly `enums.json`'s `updateEvent`.
+ * undeclared outlets and channels land in one `unknown` bucket; the object counts distinct
+ * devices, caps what one device can count or introduce, reads a window page by page and sweeps
+ * itself with a resumable cursor; and the event names are exactly `enums.json`'s `updateEvent`.
  */
 
 import { readFileSync } from "node:fs";
@@ -35,12 +36,15 @@ import {
   UPDATE_EVENTS,
 } from "../src/core/updateHealth.js";
 import {
-  MAX_PAIRS,
-  OVERFLOW_CHANNEL,
-  OVERFLOW_OUTLET,
+  MAX_DEVICE_EVENTS,
+  MAX_DEVICE_PAIRS,
+  SWEEP_BATCH,
+  SWEEP_RESUME_MS,
+  UNKNOWN,
   RETENTION_SECONDS,
 } from "../src/updateHealthDo.js";
 import type { Env } from "../src/env.js";
+import type { ServiceHooks } from "../src/core/hooks.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -107,6 +111,36 @@ function event(over: Record<string, unknown> = {}): Record<string, unknown> {
   };
 }
 
+/** The product's declarations as the hooks answer them: outlets `direct` and `play`, channels
+ *  `stable` and `beta`. (This suite's product runs neither Distribution nor Release; the real
+ *  hooks are exercised in autoHalt.test.ts.) */
+const HOOKS = {
+  delivery: () => ({
+    outlets: async () => [{ outletId: "direct" }, { outletId: "play" }],
+  }),
+  releaseCatalog: () => ({ knownChannels: async () => ["stable", "beta"] }),
+  outletCapabilities: async () => null,
+} as unknown as ServiceHooks;
+
+const SCOPE = {
+  outlets: new Set(["direct", "play"]),
+  channels: new Set(["stable", "beta"]),
+};
+
+function record(w: World, device: string, events: unknown[]) {
+  return w.ns.instance("djdl|app|v1.4.0").obj.fetch(
+    new Request("https://x/record", {
+      method: "POST",
+      body: JSON.stringify({
+        op: "record",
+        now: NOW,
+        deviceId: device,
+        events,
+      }),
+    }),
+  );
+}
+
 async function report(
   w: World,
   tok: string,
@@ -119,6 +153,7 @@ async function report(
     w.db,
     w.product,
     now,
+    HOOKS,
   );
 }
 
@@ -375,6 +410,7 @@ describe("POST /devices/report with updates", () => {
         DEVICE,
         [event() as never],
         NOW,
+        SCOPE,
       ),
     ).toBe(0);
   });
@@ -400,35 +436,117 @@ describe("UpdateHealthDO", () => {
     ).toBe(2);
   });
 
-  it("folds (outlet, channel) pairs past the cap into overflow", async () => {
+  it("counts an undeclared outlet or unknown channel in one unknown bucket", async () => {
     const w = await world();
-    const name = "djdl|app|v1.4.0";
-    const events = Array.from({ length: MAX_PAIRS + 3 }, (_, i) => ({
-      eventId: `p${i}`,
-      event: "update_applied",
-      outlet: `o${i}`,
+    const tok = await token(w);
+    await report(w, tok, {
+      updates: [
+        event({ eventId: "a", outlet: "steam" }),
+        event({ eventId: "b", channel: "nightly" }),
+        event({ eventId: "c" }),
+      ],
+    });
+    const r = await read(w);
+    expect(countsFor(r.counts, "direct", "stable").update_applied).toBe(1);
+    expect(countsFor(r.counts, UNKNOWN, UNKNOWN, "events").update_applied).toBe(
+      2,
+    );
+    expect(new Set(r.counts.map((c) => c.outlet))).toEqual(
+      new Set(["direct", UNKNOWN]),
+    );
+  });
+
+  it("32 invented pairs from one device cannot crowd out the real pair", async () => {
+    const w = await world();
+    const tok = await token(w);
+    // Through the report: every invented outlet is undeclared, so all land in `unknown`.
+    for (let i = 0; i < 32; i += 16)
+      await report(w, tok, {
+        updates: Array.from({ length: 16 }, (_, k) =>
+          event({ eventId: `x${i + k}`, outlet: `bogus${i + k}` }),
+        ),
+      });
+    // Straight at the object (declared-looking pairs): one device introduces at most 8.
+    await record(
+      w,
+      DEVICE_2,
+      Array.from({ length: 12 }, (_, k) => ({
+        eventId: `y${k}`,
+        event: "update_applied",
+        outlet: `o${k}`,
+        channel: "stable",
+        at: NOW,
+      })),
+    );
+    // Genuine traffic on the real pair, from other devices, is counted in full.
+    for (let d = 0; d < 5; d++)
+      await record(w, `GENUINE${d}`, [
+        {
+          eventId: "g",
+          event: "update_reverted",
+          outlet: "direct",
+          channel: "stable",
+          at: NOW,
+        },
+      ]);
+    const r = await read(w);
+    expect(countsFor(r.counts, "direct", "stable").update_reverted).toBe(5);
+    const own = new Set(
+      r.counts.filter((c) => c.outlet.startsWith("o")).map((c) => c.outlet),
+    );
+    expect(own.size).toBe(MAX_DEVICE_PAIRS);
+    expect(countsFor(r.counts, UNKNOWN, UNKNOWN, "events").update_applied).toBe(
+      32 + 12 - MAX_DEVICE_PAIRS,
+    );
+  });
+
+  it("counts at most 64 events per device per release, then nothing", async () => {
+    const w = await world();
+    const many = Array.from({ length: 80 }, (_, k) => ({
+      eventId: `e${k}`,
+      event: "update_offered",
+      outlet: "direct",
       channel: "stable",
       at: NOW,
     }));
-    const obj = w.ns.instance(name).obj;
-    for (let i = 0; i < events.length; i += 16) {
-      await obj.fetch(
-        new Request("https://x/record", {
-          method: "POST",
-          body: JSON.stringify({
-            op: "record",
-            now: NOW,
-            deviceId: DEVICE,
-            events: events.slice(i, i + 16),
-          }),
-        }),
-      );
-    }
+    let counted = 0;
+    for (let i = 0; i < many.length; i += 16)
+      counted += (
+        (await (await record(w, DEVICE, many.slice(i, i + 16))).json()) as {
+          counted: number;
+        }
+      ).counted;
+    expect(counted).toBe(MAX_DEVICE_EVENTS);
     const r = await read(w);
-    const outlets = new Set(r.counts.map((c) => c.outlet));
-    expect(outlets.size).toBe(MAX_PAIRS + 1);
-    const overflow = r.counts.find((c) => c.outlet === OVERFLOW_OUTLET);
-    expect(overflow).toMatchObject({ channel: OVERFLOW_CHANNEL, events: 3 });
+    expect(
+      countsFor(r.counts, "direct", "stable", "events").update_offered,
+    ).toBe(MAX_DEVICE_EVENTS);
+    const dev = await w.ns
+      .instance("djdl|app|v1.4.0")
+      .storage.get<{ ids: string[] }>(`v|${DEVICE}`);
+    expect(dev?.ids).toHaveLength(MAX_DEVICE_EVENTS);
+  });
+
+  it("sums every page of a long read", async () => {
+    const w = await world();
+    const inst = w.ns.instance("djdl|app|v1.4.0");
+    // 2500 buckets in the window: more than one read page.
+    const base = Math.floor(NOW / 3600) - 500;
+    for (let h = 0; h < 500; h++)
+      for (const e of [
+        "update_offered",
+        "update_downloaded",
+        "update_applied",
+        "update_confirmed",
+        "update_reverted",
+      ])
+        await inst.storage.put(
+          `h|${String(base + h).padStart(8, "0")}|direct|stable|${e}`,
+          { events: 1, devices: 1 },
+        );
+    const r = await read(w, "v1.4.0", 501);
+    expect(r.truncated).toBe(false);
+    expect(countsFor(r.counts, "direct", "stable").update_reverted).toBe(500);
   });
 
   it("refuses a malformed request and ignores malformed events", async () => {
@@ -493,5 +611,68 @@ describe("UpdateHealthDO", () => {
     } finally {
       Date.now = realNow;
     }
+  });
+  it("sweeps a stale record behind more than 2000 young ones that sort first", async () => {
+    const w = await world();
+    const inst = w.ns.instance("djdl|app|v1.4.0");
+    const sweepAt = NOW + RETENTION_SECONDS + 86400;
+    for (let i = 0; i < SWEEP_BATCH + 300; i++)
+      await inst.storage.put(`v|a${String(i).padStart(6, "0")}`, {
+        last: sweepAt - 60,
+        ids: ["x"],
+        pairs: [],
+        seen: [],
+      });
+    await inst.storage.put("v|zzzz", {
+      last: NOW,
+      ids: ["x"],
+      pairs: [],
+      seen: [],
+    });
+    await inst.storage.put(
+      `h|${String(Math.floor(NOW / 3600)).padStart(8, "0")}|direct|stable|update_applied`,
+      { events: 1, devices: 1 },
+    );
+    const realNow = Date.now;
+    try {
+      Date.now = () => sweepAt * 1000;
+      await inst.obj.alarm();
+    } finally {
+      Date.now = realNow;
+    }
+    expect(await inst.storage.get("v|zzzz")).toBeUndefined();
+    expect([...inst.storage.m.keys()].some((k) => k.startsWith("h|"))).toBe(
+      false,
+    );
+    expect(await inst.storage.get("v|a000000")).toBeDefined();
+    expect(inst.storage.m.size).toBe(SWEEP_BATCH + 300);
+  });
+
+  it("resumes from its cursor within a minute when the time budget runs out", async () => {
+    const w = await world();
+    const inst = w.ns.instance("djdl|app|v1.4.0");
+    const sweepAt = NOW + RETENTION_SECONDS + 86400;
+    for (let i = 0; i < SWEEP_BATCH * 2 + 10; i++)
+      await inst.storage.put(`v|a${String(i).padStart(6, "0")}`, {
+        last: NOW,
+        ids: ["x"],
+        pairs: [],
+        seen: [],
+      });
+    const realNow = Date.now;
+    let clock = sweepAt * 1000;
+    try {
+      // Every clock read advances 4 s, so the 10 s budget lasts about one page.
+      Date.now = () => (clock += 4000);
+      await inst.obj.alarm();
+      expect(await inst.storage.get("meta|sweep")).toBeDefined();
+      expect(inst.storage.alarm! - clock).toBeLessThanOrEqual(SWEEP_RESUME_MS);
+      expect(inst.storage.m.size).toBeGreaterThan(1);
+      for (let n = 0; n < 10 && inst.storage.m.size > 0; n++)
+        await inst.obj.alarm();
+    } finally {
+      Date.now = realNow;
+    }
+    expect(inst.storage.m.size).toBe(0);
   });
 });

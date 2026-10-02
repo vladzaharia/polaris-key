@@ -32,7 +32,9 @@ import { SERVICES } from "../src/mount.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import {
   recordUpdateEvents,
+  updateScope,
   type UpdateEventEntry,
+  type UpdateScope,
 } from "../src/core/updateHealth.js";
 import { applyRollout } from "../src/services/distribution/rollouts.js";
 import {
@@ -146,6 +148,7 @@ async function seedCounters(
   n: { applied: number; reverted?: number; boot?: number },
   where: { outlet?: string; channel?: string; release?: string } = {},
 ) {
+  const scope = await scopeOf(w);
   for (let i = 0; i < n.applied; i++) {
     const base = {
       deliverable: "app",
@@ -167,8 +170,22 @@ async function seedCounters(
       `device${String(i).padStart(26, "0")}`,
       entries,
       NOW,
+      scope,
     );
   }
+}
+
+/** The real scope, through the real hooks: the product's live outlets and known channels. */
+async function scopeOf(w: World): Promise<UpdateScope> {
+  const product = (await loadProduct(w.env, w.db, SLUG))!;
+  return updateScope(
+    buildHooks(SERVICES, product.services, {
+      env: w.env,
+      db: w.db,
+      product,
+      now: NOW,
+    }),
+  );
 }
 
 async function rollout(w: World, outlet = "direct", channel = "stable") {
@@ -539,6 +556,89 @@ describe("the auto-halt tick", () => {
     ]);
   });
 
+  it("reads the product's declarations through the hooks", async () => {
+    const w = await setup();
+    const scope = await scopeOf(w);
+    expect([...scope.outlets].sort()).toEqual(["direct", "play"]);
+    expect(scope.channels.has("stable")).toBe(true);
+    expect(scope.channels.has("nightly-bogus")).toBe(false);
+  });
+
+  it("still trips after one device floods 32 invented (outlet, channel) pairs", async () => {
+    const w = await setup();
+    await startRollout(w);
+    await enable(w, { minSample: 100, maxRevertRate: 0.05 });
+    const scope = await scopeOf(w);
+    for (let i = 0; i < 32; i += 16)
+      await recordUpdateEvents(
+        w.env,
+        SLUG,
+        "ATTACKER0000000000000000000000",
+        Array.from({ length: 16 }, (_, k) => ({
+          eventId: `x${i + k}`,
+          event: "update_applied" as const,
+          deliverable: "app",
+          release: "v1.1.0",
+          outlet: `bogus${i + k}`,
+          channel: `ch${i + k}`,
+          at: NOW - 600,
+        })),
+        NOW,
+        scope,
+      );
+    await seedCounters(w, { applied: 200, reverted: 30 });
+    await tick(w);
+    expect(await rollout(w)).toMatchObject({
+      state: "halted",
+      source: "auto-halt",
+    });
+  });
+
+  it("treats a truncated read as no data, and records it on the reading", async () => {
+    const w = await setup();
+    await startRollout(w);
+    await enable(w, { minSample: 100 });
+    await seedCounters(w, { applied: 300, reverted: 300 });
+    const inst = w.ns.instance(`${SLUG}|app|v1.1.0`);
+    const real = inst.obj.fetch.bind(inst.obj);
+    inst.obj.fetch = async (req: Request) => {
+      const body = (await req.clone().json()) as { op: string };
+      if (body.op !== "read") return real(req);
+      const res = (await (await real(req)).json()) as Record<string, unknown>;
+      return new Response(JSON.stringify({ ...res, truncated: true }));
+    };
+    await tick(w);
+    expect(await rollout(w)).toMatchObject({ state: "active" });
+    const reading = (await (
+      await admin(w, "GET", "/update-health")
+    ).json()) as {
+      autoHalt: {
+        lastReading: { detail: { rollouts: Array<{ skipped?: string }> } };
+      };
+    };
+    expect(reading.autoHalt.lastReading.detail.rollouts[0]?.skipped).toBe(
+      "truncated",
+    );
+  });
+
+  it("a halt the rollout code refuses is recorded, not thrown on every tick", async () => {
+    const w = await setup();
+    await startRollout(w);
+    await enable(w, { minSample: 100 });
+    await seedCounters(w, { applied: 200, reverted: 100 });
+    // The outlet is removed under the rollout (a race with a resync): applyRollout refuses.
+    await w.db.run(
+      "UPDATE dist_outlets SET removed_at = ? WHERE product = ? AND outlet_id = 'direct'",
+      NOW,
+      SLUG,
+    );
+    const report = await tick(w);
+    expect(report.failures).toEqual({});
+    expect(await rollout(w)).toMatchObject({ state: "active" });
+    expect(JSON.stringify(report.results)).toContain('"refused":1');
+    expect((await tick(w)).failures).toEqual({});
+  });
+
   it("judges nothing when the counters cannot be read", async () => {
     const w = await setup();
     await startRollout(w);
@@ -610,6 +710,7 @@ describe("the update-health console view", () => {
         },
       ],
       NOW,
+      await scopeOf(w),
     );
     const res = await admin(w, "GET", "/update-health?windowHours=24");
     expect(res.status).toBe(200);

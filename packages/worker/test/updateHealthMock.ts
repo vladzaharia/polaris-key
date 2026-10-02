@@ -4,7 +4,7 @@ import { UpdateHealthDO } from "../src/updateHealthDo.js";
 
 // An in-memory DurableObjectNamespace that runs the REAL UpdateHealthDO class (like `rlMock.ts`
 // does for the limiter) against a storage map with the subset of the Durable Object storage API
-// the class uses: get, put, delete, list (prefix/start/end/limit, key-ordered), deleteAll and
+// the class uses: get, put, delete, list (prefix/start/startAfter/end/limit, key-ordered), deleteAll and
 // the alarm. Each object's fetches are serialised, modelling the input gate.
 
 export class StorageMock {
@@ -29,6 +29,7 @@ export class StorageMock {
     opts: {
       prefix?: string;
       start?: string;
+      startAfter?: string;
       end?: string;
       limit?: number;
     } = {},
@@ -38,6 +39,7 @@ export class StorageMock {
         (k) =>
           (opts.prefix === undefined || k.startsWith(opts.prefix)) &&
           (opts.start === undefined || k >= opts.start) &&
+          (opts.startAfter === undefined || k > opts.startAfter) &&
           (opts.end === undefined || k < opts.end),
       )
       .sort();

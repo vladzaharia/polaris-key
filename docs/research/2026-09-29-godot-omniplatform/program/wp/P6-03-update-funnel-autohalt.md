@@ -140,10 +140,22 @@ Where the code disagreed with this brief, the code won:
   (device, `eventId`) as asked, and the object also keeps distinct-device counts per event; the
   rates are `update_reverted` and `boot_rolled_back` devices over `update_applied` devices, and
   `minSample` is applied devices. One device can move a rate by at most one.
-- **Unknown outlets** are not validated at ingest (that needs Distribution's tables on Core's
-  report path). They are counted as reported; a rollout row's outlet is always a declared one, so
-  they can never match a rollout or trip, and the console sums them as `unknown`. Each object
-  caps the (outlet, channel) pairs it tracks at 32, folding the rest into an overflow bucket.
+- **Outlets and channels are checked at ingest** (security review): `handleReport` now receives
+  the product's hooks from `dispatch.ts`, and `core/updateHealth.ts` `updateScope` reads the live
+  outlets (`delivery().outlets()`) and the known channels through a new read-only
+  `ReleaseCatalog.knownChannels()` hook method (Release's one definition). An undeclared outlet
+  or unknown channel is counted in one `unknown` bucket that takes no pair slot. The first
+  version's first-come 32-pair cap per object was removed (one device could push the real pair
+  into overflow). Per device and per object: at most 64 events counted, at most 8 pairs
+  introduced. No per-device rate limit was added on the report: the caps bound storage and a
+  limiter would add a Durable Object hop to every report.
+- **Storage is one record per device plus hourly buckets.** Reads are paginated (a 500,000-key
+  ceiling marks `truncated`, which the auto-halt treats as no data). The sweep pages device
+  records with a `startAfter` cursor and a 10 s budget, re-arming in a minute while work remains.
+- **The Sentry events table keeps a reduced record** (`{resource, action, rule, issueId,
+release, environment, outlet}`), never the body.
+- **A refused auto-halt is not a cron failure**: it is recorded on the reading (`refused`) and
+  retried next tick.
 - **Halt-only is enforced in `applyRollout`.** A third `RolloutActor` kind, `system`, is refused
   every verb but `halt` (`system_halt_only`); its halt records `source: auto-halt`,
   `updated_by: system:auto-halt` and the numbers in the one audit row.

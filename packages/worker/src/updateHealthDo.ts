@@ -22,35 +22,60 @@ import type { Env } from "./env.js";
  *                 that outlet and channel. This is what the auto-halt reads: one device can move
  *                 a rate by at most one, however many events it invents.
  *
+ * ── WHAT A DEVICE CAN DO TO IT (the bounds) ─────────────────────────────────────────────────
+ *
+ * The caller has already mapped an outlet the product does not declare, or a channel the
+ * product does not know, to the single `UNKNOWN` bucket (`UNKNOWN`, `UNKNOWN`), so the bucket
+ * keys are bounded by the operator's declarations, not by what a device invents, and an invented
+ * pair can never push a real one anywhere. On top of that, per device and per object:
+ *
+ *   - at most `MAX_DEVICE_EVENTS` (64) events are ever counted; past it the device counts
+ *     nothing more here (its dedupe list is what bounds its record);
+ *   - at most `MAX_DEVICE_PAIRS` (8) distinct (outlet, channel) pairs; an event on a further pair
+ *     is counted in the `UNKNOWN` bucket.
+ *
  * ── STORAGE (all keys `|`-separated; no stored field may contain `|`) ─────────────────────────
  *
- *     e|<device>|<eventId>                         → epoch seconds first seen      (dedupe)
- *     d|<event>|<outlet>|<channel>|<device>        → hour first seen               (distinct)
- *     h|<hour, 8 digits>|<outlet>|<channel>|<event> → {events, devices}            (buckets)
- *     meta|pairs                                   → the (outlet, channel) pairs seen
+ *     v|<device>                                    → {last, ids[], pairs[], seen[]}  (one per device)
+ *     h|<hour, 8 digits>|<outlet>|<channel>|<event> → {events, devices}             (buckets)
+ *     meta|sweep                                    → the sweep's resume cursor
  *
- * Bounded: at most `MAX_PAIRS` (outlet, channel) pairs; an event on a further pair is counted
- * under `OVERFLOW_OUTLET` / `OVERFLOW_CHANNEL`, so a device cannot mint unbounded bucket keys by
- * inventing outlets or channels. Everything older than `RETENTION_SECONDS` is deleted by the
- * alarm, which re-arms while anything is left and stops once the object is empty.
+ * `ids` are the counted `eventId`s (the dedupe list, ≤ 64), `pairs` the device's (outlet,
+ * channel) pairs (≤ 8), `seen` the `event|outlet|channel` triples it has been counted under
+ * (distinct devices), `last` the epoch second of its last counted event.
+ *
+ * ── RETENTION ───────────────────────────────────────────────────────────────────────────────
+ *
+ * The alarm deletes buckets older than `RETENTION_SECONDS` (hour-keyed, so a range from the
+ * start) and device records whose `last` is older than that (a full scan, paginated with a
+ * `startAfter` cursor). It works until done or until `SWEEP_BUDGET_MS` is spent; with work left
+ * it saves the cursor and re-arms in `SWEEP_RESUME_MS` (a minute), otherwise in a day while
+ * anything is left, and deletes the object's storage entirely once it is empty.
  */
 
-/** How long counters, dedupe keys and per-device markers are kept (30 days). */
+/** How long counters and device records are kept (30 days). */
 export const RETENTION_SECONDS = 30 * 24 * 60 * 60;
 const RETENTION_HOURS = RETENTION_SECONDS / 3600;
 
-/** Distinct (outlet, channel) pairs one release's object tracks before folding into overflow. */
-export const MAX_PAIRS = 32;
-export const OVERFLOW_OUTLET = "~overflow";
-export const OVERFLOW_CHANNEL = "~overflow";
+/** The one bucket for an undeclared outlet, an unknown channel, or a device past its pair cap. */
+export const UNKNOWN = "~unknown";
+/** Events one device may ever have counted in one release's object. */
+export const MAX_DEVICE_EVENTS = 64;
+/** (outlet, channel) pairs one device may introduce in one release's object. */
+export const MAX_DEVICE_PAIRS = 8;
 
 /** Most events one record call may carry (the report allows 16). */
 const MAX_RECORD_EVENTS = 16;
-/** Most bucket keys one read sums; past it the answer says `truncated`. */
-const MAX_READ_KEYS = 20_000;
-/** The sweep: how often, and how many keys per prefix per pass. */
+/** Keys read per page, and a hard ceiling past which a read says `truncated` (a reader must then
+ *  treat the answer as no data). With outlets and channels bounded by declarations this is far
+ *  above anything a product reaches: 720 hours × pairs × 7 events. */
+const READ_PAGE = 1000;
+export const MAX_READ_KEYS = 500_000;
+/** The sweep. */
+export const SWEEP_BATCH = 2000;
 const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
-const SWEEP_BATCH = 2000;
+export const SWEEP_RESUME_MS = 60 * 1000;
+export const SWEEP_BUDGET_MS = 10_000;
 
 /** One event as `core/updateHealth.ts` hands it over: already validated and bounded. */
 export interface HealthEvent {
@@ -94,6 +119,13 @@ interface Bucket {
   devices: number;
 }
 
+interface DeviceRecord {
+  last: number;
+  ids: string[];
+  pairs: string[];
+  seen: string[];
+}
+
 const SAFE = /^[^|]{1,200}$/;
 
 export const hourOf = (epochSeconds: number): number =>
@@ -110,6 +142,18 @@ function validEvent(e: unknown): e is HealthEvent {
     typeof v.at === "number" &&
     Number.isFinite(v.at)
   );
+}
+
+function deviceRecord(raw: unknown): DeviceRecord {
+  const r = (raw ?? {}) as Partial<DeviceRecord>;
+  const strs = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  return {
+    last: typeof r.last === "number" ? r.last : 0,
+    ids: strs(r.ids),
+    pairs: strs(r.pairs),
+    seen: strs(r.seen),
+  };
 }
 
 export class UpdateHealthDO implements DurableObject {
@@ -141,28 +185,32 @@ export class UpdateHealthDO implements DurableObject {
       !Array.isArray(req.events)
     )
       return { counted: 0 };
-    const pairs = new Set(
-      ((await storage.get<string[]>("meta|pairs")) ?? []).filter(
-        (p) => typeof p === "string",
-      ),
-    );
-    const pairsBefore = pairs.size;
+    const deviceKey = `v|${req.deviceId}`;
+    const device = deviceRecord(await storage.get(deviceKey));
+    const ids = new Set(device.ids);
+    const pairs = new Set(device.pairs);
+    const seen = new Set(device.seen);
     let counted = 0;
     for (const raw of req.events.slice(0, MAX_RECORD_EVENTS)) {
       if (!validEvent(raw)) continue;
+      if (ids.size >= MAX_DEVICE_EVENTS) break;
       const at = Math.min(raw.at, req.now);
       if (at < req.now - RETENTION_SECONDS) continue;
-      const dedupe = `e|${req.deviceId}|${raw.eventId}`;
-      if ((await storage.get(dedupe)) !== undefined) continue;
-      await storage.put(dedupe, req.now);
+      if (ids.has(raw.eventId)) continue;
+      ids.add(raw.eventId);
 
       let { outlet, channel } = raw;
-      const pair = `${outlet}|${channel}`;
-      if (!pairs.has(pair)) {
-        if (pairs.size >= MAX_PAIRS) {
-          outlet = OVERFLOW_OUTLET;
-          channel = OVERFLOW_CHANNEL;
-        } else pairs.add(pair);
+      if (outlet === UNKNOWN || channel === UNKNOWN) {
+        outlet = UNKNOWN;
+        channel = UNKNOWN;
+      } else {
+        const pair = `${outlet}|${channel}`;
+        if (!pairs.has(pair)) {
+          if (pairs.size >= MAX_DEVICE_PAIRS) {
+            outlet = UNKNOWN;
+            channel = UNKNOWN;
+          } else pairs.add(pair);
+        }
       }
       const hour = hourOf(at);
       const bucketKey = `h|${pad(hour)}|${outlet}|${channel}|${raw.event}`;
@@ -171,19 +219,27 @@ export class UpdateHealthDO implements DurableObject {
         devices: 0,
       };
       bucket.events += 1;
-      const deviceKey = `d|${raw.event}|${outlet}|${channel}|${req.deviceId}`;
-      if ((await storage.get(deviceKey)) === undefined) {
-        await storage.put(deviceKey, hour);
+      const triple = `${raw.event}|${outlet}|${channel}`;
+      if (!seen.has(triple)) {
+        seen.add(triple);
         bucket.devices += 1;
       }
       await storage.put(bucketKey, bucket);
       counted++;
     }
-    if (pairs.size !== pairsBefore) await storage.put("meta|pairs", [...pairs]);
-    if (counted > 0) await this.ensureSweepScheduled();
+    if (counted > 0) {
+      await storage.put(deviceKey, {
+        last: req.now,
+        ids: [...ids],
+        pairs: [...pairs],
+        seen: [...seen],
+      } satisfies DeviceRecord);
+      await this.ensureSweepScheduled();
+    }
     return { counted };
   }
 
+  /** Sum every bucket in the window, page by page. */
   private async read(req: ReadRequest): Promise<ReadAnswer> {
     if (
       !Number.isInteger(req.sinceHour) ||
@@ -191,27 +247,42 @@ export class UpdateHealthDO implements DurableObject {
       req.untilHour < req.sinceHour
     )
       return { counts: [], truncated: false };
-    const entries = await this.state.storage.list<Bucket>({
-      prefix: "h|",
-      start: `h|${pad(req.sinceHour)}`,
-      end: `h|${pad(req.untilHour + 1)}`,
-      limit: MAX_READ_KEYS,
-    });
     const sums = new Map<string, HealthCount>();
-    for (const [key, bucket] of entries) {
-      const [, , outlet, channel, event] = key.split("|");
-      if (!outlet || !channel || !event) continue;
-      const id = `${outlet}|${channel}|${event}`;
-      const sum = sums.get(id) ?? {
-        outlet,
-        channel,
-        event,
-        events: 0,
-        devices: 0,
-      };
-      sum.events += bucket?.events ?? 0;
-      sum.devices += bucket?.devices ?? 0;
-      sums.set(id, sum);
+    const end = `h|${pad(req.untilHour + 1)}`;
+    let start = `h|${pad(req.sinceHour)}`;
+    let after: string | undefined;
+    let read = 0;
+    let truncated = false;
+    for (;;) {
+      const page = await this.state.storage.list<Bucket>({
+        prefix: "h|",
+        ...(after === undefined ? { start } : { startAfter: after }),
+        end,
+        limit: READ_PAGE,
+      });
+      for (const [key, bucket] of page) {
+        const [, , outlet, channel, event] = key.split("|");
+        if (!outlet || !channel || !event) continue;
+        const id = `${outlet}|${channel}|${event}`;
+        const sum = sums.get(id) ?? {
+          outlet,
+          channel,
+          event,
+          events: 0,
+          devices: 0,
+        };
+        sum.events += bucket?.events ?? 0;
+        sum.devices += bucket?.devices ?? 0;
+        sums.set(id, sum);
+        after = key;
+      }
+      read += page.size;
+      if (page.size < READ_PAGE) break;
+      if (read >= MAX_READ_KEYS) {
+        truncated = true;
+        break;
+      }
+      start = after ?? start;
     }
     return {
       counts: [...sums.values()].sort((a, b) =>
@@ -219,7 +290,7 @@ export class UpdateHealthDO implements DurableObject {
           `${b.outlet}|${b.channel}|${b.event}`,
         ),
       ),
-      truncated: entries.size >= MAX_READ_KEYS,
+      truncated,
     };
   }
 
@@ -231,42 +302,66 @@ export class UpdateHealthDO implements DurableObject {
   }
 
   /**
-   * Delete what is past retention: buckets of old hours, dedupe keys and per-device markers
-   * first seen before the cutoff. Re-arms while anything is left, so an idle release's object
-   * empties itself within a day of its last event turning 30 days old and then costs nothing.
+   * Delete what is past retention, until done or out of budget (see the header). Buckets are
+   * hour-keyed, so the stale ones are a prefix of the key space and are deleted batch by batch
+   * from the start; device records are scanned with a `startAfter` cursor that survives between
+   * alarms, so any number of young records sorting before stale ones cannot stop the sweep.
    */
   async alarm(): Promise<void> {
     const storage = this.state.storage;
-    const nowSec = Math.floor(Date.now() / 1000);
+    const startedAt = Date.now();
+    const nowSec = Math.floor(startedAt / 1000);
     const cutoffSec = nowSec - RETENTION_SECONDS;
     const cutoffHour = hourOf(nowSec) - RETENTION_HOURS;
-    let full = false;
+    const outOfTime = () => Date.now() - startedAt >= SWEEP_BUDGET_MS;
+    let done = false;
 
-    const buckets = await storage.list({
-      prefix: "h|",
-      end: `h|${pad(cutoffHour)}`,
-      limit: SWEEP_BATCH,
-    });
-    if (buckets.size > 0) await storage.delete([...buckets.keys()]);
-    full ||= buckets.size === SWEEP_BATCH;
-
-    for (const [prefix, stale] of [
-      ["e|", (v: unknown) => typeof v !== "number" || v < cutoffSec],
-      ["d|", (v: unknown) => typeof v !== "number" || v < cutoffHour],
-    ] as const) {
-      const entries = await storage.list({ prefix, limit: SWEEP_BATCH });
-      const old = [...entries].filter(([, v]) => stale(v)).map(([k]) => k);
-      if (old.length > 0) await storage.delete(old);
-      full ||= entries.size === SWEEP_BATCH;
+    // 1. Buckets older than the cutoff: always a prefix of `h|`.
+    let bucketsDone = false;
+    while (!outOfTime()) {
+      const batch = await storage.list({
+        prefix: "h|",
+        end: `h|${pad(cutoffHour)}`,
+        limit: SWEEP_BATCH,
+      });
+      if (batch.size > 0) await storage.delete([...batch.keys()]);
+      if (batch.size < SWEEP_BATCH) {
+        bucketsDone = true;
+        break;
+      }
     }
 
-    const left = await storage.list({ prefix: "h|", limit: 1 });
-    if (full || left.size > 0) {
-      await storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
-    } else {
-      // Nothing countable is left: drop the dedupe keys, markers and pair list with it.
-      await storage.deleteAll();
+    // 2. Device records idle past the cutoff: a cursor-paginated scan.
+    let cursor = await storage.get<string>("meta|sweep");
+    let devicesDone = false;
+    while (bucketsDone && !outOfTime()) {
+      const page = await storage.list<unknown>({
+        prefix: "v|",
+        ...(cursor ? { startAfter: cursor } : {}),
+        limit: SWEEP_BATCH,
+      });
+      const stale: string[] = [];
+      for (const [key, value] of page) {
+        if (deviceRecord(value).last < cutoffSec) stale.push(key);
+        cursor = key;
+      }
+      if (stale.length > 0) await storage.delete(stale);
+      if (page.size < SWEEP_BATCH) {
+        devicesDone = true;
+        break;
+      }
     }
+    done = bucketsDone && devicesDone;
+
+    if (!done) {
+      if (cursor) await storage.put("meta|sweep", cursor);
+      await storage.setAlarm(Date.now() + SWEEP_RESUME_MS);
+      return;
+    }
+    await storage.delete("meta|sweep");
+    const left = await storage.list({ limit: 1 });
+    if (left.size > 0) await storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+    else await storage.deleteAll();
   }
 }
 

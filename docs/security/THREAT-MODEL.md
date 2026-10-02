@@ -1297,13 +1297,33 @@ can do more than the paths below allow.
 - **Inflation.** Counters are deduplicated on (device, `eventId`), and the number the auto-halt
   judges is DISTINCT DEVICES per event, so one device moves a rate by at most one however many
   events it invents; the `eventId` space is per device, so a device cannot pre-claim another's
-  ids. An attacker needs many registered devices (bounded by registration policy and seat limits)
-  to move a rate, and `minSample` must be met. An event's outlet is taken from the event, but a
-  rollout row's outlet is a declared one, so counts on an undeclared outlet never match a rollout
-  and never trip (shown as `unknown`). Each object caps the (outlet, channel) pairs it tracks at
-  32 (more fold into an overflow bucket), so a device cannot mint unbounded keys. Residual: a
-  device can name any well-formed release id and so create an idle counter object; it holds
-  nothing an operator sees and deletes itself after 30 days (cost only).
+  ids. Moving a rate needs many registered devices, and `minSample` applied devices must be met.
+  **Under open registration that is cheap:** keyless registration allows 10 per minute per IP, so
+  one IP reaches the default `minSample` of 200 in about twenty minutes, and more IPs go faster.
+  Operators of open-registration products should raise `minSample` well above what an attacker
+  would bother to register, or leave the auto-halt off; the docs page says so.
+- **Dilution.** The same cheap devices can suppress a GENUINE trip: fake `update_applied`
+  devices enlarge the denominator until the true revert rate falls under the threshold. The
+  auto-halt is a safety net, not a guarantee; the funnel, Sentry candidates and the operator's
+  own halt remain the controls.
+- **Key bounds.** An event's outlet and channel are checked at ingest against the product's
+  declarations, read through Core's hooks (Distribution's live outlets, Release's
+  `knownChannels`; AGENTS.md rule 6): anything else is counted in ONE `unknown` bucket that is
+  never judged and takes no pair. So bucket keys are bounded by what the operator and the
+  manifest declare, and an invented pair cannot crowd out a real one. Per device and per object,
+  at most 64 events are ever counted (beyond that the device counts nothing there) and at most 8
+  distinct (outlet, channel) pairs introduced (further pairs go to `unknown`); each device has
+  exactly one record holding its dedupe list. No per-device rate limit is added on the report:
+  the caps bound what any number of reports can store, the report is device-authenticated and
+  16 KiB-capped, and a limiter would add a Durable Object round trip to every report. A read
+  sums every bucket page by page; past a 500,000-key ceiling it says `truncated` and the
+  auto-halt treats that as no data. Residual: a device can name any well-formed release id and
+  so create an idle counter object; it holds nothing an operator sees and empties itself after
+  30 days (cost only).
+- **Retention.** The object's alarm deletes buckets older than 30 days (hour-keyed, a range from
+  the start) and device records idle that long (a scan paginated with a `startAfter` cursor that
+  persists between alarms), working until done or until a 10 s budget is spent, then re-arming in
+  a minute while work remains, otherwise in a day, and clearing its storage once empty.
 - **Clock.** A future `at` counts as now; one older than 30 days is not counted.
 
 **The auto-halt is halt-only, operator-owned and off by default.** Its settings live in
@@ -1317,8 +1337,11 @@ tick (the connector cron) halts through P2b-04's `applyRollout` with a third act
 the automatic path cannot pause, resume, ramp, complete or start a rollout even through a bug in
 its caller. It never touches a `mirrored` (store) rollout — it records an alert for the operator
 — and trips once per (deliverable, outlet, channel, release), so an operator's resume is not
-fought. Residual: a coordinated set of registered devices that crosses `minSample` with false
-reverts can halt a self-hosted rollout — the safe direction — but never expose a build.
+fought. A halt `applyRollout` refuses (a race: the rollout or its outlet moved since it was
+listed) is recorded on the tick's reading and judged again next tick; it does not fail the cron.
+Residual: a coordinated set of registered devices that crosses `minSample` with false reverts can
+halt a self-hosted rollout — the safe direction — but never expose a build (and see Dilution
+above for the opposite direction).
 
 **The Sentry hook proposes; an operator decides.** The client secret is an outlet credential of
 the new kind `sentry-integration` (P5-01 custody: sealed under its own AAD, written only by the
@@ -1330,9 +1353,14 @@ closed, since every open is an audit row), compares the HMAC in constant time, a
 body's SHA-256. A triggered event alert opens at most one `halt-candidate` per matching active or
 paused, non-mirrored rollout; it halts nothing. Confirming halts through `applyRollout` as the
 confirming admin, with the candidate's release pinned (`stale_release` if the rollout moved
-on). A candidate keeps only the rule name and Sentry's numeric issue id, never the event's
-message, user or tags. Residual: anyone holding the client secret (Sentry, or a leak of it) can
-open candidates and fill the console; they cannot halt.
+on). A candidate keeps only the rule name and Sentry's numeric issue id, and the events table
+keeps only a reduced record of each delivery, whatever its outcome — `{resource, action, rule,
+issueId, release, environment, outlet}` — never the body, the event's message, exception, user or
+other tags. Residuals: anyone holding the client secret (Sentry, or a leak of it) can open
+candidates and fill the console; they cannot halt. An unsigned flood can starve the per-product
+`sentryWebhook` limiter so that genuine alerts are refused for its duration. Sentry's signature
+covers no timestamp, so a delivery replayed after the 30-day event retention can reopen a
+candidate — harmless, because a candidate still needs an admin to confirm it.
 
 ### The device-code user-code page (P1-06)
 

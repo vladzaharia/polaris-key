@@ -90,7 +90,9 @@ machine-readable code such as `boot_failed`. At most 16 per report, sent in the 
 Used for: the operator's update funnel per release, outlet and channel, the operator-enabled
 automatic halt of a rollout that reverts or rolls back too often, and nothing else. A Sentry
 alert the operator connects is mapped to a rollout from the release, environment and outlet tags
-only; no crash payload is stored.
+only; no crash payload is stored. Of each Sentry delivery the Worker keeps only `{resource, action,
+rule, issueId, release, environment, outlet}` (30 days, with the connector event log), never the
+crash message, exception, user or other tags.
 
 ### Not collected
 
@@ -99,22 +101,23 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 
 ## Where it lives, and for how long
 
-| Data                                                                                                | Table                                           | Lifetime                                              |
-| --------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------- |
-| Fingerprint components + hwid                                                                       | `device_fingerprints`                           | Deleted with the device                               |
-| Software facts + probe results                                                                      | `device_facts`                                  | Deleted with the device                               |
-| Drift and mismatch events                                                                           | `audit`                                         | Retained with the product's audit log                 |
-| Update outcome events (latest report's `updates`)                                                   | `devices.reported_json`                         | Replaced by the next report; deleted with the device  |
-| Update outcome counters (per release, outlet, channel, event; device ids to count distinct devices) | `UpdateHealthDO` (a Durable Object per release) | 30 days, then deleted by the object's own daily sweep |
+| Data                                                                                                                                       | Table                                           | Lifetime                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Fingerprint components + hwid                                                                                                              | `device_fingerprints`                           | Deleted with the device                                                                         |
+| Software facts + probe results                                                                                                             | `device_facts`                                  | Deleted with the device                                                                         |
+| Drift and mismatch events                                                                                                                  | `audit`                                         | Retained with the product's audit log                                                           |
+| Update outcome events (latest report's `updates`)                                                                                          | `devices.reported_json`                         | Replaced by the next report; deleted with the device                                            |
+| Update outcome counters (per release, outlet, channel, event) and one record per device (its counted event ids, to count distinct devices) | `UpdateHealthDO` (a Durable Object per release) | 30 days (a device record: 30 days after its last event), then deleted by the object's own sweep |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the
 same operation. Disabling a license purges every one of its devices. This is why no scheduled
 cleanup job exists for these tables: there is no orphaned data for one to collect. The update
 outcome counters are the exception: they are aggregates per release, not per device, so they are
-not purged with a device; each counter object deletes everything older than 30 days — buckets,
-dedupe keys and the device ids it keeps to count distinct devices — on a daily alarm, and deletes
-itself entirely once nothing is left.
+not purged with a device; each counter object deletes buckets older than 30 days and every device
+record (a device id with the event ids it had counted) idle for 30 days, on its own alarm — it
+resumes within minutes until the whole object has been swept — and deletes itself entirely once
+nothing is left.
 
 ## Per-product opt-out
 

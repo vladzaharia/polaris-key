@@ -32,9 +32,11 @@
 
 import { OUTLET_ID_PATTERN } from "@polaris-key/protocol/distribution";
 import type { Env } from "../env.js";
+import type { ServiceHooks } from "./hooks.js";
 import {
   hourOf,
   RETENTION_SECONDS,
+  UNKNOWN,
   type HealthCount,
   type HealthEvent,
   type ReadAnswer,
@@ -132,6 +134,37 @@ export function boundedUpdates(input: unknown): UpdateEventEntry[] | undefined {
   return out;
 }
 
+/**
+ * What a product declares, against which an event's outlet and channel are checked at ingest: its
+ * live outlets (Distribution's `delivery` hook) and the channels it can serve (Release's
+ * `knownChannels`). An event naming anything else is counted in ONE `unknown` bucket, so a device
+ * cannot invent outlets or channels to mint bucket keys or crowd out a real pair. A provider that
+ * is off answers an empty set, so everything is `unknown`.
+ */
+export interface UpdateScope {
+  outlets: ReadonlySet<string>;
+  channels: ReadonlySet<string>;
+}
+
+/** The scope from the product's hooks (Core-mediated: AGENTS.md rule 6). Never throws. */
+export async function updateScope(hooks: ServiceHooks): Promise<UpdateScope> {
+  const outlets = new Set<string>();
+  const channels = new Set<string>();
+  try {
+    for (const o of (await hooks.delivery()?.outlets()) ?? [])
+      outlets.add(o.outletId);
+  } catch {
+    /* no outlets: everything is unknown */
+  }
+  try {
+    for (const c of (await hooks.releaseCatalog()?.knownChannels()) ?? [])
+      channels.add(c);
+  } catch {
+    /* no channels: everything is unknown */
+  }
+  return { outlets, channels };
+}
+
 /** The object of one (product, deliverable, release). */
 function objectName(product: string, deliverable: string, release: string) {
   return `${product}|${deliverable}|${release}`;
@@ -139,6 +172,7 @@ function objectName(product: string, deliverable: string, release: string) {
 
 /**
  * Count one device's validated events: one object call per (deliverable, release) they name.
+ * An outlet or channel outside `scope` is counted as (`unknown`, `unknown`).
  * Answers how many were newly counted (a retry counts 0). Never throws.
  */
 export async function recordUpdateEvents(
@@ -147,6 +181,7 @@ export async function recordUpdateEvents(
   deviceId: string,
   entries: readonly UpdateEventEntry[],
   now: number,
+  scope: UpdateScope,
 ): Promise<number> {
   const ns = env.UPDATE_HEALTH;
   if (!ns || entries.length === 0) return 0;
@@ -157,11 +192,13 @@ export async function recordUpdateEvents(
     if (at < now - RETENTION_SECONDS) continue;
     const name = objectName(product, e.deliverable, e.release);
     const list = groups.get(name) ?? [];
+    const declared =
+      scope.outlets.has(e.outlet) && scope.channels.has(e.channel);
     list.push({
       eventId: e.eventId,
       event: e.event,
-      outlet: e.outlet,
-      channel: e.channel,
+      outlet: declared ? e.outlet : UNKNOWN,
+      channel: declared ? e.channel : UNKNOWN,
       at,
     });
     groups.set(name, list);
@@ -194,6 +231,7 @@ export interface UpdateHealthQuery {
 }
 
 export type { HealthCount };
+export { UNKNOWN };
 
 /**
  * One release's counters over a window, per outlet, channel and event, or `null` when they
