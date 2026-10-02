@@ -235,12 +235,20 @@ browserAdapter({
   sign-out and a bundle import.
 - **Desktop.** The renderer forwards `{channel, staged, skipVersion}` through
   `invoke("update", "decide", …)`; an Electron host answers with `client.update.decide()`.
-- **No v4 answer stops play.** `binary`, `store` and `platform` with `mandatory: true`, and
-  every `blocked {app-floor}`, are prompts the player cannot dismiss (`undismissable`), shown
-  over an app that keeps running: `<UpdatePrompt>` renders them as a persistent
-  `role="alert"` banner with no dismiss control, whatever the `variant`, never as a full-window
-  dialog; `boot` is never `required`. A non-mandatory `platform` answer
-  boots as `none`.
+- **Floors never stop play.** `binary`, `store` and `platform` with `mandatory: true`, and
+  every `blocked {app-floor}` or `blocked {content-floor}`, are prompts the player cannot dismiss
+  (`undismissable`), shown over an app that keeps running: `<UpdatePrompt>` renders them as a
+  persistent `role="alert"` banner with no dismiss control, whatever the `variant`, never as a
+  full-window dialog. A non-mandatory `platform` answer, and `packs`, boot as `none`;
+  `<UpdatePrompt>` renders `packs` as nothing.
+- **Revoked required content stops the boot.** `boot` is `required` only for revoked required
+  content (`blocked {revoked-content}`, or an answer with `contentBlock: "revoked-content"`).
+  `useUpdateDecision().reason` is `"revoked-content"` or `"content-floor"` (else `null`) so a host
+  can localise its copy. `<UpdatePrompt>` renders the revoked-content hard stop as a full-window
+  message with no dismiss control, using the theme copy `updateRevokedContentTitle` and
+  `updateRevokedContentBody` ("Some of this game's content was withdrawn by its developer and
+  can't be used. Update the app to keep playing."), with the offer's button when the answer is an
+  offer and none for `blocked`; a content floor uses `updateContentFloorBody`.
 - **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins. Otherwise the
   browser adapter detects in-page (`update.detect`, default true): `readOutletSignals()` reads
   the display mode (`matchMedia('(display-mode: standalone)')`, `navigator.standalone`, an

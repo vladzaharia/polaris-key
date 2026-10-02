@@ -578,6 +578,8 @@ export const WIRE_LIMIT_EXPORTS = [
   "MAX_WIRE_INTEGER",
   "MAX_JSON_DEPTH",
   "MAX_RECORD_JWS_BYTES",
+  "MAX_FEED_REVOCATIONS",
+  "REVOCATION_REASON_MAX_BYTES",
 ] as const;
 /** The packs-on-the-wire limits and format strings every SDK applies (plans/P4-01.md §2.13). */
 export const PACK_LIMIT_EXPORTS = [

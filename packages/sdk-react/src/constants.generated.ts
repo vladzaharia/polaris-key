@@ -119,6 +119,7 @@ export const ErrorCode = {
   packNotPinned: "pack-not-pinned",
   packNotEntitled: "pack-not-entitled",
   packStateUnreadable: "pack-state-unreadable",
+  packRevoked: "pack-revoked",
   markerRejected: "marker-rejected",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -237,6 +238,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-not-pinned",
   "pack-not-entitled",
   "pack-state-unreadable",
+  "pack-revoked",
   "marker-rejected",
 ];
 
@@ -357,6 +359,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-not-pinned": "client",
   "pack-not-entitled": "client",
   "pack-state-unreadable": "client",
+  "pack-revoked": "client",
   "marker-rejected": "client",
 };
 
@@ -398,10 +401,12 @@ export const Feature = {
   updateCheck: "update.check",
   updateFeed: "update.feed",
   updateDecide: "update.decide",
+  updateContent: "update.content",
   updateDriver: "update.driver",
   updateBootguard: "update.bootguard",
   outletDetect: "outlet.detect",
   packsRecord: "packs.record",
+  packsRevoke: "packs.revoke",
   packsPlan: "packs.plan",
   packsIndexFiles: "packs.index.files",
   packsIndexChunks: "packs.index.chunks",
@@ -461,10 +466,12 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "update.check",
   "update.feed",
   "update.decide",
+  "update.content",
   "update.driver",
   "update.bootguard",
   "outlet.detect",
   "packs.record",
+  "packs.revoke",
   "packs.plan",
   "packs.index.files",
   "packs.index.chunks",
@@ -689,7 +696,7 @@ export const OUTLET_SUBKIND_VALUES: readonly OutletSubkind[] = [
   "appimage",
 ];
 
-/** The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed. */
+/** The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8; `packs` added by plans/P4-13.md §2.6). */
 export const UpdateAction = {
   none: "none",
   codeReady: "code-ready",
@@ -697,6 +704,7 @@ export const UpdateAction = {
   store: "store",
   platform: "platform",
   blocked: "blocked",
+  packs: "packs",
 } as const;
 export type UpdateAction = (typeof UpdateAction)[keyof typeof UpdateAction];
 
@@ -708,6 +716,7 @@ export const UPDATE_ACTION_VALUES: readonly UpdateAction[] = [
   "store",
   "platform",
   "blocked",
+  "packs",
 ];
 
 /** Why the update decision is `none` (`NONE_REASONS`, plans/P3-01.md §2.8). */
@@ -740,9 +749,11 @@ export const UPDATE_NONE_REASON_VALUES: readonly UpdateNoneReason[] = [
   "unknown-version",
 ];
 
-/** Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed. */
+/** Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8; `content-floor` and `revoked-content` added by plans/P4-13.md §2.6). */
 export const UpdateBlockedReason = {
   appFloor: "app-floor",
+  contentFloor: "content-floor",
+  revokedContent: "revoked-content",
 } as const;
 export type UpdateBlockedReason =
   (typeof UpdateBlockedReason)[keyof typeof UpdateBlockedReason];
@@ -750,6 +761,8 @@ export type UpdateBlockedReason =
 /** Every `UpdateBlockedReason` value, in source order. */
 export const UPDATE_BLOCKED_REASON_VALUES: readonly UpdateBlockedReason[] = [
   "app-floor",
+  "content-floor",
+  "revoked-content",
 ];
 
 /** How a `binary` decision installs the new build (`BINARY_METHODS`, plans/P3-01.md §2.8). */
@@ -1015,6 +1028,12 @@ export const MAX_JSON_DEPTH = 64;
 /** Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`). */
 export const MAX_RECORD_JWS_BYTES = 88844;
 
+/** Wire contract v4 limit `MAX_FEED_REVOCATIONS` (`@polaris-key/protocol/core`). */
+export const MAX_FEED_REVOCATIONS = 64;
+
+/** Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`). */
+export const REVOCATION_REASON_MAX_BYTES = 512;
+
 /** Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
 export const MAX_PACK_VARIANTS = 32;
 
@@ -1228,10 +1247,12 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "update.check": { status: "implemented", service: "update", na: [] },
   "update.feed": { status: "implemented", service: "update", na: [] },
   "update.decide": { status: "implemented", service: "update", na: [] },
+  "update.content": { status: "implemented", service: "update", na: [] },
   "update.driver": { status: "planned", service: "update", na: [] },
   "update.bootguard": { status: "planned", service: "update", na: [] },
   "outlet.detect": { status: "implemented", service: "update", na: [] },
   "packs.record": { status: "implemented", service: "release", na: [] },
+  "packs.revoke": { status: "implemented", service: "release", na: [] },
   "packs.plan": { status: "implemented", service: "release", na: [] },
   "packs.index.files": { status: "implemented", service: "release", na: [] },
   "packs.index.chunks": { status: "planned", service: "release", na: [] },
@@ -1289,4 +1310,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "7ca401fd75256af3b964e54e751309f6b8aabf1f276f818828b5b47a6f8470d0";
+  "3b723170158c8da22b6403b1d68b30a585bd45307df02596069d20de13a6c088";

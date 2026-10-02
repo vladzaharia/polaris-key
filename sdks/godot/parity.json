@@ -104,6 +104,7 @@
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
+    "update.content": { "status": "planned", "wp": "P4-24" },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],
@@ -118,6 +119,7 @@
       "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper, web display mode); the iOS AppDistributor and Windows package readers are hooks that answer unavailable until P5-05 and a Windows native reader. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
     },
     "packs.record": { "status": "planned", "wp": "P4-08" },
+    "packs.revoke": { "status": "planned", "wp": "P4-24" },
     "packs.plan": {
       "status": "planned",
       "wp": "P4-08"

@@ -323,3 +323,83 @@ export function byteServer(...packs: TreePack[]) {
   };
   return server;
 }
+/** A `kind: revocation` record (plans/P4-13.md §2.3) revoking `target`, signed with the release
+ *  key (or `kid`'s key), and its feed entry. */
+export async function revocationFor(
+  target: TreePack,
+  o: {
+    replacement?: TreePack;
+    issuedAt?: number;
+    reason?: string;
+    kid?: string;
+  } = {},
+): Promise<{
+  jws: string;
+  record: string;
+  entry: {
+    record: string;
+    pack: string;
+    target: string;
+    version: string;
+    seq: number;
+  };
+}> {
+  const kid = o.kid ?? RELEASE_KID;
+  const jws = await signJws(
+    {
+      schemaVersion: 1,
+      aud: PRODUCT,
+      deliverable: target.packId,
+      kind: "revocation",
+      version: target.version,
+      seq: target.seq,
+      issuedAt: o.issuedAt ?? 1759350000,
+      revokes: target.recordSha256,
+      ...(o.replacement
+        ? {
+            replacement: {
+              sha256: o.replacement.recordSha256,
+              seq: o.replacement.seq,
+              version: o.replacement.version,
+            },
+          }
+        : {}),
+      reason: o.reason ?? "Withdrawn in a test.",
+    },
+    key(kid).privateKeyPkcs8Pem,
+    kid,
+    "pkey-release+jws",
+  );
+  const record = sha(jws);
+  return {
+    jws,
+    record,
+    entry: {
+      record,
+      pack: target.packId,
+      target: target.recordSha256,
+      version: target.version,
+      seq: target.seq,
+    },
+  };
+}
+
+/** Sign a channel feed with the corpus's product key (`pkey-test-prod-2026`). */
+export function signFeedDoc(doc: unknown): Promise<string> {
+  return signJws(
+    doc,
+    key(PRODUCT_KID).privateKeyPkcs8Pem,
+    PRODUCT_KID,
+    "pkey-feed+jws",
+  );
+}
+
+/** Sign a release record with the corpus's release key. */
+export function signReleaseDoc(doc: unknown): Promise<string> {
+  return signJws(
+    doc,
+    key(RELEASE_KID).privateKeyPkcs8Pem,
+    RELEASE_KID,
+    "pkey-release+jws",
+  );
+}

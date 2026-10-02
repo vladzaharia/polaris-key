@@ -498,7 +498,8 @@ describe('UpdatePrompt source="decision" — every v4 action', () => {
         expect(
           container.querySelector("[data-polaris-update-dismiss]"),
         ).toBeNull();
-        // Not a full-window modal: no v4 answer stops play (plans/P3-01.md §2.8).
+        // Not a full-window modal: floors never stop play (plans/P3-01.md §2.8); only revoked
+        // required content does (plans/P4-13.md decision 4, tested below).
         expect(prompt.getAttribute("role")).toBe("alert");
         expect(container.querySelector('[role="alertdialog"]')).toBeNull();
         expect(container.querySelector('[aria-modal="true"]')).toBeNull();
@@ -585,6 +586,97 @@ describe('UpdatePrompt source="decision" — every v4 action', () => {
     fireEvent.click(slot);
     await settle();
     expect(within(container).getByTestId("slot").textContent).toBe("blocked");
+    adapter.dispose();
+  });
+
+  // @pkey-feature update.content
+  it("packs renders nothing: the boot's fetch applies it (plans/P4-13.md §2.6)", async () => {
+    const { container, adapter } = renderDecision({
+      action: "packs",
+      install: [
+        {
+          pack: "diceroll.foes",
+          release: { sha256: "b".repeat(64), seq: 21, version: "2.0.1" },
+        },
+      ],
+      revoke: [],
+      set: [{ pack: "diceroll.foes", sha256: "b".repeat(64) }],
+      discardStaged: false,
+    });
+    await settle();
+    expect(container.querySelector("[data-polaris-update]")).toBeNull();
+    adapter.dispose();
+  });
+
+  it("revoked required content is a full-window hard stop with the host copy (decision 4)", async () => {
+    const copy =
+      "Some of this game's content was withdrawn by its developer and can't be used. Update the app to keep playing.";
+    // `blocked {revoked-content}`: no button, no dismiss.
+    {
+      const { container, adapter } = renderDecision({
+        action: "blocked",
+        reason: "revoked-content",
+        discardStaged: false,
+      });
+      const stop = await findEl<HTMLElement>(
+        container,
+        "[data-polaris-update-required]",
+      );
+      expect(stop.textContent).toContain(copy);
+      expect(
+        container.querySelector("[data-polaris-update-action]"),
+      ).toBeNull();
+      expect(
+        container.querySelector("[data-polaris-update-dismiss]"),
+      ).toBeNull();
+      adapter.dispose();
+      cleanup();
+    }
+    // A mandatory offer with `contentBlock: revoked-content`: the offer's button.
+    {
+      const onAction = vi.fn();
+      const { container, adapter } = renderDecision(
+        {
+          action: "store",
+          release,
+          listingUrl: "https://apps.apple.com/app/id1234567890",
+          mandatory: true,
+          critical: false,
+          discardStaged: false,
+          contentBlock: "revoked-content",
+        },
+        { onAction },
+      );
+      const stop = await findEl<HTMLElement>(
+        container,
+        "[data-polaris-update-required]",
+      );
+      expect(stop.textContent).toContain(copy);
+      expect(
+        container.querySelector("[data-polaris-update-dismiss]"),
+      ).toBeNull();
+      fireEvent.click(within(container).getByRole("button"));
+      expect(onAction).toHaveBeenCalledTimes(1);
+      expect(onAction.mock.calls[0]?.[0]?.boot).toBe("required");
+      expect(onAction.mock.calls[0]?.[0]?.reason).toBe("revoked-content");
+      adapter.dispose();
+    }
+  });
+
+  it("a content floor is a prompt over a running app, never a hard stop", async () => {
+    const { container, adapter } = renderDecision({
+      action: "blocked",
+      reason: "content-floor",
+      discardStaged: false,
+    });
+    const prompt = await findEl<HTMLElement>(
+      container,
+      '[data-polaris-update="blocked"]',
+    );
+    expect(prompt.getAttribute("role")).toBe("alert");
+    expect(
+      container.querySelector("[data-polaris-update-required]"),
+    ).toBeNull();
     adapter.dispose();
   });
 

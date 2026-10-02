@@ -123,6 +123,7 @@ public enum ErrorCode {
     public static let packNotPinned = "pack-not-pinned"
     public static let packNotEntitled = "pack-not-entitled"
     public static let packStateUnreadable = "pack-state-unreadable"
+    public static let packRevoked = "pack-revoked"
     public static let markerRejected = "marker-rejected"
 }
 
@@ -240,6 +241,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "pack-not-pinned",
     "pack-not-entitled",
     "pack-state-unreadable",
+    "pack-revoked",
     "marker-rejected",
 ]
 
@@ -357,6 +359,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "pack-not-pinned": "client",
     "pack-not-entitled": "client",
     "pack-state-unreadable": "client",
+    "pack-revoked": "client",
     "marker-rejected": "client",
 ]
 
@@ -398,10 +401,12 @@ public enum Feature {
     public static let updateCheck = "update.check"
     public static let updateFeed = "update.feed"
     public static let updateDecide = "update.decide"
+    public static let updateContent = "update.content"
     public static let updateDriver = "update.driver"
     public static let updateBootguard = "update.bootguard"
     public static let outletDetect = "outlet.detect"
     public static let packsRecord = "packs.record"
+    public static let packsRevoke = "packs.revoke"
     public static let packsPlan = "packs.plan"
     public static let packsIndexFiles = "packs.index.files"
     public static let packsIndexChunks = "packs.index.chunks"
@@ -460,10 +465,12 @@ public let FEATURE_VALUES: [String] = [
     "update.check",
     "update.feed",
     "update.decide",
+    "update.content",
     "update.driver",
     "update.bootguard",
     "outlet.detect",
     "packs.record",
+    "packs.revoke",
     "packs.plan",
     "packs.index.files",
     "packs.index.chunks",
@@ -638,7 +645,7 @@ public let OUTLET_SUBKIND_VALUES: [String] = [
     "appimage",
 ]
 
-/// The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed.
+/// The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8; `packs` added by plans/P4-13.md §2.6).
 public enum UpdateAction {
     public static let none = "none"
     public static let codeReady = "code-ready"
@@ -646,6 +653,7 @@ public enum UpdateAction {
     public static let store = "store"
     public static let platform = "platform"
     public static let blocked = "blocked"
+    public static let packs = "packs"
 }
 
 /// Every `UpdateAction` value, in source order.
@@ -656,6 +664,7 @@ public let UPDATE_ACTION_VALUES: [String] = [
     "store",
     "platform",
     "blocked",
+    "packs",
 ]
 
 /// Why the update decision is `none` (`NONE_REASONS`, plans/P3-01.md §2.8).
@@ -686,14 +695,18 @@ public let UPDATE_NONE_REASON_VALUES: [String] = [
     "unknown-version",
 ]
 
-/// Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed.
+/// Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8; `content-floor` and `revoked-content` added by plans/P4-13.md §2.6).
 public enum UpdateBlockedReason {
     public static let appFloor = "app-floor"
+    public static let contentFloor = "content-floor"
+    public static let revokedContent = "revoked-content"
 }
 
 /// Every `UpdateBlockedReason` value, in source order.
 public let UPDATE_BLOCKED_REASON_VALUES: [String] = [
     "app-floor",
+    "content-floor",
+    "revoked-content",
 ]
 
 /// How a `binary` decision installs the new build (`BINARY_METHODS`, plans/P3-01.md §2.8).
@@ -932,6 +945,12 @@ public let MAX_JSON_DEPTH = 64
 /// Wire contract v4 limit `MAX_RECORD_JWS_BYTES` (`@polaris-key/protocol/core`).
 public let MAX_RECORD_JWS_BYTES = 88844
 
+/// Wire contract v4 limit `MAX_FEED_REVOCATIONS` (`@polaris-key/protocol/core`).
+public let MAX_FEED_REVOCATIONS = 64
+
+/// Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`).
+public let REVOCATION_REASON_MAX_BYTES = 512
+
 /// Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 public let MAX_PACK_VARIANTS = 32
 
@@ -1095,10 +1114,12 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "update.check": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.feed": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.decide": CapabilityRow(status: "implemented", service: "update", na: []),
+    "update.content": CapabilityRow(status: "planned", service: "update", na: []),
     "update.driver": CapabilityRow(status: "implemented", service: "update", na: [CapabilityNa(runtime: "ios", reason: "outlet")]),
     "update.bootguard": CapabilityRow(status: "planned", service: "update", na: []),
     "outlet.detect": CapabilityRow(status: "implemented", service: "update", na: []),
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.revoke": CapabilityRow(status: "planned", service: "release", na: []),
     "packs.plan": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.files": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.chunks": CapabilityRow(status: "planned", service: "release", na: []),
@@ -1120,4 +1141,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "a3057aaf9484d2f494475f75f16e9ecd3672e6b78465d89c34ce8fb085d126e3"
+public let CAPABILITY_DIGEST = "3082dea9c921c30577b8647b4e95931ce8f2556870b27a842bba1e795ec92671"

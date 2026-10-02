@@ -29,16 +29,25 @@ import {
 import {
   ROLLOUT_BUCKETS,
   type BinaryMethod,
+  type ContentBlock,
   type DecisionRelease,
   type FeedOutletEntry,
+  type FeedPackSets,
   type FeedTarget,
+  type PackTarget,
+  type ReleasePin,
+  type UpdateContentInput,
   type UpdateDecision,
   type UpdateDecisionInput,
   type UpdateNoneReason,
   type UpdateOutlet,
 } from "@polaris-key/protocol/update";
+import type { ContentHold } from "@polaris-key/protocol/packs";
 import type { ReleaseRecordBuild } from "@polaris-key/protocol/release";
 import { CLOCK_SKEW_SECONDS } from "./claims.js";
+import { feedContent } from "./feed.js";
+import { holdsOf } from "./packs/claims.js";
+import { compareBytes } from "./packs/variant.js";
 import type { BootDecision } from "./stages.js";
 import { compareVersions, parseVersion } from "./version.js";
 
@@ -285,12 +294,38 @@ function pickBuild(
   return best;
 }
 
+/** The key of the install's entry in a target (`outletEntry`'s rule), or null. */
+function outletEntryId(
+  target: FeedTarget | null,
+  outlet: UpdateOutlet,
+): string | null {
+  if (!target || outlet.kind === OUTLET_UNKNOWN) return null;
+  const outlets = target.outlets as Record<string, FeedOutletEntry>;
+  if (outlet.id !== null && has(outlets, outlet.id)) {
+    if (outlets[outlet.id]!.kind === outlet.kind) return outlet.id;
+  }
+  const ofKind = Object.keys(outlets).filter(
+    (k) => outlets[k]!.kind === outlet.kind,
+  );
+  return ofKind.length === 1 ? ofKind[0]! : null;
+}
+
 /**
- * The update decision (plans/P3-01.md §2.8): the first of eleven rules that applies decides.
- * Synchronous and total; each answer has exactly the members §2.8's output table lists, so
- * decisions compare by value. `update-matrix.json#/rows` pins every rule.
+ * The update decision (plans/P3-01.md §2.8, extended by plans/P4-13.md §2.6 when `content` is
+ * given): P3-01's eleven rules give the app answer; with `content`, the pack composition, the
+ * content blocks and `prestage` refine it in §2.6's order. Synchronous and total; each answer has
+ * exactly the members the output tables list, so decisions compare by value.
+ * `update-matrix.json#/rows` and `#/contentRows` pin every rule.
  */
 export function decideUpdate(input: UpdateDecisionInput): UpdateDecision {
+  const app = decideApp(input);
+  const content = input.content;
+  if (content === undefined || content === null) return app;
+  return decideContent(input, content, app);
+}
+
+/** P3-01's decision, unchanged (plans/P3-01.md §2.8). */
+function decideApp(input: UpdateDecisionInput): UpdateDecision {
   const feed = input.feed;
   const scheme = feed.app.versionScheme;
   const cmp = (a: string, b: string): number | null =>
@@ -509,15 +544,34 @@ function eligible(
 }
 
 /**
- * The stage machine's `decide.done` for a decision (§2.8 "bootDecision"). No v4 answer stops
- * play: `none`, and a `platform` answer that is not mandatory, give `none`; every other answer
- * gives `optional`, and a mandatory offer or a `blocked` answer is a prompt the player cannot
- * dismiss over a game that keeps running. `required` comes from no v4 answer.
+ * The stage machine's `decide.done` for a decision (plans/P3-01.md §2.8 "bootDecision", amended
+ * by plans/P4-13.md §2.6 and decision 4). Floors never stop play; a CI-signed revocation of a
+ * REQUIRED pack can:
+ *
+ * - `blocked {revoked-content}`, or any answer with `contentBlock: "revoked-content"`, gives
+ *   `required`: the boot stops at a confirmed `blocked {update-required}` (a revoked required
+ *   pack cannot be mounted, so continuing would end in an error and a rollback loop);
+ * - `packs` gives `none` (the boot's fetch applies it);
+ * - `blocked {content-floor}`, and any answer with `contentBlock: "content-floor"`, give
+ *   `optional`;
+ * - otherwise P3-01's rule: `none`, and a `platform` answer that is not mandatory, give `none`;
+ *   every other answer gives `optional`, a prompt over a game that keeps running.
  */
 export function bootDecision(decision: UpdateDecision): BootDecision {
+  if (
+    (decision.action === "blocked" && decision.reason === "revoked-content") ||
+    contentBlockOf(decision) === "revoked-content"
+  )
+    return "required";
+  if (decision.action === "packs") return "none";
   if (decision.action === "none") return "none";
   if (decision.action === "platform" && !decision.mandatory) return "none";
   return "optional";
+}
+
+/** The answer's `contentBlock`, when it has one. */
+function contentBlockOf(decision: UpdateDecision): ContentBlock | undefined {
+  return "contentBlock" in decision ? decision.contentBlock : undefined;
 }
 
 /** True when the host must render `decision` as a prompt the player cannot dismiss: a
@@ -531,4 +585,421 @@ export function isUndismissable(decision: UpdateDecision): boolean {
   )
     return decision.mandatory;
   return false;
+}
+
+// ── P4-13: the content decision (plans/P4-13.md §2.6) ────────────────────────────────────────
+
+/** Lexicographic comparison of two equal-length index tuples. */
+function tupleCmp(a: readonly number[], b: readonly number[]): number {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
+  return 0;
+}
+
+/**
+ * Row selection (plans/P4-13.md §2.6 steps 1–4): the candidate rows of `packSets` at
+ * (`contentApi`, `platform`) whose `engine` equals `engine` exactly (no fallback to `""`), grouped
+ * by their sorted axis names; in each group the row `selectVariant`'s rule picks (every axis in
+ * `axes`, the lowest tuple of preference indexes over axis names in byte order). Returns the feed
+ * target per pack: the record hash the selected rows' sets name, with a pack named by two selected
+ * rows left out. Never throws.
+ */
+export function selectPackRows(
+  packSets: FeedPackSets,
+  sel: {
+    contentApi: number;
+    platform: string;
+    engine: string;
+    axes: Readonly<Record<string, readonly string[]>>;
+  },
+): Map<string, string> {
+  const groups = new Map<string, { set: string; key: number[] }>();
+  for (const row of packSets.rows) {
+    if (
+      row.contentApi !== sel.contentApi ||
+      row.platform !== sel.platform ||
+      row.engine !== sel.engine
+    )
+      continue;
+    const names = Object.keys(row.variant).sort(compareBytes);
+    const key: number[] = [];
+    let eligible = true;
+    for (const axis of names) {
+      const list = has(sel.axes, axis) ? sel.axes[axis] : undefined;
+      const k = Array.isArray(list) ? list.indexOf(row.variant[axis]!) : -1;
+      if (k < 0) {
+        eligible = false;
+        break;
+      }
+      key.push(k);
+    }
+    if (!eligible) continue;
+    const group = JSON.stringify(names);
+    const best = groups.get(group);
+    if (best === undefined || tupleCmp(key, best.key) < 0)
+      groups.set(group, { set: row.set, key });
+  }
+  const targets = new Map<string, string>();
+  const twice = new Set<string>();
+  for (const { set } of groups.values()) {
+    const members = has(packSets.sets, set) ? packSets.sets[set]! : [];
+    for (const h of members) {
+      if (!has(packSets.releases, h)) continue;
+      const pack = packSets.releases[h]!.pack;
+      if (targets.has(pack)) twice.add(pack);
+      targets.set(pack, h);
+    }
+  }
+  for (const pack of twice) targets.delete(pack);
+  return targets;
+}
+
+interface Composition {
+  install: PackTarget[];
+  revoke: string[];
+  set: { pack: string; sha256: string }[];
+  /** A required pack is revoked without a fix. */
+  revokedRequired: boolean;
+  /** Some pack is below its floor. */
+  floor: boolean;
+}
+
+interface ContentEnv {
+  content: UpdateContentInput;
+  /** The parsed `packSets`, or null (absent, unusable, or treated as absent). */
+  packSets: FeedPackSets | null;
+  floors: {
+    pack: string;
+    contentApi: number;
+    minVersion: string;
+    versionScheme: string;
+  }[];
+  /** The outlet's narrowing and gates. */
+  pinned: ReadonlySet<string>;
+  gates: Readonly<
+    Record<
+      string,
+      {
+        halted: boolean;
+        rollout?: { bp: number; salt: string };
+        fallback: string | null;
+      }
+    >
+  >;
+  dataUpdates: boolean;
+  platform: string;
+  engine: string;
+}
+
+const pinFrom = (sets: FeedPackSets, h: string): ReleasePin => {
+  const r = sets.releases[h]!;
+  return { sha256: h, seq: r.seq, version: r.version };
+};
+
+/** The feed targets at one level, after the outlet's narrowing and gates (§2.6 step 5). */
+function feedTargets(
+  env: ContentEnv,
+  contentApi: number,
+  engine: string,
+): Map<string, ReleasePin> {
+  const out = new Map<string, ReleasePin>();
+  const sets = env.packSets;
+  if (sets === null) return out;
+  const targets = selectPackRows(sets, {
+    contentApi,
+    platform: env.platform,
+    engine,
+    axes: env.content.axes,
+  });
+  for (const [pack, h0] of targets) {
+    if (env.pinned.has(pack)) continue;
+    let h: string | null = h0;
+    if (has(env.gates, h0)) {
+      const gate = env.gates[h0]!;
+      let out_ = gate.halted;
+      if (!out_ && gate.rollout !== undefined) {
+        const buckets = env.content.buckets;
+        const b = has(buckets, gate.rollout.salt)
+          ? buckets[gate.rollout.salt]
+          : null;
+        out_ = !(typeof b === "number" && b < gate.rollout.bp);
+      }
+      if (out_) h = gate.fallback;
+    }
+    if (h !== null && has(sets.releases, h)) out.set(pack, pinFrom(sets, h));
+  }
+  return out;
+}
+
+/** The pack composition (§2.6 "Composition, per pack p"). */
+function compose(env: ContentEnv): Composition {
+  const { content } = env;
+  const stamp = content.stamp;
+  const L = stamp.contentApi;
+  const revoked = new Map<string, (typeof content.revocations)[number]>();
+  for (const r of content.revocations) revoked.set(r.target, r);
+  const isRevoked = (x: ReleasePin | null | undefined): boolean =>
+    x != null && revoked.has(x.sha256);
+
+  const pins = new Map<string, ReleasePin>();
+  for (const p of stamp.pins) pins.set(p.pack, p.release);
+  const holds = new Map<string, ReleasePin>();
+  const holdList: ContentHold[] | null = stamp.holds;
+  for (const h of holdList ?? []) holds.set(h.pack, h.release);
+  const required = new Set<string>();
+  const essential = new Set<string>();
+  for (const e of stamp.expects) {
+    if (e.required) required.add(e.pack);
+    if (e.delivery === "essential") essential.add(e.pack);
+  }
+  const active = content.active;
+  const activeOf = (p: string): ReleasePin | undefined =>
+    has(active, p) ? active[p] : undefined;
+  const targets = feedTargets(env, L, env.engine);
+
+  const known = new Set<string>([
+    ...pins.keys(),
+    ...holds.keys(),
+    ...stamp.expects.map((e) => e.pack),
+    ...Object.keys(active),
+    ...targets.keys(),
+  ]);
+
+  const out: Composition = {
+    install: [],
+    revoke: [],
+    set: [],
+    revokedRequired: false,
+    floor: false,
+  };
+  for (const p of [...known].sort(compareBytes)) {
+    const narrowed = env.pinned.has(p);
+    const rep = (x: ReleasePin | null | undefined): ReleasePin | null => {
+      if (x == null) return null;
+      if (!isRevoked(x)) return x;
+      const r = revoked.get(x.sha256)!;
+      if (
+        r.replacementUsable &&
+        r.replacement !== null &&
+        !isRevoked(r.replacement) &&
+        env.dataUpdates &&
+        !narrowed
+      )
+        return r.replacement;
+      return null;
+    };
+    let base: ReleasePin | null;
+    if (pins.has(p)) base = pins.get(p)!;
+    else if (holds.has(p)) base = holds.get(p)!;
+    else if (
+      narrowed ||
+      holdList === null ||
+      !env.dataUpdates ||
+      env.packSets === null
+    )
+      base = null;
+    else base = targets.get(p) ?? null;
+
+    const act = activeOf(p);
+    let cand = rep(base);
+    if (cand === null && isRevoked(act)) cand = rep(act);
+
+    const wanted = act !== undefined || required.has(p) || essential.has(p);
+    const install =
+      cand !== null &&
+      cand.sha256 !== act?.sha256 &&
+      wanted &&
+      (pins.has(p) ||
+        holds.has(p) ||
+        act === undefined ||
+        isRevoked(act) ||
+        cand.seq > act.seq);
+    if (install) out.install.push({ pack: p, release: cand! });
+    const eff: ReleasePin | null = install
+      ? cand
+      : act !== undefined && !isRevoked(act)
+        ? act
+        : cand;
+    if (eff !== null) out.set.push({ pack: p, sha256: eff.sha256 });
+
+    const noFix =
+      cand === null &&
+      (isRevoked(act) || (isRevoked(base) && act === undefined));
+    if (noFix && required.has(p)) out.revokedRequired = true;
+    if (noFix && !required.has(p) && act !== undefined) out.revoke.push(p);
+
+    if (!noFix && (act !== undefined || required.has(p))) {
+      const f = env.floors.find((x) => x.pack === p && x.contentApi === L);
+      if (f !== undefined) {
+        const c =
+          eff === null
+            ? null
+            : compareVersions(f.versionScheme, eff.version, f.minVersion);
+        if (c === null || c < 0) out.floor = true;
+      }
+    }
+  }
+  return out;
+}
+
+/** §2.6 "Prestage": the new level's required and essential packs, minus the build's embeds. */
+function prestageOf(
+  env: ContentEnv,
+  input: UpdateDecisionInput,
+  buildId: string,
+): PackTarget[] {
+  const record = input.record;
+  const rc = record?.content;
+  if (!record || !isObject(rc)) return [];
+  const L2 = rc.contentApi;
+  if (L2 === env.content.stamp.contentApi) return [];
+  const build = (record.builds ?? []).find((b) => b.id === buildId);
+  const embeds = new Set<string>(
+    Array.isArray(build?.embeds) ? build!.embeds : [],
+  );
+  const req = build && isObject(build.requires) ? build.requires : {};
+  const engine = typeof req.engine === "string" ? req.engine : env.engine;
+  const revoked = new Map<string, (typeof env.content.revocations)[number]>();
+  for (const r of env.content.revocations) revoked.set(r.target, r);
+  const isRevoked = (x: ReleasePin | null | undefined): boolean =>
+    x != null && revoked.has(x.sha256);
+
+  const pins = new Map<string, ReleasePin>();
+  for (const p of rc.pins ?? []) pins.set(p.pack, p.release);
+  const recordHolds = holdsOf(rc);
+  const holds = new Map<string, ReleasePin>();
+  for (const h of recordHolds ?? []) holds.set(h.pack, h.release);
+  const targets =
+    recordHolds === null || !env.dataUpdates
+      ? new Map<string, ReleasePin>()
+      : feedTargets(env, L2, engine);
+  const active = env.content.active;
+
+  const out: PackTarget[] = [];
+  for (const e of rc.expects ?? []) {
+    const p = e.pack;
+    if (!(e.required || e.delivery === "essential") || embeds.has(p)) continue;
+    const narrowed = env.pinned.has(p);
+    const rep = (x: ReleasePin | null | undefined): ReleasePin | null => {
+      if (x == null) return null;
+      if (!isRevoked(x)) return x;
+      const r = revoked.get(x.sha256)!;
+      if (
+        r.replacementUsable &&
+        r.replacement !== null &&
+        !isRevoked(r.replacement) &&
+        env.dataUpdates &&
+        !narrowed
+      )
+        return r.replacement;
+      return null;
+    };
+    const release = rep(pins.get(p) ?? holds.get(p) ?? targets.get(p) ?? null);
+    if (release === null) continue;
+    const act = has(active, p) ? active[p] : undefined;
+    if (act !== undefined && act.sha256 === release.sha256) continue;
+    out.push({ pack: p, release });
+  }
+  return out.sort((a, b) => compareBytes(a.pack, b.pack));
+}
+
+/** §2.6 "Order": the content refinement of P3-01's answer `app`. */
+function decideContent(
+  input: UpdateDecisionInput,
+  content: UpdateContentInput,
+  app: UpdateDecision,
+): UpdateDecision {
+  const feed = input.feed;
+  const target = feedTarget(feed.app.targets, input.installed.platform);
+  const entry = outletEntry(target, input.outlet);
+  const entryId = outletEntryId(target, input.outlet);
+  const caps = effectiveCapabilities(input.outlet.kind, {
+    platform: input.installed.platform,
+    subkind: input.subkind,
+    server: entry?.capabilities ?? null,
+  });
+  const fc = feedContent(feed);
+  const outlet =
+    fc.packSets !== null &&
+    fc.packSets.outlets !== undefined &&
+    entryId !== null &&
+    has(fc.packSets.outlets, entryId)
+      ? fc.packSets.outlets[entryId]!
+      : null;
+  const env = (packSets: FeedPackSets | null): ContentEnv => ({
+    content,
+    packSets,
+    floors: fc.packFloors ?? [],
+    pinned: new Set(packSets !== null ? (outlet?.pinned ?? []) : []),
+    gates: packSets !== null ? (outlet?.gates ?? {}) : {},
+    dataUpdates: caps.dataUpdates,
+    platform: input.installed.platform,
+    engine: input.installed.engine ?? "",
+  });
+  const discard = input.staged !== null && input.staged !== undefined;
+
+  // 1. Stale or unknown version: only revoked required content can change the answer.
+  if (
+    app.action === "none" &&
+    (app.reason === "stale" || app.reason === "unknown-version")
+  ) {
+    const c = compose(env(null));
+    if (c.revokedRequired)
+      return {
+        action: "blocked",
+        reason: "revoked-content",
+        discardStaged: discard,
+      };
+    return app;
+  }
+
+  const full = env(fc.packSets);
+  const c = compose(full);
+  const block: ContentBlock | null = c.revokedRequired
+    ? "revoked-content"
+    : c.floor
+      ? "content-floor"
+      : null;
+
+  // 2. The app floor.
+  if (app.action === "blocked")
+    return block === null ? app : { ...app, contentBlock: block };
+
+  // 3. Offers.
+  if (
+    app.action === "binary" ||
+    app.action === "store" ||
+    app.action === "platform"
+  ) {
+    const withPrestage =
+      app.action === "binary"
+        ? { ...app, prestage: prestageOf(full, input, app.build) }
+        : app;
+    if (block !== null)
+      return {
+        ...withPrestage,
+        mandatory: true,
+        contentBlock: block,
+      } as UpdateDecision;
+    if (app.mandatory || app.action === "binary") return withPrestage;
+  }
+
+  // 4. A content block.
+  if (block !== null)
+    return { action: "blocked", reason: block, discardStaged: discard };
+
+  // 5. code-ready.
+  if (app.action === "code-ready") return app;
+
+  // 6. packs.
+  if (caps.dataUpdates && (c.install.length > 0 || c.revoke.length > 0))
+    return {
+      action: "packs",
+      install: c.install,
+      revoke: c.revoke,
+      set: c.set,
+      discardStaged: discard,
+    };
+
+  // 7. Otherwise P3-01's answer.
+  return app;
 }

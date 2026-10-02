@@ -73,6 +73,10 @@
       "status": "implemented",
       "note": "client.update.decide() over client-core's runUpdateCheck; the outlet is the host's update.outlet, else the in-process detection result (P3-11) over the stamp, and is unknown, never offered an update, with no stamp and no attested evidence."
     },
+    "update.content": {
+      "status": "implemented",
+      "note": "client-core decideUpdate with content (feedContent, selectPackRows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (runUpdateCheck steps 10-14)."
+    },
     "update.driver": {
       "status": "planned",
       "unowned": true,
@@ -90,6 +94,10 @@
     "packs.record": {
       "status": "implemented",
       "note": "client-core verifyReleaseRecord with pin.kind (pack records fetched by the content stamp's pin) and verifyMarker for embedded baselines; the Node runner drives every packRecordCases and markerCases vector."
+    },
+    "packs.revoke": {
+      "status": "implemented",
+      "note": "client-core verifyRevocation and newerRevocation; the PackEngine keeps verified revocations in the sibling revocations.json (revocationsStored, relearn, 256 targets) and refuses revoked mounts with pack-revoked."
     },
     "packs.plan": {
       "status": "implemented",

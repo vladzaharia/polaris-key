@@ -25,17 +25,32 @@ import {
   OUTLET_KINDS,
 } from "@polaris-key/protocol/distribution";
 import {
+  ENGINE_PATTERN,
+  VARIANT_AXIS_PATTERN,
+  VARIANT_VALUE_PATTERN,
+} from "@polaris-key/protocol/packs";
+import {
   FEED_PLATFORM_PATTERN,
   FEED_VERSION_SCHEMES,
   MAX_FEED_TTL_SECONDS,
   ROLLOUT_BUCKETS,
   type ChannelFeedDoc,
+  type FeedContent,
+  type FeedPackFloor,
+  type FeedPackGate,
+  type FeedPackOutlet,
+  type FeedPackRelease,
+  type FeedPackRow,
+  type FeedPackSets,
+  type FeedRevocation,
 } from "@polaris-key/protocol/update";
 import {
   CLOCK_SKEW_SECONDS,
   NO_NON_WIRE_INTEGERS,
   isWireInteger,
 } from "./claims.js";
+import { isPackId } from "./packs/claims.js";
+import { variantKey } from "./packs/variant.js";
 import { compareVersions, parseVersion } from "./version.js";
 
 export interface FeedClaimsOptions {
@@ -279,7 +294,13 @@ export interface VerifyFeedOptions {
 }
 
 export type VerifyFeedResult =
-  | { ok: true; feed: ChannelFeedDoc }
+  | {
+      ok: true;
+      feed: ChannelFeedDoc;
+      /** `feedContent` over the payload, with its own `nonWireIntegers` (plans/P4-13.md §2.5
+       *  step 10). */
+      content: FeedContent;
+    }
   | {
       ok: false;
       reason: FeedRefusal;
@@ -333,7 +354,7 @@ export async function verifyFeed(
     if (feed.seq === floor.seq && feed.issuedAt <= floor.issuedAt)
       return { ok: false, reason: "not-newer", channel };
   }
-  return { ok: true, feed };
+  return { ok: true, feed, content: feedContent(feed, v.nonWireIntegers) };
 }
 
 /** The floor a committed feed sets for its canonical channel. */
@@ -348,6 +369,8 @@ export interface CommittedFeed {
   /** The compact JWS, verbatim, as the cache holds it. */
   jws: string;
   feed: ChannelFeedDoc;
+  /** `feedContent` over it (plans/P4-13.md §2.5). */
+  content: FeedContent;
 }
 
 export interface ReloadedFeeds {
@@ -380,7 +403,7 @@ export async function reloadFeeds(
       checkFreshness: false,
     });
     if (!r.ok || r.feed.channel !== k) continue;
-    out.feeds[k] = { jws, feed: r.feed };
+    out.feeds[k] = { jws, feed: r.feed, content: r.content };
     out.floors[k] = feedFloor(r.feed);
   }
   return out;
@@ -412,4 +435,320 @@ export function boundChannels(requested: string): string[] {
   return alias === undefined || alias === requested
     ? [requested]
     : [requested, alias];
+}
+
+// ── P4-13: the feed's content members (plans/P4-13.md §2.2, WIRE-CONTRACT-V4 §2.4.1) ─────────
+//
+// Parsed BESIDE the claims, never as a claim: an unusable member is null and never refuses the
+// feed, so a malformed content member cannot stop app updates. Each member is independent.
+// Unknown members are ignored at every level, and the parsed value carries the known ones only.
+
+/** P2-04's `VERSION_RE` (V4 §2.5's version pattern). */
+const RECORD_VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
+
+/** RFC 6901 escaping for one reference token. */
+const token = (key: string): string =>
+  key.replace(/~/g, "~0").replace(/\//g, "~1");
+
+/** A thrown marker for "this member is unusable", caught per member. */
+class Unusable extends Error {}
+const no = (): never => {
+  throw new Unusable();
+};
+
+function parseVariant(v: unknown): Record<string, string> {
+  if (!isObject(v)) no();
+  const sel = v as Record<string, unknown>;
+  const names = Object.keys(sel);
+  if (names.length > 4) no();
+  const out: Record<string, string> = {};
+  for (const name of names) {
+    const value = sel[name];
+    if (!VARIANT_AXIS_PATTERN.test(name)) no();
+    if (typeof value !== "string" || !VARIANT_VALUE_PATTERN.test(value)) no();
+    out[name] = value as string;
+  }
+  return out;
+}
+
+function parsePackSets(
+  v: unknown,
+  selector: unknown,
+  nonWire: NonWireIntegers,
+): FeedPackSets {
+  const int = (x: unknown, pointer: string, min: number): number =>
+    isWireInteger(x, pointer, min, nonWire) ? x : no();
+  if (!isObject(v)) no();
+  const ps = v as Record<string, unknown>;
+  if (!has(ps, "releases") || !has(ps, "sets") || !has(ps, "rows")) no();
+
+  if (!isObject(ps.releases)) no();
+  const releases: Record<string, FeedPackRelease> = {};
+  for (const [h, r] of Object.entries(ps.releases as Record<string, unknown>)) {
+    if (!SHA256_RE.test(h) || !isObject(r)) no();
+    const rel = r as Record<string, unknown>;
+    if (!isPackId(rel.pack)) no();
+    if (typeof rel.version !== "string" || !RECORD_VERSION_RE.test(rel.version))
+      no();
+    const seq = int(rel.seq, `/packSets/releases/${h}/seq`, 1);
+    releases[h] = {
+      pack: rel.pack as string,
+      version: rel.version as string,
+      seq,
+    };
+  }
+
+  if (!isObject(ps.sets)) no();
+  const sets: Record<string, string[]> = {};
+  for (const [id, members] of Object.entries(
+    ps.sets as Record<string, unknown>,
+  )) {
+    if (!SHA256_RE.test(id) || !Array.isArray(members)) no();
+    const packs = new Set<string>();
+    const list: string[] = [];
+    for (const m of members as unknown[]) {
+      if (typeof m !== "string" || !has(releases, m)) no();
+      const pack = releases[m as string]!.pack;
+      if (packs.has(pack)) no();
+      packs.add(pack);
+      list.push(m as string);
+    }
+    sets[id] = list;
+  }
+
+  if (!Array.isArray(ps.rows)) no();
+  const platform =
+    isObject(selector) && has(selector, "platform")
+      ? selector.platform
+      : undefined;
+  const rows: FeedPackRow[] = [];
+  const keys = new Set<string>();
+  for (const [i, r] of (ps.rows as unknown[]).entries()) {
+    if (!isObject(r)) no();
+    const row = r as Record<string, unknown>;
+    const contentApi = int(row.contentApi, `/packSets/rows/${i}/contentApi`, 1);
+    if (
+      typeof row.platform !== "string" ||
+      !FEED_PLATFORM_PATTERN.test(row.platform)
+    )
+      no();
+    if (platform !== undefined && row.platform !== platform) no();
+    if (
+      typeof row.engine !== "string" ||
+      (row.engine !== "" && !ENGINE_PATTERN.test(row.engine))
+    )
+      no();
+    const variant = parseVariant(row.variant);
+    if (typeof row.set !== "string" || !has(sets, row.set)) no();
+    const key = JSON.stringify([
+      contentApi,
+      row.platform,
+      row.engine,
+      variantKey(variant),
+    ]);
+    if (keys.has(key)) no();
+    keys.add(key);
+    rows.push({
+      contentApi,
+      platform: row.platform as string,
+      engine: row.engine as string,
+      variant,
+      set: row.set as string,
+    });
+  }
+
+  const out: FeedPackSets = { releases, sets, rows };
+  if (has(ps, "outlets")) {
+    if (!isObject(ps.outlets)) no();
+    const outlets: Record<string, FeedPackOutlet> = {};
+    for (const [id, e] of Object.entries(
+      ps.outlets as Record<string, unknown>,
+    )) {
+      if (!OUTLET_ID_PATTERN.test(id) || !isObject(e)) no();
+      const entry = e as Record<string, unknown>;
+      const parsed: FeedPackOutlet = {};
+      if (has(entry, "pinned")) {
+        if (!Array.isArray(entry.pinned)) no();
+        const seen = new Set<string>();
+        for (const p of entry.pinned as unknown[]) {
+          if (!isPackId(p) || seen.has(p)) no();
+          seen.add(p as string);
+        }
+        parsed.pinned = [...(entry.pinned as string[])];
+      }
+      if (has(entry, "gates")) {
+        if (!isObject(entry.gates)) no();
+        const gates: Record<string, FeedPackGate> = {};
+        for (const [h, g] of Object.entries(
+          entry.gates as Record<string, unknown>,
+        )) {
+          if (!has(releases, h) || !isObject(g)) no();
+          const gate = g as Record<string, unknown>;
+          if (typeof gate.halted !== "boolean") no();
+          const at = `/packSets/outlets/${token(id)}/gates/${h}`;
+          const pg: FeedPackGate = {
+            halted: gate.halted as boolean,
+            fallback: null,
+          };
+          if (has(gate, "rollout")) {
+            if (!isObject(gate.rollout)) no();
+            const ro = gate.rollout as Record<string, unknown>;
+            const bp = int(ro.bp, `${at}/rollout/bp`, 0);
+            if (bp > ROLLOUT_BUCKETS) no();
+            if (typeof ro.salt !== "string" || !SALT_RE.test(ro.salt)) no();
+            pg.rollout = { bp, salt: ro.salt as string };
+          }
+          if (!has(gate, "fallback")) no();
+          if (gate.fallback !== null) {
+            if (
+              typeof gate.fallback !== "string" ||
+              !has(releases, gate.fallback)
+            )
+              no();
+            pg.fallback = gate.fallback as string;
+          }
+          gates[h] = {
+            halted: pg.halted,
+            ...(pg.rollout ? { rollout: pg.rollout } : {}),
+            fallback: pg.fallback,
+          };
+        }
+        parsed.gates = gates;
+      }
+      outlets[id] = parsed;
+    }
+    out.outlets = outlets;
+  }
+  return out;
+}
+
+function parsePackFloors(
+  v: unknown,
+  nonWire: NonWireIntegers,
+): FeedPackFloor[] {
+  if (!Array.isArray(v)) no();
+  const out: FeedPackFloor[] = [];
+  const keys = new Set<string>();
+  for (const [i, f] of (v as unknown[]).entries()) {
+    if (!isObject(f)) no();
+    const floor = f as Record<string, unknown>;
+    if (!isPackId(floor.pack)) no();
+    if (
+      !isWireInteger(
+        floor.contentApi,
+        `/packFloors/${i}/contentApi`,
+        1,
+        nonWire,
+      )
+    )
+      no();
+    if (
+      typeof floor.minVersion !== "string" ||
+      !RECORD_VERSION_RE.test(floor.minVersion)
+    )
+      no();
+    if (typeof floor.versionScheme !== "string") no();
+    const key = JSON.stringify([floor.pack, floor.contentApi]);
+    if (keys.has(key)) no();
+    keys.add(key);
+    // A forward scheme makes that entry alone ignored.
+    if (
+      !(FEED_VERSION_SCHEMES as readonly string[]).includes(
+        floor.versionScheme as string,
+      )
+    )
+      continue;
+    out.push({
+      pack: floor.pack as string,
+      contentApi: floor.contentApi as number,
+      minVersion: floor.minVersion as string,
+      versionScheme: floor.versionScheme as string,
+    });
+  }
+  return out;
+}
+
+function parseRevocations(
+  v: unknown,
+  nonWire: NonWireIntegers,
+): FeedRevocation[] {
+  if (!Array.isArray(v)) no();
+  const out: FeedRevocation[] = [];
+  const records = new Set<string>();
+  for (const [i, e] of (v as unknown[]).entries()) {
+    if (!isObject(e)) no();
+    const r = e as Record<string, unknown>;
+    if (typeof r.record !== "string" || !SHA256_RE.test(r.record)) no();
+    if (!isPackId(r.pack)) no();
+    if (typeof r.target !== "string" || !SHA256_RE.test(r.target)) no();
+    if (typeof r.version !== "string" || !RECORD_VERSION_RE.test(r.version))
+      no();
+    if (!isWireInteger(r.seq, `/revocations/${i}/seq`, 1, nonWire)) no();
+    if (records.has(r.record as string)) no();
+    records.add(r.record as string);
+    out.push({
+      record: r.record as string,
+      pack: r.pack as string,
+      target: r.target as string,
+      version: r.version as string,
+      seq: r.seq as number,
+    });
+  }
+  return out;
+}
+
+function member<T>(
+  doc: Record<string, unknown>,
+  key: string,
+  parse: (v: unknown) => T,
+): T | null {
+  if (!has(doc, key)) return null;
+  try {
+    return parse(doc[key]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The feed's content members (plans/P4-13.md §2.2): `packSets`, `packFloors` and `revocations`,
+ * each parsed, or null when absent or unusable. Integer members follow V4 §3.1's token rule at
+ * their RFC 6901 pointers (pass the verified payload's `nonWireIntegers`; omit when checking an
+ * object you built). An unusable member never refuses the feed and never affects the other two.
+ * A `packFloors` entry whose `versionScheme` is not in `FEED_VERSION_SCHEMES` is dropped alone.
+ * Never throws.
+ */
+export function feedContent(
+  doc: unknown,
+  nonWire: NonWireIntegers = NO_NON_WIRE_INTEGERS,
+): FeedContent {
+  if (!isObject(doc))
+    return { packSets: null, packFloors: null, revocations: null };
+  return {
+    packSets: member(doc, "packSets", (v) =>
+      parsePackSets(v, doc.selector, nonWire),
+    ),
+    packFloors: member(doc, "packFloors", (v) => parsePackFloors(v, nonWire)),
+    revocations: member(doc, "revocations", (v) =>
+      parseRevocations(v, nonWire),
+    ),
+  };
+}
+
+/**
+ * The feed as the decision reads it: `feed` with each content member replaced by
+ * `content`'s parsed value, or removed when that is null. `decideUpdate` re-reads the members
+ * without the token rule, so a caller holding a verified payload hands it this copy.
+ */
+export function withFeedContent(
+  feed: ChannelFeedDoc,
+  content: FeedContent,
+): ChannelFeedDoc {
+  const { packSets: _a, packFloors: _b, revocations: _c, ...rest } = feed;
+  return {
+    ...rest,
+    ...(content.packSets ? { packSets: content.packSets } : {}),
+    ...(content.packFloors ? { packFloors: content.packFloors } : {}),
+    ...(content.revocations ? { revocations: content.revocations } : {}),
+  };
 }

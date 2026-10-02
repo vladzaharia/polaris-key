@@ -123,6 +123,10 @@
       "status": "implemented",
       "note": "client-core decideUpdate/runUpdateCheck; useUpdateDecision and <UpdatePrompt source=\"decision\"> render every v4 action. The browser outlet is web unless the host passes one."
     },
+    "update.content": {
+      "status": "implemented",
+      "note": "client-core decideUpdate with content; useUpdateDecision exposes the content reason and <UpdatePrompt> renders packs silently and the revoked-content hard stop (boot required). The Node and browser runners drive every contentRows and feedContentCases vector."
+    },
     "update.driver": {
       "status": "planned",
       "unowned": true,
@@ -140,6 +144,10 @@
     "packs.record": {
       "status": "implemented",
       "note": "client-core verifyReleaseRecord with pin.kind and verifyMarker; the Node and Chromium runners drive every packRecordCases and markerCases vector."
+    },
+    "packs.revoke": {
+      "status": "implemented",
+      "note": "client-core verifyRevocation, newerRevocation and the PackEngine's revocations.json; the Node and browser runners drive every revocationCases vector."
     },
     "packs.plan": {
       "status": "implemented",

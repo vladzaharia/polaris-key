@@ -45,8 +45,14 @@ export interface UseUpdateDecision {
   check: UpdateCheck | null;
   /** `check.decision`, or null before the first answer. */
   decision: UpdateDecision | null;
-  /** The stage machine's `decide.done` for the decision (`bootDecision`): never `required`. */
+  /** The stage machine's `decide.done` for the decision (`bootDecision`). `required` only for
+   *  revoked required content (plans/P4-13.md §2.6, decision 4): the boot stops at
+   *  `blocked {update-required}`. Floors never give it. */
   boot: BootDecision | null;
+  /** The content cause of the decision, for a host's own (localised) copy: `revoked-content`
+   *  (the required hard stop) or `content-floor` (a prompt), from `blocked {reason}` or an
+   *  answer's `contentBlock`; null otherwise. */
+  reason: "revoked-content" | "content-floor" | null;
   /** True for a mandatory `binary`, `store` or `platform` answer and every `blocked` one: a
    *  prompt the player cannot dismiss, over an app that keeps running. */
   undismissable: boolean;
@@ -137,10 +143,27 @@ export function useUpdateDecision(
     check,
     decision,
     boot: decision ? bootDecision(decision) : null,
+    reason: decision ? contentReason(decision) : null,
     undismissable: decision ? isUndismissable(decision) : false,
     busy,
     error,
     enabled,
     decide,
   };
+}
+
+/** The decision's content cause (plans/P4-13.md §2.6): `blocked {reason}` for a content reason,
+ *  else the answer's `contentBlock`. */
+export function contentReason(
+  decision: UpdateDecision,
+): "revoked-content" | "content-floor" | null {
+  if (
+    decision.action === "blocked" &&
+    (decision.reason === "revoked-content" ||
+      decision.reason === "content-floor")
+  )
+    return decision.reason;
+  if ("contentBlock" in decision && decision.contentBlock !== undefined)
+    return decision.contentBlock;
+  return null;
 }

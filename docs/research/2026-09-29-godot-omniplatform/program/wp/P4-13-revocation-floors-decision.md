@@ -235,3 +235,72 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+Where the code and the approved plan differed, the code is the fact. Each item below is a
+recorded deviation or a precision the plan left open; none changes a decision.
+
+- **Counts.** `feedContentCases` has 48 cases and `revocationCases` 27 (the plan said about 32
+  and about 18). `contentRows` has exactly 44 (C1–C43 and C9b). The generator asserts all three.
+- **`update-matrix.json`'s `description` is unchanged.** Only the two vocabulary arrays were
+  edited in place, so the file stays append-only. `contentRows` is documented in
+  `contribute/corpus.md` and the generated corpus page.
+- **`holdsOf` takes a pointer.** Its signature is `holdsOf(content, nonWire?, pointer = "/content")`,
+  and a stamp is read with `""`. `stampHolds(bytes | text)` in `client-core` wraps strict JSON and
+  `holdsOf` for hosts. `parseContentStamp` is unchanged.
+- **The token rule reaches the decision through normalised inputs.** `verifyFeed` (and the reload
+  path) now return `content` (`feedContent` with the payload's own `nonWireIntegers`).
+  `withFeedContent` replaces each member with its parsed value, or removes it, before
+  `decideUpdate`. A record whose `content.holds` fails the token rule reaches the decision with
+  `holds: null`. `verifyReleaseRecord` returns `nonWireIntegers` for this.
+- **Limits live in protocol `core`.** `MAX_FEED_REVOCATIONS` and `REVOCATION_REASON_MAX_BYTES` are
+  in `@polaris-key/protocol/core`, because `gen:constants` reads `WIRE_LIMIT_EXPORTS` from there.
+  `update` re-exports the first.
+- **The engine's second store.** `PackEngineOptions.revocations` is a second `PackStateStore` (the
+  same seam: atomic replace and quarantine) for `revocations.json`. It is not a key on
+  `PackStorage`. Node's `DirPackStorage.revocationStore()` and React's OPFS and memory stores
+  provide it. `state.json` gains `revocationsStored: true`, which the engine writes before the
+  sibling file.
+- **Applying `packs`.** The engine gains `ensureReleases` and `estimateReleases` (exact releases,
+  `pack-revoked` for a revoked one). `runBootFetch` gains `install` (a `packs` answer's list) and
+  returns `background` when given it.
+- **Worker:**
+  - A channel pointer pinned to a revoked release falls back to the channel's unpinned rule.
+  - Size step 3 keeps "referenced" revocations: the target is pinned or held by a _live_ app
+    release, or a row lists it. The drop rule keeps those named by _any_ stored app release on
+    the channel. Read literally, the two sets were the same, so step 3 would have removed nothing.
+  - A revocation is not refused while Distribution is off.
+  - Content audits are written on each re-sign.
+  - No new route and no new error code: the refusal reasons extend `release_record_rejected`.
+  - The HTTP transcripts did not change.
+- **CLI:**
+  - `revoke --dry-run` still needs the CI token and discovery, because it resolves both records
+    through the uploads preflight.
+  - `content-stamp --hold` also refuses a pack whose binding is not `compatible`, as ingest's
+    `hold-binding` does.
+- **P4-07 merged during this package.** Its Python and Swift content runners gained the
+  `stampCases` count bump (6 → 10). They compare `parseContentStamp` without `expect.holds`, which
+  P4-23 checks with `holdsOf`. Their parity manifests list `update.content` and `packs.revoke` as
+  planned for P4-23.
+- **Godot.** Only the runner count moved (`feedCases` 77 → 80). The release-template run was not
+  executed locally (the installed export template is Linux x86_64); CI runs it.
+- **Corpus growth.** The source grew by about 1.38 MB (cases.json +504 KB, update-matrix.json
+  +869 KB, content/cases.json +8 KB), not the plan's ≈0.44 MB: every `contentRows` input carries
+  the whole six-target feed. With the Swift and Godot mirrors the repository grows by about
+  4.1 MB.
+- **Review fixes (lead review).**
+  - `relearn` clears once step 11 has fetched, verified and stored every revocation of the pack
+    whose target is in H (the entries step 11 considers), on a fresh, network-verified feed with
+    a usable `revocations` member. An entry for an older release the device does not hold never
+    keeps a pack in `relearn`. The threat model records the residual under size step 3's
+    narrowed set.
+  - **Amendment to plans/P4-13.md §2.5:** `relearn` (and `revocationsStored` with an unreadable
+    `revocations.json`) refuses embedded mounts at every boot, online or offline, not only
+    offline. Online the pack is fetched instead; when no copy can be fetched the engine raises
+    `pack-revoked` with detail `relearn`.
+  - A torn `state.json` that lost `revocationsStored` gets the flag back when a readable
+    `revocations.json` with entries is loaded.
+  - An admin un-yank of a revoked release is refused (`release_revoked`, 409), and the unyank
+    statement is guarded in SQL: a revocation is permanent.
+  - React reads a stamp's holds from its original bytes or text, never from re-serialised JSON.

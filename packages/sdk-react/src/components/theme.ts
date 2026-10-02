@@ -84,6 +84,11 @@ export interface PolarisThemeCopy {
   updateMandatoryBody: string;
   updateBlockedTitle: string;
   updateBlockedBody: string;
+  /** A content floor (plans/P4-13.md §2.6): play continues, like the app floor. */
+  updateContentFloorBody: string;
+  /** Revoked required content (plans/P4-13.md §2.6, decision 4): the boot stops. */
+  updateRevokedContentTitle: string;
+  updateRevokedContentBody: string;
   // ── DeviceManager (./license) ────────────────────────────────────────────
   devicesTitle: string;
   devicesSubtitle: string;
@@ -182,6 +187,11 @@ export const defaultTheme: PolarisTheme = {
     updateBlockedTitle: "This version is no longer supported",
     updateBlockedBody:
       "This version is below the minimum supported version, and no update is available here yet. You can keep using the app.",
+    updateContentFloorBody:
+      "Some of this app's content needs a newer version. Please update; you can keep using the app until you do.",
+    updateRevokedContentTitle: "Content withdrawn",
+    updateRevokedContentBody:
+      "Some of this game's content was withdrawn by its developer and can't be used. Update the app to keep playing.",
     devicesTitle: "Your devices",
     devicesSubtitle: "Devices signed in with this license.",
     devicesEmpty: "No devices are registered to this license yet.",

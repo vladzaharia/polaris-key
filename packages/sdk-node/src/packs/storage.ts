@@ -230,10 +230,21 @@ export class DirPackStorage implements PackStorage {
     this.storeDir = join(this.root, "store");
   }
 
-  /** The atomic-replace state file. */
   /** The atomic-replace state file, with a torn document's quarantine at `state.json.torn`. */
   stateStore(): PackStateStore {
-    const path = join(this.root, "state.json");
+    return this.documentStore("state.json");
+  }
+
+  /**
+   * The sibling `revocations.json` (plans/P4-13.md §2.5): the same atomic replace and quarantine
+   * (`revocations.json.torn`) under a second name. The engine never creates it empty.
+   */
+  revocationStore(): PackStateStore {
+    return this.documentStore("revocations.json");
+  }
+
+  private documentStore(name: string): PackStateStore {
+    const path = join(this.root, name);
     const torn = `${path}.torn`;
     const holdList = `${path}.torn.list`;
     return {

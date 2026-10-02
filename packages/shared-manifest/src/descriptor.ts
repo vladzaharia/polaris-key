@@ -49,6 +49,7 @@ import { MAX_BUILD_EMBEDS, MAX_CONTENT_PINS } from "@polaris-key/protocol/core";
 import {
   VOCAB_TOKEN_PATTERN,
   type AppContent,
+  type ContentHold,
 } from "@polaris-key/protocol/packs";
 
 /** The one descriptor version this code reads. */
@@ -309,16 +310,9 @@ export interface ReleaseDescriptor {
   builds: DescriptorBuild[];
 }
 
-/**
- * A hold (P4-12, CONTENT §6.1 "per-app-release overrides"): this app release keeps a `compatible`
- * pack at one release (`release` is a pin's shape, naming a pack record), with an optional
- * human-readable `reason` of at most {@link MAX_HOLD_REASON} characters.
- */
-export interface ContentHold {
-  pack: string;
-  release: { sha256: string; seq: number; version: string };
-  reason?: string;
-}
+/** A hold (P4-12): moved to `@polaris-key/protocol/packs` by P4-13 (plans/P4-13.md §2.4) so the
+ *  clients and the Worker share one type; re-exported here under the same name. */
+export type { ContentHold } from "@polaris-key/protocol/packs";
 
 /**
  * A descriptor's `content`: the record's `content` claims (`contentApi`, `pins`, `expects`) plus

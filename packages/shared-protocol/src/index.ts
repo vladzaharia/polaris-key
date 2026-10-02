@@ -19,6 +19,7 @@ export {
   MAX_WIRE_INTEGER,
   MAX_JSON_DEPTH,
   MAX_RECORD_JWS_BYTES,
+  REVOCATION_REASON_MAX_BYTES,
   MAX_BUNDLE_BYTES,
   FINGERPRINT_COMPONENTS,
   FINGERPRINT_ANCHOR,
@@ -94,6 +95,8 @@ export type {
   ReleaseRecordDoc,
   ReleaseRecordBuild,
   ReleaseRecordArtifact,
+  RevocationRecordDoc,
+  RevocationReplacement,
 } from "./release.js";
 
 export {
@@ -106,6 +109,7 @@ export {
   NONE_REASONS,
   BLOCKED_REASONS,
   BINARY_METHODS,
+  MAX_FEED_REVOCATIONS,
 } from "./update.js";
 export type {
   UpdateArch,
@@ -128,6 +132,19 @@ export type {
   DecisionRelease,
   UpdateDecision,
   UpdateCheck,
+  FeedPackRelease,
+  FeedPackRow,
+  FeedPackGate,
+  FeedPackOutlet,
+  FeedPackSets,
+  FeedPackFloor,
+  FeedRevocation,
+  FeedContent,
+  ContentBlock,
+  ContentRevocationInput,
+  UpdateContentInput,
+  PackTarget,
+  PacksDecision,
 } from "./update.js";
 
 export {
@@ -191,6 +208,7 @@ export type {
   PackVariant,
   PackRecordDoc,
   ContentPin,
+  ContentHold,
   ContentExpect,
   AppContent,
   FilesIndexEntry,

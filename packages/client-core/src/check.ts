@@ -9,11 +9,16 @@
 // It never throws. A failure with nothing to decide from comes back as `{ok: false, error}`,
 // which the host raises.
 
-import type { TrustSet } from "@polaris-key/jws";
+import type { NonWireIntegers, TrustSet } from "@polaris-key/jws";
+import { MAX_FEED_REVOCATIONS } from "@polaris-key/protocol/core";
+import type { AppContent, ContentHold } from "@polaris-key/protocol/packs";
 import type {
   BinaryMethod,
   ChannelFeedDoc,
+  ContentRevocationInput,
+  FeedContent,
   InstalledBuild,
+  ReleasePin,
   StagedUpdate,
   UpdateCheck,
   UpdateOutlet,
@@ -25,16 +30,27 @@ import {
   feedTarget,
   outletEntry,
   rolloutBucket,
+  selectPackRows,
 } from "./decide.js";
 import {
   boundChannels,
   commitFeed,
+  feedContent,
   reloadFeeds,
   verifyFeed,
+  withFeedContent,
   type CommittedFeed,
   type FeedRefusal,
 } from "./feed.js";
-import { reloadReleaseRecords, verifyReleaseRecord } from "./record.js";
+import { holdsOf } from "./packs/claims.js";
+import { selectVariant } from "./packs/select.js";
+import {
+  newerRevocation,
+  reloadReleaseRecords,
+  verifyReleaseRecord,
+  verifyRevocation,
+  type VerifiedRevocation,
+} from "./record.js";
 
 /** One fetch's outcome. A transport failure or a non-2xx answer carries the SDK's own transport
  *  code (`network` in React, `network-error` in Node), or the Worker's wire code when the answer
@@ -76,8 +92,31 @@ export interface RunUpdateCheckOptions {
   };
   /** Step 2: `GET …/update/{channel}/feed.jws?platform=…` with the requested name. */
   fetchFeed(channel: string): Promise<FetchOutcome>;
-  /** Step 11: `GET …/release/records/{sha256}`. */
+  /** Step 11: `GET …/release/records/{sha256}`. Also fetches revocation and replacement
+   *  records by hash (plans/P4-13.md §2.5 steps 11–12). */
   fetchRecord(sha256: string): Promise<FetchOutcome>;
+  /**
+   * The content decision's inputs (plans/P4-13.md §2.5 steps 10–14, §2.6). Omitted: no content
+   * decision, every answer is P3-01's.
+   */
+  content?: UpdateCheckContent;
+}
+
+/** What a host with packs hands the update check (plans/P4-13.md §2.5, §2.6). */
+export interface UpdateCheckContent {
+  /** The running build's content stamp (`parseContentStamp`'s result). */
+  stamp: AppContent;
+  /** `holdsOf` over the stamp (`stampHolds`): null when unusable. */
+  holds: ContentHold[] | null;
+  /** The pack state's active installs, embedded baselines included, by pack id. */
+  active: Record<string, ReleasePin>;
+  /** The host's engine (`godot-<major>.<minor>`, null outside Godot) and variant axes. */
+  engine: string | null;
+  axes: Record<string, string[]>;
+  /** The stored, verified revocations, by target (the pack engine's `revocations()`). */
+  revoked: Record<string, VerifiedRevocation>;
+  /** Packs whose revocations must be re-learned (the engine's `relearn`). */
+  relearn?: readonly string[];
 }
 
 export type RunUpdateCheckResult =
@@ -94,6 +133,12 @@ export type RunUpdateCheckResult =
       cache: {
         feeds: Record<string, string>;
         releaseRecords: Record<string, string>;
+      };
+      /** With `content`: the revocations this check verified, to store (the pack engine's
+       *  `recordRevocations`), and the packs whose `relearn` it cleared. */
+      revocations?: {
+        learned: { revocation: VerifiedRevocation; jws: string }[];
+        relearnCleared: string[];
       };
     }
   | {
@@ -175,6 +220,7 @@ export async function runUpdateCheck(
 
   // Steps 2–9.
   let feed: ChannelFeedDoc | null = null;
+  let content: FeedContent | null = null;
   let feedSource: UpdateCheck["feed"] = "network";
   const fetched = await safeFetch(() => opts.fetchFeed(requested), "network");
   if (fetched.ok) {
@@ -185,6 +231,7 @@ export async function runUpdateCheck(
         : undefined;
       if (c && c.jws === fetched.body) {
         feed = c.feed;
+        content = c.content;
         break;
       }
     }
@@ -200,6 +247,7 @@ export async function runUpdateCheck(
       });
       if (v.ok) {
         feed = v.feed;
+        content = v.content;
         feeds = commitFeed(feeds, {
           requested,
           claim: v.feed.channel,
@@ -217,6 +265,7 @@ export async function runUpdateCheck(
           };
         if (err) errors.push(err);
         feed = prior.feed;
+        content = prior.content;
         feedSource = "committed";
       }
     }
@@ -226,6 +275,7 @@ export async function runUpdateCheck(
       return { ok: false, error: { code: fetched.code, detail: null } };
     errors.push({ code: fetched.code, detail: null });
     feed = prior.feed;
+    content = prior.content;
     feedSource = "committed";
   }
 
@@ -235,6 +285,7 @@ export async function runUpdateCheck(
   let record: ReleaseRecordDoc | null = null;
   let recordSource: UpdateCheck["record"] = "none";
   let recordJws: string | null = null;
+  let recordNonWire: NonWireIntegers | null = null;
   if (target) {
     const pin = target.release;
     const verifyOpts = {
@@ -256,6 +307,7 @@ export async function runUpdateCheck(
         record = r.record;
         recordSource = "cache";
         recordJws = cached;
+        recordNonWire = r.nonWireIntegers;
       }
     }
     if (record === null) {
@@ -270,6 +322,7 @@ export async function runUpdateCheck(
           record = r.record;
           recordSource = "network";
           recordJws = got.body;
+          recordNonWire = r.nonWireIntegers;
         } else if (r.step === "cross-check")
           errors.push({ code: RECORD_MISMATCH, detail: null });
         else errors.push({ code: RECORD_REJECTED, detail: r.step });
@@ -302,10 +355,40 @@ export async function runUpdateCheck(
     entry?.rollout !== undefined && opts.installId !== null
       ? await rolloutBucket(entry.rollout.salt, opts.installId)
       : null;
+
+  // plans/P4-13.md §2.5 content steps 10–14.
+  let contentInput: Parameters<typeof decideUpdate>[0]["content"];
+  let revocations: Extract<RunUpdateCheckResult, { ok: true }>["revocations"];
+  let decisionFeed = feed;
+  let decisionRecord = record;
+  if (opts.content) {
+    const fc = content ?? feedContent(feed);
+    decisionFeed = withFeedContent(feed, fc);
+    const steps = await contentSteps(opts, fc, feedSource, errors);
+    contentInput = steps.input;
+    revocations = steps.revocations;
+    // The record's holds, read with its own non-wire pointers: unusable reads as `null` so the
+    // decision (which re-reads them without the token rule) sees the same verdict.
+    if (record && record.content && recordNonWire) {
+      const h = holdsOf(record.content, recordNonWire, "/content");
+      if (
+        h === null &&
+        Object.prototype.hasOwnProperty.call(record.content, "holds")
+      )
+        decisionRecord = {
+          ...record,
+          content: {
+            ...record.content,
+            holds: null as unknown as ContentHold[],
+          },
+        };
+    }
+  }
+
   const decision = decideUpdate({
     now: opts.now,
-    feed,
-    record,
+    feed: decisionFeed,
+    record: decisionRecord,
     installed: opts.installed,
     outlet: opts.outlet,
     subkind: opts.subkind,
@@ -313,6 +396,7 @@ export async function runUpdateCheck(
     skipVersion: opts.skipVersion ?? null,
     bucket,
     methods: [...opts.methods],
+    ...(contentInput ? { content: contentInput } : {}),
   });
 
   return {
@@ -328,5 +412,177 @@ export async function runUpdateCheck(
     feed,
     record,
     cache: { feeds, releaseRecords },
+    ...(revocations ? { revocations } : {}),
+  };
+}
+
+/**
+ * plans/P4-13.md §2.5 content steps 10–13: the relevant revocations (fetched and verified against
+ * the pinned release keys, at most `MAX_FEED_REVOCATIONS` per check, superseding by
+ * `newerRevocation`), their replacements (fetched, verified as pack records, not revoked, and with
+ * a variant for this host), the gate buckets, and the decision's content input. A failed fetch
+ * retries at the next check; a failed verification is ignored and never trusted.
+ */
+async function contentSteps(
+  opts: RunUpdateCheckOptions,
+  fc: FeedContent,
+  feedSource: UpdateCheck["feed"],
+  errors: UpdateCheckError[],
+): Promise<{
+  input: NonNullable<Parameters<typeof decideUpdate>[0]["content"]>;
+  revocations: {
+    learned: { revocation: VerifiedRevocation; jws: string }[];
+    relearnCleared: string[];
+  };
+}> {
+  const c = opts.content!;
+  const platform = opts.installed.platform;
+  const engine = opts.installed.engine ?? "";
+
+  // H: the active pack records, the stamp's pins and holds, and the feed targets §2.6 selects
+  // (gate fallbacks included).
+  const H = new Set<string>();
+  for (const pin of Object.values(c.active)) H.add(pin.sha256);
+  for (const p of c.stamp.pins) H.add(p.release.sha256);
+  for (const h of c.holds ?? []) H.add(h.release.sha256);
+  const ps = fc.packSets;
+  if (ps) {
+    const targets = selectPackRows(ps, {
+      contentApi: c.stamp.contentApi,
+      platform,
+      engine,
+      axes: c.axes,
+    });
+    for (const h of targets.values()) {
+      H.add(h);
+      for (const o of Object.values(ps.outlets ?? {}))
+        for (const [g, gate] of Object.entries(o.gates ?? {}))
+          if (g === h && gate.fallback !== null) H.add(gate.fallback);
+    }
+  }
+
+  // Step 11.
+  const stored = new Map<string, VerifiedRevocation>(Object.entries(c.revoked));
+  const learned: { revocation: VerifiedRevocation; jws: string }[] = [];
+  // The feed entries step 11 considers (target in H) that are now known: already stored with
+  // that record, or fetched and verified in this check (a newer stored one may still win).
+  const known = new Set<string>();
+  let fetches = 0;
+  for (const entry of fc.revocations ?? []) {
+    if (!H.has(entry.target)) continue;
+    const have = stored.get(entry.target);
+    if (have && have.record === entry.record) {
+      known.add(entry.record);
+      continue;
+    }
+    if (fetches >= MAX_FEED_REVOCATIONS) break;
+    fetches++;
+    const got = await safeFetch(
+      () => opts.fetchRecord(entry.record),
+      "network",
+    );
+    if (!got.ok) {
+      errors.push({ code: got.code, detail: null });
+      continue;
+    }
+    const r = await verifyRevocation(got.body, {
+      releaseKeys: opts.releaseKeys,
+      productTrust: opts.trust,
+      expectedAud: opts.expectedAud,
+      entry,
+    });
+    if (!r.ok) {
+      errors.push({ code: RECORD_REJECTED, detail: r.step });
+      continue;
+    }
+    known.add(entry.record);
+    if (!have || newerRevocation(r.revocation, have) === r.revocation) {
+      stored.set(entry.target, r.revocation);
+      learned.push({ revocation: r.revocation, jws: got.body });
+    }
+  }
+
+  // Step 12: the replacements of the relevant stored revocations.
+  const isRevoked = (h: string): boolean => stored.has(h);
+  const revInput: ContentRevocationInput[] = [];
+  for (const [target, rev] of stored) {
+    let usable = false;
+    const rep = rev.replacement;
+    if (rep !== null && H.has(target) && !isRevoked(rep.sha256)) {
+      const got = await safeFetch(
+        () => opts.fetchRecord(rep.sha256),
+        "network",
+      );
+      if (got.ok) {
+        const v = await verifyReleaseRecord(got.body, {
+          releaseKeys: opts.releaseKeys,
+          productTrust: opts.trust,
+          expectedAud: opts.expectedAud,
+          expectedHash: rep.sha256,
+          pin: {
+            kind: "pack",
+            deliverable: rev.pack,
+            version: rep.version,
+            seq: rep.seq,
+          },
+        });
+        if (v.ok) {
+          const variants =
+            (v.record as unknown as { variants?: unknown[] }).variants ?? [];
+          usable = !(
+            "error" in
+            selectVariant(variants, { engine: c.engine, axes: c.axes })
+          );
+        }
+      }
+    }
+    revInput.push({
+      target,
+      pack: rev.pack,
+      replacement: rep,
+      replacementUsable: usable,
+    });
+  }
+
+  // Step 13: the bucket of every gate salt.
+  const buckets: Record<string, number | null> = {};
+  for (const o of Object.values(ps?.outlets ?? {}))
+    for (const gate of Object.values(o.gates ?? {}))
+      if (
+        gate.rollout &&
+        !Object.prototype.hasOwnProperty.call(buckets, gate.rollout.salt)
+      )
+        buckets[gate.rollout.salt] =
+          opts.installId === null
+            ? null
+            : await rolloutBucket(gate.rollout.salt, opts.installId);
+
+  // `relearn` clears only on a fresh, network-verified feed with a usable `revocations` member,
+  // once step 11 has fetched, verified and stored every revocation it considers for that pack
+  // (the entries whose target is in H). Entries for releases outside H (an older release the
+  // device does not hold) are not considered and never keep a pack in `relearn`.
+  const relearnCleared: string[] = [];
+  if (feedSource === "network" && fc.revocations !== null)
+    for (const p of c.relearn ?? []) {
+      const all = fc.revocations
+        .filter((e) => e.pack === p && H.has(e.target))
+        .every((e) => known.has(e.record));
+      if (all) relearnCleared.push(p);
+    }
+
+  return {
+    input: {
+      stamp: {
+        contentApi: c.stamp.contentApi,
+        pins: c.stamp.pins,
+        expects: c.stamp.expects,
+        holds: c.holds,
+      },
+      active: c.active,
+      axes: c.axes,
+      revocations: revInput,
+      buckets,
+    },
+    revocations: { learned, relearnCleared },
   };
 }

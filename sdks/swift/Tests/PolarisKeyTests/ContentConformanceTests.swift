@@ -121,7 +121,7 @@ final class ContentConformanceTests: XCTestCase {
         XCTAssertEqual(c["pathCases"]?.arrayValue?.count, 18)
         XCTAssertEqual(c["filesIndexCases"]?.arrayValue?.count, 15)
         XCTAssertEqual(c["packSetIdCases"]?.arrayValue?.count, 7)
-        XCTAssertEqual(c["stampCases"]?.arrayValue?.count, 6)
+        XCTAssertEqual(c["stampCases"]?.arrayValue?.count, 10)
         XCTAssertEqual(c["frameWindowCases"]?.arrayValue?.count, 13)
         XCTAssertEqual(c["applyCases"]?.arrayValue?.count, 19)
     }
@@ -230,8 +230,12 @@ final class ContentConformanceTests: XCTestCase {
     func testStampCases() throws {
         for c in try XCTUnwrap(ContentCorpus.load()["stampCases"]?.arrayValue) {
             let o = try XCTUnwrap(c.objectValue)
+            // `parseContentStamp`'s result is unchanged by P4-13: `expect.holds`, where present, is
+            // `holdsOf` over the parsed stamp (plans/P4-13.md §2.4), which P4-23 ports and checks.
+            var expect = try XCTUnwrap(o["expect"]?.objectValue)
+            expect.removeValue(forKey: "holds")
             XCTAssertEqual(
-                parseContentStamp(try XCTUnwrap(o["stamp"]?.stringValue)).json, normalisedJSON(o["expect"]!),
+                parseContentStamp(try XCTUnwrap(o["stamp"]?.stringValue)).json, normalisedJSON(.object(expect)),
                 "\(o["id"]!): \(o["description"]!)")
         }
     }

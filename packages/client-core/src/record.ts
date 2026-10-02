@@ -15,6 +15,7 @@ import {
   MAX_PACK_VARIANTS,
   MAX_RECORD_JWS_BYTES,
   MAX_VARIANT_DELTAS,
+  REVOCATION_REASON_MAX_BYTES,
 } from "@polaris-key/protocol/core";
 import {
   ENGINE_PATTERN,
@@ -30,6 +31,7 @@ import {
   BUILD_ID_PATTERN,
   type ReleaseRecordDoc,
 } from "@polaris-key/protocol/release";
+import type { FeedRevocation, ReleasePin } from "@polaris-key/protocol/update";
 import { NO_NON_WIRE_INTEGERS, isWireInteger } from "./claims.js";
 import {
   contentClaims,
@@ -388,7 +390,12 @@ export interface VerifyReleaseRecordOptions {
 export type ReleaseRecordStep = "hash" | "jws" | "claims" | "cross-check";
 
 export type VerifyReleaseRecordResult =
-  | { ok: true; record: ReleaseRecordDoc }
+  | {
+      ok: true;
+      record: ReleaseRecordDoc;
+      /** The verified payload's non-wire integer pointers (for `revocationOf`, `holdsOf`). */
+      nonWireIntegers: NonWireIntegers;
+    }
   | { ok: false; step: ReleaseRecordStep };
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -489,7 +496,7 @@ export async function verifyReleaseRecord(
       if (record.version !== pin.version || record.seq !== pin.seq)
         return fail("cross-check");
     }
-    return { ok: true, record };
+    return { ok: true, record, nonWireIntegers: v.nonWireIntegers };
   } catch {
     return fail("jws");
   }
@@ -523,4 +530,140 @@ export async function reloadReleaseRecords(
     if (r.ok) out[h] = { jws, record: r.record };
   }
   return out;
+}
+
+// ── P4-13: the revocation record (plans/P4-13.md §2.3, WIRE-CONTRACT-V4 §2.5.3) ──────────────
+
+/** A usable revocation body, as `revocationOf` reads it. */
+export interface RevocationBody {
+  /** The revoked pack (the record's `deliverable`). */
+  pack: string;
+  /** The revoked pack record's hash (`revokes`). */
+  target: string;
+  replacement: ReleasePin | null;
+  reason: string;
+  issuedAt: number;
+}
+
+/**
+ * The revocation body (plans/P4-13.md §2.3), read beside the claims: usable when `kind` is
+ * `revocation`, `deliverable` is a pack id, `revokes` is 64 lowercase hex, `replacement` is absent
+ * or `{sha256: 64 hex and not revokes, seq: an integer ≥ 1 by token, version}`, and `reason` is a
+ * string of 1–`REVOCATION_REASON_MAX_BYTES` bytes. `builds` and `content` are ignored. Null when
+ * unusable. Never throws.
+ */
+export function revocationOf(
+  doc: unknown,
+  nonWire: NonWireIntegers = NO_NON_WIRE_INTEGERS,
+): RevocationBody | null {
+  try {
+    if (!isObject(doc) || doc.kind !== "revocation") return null;
+    if (!isPackId(doc.deliverable)) return null;
+    if (typeof doc.revokes !== "string" || !SHA256_RE.test(doc.revokes))
+      return null;
+    let replacement: ReleasePin | null = null;
+    if (has(doc, "replacement")) {
+      const r = doc.replacement;
+      if (!isObject(r)) return null;
+      if (typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256))
+        return null;
+      if (r.sha256 === doc.revokes) return null;
+      if (!isWireInteger(r.seq, "/replacement/seq", 1, nonWire)) return null;
+      if (typeof r.version !== "string" || !VERSION_RE.test(r.version))
+        return null;
+      replacement = { sha256: r.sha256, seq: r.seq, version: r.version };
+    }
+    const reason = doc.reason;
+    if (typeof reason !== "string") return null;
+    const bytes = utf8Length(reason);
+    if (bytes < 1 || bytes > REVOCATION_REASON_MAX_BYTES) return null;
+    if (typeof doc.issuedAt !== "number") return null;
+    return {
+      pack: doc.deliverable,
+      target: doc.revokes,
+      replacement,
+      reason,
+      issuedAt: doc.issuedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** A verified revocation: its body, its record hash and the pin it was verified with. */
+export interface VerifiedRevocation extends RevocationBody {
+  /** The revocation record's hash. */
+  record: string;
+  /** The target's version and `seq` (the record's own `version` and `seq`). */
+  version: string;
+  seq: number;
+}
+
+export interface VerifyRevocationOptions {
+  /** The PINNED release keys only, never the Worker's trust set. */
+  releaseKeys: TrustSet;
+  /** The effective product trust set: a release key whose bytes are in it is refused. */
+  productTrust: TrustSet;
+  expectedAud: string;
+  /** The feed's `revocations` entry (or a stored entry's equivalent). */
+  entry: Pick<FeedRevocation, "record" | "pack" | "target" | "version" | "seq">;
+}
+
+/** Why `verifyRevocation` refused, by step (`revocationCases` `expect.step`). */
+export type RevocationStep = ReleaseRecordStep | "revocation";
+
+export type VerifyRevocationResult =
+  | { ok: true; revocation: VerifiedRevocation }
+  | { ok: false; step: RevocationStep };
+
+/**
+ * Verify a revocation record against a feed entry (plans/P4-13.md §2.3): V4 §3.5 steps 12–14
+ * with `entry.record` as the pin hash, step 15 with the pin `{kind: "revocation", deliverable:
+ * entry.pack, version: entry.version, seq: entry.seq}`, and step 16 (`revocation`): the body is
+ * usable (`revocationOf`) and `revokes === entry.target`. Never throws.
+ */
+export async function verifyRevocation(
+  jws: string,
+  opts: VerifyRevocationOptions,
+): Promise<VerifyRevocationResult> {
+  const { entry } = opts;
+  const r = await verifyReleaseRecord(jws, {
+    releaseKeys: opts.releaseKeys,
+    productTrust: opts.productTrust,
+    expectedAud: opts.expectedAud,
+    expectedHash: entry.record,
+    pin: {
+      kind: "revocation",
+      deliverable: entry.pack,
+      version: entry.version,
+      seq: entry.seq,
+    },
+  });
+  if (!r.ok) return r;
+  const body = revocationOf(r.record, r.nonWireIntegers);
+  if (body === null || body.target !== entry.target)
+    return { ok: false, step: "revocation" };
+  return {
+    ok: true,
+    revocation: {
+      ...body,
+      record: entry.record,
+      version: r.record.version,
+      seq: r.record.seq,
+    },
+  };
+}
+
+/**
+ * The winner of two verified revocations of one target (plans/P4-13.md §2.3, decision 18): the
+ * higher `issuedAt`, else the higher record hash by bytes. The Worker ranks superseding
+ * revocations with this same function. Revocations are permanent: superseding changes the
+ * replacement or reason, never the revoked status.
+ */
+export function newerRevocation<T extends { issuedAt: number; record: string }>(
+  a: T,
+  b: T,
+): T {
+  if (a.issuedAt !== b.issuedAt) return a.issuedAt > b.issuedAt ? a : b;
+  return a.record >= b.record ? a : b;
 }

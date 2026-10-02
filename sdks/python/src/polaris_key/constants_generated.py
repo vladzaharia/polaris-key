@@ -81,6 +81,8 @@ __all__ = [
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
     "MAX_RECORD_JWS_BYTES",
+    "MAX_FEED_REVOCATIONS",
+    "REVOCATION_REASON_MAX_BYTES",
     "MAX_PACK_VARIANTS",
     "MAX_VARIANT_DELTAS",
     "MAX_CONTENT_PINS",
@@ -227,6 +229,7 @@ class ErrorCode:
     PACK_NOT_PINNED: Final = "pack-not-pinned"
     PACK_NOT_ENTITLED: Final = "pack-not-entitled"
     PACK_STATE_UNREADABLE: Final = "pack-state-unreadable"
+    PACK_REVOKED: Final = "pack-revoked"
     MARKER_REJECTED: Final = "marker-rejected"
 
 
@@ -344,6 +347,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "pack-not-pinned",
     "pack-not-entitled",
     "pack-state-unreadable",
+    "pack-revoked",
     "marker-rejected",
 )
 
@@ -463,6 +467,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "pack-not-pinned": "client",
         "pack-not-entitled": "client",
         "pack-state-unreadable": "client",
+        "pack-revoked": "client",
         "marker-rejected": "client",
     }
 )
@@ -507,10 +512,12 @@ class Feature:
     UPDATE_CHECK: Final = "update.check"
     UPDATE_FEED: Final = "update.feed"
     UPDATE_DECIDE: Final = "update.decide"
+    UPDATE_CONTENT: Final = "update.content"
     UPDATE_DRIVER: Final = "update.driver"
     UPDATE_BOOTGUARD: Final = "update.bootguard"
     OUTLET_DETECT: Final = "outlet.detect"
     PACKS_RECORD: Final = "packs.record"
+    PACKS_REVOKE: Final = "packs.revoke"
     PACKS_PLAN: Final = "packs.plan"
     PACKS_INDEX_FILES: Final = "packs.index.files"
     PACKS_INDEX_CHUNKS: Final = "packs.index.chunks"
@@ -569,10 +576,12 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "update.check",
     "update.feed",
     "update.decide",
+    "update.content",
     "update.driver",
     "update.bootguard",
     "outlet.detect",
     "packs.record",
+    "packs.revoke",
     "packs.plan",
     "packs.index.files",
     "packs.index.chunks",
@@ -805,7 +814,7 @@ OUTLET_SUBKIND_VALUES: Tuple[str, ...] = (
 
 
 class UpdateAction:
-    """The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed."""
+    """The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8; `packs` added by plans/P4-13.md §2.6)."""
 
     NONE: Final = "none"
     CODE_READY: Final = "code-ready"
@@ -813,6 +822,7 @@ class UpdateAction:
     STORE: Final = "store"
     PLATFORM: Final = "platform"
     BLOCKED: Final = "blocked"
+    PACKS: Final = "packs"
 
 
 #: Every ``UpdateAction`` value, in source order.
@@ -823,6 +833,7 @@ UPDATE_ACTION_VALUES: Tuple[str, ...] = (
     "store",
     "platform",
     "blocked",
+    "packs",
 )
 
 
@@ -857,14 +868,18 @@ UPDATE_NONE_REASON_VALUES: Tuple[str, ...] = (
 
 
 class UpdateBlockedReason:
-    """Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed."""
+    """Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8; `content-floor` and `revoked-content` added by plans/P4-13.md §2.6)."""
 
     APP_FLOOR: Final = "app-floor"
+    CONTENT_FLOOR: Final = "content-floor"
+    REVOKED_CONTENT: Final = "revoked-content"
 
 
 #: Every ``UpdateBlockedReason`` value, in source order.
 UPDATE_BLOCKED_REASON_VALUES: Tuple[str, ...] = (
     "app-floor",
+    "content-floor",
+    "revoked-content",
 )
 
 
@@ -1164,6 +1179,14 @@ MAX_JSON_DEPTH: Final[int] = 64
 MAX_RECORD_JWS_BYTES: Final[int] = 88844
 
 
+#: Wire contract v4 limit `MAX_FEED_REVOCATIONS` (`@polaris-key/protocol/core`).
+MAX_FEED_REVOCATIONS: Final[int] = 64
+
+
+#: Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`).
+REVOCATION_REASON_MAX_BYTES: Final[int] = 512
+
+
 #: Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 MAX_PACK_VARIANTS: Final[int] = 32
 
@@ -1349,10 +1372,12 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "update.check": CapabilityRow("implemented", "update", ()),
         "update.feed": CapabilityRow("implemented", "update", ()),
         "update.decide": CapabilityRow("implemented", "update", ()),
+        "update.content": CapabilityRow("planned", "update", ()),
         "update.driver": CapabilityRow("planned", "update", ()),
         "update.bootguard": CapabilityRow("planned", "update", ()),
         "outlet.detect": CapabilityRow("implemented", "update", ()),
         "packs.record": CapabilityRow("implemented", "release", ()),
+        "packs.revoke": CapabilityRow("planned", "release", ()),
         "packs.plan": CapabilityRow("implemented", "release", ()),
         "packs.index.files": CapabilityRow("implemented", "release", ()),
         "packs.index.chunks": CapabilityRow("planned", "release", ()),
@@ -1375,4 +1400,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "52713cd757ecdc13483eb93f7acb8b2953b4864da7b5bf1453b23a224d28a2eb"
+CAPABILITY_DIGEST: Final[str] = "dfd6402b6d6a0da2dec3eef94177b0c6b5db85bafba715c3c8bef6b9407b87ba"

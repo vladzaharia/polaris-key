@@ -56,6 +56,7 @@
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
+    "update.content": { "status": "planned", "wp": "P4-23" },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],
@@ -74,6 +75,7 @@
       "status": "implemented",
       "note": "PolarisKeyCore's verifyReleaseRecord with pin.kind (pack records fetched by the content stamp's pin) and PolarisKeyPacks' verifyMarker for embedded baselines; PackRecordConformanceTests drives every packRecordCases and markerCases vector."
     },
+    "packs.revoke": { "status": "planned", "wp": "P4-23" },
     "packs.plan": {
       "status": "implemented",
       "note": "PolarisKeyPacks' plan, selectVariant and planTarget; every plan-matrix.json row, variant case and target case in PlanMatrixTests."

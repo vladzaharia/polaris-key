@@ -1719,7 +1719,9 @@ guard with P3-12, each of which extends this section.
   unexpired, and the attacker could as well have withheld the answer.
 - **Feeds do not move the clock floor**, and their freshness is judged against the effective
   clock, so winding the system clock back cannot revive an expired feed. A stale feed freezes
-  updates (`none {stale}`); it never stops play.
+  updates (`none {stale}`); a stale feed never stops play. A CI revocation of a required pack
+  can (`plans/P4-13.md` §2.6), even on a stale feed: the revocation is already stored on the
+  device and is applied without a fresh feed.
 
 P3-03 adds the Worker's half: the record ingest, the record and feed routes, their four tables,
 the composer and the `seq` ceiling script.
@@ -1785,9 +1787,72 @@ the composer and the `seq` ceiling script.
   and has no per-channel option. Its own risk is denial of updates for the product, not code
   execution: it can only raise `seq`. The RUNBOOK runs it after any suspected product-key or
   Worker compromise.
-- **Floors prompt, never block.** A floor (`min_supported`, a record's `minSupportedSeq`) reaches
-  devices as a prompt the player cannot dismiss, per platform, and play continues; License's
-  compatibility window is the only control that stops an old build.
+- **Floors prompt, never block.** A floor (`min_supported`, a record's `minSupportedSeq`, and
+  P4-13's pack floors) reaches devices as a prompt the player cannot dismiss, per platform, and
+  play continues; License's compatibility window is the only control that stops an old build.
+  The one exception is content, not a floor: a CI-signed revocation of a **required** pack with
+  no usable replacement stops the boot (`blocked {revoked-content}`, boot `required`;
+  `plans/P4-13.md` decision 4, below).
+
+### Revocations, pack sets and floors in the feed (P4-13)
+
+P4-13 (`plans/P4-13.md`; WIRE-CONTRACT-V4 §2.4.1, §2.5.3, §3.4 steps 10–14, §11.1) fills the feed's
+reserved content members (`packSets`, `packFloors`, `revocations`), the app's `content.holds` and
+the reserved record kind `revocation`. It adds no `typ`, no claim and no route.
+
+- **The revocation record kind keeps the two-signer property.** A revocation is a
+  `pkey-release+jws` with `kind: "revocation"`, signed in CI by a release key. A client verifies
+  it against the **pinned release keys** only, so the Worker (which holds only the product key)
+  can withhold a revocation but never forge one, condemn content or name a substitute. A product
+  key cannot sign one (a release key whose bytes are in the product trust set is refused), and a
+  delegated content key cannot either (P4-19). Revocations are permanent; a later one may only
+  add or change the replacement (newest `issuedAt` wins, `newerRevocation`). Ingest also yanks
+  the target, so even a rolled-back Worker stops serving it.
+- **Content members never refuse a feed.** They are parsed beside the claims; a malformed member
+  is unusable and the app part still decides. A Worker that sheds content for size omits
+  `packSets`, then `packFloors`, then unreferenced revocations, then `revocations`, before it
+  ever refuses to compose a feed.
+- **Revoked required content stops the boot.** This amends P3-01 decision 1 and AT-3's invariant
+  (`plans/P4-13.md` decision 4): a revoked required pack cannot be mounted, so continuing would
+  end in an error and a boot-guard rollback loop; `required` stops at a confirmed `blocked`. It
+  fires only for a pack the stamp marks `required`, revoked with no usable replacement, and so
+  only after a CI-signed revocation. A revoked optional pack is unmounted and play continues.
+  Floors still never stop play.
+- **A feed target never downgrades a pack**; pins, holds and replacements install exactly, so a
+  compromised Worker cannot roll packs back.
+
+Residuals, stated rather than defended:
+
+- **Old SDKs keep revoked content.** A v4 SDK that predates P4-13 verifies the new members and
+  never acts on them: it keeps mounting a revoked release until the host upgrades its SDK. The
+  yank at least stops new installs. Every SDK release note says so.
+- **SDK downgrade.** A host that downgrades its SDK below P4-13 ignores `revocations.json` and
+  may mount a revoked release again.
+- **A torn `revocations.json`** is quarantined and replaced by a file whose `relearn` lists the
+  stamp's pinned and embedded packs, so their embedded baselines are refused at every boot
+  (online the pack is fetched instead) until a fresh feed with a usable `revocations` member
+  re-teaches the device. `relearn` clears once every revocation of the pack whose target the
+  device holds, pins or would take from the feed is learned; an entry for an older release the
+  device does not hold never keeps it set.
+- **`relearn` and the size fallback's step 3.** When a feed is over the cap, step 3 keeps only
+  revocations whose target a _live_ app release pins or holds, or a row lists. A device on a
+  non-live app release can then clear `relearn` from a feed that omitted the revocation of its
+  own pinned target, and mount that embedded baseline until a feed lists the revocation again.
+- **An unreadable `revocations.json`** with `revocationsStored` set in `state.json` refuses those
+  embedded baselines at every boot (a torn `state.json` that lost the flag gets it back when a
+  readable `revocations.json` with entries is loaded); one **without** the flag (or with an unreadable `state.json`, so
+  the flag cannot be read) refuses nothing offline and can mount a revoked baseline.
+- **An unreadable `state.json` with no network** can mount a revoked embedded baseline that the
+  device's `revocations.json` does not list; within a process, a baseline a feed verified in
+  that process lists as revoked is still refused.
+- **The 256-target cap.** A device remembers at most 256 revoked targets; more revocations push
+  the oldest (by `issuedAt`) out of its memory, and a Worker that then withholds it can let the
+  target mount again.
+- **A withheld replacement keeps a required pack stopped.** The Worker can refuse to serve a
+  replacement record; the device then keeps `blocked {revoked-content}` until it arrives.
+- **A stolen release key can revoke everything.** Devices that verified revocations of required
+  packs are stopped until a binary pins a rotated key; on load, an entry whose key is no longer
+  pinned is forgotten.
 
 ### Packs on the wire (packs v1, P4-21)
 
@@ -2171,12 +2236,20 @@ Poison the release channel
 ├── Hold the product key: a compromised Worker or KEK (wire contract v4's two-signer model, P3-02)
 │   ├── CAN withhold an update (serve no target), or delay one (stop re-signing: installs freeze at expiresAt, `none {stale}`)
 │   ├── CAN re-target a channel among CI-signed releases newer than what is installed, halt or re-bucket a rollout, narrow capabilities, or lower a floor
-│   ├── CAN raise a floor: every install of that platform below it gets a prompt it cannot dismiss, including installs whose outlet has nothing newer (`blocked app-floor`), but play continues — no v4 answer maps to `required`, and License's compatibility window stays the one tool that blocks
+│   ├── CAN raise a floor: every install of that platform below it gets a prompt it cannot dismiss, including installs whose outlet has nothing newer (`blocked app-floor`), but play continues — no floor maps to `required` (only a CI-signed revocation of a required pack does, `plans/P4-13.md` decision 4), and License's compatibility window stays the one tool that blocks an old build
 │   ├── CAN point a store prompt at another listing on the same store (the listing-URL prefixes fix the store, not the app)
+│   ├── CAN raise a pack floor (P4-13): a prompt (`content-floor`, boot `optional`); play continues
+│   ├── CAN narrow, gate or withhold pack updates (omit `packSets`, pin a pack on an outlet, halt or re-bucket a pack gate)
+│   ├── CAN withhold a revocation from a device that has not learned it (a device that has keeps refusing the target)
+│   ├── CAN, given a CI revocation with a replacement, withhold the replacement and so stop the revoked required pack (`blocked {revoked-content}`, boot `required`)
 │   ├── CAN fast-forward `seq` to 2^53 − 1: installs that fetch that feed refuse the recovered Worker's lower `seq` and freeze once it is stale — until the operator runs `feed:seq-ceiling` for the product, which sets its ceiling flag (every `seq` row created later starts at the ceiling, so channels the attacker answered first, a manual or `pr-<n>` channel with no row, are covered), raises every existing row and drops the stored documents; the recovered Worker then signs every channel at the ceiling with a newer `issuedAt`, which clients accept. The freeze ends with the recovery, not with a client release
 │   ├── CANNOT ship bytes no release key signed (records verify against pinned release keys only; the payload's size and SHA-256 are checked against the record)
 │   ├── CANNOT downgrade (no answer offers a version below the installed one), widen a capability (the feed only narrows the per-kind defaults), or send a prompt outside the listing-URL prefixes
-│   └── CANNOT stop an install from running (the licence documents it also signs are AT-1's subject)
+│   ├── CANNOT forge a revocation (release-key signed, verified against pinned release keys only)
+│   ├── CANNOT downgrade a pack below what is installed (a feed target installs only at a higher `seq`)
+│   ├── CANNOT install a release the device knows is revoked
+│   ├── NOTE: a device remembers at most 256 revoked targets; more revocations push the oldest out (`plans/P4-13.md` §2.5)
+│   └── CANNOT stop an install from running, except through a CI-signed revocation of a required pack (the licence documents it also signs are AT-1's subject)
 ├── Control the unsigned v3 `/version` answer (a compromised Worker, or its `url` field)
 │   └── CAN offer any page, but the Godot UI kit's prompt opens only an `https://` URL (P1-10): a `file:`, `http:` or custom-scheme `url` gets no action, so `OS.shell_open` never reaches a local handler
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)

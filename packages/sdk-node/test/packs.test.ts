@@ -3,8 +3,9 @@
 // by the file strategy, resumed after a dropped connection, served from an embedded baseline,
 // and its `packSetId` reported through `devices/report` as `content`.
 //
-// @pkey-feature packs.state packs.handlers packs.record
+// @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content
 
+import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import {
   chmod,
@@ -29,6 +30,9 @@ import {
   PRODUCT_TRUST,
   RELEASE_KEYS,
   markerFor,
+  revocationFor,
+  signFeedDoc,
+  signReleaseDoc,
   stampFor,
   treePack,
   type TreePack,
@@ -51,6 +55,10 @@ class FakeServer {
   seen: Seen[] = [];
   reports: unknown[] = [];
   drop: number | null = null;
+  /** Extra records by hash (app records, revocations) and the signed feed `update/stable`
+   *  serves (P4-13). */
+  records = new Map<string, string>();
+  feed: string | null = null;
 
   async start(): Promise<void> {
     this.server = createServer((req, res) => void this.handle(req, res));
@@ -78,9 +86,15 @@ class FakeServer {
     const rec = /^\/djdl\/release\/records\/([0-9a-f]{64})$/.exec(url.pathname);
     if (rec) {
       const p = this.packs.find((x) => x.recordSha256 === rec[1]);
-      if (!p) return void res.writeHead(404).end();
+      const body = p?.jws ?? this.records.get(rec[1]!);
+      if (!body) return void res.writeHead(404).end();
       res.writeHead(200, { "content-type": "application/jose" });
-      res.end(p.jws);
+      res.end(body);
+      return;
+    }
+    if (url.pathname === `/${PRODUCT}/update/stable/feed.jws` && this.feed) {
+      res.writeHead(200, { "content-type": "application/jose" });
+      res.end(this.feed);
       return;
     }
     const blob = /^\/djdl\/distribution\/blobs\/sha256\/([0-9a-f]{64})$/.exec(
@@ -155,7 +169,10 @@ class FakeServer {
             blobs: `${b}/${PRODUCT}/distribution/blobs/sha256/{sha256}`,
           },
         },
-        update: { enabled: true, endpoints: {} },
+        update: {
+          enabled: true,
+          endpoints: { feed: `${b}/${PRODUCT}/update/{channel}/feed.jws` },
+        },
         identity: { enabled: false },
       },
     };
@@ -627,4 +644,101 @@ describe("DirPackStorage.list never answers a partial listing (round 3)", () => 
       expect(await treeOnDisk(dirA, a.files)).toBe(true);
     },
   );
+});
+
+describe("client.update.decide() with packs (plans/P4-13.md §2.5, §2.6)", () => {
+  it("learns a revocation of the running pack, blocks required content and refuses the release", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    srv.packs = [v1];
+    const appJws = await signReleaseDoc({
+      schemaVersion: 1,
+      aud: PRODUCT,
+      deliverable: "app",
+      kind: "app",
+      version: "1.0.0",
+      seq: 10,
+      issuedAt: 1_759_000_000,
+      builds: [
+        {
+          id: "macos-dmg",
+          platform: "macos",
+          arch: "universal",
+          format: "dmg",
+          artifacts: [
+            { name: "a.dmg", role: "payload", sha256: "a".repeat(64), size: 1 },
+          ],
+        },
+      ],
+    });
+    const rev = await revocationFor(v1);
+    srv.records = new Map([
+      [createHash("sha256").update(appJws).digest("hex"), appJws],
+      [rev.record, rev.jws],
+    ]);
+    const now = Math.floor(Date.now() / 1000);
+    const platform = { darwin: "macos", win32: "windows", linux: "linux" }[
+      process.platform as "darwin" | "win32" | "linux"
+    ];
+    srv.feed = await signFeedDoc({
+      schemaVersion: 1,
+      iss: "key.plrs.im",
+      aud: PRODUCT,
+      channel: "stable",
+      selector: {},
+      seq: 1,
+      issuedAt: now - 10,
+      expiresAt: now + 800,
+      app: {
+        deliverable: "app",
+        versionScheme: "semver",
+        targets: [
+          {
+            platform,
+            release: {
+              sha256: createHash("sha256").update(appJws).digest("hex"),
+              seq: 10,
+              version: "1.0.0",
+            },
+            floor: null,
+            critical: false,
+            outlets: {
+              direct: {
+                kind: "direct",
+                live: { version: "1.0.0", seq: 10 },
+                halted: false,
+              },
+            },
+          },
+        ],
+      },
+      revocations: [rev.entry],
+    });
+    const c = await client({ stamp: [v1] });
+    await c.update.packs.ensure(["djdl.l10n"]);
+    const check = await c.update.decide();
+    expect(check.decision).toMatchObject({
+      action: "blocked",
+      reason: "revoked-content",
+    });
+    // Persisted beside the pack state, the flag first; the release no longer runs.
+    const root = join(work, "data", PRODUCT, "packs");
+    const revs = JSON.parse(
+      await readFile(join(root, "revocations.json"), "utf8"),
+    );
+    expect(Object.keys(revs.revoked)).toEqual([v1.recordSha256]);
+    const state = JSON.parse(await readFile(join(root, "state.json"), "utf8"));
+    expect(state.revocationsStored).toBe(true);
+    expect((await c.update.packs.state()).running["djdl.l10n"]).toBeUndefined();
+    await expect(c.update.packs.ensure(["djdl.l10n"])).rejects.toMatchObject({
+      code: "pack-revoked",
+    });
+    srv.feed = null;
+    srv.records = new Map();
+  });
 });

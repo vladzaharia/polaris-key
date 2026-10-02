@@ -74,6 +74,14 @@ export interface PackStateDoc {
   observed: Record<string, unknown>;
   confirmedBootSeq: number;
   bootSeq: number;
+  /**
+   * Set (to `true`) by the engine, in the same atomic write sequence, when it first stores a
+   * revocation in the sibling `revocations.json` (plans/P4-13.md §2.5): written before the sibling
+   * file, never cleared. Absent for a product that has never had a revocation. With an unreadable
+   * `revocations.json`, it is what makes the engine refuse the stamp's embedded baselines
+   * offline.
+   */
+  revocationsStored?: true;
 }
 
 /**
@@ -194,6 +202,7 @@ export function parsePackState(text: string | null): PackStateDoc {
   if (nat(doc.confirmedBootSeq)) out.confirmedBootSeq = doc.confirmedBootSeq;
   if (nat(doc.bootSeq)) out.bootSeq = doc.bootSeq;
   if (out.confirmedBootSeq > out.bootSeq) out.confirmedBootSeq = out.bootSeq;
+  if (doc.revocationsStored === true) out.revocationsStored = true;
   return out;
 }
 
@@ -222,6 +231,7 @@ export async function reloadPackState(
   out.observed = state.observed;
   out.confirmedBootSeq = state.confirmedBootSeq;
   out.bootSeq = state.bootSeq + 1;
+  if (state.revocationsStored === true) out.revocationsStored = true;
   for (const [id, i] of Object.entries(state.active))
     if (await verify.install(i).catch(() => false)) out.active[id] = i;
   for (const [id, i] of Object.entries(state.previous)) {

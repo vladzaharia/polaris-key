@@ -62,7 +62,7 @@ const FLOORS := {
 	"clockFloorCases": 7,
 	"bundleCases": 9,
 	"pointerSets": 464,
-	"feedCases": 77,
+	"feedCases": 80,
 	"releaseRecordCases": 49,
 	"versionCases": 25,
 	"capabilityCases": 10,
