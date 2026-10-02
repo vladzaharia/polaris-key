@@ -6,7 +6,7 @@
 // missing. A browser session cannot post `devices/report` (the registered web N/A), so the
 // packSetId it would report is checked through `packSetId()`.
 //
-// @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content
+// @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.provides
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -253,6 +253,33 @@ describe("createBrowserPacks (update.packs, web)", () => {
         { packId: "djdl.l10n", releaseSha256: v1.recordSha256 },
       ]),
     );
+  });
+
+  it("answers isAvailable from the active set and packFor from the stamp's pins (P4-20)", async () => {
+    const l10n = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+      recordExtra: { provides: ["l10n.fr"] },
+    });
+    const foes = await treePack({
+      packId: "djdl.foes",
+      version: "2.0.0",
+      seq: 4,
+      files: { "foes.json": "{}" },
+      recordExtra: { provides: ["foe.goblin"] },
+    });
+    const { p } = packs(byteServer(l10n, foes), [l10n, foes]);
+    expect(await p.isAvailable("l10n.fr")).toBe(false);
+    await p.ensure(["djdl.l10n"]);
+    expect(await p.isAvailable("l10n.fr")).toBe(true);
+    expect(await p.isAvailable("foe.goblin")).toBe(false);
+    expect(await p.packFor("foe.goblin")).toEqual({
+      packId: "djdl.foes",
+      release: { sha256: foes.recordSha256, seq: 4, version: "2.0.0" },
+    });
+    expect(await p.packFor("foe.dragon")).toBeNull();
   });
 
   it("persists in OPFS: a reload re-verifies, an evicted payload is re-planned from scratch", async () => {

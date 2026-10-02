@@ -3,7 +3,7 @@
 // by the file strategy, resumed after a dropped connection, served from an embedded baseline,
 // and its `packSetId` reported through `devices/report` as `content`.
 //
-// @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content
+// @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.provides
 
 import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
@@ -381,6 +381,38 @@ describe("client.update.packs (Node)", () => {
     expect(install!.embedded).toBe(true);
     expect(await c.update.packs.path("djdl.l10n")).toBe(emb);
     expect(srv.blobRequests()).toEqual([]);
+    c.close();
+  });
+
+  it("answers isAvailable from the active set and packFor from the stamp's pins (P4-20)", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const l10n = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+      recordExtra: { provides: ["l10n.fr"] },
+    });
+    const foes = await treePack({
+      packId: "djdl.foes",
+      version: "2.0.0",
+      seq: 4,
+      files: { "foes.json": "{}" },
+      recordExtra: { provides: ["foe.goblin"] },
+    });
+    srv.packs = [l10n, foes];
+    const c = await client({ stamp: [l10n, foes] });
+    expect(await c.update.packs.isAvailable("l10n.fr")).toBe(false);
+    await c.update.packs.ensure(["djdl.l10n"]);
+    expect(await c.update.packs.isAvailable("l10n.fr")).toBe(true);
+    expect(await c.update.packs.isAvailable("foe.goblin")).toBe(false);
+    srv.seen = [];
+    expect(await c.update.packs.packFor("foe.goblin")).toEqual({
+      packId: "djdl.foes",
+      release: { sha256: foes.recordSha256, seq: 4, version: "2.0.0" },
+    });
+    expect(srv.blobRequests()).toEqual([]);
+    expect(await c.update.packs.packFor("foe.dragon")).toBeNull();
     c.close();
   });
 

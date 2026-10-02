@@ -42,6 +42,7 @@ import {
   type PackHandler,
   type PackInstall,
   type PackProgress,
+  type PackProvider,
   type PacksSnapshot,
   type PackStateStore,
   type PackStorage,
@@ -216,6 +217,15 @@ export interface BrowserPacks {
   ensureReleases(targets: readonly PackTarget[]): Promise<PackInstall[]>;
   /** The stored and verified revocations and `relearn` (plans/P4-13.md §2.5). */
   revocations(): Promise<RevocationsSnapshot>;
+  /** P4-20: whether a pack in the active set provides `contentId` (its record's `provides`);
+   *  false without a content stamp. */
+  isAvailable(contentId: string): Promise<boolean>;
+  /** P4-20: the pack whose target release (the stamp's pins, or `targets`) provides
+   *  `contentId`, or null. Reads records only. */
+  packFor(
+    contentId: string,
+    targets?: readonly PackTarget[],
+  ): Promise<PackProvider | null>;
   /** The update check's content input, or null without a content stamp. */
   contentInput(): Promise<UpdateCheckContent | null>;
   /** Keep the revocations an update check verified. */
@@ -444,6 +454,14 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
     bootFetch: async (o) => runBootFetch(await start(), { ...o, stamp }),
     ensureReleases: async (targets) => (await start()).ensureReleases(targets),
     revocations: async () => (await start()).revocations(),
+    async isAvailable(contentId) {
+      if (stamp === null) return false;
+      return (await start()).isAvailable(contentId);
+    },
+    async packFor(contentId, targets) {
+      if (stamp === null) return null;
+      return (await start()).packFor(contentId, targets);
+    },
     async contentInput() {
       if (stamp === null) return null;
       const e = await start();

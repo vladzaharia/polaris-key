@@ -212,6 +212,14 @@ export {
   type VerifyMarkerOptions,
   type VerifyMarkerResult,
   type ZstdPort,
+  // P4-20: save compatibility (`isAvailable`, `packFor`).
+  CONTENT_ID_PATTERN,
+  MAX_PROVIDES,
+  providesFacts,
+  providesOf,
+  verifiedPayloadOf,
+  type PackProvider,
+  type ProvidesFacts,
 } from "./packs/index.js";
 
 export {

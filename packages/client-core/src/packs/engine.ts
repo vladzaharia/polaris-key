@@ -26,6 +26,7 @@ import type {
   PackRecordDoc,
   PackVariant,
 } from "@polaris-key/protocol/packs";
+import type { PackTarget } from "@polaris-key/protocol/update";
 import { PolarisError } from "../errors.js";
 import {
   delegationHashOf,
@@ -82,6 +83,12 @@ import {
   MAX_FILES_INDEX_BYTES,
 } from "@polaris-key/protocol/core";
 import { packSetId } from "./set.js";
+import {
+  providesFacts,
+  verifiedPayloadOf,
+  type PackProvider,
+  type ProvidesFacts,
+} from "./provides.js";
 import {
   abandonInstall,
   beginInstall,
@@ -395,6 +402,8 @@ export class PackEngine {
     string,
     { pack: string; delegation: string }
   >();
+  /** P4-20: `providesFacts` of verified records, by record hash. */
+  private readonly providesMemo = new Map<string, ProvidesFacts>();
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(opts: PackEngineOptions) {
@@ -589,6 +598,62 @@ export class PackEngine {
         releaseSha256: i.recordSha256,
       })),
     );
+  }
+
+  /**
+   * Save compatibility (P4-20, CONTENT §6.7 item 8): whether a pack release in the ACTIVE set
+   * provides `contentId` (its record's `provides`, `provides.ts`). The active set is `running`:
+   * restart packs mounted at this boot, hot packs active, embedded baselines included; a revoked
+   * release is never in it. A pack whose `entitlement` the licence lacks never answers.
+   */
+  isAvailable(contentId: string): boolean {
+    this.requireLoaded();
+    const granted = this.opts.entitlements?.() ?? null;
+    for (const i of this.running.values()) {
+      const f = this.factsOf(i.recordSha256, i.record);
+      if (f.provides.has(contentId) && entitled(f, granted)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * The pack whose TARGET release provides `contentId`, so a game can `estimate` and `ensure` it
+   * ("Continue (downloading 12 MB…)"). The target set is `targets` (a `packs` decision's install
+   * list) or, by default, the content stamp's pins; each target's record is the verified record
+   * of an install or embedded baseline with its hash, else fetched by hash and verified as
+   * `ensure` verifies it. The first target, in list order, that provides the id answers. A target
+   * that cannot be fetched or verified, a revoked one and an unentitled one (CONTENT §6.7 item 9)
+   * never answer. Null when no target provides it.
+   */
+  packFor(
+    contentId: string,
+    targets?: readonly PackTarget[],
+  ): Promise<PackProvider | null> {
+    return this.serialised(async () => {
+      this.requireLoaded();
+      this.delegationBudget = MAX_DELEGATIONS_PER_CHECK;
+      const list: readonly PackTarget[] =
+        targets ??
+        (this.opts.stamp?.pins ?? []).map((p) => ({
+          pack: p.pack,
+          release: p.release,
+        }));
+      const granted = this.opts.entitlements?.() ?? null;
+      for (const t of list) {
+        if (this.isRevoked(t.release.sha256)) continue;
+        const f = await this.targetFacts(t);
+        if (f && f.provides.has(contentId) && entitled(f, granted))
+          return {
+            packId: t.pack,
+            release: {
+              sha256: t.release.sha256,
+              seq: t.release.seq,
+              version: t.release.version,
+            },
+          };
+      }
+      return null;
+    });
   }
 
   /** Mark this boot healthy (CONTENT §10 step 7). */
@@ -1236,61 +1301,7 @@ export class PackEngine {
       return { kind: "current", install: emb };
 
     // 2. The pinned record, by hash, against the pinned release keys.
-    const got = await this.opts.fetchRecord(pin.release.sha256);
-    if (!got.ok)
-      throw new PackError(
-        got.code,
-        `Fetching ${packId}'s record failed (${got.code}).`,
-        { packId },
-      );
-    // plans/P4-19.md §2.3, §2.4: a `pkd1-` kid names its delegation, fetched by hash, only on
-    // the delegated surface (a feed target that is neither the stamp's pin or hold for this pack
-    // nor a stored revocation's replacement). Elsewhere step 13 refuses it at `jws`.
-    const delegationHash = delegationHashOf(got.body);
-    const delegation =
-      delegationHash !== null &&
-      this.delegatedAllowed(packId, pin.release.sha256)
-        ? await this.fetchDelegation(packId, delegationHash)
-        : null;
-    const v = await verifyReleaseRecord(got.body, {
-      releaseKeys: this.opts.releaseKeys,
-      productTrust: this.opts.productTrust(),
-      expectedAud: this.opts.product,
-      expectedHash: pin.release.sha256,
-      pin: {
-        kind: "pack",
-        deliverable: packId,
-        version: pin.release.version,
-        seq: pin.release.seq,
-      },
-      ...(delegation !== null ? { delegation } : {}),
-    });
-    if (!v.ok)
-      throw v.step === "cross-check"
-        ? new PackError(
-            "record-mismatch",
-            `${packId}'s record is not the pinned release.`,
-            { packId },
-          )
-        : new PackError(
-            "record-rejected",
-            `${packId}'s record was refused at ${v.step}.`,
-            { packId, detail: v.step },
-          );
-    const record = v.record as unknown as PackRecordDoc;
-    if (v.delegation !== null) {
-      this.delegatedKnown.set(pin.release.sha256, {
-        pack: packId,
-        delegation: v.delegation.sha256,
-      });
-      if (this.revokedBy(pin.release.sha256, v.delegation.sha256) !== null)
-        throw new PackError(
-          "pack-revoked",
-          `${packId}@${pin.release.version} was signed under a delegation its developer revoked.`,
-          { packId, detail: "delegation" },
-        );
-    }
-    const delegated = v.delegation !== null ? delegation : null;
+    const { body, record, delegated } = await this.fetchVerified(packId, pin);
 
     // 3. Type, entitlement, variant.
     const handler = this.handlers.get(record.type);
@@ -1449,7 +1460,7 @@ export class PackEngine {
       });
     return {
       kind: "plan",
-      body: got.body,
+      body,
       recordSha256: pin.release.sha256,
       record,
       variant,
@@ -1459,6 +1470,106 @@ export class PackEngine {
       index,
       plan: p,
       delegation: delegated,
+    };
+  }
+
+  /** `providesFacts` of a verified record, by its hash (bounded memo). */
+  private factsOf(sha256: string, jws: string): ProvidesFacts {
+    const hit = this.providesMemo.get(sha256);
+    if (hit) return hit;
+    const f = providesFacts(verifiedPayloadOf(jws));
+    if (this.providesMemo.size >= MAX_PROVIDES_MEMO) this.providesMemo.clear();
+    this.providesMemo.set(sha256, f);
+    return f;
+  }
+
+  /** A target's facts: from an install or embedded baseline of that release, else its record
+   *  fetched and verified (`fetchVerified`); null when that fails. */
+  private async targetFacts(t: PackTarget): Promise<ProvidesFacts | null> {
+    const sha = t.release.sha256;
+    const hit = this.providesMemo.get(sha);
+    if (hit) return hit;
+    const doc = this.requireLoaded();
+    for (const i of [
+      doc.active[t.pack],
+      doc.previous[t.pack],
+      this.running.get(t.pack),
+      this.embedded.get(t.pack),
+    ])
+      if (i && i.recordSha256 === sha && i.packId === t.pack)
+        return this.factsOf(sha, i.record);
+    try {
+      const { body } = await this.fetchVerified(t.pack, t);
+      return this.factsOf(sha, body);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Step 2 for one pin: the record fetched by hash and verified against the pinned release keys
+   *  (a delegated one through its delegation, plans/P4-19.md §2.3). Raises a `PackError`. */
+  private async fetchVerified(
+    packId: string,
+    pin: { release: { sha256: string; seq: number; version: string } },
+  ): Promise<{ body: string; record: PackRecordDoc; delegated: string | null }> {
+    const got = await this.opts.fetchRecord(pin.release.sha256);
+    if (!got.ok)
+      throw new PackError(
+        got.code,
+        `Fetching ${packId}'s record failed (${got.code}).`,
+        { packId },
+      );
+    // plans/P4-19.md §2.3, §2.4: a `pkd1-` kid names its delegation, fetched by hash, only on
+    // the delegated surface (a feed target that is neither the stamp's pin or hold for this pack
+    // nor a stored revocation's replacement). Elsewhere step 13 refuses it at `jws`.
+    const delegationHash = delegationHashOf(got.body);
+    const delegation =
+      delegationHash !== null &&
+      this.delegatedAllowed(packId, pin.release.sha256)
+        ? await this.fetchDelegation(packId, delegationHash)
+        : null;
+    const v = await verifyReleaseRecord(got.body, {
+      releaseKeys: this.opts.releaseKeys,
+      productTrust: this.opts.productTrust(),
+      expectedAud: this.opts.product,
+      expectedHash: pin.release.sha256,
+      pin: {
+        kind: "pack",
+        deliverable: packId,
+        version: pin.release.version,
+        seq: pin.release.seq,
+      },
+      ...(delegation !== null ? { delegation } : {}),
+    });
+    if (!v.ok)
+      throw v.step === "cross-check"
+        ? new PackError(
+            "record-mismatch",
+            `${packId}'s record is not the pinned release.`,
+            { packId },
+          )
+        : new PackError(
+            "record-rejected",
+            `${packId}'s record was refused at ${v.step}.`,
+            { packId, detail: v.step },
+          );
+    const record = v.record as unknown as PackRecordDoc;
+    if (v.delegation !== null) {
+      this.delegatedKnown.set(pin.release.sha256, {
+        pack: packId,
+        delegation: v.delegation.sha256,
+      });
+      if (this.revokedBy(pin.release.sha256, v.delegation.sha256) !== null)
+        throw new PackError(
+          "pack-revoked",
+          `${packId}@${pin.release.version} was signed under a delegation its developer revoked.`,
+          { packId, detail: "delegation" },
+        );
+    }
+    return {
+      body: got.body,
+      record,
+      delegated: v.delegation !== null ? delegation : null,
     };
   }
 
@@ -2070,6 +2181,17 @@ function activationOf(
   const a = record.handler?.activation;
   if (a === "hot" || a === "restart") return a;
   return handler?.activation ?? "restart";
+}
+
+/** The most record facts `providesMemo` keeps before it starts over. */
+const MAX_PROVIDES_MEMO = 1024;
+
+/** Whether the licence lets a pack answer: ungated, no License service, or the flag granted. */
+function entitled(
+  f: ProvidesFacts,
+  granted: ReadonlySet<string> | null,
+): boolean {
+  return f.entitlement === null || granted === null || granted.has(f.entitlement);
 }
 
 /** The delegation hash of a delegated install (its stored delegation and the record's kid), or
