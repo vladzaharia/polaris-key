@@ -152,9 +152,16 @@ mise exec node@22 -- pnpm parity:check
   SDK reports with its own list.
 - **Outlet.** P3-11 had landed, so the hook is real in one place. Swift's `update.driver`
   outlet detector answers on iOS, where self-update is always forbidden.
-- **Not converted.** The sub-clients' `service-unavailable` refusals for a disabled service stay
-  as they are. `supports()` reports `product` for them, but changing the thrown code would
-  change recorded transcripts and existing callers. This is a follow-up.
+- **Product refusals carry the typed fields (review decision).** A sub-client whose service is
+  off (`requireService` in Node, Python, Swift and Godot) refuses with `reason: "product"`, the
+  feature and the detail that `supports()` reports. It keeps the code `service-unavailable`, so
+  existing callers still match. Node and Python throw `UnsupportedError`. Swift keeps throwing
+  `PolarisError`, now with `PolarisError.unsupported`, because a different error type would break
+  every `catch let e as PolarisError` site. Godot keeps its result types and puts the fields in
+  `detail`. The recorded transcripts do not change, because they record HTTP and these refusals
+  happen before any request. React's own `service-disabled` refusals are unchanged.
+- **Node `devices.report()` carries `caps`** as well as the report after a sync.
+  `DevicesClient` takes a `caps` callback from `PolarisKeyClient`, as Python does.
 
 ## Hand-off
 

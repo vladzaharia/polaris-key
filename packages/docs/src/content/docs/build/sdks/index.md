@@ -85,14 +85,23 @@ constants. The answer is Supported, or Unsupported with a `feature`, a `reason` 
 
 Each SDK reads a capability table generated from its own `parity.json`, so its answers always
 match the [SDK parity matrix](/docs/reference/parity/). Calling into an unsupported feature
-fails with the same fields, in each language's idiom:
+fails with the same fields, in each language's idiom. The code depends on the reason:
 
-- Node, React and Python throw `UnsupportedError` with code `unsupported`.
-- Swift throws `UnsupportedError`.
-- Godot returns a `PKeyResult` with code `unsupported` and the fields in `detail`.
+- **A `runtime` refusal uses code `unsupported`.** Node, React and Python throw
+  `UnsupportedError`; Swift throws `UnsupportedError`; Godot returns a `PKeyResult` with the
+  fields in `detail`. React's `getSecret()` is an example: it throws instead of returning
+  `null`.
+- **A `product` refusal uses code `service-unavailable`.** This is a sub-client whose service
+  is off. The code is the one callers already match on, and the refusal carries the same
+  fields. Node and Python throw `UnsupportedError`. Swift throws its usual `PolarisError`, with
+  the fields in `PolarisError.unsupported` so existing `catch let e as PolarisError` sites keep
+  working. Godot returns its usual result, with the fields in `detail`.
+- **React keeps two older codes.** Its browser device-management verbs throw
+  `UnsupportedError` with code `device-management-unsupported`, and `report()` throws it with
+  `report-unsupported`. React's own refusals for a service that is off keep the plain
+  `PolarisError` code `service-disabled`.
 
-React's `getSecret()` is an example: it throws instead of returning `null`. `caps()` lists the
-supported ids, and each device report sends that list as `caps`.
+`caps()` lists the supported ids, and each device report sends that list as `caps`.
 
 ## The `PKEY_CONFIG_*` env convention
 

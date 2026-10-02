@@ -96,6 +96,11 @@ the features, because "done" means "done in every SDK".
   - **Accepted exception (lead, P3-07):** Swift's signed-feed call is `UpdateClient.channelFeed(channel:)`, not
     `feed(channel:)`, because `feed(channel:arch:entitlements:)` is the Sparkle appcast helper that must keep its
     behaviour. Node, Python and Godot keep `feed`.
+  - **Accepted shapes (P1b-10):** `supports()` answers in each language's idiom. Swift returns
+    `enum Support { case supported(feature:); case unsupported(Unsupported) }`. Godot returns a
+    `PKeyResult` (ok, or code `unsupported` with `detail = {feature, reason, detail}`). Swift's
+    `service-unavailable` refusal stays a `PolarisError`, with the same fields in
+    `PolarisError.unsupported`.
 - **Same verdicts.** Wherever a feature has a corpus file, every SDK reproduces its expected
   outcomes and output bytes.
 - **Same requests.** Wherever a feature talks to the Worker, every SDK produces the same
