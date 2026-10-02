@@ -158,3 +158,58 @@ GC on top of these availability rows; P5-08 adds platform transports beside them
 
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded while implementing; the plan (§6, §8.4, decision 35) and the code are right where this
+brief differs.
+
+- **One blob route, no gated variant.** Devices fetch every pack object at
+  `distribution.endpoints.blobs` with `{sha256}` substituted (plan §2.7), so no second path or
+  discovery key was added (that would be a wire change). The route decides from the object's
+  HOLDERS in the product (`services/distribution/blobAccess.ts`, Core's `refHolders`): the public
+  key `blobs/sha256/<h>` first (it never reads `gated/`), then `gated/blobs/sha256/<h>`, which only
+  a pack's `pack-upload`/`pack-object` ref can authorise. The acceptance row "the same hash on the
+  public path returns 404" is met as: `files/` and `builds/` (which never read `gated/`) answer
+  not-found for every pack object, with or without the flag; a hash held only under `gated/` is
+  never looked up under `blobs/`; another product's ref never counts.
+- **`HEAD` was served but undocumented.** P2b-04's blob route answered `HEAD`; the spec listed
+  `get` only. `headBlob` is now in the OpenAPI spec, `routeCoverage` pins `["get", "head"]`, and
+  `gen-reference.mjs` (and `routeCoverage`'s `specMethods`) count `head`, so `routes.mdx` lists it.
+  No path was added.
+- **P4-02's hand-off closed.** `files/<packRelease>/<name>` and `builds/…?deliverable=<pack>` now
+  answer not-found (pack releases are reachable only on the blob route), and `deliveryUrl` returns
+  `null` for a pack release. The app's `entitled` version window is never applied to a pack's
+  version: the blob route's app side counts app releases only.
+- **`entitled` without a gate (P4-01 follow-up): fail-closed.** The plan leaves it open. A pack's
+  grant is its gate; the app's window is an app rule. So a pack object under mode `entitled` with
+  no gate is refused, `403 delivery_gate_missing` (new wire code in `errors.json`), even to a
+  licence holding every flag. A pack with no row inherits the app's mode, so a paid (`entitled`)
+  app's packs are refused until an operator sets a gate or a looser mode. With a gate, `entitled`
+  means the gate's flag, for `blobs/` objects too. `licensed`/`authenticated` mean a usable
+  licence; `public` anyone.
+- **The gate is read at request time.** `core/entitledAccess.ts` `entitlementFlagRefusal` checks
+  the flag against the grant the licence document carries (`resolveMergedPayload` +
+  `injectAdminPolicy`); `401 unauthorized` without a usable licence, `403 not_entitled` (existing
+  code) without the flag. Renaming the flag moves access at once (tested).
+- **Upload tickets are already scoped** by P4-02's stage round (`gated` held to the gate), as plan
+  §8.4 says; nothing here changes uploads.
+- **Availability is derived, not written.** P2b-03's self-hosted availability is computed on read,
+  with no `dist_availability` row; packs follow that model (`packDerivedAvailability`):
+  `pkey-cdn`/`web` per variant once every object the record names is stored (hash and length) and
+  held; `embedded` per (app release, outlet) with `detail: {appReleaseId, buildIds}`. File blobs
+  are not re-read per call (that would decode an index per variant); ingest checked them, and
+  `pack-upload` refs hold them until P4-14's collector, which must keep this rule. "Becomes live
+  only after its last object is uploaded" is shown through ingest (refused `pack-object` while one
+  object is missing, nothing derived; live after the last upload) plus a removed ref.
+- **The matrix derives pack cells by the same rule** for a pack deliverable (it compared equal in
+  tests); its outlets and the console's outlet list carry `supported`, and the matrix header says
+  "<transport>: not supported yet". P4-09 builds the pack views proper.
+- **F-Droid relay.** `objectIsPublic` now delegates to the blob route's rule
+  (`publicKeyIsPublic`), so a registered file a pack holds publicly is relayed only while that
+  pack is `public`.
+- **R10.** `routedDeliverables` no longer filters packs; `dist_transports` rows are written 25 to
+  an INSERT, so the worst case is 84 insert statements (test and THREAT-MODEL updated). The Action
+  is rebundled (`@polaris-key/manifest` changed).
+- **No migration.** Nothing needed a column; `blob_refs.ref_kind` is free text.
+- **Access-Control-Max-Age** stays 600; CORS is P0-05's, unchanged.
