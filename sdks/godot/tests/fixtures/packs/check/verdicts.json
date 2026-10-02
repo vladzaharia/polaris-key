@@ -1,0 +1,191 @@
+{
+  "prefixes": [
+    "res://assets/kaykit/"
+  ],
+  "engine": "godot-4.7",
+  "fixtures": {
+    "kaykit-v1": {
+      "errors": [],
+      "warnings": []
+    },
+    "kaykit-unstripped": {
+      "errors": [
+        "project.binary: --export-pack's project.binary replaces the main pack's copy.",
+        ".godot/global_script_class_cache.cfg: --export-pack's .godot/global_script_class_cache.cfg replaces the main pack's copy."
+      ],
+      "warnings": []
+    },
+    "kaykit-forbidden": {
+      "errors": [
+        "assets/kaykit/roll.gd: a script; a pack carries data only (S-07 row 13).",
+        "assets/kaykit/bin/libdice.so: a native library or GDExtension; a pack carries data only.",
+        "other/thing.png: outside the handler prefixes (res://assets/kaykit/).",
+        ".godot/imported/orphan.png-ffff.s3tc.ctex: no in-prefix .remap or .import names it, so nothing in the pack could load it."
+      ],
+      "warnings": []
+    },
+    "remap-script-gdextension-engine": {
+      "errors": [
+        "the PCK header says engine 4.6.1, outside requires.engine godot-4.7.",
+        "assets/kaykit/pack_class.gd.remap: remaps a script (assets/kaykit/pack_class.gdc); a pack carries data only.",
+        "assets/kaykit/x.gdextension: a native library or GDExtension; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "embedded-text": {
+      "errors": [
+        "assets/kaykit/probe.tscn: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/sneaky.tres: a text resource that names script/source (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "ext-script-ok": {
+      "errors": [],
+      "warnings": []
+    },
+    "embedded-binary": {
+      "errors": [
+        "assets/kaykit/a.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/b.res: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/c.res: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+        "assets/kaykit/d.scn: not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "exported-script": {
+      "errors": [
+        ".godot/exported/9/export-ffff-x.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "path-dotdot": {
+      "reader": "the payload: assets/kaykit/../../escaped.txt: an unsafe path (a `..`, `.` or empty segment, or a character the path rules refuse)."
+    },
+    "path-trailing-dot": {
+      "reader": "the payload: assets/kaykit/evil.gd/.: an unsafe path (a `..`, `.` or empty segment, or a character the path rules refuse)."
+    },
+    "path-dot-segment": {
+      "reader": "the payload: assets/kaykit/./evil.gd/: an unsafe path (a `..`, `.` or empty segment, or a character the path rules refuse)."
+    },
+    "content-binary-extensions": {
+      "errors": [
+        "assets/kaykit/look.material: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/walk.anim: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/m.mesh: a binary resource that names CSharpScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/z.material: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+        "assets/kaykit/level.cfg: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "remap-outside-pack": {
+      "errors": [
+        "assets/kaykit/coin.png.import: remaps a path outside the pack (res://.godot/imported/basegame.png-1234.ctex); a pack loads only its own files.",
+        "assets/kaykit/odd.tscn.remap: remaps a path outside the pack (res://assets/kaykit/../../game/main.scn); a pack loads only its own files.",
+        "assets/kaykit/abs.tscn.remap: remaps a path outside the pack (/tmp/elsewhere.scn); a pack loads only its own files."
+      ],
+      "warnings": []
+    },
+    "uid-cache-outside-pack": {
+      "errors": [
+        ".godot/uid_cache.bin: names a path outside the pack (res://main_res/base.tres); a pack registers only its own UIDs."
+      ],
+      "warnings": []
+    },
+    "audit-text-spellings": {
+      "errors": [
+        "assets/kaykit/inline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/multiline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/bracket.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/stringname.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/escaped.tres: a text resource with a \\u escape, which can spell a script type; a pack carries data only.",
+        "assets/kaykit/objinline.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/passthrough.tres: a text resource that names GDScript behind escapes (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/passthrough-src.tres: a text resource that names script/source behind escapes (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-text-legit": {
+      "errors": [],
+      "warnings": []
+    },
+    "audit-cr": {
+      "errors": [
+        "assets/kaykit/cr.tres: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-binary-padded": {
+      "errors": [
+        "assets/kaykit/padded.res: a binary resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-binary-extref": {
+      "errors": [],
+      "warnings": []
+    },
+    "audit-remap-dodges": {
+      "errors": [
+        "assets/kaykit/a.png.import: a path line the engine could read differently (path.s3tc.x=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/b.tres.remap: a path line the engine could read differently (path=&\"res://assets/kaykit/data/level_000.json\"); a pack loads only its own files.",
+        "assets/kaykit/c.png.import: a path line the engine could read differently ([remap] path=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/d.png.import: a path line the engine could read differently (importer=\"texture\" path=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/e.png.import: a path line the engine could read differently (} path=\"res://main.gd\"); a pack loads only its own files.",
+        "assets/kaykit/f.tres.remap: a .remap or .import with a backslash; a pack loads only its own files.",
+        "assets/kaykit/g.tres.remap: a .remap or .import with a control byte; a pack loads only its own files."
+      ],
+      "warnings": []
+    },
+    "audit-nul": {
+      "errors": [
+        "assets/kaykit/nulbyte.tres: a text resource with a NUL byte, which cannot be inspected for embedded scripts; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-bom-head": {
+      "errors": [
+        "assets/kaykit/level.bin: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "audit-x-bin": {
+      "errors": [],
+      "warnings": []
+    },
+    "audit-real-import-texture": {
+      "errors": [],
+      "warnings": []
+    },
+    "audit-real-import-model": {
+      "errors": [
+        ".godot/imported/tri.glb-6ed0665643de460f848bf1abf5ed7ae0.scn: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "reader-v2-res": {
+      "errors": [
+        "the PCK header says engine 4.3.0, outside requires.engine godot-4.7."
+      ],
+      "warnings": []
+    },
+    "reader-v3": {
+      "errors": [],
+      "warnings": []
+    },
+    "reader-encrypted-dir": {
+      "reader": "the payload has an encrypted directory (pack flags 3); a published pack is never encrypted."
+    },
+    "reader-sparse": {
+      "reader": "the payload is a sparse bundle (pack flags 6): its file data is not in this file."
+    },
+    "reader-entry-encrypted": {
+      "reader": "the payload: assets/kaykit/data/level_001.json: an encrypted entry; a published pack is never encrypted."
+    },
+    "reader-entry-removal": {
+      "reader": "the payload: assets/kaykit/data/level_004.json: a patch pack's removal entry (flags 2); a published pack stands alone."
+    },
+    "reader-entry-delta": {
+      "reader": "the payload: assets/kaykit/data/level_002.json: a patch pack's delta entry (flags 4); a published pack stands alone."
+    }
+  }
+}

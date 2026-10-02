@@ -36,6 +36,9 @@ extends RefCounted
 ##   adapter()                     the PKeyOutletAdapter for this install's outlet
 ##   plan(result)                  what the prompt offers for an answer (adapter.describe)
 ##   updater                       the PKeyUpdater: slots, the boot guard, the native bridges
+##   packs                         PKeyPacks (P4-08): ensure, mount, state, rollback, the pack
+##                                 signals; the boot guard rolls a failed pack set back with the
+##                                 binary
 ##
 ## While the updater is active (not in the editor, a headless run or a debug build, unless
 ## enabled), decide() fills in the staged update, the skipped version and the binary version from
@@ -88,6 +91,8 @@ signal download_progress(received: int, total: int)
 
 ## Acting on decisions: the slots, the boot guard, the native bridges (P3-10).
 var updater := PKeyUpdater.new()
+## Packs (P4-08): the `godot.pck` and `files.tree` pipeline (PKeyPacks).
+var packs := PKeyPacks.new()
 ## Stage a `binary {method: sidecar-pck}` answer in the background as soon as decide() returns it.
 var auto_stage := true
 
@@ -102,6 +107,9 @@ signal _finished
 
 func attach(core: PKeyCore) -> void:
 	_core_ref = weakref(core)
+	packs.attach(core)
+	core.packs = packs
+	updater.packs = packs
 	updater.attach(core)
 	if not updater.update_staged.is_connected(_on_staged):
 		updater.update_staged.connect(_on_staged)

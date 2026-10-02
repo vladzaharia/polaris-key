@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 39 | 12 | 3 | 6 |
 | Python | `python` | 47 | 3 | 3 | 7 |
 | Swift | `macos`, `ios` | 48 | 3 | 3 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 39 | 0 | 18 | 3 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 47 | 0 | 10 | 3 |
 
 ## Core
 
@@ -94,17 +94,17 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | — |
+| `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.revoke` | Revocation records: verify, supersede, persist, refuse revoked mounts | `cases.json` `revocationCases` + unit | ✓ | ✓ | ✓ | ✓ | planned (P4-24) | — |
-| `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | — |
-| `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | — |
+| `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.index.chunks` | Chunk index parsing | `content/` | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |
-| `packs.apply.full` | Full apply | `content/` | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | — |
-| `packs.apply.file` | File apply with type-neutral container rebuild | `content/` | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | — |
+| `packs.apply.full` | Full apply | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.apply.file` | File apply with type-neutral container rebuild | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |
-| `packs.apply.delta` | Raw-prefix delta | `content/` | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | any: dependency; any: version |
-| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + `content/` `packSetIdCases` (P4-04) + unit | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | — |
-| `packs.handlers` | Handler contract; registerHandler for custom types | unit | ✓ | ✓ | ✓ | ✓ | planned (P4-08) | — |
+| `packs.apply.delta` | Raw-prefix delta | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | any: dependency; any: version |
+| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + `content/` `packSetIdCases` (P4-04) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.handlers` | Handler contract; registerHandler for custom types | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.provides` | isAvailable(contentId) from provides | unit | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | — |
 | `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | planned (P5-08); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
 | `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (P5-08); N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |

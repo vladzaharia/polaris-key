@@ -10,9 +10,13 @@
 #   PKEY_TEST_STAMPS  1 runs the build-stamp exports (step 4) whatever the selection; they run
 #                     by default only with the `ci` selection
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
+#   PKEY_CONTENT_CORPUS the content corpus directory the packs suite reads (default: the
+#                     checkout's conformance/corpus/v2/content; `content/` is not mirrored)
 #   Extra arguments are passed to every suite after the selection.
 #
-# Steps: import (retried once on a signal exit), the untracked-.uid check, the editor run, the
+# Steps: import (retried once on a signal exit), the untracked-.uid check, the f_uid data packs
+# (two projects under tests/fixtures/uid_packs/, imported and exported with --export-pack into
+# build/uid_packs/, read by the packs suite through PKEY_UID_PACKS), the editor run, the
 # build-stamp exports (six ZIP exports with the P1-11 and P3-11 env overrides, checked by the
 # export_stamps suite in the editor; --export-pack needs no templates), then export + template
 # run. Every step runs under a log watchdog: a fatal line (below) kills and
@@ -50,6 +54,13 @@ fi
 rm -rf "$BUILD"
 mkdir -p "$LOGS"
 : >"$BUILD/.gdignore"
+
+# The packs suite reads the content corpus from the checkout and the f_uid packs from build/.
+if [ -z "${PKEY_CONTENT_CORPUS:-}" ]; then
+  PKEY_CONTENT_CORPUS="$(cd "$PROJECT/../../conformance/corpus/v2/content" 2>/dev/null && pwd || true)"
+fi
+export PKEY_CONTENT_CORPUS
+export PKEY_UID_PACKS="$BUILD/uid_packs"
 
 STEP_STATUS=0
 
@@ -124,6 +135,15 @@ if command -v git >/dev/null 2>&1 && git -C "$PROJECT" rev-parse --is-inside-wor
 else
   echo "── uid-check: skipped (not inside a git work tree)"
 fi
+
+# 2b. The f_uid data packs (S-05 §4.6): two projects imported and exported independently, with
+# this editor, so each leg mounts packs its own engine wrote.
+mkdir -p "$PKEY_UID_PACKS" "$BUILD/uid_src"
+for d in dataA dataB; do
+  cp -R "$PROJECT/tests/fixtures/uid_packs/$d" "$BUILD/uid_src/$d"
+  step "uid-import-$d" plain "$GODOT" --headless --path "$BUILD/uid_src/$d" --import || exit 1
+  step "uid-export-$d" plain "$GODOT" --headless --path "$BUILD/uid_src/$d" --export-pack "Data" "$PKEY_UID_PACKS/$d.pck" || exit 1
+done
 
 # 3. The editor run.
 step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "$@" || exit 1

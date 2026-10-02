@@ -42,7 +42,7 @@ func fetch(_required: Array) -> Dictionary:
 	return await _wait("fetch")
 
 
-func mount() -> Dictionary:
+func mount(_required: Array = []) -> Dictionary:
 	return await _wait("mount")
 
 

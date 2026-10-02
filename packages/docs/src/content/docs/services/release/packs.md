@@ -375,6 +375,11 @@ revocation has no `revocations.json` and nothing is refused.
   below 3.14) on 3.9–3.13.
 - Swift: `update.packs` from the cross-platform `PolarisKeyPacks` target (macOS and iOS, libzstd
   1.5.7) — see the [Swift SDK](/docs/build/sdks/swift/).
-- Node, Web, Python and Swift run the content decision and keep revocations (P4-13, P4-23).
-- Godot follows the same reference implementation (`@polaris-key/client-core/packs`) and the same
-  conformance vectors.
+- Godot: `PolarisKey.update.packs` — see the [Godot SDK](/docs/build/sdks/godot/). A pure-GDScript
+  port over the same conformance vectors, with the `godot.pck` handler: a rebuilt pack is checked
+  against the same admission list as the publish lint before it commits, and mounted at a boot
+  from `user://pkey/store/<sha256>.pck`. `--patch-from` frames are decoded by Godot's own delta
+  decoder, so `zstd-patch-from` is advertised on Godot 4.6 and later only. The content stamp is
+  `res://pkey_packs/pkey-content.json`, beside the embedded baselines.
+- Node, Web, Python and Swift run the content decision and keep revocations (P4-13, P4-23);
+  Godot's follows in P4-24.

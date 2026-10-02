@@ -118,43 +118,46 @@
       "status": "implemented",
       "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper, web display mode); the iOS AppDistributor and Windows package readers are hooks that answer unavailable until P5-05 and a Windows native reader. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
     },
-    "packs.record": { "status": "planned", "wp": "P4-08" },
+    "packs.record": {
+      "status": "implemented",
+      "note": "P4-08: core/release_record.gd applies the pack claims and pin.kind (PKeyPackClaims), packs/marker.gd verifies embedded-pack markers; the packs suite drives every packRecordCases and markerCases vector, the content stamps and packSetIdCases."
+    },
     "packs.revoke": { "status": "planned", "wp": "P4-24" },
     "packs.plan": {
-      "status": "planned",
-      "wp": "P4-08"
+      "status": "implemented",
+      "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json (v2) row, variant case and target case on the editor and the release template; plan_target applies the P4-10 §2.5 chunk rule when given a chunk index (Godot parses none until P4-11)."
     },
     "packs.index.files": {
-      "status": "planned",
-      "wp": "P4-08"
+      "status": "implemented",
+      "note": "P4-08: packs/files.gd (parse_files_index, check_paths, tree_digest) over PackedByteArray.decompress; every pathCases and filesIndexCases vector."
     },
     "packs.index.chunks": {
       "status": "planned",
       "wp": "P4-11"
     },
     "packs.apply.full": {
-      "status": "planned",
-      "wp": "P4-08"
+      "status": "implemented",
+      "note": "P4-08: packs/apply.gd apply_full (buffered: decompress cannot stream, so PKeyPacks.one_shot_budget can drop a too-large full before planning); applyCases on the editor and the release template."
     },
     "packs.apply.file": {
-      "status": "planned",
-      "wp": "P4-08"
+      "status": "implemented",
+      "note": "P4-08: packs/apply.gd apply_file with the type-neutral container rebuild from gaps and blobs; a godot.pck installed without a kept index derives its files from its own PCK directory, so the next release can come by file."
     },
     "packs.apply.chunk": {
       "status": "planned",
       "wp": "P4-11"
     },
     "packs.apply.delta": {
-      "status": "planned",
-      "wp": "P4-08"
+      "status": "implemented",
+      "note": "P4-08: zstd --patch-from frames decoded by the ENGINE's own GDDL delta decoder (a PACK_FILE_DELTA helper pack over a private-namespace prefix: a trailer appended to the installed store pack and truncated back, or a copy host), after the window check; advertised (zstd-patch-from) only on the pinned engines PKeyPackZstd.PATCH_FROM_ENGINES (4.6, 4.7) whose start-up probe decodes. On the 4.4 floor the planner never chooses a delta and the corpus's decode cases fail closed (delta-apply-failed)."
     },
     "packs.state": {
-      "status": "planned",
-      "wp": "P4-08"
+      "status": "implemented",
+      "note": "P4-08: packs/state.gd and PKeyPackEngine (client-core's PackEngine) over PKeyPackStorage in user://pkey (staging, store/<sha256>.pck, trees/<sha256>/, content/state.json): journal, Range/If-Range resume, read-back before every rename, torn-state quarantine with its saved snapshot, unreadable-state refusal, deferred installs, GC roots, embedded baselines from res://pkey_packs/; packSetId on devices/report; the shared boot guard rolls a failed pack set back with the binary and holds each rolled-back record (held, with a count) until the stamp pins another (pack-rolled-back on ensure)."
     },
     "packs.handlers": {
-      "status": "planned",
-      "wp": "P4-08"
+      "status": "implemented",
+      "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount: normal paths only, resources judged by content (RSRC/text head, RSCC refused), remap/import targets and uid_cache.bin entries inside the pack; files.tree outputs content-scanned too; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
     },
     "packs.provides": {
       "status": "planned",

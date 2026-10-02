@@ -1,14 +1,14 @@
 ---
 title: "SDKs"
-description: "One wire contract, five surfaces — the shared core-plus-sub-client shape, fail-closed capability negotiation, and the PKEY_CONFIG_* env convention."
+description: "One wire contract, six surfaces — the shared core-plus-sub-client shape, fail-closed capability negotiation, and the PKEY_CONFIG_* env convention."
 sidebar:
   order: 4
   label: "SDKs"
 ---
 
 There is **one** wire contract — the frozen compact-JWS envelope described in
-[The wire contract](/docs/build/wire/) — and **five** surfaces that speak it: four language
-SDKs, and a CLI built from the same core as a fifth. Whichever one your product links against,
+[The wire contract](/docs/build/wire/) — and **six** surfaces that speak it: five language
+SDKs, and a CLI built from the same core as a sixth. Whichever one your product links against,
 it verifies the identical signed documents, exposes the identical `core` +
 per-service-sub-client shape, and fails closed the same way when a capability is not on.
 
@@ -18,6 +18,7 @@ per-service-sub-client shape, and fails closed the same way when a capability is
 | React   | `@polaris-key/react`                                    | [React](/docs/build/sdks/react/)               |
 | Python  | `polaris-key` (PyPI)                                    | [Python](/docs/build/sdks/python/)             |
 | Swift   | `PolarisKey` (SwiftPM)                                  | [Swift](/docs/build/sdks/swift/)               |
+| Godot   | the `addons/polaris_key` addon                          | [Godot](/docs/build/sdks/godot/)               |
 | CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script | shipped inside the Node and Python pages above |
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
@@ -149,3 +150,6 @@ environment supplies is not listed (rule 4).
   front ends (argparse, click, typer) over one command core.
 - **[Swift](/docs/build/sdks/swift/)** — native CryptoKit verification, per-service SwiftPM
   targets so an app links only what it ships.
+- **[Godot](/docs/build/sdks/godot/)** — a pure-GDScript addon: the `PolarisKey` autoload,
+  `PKeyBoot` and the UI kit, updates by outlet, and packs mounted at a boot (a build without a
+  content stamp at `res://pkey_packs/pkey-content.json` has no packs).

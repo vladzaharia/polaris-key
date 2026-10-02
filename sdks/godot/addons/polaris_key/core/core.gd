@@ -48,6 +48,8 @@ var post_sync_hooks: Array[Callable] = []
 ## The update-event queue (PKeyUpdater): pending_events() goes into the device report's `updates`
 ## key (P6-03) and mark_reported(ids) runs once the Worker accepted it. Null: none.
 var update_events: Object = null
+## PolarisKey.update.packs (P4-08): the running set's packSetId rides on devices/report.
+var packs: Object = null
 ## The last discovery manifest this session, or null.
 var discovery_manifest = null
 

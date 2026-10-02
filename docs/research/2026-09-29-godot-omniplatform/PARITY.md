@@ -106,6 +106,10 @@ the features, because "done" means "done in every SDK".
     `code` is a registry code like every other error's. `update.packs` calls can throw either:
     `PackError` for the pack pipeline and `PolarisError` for `service-unavailable` or
     `local-only`, so Swift callers catch both. Node, Python and Godot raise one error type.
+  - **Accepted shape (P4-08):** GDScript has no exceptions, so every `PolarisKey.update.packs` call
+    that can fail returns a `PKeyResult` (`ok`, or the registry `code` with `detail = {packId,
+path?, step?}`), `estimate` and `mount` return Dictionaries, and the pipeline's progress is the
+    `pack_progress`, `set_changed`, `pack_ready` and `pack_failed` signals.
 - **Same verdicts.** Wherever a feature has a corpus file, every SDK reproduces its expected
   outcomes and output bytes.
 - **Same requests.** Wherever a feature talks to the Worker, every SDK produces the same
