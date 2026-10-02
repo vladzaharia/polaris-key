@@ -298,8 +298,12 @@ package, and every decision in §8.1 that names it as owner, override this brief
   buffered and `PKeyPacks.one_shot_budget` may drop a `full` too large for the device.
 - **Web.** The Cache Storage shell (S-05 §4.3) is not built: on web the mount cap applies and
   `PKeyPacks.root` may be a MEMFS path (`/pkey`), so packs re-download after a reload. A follow-up.
-- **P4-10.** P4-10 has not landed (content corpus and plan matrix are still version 1), so
-  `plan_target`'s chunk rule and the chunk sections stay with it (its §8.5).
+- **P4-10.** P4-10 landed before this branch merged (§8.5): the Godot runners accept content
+  corpus v2 and plan matrix v2; `chunkIndexCases` and the eight `strategy: chunk` apply cases are
+  declared planned for P4-11 by exact id and checked against `parity.json`
+  (`packs.index.chunks`, `packs.apply.chunk`: planned, P4-11), their inputs (the `put*` mutations
+  included) materialised against their refs; `plan_target` takes `chunk_index` and applies the
+  §2.5 chunk rule; the pack claims apply checks 81–83 on `chunks`.
 - **Review round (B1–B4, N1–N6).** The review made downloaded GDScript run on 4.7.2 and 4.4.1
   through two holes the CLI lint shared, now closed on both sides with permanent fixtures:
   (B1) Godot simplifies pack paths at mount, so `packs/a/../../x` and `packs/a/evil.gd/.` escaped

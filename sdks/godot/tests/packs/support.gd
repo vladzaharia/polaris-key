@@ -64,6 +64,12 @@ static func materialise(ref: Dictionary) -> PackedByteArray:
 				bytes = bytes.slice(0, int(m["length"]))
 			"xor":
 				bytes[int(m["offset"])] = bytes[int(m["offset"])] ^ int(m["value"])
+			"putU16", "putU32", "putU64":
+				# plans/P4-10.md §4.2: little-endian; a putU64 value is below 2^53.
+				var width: int = {"putU16": 2, "putU32": 4, "putU64": 8}[String(m["op"])]
+				var v := int(m["value"])
+				for k in width:
+					bytes[int(m["offset"]) + k] = (v >> (8 * k)) & 0xFF
 			_:
 				push_error("unknown mutation %s" % str(m))
 	return bytes

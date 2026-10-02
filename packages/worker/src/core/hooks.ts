@@ -40,8 +40,10 @@
  * P2b-04 added resolution and source access to `ReleaseCatalog` and rollouts, delivery access and
  * delivery URLs to `Delivery`; P2b-02 implements `outletCapabilities`; P2b-03 added availability,
  * submissions and the key inventory; P4-02 added the pack functions to `ReleaseCatalog` and the
- * delivery gate (`entitlement`) to `Delivery`. P2b-05, P2b-06, P3-03, P4-02 (Release's publish
- * routes read `delivery.entitlement`), P4-05, P4-09, P4-14 and P6-03 consume.
+ * delivery gate (`entitlement`) to `Delivery`; P4-14 added `rollouts` and `reportedAvailability` to
+ * `Delivery` and the optional `packChunks` hook point to `ReleaseCatalog` (P4-22 implements it).
+ * P2b-05, P2b-06, P3-03, P4-02 (Release's publish routes read `delivery.entitlement`), P4-05,
+ * P4-09, P4-14 (Core's blob collector reads both hooks) and P6-03 consume.
  */
 
 /// <reference types="@cloudflare/workers-types" />
@@ -392,6 +394,12 @@ export interface CatalogHold {
  * the replacement it names. A superseding revocation replaces it in place; none is ever removed.
  */
 export interface CatalogRevocation {
+  /**
+   * `record` (absent: P4-13's revocation of one pack release) or, from P4-19, `delegation` (whose
+   * target is a delegation hash, not a release). A consumer that reads `targetReleaseId` as a
+   * release must ignore every other kind.
+   */
+  kind?: "record" | "delegation";
   /** The revoked pack's id. */
   deliverableId: string;
   targetReleaseId: string;
@@ -541,6 +549,35 @@ export interface ReleaseCatalog {
    * lists, P4-14 excludes from GC's live references and P4-15 shows.
    */
   revocations(): Promise<CatalogRevocation[]>;
+
+  // ── Chunk bundles (P4-10 decision 16): the HOOK POINT P4-22 fills ──
+  /**
+   * The chunks one variant of a pack release reads from chunk bundles, decoded from its stored
+   * chunk index (one index per call, at most `MAX_PUBLISHED_INDEX_BYTES`; a caller walking many
+   * releases drops each before the next). Null when the release, the variant or its readable chunk
+   * index does not exist.
+   *
+   * OPTIONAL, and not implemented yet: whichever of P4-14 and P4-22 lands second implements it
+   * (P4-10 decision 16). P4-14 landed first, so until Release implements it the collector
+   * (`core/blobGc.ts`) KEEPS every ref to a key under `bundles/` (fail closed: it cannot tell a live
+   * bundle from a dead one) and the bundle live-data ratio reads `null`. P4-22 implements it here,
+   * in `services/release/packs/catalog.ts`, and adds the test that every bundle a live index names
+   * is kept.
+   */
+  packChunks?(
+    releaseId: string,
+    variantKey: string,
+  ): Promise<CatalogPackChunk[] | null>;
+}
+
+/** One chunk a pack variant reads from a chunk bundle (`ReleaseCatalog.packChunks`, P4-22). */
+export interface CatalogPackChunk {
+  /** The bundle's blob-store key (`bundles/sha256/<hex>`, or under `gated/`). */
+  bundleKey: string;
+  /** The chunk's byte offset in the bundle (a chunk is identified by bundle and offset). */
+  offset: number;
+  /** The chunk's stored length in the bundle. */
+  bytes: number;
 }
 
 // ── delivery (Distribution) ─────────────────────────────────────────────────────────────────
@@ -849,6 +886,22 @@ export interface Delivery {
    */
   transports(): Promise<
     { deliverable: string; outlet: string; transport: TransportId }[]
+  >;
+  /**
+   * P4-14: every outlet rollout of the product (`dist_rollouts`), any deliverable and any state, by
+   * deliverable, then outlet, then channel. Update composes a pack's per-outlet gates from it, and
+   * Core's blob collector keeps every release a rollout names (and its fallback).
+   */
+  rollouts(): Promise<RolloutRecord[]>;
+  /**
+   * P4-14: every STORED availability record (CI reports, store connectors) of the product, on live
+   * and removed outlets alike, as (release, outlet, state). Derived records are not included: they
+   * are computed from the blob store, so counting them would let an object keep itself alive.
+   * Core's blob collector keeps every pack release an outlet lists in a state other than
+   * `rejected` or `removed`.
+   */
+  reportedAvailability(): Promise<
+    { releaseId: string; outletId: string; state: string }[]
   >;
 }
 

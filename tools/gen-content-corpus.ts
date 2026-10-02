@@ -42,6 +42,23 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decode, decodeWithPrefix } from "@polaris-key/zstd-wasm";
+import {
+  CHUNKS_FORMAT,
+  MAX_CHUNK_BYTES,
+  MAX_CHUNK_INDEX_BYTES,
+  chunkPayload,
+  containerSegments,
+  layoutChunks,
+  mutateBytes,
+  refApplyChunk,
+  refParseChunkIndex,
+  refParseChunkIndexBytes,
+  writeChunkIndex,
+  type Chunk,
+  type ChunkIndexDoc,
+  type ChunkVerdict,
+  type Mutation,
+} from "./gen-content-chunks.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const CONTENT_DIR = join(
@@ -988,10 +1005,43 @@ export function refSelectVariant(
   return best === null ? { error: "pack-no-variant" } : { index: best.index };
 }
 
+/** What `planTarget` reads of a parsed chunk index. */
+export interface PlanChunkIndex {
+  payloadSize: number;
+  payloadSha256: string;
+  records: [string, number, number, number, number][];
+}
+
+/** plans/P4-10.md §2.5: the chunk candidate, or null. */
+function refChunkTarget(
+  variant: Record<string, unknown>,
+  chunkIndex: PlanChunkIndex | null,
+): Record<string, Json> | null {
+  const c = variant.chunks;
+  if (chunkIndex === null || !isObj(c)) return null;
+  if (!usableVariant(variant)) return null;
+  if ((variant.files as Record<string, unknown>).layout !== "container")
+    return null;
+  if (c.format !== CHUNKS_FORMAT || !usableCodec(c.codec)) return null;
+  if (typeof c.size !== "number" || c.size > MAX_CHUNK_INDEX_BYTES) return null;
+  const p = variant.payload as { size: number; sha256: string };
+  if (
+    chunkIndex.payloadSize !== p.size ||
+    chunkIndex.payloadSha256 !== p.sha256
+  )
+    return null;
+  if (chunkIndex.records.some((r) => r[1] > MAX_CHUNK_BYTES)) return null;
+  return {
+    indexBytes: c.bytes as number,
+    records: chunkIndex.records.map((r) => [...r]),
+  };
+}
+
 export function refPlanTarget(
   variant: Record<string, unknown>,
   recordSha256: string,
   filesIndex: FilesIndex | null,
+  chunkIndex: PlanChunkIndex | null = null,
 ): Record<string, Json> {
   const payload = variant.payload;
   if (!usableVariant(variant))
@@ -1063,7 +1113,7 @@ export function refPlanTarget(
     payload,
     full: fullT,
     platform: null,
-    chunks: null,
+    chunks: refChunkTarget(variant, chunkIndex),
     files: filesT,
     deltas,
   };
@@ -1115,6 +1165,9 @@ const json = (o: unknown): Uint8Array => utf8(JSON.stringify(o));
 
 interface Tool {
   zc(b: Uint8Array): Uint8Array;
+  /** One frame per input, compressed by one zstd process per 400 inputs (plans/P4-10.md §2.4:
+   *  the CLI writes each frame's content size). */
+  zcMany(bs: readonly Uint8Array[]): Uint8Array[];
   pf(base: Uint8Array, target: Uint8Array): Uint8Array;
 }
 function zstdTool(dir: string): Tool {
@@ -1131,6 +1184,20 @@ function zstdTool(dir: string): Tool {
       writeFileSync(i, b);
       run([`-${ZSTD_LEVEL}`, i, "-o", o]);
       return new Uint8Array(readFileSync(o));
+    },
+    zcMany(bs) {
+      const out: Uint8Array[] = [];
+      for (let k = 0; k < bs.length; k += 400) {
+        const names = bs.slice(k, k + 400).map((b) => {
+          const i = join(dir, `m${n++}`);
+          writeFileSync(i, b);
+          return i;
+        });
+        run([`-${ZSTD_LEVEL}`, ...names]);
+        for (const i of names)
+          out.push(new Uint8Array(readFileSync(`${i}.zst`)));
+      }
+      return out;
     },
     pf(base, target) {
       const bi = join(dir, `b${n}`);
@@ -1158,7 +1225,131 @@ function payloadsFromBlobs(ref: RefJson): { v1: Uint8Array; v2: Uint8Array } {
   return { v1: set.v1, v2: set.v2 };
 }
 
-export function rebuildContentBlobs(ref: RefJson, payloadsDir?: string): void {
+/** Where `--rebuild-content-blobs` reads payloads from and what it may add to. */
+export interface RebuildOptions {
+  /** `v1.pck` and `v2.pck` to seed from; otherwise the committed set's decoded payloads. */
+  payloadsDir?: string;
+  /** The blob directory compared and added to, `content/blobs/` by default (a test passes a
+   *  temporary copy). */
+  blobsDir?: string;
+}
+
+/**
+ * plans/P4-10.md decision 15, the additions-only guard: `next` (every blob the rebuild computed,
+ * by name) against the files already under `blobsDir`. Throws, naming every offence, when an
+ * existing blob's bytes would change or an existing blob would disappear, or when an existing
+ * `refs.json` entry would change or disappear; returns the names to write (new files, and
+ * `refs.json` when it only gains entries). Writes nothing.
+ */
+export function additionsOnly(
+  next: ReadonlyMap<string, Uint8Array>,
+  blobsDir: string,
+): string[] {
+  const offences: string[] = [];
+  const write: string[] = [];
+  const existing = new Set(listFiles(blobsDir));
+  const eq = (a: Uint8Array, b: Uint8Array): boolean =>
+    a.byteLength === b.byteLength && a.every((x, i) => x === b[i]);
+  for (const name of existing)
+    if (!next.has(name)) offences.push(`${name} would be removed`);
+  for (const [name, bytes] of next) {
+    if (!existing.has(name)) {
+      write.push(name);
+      continue;
+    }
+    const cur = new Uint8Array(
+      readFileSync(join(blobsDir, ...name.split("/"))),
+    );
+    if (eq(cur, bytes)) continue;
+    if (name !== "refs.json") {
+      offences.push(`${name} would change`);
+      continue;
+    }
+    const refsOf = (b: Uint8Array): Record<string, unknown> => {
+      try {
+        const d = JSON.parse(new TextDecoder().decode(b)) as {
+          refs?: Record<string, unknown>;
+        };
+        return d.refs ?? {};
+      } catch {
+        return {};
+      }
+    };
+    const was = refsOf(cur);
+    const now = refsOf(bytes);
+    const changed = Object.keys(was).filter(
+      (k) => !has(now, k) || canonical(was[k]) !== canonical(now[k]),
+    );
+    if (changed.length > 0)
+      offences.push(`refs.json entries would change: ${changed.join(", ")}`);
+    else write.push(name);
+  }
+  if (offences.length > 0)
+    fail(
+      `--rebuild-content-blobs may only add blobs and refs.json entries (plans/P4-10.md decision 15); nothing was written:\n  ${offences.join("\n  ")}`,
+    );
+  return write;
+}
+
+/** The chunking parameters of the corpus (plans/P4-10.md §4.2): §2.4's, with a 256 KiB bundle
+ *  target so runs cross bundles and only one v1 bundle ships. */
+export const CORPUS_CHUNK_PARAMS = {
+  chunker: "fastcdc-2016-nc1",
+  fileAware: true,
+  avgSize: 65536,
+  minSize: 16384,
+  maxSize: 262144,
+  padMerge: 64,
+  bundleTarget: 262144,
+  bundleLayout: "shared",
+  zstdLevel: 19,
+} as const;
+
+/** The synthetic `dup` payload (plans/P4-10.md §4.2): t1's first three files in index order with
+ *  the first repeated, `f0 f1 f0 f2`, each its own segment, so duplicate records exist. */
+function dupLayout(t1Files: readonly { data: Uint8Array }[]): {
+  payload: Uint8Array;
+  segments: [number, number][];
+} {
+  const parts = [t1Files[0]!, t1Files[1]!, t1Files[0]!, t1Files[2]!].map(
+    (f) => f.data,
+  );
+  const segments: [number, number][] = [];
+  let o = 0;
+  for (const p of parts) {
+    segments.push([o, p.byteLength]);
+    o += p.byteLength;
+  }
+  return { payload: concat(parts), segments };
+}
+
+/** v1's largest chunk that v2 reuses (gen.py's choice for the tampered seed): its record, its
+ *  record index and its payload offset. Ties keep the earlier record. */
+function largestReused(
+  v1: ChunkIndexDoc,
+  v2Ids: ReadonlySet<string>,
+): { record: ChunkIndexDoc["records"][number]; index: number; offset: number } {
+  let best: {
+    record: ChunkIndexDoc["records"][number];
+    index: number;
+    offset: number;
+  } | null = null;
+  let off = 0;
+  v1.records.forEach((r, i) => {
+    if (v2Ids.has(r[0]) && (best === null || r[1] > best.record[1]))
+      best = { record: r, index: i, offset: off };
+    off += r[1];
+  });
+  if (best === null) fail("v2 reuses no v1 chunk");
+  return best;
+}
+
+export function rebuildContentBlobs(
+  ref: RefJson,
+  opts: RebuildOptions = {},
+): void {
+  const payloadsDir = opts.payloadsDir;
+  const blobsDir = opts.blobsDir ?? CONTENT_BLOBS_DIR;
   requireZstdCli();
   const { v1, v2 } = payloadsDir
     ? {
@@ -1413,14 +1604,91 @@ export function rebuildContentBlobs(ref: RefJson, payloadsDir?: string): void {
       ),
     );
 
-    rmSync(CONTENT_BLOBS_DIR, { recursive: true, force: true });
-    for (const [name, b] of out) {
-      const p = join(CONTENT_BLOBS_DIR, ...name.split("/"));
+    // plans/P4-10.md §4.2: the chunk blobs. v1 and v2 chunked at the corpus parameters, v2's
+    // bundles laid out shared after v1's; the synthetic `dup` index and its bundle.
+    const P = CORPUS_CHUNK_PARAMS;
+    const chunksOf = (payload: Uint8Array, idx: FilesIndex): Chunk[] =>
+      chunkPayload(
+        payload,
+        containerSegments(
+          idx.files.map((f) => ({ offset: f.offset!, size: f.size })),
+          payload.byteLength,
+          P.padMerge,
+        ),
+        P.avgSize,
+      );
+    const k1 = chunksOf(v1, c1);
+    const k2 = chunksOf(v2, c2);
+    const dup = dupLayout(t1Files);
+    const kd = chunkPayload(dup.payload, dup.segments, P.avgSize);
+    const storedChunk = new Map<string, Uint8Array>();
+    {
+      const uniq = new Map<string, Uint8Array>();
+      for (const [list, payload] of [
+        [k1, v1],
+        [k2, v2],
+        [kd, dup.payload],
+      ] as const)
+        for (const c of list)
+          if (!uniq.has(c.id))
+            uniq.set(c.id, payload.subarray(c.offset, c.offset + c.len));
+      const ids = [...uniq.keys()];
+      const frames = z.zcMany(ids.map((id) => uniq.get(id)!));
+      ids.forEach((id, i) => {
+        const rawChunk = uniq.get(id)!;
+        storedChunk.set(
+          id,
+          frames[i]!.byteLength < rawChunk.byteLength ? frames[i]! : rawChunk,
+        );
+      });
+    }
+    const stored = (id: string): Uint8Array => storedChunk.get(id)!;
+    const index = (
+      list: Chunk[],
+      payload: Uint8Array,
+      prior: ChunkIndexDoc | null,
+    ): { doc: ChunkIndexDoc; fresh: Uint8Array[] } => {
+      const l = layoutChunks(list, stored, P.bundleTarget, prior);
+      return {
+        doc: {
+          fileAware: true,
+          payloadSize: payload.byteLength,
+          payloadSha256: sha256Hex(payload),
+          records: l.records,
+          bundles: l.table,
+        },
+        fresh: l.fresh,
+      };
+    };
+    const i1 = index(k1, v1, null);
+    const i2 = index(k2, v2, i1.doc);
+    const id = index(kd, dup.payload, null);
+    const v2pkc = writeChunkIndex(i2.doc);
+    const v2zst = z.zc(v2pkc);
+    if (v2zst.byteLength >= v2pkc.byteLength)
+      fail("chunks/v2.pkc must compress (its ref is codec zstd)");
+    put("chunks/v1.pkc", writeChunkIndex(i1.doc));
+    put("chunks/v2.pkc", v2pkc);
+    put("chunks/v2.pkc.zst", v2zst);
+    put("chunks/dup.pkc", writeChunkIndex(id.doc));
+    for (const b of [...i2.fresh, ...id.fresh])
+      put(`bundles/${sha256Hex(b)}`, b);
+    // The v1 bundle that holds the largest reused chunk (the repair case refetches from it).
+    const v2Ids = new Set(k2.map((c) => c.id));
+    const reusedChunk = largestReused(i1.doc, v2Ids);
+    const v1Bundle = i1.fresh.find(
+      (b) => sha256Hex(b) === i1.doc.bundles[reusedChunk.record[3]]![0],
+    )!;
+    put(`bundles/${sha256Hex(v1Bundle)}`, v1Bundle);
+
+    const write = additionsOnly(out, blobsDir);
+    for (const name of write) {
+      const p = join(blobsDir, ...name.split("/"));
       mkdirSync(dirname(p), { recursive: true });
-      writeFileSync(p, b);
+      writeFileSync(p, out.get(name)!);
     }
     console.log(
-      `rebuilt ${out.size} content blobs (${[...out.values()].reduce((a, b) => a + b.byteLength, 0)} B) with zstd ${ZSTD_CLI_VERSION}`,
+      `rebuilt ${out.size} content blobs (${[...out.values()].reduce((a, b) => a + b.byteLength, 0)} B) with zstd ${ZSTD_CLI_VERSION}; added ${write.length}${write.length > 0 ? `: ${write.join(", ")}` : ""}`,
     );
   } finally {
     rmSync(tmp, { recursive: true, force: true });
@@ -1498,6 +1766,13 @@ const FIXED_BLOBS = [
   "tree/v1.files.zst",
   "tree/v2.files.zst",
 ] as const;
+/** plans/P4-10.md §4.1: the fixed chunk blobs; `bundles/<sha256>` blobs follow from them. */
+const CHUNK_BLOBS = [
+  "chunks/dup.pkc",
+  "chunks/v1.pkc",
+  "chunks/v2.pkc",
+  "chunks/v2.pkc.zst",
+] as const;
 const REFS_NAMES = [
   "files/v1.gaps.zst",
   "payload/v2.full.zst",
@@ -1537,6 +1812,16 @@ export interface ContentSet {
   /** v1's files as installed state (from `payload/v1.full.zst` and v1's index). */
   installedV1: InstalledFile[];
   memBytes: { setC: number; setT: number; setS: number };
+  /** plans/P4-10.md §4.2: the parsed chunk indexes (`chunks/{v1,v2,dup}.pkc`). */
+  chunks: { v1: ChunkIndexDoc; v2: ChunkIndexDoc; dup: ChunkIndexDoc };
+  /** The synthetic `dup` payload, `f0 f1 f0 f2` over t1's first three files. */
+  dup: Uint8Array;
+  /** v1's largest chunk v2 reuses: record, record index and v1 payload offset. */
+  reusedChunk: {
+    record: ChunkIndexDoc["records"][number];
+    index: number;
+    offset: number;
+  };
 }
 
 function memOf(doc: PatchDoc, base: Map<string, number>): number {
@@ -1582,11 +1867,43 @@ export function loadContentSet(ref: RefJson): ContentSet {
   )
     fail("refs.json must hold exactly the four unshipped refs");
 
-  // The expected names: the fixed ones, and one blob per v2 file v1 lacks.
+  // plans/P4-10.md §4.2: the chunk indexes, parsed (a failure is a corrupt input).
+  const pkc = (n: string): ChunkIndexDoc => {
+    const r = refParseChunkIndexBytes(need(n), null);
+    if (!r.ok) fail(`${n} does not parse: ${JSON.stringify(r)}`);
+    return r.index;
+  };
+  const chunks = {
+    v1: pkc("chunks/v1.pkc"),
+    v2: pkc("chunks/v2.pkc"),
+    dup: pkc("chunks/dup.pkc"),
+  };
+  {
+    const z = need("chunks/v2.pkc.zst");
+    const h = frameHeader(z);
+    const raw = need("chunks/v2.pkc");
+    if (!h || h.contentSize !== raw.byteLength)
+      fail("chunks/v2.pkc.zst is not v2.pkc's frame");
+    const d = decode(z, raw.byteLength);
+    if (sha256Hex(d) !== sha256Hex(raw))
+      fail("chunks/v2.pkc.zst does not decode to v2.pkc");
+  }
+  const reusedChunk = largestReused(
+    chunks.v1,
+    new Set(chunks.v2.records.map((r) => r[0])),
+  );
+
+  // The expected names: the fixed ones, one blob per v2 file v1 lacks, v2's bundles v1 lacks,
+  // the v1 bundle holding the largest reused chunk, and the dup bundles.
   const v1Hashes = new Set(c1.files.map((f) => f.sha256));
-  const expected = new Set<string>(FIXED_BLOBS);
+  const expected = new Set<string>([...FIXED_BLOBS, ...CHUNK_BLOBS]);
   for (const f of c2.files)
     if (!v1Hashes.has(f.sha256)) expected.add(`files/${f.blob.sha256}`);
+  const v1Bundles = new Set(chunks.v1.bundles.map((b) => b[0]));
+  for (const [h] of chunks.v2.bundles)
+    if (!v1Bundles.has(h)) expected.add(`bundles/${h}`);
+  expected.add(`bundles/${chunks.v1.bundles[reusedChunk.record[3]]![0]}`);
+  for (const [h] of chunks.dup.bundles) expected.add(`bundles/${h}`);
   for (const n of expected) need(n);
   for (const n of names)
     if (!expected.has(n))
@@ -1594,8 +1911,13 @@ export function loadContentSet(ref: RefJson): ContentSet {
 
   const objects = new Map<string, ObjectRef>();
   for (const [n, b] of blobs) {
-    // A packed data object is not one frame, and the JSON inputs are raw.
-    const raw = n.endsWith(".data") || n.endsWith(".json");
+    // A packed data object is not one frame, and the JSON inputs are raw; so are the binary
+    // chunk indexes and the bundles (a bundle may start with a chunk's frame).
+    const raw =
+      n.endsWith(".data") ||
+      n.endsWith(".json") ||
+      n.endsWith(".pkc") ||
+      n.startsWith("bundles/");
     const h = raw ? null : frameHeader(b);
     objects.set(
       n,
@@ -1659,6 +1981,31 @@ export function loadContentSet(ref: RefJson): ContentSet {
 
   const sizeBy = (idx: FilesIndex): Map<string, number> =>
     new Map(idx.files.map((f) => [f.sha256, f.size]));
+  // The dup payload: t1's first three files (index order) from `tree/t1.full.zst`.
+  const t1Full = zstdDecode(need("tree/t1.full.zst"));
+  const t1Data: { data: Uint8Array }[] = [];
+  {
+    let o = 0;
+    for (const f of t1.files) {
+      t1Data.push({ data: t1Full.subarray(o, o + f.size) });
+      o += f.size;
+    }
+  }
+  const dup = dupLayout(t1Data).payload;
+  if (
+    sha256Hex(dup) !== chunks.dup.payloadSha256 ||
+    dup.byteLength !== chunks.dup.payloadSize
+  )
+    fail("chunks/dup.pkc is not bound to the dup payload");
+  for (const [doc, payload] of [
+    [chunks.v1, v1],
+    [chunks.v2, v2],
+  ] as const)
+    if (
+      doc.payloadSha256 !== sha256Hex(payload) ||
+      doc.payloadSize !== payload.byteLength
+    )
+      fail("a chunk index is not bound to its payload");
   LOADED = {
     blobs,
     objects,
@@ -1680,6 +2027,9 @@ export function loadContentSet(ref: RefJson): ContentSet {
       setT: memOf(patchT, sizeBy(tree1)),
       setS: memOf(patchS, sizeBy(t1)),
     },
+    chunks,
+    dup,
+    reusedChunk,
   };
   return LOADED;
 }
@@ -1707,23 +2057,10 @@ interface BlobCaseRef {
   size?: number;
   mutate?: Mutation[];
 }
-type Mutation =
-  | { op: "truncate"; length: number }
-  | { op: "xor"; offset: number; value: number };
 type ObjectSource = BlobCaseRef | { text: string };
 
-function mutate(
-  b: Uint8Array,
-  muts: readonly Mutation[] | undefined,
-): Uint8Array {
-  if (!muts || muts.length === 0) return b;
-  let out = b.slice();
-  for (const m of muts) {
-    if (m.op === "truncate") out = out.slice(0, m.length);
-    else out[m.offset] = out[m.offset]! ^ m.value;
-  }
-  return out;
-}
+/** `<ref>` mutations: `truncate`, `xor` and P4-10's `putU16`, `putU32`, `putU64`. */
+const mutate = mutateBytes;
 
 /** The pack records the cases reuse (their variants), from sign-corpus.ts. */
 export interface ContentRecords {
@@ -1738,12 +2075,16 @@ export interface ContentRecords {
 interface ApplyCase {
   id: string;
   description: string;
-  strategy: "full" | "delta" | "file";
+  strategy: "full" | "delta" | "file" | "chunk";
   variant: Record<string, unknown>;
   delta?: number;
   installed?: { payload: BlobCaseRef; files: BlobCaseRef };
+  /** plans/P4-10.md §4.3: a chunk case's seeds, each a payload and its index. */
+  seeds?: { payload: BlobCaseRef; index: BlobCaseRef }[];
   objects: Record<string, ObjectSource>;
   skipBaseCheck?: true;
+  /** A chunk case's repair switch. */
+  repair?: boolean;
   expect: Record<string, unknown>;
 }
 
@@ -1793,6 +2134,18 @@ function runApplyCase(
       size: f.size,
       bytes: base.subarray(f.offset!, f.offset! + f.size),
     }));
+  }
+  if (c.strategy === "chunk") {
+    const seeds = (c.seeds ?? []).map((sd) => ({
+      payload: materialise(sd.payload),
+      index: materialise(sd.index),
+    }));
+    return refApplyChunk(
+      c.variant as Parameters<typeof refApplyChunk>[0],
+      seeds,
+      fetch,
+      c.repair === true,
+    );
   }
   if (c.strategy === "full") return refApplyFull(ref, c.variant, fetch);
   if (c.strategy === "delta")
@@ -2200,6 +2553,193 @@ export function buildContentCorpus(
     },
   ];
   void lv2;
+
+  // ── plans/P4-10.md §4.3: the eight chunk apply cases ──
+  const CK = set.chunks;
+  const chunksRefOf = (name: string): Record<string, unknown> => ({
+    format: CHUNKS_FORMAT,
+    ...o(name),
+  });
+  const levels3 = variantOf("djdl.levels@1.2.0");
+  const chunkV = pick(levels3, ["payload", "chunks"]);
+  if (
+    !sameJson(
+      pick(chunkV.chunks as Record<string, unknown>, [
+        "format",
+        "sha256",
+        "bytes",
+        "size",
+        "codec",
+      ]),
+      chunksRefOf("chunks/v2.pkc.zst"),
+    )
+  )
+    fail("djdl.levels@1.2.0's chunks must pin chunks/v2.pkc.zst");
+  const bundleObjects = (doc: ChunkIndexDoc): Record<string, ObjectSource> => {
+    const out: Record<string, ObjectSource> = {};
+    for (const [h] of doc.bundles)
+      if (set.blobs.has(`bundles/${h}`)) out[h] = blobRef(`bundles/${h}`);
+    return out;
+  };
+  const v2ChunkObjects: Record<string, ObjectSource> = {
+    [sha("chunks/v2.pkc.zst")]: blobRef("chunks/v2.pkc.zst"),
+    ...bundleObjects(CK.v2),
+  };
+  const v1Seed = {
+    payload: decoded("payload/v1.full.zst"),
+    index: blobRef("chunks/v1.pkc"),
+  };
+  // Mutation targets (gen.py's choices): the fetched records in order, a zstd-coded one from the
+  // middle, a raw-stored one, a late zstd-coded one for truncation, and v1's largest reused chunk.
+  const seedIds = new Set(CK.v1.records.map((r) => r[0]));
+  const fetched: { i: number; r: ChunkIndexDoc["records"][number] }[] = [];
+  {
+    const seen = new Set<string>();
+    CK.v2.records.forEach((r, i) => {
+      if (seedIds.has(r[0]) || seen.has(r[0])) return;
+      seen.add(r[0]);
+      fetched.push({ i, r });
+    });
+  }
+  const firstFetched = (
+    pred: (clen: number, len: number) => boolean,
+    from: number,
+  ): { i: number; r: ChunkIndexDoc["records"][number] } =>
+    fetched.slice(from).find((f) => pred(f.r[2], f.r[1])) ??
+    fail("no chunk candidate");
+  const zc = firstFetched((cl, ln) => cl < ln, Math.floor(fetched.length / 2));
+  const rc = firstFetched((cl, ln) => cl === ln, 0);
+  const tc = firstFetched((cl, ln) => cl < ln, fetched.length - 8);
+  const bundleBlob = (bi: number): string => `bundles/${CK.v2.bundles[bi]![0]}`;
+  const zstdCandidates = fetched.filter((f) => f.r[2] < f.r[1]).length;
+  const rawCandidates = fetched.filter((f) => f.r[2] === f.r[1]).length;
+  const seedFlip =
+    set.reusedChunk.offset + Math.floor(set.reusedChunk.record[1] / 2);
+  const tamperedSeed = {
+    payload: decoded("payload/v1.full.zst", {
+      mutate: [{ op: "xor", offset: seedFlip, value: 1 }],
+    }),
+    index: blobRef("chunks/v1.pkc"),
+  };
+  const chunkCases: ApplyCase[] = [
+    {
+      id: "chunk-v1-to-v2",
+      description:
+        "Chunk sync with v1 as the only seed, bundles shared along the chain: only v2's new bundles are fetched, one request per run.",
+      strategy: "chunk",
+      variant: chunkV,
+      seeds: [v1Seed],
+      objects: v2ChunkObjects,
+      repair: false,
+      expect: {},
+    },
+    {
+      id: "chunk-no-seed",
+      description:
+        "The synthetic `dup` payload (`f0 f1 f0 f2`) with no seed: every unique chunk is fetched and the duplicate copied from the output.",
+      strategy: "chunk",
+      variant: {
+        payload: { sha256: CK.dup.payloadSha256, size: CK.dup.payloadSize },
+        chunks: chunksRefOf("chunks/dup.pkc"),
+      },
+      seeds: [],
+      objects: {
+        [sha("chunks/dup.pkc")]: blobRef("chunks/dup.pkc"),
+        ...bundleObjects(CK.dup),
+      },
+      repair: false,
+      expect: {},
+    },
+    {
+      id: "chunk-tampered-zstd",
+      description: `One byte flipped inside a fetched zstd-coded chunk's frame (one of ${zstdCandidates}): it fails to decode or to hash.`,
+      strategy: "chunk",
+      variant: chunkV,
+      seeds: [v1Seed],
+      objects: {
+        ...v2ChunkObjects,
+        [CK.v2.bundles[zc.r[3]]![0]]: blobRef(bundleBlob(zc.r[3]), {
+          mutate: [
+            { op: "xor", offset: zc.r[4] + Math.floor(zc.r[2] / 2), value: 1 },
+          ],
+        }),
+      },
+      repair: false,
+      expect: {},
+    },
+    {
+      id: "chunk-tampered-raw",
+      description: `One byte flipped inside a fetched raw-stored chunk (\`clen == len\`, one of ${rawCandidates}): its SHA-256 fails.`,
+      strategy: "chunk",
+      variant: chunkV,
+      seeds: [v1Seed],
+      objects: {
+        ...v2ChunkObjects,
+        [CK.v2.bundles[rc.r[3]]![0]]: blobRef(bundleBlob(rc.r[3]), {
+          mutate: [
+            { op: "xor", offset: rc.r[4] + Math.floor(rc.r[2] / 2), value: 1 },
+          ],
+        }),
+      },
+      repair: false,
+      expect: {},
+    },
+    {
+      id: "chunk-bundle-truncated",
+      description:
+        "A new bundle object ends in the middle of a fetched chunk: the range comes back clipped at the object's end, so fewer than `clen` bytes arrive for that record.",
+      strategy: "chunk",
+      variant: chunkV,
+      seeds: [v1Seed],
+      objects: {
+        ...v2ChunkObjects,
+        [CK.v2.bundles[tc.r[3]]![0]]: blobRef(bundleBlob(tc.r[3]), {
+          mutate: [
+            { op: "truncate", length: tc.r[4] + Math.floor(tc.r[2] / 2) },
+          ],
+        }),
+      },
+      repair: false,
+      expect: {},
+    },
+    {
+      id: "chunk-seed-tampered",
+      description:
+        "The installed seed has one flipped byte inside v1's largest reused chunk; no repair pass: the rebuilt payload's hash fails.",
+      strategy: "chunk",
+      variant: chunkV,
+      seeds: [tamperedSeed],
+      objects: v2ChunkObjects,
+      repair: false,
+      expect: {},
+    },
+    {
+      id: "chunk-seed-tampered-repair",
+      description:
+        "As chunk-seed-tampered with the repair pass: every seeded record whose bytes no longer hash to its id is refetched from the bundle the target index names (here the shipped v1 bundle).",
+      strategy: "chunk",
+      variant: chunkV,
+      seeds: [tamperedSeed],
+      objects: v2ChunkObjects,
+      repair: true,
+      expect: {},
+    },
+    {
+      id: "chunk-index-for-other-payload",
+      description:
+        "The target index is bound to v1 (its `payloadSha256` and `payloadSize` are not the variant's payload).",
+      strategy: "chunk",
+      variant: {
+        payload: set.c2.payload,
+        chunks: chunksRefOf("chunks/v1.pkc"),
+      },
+      seeds: [v1Seed],
+      objects: { [sha("chunks/v1.pkc")]: blobRef("chunks/v1.pkc") },
+      repair: false,
+      expect: {},
+    },
+  ];
+  applyCases.push(...chunkCases);
   const outputs = new Map<string, Uint8Array | Map<string, Uint8Array>>();
   for (const c of applyCases) {
     const r = runApplyCase(ref, set, c);
@@ -2232,11 +2772,36 @@ export function buildContentCorpus(
     "file-source-missing": ["file-source-missing", true],
     "file-gaps-short": ["files-layout-mismatch", false],
   };
-  if (applyCases.length !== 19) fail(`applyCases: ${applyCases.length} != 19`);
+  // plans/P4-10.md §4.3: the chunk cases name `chunk`, never `path`.
+  for (const id of [
+    "chunk-v1-to-v2",
+    "chunk-no-seed",
+    "chunk-seed-tampered-repair",
+  ])
+    wantOk.add(id);
+  const wantChunkErr: Record<string, [string, boolean]> = {
+    "chunk-tampered-zstd": ["chunk-corrupt", true],
+    "chunk-tampered-raw": ["chunk-corrupt", true],
+    "chunk-bundle-truncated": ["chunk-bundle-truncated", true],
+    "chunk-seed-tampered": ["payload-hash-mismatch", false],
+    "chunk-index-for-other-payload": ["chunks-payload-mismatch", false],
+  };
+  if (applyCases.length !== 27) fail(`applyCases: ${applyCases.length} != 27`);
   for (const c of applyCases) {
     const v = c.expect;
     if (wantOk.has(c.id)) {
       if (v.ok !== true) fail(`${c.id} must be ok: ${JSON.stringify(v)}`);
+      continue;
+    }
+    const cw = wantChunkErr[c.id];
+    if (cw) {
+      if (
+        v.ok !== false ||
+        v.error !== cw[0] ||
+        has(v, "chunk") !== cw[1] ||
+        has(v, "path")
+      )
+        fail(`${c.id} must fail with ${cw[0]}: ${JSON.stringify(v)}`);
       continue;
     }
     const w = wantErr[c.id] ?? fail(`${c.id} has no expectation`);
@@ -2257,6 +2822,62 @@ export function buildContentCorpus(
     )
       fail(`${id} does not rebuild v2 byte for byte`);
   if (!eq(outOf("full-v1"), set.v1)) fail("full-v1 does not rebuild v1");
+  // plans/P4-10.md §4.2: chunk-v1-to-v2 rebuilds v2 byte for byte (equal to the delta and file
+  // results); chunk-no-seed rebuilds dup with at least one self-copy; the repair refetches one.
+  if (!eq(outOf("chunk-v1-to-v2"), set.v2))
+    fail("chunk-v1-to-v2 does not rebuild v2 byte for byte");
+  if (!eq(outOf("chunk-no-seed"), set.dup))
+    fail("chunk-no-seed does not rebuild dup");
+  const cv = (id: string): Record<string, unknown> =>
+    applyCases.find((c) => c.id === id)!.expect;
+  if (!((cv("chunk-no-seed").selfChunks as number) >= 1))
+    fail("chunk-no-seed must copy a duplicate from the output");
+  const reusedAt = CK.v2.records.findIndex(
+    (r) => r[0] === set.reusedChunk.record[0],
+  );
+  if (!sameJson(cv("chunk-seed-tampered-repair").repairedChunks, [reusedAt]))
+    fail(
+      `chunk-seed-tampered-repair must repair exactly the reused chunk: ${JSON.stringify(cv("chunk-seed-tampered-repair"))}`,
+    );
+  for (const [id, f] of [
+    ["chunk-tampered-zstd", zc],
+    ["chunk-tampered-raw", rc],
+    ["chunk-bundle-truncated", tc],
+  ] as const)
+    if (cv(id).chunk !== f.i)
+      fail(`${id} must land on record ${f.i}: ${JSON.stringify(cv(id))}`);
+  {
+    const v = cv("chunk-v1-to-v2");
+    if (v.selfChunks !== 0 || v.fetchedChunks !== fetched.length)
+      fail(`chunk-v1-to-v2's counters drifted: ${JSON.stringify(v)}`);
+    const fresh = new Set(CK.v2.bundles.map((b) => b[0]));
+    for (const [h] of CK.v1.bundles) fresh.delete(h);
+    const freshBytes = [...fresh].reduce(
+      (a, h) => a + set.blobs.get(`bundles/${h}`)!.byteLength,
+      0,
+    );
+    if (v.fetchedBytes !== freshBytes)
+      fail(
+        `chunk-v1-to-v2 must fetch exactly v2's new bundles (${freshBytes} B): ${JSON.stringify(v)}`,
+      );
+  }
+  // Every bundle an apply case names is in an index.
+  {
+    const named = new Set(
+      [CK.v1, CK.v2, CK.dup].flatMap((d) => d.bundles.map((b) => b[0])),
+    );
+    for (const c of chunkCases)
+      for (const h of Object.keys(c.objects))
+        if (
+          !named.has(h) &&
+          ![
+            sha("chunks/v2.pkc.zst"),
+            sha("chunks/v1.pkc"),
+            sha("chunks/dup.pkc"),
+          ].includes(h)
+        )
+          fail(`${c.id} names ${h}, which no index lists`);
+  }
   const ft = applyCases.find((c) => c.id === "file-delta-tree")!.expect;
   if (ft.treeDigest !== set.tree2.payload.sha256)
     fail("file-delta-tree's digest is not v2's");
@@ -2638,6 +3259,237 @@ export function buildContentCorpus(
   }
   if (filesIndexCases.length !== 15) fail("filesIndexCases must be 15");
 
+  // ── chunkIndexCases (plans/P4-10.md §4.3): A7's 15 and seven new ──
+  const CI = set.chunks;
+  const v2raw = set.blobs.get("chunks/v2.pkc")!;
+  const nRec = CI.v2.records.length;
+  const nBun = CI.v2.bundles.length;
+  const recAt = (i: number, field: number): number => 64 + 48 * i + field;
+  const bundleAt = (j: number, field: number): number =>
+    64 + 48 * (nRec + j) + field;
+  /** A raw (`codec: none`) ref over a mutated copy of `chunks/v2.pkc`, so step 0 passes. */
+  const mutatedCase = (
+    id: string,
+    description: string,
+    muts: Mutation[],
+    payload: { size: number; sha256: string } = set.c2.payload,
+  ): Record<string, unknown> => {
+    const b = mutate(v2raw, muts);
+    return {
+      id,
+      description,
+      stored: blobRef("chunks/v2.pkc", { mutate: muts }),
+      chunks: {
+        format: CHUNKS_FORMAT,
+        sha256: sha256Hex(b),
+        bytes: b.byteLength,
+        size: b.byteLength,
+        codec: "none",
+      },
+      payload,
+    };
+  };
+  const ref2 = (): Record<string, unknown> => ({
+    format: CHUNKS_FORMAT,
+    ...o("chunks/v2.pkc.zst"),
+  });
+  const rec3 = CI.v2.records[3]!;
+  const rec5 = CI.v2.records[5]!;
+  const chunkIndexCases: Record<string, unknown>[] = [
+    {
+      id: "chunks-v1-valid",
+      description:
+        "The seed release's index, stored raw (`codec: none`), bound to v1.",
+      stored: blobRef("chunks/v1.pkc"),
+      chunks: { format: CHUNKS_FORMAT, ...o("chunks/v1.pkc") },
+      payload: set.c1.payload,
+    },
+    {
+      id: "chunks-v2-valid",
+      description:
+        "The target release's index as one zstd frame (`codec: zstd`), bound to v2: the object `djdl.levels@1.2.0` pins.",
+      stored: blobRef("chunks/v2.pkc.zst"),
+      chunks: ref2(),
+      payload: set.c2.payload,
+    },
+    mutatedCase("chunks-short-header", "Fewer than 64 bytes.", [
+      { op: "truncate", length: 40 },
+    ]),
+    mutatedCase("chunks-bad-magic", "The magic is not `PKEYCHNK`.", [
+      { op: "xor", offset: 0, value: 32 },
+    ]),
+    mutatedCase("chunks-bad-version", "Version 2 is unknown to a v1 reader.", [
+      { op: "putU16", offset: 8, value: 2 },
+    ]),
+    mutatedCase("chunks-bad-record-size", "`recordSize` must be 48.", [
+      { op: "putU16", offset: 10, value: 40 },
+    ]),
+    mutatedCase("chunks-bad-flags", "An undefined flag bit (bit 1) is set.", [
+      { op: "putU32", offset: 12, value: 3 },
+    ]),
+    mutatedCase(
+      "chunks-bad-length",
+      "The file is 7 bytes short of 64 + 48 × (chunkCount + bundleCount).",
+      [{ op: "truncate", length: v2raw.byteLength - 7 }],
+    ),
+    mutatedCase(
+      "chunks-bad-length-count",
+      "`chunkCount` claims one record more than the file holds.",
+      [{ op: "putU32", offset: 16, value: nRec + 1 }],
+    ),
+    mutatedCase("chunks-zero-length", "Chunk record 3 has `len` 0.", [
+      { op: "putU32", offset: recAt(3, 32), value: 0 },
+    ]),
+    mutatedCase("chunks-bad-clen", "Chunk record 3 has `clen` = `len` + 1.", [
+      { op: "putU32", offset: recAt(3, 36), value: rec3[1] + 1 },
+    ]),
+    mutatedCase(
+      "chunks-bad-bundle-ref",
+      "Chunk record 5 names bundle `bundleCount`.",
+      [{ op: "putU32", offset: recAt(5, 40), value: nBun }],
+    ),
+    mutatedCase(
+      "chunks-bad-bundle-range",
+      "Chunk record 5's `offset` is its bundle's `size` − 1, so `offset + clen` runs past it.",
+      [
+        {
+          op: "putU32",
+          offset: recAt(5, 44),
+          value: CI.v2.bundles[rec5[3]]![1] - 1,
+        },
+      ],
+    ),
+    mutatedCase(
+      "chunks-reserved-nonzero",
+      "Bundle record 0's `reserved` is 1.",
+      [{ op: "putU64", offset: bundleAt(0, 40), value: 1 }],
+    ),
+    mutatedCase(
+      "chunks-size-mismatch",
+      "`payloadSize` is one more than the sum of the chunk lengths.",
+      [{ op: "putU64", offset: 24, value: CI.v2.payloadSize + 1 }],
+    ),
+    mutatedCase("chunks-zero-clen", "Chunk record 3 has `clen` 0.", [
+      { op: "putU32", offset: recAt(3, 36), value: 0 },
+    ]),
+    mutatedCase(
+      "chunks-bad-length-wrap",
+      "`chunkCount` + 268,435,456: 48 × the count wraps in 32 bits to the true length, so only exact arithmetic refuses it.",
+      [{ op: "putU32", offset: 16, value: nRec + 268435456 }],
+    ),
+    mutatedCase(
+      "chunks-size-high-word",
+      "`payloadSize`'s high word + 2^21: the u64 rule saturates it at 2^53, which no sum of lengths reaches.",
+      [{ op: "putU32", offset: 28, value: 2097152 }],
+    ),
+    {
+      id: "chunks-ref-tampered",
+      description:
+        "One stored byte of v2's frame flipped: its SHA-256 is not the ref's, refused before decoding.",
+      stored: blobRef("chunks/v2.pkc.zst", {
+        mutate: [
+          {
+            op: "xor",
+            offset: Math.floor(o("chunks/v2.pkc.zst").bytes / 2),
+            value: 1,
+          },
+        ],
+      }),
+      chunks: ref2(),
+      payload: set.c2.payload,
+    },
+    {
+      id: "chunks-ref-over-max",
+      description:
+        "`size` is MAX_CHUNK_INDEX_BYTES + 1: refused before anything is fetched or decoded.",
+      stored: blobRef("chunks/v2.pkc.zst"),
+      chunks: { ...ref2(), size: MAX_CHUNK_INDEX_BYTES + 1 },
+      payload: set.c2.payload,
+    },
+    {
+      id: "chunks-payload-mismatch",
+      description:
+        "v2's index checked against v1's payload: `payloadSha256` and `payloadSize` differ.",
+      stored: blobRef("chunks/v2.pkc.zst"),
+      chunks: ref2(),
+      payload: set.c1.payload,
+    },
+    mutatedCase(
+      "chunks-bundle-size-saturated",
+      "Bundle record 0's `size` with its high bit set (high word 0x80000000): the u64 rule reads it as 2^53, and the index stays valid.",
+      [{ op: "putU32", offset: bundleAt(0, 36), value: 0x80000000 }],
+    ),
+  ];
+  const chunkWant: Record<string, unknown> = {
+    "chunks-short-header": { ok: false, error: "chunks-bad-length" },
+    "chunks-bad-magic": { ok: false, error: "chunks-bad-magic" },
+    "chunks-bad-version": { ok: false, error: "chunks-unsupported-version" },
+    "chunks-bad-record-size": { ok: false, error: "chunks-bad-record-size" },
+    "chunks-bad-flags": { ok: false, error: "chunks-bad-flags" },
+    "chunks-bad-length": { ok: false, error: "chunks-bad-length" },
+    "chunks-bad-length-count": { ok: false, error: "chunks-bad-length" },
+    "chunks-zero-length": { ok: false, error: "chunks-zero-length", chunk: 3 },
+    "chunks-bad-clen": { ok: false, error: "chunks-bad-clen", chunk: 3 },
+    "chunks-bad-bundle-ref": {
+      ok: false,
+      error: "chunks-bad-bundle-ref",
+      chunk: 5,
+    },
+    "chunks-bad-bundle-range": {
+      ok: false,
+      error: "chunks-bad-bundle-range",
+      chunk: 5,
+    },
+    "chunks-reserved-nonzero": {
+      ok: false,
+      error: "chunks-reserved-nonzero",
+      bundle: 0,
+    },
+    "chunks-size-mismatch": { ok: false, error: "chunks-size-mismatch" },
+    "chunks-zero-clen": { ok: false, error: "chunks-bad-clen", chunk: 3 },
+    "chunks-bad-length-wrap": { ok: false, error: "chunks-bad-length" },
+    "chunks-size-high-word": { ok: false, error: "chunks-size-mismatch" },
+    "chunks-ref-tampered": { ok: false, error: "chunks-ref-mismatch" },
+    "chunks-ref-over-max": { ok: false, error: "chunks-ref-mismatch" },
+    "chunks-payload-mismatch": { ok: false, error: "chunks-payload-mismatch" },
+  };
+  // The wrap case wraps exactly: 48 × (true count + 2^28) ≡ 48 × true count (mod 2^32).
+  if ((48 * 268435456) % 2 ** 32 !== 0)
+    fail("chunks-bad-length-wrap must wrap to the true length");
+  for (const c of chunkIndexCases) {
+    const st = c.stored as BlobCaseRef;
+    const r = refParseChunkIndex(
+      mutate(set.blobs.get(st.blob)!, st.mutate),
+      c.chunks as ObjectRef,
+      c.payload as { size: number; sha256: string },
+    );
+    const v = r.ok
+      ? {
+          ok: true,
+          chunks: r.index.records.length,
+          bundleSizes: r.index.bundles.map((b) => b[1]),
+        }
+      : r;
+    const id = c.id as string;
+    if (has(chunkWant, id)) {
+      if (!sameJson(v, chunkWant[id])) fail(`${id}: ${JSON.stringify(v)}`);
+    } else if (!r.ok) fail(`${id} must parse: ${JSON.stringify(v)}`);
+    c.expect = v;
+  }
+  if (chunkIndexCases.length !== 22) fail("chunkIndexCases must be 22");
+  {
+    const sat = chunkIndexCases.find(
+      (c) => c.id === "chunks-bundle-size-saturated",
+    )!.expect as { bundleSizes: number[] };
+    if (sat.bundleSizes[0] !== 2 ** 53)
+      fail("chunks-bundle-size-saturated must read 2^53");
+    // Every mutation lands where its case says: the mutated bytes differ from v2.pkc exactly
+    // inside the field the case names (the header, record 3 or 5, or bundle record 0).
+    const v2v = chunkIndexCases.find((c) => c.id === "chunks-v2-valid")!
+      .expect as { chunks: number };
+    if (v2v.chunks !== nRec) fail("chunks-v2-valid's count drifted");
+  }
+
   // ── packSetIdCases ──
   const rec = (n: string) => records.get(n);
   const syn = (n: string) => sha256Hex(`pkey-content-corpus:release:${n}`);
@@ -3000,10 +3852,14 @@ export function buildContentCorpus(
     blobsTable[n] = { size: b.byteLength, sha256: sha256Hex(b) };
   }
   const cases = {
-    contentCorpusVersion: 1,
+    contentCorpusVersion: 2,
     description:
-      "The content corpus (plans/P4-01.md §4.4; WIRE-CONTRACT-V4 §2.6): the files index and its path rules, full, delta and file apply with negative cases, `packSetId`, the content stamp and `frameWindow`. Generated by `tools/gen-content-corpus.ts` from the committed inputs in `blobs/` (never compressed by a normal run): do not hand-edit. A runner first checks every file under `blobs/` against `blobs`, a harness error otherwise. `<ref>` is `{blob, codec?, size?, mutate?}`: the named blob, decoded when `codec` is `zstd` (to `size` bytes), then mutated (`truncate {length}`, `xor {offset, value}`). An apply case's `installed` is materialised (decoded, then mutated): its files are `installed.files`'s entries sliced from `installed.payload`, each with the SHA-256 the index claims. `objects` is the blob store by stored SHA-256, read raw (mutations apply to the stored bytes): the fetcher answers `objects[sha256]`, a `<ref>` or `{text}` (UTF-8). `variant` holds the record members the applier reads; `delta` indexes `variant.deltas` (a `payload` delta for `strategy: delta`, a `files` set for `strategy: file`; absent means the `file` strategy). `skipBaseCheck` is a test-only switch. Verdicts compare by canonical JSON: `{ok: true, …}` with the counters stated, or `{ok: false, error, path?}`; the first failure wins.",
-    params: { zstd: ZSTD_CLI_VERSION, zstdLevel: ZSTD_LEVEL },
+      "The content corpus (plans/P4-01.md §4.4; plans/P4-10.md §4.3; WIRE-CONTRACT-V4 §2.6): the files index and its path rules, the chunk index (`pkey-chunks/1`), full, delta, file and chunk apply with negative cases, `packSetId`, the content stamp and `frameWindow`. Generated by `tools/gen-content-corpus.ts` from the committed inputs in `blobs/` (never compressed by a normal run): do not hand-edit. A runner first checks every file under `blobs/` against `blobs`, a harness error otherwise. `<ref>` is `{blob, codec?, size?, mutate?}`: the named blob, decoded when `codec` is `zstd` (to `size` bytes), then mutated in order (`truncate {length}`, `xor {offset, value}`, and the little-endian `putU16`, `putU32`, `putU64 {offset, value}`, a `putU64` value below 2^53). An apply case's `installed` is materialised (decoded, then mutated): its files are `installed.files`'s entries sliced from `installed.payload`, each with the SHA-256 the index claims. `objects` is the blob store by stored SHA-256, read raw (mutations apply to the stored bytes): the fetcher answers `objects[sha256]`, a `<ref>` or `{text}` (UTF-8); a chunk case's range request answers the object sliced to the range and clipped at its end. `variant` holds the record members the applier reads; `delta` indexes `variant.deltas` (a `payload` delta for `strategy: delta`, a `files` set for `strategy: file`; absent means the `file` strategy). A `strategy: chunk` case carries `seeds` (each `{payload, index}`, two `<ref>`s, in order) and `repair`; its verdict is `{ok: true, sha256, size, fetchedChunks, fetchedBytes, requests, seedChunks, selfChunks, repairedChunks}` (`requests` counts runs). `chunkIndexCases` pin `parseChunkIndex(stored, chunks, payload)`: `{ok: true, chunks, bundleSizes}` (u64s read as two u32 words and saturated at 2^53) or `{ok: false, error, chunk? | bundle?}`. `skipBaseCheck` is a test-only switch. Verdicts compare by canonical JSON: `{ok: true, …}` with the counters stated, or `{ok: false, error, path? | chunk? | bundle?}`; the first failure wins.",
+    params: {
+      zstd: ZSTD_CLI_VERSION,
+      zstdLevel: ZSTD_LEVEL,
+      chunks: CORPUS_CHUNK_PARAMS,
+    },
     payloads: {
       v1: { sha256: S1, size: N1 },
       v2: { sha256: S2, size: N2 },
@@ -3011,17 +3867,44 @@ export function buildContentCorpus(
       treeV2: set.tree2.payload,
       t1: set.t1.payload,
       t2: set.t2.payload,
+      dup: {
+        sha256: set.chunks.dup.payloadSha256,
+        size: set.chunks.dup.payloadSize,
+      },
     },
     blobs: blobsTable,
     applyCases,
     pathCases,
     filesIndexCases,
+    chunkIndexCases,
     packSetIdCases,
     stampCases,
     frameWindowCases,
   };
 
   const { planMatrix, planRealPins } = buildPlanMatrix(set, records);
+  // plans/P4-10.md §4.2: chunk-v1-to-v2's `requests` is the planner's chunk candidate in
+  // plan-real-chunk-v1-v2 minus the index request.
+  {
+    const row = (
+      planMatrix.rows as { id: string; expect: Record<string, any> }[]
+    ).find((r) => r.id === "plan-real-chunk-v1-v2")!;
+    const cand = (row.expect.fallbacks as Record<string, any>[]).find(
+      (f) => f.strategy === "chunk",
+    )!;
+    const applied = applyCases.find((c) => c.id === "chunk-v1-to-v2")!.expect;
+    if (cand.requests - 1 !== applied.requests)
+      fail(
+        `chunk-v1-to-v2's ${String(applied.requests)} requests are not the planner's ${cand.requests} − 1`,
+      );
+    if (
+      cand.bytes !==
+      (applied.fetchedBytes as number) + o("chunks/v2.pkc.zst").bytes
+    )
+      fail(
+        "the planner's chunk bytes are not the fetched bytes plus the index",
+      );
+  }
   return { cases, planMatrix, planRealPins };
 }
 
@@ -3304,6 +4187,7 @@ function buildPlanMatrix(
     expect?: unknown;
   }[] = syntheticRows();
   if (rows.length !== 19) fail("A7's synthetic plan rows must be 19");
+  // (P4-04's six real and tree rows, then P4-10's three chunk rows, are appended below.)
   // The four real rows, rebuilt from the content set through `planTarget` (§4.5).
   const v1Rec = records.get("djdl.levels@1.0.0");
   const v2Rec = records.get("djdl.levels@1.1.0");
@@ -3376,11 +4260,64 @@ function buildPlanMatrix(
       "A tree with three of five files installed: file (no gaps object, so one request for the index and one per missing blob) beats the two-request full.",
     input: treeBase(),
   });
+  // plans/P4-10.md §4.4: three chunk rows over `djdl.levels@1.2.0` (v2 republished with
+  // `chunks`), v2's index inline, v1 installed with its chunk ids and its files.
+  const v3Rec = records.get("djdl.levels@1.2.0");
+  const v3Variant = (v3Rec.doc.variants as Record<string, any>[])[0]!;
+  const chunkIndexOf = (d: ChunkIndexDoc): PlanChunkIndex => ({
+    payloadSize: d.payloadSize,
+    payloadSha256: d.payloadSha256,
+    records: d.records.map((r) => [...r]),
+  });
+  const ct = refPlanTarget(
+    v3Variant,
+    v3Rec.sha256,
+    set.c2,
+    chunkIndexOf(set.chunks.v2),
+  );
+  if (ct.chunks === null) fail("djdl.levels@1.2.0's chunk target is unusable");
+  const ci = {
+    target: ct,
+    installed: [
+      {
+        release: v1Rec.sha256,
+        payloadSha256: set.c1.payload.sha256,
+        chunks: { ids: set.chunks.v1.records.map((r) => r[0]) },
+        files: set.c1.files.map((f) => f.sha256),
+      },
+    ],
+    caps: planBase().caps,
+  };
+  rows.push({
+    id: "plan-real-chunk-v1-v2",
+    description:
+      "`djdl.levels@1.2.0` (v2 with its chunk index) through `planTarget`, v1 installed with its chunk ids: the whole delta wins, and chunk comes before file and full in the fallbacks.",
+    input: ci,
+  });
+  const ci2 = clone(ci);
+  ci2.caps.strategies = ["chunk", "file", "full"];
+  rows.push({
+    id: "plan-real-chunk-no-delta",
+    description:
+      "As plan-real-chunk-v1-v2 for an SDK without delta support: chunk wins.",
+    input: ci2,
+  });
+  const ci3 = clone(ci2);
+  (ci3.caps as Record<string, unknown>).requestWeight = 65536;
+  rows.push({
+    id: "plan-real-chunk-64k",
+    description:
+      "As plan-real-chunk-no-delta with requestWeight 65536: still chunk (index plus three runs), where plan-real-no-delta-64k takes full.",
+    input: ci3,
+  });
   for (const r of rows) r.expect = refPlan(r.input);
   const exp = Object.fromEntries(
     rows.map((r) => [r.id, r.expect as Record<string, any>]),
   );
   const wantStrategy: Record<string, string> = {
+    "plan-real-chunk-v1-v2": "delta",
+    "plan-real-chunk-no-delta": "chunk",
+    "plan-real-chunk-64k": "chunk",
     "plan-real-v1-v2": "delta",
     "plan-real-low-memory": "delta",
     "plan-tree-first-install": "full",
@@ -3393,6 +4330,20 @@ function buildPlanMatrix(
     fail("plan-real-low-memory must choose the packed set");
   if (exp["plan-tree-first-install"]!.requests !== 2)
     fail("a tree's full is two requests");
+  {
+    const fb = (
+      exp["plan-real-chunk-v1-v2"]!.fallbacks as { strategy: string }[]
+    ).map((f) => f.strategy);
+    const at = (x: string): number => fb.indexOf(x);
+    if (at("chunk") < 0 || at("chunk") > at("file") || at("chunk") > at("full"))
+      fail(
+        `plan-real-chunk-v1-v2: chunk must come before file and full: ${fb.join(",")}`,
+      );
+    if (exp["plan-real-chunk-v1-v2"]!.delta !== exp["plan-real-v1-v2"]!.delta)
+      fail("plan-real-chunk-v1-v2 must choose the whole-payload delta");
+    if (exp["plan-real-no-delta-64k"]!.strategy !== "full")
+      fail("plan-real-no-delta-64k must stay full");
+  }
   // A7's synthetic expectations quoted in §4.5 and A7 §4.4.
   const dw = exp["plan-delta-wins"]!;
   if (
@@ -3563,12 +4514,13 @@ function buildPlanMatrix(
       fail(`${c.id}: ${JSON.stringify(c.expect)}`);
 
   // targetCases (§4.5): synthetic variants and indexes of a few entries.
-  const tgt = buildTargetCases();
+  const tgt = buildTargetCases(set);
+  if ((rows.length as number) !== 28) fail(`plan rows: ${rows.length} != 28`);
   return {
     planMatrix: {
-      planMatrixVersion: 1,
+      planMatrixVersion: 2,
       description:
-        'The install planner, variant selection and target mapping (plans/P4-01.md §2.9, §4.5; WIRE-CONTRACT-V4 §11.4, informative). Generated by `tools/gen-content-corpus.ts`; do not hand-edit. `rows` pin `plan(input)`: A7 §4.2 with `requestWeight` (default below; `caps.requestWeight` overrides) and `full` as `{bytes, requests?}` costing `requests ?? 1`; chunk targets and seeds are inline (`records` as `[id, len, clen, bundle, offset]`, `ids`), so the planner never parses an index. Results are verdicts, never exceptions: `{strategy, delta?, transport?, bytes, requests, cost, peakDisk, fallbacks}` or `{error}`. The `plan-real-*` rows are the content set\'s own menu through `planTarget`. `variantCases` pin `selectVariant(variants, prefs)` (`{index}` or `{error: "pack-no-variant"}`), `targetCases` `planTarget(variant, recordSha256, filesIndex)`. Compare by canonical JSON.',
+        'The install planner, variant selection and target mapping (plans/P4-01.md §2.9, §4.5; WIRE-CONTRACT-V4 §11.4, informative). Generated by `tools/gen-content-corpus.ts`; do not hand-edit. `rows` pin `plan(input)`: A7 §4.2 with `requestWeight` (default below; `caps.requestWeight` overrides) and `full` as `{bytes, requests?}` costing `requests ?? 1`; chunk targets and seeds are inline (`records` as `[id, len, clen, bundle, offset]`, `ids`), so the planner never parses an index. Results are verdicts, never exceptions: `{strategy, delta?, transport?, bytes, requests, cost, peakDisk, fallbacks}` or `{error}`. The `plan-real-*` rows are the content set\'s own menu through `planTarget`. `variantCases` pin `selectVariant(variants, prefs)` (`{index}` or `{error: "pack-no-variant"}`), `targetCases` `planTarget(variant, recordSha256, filesIndex, chunkIndex)`, where `chunkIndex` (`{payloadSize, payloadSha256, records}`, plans/P4-10.md §2.5) is absent, meaning null, on the cases before P4-10. Compare by canonical JSON.',
       requestWeight: PLAN_REQUEST_WEIGHT,
       rows,
       variantCases,
@@ -3578,7 +4530,7 @@ function buildPlanMatrix(
   };
 }
 
-function buildTargetCases(): Record<string, unknown>[] {
+function buildTargetCases(set: ContentSet): Record<string, unknown>[] {
   const ref = (
     c: string,
     bytes: number,
@@ -3813,19 +4765,153 @@ function buildTargetCases(): Record<string, unknown>[] {
     (t) => t.deltas.length === 2 && t.deltas[0].method === "godot-delta-pck",
   );
   if (rows.length !== 14) fail("targetCases must be 14");
-  return rows.map(([id, description, variant, filesIndex, check]) => {
-    const expect = refPlanTarget(variant, H("7"), filesIndex);
+  const out: Record<string, unknown>[] = rows.map(
+    ([id, description, variant, filesIndex, check]) => {
+      const expect = refPlanTarget(variant, H("7"), filesIndex);
+      if (!check(expect as Record<string, any>))
+        fail(`${id}: ${JSON.stringify(expect)}`);
+      return {
+        id,
+        description,
+        recordSha256: H("7"),
+        variant,
+        filesIndex,
+        expect,
+      };
+    },
+  );
+
+  // plans/P4-10.md §4.4: eight chunk cases, every one over the synthetic `dup` index (four
+  // records), each with `chunkIndex`. Every case but the first maps `chunks` to null and keeps
+  // the rest of the target.
+  const dup = set.chunks.dup;
+  const dupRef = contentRef(set, "chunks/dup.pkc");
+  const dupPayload = { size: dup.payloadSize, sha256: dup.payloadSha256 };
+  const dupIndex = (): PlanChunkIndex => ({
+    payloadSize: dup.payloadSize,
+    payloadSha256: dup.payloadSha256,
+    records: dup.records.map((r) => [...r]),
+  });
+  const chunked =
+    (base: () => Record<string, any>) => (): Record<string, any> => {
+      const v = base();
+      v.payload = dupPayload;
+      v.full = ref("b", 120, dup.payloadSize);
+      v.chunks = { format: CHUNKS_FORMAT, ...dupRef };
+      return v;
+    };
+  const crows: [
+    string,
+    string,
+    (v: Record<string, any>) => void,
+    () => Record<string, any>,
+    PlanChunkIndex | null,
+    (t: Record<string, any>) => boolean,
+  ][] = [];
+  const kept = (t: Record<string, any>): boolean =>
+    t.chunks === null && t.full !== null && t.deltas.length === 1;
+  crows.push([
+    "target-chunks-usable",
+    "A container with a usable `chunks` ref and its parsed index: `chunks` is the index bytes and the four inline records (the dup payload repeats its first file, so two records share an id).",
+    () => {},
+    chunked(container),
+    dupIndex(),
+    (t) =>
+      t.chunks !== null &&
+      t.chunks.indexBytes === dupRef.bytes &&
+      t.chunks.records.length === 4 &&
+      t.chunks.records[0][0] === t.chunks.records[2][0],
+  ]);
+  crows.push([
+    "target-chunks-format-unknown",
+    "`chunks.format` is `pkey-chunks/2`: `chunks` null, the rest kept.",
+    (v) => {
+      v.chunks.format = "pkey-chunks/2";
+    },
+    chunked(container),
+    dupIndex(),
+    kept,
+  ]);
+  crows.push([
+    "target-chunks-codec-unknown",
+    "An unknown `chunks` codec (`lz4`): `chunks` null.",
+    (v) => {
+      v.chunks.codec = "lz4";
+    },
+    chunked(container),
+    dupIndex(),
+    kept,
+  ]);
+  crows.push([
+    "target-chunks-over-max",
+    "`chunks.size` above MAX_CHUNK_INDEX_BYTES: `chunks` null.",
+    (v) => {
+      v.chunks.size = MAX_CHUNK_INDEX_BYTES + 1;
+    },
+    chunked(container),
+    dupIndex(),
+    kept,
+  ]);
+  {
+    const other = dupIndex();
+    other.payloadSha256 = H("e");
+    crows.push([
+      "target-chunks-other-payload",
+      "The parsed index is bound to another payload: `chunks` null.",
+      () => {},
+      chunked(container),
+      other,
+      kept,
+    ]);
+  }
+  crows.push([
+    "target-chunks-no-index",
+    "No parsed index (it was not fetched): `chunks` null.",
+    () => {},
+    chunked(container),
+    null,
+    kept,
+  ]);
+  crows.push([
+    "target-chunks-on-tree",
+    "A `tree` variant carrying `chunks` (valid, ignored: v2 defines no tree chunking): `chunks` null.",
+    () => {},
+    chunked(tree),
+    dupIndex(),
+    (t) => t.chunks === null && t.full !== null,
+  ]);
+  {
+    const big = dupIndex();
+    big.records[1]![1] = MAX_CHUNK_BYTES + 1;
+    crows.push([
+      "target-chunks-oversized",
+      "One record's `len` is MAX_CHUNK_BYTES + 1: the strategy is unusable, `chunks` null (no code).",
+      () => {},
+      chunked(container),
+      big,
+      kept,
+    ]);
+  }
+  for (const [id, description, mut, base, chunkIndex, check] of crows) {
+    const variant = base();
+    mut(variant);
+    const expect = refPlanTarget(variant, H("7"), null, chunkIndex);
     if (!check(expect as Record<string, any>))
       fail(`${id}: ${JSON.stringify(expect)}`);
-    return {
+    if (chunkIndex !== null && chunkIndex.records.length > 4)
+      fail(`${id}: at most four records`);
+    out.push({
       id,
       description,
       recordSha256: H("7"),
       variant,
-      filesIndex,
+      filesIndex: null,
+      chunkIndex,
       expect,
-    };
-  });
+    });
+  }
+  if (out.length !== 22) fail("targetCases must be 22");
+  return out;
 }
 
 /** `--check`'s guard against a `content/` directory in a mirror (content/ is source-only). */

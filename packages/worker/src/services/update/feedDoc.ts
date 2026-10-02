@@ -290,7 +290,8 @@ function usableContent(
 }
 
 /** The per-platform content part: its rows, only the sets and releases they reference, every
- *  floor and revocation, and the outlets of its own target. */
+ *  floor and revocation, and the outlets of its own target (with only the gates its rows' releases
+ *  key, and their fallbacks). */
 function platformContent(
   content: FeedContentPart,
   platform: string,
@@ -309,8 +310,22 @@ function platformContent(
       }
       packSets = { releases, sets, rows };
       const outlets: NonNullable<FeedPackSets["outlets"]> = {};
-      for (const [id, o] of Object.entries(content.packSets.outlets ?? {}))
-        if (target && Object.hasOwn(target.outlets, id)) outlets[id] = o;
+      for (const [id, o] of Object.entries(content.packSets.outlets ?? {})) {
+        if (!target || !Object.hasOwn(target.outlets, id)) continue;
+        // P4-14's gates: only those keyed by a release this platform's rows offer, each with its
+        // fallback carried into `releases` (a gate's keys and fallbacks must be keys there).
+        const { gates, ...rest } = o;
+        const kept: NonNullable<typeof gates> = {};
+        for (const [h, g] of Object.entries(gates ?? {})) {
+          if (!Object.hasOwn(releases, h)) continue;
+          kept[h] = g;
+          if (g.fallback !== null)
+            releases[g.fallback] = content.packSets.releases[g.fallback]!;
+        }
+        const entry =
+          Object.keys(kept).length > 0 ? { ...rest, gates: kept } : rest;
+        if (Object.keys(entry).length > 0) outlets[id] = entry;
+      }
       if (Object.keys(outlets).length > 0) packSets.outlets = outlets;
     }
   }

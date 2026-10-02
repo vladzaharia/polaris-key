@@ -10,7 +10,7 @@
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
  * any service: `secrets/*`, `outlet-credentials/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
- * `activity`, `services[/revert]`, `bundles`. Everything
+ * `activity`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
  *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
@@ -70,6 +70,7 @@ import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
+import { handleBlobGcAdmin } from "../core/blobGc.js";
 import { loadProduct } from "../core/products.js";
 import { buildHooks } from "../core/hooks.js";
 import { manifestIngestFor } from "../core/registry.js";
@@ -213,6 +214,21 @@ async function handleProductScoped(
   // belongs to neither service — a config-only product mints one with no license in it at all.
   if (resource === "bundles") {
     return handleBundleMint(req, env, db, session, slug, id, now);
+  }
+
+  // The blob collector's dry run and the bundle live-data ratios (P4-14). CORE, like the blob
+  // store itself: liveness is read through the product's hooks, as the nightly collector reads it.
+  //   GET /products/<slug>/blob-gc, GET /products/<slug>/blob-gc/bundles
+  if (resource === "blob-gc") {
+    const loaded = await loadProduct(env, db, slug);
+    if (!loaded) return notFound();
+    const hooks = buildHooks(SERVICES, loaded.services, {
+      env,
+      db,
+      product: loaded,
+      now,
+    });
+    return handleBlobGcAdmin(req, env, db, slug, hooks, id, now);
   }
 
   if (resource === "activity") {

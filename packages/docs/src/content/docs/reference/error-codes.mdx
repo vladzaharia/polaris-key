@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(117 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(132 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -123,6 +123,21 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `file-corrupt` | `update` | A pack file's blob (or a set's blob entry) failed its ref, its decode or its SHA-256, or a tree's reused file no longer hashes to its index entry; `path` names it (plans/P4-01.md §2.9). |
 | `file-source-missing` | `update` | A target file of the `file` strategy has no installed file with its hash and no source to fetch it from; `path` names it (plans/P4-01.md §2.9). |
 | `payload-hash-mismatch` | `update` | A container pack rebuilt by the `file` strategy does not hash to the variant's `payload.sha256` (plans/P4-01.md §2.9). |
+| `chunks-ref-mismatch` | `update` | A pack variant's chunk index (`pkey-chunks/1`) was refused before parsing: its declared size is over the limit, its stored bytes differ from the `chunks` ref, it does not decode, or its decoded length is not the ref's `size` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-bad-length` | `update` | A chunk index is shorter than its 64-byte header, or its length is not exactly 64 + 48 × (chunkCount + bundleCount) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-bad-magic` | `update` | A chunk index does not start with `PKEYCHNK` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-unsupported-version` | `update` | A chunk index's `version` is not 1 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-bad-record-size` | `update` | A chunk index's `recordSize` is not 48 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-bad-flags` | `update` | A chunk index sets a flag bit other than bit 0 (`fileAware`) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-reserved-nonzero` | `update` | A chunk index's bundle record has a nonzero `reserved` field; `bundle` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-zero-length` | `update` | A chunk index's chunk record has `len` 0; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-bad-clen` | `update` | A chunk index's chunk record has `clen` 0 or above `len`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-bad-bundle-ref` | `update` | A chunk index's chunk record names a bundle at or past `bundleCount`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-bad-bundle-range` | `update` | A chunk index's chunk record runs past its bundle's declared `size` (`offset + clen`); `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-size-mismatch` | `update` | A chunk index's chunk lengths do not sum to its `payloadSize` (read by the u64 rule) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunks-payload-mismatch` | `update` | A chunk index is bound to another payload: its `payloadSha256` or `payloadSize` is not the variant's `payload` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
+| `chunk-bundle-truncated` | `update` | Chunk sync: fewer than `clen` bytes arrived for a fetched chunk (a short body, or a range clipped at the bundle's end); `chunk` names it (plans/P4-10.md §2.5). |
+| `chunk-corrupt` | `update` | Chunk sync: a fetched chunk does not decode, decodes to the wrong length, or does not hash to its id; `chunk` names it (plans/P4-10.md §2.5). |
 | `plan-transport-unsupported` | `update` | The install planner's result: the target is platform-bound and the host lists no transport for it (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
 | `plan-insufficient-disk` | `update` | The install planner's result: no feasible strategy fits the host's free disk (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
 | `plan-no-strategy` | `update` | The install planner's result: no strategy the host allows can reach the target (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |

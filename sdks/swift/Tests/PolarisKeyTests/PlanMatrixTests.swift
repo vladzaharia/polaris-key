@@ -1,6 +1,7 @@
 // @pkey-feature packs.plan
 //
-// `plan-matrix.json` (planMatrixVersion 1, plans/P4-01.md §4.5) through PolarisKeyPacks:
+// `plan-matrix.json` (planMatrixVersion 2, plans/P4-01.md §4.5, plans/P4-10.md §4.4) through
+// PolarisKeyPacks:
 //
 //   rows          the planner                → plan
 //   variantCases  variant selection          → selectVariant
@@ -20,12 +21,12 @@ final class PlanMatrixTests: XCTestCase {
 
     func testHasEveryRowAndCase() throws {
         let m = try matrix()
-        XCTAssertEqual(m["planMatrixVersion"], .int(1))
+        XCTAssertEqual(m["planMatrixVersion"], .int(2))
         XCTAssertEqual(m["requestWeight"], .int(16384))
         XCTAssertEqual(m["requestWeight"]?.intValue, PLAN_REQUEST_WEIGHT)
-        XCTAssertEqual(m["rows"]?.arrayValue?.count, 25)
+        XCTAssertEqual(m["rows"]?.arrayValue?.count, 28)
         XCTAssertEqual(m["variantCases"]?.arrayValue?.count, 11)
-        XCTAssertEqual(m["targetCases"]?.arrayValue?.count, 14)
+        XCTAssertEqual(m["targetCases"]?.arrayValue?.count, 22)
     }
 
     func testRows() throws {
@@ -59,8 +60,16 @@ final class PlanMatrixTests: XCTestCase {
             let o = try XCTUnwrap(c.objectValue)
             let variant = try XCTUnwrap(PackVariant(json: o["variant"]!), "\(o["id"]!)")
             let index: FilesIndexDoc? = o["filesIndex"] == .null ? nil : FilesIndexDoc(json: o["filesIndex"]!)
+            // plans/P4-10.md §4.4: `chunkIndex` is absent (nil) on the cases before P4-10.
+            var chunkIndex: PlanChunkIndex?
+            if let ci = o["chunkIndex"], ci != .null {
+                chunkIndex = try XCTUnwrap(PlanChunkIndex(json: ci), "\(o["id"]!)")
+            }
             XCTAssertEqual(
-                planTarget(variant, recordSha256: try XCTUnwrap(o["recordSha256"]?.stringValue), filesIndex: index).json,
+                planTarget(
+                    variant, recordSha256: try XCTUnwrap(o["recordSha256"]?.stringValue), filesIndex: index,
+                    chunkIndex: chunkIndex
+                ).json,
                 normalisedJSON(o["expect"]!), "target \(o["id"]!): \(o["description"]!)")
         }
     }

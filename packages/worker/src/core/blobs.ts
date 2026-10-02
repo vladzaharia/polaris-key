@@ -406,7 +406,7 @@ export async function promote(
     alreadyStored = true;
   }
 
-  await recordObject(
+  const recorded = await recordObject(
     record.db,
     {
       storageKey: targetKey,
@@ -417,6 +417,35 @@ export async function promote(
     },
     record.now,
   );
+  // The collector has claimed the object for deletion (P4-14, `blobGc.ts`): its bytes may be gone
+  // a moment from now, so no ref may be earned to it. Retryable: once the sweep has deleted it, a
+  // fresh promote stores the bytes again.
+  if (!recorded) return { ok: false, reason: "changed" };
+  if (alreadyStored) {
+    // The bytes were confirmed BEFORE the row was recorded, and the sweep may have claimed and
+    // deleted the object in between (then `recordObject` inserted a fresh row for bytes that are
+    // gone). Now that `recordObject` has cleared `unreferenced_since`, no claim can happen within
+    // the grace period, so this second look is authoritative. Gone: put the staged copy back.
+    const again = await bucket.head(targetKey);
+    if (!again) {
+      const retry = await bucket.get(fromStagingKey, {
+        onlyIf: { etagMatches: verified.etag },
+      });
+      if (!retry || !("body" in retry)) return { ok: false, reason: "changed" };
+      const restored = await putVerified(
+        bucket,
+        targetKey,
+        retry.body,
+        expected,
+      );
+      if (!restored.ok) return { ok: false, reason: "changed" };
+      alreadyStored = false;
+    } else if (
+      again.size !== expected.size ||
+      checksumHex(again) !== expected.sha256
+    )
+      return { ok: false, reason: "conflict" };
+  }
   return { ok: true, key: targetKey, alreadyStored, verifiedBy: verified };
 }
 
@@ -430,16 +459,27 @@ export interface BlobObjectRow {
   gated: boolean;
 }
 
-/** Record a stored, verified object. Written by `promote` only; a no-op if already recorded. */
+/**
+ * Record a stored, verified object. Written by `promote` only. Already recorded: the row is kept
+ * (its `created_at` is when the LOCK started, so it never moves) and its `unreferenced_since` is
+ * cleared, so the collector's grace period starts again and a publish in flight has the whole of
+ * it to write its ref (P4-14, `blobGc.ts`).
+ *
+ * Answers `false` when the collector has CLAIMED the object (`gc_claimed_at`): its delete is in
+ * progress, and the caller must not earn a ref to it. The claim and this statement are each one
+ * atomic D1 statement, so either the claim comes first (and this answers `false`) or this does
+ * (and the cleared `unreferenced_since` fails the claim's condition).
+ */
 export async function recordObject(
   db: Db,
   row: BlobObjectRow,
   now: number,
-): Promise<void> {
+): Promise<boolean> {
   await db.run(
     `INSERT INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(storage_key) DO NOTHING`,
+     ON CONFLICT(storage_key) DO UPDATE SET unreferenced_since = NULL
+       WHERE blob_objects.gc_claimed_at IS NULL`,
     row.storageKey,
     row.sha256,
     row.size,
@@ -448,6 +488,11 @@ export async function recordObject(
     now,
     now,
   );
+  const claimed = await db.first<{ c: number | null }>(
+    "SELECT gc_claimed_at AS c FROM blob_objects WHERE storage_key = ?",
+    row.storageKey,
+  );
+  return claimed !== null && claimed.c === null;
 }
 
 /**
@@ -544,6 +589,10 @@ export interface BlobRef {
  * required the upload), or (b) for a key it already references. Never on the strength of
  * `isStored`/`storedKeys`: that would let a tenant claim another product's gated build by
  * naming its hash (which the other product's signed manifests publish).
+ *
+ * Re-earning a ref that exists moves its `created_at` forward: the collector (P4-14) drops a ref
+ * only once it is older than its grace period, which therefore counts from the last time it was
+ * earned.
  */
 export async function recordRef(
   db: Db,
@@ -553,7 +602,8 @@ export async function recordRef(
   await db.run(
     `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
      VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(product, storage_key, ref_kind, ref_id) DO NOTHING`,
+     ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
+            created_at = MAX(blob_refs.created_at, excluded.created_at)`,
     ref.product,
     ref.storageKey,
     ref.refKind,
@@ -571,7 +621,8 @@ export function stmtRecordRef(ref: BlobRef, now: number): DbStatement {
   return {
     sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
           VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(product, storage_key, ref_kind, ref_id) DO NOTHING`,
+          ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
+            created_at = MAX(blob_refs.created_at, excluded.created_at)`,
     params: [ref.product, ref.storageKey, ref.refKind, ref.refId, now],
   };
 }

@@ -88,6 +88,14 @@ export {
   type ParseFilesIndexOptions,
   type ParseFilesIndexResult,
   type ZstdDecode,
+  // P4-10: the chunk index (`pkey-chunks/1`).
+  parseChunkIndex,
+  parseChunkIndexBytes,
+  type ChunkIndexErrorCode,
+  type ChunkIndexRef,
+  type ParseChunkIndexOptions,
+  type ParseChunkIndexResult,
+  type PlanChunkIndex,
   // P4-06: the appliers, planner, selection, marker, install state and pipeline.
   FILES_TREE_HANDLER,
   PACK_STATE_VERSION,

@@ -1388,7 +1388,7 @@
       "optional": false,
       "refs": ["CONTENT §8 §9", "notes/A7 §3.1", "notes/A6", "plans/P4-10.md"],
       "brief": "wp/P4-10-chunk-indexes.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-11",

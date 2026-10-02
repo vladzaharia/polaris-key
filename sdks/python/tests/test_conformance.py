@@ -546,7 +546,7 @@ _MARKER_CASES: List[Dict[str, Any]] = _CORPUS["markerCases"]
 
 
 def test_pack_record_and_marker_counts() -> None:
-    assert len(_PACK_RECORD_CASES) == 159
+    assert len(_PACK_RECORD_CASES) == 170
     assert len(_MARKER_CASES) == 17
 
 

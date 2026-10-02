@@ -125,7 +125,7 @@
     "packs.revoke": { "status": "planned", "wp": "P4-24" },
     "packs.plan": {
       "status": "implemented",
-      "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json row, variant case and target case on the editor and the release template."
+      "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json (v2) row, variant case and target case on the editor and the release template; plan_target applies the P4-10 §2.5 chunk rule when given a chunk index (Godot parses none until P4-11)."
     },
     "packs.index.files": {
       "status": "implemented",

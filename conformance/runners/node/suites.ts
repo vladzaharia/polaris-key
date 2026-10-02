@@ -71,6 +71,11 @@
 //   frameWindowCases  §2.7 rule 3's header window                      → frameWindow
 //   applyCases        §2.9's appliers, verdicts and counters (P4-06)   → applyFull, applyDelta,
 //                                                                         applyFile
+//   chunkIndexCases   plans/P4-10.md §2.3's parseChunkIndex (P4-10)    → parseChunkIndex
+//
+// The eight `strategy: chunk` apply cases (plans/P4-10.md §4.3) are declared `it.todo` by exact
+// id until P4-11 lands `applyChunk` (`packs.apply.chunk`); the target cases pass `chunkIndex`
+// (plans/P4-10.md §2.5) to `planTarget`.
 //
 // and, from P4-13 (plans/P4-13.md §4, §5 order 1), the content members, revocations, holds and
 // the content decision:
@@ -182,6 +187,7 @@ import {
   memorySource,
   packSetId,
   parseContentStamp,
+  parseChunkIndex,
   parseFilesIndex,
   plan,
   planTarget,
@@ -193,6 +199,7 @@ import {
   type FilesIndexRef,
   type InstalledFile,
   type PackSetEntry,
+  type PlanChunkIndex,
   type PlanInput,
   type PlanTarget,
   type VariantPrefs,
@@ -545,7 +552,7 @@ export interface CorpusFiles {
   planMatrix: PlanMatrix;
 }
 
-/** `plan-matrix.json` (planMatrixVersion 1, plans/P4-01.md §4.5). */
+/** `plan-matrix.json` (planMatrixVersion 2: plans/P4-01.md §4.5, plans/P4-10.md §4.4). */
 export interface PlanMatrix {
   planMatrixVersion: number;
   requestWeight: number;
@@ -568,6 +575,8 @@ export interface PlanMatrix {
     recordSha256: string;
     variant: PackVariant;
     filesIndex: FilesIndexDoc | null;
+    /** plans/P4-10.md §4.4: absent (null) on the cases before P4-10. */
+    chunkIndex?: PlanChunkIndex | null;
     expect: PlanTarget;
   }[];
 }
@@ -1302,8 +1311,8 @@ export function defineCorpusSuites({
 
   // @pkey-feature packs.record
   describe(`conformance corpus v${corpus.corpusVersion} — pack record claims (V4 §2.5 step 14, plans/P4-01.md §2.3–§2.4)`, () => {
-    it("has every pack-record and marker case of plans/P4-01.md §4.6", () => {
-      expect(corpus.packRecordCases.length).toBe(159);
+    it("has every pack-record and marker case of plans/P4-01.md §4.6 and plans/P4-10.md §4.5", () => {
+      expect(corpus.packRecordCases.length).toBe(170);
       expect(corpus.markerCases.length).toBe(17);
     });
     for (const c of corpus.packRecordCases) {
@@ -1397,11 +1406,11 @@ export function defineCorpusSuites({
   // @pkey-feature packs.plan
   describe(`plan-matrix v${planMatrix.planMatrixVersion} — the planner, variant selection and target mapping (plans/P4-01.md §2.9)`, () => {
     it("has every row and case of plans/P4-01.md §4.5", () => {
-      expect(planMatrix.planMatrixVersion).toBe(1);
+      expect(planMatrix.planMatrixVersion).toBe(2);
       expect(planMatrix.requestWeight).toBe(16384);
-      expect(planMatrix.rows.length).toBe(25);
+      expect(planMatrix.rows.length).toBe(28);
       expect(planMatrix.variantCases.length).toBe(11);
-      expect(planMatrix.targetCases.length).toBe(14);
+      expect(planMatrix.targetCases.length).toBe(22);
     });
     for (const row of planMatrix.rows) {
       it(`row ${row.id}`, () => {
@@ -1418,7 +1427,12 @@ export function defineCorpusSuites({
     for (const c of planMatrix.targetCases) {
       it(`target ${c.id}`, () => {
         expect(
-          planTarget(c.variant, c.recordSha256, c.filesIndex),
+          planTarget(
+            c.variant,
+            c.recordSha256,
+            c.filesIndex,
+            c.chunkIndex ?? null,
+          ),
           c.description,
         ).toEqual(c.expect);
       });
@@ -1684,6 +1698,7 @@ export interface ContentRef {
   mutate?: (
     | { op: "truncate"; length: number }
     | { op: "xor"; offset: number; value: number }
+    | { op: "putU16" | "putU32" | "putU64"; offset: number; value: number }
   )[];
 }
 
@@ -1692,7 +1707,7 @@ interface ContentCase {
   description: string;
 }
 
-/** `content/cases.json` (contentCorpusVersion 1): the sections this module drives. */
+/** `content/cases.json` (contentCorpusVersion 2): the sections this module drives. */
 export interface ContentCorpus {
   contentCorpusVersion: number;
   blobs: Record<string, { size: number; sha256: string }>;
@@ -1717,8 +1732,23 @@ export interface ContentCorpus {
     header: string;
     expect: { window: number | null };
   })[];
+  /** plans/P4-10.md §4.3. */
+  chunkIndexCases: (ContentCase & {
+    stored: ContentRef;
+    chunks: {
+      format: string;
+      sha256: string;
+      bytes: number;
+      size: number;
+      codec: string;
+    };
+    payload: { size: number; sha256: string };
+    expect:
+      | { ok: true; chunks: number; bundleSizes: number[] }
+      | { ok: false; error: string; chunk?: number; bundle?: number };
+  })[];
   applyCases: (ContentCase & {
-    strategy: "full" | "delta" | "file";
+    strategy: "full" | "delta" | "file" | "chunk";
     variant: PackVariant;
     delta?: number;
     installed?: { payload: ContentRef; files: ContentRef };
@@ -1779,10 +1809,33 @@ async function materialise(
     else if (m.op === "xor") {
       bytes = bytes.slice();
       bytes[m.offset] = bytes[m.offset]! ^ m.value;
+    } else if (m.op === "putU16" || m.op === "putU32" || m.op === "putU64") {
+      // plans/P4-10.md §4.2: little-endian; a `putU64` value is below 2^53, written as two u32
+      // words (low first) through a DataView.
+      bytes = bytes.slice();
+      const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      if (m.op === "putU16") dv.setUint16(m.offset, m.value, true);
+      else if (m.op === "putU32") dv.setUint32(m.offset, m.value, true);
+      else {
+        dv.setUint32(m.offset, m.value % 4294967296, true);
+        dv.setUint32(m.offset + 4, Math.floor(m.value / 4294967296), true);
+      }
     } else throw new Error(`unknown mutation ${JSON.stringify(m)}`);
   }
   return bytes;
 }
+
+/** plans/P4-10.md §4.3: the chunk apply cases, `it.todo` until P4-11 lands `applyChunk`. */
+export const CHUNK_APPLY_TODO = [
+  "chunk-v1-to-v2",
+  "chunk-no-seed",
+  "chunk-tampered-zstd",
+  "chunk-tampered-raw",
+  "chunk-bundle-truncated",
+  "chunk-seed-tampered",
+  "chunk-seed-tampered-repair",
+  "chunk-index-for-other-payload",
+] as const;
 
 /**
  * Registers the content corpus's pure sections. Call it once per runner, at module top level.
@@ -1804,13 +1857,14 @@ export function defineContentSuites({
       blobs = await loadBlobs();
     });
     it("has its version and every section of plans/P4-01.md §4.4", () => {
-      expect(content.contentCorpusVersion).toBe(1);
+      expect(content.contentCorpusVersion).toBe(2);
       expect(content.pathCases.length).toBe(18);
       expect(content.filesIndexCases.length).toBe(15);
+      expect(content.chunkIndexCases.length).toBe(22);
       expect(content.packSetIdCases.length).toBe(7);
       expect(content.stampCases.length).toBe(10);
       expect(content.frameWindowCases.length).toBe(13);
-      expect(content.applyCases.length).toBe(19);
+      expect(content.applyCases.length).toBe(27);
       expect(backends.length).toBeGreaterThan(0);
     });
     it("every file under content/blobs/ matches the blobs table, and nothing else is there", async () => {
@@ -1848,12 +1902,45 @@ export function defineContentSuites({
       }
     });
 
+    // @pkey-feature packs.index.chunks
+    describe(`content corpus v${content.contentCorpusVersion} — chunkIndexCases [${backend.label}] (plans/P4-10.md §2.3)`, () => {
+      for (const c of content.chunkIndexCases) {
+        it(`chunk index ${c.id}`, async () => {
+          const stored = await materialise(c.stored, blobs, decode);
+          const r = await parseChunkIndex(stored, c.chunks, c.payload, {
+            decode: (f, n) => backend.zstd.decode(f, n),
+          });
+          const verdict = r.ok
+            ? {
+                ok: true,
+                chunks: r.index.records.length,
+                bundleSizes: r.index.bundles.map((b) => b[1]),
+              }
+            : r;
+          expect(verdict, c.description).toEqual(c.expect);
+        });
+      }
+    });
+
     // @pkey-feature packs.apply.full packs.apply.file packs.apply.delta
     describe(`content corpus v${content.contentCorpusVersion} — applyCases [${backend.label}] (plans/P4-01.md §2.9)`, () => {
-      it("has every apply case of plans/P4-01.md §4.4", () => {
-        expect(content.applyCases.length).toBe(19);
+      it("has every apply case of plans/P4-01.md §4.4 and plans/P4-10.md §4.3", () => {
+        expect(content.applyCases.length).toBe(27);
+        // The chunk cases this runner declares `todo` are exactly the corpus's chunk cases.
+        expect(
+          content.applyCases
+            .filter((c) => c.strategy === "chunk")
+            .map((c) => c.id),
+        ).toEqual([...CHUNK_APPLY_TODO]);
       });
       for (const c of content.applyCases) {
+        if (c.strategy === "chunk") {
+          // @pkey-feature packs.apply.chunk
+          it.todo(`apply ${c.id} (applyChunk, P4-11)`);
+          continue;
+        }
+        if (!["full", "delta", "file"].includes(c.strategy))
+          throw new Error(`apply ${c.id}: unknown strategy ${c.strategy}`);
         it(`apply ${c.id}`, async () => {
           const store = new Map<string, Uint8Array>();
           for (const [h, src] of Object.entries(c.objects))

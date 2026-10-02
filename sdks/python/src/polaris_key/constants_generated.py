@@ -95,6 +95,9 @@ __all__ = [
     "MARKER_FORMAT",
     "CONTENT_STAMP_FORMAT",
     "PLAN_REQUEST_WEIGHT",
+    "CHUNKS_FORMAT",
+    "MAX_CHUNK_INDEX_BYTES",
+    "MAX_CHUNK_BYTES",
     "CHANNEL_ALIASES",
     "CHANNEL_BETA",
     "CHANNEL_DEV",
@@ -221,6 +224,21 @@ class ErrorCode:
     FILE_CORRUPT: Final = "file-corrupt"
     FILE_SOURCE_MISSING: Final = "file-source-missing"
     PAYLOAD_HASH_MISMATCH: Final = "payload-hash-mismatch"
+    CHUNKS_REF_MISMATCH: Final = "chunks-ref-mismatch"
+    CHUNKS_BAD_LENGTH: Final = "chunks-bad-length"
+    CHUNKS_BAD_MAGIC: Final = "chunks-bad-magic"
+    CHUNKS_UNSUPPORTED_VERSION: Final = "chunks-unsupported-version"
+    CHUNKS_BAD_RECORD_SIZE: Final = "chunks-bad-record-size"
+    CHUNKS_BAD_FLAGS: Final = "chunks-bad-flags"
+    CHUNKS_RESERVED_NONZERO: Final = "chunks-reserved-nonzero"
+    CHUNKS_ZERO_LENGTH: Final = "chunks-zero-length"
+    CHUNKS_BAD_CLEN: Final = "chunks-bad-clen"
+    CHUNKS_BAD_BUNDLE_REF: Final = "chunks-bad-bundle-ref"
+    CHUNKS_BAD_BUNDLE_RANGE: Final = "chunks-bad-bundle-range"
+    CHUNKS_SIZE_MISMATCH: Final = "chunks-size-mismatch"
+    CHUNKS_PAYLOAD_MISMATCH: Final = "chunks-payload-mismatch"
+    CHUNK_BUNDLE_TRUNCATED: Final = "chunk-bundle-truncated"
+    CHUNK_CORRUPT: Final = "chunk-corrupt"
     PLAN_TRANSPORT_UNSUPPORTED: Final = "plan-transport-unsupported"
     PLAN_INSUFFICIENT_DISK: Final = "plan-insufficient-disk"
     PLAN_NO_STRATEGY: Final = "plan-no-strategy"
@@ -342,6 +360,21 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "file-corrupt",
     "file-source-missing",
     "payload-hash-mismatch",
+    "chunks-ref-mismatch",
+    "chunks-bad-length",
+    "chunks-bad-magic",
+    "chunks-unsupported-version",
+    "chunks-bad-record-size",
+    "chunks-bad-flags",
+    "chunks-reserved-nonzero",
+    "chunks-zero-length",
+    "chunks-bad-clen",
+    "chunks-bad-bundle-ref",
+    "chunks-bad-bundle-range",
+    "chunks-size-mismatch",
+    "chunks-payload-mismatch",
+    "chunk-bundle-truncated",
+    "chunk-corrupt",
     "plan-transport-unsupported",
     "plan-insufficient-disk",
     "plan-no-strategy",
@@ -465,6 +498,21 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "file-corrupt": "client",
         "file-source-missing": "client",
         "payload-hash-mismatch": "client",
+        "chunks-ref-mismatch": "client",
+        "chunks-bad-length": "client",
+        "chunks-bad-magic": "client",
+        "chunks-unsupported-version": "client",
+        "chunks-bad-record-size": "client",
+        "chunks-bad-flags": "client",
+        "chunks-reserved-nonzero": "client",
+        "chunks-zero-length": "client",
+        "chunks-bad-clen": "client",
+        "chunks-bad-bundle-ref": "client",
+        "chunks-bad-bundle-range": "client",
+        "chunks-size-mismatch": "client",
+        "chunks-payload-mismatch": "client",
+        "chunk-bundle-truncated": "client",
+        "chunk-corrupt": "client",
         "plan-transport-unsupported": "client",
         "plan-insufficient-disk": "client",
         "plan-no-strategy": "client",
@@ -1169,11 +1217,11 @@ OUTLET_MATRIX_VERSION: Final[int] = 1
 
 
 #: `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
-PLAN_MATRIX_VERSION: Final[int] = 1
+PLAN_MATRIX_VERSION: Final[int] = 2
 
 
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
-CONTENT_CORPUS_VERSION: Final[int] = 1
+CONTENT_CORPUS_VERSION: Final[int] = 2
 
 
 #: Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
@@ -1242,6 +1290,18 @@ CONTENT_STAMP_FORMAT: Final[str] = "pkey-content/1"
 
 #: Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 PLAN_REQUEST_WEIGHT: Final[int] = 16384
+
+
+#: Packs on the wire: `CHUNKS_FORMAT` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+CHUNKS_FORMAT: Final[str] = "pkey-chunks/1"
+
+
+#: Packs on the wire: `MAX_CHUNK_INDEX_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+MAX_CHUNK_INDEX_BYTES: Final[int] = 16777216
+
+
+#: Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
+MAX_CHUNK_BYTES: Final[int] = 4194304
 
 
 #: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).

@@ -11,7 +11,10 @@
  *     fingerprint, P2b-06's download-page fingerprints, P3-03's release key.
  *   - `rollout` (P2b-04): the outlet rollout for a deliverable on a channel (`dist_rollouts`),
  *     what P3-03 composes into the signed feed, P4-14 extends to packs, P5-02/P5-03 mirror into
- *     and P6-03 halts through.
+ *     and P6-03 halts through; `rollouts` (P4-14) lists every row, for the feed's per-outlet pack
+ *     gates and Core's blob collector.
+ *   - `reportedAvailability` (P4-14): every stored availability row, what the collector counts as
+ *     "an outlet lists it". `availability` also applies P4-14's readiness hold (`readiness.ts`).
  *   - `accessMode` (P2b-04): `dist_access` — the ONE delivery-access answer the byte routes, the
  *     appcast and the portal read.
  *   - `entitlement` (P4-02): a deliverable's delivery gate, the `entitlement` of its OWN
@@ -40,11 +43,12 @@ import {
 import { bytesHostname } from "../../core/bytesHost.js";
 import type { Env } from "../../core/platform.js";
 import { accessModeOf, entitlementOf } from "./access.js";
-import { getRollout, rolloutRecord } from "./rollouts.js";
+import { getRollout, listRollouts, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
 import { listOutlets, parseJsonColumn } from "./outlets.js";
 import { selectFeedWith } from "./feeds/select.js";
 import { feedStateStamp } from "./feeds/cache.js";
+import { readinessReader, type ReadinessReader } from "./readiness.js";
 
 /** The origin byte URLs are minted on: the bytes host when there is one, else none (a path). */
 function bytesOrigin(env: Env): string {
@@ -70,11 +74,19 @@ export function fileDeliveryUrl(
 export function delivery(ctx: HookContext): Delivery {
   const { db, product } = ctx;
   const slug = product.slug;
+  // P4-14: one readiness reader per hook instance (one request), so a composition that asks about
+  // several app releases reads the declarations, sets and pack records once.
+  let readiness: ReadinessReader | undefined;
+  const reader = (): ReadinessReader =>
+    (readiness ??= readinessReader({ db, product: slug, hooks: ctx.hooks }));
   return {
     defaultTransport: DEFAULT_TRANSPORT,
 
     availability: (releaseId: string) =>
-      availabilityFor({ db, product: slug, hooks: ctx.hooks }, releaseId),
+      availabilityFor(
+        { db, product: slug, hooks: ctx.hooks, readiness: reader() },
+        releaseId,
+      ),
 
     submissions: (releaseId: string) =>
       submissionsFor({ db, product: slug, hooks: ctx.hooks }, releaseId),
@@ -103,6 +115,24 @@ export function delivery(ctx: HookContext): Delivery {
     async rollout({ deliverable, outlet, channel }) {
       const row = await getRollout(db, slug, deliverable, outlet, channel);
       return row ? rolloutRecord(row) : null;
+    },
+
+    async rollouts() {
+      return (await listRollouts(db, slug)).map(rolloutRecord);
+    },
+
+    async reportedAvailability() {
+      return (
+        await db.all<{ release_id: string; outlet_id: string; state: string }>(
+          `SELECT release_id, outlet_id, state FROM dist_availability
+            WHERE product = ? ORDER BY release_id, outlet_id`,
+          slug,
+        )
+      ).map((r) => ({
+        releaseId: r.release_id,
+        outletId: r.outlet_id,
+        state: r.state,
+      }));
     },
 
     accessMode: (deliverable: string) => accessModeOf(db, slug, deliverable),
@@ -195,6 +225,7 @@ export function delivery(ctx: HookContext): Delivery {
           hooks: ctx.hooks,
           origin: q.origin,
           env: ctx.env,
+          readiness: reader(),
         },
         { catalog, notesPublic: metadata === "public" },
         q.channel,

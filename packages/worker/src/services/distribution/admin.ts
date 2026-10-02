@@ -24,6 +24,13 @@
  *     GET  …/distribution/matrix?deliverable=app&limit=20      releases × outlets: availability,
  *                                                              submission and rollout per cell,
  *                                                              with the verbs each allows (P2b-06)
+ *     GET  …/distribution/readiness[?release=<appReleaseId>]   outlet readiness (P4-14): the
+ *                                                              stored snapshot, or one app
+ *                                                              release computed now, per outlet
+ *     POST …/distribution/readiness/refresh                    recompute the snapshot
+ *     POST …/distribution/readiness/<appReleaseId>/<outletId>/{override,clear}
+ *                                                              release the hold (audited, with a
+ *                                                              reason) or hand it back
  *     GET  …/distribution/connectors                           every store connector: setup,
  *                                                              tracked objects, recent events (P5-02)
  *     GET  …/distribution/connectors/<kind>                    one connector
@@ -107,6 +114,14 @@ import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { CONNECTORS, connectorOf } from "./connectors/index.js";
 import { handleUpdateHealthAdmin } from "./updateHealthAdmin.js";
 import { buildMatrix, MATRIX_DEFAULT_LIMIT } from "./matrix.js";
+import {
+  READINESS_STATES,
+  listReadiness,
+  readinessReader,
+  readinessRowView,
+  refreshReadiness,
+  setReadinessOverride,
+} from "./readiness.js";
 
 /** The console's view of one outlet. */
 export function outletView(
@@ -153,6 +168,7 @@ export async function handleDistributionAdmin(
   if (rest[0] === "keys") return handleKeysAdmin(ctx);
   if (rest[0] === "connectors") return handleConnectorsAdmin(ctx);
   if (rest[0] === "matrix") return handleMatrixAdmin(ctx);
+  if (rest[0] === "readiness") return handleReadinessAdmin(ctx);
   if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 
@@ -555,6 +571,108 @@ async function handleMatrixAdmin(
   );
   if (!matrix) return adminNotFound();
   return adminJson(matrix);
+}
+
+// ── Outlet readiness (P4-14) ─────────────────────────────────────────────────────────────────
+
+/** The longest override reason kept (it is shown and audited). */
+const MAX_OVERRIDE_REASON = 500;
+
+async function handleReadinessAdmin(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response | null> {
+  const { req, db, product, session, now, rest, hooks } = ctx;
+  const slug = product.slug;
+  const refreshCtx = {
+    db,
+    product: slug,
+    hooks,
+    now,
+    actor: `admin:${session.sub}`,
+  };
+  if (rest.length === 1) {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const release = new URL(req.url).searchParams.get("release");
+    if (release !== null) {
+      const computed = await readinessReader({
+        db,
+        product: slug,
+        hooks,
+      }).forRelease(release);
+      if (computed === null) return adminNotFound();
+      return adminJson({ appReleaseId: release, outlets: computed });
+    }
+    return adminJson({
+      states: READINESS_STATES,
+      rows: (await listReadiness(db, slug)).map(readinessRowView),
+    });
+  }
+  if (rest.length === 2 && rest[1] === "refresh") {
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const refreshed = await refreshReadiness(refreshCtx);
+    return adminJson({
+      refreshed,
+      rows: (await listReadiness(db, slug)).map(readinessRowView),
+    });
+  }
+  if (rest.length !== 4 || (rest[3] !== "override" && rest[3] !== "clear"))
+    return null;
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const appReleaseId = rest[1] as string;
+  const outletId = rest[2] as string;
+  let reason: string | null = null;
+  if (rest[3] === "override") {
+    const body = await readBody(req);
+    if (
+      typeof body.reason !== "string" ||
+      body.reason.trim() === "" ||
+      body.reason.length > MAX_OVERRIDE_REASON
+    )
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        `reason is required (at most ${MAX_OVERRIDE_REASON} characters): an override is audited with why`,
+        { fields: ["reason"] },
+      );
+    reason = body.reason.trim();
+  }
+  const result = await setReadinessOverride(
+    refreshCtx,
+    appReleaseId,
+    outletId,
+    reason,
+  );
+  if (!result.ok) {
+    if (result.status === 404) return adminNotFound();
+    return err(result.status, ErrorCode.BadRequest, result.message, {
+      reason: result.reason,
+    });
+  }
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    reason === null
+      ? "distribution.readiness.override_cleared"
+      : "distribution.readiness.override",
+    { kind: "readiness", id: `${appReleaseId}:${outletId}` },
+    reason === null
+      ? `Cleared the readiness override of ${appReleaseId} on ${outletId}; the hold is computed again`
+      : `Overrode the readiness hold of ${appReleaseId} on ${outletId}: ${reason}`,
+  );
+  const computed = await readinessReader({
+    db,
+    product: slug,
+    hooks,
+  }).forRelease(appReleaseId);
+  return adminJson({
+    appReleaseId,
+    readiness: computed?.find((r) => r.outletId === outletId) ?? null,
+  });
 }
 
 // ── Store connectors (P5-02) ─────────────────────────────────────────────────────────────────

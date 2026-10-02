@@ -26,6 +26,13 @@ export interface Env {
    */
   BLOBS?: R2Bucket;
   /**
+   * The blob collector's kill switch (P4-14, `core/blobGc.ts`): `off` stops it entirely; anything
+   * else (or unset) runs it on the nightly maintenance cron. A `[vars]` value, never a secret.
+   */
+  BLOB_GC_MODE?: string;
+  /** The collector's grace period in days (default 30, never under 1). A `[vars]` value. */
+  BLOB_GC_GRACE_DAYS?: string;
+  /**
    * The bytes host's origin, e.g. `https://dl.plrs.im`. A request whose host is this origin's
    * host reaches ONLY the byte routes (`core/bytesHost.ts`); everything else there — the
    * console, the portal, `/docs`, discovery — answers not-found. Unset (or unparsable) ⇒ there

@@ -12,7 +12,8 @@
  *      payload we serve;
  *   4. that are not yanked, and not held back on O: these clients cannot bucket installs, so a
  *      release whose rollout on O is paused or halted, or active below 10000 bp, is left out until
- *      it completes — the previous release is listed instead;
+ *      it completes — the previous release is listed instead; nor HELD by P4-14's readiness (its
+ *      required pack set is not yet available through O's transport, `readiness.ts`);
  *   5. whose payload has an immutable delivery URL (the answer of `delivery.deliveryUrl`, on the
  *      bytes host when `BLOB_ORIGIN` is set).
  *
@@ -61,6 +62,7 @@ import {
   type DistOutletRow,
 } from "../outlets.js";
 import { FULL_ROLLOUT_BP, type DistRolloutRow } from "../rollouts.js";
+import { readinessReader, type ReadinessReader } from "../readiness.js";
 import type { RenderListing } from "./render.js";
 
 /** The most versions a feed lists, and the most releases it reads to find them (newest first). */
@@ -75,6 +77,8 @@ export interface FeedReadContext {
   origin: string;
   /** For the bytes host (`BLOB_ORIGIN`) delivery URLs are minted on. */
   env: Env;
+  /** P4-14's readiness reader, when the caller shares one (`delivery.ts`); else one is made. */
+  readiness?: ReadinessReader;
 }
 
 /** The outlet a feed is rendered for. */
@@ -382,6 +386,11 @@ export async function selectFeedWith(
     spec.rollouts ?? "hold",
     history.channel,
   );
+  // P4-14: a release whose required pack set is not available on this outlet is held (Polaris Key
+  // serves this feed, so it can hold it wherever the outlet's kind is holdable).
+  const readiness =
+    ctx.readiness ??
+    readinessReader({ db: ctx.db, product: slug, hooks: ctx.hooks });
   const only = spec.releaseIds ? new Set(spec.releaseIds) : null;
   const limit = spec.limit ?? MAX_FEED_VERSIONS;
   const entries: FeedSelectionEntry[] = [];
@@ -390,6 +399,7 @@ export async function selectFeedWith(
     if (releasesListed >= limit) break;
     if (release.yanked || standing.held.has(release.releaseId)) continue;
     if (only && !only.has(release.releaseId)) continue;
+    if (await readiness.holdsOn(release.releaseId, outlet.id)) continue;
     // A store outlet is live only where reported: a release with no live report costs nothing.
     if (
       liveness &&

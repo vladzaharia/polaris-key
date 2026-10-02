@@ -11142,7 +11142,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-E7KJYQFL.js
+// ../shared-protocol/dist/chunk-PF27BW4O.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MAX_JSON_DEPTH = 64;
 var MAX_RECORD_JWS_BYTES = 88844;
@@ -18514,6 +18514,17 @@ function packClaimsOk(doc, nonWire) {
     if (has2(v, "requires")) {
       const r = v.requires;
       if (!isObject2(r) || !optPattern(r, "engine", ENGINE_PATTERN))
+        return false;
+    }
+    if (has2(v, "chunks")) {
+      const c = v.chunks;
+      if (!isObject2(c))
+        return false;
+      if (typeof c.format !== "string" || !OBJECT_FORMAT_PATTERN.test(c.format))
+        return false;
+      if (!objectRef(c, `${at}/chunks`, 1, 1, nonWire))
+        return false;
+      if (has2(c, "params") && !isObject2(c.params))
         return false;
     }
     const key = variantKey(sel);

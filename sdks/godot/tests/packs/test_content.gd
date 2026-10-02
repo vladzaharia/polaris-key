@@ -1,10 +1,15 @@
 extends RefCounted
-# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record
+# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record packs.index.chunks packs.apply.chunk
 # The content corpus (conformance/corpus/v2/content/cases.json, read from the checkout through
 # PKEY_CONTENT_CORPUS; plans/P4-01.md §4.4), mirroring conformance/runners/node/suites.ts
 # `defineContentSuites` vector for vector: the blobs table, pathCases, filesIndexCases,
 # applyCases (full, delta and file through the addon's appliers, the engine's own zstd and GDDL
 # decoders), packSetIdCases, stampCases and frameWindowCases.
+#
+# Content corpus v2 (plans/P4-10.md §4.3) adds chunkIndexCases and eight `strategy: chunk` apply
+# cases. Godot's chunk parser and applier are P4-11's: both are declared planned by exact id (and
+# in parity.json), never skipped silently; their <ref> inputs (the put* mutations included) are
+# materialised and checked against their refs here, as the Python and Swift runners do.
 #
 # The `zstd-patch-from` decode is engine-internal (P4-01 decision 7): on an engine outside
 # PKeyPackZstd.PATCH_FROM_ENGINES (4.4, 4.5) the SDK does not advertise the method, so the planner
@@ -16,7 +21,22 @@ const S := preload("res://tests/packs/support.gd")
 ## The content corpus's directory under conformance/corpus/v2/ (PKEY_CONTENT_CORPUS names it).
 const CONTENT := "content/"
 
-const FLOORS := {"pathCases": 18, "filesIndexCases": 15, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 19}
+const FLOORS := {"pathCases": 18, "filesIndexCases": 15, "chunkIndexCases": 22, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 27}
+
+## plans/P4-10.md §4.3: the sections Godot declares planned until P4-11, by exact id.
+const CHUNK_INDEX_PLANNED := [
+	"chunks-v1-valid", "chunks-v2-valid", "chunks-short-header", "chunks-bad-magic",
+	"chunks-bad-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-bad-length",
+	"chunks-bad-length-count", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref",
+	"chunks-bad-bundle-range", "chunks-reserved-nonzero", "chunks-size-mismatch", "chunks-zero-clen",
+	"chunks-bad-length-wrap", "chunks-size-high-word", "chunks-ref-tampered", "chunks-ref-over-max",
+	"chunks-payload-mismatch", "chunks-bundle-size-saturated",
+]
+const CHUNK_APPLY_PLANNED := [
+	"chunk-v1-to-v2", "chunk-no-seed", "chunk-tampered-zstd", "chunk-tampered-raw",
+	"chunk-bundle-truncated", "chunk-seed-tampered", "chunk-seed-tampered-repair",
+	"chunk-index-for-other-payload",
+]
 
 
 func run(t: PKeyTestContext) -> void:
@@ -33,7 +53,8 @@ func run(t: PKeyTestContext) -> void:
 	_blobs(t, dir, doc)
 	_paths(t, doc.get("pathCases", []))
 	_files_index(t, doc.get("filesIndexCases", []))
-	_apply(t, doc.get("applyCases", []))
+	_chunks_planned(t, doc)
+	_apply(t, (doc.get("applyCases", []) as Array).filter(func(c): return c["strategy"] != "chunk"))
 	_pack_sets(t, doc.get("packSetIdCases", []))
 	_stamps(t, doc.get("stampCases", []))
 	_windows(t, doc.get("frameWindowCases", []))
@@ -134,7 +155,33 @@ func _apply(t: PKeyTestContext, cases: Array) -> void:
 		t.info("apply %s: %.1f ms" % [c["id"], ms])
 		n += 1
 	t.info("applyCases GDDL: %s" % S.canon(z.stats))
-	t.check("content: applyCases coverage", n == cases.size() and n >= FLOORS["applyCases"], "%d/%d" % [n, cases.size()])
+	t.check("content: applyCases coverage (every non-chunk case)", n == cases.size() and n + CHUNK_APPLY_PLANNED.size() == FLOORS["applyCases"], "%d/%d" % [n, cases.size()])
+
+
+## No silent skip: the planned lists are exactly the corpus's chunk cases, parity.json declares
+## both features planned in P4-11, and every chunk index case's input materialises to the bytes
+## its `chunks` ref names (except chunks-ref-tampered, whose stored frame is the mutated one).
+func _chunks_planned(t: PKeyTestContext, doc: Dictionary) -> void:
+	var idx_ids := []
+	for c in doc.get("chunkIndexCases", []):
+		idx_ids.append(c["id"])
+	var apply_ids := []
+	for c in doc.get("applyCases", []):
+		if c["strategy"] == "chunk":
+			apply_ids.append(c["id"])
+	t.check("content: chunkIndexCases are exactly the planned ids (P4-11)", idx_ids == CHUNK_INDEX_PLANNED, S.canon(idx_ids))
+	t.check("content: the chunk applyCases are exactly the planned ids (P4-11)", apply_ids == CHUNK_APPLY_PLANNED, S.canon(apply_ids))
+	# res://parity.json: the export preset's include_filter (*.json) packs it into the template too.
+	var parity = S.read_json("res://parity.json")
+	for fid in ["packs.index.chunks", "packs.apply.chunk"]:
+		var f = parity.get("features", {}).get(fid) if parity is Dictionary else null
+		t.check("content: parity.json declares %s planned in P4-11" % fid, f is Dictionary and f.size() == 2 and f.get("status") == "planned" and f.get("wp") == "P4-11", S.canon(f))
+	for c in doc.get("chunkIndexCases", []):
+		var stored := S.materialise(c["stored"])
+		var ref: Dictionary = c["chunks"]
+		var matches: bool = stored.size() == int(ref["bytes"]) and PKeyPackClaims.sha256_hex(stored) == ref["sha256"]
+		t.check("chunk index %s: its input materialises to its ref (planned: P4-11)" % c["id"], matches == (c["id"] != "chunks-ref-tampered"))
+	t.info("planned: P4-11 (packs.index.chunks, packs.apply.chunk): %d chunk index and %d chunk apply cases" % [idx_ids.size(), apply_ids.size()])
 
 
 func _pack_sets(t: PKeyTestContext, cases: Array) -> void:

@@ -294,6 +294,18 @@ static func pack_record_claims(doc: Dictionary, nw: PKeyJson.PointerSet = null) 
 			var r = v["requires"]
 			if not (r is Dictionary) or not _opt_pattern(r, "engine", ENGINE_PATTERN):
 				return false
+		# plans/P4-10.md §2.2: checks 81-83 and the object ref at `chunks` (`bytes` and `size` from
+		# 1); other members are ignored (reserved: an index delta).
+		if v.has("chunks"):
+			var c = v["chunks"]
+			if not (c is Dictionary):
+				return false
+			if not matches(OBJECT_FORMAT_PATTERN, c.get("format")):
+				return false
+			if not object_ref(c, at + "/chunks", 1, 1, nw):
+				return false
+			if c.has("params") and not (c["params"] is Dictionary):
+				return false
 		var key := variant_key(sel)
 		if keys.has(key):
 			return false

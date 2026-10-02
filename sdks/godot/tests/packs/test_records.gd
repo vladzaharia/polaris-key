@@ -16,7 +16,7 @@ func run(t: PKeyTestContext) -> void:
 		return
 	var records: Array = corpus.get("packRecordCases", [])
 	var markers: Array = corpus.get("markerCases", [])
-	t.check("records: 159 pack-record and 17 marker cases", records.size() == 159 and markers.size() == 17, "%d/%d" % [records.size(), markers.size()])
+	t.check("records: 170 pack-record and 17 marker cases", records.size() == 170 and markers.size() == 17, "%d/%d" % [records.size(), markers.size()])
 	var started := Time.get_ticks_usec()
 	var n := 0
 	for c in records:

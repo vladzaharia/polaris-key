@@ -204,6 +204,11 @@ describe("@polaris-key/protocol layout", () => {
     expect(core.PATCH_FORMAT).toBe("pkey-patch/1");
     expect(core.MARKER_FORMAT).toBe("pkey-marker/1");
     expect(core.CONTENT_STAMP_FORMAT).toBe("pkey-content/1");
+    // plans/P4-10.md §2.3: the chunk index format and its two client limits.
+    expect(core.CHUNKS_FORMAT).toBe("pkey-chunks/1");
+    expect(core.MAX_CHUNK_INDEX_BYTES).toBe(16 * 1024 * 1024);
+    expect(core.MAX_CHUNK_BYTES).toBe(4 * 1024 * 1024);
+    expect(barrel.MAX_CHUNK_BYTES).toBe(core.MAX_CHUNK_BYTES);
     expect(packs.PACK_TYPE_PATTERN.source).toBe(
       "^[a-z][a-z0-9-]{0,31}\\.[a-z][a-z0-9-]{0,31}$",
     );

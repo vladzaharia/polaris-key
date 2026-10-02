@@ -96,7 +96,7 @@ static func _lex_less(x: Array, y: Array) -> bool:
 ## payload's (a tree's costs its index too, in two requests); `files` needs the index, a readable
 ## one (a container: rebuildable); a `payload` delta is kept on a container, a `files` delta when
 ## `files` is kept and its `patch` ref is usable.
-static func plan_target(variant: Dictionary, record_sha256: String, files_index: Variant) -> Dictionary:
+static func plan_target(variant: Dictionary, record_sha256: String, files_index: Variant, chunk_index: Variant = null) -> Dictionary:
 	var payload = variant.get("payload")
 	if not variant_usable(variant):
 		return {"release": record_sha256, "payload": payload, "full": null, "platform": null, "chunks": null, "files": null, "deltas": []}
@@ -130,7 +130,35 @@ static func plan_target(variant: Dictionary, record_sha256: String, files_index:
 			arts.append({"sha256": d["patch"]["sha256"], "bytes": d["patch"]["bytes"]})
 			arts.append({"sha256": d["data"]["sha256"], "bytes": d["data"]["bytes"]})
 			deltas.append({"id": d["patch"]["sha256"], "method": d["method"], "from": d["from"], "memBytes": d["memBytes"], "artifacts": arts})
-	return {"release": record_sha256, "payload": payload, "full": full_t, "platform": null, "chunks": null, "files": files_t, "deltas": deltas}
+	return {"release": record_sha256, "payload": payload, "full": full_t, "platform": null, "chunks": _chunk_target(variant, chunk_index), "files": files_t, "deltas": deltas}
+
+
+## plans/P4-10.md §2.5 (client-core's `chunkTarget`): {indexBytes: chunks.bytes, records} when
+## the variant is a usable container, `chunks.format` is pkey-chunks/1, its codec is usable,
+## `chunks.size` is at most MAX_CHUNK_INDEX_BYTES, the parsed index is given and bound to the
+## payload, and no record's length exceeds MAX_CHUNK_BYTES; null otherwise. Godot's chunk parser
+## and applier are P4-11's, so production passes no index yet and this answers null.
+static func _chunk_target(variant: Dictionary, chunk_index: Variant) -> Variant:
+	var c = variant.get("chunks")
+	if not (chunk_index is Dictionary) or not (c is Dictionary):
+		return null
+	if not PKeyPackClaims.same(variant["files"].get("layout"), "container"):
+		return null
+	if not PKeyPackClaims.same(c.get("format"), PKeyConstants.CHUNKS_FORMAT) or not usable_codec(c.get("codec")):
+		return null
+	if not PKeyClaims.is_number(c.get("size")) or float(c["size"]) > float(PKeyConstants.MAX_CHUNK_INDEX_BYTES):
+		return null
+	if not PKeyClaims.is_number(c.get("bytes")):
+		return null
+	var payload: Dictionary = variant["payload"]
+	if not PKeyPackClaims.same(chunk_index.get("payloadSize"), payload.get("size")) or not PKeyPackClaims.same(chunk_index.get("payloadSha256"), payload.get("sha256")):
+		return null
+	var records: Array = []
+	for r in chunk_index.get("records", []):
+		if float(r[1]) > float(PKeyConstants.MAX_CHUNK_BYTES):
+			return null
+		records.append([r[0], r[1], r[2], r[3], r[4]])
+	return {"indexBytes": c["bytes"], "records": records}
 
 
 ## The strategies in the rank that breaks a cost tie (`full` is always last).

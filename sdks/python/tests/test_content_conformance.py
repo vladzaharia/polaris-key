@@ -1,4 +1,4 @@
-# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content
+# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content packs.index.chunks packs.apply.chunk
 """The content corpus (plans/P4-01.md §4.4, §5; P4-07): ``conformance/corpus/v2/content/``
 through the production pack core, as the Node runner (``conformance/runners/node/suites.ts``,
 ``defineContentSuites``) drives it. ``content/`` is not mirrored: this runner reads it from the
@@ -13,7 +13,13 @@ checkout.
                                                                             ``holds_of``
 ``frameWindowCases``   §2.7 rule 3's header window                          ``frame_window``
 ``applyCases``         §2.9's appliers, verdicts and counters               ``apply_*``
+``chunkIndexCases``    plans/P4-10.md §2.3 (planned: P4-11)                 materialised only
 =====================  ===================================================  =====================
+
+Content corpus v2 (plans/P4-10.md §4.3) adds ``chunkIndexCases`` and eight ``strategy: chunk``
+apply cases. Python's parser and applier are P4-11's: both are declared planned by exact id (and
+in ``parity.json``), never skipped silently; their ``<ref>`` inputs (the ``put*`` mutations
+included) are materialised and checked against their refs here.
 
 ``filesIndexCases`` and ``applyCases`` run once per zstd backend this interpreter has
 (``compression.zstd`` on 3.14+, ``zstandard`` where installed).
@@ -86,20 +92,99 @@ def _materialise(ref: Dict[str, Any]) -> bytes:
             b = bytearray(data)
             b[m["offset"]] ^= m["value"]
             data = bytes(b)
+        elif m["op"] in ("putU16", "putU32", "putU64"):
+            # plans/P4-10.md §4.2: little-endian; a putU64 value is below 2^53.
+            b = bytearray(data)
+            width = {"putU16": 2, "putU32": 4, "putU64": 8}[m["op"]]
+            b[m["offset"] : m["offset"] + width] = int(m["value"]).to_bytes(width, "little")
+            data = bytes(b)
         else:
             raise AssertionError(f"unknown mutation {m!r}")
     return data
 
 
+#: plans/P4-10.md §4.3: the sections Python declares planned until P4-11, by exact id.
+_CHUNK_INDEX_PLANNED = [
+    "chunks-v1-valid",
+    "chunks-v2-valid",
+    "chunks-short-header",
+    "chunks-bad-magic",
+    "chunks-bad-version",
+    "chunks-bad-record-size",
+    "chunks-bad-flags",
+    "chunks-bad-length",
+    "chunks-bad-length-count",
+    "chunks-zero-length",
+    "chunks-bad-clen",
+    "chunks-bad-bundle-ref",
+    "chunks-bad-bundle-range",
+    "chunks-reserved-nonzero",
+    "chunks-size-mismatch",
+    "chunks-zero-clen",
+    "chunks-bad-length-wrap",
+    "chunks-size-high-word",
+    "chunks-ref-tampered",
+    "chunks-ref-over-max",
+    "chunks-payload-mismatch",
+    "chunks-bundle-size-saturated",
+]
+_CHUNK_APPLY_PLANNED = [
+    "chunk-v1-to-v2",
+    "chunk-no-seed",
+    "chunk-tampered-zstd",
+    "chunk-tampered-raw",
+    "chunk-bundle-truncated",
+    "chunk-seed-tampered",
+    "chunk-seed-tampered-repair",
+    "chunk-index-for-other-payload",
+]
+_PLANNED = "planned: P4-11 (packs.index.chunks, packs.apply.chunk)"
+
+
 def test_content_corpus_has_every_section() -> None:
-    assert _CONTENT["contentCorpusVersion"] == 1
+    assert _CONTENT["contentCorpusVersion"] == 2
     assert len(_CONTENT["pathCases"]) == 18
     assert len(_CONTENT["filesIndexCases"]) == 15
+    assert len(_CONTENT["chunkIndexCases"]) == 22
     assert len(_CONTENT["packSetIdCases"]) == 7
     assert len(_CONTENT["stampCases"]) == 10
     assert len(_CONTENT["frameWindowCases"]) == 13
-    assert len(_CONTENT["applyCases"]) == 19
+    assert len(_CONTENT["applyCases"]) == 27
     assert _BACKENDS, "no zstd backend"
+
+
+def test_chunk_sections_are_declared_planned_by_exact_id() -> None:
+    """No silent skip: the planned lists are exactly the corpus's chunk cases, and
+    ``parity.json`` declares both features planned in P4-11."""
+    assert [c["id"] for c in _CONTENT["chunkIndexCases"]] == _CHUNK_INDEX_PLANNED
+    assert [c["id"] for c in _CONTENT["applyCases"] if c["strategy"] == "chunk"] == _CHUNK_APPLY_PLANNED
+    parity = json.loads((Path(__file__).resolve().parents[1] / "parity.json").read_text(encoding="utf-8"))
+    for fid in ("packs.index.chunks", "packs.apply.chunk"):
+        assert parity["features"][fid] == {"status": "planned", "wp": "P4-11"}, fid
+
+
+@pytest.mark.parametrize(
+    "case", _CONTENT["chunkIndexCases"], ids=[c["id"] for c in _CONTENT["chunkIndexCases"]]
+)
+def test_chunk_index_case_inputs(case: Dict[str, Any]) -> None:
+    """The ``<ref>`` (``put*`` included) materialises to the bytes its ``chunks`` ref names,
+    except in ``chunks-ref-tampered`` (whose stored frame is the mutated one)."""
+    stored = _materialise(case["stored"])
+    ref = case["chunks"]
+    matches = len(stored) == ref["bytes"] and hashlib.sha256(stored).hexdigest() == ref["sha256"]
+    assert matches == (case["id"] != "chunks-ref-tampered"), case["id"]
+
+
+@pytest.mark.skip(reason=_PLANNED)
+@pytest.mark.parametrize("case_id", _CHUNK_INDEX_PLANNED)
+def test_chunk_index_case(case_id: str) -> None:  # pragma: no cover - P4-11
+    raise AssertionError(case_id)
+
+
+@pytest.mark.skip(reason=_PLANNED)
+@pytest.mark.parametrize("case_id", _CHUNK_APPLY_PLANNED)
+def test_chunk_apply_case(case_id: str) -> None:  # pragma: no cover - P4-11
+    raise AssertionError(case_id)
 
 
 def test_blobs_match_the_table_and_nothing_else_is_there() -> None:
@@ -130,7 +215,7 @@ def test_files_index_case(backend: Any, case: Dict[str, Any]) -> None:
     assert _canonical(r.verdict()) == _canonical(case["expect"]), case["description"]
 
 
-_AP = [(b, c) for b in _BACKENDS for c in _CONTENT["applyCases"]]
+_AP = [(b, c) for b in _BACKENDS for c in _CONTENT["applyCases"] if c["strategy"] != "chunk"]
 
 
 @pytest.mark.parametrize("backend,case", _AP, ids=[f"{b[0]}:{c['id']}" for b, c in _AP])

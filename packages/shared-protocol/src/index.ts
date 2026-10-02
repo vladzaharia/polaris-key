@@ -51,6 +51,9 @@ export {
   PATCH_FORMAT,
   MARKER_FORMAT,
   CONTENT_STAMP_FORMAT,
+  CHUNKS_FORMAT,
+  MAX_CHUNK_INDEX_BYTES,
+  MAX_CHUNK_BYTES,
 } from "./core.js";
 export type {
   JSONValue,
@@ -206,6 +209,10 @@ export type {
   PayloadDelta,
   FilesDelta,
   PackVariant,
+  ChunkParams,
+  ChunksRef,
+  ChunkRecord,
+  ChunkIndexDoc,
   PackRecordDoc,
   ContentPin,
   ContentHold,

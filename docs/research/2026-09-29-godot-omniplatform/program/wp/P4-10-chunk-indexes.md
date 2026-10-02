@@ -276,3 +276,43 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded by the P4-10 implementation (the approved `plans/P4-10.md` governs; where the code
+disagreed with this brief, the code is the fact):
+
+- **Scope is the plan's, not this brief's.** The CLI chunker, bundles, upload, lints and the
+  Worker ingest moved to P4-22 (plan decision 1). This package lands the contract, the claims,
+  `parseChunkIndex`, `planTarget`'s chunk rule, content corpus v2 and the runners. The brief's
+  `pnpm --filter @polaris-key/cli test` acceptance item is P4-22's.
+- **22 index cases, not 15; rows inline, not index-blob rows** (plan §4.3, decision 12).
+  `chunk-no-seed` and every chunk target case run over the synthetic `dup` index.
+- **The parser is `packages/client-core/src/packs/chunks.ts`**, exported from
+  `@polaris-key/client-core` and `/packs` with `parseChunkIndexBytes` and `readU64`. The
+  generator's own reference lives in `tools/gen-content-chunks.ts` (P3-02's rule: it imports
+  nothing it checks).
+- **Python and Swift verify pack records**, so their record claims gained checks 81–83 and the two
+  `chunks` integer paths in this package (the plan's §5 order 0 says only that their pointer-set
+  sections run the new cases; without the claims, the three structure and six integer cases
+  would fail there). P4-07 (Python, Swift) is on `main`, so `plan_target`'s chunk rule and the v2
+  runners (chunk sections planned by exact id, `put*` mutations) landed here per plan §8.5. Godot
+  has no content or plan runner on `main` (P4-08 is not merged): it gets the constants and the
+  mirrors only, and P4-08 picks up §8.5's Godot bullet.
+- **The blob rebuild landed in this PR** under decision 15's additions-only guard
+  (`additionsOnly` in `tools/gen-content-corpus.ts`, `rebuildContentBlobs(ref, {blobsDir})`),
+  tested in `tools/gen-content-corpus.test.ts`: the pure guard always; the full rebuild over a
+  temporary copy (reproduces every committed blob and adds nothing; throws and writes nothing
+  after one existing blob is altered) where `zstd -V` reports 1.5.7. The rebuild reproduced all
+  62 pre-existing blobs byte for byte and added nine.
+- **Measured** (zstd 1.5.7, macOS arm64): `chunks/v1.pkc` 8,992 B (181 chunks, 5 bundles),
+  `chunks/v2.pkc` 9,328 B (186 chunks, 7 bundles), `chunks/v2.pkc.zst` 8,033 B, `chunks/dup.pkc`
+  304 B; v2's three new bundles 616,654 B, the v1 bundle 248,981 B, the dup bundle 986 B.
+  `chunk-v1-to-v2`: 58 fetched (616,654 B) in 3 runs, 128 seeded, no self-copies.
+- **Budget, after prettier:** source content corpus 4,532,463 B (`content/` 3,913,193 +
+  `plan-matrix.json` 619,270), under the 4.6 MB target and the 5 MB budget; the plan's estimate
+  was about 4,458,000 (`plan-matrix.json` grew 318,989 B, not about 255,000, in prettier's
+  one-number-per-line layout of the inline records). Mirrors grow by `cases.json` +42,439 and
+  `plan-matrix.json` +318,989, each twice (Swift, Godot): 722,856 B.
+- **The pack-kind record is `packRecordCases`' `pack-valid-chunks`** (`djdl.levels@1.2.0`), not a
+  `releaseRecordCases` vector: pack records live in `packRecordCases` since P4-01.
