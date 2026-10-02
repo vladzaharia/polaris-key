@@ -316,12 +316,21 @@ func outlet() -> String:
 	return build_stamp["outlet"] if build_stamp != null else ""
 
 
-## The stamp outlet detection reads: the build stamp, else a `pkey_outlet_<kind>` feature tag,
-## else the synthesised `web` stamp on a web export, else null.
+## The build stamp, else (for an export that lost build.json) the stamp its
+## `pkey_outlet_<kind>` feature tag implies. PKeyOptions.build_stamp_path = "" means no stamp at
+## all, so no tag stands in for it either.
+func _stamp_or_tag() -> Variant:
+	if build_stamp != null:
+		return build_stamp
+	if options == null or options.build_stamp_path == "":
+		return null
+	return PKeyOutletSignals.feature_tag_stamp(outlet_env)
+
+
+## The stamp outlet detection reads: the build stamp (or its feature tag), else the synthesised
+## `web` stamp on a web export, else null.
 func detection_stamp() -> Variant:
-	var stamp = build_stamp
-	if stamp == null:
-		stamp = PKeyOutletSignals.feature_tag_stamp(outlet_env)
+	var stamp = _stamp_or_tag()
 	if stamp == null and (outlet_env.platform() if outlet_env != null else PKeyHeaders.platform()) == "web":
 		return PKeyOutlet.WEB_STAMP.duplicate(true)
 	return PKeyOutlet.detection_stamp(stamp)
@@ -343,9 +352,7 @@ func detected_outlet() -> Variant:
 ## The outlet the update decision uses: PKeyDecision.resolve_update_outlet over the host option,
 ## the stamp (or the feature-tag stamp) and detected_outlet(). {id, kind, subkind}.
 func update_outlet() -> Dictionary:
-	var stamp = build_stamp
-	if stamp == null:
-		stamp = PKeyOutletSignals.feature_tag_stamp(outlet_env)
+	var stamp = _stamp_or_tag()
 	var resolved = PKeyDecision.resolve_update_outlet({
 		"host": options.host_outlet() if options != null else null,
 		"stamp": stamp,
