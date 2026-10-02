@@ -1,0 +1,114 @@
+extends RefCounted
+# @pkey-feature update.driver
+# The native hooks (PKeySparkleBridge, PKeyVelopackBridge, PKeyWinSparkleBridge,
+# PKeyAppImageBridge): with no plugin every call is the typed unsupported result (`dependency`);
+# with a stand-in singleton the call reaches it with the feed URL from discovery (P3-09's
+# routes); AppImageUpdate runs through OS.execute and relaunches $APPIMAGE. Through a real
+# PKeyUpdater: `native` is offered to the decision only with a usable bridge, the platform picks
+# the bridge, and `binary {native}` with no plugin opens the build's download link instead.
+
+const S := preload("res://tests/updater/support.gd")
+
+
+class Native extends RefCounted:
+	var calls: Array = []
+	var ok := true
+	var available := true
+
+	func is_available() -> bool:
+		return available
+
+	func check_now(feed: String) -> int:
+		calls.append(["check_now", feed])
+		return OK if ok else FAILED
+
+	func install_and_relaunch(feed: String) -> int:
+		calls.append(["install_and_relaunch", feed])
+		return OK if ok else FAILED
+
+
+func run(t: PKeyTestContext) -> void:
+	var env := PKeyFakeUpdaterEnv.new()
+	for b in [PKeySparkleBridge.new(env, "https://x/appcast.xml"), PKeyVelopackBridge.new(env, "https://x/velopack/"), PKeyWinSparkleBridge.new(env, "https://x/winsparkle.xml"), PKeyAppImageBridge.new(env)]:
+		var r: PKeyApplyResult = await b.install_and_relaunch()
+		var c: PKeyApplyResult = await b.check_now()
+		t.check("bridges: %s with no plugin is unavailable and answers unsupported (dependency)" % b.id(), not b.is_available() and not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "dependency" and r.detail.get("feature") == "update.driver" and not c.ok and c.detail.get("reason") == "dependency", str(r))
+
+	var native := Native.new()
+	env.singletons["PolarisKeySparkle"] = native
+	var sparkle := PKeySparkleBridge.new(env, "https://x/appcast.xml")
+	var r: PKeyApplyResult = await sparkle.install_and_relaunch()
+	t.check("bridges: the Sparkle singleton gets install_and_relaunch with the appcast", sparkle.is_available() and r.ok and r.behaviour == "hook" and r.bridge == "sparkle" and native.calls == [["install_and_relaunch", "https://x/appcast.xml"]], str(native.calls))
+	native.ok = false
+	r = await sparkle.install_and_relaunch()
+	t.check("bridges: a failing native call is a typed failure, not a crash", not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "runtime")
+	native.available = false
+	t.check("bridges: a plugin that says it is unavailable is unavailable", not sparkle.is_available())
+
+	# AppImage: needs $APPIMAGE and appimageupdatetool; runs it with -O, then relaunches $APPIMAGE.
+	var ai := PKeyAppImageBridge.new(env)
+	env.vars["APPIMAGE"] = "/home/p/Games/Game-x86_64.AppImage"
+	t.check("bridges: AppImage without appimageupdatetool is unavailable", not ai.is_available())
+	env.programs["appimageupdatetool"] = "/usr/bin/appimageupdatetool"
+	r = await ai.install_and_relaunch()
+	t.check("bridges: AppImage runs appimageupdatetool -O over $APPIMAGE and relaunches $APPIMAGE (not the mounted executable)", r.ok and r.bridge == "appimage" and env.executed.size() == 1 and env.executed[0][0] == "/usr/bin/appimageupdatetool" and Array(env.executed[0][1]) == ["-O", env.vars["APPIMAGE"]] and env.relaunched == [env.vars["APPIMAGE"]], str(env.executed))
+	env.exec_code = 3
+	env.relaunched.clear()
+	r = await ai.install_and_relaunch()
+	t.check("bridges: a failed AppImageUpdate relaunches nothing", not r.ok and env.relaunched.is_empty())
+	env.exec_code = 1
+	r = await ai.check_now()
+	t.check("bridges: appimageupdatetool -j exit 1 means an update is available", r.ok and r.detail.get("available") == true)
+
+	# Through a real updater: the bridge per platform, methods narrowed, feed URLs from discovery.
+	var sup := S.new()
+	sup.serve()
+	var inst := S.install("bridges", S.bytes(64, 1), "macos", "Game")
+	var sdk: Node = await sup.launch(inst, "1.4.0", func(o): o.update_outlet = "direct")
+	sup.discovered(sdk, {
+		"appcast": sup.server.base_url() + "/djdl/update/appcast.xml",
+		"winsparkle": sup.server.base_url() + "/djdl/update/{channel}/winsparkle.xml",
+		"velopack": sup.server.base_url() + "/djdl/update/{channel}/velopack/releases.{velopackChannel}.json",
+	}, S.DL)
+	var u: PKeyUpdater = sdk.update.updater
+	var e: PKeyFakeUpdaterEnv = inst["env"]
+	t.check("bridges: macOS uses Sparkle", u.native_bridge_name() == "sparkle")
+	t.check("bridges: native is not offered without the plugin (download stays)", u.methods() == ["download"] or u.methods() == ["download", "sidecar-pck"], str(u.methods()))
+	t.check("bridges: the Sparkle feed is this channel's appcast for this arch", u.feed_url("sparkle").begins_with(sup.server.base_url() + "/djdl/update/appcast.xml?arch="), u.feed_url("sparkle"))
+	e.os = "windows"
+	t.check("bridges: Windows without Velopack uses WinSparkle", u.native_bridge_name() == "winsparkle")
+	t.check("bridges: the WinSparkle feed is this channel's", u.feed_url("winsparkle") == sup.server.base_url() + "/djdl/update/stable/winsparkle.xml", u.feed_url("winsparkle"))
+	t.check("bridges: the Velopack feed is the channel's directory (UpdateManager adds releases.<channel>.json)", u.feed_url("velopack") == sup.server.base_url() + "/djdl/update/stable/velopack/", u.feed_url("velopack"))
+	e.files[inst["exe"].get_base_dir().path_join("sq.version")] = true
+	t.check("bridges: a Velopack install uses Velopack", u.native_bridge_name() == "velopack")
+	e.files.clear()
+	e.os = "linux"
+	t.check("bridges: Linux outside an AppImage uses Velopack", u.native_bridge_name() == "velopack")
+	e.vars["APPIMAGE"] = "/tmp/Game.AppImage"
+	t.check("bridges: Linux in an AppImage uses AppImageUpdate", u.native_bridge_name() == "appimage")
+	e.vars.erase("APPIMAGE")
+	e.os = "macos"
+
+	# binary {native} with no plugin: the adapter opens the build's download link.
+	var check := S.check_of({"action": "binary", "method": "native", "release": {"version": "1.5.0", "seq": 15, "sha256": "ab".repeat(32)}, "build": "macos-dmg", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false})
+	var want := S.DL + "/djdl/distribution/builds/1.5.0/macos-dmg"
+	r = await sdk.update.apply(check)
+	t.check("bridges: binary native with no plugin degrades to the build's download link", r.ok and r.behaviour == "link" and r.url == want and e.opened == [want], "%s %s" % [r, e.opened])
+	# With a plugin whose call fails: still the link, and the hook's code is kept.
+	var failing := Native.new()
+	failing.ok = false
+	e.singletons["PolarisKeySparkle"] = failing
+	u.bridges = {}
+	e.opened.clear()
+	r = await sdk.update.apply(check)
+	t.check("bridges: a native updater that fails falls back to the download link", r.ok and r.behaviour == "link" and e.opened == [want] and r.detail.get("fallback_from") == "sparkle" and failing.calls.size() == 1, "%s %s" % [r, r.detail])
+	var working := Native.new()
+	e.singletons["PolarisKeySparkle"] = working
+	u.bridges = {}
+	e.opened.clear()
+	r = await sdk.update.apply(check)
+	t.check("bridges: with the Sparkle plugin, binary native hands off (no link opened)", r.ok and r.behaviour == "hook" and working.calls.size() == 1 and e.opened.is_empty() and String(working.calls[0][1]).contains("/update/appcast.xml"), str(working.calls))
+	t.check("bridges: with the plugin, native is offered to the decision", u.methods().has("native"))
+	sdk.queue_free()
+	sup.free_server()
+	PKeyTestFixtures.remove_tree(inst["dir"])

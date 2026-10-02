@@ -526,6 +526,24 @@
       "description": "A verified release record does not match the feed's pin: its kind, deliverable, version or `seq` differs (WIRE-CONTRACT-V4 §2.5 step 15)."
     },
     {
+      "code": "payload-mismatch",
+      "kind": "client",
+      "service": "update",
+      "description": "Godot: downloaded or staged update bytes do not match the verified release record's payload `size` and `sha256`; nothing was staged or swapped (plans/P3-01.md §2.5 step 19)."
+    },
+    {
+      "code": "swap-refused",
+      "kind": "client",
+      "service": "update",
+      "description": "Godot: this install cannot take a sidecar-PCK swap; `detail.reason` says why (`platform`, `app-bundle`, `msix`, `program-files`, `flatpak`, `snap`, `appimage`, `velopack`, `no-sidecar`, `not-writable`, `inert`)."
+    },
+    {
+      "code": "swap-failed",
+      "kind": "client",
+      "service": "update",
+      "description": "Godot: a verified sidecar-PCK swap or rollback could not replace the pack beside the executable (a copy or rename failed); the staged update is kept and retried at the next launch."
+    },
+    {
       "code": "files-index-invalid",
       "kind": "client",
       "service": "update",

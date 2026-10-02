@@ -219,3 +219,57 @@ grep -rn -e '--main-pack' -e '"--path"' -e '"--scene"' sdks/godot/addons/polaris
   `stamp_version.py` (notes/A4 §4.1), and takes feeds from [P3-09](P3-09-updater-feeds.md).
 - `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P3-10 done` in the PR
   that completes the work.
+
+## Corrections from implementation
+
+The code is the fact; where this brief and the code differ, the code and these notes win.
+
+- **No Godot page on the docs site.** The "Updates by outlet" section lives in
+  `sdks/godot/README.md`, like every earlier Godot work package's documentation.
+- **Adapter shape.** `PKeyOutletAdapter` has `id()`, `capabilities(platform, subkind, server)`, a
+  pure `describe(decision, ctx)` that the prompt renders, and `apply(decision, host, check)`; the
+  `host` (PKeyUpdater, or a test's recording fake) performs every side effect. Results are
+  `PKeyApplyResult` with `behaviour` `link`, `hook`, `staged`, `restart`, `reload` or `silent`.
+  Bridges (`PKeySparkleBridge`, `PKeyVelopackBridge`, `PKeyWinSparkleBridge`, plus
+  `PKeyAppImageBridge`) reach P5-07's plugins as Engine singletons `PolarisKeySparkle`,
+  `PolarisKeyVelopack`, `PolarisKeyWinSparkle` with `check_now(feed_url)` and
+  `install_and_relaunch(feed_url)`; the stub answer is `unsupported` with `detail.reason`
+  `dependency` (no new code).
+- **Three new client codes** in `conformance/parity/errors.json`: `payload-mismatch`,
+  `swap-refused` (with `detail.reason`) and `swap-failed`.
+- **When the swap happens.** `restart_to_update()` swaps at once and restarts, because a process
+  must not keep running over a replaced pack (it still holds the old directory; any later resource
+  read would use stale offsets). The guard applies a staged pack only when that swap was deferred,
+  and it restarts at once too. A rollback restarts as well, so `guard.done rolled-back` (P1-09
+  row 24) is sent by the launch AFTER the rollback; the rolling-back launch sends nothing.
+- **Windows rename: not measured** (no Windows host). Chosen approach: 12 retries 250 ms apart;
+  then the staged pack is kept, the game restarts anyway, and the next launch's guard applies it
+  with one more restart ("accept a second restart"; no detached helper). On Windows Godot's
+  `DirAccess.rename` removes the target first, so a crash between its two calls is the one window
+  left open; the journal covers the rest.
+- **Options.** `update_methods` keeps its `["download"]` default (a game opts into `native` and
+  `sidecar-pck`); an active updater narrows it per install, an inert one passes it through
+  unchanged (so the transcripts replay as recorded). New: `update_release_url` and
+  `update_page_url` (https only; the page a `store` answer opens when the feed has no https
+  listing: AltStore, AltStore PAL, Obtainium, F-Droid and an iOS web-distribution page). Store
+  deep links (`itms-apps://`, `market://`, `ms-windows-store://`) are never opened, under the
+  prompt's https-only rule.
+- **Refusals.** AppImage installs are refused too (read-only image); macOS outside an `.app` is
+  allowed. Velopack is detected by `sq.version` beside the executable or `current/` beside
+  `Update.exe` / `UpdateNix` [I].
+- **Rollback without a previous pack** (a second update that also fails twice after the first
+  rollback consumed `previous`): the version is recorded as skipped and the counting restarts; the
+  shipped pack is not kept as a fourth slot.
+- **Telemetry** (after P6-03 landed). `update_downloaded`, `update_applied`, `update_confirmed`
+  and `boot_rolled_back` go out on `devices/report`'s `updates` key in P6-03's `boundedUpdates`
+  shape (`eventId`, `event`, `deliverable: app`, `release` = the record's `tag`, else its version,
+  `fromRelease`, `outlet`, `channel`, `at`, `code`); `state.json` is the queue until a report
+  carrying them is accepted.
+- **Verified copies (security review B1).** Every copy the swap and the rollback make is read
+  back from disk and verified before the rename (a truncated write is removed and the live pack is
+  never touched), `PKeySlots._digest_sync` fails on a failed write, and free space is checked with
+  `DirAccess.get_space_left()` before downloading and copying (unknown counts as enough). Only a
+  locked pack defers with a restart; a short write or a full volume does not restart.
+- **PATH lookup** for `appimageupdatetool` skips relative entries.
+- **Not done here (devices):** opening each listing prefix on a device (plans/P3-01.md §2.9) and
+  the Windows rename measurement; both are human hand-offs.

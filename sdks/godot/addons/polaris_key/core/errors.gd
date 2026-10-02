@@ -45,6 +45,11 @@ const FEED_REJECTED := &"feed-rejected"
 const FEED_ROLLBACK := &"feed-rollback"
 const RECORD_REJECTED := &"record-rejected"
 const RECORD_MISMATCH := &"record-mismatch"
+## Acting on a decision (P3-10): downloaded or staged bytes differ from the record's payload; this
+## install cannot take a sidecar-PCK swap (`detail.reason`); a verified swap could not be made.
+const PAYLOAD_MISMATCH := &"payload-mismatch"
+const SWAP_REFUSED := &"swap-refused"
+const SWAP_FAILED := &"swap-failed"
 ## Device management (rename, deauthorize) needs a device token this client does not hold.
 const DEVICE_MANAGEMENT_UNSUPPORTED := &"device-management-unsupported"
 ## The four §7 bundle steps (PKeyBundle).

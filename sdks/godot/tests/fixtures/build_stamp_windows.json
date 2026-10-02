@@ -1,0 +1,17 @@
+{
+  "arch": "x86_64",
+  "build": 140,
+  "channel": "stable",
+  "debug": false,
+  "embeddedPacks": [],
+  "engine": "godot-4.7",
+  "engineVersion": "4.7.2-stable (official)",
+  "outlet": "direct",
+  "outletIds": {},
+  "packSources": "embedded",
+  "pkeyBuild": 1,
+  "platform": "windows",
+  "product": "djdl",
+  "sdkVersion": "0.1.0",
+  "version": "1.4.0"
+}
