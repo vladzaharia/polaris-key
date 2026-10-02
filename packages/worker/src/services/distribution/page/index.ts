@@ -18,7 +18,7 @@
  *
  *   - `sandbox` (no `allow-scripts`, no `allow-same-origin`): the document has an opaque origin
  *     and runs no script, which is the compensation THREAT-MODEL §3 records for `dl.plrs.im`
- *     being same-site with the console. The page needs no script: platform detection is
+ *     being same-site with the console host. The page needs no script: platform detection is
  *     server-side (`detect.ts`) and the iPad case is a CSS media query. The two sandbox tokens it
  *     keeps let a click do what the page is for — `allow-downloads` (the download buttons) and
  *     `allow-top-navigation-to-custom-protocols` (the `altstore://`, `obtainium://`, … links);
