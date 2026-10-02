@@ -55,3 +55,6 @@ docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/e_velop
 docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/export/
 docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/profiles/
 docs/research/2026-09-29-godot-omniplatform/prototype/platform-mechanics/c_web/node_modules/
+
+# Local Claude Code worktrees (git-excluded via .git/info/exclude, which Prettier does not read).
+.claude/worktrees/
