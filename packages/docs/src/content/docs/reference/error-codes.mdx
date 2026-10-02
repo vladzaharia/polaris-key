@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(106 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(108 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -125,4 +125,6 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `plan-no-strategy` | `update` | The install planner's result: no strategy the host allows can reach the target (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
 | `pack-no-variant` | `update` | No variant of a pack record is eligible on this host: none is usable, matches the host's engine, or has a value in the host's preference list for every axis it declares (plans/P4-01.md §2.9). |
 | `pack-type-unsupported` | `update` | A pack record's `type` is one this SDK cannot hold (v1: `files.tree` everywhere, `godot.pck` in Godot), so the pack is unusable (plans/P4-01.md §2.2). |
+| `pack-not-pinned` | `update` | `update.packs.ensure` named a pack the running build's content stamp does not pin, so there is no release to install (plans/P4-01.md §2.8: the stamp is the only source of pins in v1). |
+| `pack-not-entitled` | `update` | A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9). |
 | `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). |

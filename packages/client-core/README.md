@@ -65,6 +65,7 @@ pulling the barrel (`sideEffects: false`, so an unused subpath costs nothing eit
 | `@polaris-key/client-core/record`  | `verifyReleaseRecord`, `releaseRecordClaims`, `recordHash`, `reloadReleaseRecords`                                                | the release record (`pkey-release+jws`): hash before signature, pinned release keys only       |
 | `@polaris-key/client-core/decide`  | `decideUpdate`, `bootDecision`, `rolloutBucket`, `effectiveCapabilities`, `resolveUpdateOutlet`, `outletEntry`, `isUndismissable` | the update decision (`update-matrix.json`), synchronous; the bucket is its one async input     |
 | `@polaris-key/client-core/check`   | `runUpdateCheck`                                                                                                                  | `update.decide()`'s I/O-free core: the order, the fallback and the error map of §2.5           |
+| `@polaris-key/client-core/packs`   | `plan`, `selectVariant`, `planTarget`, `applyFull`, `applyDelta`, `applyFile`, `verifyMarker`, `PackEngine`, the install state    | packs (plans/P4-01.md §2.6–§2.9): the planner, the appliers and the pipeline, over ports       |
 
 ## The pieces
 
@@ -134,6 +135,40 @@ The signed update path of WIRE-CONTRACT-V4, in the contract's order (plans/P3-01
 
 `CacheRecordV3` carries the two optional slices, `feeds` and `releaseRecords`, as signed JWSs
 only; `CACHE_VERSION` stays 3.
+
+### Packs (`packs/`) — plans/P4-01.md §2.6–§2.10
+
+The language-neutral half of packs, every function over **injected ports** (an incremental
+SHA-256, a zstd decoder with `decode(frame, size)` and `decodeWithPrefix(frame, prefix, size,
+windowLogMax)`, positional byte sources and sinks, and the record and object fetches), so the
+same code runs in Node, in a browser and under the corpus runner. Nothing here does I/O.
+
+- **Wire functions** (P4-21, P4-04): `isPackId`, `objectRef`, `contentClaims`, `parseFilesIndex`,
+  `checkPaths`, `treeDigest`, `variantKey`, `parseContentStamp`, `packSetId`, `frameWindow`,
+  `windowLogMax`, `windowAllowed`.
+- **Selection and planning**: `selectVariant` (`variantCases`), `planTarget` (`targetCases`) and
+  `plan`, notes/A7 §4.2 with `full.requests` (`plan-matrix.json#rows`); its refusals are verdicts.
+- **Appliers**: `applyFull`, `applyDelta`, `applyFile` and `parsePatch`, first failure as the
+  verdict, counters included (`content/cases.json#applyCases`). Every `zstd-patch-from` frame
+  passes §2.7 rule 3's window check before it is decoded, whichever decoder the host injected, and
+  a base that starts with the zstd dictionary magic is refused (rule 5). A port with
+  `decodeStream` streams a whole payload instead of decoding it into one buffer.
+- **Markers**: `verifyMarker` (V4 §3.7, `markerCases`) and `matchEmbedded`, the host's match of
+  the embedded bytes and the content stamp's pin. `verifyReleaseRecord` takes `pin.kind`
+  (default `app`).
+- **Install state**: `active`, `previous`, `inflight` (the journal), `observed` and
+  `confirmedBootSeq`, as pure transitions (`commitInstall`, `rollbackInstall`, `confirmBoot`,
+  `gcRoots`) over a store with atomic replace. Each entry carries its pack record verbatim and
+  `reloadPackState` re-verifies it on every load; nothing read back is trusted.
+- **`PackEngine`**: CONTENT §10's pipeline — preflight, journal, `Range`/`If-Range` fetch whose
+  resume re-hashes what is staged, apply with fallbacks, commit (the pointer swap), activation,
+  confirm, rollback, garbage collection and embedded baselines. `estimate` sizes a download for
+  a consent dialog; `bootPackOptions` and `runBootFetch` are the stage machine's host side
+  (`fetch.consent`, `fetch.progress`, `fetch.done`). `memoryPackStorage` and
+  `memoryPackStateStore` are the in-memory stores.
+
+`@polaris-key/node` (`client.update.packs`) and `@polaris-key/react` (`createBrowserPacks`) are this
+engine with their own transport, storage, zstd and SHA-256.
 
 ### Config (`config.ts`)
 

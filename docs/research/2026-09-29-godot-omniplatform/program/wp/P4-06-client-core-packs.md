@@ -171,3 +171,51 @@ types through `registerHandler`; P4-18 adds `dcz` beside the WASM decoder. Then
 
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+- **The pipeline is in `client-core` too.** Beyond the brief's list, `PackEngine` (preflight,
+  journal, `Range`/`If-Range` fetch, apply with fallbacks, commit, activate, confirm, rollback,
+  GC, embedded baselines) lives in `@polaris-key/client-core/packs`, so Node and React run one
+  pipeline; each host implements `PackStorage`, `RecordFetch` and `ObjectFetch`. `estimate`
+  sizes a download for the consent dialog, and the stage machine's host side is
+  `bootPackOptions` plus `runBootFetch` (`fetch.consent`, `fetch.progress`, `fetch.done`),
+  exposed as `bootOptions()`/`bootFetch()` in both SDKs. Neither SDK renders a boot machine yet.
+- **Install state is an SDK-local document, not a `CacheRecordV3` slice**, as plans/P4-01.md
+  §2.1 says (`CACHE_VERSION` stays 3): `<data dir>/packs/state.json` in Node, `state.json` in
+  OPFS on the web, both replaced atomically. It holds each pack record's JWS verbatim, and every
+  load re-verifies it (hash, pinned release keys, claims, `kind: pack`, the pack id, version,
+  seq, variant) and re-checks the payload (`treeDigest` or SHA-256); what fails is dropped.
+- **Rule 5 for every decoder.** The appliers refuse a base that starts with the dictionary magic
+  (`delta-apply-failed`) before any decoder sees it, so the verdict cannot depend on whether the
+  injected decoder auto-detects dictionaries.
+- **Node zstd.** Plain frames go through `node:zlib` wherever it has zstd (22.15+), streamed
+  for a whole payload with the window bounded by the content size; `--patch-from` frames go
+  through it only when a built-in 80-byte prefix vector decodes at start-up, else through
+  `@polaris-key/zstd-wasm`. The window check's P is the prefix decoder's (30 for the WASM one).
+- **`@polaris-key/zstd-wasm/browser`** (`loadZstdWasm`, asynchronous) is a new subpath rather
+  than a `browser` condition on `.`: engines refuse to compile a 69 KB module synchronously on
+  the main thread, and `.` keeps its synchronous API.
+- **Two client codes** in `errors.json`: `pack-not-pinned` (`ensure` names a pack the stamp
+  does not pin) and `pack-not-entitled` (the record's `entitlement` is not granted).
+- **React.** Errors are client-core's `PackError` (React's `PolarisError` takes a closed UI
+  union). A browser session cannot post `devices/report` (the registered `devices.report` web
+  N/A), so `packSetId()` is exposed for the host; on desktop the host's Node client reports
+  `content`. The acceptance's React "report through `devices/report`" therefore holds on desktop
+  only; the browser tests check `packSetId()`. OPFS is the default store; without it `ensure`
+  raises `not-configured` unless the host chooses `storage: "memory"`. `hash-wasm` (MIT) is a
+  new dependency.
+- **Failures.** A network failure keeps the journal and what is staged, so the next `ensure`
+  resumes; it does not fall back. A verification failure falls back to the next strategy.
+  Node's object downloads use an idle timeout (`requestTimeoutMs` per chunk), not the
+  per-request deadline, which would cut off a large payload.
+- **Embedded baselines** whose marker's release is not the stamp's pin are refused (step `pin`)
+  and never used as seeds (plans/P4-01.md §2.6).
+- **Backup exclusion** (P1b-09) runs once per store (its `CACHEDIR.TAG` is the record), with
+  macOS's `tmutil` detached: it took 11 s here and blocked the event loop.
+- **Parity.** `stageMatrix.test.ts` carries `@pkey-feature packs.state` (the registry's
+  `stage-matrix.json` proof needs a tagged loader), and the runners name `"content/"` as a
+  literal (`CONTENT_DIR`). `parity:check` needs main's `e0a2e7ac` (a directory proof's family).
+- **Verified locally** on Node 22.13.1 (no `node:zlib` zstd: the `node:zlib` leg runs the WASM
+  decoder), 22.0.0 (the floor), 24.14.1 and 26.7.0 (`node:zlib` for both kinds of frame), and in
+  Chromium.

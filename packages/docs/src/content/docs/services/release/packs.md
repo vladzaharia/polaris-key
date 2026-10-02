@@ -120,3 +120,18 @@ its variants and objects, a variant's files (read from its index), what an app r
 which app releases pin a pack release, and what a build embeds. Discovery's Release fragment
 carries `packs: true` on a Worker that ingests packs; `pkey release publish` refuses to publish a
 pack or stamp `content` without it.
+
+## Installing packs on a device
+
+A build learns its pins from the **content stamp** (`pkey-content.json`) it ships, never from the
+network: a build without one has no packs. The SDK fetches each pinned pack record by hash,
+verifies it against the app's pinned release keys, picks the variant for the device, plans the
+cheapest way from what is installed (a delta, the changed files, or the whole payload), verifies
+every byte against the record and swaps the installed release atomically. Embedded baselines are
+verified once from their markers and then count as installed. Devices report the id of the pack
+set they run (`content.packSetId`) on `devices/report`.
+
+- Node: `client.update.packs` — see the [Node SDK](/docs/build/sdks/node/).
+- Web: `createBrowserPacks` (OPFS storage) — see the [React SDK](/docs/build/sdks/react/).
+- Python, Swift and Godot follow the same reference implementation
+  (`@polaris-key/client-core/packs`) and the same conformance vectors.

@@ -53,17 +53,18 @@ await client.sync();
 
 ## Shape
 
-| Surface           | Subpath                      | What it owns                                                                                                             |
-| ----------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `client.core`     | `@polaris-key/node/core`     | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                |
-| `client.license`  | `@polaris-key/node/license`  | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                     |
-| `client.config`   | `@polaris-key/node/config`   | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint) |
-| `client.devices`  | `@polaris-key/node/devices`  | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas      |
-| `client.identity` | `@polaris-key/node/identity` | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                          |
-| `client.release`  | `@polaris-key/node/release`  | `changelog` / `installUrl` / `downloadUrl`                                                                               |
-| `client.update`   | `@polaris-key/node/update`   | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)           |
-| —                 | `@polaris-key/node/local`    | The transportless profile: every network-requiring call refuses                                                          |
-| —                 | `@polaris-key/node/cli`      | Framework-agnostic commands + commander/yargs adapters                                                                   |
+| Surface           | Subpath                      | What it owns                                                                                                                |
+| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `client.core`     | `@polaris-key/node/core`     | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                   |
+| `client.license`  | `@polaris-key/node/license`  | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                        |
+| `client.config`   | `@polaris-key/node/config`   | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint)    |
+| `client.devices`  | `@polaris-key/node/devices`  | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas         |
+| `client.identity` | `@polaris-key/node/identity` | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                             |
+| `client.release`  | `@polaris-key/node/release`  | `changelog` / `installUrl` / `downloadUrl`                                                                                  |
+| `client.update`   | `@polaris-key/node/update`   | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)              |
+| `…update.packs`   | `@polaris-key/node/packs`    | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe |
+| —                 | `@polaris-key/node/local`    | The transportless profile: every network-requiring call refuses                                                             |
+| —                 | `@polaris-key/node/cli`      | Framework-agnostic commands + commander/yargs adapters                                                                      |
 
 `client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
 or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's for the
@@ -360,6 +361,60 @@ as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed
 - `feed({channel})` returns the verified feed `decide()` would use, without the record;
   `releaseRecord(sha256)` verifies one record by hash (cross-checked and cached when a committed
   feed pins it). Handing off to Velopack, electron-updater or a self-replace is the host's.
+
+## Packs (`client.update.packs`)
+
+Downloadable content (plans/P4-01.md §2.6–§2.9): the running build's **content stamp** pins one
+pack release per pack, and `client.update.packs` installs those releases into the platform data
+directory. **A build without a stamp has no packs** — ship `pkey-content.json` (written by
+`pkey release content-stamp`) among the app's own read-only resources, never a user-writable
+path, and name it in the options:
+
+```ts
+const client = await PolarisKeyClient.create({
+  // …
+  update: {
+    pinnedReleaseKeys: { "diceroll-release-2026": "…" },
+    packs: {
+      contentStamp: join(appResources, "pkey-content.json"),
+      // Optional: packs this build ships, verified once and then used as installed state.
+      embedded: [{ path: join(appResources, "pkey_packs", "diceroll.l10n") }],
+      axes: { locale: ["fr", "en"] },
+    },
+  },
+});
+client.update.packs.on((p) => console.log(p.phase, p.done, p.total));
+await client.update.packs.ensure(["diceroll.l10n"]);
+const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
+```
+
+- **What it trusts.** Each pinned pack record is fetched by hash (`release.endpoints.record`) and
+  verified against `pinnedReleaseKeys` only, with `pin.kind: "pack"`; its objects come from
+  `distribution.endpoints.blobs` with `Range`/`If-Range`, every stored SHA-256 and length checked
+  before a byte is decoded. The device bearer goes only to the control plane's own origin.
+- **Types.** `files.tree` is built in: hot, a versioned directory per payload
+  (`<data>/packs/store/<packId>/<treeDigest>/`) and an atomic pointer swap in `state.json`.
+  `registerHandler` adds others.
+- **Strategies.** The planner picks `delta` (a whole-payload or per-file `zstd --patch-from`
+  set), `file` (only the files whose hash is not installed) or `full`; a refused strategy falls
+  back to the next, `full` last.
+- **zstd.** `node:zlib` decodes plain frames where it has zstd (22.15+), streaming a whole
+  payload; `--patch-from` frames go through it only when a built-in prefix vector decodes at
+  start-up (the dictionary option is ignored before 22.19 and in 24.0–24.5), else through
+  `@polaris-key/zstd-wasm`. `client.update.packs.zstd()` says which.
+- **Resume and state.** A dropped download keeps its journal; the next `ensure` resumes it, the
+  staged bytes re-hashed. The state holds each pack record verbatim and is re-verified on every
+  load, the payload included. `confirm()` marks a healthy boot, `rollback(packId)` restores the
+  previous install, and garbage collection keeps active, previous, in-flight and embedded roots.
+- **Boot.** `bootOptions()` gives the stage machine its `requiredPacks` and `essentialPacks`;
+  `bootFetch({send, consent, metered, answer})` drives the FETCH stage with `fetch.consent`,
+  `fetch.progress` and `fetch.done`.
+- **Telemetry.** `devices/report` carries `content: {packSetId}`, the id of the pack releases
+  running in this process.
+- **Errors** are `PackError` (a `PolarisError` with `detail` and `path`): `not-configured`,
+  `content-stamp-invalid`, `pack-not-pinned`, `record-rejected`, `record-mismatch`,
+  `pack-type-unsupported`, `pack-not-entitled`, `pack-no-variant`, the `plan-*` and applier
+  codes, `network-error`.
 
 ## Offline depths
 
