@@ -150,7 +150,7 @@ func _refusals(t: PKeyTestContext) -> void:
 	var web = await h.sdk(PKeyMemoryStore.new(h.F["device_id"]))
 	web.devices.fingerprint_host = PKeyFakeHost.load_host("web")
 	var r: PKeyActivationResult = await web.license.enroll()
-	t.check("enroll: on web -> unsupported with reason runtime", not r.ok and r.kind == PKeyActivationResult.KIND_UNSUPPORTED and r.code == PKeyErrors.UNSUPPORTED and r.detail == {"feature": "license.enroll", "reason": "runtime"}, str(r))
+	t.check("enroll: on web -> unsupported with reason runtime", not r.ok and r.kind == PKeyActivationResult.KIND_UNSUPPORTED and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("feature") == "license.enroll" and r.detail.get("reason") == "runtime" and String(r.detail.get("detail", "")) != "" and r.message == r.detail["detail"], str(r))
 	t.check("enroll: on web nothing is sent", h.requests("POST", "/license/enroll").is_empty())
 	r = await web.license.activate_with_key(KEY)
 	var reqs: Array = h.requests("POST", "/license/activate")

@@ -32,7 +32,7 @@
     },
     "core.headers": { "status": "implemented" },
     "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "planned", "wp": "P1b-10" },
+    "core.caps": { "status": "implemented" },
     "core.store": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],

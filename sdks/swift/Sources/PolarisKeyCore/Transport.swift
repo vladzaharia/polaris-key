@@ -33,11 +33,19 @@ public struct PolarisError: Error, Sendable, Equatable {
     /// The refused step, where the code has one (wire v4's `feed-rejected` and `record-rejected`:
     /// `jws`, `claims`, `channel`, `selector`, `freshness`, `hash`); nil otherwise.
     public let detail: String?
+    /// The typed N/A behind a `service-unavailable` refusal (PARITY §2.2, P1b-10): the feature,
+    /// `reason` `product` and the detail, exactly as `supports(feature)` reports them. The error
+    /// stays a `PolarisError` with its old code so existing `catch` sites keep matching. Nil for
+    /// every other code.
+    public let unsupported: Unsupported?
 
-    public init(code: String, message: String, detail: String? = nil) {
+    public init(
+        code: String, message: String, detail: String? = nil, unsupported: Unsupported? = nil
+    ) {
         self.code = code
         self.message = message
         self.detail = detail
+        self.unsupported = unsupported
     }
 
     // ── Client-side codes ────────────────────────────────────────────────────────────────

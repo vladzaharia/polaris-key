@@ -293,6 +293,58 @@ describe("licensing edge cases", () => {
     expect(await stored()).toEqual({ engine: { version: "4.7" } });
   });
 
+  it("report keeps caps, bounded (P1b-10)", async () => {
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const token = await activate(env, db, product, key, "dev-1");
+    const send = (body: unknown) =>
+      handleReport(
+        mkReq("POST", { authorization: `Bearer ${token}` }, body),
+        env,
+        db,
+        product,
+        NOW,
+      );
+    const stored = async () =>
+      JSON.parse((await getDevice(db, "djdl", "dev-1"))!.reported_json!) as {
+        caps?: string[];
+      };
+
+    // A newer SDK's feature id survives; non-ids, non-strings, over-long ids and duplicates
+    // do not.
+    const res = await send({
+      caps: [
+        "core.verify",
+        "update.decide",
+        "packs.apply.delta",
+        "future.feature",
+        "core.verify",
+        "Not An Id",
+        "core",
+        7,
+        null,
+        `a.${"b".repeat(80)}`,
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect((await stored()).caps).toEqual([
+      "core.verify",
+      "update.decide",
+      "packs.apply.delta",
+      "future.feature",
+    ]);
+
+    // At most 128 entries are kept.
+    const many = Array.from({ length: 200 }, (_, i) => `f.x${i}`);
+    await send({ caps: many });
+    expect((await stored()).caps).toEqual(many.slice(0, 128));
+
+    // A non-array caps is dropped whole; an empty one is kept as the truthful empty list.
+    await send({ caps: "core.verify", appVersion: "1.0.0" });
+    expect(await stored()).toEqual({ appVersion: "1.0.0" });
+    await send({ caps: [] });
+    expect(await stored()).toEqual({ caps: [] });
+  });
+
   it("report rejects an unknown token / invalid body", async () => {
     expect(
       (

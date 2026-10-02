@@ -708,7 +708,7 @@
       "optional": false,
       "refs": ["PARITY §2.2", "PARITY §5.1 core.caps"],
       "brief": "wp/P1b-10-core-caps.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-01",

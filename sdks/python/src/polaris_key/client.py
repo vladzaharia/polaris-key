@@ -32,6 +32,15 @@ import httpx
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
 from .core.cache import CacheManager
+from .core.caps import (
+    Detector,
+    DetectorKey,
+    Support,
+    evaluate_support,
+    supported_features,
+    validate_detectors,
+)
+from .constants_generated import Feature, StoreDegradedReason, UnsupportedReason
 from .core.context import DEFAULT_REQUEST_TIMEOUT_SECONDS, CoreContext
 from .core.models import (
     ActivationSource,
@@ -183,6 +192,7 @@ class PolarisKeyClient:
             self._tokens,
             probes=self._probes,
             fingerprint=fingerprint,
+            caps=lambda: self.caps(),
         )
         self.license = LicenseClient(
             self.core,
@@ -225,6 +235,12 @@ class PolarisKeyClient:
         )
 
         self._discovery_doc: Optional[Dict[str, Any]] = None
+        # The detectors behind the table's conditional N/As (P1b-10). Checked against the
+        # generated table here, so a manifest that gains or loses one fails loudly.
+        self._detectors: Dict[DetectorKey, Detector] = {
+            (Feature.CORE_STORE, UnsupportedReason.DEPENDENCY): self._keyring_missing,
+        }
+        validate_detectors(self._detectors)
         self._refresh_interval = refresh_interval_seconds
         self._on_change = on_change
         self._timer_stop = threading.Event()
@@ -318,6 +334,48 @@ class PolarisKeyClient:
         """What this client currently believes the product runs."""
         return self.core.services()
 
+    # ── supports() and capability telemetry (P1b-10, PARITY §2.2) ───────────────────
+    def supports(self, feature: str) -> Support:
+        """Whether ``feature`` (a :class:`Feature` id) works here, right now.
+
+        :class:`Supported`, or :class:`Unsupported` with ``reason`` ``runtime`` (this runtime
+        cannot), ``product`` (the product runs no service for it, per :meth:`capabilities`),
+        ``dependency`` (the optional ``keyring`` extra or backend is missing, for
+        ``core.store``) or ``version`` (this SDK version does not implement or know it).
+        Offline and side-effect free: it reads the generated capability table, the services
+        this client believes in and the environment, and never calls anything."""
+        return evaluate_support(
+            feature,
+            services_enabled=self.core.enabled,
+            detectors=self._detectors,
+        )
+
+    def caps(self) -> List[str]:
+        """The feature ids :meth:`supports` answers Supported for, in registry order. Sent as
+        ``caps`` with every device report."""
+        return supported_features(self.supports)
+
+    def _keyring_missing(self) -> Optional[str]:
+        """``core.store``'s ``dependency`` detector: the store's reason when its OS keyring
+        cannot be used (the optional ``keyring`` package or a usable backend is missing).
+        A host store that reports nothing is the host's business: supported."""
+        store = self.core.store
+        probe = getattr(store, "keyring_unavailable", None)
+        if callable(probe):
+            try:
+                why = probe()
+            except Exception:
+                return None
+            return why or None
+        status = self.store_status()
+        if (
+            status is not None
+            and status.degraded is not None
+            and status.degraded.reason == StoreDegradedReason.KEYRING_UNAVAILABLE
+        ):
+            return status.degraded.detail or "the OS keyring is unavailable"
+        return None
+
     # ── Sync ────────────────────────────────────────────────────────────────────────
     def sync(self, *, force: bool = False) -> SyncResult:
         """One Core pass: trust refresh → enabled documents → verify → cache → floor →
@@ -349,7 +407,9 @@ class PolarisKeyClient:
         token = self._tokens.current
         if not token:
             return
-        report_snapshot(self.core, token, build_snapshot(self._cache, self._probes))
+        report_snapshot(
+            self.core, token, build_snapshot(self._cache, self._probes, self.caps)
+        )
 
     def _on_license_acquired(self) -> None:
         self.sync(force=True)

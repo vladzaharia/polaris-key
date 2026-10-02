@@ -303,7 +303,7 @@ public actor UpdateClient {
     /// disabled service and a missing route answer with the same 404 server-side, so probing
     /// would tell the caller nothing the capability map does not already say.
     public func check(channel: String? = nil) async throws -> VersionCheck {
-        try await core.requireService(.update)
+        try await core.requireService(.update, feature: Feature.updateCheck)
         var components = URLComponents(
             url: core.endpoints.updateVersion, resolvingAgainstBaseURL: false)
         if let channel {
@@ -540,7 +540,7 @@ extension UpdateClient {
         channel: String?, staged: StagedUpdate?, skipVersion: String?
     ) async throws -> UpdateCheck {
         let c = try requireKeys()
-        try await core.requireService(.update)
+        try await core.requireService(.update, feature: Feature.updateDecide)
         let installed = try installed()
         let outlet = await resolvedOutlet(c).outlet
         let ep = try await endpoints(feed: true, record: true)
@@ -577,7 +577,7 @@ extension UpdateClient {
     }
 
     private func channelFeedNow(channel: String?) async throws -> FeedCheck {
-        try await core.requireService(.update)
+        try await core.requireService(.update, feature: Feature.updateFeed)
         let installed = try installed()
         let ep = try await endpoints(feed: true, record: false)
         let slices = await core.updateSlices()
@@ -610,7 +610,7 @@ extension UpdateClient {
 
     private func releaseRecordNow(_ sha256: String) async throws -> ReleaseRecordCheck {
         let c = try requireKeys()
-        try await core.requireService(.release)
+        try await core.requireService(.release, feature: Feature.releaseRecord)
         let installed = try installed()
         let ep = try await endpoints(feed: false, record: true)
         let slices = await core.updateSlices()

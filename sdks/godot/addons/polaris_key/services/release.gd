@@ -39,9 +39,11 @@ func changelog() -> PKeyChangelogResult:
 	var core := _core()
 	if core == null:
 		return PKeyChangelogResult.failed(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
-	var off = core.require_service("release")
+	var off = core.require_service("release", PKeyConstants.Feature.RELEASE_CHANGELOG)
 	if off != null:
-		return PKeyChangelogResult.failed(off.code, off.message)
+		var refused := PKeyChangelogResult.failed(off.code, off.message)
+		refused.detail = off.detail
+		return refused
 	var r := await core.request("GET", "release/changelog", null, core.tokens.has_token())
 	var status: int = r.detail.get("status", 0) if r.detail is Dictionary else 0
 	if status == 0:

@@ -12,8 +12,15 @@ import {
   REGISTRY_SCHEMA_PATH,
   TRANSCRIPTS_DIR,
 } from "./parity-check.js";
+import {
+  capabilityDigest,
+  capabilityTable,
+  type CapabilityManifest,
+  type CapabilityRegistry,
+} from "./capabilities.js";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
+const CONSTANTS = "sdks/demo/constants.generated.ts";
 
 // ── A miniature repository ─────────────────────────────────────────────────────────────────
 //
@@ -34,7 +41,14 @@ function registry(): Json {
     ],
     traits: [{ id: "headless", title: "Headless" }],
     families: [{ id: "demo", title: "Demo" }],
-    sdks: [{ id: "demo", title: "Demo", manifest: "sdks/demo/parity.json" }],
+    sdks: [
+      {
+        id: "demo",
+        title: "Demo",
+        manifest: "sdks/demo/parity.json",
+        constants: CONSTANTS,
+      },
+    ],
     features: [
       {
         id: "demo.verify",
@@ -114,6 +128,24 @@ interface Fixture {
   program?: Json | null;
   /** conformance/transcripts/<name>.json → content. */
   transcripts?: Record<string, Json>;
+  /** The generated constants module; default: one carrying the fixture's own digest. `null`
+   *  leaves it out. */
+  constants?: string | null;
+}
+
+/** A constants module carrying the digest of this registry and manifest (when it has one). */
+function constantsFor(reg: Json, man: Json): string {
+  try {
+    const digest = capabilityDigest(
+      capabilityTable(
+        reg as unknown as CapabilityRegistry,
+        man as unknown as CapabilityManifest,
+      ),
+    );
+    return `export const CAPABILITY_DIGEST = "${digest}";\n`;
+  } catch {
+    return "// no table: the manifest is incomplete\n";
+  }
 }
 
 function fixture(over: Fixture = {}): string {
@@ -121,8 +153,12 @@ function fixture(over: Fixture = {}): string {
   roots.push(root);
   for (const schema of [REGISTRY_SCHEMA_PATH, MANIFEST_SCHEMA_PATH])
     cpSync(join(repo, schema), join(root, schema));
-  write(root, REGISTRY_PATH, over.registry ?? registry());
-  write(root, "sdks/demo/parity.json", over.manifest ?? manifest());
+  const reg = over.registry ?? registry();
+  const man = over.manifest ?? manifest();
+  write(root, REGISTRY_PATH, reg);
+  write(root, "sdks/demo/parity.json", man);
+  if (over.constants !== null)
+    write(root, CONSTANTS, over.constants ?? constantsFor(reg, man));
   write(root, "conformance/corpus/v2/mini.json", { cases: [] });
   for (const [name, text] of Object.entries(over.tests ?? TESTS))
     write(root, `sdks/demo/tests/${name}`, text);
@@ -711,5 +747,72 @@ describe("parseTags", () => {
 describe("the committed registry and manifests", () => {
   it("pass the gate", () => {
     expect(checkParity({ root: repo }).violations).toEqual([]);
+  });
+});
+
+// ── Rule 7 ─────────────────────────────────────────────────────────────────────────────────
+
+describe("rule 7 — the generated capability table is the manifest's", () => {
+  it("fails when the constants module carries another manifest's digest", () => {
+    // Generated before demo.ui moved from planned to implemented-with-a-test.
+    const stale = constantsFor(registry(), manifest());
+    const m = withEntry("demo.ui", {
+      status: "implemented",
+      except: [{ runtime: "web", reason: "runtime" }],
+    });
+    const { violations } = run({
+      manifest: m,
+      constants: stale,
+      tests: { ...TESTS, "ui.test.ts": "// @pkey-feature demo.ui\n" },
+      registry: (() => {
+        const r = registry();
+        const ui = (r.features as Json[])[2]!;
+        ui.allowedNa = [{ runtime: "web", reason: "runtime", why: "x" }];
+        return r;
+      })(),
+    });
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toMatch(
+      /^\[rule 7\] demo: the capability table in sdks\/demo\/constants\.generated\.ts is not sdks\/demo\/parity\.json's \(CAPABILITY_DIGEST [0-9a-f]{64}\); run `pnpm gen:constants`$/,
+    );
+  });
+
+  it("fails when the constants module does not exist", () => {
+    const { violations } = run({ constants: null });
+    expect(violations).toEqual([
+      "[rule 7] demo: sdks/demo/constants.generated.ts does not exist (run `pnpm gen:constants`)",
+    ]);
+  });
+
+  it("is skipped while rule 1 fails: an incomplete manifest has no table", () => {
+    const m = manifest();
+    delete (m.features as Json)["demo.ui"];
+    const { violations } = run({ manifest: m, constants: "// stale\n" });
+    expect(violations).toEqual([
+      "[rule 1] demo: demo.ui is missing from sdks/demo/parity.json",
+    ]);
+  });
+
+  it("a trait N/A is expanded to every runtime the manifest lists", () => {
+    const m: Json = { ...manifest(), traits: ["headless"] };
+    (m.features as Json)["demo.ui"] = {
+      status: "na",
+      runtime: "headless",
+      reason: "runtime",
+    };
+    const table = capabilityTable(
+      registry() as unknown as CapabilityRegistry,
+      m as unknown as CapabilityManifest,
+    );
+    expect(table.rows.find((r) => r.feature === "demo.ui")).toEqual({
+      feature: "demo.ui",
+      status: "na",
+      service: "sdk",
+      na: [
+        { runtime: "node", reason: "runtime" },
+        { runtime: "web", reason: "runtime" },
+      ],
+    });
+    expect(run({ manifest: m }).violations).toEqual([]);
   });
 });

@@ -137,6 +137,9 @@ public actor PolarisKeyClient {
     public nonisolated let identity: IdentityClient
 
     private let probes: [ProbeDeclaration]
+    /// The capability engine `supports()` reads (P1b-10): the generated table, this build's
+    /// runtime and the SDK's detectors.
+    private nonisolated let capabilityEngine: Capabilities
     private let fingerprintEnabled: Bool
     private let refreshIntervalSeconds: Double?
     private var refreshTask: Task<Void, Never>?
@@ -154,13 +157,16 @@ public actor PolarisKeyClient {
                 core: core, fingerprintEnabled: options.license.fingerprint))
         // A completed device-code sign-in raises the same acquisition event activation does: a
         // signed-in device holds a licensed token exactly as an activated one does.
+        // One engine for supports(), caps() and every report's `caps`.
+        let engine = Capabilities.sdk()
         self.identity = IdentityClient(core: core) {
             await PolarisKeyClient.syncAfterAcquisition(
-                core: core, probes: options.probes,
+                core: core, probes: options.probes, engine: engine,
                 fingerprintEnabled: options.license.fingerprint)
         }
         self.release = ReleaseClient(core: core)
         self.probes = options.probes
+        self.capabilityEngine = engine
         self.fingerprintEnabled = options.license.fingerprint
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
@@ -171,7 +177,7 @@ public actor PolarisKeyClient {
             // A `nonisolated` closure so `LicenseClient` can raise it without knowing about this
             // actor; the hop back in is what makes `sync()` the facade's decision.
             await PolarisKeyClient.syncAfterAcquisition(
-                core: core, probes: options.probes,
+                core: core, probes: options.probes, engine: engine,
                 fingerprintEnabled: options.license.fingerprint)
         }
     }
@@ -205,6 +211,23 @@ public actor PolarisKeyClient {
         await core.services()
     }
 
+    // ── Typed "unsupported here" (PARITY §2.2, P1b-10) ───────────────────────────────────
+    /// Whether `feature` (a `Feature` constant) works here and now: `.supported`, or
+    /// `.unsupported` with the `reason` (`runtime`, `outlet`, `product`, `dependency`,
+    /// `version`) and a `detail`. Offline and side-effect free: it reads the capability table
+    /// generated from `parity.json`, the services this client believes the product runs
+    /// (discovery > `expectedServices` > the default) and state already held. `async` only
+    /// because the services live on the `CoreContext` actor.
+    public func supports(_ feature: String) async -> Support {
+        capabilityEngine.supports(feature, services: await core.services())
+    }
+
+    /// The feature ids `supports()` answers `.supported` for right now, in registry order. Sent
+    /// as `caps` with every device report.
+    public func caps() async -> [String] {
+        capabilityEngine.caps(services: await core.services())
+    }
+
     // ── Sync ─────────────────────────────────────────────────────────────────────────────
     /// One Core pass: trust refresh → enabled documents in parallel → verify → cache → floor →
     /// report. See `CoreContext.sync` for the full ordering rationale.
@@ -217,10 +240,13 @@ public actor PolarisKeyClient {
         let beforeConfig = await core.etag(.config)
         let core = self.core
         let probes = self.probes
+        let engine = self.capabilityEngine
         let result = await core.sync(
             force: force,
             reacquire: PolarisKeyClient.reacquire(core: core, fingerprintEnabled: fingerprintEnabled),
-            report: { _ = await PolarisKeyClient.report(core: core, probes: probes) })
+            report: {
+                _ = await PolarisKeyClient.report(core: core, probes: probes, engine: engine)
+            })
         // The ETags are the change signal: they exclude the per-request timestamps, so a
         // differing tag means the CONTENT changed rather than that the document was re-signed.
         let afterLicense = await core.etag(.license)
@@ -234,12 +260,15 @@ public actor PolarisKeyClient {
 
     /// The post-activation sync, forced so a stale ETag cannot 304 away the very first document.
     private static func syncAfterAcquisition(
-        core: CoreContext, probes: [ProbeDeclaration], fingerprintEnabled: Bool
+        core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities,
+        fingerprintEnabled: Bool
     ) async {
         _ = await core.sync(
             force: true,
             reacquire: reacquire(core: core, fingerprintEnabled: fingerprintEnabled),
-            report: { _ = await PolarisKeyClient.report(core: core, probes: probes) })
+            report: {
+                _ = await PolarisKeyClient.report(core: core, probes: probes, engine: engine)
+            })
     }
 
     /// The §5 single re-acquire, injected into `CoreContext.sync` so Core keeps no dependency on
@@ -284,7 +313,9 @@ public actor PolarisKeyClient {
     /// read from the documents Core re-verified; if nothing verified, the maps are empty, and an
     /// empty report is a truthful one.
     @discardableResult
-    private static func report(core: CoreContext, probes: [ProbeDeclaration]) async -> Bool {
+    private static func report(
+        core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities
+    ) async -> Bool {
         let cache = await core.cache()
         var config: [String: JSONValue] = [:]
         var entitlements: [String: JSONValue] = [:]
@@ -293,10 +324,13 @@ public actor PolarisKeyClient {
             entitlements[key] = entry.value
         }
         let facts = Facts.collect(probes: probes)
+        // `caps` rides EVERY report: the Worker overwrites the stored report each time, so a
+        // report without it would erase the fleet's capability view (P1b-10).
+        let caps = engine.caps(services: await core.services())
         let body = SnapshotBody(
             os: facts.os, hardware: facts.hardware, runtime: facts.runtime,
             locale: facts.locale, timezone: facts.timezone, probes: facts.probes,
-            config: config, entitlements: entitlements)
+            config: config, entitlements: entitlements, caps: caps)
         return await core.reportSnapshot((try? JSONEncoder().encode(body)) ?? Data("{}".utf8))
     }
 
@@ -310,7 +344,7 @@ public actor PolarisKeyClient {
     /// refused, or the network failed — telemetry never throws at the host.
     @discardableResult
     public func report() async -> Bool {
-        await PolarisKeyClient.report(core: core, probes: probes)
+        await PolarisKeyClient.report(core: core, probes: probes, engine: capabilityEngine)
     }
 
     /// The React-bridge contract, assembled from the managers that own each piece.
@@ -469,6 +503,8 @@ private struct SnapshotBody: Encodable {
     let probes: [String: ProbeResult]?
     let config: [String: JSONValue]
     let entitlements: [String: JSONValue]
+    /// The supported feature ids (P1b-10).
+    let caps: [String]
 }
 
 // ── The §7.3 local-only profile ────────────────────────────────────────────────────

@@ -479,7 +479,7 @@ describe("BrowserAdapter — update checks", () => {
 });
 
 describe("BrowserAdapter — config / secret / entitlement accessors", () => {
-  it("getConfig reads the config document, getSecret is always null, isEntitled reflects flags", async () => {
+  it("getConfig reads the config document, getSecret refuses (config.secret web N/A), isEntitled reflects flags", async () => {
     const adapter = browserAdapter({
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
@@ -488,8 +488,15 @@ describe("BrowserAdapter — config / secret / entitlement accessors", () => {
     await ready(adapter);
     expect(adapter.getConfig("theme.mode", "light")).toBe("dark");
     expect(adapter.getConfig("missing", 42)).toBe(42);
-    // Secrets ride the config document's `secrets` block and are never projected into state.
-    expect(adapter.getSecret("api.token")).toBeNull();
+    // Secrets ride the config document's `secrets` block and are never projected into state:
+    // asking is the typed `config.secret` refusal (P1b-10), never an indistinguishable null.
+    expect(() => adapter.getSecret("api.token")).toThrow(
+      expect.objectContaining({
+        code: "unsupported",
+        feature: "config.secret",
+        reason: "runtime",
+      }),
+    );
     expect(adapter.isEntitled("polarisVpn")).toBe(true);
     expect(adapter.isEntitled("beta")).toBe(false);
     adapter.dispose();

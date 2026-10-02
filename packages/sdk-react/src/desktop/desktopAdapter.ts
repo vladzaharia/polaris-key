@@ -23,12 +23,18 @@ import {
   readEntitled,
   readEntitledChannels,
 } from "../core/adapter.js";
-import { ErrorCode } from "../constants.generated.js";
+import { ErrorCode, Feature } from "../constants.generated.js";
+import type { CapabilityContext } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
+  capabilityContext,
+  capsIn,
   initialState,
+  refuse,
+  supportsIn,
   type ConfigSource,
+  type Support,
   type DeviceInfo,
   type JSONValue,
   type OidcSignInHandle,
@@ -83,6 +89,8 @@ export class DesktopAdapter implements PolarisAdapter {
   private readonly localOverrides: Record<string, JSONValue>;
   private readonly fallbackServices: ServicesMap;
   private capabilities: ServicesMap;
+  /** `supports()`'s inputs: the generated table, runtime `desktop-bridge`, and `capabilities`. */
+  private readonly capabilityCtx: CapabilityContext;
   private offBridge: (() => void) | null = null;
 
   constructor(opts: DesktopAdapterOptions = {}) {
@@ -100,6 +108,10 @@ export class DesktopAdapter implements PolarisAdapter {
       opts.expectServices ?? defaultServices(),
     );
     this.capabilities = copyServices(this.fallbackServices);
+    this.capabilityCtx = capabilityContext(
+      "desktop-bridge",
+      () => this.capabilities,
+    );
     this.store = createStore<PolarisState>(
       initialState("desktop", this.capabilities, this.localOverrides),
     );
@@ -590,10 +602,22 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   getSecret(key: string): string | null {
-    // The renderer never holds secrets. Privileged hosts should expose a separate bridge
-    // secret API if a renderer truly needs a secret value.
+    // The renderer never holds secrets (the `config.secret` desktop-bridge N/A): a typed refusal
+    // rather than an indistinguishable `null`. A privileged host that truly needs to hand a
+    // renderer a secret exposes its own bridge verb for it.
     void key;
-    return null;
+    refuse(this.capabilityCtx, Feature.configSecret, {
+      detail:
+        "The renderer never holds secrets; a host that must hand one over exposes its own bridge verb.",
+    });
+  }
+
+  supports(feature: string): Support {
+    return supportsIn(this.capabilityCtx, feature);
+  }
+
+  caps(): string[] {
+    return capsIn(this.capabilityCtx);
   }
 
   isEntitled(name: string): boolean {

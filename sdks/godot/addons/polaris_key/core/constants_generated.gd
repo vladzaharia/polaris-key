@@ -768,3 +768,77 @@ const PLATFORM_SPELLINGS := {
 	"web": "web",
 	"browser": "web",
 }
+
+## The parity-registry id of the SDK this module belongs to.
+const CAPABILITY_SDK := "godot"
+
+## The runtimes this SDK's manifest lists.
+const CAPABILITY_RUNTIMES := ["linux", "macos", "windows", "android", "ios", "web"]
+
+## This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2).
+## Each row is {status, service, na: [{runtime, reason}]}. A function, not a const, so every call
+## builds a fresh Dictionary that any thread may read.
+static func capabilities() -> Dictionary:
+	return {
+		"core.verify": {"status": "implemented", "service": "core", "na": []},
+		"core.cache": {"status": "implemented", "service": "core", "na": []},
+		"core.bundle": {"status": "implemented", "service": "core", "na": []},
+		"core.discover": {"status": "implemented", "service": "core", "na": []},
+		"core.sync": {"status": "implemented", "service": "core", "na": []},
+		"core.local": {"status": "implemented", "service": "core", "na": []},
+		"core.headers": {"status": "implemented", "service": "core", "na": []},
+		"core.errors": {"status": "implemented", "service": "core", "na": []},
+		"core.caps": {"status": "implemented", "service": "core", "na": []},
+		"core.store": {"status": "planned", "service": "core", "na": []},
+		"license.gate": {"status": "implemented", "service": "license", "na": []},
+		"license.activate": {"status": "implemented", "service": "license", "na": []},
+		"license.enroll": {"status": "implemented", "service": "license", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"license.deactivate": {"status": "implemented", "service": "license", "na": []},
+		"license.entitlements": {"status": "implemented", "service": "license", "na": []},
+		"license.channels": {"status": "implemented", "service": "license", "na": []},
+		"license.reregister": {"status": "implemented", "service": "license", "na": []},
+		"config.resolve": {"status": "implemented", "service": "config", "na": []},
+		"config.list": {"status": "implemented", "service": "config", "na": []},
+		"config.secret": {"status": "implemented", "service": "config", "na": []},
+		"config.schema": {"status": "implemented", "service": "config", "na": []},
+		"config.mint": {"status": "implemented", "service": "config", "na": []},
+		"config.mirror": {"status": "implemented", "service": "config", "na": []},
+		"devices.fingerprint": {"status": "implemented", "service": "core", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"devices.facts": {"status": "implemented", "service": "core", "na": []},
+		"devices.register": {"status": "implemented", "service": "core", "na": []},
+		"devices.manage": {"status": "implemented", "service": "core", "na": []},
+		"devices.report": {"status": "implemented", "service": "core", "na": []},
+		"identity.oidc": {"status": "planned", "service": "identity", "na": []},
+		"identity.devicecode": {"status": "implemented", "service": "identity", "na": []},
+		"release.changelog": {"status": "implemented", "service": "release", "na": []},
+		"release.download": {"status": "implemented", "service": "release", "na": []},
+		"release.record": {"status": "implemented", "service": "release", "na": []},
+		"update.check": {"status": "implemented", "service": "update", "na": []},
+		"update.feed": {"status": "implemented", "service": "update", "na": []},
+		"update.decide": {"status": "implemented", "service": "update", "na": []},
+		"update.driver": {"status": "planned", "service": "update", "na": []},
+		"update.bootguard": {"status": "planned", "service": "update", "na": []},
+		"outlet.detect": {"status": "implemented", "service": "update", "na": []},
+		"packs.record": {"status": "planned", "service": "release", "na": []},
+		"packs.plan": {"status": "planned", "service": "release", "na": []},
+		"packs.index.files": {"status": "planned", "service": "release", "na": []},
+		"packs.index.chunks": {"status": "planned", "service": "release", "na": []},
+		"packs.apply.full": {"status": "planned", "service": "release", "na": []},
+		"packs.apply.file": {"status": "planned", "service": "release", "na": []},
+		"packs.apply.chunk": {"status": "planned", "service": "release", "na": []},
+		"packs.apply.delta": {"status": "planned", "service": "release", "na": []},
+		"packs.state": {"status": "planned", "service": "release", "na": []},
+		"packs.handlers": {"status": "planned", "service": "release", "na": []},
+		"packs.provides": {"status": "planned", "service": "release", "na": []},
+		"packs.transport.apple": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"packs.transport.play": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"packs.transport.steam": {"status": "planned", "service": "distribution", "na": [{"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"packs.transport.msix": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"packs.transport.flatpak": {"status": "planned", "service": "distribution", "na": [{"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"ui.stages": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.kit": {"status": "implemented", "service": "sdk", "na": []},
+		"commerce.receipt": {"status": "planned", "service": "license", "na": []},
+	}
+
+## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
+const CAPABILITY_DIGEST := "1727598f8ea95bbbbc97f358e6f62901a2aaaa69820ca46caa3802816413fbb6"
