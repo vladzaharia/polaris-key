@@ -677,7 +677,7 @@ const DELEGABLE_PACK_TYPE_VALUES := ["files.tree", "data.json", "l10n.table"]
 
 ## The file extensions a delegated install may hold (`DATA_ONLY_EXTENSIONS`, plans/P4-19.md §2.5 rule 2): the final segment's text after its last `.`, ASCII-lowercased. An allow-list: anything else is refused (`pack-not-data-only`, rule `extension`). `dataOnlyCases` pins them.
 class DataOnlyExtension:
-	const JSON := "json"
+	const JSON_ := "json"
 	const CSV := "csv"
 	const TSV := "tsv"
 	const PO := "po"

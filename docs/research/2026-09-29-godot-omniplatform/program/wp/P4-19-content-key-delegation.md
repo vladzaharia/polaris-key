@@ -180,3 +180,53 @@ entry whose kind is not `record`. **This package must** exclude the releases a d
 revocation yanks from the collector's live rules (a) pins and holds, (e) rollouts and (f) outlet
 listings, and add a test for it (plan P4-19 §8.5: "releases yanked by a delegation revocation are
 no live GC reference").
+
+## Corrections from implementation
+
+Recorded by the implementer; the code is the fact where this brief, the plan and the code differ.
+
+- **`dataOnlyCases` has 64 cases, not 54.** The plan's 54, plus nine path-normalisation cases
+  (`..`, a leading or inner `.`, an empty segment, a trailing `/` or `/.`, a leading `/`, a
+  backslash, a `res://` scheme) and one tail-bound case (`tail-bound-eocd-outside-accepted`, which
+  pins `DATA_ONLY_TAIL_BYTES` the way the plan's whitespace case pins the head bound). It adds
+  about 88 KB to `content/cases.json`, well inside P4-10's 4.6 MB target.
+- **`dataOnlyRefusal` checks rule 1 itself.** A path that fails the files index's path rules (not
+  already normalised: nothing Godot's `simplify_path()` would change) is refused with rule
+  `extension`, so the rule holds even where `checkPaths` was not run first (the lesson of P4-08).
+  Which files are sniffed is decided by content (the head magics and the tail), never by
+  extension.
+- **A feed `revocations[].kind` that is a string but not a vocabulary token** makes the member
+  unusable, like a non-string `kind` (the plan named only the two outer cases). The member's
+  `record`-uniqueness check counts entries that are later dropped for a forward `kind`.
+- **`PackJournal.delegation?`** joins `PackInstall.delegation?`, so a delegated install resumes
+  after a restart instead of re-planning. Both are optional; `PACK_STATE_VERSION` stays 1.
+- **The engine's delegated surface** is "a release that is neither the stamp's pin or hold for
+  that pack nor a stored revocation's replacement" (§2.4). So `ensure()` (the stamp's pins) never
+  takes the delegated path; `ensureReleases()` and `estimateReleases()` (feed targets) do. A
+  `noop` plan that reuses an install already holding the same payload runs no head or tail sniff,
+  because its bytes were already admitted (the extension rule still ran over the index).
+- **`runUpdateCheck`'s content input gains `delegated`**, the engine's `delegatedReleases()`
+  (record hash → pack and delegation hash: stored and running delegated installs plus delegated
+  feed targets verified in the process). Step 11's delegation relevance and the decision-input
+  expansion read it. A stored revocation whose target is a known delegation has its replacement
+  ignored.
+- **The CLI fetches a delegation from the record route without a credential** (access rule (1)
+  governs it). On a product whose release metadata is not `public` that fetch is refused, and the
+  content-key publish and `revoke --delegation <sha256>` cannot proceed; `revoke --delegation
+  <file>` still can. Proposed follow-up below.
+- **`gen:constants` gains a GDScript naming rule.** `dataOnlyExtension`'s `json` maps to
+  `JSON`, which shadows Godot's native `JSON` class (a parse error that broke the Godot runner).
+  The GDScript renderer now writes a member whose UPPER_SNAKE name is one of Godot's all-caps
+  native class or built-in type names (`AABB`, `IP`, `JSON`, `OS`, `RID`, `UPNP`) with a trailing
+  `_` (`PKeyConstants.DataOnlyExtension.JSON_`); every other language keeps `JSON`. A generator
+  test pins it.
+- **Python, Swift and Godot** list `packs.delegation` as `planned` (P4-25, P4-25, P4-26) in their
+  `parity.json`; their generated constants carry the new limits and enums.
+
+Proposed follow-ups (not in this package):
+
+- P2-02: a second publisher entry scoped to packs under a prefix, so content CI need not run the
+  release workflow (plan §8.2 risk 6).
+- P2-06 / the CLI: let the record-route fetch in `pkey release publish --delegation` and
+  `pkey release revoke --delegation <sha256>` carry the publisher bearer, for products whose
+  release metadata is not public.
