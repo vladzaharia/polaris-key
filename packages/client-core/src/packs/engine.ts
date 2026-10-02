@@ -284,6 +284,8 @@ export class PackEngine {
   private readonly listeners = new Set<(e: PackProgress) => void>();
   private readonly embedded = new Map<string, PackInstall>();
   private readonly running = new Map<string, PackInstall>();
+  /** Locations whose payload could not be read at load: kept out of use and out of GC. */
+  private readonly unverifiable = new Set<string>();
   private doc: PackStateDoc | null = null;
   /** Plan ids `estimate` staged an index under, reused by the next `ensure`. */
   private readonly preflightPlans = new Map<
@@ -337,28 +339,42 @@ export class PackEngine {
         if (!r.ok) refused.push({ location: e.location, step: r.step });
         else this.embedded.set(r.install.packId, r.install);
       }
-      const parsed = parsePackState(
-        await this.opts.state.read().catch(() => null),
-      );
+      const text = await this.opts.state.read().catch(() => null);
+      const parsed = parsePackState(text);
+      // A document that exists but does not parse (a torn write) is not the empty state: nothing
+      // it named is collected this load, so a crash cannot wipe the store.
+      const torn = text !== null && text.trim() !== "" && !looksLikeState(text);
       const doc = await reloadPackState(parsed, {
-        install: async (i) =>
-          (await this.verifyStoredRecord(
-            i.record,
-            i.recordSha256,
-            i.packId,
-            i,
-          )) && (await this.opts.storage.verify(i).catch(() => false)),
+        install: async (i) => {
+          if (
+            !(await this.verifyStoredRecord(
+              i.record,
+              i.recordSha256,
+              i.packId,
+              i,
+            ))
+          )
+            return false;
+          try {
+            return await this.opts.storage.verify(i);
+          } catch {
+            // The payload could not be read (an I/O error, not a mismatch): not used this
+            // load, but not collected either.
+            this.unverifiable.add(i.location);
+            return false;
+          }
+        },
         journal: (j) =>
           this.verifyStoredRecord(j.record, j.recordSha256, j.packId),
       });
       this.doc = doc;
       // This boot's set: every active install (restart packs mount now), else the embedded
       // baseline.
-      for (const [id, i] of Object.entries(doc.active)) await this.activate(i);
+      for (const i of Object.values(doc.active)) await this.activate(i);
       for (const [id, e] of this.embedded)
         if (!this.running.has(id)) this.running.set(id, e);
       await this.persist();
-      await this.collect();
+      if (!torn) await this.collect();
       return { refused };
     });
   }
@@ -687,12 +703,18 @@ export class PackEngine {
       );
 
     // 4. The index (a tree, or any installed release), the target, the plan.
-    const installs = this.installsOf(packId);
+    // Only installs whose bytes can be opened count as installed: the planner must not choose
+    // a delta from a base the appliers cannot read.
     const seeds = new Map<string, InstalledPayload>();
-    for (const i of installs) {
+    const readable: PackInstall[] = [];
+    for (const i of this.installsOf(packId)) {
       const p = await this.opts.storage.installed(i).catch(() => null);
-      if (p) seeds.set(i.location, p);
+      if (p) {
+        seeds.set(i.location, p);
+        readable.push(i);
+      }
     }
+    const installs = readable;
     const prior = doc.inflight[packId];
     const early = this.preflightPlans.get(packId);
     const planId =
@@ -1055,6 +1077,7 @@ export class PackEngine {
       ...this.embedded.values(),
       ...this.running.values(),
     ]);
+    for (const loc of this.unverifiable) roots.locations.add(loc);
     const listed = await this.opts.storage
       .list()
       .catch(() => ({ locations: [], plans: [] }));
@@ -1218,6 +1241,16 @@ function rangeStartsAt(contentRange: string | null, offset: number): boolean {
   if (contentRange === null) return false;
   const m = /^bytes (\d+)-\d+\/\d+$/.exec(contentRange.trim());
   return m !== null && Number(m[1]) === offset;
+}
+
+/** Whether stored text is at least a version-1 state document's shape. */
+function looksLikeState(text: string): boolean {
+  try {
+    const d = JSON.parse(text) as { v?: unknown };
+    return typeof d === "object" && d !== null && d.v === 1;
+  } catch {
+    return false;
+  }
 }
 
 /** A record's activation, else its handler's default. */

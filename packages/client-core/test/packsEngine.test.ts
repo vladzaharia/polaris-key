@@ -790,3 +790,40 @@ describe("the stage machine's host side (plans/P4-01.md §2.10)", () => {
     });
   });
 });
+
+describe("PackEngine: a load never collects what it could not judge", () => {
+  it("keeps the store when the state document is torn", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    state.text = state.text!.slice(0, 20); // a torn write
+    const e2 = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e2.load();
+    expect(e2.state().active["djdl.l10n"]).toBeUndefined();
+    expect(storage.store.has(i!.location)).toBe(true);
+  });
+
+  it("keeps, but does not use, a payload whose check could not run", async () => {
+    const { v1 } = await releases();
+    const server = byteServer(v1);
+    const storage = memoryPackStorage();
+    const state = memoryPackStateStore();
+    const e = engine({ server, storage, state, stamp: stampFor(v1) });
+    await e.load();
+    const [i] = await e.ensure(["djdl.l10n"]);
+    const flaky = {
+      ...storage,
+      verify: async () => {
+        throw new Error("EIO");
+      },
+    };
+    const e2 = engine({ server, storage: flaky, state, stamp: stampFor(v1) });
+    await e2.load();
+    expect(e2.state().active["djdl.l10n"]).toBeUndefined();
+    expect(storage.store.has(i!.location)).toBe(true);
+  });
+});
