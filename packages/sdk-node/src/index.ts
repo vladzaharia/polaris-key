@@ -202,3 +202,11 @@ export {
   type Supported,
   type Unsupported,
 } from "@polaris-key/client-core";
+
+// Packs (`client.update.packs`, P4-06): the facet's class, its options and its error.
+export {
+  PackError,
+  PacksClient,
+  type NodeEmbeddedPack,
+  type NodePacksOptions,
+} from "./packs/index.js";

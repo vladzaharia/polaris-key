@@ -167,7 +167,9 @@ const invalid: ParseFilesIndexResult = {
   error: "files-index-invalid",
 };
 
-function strictParse(
+/** V4 §1.2's strict JSON over UTF-8 bytes (no BOM), with the integer rule's pointers; null on any
+ *  failure. */
+export function strictParse(
   bytes: Uint8Array,
 ): { value: unknown; nonWire: NonWireIntegers } | null {
   let text: string;

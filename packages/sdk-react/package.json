@@ -59,13 +59,16 @@
   "dependencies": {
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
-    "@polaris-key/protocol": "workspace:*"
+    "@polaris-key/protocol": "workspace:*",
+    "@polaris-key/zstd-wasm": "workspace:*",
+    "hash-wasm": "^4.12.0"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
+    "@polaris-key/jws": "workspace:*",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",

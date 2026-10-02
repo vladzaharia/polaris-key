@@ -89,6 +89,7 @@ import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import type { TrustManager } from "../core/trust.js";
 import { readOutletSignals, type OutletReaderEnvironment } from "./outlet.js";
+import { PacksClient, type NodePacksOptions } from "../packs/client.js";
 import {
   appcastUrlFrom,
   updateEndpointsFrom,
@@ -150,6 +151,10 @@ export interface UpdateClientOptions {
   engine?: string | null;
   /** The install's platform. Defaults to `os.platform()`'s canonical value. */
   platform?: Platform;
+  /** Packs (`client.update.packs`, plans/P4-01.md §2.6–§2.9): the content stamp, embedded
+   *  baselines, variant preferences and the store directory. Pack records verify against
+   *  `pinnedReleaseKeys`. */
+  packs?: NodePacksOptions;
   /** The device's architecture. Defaults to `os.arch()`'s canonical value. */
   arch?: Arch;
 }
@@ -427,6 +432,8 @@ async function readCapped(res: Response, limit: number): Promise<string> {
 }
 
 export class UpdateClient {
+  /** The pack facet (`ensure`, `state`, `registerHandler`, progress events). */
+  readonly packs: PacksClient;
   private readonly cache?: CacheManager;
   private readonly trust?: TrustManager;
   private readonly discoverNow?: () => Promise<unknown>;
@@ -447,6 +454,18 @@ export class UpdateClient {
       wiring.options === undefined
         ? null
         : configure(wiring.options, ctx.pinnedTrust);
+    this.packs = new PacksClient(
+      {
+        ctx,
+        tokens,
+        discovery,
+        ...(wiring.discover ? { discover: wiring.discover } : {}),
+        ...(wiring.cache ? { cache: wiring.cache } : {}),
+        ...(wiring.trust ? { trust: wiring.trust } : {}),
+        releaseKeys: () => this.configured?.releaseKeys ?? {},
+      },
+      wiring.options?.packs ?? {},
+    );
   }
 
   /** The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), or null when the client has

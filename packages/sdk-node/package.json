@@ -38,6 +38,10 @@
       "types": "./dist/update/client.d.ts",
       "default": "./dist/update/client.js"
     },
+    "./packs": {
+      "types": "./dist/packs/index.d.ts",
+      "default": "./dist/packs/index.js"
+    },
     "./local": {
       "types": "./dist/local/index.d.ts",
       "default": "./dist/local/index.js"
@@ -64,7 +68,8 @@
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
-    "@polaris-key/protocol": "workspace:*"
+    "@polaris-key/protocol": "workspace:*",
+    "@polaris-key/zstd-wasm": "workspace:*"
   },
   "optionalDependencies": {
     "@napi-rs/keyring": "^2.1.0"
