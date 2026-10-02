@@ -168,6 +168,10 @@ App Installer and `appimageupdatetool` at the preview routes, and record the res
 
 Where the code disagreed with this brief, the code won:
 
+- **The extended `/update/version` answer needs `?platform=`.** `?arch=`, `?outlet=` and
+  `?build=` refine it and are discarded on their own, so every legacy URL keeps its three-field
+  answer (acceptance row 3 reads "when asked for a platform").
+
 - **Update may not import Distribution** (AGENTS.md rule 6), so P2b-05's selection and cache are
   reused through Core. Distribution's `delivery` hook gained the read-only `feedSelection`
   (P2b-05's `selectFeed` with declarative filters: arches, build ids, payload suffixes, an

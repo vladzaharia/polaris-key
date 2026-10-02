@@ -484,7 +484,7 @@ export function rewriteZsync(
 
 // ── The extended version check ───────────────────────────────────────────────────────────────
 
-/** `/update/version` asked for a platform, arch or outlet (plans/P3-01.md §6). */
+/** `/update/version` asked with `?platform=`, refined by `?arch=`/`?outlet=`/`?build=` (plans/P3-01.md §6). */
 export interface VersionDocument {
   version: string;
   tag: string | null;

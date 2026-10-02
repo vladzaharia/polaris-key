@@ -13,8 +13,9 @@
  *
  * The appcasts and the version check have two paths since P3-09: a product that publishes
  * release records gets the EXTENDED appcast (`updaterFeeds.ts`, rendered from the records and
- * Distribution's per-outlet state), and the version check's extended answer when it asks with
- * `?platform=`, `?arch=` or `?outlet=`; every other request runs the legacy, GitHub-resolved path
+ * Distribution's per-outlet state), and the version check's extended answer when it names
+ * `?platform=` (`?arch=`, `?outlet=` and `?build=` only refine it); every other request runs the
+ * legacy, GitHub-resolved path
  * (`feed.ts`) unchanged.
  *
  * The aliases arrive here already rewritten into the canonical segments by the core router
