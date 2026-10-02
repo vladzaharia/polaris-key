@@ -177,6 +177,9 @@ export interface ListedDelegation {
   expiresAt: number;
   origin: "submit" | "revocation";
   revoked: boolean;
+  version: string;
+  /** The delegation's compact JWS, verbatim. */
+  jws: string;
 }
 
 export async function listDelegations(
@@ -206,22 +209,24 @@ export async function listDelegations(
   };
 }
 
-/** A record by hash from the record route (no credential: access rule (1) governs it). */
-export async function fetchRecordByHash(
+/**
+ * A stored delegation's compact JWS by hash, from the authenticated delegations read route (its
+ * `jws` member), so it works whatever the product's release metadata access (the record route is
+ * governed by access rule (1)). Null when Polaris Key stores no delegation with that hash; an entry
+ * whose JWS does not hash to it is refused.
+ */
+export async function storedDelegation(
   client: CiClient,
   sha256: string,
-  fetchImpl: typeof fetch = fetch,
 ): Promise<string | null> {
-  const url = client.url(`release/records/${sha256}`);
-  let res: Response;
-  try {
-    res = await fetchImpl(url, { headers: { accept: "application/jose" } });
-  } catch (e) {
-    throw new Error(`Fetching ${url}: ${(e as Error).message}`);
-  }
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Fetching ${url} answered ${res.status}.`);
-  return (await res.text()).trim();
+  const { delegations } = await listDelegations(client);
+  const hit = delegations.find((d) => d.sha256 === sha256);
+  if (hit === undefined) return null;
+  if (typeof hit.jws !== "string" || sha256Hex(hit.jws) !== sha256)
+    throw new Error(
+      `${client.url("release/publish/delegations")} answered delegation ${sha256.slice(0, 12)}… without its JWS, or with one of another hash.`,
+    );
+  return hit.jws;
 }
 
 const trustOf = (declared: readonly ManifestReleaseKey[]) => {
@@ -575,9 +580,12 @@ export async function contentSigner(o: {
     throw new Error(
       "--delegation must be the delegation record's sha256 (64 lowercase hex), as pkey release delegate prints it.",
     );
-  const publicKey = publicKeyOfPem(o.key.pem).trim();
+  const publicKey = publicKeyOfPem(
+    o.key.pem,
+    `The content key (${CONTENT_KEY_ENV} or --content-key-file)`,
+  ).trim();
   await requireDelegationsDiscovery(o.client, o.fetchImpl);
-  const jws = await fetchRecordByHash(o.client, o.key.delegation, o.fetchImpl);
+  const jws = await storedDelegation(o.client, o.key.delegation);
   if (jws === null)
     throw new Error(
       `Polaris Key stores no record ${o.key.delegation.slice(0, 12)}…: delegate the key first (pkey release delegate).`,

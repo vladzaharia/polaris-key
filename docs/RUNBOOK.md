@@ -446,6 +446,19 @@ revoke at once. A revocation is permanent and takes no replacement. A delegation
 CI (for example with a stolen release key) can be revoked only if you hold its JWS (pass the
 file); otherwise rotate the pinned release keys.
 
+**Revoke a leaked content key.** Treat a content key that leaked as actively abused: revoke its
+delegation at once, from the release workflow (it needs `PKEY_RELEASE_KEY` and the publisher
+token), then mint a new key and delegation and re-publish.
+
+```sh
+pkey release revoke --delegation <sha256> --reason "Content key leaked"
+```
+
+You need only the delegation's hash (`pkey release delegate` printed it; the console's Content
+keys table and `POST …/release/publish/delegations` list every stored one). The CLI reads the
+delegation's JWS from that authenticated route, so this works on a product whose release metadata
+is not public. A delegation the Worker never stored needs its JWS file instead (see above).
+
 **The tail sniff's chance match.** The data-only rule refuses a file whose last 65,557 bytes
 contain `PK\x05\x06` (a zip end record). Compressed media (PNG, OGG, MP3) can hold those four
 bytes by chance, about 1.5e-5 per file (65,557 positions × 2^-32). It fails closed: the CLI lint

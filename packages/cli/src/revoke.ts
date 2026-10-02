@@ -40,7 +40,7 @@ import { RELEASE_KEY_ENV, recordSigner } from "./releaseKeys.js";
 import {
   checkDelegation,
   delegationVersion,
-  fetchRecordByHash,
+  storedDelegation,
   requireDelegationsDiscovery,
 } from "./delegate.js";
 
@@ -368,13 +368,11 @@ export async function revokeDelegation(
   if (fileJws !== null) {
     jws = fileJws;
     hash = sha256Hex(jws);
-    const served = await fetchRecordByHash(client, hash, opts.fetchImpl).catch(
-      () => null,
-    );
+    const served = await storedDelegation(client, hash).catch(() => null);
     supplied = served !== jws;
   } else {
     hash = opts.delegation;
-    const served = await fetchRecordByHash(client, hash, opts.fetchImpl);
+    const served = await storedDelegation(client, hash);
     if (served === null)
       throw new Error(
         `Polaris Key stores no delegation ${hash.slice(0, 12)}…; to revoke one it never saw, pass the file holding its JWS (--delegation <file>).`,

@@ -315,7 +315,10 @@ The CLI flow, with no key ever stored by the Worker:
 `POST /{product}/release/publish/delegations` (publisher bearer, scope `release:publish`, body
 `{"deliverable"?: "<scope root>"}`) lists the product's delegations: each one's hash, scope root,
 `seq`, key fingerprint (the hex SHA-256 of the raw key), window, origin (`submit` or `revocation`)
-and whether it is revoked, plus `nextSeq` when a scope root is given. It needs no blob store.
+whether it is revoked, its `version` and its compact JWS (`jws`), plus `nextSeq` when a scope
+root is given. It needs no blob store. The CLI reads a stored delegation's JWS here, behind the
+publisher token, for a content-key publish and for `revoke --delegation <sha256>`, so both work on
+a product whose release metadata is not public.
 
 Ingest refuses, with `release_record_rejected`: a delegation whose body is unusable or lists a
 non-delegable type (`delegation-body`), whose key is a release key, a product key or any stored

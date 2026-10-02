@@ -807,7 +807,8 @@ export async function handleDelegationRevocation(
 
 // ── POST /<p>/release/publish/delegations ───────────────────────────────────────────────────
 
-/** The CI read route (plans/P4-19.md §6.3): every stored delegation, and `nextSeq` for a scope.
+/** The CI read route (plans/P4-19.md §6.3): every stored delegation (its JWS included), and
+ *  `nextSeq` for a scope.
  *  No blob store involved: a delegation is a signature, never bytes. */
 export async function handleDelegationsRead(
   ctx: ServiceContext,
@@ -829,11 +830,15 @@ export async function handleDelegationsRead(
       sha256: r.record_sha256,
       deliverable: r.deliverable_id,
       seq: r.seq,
+      version: r.version,
       keyFingerprint: await keyFingerprint(r.public_key),
       issuedAt: r.issued_at,
       expiresAt: r.expires_at,
       origin: r.origin,
       revoked: r.revocation_sha256 !== null,
+      // The delegation's compact JWS, verbatim: the CLI reads it here (behind the publisher
+      // token) to revoke or publish under it, whatever the product's metadata access.
+      jws: r.jws,
     });
   let nextSeq: number | undefined;
   if (typeof deliverable === "string") {

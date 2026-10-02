@@ -407,13 +407,16 @@ describe("a kind: delegation submit (plans/P4-19.md §6.2)", () => {
         sha256: d.sha256,
         deliverable: ROOT,
         seq: 1,
+        version: "1",
         keyFingerprint: sha(base64UrlDecode(key.pub)),
         issuedAt: NOW - 100,
         expiresAt: NOW + 180 * 86400,
         origin: "submit",
         revoked: false,
+        jws: d.jws,
       },
     ]);
+    expect(sha(listed.delegations[0].jws)).toBe(d.sha256);
     const other = (await (
       await post("publish/delegations", { deliverable: "djdl.other" })
     ).json()) as Record<string, any>;

@@ -458,6 +458,8 @@ export interface PackServer {
     expiresAt: number;
     origin: "submit" | "revocation";
     revoked: boolean;
+    version: string;
+    jws: string;
   }[];
   /** Records the record route serves, by hash (P4-19). */
   records: Map<string, string>;
@@ -722,6 +724,8 @@ export function packServer(): PackServer {
               expiresAt: p.expiresAt,
               origin: "submit",
               revoked: false,
+              version: payload.version,
+              jws,
             });
             return json({
               ok: true,

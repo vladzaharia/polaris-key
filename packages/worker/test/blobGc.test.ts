@@ -603,6 +603,51 @@ describe("review fixes: nothing live is ever deleted (P4-14 B1–B4)", () => {
   });
 });
 
+describe("P4-19: delegation revocations through the real catalog", () => {
+  it("reads a stored delegation revocation and its delegated records from D1 (readDelegationRevocations), so the yanked release is no live reference", async () => {
+    const { w, foes } = await world();
+    const dead = foes[5]!;
+    const before = (await livePackReleases(await w.hooks(T)))!.live;
+    expect(before.has(dead.releaseId)).toBe(true);
+    const delegation = "d".repeat(64);
+    await w.db.run(
+      `INSERT INTO release_delegations
+         (product, record_sha256, deliverable_id, seq, version, kid, jws, public_key, types_json,
+          issued_at, expires_at, ingested_at, origin, revocation_sha256, revocation_jws,
+          revocation_kid, revocation_reason, revocation_issued_at)
+       VALUES (?, ?, ?, 1, '1', 'djdl-release-test-2026', 'x.y.z', ?, '["files.tree"]',
+               ?, ?, ?, 'submit', ?, 'r.s.t', 'djdl-release-test-2026', 'retired', ?)`,
+      SLUG,
+      delegation,
+      FOES,
+      "A".repeat(43),
+      NOW - 100,
+      NOW + 86400,
+      NOW,
+      "e".repeat(64),
+      NOW,
+    );
+    await w.db.run(
+      "INSERT INTO release_delegated_records (product, record_sha256, delegation_sha256) VALUES (?, ?, ?)",
+      SLUG,
+      dead.sha256,
+      delegation,
+    );
+    const hooks = await w.hooks(T);
+    const revs = await hooks.releaseCatalog()!.revocations();
+    expect(revs).toContainEqual(
+      expect.objectContaining({
+        kind: "delegation",
+        targetSha256: delegation,
+        delegatedReleaseIds: [dead.releaseId],
+      }),
+    );
+    const live = (await livePackReleases(hooks))!.live;
+    expect(live.has(dead.releaseId)).toBe(false);
+    expect(live.has(foes[4]!.releaseId)).toBe(true);
+  });
+});
+
 describe("review fixes: tenancy (P4-14 S3)", () => {
   it("an object another product still references is kept, and a restore never grants a ref only another product holds", async () => {
     const { w, foes } = await world();
