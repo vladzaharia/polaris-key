@@ -1,16 +1,16 @@
 # P4-02 Release: pack deliverables, `pinned` binding, embedded baselines, `contentApi` on app releases
 
-| Field       | Value                                                                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v1)                                                                                                                                            |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                      |
-| Depends on  | [P4-01](P4-01-packs-plan.md), [P3-03](P3-03-feed-composition.md), [P4-21](P4-21-packs-wire-core.md)                                                       |
-| Unblocks    | [P4-03](P4-03-ci-patch-artifacts.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-09](P4-09-console-pack-views.md), [P4-12](P4-12-compat-resolution.md)    |
-| Role        | `pkey-implementer`                                                                                                                                        |
-| Plan mode   | no: it executes the approved `program/plans/P4-01.md`; a deviation needs a plan amendment first                                                           |
-| Gates       | rule 9 (validator rule + mutation-table entry + JSON schema); D1 migration + `TABLE_OWNERS` (`data-model.mdx`); `validation-codes.mdx` (`docs gen:check`) |
-| Human input | none                                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P4: Packs (v1)                                                                                                                                                                             |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                       |
+| Depends on  | [P4-01](P4-01-packs-plan.md), [P3-03](P3-03-feed-composition.md), [P4-21](P4-21-packs-wire-core.md)                                                                                        |
+| Unblocks    | [P4-03](P4-03-ci-patch-artifacts.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-09](P4-09-console-pack-views.md), [P4-12](P4-12-compat-resolution.md), [P4-22](P4-22-ci-chunk-indexes.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                         |
+| Plan mode   | no: it executes the approved `program/plans/P4-01.md`; a deviation needs a plan amendment first                                                                                            |
+| Gates       | rule 9 (validator rule + mutation-table entry + JSON schema); D1 migration + `TABLE_OWNERS` (`data-model.mdx`); `validation-codes.mdx` (`docs gen:check`)                                  |
+| Human input | none                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                  |
 
 ## Goal
 

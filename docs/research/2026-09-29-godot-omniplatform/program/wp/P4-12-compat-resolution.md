@@ -224,3 +224,106 @@ Downstream packages rely on these names (propose, then keep):
 
 Set the status in the PR that completes the work:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-12 done`.
+
+## Corrections from implementation
+
+Where this brief and the code disagreed, the code is the fact; these are the choices the
+implementation made, recorded here in the same branch.
+
+- **Pack floors live in their own table.** `release_channel_policy`'s primary key is
+  (product, deliverable_id, channel), and every reader and both upserts (`model.ts`,
+  `deliverables.ts`, `resolve.ts`, `gateway.ts`) key on that triple. Floors per contentApi line
+  are `release_pack_floors(product, deliverable_id, channel, content_api, min_version, source, …)`
+  (primary key with `content_api`), operator-owned (`source = 'admin'`). A pack's level-free
+  `min_supported` still applies; resolution honours both.
+- **Migrations 0046_a and 0046_b.** 0046_a creates `release_sets` (keyed with an `engine`
+  column, and with `unsatisfied_json`), `release_set_state` (the per-product generation),
+  `release_holds` (with `record_sha256`) and `release_pack_floors`, then adds
+  `release_metadata.pack_channels_json` last; 0046_b adds `release_builds.conflicts_json`.
+- **Requirements come from the signed record.** A pack release's `requires.contentApi`,
+  `requires.packs` and `conflicts` are its record's per-variant reserved members (CONTENT §6.9;
+  plans/P4-01.md §2.3 reserved them for P4-12), mirrored into `release_builds` at ingest. The
+  `.pkey/release` values are the defaults CI signs. Ingest gains `pack-requires` (the signed
+  values against the binding and the declared packs) and `pack-channel` (a channel the pack does
+  not publish to). Client-core claims are unchanged: clients still ignore those members.
+- **Engine is a selector dimension** (lead decision on review): `release_sets` is keyed by
+  (channel, app deliverable, contentApi, platform, engine, variant), `engine` the live builds'
+  `requires.engine` (`''` when a build declares none, which constrains nothing). During an engine
+  bump each engine keeps its own set (CONTENT §6.8 row 7 as written).
+- **Variants are projected per group, not crossed** (lead decision on review). The brief's
+  "variant over every pack's axes" multiplies rows across packs (64 packs × 3 axes × 16 values
+  measured 28.7 s and 1.9 GB). The resolvable packs are grouped (same axis names, merged across
+  `requires.packs` and `conflicts`), each group resolved per combination of its own axes and
+  stored as its own row; a device's set is one row per group, the one its variant projects onto.
+  Every device still gets exactly the releases a whole-assignment resolution gives it, because no
+  constraint crosses a group. P4-13 composes a device's set from one row per group.
+- **Per-component semantics** (lead decision, review round 2). Within a row the solver splits the
+  packs into components (packs some candidate's `requires.packs` or `conflicts` links) and solves
+  each on its own, leaving out as few packs as possible; a pack is dropped only when its own
+  component cannot keep it. This replaces "whole assignment" as the reference: it is strictly
+  better (an unrelated conflicting pair never costs a satisfiable pack its place).
+- **One work budget per resolution.** `MAX_RESOLUTION_WORK` (1,000,000 candidate checks) is
+  shared by the whole resolution, not per problem, and charged for grouping, stages, constraint
+  building, every pruning probe and range check, the component split and every solver try; stage
+  outputs, live levels and solver results are memoised. Adversarial cases spend it, or finish, in
+  15–60 ms on Node 22.
+- **Fail closed** (lead decision on review). A trigger whose resolution fails clears the
+  product's sets, writes an audit row and answers `packSets: {ok: false, reason}`; it never
+  refuses the yank, floor change, pointer move or resync. Concurrent triggers are ordered by the
+  `release_set_state` generation (a write knows it won from its claim's changed-row count). A
+  policy change clears the stored sets inside its own batch, so a crash before the re-resolution
+  leaves none stale. A CI publish resolves once: the check's after-state is stored (the stored
+  rows are the "before" of the report), and the submit's two plans share a memo; the GitHub sync
+  path can resolve twice.
+- **`requires.features` stays refused.** No app-side value exists to check it against; this is a
+  plan gap, reported rather than invented.
+- **Validator codes.** New: `missing_content_api_range`, `standalone_with_content_api`,
+  `unknown_content_api_app`, `invalid_pack_conflicts` (conflicts needed a code),
+  `invalid_pack_channels` (the app's `content.packChannels`, as proposed) and
+  `unknown_pack_channels_target` (also refuses a target channel a matched pack does not publish
+  to). A pack's own `channels` list reuses `invalid_channel` with a pack-path mutation.
+  `deliverables.app.content.holds` stays refused: holds are chosen per app release at publish.
+  The descriptor's `content` accepts `holds` (`{pack, release {sha256, seq, version}, reason?}`,
+  never a pinned pack) and `packChannels` (equal to the manifest's), both under
+  `invalid_descriptor_content`.
+- **P4-02's v1 pin rules narrowed.** Every expected **pinned** pack is pinned; an expected
+  compatible or standalone pack needs no pin unless a build embeds it as a baseline; the
+  "required means pinned" rule applies to pinned packs (a required compatible pack is checked
+  against the resolved sets, `content-unsatisfied`).
+- **New ingest reasons** (`release_record_rejected`): `pack-requires`, `pack-channel`,
+  `pack-unsatisfiable`, `pack-sets-bound`, `pin-requires`, `hold-unknown`, `hold-mismatch`,
+  `hold-yanked`, `hold-binding`, `hold-requires`, `hold-unsatisfiable`, `content-unsatisfied`,
+  `pack-channels-conflict`.
+- **Hook functions bind the product**, as every `ReleaseCatalog` method does:
+  `liveLevels(appDeliverable, channel)`, `packSets(channel)`, `packFloors(channel)`,
+  `holdsFor(appReleaseId)`, plus `heldBy(packReleaseId)` for P4-14's live references.
+- **The floor operation is the admin API only.** `PUT …/release/channels/{channel}` takes
+  `{deliverable, contentApi, minSupported}`. There is no CI floor route today (CI promotes, pins
+  and yanks), floors are operator-owned, and a CI route would be a rule-10 change this brief's
+  gates exclude, so no `pkey release` floor command was added.
+- **The dry run is the Worker's.** The submit (pack and app) answers `packSets`, dry run or
+  not; `dryRun: true` writes nothing. P4-03 (the CLI's `--dry-run`) is still `todo`, so printing
+  the report, and joining it with Distribution's availability, is P4-03's.
+- **Not checked, for want of an input:** the data-only lint result (P4-03 does not exist yet, and
+  a pack record has no descriptor), and a `standalone` pack's format version against the app
+  (no app-side handler version exists).
+- **Console read** is the hook functions; the console view is P4-15's.
+
+## Plan amendment for P4-13
+
+P4-12 changed the shape P4-13 composes the feed from (lead decisions in review; P4-13 freezes the
+wire form):
+
+- **One row per group.** `release_sets` holds one row per (channel, app deliverable, contentApi,
+  platform, engine, variant), where `variant` is the key over ONE group's axes (packs with the same
+  variant axes, merged across `requires.packs` and `conflicts`; `''` for a group without axes) and
+  the row lists that group's packs only. `engine` is the live builds' `requires.engine`, `''` when
+  they declare none.
+- **The device composes from one row per group.** A device's compatible and standalone set is the
+  union of, for each group, the row whose variant key is the device's own variant projected onto
+  that group's axes, for its channel, contentApi, platform and engine (`''` rows apply to a device
+  whose build declared no engine). Its active set id is then client-core's `packSetId` over that
+  union plus its pins and holds.
+- **Per-component semantics.** Within a row, a pack is left out (`unsatisfied`) only when the packs
+  its own dependencies and conflicts link it to cannot keep it; this, not a whole-assignment
+  search, is the reference behaviour SDK-side simulators and P4-15's console must reproduce.

@@ -237,3 +237,8 @@ transports behind the transport interface. Then
 
 The approved [`plans/P4-01.md`](../plans/P4-01.md) changes this package; its §8.4 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Plan amendments (P4-10)
+
+The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

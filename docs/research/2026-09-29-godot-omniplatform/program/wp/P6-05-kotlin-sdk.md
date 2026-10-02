@@ -101,3 +101,8 @@ mise exec node@22 -- pnpm parity:check -- --check
 - A published Kotlin SDK whose Android backend is the same AAR Godot uses; Unity and MAUI Android
   can bind the same AAR.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-05 done`.
+
+## Plan amendments (P4-10)
+
+The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

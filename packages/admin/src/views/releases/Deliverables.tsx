@@ -29,9 +29,9 @@ import { absoluteTime, relativeTime } from "../format.js";
  * Types, bindings and deliveries are the strings the declarations hold — the console names no
  * pack and no pack type (AGENTS rule 5).
  *
- * Two flags carry the operator's real questions. "Not pinned by any app release": with only the
- * pinned binding in v1, a pack release reaches a device only through an app release that pins it,
- * so such a pack delivers nothing yet. "Gate differs": the gate is the pack's own access row,
+ * Two flags carry the operator's real questions. "Not pinned by any app release": a `pinned`
+ * pack's release reaches a device only through an app release that pins it, so such a pack
+ * delivers nothing yet (compatible and standalone packs ship through the resolved sets instead). "Gate differs": the gate is the pack's own access row,
  * operator-owned; the latest release's signed `entitlement` is the gate CI saw at publish, and a
  * device follows that until the next publish (plans/P4-01.md §8.2 risk 14).
  */
@@ -163,9 +163,9 @@ export function Deliverables({ slug }: { slug: string }): React.ReactElement {
             <CardTitle>Deliverables</CardTitle>
           </div>
           <CardDescription>
-            Every deliverable the release manifest declares. A pack ships only
-            when an app release pins one of its releases; open a pack to see
-            which app releases pin which of its releases.{" "}
+            Every deliverable the release manifest declares. A pinned pack ships
+            only when an app release pins one of its releases; open a pack to
+            see which app releases pin which of its releases.{" "}
             <a
               className="underline underline-offset-2 hover:text-foreground"
               href={docsUrl("packDeliverables")}
@@ -259,11 +259,19 @@ export function GateCell({
   );
 }
 
-/** How many app releases pin the pack, or the flag that none does. */
+/**
+ * How many app releases pin the pack, or the flag that none does. The flag is for a `pinned` pack
+ * only (or one whose declaration does not read back): a compatible or standalone pack reaches
+ * devices through the resolved pack sets (P4-12), so zero pins is normal for it.
+ */
 export function PinnedCell({ d }: { d: DeliverableDto }): React.ReactElement {
   if (d.pinnedByAppReleases === null) return <Dash />;
   if (d.pinnedByAppReleases === 0)
-    return <Badge variant="warning">Not pinned by any app release</Badge>;
+    return d.binding === "pinned" || d.binding === null ? (
+      <Badge variant="warning">Not pinned by any app release</Badge>
+    ) : (
+      <span className="text-muted-foreground">none (resolved sets)</span>
+    );
   return (
     <span>
       {d.pinnedByAppReleases === 1

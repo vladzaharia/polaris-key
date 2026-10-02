@@ -100,7 +100,10 @@ function packDeliverableStatements(
              AND deliverable_id NOT IN (SELECT value FROM json_each(?))
              AND NOT EXISTS (SELECT 1 FROM release_channel_policy c
                               WHERE c.product = release_deliverables.product
-                                AND c.deliverable_id = release_deliverables.deliverable_id)`,
+                                AND c.deliverable_id = release_deliverables.deliverable_id)
+             AND NOT EXISTS (SELECT 1 FROM release_pack_floors f
+                              WHERE f.product = release_deliverables.product
+                                AND f.deliverable_id = release_deliverables.deliverable_id)`,
     params: [product, JSON.stringify(packs.map((p) => p.id))],
   });
   return stmts;

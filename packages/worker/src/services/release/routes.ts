@@ -128,7 +128,7 @@ async function handleCiPointer(
     now,
   );
   if (!result.ok) return refusal(result);
-  return json({ ok: true, policy: result.policy });
+  return json({ ok: true, policy: result.policy, packSets: result.packSets });
 }
 
 /** `POST /<p>/release/releases/<releaseId>/yank` — `release:yank`. */
@@ -163,5 +163,5 @@ async function handleCiYank(
     now,
   );
   if (!result.ok) return refusal(result);
-  return json({ ok: true, yank: result.yank });
+  return json({ ok: true, yank: result.yank, packSets: result.packSets });
 }

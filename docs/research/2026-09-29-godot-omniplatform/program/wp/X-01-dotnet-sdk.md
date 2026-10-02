@@ -178,3 +178,8 @@ mise exec node@22 -- pnpm gen:corpus -- --check
 - A Godot C# facade (README §5.12) can wrap `PolarisKey` directly.
 - Set the status per milestone in PR descriptions, and at the end:
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set X-01 done`.
+
+## Plan amendments (P4-10)
+
+The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
+package, and every decision in §8.1 that names it as owner, override this brief where they differ.

@@ -605,7 +605,7 @@ plan(target, installed, caps):                  integers only; full spec in note
 | Pack delivered by a platform                                                                                                                                             | platform                                                             | the platform owns transfer and patching                                         |
 
 Rule of thumb: full under 4 MiB; full plus one delta for small packs that change every release;
-chunk sync from about 16 MiB up.
+every container pack of 4 MiB or more gets a chunk index (S-03 §6; plans/P4-10.md).
 
 ### 8.3 Godot, measured (pure GDScript, 4.7.2)
 

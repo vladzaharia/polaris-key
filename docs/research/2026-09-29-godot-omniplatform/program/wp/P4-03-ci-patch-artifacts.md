@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v1)                                                                                                                                                                 |
 | Size        | 1.5–2 engineer-weeks                                                                                                                                                           |
 | Depends on  | [P4-01](P4-01-packs-plan.md), [P2-06](P2-06-publish-cli-action.md), [P3-03](P3-03-feed-composition.md), [P4-21](P4-21-packs-wire-core.md), [P4-02](P4-02-pack-deliverables.md) |
-| Unblocks    | [P4-10](P4-10-chunk-indexes.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md)                                                                 |
+| Unblocks    | [P4-22](P4-22-ci-chunk-indexes.md), [P5-08](P5-08-platform-pack-transports.md), [D-04](D-04-diceroll-after-p4.md)                                                              |
 | Role        | `pkey-implementer`                                                                                                                                                             |
 | Plan mode   | no: it implements the formats in the approved `program/plans/P4-01.md`                                                                                                         |
 | Gates       | CLI tests; no Worker change. End-to-end submission needs [P4-02](P4-02-pack-deliverables.md) deployed                                                                          |

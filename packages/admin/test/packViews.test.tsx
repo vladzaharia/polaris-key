@@ -256,6 +256,23 @@ describe("Deliverables tab", () => {
     ).toBeNull();
   });
 
+  it("does not flag a compatible pack without pins (it ships through the resolved sets)", async () => {
+    deliverables.mockResolvedValue({
+      ...LIST,
+      deliverables: LIST.deliverables.map((d) =>
+        d.id === MUSIC ? { ...d, binding: "compatible" } : d,
+      ),
+    });
+    render(<Deliverables slug={SLUG} />);
+    const musicRow = (
+      await screen.findByRole("button", { name: `Open pack ${MUSIC}` })
+    ).closest("tr")!;
+    expect(
+      within(musicRow).queryByText("Not pinned by any app release"),
+    ).toBeNull();
+    expect(within(musicRow).getByText("none (resolved sets)")).toBeTruthy();
+  });
+
   it("opens a pack's page by its id", async () => {
     render(<Deliverables slug={SLUG} />);
     await userEvent.click(

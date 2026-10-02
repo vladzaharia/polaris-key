@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 178 distinct emit sites.
+codes with their JSON-pointer paths. 187 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -27,7 +27,7 @@ the offending value, or the allowed set.
 | `invalid_api_version` | error | product | `/apiVersion` | apiVersion must be pkey.dev/v1 when present. |
 | `invalid_api_version` | error | distribution | `/apiVersion` | apiVersion must be pkey.dev/v1 when present. |
 | `invalid_app_content` | error | release | `/release/deliverables/app/content` | a product that declares pack deliverables declares deliverables.app with content.contentApi, the content shape its code expects. |
-| `invalid_app_content` | error | release | `/release/deliverables/app/content` | deliverables.app.content is \{ contentApi: an integer from 1 to $\{MAX_CONTENT_API\} \}; packChannels and holds come with P4-12. |
+| `invalid_app_content` | error | release | `/release/deliverables/app/content` | deliverables.app.content is \{ contentApi: an integer from 1 to $\{MAX_CONTENT_API\}, packChannels? \}; holds are chosen per app release at publish (the content stamp), never declared here. |
 | `invalid_app_content` | error | release | `/release/deliverables/app/content` | a product that declares pack deliverables declares deliverables.app.content.contentApi, the content shape its code expects. |
 | `invalid_architecture` | error | release | `/release/artifactPolicy/architectures` | artifactPolicy.architectures must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_artifact_arch` | error | release | `/release/deliverables/app/artifacts/${i}/arch` | artifacts[].arch must be one of $\{RELEASE_ARCHES.join(", ")\}. |
@@ -52,6 +52,7 @@ the offending value, or the allowed set.
 | `invalid_channel` | error | product | `/licensing/tiers/${i}/channels` | Tier channels must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_channel` | error | release | `/release/artifactPolicy/channels` | artifactPolicy.channels must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_channel` | error | release | `/release/deliverables/app/channels/${name}` | deliverables.app.channels names must be canonical ($\{CANONICAL_CHANNEL_PATTERN.source\}, and not an alias such as $\{CHANNEL_ALIAS_NAMES.join(" or ")\}). |
+| `invalid_channel` | error | release | `${at}/channels` | a pack's channels lists 1 to $\{MAX_PACK_CHANNELS\} distinct canonical channel names ($\{CANONICAL_CHANNEL_PATTERN.source\}, and not an alias such as $\{CHANNEL_ALIAS_NAMES.join(" or ")\}). |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning hooks require claim. |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning claim names must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
 | `invalid_deliverable_id` | error | release | `/release/deliverables/${id}` | deliverable ids must match $\{DELIVERABLE_ID_PATTERN.source\} and be at most $\{MAX_DELIVERABLE_ID_LENGTH\} characters. |
@@ -89,7 +90,10 @@ the offending value, or the allowed set.
 | `invalid_outlet_identity` | error | distribution | `/outlets/${id}/${field}` | outlets.$\{id\}.$\{field\} $\{problem\}. |
 | `invalid_outlet_identity` | error | distribution | `/outlets/${id}/scoop` | outlets.$\{id\}.scoop describes a Windows install, so platforms must include windows. |
 | `invalid_outlet_identity` | error | distribution | `/outlets/${id}` | each outlet must be an object (write $\{id\}: \{\} for an outlet with no identity fields). |
-| `invalid_pack_binding` | error | release | `${at}/binding` | binding must be pinned in v1 (the app release pins the exact pack release; compatible and standalone come with P4-12). |
+| `invalid_pack_binding` | error | release | `${at}/binding` | binding must be one of $\{PACK_BINDINGS.join(", ")\}: pinned (each app release pins the exact pack release), compatible (the newest release whose requires.contentApi range holds the app's contentApi) or standalone (the newest release, whatever the contentApi). |
+| `invalid_pack_channels` | error | release | `/release/deliverables/app/content/packChannels` | content.packChannels maps 1 to $\{MAX_PACK_CHANNEL_MAP\} pack ids or prefixes ending in .* (diceroll.events.*) to a canonical channel name. |
+| `invalid_pack_conflicts` | error | release | `${at}/conflicts/${i}` | conflicts names other declared packs; $\{String(c)\} is $\{c === id ? "this pack" : "not a declared pack"\}. |
+| `invalid_pack_conflicts` | error | release | `${at}/conflicts` | conflicts lists 1 to $\{MAX_PACK_CONFLICTS\} distinct pack ids this pack never shares a resolved set with. |
 | `invalid_pack_handler` | error | release | `${at}/handler/activation` | handler.activation must be one of $\{PACK_ACTIVATIONS.join(", ")\}. |
 | `invalid_pack_handler` | error | release | `${at}/handler/mountOrder` | handler.mountOrder must be an integer from 0 to $\{MAX_PACK_MOUNT_ORDER\}. |
 | `invalid_pack_handler` | error | release | `${at}/handler/prefixes` | handler.prefixes must be 1 to $\{MAX_PACK_PREFIXES\} distinct res:// directory prefixes ending in / ($\{HANDLER_PREFIX_PATTERN.source\}), each at most $\{MAX_PACK_PREFIX_BYTES\} bytes. |
@@ -103,7 +107,8 @@ the offending value, or the allowed set.
 | `invalid_pack_policy` | error | release | `${at}/required` | required must be a boolean. |
 | `invalid_pack_policy` | error | release | `${at}/required` | a required pack is delivered as essential and carries no entitlement: the app cannot run without it, so nothing may withhold it. |
 | `invalid_pack_requires` | error | release | `${at}/requires/engine` | a godot.pck pack declares requires.engine (godot-\<major>.\<minor>): a PCK mounts only into the engine version that exported it. |
-| `invalid_pack_requires` | error | release | `${at}/requires` | requires is \{ engine \} in v1, engine matching $\{ENGINE_PATTERN.source\}; contentApi, packs and features come with P4-12. |
+| `invalid_pack_requires` | error | release | `${at}/requires/packs/${target}` | requires.packs names another declared compatible or standalone pack; $\{target\} is $\{target === id ? "this pack" : targetBinding === undefined ? "not a declared pack" : "pinned, and a pinned pack never enters a resolved set"\}. |
+| `invalid_pack_requires` | error | release | `${at}/requires` | requires is \{ engine?, contentApi?, packs? \}: engine matching $\{ENGINE_PATTERN.source\}; contentApi an object of app deliverable id → a range such as ">=3 \<5"; packs an object of pack id → a version range such as ">=1.2.0 \<2.0.0" (features has no meaning yet). |
 | `invalid_pack_type` | error | release | `${at}/type` | a pack's type is required and must be one of $\{PACK_TYPES.join(", ")\}. |
 | `invalid_pack_variants` | error | release | `${at}/variants/${axis}` | variant axes must be among $\{VARIANT_AXES.join(", ")\}. |
 | `invalid_pack_variants` | error | release | `${at}/variants/${axis}` | each variant axis lists 1 to $\{MAX_PACK_VARIANT_VALUES\} distinct values matching $\{VARIANT_VALUE_PATTERN.source\}. |
@@ -155,6 +160,7 @@ the offending value, or the allowed set.
 | `invalid_web_origins` | error | product | `/web/origins` | web.origins must be an array of at most $\{MAX_WEB_ORIGINS\} origins. |
 | `invalid_web_origins` | error | product | `/web` | web must be an object. |
 | `missing_auto_issue_tier` | error | product | `/autoIssue/tierId` | autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything. |
+| `missing_content_api_range` | error | release | `${at}/requires/contentApi` | a compatible pack declares requires.contentApi (for example \{ $\{APP_DELIVERABLE_ID\}: ">=3 \<5" \}): the contentApi levels its releases support. |
 | `missing_github_repo` | error | release | `/release/provider` | GitHub releases require owner and repo. |
 | `missing_name` | error | product | `/product/name` | Add product.name. |
 | `missing_oidc_client_id` | error | product | `/oidc/clientId` | OIDC clientId is required for custom OIDC. |
@@ -165,10 +171,11 @@ the offending value, or the allowed set.
 | `noncanonical_channel_name` | warning | release | `/release/artifactPolicy/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1). |
 | `noncanonical_channel_name` | warning | release | `${at}/name` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1). |
 | `outlet_kind_mismatch` | error | distribution | `/outlets/${id}/kind` | outlet $\{id\} is itself an outlet kind, so its kind may only be $\{id\} (or omitted); declare another id, such as $\{id\}-beta, for an outlet of a different kind. |
-| `pack_field_not_supported` | error | release | `${at}/${field}` | $\{field\} is not supported for packs yet (pinned packs only in v1; P4-12 adds channels and conflicts, P4-20 provides and removes). |
+| `pack_field_not_supported` | error | release | `${at}/${field}` | $\{field\} is not supported for packs yet (P4-20 adds provides and removes). |
 | `release_key_reused` | error | release | `${at}/publicKey` | A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs. |
 | `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1). |
 | `reserved_slug` | error | product | `/product/slug` | product.slug "$\{productSlug\}" collides with a reserved platform route. |
+| `standalone_with_content_api` | error | release | `${at}/requires/contentApi` | a standalone pack depends only on its type's format, never on the app's contentApi; drop requires.contentApi or make it compatible. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/deviceLimit` | deviceLimit on a tier is ignored; use policyDeviceLimit. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace. |
@@ -180,11 +187,13 @@ the offending value, or the allowed set.
 | `unknown_artifact_ref` | error | distribution | `/outlets/${id}/artifact` | outlets.$\{id\}.artifact must name an id in .pkey/release deliverables.app.artifacts. |
 | `unknown_auto_issue_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId references unknown tier $\{autoIssue.tierId\}. |
 | `unknown_channel_ref` | error | distribution | `/outlets/${id}/${field}/${channel}` | outlets.$\{id\}.$\{field\} keys must be declared channels (stable, beta, a manual channel or one of deliverables.app.channels). |
+| `unknown_content_api_app` | error | release | `${at}/requires/contentApi/${key}` | requires.contentApi is keyed by app deliverable; $\{key\} is not one (the product's app deliverable is $\{APP_DELIVERABLE_ID\}). |
 | `unknown_deliverable_ref` | error | distribution | `/transports/deliverables/${deliverableId}` | transports.deliverables keys must name a deliverable declared in .pkey/release (app is always declared). |
 | `unknown_entitlement_ref` | error | release | `${at}/entitlement` | entitlement must be a licence flag key matching $\{ENTITLEMENT_PATTERN.source\}. |
 | `unknown_entitlement_ref` | error | release | `${at}/entitlement` | entitlement $\{entitlement\} is not a flag entry of the product's .pkey/schema. It only asserts the pack's delivery gate, which an operator sets under Distribution → Access. |
 | `unknown_outlet_kind` | error | distribution | `/outlets/${id}/kind` | outlet $\{id\} needs a kind from $\{OUTLET_KINDS.join(", ")\} (an outlet id that is itself a kind may omit it). |
 | `unknown_outlet_ref` | error | distribution | `${path}/${outletId}` | transport maps may only name outlets declared under outlets. |
+| `unknown_pack_channels_target` | error | release | `/release/deliverables/app/content/packChannels/${key}` | content.packChannels $\{key\} must match a declared pack, and every pack it matches must publish to $\{String(channel)\} (stable, beta or one of the pack's channels). |
 | `unknown_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier references unknown profile $\{profile\}. |
 | `unsupported_release_provider` | error | release | `/release/provider/type` | Only github is implemented. |
 | `update_requires_distribution` | error | product | `/modules/update` | The update service serves a feed over distribution's delivery state, so distribution must be enabled too. |
@@ -199,7 +208,7 @@ the offending value, or the allowed set.
 `validateReleaseDescriptor` (`@polaris-key/manifest`, P2-04) checks a release descriptor
 (`pkey-release.json`) against its own shape and the product's declared artifact map. Every
 problem is an error; the Worker reports them under the ingest refusal reason
-`invalid_descriptor`. 61 distinct emit sites.
+`invalid_descriptor`. 63 distinct emit sites.
 
 | Code | Path | Message |
 | --- | --- | --- |
@@ -234,6 +243,8 @@ problem is an error; the Worker reports them under the ingest refusal reason
 | `invalid_descriptor_build` | `/builds/${bi}` | each build must be an object. |
 | `invalid_descriptor_content` | `/content/contentApi` | content.contentApi is $\{desc.content.contentApi\}; .pkey/release declares $\{app.content.contentApi\}. |
 | `invalid_descriptor_content` | `/content/expects/${i}/pack` | $\{e.pack\} is not a pack deliverable this product declares. |
+| `invalid_descriptor_content` | `/content/holds/${i}/pack` | $\{h.pack\} is not a pack deliverable this product declares. |
+| `invalid_descriptor_content` | `/content/packChannels` | content.packChannels must equal .pkey/release's deliverables.app.content.packChannels ($\{canonicalMap(app.content.packChannels) ?? "none"\}). |
 | `invalid_descriptor_content` | `/content/pins/${i}/pack` | $\{pin.pack\} is not a pack deliverable this product declares. |
 | `invalid_descriptor_content` | `/content` | $\{problem\}. |
 | `invalid_descriptor_content` | `/content` | the product declares no deliverables.app.content in .pkey/release, so its releases carry no content. |

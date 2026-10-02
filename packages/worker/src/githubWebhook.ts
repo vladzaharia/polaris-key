@@ -63,6 +63,8 @@ interface ReleaseEventResult {
    * `<packId>@<version>`). Never merged into the pack. Absent when none.
    */
   packTagConflicts?: string[];
+  /** P4-12: the pack-set re-resolution's outcome when it failed (sets cleared) or stored sets. */
+  packSets?: { ok: boolean; reason?: string; message?: string; sets?: number };
 }
 
 function hexToBytes(hex: string): Uint8Array | null {
@@ -202,13 +204,8 @@ async function handleReleaseEvent(
     }
     // Idempotent and bounded (P0-02's capped pagination), so it is safe on every delivery;
     // bursts are not coalesced. `syncReleaseStore` never throws and applies all or nothing.
-    const { statements, packTagConflicts } = await syncReleaseStoreReport(
-      env,
-      db,
-      product.slug,
-      now,
-      fetchImpl,
-    );
+    const { statements, packTagConflicts, packSets } =
+      await syncReleaseStoreReport(env, db, product.slug, now, fetchImpl);
     results.push(
       statements > 0
         ? {
@@ -216,6 +213,7 @@ async function handleReleaseEvent(
             ok: true,
             statements,
             ...(packTagConflicts.length > 0 ? { packTagConflicts } : {}),
+            ...(packSets ? { packSets } : {}),
           }
         : {
             product: product.slug,
@@ -375,6 +373,7 @@ export async function handleGithubWebhook(
         product: product.slug,
         ok: true,
         updated: result.updated,
+        ...(result.packSets ? { packSets: result.packSets } : {}),
       });
     } else {
       await upsertProductSyncState(db, {
