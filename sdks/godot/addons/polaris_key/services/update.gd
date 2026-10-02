@@ -51,6 +51,11 @@ extends RefCounted
 ## (PKeyOptions.version). Test the type (`result is PKeyUpdateCheck`) when connecting both.
 signal update_available(result: PKeyResult)
 
+## The answer update_available last carried, or null once a later answer has nothing to show
+## (decide() answered `none`, check() found this build current). A PKeyUpdatePrompt added after
+## the boot replays it, so a mandatory or blocked answer is not lost between scenes.
+var last_available: PKeyResult = null
+
 ## The record bound of plans/P3-01.md §2.5 step 12: a body over it cannot be a record any feed
 ## pins.
 const MAX_RECORD_JWS_BYTES := 88844
@@ -104,6 +109,7 @@ func check(channel := "") -> PKeyVersionCheck:
 		PKeySemver.compare(core.version, newest) < 0,
 		status,
 	)
+	last_available = result if result.update_available else null
 	if result.update_available:
 		update_available.emit(result)
 	return result
@@ -130,6 +136,7 @@ func decide(channel := "", staged: Variant = null, skip_version: Variant = null)
 		push_warning("PolarisKey: the update slices could not be written (%s)." % str(core.last_store_error))
 	_end()
 	var result := PKeyUpdateCheck.of(flow)
+	last_available = result if result.boot == PKeyDecision.BOOT_OPTIONAL else null
 	if result.boot == PKeyDecision.BOOT_OPTIONAL:
 		update_available.emit(result)
 	return result

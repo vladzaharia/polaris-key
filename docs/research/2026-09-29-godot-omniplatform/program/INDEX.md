@@ -42,7 +42,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | done   |
 | [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | done   |
 | [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`    | —                                        | sdk-porter     | 1–1.5    | done   |
-| [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | todo   |
+| [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | done   |
 | [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | done   |
 | [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)        | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | todo   |
 
@@ -135,7 +135,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-18](wp/P4-18-web-dcz.md)                      | Web deltas via Compression Dictionary Transport, with the WASM decoder fallback                                               | P4-11, P4-05, P1b-05                     | implementer    | 1         | todo   |
 | [P4-19](wp/P4-19-content-key-delegation.md) ⚑     | Content-key delegation for data-only packs                                                                                    | P4-13                                    | implementer    | 0.75–1    | todo   |
 | [P4-20](wp/P4-20-save-compat.md)                  | Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint                                 | P4-12, P4-08, P4-06, P4-07               | implementer    | 1         | todo   |
-| [P4-21](wp/P4-21-packs-wire-core.md) ⚑            | Packs wire core: contract amendment, pack record and marker claims and cases, files-index functions, `@polaris-key/zstd-wasm` | P4-01, P3-02                             | implementer    | 1.25–1.75 | todo   |
+| [P4-21](wp/P4-21-packs-wire-core.md) ⚑            | Packs wire core: contract amendment, pack record and marker claims and cases, files-index functions, `@polaris-key/zstd-wasm` | P4-01, P3-02                             | implementer    | 1.25–1.75 | done   |
 
 ## P5: Distribution connectors and native plugins
 

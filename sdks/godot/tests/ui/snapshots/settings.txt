@@ -1,0 +1,99 @@
+== catalog ==
+Body/Title: Label "Settings"
+Body/Rows/Category_Operations: Label "Operations"
+Body/Rows/Row_game_killSwitch/Line/Label: Label "Online play off"
+Body/Rows/Row_game_killSwitch/Line/Input: CheckButton [pressed, disabled]
+Body/Rows/Row_game_killSwitch/Line/Badge: Label "Locked"
+Body/Rows/Row_game_killSwitch/SetBy: Label "Set by djdl"
+Body/Rows/Row_game_killSwitch/Description: Label "Set by the operator."
+Body/Rows/Category_Audio: Label "Audio"
+Body/Rows/Row_audio_volume/Line/Label: Label "Volume"
+Body/Rows/Row_audio_volume/Line/Input: SpinBox [value 60.0, focus 1]
+Body/Rows/Row_audio_volume/Line/Badge: Label "Default"
+Body/Rows/Row_audio_volume/Description: Label "Master volume."
+Body/Rows/Row_audio_muted/Line/Label: Label "Mute"
+Body/Rows/Row_audio_muted/Line/Input: CheckButton [pressed, focus 2]
+Body/Rows/Row_audio_muted/Line/Badge: Label "Set by the environment"
+Body/Rows/Category_Interface: Label "Interface"
+Body/Rows/Row_ui_theme/Line/Label: Label "Theme"
+Body/Rows/Row_ui_theme/Line/Input: OptionButton "Dark" [items [Dark, Light], focus 3]
+Body/Rows/Row_ui_theme/Line/Badge: Label "Default"
+Body/Rows/Row_ui_theme/Description: Label "Colour theme."
+Body/Rows/Row_ui_reducedMotion/Line/Label: Label "Reduce motion"
+Body/Rows/Row_ui_reducedMotion/Line/Input: CheckButton [focus 4]
+Body/Rows/Row_ui_reducedMotion/Line/Badge: Label "Built-in default"
+Body/Rows/Row_ui_reducedMotion/Description: Label "Only with the dark theme."
+Body/Rows/Category_Notes: Label "Notes"
+Body/Rows/Row_notes_motd/Line/Label: Label "Message of the day"
+Body/Rows/Row_notes_motd/Line/Input: TextEdit "Welcome" [focus 5]
+Body/Rows/Row_notes_motd/Line/Badge: Label "Built-in default"
+Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 6]
+== advanced shown ==
+Body/Title: Label "Settings"
+Body/Rows/Category_Operations: Label "Operations"
+Body/Rows/Row_game_killSwitch/Line/Label: Label "Online play off"
+Body/Rows/Row_game_killSwitch/Line/Input: CheckButton [pressed, disabled]
+Body/Rows/Row_game_killSwitch/Line/Badge: Label "Locked"
+Body/Rows/Row_game_killSwitch/SetBy: Label "Set by djdl"
+Body/Rows/Row_game_killSwitch/Description: Label "Set by the operator."
+Body/Rows/Category_Audio: Label "Audio"
+Body/Rows/Row_audio_volume/Line/Label: Label "Volume"
+Body/Rows/Row_audio_volume/Line/Input: SpinBox [value 60.0, focus 1]
+Body/Rows/Row_audio_volume/Line/Badge: Label "Default"
+Body/Rows/Row_audio_volume/Description: Label "Master volume."
+Body/Rows/Row_audio_muted/Line/Label: Label "Mute"
+Body/Rows/Row_audio_muted/Line/Input: CheckButton [pressed, focus 2]
+Body/Rows/Row_audio_muted/Line/Badge: Label "Set by the environment"
+Body/Rows/Category_Interface: Label "Interface"
+Body/Rows/Row_ui_theme/Line/Label: Label "Theme"
+Body/Rows/Row_ui_theme/Line/Input: OptionButton "Dark" [items [Dark, Light], focus 3]
+Body/Rows/Row_ui_theme/Line/Badge: Label "Default"
+Body/Rows/Row_ui_theme/Description: Label "Colour theme."
+Body/Rows/Row_ui_reducedMotion/Line/Label: Label "Reduce motion"
+Body/Rows/Row_ui_reducedMotion/Line/Input: CheckButton [focus 4]
+Body/Rows/Row_ui_reducedMotion/Line/Badge: Label "Built-in default"
+Body/Rows/Row_ui_reducedMotion/Description: Label "Only with the dark theme."
+Body/Rows/Category_Network: Label "Network"
+Body/Rows/Row_net_proxyUrl/Line/Label: Label "Proxy URL"
+Body/Rows/Row_net_proxyUrl/Line/Input: LineEdit [placeholder "https://proxy.example", focus 5]
+Body/Rows/Row_net_proxyUrl/Line/Badge: Label "Default"
+Body/Rows/Row_net_proxyUrl/Description: Label "Advanced."
+Body/Rows/Row_net_proxyPassword/Line/Label: Label "Proxy password"
+Body/Rows/Row_net_proxyPassword/Line/Input: LineEdit [secret, focus 6]
+Body/Rows/Row_net_proxyPassword/Line/Badge: Label "Built-in default"
+Body/Rows/Category_Notes: Label "Notes"
+Body/Rows/Row_notes_motd/Line/Label: Label "Message of the day"
+Body/Rows/Row_notes_motd/Line/Input: TextEdit "Welcome" [focus 7]
+Body/Rows/Row_notes_motd/Line/Badge: Label "Built-in default"
+Body/AdvancedToggle: CheckButton "Show advanced settings" [pressed, focus 8]
+== local override, dependsOn hidden ==
+Body/Title: Label "Settings"
+Body/Rows/Category_Operations: Label "Operations"
+Body/Rows/Row_game_killSwitch/Line/Label: Label "Online play off"
+Body/Rows/Row_game_killSwitch/Line/Input: CheckButton [pressed, disabled]
+Body/Rows/Row_game_killSwitch/Line/Badge: Label "Locked"
+Body/Rows/Row_game_killSwitch/SetBy: Label "Set by djdl"
+Body/Rows/Row_game_killSwitch/Description: Label "Set by the operator."
+Body/Rows/Category_Audio: Label "Audio"
+Body/Rows/Row_audio_volume/Line/Label: Label "Volume"
+Body/Rows/Row_audio_volume/Line/Input: SpinBox [value 25.0, focus 1]
+Body/Rows/Row_audio_volume/Line/Badge: Label "Changed by you"
+Body/Rows/Row_audio_volume/Line/Reset: Button "Reset to default" [focus 2]
+Body/Rows/Row_audio_volume/Description: Label "Master volume."
+Body/Rows/Row_audio_muted/Line/Label: Label "Mute"
+Body/Rows/Row_audio_muted/Line/Input: CheckButton [pressed, focus 3]
+Body/Rows/Row_audio_muted/Line/Badge: Label "Set by the environment"
+Body/Rows/Category_Interface: Label "Interface"
+Body/Rows/Row_ui_theme/Line/Label: Label "Theme"
+Body/Rows/Row_ui_theme/Line/Input: OptionButton "Light" [items [Dark, Light], focus 4]
+Body/Rows/Row_ui_theme/Line/Badge: Label "Changed by you"
+Body/Rows/Row_ui_theme/Line/Reset: Button "Reset to default" [focus 5]
+Body/Rows/Row_ui_theme/Description: Label "Colour theme."
+Body/Rows/Category_Notes: Label "Notes"
+Body/Rows/Row_notes_motd/Line/Label: Label "Message of the day"
+Body/Rows/Row_notes_motd/Line/Input: TextEdit "Welcome" [focus 6]
+Body/Rows/Row_notes_motd/Line/Badge: Label "Built-in default"
+Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 7]
+== empty ==
+Body/Title: Label "Settings"
+Body/Empty: Label "There are no settings to show."

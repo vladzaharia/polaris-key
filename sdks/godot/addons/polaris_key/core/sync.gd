@@ -104,7 +104,10 @@ static func run(core: PKeyCore, force := false) -> PKeySyncResult:
 	result.blocked = blocked_outcome != null
 	result.rate_limited = rate_limited
 	for slice in join.results:
-		result.documents[slice] = join.results[slice]["kind"]
+		var o: Dictionary = join.results[slice]
+		result.documents[slice] = o["kind"]
+		if o["kind"] == "error":
+			result.errors[slice] = {"status": int(o.get("status", 0)), "code": String(o.get("code", ""))}
 
 	if applied or not unauthorized:
 		for hook in core.post_sync_hooks:
@@ -148,11 +151,11 @@ static func _sync_document(core: PKeyCore, slice: String, force: bool, allow_rea
 				opts["last_accepted_issued_at"] = held["doc"]["issuedAt"]
 			var doc = await PKeyVerify.verify_doc(res["jws"], PKeyClaims.TYP_LICENSE if slice == "license" else PKeyClaims.TYP_CONFIG, opts)
 			if doc == null:
-				return {"kind": "error", "message": "the %s document did not verify" % slice}
+				return {"kind": "error", "status": 200, "code": String(PKeyErrors.INVALID_RESPONSE), "message": "the %s document did not verify" % slice}
 			if slice == "license":
 				core.cache.apply_license(res["jws"], doc, res["etag"])
 			else:
 				core.cache.apply_config(res["jws"], doc, res["etag"])
 			core.cache.mark_verified()
 			return {"kind": "applied"}
-	return {"kind": "error", "status": res.get("status", 0), "message": res.get("message", "")}
+	return {"kind": "error", "status": res.get("status", 0), "code": res.get("code", ""), "message": res.get("message", "")}

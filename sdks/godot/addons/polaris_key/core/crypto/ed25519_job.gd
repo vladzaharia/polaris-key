@@ -41,6 +41,21 @@ func _init(sig: PackedByteArray, msg: PackedByteArray, key: Array) -> void:
 	_sha = PKeySha512Stream.new(hin)
 
 
+## How far the job is, 0.0 to 1.0: the SHA-512 pass (the cost of a big message) is the first
+## 90 %, the double-scalar multiply the rest. For the sliced verify's progress signal.
+func progress() -> float:
+	if done:
+		return 1.0
+	match _phase:
+		0:
+			return 0.9 * float(_sha._blk) / float(maxi(_sha._nw, 1))
+		1:
+			return 0.9
+		2:
+			return 0.9 + 0.1 * float(255 - _i) / 256.0
+	return 1.0
+
+
 ## Runs to completion.
 func run() -> void:
 	step(0)
