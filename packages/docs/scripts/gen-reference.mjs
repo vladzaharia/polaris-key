@@ -348,6 +348,9 @@ const TABLE_OWNERS = {
     "release_yanks",
     "release_records",
     "release_pins",
+    "release_sets",
+    "release_holds",
+    "release_pack_floors",
   ],
   distribution: [
     "dist_outlets",

@@ -327,7 +327,7 @@
       "maxProperties": 65
     },
     "packDeliverable": {
-      "description": "A pack deliverable (P4-02, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck pack declares handler.prefixes, activates on restart and declares requires.engine; a files.tree pack takes no handler.prefixes or mountOrder; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema.",
+      "description": "A pack deliverable (P4-02, P4-12, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck pack declares handler.prefixes, activates on restart and declares requires.engine; a files.tree pack takes no handler.prefixes or mountOrder; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema; requires.contentApi is keyed by the app deliverable (app); requires.packs names other declared compatible or standalone packs; conflicts names other declared packs.",
       "type": "object",
       "properties": {
         "kind": {
@@ -338,8 +338,8 @@
           "enum": ["godot.pck", "files.tree"]
         },
         "binding": {
-          "description": "How app releases bind this pack. Only pinned in v1: each app release pins the exact pack release. Default pinned.",
-          "enum": ["pinned"]
+          "description": "How app releases bind this pack (CONTENT §6.1): pinned (each app release pins the exact pack release), compatible (the server resolves the newest release whose requires.contentApi range holds each live app contentApi level) or standalone (resolved for every level; depends only on its type's format). Default pinned.",
+          "enum": ["pinned", "compatible", "standalone"]
         },
         "baseline": {
           "description": "embedded: app builds ship it (see artifacts[].embeds); none: network only. Default none.",
@@ -405,12 +405,40 @@
           }
         },
         "requires": {
-          "description": "{ engine } in v1; contentApi, packs and features come with P4-12.",
+          "description": "The defaults CI signs into each variant's requires (P4-12): engine; contentApi, app deliverable id → a contentApi range such as \">=3 <5\" (required for compatible, refused for standalone); packs, pack id → a version range under that pack's scheme, such as \">=1.2.0 <2.0.0\".",
           "type": "object",
           "properties": {
             "engine": {
               "type": "string",
               "pattern": "^godot-[0-9]+\\.[0-9]+$"
+            },
+            "contentApi": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 64,
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^(?:>=|<=|>|<|=)?[1-9][0-9]{0,15}(?: (?:>=|<=|>|<|=)?[1-9][0-9]{0,15}){0,3}$"
+              }
+            },
+            "packs": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 64,
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^(?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}(?: (?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}){0,3}$"
+              }
             }
           },
           "additionalProperties": false
@@ -448,12 +476,78 @@
             }
           }
         },
-        "channels": false,
-        "conflicts": false,
+        "channels": {
+          "description": "The channels this pack's releases may be published to beyond stable and beta (P4-12), by canonical name.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+            "not": {
+              "enum": ["staging", "latest"]
+            }
+          }
+        },
+        "conflicts": {
+          "description": "Pack ids this pack never shares a resolved set with (P4-12).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+            "not": {
+              "const": "app"
+            }
+          }
+        },
         "provides": false,
         "removes": false
       },
-      "required": ["kind", "type"]
+      "required": ["kind", "type"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "binding": {
+                "const": "compatible"
+              }
+            },
+            "required": ["binding"]
+          },
+          "then": {
+            "required": ["requires"],
+            "properties": {
+              "requires": {
+                "required": ["contentApi"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "binding": {
+                "const": "standalone"
+              }
+            },
+            "required": ["binding"]
+          },
+          "then": {
+            "properties": {
+              "requires": {
+                "not": {
+                  "required": ["contentApi"]
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "appDeliverable": {
       "type": "object",
@@ -516,7 +610,7 @@
           }
         },
         "content": {
-          "description": "The content shape this app's code expects (P4-02). Required when the product declares any pack (the validator checks that).",
+          "description": "The content shape this app's code expects (P4-02), and how its channels map pack families (P4-12). Required when the product declares any pack (the validator checks that, and that each packChannels key matches a declared pack that publishes to its channel).",
           "type": "object",
           "properties": {
             "contentApi": {
@@ -524,7 +618,27 @@
               "minimum": 1,
               "maximum": 9007199254740991
             },
-            "packChannels": false,
+            "packChannels": {
+              "description": "Pack id or prefix ending in .* (diceroll.events.*) → the pack channel every app channel consumes for those packs.",
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 64,
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*(\\.\\*)?$",
+                "not": {
+                  "const": "app"
+                }
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+                "not": {
+                  "enum": ["staging", "latest"]
+                }
+              }
+            },
             "holds": false
           },
           "required": ["contentApi"]
