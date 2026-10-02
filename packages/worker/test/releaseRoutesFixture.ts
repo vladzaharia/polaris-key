@@ -337,7 +337,8 @@ export async function admin(
     }),
     env,
     db,
-    full,
+    // The router hands the admin API a pathname; a query stays on the request's URL.
+    full.split("?")[0]!,
     { now: NOW },
   );
 }

@@ -122,37 +122,32 @@ function pinRecord(r: PinRow): CatalogPin {
   };
 }
 
-/** A pack release's stored record and release row, or null. */
-async function packRecordOf(
-  db: Db,
-  product: string,
-  releaseId: string,
-): Promise<{
+interface PackRecordRow {
+  release_id: string;
+  jws: string;
+  record_sha256: string;
+  deliverable_id: string;
+  version: string;
+  seq: number | null;
+  channel: string | null;
+  published_at: number | null;
+  yanked: number;
+}
+
+interface FoundPackRecord {
   record: PackRecordDoc;
   sha256: string;
   release: CatalogRelease;
-} | null> {
-  const row = await db.first<{
-    jws: string;
-    record_sha256: string;
-    deliverable_id: string;
-    version: string;
-    seq: number | null;
-    channel: string | null;
-    published_at: number | null;
-    yanked: number;
-  }>(
-    `SELECT r.jws, r.record_sha256, m.deliverable_id, m.version, m.seq, m.channel,
-            m.published_at,
+}
+
+const PACK_RECORD_SELECT = `SELECT r.release_id, r.jws, r.record_sha256, m.deliverable_id, m.version, m.seq,
+            m.channel, m.published_at,
             EXISTS (SELECT 1 FROM release_yanks y
                      WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked
        FROM release_records r
-       JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id
-      WHERE r.product = ? AND r.release_id = ? AND r.kind = 'pack'`,
-    product,
-    releaseId,
-  );
-  if (!row) return null;
+       JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id`;
+
+function foundOf(row: PackRecordRow): FoundPackRecord | null {
   const payload = storedRecordPayload(row.jws);
   if (!payload || payload.kind !== "pack") return null;
   return {
@@ -160,7 +155,7 @@ async function packRecordOf(
     sha256: row.record_sha256,
     release: {
       deliverableId: row.deliverable_id,
-      releaseId,
+      releaseId: row.release_id,
       version: row.version,
       seq: row.seq,
       channel: row.channel,
@@ -168,6 +163,84 @@ async function packRecordOf(
       yanked: Boolean(row.yanked),
     },
   };
+}
+
+/** A pack release's stored record and release row, or null. */
+async function packRecordOf(
+  db: Db,
+  product: string,
+  releaseId: string,
+): Promise<FoundPackRecord | null> {
+  const row = await db.first<PackRecordRow>(
+    `${PACK_RECORD_SELECT}
+      WHERE r.product = ? AND r.release_id = ? AND r.kind = 'pack'`,
+    product,
+    releaseId,
+  );
+  return row ? foundOf(row) : null;
+}
+
+/** The hook's view of one stored pack record: its variants and the objects each names. */
+function packReleaseView(found: FoundPackRecord): CatalogPackRelease {
+  const { record } = found;
+  const objects = packObjects(record);
+  return {
+    release: found.release,
+    recordSha256: found.sha256,
+    type: record.type,
+    formatVersion: record.formatVersion,
+    entitlement: record.entitlement ?? null,
+    handler: record.handler ?? null,
+    variants: record.variants.map((v) => {
+      const buildId = variantBuildId(v.variant);
+      return {
+        variantKey: variantKey(v.variant),
+        buildId,
+        variant: v.variant,
+        payload: v.payload,
+        engine:
+          typeof v.requires?.engine === "string" ? v.requires.engine : null,
+        objects: objects
+          .filter((o) => o.buildId === buildId)
+          .map((o) => ({
+            role: o.role,
+            sha256: o.sha256,
+            bytes: o.bytes,
+            key: o.key,
+            meta: o.meta,
+          })),
+      };
+    }),
+  };
+}
+
+/**
+ * `packRelease` for many releases of one pack in bounded queries (P4-09's pack page): one
+ * chunked `IN` per `IN_IDS` ids, keyed by release id. A release of another deliverable, or one
+ * whose record does not read back, is absent.
+ */
+export async function packReleasesMany(
+  db: Db,
+  product: string,
+  deliverableId: string,
+  releaseIds: readonly string[],
+): Promise<Map<string, CatalogPackRelease>> {
+  const out = new Map<string, CatalogPackRelease>();
+  for (const ids of chunked(releaseIds)) {
+    const rows = await db.all<PackRecordRow>(
+      `${PACK_RECORD_SELECT}
+        WHERE r.product = ? AND r.kind = 'pack'
+          AND r.release_id IN (${ids.map(() => "?").join(", ")})`,
+      product,
+      ...ids,
+    );
+    for (const row of rows) {
+      const found = foundOf(row);
+      if (found && found.release.deliverableId === deliverableId)
+        out.set(row.release_id, packReleaseView(found));
+    }
+  }
+  return out;
 }
 
 export function packCatalog(ctx: {
@@ -194,37 +267,7 @@ export function packCatalog(ctx: {
     async packRelease(deliverableId, releaseId) {
       const found = await packRecordOf(db, slug, releaseId);
       if (!found || found.release.deliverableId !== deliverableId) return null;
-      const { record } = found;
-      const objects = packObjects(record);
-      const out: CatalogPackRelease = {
-        release: found.release,
-        recordSha256: found.sha256,
-        type: record.type,
-        formatVersion: record.formatVersion,
-        entitlement: record.entitlement ?? null,
-        handler: record.handler ?? null,
-        variants: record.variants.map((v) => {
-          const buildId = variantBuildId(v.variant);
-          return {
-            variantKey: variantKey(v.variant),
-            buildId,
-            variant: v.variant,
-            payload: v.payload,
-            engine:
-              typeof v.requires?.engine === "string" ? v.requires.engine : null,
-            objects: objects
-              .filter((o) => o.buildId === buildId)
-              .map((o) => ({
-                role: o.role,
-                sha256: o.sha256,
-                bytes: o.bytes,
-                key: o.key,
-                meta: o.meta,
-              })),
-          };
-        }),
-      };
-      return out;
+      return packReleaseView(found);
     },
 
     async packFiles(releaseId, key): Promise<CatalogPackFile[] | null> {

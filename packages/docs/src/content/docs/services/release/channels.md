@@ -111,14 +111,17 @@ routes and answer no CORS.
 
 **Operators**, in the console (all under `/manage/api/products/<slug>/release/`):
 
-| Method and path                    | Does                                                                                                      |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `GET channels`                     | Every deliverable's channels, policies, sources, and what each resolves to now, overall and per platform. |
-| `PUT channels/<channel>`           | Set `pointer`, `pinned`, `minSupported`, `critical`.                                                      |
-| `POST channels/<channel>/revert`   | Hand the row back to the manifest.                                                                        |
-| `POST releases/<releaseId>/yank`   | Yank, with `reason`.                                                                                      |
-| `DELETE releases/<releaseId>/yank` | Lift the yank.                                                                                            |
-| `GET releases`                     | Releases with their builds, artifact roles, SHA-256s, locations and yank.                                 |
+| Method and path                                                  | Does                                                                                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `GET channels`                                                   | Every deliverable's channels, policies, sources, and what each resolves to now, overall and per platform.                      |
+| `PUT channels/<channel>`                                         | Set `pointer`, `pinned`, `minSupported`, `critical`.                                                                           |
+| `POST channels/<channel>/revert`                                 | Hand the row back to the manifest.                                                                                             |
+| `POST releases/<releaseId>/yank`                                 | Yank, with `reason`.                                                                                                           |
+| `DELETE releases/<releaseId>/yank`                               | Lift the yank.                                                                                                                 |
+| `GET releases`                                                   | App releases with their builds, artifact roles, SHA-256s, locations and yank, plus their pack pins.                            |
+| `GET deliverables`                                               | The app and every pack, with the declaration, gate and latest release ([Packs](/docs/services/release/packs/#in-the-console)). |
+| `GET deliverables/<id>/releases`                                 | A pack's releases and the app releases that pin each.                                                                          |
+| `GET deliverables/<id>/releases/<releaseId>/files?variant=<key>` | One variant's files, read from its files index ([Packs](/docs/services/release/packs/#in-the-console)).                        |
 
 Every change writes an audit row naming its actor (`admin` for the console session's subject,
 `ci:<subject>` for a CI token), and invalidates the product's cached resolutions. See
