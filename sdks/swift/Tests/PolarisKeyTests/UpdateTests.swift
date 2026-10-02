@@ -897,4 +897,48 @@ extension UpdateDecideTests {
         let givenOutlet = await given.outlet()
         XCTAssertEqual(givenOutlet, ResolvedOutlet(id: nil, kind: "steam", subkind: nil))
     }
+
+    func testTheHostsDetectedIsReportedWhenItsOutletWins() async throws {
+        let core = try await makeCore(
+            store: InMemoryStore(productSlug: "djdl", deviceId: "dev-1"), clock: ReplayClock(t0))
+        let steam = DetectedOutlet(kind: "steam", confidence: "declared")
+        let both = try UpdateClient(
+            core: core, options: detectingOptions(outlet: .kind("direct"), detected: steam, env: fakeMac()))
+        let bothOutlet = await both.outlet()
+        XCTAssertEqual(bothOutlet, ResolvedOutlet(id: "direct", kind: "direct", subkind: nil))
+        let bothDetected = await both.detected()
+        XCTAssertEqual(bothDetected, steam)
+    }
+
+    func testConcurrentCallsShareOneDetection() async throws {
+        let core = try await makeCore(
+            store: InMemoryStore(productSlug: "djdl", deviceId: "dev-1"), clock: ReplayClock(t0))
+        let reads = ReadCounter()
+        // An iOS environment whose AppDistributor read is slow, so the calls overlap.
+        let env = OutletReaderEnvironment(
+            platform: "ios", bundlePath: "/var/containers/Bundle/Application/X/Diceroll.app",
+            appDistributor: {
+                reads.increment()
+                try? await Task.sleep(for: .milliseconds(100))
+                return "other"
+            })
+        let client = try UpdateClient(core: core, options: detectingOptions(env: env))
+        async let first = client.outlet()
+        async let second = client.detected()
+        async let third = client.outlet()
+        let (a, b, c) = await (first, second, third)
+        XCTAssertNotNil(a)
+        XCTAssertNotNil(b)
+        XCTAssertEqual(a, c)
+        XCTAssertEqual(reads.value, 1)
+        _ = await client.outlet()
+        XCTAssertEqual(reads.value, 1)
+    }
+}
+
+private final class ReadCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func increment() { lock.lock(); count += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
 }

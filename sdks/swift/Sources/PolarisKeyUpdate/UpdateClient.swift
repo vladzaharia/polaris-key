@@ -240,8 +240,9 @@ public struct VersionCheck: Sendable, Equatable {
 public actor UpdateClient {
     private let core: CoreContext
     private let configured: ConfiguredUpdate?
-    /// The in-process detection, once it ran: never cached past this client (§2.9).
-    private var detection: (outlet: ResolvedOutlet, detected: DetectedOutlet?)?
+    /// The in-process detection, once started: never cached past this client (§2.9). The task,
+    /// not its result, so concurrent `decide()` / `outlet()` calls share one detection.
+    private var detection: Task<(outlet: ResolvedOutlet, detected: DetectedOutlet?), Never>?
     /// The v4 calls run one at a time: each is a read-modify-write of the cache slices, and the
     /// actor alone would let two interleave at their network awaits.
     private var tail: Task<Void, Never>?
@@ -268,27 +269,32 @@ public actor UpdateClient {
         return await resolvedOutlet(configured).outlet
     }
 
-    /// The detection result `outlet()` was resolved from (in-process, or the host's
-    /// `detected`); nil when the host named the outlet, turned detection off, or configured no
-    /// updates.
+    /// The detection result: the in-process one, or the host's `detected` as given (even when the
+    /// host's `outlet` wins); nil when the host passed no `detected` and named the outlet or
+    /// turned detection off, or configured no updates.
     public func detected() async -> DetectedOutlet? {
         guard let configured else { return nil }
         return await resolvedOutlet(configured).detected
     }
 
     private func resolvedOutlet(_ c: ConfiguredUpdate) async -> (outlet: ResolvedOutlet, detected: DetectedOutlet?) {
-        if let outlet = c.outlet { return (outlet, c.options.outlet == nil ? c.options.detected : nil) }
-        if let detection { return detection }
-        let stamp = detectionStamp(c.options.stamp)
-        let signals = await readOutletSignals(
-            c.options.outletEnvironment ?? .process(), outletIds: stamp?.outletIds ?? [:])
-        let detected = detectOutlet(stamp: stamp, signals: signals)
-        let outlet =
-            resolveUpdateOutlet(host: nil, stamp: c.options.stamp, detected: detected)
-            ?? ResolvedOutlet(id: nil, kind: OUTLET_UNKNOWN, subkind: nil)
-        let result = (outlet: outlet, detected: Optional(detected))
-        detection = result
-        return result
+        // The host's `detected` is reported as given, even when its `outlet` wins (as in Node and
+        // Python); nil when it passed none.
+        if let outlet = c.outlet { return (outlet, c.options.detected) }
+        if let detection { return await detection.value }
+        let options = c.options
+        let task = Task { () -> (outlet: ResolvedOutlet, detected: DetectedOutlet?) in
+            let stamp = detectionStamp(options.stamp)
+            let signals = await readOutletSignals(
+                options.outletEnvironment ?? .process(), outletIds: stamp?.outletIds ?? [:])
+            let detected = detectOutlet(stamp: stamp, signals: signals)
+            let outlet =
+                resolveUpdateOutlet(host: nil, stamp: options.stamp, detected: detected)
+                ?? ResolvedOutlet(id: nil, kind: OUTLET_UNKNOWN, subkind: nil)
+            return (outlet: outlet, detected: Optional(detected))
+        }
+        detection = task
+        return await task.value
     }
 
     /// `GET /<p>/update/version` — the newest build, and whether we are behind it.
