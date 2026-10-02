@@ -582,7 +582,7 @@ extension ConformanceTests {
     /// Steps 3–8 through `verifyFeed`, every case, with the same ids as the other runners.
     func testAllFeedCases() throws {
         let corpus = try v4Corpus()
-        XCTAssertEqual(corpus.feedCases.count, 77)
+        XCTAssertEqual(corpus.feedCases.count, 80)
         for c in corpus.feedCases {
             let r = verifyFeed(
                 c.jws,

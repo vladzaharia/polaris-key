@@ -25,7 +25,9 @@ import {
   runUpdateCheck,
   type FetchOutcome,
   type ResolvedOutlet,
+  type UpdateCheckContent,
   type UpdateCheckError,
+  type VerifiedRevocation,
 } from "@polaris-key/client-core";
 import { ERROR_CODE_VALUES } from "../constants.generated.js";
 import {
@@ -63,12 +65,20 @@ export interface BrowserDecideOptions extends UpdateDecideOptions {
   outlet: ResolvedOutlet;
   methods: readonly BinaryMethod[];
   cache: UpdateSlices;
+  /** The content decision's inputs (plans/P4-13.md §2.5): the page's pack facet's
+   *  `contentInput()`. Omitted: no content decision. */
+  content?: UpdateCheckContent;
 }
 
 export interface BrowserDecideResult {
   check: UpdateCheck;
   /** The slices to persist. */
   cache: Required<UpdateSlices>;
+  /** With `content`: the revocations to keep (`BrowserPacks.recordRevocations`). */
+  revocations?: {
+    learned: { revocation: VerifiedRevocation; jws: string }[];
+    relearnCleared: string[];
+  };
 }
 
 /** The transport's own code for a failed fetch: React's `network`, unless the Worker's answer
@@ -206,6 +216,7 @@ export async function decideBrowserUpdate(
     );
   const platform = o.installed.platform;
   const r = await runUpdateCheck({
+    ...(o.content ? { content: o.content } : {}),
     channel: o.channel ?? "stable",
     expectedAud: o.product,
     trust: o.trust,
@@ -232,7 +243,11 @@ export async function decideBrowserUpdate(
       ),
   });
   if (!r.ok) throw raise(r.error);
-  return { check: r.check, cache: r.cache };
+  return {
+    check: r.check,
+    cache: r.cache,
+    ...(r.revocations ? { revocations: r.revocations } : {}),
+  };
 }
 
 /**

@@ -552,6 +552,32 @@ describe("admin routes", () => {
     expect(yank?.n).toBe(0);
   });
 
+  it("refuses to lift the yank of a revoked release (a revocation is permanent, P4-13)", async () => {
+    const { env, db } = await setup();
+    await admin(env, db, "POST", "/releases/v1.1.0/yank", {
+      reason: "revoked",
+    });
+    await db.run(
+      `INSERT INTO release_revocations
+         (product, deliverable_id, target_release_id, target_sha256, record_sha256, kid, jws,
+          reason, issued_at, ingested_at)
+       VALUES (?, 'app', 'v1.1.0', ?, ?, 'k', 'jws', 'withdrawn', 1, 1)`,
+      SLUG,
+      "a".repeat(64),
+      "b".repeat(64),
+    );
+    const res = await admin(env, db, "DELETE", "/releases/v1.1.0/yank");
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { reason?: string }).reason).toBe(
+      "release_revoked",
+    );
+    const yank = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM release_yanks WHERE product = ? AND release_id = 'v1.1.0'",
+      SLUG,
+    );
+    expect(yank?.n).toBe(1);
+  });
+
   it("the releases read model carries builds, roles, hashes, locations and the yank", async () => {
     const { env, db } = await setup();
     await admin(env, db, "POST", "/releases/v1.0.0/yank", { reason: "old" });

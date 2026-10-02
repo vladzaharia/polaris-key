@@ -92,7 +92,7 @@ def test_content_corpus_has_every_section() -> None:
     assert len(_CONTENT["pathCases"]) == 18
     assert len(_CONTENT["filesIndexCases"]) == 15
     assert len(_CONTENT["packSetIdCases"]) == 7
-    assert len(_CONTENT["stampCases"]) == 6
+    assert len(_CONTENT["stampCases"]) == 10
     assert len(_CONTENT["frameWindowCases"]) == 13
     assert len(_CONTENT["applyCases"]) == 19
     assert _BACKENDS, "no zstd backend"
@@ -177,7 +177,10 @@ def test_pack_set_id_case(case: Dict[str, Any]) -> None:
 @pytest.mark.parametrize("case", _CONTENT["stampCases"], ids=[c["id"] for c in _CONTENT["stampCases"]])
 def test_stamp_case(case: Dict[str, Any]) -> None:
     got = parse_content_stamp(case["stamp"]).to_dict()
-    assert _canonical(got) == _canonical(case["expect"]), case["description"]
+    # `parse_content_stamp`'s result is unchanged by P4-13: `expect.holds`, where present, is
+    # `holdsOf` over the parsed stamp (plans/P4-13.md §2.4), which P4-23 ports and checks.
+    want = {k: v for k, v in case["expect"].items() if k != "holds"}
+    assert _canonical(got) == _canonical(want), case["description"]
 
 
 @pytest.mark.parametrize(

@@ -27,6 +27,8 @@
  * The composer's document is checked with `feedClaims` (the claims every v4 SDK runs) and
  * `scanStrictJson` before signing. A document that fails, or a per-platform document over the
  * 65 536-byte payload cap, is not signed: `500 feed_not_composable`. Every SDK would refuse it.
+ * P4-13's content members are checked with `feedContent` first and shed before the 500 in the
+ * fixed order of `documentFor`, so content alone never makes a feed uncomposable.
  *
  * ── access ──────────────────────────────────────────────────────────────────────────────────
  *
@@ -43,10 +45,13 @@ import { ISSUER, MAX_WIRE_INTEGER } from "@polaris-key/protocol/core";
 import {
   FEED_TTL_SECONDS,
   type ChannelFeedDoc,
+  type FeedPackFloor,
+  type FeedPackSets,
+  type FeedRevocation,
   type FeedTarget,
 } from "@polaris-key/protocol/update";
 import { scanStrictJson } from "@polaris-key/jws";
-import { feedClaims } from "@polaris-key/client-core/feed";
+import { feedClaims, feedContent } from "@polaris-key/client-core/feed";
 import type { ServiceContext } from "../../core/registry.js";
 import type { Db } from "../../core/platform.js";
 import { appSecurityHeaders } from "../../core/platform.js";
@@ -187,6 +192,19 @@ export function selectorKey(platform: string | null): string {
   return platform === null ? "" : `platform=${platform}`;
 }
 
+/** The content members one document carries (each absent when null). */
+export interface FeedContentPart {
+  packSets: FeedPackSets | null;
+  packFloors: FeedPackFloor[] | null;
+  revocations: FeedRevocation[] | null;
+}
+
+const NO_CONTENT: FeedContentPart = {
+  packSets: null,
+  packFloors: null,
+  revocations: null,
+};
+
 function feedPayload(
   product: string,
   composed: ComposedFeed,
@@ -194,6 +212,7 @@ function feedPayload(
   targets: FeedTarget[],
   seq: number,
   now: number,
+  content: FeedContentPart = NO_CONTENT,
 ): ChannelFeedDoc {
   return {
     schemaVersion: 1,
@@ -209,6 +228,9 @@ function feedPayload(
       versionScheme: composed.versionScheme,
       targets,
     },
+    ...(content.packSets ? { packSets: content.packSets } : {}),
+    ...(content.packFloors ? { packFloors: content.packFloors } : {}),
+    ...(content.revocations ? { revocations: content.revocations } : {}),
   };
 }
 
@@ -232,28 +254,144 @@ export function feedSelfCheck(
   );
 }
 
-/** The document to sign for a request: the channel-wide one while it fits, else the platform's. */
-function documentFor(
+const fits = (doc: ChannelFeedDoc): boolean =>
+  enc.encode(JSON.stringify(doc)).byteLength <= MAX_FEED_PAYLOAD_BYTES;
+
+/** One audit row a signing owes (P4-13's content shedding and omissions). */
+export interface FeedAudit {
+  action: string;
+  summary: string;
+}
+
+/**
+ * Keep only the content members client-core's `feedContent` reads as usable (the same parser every
+ * v4 SDK runs); one that would read as unusable is omitted and audited, never signed.
+ */
+function usableContent(
+  doc: ChannelFeedDoc,
+  audits: FeedAudit[],
+): ChannelFeedDoc {
+  const parsed = feedContent(JSON.parse(JSON.stringify(doc)) as unknown);
+  const out = { ...doc };
+  for (const key of ["packSets", "packFloors", "revocations"] as const)
+    if (out[key] !== undefined && parsed[key] === null) {
+      delete out[key];
+      audits.push({
+        action:
+          key === "packSets"
+            ? "update.feed.packs_omitted"
+            : key === "packFloors"
+              ? "update.feed.floors_omitted"
+              : "update.feed.revocations_omitted",
+        summary: `The ${doc.channel} feed's ${key} would read as unusable (feedContent) and was left out.`,
+      });
+    }
+  return out;
+}
+
+/** The per-platform content part: its rows, only the sets and releases they reference, every
+ *  floor and revocation, and the outlets of its own target. */
+function platformContent(
+  content: FeedContentPart,
+  platform: string,
+  target: FeedTarget | undefined,
+): FeedContentPart {
+  let packSets: FeedPackSets | null = null;
+  if (content.packSets) {
+    const rows = content.packSets.rows.filter((r) => r.platform === platform);
+    if (rows.length > 0) {
+      const sets: FeedPackSets["sets"] = {};
+      const releases: FeedPackSets["releases"] = {};
+      for (const r of rows) {
+        const members = content.packSets.sets[r.set] ?? [];
+        sets[r.set] = members;
+        for (const h of members) releases[h] = content.packSets.releases[h]!;
+      }
+      packSets = { releases, sets, rows };
+      const outlets: NonNullable<FeedPackSets["outlets"]> = {};
+      for (const [id, o] of Object.entries(content.packSets.outlets ?? {}))
+        if (target && Object.hasOwn(target.outlets, id)) outlets[id] = o;
+      if (Object.keys(outlets).length > 0) packSets.outlets = outlets;
+    }
+  }
+  return {
+    packSets,
+    packFloors: content.packFloors,
+    revocations: content.revocations,
+  };
+}
+
+/**
+ * The document to sign for a request (plans/P4-13.md §6.3, decision 13): the channel-wide one while
+ * it fits; else the platform's; and when that is still over the cap, content is shed in a fixed
+ * order, re-measuring after each step and auditing each: 1. omit `packSets` (devices keep their
+ * content), 2. omit `packFloors`, 3. keep only the referenced revocations, 4. omit `revocations`
+ * (devices keep what they stored). With all three gone the document is P3-03's, so content can
+ * never cause `feed_not_composable` on its own. `audits` is what a signing of it owes.
+ */
+export function documentFor(
   product: string,
   composed: ComposedFeed,
   platform: string,
   seq: number,
   now: number,
-): { doc: ChannelFeedDoc; platform: string | null } {
-  const wide = feedPayload(product, composed, null, composed.targets, seq, now);
-  if (enc.encode(JSON.stringify(wide)).byteLength <= MAX_FEED_PAYLOAD_BYTES)
-    return { doc: wide, platform: null };
-  return {
-    doc: feedPayload(
-      product,
-      composed,
-      platform,
-      composed.targets.filter((t) => t.platform === platform),
-      seq,
-      now,
-    ),
-    platform,
+): { doc: ChannelFeedDoc; platform: string | null; audits: FeedAudit[] } {
+  const audits: FeedAudit[] = [...composed.content.audits];
+  const content: FeedContentPart = {
+    packSets: composed.content.packSets,
+    packFloors: composed.content.packFloors,
+    revocations: composed.content.revocations,
   };
+  const wide = usableContent(
+    feedPayload(product, composed, null, composed.targets, seq, now, content),
+    audits,
+  );
+  if (fits(wide)) return { doc: wide, platform: null, audits };
+  const targets = composed.targets.filter((t) => t.platform === platform);
+  const part = platformContent(content, platform, targets[0]);
+  const build = (): ChannelFeedDoc =>
+    usableContent(
+      feedPayload(product, composed, platform, targets, seq, now, part),
+      audits,
+    );
+  let doc = build();
+  const shed = (action: string, summary: string): void => {
+    audits.push({ action, summary });
+    doc = build();
+  };
+  if (!fits(doc) && part.packSets) {
+    part.packSets = null;
+    shed(
+      "update.feed.packs_omitted",
+      `The ${composed.channel} feed for ${platform} is over ${MAX_FEED_PAYLOAD_BYTES} bytes; packSets was left out.`,
+    );
+  }
+  if (!fits(doc) && part.packFloors) {
+    part.packFloors = null;
+    shed(
+      "update.feed.floors_omitted",
+      `The ${composed.channel} feed for ${platform} is over ${MAX_FEED_PAYLOAD_BYTES} bytes; packFloors was left out.`,
+    );
+  }
+  if (!fits(doc) && part.revocations) {
+    const referenced = composed.content.referenced;
+    const kept = part.revocations.filter((r) => referenced.has(r.record));
+    if (kept.length < part.revocations.length) {
+      part.revocations = kept.length > 0 ? kept : null;
+      shed(
+        "update.feed.revocations_trimmed",
+        `The ${composed.channel} feed for ${platform} is over ${MAX_FEED_PAYLOAD_BYTES} bytes; only the referenced revocations were kept.`,
+      );
+    }
+  }
+  if (!fits(doc) && part.revocations) {
+    part.revocations = null;
+    shed(
+      "update.feed.revocations_omitted",
+      `The ${composed.channel} feed for ${platform} is over ${MAX_FEED_PAYLOAD_BYTES} bytes; revocations was left out (devices keep the revocations they stored).`,
+    );
+  }
+  return { doc, platform, audits };
 }
 
 function notComposable(): Response {
@@ -338,11 +476,17 @@ export async function handleFeedRoute(
     }
   }
 
+  // The content members join the hash only when present, so a product without content keeps
+  // the hash (and the seq) it had before P4-13.
+  const c = composed.content;
   const contentSha256 = await sha256Hex(
     canonicalDescriptorJson({
       channel: composed.channel,
       versionScheme: composed.versionScheme,
       targets: composed.targets,
+      ...(c.packSets ? { packSets: c.packSets } : {}),
+      ...(c.packFloors ? { packFloors: c.packFloors } : {}),
+      ...(c.revocations ? { revocations: c.revocations } : {}),
     }),
   );
   const state = await feedSeqFor(
@@ -391,6 +535,20 @@ export async function handleFeedRoute(
     jws = stored.jws;
   } else {
     if (!feedSelfCheck(probe.doc, probe.platform)) return notComposable();
+    for (const a of probe.audits)
+      await appendAudit(db, {
+        product: product.slug,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: "system:update-feed",
+        actor_name: "Update feed",
+        actor_email: null,
+        action: a.action,
+        target_kind: "channel",
+        target_id: composed.channel,
+        parent_id: null,
+        summary: a.summary,
+      });
     jws = await signDoc(
       probe.doc,
       product.signingKeyPem,

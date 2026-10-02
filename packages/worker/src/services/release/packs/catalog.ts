@@ -25,6 +25,7 @@ import type {
   CatalogPackRelease,
   CatalogPin,
   CatalogRelease,
+  CatalogRevocation,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
@@ -39,6 +40,7 @@ import type { Db, Env } from "../../../core/platform.js";
 import { blobKey } from "../../../core/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
 import { packObjects, storedRecordPayload, variantBuildId } from "./ingest.js";
+import { readRevocations } from "./revocations.js";
 
 type PackCatalog = Pick<
   ReleaseCatalog,
@@ -55,6 +57,7 @@ type PackCatalog = Pick<
   | "heldBy"
   | "pinnedByMany"
   | "embedsOf"
+  | "revocations"
 >;
 
 interface HoldRow {
@@ -463,6 +466,10 @@ export function packCatalog(ctx: {
       return out.sort(
         (a, b) => cmp(a.releaseId, b.releaseId) || cmp(a.buildId, b.buildId),
       );
+    },
+
+    async revocations(): Promise<CatalogRevocation[]> {
+      return readRevocations(db, slug);
     },
   };
 }

@@ -84,8 +84,16 @@
     },
     {
       "name": "updateAction",
-      "description": "The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8). `packs` is reserved for P4-01 and not listed.",
-      "values": ["none", "code-ready", "binary", "store", "platform", "blocked"]
+      "description": "The update decision's action (`UPDATE_ACTIONS`, plans/P3-01.md §2.8; `packs` added by plans/P4-13.md §2.6).",
+      "values": [
+        "none",
+        "code-ready",
+        "binary",
+        "store",
+        "platform",
+        "blocked",
+        "packs"
+      ]
     },
     {
       "name": "updateNoneReason",
@@ -105,8 +113,8 @@
     },
     {
       "name": "updateBlockedReason",
-      "description": "Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8). `content-floor` and `revoked-content` are reserved for P4-13 and not listed.",
-      "values": ["app-floor"]
+      "description": "Why the update decision is `blocked` (`BLOCKED_REASONS`, plans/P3-01.md §2.8; `content-floor` and `revoked-content` added by plans/P4-13.md §2.6).",
+      "values": ["app-floor", "content-floor", "revoked-content"]
     },
     {
       "name": "binaryMethod",

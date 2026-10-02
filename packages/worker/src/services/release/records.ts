@@ -33,7 +33,11 @@ import {
   type ManifestReleaseKey,
   type ReleaseDescriptor,
 } from "@polaris-key/manifest";
-import { base64UrlDecode, verifyJws } from "@polaris-key/jws";
+import {
+  base64UrlDecode,
+  verifyJws,
+  type NonWireIntegers,
+} from "@polaris-key/jws";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { releaseRecordClaims } from "@polaris-key/client-core/record";
@@ -83,7 +87,15 @@ export type RecordRefusalReason =
   | "hold-requires"
   | "hold-unsatisfiable"
   | "content-unsatisfied"
-  | "pack-channels-conflict";
+  | "pack-channels-conflict"
+  // P4-13: revocation records (plans/P4-13.md §6.2) and pins or holds of a revoked release.
+  | "revocation-body"
+  | "revocation-target"
+  | "revocation-stale"
+  | "revocation-replacement"
+  | "revocation-replacement-incompatible"
+  | "pin-revoked"
+  | "hold-revoked";
 
 export type RecordCheck =
   | {
@@ -314,6 +326,8 @@ export type VerifiedRecordJws =
       payload: Record<string, unknown>;
       kid: string;
       jws: string;
+      /** The verifier's non-wire integer pointers (`revocationOf` reads them, P4-13). */
+      nonWireIntegers: NonWireIntegers;
     }
   | { ok: false; reason: RecordRefusalReason; message: string };
 
@@ -391,6 +405,7 @@ export async function verifyRecordJws(
     payload: verified.payload as Record<string, unknown>,
     kid,
     jws,
+    nonWireIntegers: verified.nonWireIntegers,
   };
 }
 
@@ -500,14 +515,27 @@ export function stmtInsertReleaseRecord(r: {
   };
 }
 
-/** The record stored under a hash, or null. */
+/** The record stored under a hash, or null. A current revocation record (P4-13,
+ *  `release_revocations`) reads back as a row of `kind: revocation` naming its target's release. */
 export async function getRecordByHash(
   db: Db,
   product: string,
   sha256: string,
 ): Promise<ReleaseRecordRow | null> {
-  return db.first<ReleaseRecordRow>(
+  const row = await db.first<ReleaseRecordRow>(
     "SELECT * FROM release_records WHERE product = ? AND record_sha256 = ?",
+    product,
+    sha256,
+  );
+  if (row) return row;
+  return db.first<ReleaseRecordRow>(
+    `SELECT v.product, v.deliverable_id, v.target_release_id AS release_id,
+            COALESCE(m.seq, 0) AS seq, 'revocation' AS kind, v.record_sha256, v.kid, v.jws,
+            v.ingested_at
+       FROM release_revocations v
+       LEFT JOIN release_metadata m
+         ON m.product = v.product AND m.release_id = v.target_release_id
+      WHERE v.product = ? AND v.record_sha256 = ?`,
     product,
     sha256,
   );

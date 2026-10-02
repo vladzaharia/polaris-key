@@ -147,7 +147,7 @@ async function settle<T>(p: Promise<T>): Promise<T | UpdateError> {
 
 describe(`feedCases through client.update.feed() (${corpus.feedCases.length})`, () => {
   it("has every feed case of plans/P3-01.md §4.4", () => {
-    expect(corpus.feedCases.length).toBe(77);
+    expect(corpus.feedCases.length).toBe(80);
   });
 
   for (const c of corpus.feedCases) {

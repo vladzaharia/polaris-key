@@ -104,6 +104,7 @@
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
+    "update.content": { "status": "planned", "wp": "P4-24" },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],
@@ -121,6 +122,7 @@
       "status": "implemented",
       "note": "P4-08: core/release_record.gd applies the pack claims and pin.kind (PKeyPackClaims), packs/marker.gd verifies embedded-pack markers; the packs suite drives every packRecordCases and markerCases vector, the content stamps and packSetIdCases."
     },
+    "packs.revoke": { "status": "planned", "wp": "P4-24" },
     "packs.plan": {
       "status": "implemented",
       "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json row, variant case and target case on the editor and the release template."

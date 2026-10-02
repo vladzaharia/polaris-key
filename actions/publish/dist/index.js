@@ -11142,7 +11142,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-X4RC53VQ.js
+// ../shared-protocol/dist/chunk-E7KJYQFL.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MAX_JSON_DEPTH = 64;
 var MAX_RECORD_JWS_BYTES = 88844;
@@ -11157,6 +11157,7 @@ var FILES_FORMAT = "pkey-files/1";
 var PATCH_FORMAT = "pkey-patch/1";
 var MARKER_FORMAT = "pkey-marker/1";
 var CONTENT_STAMP_FORMAT = "pkey-content/1";
+var REVOCATION_REASON_MAX_BYTES = 512;
 var FINGERPRINT_TOLERANCE = {
   off: Number.POSITIVE_INFINITY,
   lenient: 4,
@@ -11271,7 +11272,7 @@ var OUTLET_CAPABILITY_DEFAULTS = {
 // ../shared-protocol/dist/release.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-U3NRTC2B.js
+// ../shared-protocol/dist/chunk-2FII4NNE.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
@@ -18222,6 +18223,51 @@ function contentClaims(value, opts = {}) {
     return false;
   }
 }
+function holdsOf(content, nonWire = NO_NON_WIRE_INTEGERS, pointer = "/content") {
+  try {
+    if (!isObject(content))
+      return null;
+    if (!has(content, "holds"))
+      return [];
+    const holds = content.holds;
+    if (!Array.isArray(holds) || holds.length > MAX_CONTENT_PINS)
+      return null;
+    const pinned = /* @__PURE__ */ new Set();
+    if (Array.isArray(content.pins)) {
+      for (const p of content.pins)
+        if (isObject(p) && typeof p.pack === "string")
+          pinned.add(p.pack);
+    }
+    const seen = /* @__PURE__ */ new Set();
+    const out = [];
+    for (const [i, h] of holds.entries()) {
+      if (!isObject(h) || !isPackId(h.pack))
+        return null;
+      if (seen.has(h.pack) || pinned.has(h.pack))
+        return null;
+      seen.add(h.pack);
+      const r = h.release;
+      if (!isObject(r))
+        return null;
+      if (typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256))
+        return null;
+      if (!isWireInteger(r.seq, `${pointer}/holds/${i}/release/seq`, 1, nonWire))
+        return null;
+      if (typeof r.version !== "string" || !VERSION_RE2.test(r.version))
+        return null;
+      if (has(h, "reason") && typeof h.reason !== "string")
+        return null;
+      out.push({
+        pack: h.pack,
+        release: { sha256: r.sha256, seq: r.seq, version: r.version },
+        ...has(h, "reason") ? { reason: h.reason } : {}
+      });
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
 
 // ../client-core/dist/packs/variant.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -18489,6 +18535,48 @@ function releaseRecordClaims(payload, opts) {
     return claimsOk(payload, opts, opts.nonWire ?? NO_NON_WIRE_INTEGERS);
   } catch {
     return false;
+  }
+}
+function revocationOf(doc, nonWire = NO_NON_WIRE_INTEGERS) {
+  try {
+    if (!isObject2(doc) || doc.kind !== "revocation")
+      return null;
+    if (!isPackId(doc.deliverable))
+      return null;
+    if (typeof doc.revokes !== "string" || !SHA256_RE3.test(doc.revokes))
+      return null;
+    let replacement = null;
+    if (has2(doc, "replacement")) {
+      const r = doc.replacement;
+      if (!isObject2(r))
+        return null;
+      if (typeof r.sha256 !== "string" || !SHA256_RE3.test(r.sha256))
+        return null;
+      if (r.sha256 === doc.revokes)
+        return null;
+      if (!isWireInteger(r.seq, "/replacement/seq", 1, nonWire))
+        return null;
+      if (typeof r.version !== "string" || !VERSION_RE3.test(r.version))
+        return null;
+      replacement = { sha256: r.sha256, seq: r.seq, version: r.version };
+    }
+    const reason = doc.reason;
+    if (typeof reason !== "string")
+      return null;
+    const bytes = utf8Length(reason);
+    if (bytes < 1 || bytes > REVOCATION_REASON_MAX_BYTES)
+      return null;
+    if (typeof doc.issuedAt !== "number")
+      return null;
+    return {
+      pack: doc.deliverable,
+      target: doc.revokes,
+      replacement,
+      reason,
+      issuedAt: doc.issuedAt
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -19474,7 +19562,7 @@ function noiseReport(base, target) {
 }
 
 // src/contentStamp.ts
-var CONTENT_STAMP_USAGE = "Usage: pkey release content-stamp --product <slug> --out <file> [--embedded <dir>] [--pin <packId>@<version> ...] [--base-url <url>]";
+var CONTENT_STAMP_USAGE = "Usage: pkey release content-stamp --product <slug> --out <file> [--embedded <dir>] [--pin <packId>@<version> ...] [--hold <packId>@<version>[=<reason>] ...] [--base-url <url>]";
 var VERSION_RE4 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 async function findMarkers(dir) {
   const out = [];
@@ -19552,22 +19640,34 @@ async function readMarker(file, ctx) {
     record
   };
 }
-function parsePinFlag(value) {
+function parsePinFlag(value, flag = "--pin") {
   const at = value.lastIndexOf("@");
   const pack = value.slice(0, at);
   const version = value.slice(at + 1);
   if (at < 1 || !isPackId(pack) || !VERSION_RE4.test(version))
-    throw new Error(`--pin ${value} must be <packId>@<version>.`);
+    throw new Error(`${flag} ${value} must be <packId>@<version>.`);
   return { pack, version };
 }
-async function resolvePins(client, flags) {
+function parseHoldFlag(value) {
+  const eq = value.indexOf("=");
+  const spec = eq < 0 ? value : value.slice(0, eq);
+  const { pack, version } = parsePinFlag(spec, "--hold");
+  if (eq < 0) return { pack, version };
+  const reason = value.slice(eq + 1);
+  if (reason === "" || reason.length > MAX_HOLD_REASON)
+    throw new Error(
+      `--hold ${value}: the reason after "=" must be 1–${MAX_HOLD_REASON} characters.`
+    );
+  return { pack, version, reason };
+}
+async function resolvePins(client, flags, flag = "--pin") {
   if (flags.length === 0) return [];
-  const wanted = flags.map(parsePinFlag);
+  const wanted = flags.map((f) => parsePinFlag(f, flag));
   const out = [];
   for (let i = 0; i < wanted.length; i += 16) {
     const slice = wanted.slice(i, i + 16);
     const answer = await client.postJson("release/publish/uploads", {
-      what: "Resolving --pin through Polaris Key",
+      what: `Resolving ${flag} through Polaris Key`,
       body: {
         releases: slice.map((w) => ({
           deliverable: w.pack,
@@ -19581,16 +19681,52 @@ async function resolvePins(client, flags) {
       );
       if (!s?.recordSha256)
         throw new Error(
-          `--pin ${w.pack}@${w.version}: Polaris Key stores no record for that pack release (publish it first).`
+          `${flag} ${w.pack}@${w.version}: Polaris Key stores no record for that pack release (publish it first).`
         );
       out.push({
         pack: w.pack,
         release: { sha256: s.recordSha256, seq: s.seq, version: w.version },
-        source: "--pin"
+        source: flag
       });
     }
   }
   return out;
+}
+async function resolveHolds(client, flags, packs, pins) {
+  if (flags.length === 0) return [];
+  const parsed = flags.map(parseHoldFlag);
+  const seen = /* @__PURE__ */ new Set();
+  const pinned = new Set(pins.map((p) => p.pack));
+  const decl = new Map(packs.map((p) => [p.id, p]));
+  for (const h of parsed) {
+    if (seen.has(h.pack))
+      throw new Error(`--hold ${h.pack} is given twice; hold a pack once.`);
+    seen.add(h.pack);
+    if (pinned.has(h.pack))
+      throw new Error(
+        `--hold ${h.pack}: this release pins ${h.pack}, and a pinned pack is never held.`
+      );
+    const d = decl.get(h.pack);
+    if (!d)
+      throw new Error(`--hold ${h.pack} is not a pack .pkey/release declares.`);
+    if (d.binding !== "compatible")
+      throw new Error(
+        `--hold ${h.pack}: its binding is ${d.binding}; a hold keeps a compatible pack at one release.`
+      );
+  }
+  const resolved = await resolvePins(
+    client,
+    parsed.map((h) => `${h.pack}@${h.version}`),
+    "--hold"
+  );
+  return parsed.map((h) => {
+    const r = resolved.find((x) => x.pack === h.pack);
+    return {
+      pack: h.pack,
+      release: { ...r.release },
+      ...h.reason !== void 0 ? { reason: h.reason } : {}
+    };
+  }).sort((a, b) => a.pack < b.pack ? -1 : a.pack > b.pack ? 1 : 0);
 }
 function mergePins(pins) {
   const by = /* @__PURE__ */ new Map();
@@ -19666,19 +19802,20 @@ function contentRuleProblems(content, contentApi, packs, embeds = {}) {
   return problems;
 }
 function stampText(content) {
-  const text = `${JSON.stringify(
-    {
-      format: CONTENT_STAMP_FORMAT,
-      contentApi: content.contentApi,
-      pins: content.pins,
-      expects: content.expects
-    },
-    null,
-    2
-  )}
+  const holds = content.holds ?? [];
+  const doc = {
+    format: CONTENT_STAMP_FORMAT,
+    contentApi: content.contentApi,
+    pins: content.pins,
+    expects: content.expects,
+    ...holds.length > 0 ? { holds } : {}
+  };
+  const text = `${JSON.stringify(doc, null, 2)}
 `;
   if (!parseContentStamp(text).ok)
     throw new Error("Self-check: the content stamp fails parseContentStamp.");
+  if (JSON.stringify(holdsOf(JSON.parse(text), void 0, "")) !== JSON.stringify(holds))
+    throw new Error("Self-check: the content stamp's holds fail holdsOf.");
   return text;
 }
 async function readContentStamp(file) {
@@ -19693,7 +19830,17 @@ async function readContentStamp(file) {
     throw new Error(
       `--content-stamp ${file} is not a valid ${CONTENT_STAMP_FORMAT} stamp (content-stamp-invalid).`
     );
-  return parsed.content;
+  const scan = scanStrictJson(new TextDecoder().decode(bytes));
+  const holds = holdsOf(
+    JSON.parse(new TextDecoder().decode(bytes)),
+    scan.ok ? scan.nonWireIntegers : void 0,
+    ""
+  );
+  if (holds === null)
+    throw new Error(
+      `--content-stamp ${file}: its holds are malformed (each {pack, release {sha256, seq, version}, reason?}, never a pinned pack).`
+    );
+  return holds.length > 0 ? { ...parsed.content, holds } : parsed.content;
 }
 async function markerPins(dir, ctx) {
   const pins = [];
@@ -19715,6 +19862,11 @@ function describeContent(out, content, pins) {
 `
     );
   }
+  for (const h of content.holds ?? [])
+    out.write(
+      `  hold ${h.pack}@${h.release.version} (seq ${h.release.seq}, record ${h.release.sha256.slice(0, 12)}…)${h.reason !== void 0 ? ` — ${h.reason}` : ""}
+`
+    );
 }
 async function writeContentStampFile(opts) {
   const loaded = await loadManifest(opts.cwd);
@@ -19746,7 +19898,8 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
         releaseKeys: ctx.releaseKeys
       })
     );
-  if (opts.pins?.length) {
+  let client = null;
+  if (opts.pins?.length || opts.holds?.length) {
     const token = await resolveCiToken({
       baseUrl: opts.baseUrl,
       product: opts.product,
@@ -19756,7 +19909,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep
     });
-    const client = ciClient({
+    client = ciClient({
       baseUrl: opts.baseUrl,
       product: opts.product,
       token,
@@ -19765,10 +19918,14 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       log: opts.stderr
     });
     await requirePacksDiscovery(client, opts.fetchImpl);
-    pins.push(...await resolvePins(client, opts.pins));
+    pins.push(...await resolvePins(client, opts.pins ?? []));
   }
   const merged = mergePins(pins);
   const content = contentFor(contentApi, ctx.packs, merged);
+  if (client && opts.holds?.length) {
+    const holds = await resolveHolds(client, opts.holds, ctx.packs, merged);
+    if (holds.length > 0) content.holds = holds;
+  }
   const problems = contentRuleProblems(content, contentApi, ctx.packs);
   if (problems.length)
     throw new Error(
@@ -21552,6 +21709,167 @@ ${objectCount} distinct objects
 `);
 }
 
+// src/revoke.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var REVOKE_USAGE = "Usage: pkey release revoke <packId>@<version> --reason <text> --product <slug> [--replacement <version>] [--release-key-file pem] [--base-url <url>] [--dry-run]";
+async function requireRevocationsDiscovery(client, fetchImpl = fetch) {
+  const url = client.url(".well-known/polaris.json");
+  let body = {};
+  try {
+    const res = await fetchImpl(url, {
+      headers: { accept: "application/json" }
+    });
+    if (res.ok) body = await res.json();
+  } catch {
+  }
+  if (body.services?.release?.revocations !== true)
+    throw new Error(
+      `${url} does not advertise release.revocations: this Polaris Key does not ingest revocation records yet (it predates P4-13). Nothing was signed or submitted.`
+    );
+}
+function checkReason(reason) {
+  const bytes = new TextEncoder().encode(reason).byteLength;
+  if (bytes < 1 || bytes > REVOCATION_REASON_MAX_BYTES)
+    throw new Error(
+      `--reason must be 1–${REVOCATION_REASON_MAX_BYTES} bytes (got ${bytes}).`
+    );
+}
+function revocationRecord(o) {
+  if (o.replacement && o.replacement.sha256 === o.target.sha256)
+    throw new Error(
+      "--replacement names the revoked release itself; a replacement is another release."
+    );
+  return {
+    schemaVersion: 1,
+    aud: o.product,
+    deliverable: o.pack,
+    kind: "revocation",
+    version: o.target.version,
+    seq: o.target.seq,
+    issuedAt: o.issuedAt,
+    revokes: o.target.sha256,
+    ...o.replacement ? {
+      replacement: {
+        sha256: o.replacement.sha256,
+        seq: o.replacement.seq,
+        version: o.replacement.version
+      }
+    } : {},
+    reason: o.reason
+  };
+}
+async function checkSignedRevocation(jws, record, trust) {
+  const v = await verifyJws(jws, trust, { typ: "pkey-release+jws" });
+  if (!v)
+    throw new Error(
+      "The signed revocation does not verify against .pkey/release's releaseKeys; nothing was submitted."
+    );
+  if (!releaseRecordClaims(v.payload, {
+    expectedAud: record.aud,
+    nonWire: v.nonWireIntegers
+  }))
+    throw new Error(
+      "The revocation fails the v4 record claims (WIRE-CONTRACT-V4 §2.4); nothing was submitted."
+    );
+  const body = revocationOf(v.payload, v.nonWireIntegers);
+  if (body === null || body.target !== record.revokes || JSON.stringify(v.payload) !== JSON.stringify(record))
+    throw new Error(
+      "The signed revocation is not a usable revocation body (plans/P4-13.md §2.3); nothing was submitted."
+    );
+}
+async function revokePackRelease(opts) {
+  const out = opts.stdout;
+  const { pack, version } = parsePinFlag(opts.target, "revoke");
+  if (opts.replacement !== void 0)
+    parsePinFlag(`${pack}@${opts.replacement}`, "--replacement");
+  if (opts.replacement === version)
+    throw new Error(
+      "--replacement names the revoked release itself; a replacement is another release."
+    );
+  checkReason(opts.reason);
+  const loaded = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded);
+  if (!validation.ok)
+    throw new Error(
+      `.pkey/ is invalid; run pkey validate:
+${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
+    );
+  const ctx = packContext(loaded);
+  if (ctx.slug !== opts.product)
+    throw new Error(
+      `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
+    );
+  if (!ctx.packs.some((p) => p.id === pack))
+    throw new Error(
+      `${pack} is not a pack .pkey/release declares; only a pack release can be revoked (an app build is retired by License's compatibility window).`
+    );
+  const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
+  const sign = opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
+  if (!sign)
+    throw new Error(
+      `A revocation is a signed release record: set ${RELEASE_KEY_ENV} (the release key pkey release publish uses) or --release-key-file.`
+    );
+  const token = await resolveCiToken({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    env: opts.env,
+    out,
+    log: opts.stderr,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep
+  });
+  const client = ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    token,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.stderr
+  });
+  await requireRevocationsDiscovery(client, opts.fetchImpl);
+  const flags = [`${pack}@${version}`];
+  if (opts.replacement !== void 0) flags.push(`${pack}@${opts.replacement}`);
+  const [target, replacement] = await resolvePins(client, flags, "revoke");
+  const record = revocationRecord({
+    product: opts.product,
+    pack,
+    target: target.release,
+    ...replacement ? { replacement: replacement.release } : {},
+    reason: opts.reason,
+    issuedAt: opts.now ? opts.now() : Math.floor(Date.now() / 1e3)
+  });
+  const jws = await sign(record);
+  const trust = {};
+  for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
+  if (!opts.signRecord) await checkSignedRevocation(jws, record, trust);
+  const sha2564 = sha256Hex2(jws);
+  out.write(
+    `Revocation of ${pack}@${version} (seq ${record.seq}, record ${record.revokes.slice(0, 12)}…)${record.replacement ? `, replacement ${record.replacement.version} (seq ${record.replacement.seq})` : ", no replacement"}
+Signed the revocation record (sha256 ${sha2564})
+`
+  );
+  if (opts.dryRun) {
+    out.write(
+      `
+Revocation record:
+${JSON.stringify(record, null, 2)}
+${jws}
+`
+    );
+    out.write("Dry run: nothing submitted.\n");
+    return { record, jws, sha256: sha2564, server: null };
+  }
+  const server = await client.postJson(
+    "release/publish/submit",
+    { what: "Submitting the revocation record", body: { record: jws } }
+  );
+  out.write(
+    `Revoked ${pack}@${version} (${String(server.outcome ?? "submitted")})
+`
+  );
+  return { record, jws, sha256: sha2564, server };
+}
+
 // src/distribution.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DISTRIBUTION_CI_USAGE = "Usage: pkey distribution report availability --product <slug> --outlet <id> (--release <id> | --version <v> [--deliverable id])\n              [--build <id>] --state <state> [--since <epoch>] [--platform-ref <json>] [--detail <json>]\n       pkey distribution report submission --product <slug> --outlet <id> (--release <id> | --version <v> [--deliverable id])\n              --state <state> [--since <epoch>] [--detail <json>]\n       pkey distribution report key --product <slug> --purpose <purpose> --sha256 <hex> [--outlet <id>]\n       pkey distribution rollout --product <slug> --outlet <id> --channel <c> --release <id> --bp <0-10000> [--deliverable id]\n       pkey distribution pause|resume|halt|complete --product <slug> --outlet <id> --channel <c> [--release <id>] [--deliverable id]";
@@ -22748,6 +23066,10 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
     case "content-stamp": {
       if (parsed.bare.has("pin"))
         throw new Error("--pin needs a value: --pin <packId>@<version>.");
+      if (parsed.bare.has("hold"))
+        throw new Error(
+          "--hold needs a value: --hold <packId>@<version>[=<reason>]."
+        );
       const outFile = flagString(parsed, "out");
       if (!product || !outFile) throw new Error(CONTENT_STAMP_USAGE);
       await writeContentStampFile({
@@ -22756,7 +23078,27 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         product,
         out: outFile,
         embedded: flagString(parsed, "embedded"),
-        pins: parsed.multi["pin"] ?? []
+        pins: parsed.multi["pin"] ?? [],
+        holds: parsed.multi["hold"] ?? []
+      });
+      return 0;
+    }
+    case "revoke": {
+      const reason = flagString(parsed, "reason");
+      if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile8(
+        path9.resolve(cwd, flagString(parsed, "release-key-file")),
+        "utf8"
+      ) : void 0;
+      await revokePackRelease({
+        ...common,
+        cwd,
+        product,
+        target: releaseId,
+        replacement: flagString(parsed, "replacement"),
+        reason,
+        dryRun: flagBool(parsed, "dry-run"),
+        ...releaseKeyPem !== void 0 ? { releaseKeyPem } : {}
       });
       return 0;
     }
@@ -22881,7 +23223,9 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey release publish --product slug --version v --dir path --deliverable packId
               [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
   pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
-              [--pin packId@version ...] [--base-url url]
+              [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
+  pkey release revoke packId@version --reason text --product slug [--replacement version]
+              [--release-key-file pem] [--base-url url] [--dry-run]
   pkey release keys generate --kid kid --out file [--force]
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
@@ -22915,6 +23259,12 @@ project.binary and the class cache, linted, indexed (pkey-files/1), with a full 
 blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH); it
 signs the pack record, uploads in stage rounds, submits it, and writes a marker beside each
 payload. --out keeps the record and payloads for the next publish's --bases.
+pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one
+release for this app release (written into the stamp's holds; never a pinned pack).
+pkey release revoke signs a kind: revocation release record with the release key and submits it:
+devices stop using that pack release, and --replacement names the release of the same pack they
+take instead. Revocations are permanent; a later revoke of the same release supersedes the
+replacement or reason, never the revoked status.
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
 payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
 read into the descriptor for the storefront feeds. The CI commands

@@ -211,7 +211,7 @@
       "code": "release_record_rejected",
       "kind": "wire",
       "service": "release",
-      "description": "A trusted-publishing submit carried a release record (pkey-release+jws), or a release whose packs, the ingest refused; nothing was stored. `reason` names the check: typ, kid, product-key, signature, claims, scheme, descriptor-mismatch or seq; for a pack record (P4-02) pack-unknown, pack-type, pack-variant, pack-entitlement, pack-index or pack-object; for an app release's content content-api, pin-unknown, pin-mismatch, pin-yanked, pin-missing, pin-gated, embeds or pack-unreadable (a declared pack's stored declaration does not read back; resync the manifest); for compatible and standalone packs (P4-12) pack-requires, pack-channel or pack-unsatisfiable on a pack record, pin-requires, hold-unknown, hold-mismatch, hold-yanked, hold-binding, hold-requires, hold-unsatisfiable, content-unsatisfied or pack-channels-conflict on an app release, and pack-sets-bound when resolution cannot finish inside its bounds."
+      "description": "A trusted-publishing submit carried a release record (pkey-release+jws), or a release whose packs, the ingest refused; nothing was stored. `reason` names the check: typ, kid, product-key, signature, claims, scheme, descriptor-mismatch or seq; for a pack record (P4-02) pack-unknown, pack-type, pack-variant, pack-entitlement, pack-index or pack-object; for an app release's content content-api, pin-unknown, pin-mismatch, pin-yanked, pin-missing, pin-gated, embeds or pack-unreadable (a declared pack's stored declaration does not read back; resync the manifest); for compatible and standalone packs (P4-12) pack-requires, pack-channel or pack-unsatisfiable on a pack record, pin-requires, hold-unknown, hold-mismatch, hold-yanked, hold-binding, hold-requires, hold-unsatisfiable, content-unsatisfied or pack-channels-conflict on an app release, and pack-sets-bound when resolution cannot finish inside its bounds; for a revocation record (P4-13) revocation-body, revocation-target, revocation-stale, revocation-replacement or revocation-replacement-incompatible, and pin-revoked or hold-revoked on an app release."
     },
     {
       "code": "release_tag_is_pack_release",
@@ -692,6 +692,12 @@
       "kind": "client",
       "service": "update",
       "description": "The release the content stamp pins was rolled back by the boot guard after failed boots, so it is not installed again while the stamp still pins it; the restored previous release stays active and counts as present (P3-10's skipVersion for packs; P4-08)."
+    },
+    {
+      "code": "pack-revoked",
+      "kind": "client",
+      "service": "update",
+      "description": "The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5)."
     },
     {
       "code": "marker-rejected",

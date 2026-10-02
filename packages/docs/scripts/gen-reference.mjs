@@ -352,6 +352,7 @@ const TABLE_OWNERS = {
     "release_set_state",
     "release_holds",
     "release_pack_floors",
+    "release_revocations",
   ],
   distribution: [
     "dist_outlets",

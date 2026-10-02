@@ -60,15 +60,42 @@ through a small buffer: without the check, one verdict would depend on how each 
 
 ## What the content corpus pins
 
-| Section            | Pins                                                                                   |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `pathCases`        | The path rules                                                                         |
-| `filesIndexCases`  | `parseFilesIndex`, its five steps in order                                             |
-| `applyCases`       | Full, delta and file apply over a real v1 → v2 pair, with negatives and exact counters |
-| `packSetIdCases`   | `packSetId`, the identifier of a set of pack releases                                  |
-| `stampCases`       | The content stamp                                                                      |
-| `frameWindowCases` | `frameWindow` over raw frame headers                                                   |
+| Section            | Pins                                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `pathCases`        | The path rules                                                                                             |
+| `filesIndexCases`  | `parseFilesIndex`, its five steps in order                                                                 |
+| `applyCases`       | Full, delta and file apply over a real v1 → v2 pair, with negatives and exact counters                     |
+| `packSetIdCases`   | `packSetId`, the identifier of a set of pack releases                                                      |
+| `stampCases`       | The content stamp, and (P4-13) its `holds` read by `holdsOf`, compared only when a case has `expect.holds` |
+| `frameWindowCases` | `frameWindow` over raw frame headers                                                                       |
 
 `plan-matrix.json` pins the install planner, variant selection and target mapping beside it
 (spec §11.4). How the blobs are kept and regenerated is on
 [The conformance corpus](/docs/build/wire/corpus/).
+
+## Content in the feed and revocations
+
+P4-13 (spec §2.4.1, §2.5.3, §11.1) lets the channel feed carry content and lets CI revoke a pack
+release. Nothing here is a new claim: each member is read beside the claims, so a malformed one
+is unusable and never refuses the feed or the record, and the wire stays v4.
+
+| Member or record          | What it carries                                                                                                                                                                                                                                         | Read by                                               |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `packSets`                | A release table keyed by record hash, sets keyed by `packSetId`, one row per resolution group (`contentApi`, platform, engine, variant) naming a set, and per-outlet `pinned` (packs that cannot float on that outlet) and `gates` (rollouts and halts) | `feedContent`, `selectPackRows`                       |
+| `packFloors`              | The effective floor of each pack at each live level, with its version scheme. An entry with an unknown scheme is ignored                                                                                                                                | `feedContent`                                         |
+| `revocations`             | The revocations in force: each revocation record's hash, the pack and the revoked release's hash, version and `seq` (at most 64)                                                                                                                        | `feedContent`                                         |
+| `content.holds`           | An app release keeping a pack at one release; reaches a device in its content stamp                                                                                                                                                                     | `holdsOf`                                             |
+| `kind: revocation` record | CI-signed with a release key: `revokes` (the target's record hash), an optional `replacement` of the same pack, and a 1–512-byte `reason`. Permanent; a later one may only change the replacement (newest `issuedAt` wins)                              | `revocationOf`, `verifyRevocation`, `newerRevocation` |
+
+A device composes its set from one row per group, then its pins and holds: it resolves nothing.
+A feed target never downgrades a pack. The Worker can withhold content but never condemn or
+substitute it, because only a pinned release key verifies a revocation. A device refuses to
+mount a revoked release (`pack-revoked`), embedded baselines included, and swaps in a usable
+replacement. When a **required** pack is revoked with no usable replacement, the boot stops
+(`blocked {revoked-content}`, boot `required`); a revoked optional pack is unmounted and play
+continues. Floors (`content-floor`) are prompts and never stop play. The device keeps up to 256
+revoked targets in a sibling `revocations.json` beside its pack state, so a Worker that later
+withholds a revocation cannot bring the target back.
+
+`cases.json` pins the members in `feedContentCases` and the record in `revocationCases`;
+`update-matrix.json` pins the decision in `contentRows`.

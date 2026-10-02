@@ -133,6 +133,8 @@ export interface RefJson {
   nonWire(text: string): string[];
   /** §2.4's `content` claims over a stamp's top-level `contentApi`, `pins` and `expects`. */
   stampContentClaims(text: string): boolean;
+  /** plans/P4-13.md §2.4's `holdsOf` over a stamp's `holds` (token rule included), or null. */
+  stampHolds(text: string): unknown[] | null;
 }
 
 // ── frames: the header reader (§2.7 rule 3) ────────────────────────────────────────────────────
@@ -1729,6 +1731,8 @@ export interface ContentRecords {
   get(name: string): { doc: Record<string, unknown>; sha256: string };
   /** The app twin's `content` (the stamp cases' valid content). */
   appContent: Record<string, unknown>;
+  /** plans/P4-13.md: the `djdl.docs@1.0.0` pin `{sha256, seq, version}` the holds cases name. */
+  docsPin?: Record<string, unknown>;
 }
 
 interface ApplyCase {
@@ -2773,6 +2777,44 @@ export function buildContentCorpus(
       }),
     ],
   ];
+  // plans/P4-13.md §4.1: four appended holds cases, each with `expect.holds` (`holdsOf` over the
+  // parsed stamp; `parseContentStamp`'s result is unchanged). The hold names `djdl.docs`, which
+  // the stamp does not pin.
+  const docsPin = records.docsPin;
+  if (!docsPin) fail("stampCases: no djdl.docs pin for the holds cases");
+  const hold = {
+    pack: "djdl.docs",
+    release: docsPin,
+    reason: "Held at 1.0.0 for the 1.5 line.",
+  };
+  const holdsRows: [string, string, string][] = [
+    [
+      "stamp-holds-valid",
+      "P4-13: a stamp holding `djdl.docs` (not pinned) at one release, with a reason: `holdsOf` reads it.",
+      stamp({ ...valid, holds: [hold] }),
+    ],
+    [
+      "stamp-holds-seq-token",
+      "P4-13: the hold's `release.seq` written as the token `1.0`: the holds are unusable (V4 §3.1), the stamp still parses.",
+      stamp({ ...valid, holds: [hold] }).replace(
+        `"seq":${String(docsPin!.seq)},"version":"${String(docsPin!.version)}"},"reason"`,
+        `"seq":${String(docsPin!.seq)}.0,"version":"${String(docsPin!.version)}"},"reason"`,
+      ),
+    ],
+    [
+      "stamp-holds-pinned-and-held",
+      "P4-13: a hold of `djdl.levels`, which the stamp pins: unusable.",
+      stamp({
+        ...valid,
+        holds: [{ ...hold, pack: "djdl.levels" }],
+      }),
+    ],
+    [
+      "stamp-holds-unusable-shape",
+      "P4-13: `holds` is an object, not an array: unusable.",
+      stamp({ ...valid, holds: {} }),
+    ],
+  ];
   const stampCases = stampRows.map(([id, description, text]) => {
     let expect: Record<string, unknown> = {
       ok: false,
@@ -2800,6 +2842,40 @@ export function buildContentCorpus(
     .map((c) => c.id);
   if (!sameJson(okStamps, ["stamp-valid", "stamp-forward-members-ignored"]))
     fail(`stampCases: ok ${JSON.stringify(okStamps)}`);
+  for (const [id, description, text] of holdsRows) {
+    const p = ref.parseStrict(text);
+    if (
+      !(
+        p.ok &&
+        isObj(p.value) &&
+        p.value.format === "pkey-content/1" &&
+        ref.stampContentClaims(text)
+      )
+    )
+      fail(`stampCases ${id}: the stamp must parse`);
+    const v = p.value as Record<string, unknown>;
+    const holds = ref.stampHolds(text);
+    if ((id === "stamp-holds-valid") !== (holds !== null))
+      fail(`stampCases ${id}: holds ${JSON.stringify(holds)}`);
+    if (id === "stamp-holds-seq-token" && ref.nonWire(text).length !== 1)
+      fail(`stampCases ${id}: one non-wire token`);
+    stampCases.push({
+      id,
+      description,
+      stamp: text,
+      expect: {
+        ok: true,
+        content: {
+          contentApi: v.contentApi,
+          pins: v.pins,
+          expects: v.expects,
+        },
+        holds,
+      },
+    });
+  }
+  if (stampCases.length !== 10)
+    fail(`stampCases: ${stampCases.length}, not 10`);
 
   // ── frameWindowCases ──
   const hex = (b: readonly number[] | Uint8Array): string =>

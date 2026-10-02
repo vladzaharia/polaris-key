@@ -536,7 +536,7 @@ describe("releaseCatalog (Release)", () => {
     // P2b-04 added the five byte-delivery methods: still readers. `openSource` answers with
     // bytes (Release's GitHub-located ones) rather than records, and writes nothing either.
     // P2b-05 added `channelReleases`, the feeds' history read. P4-02 added the six pack reads.
-    // P6-03 added `knownChannels`, P4-12 the five pack-set reads.
+    // P6-03 added `knownChannels`, P4-12 the five pack-set reads, P4-13 `revocations`.
     expect(Object.keys(catalog).sort()).toEqual([
       "accessSelector",
       "artifacts",
@@ -564,6 +564,7 @@ describe("releaseCatalog (Release)", () => {
       "release",
       "releases",
       "resolve",
+      "revocations",
       "yanks",
     ]);
     const [artifact] = await catalog.artifacts("v1.1.0", "macos");

@@ -179,12 +179,26 @@ export interface ContentExpect {
   delivery: string;
 }
 
-/** An app record's `content`, also the content stamp's body. `holds` and `packChannels` are
- *  reserved for P4-12. */
+/**
+ * A hold (P4-12, CONTENT §6.1 "per-app-release overrides"; WIRE-CONTRACT-V4 §2.5.2): this app
+ * release keeps a `compatible` pack at one release (`release` is a pin's shape, naming a pack
+ * record), with an optional human-readable `reason`. Clients read holds with `holdsOf`
+ * (plans/P4-13.md §2.4), beside the claims: a malformed list is unusable, never a claim failure.
+ */
+export interface ContentHold {
+  pack: string;
+  release: ReleasePin;
+  reason?: string;
+}
+
+/** An app record's `content`, also the content stamp's body. `holds` is read beside the claims
+ *  (`holdsOf`, plans/P4-13.md §2.4); `packChannels` is the Worker's alone. */
 export interface AppContent {
   contentApi: number;
   pins: ContentPin[];
   expects: ContentExpect[];
+  /** At most `MAX_CONTENT_PINS` holds; never a pinned pack. */
+  holds?: ContentHold[];
 }
 
 // ── Side objects (WIRE-CONTRACT-V4 §2.6) ─────────────────────────────────────────────────────

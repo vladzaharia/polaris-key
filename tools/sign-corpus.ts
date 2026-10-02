@@ -1777,7 +1777,11 @@ async function buildV2(): Promise<unknown> {
     clockFloorCases: await buildClockFloorCasesV2(),
     bundleCases: await buildBundleCases(),
     feedCases: await buildFeedCases(),
+    // plans/P4-13.md §4.1: the feed's content members, parsed beside the claims.
+    feedContentCases: await buildFeedContentCases(),
     releaseRecordCases: await buildReleaseRecordCases(RECORDS),
+    // plans/P4-13.md §4.1: `kind: revocation` records against a feed entry.
+    revocationCases: await buildRevocationCases(),
     // plans/P4-01.md §4.6 (P4-21): two new JWS families after the record cases.
     packRecordCases: await buildPackRecordCases(),
     markerCases: await buildMarkerCases(),
@@ -8663,6 +8667,35 @@ async function buildRecordVectors(): Promise<Map<string, RecordVector>> {
     }),
   );
   await add("R15max", recordDoc({ seq: MAX_WIRE_INTEGER_REF }));
+  // plans/P4-13.md §4.3: the level-4 app release `contentRows` offers (prestage), its apk build
+  // embedding the texture pack.
+  {
+    const builds = r15Builds("1.6.0");
+    for (const b of builds)
+      if (b.id === "apk") b.embeds = ["diceroll.textures"];
+    await add(
+      "RC16",
+      recordDoc({
+        version: "1.6.0",
+        seq: 16,
+        builds,
+        content: {
+          contentApi: 4,
+          pins: [],
+          expects: [
+            { pack: "diceroll.foes", required: true, delivery: "essential" },
+            { pack: "diceroll.l10n", required: false, delivery: "prefetch" },
+            { pack: "diceroll.skins", required: false, delivery: "on-demand" },
+            {
+              pack: "diceroll.textures",
+              required: true,
+              delivery: "essential",
+            },
+          ],
+        },
+      }),
+    );
+  }
   return out;
 }
 
@@ -10077,7 +10110,10 @@ async function buildFeedCases(): Promise<FeedCase[]> {
     },
   );
 
-  if (cases.length !== 77) throw new Error(`feedCases: ${cases.length} != 77`);
+  // plans/P4-13.md §4.2: three appended cases carrying the content members.
+  await appendContentFeedCases(mk, base);
+
+  if (cases.length !== 80) throw new Error(`feedCases: ${cases.length} != 80`);
   for (const c of cases) {
     const want = refVerifyFeedCase(c);
     const got = c.expect;
@@ -10346,7 +10382,7 @@ function refDecideUpdate(inp: RefInput): Record<string, unknown> {
   return none("no-method");
 }
 
-/** §2.8: no v4 answer stops play. */
+/** §2.8 (P3-01): no v4 answer stops play. `refBootDecisionV2` adds plans/P4-13.md §2.6. */
 function refBootDecision(d: Record<string, unknown>): string {
   if (d.action === "none") return "none";
   if (d.action === "platform" && d.mandatory === false) return "none";
@@ -11095,7 +11131,16 @@ function buildUpdateMatrixV1(): unknown {
     throw new Error(`update-matrix: ${m}`);
   };
   const vocabulary = {
-    actions: ["none", "code-ready", "binary", "store", "platform", "blocked"],
+    // plans/P4-13.md §2.6: P3-01's reserved values, added together with the constants.
+    actions: [
+      "none",
+      "code-ready",
+      "binary",
+      "store",
+      "platform",
+      "blocked",
+      "packs",
+    ],
     noneReasons: [
       "up-to-date",
       "behind",
@@ -11108,7 +11153,7 @@ function buildUpdateMatrixV1(): unknown {
       "no-build",
       "unknown-version",
     ],
-    blockedReasons: ["app-floor"],
+    blockedReasons: ["app-floor", "content-floor", "revoked-content"],
     methods: ["native", "download", "sidecar-pck"],
     boot: ["none", "optional", "required"],
     schemes: [...REF_SCHEMES],
@@ -11569,20 +11614,23 @@ function buildUpdateMatrixV1(): unknown {
     };
   });
   if (rows.length !== 65) fail(`${rows.length} rows, not 65`);
+  // plans/P4-13.md §4.3: the content rows, after `rows`.
+  const content = buildContentRows(fail);
+  const usedBoot = new Set<string>(content.used.boot);
+  for (const r of rows) usedBoot.add((r.expect as { boot: string }).boot);
+  for (const v of content.used.actions) used.actions.add(v);
+  for (const v of content.used.blocked) used.blocked.add(v);
+  // Every vocabulary value, `required` included (no longer exempt), is produced by a row.
   for (const [list, set] of [
     [vocabulary.actions, used.actions],
     [vocabulary.noneReasons, used.none],
     [vocabulary.blockedReasons, used.blocked],
     [vocabulary.methods, used.methods],
     [vocabulary.schemes, used.schemes],
+    [vocabulary.boot, usedBoot],
     [REF_BINARY_ORDER, used.classes],
   ] as const)
     for (const v of list) if (!set.has(v)) fail(`${v} is produced by no row`);
-  for (const reserved of ["packs", "content-floor", "revoked-content"])
-    if (
-      Object.values(vocabulary).some((l) => (l as string[]).includes(reserved))
-    )
-      fail(`reserved ${reserved} in a vocabulary`);
 
   return {
     updateMatrixVersion: 1,
@@ -11594,6 +11642,7 @@ function buildUpdateMatrixV1(): unknown {
     outletCases,
     bucketVectors,
     rows,
+    contentRows: content.rows,
   };
 }
 
@@ -12894,6 +12943,15 @@ const REF_JSON: RefJson = {
     const parsed = refParseStrict(wrapped);
     if (!parsed.ok || !isObj(parsed.value)) return false;
     return refContentClaims(parsed.value.content, ctxOf(wrapped), "/content");
+  },
+  // plans/P4-13.md §2.4: the stamp's holds, re-rooted under `/content` like the claims.
+  stampHolds: (text) => {
+    const wrapped = `{"content":${text}}`;
+    const parsed = refParseStrict(wrapped);
+    if (!parsed.ok || !isObj(parsed.value)) return null;
+    const c = parsed.value.content;
+    if (!isObj(c)) return null;
+    return refHoldsOf(c, ctxOf(wrapped), "/content");
   },
 };
 
@@ -14961,6 +15019,2550 @@ function checkPackClaimCases(corpus: Record<string, AnyCase[]>): void {
   }
 }
 
+// ── plans/P4-13.md: content members, revocations, holds and the content decision ────────────
+// The generator's own references (it imports nothing it checks): `refFeedContent` (§2.2),
+// `refRevocationOf` and the revocation verifier (§2.3), `refHoldsOf` (§2.4) and the content
+// decision (§2.6), plus the fixtures of `feedContentCases`, `revocationCases`, the three appended
+// `feedCases` and `update-matrix.json#/contentRows`.
+
+const refCmpBytes = (a: string, b: string): number =>
+  Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+const refPackId = (v: unknown): v is string => refPackIdShape(v) && v !== "app";
+const P13_SCHEMES: readonly string[] = REF_SCHEMES;
+const P13_REASON_MAX = 512;
+
+/** A content integer member (V4 §3.1's token rule, read from the payload's own tokens). */
+function p13Int(
+  ctx: ClaimCtx | null,
+  v: unknown,
+  pointer: string,
+  min: number,
+  max = MAX_WIRE_INTEGER_REF,
+): v is number {
+  if (typeof v !== "number" || !Number.isSafeInteger(v)) return false;
+  if (ctx !== null) {
+    const t = ctx.tokens.get(pointer);
+    if (t === undefined || !PLAIN_INTEGER_REF.test(t)) return false;
+  }
+  return v >= min && v <= max;
+}
+
+/** `packSetId` (plans/P4-01.md §2.9), from first principles. */
+function refPackSetId(entries: [pack: string, sha256: string][]): string {
+  const text = [...entries]
+    .sort((a, b) => refCmpBytes(a[0], b[0]))
+    .map(([p, h]) => `${p} ${h}\n`)
+    .join("");
+  return sha256Hex(text);
+}
+
+const refVariantKey = (v: Record<string, string>): string =>
+  Object.keys(v)
+    .sort(refCmpBytes)
+    .map((k) => `${k}=${v[k]}`)
+    .join(";");
+
+/** §2.2's table, member by member; each returns the parsed member or null. */
+function refFeedContent(
+  doc: Record<string, any>,
+  ctx: ClaimCtx | null,
+): { packSets: unknown; packFloors: unknown; revocations: unknown } {
+  const packSets = ((): unknown => {
+    if (!hasOwn(doc, "packSets")) return null;
+    const ps = doc.packSets;
+    if (!isObj(ps)) return null;
+    for (const k of ["releases", "sets", "rows"])
+      if (!hasOwn(ps, k)) return null;
+    if (!isObj(ps.releases) || !isObj(ps.sets) || !Array.isArray(ps.rows))
+      return null;
+    const releases: Record<string, unknown> = {};
+    for (const h of Object.keys(ps.releases)) {
+      const r = ps.releases[h];
+      if (!REF_SHA256_RE.test(h) || !isObj(r)) return null;
+      if (!refPackId(r.pack)) return null;
+      if (
+        typeof r.version !== "string" ||
+        !REF_RECORD_VERSION_RE.test(r.version)
+      )
+        return null;
+      if (!p13Int(ctx, r.seq, `/packSets/releases/${h}/seq`, 1)) return null;
+      releases[h] = { pack: r.pack, version: r.version, seq: r.seq };
+    }
+    const sets: Record<string, string[]> = {};
+    for (const id of Object.keys(ps.sets)) {
+      const m = ps.sets[id];
+      if (!REF_SHA256_RE.test(id) || !Array.isArray(m)) return null;
+      const seen: string[] = [];
+      for (const h of m) {
+        if (typeof h !== "string" || !hasOwn(releases, h)) return null;
+        const pack = (releases[h] as { pack: string }).pack;
+        if (seen.includes(pack)) return null;
+        seen.push(pack);
+      }
+      sets[id] = [...m];
+    }
+    const sel = isObj(doc.selector) ? doc.selector : {};
+    const rows: unknown[] = [];
+    const keys = new Set<string>();
+    for (const [i, r] of ps.rows.entries()) {
+      if (!isObj(r)) return null;
+      if (!p13Int(ctx, r.contentApi, `/packSets/rows/${i}/contentApi`, 1))
+        return null;
+      if (
+        typeof r.platform !== "string" ||
+        !REF_FEED_PLATFORM_RE.test(r.platform)
+      )
+        return null;
+      if (hasOwn(sel, "platform") && r.platform !== sel.platform) return null;
+      if (
+        typeof r.engine !== "string" ||
+        (r.engine !== "" && !REF_ENGINE_RE.test(r.engine))
+      )
+        return null;
+      if (!isObj(r.variant) || Object.keys(r.variant).length > 4) return null;
+      const variant: Record<string, string> = {};
+      for (const [a, x] of Object.entries(r.variant)) {
+        if (!REF_AXIS_RE.test(a)) return null;
+        if (typeof x !== "string" || !REF_AXIS_VALUE_RE.test(x)) return null;
+        variant[a] = x;
+      }
+      if (typeof r.set !== "string" || !hasOwn(sets, r.set)) return null;
+      const key = `${r.contentApi}|${r.platform}|${r.engine}|${refVariantKey(variant)}`;
+      if (keys.has(key)) return null;
+      keys.add(key);
+      rows.push({
+        contentApi: r.contentApi,
+        platform: r.platform,
+        engine: r.engine,
+        variant,
+        set: r.set,
+      });
+    }
+    const out: Record<string, unknown> = { releases, sets, rows };
+    if (hasOwn(ps, "outlets")) {
+      if (!isObj(ps.outlets)) return null;
+      const outlets: Record<string, unknown> = {};
+      for (const id of Object.keys(ps.outlets)) {
+        const e = ps.outlets[id];
+        if (!REF_OUTLET_ID_RE.test(id) || !isObj(e)) return null;
+        const o: Record<string, unknown> = {};
+        if (hasOwn(e, "pinned")) {
+          if (!Array.isArray(e.pinned)) return null;
+          if (!e.pinned.every(refPackId)) return null;
+          if (new Set(e.pinned).size !== e.pinned.length) return null;
+          o.pinned = [...e.pinned];
+        }
+        if (hasOwn(e, "gates")) {
+          if (!isObj(e.gates)) return null;
+          const gates: Record<string, unknown> = {};
+          for (const h of Object.keys(e.gates)) {
+            const g = e.gates[h];
+            if (!hasOwn(releases, h) || !isObj(g)) return null;
+            if (typeof g.halted !== "boolean") return null;
+            const gate: Record<string, unknown> = { halted: g.halted };
+            if (hasOwn(g, "rollout")) {
+              const ro = g.rollout;
+              if (!isObj(ro)) return null;
+              const at = `/packSets/outlets/${pointerToken(id)}/gates/${h}/rollout/bp`;
+              if (!p13Int(ctx, ro.bp, at, 0, 10000)) return null;
+              if (typeof ro.salt !== "string" || !REF_SALT_RE.test(ro.salt))
+                return null;
+              gate.rollout = { bp: ro.bp, salt: ro.salt };
+            }
+            if (!hasOwn(g, "fallback")) return null;
+            if (
+              g.fallback !== null &&
+              !(typeof g.fallback === "string" && hasOwn(releases, g.fallback))
+            )
+              return null;
+            gate.fallback = g.fallback;
+            gates[h] = gate;
+          }
+          o.gates = gates;
+        }
+        outlets[id] = o;
+      }
+      out.outlets = outlets;
+    }
+    return out;
+  })();
+
+  const packFloors = ((): unknown => {
+    if (!hasOwn(doc, "packFloors")) return null;
+    const fs = doc.packFloors;
+    if (!Array.isArray(fs)) return null;
+    const out: unknown[] = [];
+    const keys = new Set<string>();
+    for (const [i, f] of fs.entries()) {
+      if (!isObj(f) || !refPackId(f.pack)) return null;
+      if (!p13Int(ctx, f.contentApi, `/packFloors/${i}/contentApi`, 1))
+        return null;
+      if (
+        typeof f.minVersion !== "string" ||
+        !REF_RECORD_VERSION_RE.test(f.minVersion)
+      )
+        return null;
+      if (typeof f.versionScheme !== "string") return null;
+      const key = `${f.pack}|${f.contentApi}`;
+      if (keys.has(key)) return null;
+      keys.add(key);
+      if (P13_SCHEMES.includes(f.versionScheme))
+        out.push({
+          pack: f.pack,
+          contentApi: f.contentApi,
+          minVersion: f.minVersion,
+          versionScheme: f.versionScheme,
+        });
+    }
+    return out;
+  })();
+
+  const revocations = ((): unknown => {
+    if (!hasOwn(doc, "revocations")) return null;
+    const rs = doc.revocations;
+    if (!Array.isArray(rs)) return null;
+    const out: unknown[] = [];
+    const seen = new Set<string>();
+    for (const [i, r] of rs.entries()) {
+      if (!isObj(r)) return null;
+      if (!refHex64(r.record) || !refPackId(r.pack) || !refHex64(r.target))
+        return null;
+      if (
+        typeof r.version !== "string" ||
+        !REF_RECORD_VERSION_RE.test(r.version)
+      )
+        return null;
+      if (!p13Int(ctx, r.seq, `/revocations/${i}/seq`, 1)) return null;
+      if (seen.has(r.record as string)) return null;
+      seen.add(r.record as string);
+      out.push({
+        record: r.record,
+        pack: r.pack,
+        target: r.target,
+        version: r.version,
+        seq: r.seq,
+      });
+    }
+    return out;
+  })();
+
+  return { packSets, packFloors, revocations };
+}
+
+/** §2.3: the revocation body, or null. */
+function refRevocationOf(
+  doc: Record<string, any>,
+  ctx: ClaimCtx | null,
+): Record<string, unknown> | null {
+  if (doc.kind !== "revocation" || !refPackId(doc.deliverable)) return null;
+  if (!refHex64(doc.revokes)) return null;
+  let replacement: Record<string, unknown> | null = null;
+  if (hasOwn(doc, "replacement")) {
+    const r = doc.replacement;
+    if (!isObj(r) || !refHex64(r.sha256) || r.sha256 === doc.revokes)
+      return null;
+    if (!p13Int(ctx, r.seq, "/replacement/seq", 1)) return null;
+    if (typeof r.version !== "string" || !REF_RECORD_VERSION_RE.test(r.version))
+      return null;
+    replacement = { sha256: r.sha256, seq: r.seq, version: r.version };
+  }
+  if (typeof doc.reason !== "string") return null;
+  const n = utf8Bytes(doc.reason).length;
+  if (n < 1 || n > P13_REASON_MAX) return null;
+  return {
+    pack: doc.deliverable,
+    target: doc.revokes,
+    replacement,
+    reason: doc.reason,
+    issuedAt: doc.issuedAt,
+  };
+}
+
+/** §2.4: the holds of a `content` object at `at`, or null when unusable. */
+function refHoldsOf(
+  c: Record<string, any>,
+  ctx: ClaimCtx | null,
+  at: string,
+): unknown[] | null {
+  if (!hasOwn(c, "holds")) return [];
+  const hs = c.holds;
+  if (!Array.isArray(hs) || hs.length > 256) return null;
+  const pinned = new Set(
+    (Array.isArray(c.pins) ? c.pins : []).map((p: any) => p?.pack),
+  );
+  const seen = new Set<string>();
+  const out: unknown[] = [];
+  for (const [i, h] of hs.entries()) {
+    if (!isObj(h) || !refPackId(h.pack)) return null;
+    if (seen.has(h.pack) || pinned.has(h.pack)) return null;
+    seen.add(h.pack);
+    const r = h.release;
+    if (!isObj(r) || !refHex64(r.sha256)) return null;
+    if (!p13Int(ctx, r.seq, `${at}/holds/${i}/release/seq`, 1)) return null;
+    if (typeof r.version !== "string" || !REF_RECORD_VERSION_RE.test(r.version))
+      return null;
+    if (hasOwn(h, "reason") && typeof h.reason !== "string") return null;
+    out.push({
+      pack: h.pack,
+      release: { sha256: r.sha256, seq: r.seq, version: r.version },
+      ...(hasOwn(h, "reason") ? { reason: h.reason } : {}),
+    });
+  }
+  return out;
+}
+
+// ── The content fixture (CONTENT §6.8, Diceroll) ─────────────────────────────────────────────
+
+/** The pack releases every P4-13 vector names, by short name: [pack, version, seq]. */
+const P13_RELEASES: Record<string, [string, string, number]> = {
+  "foes@1.3.3": ["diceroll.foes", "1.3.3", 10],
+  "foes@1.3.4": ["diceroll.foes", "1.3.4", 11],
+  "foes@2.0.0": ["diceroll.foes", "2.0.0", 20],
+  "foes@2.0.1": ["diceroll.foes", "2.0.1", 21],
+  "foes@2.0.2": ["diceroll.foes", "2.0.2", 22],
+  "l10n@1.0.0": ["diceroll.l10n", "1.0.0", 1],
+  "l10n@1.1.0": ["diceroll.l10n", "1.1.0", 2],
+  "tex@1.0.0": ["diceroll.textures", "1.0.0", 1],
+  "tex@1.1.0": ["diceroll.textures", "1.1.0", 2],
+  "skins@1.0.0": ["diceroll.skins", "1.0.0", 1],
+};
+const p13Rel = (name: string): [string, string, number] => {
+  const r = P13_RELEASES[name];
+  if (!r) throw new Error(`P4-13 fixture: no release ${name}`);
+  return r;
+};
+const p13Hash = (name: string): string => {
+  const [pack, version] = p13Rel(name);
+  return sha256Hex(`pkey-corpus-pack:${pack}@${version}`);
+};
+const p13Pin = (name: string): Record<string, unknown> => {
+  const [, version, seq] = p13Rel(name);
+  return { sha256: p13Hash(name), seq, version };
+};
+const p13PackOf = (name: string): string => p13Rel(name)[0];
+/** A revocation record's hash in the decision fixtures (a record the rows never sign). */
+const p13RevRecord = (name: string, n = 1): string =>
+  sha256Hex(`pkey-corpus-revocation:${name}:${n}`);
+
+type P13Row = [
+  contentApi: number,
+  platform: string,
+  engine: string,
+  variant: Record<string, string>,
+  members: string[],
+];
+
+/** `packSets` from rows of release names: the release table, the sets keyed by `packSetId`. */
+function p13PackSets(
+  rows: P13Row[],
+  outlets?: Record<string, unknown>,
+): Record<string, any> {
+  const names = [...new Set(rows.flatMap((r) => r[4]))];
+  const releases: Record<string, unknown> = {};
+  for (const n of [...names].sort((a, b) =>
+    refCmpBytes(p13Hash(a), p13Hash(b)),
+  )) {
+    const [pack, version, seq] = p13Rel(n);
+    releases[p13Hash(n)] = { pack, version, seq };
+  }
+  const sets: Record<string, string[]> = {};
+  const outRows = rows.map(
+    ([contentApi, platform, engine, variant, members]) => {
+      const sorted = [...members].sort((a, b) =>
+        refCmpBytes(p13PackOf(a), p13PackOf(b)),
+      );
+      const id = refPackSetId(sorted.map((m) => [p13PackOf(m), p13Hash(m)]));
+      sets[id] = sorted.map(p13Hash);
+      return { contentApi, platform, engine, variant, set: id };
+    },
+  );
+  return {
+    releases,
+    sets,
+    rows: outRows,
+    ...(outlets ? { outlets } : {}),
+  };
+}
+
+const P13_SALT = "0f1e2d3c4b5a69788796a5b4c3d2e1f0";
+
+/** The `feedContentCases` base: FC's two platforms. */
+function p13FeedMembers(): Record<string, unknown> {
+  return {
+    packSets: p13PackSets(
+      [
+        [3, "macos", "godot-4.4", {}, ["foes@1.3.4", "l10n@1.1.0"]],
+        [4, "macos", "godot-4.4", {}, ["foes@2.0.1", "l10n@1.1.0"]],
+        [4, "macos", "godot-4.4", { texture: "astc" }, ["tex@1.1.0"]],
+        [4, "macos", "godot-4.4", { texture: "etc2" }, ["tex@1.0.0"]],
+        [4, "windows", "", {}, ["foes@2.0.1", "l10n@1.1.0"]],
+      ],
+      {
+        steam: { pinned: ["diceroll.foes"] },
+        direct: {
+          gates: {
+            [p13Hash("foes@2.0.1")]: {
+              halted: false,
+              rollout: { bp: 2500, salt: P13_SALT },
+              fallback: null,
+            },
+            [p13Hash("tex@1.1.0")]: {
+              halted: true,
+              fallback: p13Hash("tex@1.0.0"),
+            },
+          },
+        },
+      },
+    ),
+    packFloors: [
+      {
+        pack: "diceroll.foes",
+        contentApi: 3,
+        minVersion: "1.3.4",
+        versionScheme: "semver",
+      },
+      {
+        pack: "diceroll.foes",
+        contentApi: 4,
+        minVersion: "2.0.0",
+        versionScheme: "semver",
+      },
+      {
+        pack: "diceroll.l10n",
+        contentApi: 4,
+        minVersion: "1.0.0",
+        versionScheme: "semver",
+      },
+    ],
+    revocations: [
+      {
+        record: p13RevRecord("foes@1.3.3"),
+        pack: "diceroll.foes",
+        target: p13Hash("foes@1.3.3"),
+        version: "1.3.3",
+        seq: 10,
+      },
+    ],
+  };
+}
+
+// ── `feedContentCases` (plans/P4-13.md §4.2) ─────────────────────────────────────────────────
+
+interface FeedContentCase {
+  id: string;
+  description: string;
+  jws: string;
+  trust: Record<string, string>;
+  expectedAud: string;
+  channel: string;
+  platform: string;
+  now: number;
+  checkFreshness: boolean;
+  nonWireIntegers?: string[];
+  expect: {
+    verify: "ok";
+    content: { packSets: unknown; packFloors: unknown; revocations: unknown };
+  };
+}
+
+async function buildFeedContentCases(): Promise<FeedContentCase[]> {
+  const TRUST = { [PIN_KID]: pub(PIN_KID) };
+  const base = { ...feedPayload(), ...p13FeedMembers() };
+  const cases: FeedContentCase[] = [];
+  const baseContent = refFeedContent(base, null);
+  type Patch = (d: Record<string, any>) => void;
+  const mk = async (
+    id: string,
+    description: string,
+    o: {
+      patch?: Patch;
+      raw?: boolean;
+      /** The members (pointer prefixes) the mutation may touch. */
+      props: string[];
+      /** Which parsed members must differ from the base's (the rest must equal it). */
+      changes: ("packSets" | "packFloors" | "revocations")[];
+    },
+  ): Promise<void> => {
+    const doc = structuredClone(base) as Record<string, any>;
+    o.patch?.(doc);
+    const text = o.raw ? rawJson(doc) : JSON.stringify(doc);
+    const jws = await signRawSegments(
+      headerText("pkey-feed+jws", PIN_KID),
+      text,
+      PIN_KID,
+    );
+    // Every case is a valid feed: the claims never see the content members.
+    const v = refVerifyJws(jws, TRUST, "pkey-feed+jws");
+    if (!v) throw new Error(`feedContentCases ${id}: does not verify`);
+    if (
+      refFeedClaims(v.payload, ctxOf(v.text), {
+        aud: AUD_V3,
+        channel: "stable",
+        platform: "macos",
+      }) !== null
+    )
+      throw new Error(`feedContentCases ${id}: fails the feed claims`);
+    const content = refFeedContent(v.payload, ctxOf(v.text));
+    // The mutation changes only its members.
+    const parsedBack = JSON.parse(text) as unknown;
+    const diff = leafDiff(base, parsedBack);
+    if (
+      o.patch &&
+      (diff.length === 0 && !o.raw
+        ? true
+        : !diff.every((p) =>
+            o.props.some((q) => p === q || p.startsWith(`${q}/`)),
+          ))
+    )
+      throw new Error(
+        `feedContentCases ${id}: differs outside ${o.props.join(", ")}: ${diff.join(", ")}`,
+      );
+    for (const m of ["packSets", "packFloors", "revocations"] as const) {
+      const same =
+        JSON.stringify(content[m]) === JSON.stringify(baseContent[m]);
+      if (o.changes.includes(m) === same)
+        throw new Error(
+          `feedContentCases ${id}: ${m} ${same ? "unchanged" : "changed"}`,
+        );
+    }
+    const nonWire = refNonWire(v.text);
+    const c: FeedContentCase = {
+      id,
+      description,
+      jws,
+      trust: TRUST,
+      expectedAud: AUD_V3,
+      channel: "stable",
+      platform: "macos",
+      now: FEED_NOW,
+      checkFreshness: true,
+      expect: { verify: "ok", content },
+    };
+    cases.push(
+      placeNonWire(nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c),
+    );
+  };
+  const ps = (d: Record<string, any>): Record<string, any> => d.packSets;
+  const h = p13Hash;
+  const gateBp = `/packSets/outlets/direct/gates/${h("foes@2.0.1")}/rollout/bp`;
+
+  // Valid.
+  await mk(
+    "feed-content-valid",
+    'The base: FC with all three content members (two platforms, an axis-less group and a texture group, an `engine: ""` row, a narrowed outlet, two gates, three floors and one revocation).',
+    { props: [], changes: [] },
+  );
+  await mk("feed-content-valid-pack-sets-alone", "Only `packSets`.", {
+    patch: (d) => {
+      delete d.packFloors;
+      delete d.revocations;
+    },
+    props: ["/packFloors", "/revocations"],
+    changes: ["packFloors", "revocations"],
+  });
+  await mk("feed-content-valid-pack-floors-alone", "Only `packFloors`.", {
+    patch: (d) => {
+      delete d.packSets;
+      delete d.revocations;
+    },
+    props: ["/packSets", "/revocations"],
+    changes: ["packSets", "revocations"],
+  });
+  await mk("feed-content-valid-revocations-alone", "Only `revocations`.", {
+    patch: (d) => {
+      delete d.packSets;
+      delete d.packFloors;
+    },
+    props: ["/packSets", "/packFloors"],
+    changes: ["packSets", "packFloors"],
+  });
+  await mk(
+    "feed-content-valid-absent",
+    "No content member: all three parse as null (a feed from a Worker before P4-13).",
+    {
+      patch: (d) => {
+        delete d.packSets;
+        delete d.packFloors;
+        delete d.revocations;
+      },
+      props: ["/packSets", "/packFloors", "/revocations"],
+      changes: ["packSets", "packFloors", "revocations"],
+    },
+  );
+  await mk(
+    "feed-content-valid-unknown-members-ignored",
+    "An unknown member at every level of every content member is ignored, and the parsed members carry the known ones only.",
+    {
+      patch: (d) => {
+        ps(d).later = 1;
+        ps(d).releases[h("foes@2.0.1")].later = 1;
+        ps(d).rows[0].later = "x";
+        ps(d).outlets.steam.later = true;
+        ps(d).outlets.direct.gates[h("tex@1.1.0")].later = {};
+        d.packFloors[0].later = 1;
+        d.revocations[0].later = 1;
+      },
+      props: ["/packSets", "/packFloors", "/revocations"],
+      changes: [],
+    },
+  );
+  await mk(
+    "feed-content-valid-floor-unknown-scheme",
+    "A floor with a forward `versionScheme` (`calver`) is dropped alone; the others stay in force.",
+    {
+      patch: (d) => void (d.packFloors[2].versionScheme = "calver"),
+      props: ["/packFloors/2/versionScheme"],
+      changes: ["packFloors"],
+    },
+  );
+  await mk(
+    "feed-content-valid-empty-set",
+    "A row whose set is empty (every pack of that group unsatisfied).",
+    {
+      patch: (d) => {
+        const empty = refPackSetId([]);
+        ps(d).sets[empty] = [];
+        ps(d).rows[2].set = empty;
+      },
+      props: ["/packSets/sets", "/packSets/rows/2/set"],
+      changes: ["packSets"],
+    },
+  );
+  await mk(
+    "feed-content-valid-engine-empty-rows",
+    'Every row with `engine: ""` (builds that declared no engine).',
+    {
+      patch: (d) => {
+        for (const r of ps(d).rows) r.engine = "";
+      },
+      props: ["/packSets/rows"],
+      changes: ["packSets"],
+    },
+  );
+
+  // Unusable `packSets`.
+  const bad = async (
+    id: string,
+    description: string,
+    patch: Patch,
+    props: string[],
+    member: "packSets" | "packFloors" | "revocations" = "packSets",
+    raw = false,
+  ): Promise<void> =>
+    mk(id, description, { patch, props, changes: [member], raw });
+  await bad(
+    "feed-content-pack-sets-not-object",
+    "`packSets` is a string.",
+    (d) => void (d.packSets = "sets"),
+    ["/packSets"],
+  );
+  await bad(
+    "feed-content-pack-sets-array",
+    "`packSets: []`, the shape `feed-valid-unknown-fields-ignored` carries: unusable, never a refusal.",
+    (d) => void (d.packSets = []),
+    ["/packSets"],
+  );
+  for (const k of ["releases", "sets", "rows"])
+    await bad(
+      `feed-content-pack-sets-${k}-missing`,
+      `\`packSets\` without \`${k}\`.`,
+      (d) => void delete ps(d)[k],
+      [`/packSets/${k}`],
+    );
+  await bad(
+    "feed-content-release-key-uppercase",
+    "A `releases` key in uppercase hex.",
+    (d) => {
+      const r = ps(d).releases;
+      const k = h("skins@1.0.0").toUpperCase();
+      r[k] = { pack: "diceroll.skins", version: "1.0.0", seq: 1 };
+    },
+    ["/packSets/releases"],
+  );
+  await bad(
+    "feed-content-release-pack-app",
+    "A release whose `pack` is `app` (not a pack id).",
+    (d) => void (ps(d).releases[h("l10n@1.1.0")].pack = "app"),
+    [`/packSets/releases/${h("l10n@1.1.0")}/pack`],
+  );
+  await bad(
+    "feed-content-release-version-bad",
+    "A release `version` with a space.",
+    (d) => void (ps(d).releases[h("l10n@1.1.0")].version = "1.1 .0"),
+    [`/packSets/releases/${h("l10n@1.1.0")}/version`],
+  );
+  await bad(
+    "feed-content-release-seq-string",
+    'A release `seq` of `"2"`.',
+    (d) => void (ps(d).releases[h("l10n@1.1.0")].seq = "2"),
+    [`/packSets/releases/${h("l10n@1.1.0")}/seq`],
+  );
+  await bad(
+    "feed-content-set-unknown-release",
+    "A set names a hash that is not in `releases`.",
+    (d) => {
+      const id = ps(d).rows[2].set;
+      ps(d).sets[id] = [...ps(d).sets[id], h("skins@1.0.0")];
+    },
+    ["/packSets/sets"],
+  );
+  await bad(
+    "feed-content-set-pack-twice",
+    "A set names two releases of one pack.",
+    (d) => {
+      const id = ps(d).rows[2].set;
+      ps(d).sets[id] = [h("tex@1.1.0"), h("tex@1.0.0")];
+    },
+    ["/packSets/sets"],
+  );
+  await bad(
+    "feed-content-row-content-api-string",
+    'A row `contentApi` of `"4"`.',
+    (d) => void (ps(d).rows[1].contentApi = "4"),
+    ["/packSets/rows/1/contentApi"],
+  );
+  await bad(
+    "feed-content-row-platform-bad",
+    "A row platform with an uppercase letter.",
+    (d) => void (ps(d).rows[1].platform = "macOS"),
+    ["/packSets/rows/1/platform"],
+  );
+  await bad(
+    "feed-content-row-engine-bad",
+    "A row engine that is neither empty nor `godot-<major>.<minor>`.",
+    (d) => void (ps(d).rows[1].engine = "godot-4"),
+    ["/packSets/rows/1/engine"],
+  );
+  await bad(
+    "feed-content-row-variant-five-axes",
+    "A row variant with five members.",
+    (d) =>
+      void (ps(d).rows[2].variant = {
+        texture: "astc",
+        locale: "fr",
+        quality: "hd",
+        size: "l",
+        tier: "a",
+      }),
+    ["/packSets/rows/2/variant"],
+  );
+  await bad(
+    "feed-content-row-set-unknown",
+    "A row names a set that is not in `sets`.",
+    (d) => void (ps(d).rows[1].set = h("skins@1.0.0")),
+    ["/packSets/rows/1/set"],
+  );
+  await bad(
+    "feed-content-row-duplicate-key",
+    "Two rows with the same (contentApi, platform, engine, variant).",
+    (d) => void (ps(d).rows[3].variant = { texture: "astc" }),
+    ["/packSets/rows/3/variant"],
+  );
+  await bad(
+    "feed-content-row-platform-not-selector",
+    "A per-platform feed (`selector {platform: macos}`) whose `packSets` keeps a windows row.",
+    (d) => {
+      d.selector = { platform: "macos" };
+      d.app.targets = [d.app.targets[0]];
+    },
+    ["/selector", "/app/targets"],
+  );
+  await bad(
+    "feed-content-outlet-key-bad",
+    "An `outlets` key with an underscore.",
+    (d) => {
+      ps(d).outlets.play_store = { pinned: [] };
+    },
+    ["/packSets/outlets"],
+  );
+  await bad(
+    "feed-content-outlet-pinned-duplicate",
+    "`pinned` names one pack twice.",
+    (d) =>
+      void (ps(d).outlets.steam.pinned = ["diceroll.foes", "diceroll.foes"]),
+    ["/packSets/outlets/steam/pinned"],
+  );
+  await bad(
+    "feed-content-gate-key-not-release",
+    "A gate keyed by a hash that is not in `releases`.",
+    (d) =>
+      void (ps(d).outlets.direct.gates[h("skins@1.0.0")] = {
+        halted: true,
+        fallback: null,
+      }),
+    ["/packSets/outlets/direct/gates"],
+  );
+  await bad(
+    "feed-content-gate-halted-string",
+    'A gate `halted` of `"false"`.',
+    (d) => void (ps(d).outlets.direct.gates[h("tex@1.1.0")].halted = "false"),
+    [`/packSets/outlets/direct/gates/${h("tex@1.1.0")}/halted`],
+  );
+  await bad(
+    "feed-content-gate-bp-over",
+    "A gate rollout `bp` of 10 001.",
+    (d) =>
+      void (ps(d).outlets.direct.gates[h("foes@2.0.1")].rollout.bp = 10001),
+    [gateBp],
+  );
+  await bad(
+    "feed-content-gate-salt-bad",
+    "A gate rollout salt of 31 hex digits.",
+    (d) =>
+      void (ps(d).outlets.direct.gates[h("foes@2.0.1")].rollout.salt =
+        P13_SALT.slice(1)),
+    [`/packSets/outlets/direct/gates/${h("foes@2.0.1")}/rollout/salt`],
+  );
+  await bad(
+    "feed-content-gate-fallback-dangling",
+    "A gate `fallback` that is not in `releases`.",
+    (d) =>
+      void (ps(d).outlets.direct.gates[h("tex@1.1.0")].fallback =
+        h("skins@1.0.0")),
+    [`/packSets/outlets/direct/gates/${h("tex@1.1.0")}/fallback`],
+  );
+
+  // Unusable `packFloors` and `revocations`.
+  await bad(
+    "feed-content-pack-floors-not-array",
+    "`packFloors` is an object.",
+    (d) => void (d.packFloors = {}),
+    ["/packFloors"],
+    "packFloors",
+  );
+  await bad(
+    "feed-content-pack-floors-duplicate",
+    "Two floors for one (pack, contentApi).",
+    (d) => void (d.packFloors[1].contentApi = 3),
+    ["/packFloors/1/contentApi"],
+    "packFloors",
+  );
+  await bad(
+    "feed-content-revocations-not-array",
+    "`revocations` is an object.",
+    (d) => void (d.revocations = {}),
+    ["/revocations"],
+    "revocations",
+  );
+  await bad(
+    "feed-content-revocations-duplicate-record",
+    "Two entries with one `record`.",
+    (d) =>
+      void d.revocations.push({
+        ...d.revocations[0],
+        target: h("foes@1.3.4"),
+        version: "1.3.4",
+        seq: 11,
+      }),
+    ["/revocations/1"],
+    "revocations",
+  );
+
+  // The token rule and the minimum at each of the five integer pointers.
+  const intCase = async (
+    slug: string,
+    pointer: string,
+    member: "packSets" | "packFloors" | "revocations",
+    set: (d: Record<string, any>, v: unknown) => void,
+    token: string,
+    min: number,
+  ): Promise<void> => {
+    await bad(
+      `feed-content-${slug}-token`,
+      `V4 §3.1: \`${pointer}\` written as the token \`${token}\`.`,
+      (d) => set(d, raw(token)),
+      [pointer],
+      member,
+      true,
+    );
+    await bad(
+      `feed-content-${slug}-minimum`,
+      `\`${pointer}\` ${min}, below its minimum.`,
+      (d) => set(d, min),
+      [pointer],
+      member,
+    );
+  };
+  await intCase(
+    "release-seq",
+    `/packSets/releases/${h("l10n@1.1.0")}/seq`,
+    "packSets",
+    (d, v) => void (ps(d).releases[h("l10n@1.1.0")].seq = v),
+    "2.0",
+    0,
+  );
+  await intCase(
+    "row-content-api",
+    "/packSets/rows/0/contentApi",
+    "packSets",
+    (d, v) => void (ps(d).rows[0].contentApi = v),
+    "3.0",
+    0,
+  );
+  await intCase(
+    "gate-bp",
+    gateBp,
+    "packSets",
+    (d, v) => void (ps(d).outlets.direct.gates[h("foes@2.0.1")].rollout.bp = v),
+    "2500.0",
+    -1,
+  );
+  await intCase(
+    "floor-content-api",
+    "/packFloors/0/contentApi",
+    "packFloors",
+    (d, v) => void (d.packFloors[0].contentApi = v),
+    "3.0",
+    0,
+  );
+  await intCase(
+    "revocation-seq",
+    "/revocations/0/seq",
+    "revocations",
+    (d, v) => void (d.revocations[0].seq = v),
+    "10.0",
+    0,
+  );
+
+  // Every set key is the `packSetId` of its members, in every case whose `packSets` parses.
+  for (const c of cases) {
+    const p = c.expect.content.packSets as Record<string, any> | null;
+    if (p === null) continue;
+    for (const [id, members] of Object.entries<string[]>(p.sets))
+      if (
+        id !==
+        refPackSetId(members.map((m) => [p.releases[m].pack as string, m]))
+      )
+        throw new Error(
+          `feedContentCases ${c.id}: set ${id} is not its packSetId`,
+        );
+  }
+  if (cases.length !== P13_COUNTS.feedContentCases)
+    throw new Error(
+      `feedContentCases: ${cases.length} != ${P13_COUNTS.feedContentCases}`,
+    );
+  return cases;
+}
+
+/** The exact counts of plans/P4-13.md's new sections (the self-check's "counts are exact"). */
+const P13_COUNTS = {
+  feedContentCases: 48,
+  revocationCases: 27,
+  contentRows: 44,
+};
+
+/** The three appended `feedCases` (plans/P4-13.md §4.2): every runner verifies them. */
+async function appendContentFeedCases(
+  mk: (
+    id: string,
+    description: string,
+    o: { doc?: Record<string, unknown>; expect: "ok" },
+  ) => Promise<void>,
+  base: Record<string, unknown>,
+): Promise<void> {
+  await mk(
+    "feed-valid-content-members-populated",
+    "P4-13: a channel-wide feed carrying all three content members (`packSets` with every row kind, `packFloors`, `revocations`). A v4 verifier ignores them: the verdict is FC's.",
+    { doc: { ...structuredClone(base), ...p13FeedMembers() }, expect: "ok" },
+  );
+  const perPlatform = {
+    ...structuredClone(base),
+    ...p13FeedMembers(),
+  } as Record<string, any>;
+  perPlatform.selector = { platform: "macos" };
+  perPlatform.app.targets = [perPlatform.app.targets[0]];
+  perPlatform.packSets = p13PackSets(
+    [
+      [3, "macos", "godot-4.4", {}, ["foes@1.3.4", "l10n@1.1.0"]],
+      [4, "macos", "godot-4.4", {}, ["foes@2.0.1", "l10n@1.1.0"]],
+    ],
+    { "app-store": { pinned: ["diceroll.foes"] } },
+  );
+  await mk(
+    "feed-valid-content-members-per-platform",
+    "P4-13: a per-platform feed (`selector: {platform: macos}`) with its own rows only, every floor and revocation.",
+    { doc: perPlatform, expect: "ok" },
+  );
+  // At the cap: `packSets` rows padded until the payload is exactly 65 536 bytes.
+  const atCap = {
+    ...structuredClone(base),
+    ...p13FeedMembers(),
+  } as Record<string, any>;
+  const size = (o: unknown): number => utf8Bytes(JSON.stringify(o)).length;
+  const rows = atCap.packSets.rows as Record<string, unknown>[];
+  const set0 = rows[0]!.set as string;
+  for (let api = 100; ; api++) {
+    const row = {
+      contentApi: api,
+      platform: "linux",
+      engine: "godot-4.4",
+      variant: {},
+      set: set0,
+    };
+    rows.push(row);
+    if (size(atCap) > 65536 - 200) break;
+  }
+  const last = rows[rows.length - 1]!;
+  last.pad = "";
+  const room = 65536 - size(atCap);
+  if (room < 0) throw new Error("feed-valid-content-at-cap: overshoot");
+  last.pad = "A".repeat(room);
+  if (size(atCap) !== 65536)
+    throw new Error(`feed-valid-content-at-cap: ${size(atCap)} bytes`);
+  if (refFeedContent(atCap, null).packSets === null)
+    throw new Error("feed-valid-content-at-cap: packSets must stay usable");
+  await mk(
+    "feed-valid-content-at-cap",
+    "P4-13: the generator's at-cap test, a content-carrying payload of exactly 65 536 bytes (its `packSets` rows padded). An over-cap payload is `jwsCases`' oversize case.",
+    { doc: atCap, expect: "ok" },
+  );
+}
+
+// ── `revocationCases` (plans/P4-13.md §4.2) ──────────────────────────────────────────────────
+
+interface RevocationCase {
+  id: string;
+  description: string;
+  mode: "revocation" | "replacement";
+  jws: string;
+  releaseKeys: Record<string, string>;
+  productTrust: Record<string, string>;
+  expectedAud: string;
+  /** `revocation` mode: the feed entry the record is verified against. */
+  entry?: {
+    record: string;
+    pack: string;
+    target: string;
+    version: string;
+    seq: number;
+  };
+  /** `replacement` mode: the replacement's hash and pin (kind `pack`). */
+  expectedHash?: string;
+  pin?: { kind: "pack"; deliverable: string; version: string; seq: number };
+  nonWireIntegers?: string[];
+  expect:
+    | {
+        verify: "ok";
+        revocation?: Record<string, unknown>;
+        kind?: string;
+        supersedes?: string;
+        winner?: string;
+      }
+    | {
+        verify: "fail";
+        step: "hash" | "jws" | "claims" | "cross-check" | "revocation";
+      };
+}
+
+/** §2.3's steps 12–16, from first principles. */
+function refVerifyRevocationCase(c: RevocationCase): RevocationCase["expect"] {
+  const fail = (
+    step: "hash" | "jws" | "claims" | "cross-check" | "revocation",
+  ): RevocationCase["expect"] => ({ verify: "fail", step });
+  const body = c.jws;
+  const hash = c.mode === "revocation" ? c.entry!.record : c.expectedHash!;
+  if (utf8Bytes(body).length > 88844 || /[^\x00-\x7f]/.test(body))
+    return fail("hash");
+  if (sha256Hex(body) !== hash) return fail("hash");
+  let kid: unknown;
+  try {
+    kid = (
+      JSON.parse(
+        new TextDecoder().decode(base64UrlDecode(body.split(".")[0] ?? "")),
+      ) as Record<string, unknown>
+    ).kid;
+  } catch {
+    return fail("jws");
+  }
+  if (typeof kid !== "string" || !hasOwn(c.releaseKeys, kid))
+    return fail("jws");
+  const key = c.releaseKeys[kid]!;
+  if (Object.values(c.productTrust).includes(key)) return fail("jws");
+  const v = refVerifyJws(body, { [kid]: key }, "pkey-release+jws");
+  if (!v) return fail("jws");
+  const ctx = ctxOf(v.text);
+  if (!refRecordClaims(v.payload, ctx, c.expectedAud)) return fail("claims");
+  const d = v.payload as Record<string, any>;
+  if (c.mode === "replacement") {
+    const p = c.pin!;
+    if (d.kind !== p.kind || d.deliverable !== p.deliverable)
+      return fail("cross-check");
+    if (d.version !== p.version || d.seq !== p.seq) return fail("cross-check");
+    return { verify: "ok", kind: d.kind };
+  }
+  const e = c.entry!;
+  if (d.kind !== "revocation" || d.deliverable !== e.pack)
+    return fail("cross-check");
+  if (d.version !== e.version || d.seq !== e.seq) return fail("cross-check");
+  const r = refRevocationOf(d, ctx);
+  if (r === null || r.target !== e.target) return fail("revocation");
+  return { verify: "ok", revocation: r };
+}
+
+async function buildRevocationCases(): Promise<RevocationCase[]> {
+  const packs = await packRecords();
+  const target = packs.get("djdl.levels@1.0.0")!;
+  const repl = packs.get("djdl.levels@1.1.0")!;
+  const other = packs.get("djdl.assets@1.1.0")!;
+  const RK = { [REL_KID]: pub(REL_KID) };
+  const PT = { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) };
+  const ISSUED = RECORD_ISSUED + 5_000;
+  const revDoc = (
+    over: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    schemaVersion: 1,
+    aud: AUD_V3,
+    deliverable: "djdl.levels",
+    kind: "revocation",
+    version: "1.0.0",
+    seq: 1,
+    issuedAt: ISSUED,
+    revokes: target.sha256,
+    replacement: { sha256: repl.sha256, seq: 2, version: "1.1.0" },
+    reason: "Exploit in the level 3 spawn tables.",
+    ...over,
+  });
+  const cases: RevocationCase[] = [];
+  const hashes = new Map<string, string>();
+  const mk = async (
+    id: string,
+    description: string,
+    o: {
+      doc?: Record<string, unknown>;
+      text?: string;
+      kid?: string;
+      releaseKeys?: Record<string, string>;
+      entry?: Partial<NonNullable<RevocationCase["entry"]>>;
+      /** Sign this exact JWS (`replacement` mode, or a pre-signed record). */
+      jws?: string;
+      mode?: "revocation" | "replacement";
+      pin?: RevocationCase["pin"];
+      hashOverride?: string;
+      supersedes?: string;
+      winner?: string;
+      expect:
+        | "ok"
+        | Exclude<RevocationCase["expect"], { verify: "ok" }>["step"];
+    },
+  ): Promise<void> => {
+    const kid = o.kid ?? REL_KID;
+    const mode = o.mode ?? "revocation";
+    const jws =
+      o.jws ??
+      (o.text !== undefined
+        ? await signText(o.text, kid, "pkey-release+jws")
+        : await signAs(o.doc ?? revDoc(), kid, "pkey-release+jws"));
+    const base: RevocationCase = {
+      id,
+      description,
+      mode,
+      jws,
+      releaseKeys: o.releaseKeys ?? RK,
+      productTrust: PT,
+      expectedAud: AUD_V3,
+      expect: { verify: "ok" },
+    };
+    const c: RevocationCase =
+      mode === "revocation"
+        ? {
+            ...base,
+            entry: {
+              record: o.hashOverride ?? sha256Hex(jws),
+              pack: "djdl.levels",
+              target: target.sha256,
+              version: "1.0.0",
+              seq: 1,
+              ...o.entry,
+            },
+          }
+        : {
+            ...base,
+            expectedHash: o.hashOverride ?? sha256Hex(jws),
+            pin: o.pin!,
+          };
+    const want = refVerifyRevocationCase(c);
+    if (o.expect === "ok") {
+      if (want.verify !== "ok")
+        throw new Error(`revocationCases ${id}: the reference refuses it`);
+      c.expect = {
+        ...want,
+        ...(o.supersedes ? { supersedes: o.supersedes } : {}),
+        ...(o.winner ? { winner: o.winner } : {}),
+      };
+    } else {
+      if (want.verify !== "fail" || want.step !== o.expect)
+        throw new Error(
+          `revocationCases ${id}: the reference answers ${JSON.stringify(want)}`,
+        );
+      c.expect = want;
+    }
+    hashes.set(id, sha256Hex(jws));
+    const kidOk =
+      hasOwn(c.releaseKeys, kid) &&
+      !Object.values(PT).includes(c.releaseKeys[kid]!);
+    const v = kidOk
+      ? refVerifyJws(jws, { [kid]: c.releaseKeys[kid]! }, "pkey-release+jws")
+      : null;
+    const nonWire = v ? refNonWire(v.text) : [];
+    cases.push(
+      placeNonWire(nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c),
+    );
+  };
+  const withoutKey = (
+    k: string,
+    over: Record<string, unknown> = {},
+  ): Record<string, unknown> => {
+    const d = revDoc(over);
+    delete d[k];
+    return d;
+  };
+
+  // Valid.
+  await mk(
+    "revocation-valid-with-replacement",
+    "The control: djdl.levels@1.0.0 revoked, replaced by 1.1.0 (same deliverable), signed by the pinned release key.",
+    { expect: "ok" },
+  );
+  await mk(
+    "revocation-valid-no-replacement",
+    "A revocation without a replacement.",
+    {
+      doc: withoutKey("replacement"),
+      expect: "ok",
+    },
+  );
+  await mk(
+    "revocation-valid-reason-at-max",
+    "`reason` of exactly 512 UTF-8 bytes (multi-byte characters counted as bytes).",
+    {
+      doc: revDoc({ reason: `${"é".repeat(200)}${"x".repeat(112)}` }),
+      expect: "ok",
+    },
+  );
+  await mk(
+    "revocation-valid-second-release-key",
+    "Signed by the second pinned release key (2027), during a rotation.",
+    {
+      kid: REL2_KID,
+      releaseKeys: { ...RK, [REL2_KID]: pub(REL2_KID) },
+      expect: "ok",
+    },
+  );
+  // jws.
+  await mk(
+    "revocation-signed-by-product-key",
+    "Signed by the product key, which is in the product trust set: refused at step `jws` (decision 3: the Worker can never sign one).",
+    {
+      kid: PIN_KID,
+      releaseKeys: { ...RK, [PIN_KID]: pub(PIN_KID) },
+      expect: "jws",
+    },
+  );
+  await mk(
+    "revocation-kid-not-pinned",
+    "Signed by the 2027 release key, which this app does not pin.",
+    { kid: REL2_KID, expect: "jws" },
+  );
+  // hash.
+  await mk(
+    "revocation-hash-mismatch",
+    "The body does not hash to `entry.record`.",
+    { hashOverride: sha256Hex("pkey-corpus-revocation:other"), expect: "hash" },
+  );
+  // claims.
+  await mk("revocation-wrong-aud", "`aud` names another product.", {
+    doc: revDoc({ aud: "other" }),
+    expect: "claims",
+  });
+  // cross-check.
+  await mk(
+    "revocation-entry-pack-mismatch",
+    "The feed entry names another pack.",
+    { entry: { pack: "djdl.assets" }, expect: "cross-check" },
+  );
+  await mk(
+    "revocation-entry-version-mismatch",
+    "The feed entry names another version.",
+    { entry: { version: "1.0.1" }, expect: "cross-check" },
+  );
+  await mk(
+    "revocation-entry-seq-mismatch",
+    "The feed entry names another `seq`.",
+    { entry: { seq: 2 }, expect: "cross-check" },
+  );
+  await mk(
+    "revocation-kind-app",
+    "A record of `kind: app` where a revocation is pinned.",
+    {
+      doc: revDoc({ kind: "app", builds: r15Builds("1.0.0", ["macos-dmg"]) }),
+      expect: "cross-check",
+    },
+  );
+  // revocation (step 16).
+  await mk(
+    "revocation-deliverable-app",
+    "`deliverable: app`: an app build is revoked by License's compatibility window, never by a revocation record.",
+    {
+      doc: revDoc({ deliverable: "app" }),
+      entry: { pack: "app" },
+      expect: "revocation",
+    },
+  );
+  await mk("revocation-revokes-missing", "No `revokes`.", {
+    doc: withoutKey("revokes"),
+    expect: "revocation",
+  });
+  await mk("revocation-revokes-uppercase", "`revokes` in uppercase hex.", {
+    doc: revDoc({ revokes: target.sha256.toUpperCase() }),
+    expect: "revocation",
+  });
+  await mk(
+    "revocation-revokes-not-entry-target",
+    "`revokes` is not the feed entry's `target`.",
+    { doc: revDoc({ revokes: other.sha256 }), expect: "revocation" },
+  );
+  await mk(
+    "revocation-replacement-equals-revokes",
+    "The replacement is the revoked record itself.",
+    {
+      doc: revDoc({
+        replacement: { sha256: target.sha256, seq: 1, version: "1.0.0" },
+      }),
+      expect: "revocation",
+    },
+  );
+  await mk(
+    "revocation-replacement-seq-token",
+    "V4 §3.1: `replacement.seq` written as the token `2.0`.",
+    {
+      text: rawJson(
+        revDoc({
+          replacement: {
+            sha256: repl.sha256,
+            seq: raw("2.0"),
+            version: "1.1.0",
+          },
+        }),
+      ),
+      expect: "revocation",
+    },
+  );
+  await mk("revocation-replacement-seq-zero", "`replacement.seq` 0.", {
+    doc: revDoc({
+      replacement: { sha256: repl.sha256, seq: 0, version: "1.1.0" },
+    }),
+    expect: "revocation",
+  });
+  await mk("revocation-reason-missing", "No `reason`.", {
+    doc: withoutKey("reason"),
+    expect: "revocation",
+  });
+  await mk("revocation-reason-over-max", "`reason` of 513 bytes.", {
+    doc: revDoc({ reason: "x".repeat(513) }),
+    expect: "revocation",
+  });
+  // replacement mode.
+  await mk(
+    "revocation-replacement-record-valid",
+    "`replacement` mode: the replacement record (djdl.levels@1.1.0) verifies as a pack record against the revocation's replacement pin.",
+    {
+      mode: "replacement",
+      jws: repl.jws,
+      pin: {
+        kind: "pack",
+        deliverable: "djdl.levels",
+        version: "1.1.0",
+        seq: 2,
+      },
+      expect: "ok",
+    },
+  );
+  await mk(
+    "revocation-replacement-other-deliverable",
+    "`replacement` mode: the replacement hash names a record of another deliverable (djdl.assets@1.1.0): refused at `cross-check`.",
+    {
+      mode: "replacement",
+      jws: other.jws,
+      pin: {
+        kind: "pack",
+        deliverable: "djdl.levels",
+        version: "1.1.0",
+        seq: 2,
+      },
+      expect: "cross-check",
+    },
+  );
+  // Superseding (decision 18).
+  const replB = { sha256: other.sha256, seq: 2, version: "1.1.0" };
+  await mk(
+    "revocation-supersedes-replacement",
+    "A later revocation of the same target with a newer `issuedAt` and a different replacement; with `revocation-valid-with-replacement` it is the winner (`newerRevocation`).",
+    {
+      doc: revDoc({ issuedAt: ISSUED + 600, replacement: replB }),
+      supersedes: "revocation-valid-with-replacement",
+      winner: "revocation-supersedes-replacement",
+      expect: "ok",
+    },
+  );
+  await mk(
+    "revocation-supersede-omits-revokes",
+    "A superseding record cannot omit `revokes`: still step `revocation`.",
+    {
+      doc: withoutKey("revokes", { issuedAt: ISSUED + 900 }),
+      expect: "revocation",
+    },
+  );
+  {
+    const tie = revDoc({ replacement: replB, reason: "Tie." });
+    const tieJws = await signAs(tie, REL_KID, "pkey-release+jws");
+    const control = hashes.get("revocation-valid-with-replacement")!;
+    const winner =
+      sha256Hex(tieJws) > control
+        ? "revocation-supersede-tie"
+        : "revocation-valid-with-replacement";
+    await mk(
+      "revocation-supersede-tie",
+      "Equal `issuedAt` with `revocation-valid-with-replacement`: the higher record hash (by bytes) wins.",
+      {
+        jws: tieJws,
+        supersedes: "revocation-valid-with-replacement",
+        winner,
+        expect: "ok",
+      },
+    );
+  }
+  await mk(
+    "revocation-supersede-older-loses",
+    "An older `issuedAt` with a different replacement loses to `revocation-valid-with-replacement`, which stays the winner.",
+    {
+      doc: revDoc({ issuedAt: ISSUED - 600, replacement: replB }),
+      supersedes: "revocation-valid-with-replacement",
+      winner: "revocation-valid-with-replacement",
+      expect: "ok",
+    },
+  );
+
+  // The superseding winners, recomputed with the reference rule.
+  const byId = new Map(cases.map((c) => [c.id, c]));
+  for (const c of cases) {
+    if (c.expect.verify !== "ok" || !c.expect.supersedes) continue;
+    const o = byId.get(c.expect.supersedes)!;
+    const a = c.expect.revocation as { issuedAt: number };
+    const b = (o.expect as unknown as { revocation: { issuedAt: number } })
+      .revocation;
+    const ha = c.entry!.record;
+    const hb = o.entry!.record;
+    const win =
+      a.issuedAt !== b.issuedAt
+        ? a.issuedAt > b.issuedAt
+          ? c.id
+          : o.id
+        : ha >= hb
+          ? c.id
+          : o.id;
+    if (win !== c.expect.winner)
+      throw new Error(`revocationCases ${c.id}: the winner is ${win}`);
+    if (c.entry!.target !== o.entry!.target)
+      throw new Error(`revocationCases ${c.id}: supersedes another target`);
+  }
+  if (cases.length !== P13_COUNTS.revocationCases)
+    throw new Error(
+      `revocationCases: ${cases.length} != ${P13_COUNTS.revocationCases}`,
+    );
+  return cases;
+}
+
+// ── The content decision (plans/P4-13.md §2.6), the generator's reference ────────────────────
+
+interface RefContentInput {
+  stamp: {
+    contentApi: number;
+    pins: { pack: string; release: Record<string, any> }[];
+    expects: { pack: string; required: boolean; delivery: string }[];
+    holds: { pack: string; release: Record<string, any> }[] | null;
+  };
+  active: Record<string, Record<string, any>>;
+  axes: Record<string, string[]>;
+  revocations: {
+    target: string;
+    pack: string;
+    replacement: Record<string, any> | null;
+    replacementUsable: boolean;
+  }[];
+  buckets: Record<string, number | null>;
+}
+type RefContentRowInput = RefInput & { content: RefContentInput };
+
+/** The key of the install's outlet entry in `target`, by §2.8 step 3's rule. */
+function refEntryId(
+  target: Record<string, any> | undefined,
+  outlet: { id: string | null; kind: string },
+): string | null {
+  if (!target || outlet.kind === "unknown") return null;
+  const outlets = target.outlets as Record<string, Record<string, any>>;
+  if (outlet.id !== null && hasOwn(outlets, outlet.id)) {
+    if (outlets[outlet.id]!.kind === outlet.kind) return outlet.id;
+  }
+  const ids = Object.keys(outlets).filter(
+    (k) => outlets[k]!.kind === outlet.kind,
+  );
+  return ids.length === 1 ? ids[0]! : null;
+}
+
+/** §2.6 steps 1–5: the feed target per pack at one level and engine (pins and gates applied). */
+function refFeedTargets(
+  ps: Record<string, any> | null,
+  level: number,
+  platform: string,
+  engine: string,
+  axes: Record<string, string[]>,
+  outlet: Record<string, any> | null,
+  buckets: Record<string, number | null>,
+): Map<string, Record<string, any>> {
+  const out = new Map<string, Record<string, any>>();
+  if (ps === null) return out;
+  const best = new Map<string, { idx: number[]; set: string }>();
+  for (const row of ps.rows as Record<string, any>[]) {
+    if (row.contentApi !== level || row.platform !== platform) continue;
+    if (row.engine !== engine) continue;
+    const names = Object.keys(row.variant).sort(refCmpBytes);
+    const idx = names.map((a) =>
+      hasOwn(axes, a) ? axes[a]!.indexOf(row.variant[a]) : -1,
+    );
+    if (idx.some((k) => k < 0)) continue;
+    const g = names.join("\u0000");
+    const cur = best.get(g);
+    let lower = cur === undefined;
+    if (cur !== undefined)
+      for (let k = 0; k < idx.length; k++)
+        if (idx[k] !== cur.idx[k]) {
+          lower = idx[k]! < cur.idx[k]!;
+          break;
+        }
+    if (lower) best.set(g, { idx, set: row.set });
+  }
+  const count = new Map<string, number>();
+  const named = new Map<string, string>();
+  for (const { set } of best.values())
+    for (const h of ps.sets[set] as string[]) {
+      const pack = ps.releases[h].pack as string;
+      count.set(pack, (count.get(pack) ?? 0) + 1);
+      named.set(pack, h);
+    }
+  const pinned: string[] = outlet?.pinned ?? [];
+  const gates: Record<string, any> = outlet?.gates ?? {};
+  for (const [pack, h0] of named) {
+    if (count.get(pack)! > 1 || pinned.includes(pack)) continue;
+    let h: string | null = h0;
+    if (hasOwn(gates, h0)) {
+      const g = gates[h0];
+      const inBucket =
+        !g.halted &&
+        (!hasOwn(g, "rollout") ||
+          (typeof buckets[g.rollout.salt] === "number" &&
+            (buckets[g.rollout.salt] as number) < g.rollout.bp));
+      if (!inBucket) h = g.fallback;
+    }
+    if (h !== null) {
+      const r = ps.releases[h];
+      out.set(pack, { sha256: h, seq: r.seq, version: r.version });
+    }
+  }
+  return out;
+}
+
+interface RefComposed {
+  install: { pack: string; release: Record<string, any> }[];
+  revoke: string[];
+  set: { pack: string; sha256: string }[];
+  R: boolean;
+  F: boolean;
+}
+
+function refCompose(
+  c: RefContentInput,
+  ps: Record<string, any> | null,
+  floors: Record<string, any>[],
+  outlet: Record<string, any> | null,
+  dataUpdates: boolean,
+  platform: string,
+  engine: string,
+): RefComposed {
+  const L = c.stamp.contentApi;
+  const revs = new Map(c.revocations.map((r) => [r.target, r]));
+  const revoked = (x: Record<string, any> | null | undefined): boolean =>
+    !!x && revs.has(x.sha256);
+  const pin = new Map(c.stamp.pins.map((p) => [p.pack, p.release]));
+  const hold = new Map((c.stamp.holds ?? []).map((h) => [h.pack, h.release]));
+  const exp = new Map(c.stamp.expects.map((e) => [e.pack, e]));
+  const pinnedOut: string[] = ps !== null ? (outlet?.pinned ?? []) : [];
+  const targets = refFeedTargets(
+    ps,
+    L,
+    platform,
+    engine,
+    c.axes,
+    ps !== null ? outlet : null,
+    c.buckets,
+  );
+  const packs = [
+    ...new Set([
+      ...pin.keys(),
+      ...hold.keys(),
+      ...exp.keys(),
+      ...Object.keys(c.active),
+      ...targets.keys(),
+    ]),
+  ].sort(refCmpBytes);
+  const out: RefComposed = {
+    install: [],
+    revoke: [],
+    set: [],
+    R: false,
+    F: false,
+  };
+  for (const p of packs) {
+    const narrowed = pinnedOut.includes(p);
+    const replace = (
+      x: Record<string, any> | null,
+    ): Record<string, any> | null => {
+      if (x === null) return null;
+      if (!revoked(x)) return x;
+      const r = revs.get(x.sha256)!;
+      return r.replacementUsable &&
+        r.replacement !== null &&
+        !revoked(r.replacement) &&
+        dataUpdates &&
+        !narrowed
+        ? r.replacement
+        : null;
+    };
+    const required = exp.get(p)?.required === true;
+    const essential = exp.get(p)?.delivery === "essential";
+    const act = hasOwn(c.active, p) ? c.active[p]! : null;
+    let base: Record<string, any> | null = null;
+    if (pin.has(p)) base = pin.get(p)!;
+    else if (hold.has(p)) base = hold.get(p)!;
+    else if (!narrowed && c.stamp.holds !== null && dataUpdates && ps !== null)
+      base = targets.get(p) ?? null;
+    let cand = replace(base);
+    if (cand === null && revoked(act)) cand = replace(act);
+    const install =
+      cand !== null &&
+      cand.sha256 !== act?.sha256 &&
+      (act !== null || required || essential) &&
+      (pin.has(p) ||
+        hold.has(p) ||
+        act === null ||
+        revoked(act) ||
+        cand.seq > act.seq);
+    if (install) out.install.push({ pack: p, release: cand! });
+    const eff = install ? cand : act !== null && !revoked(act) ? act : cand;
+    if (eff !== null) out.set.push({ pack: p, sha256: eff.sha256 });
+    const noFix =
+      cand === null && (revoked(act) || (revoked(base) && act === null));
+    if (noFix && required) out.R = true;
+    if (noFix && !required && act !== null) out.revoke.push(p);
+    if (!noFix && (act !== null || required)) {
+      const f = floors.find((x) => x.pack === p && x.contentApi === L);
+      if (f) {
+        const k =
+          eff === null
+            ? null
+            : refCompareVersions(f.versionScheme, eff.version, f.minVersion);
+        if (k === null || k < 0) out.F = true;
+      }
+    }
+  }
+  return out;
+}
+
+/** §2.6 "Order", over P3-01's answer from `refDecideUpdate`. */
+function refDecideWithContent(
+  inp: RefContentRowInput,
+): Record<string, unknown> {
+  const app = refDecideUpdate(inp);
+  const c = inp.content;
+  const feed = inp.feed;
+  const target = (feed.app.targets as Record<string, any>[]).find(
+    (t) => t.platform === inp.installed.platform,
+  );
+  const id = refEntryId(target, inp.outlet);
+  const entry = id !== null ? target!.outlets[id] : null;
+  const caps = refEffectiveCapabilities(inp.outlet.kind, {
+    platform: inp.installed.platform,
+    subkind: inp.subkind,
+    server: entry?.capabilities,
+  });
+  const fc = refFeedContent(feed, null) as {
+    packSets: Record<string, any> | null;
+    packFloors: Record<string, any>[] | null;
+  };
+  const outlet =
+    fc.packSets !== null && id !== null && hasOwn(fc.packSets.outlets ?? {}, id)
+      ? fc.packSets.outlets[id]
+      : null;
+  const engine = inp.installed.engine ?? "";
+  const floors = fc.packFloors ?? [];
+  const staged = inp.staged !== null;
+
+  if (
+    app.action === "none" &&
+    (app.reason === "stale" || app.reason === "unknown-version")
+  ) {
+    const k = refCompose(
+      c,
+      null,
+      floors,
+      null,
+      caps.dataUpdates,
+      inp.installed.platform,
+      engine,
+    );
+    return k.R
+      ? { action: "blocked", reason: "revoked-content", discardStaged: staged }
+      : app;
+  }
+  const k = refCompose(
+    c,
+    fc.packSets,
+    floors,
+    outlet,
+    caps.dataUpdates,
+    inp.installed.platform,
+    engine,
+  );
+  const block = k.R ? "revoked-content" : k.F ? "content-floor" : null;
+  if (app.action === "blocked")
+    return block === null ? app : { ...app, contentBlock: block };
+  if (["binary", "store", "platform"].includes(app.action as string)) {
+    let a = app;
+    if (app.action === "binary") {
+      // Prestage: the offered record's new level, required and essential, minus the embeds.
+      const rec = inp.record;
+      const rc = rec?.content;
+      let prestage: unknown[] = [];
+      if (rc && rc.contentApi !== c.stamp.contentApi) {
+        const build = (rec!.builds as Record<string, any>[]).find(
+          (b) => b.id === app.build,
+        );
+        const embeds: string[] = build?.embeds ?? [];
+        const bEngine =
+          isObj(build?.requires) && typeof build!.requires.engine === "string"
+            ? build!.requires.engine
+            : engine;
+        const holds = refHoldsOf(rc, null, "/content");
+        const tgts =
+          holds === null || !caps.dataUpdates
+            ? new Map<string, Record<string, any>>()
+            : refFeedTargets(
+                fc.packSets,
+                rc.contentApi,
+                inp.installed.platform,
+                bEngine,
+                c.axes,
+                outlet,
+                c.buckets,
+              );
+        const revs = new Map(c.revocations.map((r) => [r.target, r]));
+        for (const e of rc.expects as Record<string, any>[]) {
+          if (
+            !(e.required || e.delivery === "essential") ||
+            embeds.includes(e.pack)
+          )
+            continue;
+          const narrowed = (outlet?.pinned ?? []).includes(e.pack);
+          let rel: Record<string, any> | null =
+            (rc.pins as Record<string, any>[]).find((x) => x.pack === e.pack)
+              ?.release ??
+            (holds as Record<string, any>[] | null)?.find(
+              (x) => x.pack === e.pack,
+            )?.release ??
+            tgts.get(e.pack) ??
+            null;
+          if (rel && revs.has(rel.sha256)) {
+            const r = revs.get(rel.sha256)!;
+            rel =
+              r.replacementUsable &&
+              r.replacement &&
+              !revs.has(r.replacement.sha256) &&
+              caps.dataUpdates &&
+              !narrowed
+                ? r.replacement
+                : null;
+          }
+          if (!rel || c.active[e.pack]?.sha256 === rel.sha256) continue;
+          prestage.push({ pack: e.pack, release: rel });
+        }
+        prestage = (prestage as { pack: string }[]).sort((x, y) =>
+          refCmpBytes(x.pack, y.pack),
+        );
+      }
+      a = { ...app, prestage };
+    }
+    if (block !== null) return { ...a, mandatory: true, contentBlock: block };
+    if (app.mandatory === true || app.action === "binary") return a;
+  }
+  if (block !== null)
+    return { action: "blocked", reason: block, discardStaged: staged };
+  if (app.action === "code-ready") return app;
+  if (caps.dataUpdates && (k.install.length > 0 || k.revoke.length > 0))
+    return {
+      action: "packs",
+      install: k.install,
+      revoke: k.revoke,
+      set: k.set,
+      discardStaged: staged,
+    };
+  return app;
+}
+
+/** §2.6's boot table over P3-01's. */
+function refBootDecisionV2(d: Record<string, unknown>): string {
+  if (d.reason === "revoked-content" || d.contentBlock === "revoked-content")
+    return "required";
+  if (d.action === "packs") return "none";
+  return refBootDecision(d);
+}
+
+// ── `update-matrix.json#/contentRows` (plans/P4-13.md §4.3) ──────────────────────────────────
+
+const P13_EXPECTS = [
+  { pack: "diceroll.foes", required: true, delivery: "essential" },
+  { pack: "diceroll.l10n", required: false, delivery: "prefetch" },
+  { pack: "diceroll.skins", required: false, delivery: "on-demand" },
+  { pack: "diceroll.textures", required: true, delivery: "essential" },
+];
+
+/** The rows of the base feed: android, `godot-4.4`, levels 3 and 4. */
+function p13MatrixRows(): P13Row[] {
+  const rows: P13Row[] = [];
+  for (const [level, foes] of [
+    [3, "foes@1.3.3"],
+    [4, "foes@2.0.1"],
+  ] as const) {
+    rows.push([
+      level,
+      "android",
+      "godot-4.4",
+      {},
+      [foes, "l10n@1.1.0", "skins@1.0.0"],
+    ]);
+    rows.push([
+      level,
+      "android",
+      "godot-4.4",
+      { texture: "astc" },
+      ["tex@1.1.0"],
+    ]);
+    rows.push([
+      level,
+      "android",
+      "godot-4.4",
+      { texture: "etc2" },
+      ["tex@1.0.0"],
+    ]);
+  }
+  return rows;
+}
+
+/** The base `contentRows` input: CONTENT §6.8's Diceroll on android, level 4, up to date. */
+function contentBaseInput(): RefContentRowInput {
+  const i = baseInput() as RefContentRowInput;
+  i.installed = {
+    version: "1.5.0",
+    binaryVersion: "1.5.0",
+    buildNumber: "150",
+    platform: "android",
+    arch: "arm64",
+    format: null,
+    engine: "godot-4.4",
+  };
+  Object.assign(i.feed, {
+    packSets: p13PackSets(p13MatrixRows(), {
+      play: { pinned: ["diceroll.foes"] },
+    }),
+    packFloors: [
+      {
+        pack: "diceroll.foes",
+        contentApi: 3,
+        minVersion: "1.3.3",
+        versionScheme: "semver",
+      },
+      {
+        pack: "diceroll.foes",
+        contentApi: 4,
+        minVersion: "2.0.0",
+        versionScheme: "semver",
+      },
+    ],
+    revocations: [],
+  });
+  i.content = {
+    stamp: {
+      contentApi: 4,
+      pins: [],
+      expects: structuredClone(P13_EXPECTS),
+      holds: [],
+    },
+    active: {
+      "diceroll.foes": p13Pin("foes@2.0.1"),
+      "diceroll.l10n": p13Pin("l10n@1.1.0"),
+      "diceroll.skins": p13Pin("skins@1.0.0"),
+      "diceroll.textures": p13Pin("tex@1.1.0"),
+    },
+    axes: { texture: ["astc", "etc2"] },
+    revocations: [],
+    buckets: {},
+  };
+  return i;
+}
+
+type CDelta = (i: RefContentRowInput) => void;
+/** The deltas of `contentRows`, as functions. */
+const C = {
+  active:
+    (pack: string, name: string | null) =>
+    (i: RefContentRowInput): void => {
+      if (name === null) delete i.content.active[`diceroll.${pack}`];
+      else i.content.active[`diceroll.${pack}`] = p13Pin(name);
+    },
+  level:
+    (n: number) =>
+    (i: RefContentRowInput): void =>
+      void (i.content.stamp.contentApi = n),
+  /** A level-3 device: its stamp and the level-3 releases active. */
+  level3: (i: RefContentRowInput): void => {
+    i.content.stamp.contentApi = 3;
+    i.content.active["diceroll.foes"] = p13Pin("foes@1.3.3");
+  },
+  pin:
+    (name: string) =>
+    (i: RefContentRowInput): void =>
+      void i.content.stamp.pins.push({
+        pack: p13PackOf(name),
+        release: p13Pin(name),
+      }),
+  hold:
+    (name: string) =>
+    (i: RefContentRowInput): void =>
+      void i.content.stamp.holds!.push({
+        pack: p13PackOf(name),
+        release: p13Pin(name),
+      }),
+  holdsUnusable: (i: RefContentRowInput): void =>
+    void (i.content.stamp.holds = null),
+  rows:
+    (rows: P13Row[], outlets?: Record<string, unknown>) =>
+    (i: RefContentRowInput): void =>
+      void (i.feed.packSets = p13PackSets(
+        rows,
+        outlets ?? i.feed.packSets.outlets,
+      )),
+  floor:
+    (level: number, min: string) =>
+    (i: RefContentRowInput): void => {
+      const f = (i.feed.packFloors as Record<string, any>[]).find(
+        (x) => x.contentApi === level,
+      )!;
+      f.minVersion = min;
+    },
+  gate:
+    (name: string, gate: Record<string, unknown>, fallback: string | null) =>
+    (i: RefContentRowInput): void => {
+      const ps = i.feed.packSets;
+      if (fallback !== null) {
+        const [pack, version, seq] = p13Rel(fallback);
+        ps.releases[p13Hash(fallback)] = { pack, version, seq };
+      }
+      const o = (ps.outlets ??= {});
+      o.direct = {
+        gates: {
+          [p13Hash(name)]: {
+            ...gate,
+            fallback: fallback === null ? null : p13Hash(fallback),
+          },
+        },
+      };
+    },
+  bucket:
+    (n: number | null) =>
+    (i: RefContentRowInput): void =>
+      void (i.content.buckets = { [P13_SALT]: n }),
+  /** A revocation of `name`, in the feed and stored (`replacement` usable unless stated). */
+  revoke:
+    (name: string, replacement: string | null, usable = true, n = 1) =>
+    (i: RefContentRowInput): void => {
+      const [pack, version, seq] = p13Rel(name);
+      (i.feed.revocations as unknown[]).push({
+        record: p13RevRecord(name, n),
+        pack,
+        target: p13Hash(name),
+        version,
+        seq,
+      });
+      i.content.revocations.push({
+        target: p13Hash(name),
+        pack,
+        replacement: replacement === null ? null : p13Pin(replacement),
+        replacementUsable: replacement !== null && usable,
+      });
+    },
+  outletPlay: (i: RefContentRowInput): void => {
+    i.outlet = { id: "play", kind: "play" };
+  },
+  playLive:
+    (version: string, seq: number) =>
+    (i: RefContentRowInput): void => {
+      const t = i.feed.app.targets.find((x: any) => x.platform === "android");
+      t.outlets.play.live = LIVE(version, seq);
+    },
+  /** The android target pins RC16 (1.6.0, level 4 content), offered on `direct`. */
+  offerRC16: (i: RefContentRowInput): void => {
+    const t = i.feed.app.targets.find((x: any) => x.platform === "android");
+    t.release = pinOf("RC16");
+    t.outlets.direct.live = LIVE("1.6.0", 16);
+    i.record = structuredClone(record("RC16").doc);
+  },
+  appFloor:
+    (v: string) =>
+    (i: RefContentRowInput): void => {
+      i.feed.app.targets.find((x: any) => x.platform === "android").floor = {
+        minVersion: v,
+      };
+    },
+  installed:
+    (v: string) =>
+    (i: RefContentRowInput): void => {
+      i.installed.version = v;
+      i.installed.binaryVersion = v;
+    },
+  engine:
+    (e: string | null) =>
+    (i: RefContentRowInput): void =>
+      void (i.installed.engine = e),
+  methods:
+    (...m: string[]) =>
+    (i: RefContentRowInput): void =>
+      void (i.methods = m),
+  stale: (i: RefContentRowInput): void =>
+    void (i.now = (i.feed.expiresAt as number) + CLOCK_SKEW),
+  staged:
+    (version: string) =>
+    (i: RefContentRowInput): void =>
+      void (i.staged = { version, channel: "stable" }),
+  entryCaps:
+    (caps: Record<string, unknown>) =>
+    (i: RefContentRowInput): void => {
+      const t = i.feed.app.targets.find((x: any) => x.platform === "android");
+      t.outlets.direct.capabilities = caps;
+    },
+  noPackSets: (i: RefContentRowInput): void => void delete i.feed.packSets,
+};
+
+interface CWant {
+  action: string;
+  reason?: string;
+  install?: string[];
+  revoke?: string[];
+  prestage?: string[];
+  mandatory?: boolean;
+  contentBlock?: string;
+  boot: "none" | "optional" | "required";
+}
+
+function contentRowsSpec(): { name: string; deltas: CDelta[]; want: CWant }[] {
+  const row = (name: string, deltas: CDelta[], want: CWant) => ({
+    name,
+    deltas,
+    want,
+  });
+  const n = "none" as const;
+  const o = "optional" as const;
+  const r = "required" as const;
+  const base = p13MatrixRows();
+  const withSet = (level: number, members: string[]): P13Row[] =>
+    base.map((x) =>
+      x[0] === level && Object.keys(x[3]).length === 0
+        ? [x[0], x[1], x[2], x[3], members]
+        : x,
+    );
+  return [
+    row("packs-new-compatible-release", [C.active("foes", "foes@2.0.0")], {
+      action: "packs",
+      install: ["foes@2.0.1"],
+      boot: n,
+    }),
+    row("packs-active-equals-target", [], {
+      action: "none",
+      reason: "up-to-date",
+      boot: n,
+    }),
+    row(
+      "packs-standalone-any-level",
+      [C.level3, C.active("l10n", "l10n@1.0.0")],
+      { action: "packs", install: ["l10n@1.1.0"], boot: n },
+    ),
+    row(
+      "packs-hold-overrides-feed",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.active("l10n", "l10n@1.0.0"),
+        C.hold("foes@2.0.0"),
+      ],
+      { action: "packs", install: ["l10n@1.1.0"], boot: n },
+    ),
+    row(
+      "packs-pinned-never-from-feed",
+      [C.active("foes", "foes@2.0.0"), C.pin("foes@2.0.0")],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "packs-narrowed-to-pinned-on-play",
+      [C.outletPlay, C.playLive("1.5.0", 15), C.active("foes", "foes@2.0.0")],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "packs-variant-row-by-preference",
+      [C.active("textures", "tex@1.0.0")],
+      { action: "packs", install: ["tex@1.1.0"], boot: n },
+    ),
+    row(
+      "packs-engine-exact-row-only",
+      [
+        C.active("l10n", "l10n@1.0.0"),
+        C.rows([
+          ...base,
+          [4, "android", "", {}, ["foes@2.0.1", "l10n@1.0.0", "skins@1.0.0"]],
+        ]),
+      ],
+      { action: "packs", install: ["l10n@1.1.0"], boot: n },
+    ),
+    row(
+      "packs-engine-no-exact-row-no-target",
+      [
+        C.engine("godot-4.5"),
+        C.active("l10n", "l10n@1.0.0"),
+        C.rows(base.map((x) => [x[0], x[1], "", x[3], x[4]] as P13Row)),
+      ],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "packs-engine-null-takes-empty-row",
+      [
+        C.engine(null),
+        C.active("l10n", "l10n@1.0.0"),
+        C.rows(base.map((x) => [x[0], x[1], "", x[3], x[4]] as P13Row)),
+      ],
+      { action: "packs", install: ["l10n@1.1.0"], boot: n },
+    ),
+    row(
+      "packs-yanked-head-no-downgrade",
+      [C.rows(withSet(4, ["foes@2.0.0", "l10n@1.1.0", "skins@1.0.0"]))],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "packs-gate-in-bucket",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.gate(
+          "foes@2.0.1",
+          { halted: false, rollout: { bp: 5000, salt: P13_SALT } },
+          "foes@2.0.0",
+        ),
+        C.bucket(100),
+      ],
+      { action: "packs", install: ["foes@2.0.1"], boot: n },
+    ),
+    row(
+      "packs-gate-out-of-bucket-fallback",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.gate(
+          "foes@2.0.1",
+          { halted: false, rollout: { bp: 5000, salt: P13_SALT } },
+          "foes@2.0.0",
+        ),
+        C.bucket(9000),
+      ],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "packs-gate-halted-fallback",
+      [
+        C.active("foes", null),
+        C.gate("foes@2.0.1", { halted: true }, "foes@2.0.0"),
+      ],
+      { action: "packs", install: ["foes@2.0.0"], boot: n },
+    ),
+    row(
+      "packs-no-data-updates",
+      [C.active("foes", "foes@2.0.0"), C.entryCaps({ dataUpdates: false })],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row("packs-member-absent", [C.active("foes", "foes@2.0.0"), C.noPackSets], {
+      action: "none",
+      reason: "up-to-date",
+      boot: n,
+    }),
+    row(
+      "packs-non-mandatory-store-with-pack-update",
+      [C.outletPlay, C.playLive("1.6.0", 16), C.active("l10n", "l10n@1.0.0")],
+      { action: "packs", install: ["l10n@1.1.0"], boot: n },
+    ),
+    row("binary-prestage-on-contentapi-change", [C.level3, C.offerRC16], {
+      action: "binary",
+      prestage: ["foes@2.0.1"],
+      mandatory: false,
+      boot: o,
+    }),
+    row("binary-same-contentapi-no-prestage", [C.offerRC16], {
+      action: "binary",
+      prestage: [],
+      mandatory: false,
+      boot: o,
+    }),
+    row(
+      "non-mandatory-binary-with-pack-update",
+      [C.offerRC16, C.active("l10n", "l10n@1.0.0")],
+      { action: "binary", prestage: [], mandatory: false, boot: o },
+    ),
+    row("store-new-level-fetch-at-boot", [C.active("foes", "foes@1.3.3")], {
+      action: "packs",
+      install: ["foes@2.0.1"],
+      boot: n,
+    }),
+    row("blocked-content-floor-no-backport", [C.level3, C.floor(3, "1.3.4")], {
+      action: "blocked",
+      reason: "content-floor",
+      boot: o,
+    }),
+    row(
+      "content-floor-met-by-backport",
+      [
+        C.level3,
+        C.floor(3, "1.3.4"),
+        C.rows(withSet(3, ["foes@1.3.4", "l10n@1.1.0", "skins@1.0.0"])),
+      ],
+      { action: "packs", install: ["foes@1.3.4"], boot: n },
+    ),
+    row(
+      "blocked-content-floor-pinned-below-floor",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.pin("foes@2.0.0"),
+        C.floor(4, "2.0.1"),
+      ],
+      { action: "blocked", reason: "content-floor", boot: o },
+    ),
+    row(
+      "content-floor-with-store-offer",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.pin("foes@2.0.0"),
+        C.floor(4, "2.0.1"),
+        C.outletPlay,
+        C.playLive("1.6.0", 16),
+      ],
+      {
+        action: "store",
+        mandatory: true,
+        contentBlock: "content-floor",
+        boot: o,
+      },
+    ),
+    row(
+      "revoked-with-compatible-replacement",
+      [C.revoke("foes@2.0.1", "foes@2.0.2")],
+      { action: "packs", install: ["foes@2.0.2"], boot: n },
+    ),
+    row(
+      "revoked-pinned-with-record-replacement",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.pin("foes@2.0.0"),
+        C.revoke("foes@2.0.0", "foes@2.0.1"),
+      ],
+      { action: "packs", install: ["foes@2.0.1"], boot: n },
+    ),
+    row(
+      "blocked-revoked-no-compatible-replacement",
+      [C.revoke("foes@2.0.1", null)],
+      { action: "blocked", reason: "revoked-content", boot: r },
+    ),
+    row(
+      "revoked-replacement-unusable",
+      [C.revoke("foes@2.0.1", "foes@2.0.2", false)],
+      { action: "blocked", reason: "revoked-content", boot: r },
+    ),
+    row(
+      "revoked-embedded-baseline",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.pin("foes@2.0.0"),
+        C.revoke("foes@2.0.0", "foes@2.0.1"),
+      ],
+      { action: "packs", install: ["foes@2.0.1"], boot: n },
+    ),
+    row("revoked-optional-pack-unmounted", [C.revoke("skins@1.0.0", null)], {
+      action: "packs",
+      install: [],
+      revoke: ["diceroll.skins"],
+      boot: n,
+    }),
+    row(
+      "revoked-feed-target-not-installed",
+      [C.active("foes", "foes@2.0.0"), C.revoke("foes@2.0.1", null)],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "revoked-with-binary-offer",
+      [C.offerRC16, C.revoke("foes@2.0.1", null)],
+      {
+        action: "binary",
+        mandatory: true,
+        contentBlock: "revoked-content",
+        prestage: [],
+        boot: r,
+      },
+    ),
+    row(
+      "app-floor-precedes-content-floor",
+      [
+        C.level3,
+        C.floor(3, "1.3.4"),
+        C.installed("1.4.0"),
+        C.appFloor("1.5.0"),
+        C.methods(),
+      ],
+      {
+        action: "blocked",
+        reason: "app-floor",
+        contentBlock: "content-floor",
+        boot: o,
+      },
+    ),
+    row(
+      "app-floor-with-revoked-required",
+      [
+        C.revoke("foes@2.0.1", null),
+        C.installed("1.4.0"),
+        C.appFloor("1.5.0"),
+        C.methods(),
+      ],
+      {
+        action: "blocked",
+        reason: "app-floor",
+        contentBlock: "revoked-content",
+        boot: r,
+      },
+    ),
+    row(
+      "mandatory-binary-supersedes-optional-packs",
+      [
+        C.level3,
+        C.active("l10n", "l10n@1.0.0"),
+        C.offerRC16,
+        C.installed("1.4.0"),
+        C.appFloor("1.5.0"),
+      ],
+      { action: "binary", mandatory: true, prestage: ["foes@2.0.1"], boot: o },
+    ),
+    row(
+      "mandatory-store-supersedes-packs",
+      [
+        C.outletPlay,
+        C.playLive("1.6.0", 16),
+        C.installed("1.4.0"),
+        C.appFloor("1.5.0"),
+        C.active("l10n", "l10n@1.0.0"),
+      ],
+      { action: "store", mandatory: true, boot: o },
+    ),
+    row(
+      "stale-feed-revoked-required-blocks",
+      [C.stale, C.revoke("foes@2.0.1", null)],
+      {
+        action: "blocked",
+        reason: "revoked-content",
+        boot: r,
+      },
+    ),
+    row(
+      "stale-feed-content-floor-frozen",
+      [C.stale, C.level3, C.floor(3, "1.3.4")],
+      {
+        action: "none",
+        reason: "stale",
+        boot: n,
+      },
+    ),
+    row(
+      "code-ready-with-pack-update",
+      [C.installed("1.4.0"), C.staged("1.5.0"), C.active("l10n", "l10n@1.0.0")],
+      { action: "code-ready", boot: o },
+    ),
+    row(
+      "holds-unusable-no-feed-targets",
+      [C.holdsUnusable, C.active("l10n", "l10n@1.0.0")],
+      { action: "none", reason: "up-to-date", boot: n },
+    ),
+    row(
+      "pack-in-two-selected-rows-ignored",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.active("l10n", "l10n@1.0.0"),
+        C.rows(
+          base.map((x) =>
+            x[0] === 4 && x[3].texture === "astc"
+              ? ([
+                  x[0],
+                  x[1],
+                  x[2],
+                  x[3],
+                  ["tex@1.1.0", "l10n@1.1.0"],
+                ] as P13Row)
+              : x,
+          ),
+        ),
+      ],
+      { action: "packs", install: ["foes@2.0.1"], boot: n },
+    ),
+    row(
+      "revoked-superseded-replacement",
+      [
+        C.active("foes", "foes@2.0.0"),
+        C.pin("foes@2.0.0"),
+        C.revoke("foes@2.0.0", "foes@2.0.2", true, 2),
+      ],
+      { action: "packs", install: ["foes@2.0.2"], boot: n },
+    ),
+    row(
+      "stale-feed-revoked-pin-replacement-active",
+      [C.stale, C.pin("foes@2.0.0"), C.revoke("foes@2.0.0", "foes@2.0.1")],
+      { action: "none", reason: "stale", boot: n },
+    ),
+  ];
+}
+
+/** `contentRows`: computed by the reference, checked against the plan's table. */
+function buildContentRows(fail: (m: string) => never): {
+  rows: unknown[];
+  used: { actions: Set<string>; blocked: Set<string>; boot: Set<string> };
+} {
+  const used = {
+    actions: new Set<string>(),
+    blocked: new Set<string>(),
+    boot: new Set<string>(),
+  };
+  const nameOf = (pin: Record<string, any>): string => {
+    const hit = Object.keys(P13_RELEASES).find(
+      (k) => p13Hash(k) === pin.sha256,
+    );
+    if (!hit) fail(`contentRows: an unknown release ${pin.sha256}`);
+    return hit!;
+  };
+  const rows = contentRowsSpec().map((spec, k) => {
+    const input = contentBaseInput();
+    for (const d of spec.deltas) d(input);
+    const decision = refDecideWithContent(input);
+    const boot = refBootDecisionV2(decision);
+    const label = k < 9 ? `C${k + 1}` : k === 9 ? "C9b" : `C${k}`;
+    const where = `contentRow ${label} (${spec.name})`;
+    const w = spec.want;
+    if (decision.action !== w.action)
+      fail(`${where}: ${decision.action} != ${w.action}`);
+    for (const key of ["reason", "mandatory", "contentBlock"] as const)
+      if (w[key] !== undefined && decision[key] !== w[key])
+        fail(`${where}: ${key} ${String(decision[key])} != ${String(w[key])}`);
+    if (w.contentBlock === undefined && decision.contentBlock !== undefined)
+      fail(`${where}: an unexpected contentBlock`);
+    if (w.install !== undefined) {
+      const got = (decision.install as { release: Record<string, any> }[]).map(
+        (x) => nameOf(x.release),
+      );
+      if (JSON.stringify(got) !== JSON.stringify(w.install))
+        fail(`${where}: install ${JSON.stringify(got)}`);
+    }
+    if (
+      w.revoke !== undefined &&
+      JSON.stringify(decision.revoke) !== JSON.stringify(w.revoke)
+    )
+      fail(`${where}: revoke ${JSON.stringify(decision.revoke)}`);
+    if (w.prestage !== undefined) {
+      const got = (decision.prestage as { release: Record<string, any> }[]).map(
+        (x) => nameOf(x.release),
+      );
+      if (JSON.stringify(got) !== JSON.stringify(w.prestage))
+        fail(`${where}: prestage ${JSON.stringify(got)}`);
+    }
+    if (boot !== w.boot) fail(`${where}: boot ${boot} != ${w.boot}`);
+    // `required` exactly on the revoked-content rows.
+    const revokedRow =
+      decision.reason === "revoked-content" ||
+      decision.contentBlock === "revoked-content";
+    if ((boot === "required") !== revokedRow)
+      fail(`${where}: required off the revoked-content rows`);
+    // The feed passes the claims; its content members are usable unless the row removes one.
+    const feedText = JSON.stringify(input.feed);
+    if (
+      refFeedClaims(input.feed, ctxOf(feedText), {
+        aud: AUD_V3,
+        channel: input.feed.channel,
+      }) !== null
+    )
+      fail(`${where}: its feed fails the claims`);
+    const fc = refFeedContent(input.feed, ctxOf(feedText));
+    if (spec.name !== "packs-member-absent" && fc.packSets === null)
+      fail(`${where}: packSets unusable`);
+    if (fc.packFloors === null || fc.revocations === null)
+      fail(`${where}: floors or revocations unusable`);
+    const ps = fc.packSets as Record<string, any> | null;
+    if (ps)
+      for (const [id, members] of Object.entries<string[]>(ps.sets))
+        if (id !== refPackSetId(members.map((m) => [ps.releases[m].pack, m])))
+          fail(`${where}: set ${id} is not its packSetId`);
+    if (input.record) {
+      if (
+        !refRecordClaims(
+          input.record,
+          ctxOf(JSON.stringify(input.record)),
+          AUD_V3,
+        )
+      )
+        fail(`${where}: its record fails the claims`);
+      const t = input.feed.app.targets.find(
+        (x: any) => x.platform === input.installed.platform,
+      );
+      const named = [...RECORDS!.values()].find(
+        (x) => x.sha256 === t.release.sha256,
+      );
+      if (!named || JSON.stringify(named.doc) !== JSON.stringify(input.record))
+        fail(`${where}: the record is not the pin's`);
+    }
+    // The stamp's content passes the content claims; holds, when usable, pass `holdsOf`.
+    const stamp = input.content.stamp;
+    if (stamp.holds !== null && refHoldsOf(stamp, null, "/content") === null)
+      fail(`${where}: the stamp's holds are unusable`);
+    used.actions.add(decision.action as string);
+    if (decision.action === "blocked")
+      used.blocked.add(decision.reason as string);
+    used.boot.add(boot);
+    const expect: Record<string, unknown> = { decision, boot };
+    if (decision.action === "packs")
+      expect.packSetId = refPackSetId(
+        (decision.set as { pack: string; sha256: string }[]).map((x) => [
+          x.pack,
+          x.sha256,
+        ]),
+      );
+    return { name: `${label}. ${spec.name}`, input, expect };
+  });
+  if (rows.length !== P13_COUNTS.contentRows)
+    fail(`${rows.length} contentRows, not ${P13_COUNTS.contentRows}`);
+  return { rows, used };
+}
+
 // ── §4.9 self-checks over the assembled corpus ───────────────────────────────────────────────
 
 type AnyCase = Record<string, any>;
@@ -15013,6 +17615,19 @@ const JWS_FAMILIES: Record<
     cap: 65536,
   }),
   releaseRecordCases: (c) => ({
+    jws: c.jws,
+    keys: c.releaseKeys,
+    typ: "pkey-release+jws",
+    cap: 65536,
+  }),
+  // plans/P4-13.md §4.2.
+  feedContentCases: (c) => ({
+    jws: c.jws,
+    keys: c.trust,
+    typ: "pkey-feed+jws",
+    cap: 65536,
+  }),
+  revocationCases: (c) => ({
     jws: c.jws,
     keys: c.releaseKeys,
     typ: "pkey-release+jws",
@@ -15234,7 +17849,9 @@ const FAMILY_CLAIM_KEYS: Record<string, string[]> = {
   trustCases: ["trust"],
   bundleCases: ["bundle"],
   feedCases: ["feed"],
+  feedContentCases: ["feed"],
   releaseRecordCases: ["record"],
+  revocationCases: ["record"],
   packRecordCases: ["record", "pack", "content"],
   markerCases: ["record", "pack", "content"],
 };
@@ -15259,8 +17876,10 @@ function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
     configDocCases: 21,
     trustCases: 20,
     bundleCases: 16,
-    feedCases: 77,
+    feedCases: 80,
+    feedContentCases: P13_COUNTS.feedContentCases,
     releaseRecordCases: 49,
+    revocationCases: P13_COUNTS.revocationCases,
     packRecordCases: 159,
     markerCases: 17,
   };
@@ -15466,6 +18085,10 @@ async function buildContent(): Promise<{
       return { doc: r.doc, sha256: r.sha256 };
     },
     appContent: appTwin(packs).content as Record<string, unknown>,
+    docsPin: (() => {
+      const r = packs.get("djdl.docs@1.0.0")!;
+      return { sha256: r.sha256, seq: r.doc.seq, version: r.doc.version };
+    })(),
   });
   const pinned = new Set<string>();
   const walk = (v: unknown): void => {

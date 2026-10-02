@@ -236,8 +236,20 @@ export async function loadResolutionState(
       list.push(packVariantFacts(b));
       variantsBy.set(b.release_id, list);
     }
+    // P4-13: a revoked release leaves every candidate list, a pinned pointer included (a yank
+    // alone would still resolve as a pinned pointer).
+    const revoked = new Set(
+      (
+        await db.all<{ target_release_id: string }>(
+          "SELECT target_release_id FROM release_revocations WHERE product = ?",
+          product,
+        )
+      ).map((r) => r.target_release_id),
+    );
     for (const decl of resolvable) {
-      const mine = rows.filter((r) => r.deliverable_id === decl.id);
+      const mine = rows.filter(
+        (r) => r.deliverable_id === decl.id && !revoked.has(r.release_id),
+      );
       const candidates: Candidate[] = mine.map((r) => ({
         releaseId: r.release_id,
         version: r.version,

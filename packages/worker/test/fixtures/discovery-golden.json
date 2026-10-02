@@ -160,7 +160,8 @@
           "record": "https://key.plrs.im/full/release/records/{sha256}"
         },
         "releaseKeyFingerprints": [],
-        "packs": true
+        "packs": true,
+        "revocations": true
       },
       "distribution": {
         "enabled": true,

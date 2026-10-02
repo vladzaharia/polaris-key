@@ -16,7 +16,7 @@ const S := preload("res://tests/packs/support.gd")
 ## The content corpus's directory under conformance/corpus/v2/ (PKEY_CONTENT_CORPUS names it).
 const CONTENT := "content/"
 
-const FLOORS := {"pathCases": 18, "filesIndexCases": 15, "packSetIdCases": 7, "stampCases": 6, "frameWindowCases": 13, "applyCases": 19}
+const FLOORS := {"pathCases": 18, "filesIndexCases": 15, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 19}
 
 
 func run(t: PKeyTestContext) -> void:
@@ -150,7 +150,11 @@ func _stamps(t: PKeyTestContext, cases: Array) -> void:
 	var n := 0
 	for c in cases:
 		var got := PKeyPackClaims.parse_content_stamp(c["stamp"])
-		S.check_same(t, "stamp %s" % c["id"], got, c["expect"])
+		# parse_content_stamp's result is unchanged by P4-13: `expect.holds`, where present, is
+		# holdsOf over the parsed stamp (plans/P4-13.md §2.4), which P4-24 ports and checks.
+		var want: Dictionary = (c["expect"] as Dictionary).duplicate()
+		want.erase("holds")
+		S.check_same(t, "stamp %s" % c["id"], got, want)
 		n += 1
 	t.check("content: stampCases coverage", n == cases.size() and n >= FLOORS["stampCases"], "%d/%d" % [n, cases.size()])
 

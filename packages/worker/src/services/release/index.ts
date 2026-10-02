@@ -83,6 +83,9 @@ export const releaseService: ServiceDescriptor = {
       // to publish a pack or stamp `content` without it, so no app record carries pins a Worker
       // did not mirror.
       packs: true,
+      // P4-13: this Worker ingests CI-signed `kind: revocation` records, serves them on the
+      // record route and lists them in the channel feed. `pkey release revoke` requires it.
+      revocations: true,
     };
   },
 };

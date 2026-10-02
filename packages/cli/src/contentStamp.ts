@@ -13,6 +13,10 @@
  *     stale marker never becomes a pin;
  *   - `--pin <packId>@<version>`, resolved through the uploads preflight, whose
  *     `seqs[].recordSha256` names the stored record (a pack not embedded in this build);
+ *   - `--hold <packId>@<version>[=<reason>]` (P4-13, plans/P4-13.md §2.4 and decision 17),
+ *     resolved the same way: this app release keeps a `compatible` pack at that release. Holds
+ *     go into the stamp's `holds` (never for a pinned pack) and reach devices in the stamp;
+ *     `parseContentStamp` ignores them and `holdsOf` reads them;
  *   - `.pkey/release`: `contentApi` from `deliverables.app.content`, and each pin's `required`
  *     and `delivery` as its `expects` entry.
  *
@@ -36,16 +40,18 @@ import {
 import {
   MARKER_SUFFIX,
   type AppContent,
+  type ContentHold,
   type ContentPin,
   type PackRecordDoc,
 } from "@polaris-key/protocol/packs";
-import type {
-  ManifestArtifactEntry,
-  ManifestPackDeliverable,
-  ManifestReleaseKey,
+import {
+  MAX_HOLD_REASON,
+  type ManifestArtifactEntry,
+  type ManifestPackDeliverable,
+  type ManifestReleaseKey,
 } from "@polaris-key/manifest";
 import { releaseRecordClaims, isPackId } from "@polaris-key/client-core/record";
-import { parseContentStamp } from "@polaris-key/client-core/packs";
+import { holdsOf, parseContentStamp } from "@polaris-key/client-core/packs";
 import { ciClient, type CiClient, type Out, type Sleep } from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
@@ -54,7 +60,8 @@ import { payloadIdentity, readTree, sha256Hex } from "./packArtifacts.js";
 
 export const CONTENT_STAMP_USAGE =
   "Usage: pkey release content-stamp --product <slug> --out <file> " +
-  "[--embedded <dir>] [--pin <packId>@<version> ...] [--base-url <url>]";
+  "[--embedded <dir>] [--pin <packId>@<version> ...] " +
+  "[--hold <packId>@<version>[=<reason>] ...] [--base-url <url>]";
 
 const VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 
@@ -176,22 +183,45 @@ export async function readMarker(
 
 // ── --pin ────────────────────────────────────────────────────────────────────
 
-export function parsePinFlag(value: string): { pack: string; version: string } {
+export function parsePinFlag(
+  value: string,
+  flag = "--pin",
+): { pack: string; version: string } {
   const at = value.lastIndexOf("@");
   const pack = value.slice(0, at);
   const version = value.slice(at + 1);
   if (at < 1 || !isPackId(pack) || !VERSION_RE.test(version))
-    throw new Error(`--pin ${value} must be <packId>@<version>.`);
+    throw new Error(`${flag} ${value} must be <packId>@<version>.`);
   return { pack, version };
+}
+
+/** `--hold <packId>@<version>[=<reason>]`: the reason follows the first `=` (pack ids and
+ *  versions never contain one), 1–`MAX_HOLD_REASON` characters. */
+export function parseHoldFlag(value: string): {
+  pack: string;
+  version: string;
+  reason?: string;
+} {
+  const eq = value.indexOf("=");
+  const spec = eq < 0 ? value : value.slice(0, eq);
+  const { pack, version } = parsePinFlag(spec, "--hold");
+  if (eq < 0) return { pack, version };
+  const reason = value.slice(eq + 1);
+  if (reason === "" || reason.length > MAX_HOLD_REASON)
+    throw new Error(
+      `--hold ${value}: the reason after "=" must be 1–${MAX_HOLD_REASON} characters.`,
+    );
+  return { pack, version, reason };
 }
 
 /** Resolve `--pin` flags through the uploads preflight's `seqs[].recordSha256`. */
 export async function resolvePins(
   client: CiClient,
   flags: readonly string[],
+  flag = "--pin",
 ): Promise<SourcedPin[]> {
   if (flags.length === 0) return [];
-  const wanted = flags.map(parsePinFlag);
+  const wanted = flags.map((f) => parsePinFlag(f, flag));
   const out: SourcedPin[] = [];
   for (let i = 0; i < wanted.length; i += 16) {
     const slice = wanted.slice(i, i + 16);
@@ -203,7 +233,7 @@ export async function resolvePins(
         recordSha256?: string;
       }[];
     }>("release/publish/uploads", {
-      what: "Resolving --pin through Polaris Key",
+      what: `Resolving ${flag} through Polaris Key`,
       body: {
         releases: slice.map((w) => ({
           deliverable: w.pack,
@@ -217,16 +247,65 @@ export async function resolvePins(
       );
       if (!s?.recordSha256)
         throw new Error(
-          `--pin ${w.pack}@${w.version}: Polaris Key stores no record for that pack release (publish it first).`,
+          `${flag} ${w.pack}@${w.version}: Polaris Key stores no record for that pack release (publish it first).`,
         );
       out.push({
         pack: w.pack,
         release: { sha256: s.recordSha256, seq: s.seq, version: w.version },
-        source: "--pin",
+        source: flag,
       });
     }
   }
   return out;
+}
+
+/**
+ * Resolve `--hold` flags (P4-13) like `--pin`, and check them against the release: one hold per
+ * pack, never a pinned pack, only a pack `.pkey/release` declares with binding `compatible`
+ * (ingest refuses the rest as `hold-binding`). Sorted by pack id.
+ */
+export async function resolveHolds(
+  client: CiClient,
+  flags: readonly string[],
+  packs: readonly ManifestPackDeliverable[],
+  pins: readonly ContentPin[],
+): Promise<ContentHold[]> {
+  if (flags.length === 0) return [];
+  const parsed = flags.map(parseHoldFlag);
+  const seen = new Set<string>();
+  const pinned = new Set(pins.map((p) => p.pack));
+  const decl = new Map(packs.map((p) => [p.id, p]));
+  for (const h of parsed) {
+    if (seen.has(h.pack))
+      throw new Error(`--hold ${h.pack} is given twice; hold a pack once.`);
+    seen.add(h.pack);
+    if (pinned.has(h.pack))
+      throw new Error(
+        `--hold ${h.pack}: this release pins ${h.pack}, and a pinned pack is never held.`,
+      );
+    const d = decl.get(h.pack);
+    if (!d)
+      throw new Error(`--hold ${h.pack} is not a pack .pkey/release declares.`);
+    if (d.binding !== "compatible")
+      throw new Error(
+        `--hold ${h.pack}: its binding is ${d.binding}; a hold keeps a compatible pack at one release.`,
+      );
+  }
+  const resolved = await resolvePins(
+    client,
+    parsed.map((h) => `${h.pack}@${h.version}`),
+    "--hold",
+  );
+  return parsed
+    .map((h) => {
+      const r = resolved.find((x) => x.pack === h.pack)!;
+      return {
+        pack: h.pack,
+        release: { ...r.release },
+        ...(h.reason !== undefined ? { reason: h.reason } : {}),
+      };
+    })
+    .sort((a, b) => (a.pack < b.pack ? -1 : a.pack > b.pack ? 1 : 0));
 }
 
 // ── The content and its publish rules ────────────────────────────────────────
@@ -329,20 +408,25 @@ export function contentRuleProblems(
   return problems;
 }
 
-/** The stamp file's text (`pkey-content/1`), checked by client-core's `parseContentStamp`. */
+/** The stamp file's text (`pkey-content/1`), checked by client-core's `parseContentStamp` and,
+ *  when it carries holds, `holdsOf` (P4-13). */
 export function stampText(content: AppContent): string {
-  const text = `${JSON.stringify(
-    {
-      format: CONTENT_STAMP_FORMAT,
-      contentApi: content.contentApi,
-      pins: content.pins,
-      expects: content.expects,
-    },
-    null,
-    2,
-  )}\n`;
+  const holds = content.holds ?? [];
+  const doc = {
+    format: CONTENT_STAMP_FORMAT,
+    contentApi: content.contentApi,
+    pins: content.pins,
+    expects: content.expects,
+    ...(holds.length > 0 ? { holds } : {}),
+  };
+  const text = `${JSON.stringify(doc, null, 2)}\n`;
   if (!parseContentStamp(text).ok)
     throw new Error("Self-check: the content stamp fails parseContentStamp.");
+  if (
+    JSON.stringify(holdsOf(JSON.parse(text), undefined, "")) !==
+    JSON.stringify(holds)
+  )
+    throw new Error("Self-check: the content stamp's holds fail holdsOf.");
   return text;
 }
 
@@ -359,7 +443,19 @@ export async function readContentStamp(file: string): Promise<AppContent> {
     throw new Error(
       `--content-stamp ${file} is not a valid ${CONTENT_STAMP_FORMAT} stamp (content-stamp-invalid).`,
     );
-  return parsed.content;
+  // `parseContentStamp` ignores holds (plans/P4-13.md §2.4); read them beside it, with the
+  // stamp's own token rule, so they reach the descriptor and the record.
+  const scan = scanStrictJson(new TextDecoder().decode(bytes));
+  const holds = holdsOf(
+    JSON.parse(new TextDecoder().decode(bytes)),
+    scan.ok ? scan.nonWireIntegers : undefined,
+    "",
+  );
+  if (holds === null)
+    throw new Error(
+      `--content-stamp ${file}: its holds are malformed (each {pack, release {sha256, seq, version}, reason?}, never a pinned pack).`,
+    );
+  return holds.length > 0 ? { ...parsed.content, holds } : parsed.content;
 }
 
 /** The pins from `--embedded` markers. */
@@ -390,6 +486,11 @@ export function describeContent(
         `${e ? ` ${e.required ? "required" : "optional"}, ${e.delivery}` : ""}${src ? ` — from ${src}` : ""}\n`,
     );
   }
+  for (const h of content.holds ?? [])
+    out.write(
+      `  hold ${h.pack}@${h.release.version} (seq ${h.release.seq}, record ${h.release.sha256.slice(0, 12)}…)` +
+        `${h.reason !== undefined ? ` — ${h.reason}` : ""}\n`,
+    );
 }
 
 // ── `pkey release content-stamp` ─────────────────────────────────────────────
@@ -400,6 +501,8 @@ export interface ContentStampOptions {
   out: string;
   embedded?: string;
   pins?: string[];
+  /** `--hold <packId>@<version>[=<reason>]` (P4-13). */
+  holds?: string[];
   baseUrl?: string;
   env: CiEnv;
   stdout: Out;
@@ -441,7 +544,8 @@ export async function writeContentStampFile(
         releaseKeys: ctx.releaseKeys,
       })),
     );
-  if (opts.pins?.length) {
+  let client: CiClient | null = null;
+  if (opts.pins?.length || opts.holds?.length) {
     const token = await resolveCiToken({
       baseUrl: opts.baseUrl,
       product: opts.product,
@@ -451,7 +555,7 @@ export async function writeContentStampFile(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
     });
-    const client = ciClient({
+    client = ciClient({
       baseUrl: opts.baseUrl,
       product: opts.product,
       token,
@@ -460,10 +564,14 @@ export async function writeContentStampFile(
       log: opts.stderr,
     });
     await requirePacksDiscovery(client, opts.fetchImpl);
-    pins.push(...(await resolvePins(client, opts.pins)));
+    pins.push(...(await resolvePins(client, opts.pins ?? [])));
   }
   const merged = mergePins(pins);
   const content = contentFor(contentApi, ctx.packs, merged);
+  if (client && opts.holds?.length) {
+    const holds = await resolveHolds(client, opts.holds, ctx.packs, merged);
+    if (holds.length > 0) content.holds = holds;
+  }
   const problems = contentRuleProblems(content, contentApi, ctx.packs);
   if (problems.length)
     throw new Error(

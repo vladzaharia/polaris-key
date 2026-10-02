@@ -442,6 +442,10 @@ export interface PackServer {
   gate: string | null;
   /** Discovery's `release.packs`. */
   packs: boolean;
+  /** Discovery's `release.revocations` (P4-13). */
+  revocations: boolean;
+  /** Submitted revocation records (P4-13), in order. */
+  revoked: string[];
   /** Stored releases: `<deliverable>@<version>` → seq and record hash. */
   stored: Map<string, { seq: number; recordSha256: string; jws?: string }>;
   /** Stage-round failures to inject (consumed one per stage call). */
@@ -486,6 +490,8 @@ export function packServer(): PackServer {
     referenced,
     gate: null,
     packs: true,
+    revocations: true,
+    revoked: [],
     stored,
     failStage: 0,
     dropFromTicket: false,
@@ -525,7 +531,11 @@ export function packServer(): PackServer {
       return json({
         version: 2,
         services: {
-          release: { enabled: true, ...(server.packs ? { packs: true } : {}) },
+          release: {
+            enabled: true,
+            ...(server.packs ? { packs: true } : {}),
+            ...(server.revocations ? { revocations: true } : {}),
+          },
         },
       });
     rec.body = init?.body ? JSON.parse(String(init.body)) : undefined;
@@ -629,8 +639,18 @@ export function packServer(): PackServer {
             deliverable: string;
             version: string;
             seq: number;
+            kind?: string;
           };
           const id = `${payload.deliverable}@${payload.version}`;
+          if (payload.kind === "revocation") {
+            server.revoked.push(jws);
+            return json({
+              ok: true,
+              releaseId: id,
+              outcome: "revoked",
+              record: { sha256: sha(jws), stored: true },
+            });
+          }
           stored.set(id, { seq: payload.seq, recordSha256: sha(jws), jws });
           return json({
             ok: true,

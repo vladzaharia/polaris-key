@@ -209,6 +209,8 @@ const locationParts = (location: string): string[] => location.split("/");
 export interface OpfsPackStore {
   storage: PackStorage;
   state: PackStateStore;
+  /** The sibling `revocations.json` (plans/P4-13.md §2.5). */
+  revocations: PackStateStore;
 }
 
 /**
@@ -494,38 +496,42 @@ export async function opfsPackStore(opts: {
     return new TextDecoder().decode(await f.slice(0, f.size).arrayBuffer());
   };
 
-  const state: PackStateStore = {
-    read: () => readText("state.json"),
+  /** One atomic-replace document with a torn copy's quarantine beside it (`<name>.torn`). */
+  const documentStore = (name: string): PackStateStore => ({
+    read: () => readText(name),
     async replace(text) {
       // `createWritable` writes to a swap file and replaces the target on `close()`.
       await writeWhole(
-        (await fileAt(root, ["state.json"], true))!,
+        (await fileAt(root, [name], true))!,
         new TextEncoder().encode(text),
       );
     },
     async quarantine(text) {
-      if ((await readText("state.json.torn")) !== null) return;
+      if ((await readText(`${name}.torn`)) !== null) return;
       await writeWhole(
-        await root.getFileHandle("state.json.torn", { create: true }),
+        await root.getFileHandle(`${name}.torn`, { create: true }),
         new TextEncoder().encode(text),
       );
     },
     quarantined: async () =>
-      (await readText("state.json.torn").catch(() => "")) !== null,
+      (await readText(`${name}.torn`).catch(() => "")) !== null,
     async clearQuarantine() {
-      await remove(root, ["state.json.torn.list"]);
-      await remove(root, ["state.json.torn"]);
+      await remove(root, [`${name}.torn.list`]);
+      await remove(root, [`${name}.torn`]);
     },
-    readHoldList: () => readText("state.json.torn.list"),
+    readHoldList: () => readText(`${name}.torn.list`),
     async writeHoldList(text) {
-      if ((await readText("state.json.torn.list")) !== null) return;
+      if ((await readText(`${name}.torn.list`)) !== null) return;
       // `createWritable` replaces the file on `close()`, so the list is never half written.
       await writeWhole(
-        await root.getFileHandle("state.json.torn.list", { create: true }),
+        await root.getFileHandle(`${name}.torn.list`, { create: true }),
         new TextEncoder().encode(text),
       );
     },
-  };
+  });
+  const state = documentStore("state.json");
+  // plans/P4-13.md §2.5: the sibling revocations, never created empty.
+  const revocations = documentStore("revocations.json");
 
-  return { storage, state };
+  return { storage, state, revocations };
 }

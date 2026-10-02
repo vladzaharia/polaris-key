@@ -72,6 +72,17 @@
 //   applyCases        §2.9's appliers, verdicts and counters (P4-06)   → applyFull, applyDelta,
 //                                                                         applyFile
 //
+// and, from P4-13 (plans/P4-13.md §4, §5 order 1), the content members, revocations, holds and
+// the content decision:
+//
+//   feedContentCases  §2.2's content members, every case               → verifyFeed, feedContent
+//   revocationCases   §2.3's steps 12–16, superseding                  → verifyRevocation,
+//                                                                         verifyReleaseRecord,
+//                                                                         newerRevocation
+//   contentRows       update-matrix.json, §2.6's content decision      → decideUpdate, bootDecision,
+//                                                                         packSetId
+//   stampCases        `expect.holds`, when present                     → holdsOf
+//
 // `filesIndexCases` and `applyCases` run once per zstd backend the runner hands over (the Node
 // runner: the WASM decoder, `node:zlib` where its probe passes, and a failed probe; the browser:
 // the WASM decoder), so a verdict cannot depend on the decoder.
@@ -87,7 +98,12 @@
 // (`BundleRefusalReason`) rather than collapsing every failure into a bare null.
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { base64UrlDecode, verifyJws, type TrustSet } from "@polaris-key/jws";
+import {
+  base64UrlDecode,
+  scanStrictJson,
+  verifyJws,
+  type TrustSet,
+} from "@polaris-key/jws";
 import {
   LISTING_URL_PREFIXES,
   OUTLET_CAPABILITY_DEFAULTS,
@@ -142,6 +158,10 @@ import {
   rolloutBucket,
   verifyFeed,
   verifyReleaseRecord,
+  verifyRevocation,
+  feedContent,
+  holdsOf,
+  newerRevocation,
   compareSemver,
   effectiveNow,
   highWaterMark,
@@ -295,6 +315,52 @@ interface RecordCase extends NonWire {
     | { verify: "fail"; step: string };
 }
 
+/** plans/P4-13.md §4.2: one `feedContentCases` vector, a valid feed and its parsed members. */
+interface FeedContentCase extends NonWire {
+  id: string;
+  description: string;
+  jws: string;
+  trust: TrustSet;
+  expectedAud: string;
+  channel: string;
+  platform: string;
+  now: number;
+  checkFreshness: boolean;
+  expect: {
+    verify: "ok";
+    content: { packSets: unknown; packFloors: unknown; revocations: unknown };
+  };
+}
+
+/** plans/P4-13.md §4.2: one `revocationCases` vector. */
+interface RevocationCase extends NonWire {
+  id: string;
+  description: string;
+  mode: "revocation" | "replacement";
+  jws: string;
+  releaseKeys: TrustSet;
+  productTrust: TrustSet;
+  expectedAud: string;
+  entry?: {
+    record: string;
+    pack: string;
+    target: string;
+    version: string;
+    seq: number;
+  };
+  expectedHash?: string;
+  pin?: { kind: string; deliverable: string; version: string; seq: number };
+  expect:
+    | {
+        verify: "ok";
+        revocation?: Record<string, unknown>;
+        kind?: string;
+        supersedes?: string;
+        winner?: string;
+      }
+    | { verify: "fail"; step: string };
+}
+
 /** plans/P4-01.md §4.6: one `packRecordCases` vector. `pin.kind` defaults to `app`. */
 export interface PackRecordCase extends NonWire {
   id: string;
@@ -348,7 +414,9 @@ export interface Corpus {
   clockFloorCases: ClockFloorCase[];
   bundleCases: BundleCase[];
   feedCases: FeedCase[];
+  feedContentCases: FeedContentCase[];
   releaseRecordCases: RecordCase[];
+  revocationCases: RevocationCase[];
   packRecordCases: PackRecordCase[];
   markerCases: MarkerCase[];
 }
@@ -423,6 +491,12 @@ export interface UpdateMatrix {
     name: string;
     input: UpdateDecisionInput;
     expect: { decision: UpdateDecision; boot: string };
+  }[];
+  /** plans/P4-13.md §4.3: `rows` plus `input.content`; `packSetId` on a `packs` answer. */
+  contentRows: {
+    name: string;
+    input: UpdateDecisionInput;
+    expect: { decision: UpdateDecision; boot: string; packSetId?: string };
   }[];
 }
 export interface OutletMatrix {
@@ -1021,6 +1095,27 @@ export function defineCorpusSuites({
         cap: undefined,
       }),
     ],
+    // plans/P4-13.md §4.2: the content members' feeds and the revocation records.
+    [
+      "feedContentCases",
+      corpus.feedContentCases,
+      (c: FeedContentCase) => ({
+        jws: c.jws,
+        keys: c.trust,
+        typ: "pkey-feed+jws",
+        cap: undefined,
+      }),
+    ],
+    [
+      "revocationCases",
+      corpus.revocationCases,
+      (c: RevocationCase) => ({
+        jws: c.jws,
+        keys: c.releaseKeys,
+        typ: "pkey-release+jws",
+        cap: undefined,
+      }),
+    ],
     // plans/P4-01.md §4.6 (P4-21): the two pack families; a marker's JWS is its `release`.
     [
       "packRecordCases",
@@ -1335,7 +1430,7 @@ export function defineCorpusSuites({
   // @pkey-feature update.feed
   describe(`conformance corpus v${corpus.corpusVersion} — channel feeds (V4 §2.5 steps 3–8)`, () => {
     it("has every feed case of plans/P3-01.md §4.4", () => {
-      expect(corpus.feedCases.length).toBe(77);
+      expect(corpus.feedCases.length).toBe(80);
     });
     for (const c of corpus.feedCases) {
       const want = c.expect.verify === "ok" ? "ok" : c.expect.reason;
@@ -1449,6 +1544,130 @@ export function defineCorpusSuites({
     it("every v4 boot value is none or optional: no floor stops play", () => {
       for (const row of updateMatrix.rows)
         expect(["none", "optional"]).toContain(row.expect.boot);
+    });
+  });
+
+  // ── plans/P4-13.md §5 order 1 — content members, revocations and the content decision ──────
+
+  // @pkey-feature update.content
+  describe(`conformance corpus v${corpus.corpusVersion} — feed content members (plans/P4-13.md §2.2)`, () => {
+    it("has every feedContentCases vector", () => {
+      expect(corpus.feedContentCases.length).toBe(48);
+    });
+    for (const c of corpus.feedContentCases) {
+      it(c.id, async () => {
+        const r = await verifyFeed(c.jws, {
+          trust: c.trust,
+          expectedAud: c.expectedAud,
+          channel: c.channel,
+          platform: c.platform,
+          now: c.now,
+          checkFreshness: c.checkFreshness,
+        });
+        expect(r, c.description).toMatchObject({ ok: true });
+        if (!r.ok) return;
+        expect(r.content, c.description).toEqual(c.expect.content);
+      });
+    }
+  });
+
+  // @pkey-feature packs.revoke
+  describe(`conformance corpus v${corpus.corpusVersion} — revocation records (plans/P4-13.md §2.3)`, () => {
+    it("has every revocationCases vector", () => {
+      expect(corpus.revocationCases.length).toBe(27);
+    });
+    const byId = new Map(corpus.revocationCases.map((c) => [c.id, c]));
+    for (const c of corpus.revocationCases) {
+      const want = c.expect.verify === "ok" ? "ok" : c.expect.step;
+      it(`${c.id} → ${want}`, async () => {
+        if (c.mode === "replacement") {
+          const r = await verifyReleaseRecord(c.jws, {
+            releaseKeys: c.releaseKeys,
+            productTrust: c.productTrust,
+            expectedAud: c.expectedAud,
+            expectedHash: c.expectedHash!,
+            pin: c.pin!,
+          });
+          if (c.expect.verify === "ok") {
+            expect(r, c.description).toMatchObject({ ok: true });
+            if (r.ok) expect(r.record.kind).toBe(c.expect.kind);
+          } else {
+            expect(r.ok, c.description).toBe(false);
+            if (!r.ok) expect(r.step).toBe(c.expect.step);
+          }
+          return;
+        }
+        const r = await verifyRevocation(c.jws, {
+          releaseKeys: c.releaseKeys,
+          productTrust: c.productTrust,
+          expectedAud: c.expectedAud,
+          entry: c.entry!,
+        });
+        if (c.expect.verify === "fail") {
+          expect(r.ok, c.description).toBe(false);
+          if (!r.ok) expect(r.step, c.description).toBe(c.expect.step);
+          return;
+        }
+        expect(r, c.description).toMatchObject({ ok: true });
+        if (!r.ok) return;
+        const { pack, target, replacement, reason, issuedAt } = r.revocation;
+        expect({ pack, target, replacement, reason, issuedAt }).toEqual(
+          c.expect.revocation,
+        );
+        if (c.expect.supersedes !== undefined) {
+          const other = byId.get(c.expect.supersedes)!;
+          const o = await verifyRevocation(other.jws, {
+            releaseKeys: other.releaseKeys,
+            productTrust: other.productTrust,
+            expectedAud: other.expectedAud,
+            entry: other.entry!,
+          });
+          expect(o.ok).toBe(true);
+          if (!o.ok) return;
+          const win = newerRevocation(r.revocation, o.revocation);
+          expect(win).toBe(newerRevocation(o.revocation, r.revocation));
+          expect(win.record).toBe(byId.get(c.expect.winner!)!.entry!.record);
+        }
+      });
+    }
+  });
+
+  // @pkey-feature update.content
+  describe(`update-matrix v${updateMatrix.updateMatrixVersion} — contentRows (plans/P4-13.md §2.6)`, () => {
+    it("has every content row of plans/P4-13.md §4.3", () => {
+      expect(updateMatrix.contentRows.length).toBe(44);
+    });
+    for (const row of updateMatrix.contentRows) {
+      it(`content row ${row.name}`, async () => {
+        const decision = decideUpdate(row.input);
+        expect(decision).toEqual(row.expect.decision);
+        expect(bootDecision(decision)).toBe(row.expect.boot);
+        if (row.expect.packSetId !== undefined) {
+          expect(decision.action).toBe("packs");
+          if (decision.action !== "packs") return;
+          expect(
+            await packSetId(
+              decision.set.map((x) => ({
+                packId: x.pack,
+                releaseSha256: x.sha256,
+              })),
+            ),
+          ).toBe(row.expect.packSetId);
+        }
+      });
+    }
+    it("required exactly on the revoked-content rows (decision 4)", () => {
+      for (const row of updateMatrix.contentRows) {
+        const d = row.expect.decision as Record<string, unknown>;
+        const revoked =
+          d.reason === "revoked-content" ||
+          d.contentBlock === "revoked-content";
+        expect(row.expect.boot === "required").toBe(revoked);
+      }
+    });
+    it("feedContent over a decoded feed equals the decision's own reading", () => {
+      for (const row of updateMatrix.contentRows)
+        expect(feedContent(row.input.feed).packFloors).not.toBeNull();
     });
   });
 }
@@ -1589,7 +1808,7 @@ export function defineContentSuites({
       expect(content.pathCases.length).toBe(18);
       expect(content.filesIndexCases.length).toBe(15);
       expect(content.packSetIdCases.length).toBe(7);
-      expect(content.stampCases.length).toBe(6);
+      expect(content.stampCases.length).toBe(10);
       expect(content.frameWindowCases.length).toBe(13);
       expect(content.applyCases.length).toBe(19);
       expect(backends.length).toBeGreaterThan(0);
@@ -1692,7 +1911,18 @@ export function defineContentSuites({
   describe(`content corpus v${content.contentCorpusVersion} — content stamps (plans/P4-01.md §2.8)`, () => {
     for (const c of content.stampCases) {
       it(`stamp ${c.id}`, () => {
-        expect(parseContentStamp(c.stamp), c.description).toEqual(c.expect);
+        // `parseContentStamp`'s result is unchanged by P4-13; holds are read beside it
+        // (`holdsOf`, plans/P4-13.md §2.4), and only checked where `expect.holds` is present.
+        const { holds, ...want } = c.expect as Record<string, unknown>;
+        expect(parseContentStamp(c.stamp), c.description).toEqual(want);
+        if (!("holds" in (c.expect as object))) return;
+        const scan = scanStrictJson(c.stamp);
+        expect(scan.ok).toBe(true);
+        if (!scan.ok) return;
+        expect(
+          holdsOf(JSON.parse(c.stamp), scan.nonWireIntegers, ""),
+          c.description,
+        ).toEqual(holds);
       });
     }
   });

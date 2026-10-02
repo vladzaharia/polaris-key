@@ -2672,6 +2672,168 @@
           ]
         }
       }
+    },
+    {
+      "id": "stamp-holds-valid",
+      "description": "P4-13: a stamp holding `djdl.docs` (not pinned) at one release, with a reason: `holdsOf` reads it.",
+      "stamp": "{\"format\":\"pkey-content/1\",\"contentApi\":4,\"pins\":[{\"pack\":\"djdl.levels\",\"release\":{\"sha256\":\"99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f\",\"seq\":2,\"version\":\"1.1.0\"}},{\"pack\":\"djdl.assets\",\"release\":{\"sha256\":\"72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992\",\"seq\":2,\"version\":\"1.1.0\"}}],\"expects\":[{\"pack\":\"djdl.levels\",\"required\":true,\"delivery\":\"essential\"},{\"pack\":\"djdl.assets\",\"required\":false,\"delivery\":\"prefetch\"}],\"holds\":[{\"pack\":\"djdl.docs\",\"release\":{\"sha256\":\"aa40be42f92d786f5d7ec8a6e6e721fa76a03948d4955ed00a81380502efac58\",\"seq\":1,\"version\":\"1.0.0\"},\"reason\":\"Held at 1.0.0 for the 1.5 line.\"}]}",
+      "expect": {
+        "ok": true,
+        "content": {
+          "contentApi": 4,
+          "pins": [
+            {
+              "pack": "djdl.levels",
+              "release": {
+                "sha256": "99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            },
+            {
+              "pack": "djdl.assets",
+              "release": {
+                "sha256": "72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            }
+          ],
+          "expects": [
+            {
+              "pack": "djdl.levels",
+              "required": true,
+              "delivery": "essential"
+            },
+            { "pack": "djdl.assets", "required": false, "delivery": "prefetch" }
+          ]
+        },
+        "holds": [
+          {
+            "pack": "djdl.docs",
+            "release": {
+              "sha256": "aa40be42f92d786f5d7ec8a6e6e721fa76a03948d4955ed00a81380502efac58",
+              "seq": 1,
+              "version": "1.0.0"
+            },
+            "reason": "Held at 1.0.0 for the 1.5 line."
+          }
+        ]
+      }
+    },
+    {
+      "id": "stamp-holds-seq-token",
+      "description": "P4-13: the hold's `release.seq` written as the token `1.0`: the holds are unusable (V4 §3.1), the stamp still parses.",
+      "stamp": "{\"format\":\"pkey-content/1\",\"contentApi\":4,\"pins\":[{\"pack\":\"djdl.levels\",\"release\":{\"sha256\":\"99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f\",\"seq\":2,\"version\":\"1.1.0\"}},{\"pack\":\"djdl.assets\",\"release\":{\"sha256\":\"72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992\",\"seq\":2,\"version\":\"1.1.0\"}}],\"expects\":[{\"pack\":\"djdl.levels\",\"required\":true,\"delivery\":\"essential\"},{\"pack\":\"djdl.assets\",\"required\":false,\"delivery\":\"prefetch\"}],\"holds\":[{\"pack\":\"djdl.docs\",\"release\":{\"sha256\":\"aa40be42f92d786f5d7ec8a6e6e721fa76a03948d4955ed00a81380502efac58\",\"seq\":1.0,\"version\":\"1.0.0\"},\"reason\":\"Held at 1.0.0 for the 1.5 line.\"}]}",
+      "expect": {
+        "ok": true,
+        "content": {
+          "contentApi": 4,
+          "pins": [
+            {
+              "pack": "djdl.levels",
+              "release": {
+                "sha256": "99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            },
+            {
+              "pack": "djdl.assets",
+              "release": {
+                "sha256": "72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            }
+          ],
+          "expects": [
+            {
+              "pack": "djdl.levels",
+              "required": true,
+              "delivery": "essential"
+            },
+            { "pack": "djdl.assets", "required": false, "delivery": "prefetch" }
+          ]
+        },
+        "holds": null
+      }
+    },
+    {
+      "id": "stamp-holds-pinned-and-held",
+      "description": "P4-13: a hold of `djdl.levels`, which the stamp pins: unusable.",
+      "stamp": "{\"format\":\"pkey-content/1\",\"contentApi\":4,\"pins\":[{\"pack\":\"djdl.levels\",\"release\":{\"sha256\":\"99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f\",\"seq\":2,\"version\":\"1.1.0\"}},{\"pack\":\"djdl.assets\",\"release\":{\"sha256\":\"72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992\",\"seq\":2,\"version\":\"1.1.0\"}}],\"expects\":[{\"pack\":\"djdl.levels\",\"required\":true,\"delivery\":\"essential\"},{\"pack\":\"djdl.assets\",\"required\":false,\"delivery\":\"prefetch\"}],\"holds\":[{\"pack\":\"djdl.levels\",\"release\":{\"sha256\":\"aa40be42f92d786f5d7ec8a6e6e721fa76a03948d4955ed00a81380502efac58\",\"seq\":1,\"version\":\"1.0.0\"},\"reason\":\"Held at 1.0.0 for the 1.5 line.\"}]}",
+      "expect": {
+        "ok": true,
+        "content": {
+          "contentApi": 4,
+          "pins": [
+            {
+              "pack": "djdl.levels",
+              "release": {
+                "sha256": "99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            },
+            {
+              "pack": "djdl.assets",
+              "release": {
+                "sha256": "72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            }
+          ],
+          "expects": [
+            {
+              "pack": "djdl.levels",
+              "required": true,
+              "delivery": "essential"
+            },
+            { "pack": "djdl.assets", "required": false, "delivery": "prefetch" }
+          ]
+        },
+        "holds": null
+      }
+    },
+    {
+      "id": "stamp-holds-unusable-shape",
+      "description": "P4-13: `holds` is an object, not an array: unusable.",
+      "stamp": "{\"format\":\"pkey-content/1\",\"contentApi\":4,\"pins\":[{\"pack\":\"djdl.levels\",\"release\":{\"sha256\":\"99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f\",\"seq\":2,\"version\":\"1.1.0\"}},{\"pack\":\"djdl.assets\",\"release\":{\"sha256\":\"72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992\",\"seq\":2,\"version\":\"1.1.0\"}}],\"expects\":[{\"pack\":\"djdl.levels\",\"required\":true,\"delivery\":\"essential\"},{\"pack\":\"djdl.assets\",\"required\":false,\"delivery\":\"prefetch\"}],\"holds\":{}}",
+      "expect": {
+        "ok": true,
+        "content": {
+          "contentApi": 4,
+          "pins": [
+            {
+              "pack": "djdl.levels",
+              "release": {
+                "sha256": "99573d357b2d688e22c619bbe9f9b590c655a6477032885bab718145de930d2f",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            },
+            {
+              "pack": "djdl.assets",
+              "release": {
+                "sha256": "72e7eef6f783919a33a3a22c2c67dc2ae368b97f5e4c9c1d1450defc6cdbf992",
+                "seq": 2,
+                "version": "1.1.0"
+              }
+            }
+          ],
+          "expects": [
+            {
+              "pack": "djdl.levels",
+              "required": true,
+              "delivery": "essential"
+            },
+            { "pack": "djdl.assets", "required": false, "delivery": "prefetch" }
+          ]
+        },
+        "holds": null
+      }
     }
   ],
   "frameWindowCases": [
