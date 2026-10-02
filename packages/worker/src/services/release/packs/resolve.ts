@@ -30,9 +30,15 @@
  * the groups' axis-name sets are distinct. A group is resolved per combination of ITS axes' values
  * (its variant key, `""` for a group without axes) and stored as its own row: a device's set is
  * the union of one row per group, the row whose variant key is its own variant projected onto that
- * group's axes. Every device gets exactly the releases a whole-assignment resolution would give
- * it (no constraint crosses a group), while the rows grow as the SUM over groups, not the product
- * over every pack's axes.
+ * group's axes. The rows grow as the SUM over groups, not the product over every pack's axes.
+ *
+ * The semantics are PER COMPONENT (the lead's decision on review, and the reference for P4-13):
+ * within a row, the packs are split into components — packs some candidate's `requires.packs` or
+ * `conflicts` entry links — and each component is solved on its own. A pack is left out only when
+ * its OWN component cannot keep it; a conflict elsewhere never costs it its place. That is
+ * strictly better than one whole-assignment search, which could drop a satisfiable pack because
+ * an unrelated pair conflicts. Groups are unions of components, so per group equals per
+ * component.
  *
  * ── ONE PACK AT ONE SELECTOR (step 3) ──────────────────────────────────────────────────────
  *
@@ -59,18 +65,20 @@
  * Dependency pruning to a fixpoint, then greedy highest-first per pack, packs in id order, with
  * backtracking when a choice breaks a `requires.packs` range (the target must be in the set, at a
  * version its range holds under the target's scheme) or a `conflicts` entry (either direction).
- * When no assignment keeps every pack, a second search may leave packs out (tried after each of
- * their releases); those are marked `dependency` or `conflict`, and the set is still stored with
+ * When no assignment keeps every pack, the search is repeated leaving out at most one pack, then
+ * two, …; those left out are marked `dependency` or `conflict`, and the set is still stored with
  * its `unsatisfied` marker, so a floor with no backport blocks a content line (P4-13 turns it
  * into `blocked(content-floor)`) instead of being refused.
  *
  * ONE work budget, `MAX_RESOLUTION_WORK`, is shared by the whole resolution (never per problem):
- * every candidate a stage examines or pruning re-checks spends one unit, and every candidate the
- * solver tries spends one plus one per chosen pack and per dependency it checks against. Past it,
+ * grouping reads every declared constraint, a stage pays per candidate and per constraint it
+ * builds, pruning pays per dependency probe and twice per range check, the component split pays
+ * per constraint, and a solver try pays one plus one per chosen pack and per dependency. Past it,
  * or past `MAX_SELECTORS` rows, resolution FAILS (`PackResolutionError`) rather than guess. The
- * budget is sized so that the adversarial cases measured on Node 22 (64 packs × 200 releases,
- * exhaustive searches over dependency chains, 64-entry conflict lists, three 16-value axes) spend
- * it in 40–150 ms and a few MB of heap (`test/packResolve.test.ts` "bounds").
+ * budget is sized so that the adversarial cases measured on Node 22 (64 packs × 200 releases with
+ * 63 dependencies each, exhaustive searches over dependency chains, 64-entry conflict lists, three
+ * coupled 16-value axes, 500 live app releases × 4,000 rows) spend it, or finish, in 15–60 ms with
+ * under 25 MB of heap (`test/packResolve.test.ts` "bounds").
  */
 
 import {
@@ -320,15 +328,26 @@ interface Cand {
   deps: readonly (readonly [string, string])[];
 }
 
+/** A variant's constraints in the shapes the solver walks, built once per variant. */
+const derived = new WeakMap<
+  PackVariantFacts,
+  {
+    conflicts: ReadonlySet<string>;
+    deps: readonly (readonly [string, string])[];
+  }
+>();
+
 /** A candidate of `pack`: `rel` at its variant `v`. */
 function cand(pack: string, rel: PackReleaseFacts, v: PackVariantFacts): Cand {
-  return {
-    pack,
-    rel,
-    v,
-    conflicts: new Set(v.conflicts),
-    deps: Object.entries(v.packs ?? {}),
-  };
+  let d = derived.get(v);
+  if (!d) {
+    d = {
+      conflicts: new Set(v.conflicts),
+      deps: Object.entries(v.packs ?? {}),
+    };
+    derived.set(v, d);
+  }
+  return { pack, rel, v, conflicts: d.conflicts, deps: d.deps };
 }
 
 type Stage =
@@ -439,13 +458,20 @@ export class PackResolver {
       const y = find(b);
       if (x !== y) parent.set(x < y ? y : x, x < y ? x : y);
     };
-    for (const p of this.universe)
+    for (const p of this.universe) {
+      const linked = new Set<string>();
       for (const rel of p.releases.values())
         for (const v of rel.variants) {
-          for (const t of Object.keys(v.packs ?? {}))
-            if (parent.has(t)) union(p.id, t);
-          for (const t of v.conflicts) if (parent.has(t)) union(p.id, t);
+          // Every constraint a release declares is read once: charge it.
+          this.spend(1 + v.conflicts.length);
+          for (const t in v.packs ?? {}) {
+            this.spend(1);
+            linked.add(t);
+          }
+          for (const t of v.conflicts) linked.add(t);
         }
+      for (const t of linked) if (parent.has(t)) union(p.id, t);
+    }
     // Merge groups whose axis-name sets are equal, until they are all distinct.
     for (;;) {
       const axesOf = new Map<string, Set<string>>();
@@ -557,8 +583,22 @@ export class PackResolver {
     return out;
   }
 
+  private readonly levelsCache = new Map<
+    string,
+    ReturnType<PackResolver["computeLevels"]>
+  >();
+
+  /** `computeLevels` of `channel`'s live releases, memoised per channel (and charged once). */
+  private levels(channel: string): ReturnType<PackResolver["computeLevels"]> {
+    const hit = this.levelsCache.get(channel);
+    if (hit) return hit;
+    const out = this.computeLevels(this.live(channel));
+    this.levelsCache.set(channel, out);
+    return out;
+  }
+
   /** level → platform → engine (`""` for none) → the live releases there, newest first. */
-  private levels(live: readonly LiveRelease[]): Map<
+  private computeLevels(live: readonly LiveRelease[]): Map<
     number,
     {
       platforms: Map<string, Map<string, string[]>>;
@@ -580,12 +620,18 @@ export class PackResolver {
         level = { platforms: new Map(), packChannels: facts.packChannels };
         out.set(r.contentApi, level);
       }
+      this.spend(1 + facts.builds.length);
+      // Each (platform, engine) once per release: a release with several builds there counts once.
+      const seen = new Set<string>();
       for (const b of facts.builds) {
         if (b.platform === null) continue;
-        const engines = level.platforms.get(b.platform) ?? new Map();
         const engine = b.engine ?? "";
+        const key = `${b.platform}\u0000${engine}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const engines = level.platforms.get(b.platform) ?? new Map();
         const list: string[] = engines.get(engine) ?? [];
-        if (!list.includes(r.releaseId)) list.push(r.releaseId);
+        list.push(r.releaseId);
         engines.set(engine, list);
         level.platforms.set(b.platform, engines);
       }
@@ -639,7 +685,15 @@ export class PackResolver {
       if (!rel) continue;
       const v =
         rel.variants.find((x) => x.variantKey === vk) ?? rel.variants[0];
-      if (v) all.push(cand(pack.id, rel, v));
+      if (!v) continue;
+      // Building a candidate's constraint shapes is part of the work: charge it (twice a try
+      // per constraint, measured).
+      if (!derived.has(v)) {
+        let n = v.conflicts.length;
+        for (const _ in v.packs ?? {}) n++;
+        this.spend(2 * n);
+      }
+      all.push(cand(pack.id, rel, v));
     }
     if (all.length === 0)
       return {
@@ -739,24 +793,12 @@ export class PackResolver {
     return null;
   }
 
-  /** Does some candidate of `target` hold `range`? */
-  private supported(
-    domains: ReadonlyMap<string, Cand[]>,
-    target: string,
-    range: string,
-  ): boolean {
-    const scheme = this.packsById.get(target)?.scheme;
-    return (
-      scheme !== undefined &&
-      (domains.get(target) ?? []).some((t) =>
-        inRange(scheme, t.rel.version, range),
-      )
-    );
-  }
-
   /**
    * The solver over packs that passed their stages (see the header). `key` is the stage outputs'
-   * ids, which determine the problem exactly.
+   * ids, which determine the problem exactly. The packs are split into COMPONENTS (packs a
+   * `requires.packs` or `conflicts` entry of some candidate links), each solved on its own with its
+   * own switch to "a pack may be left out": a pack is dropped only when its own component cannot
+   * keep it.
    */
   private solve(
     key: string,
@@ -764,41 +806,106 @@ export class PackResolver {
   ): { chosen: Cand[]; unsat: Unsatisfied[] } {
     const hit = this.solveCache.get(key);
     if (hit) return hit;
-    const unsat = new Map<string, Unsatisfied>();
     // A problem without a single dependency or conflict needs no search: newest of each.
-    if (
-      order0.every((p) =>
-        p.cands.every((c) => !c.v.packs && c.v.conflicts.length === 0),
-      )
-    ) {
+    let constrained = false;
+    for (const p of order0) {
+      this.spend(p.cands.length);
+      if (p.cands.some((c) => c.deps.length > 0 || c.conflicts.size > 0))
+        constrained = true;
+    }
+    if (!constrained) {
       const result = { chosen: order0.map((p) => p.cands[0]!), unsat: [] };
       this.solveCache.set(key, result);
       return result;
     }
+    const chosen: Cand[] = [];
+    const unsat: Unsatisfied[] = [];
+    for (const comp of this.components(order0)) {
+      const r = this.solveComponent(comp);
+      chosen.push(...r.chosen);
+      unsat.push(...r.unsat);
+    }
+    const index = new Map(order0.map((p, i) => [p.id, i]));
+    const result = {
+      chosen: chosen.sort((a, b) => index.get(a.pack)! - index.get(b.pack)!),
+      unsat,
+    };
+    this.solveCache.set(key, result);
+    return result;
+  }
+
+  /** `order` split into edge-connected components, each in `order`'s order. */
+  private components(
+    order: { id: string; cands: Cand[] }[],
+  ): { id: string; cands: Cand[] }[][] {
+    const parent = new Map(order.map((p) => [p.id, p.id]));
+    const find = (x: string): string => {
+      let r = x;
+      while (parent.get(r) !== r) r = parent.get(r)!;
+      parent.set(x, r);
+      return r;
+    };
+    for (const p of order)
+      for (const c of p.cands) {
+        this.spend(1 + c.deps.length + c.conflicts.size);
+        for (const [t] of c.deps)
+          if (parent.has(t)) parent.set(find(t), find(p.id));
+        for (const t of c.conflicts)
+          if (parent.has(t)) parent.set(find(t), find(p.id));
+      }
+    const out = new Map<string, { id: string; cands: Cand[] }[]>();
+    for (const p of order) {
+      const r = find(p.id);
+      out.set(r, [...(out.get(r) ?? []), p]);
+    }
+    return [...out.values()];
+  }
+
+  /** One component: prune, a search keeping every pack, then (only if none) one leaving some out. */
+  private solveComponent(order0: { id: string; cands: Cand[] }[]): {
+    chosen: Cand[];
+    unsat: Unsatisfied[];
+  } {
+    const unsat = new Map<string, Unsatisfied>();
 
     // 1. Prune: a candidate whose dependency no candidate of its target satisfies goes; a pack
-    //    left with none is unsatisfied, which may prune its dependants in turn.
+    //    left with none is unsatisfied, which may prune its dependants in turn. "Does some
+    //    candidate of T hold range R" is memoised until T's domain changes, and every target
+    //    candidate a miss examines is charged.
     const domains = new Map(order0.map((p) => [p.id, [...p.cands]]));
+    const support = new Map<string, Map<string, boolean>>();
+    const supported = (target: string, range: string): boolean => {
+      this.spend(1);
+      const memo = support.get(target);
+      const hit = memo?.get(range);
+      if (hit !== undefined) return hit;
+      const scheme = this.packsById.get(target)?.scheme;
+      const domain = domains.get(target) ?? [];
+      // A range check costs about twice a solver try (measured): charge it so.
+      this.spend(2 * domain.length);
+      const v =
+        scheme !== undefined &&
+        domain.some((t) => inRange(scheme, t.rel.version, range));
+      if (memo) memo.set(range, v);
+      else support.set(target, new Map([[range, v]]));
+      return v;
+    };
     let pruned = true;
     while (pruned) {
       pruned = false;
       for (const [id, cands] of domains) {
-        this.spend(cands.length);
         const kept = cands.filter((c) =>
-          Object.entries(c.v.packs ?? {}).every(([t, r]) =>
-            this.supported(domains, t, r),
-          ),
+          c.deps.every(([t, r]) => supported(t, r)),
         );
         if (kept.length === cands.length) continue;
         pruned = true;
+        support.delete(id);
         if (kept.length > 0) {
           domains.set(id, kept);
           continue;
         }
         const c = cands[0]!;
-        const [target, range] = Object.entries(c.v.packs ?? {}).find(
-          ([t, r]) => !this.supported(domains, t, r),
-        )!;
+        const [target, range] = c.deps.find(([t, r]) => !supported(t, r))!;
         unsat.set(id, {
           pack: id,
           reason: "dependency",
@@ -810,13 +917,14 @@ export class PackResolver {
     const order = order0
       .filter((p) => domains.has(p.id))
       .map((p) => ({ id: p.id, cands: domains.get(p.id)! }));
-
-    // 2. Search, every pack kept; 3. if none exists, a pack may be left out.
+    // 2. Search, every pack kept; 3. if none exists, leave out as FEW packs as possible: one,
+    //    then two, … (the omission tried after each pack's releases), so newer releases of
+    //    earlier packs never cost a later pack its place.
     const chosen = new Map<string, Cand>();
     const omitted = new Set<string>();
     // The packs not left out (undecided ones count: their constraints are checked when chosen).
     const present = new Set(order.map((p) => p.id));
-    const dfs = (i: number, allowOmit: boolean): boolean => {
+    const dfs = (i: number, omits: number): boolean => {
       if (i === order.length) return true;
       const p = order[i]!;
       for (const c of p.cands) {
@@ -824,25 +932,25 @@ export class PackResolver {
         this.spend(1 + chosen.size + c.deps.length);
         if (this.conflictWith(c, chosen, present)) continue;
         chosen.set(p.id, c);
-        if (dfs(i + 1, allowOmit)) return true;
+        if (dfs(i + 1, omits)) return true;
         chosen.delete(p.id);
       }
-      if (!allowOmit) return false;
+      if (omits === 0) return false;
       this.spend(1);
       // Leaving `p` out breaks every chosen pack that depends on it.
       for (const j of chosen.values())
         if (j.v.packs?.[p.id] !== undefined) return false;
       omitted.add(p.id);
       present.delete(p.id);
-      if (dfs(i + 1, allowOmit)) return true;
+      if (dfs(i + 1, omits - 1)) return true;
       omitted.delete(p.id);
       present.add(p.id);
       return false;
     };
-    if (!dfs(0, false)) {
+    for (let k = 0; k <= order.length; k++) {
       chosen.clear();
       omitted.clear();
-      dfs(0, true);
+      if (dfs(0, k)) break;
     }
     for (const id of omitted) {
       const p = order.find((x) => x.id === id)!;
@@ -856,14 +964,12 @@ export class PackResolver {
           `${id} cannot share a set with the releases the other packs require`,
       });
     }
-    const result = {
+    return {
       chosen: order.flatMap((p) =>
         chosen.has(p.id) ? [chosen.get(p.id)!] : [],
       ),
       unsat: [...unsat.values()],
     };
-    this.solveCache.set(key, result);
-    return result;
   }
 
   /** One row: one group at one selector. */
@@ -919,7 +1025,7 @@ export class PackResolver {
       const releases = this.live(channel);
       live.set(channel, releases);
       if (this.groups.length === 0) continue;
-      const levels = this.levels(releases);
+      const levels = this.levels(channel);
       for (const level of [...levels.keys()].sort((a, b) => a - b)) {
         const l = levels.get(level)!;
         for (const platform of [...l.platforms.keys()].sort()) {
@@ -1076,6 +1182,6 @@ export class PackResolver {
 
   /** The `packChannels` mapping of `channel`'s live releases at `level`, or null. */
   levelMapping(channel: string, level: number): Record<string, string> | null {
-    return this.levels(this.live(channel)).get(level)?.packChannels ?? null;
+    return this.levels(channel).get(level)?.packChannels ?? null;
   }
 }

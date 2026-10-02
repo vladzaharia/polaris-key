@@ -257,14 +257,24 @@ implementation made, recorded here in the same branch.
   stored as its own row; a device's set is one row per group, the one its variant projects onto.
   Every device still gets exactly the releases a whole-assignment resolution gives it, because no
   constraint crosses a group. P4-13 composes a device's set from one row per group.
+- **Per-component semantics** (lead decision, review round 2). Within a row the solver splits the
+  packs into components (packs some candidate's `requires.packs` or `conflicts` links) and solves
+  each on its own, leaving out as few packs as possible; a pack is dropped only when its own
+  component cannot keep it. This replaces "whole assignment" as the reference: it is strictly
+  better (an unrelated conflicting pair never costs a satisfiable pack its place).
 - **One work budget per resolution.** `MAX_RESOLUTION_WORK` (1,000,000 candidate checks) is
-  shared by the whole resolution, not per problem; stage outputs and solver results are memoised
-  by stage-output ids. Adversarial cases spend it in 40–150 ms on Node 22.
+  shared by the whole resolution, not per problem, and charged for grouping, stages, constraint
+  building, every pruning probe and range check, the component split and every solver try; stage
+  outputs, live levels and solver results are memoised. Adversarial cases spend it, or finish, in
+  15–60 ms on Node 22.
 - **Fail closed** (lead decision on review). A trigger whose resolution fails clears the
   product's sets, writes an audit row and answers `packSets: {ok: false, reason}`; it never
   refuses the yank, floor change, pointer move or resync. Concurrent triggers are ordered by the
-  `release_set_state` generation. A publish resolves once: the check's after-state is stored
-  (the stored rows are the "before" of the report), and the submit's two plans share a memo.
+  `release_set_state` generation (a write knows it won from its claim's changed-row count). A
+  policy change clears the stored sets inside its own batch, so a crash before the re-resolution
+  leaves none stale. A CI publish resolves once: the check's after-state is stored (the stored
+  rows are the "before" of the report), and the submit's two plans share a memo; the GitHub sync
+  path can resolve twice.
 - **`requires.features` stays refused.** No app-side value exists to check it against; this is a
   plan gap, reported rather than invented.
 - **Validator codes.** New: `missing_content_api_range`, `standalone_with_content_api`,
@@ -298,3 +308,22 @@ implementation made, recorded here in the same branch.
   a pack record has no descriptor), and a `standalone` pack's format version against the app
   (no app-side handler version exists).
 - **Console read** is the hook functions; the console view is P4-15's.
+
+## Plan amendment for P4-13
+
+P4-12 changed the shape P4-13 composes the feed from (lead decisions in review; P4-13 freezes the
+wire form):
+
+- **One row per group.** `release_sets` holds one row per (channel, app deliverable, contentApi,
+  platform, engine, variant), where `variant` is the key over ONE group's axes (packs with the same
+  variant axes, merged across `requires.packs` and `conflicts`; `''` for a group without axes) and
+  the row lists that group's packs only. `engine` is the live builds' `requires.engine`, `''` when
+  they declare none.
+- **The device composes from one row per group.** A device's compatible and standalone set is the
+  union of, for each group, the row whose variant key is the device's own variant projected onto
+  that group's axes, for its channel, contentApi, platform and engine (`''` rows apply to a device
+  whose build declared no engine). Its active set id is then client-core's `packSetId` over that
+  union plus its pins and holds.
+- **Per-component semantics.** Within a row, a pack is left out (`unsatisfied`) only when the packs
+  its own dependencies and conflicts link it to cannot keep it; this, not a whole-assignment
+  search, is the reference behaviour SDK-side simulators and P4-15's console must reproduce.

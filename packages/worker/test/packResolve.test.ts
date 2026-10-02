@@ -739,9 +739,9 @@ describe("the solver: dependencies, conflicts, holds and bounds", () => {
   });
 
   it("fails with a clear error when the search bound is hit", () => {
-    // 12 packs of 4 releases; the last requires the OLDEST release of the first, so a search
-    // that tries the newest first walks 4^10 assignments of the packs between before it may
-    // revisit the first.
+    // 12 packs of 4 releases chained by dependencies (one component); the last requires the
+    // OLDEST release of the first, so a search that tries the newest first walks 4^10
+    // assignments of the packs between before it may revisit the first.
     const packs: PackSpec[] = [];
     for (let i = 0; i < 12; i++)
       packs.push({
@@ -750,7 +750,12 @@ describe("the solver: dependencies, conflicts, holds and bounds", () => {
         releases: [1, 2, 3, 4].map((n) => ({
           version: `${n}.0.0`,
           seq: n,
-          ...(i === 11 ? { packs: { "p.p00": "=1.0.0" } } : {}),
+          packs: {
+            ...(i > 0
+              ? { [`p.p${String(i - 1).padStart(2, "0")}`]: ">=1.0.0" }
+              : {}),
+            ...(i === 11 ? { "p.p00": "=1.0.0" } : {}),
+          },
         })),
       });
     expect(() => resolve([APP_15], packs)).toThrow(PackResolutionError);
@@ -858,15 +863,20 @@ describe("bounds (review fix 1)", () => {
   });
 
   it("an adversarial search spends the whole-resolution budget, then refuses, in bounded time and memory", () => {
-    // 64 packs of 200 releases: the last requires the oldest release of the first, so a
-    // newest-first search walks a huge space; the shared budget stops it.
+    // 64 packs of 200 releases chained by dependencies: the last requires the oldest release of
+    // the first, so a newest-first search walks a huge space; the shared budget stops it.
     const packs: PackSpec[] = Array.from({ length: 64 }, (_, i) => ({
       id: `p.p${String(i).padStart(2, "0")}`,
       binding: "standalone" as const,
       releases: Array.from({ length: 200 }, (_, n) => ({
         version: `1.${Math.floor(n / 50)}.${n % 50}`,
         seq: n + 1,
-        ...(i === 63 ? { packs: { "p.p00": "=1.0.0" } } : {}),
+        packs: {
+          ...(i > 0
+            ? { [`p.p${String(i - 1).padStart(2, "0")}`]: ">=1.0.0" }
+            : {}),
+          ...(i === 63 ? { "p.p00": "=1.0.0" } : {}),
+        },
       })),
     }));
     const heap0 = process.memoryUsage().heapUsed;
@@ -878,6 +888,135 @@ describe("bounds (review fix 1)", () => {
     expect(performance.now() - t0).toBeLessThan(1500);
     // An isolate has 128 MB; resolution must stay far below it.
     expect((process.memoryUsage().heapUsed - heap0) / 1048576).toBeLessThan(64);
+  });
+});
+
+describe("bounds, round 2", () => {
+  it("dependency pruning is charged: 64 packs × 200 releases × 63 dependencies refuse cleanly in time", () => {
+    // Every pack requires the OLDEST release of every other: pruning examines whole domains.
+    const id = (i: number) => `p.p${String(i).padStart(2, "0")}`;
+    const packs: PackSpec[] = Array.from({ length: 64 }, (_, i) => ({
+      id: id(i),
+      binding: "standalone" as const,
+      releases: Array.from({ length: 200 }, (_, n) => ({
+        version: `1.${Math.floor(n / 50)}.${n % 50}`,
+        seq: n + 1,
+        packs: Object.fromEntries(
+          Array.from({ length: 63 }, (_, k) => [
+            id((i + k + 1) % 64),
+            "<=1.0.0",
+          ]),
+        ),
+      })),
+    }));
+    const heap0 = process.memoryUsage().heapUsed;
+    const t0 = performance.now();
+    expect(() => resolve([APP_15], packs)).toThrow(String(MAX_RESOLUTION_WORK));
+    // About 35 ms on Node 22 (it was 17.5 s with pruning outside the budget).
+    expect(performance.now() - t0).toBeLessThan(300);
+    expect((process.memoryUsage().heapUsed - heap0) / 1048576).toBeLessThan(64);
+  });
+
+  it("the live levels are computed once per channel, not per row: 500 app releases × 4,000 rows", () => {
+    const values = Array.from({ length: 10 }, (_, i) => `v${i}`);
+    const keys: string[] = [];
+    for (const a of values)
+      for (const b of values)
+        for (const c of values)
+          keys.push(`locale=${a};quality=${b};texture=${c}`);
+    const apps: AppSpec[] = Array.from({ length: 500 }, (_, n) => ({
+      version: `1.0.${n}`,
+      seq: n + 1,
+      contentApi: 3,
+      platforms: ["android", "ios", "macos", "web"],
+    }));
+    const t0 = performance.now();
+    const { sets, resolver } = resolve(apps, [
+      {
+        id: "x.x",
+        binding: "standalone",
+        axes: { locale: values, quality: values, texture: values },
+        releases: [{ version: "1.0.0", seq: 1, variants: keys }],
+      },
+    ]);
+    expect(sets).toHaveLength(4000);
+    // The publish check asks every row for its mapping: memoised, so this is free.
+    for (const s of sets) resolver.levelMapping(s.channel, s.contentApi);
+    // About 20 ms on Node 22 (3.3 s when it was recomputed per row).
+    expect(performance.now() - t0).toBeLessThan(1000);
+  });
+});
+
+describe("per-component semantics (round 2, lead decision)", () => {
+  type Rel = {
+    v: string;
+    packs?: Record<string, string>;
+    conflicts?: string[];
+  };
+  const pk = (
+    id: string,
+    rels: Rel[],
+    axes: Record<string, string[]> = {},
+  ): PackSpec => ({
+    id,
+    binding: "standalone",
+    axes,
+    releases: rels.map((r, n) => ({
+      version: r.v,
+      seq: n + 1,
+      ...(Object.keys(axes).length
+        ? {
+            variants: Object.entries(axes).flatMap(([a, vs]) =>
+              vs.map((x) => `${a}=${x}`),
+            ),
+          }
+        : {}),
+      ...(r.packs ? { packs: r.packs } : {}),
+      ...(r.conflicts ? { conflicts: r.conflicts } : {}),
+    })),
+  });
+
+  it("couple2: a conflict between a1 and a2 never costs b2 its place (one group, two components)", () => {
+    const { sets } = resolve(
+      [APP_15],
+      [
+        pk("a.a1", [{ v: "1.0.0", conflicts: ["a.a2"] }]),
+        pk("a.a2", [{ v: "1.0.0" }]),
+        pk("b.b1", [{ v: "2.0.0", conflicts: ["b.b2"] }, { v: "1.0.0" }]),
+        pk("b.b2", [{ v: "1.0.0" }]),
+      ],
+    );
+    expect(members(sets[0]!)).toEqual({
+      "a.a1": "1.0.0",
+      "b.b1": "1.0.0",
+      "b.b2": "1.0.0",
+    });
+    expect(unsat(sets[0]!)).toEqual({ "a.a2": "conflict" });
+  });
+
+  it("couple: tied into one component, the fewest packs are left out (b2 stays)", () => {
+    for (const tie of [false, true]) {
+      const { sets } = resolve(
+        [APP_15],
+        [
+          pk("a.a1", [{ v: "1.0.0", conflicts: ["a.a2"] }], { locale: ["en"] }),
+          pk("a.a2", [{ v: "1.0.0" }], { locale: ["en"] }),
+          pk("b.b1", [{ v: "2.0.0", conflicts: ["b.b2"] }, { v: "1.0.0" }]),
+          pk("b.b2", [
+            { v: "1.0.0", ...(tie ? { packs: { "a.a1": ">=0.0.0" } } : {}) },
+          ]),
+        ],
+      );
+      const all = Object.assign({}, ...sets.map(members));
+      expect(all, `tie ${tie}`).toEqual({
+        "a.a1": "1.0.0",
+        "b.b1": "1.0.0",
+        "b.b2": "1.0.0",
+      });
+      expect(Object.assign({}, ...sets.map(unsat))).toEqual({
+        "a.a2": "conflict",
+      });
+    }
   });
 });
 

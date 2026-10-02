@@ -329,9 +329,13 @@ Content packs are deliverables like the app (see [Packs](/docs/services/release/
 - **hold** — a compatible pack release an app release keeps in its signed `content.holds`
   instead of the resolved one; mirrored into `release_holds`.
 - **pack set** — the pack releases active in a running build; its **pack set id** (`packSetId`)
-  is what a device reports. Release also stores a **resolved** pack set per (channel, contentApi
-  level, platform, variant) over the compatible and standalone packs, with the same id function;
-  a pack nothing satisfies there is listed as **unsatisfied** with a reason.
+  is what a device reports. Release also stores **resolved** pack sets over the compatible and
+  standalone packs, per (channel, contentApi level, platform, **engine** of the live builds — empty
+  when they declare none), with the same id function. They are stored as one row per **group**
+  (packs sharing variant axes, merged across dependencies and conflicts) and per combination of
+  that group's axes; a device's resolved set is one row per group, the one its variant projects
+  onto. A pack nothing satisfies there is listed as **unsatisfied** with a reason; a pack is left
+  out only when the packs its own dependencies and conflicts link it to cannot keep it.
 - **pack floor** — the lowest pack release a channel resolves for one contentApi line ("foes ≥
   1.3.4 for contentApi 3"), set by an operator, so a fix can be backported to an older line.
 - **delivery gate** — the licence flag (`entitlement`) of a pack's own `dist_access` row, set by

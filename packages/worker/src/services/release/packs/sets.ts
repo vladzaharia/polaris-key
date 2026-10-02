@@ -632,18 +632,52 @@ export async function storeResolution(
   now: number,
 ): Promise<boolean> {
   const token = newToken();
-  await db.batch(
-    setStatements(product, resolved.sets, now, {
-      generation: resolved.generation,
-      token,
-    }),
-  );
+  const statements = setStatements(product, resolved.sets, now, {
+    generation: resolved.generation,
+    token,
+  });
+  // The claim (statement 1) changed a row exactly when this write won; every other statement is
+  // guarded on it, so the batch applied whole or not at all.
+  if (db.batchChanges) return (await db.batchChanges(statements))[0] === 1;
+  await db.batch(statements);
   const row = await db.first<{ token: string | null }>(
     "SELECT token FROM release_set_state WHERE product = ?",
     product,
   );
   return row?.token === token;
 }
+
+/**
+ * The statements that make the stored sets unusable until the next resolution: move the
+ * generation (so no writer resolved from before can store) and delete every row. A policy change
+ * that can make a stored set wrong (a yank, an unyank, a floor, a pointer) rides these in its own
+ * batch, so a crash between its write and `resolveAndStore` leaves no stale set: fail closed.
+ */
+export function invalidateSetsStatements(
+  product: string,
+  now: number,
+): DbStatement[] {
+  return [
+    {
+      // Only for a product that resolves sets (an app-only product gets no state row).
+      sql: `INSERT INTO release_set_state (product, generation, token, modified_at)
+            SELECT ?, 1, ?, ?
+             WHERE ${RESOLVES_SETS_SQL}
+            ON CONFLICT(product) DO UPDATE SET generation = release_set_state.generation + 1,
+              token = excluded.token, modified_at = excluded.modified_at`,
+      params: [product, newToken(), now, product, product],
+    },
+    { sql: "DELETE FROM release_sets WHERE product = ?", params: [product] },
+  ];
+}
+
+/** True while the product has a stored set or a compatible or standalone pack. Params: product ×2. */
+const RESOLVES_SETS_SQL = `(EXISTS (SELECT 1 FROM release_sets WHERE product = ?)
+  OR EXISTS (SELECT 1 FROM release_deliverables
+              WHERE product = ? AND kind = 'pack'
+                AND (CASE WHEN json_valid(def_json)
+                          THEN json_extract(def_json, '$.binding') END)
+                    IN ('compatible', 'standalone')))`;
 
 /**
  * Fail closed: clear the product's sets (and move the generation, so a slower writer resolved
@@ -656,16 +690,7 @@ async function clearSets(
   outcome: Extract<StoreOutcome, { ok: false }>,
 ): Promise<void> {
   try {
-    await db.batch([
-      {
-        sql: `INSERT INTO release_set_state (product, generation, token, modified_at)
-              VALUES (?, 1, ?, ?)
-              ON CONFLICT(product) DO UPDATE SET generation = release_set_state.generation + 1,
-                token = excluded.token, modified_at = excluded.modified_at`,
-        params: [product, newToken(), now],
-      },
-      { sql: "DELETE FROM release_sets WHERE product = ?", params: [product] },
-    ]);
+    await db.batch(invalidateSetsStatements(product, now));
     await appendAudit(db, {
       product,
       id: randomId("aud"),
@@ -723,7 +748,7 @@ export async function resolveAndStore(
     for (let attempt = 0; attempt < 2; attempt++) {
       const state = await loadResolutionState(db, product);
       if (!state) {
-        await db.run("DELETE FROM release_sets WHERE product = ?", product);
+        await db.batch(invalidateSetsStatements(product, now));
         return { ok: true, sets: 0 };
       }
       const r = tryResolve(state);

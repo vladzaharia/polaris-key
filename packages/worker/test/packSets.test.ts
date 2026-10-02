@@ -41,6 +41,7 @@ import { manifestDeliverableStatements } from "../src/services/release/deliverab
 import { loadProduct } from "../src/core/products.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
+import { yank } from "../src/services/release/policy.js";
 import {
   PackResolutionError,
   PackResolver,
@@ -59,6 +60,7 @@ const FOES = "djdl.foes";
 const LORE = "djdl.lore";
 const L10N = "djdl.l10n";
 const EVENTS = "djdl.events.halloween";
+const DROPS = "djdl.drops";
 
 function releaseDoc(
   contentApi: number,
@@ -104,6 +106,12 @@ function releaseDoc(
           type: "files.tree",
           binding: "standalone",
           variants: { locale: ["en", "fr"] },
+        },
+        [DROPS]: {
+          kind: "pack",
+          type: "files.tree",
+          binding: "compatible",
+          requires: { contentApi: { app: ">=3" } },
         },
         [EVENTS]: {
           kind: "pack",
@@ -447,7 +455,11 @@ describe("resolution on publish (P4-12)", () => {
     await baseline();
     expect(await setAt(3)).toEqual({
       packs: { [FOES]: "1.0.0", [L10N]: "1.0.0" },
-      unsatisfied: { [EVENTS]: "no-release", [LORE]: "no-release" },
+      unsatisfied: {
+        [DROPS]: "no-release",
+        [EVENTS]: "no-release",
+        [LORE]: "no-release",
+      },
     });
     // The app moves to contentApi 4 (1.5.0) while 1.4.0 is still live.
     await syncDeliverables(4);
@@ -556,6 +568,7 @@ describe("re-resolution on floor changes, pointer moves and yanks (P4-12)", () =
     expect(await setAt(3)).toEqual({
       packs: { [L10N]: "1.0.0" },
       unsatisfied: {
+        [DROPS]: "no-release",
         [EVENTS]: "no-release",
         [FOES]: "content-floor",
         [LORE]: "no-release",
@@ -668,6 +681,119 @@ describe("re-resolution on floor changes, pointer moves and yanks (P4-12)", () =
       `${CONSOLE}/${SLUG}/update/events/feed.jws?platform=web`,
     );
     expect(feed.status).toBe(404);
+  });
+});
+
+describe("per-component semantics (round 2)", () => {
+  it("a conflict between two packs never refuses an app publish whose required pack is satisfiable", async () => {
+    // Component B: drops 2.0.0 conflicts with foes (required); drops 1.0.0 does not. Published
+    // before foes, so no publish check refuses it.
+    await publishPack(DROPS, "1.0.0");
+    await publishPack(DROPS, "2.0.0", { conflicts: [FOES] });
+    await baseline();
+    // Component A: lore conflicts with the event pack, so one of the two is left out.
+    await publishPack(LORE, "1.0.0", { conflicts: [EVENTS] });
+    await publishPack(EVENTS, "1.0.0", { channel: "events" });
+    const res = await submitApp("1.4.1", 15, appContent(3));
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const set = await setAt(3);
+    expect(set.packs[FOES]).toBe("1.0.0");
+    expect(set.packs[DROPS]).toBe("1.0.0");
+    expect(Object.keys(set.unsatisfied)).toHaveLength(1);
+  });
+});
+
+describe("one resolution per publish (round 2)", () => {
+  it("a CI app publish (dry-run pre-check, ingest, store) resolves exactly once", async () => {
+    await baseline();
+    await syncDeliverables(4);
+    await publishPack(FOES, "2.0.0", { contentApi: ">=4" });
+    const spy = vi.spyOn(PackResolver.prototype, "resolve");
+    try {
+      const res = await submitApp("1.5.0", 15, appContent(4));
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await setAt(4)).packs[FOES]).toBe("2.0.0");
+  });
+
+  it("a pack publish resolves exactly once", async () => {
+    await baseline();
+    const spy = vi.spyOn(PackResolver.prototype, "resolve");
+    try {
+      await publishPack(FOES, "1.1.0", { contentApi: ">=3 <4" });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("a crash after a policy write leaves no stale set (round 2)", () => {
+  it("the yank's own batch clears the sets; a crash before re-resolution keeps them cleared", async () => {
+    await baseline();
+    await publishPack(FOES, "1.1.0", { contentApi: ">=3 <4" });
+    expect((await sets()).length).toBeGreaterThan(0);
+    // A database that dies right after the batch that carries the yank.
+    let dead = false;
+    const crashing: Db = {
+      ...db,
+      first: (...a: Parameters<Db["first"]>) => {
+        if (dead) throw new Error("isolate killed");
+        return db.first(...a);
+      },
+      all: (...a: Parameters<Db["all"]>) => {
+        if (dead) throw new Error("isolate killed");
+        return db.all(...a);
+      },
+      run: (...a: Parameters<Db["run"]>) => {
+        if (dead) throw new Error("isolate killed");
+        return db.run(...a);
+      },
+      runChanges: (...a: Parameters<Db["runChanges"]>) => db.runChanges(...a),
+      batch: (st: Parameters<Db["batch"]>[0]) => db.batch(st),
+      batchChanges: async (st: Parameters<Db["batch"]>[0]) => {
+        const out = await db.batchChanges!(st);
+        if (st.some((x) => x.sql.includes("release_yanks"))) dead = true;
+        return out;
+      },
+    } as Db;
+    await expect(
+      yank(
+        env,
+        crashing,
+        SLUG,
+        `${FOES}@1.1.0`,
+        "bad",
+        {
+          kind: "admin",
+          session: {
+            sub: "u1",
+            name: "Ada",
+            email: "ada@x.io",
+            groups: ["platform-admins"],
+          } as never,
+        },
+        NOW,
+      ),
+    ).rejects.toThrow("isolate killed");
+    // The yank committed, and so did the clearing in its batch: no set holds 1.1.0.
+    expect(
+      await db.first(
+        "SELECT 1 AS one FROM release_yanks WHERE product = ? AND release_id = ?",
+        SLUG,
+        `${FOES}@1.1.0`,
+      ),
+    ).toEqual({ one: 1 });
+    expect(await sets()).toEqual([]);
+    // The next trigger resolves them again, without the yanked release.
+    expect(await resolveAndStore(db, SLUG, NOW)).toEqual({
+      ok: true,
+      sets: expect.any(Number),
+    });
+    expect((await setAt(3)).packs[FOES]).toBe("1.0.0");
   });
 });
 

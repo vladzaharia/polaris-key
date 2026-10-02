@@ -46,7 +46,7 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db, Env } from "../../core/platform.js";
+import type { Db, DbStatement, Env } from "../../core/platform.js";
 import { randomId } from "../../core/platform.js";
 import { appendAudit } from "../../core/data.js";
 import { audit, type AdminSession } from "../../core/adminApi.js";
@@ -54,15 +54,18 @@ import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import { parseManualChannels } from "./channels.js";
 import type { ReleaseConfigRow } from "./config.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
-import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
+import {
+  invalidateSetsStatements,
+  resolveAndStore,
+  type StoreOutcome,
+} from "./packs/sets.js";
 import {
   getChannelPolicy,
   getDeliverable,
   isYanked,
-  revertChannelPolicyToManifest,
-  setChannelPolicy,
-  unyankRelease,
-  yankRelease,
+  stmtSetChannelPolicy,
+  stmtUnyankRelease,
+  stmtYankRelease,
   type ChannelPolicyPatch,
   type ReleaseChannelPolicyRow,
   type ReleaseDeliverableRow,
@@ -119,6 +122,23 @@ function refuse(
     message,
     ...(fields ? { fields } : {}),
   };
+}
+
+/**
+ * Apply one policy write and, in the SAME batch, invalidate the product's stored sets
+ * (`invalidateSetsStatements`): a crash between the write and `resolveAndStore` then leaves no
+ * stale set (fail closed). Answers the write's changed-row count (1 when the engine cannot say).
+ */
+async function writeAndInvalidate(
+  db: Db,
+  product: string,
+  now: number,
+  write: DbStatement,
+): Promise<number> {
+  const statements = [write, ...invalidateSetsStatements(product, now)];
+  if (db.batchChanges) return (await db.batchChanges(statements))[0] ?? 0;
+  await db.batch(statements);
+  return 1;
 }
 
 /** Append one audit row for a policy change, attributed to its actor. */
@@ -406,11 +426,16 @@ export async function applyPointerOp(
         : `Promoted ${releaseId} to ${deliverable} ${ch.channel}`;
   }
 
-  await setChannelPolicy(db, key, patch, {
-    source: "admin",
-    by: actorId(actor),
+  await writeAndInvalidate(
+    db,
+    product,
     now,
-  });
+    stmtSetChannelPolicy(key, patch, {
+      source: "admin",
+      by: actorId(actor),
+      now,
+    }),
+  );
   await auditChange(
     db,
     product,
@@ -545,11 +570,16 @@ export async function updateChannelPolicy(
       ["pointer", "pinned"],
     );
 
-  await setChannelPolicy(db, key, patch, {
-    source: "admin",
-    by: actorId(actor),
+  await writeAndInvalidate(
+    db,
+    product,
     now,
-  });
+    stmtSetChannelPolicy(key, patch, {
+      source: "admin",
+      by: actorId(actor),
+      now,
+    }),
+  );
   await auditChange(
     db,
     product,
@@ -624,33 +654,36 @@ async function updatePackFloor(
       ["minSupported"],
     );
   const by = actorId(actor);
-  if (min === null)
-    await db.run(
-      `DELETE FROM release_pack_floors
-        WHERE product = ? AND deliverable_id = ? AND channel = ? AND content_api = ?`,
-      product,
-      key.deliverableId,
-      key.channel,
-      contentApi,
-    );
-  else
-    await db.run(
-      `INSERT INTO release_pack_floors
-         (product, deliverable_id, channel, content_api, min_version, source, created_at,
-          modified_at, modified_by)
-       VALUES (?, ?, ?, ?, ?, 'admin', ?, ?, ?)
-       ON CONFLICT(product, deliverable_id, channel, content_api) DO UPDATE SET
-         min_version = excluded.min_version, source = 'admin',
-         modified_at = excluded.modified_at, modified_by = excluded.modified_by`,
-      product,
-      key.deliverableId,
-      key.channel,
-      contentApi,
-      min,
-      now,
-      now,
-      by,
-    );
+  await writeAndInvalidate(
+    db,
+    product,
+    now,
+    min === null
+      ? {
+          sql: `DELETE FROM release_pack_floors
+                 WHERE product = ? AND deliverable_id = ? AND channel = ? AND content_api = ?`,
+          params: [product, key.deliverableId, key.channel, contentApi],
+        }
+      : {
+          sql: `INSERT INTO release_pack_floors
+                  (product, deliverable_id, channel, content_api, min_version, source, created_at,
+                   modified_at, modified_by)
+                VALUES (?, ?, ?, ?, ?, 'admin', ?, ?, ?)
+                ON CONFLICT(product, deliverable_id, channel, content_api) DO UPDATE SET
+                  min_version = excluded.min_version, source = 'admin',
+                  modified_at = excluded.modified_at, modified_by = excluded.modified_by`,
+          params: [
+            product,
+            key.deliverableId,
+            key.channel,
+            contentApi,
+            min,
+            now,
+            now,
+            by,
+          ],
+        },
+  );
   await auditChange(
     db,
     product,
@@ -689,7 +722,20 @@ export async function revertChannelPolicy(
   if (!ch.ok) return ch;
   const deliverable = d.deliverable.deliverable_id;
   const key = { product, deliverableId: deliverable, channel: ch.channel };
-  if (!(await revertChannelPolicyToManifest(db, key, actorId(actor), now)))
+  if (
+    (await writeAndInvalidate(db, product, now, {
+      sql: `UPDATE release_channel_policy
+               SET source = 'manifest', modified_at = ?, modified_by = ?
+             WHERE product = ? AND deliverable_id = ? AND channel = ?`,
+      params: [
+        now,
+        actorId(actor),
+        key.product,
+        key.deliverableId,
+        key.channel,
+      ],
+    })) === 0
+  )
     return refuse(404, "no_policy", "this channel has no policy to revert");
   await auditChange(
     db,
@@ -744,7 +790,12 @@ export async function yank(
   );
   if (!release) return refuse(404, "unknown_release", "no such release");
   const by = actorId(actor);
-  await yankRelease(db, product, releaseId, reason.trim(), by, now);
+  await writeAndInvalidate(
+    db,
+    product,
+    now,
+    stmtYankRelease(product, releaseId, reason.trim(), by, now),
+  );
   await auditChange(
     db,
     product,
@@ -772,7 +823,14 @@ export async function unyank(
   actor: PolicyActor,
   now: number,
 ): Promise<PolicyResult<{ yank: YankView; packSets: StoreOutcome }>> {
-  if (!(await unyankRelease(db, product, releaseId)))
+  if (
+    (await writeAndInvalidate(
+      db,
+      product,
+      now,
+      stmtUnyankRelease(product, releaseId),
+    )) === 0
+  )
     return refuse(404, "not_yanked", "this release is not yanked");
   await auditChange(
     db,

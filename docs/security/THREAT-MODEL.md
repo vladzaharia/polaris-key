@@ -1863,10 +1863,16 @@ Worker still signs nothing; what changes:
   inside the triggering request. Variants are projected per group of packs (packs with the same
   axes, merged across dependencies and conflicts), so rows grow as the sum over groups, not the
   product over every pack's axes; at most `MAX_SELECTORS` (4,096) rows per product, and ONE work
-  budget, `MAX_RESOLUTION_WORK` (1,000,000 candidate checks), for the whole resolution (not per
-  problem). Measured on Node 22, the adversarial cases (64 packs × 200 releases, exhaustive
-  searches, 64-entry conflict lists, three coupled 16-value axes) spend the budget in 40–150 ms
-  and a few MB of heap; a publish runs one resolution (the check's, reused to store). The inputs
+  budget, `MAX_RESOLUTION_WORK` (1,000,000 work units), for the whole resolution (not per
+  problem): grouping, stage candidates, building each candidate's constraints, every dependency
+  probe and range check of the pruning pass, the component split and every solver try are all
+  charged. Measured on Node 22, the adversarial cases (64 packs × 200 releases with 63
+  dependencies each, exhaustive searches over dependency chains, 64-entry conflict lists, three
+  coupled 16-value axes, 500 live app releases × 4,000 rows) spend the budget, or finish, in
+  15–60 ms with under 25 MB of heap. A CI publish runs one resolution (its check's, reused to
+  store); the GitHub sync path can run two for a descriptor it ingests (the descriptor's check,
+  then the sync's own re-resolution). A policy change clears the stored sets in its own batch, so
+  even a CPU kill before the re-resolution leaves no stale set. The inputs
   are bounded already: at most 64 declared packs, 32 variant combinations each, and conflicts and
   dependencies lists of at most 64. A repo writer who can publish can make resolution slow only up
   to those bounds, and only for their own product.

@@ -202,8 +202,10 @@ On every publish, pointer move, floor change, yank and resync, Release re-resolv
    engine; it carries the row's variant; it is at or above the pack's floor.
    Yanked releases resolve only as a pinned pointer.
 4. **The solver** keeps `requires.packs` ranges and `conflicts`, backtracking highest-first in
-   pack-id order. One work budget covers the whole resolution; past it (or past 4,096 rows) a
-   publish fails (`pack-sets-bound`) rather than guess.
+   pack-id order, one **component** at a time (packs a dependency or conflict links): a pack is
+   left out only when its own component cannot keep it, and then as few packs as possible. One
+   work budget covers the whole resolution; past it (or past 4,096 rows) a publish fails
+   (`pack-sets-bound`) rather than guess.
 
 A pack nothing satisfies at a selector is stored in the set's `unsatisfied` list with a reason —
 `no-release`, `content-api`, `engine`, `variant`, `content-floor`, `dependency` or `conflict` —
@@ -244,6 +246,11 @@ message naming the selector and the constraint:
 | `content-unsatisfied`    | a `required` compatible or standalone pack has no release at one of the app release's selectors                                                                                                                                    |
 | `pack-channels-conflict` | the app release's `packChannels` differs from another live app release's on the same channel and contentApi (a mapping change needs a contentApi bump)                                                                             |
 | `pack-sets-bound`        | resolution cannot finish inside its bounds                                                                                                                                                                                         |
+
+During an engine bump (CONTENT §6.8 row 7) an app release on the new engine is refused
+`content-unsatisfied` only for a **`required`** pack with no release for that engine yet; an
+optional one is simply listed `unsatisfied` (`engine`) until its release exists, and the players
+of the older engine keep their set throughout.
 
 Either submit, dry run or not, answers `packSets`: the resulting sets with the selectors and app
 releases that receive them, and every selector whose set changed. `dryRun: true` writes nothing.
