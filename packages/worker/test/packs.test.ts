@@ -31,6 +31,7 @@ import {
 } from "./releaseKeysFixture.js";
 import {
   bytesFrom,
+  chunksFor,
   containerVariant,
   packRecord,
   sha,
@@ -951,6 +952,181 @@ async function submitApp(
     body: (await res.json()) as Record<string, any>,
   };
 }
+
+describe("chunk indexes at ingest (P4-22, plans/P4-10.md §6)", () => {
+  /** core3d's two variants, the s3tc one with a chunk index over its payload. */
+  function chunked(seed: string, o: { reuse?: Obj } = {}) {
+    const variants = coreVariants(seed);
+    const v = variants[0]!;
+    const c = chunksFor(
+      v.objects[0]!.bytes,
+      v.variant.payload as { size: number; sha256: string },
+      seed,
+      o,
+    );
+    v.variant.chunks = c.chunks;
+    return { variants, ...c };
+  }
+
+  it("ingests a variant's chunk index: a chunk-index row and ref, no row for its bundle", async () => {
+    const { variants, index, bundle } = chunked("chunks-ok");
+    await stageOk(CORE, [...variants.flatMap((v) => v.objects), index, bundle]);
+    const jws = await signRecord(coreRecord("1.4.0", 12, variants));
+    const res = await post("submit", { record: jws });
+    expect(res.status, await res.clone().text()).toBe(200);
+    const roles = await db.all<{ role: string; storage_key: string }>(
+      "SELECT role, storage_key FROM release_artifacts WHERE product = ? AND release_id = ? AND build_id = 'texture=s3tc' ORDER BY role",
+      SLUG,
+      `${CORE}@1.4.0`,
+    );
+    expect(roles.map((r) => r.role)).toContain("chunk-index");
+    expect(roles.find((r) => r.role === "chunk-index")!.storage_key).toBe(
+      `blobs/sha256/${index.sha256}`,
+    );
+    expect(
+      roles.some((r) => r.storage_key === `blobs/sha256/${bundle.sha256}`),
+    ).toBe(false);
+    expect(
+      await count(
+        "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ? AND storage_key = ? AND ref_kind = 'pack-object'",
+        SLUG,
+        `blobs/sha256/${index.sha256}`,
+      ),
+    ).toBe(1);
+    // The hook reads the chunks back from the stored index.
+    expect(
+      await (
+        await catalog()
+      ).packChunks!(`${CORE}@1.4.0`, "texture=s3tc"),
+    ).toEqual([
+      { bundleKey: `blobs/sha256/${bundle.sha256}`, offset: 8, bytes: 85 },
+      { bundleKey: `blobs/sha256/${bundle.sha256}`, offset: 93, bytes: 85 },
+    ]);
+    expect(
+      await (
+        await catalog()
+      ).packChunks!(`${CORE}@1.4.0`, "texture=etc2"),
+    ).toBeNull();
+  });
+
+  it("a later release may name an earlier release's bundle of the same pack", async () => {
+    const first = chunked("chain-1");
+    await stageOk(CORE, [
+      ...first.variants.flatMap((v) => v.objects),
+      first.index,
+      first.bundle,
+    ]);
+    const r1 = await post("submit", {
+      record: await signRecord(coreRecord("1.0.0", 1, first.variants)),
+    });
+    expect(r1.status, await r1.clone().text()).toBe(200);
+    const next = chunked("chain-2", { reuse: first.bundle });
+    await stageOk(CORE, [
+      ...next.variants.flatMap((v) => v.objects),
+      next.index,
+      next.bundle,
+    ]);
+    const r2 = await post("submit", {
+      record: await signRecord(coreRecord("1.1.0", 2, next.variants)),
+    });
+    expect(r2.status, await r2.clone().text()).toBe(200);
+  });
+
+  it("refuses a bundle, or an index, that holds only another pack's ref (pack-object)", async () => {
+    const { variants, index, bundle } = chunked("chunks-foreign");
+    await stageOk(CORE, [...variants.flatMap((v) => v.objects), index]);
+    // The bundle was uploaded by another pack of the product: the product holds a ref, this
+    // pack does not.
+    await stageOk(L10N, [bundle]);
+    const r = await submitRefused(coreRecord("1.0.0", 1, variants));
+    expect(r.reason).toBe("pack-object");
+    expect(r.message).toContain(`blobs/sha256/${bundle.sha256}`);
+    expect(r.message).toContain(`pack-upload ref of ${CORE}`);
+
+    const other = chunked("chunks-foreign-index");
+    await stageOk(CORE, [
+      ...other.variants.flatMap((v) => v.objects),
+      other.bundle,
+    ]);
+    await stageOk(L10N, [other.index]);
+    const ri = await submitRefused(coreRecord("1.0.0", 1, other.variants));
+    expect([ri.reason, ri.message.includes("chunk index")]).toEqual([
+      "pack-object",
+      true,
+    ]);
+  });
+
+  it("refuses a missing bundle (pack-object)", async () => {
+    const { variants, index } = chunked("chunks-missing");
+    await stageOk(CORE, [...variants.flatMap((v) => v.objects), index]);
+    const r = await submitRefused(coreRecord("1.0.0", 1, variants));
+    expect([r.reason, r.message.includes("a chunk bundle")]).toEqual([
+      "pack-object",
+      true,
+    ]);
+  });
+
+  it("refuses an index over MAX_PUBLISHED_INDEX_BYTES or of an unknown format before reading, and one bound to another payload (pack-index)", async () => {
+    const big = chunked("chunks-big");
+    (big.variants[0]!.variant.chunks as any).size = 8388609;
+    (big.variants[0]!.variant.chunks as any).codec = "zstd";
+    const r = await submitRefused(coreRecord("1.0.0", 1, big.variants));
+    expect([r.reason, r.message.includes("chunk index")]).toEqual([
+      "pack-index",
+      true,
+    ]);
+    const fmt = chunked("chunks-format");
+    (fmt.variants[0]!.variant.chunks as any).format = "pkey-chunks/2";
+    const rf = await submitRefused(coreRecord("1.0.0", 1, fmt.variants));
+    expect([rf.reason, rf.message.includes("pkey-chunks/1")]).toEqual([
+      "pack-index",
+      true,
+    ]);
+    // The s3tc index moved onto the etc2 variant: bound to another payload.
+    const moved = chunked("chunks-moved");
+    await stageOk(CORE, [
+      ...moved.variants.flatMap((v) => v.objects),
+      moved.index,
+      moved.bundle,
+    ]);
+    moved.variants[1]!.variant.chunks = moved.variants[0]!.variant.chunks;
+    delete moved.variants[0]!.variant.chunks;
+    const rm = await submitRefused(coreRecord("1.0.0", 1, moved.variants));
+    expect([rm.reason, rm.message]).toEqual([
+      "pack-index",
+      "variants[1]'s chunk index fails chunks-payload-mismatch.",
+    ]);
+  });
+
+  it("a dry run lists an index neither stored nor staged, and a bundle not yet held, in unverified", async () => {
+    const { variants, index, bundle } = chunked("chunks-dry");
+    await stageOk(
+      CORE,
+      variants.flatMap((v) => v.objects),
+    );
+    const jws = await signRecord(coreRecord("1.0.0", 1, variants));
+    const res = await post("submit", { record: jws, dryRun: true });
+    expect(res.status, await res.clone().text()).toBe(200);
+    expect(((await res.json()) as any).unverified).toEqual([
+      `blobs/sha256/${index.sha256}`,
+    ]);
+    // With the index stored, its parse runs and the bundle is listed instead.
+    await stageOk(CORE, [index]);
+    const res2 = await post("submit", { record: jws, dryRun: true });
+    expect(res2.status, await res2.clone().text()).toBe(200);
+    expect(((await res2.json()) as any).unverified).toEqual([
+      `blobs/sha256/${bundle.sha256}`,
+    ]);
+    // Nothing was written.
+    expect(
+      await count(
+        "SELECT COUNT(*) AS n FROM release_metadata WHERE product = ? AND release_id = ?",
+        SLUG,
+        `${CORE}@1.0.0`,
+      ),
+    ).toBe(0);
+  });
+});
 
 describe("app releases with content (pins and embeds)", () => {
   it("accepts pins and embeds, mirrors them into release_pins, content_api and embeds_json, read through the hook", async () => {

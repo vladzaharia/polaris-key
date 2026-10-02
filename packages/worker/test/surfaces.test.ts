@@ -252,6 +252,8 @@ describe("worker surfaces", () => {
       releaseKeyFingerprints: [],
       // P4-02: this Worker ingests pack records and mirrors pins.
       packs: true,
+      // P4-22: chunk indexes are ingested and their bundles kept.
+      chunks: true,
       // P4-13: revocation records are ingested and served.
       revocations: true,
     });

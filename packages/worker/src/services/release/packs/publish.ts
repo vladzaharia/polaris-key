@@ -519,8 +519,10 @@ export async function handlePackSubmit(
   const store = await checkPackStore(db, bucket, product.slug, record, {
     pending,
     unverified,
+    dryRun,
   });
   if (!store.ok) return recordRefusal(store.reason, store.message);
+  for (const k of store.unverifiedChunks) unverified.add(k);
 
   // 4. The resolution check (P4-12): the sets every live selector would resolve with it.
   const sets = await checkPackPublish(

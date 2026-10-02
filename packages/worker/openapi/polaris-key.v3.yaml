@@ -185,6 +185,7 @@ paths:
                             d8f1a6a3f0b2a1c7e6d9b4c3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3,
                           ]
                         packs: true
+                        chunks: true
                         revocations: true
                       distribution:
                         enabled: true

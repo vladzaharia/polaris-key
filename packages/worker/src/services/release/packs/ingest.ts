@@ -24,14 +24,20 @@
  *                     channels the pack declares;
  *   pack-entitlement  `entitlement` (absent = none) differs from the delivery gate
  *                     `delivery.entitlement` answers now, or from the declaration's assertion;
- *   pack-index        a variant's `files.size` or `files.bytes` is above
- *                     `MAX_PUBLISHED_INDEX_BYTES`, or the indexes total more than
- *                     `MAX_INGEST_INDEX_BYTES` decoded (both before anything is read); or an
- *                     index fails `parseFilesIndex` (client-core's, decision 33);
+ *   pack-index        a variant's `files.size` or `files.bytes` (or, P4-22, `chunks.size` or
+ *                     `chunks.bytes`) is above `MAX_PUBLISHED_INDEX_BYTES`, a `chunks.format` is
+ *                     not `pkey-chunks/1`, or the indexes total more than
+ *                     `MAX_INGEST_INDEX_BYTES` decoded (all before anything is read); or an
+ *                     index fails `parseFilesIndex` (client-core's, decision 33), or a chunk
+ *                     index fails `parseChunkIndex` bound to the variant's payload;
  *   pack-object       a variant's `full.size` differs from its `payload.size`, or an object the
  *                     record or an index names is not stored with that length under the pack's
  *                     prefix (`gated/` exactly when the record carries an `entitlement`), or the
- *                     product holds no ref to it (P2-01's possession rule).
+ *                     product holds no ref to it (P2-01's possession rule). A chunk index and
+ *                     every bundle its table names need more: a `pack-upload` ref held by THIS
+ *                     pack (`ref_id` = the pack id) on that key. A ref held by another pack or a
+ *                     release does not count (plans/P4-10.md §6), so a chain can only ever name
+ *                     bundles its own pack uploaded, under its own prefix.
  *
  * ONE INDEX AT A TIME (decision 36). Each index is read from the blob store (bounded by its
  * recorded bytes, never a size from the request), decoded with `@polaris-key/zstd-wasm` (a fresh
@@ -56,7 +62,12 @@ import {
   type ManifestPackDeliverable,
   type PackObjectRole,
 } from "@polaris-key/manifest";
-import { parseFilesIndex, variantKey } from "@polaris-key/client-core/packs";
+import {
+  parseChunkIndex,
+  parseFilesIndex,
+  variantKey,
+} from "@polaris-key/client-core/packs";
+import { CHUNKS_FORMAT } from "@polaris-key/protocol/core";
 import { parseVersion } from "@polaris-key/client-core/version";
 import type {
   FilesDelta,
@@ -159,6 +170,24 @@ export function checkPackAgainstDeclaration(
         `variants[${i}]'s files index is ${Math.max(v.files.size, v.files.bytes)} bytes; the Worker reads at most ${MAX_PUBLISHED_INDEX_BYTES} per index.`,
       );
     total += v.files.size;
+    // P4-22: the chunk index, bounded and its format known before anything is read.
+    const c = v.chunks;
+    if (c !== undefined) {
+      if (
+        c.size > MAX_PUBLISHED_INDEX_BYTES ||
+        c.bytes > MAX_PUBLISHED_INDEX_BYTES
+      )
+        return refuse(
+          "pack-index",
+          `variants[${i}]'s chunk index is ${Math.max(c.size, c.bytes)} bytes; the Worker reads at most ${MAX_PUBLISHED_INDEX_BYTES} per index.`,
+        );
+      if (c.format !== CHUNKS_FORMAT)
+        return refuse(
+          "pack-index",
+          `variants[${i}]'s chunk index is format ${c.format}; this Worker ingests ${CHUNKS_FORMAT} only.`,
+        );
+      total += c.size;
+    }
   }
   if (total > MAX_INGEST_INDEX_BYTES)
     return refuse(
@@ -303,8 +332,9 @@ export interface PackObject {
 /**
  * Every object the record names, variant by variant: `full` (role `payload`), the files index,
  * its gaps, a `payload` delta's frame (`delta`) and a `files` delta's descriptor and data
- * (`patch`, `patch-data`). A delta of another scope names nothing v1 knows. File blobs are not
- * here: they are named by the indexes, not the record.
+ * (`patch`, `patch-data`), then (P4-22) the chunk index (`chunk-index`). A delta of another scope
+ * names nothing v1 knows. File blobs and chunk bundles are not here: they are named by the
+ * indexes, not the record.
  */
 export function packObjects(record: PackRecordDoc): PackObject[] {
   const gated = record.entitlement !== undefined;
@@ -361,6 +391,12 @@ export function packObjects(record: PackRecordDoc): PackObject[] {
         push("patch-data", ordinal, f.data, { from: f.from });
       }
     }
+    if (v.chunks)
+      push("chunk-index", 0, v.chunks, {
+        size: v.chunks.size,
+        codec: v.chunks.codec,
+        format: v.chunks.format,
+      });
   }
   return out;
 }
@@ -395,6 +431,42 @@ export async function firstMissingObject(
   return null;
 }
 
+/**
+ * The stricter possession check of a chunk index and its bundles (plans/P4-10.md §6): the keys of
+ * `pairs` (`[storageKey, bytes]`) that are not stored with that length, or that hold no
+ * `pack-upload` ref of `product` with `ref_id = packId`. A ref held by another pack or by a
+ * release (`pack-object`) does not count. At most `limit` keys, one query per `batch` pairs.
+ */
+export async function missingHeldObjects(
+  db: Db,
+  product: string,
+  packId: string,
+  pairs: readonly (readonly [string, number])[],
+  limit = 1,
+  batch = OBJECT_CHECK_BATCH,
+): Promise<string[]> {
+  const out: string[] = [];
+  for (let i = 0; i < pairs.length && out.length < limit; i += batch) {
+    const chunk = pairs.slice(i, i + batch);
+    const rows = await db.all<{ k: string }>(
+      `SELECT json_extract(j.value, '$[0]') AS k FROM json_each(?) AS j
+        WHERE NOT EXISTS (SELECT 1 FROM blob_objects o
+                           WHERE o.storage_key = json_extract(j.value, '$[0]')
+                             AND o.size = json_extract(j.value, '$[1]'))
+           OR NOT EXISTS (SELECT 1 FROM blob_refs r
+                           WHERE r.product = ? AND r.storage_key = json_extract(j.value, '$[0]')
+                             AND r.ref_kind = 'pack-upload' AND r.ref_id = ?)
+        LIMIT ?`,
+      JSON.stringify(chunk),
+      product,
+      packId,
+      limit - out.length,
+    );
+    for (const r of rows) out.push(r.k);
+  }
+  return out;
+}
+
 /** An object not yet promoted but judged as if it were: a dry run's verified staged copy. */
 export interface PendingObject {
   sha256: string;
@@ -408,6 +480,11 @@ export interface ObjectCheckOptions {
   pending?: ReadonlyMap<string, PendingObject>;
   /** Ticket objects not yet uploaded, by target key: a dry run lists them as unverified. */
   unverified?: ReadonlySet<string>;
+  /**
+   * A dry run (P4-22): a chunk index neither stored nor staged, and a bundle of a parsed index
+   * this pack does not hold yet, are listed in `unverifiedChunks` instead of refused.
+   */
+  dryRun?: boolean;
 }
 
 /** `pack-object` for `pairs`, honouring a dry run's pending and unverified objects. */
@@ -449,6 +526,10 @@ export interface PackStoreCheck {
   files: number;
   /** Index keys a dry run could not read yet (not uploaded), so their files went unchecked. */
   unreadIndexes: string[];
+  /** How many chunk bundles the chunk indexes named (each checked), P4-22. */
+  bundles: number;
+  /** A dry run's chunk indexes and bundles not yet held by this pack (listed, not refused). */
+  unverifiedChunks: string[];
 }
 
 /**
@@ -462,7 +543,8 @@ export async function checkPackStore(
   record: PackRecordDoc,
   opts: ObjectCheckOptions = {},
 ): Promise<PackStoreCheck | PackRefusal> {
-  const objects = packObjects(record);
+  // The chunk indexes take the stricter held-by-this-pack check below, not this one.
+  const objects = packObjects(record).filter((o) => o.role !== "chunk-index");
   const byKey = new Map(objects.map((o) => [o.key, o]));
   const named = await checkPairs(
     db,
@@ -519,7 +601,145 @@ export async function checkPackStore(
     if (fileCheck) return fileCheck;
     files += blobs.size;
   }
-  return { ok: true, files, unreadIndexes };
+
+  // P4-22: each chunk index, then the bundles its table names — one index at a time, each held
+  // by THIS pack under the pack's prefix (plans/P4-10.md §6).
+  const chunks = await checkPackChunks(db, bucket, product, record, opts);
+  if (!chunks.ok) return chunks;
+  return {
+    ok: true,
+    files,
+    unreadIndexes: [...unreadIndexes, ...chunks.unreadIndexes],
+    bundles: chunks.bundles,
+    unverifiedChunks: chunks.unverified,
+  };
+}
+
+/**
+ * The chunk-index half of `checkPackStore` (P4-22, plans/P4-10.md §6). For each variant with
+ * `chunks`: the index object must be stored with its recorded length and held by a `pack-upload`
+ * ref of this pack; it is read (bounded by its recorded `bytes`, already under
+ * `MAX_PUBLISHED_INDEX_BYTES`), decoded by the WASM decoder and parsed by client-core's
+ * `parseChunkIndex` bound to the variant's payload; then every bundle in its table must be stored
+ * with its table size and held by this pack. A dry run judges a staged copy as P4-02 does, and
+ * lists — never refuses — an index neither stored nor staged (its parse and bundle checks are
+ * skipped) and a bundle not yet held.
+ */
+async function checkPackChunks(
+  db: Db,
+  bucket: R2Bucket,
+  product: string,
+  record: PackRecordDoc,
+  opts: ObjectCheckOptions,
+): Promise<
+  | { ok: true; bundles: number; unreadIndexes: string[]; unverified: string[] }
+  | PackRefusal
+> {
+  const gated = record.entitlement !== undefined;
+  const packId = record.deliverable;
+  const unverified = new Set<string>();
+  const unreadIndexes: string[] = [];
+  let bundles = 0;
+  /** The pairs not pending or unverified, split into held and not held. */
+  const held = async (
+    pairs: readonly (readonly [string, number])[],
+    label: (key: string) => string,
+  ): Promise<PackRefusal | null> => {
+    const toCheck: [string, number][] = [];
+    for (const [key, bytes] of pairs) {
+      const p = opts.pending?.get(key);
+      if (p) {
+        if (p.size !== bytes)
+          return refuse(
+            "pack-object",
+            `${label(key)} is staged with ${p.size} bytes, not ${bytes}.`,
+          );
+        continue;
+      }
+      if (opts.unverified?.has(key)) continue;
+      toCheck.push([key, bytes]);
+    }
+    if (opts.dryRun) {
+      for (const k of await missingHeldObjects(
+        db,
+        product,
+        packId,
+        toCheck,
+        toCheck.length,
+      ))
+        unverified.add(k);
+      return null;
+    }
+    const [missing] = await missingHeldObjects(db, product, packId, toCheck);
+    return missing === undefined
+      ? null
+      : refuse(
+          "pack-object",
+          `${label(missing)} is not stored with its recorded length under a pack-upload ref of ${packId} (a ref held by another pack or release does not count; upload it in a stage round of this pack).`,
+        );
+  };
+  for (const [i, v] of record.variants.entries()) {
+    const c = v.chunks;
+    if (!c) continue;
+    const key = blobKey(c.sha256, { gated });
+    const pending = opts.pending?.get(key);
+    if (!pending && opts.unverified?.has(key)) {
+      unreadIndexes.push(key);
+      continue;
+    }
+    if (!pending) {
+      if (opts.dryRun) {
+        const [missing] = await missingHeldObjects(db, product, packId, [
+          [key, c.bytes],
+        ]);
+        if (missing !== undefined) {
+          unverified.add(key);
+          continue;
+        }
+      } else {
+        const refusal = await held(
+          [[key, c.bytes]],
+          () => `variants[${i}]'s chunk index ${c.sha256}`,
+        );
+        if (refusal) return refusal;
+      }
+    } else if (pending.size !== c.bytes)
+      return refuse(
+        "pack-object",
+        `variants[${i}]'s chunk index ${c.sha256} is staged with ${pending.size} bytes, not ${c.bytes}.`,
+      );
+    const stored = await readObject(bucket, pending?.staging ?? key, c.bytes);
+    if (!stored)
+      return refuse(
+        "pack-object",
+        `variants[${i}]'s chunk index ${c.sha256} could not be read from the blob store.`,
+      );
+    const parsed = await parseChunkIndex(stored, c, v.payload, {
+      decode: (frame, size) => zstdDecode(frame, size),
+      maxBytes: MAX_PUBLISHED_INDEX_BYTES,
+    });
+    if (!parsed.ok)
+      return refuse(
+        "pack-index",
+        `variants[${i}]'s chunk index fails ${parsed.error}${parsed.chunk !== undefined ? ` at chunk ${parsed.chunk}` : ""}${parsed.bundle !== undefined ? ` at bundle ${parsed.bundle}` : ""}.`,
+      );
+    // The bundles its table names: each once, then the index is dropped before the next.
+    const table = new Map<string, number>();
+    for (const [sha, size] of parsed.index.bundles)
+      table.set(blobKey(sha, { gated }), size);
+    const bundleCheck = await held(
+      [...table.entries()],
+      (k) => `a chunk bundle of variants[${i}] (${k})`,
+    );
+    if (bundleCheck) return bundleCheck;
+    bundles += table.size;
+  }
+  return {
+    ok: true,
+    bundles,
+    unreadIndexes,
+    unverified: [...unverified].sort(),
+  };
 }
 
 /** An object's bytes, or null when it is not there or not exactly `bytes` long. */
