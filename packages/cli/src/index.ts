@@ -28,6 +28,8 @@ import {
   type PublishSource,
 } from "./publish.js";
 import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
+import { publishPack } from "./packPublish.js";
+import { CONTENT_STAMP_USAGE, writeContentStampFile } from "./contentStamp.js";
 import {
   DISTRIBUTION_CI_USAGE,
   ROLLOUT_COMMANDS,
@@ -77,6 +79,75 @@ export {
   type PublishResult,
 } from "./publish.js";
 export { movePointer, yankRelease, CHANNEL_USAGE } from "./channels.js";
+export {
+  publishPack,
+  STAGE_ROUND_OBJECTS,
+  markerJson,
+  markerPathFor,
+  type PackPublishOptions,
+  type PackPublishResult,
+  type PackVariantReport,
+} from "./packPublish.js";
+export {
+  declaredVariants,
+  packContext,
+  requirePacksDiscovery,
+  variantDirName,
+} from "./packManifest.js";
+export {
+  CONTENT_STAMP_USAGE,
+  contentFor,
+  contentRuleProblems,
+  embedsFor,
+  markerPins,
+  mergePins,
+  parsePinFlag,
+  readContentStamp,
+  readMarker,
+  resolvePins,
+  stampText,
+  writeContentStampFile,
+  type ContentStampOptions,
+  type SourcedPin,
+} from "./contentStamp.js";
+export {
+  checkPckHeader,
+  PCK_STRIP_PATHS,
+  PckError,
+  readPck,
+  stripPck,
+  writePck,
+  type PckDirectory,
+  type PckEntry,
+  type PckHeader,
+} from "./pck.js";
+export {
+  lintPck,
+  lintTreePaths,
+  PCK_MAX_ENTRIES,
+  PCK_WARN_ENTRIES,
+  remapTargets,
+} from "./packLint.js";
+export {
+  buildFilesDelta,
+  buildPayload,
+  buildPayloadDelta,
+  cacheItems,
+  containerPayload,
+  filesRefOf,
+  gapsOf,
+  MIN_ZSTD_VERSION,
+  noiseReport,
+  payloadIdentity,
+  readTree,
+  selfCheckPayload,
+  storeMany,
+  zstdCli,
+  type BuiltPayload,
+  type Payload,
+  type PayloadFile,
+  type Zstd,
+} from "./packArtifacts.js";
 export {
   checkSignedRecord,
   fingerprintOf,
@@ -165,6 +236,8 @@ export interface CliIo {
 interface ParsedArgs {
   command: string;
   flags: Record<string, string | boolean>;
+  /** Every string value of a repeatable flag (`--pin a@1 --pin b@2`), in order. */
+  multi: Record<string, string[]>;
   positional: string[];
 }
 
@@ -221,7 +294,12 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
 function parseArgs(argv: string[]): ParsedArgs {
   const [command = "help", ...rest] = argv;
   const flags: Record<string, string | boolean> = {};
+  const multi: Record<string, string[]> = {};
   const positional: string[] = [];
+  const add = (key: string, value: string) => {
+    flags[key] = value;
+    (multi[key] ??= []).push(value);
+  };
   for (let i = 0; i < rest.length; i += 1) {
     const arg = rest[i]!;
     if (!arg.startsWith("--")) {
@@ -233,18 +311,18 @@ function parseArgs(argv: string[]): ParsedArgs {
       string?,
     ];
     if (inlineValue !== undefined) {
-      flags[rawKey] = inlineValue;
+      add(rawKey, inlineValue);
       continue;
     }
     const next = rest[i + 1];
     if (next && !next.startsWith("--")) {
-      flags[rawKey] = next;
+      add(rawKey, next);
       i += 1;
     } else {
       flags[rawKey] = true;
     }
   }
-  return { command, flags, positional };
+  return { command, flags, multi, positional };
 }
 
 async function cmdInit(
@@ -607,30 +685,68 @@ async function cmdRelease(
     case "publish": {
       const dir = flagString(parsed, "dir");
       if (!product || !dir) throw new Error(PUBLISH_USAGE);
+      const deliverable = flagString(parsed, "deliverable");
+      const releaseKeyPem = flagString(parsed, "release-key-file")
+        ? await readFile(
+            path.resolve(cwd, flagString(parsed, "release-key-file")!),
+            "utf8",
+          )
+        : undefined;
+      const minSupportedSeq =
+        flagString(parsed, "min-supported-seq") !== undefined
+          ? Number(flagString(parsed, "min-supported-seq"))
+          : undefined;
+      if (deliverable && deliverable !== "app") {
+        // P4-03: a pack release.
+        await publishPack({
+          ...common,
+          cwd,
+          product,
+          dir,
+          deliverable,
+          version: flagString(parsed, "version"),
+          tag: flagString(parsed, "tag"),
+          channel: flagString(parsed, "channel"),
+          out: flagString(parsed, "out"),
+          bases: flagString(parsed, "bases"),
+          dryRun: flagBool(parsed, "dry-run"),
+          ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
+          ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
+        });
+        return 0;
+      }
       await publishRelease({
         ...common,
         cwd,
         product,
         dir,
-        deliverable: flagString(parsed, "deliverable"),
+        deliverable,
         version: flagString(parsed, "version"),
         tag: flagString(parsed, "tag"),
         channel: flagString(parsed, "channel"),
         source: flagString(parsed, "source") as PublishSource | undefined,
         meta: flagString(parsed, "meta"),
         dryRun: flagBool(parsed, "dry-run"),
-        ...(flagString(parsed, "release-key-file")
-          ? {
-              releaseKeyPem: await readFile(
-                path.resolve(cwd, flagString(parsed, "release-key-file")!),
-                "utf8",
-              ),
-            }
-          : {}),
-        ...(flagString(parsed, "min-supported-seq") !== undefined
-          ? { minSupportedSeq: Number(flagString(parsed, "min-supported-seq")) }
-          : {}),
+        ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
+        ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
         noRecord: flagBool(parsed, "no-record"),
+        contentStamp: flagString(parsed, "content-stamp"),
+        embedded: flagString(parsed, "embedded"),
+        pins: parsed.multi["pin"] ?? [],
+      });
+      return 0;
+    }
+    case "content-stamp": {
+      // `pkey release content-stamp` (P4-03): the pkey-content/1 stamp a build embeds.
+      const outFile = flagString(parsed, "out");
+      if (!product || !outFile) throw new Error(CONTENT_STAMP_USAGE);
+      await writeContentStampFile({
+        ...common,
+        cwd,
+        product,
+        out: outFile,
+        embedded: flagString(parsed, "embedded"),
+        pins: parsed.multi["pin"] ?? [],
       });
       return 0;
     }
@@ -670,7 +786,9 @@ async function cmdRelease(
       return 0;
     }
     default:
-      throw new Error(`${PUBLISH_USAGE}\n${CHANNEL_USAGE}`);
+      throw new Error(
+        `${PUBLISH_USAGE}\n${CONTENT_STAMP_USAGE}\n${CHANNEL_USAGE}`,
+      );
   }
 }
 
@@ -759,7 +877,12 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey release publish --product slug --version v --dir path [--deliverable app]
               [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
               [--base-url url] [--release-key-file pem] [--min-supported-seq n]
-              [--no-record] [--dry-run]
+              [--no-record] [--content-stamp file | --embedded dir --pin pack@v ...]
+              [--dry-run]
+  pkey release publish --product slug --version v --dir path --deliverable packId
+              [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
+  pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
+              [--pin packId@version ...] [--base-url url]
   pkey release keys generate --kid kid --out file [--force]
   pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
   pkey release unpin --channel c --product slug [--deliverable id]
@@ -783,6 +906,16 @@ With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the r
 (pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it,
 and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys
 generate writes a new private release key to --out and prints its releaseKeys entry.
+When .pkey/release declares packs, an app publish states its pins: --content-stamp is the
+pkey-content.json pkey release content-stamp wrote before the export (from the pkey-marker/1
+markers under --embedded, verified, and --pin packId@version resolved through Polaris Key), and
+each build's embeds come from the artifact map; both go into the descriptor, which the record
+is moved from. --deliverable <packId> publishes a pack: per declared variant, the payload at
+<dir>/<variant key or "default">/ (one .pck file, or the tree), checked, stripped of
+project.binary and the class cache, linted, indexed (pkey-files/1), with a full object, file
+blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH); it
+signs the pack record, uploads in stage rounds, submits it, and writes a marker beside each
+payload. --out keeps the record and payloads for the next publish's --bases.
 --meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
 payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
 read into the descriptor for the storefront feeds. The CI commands

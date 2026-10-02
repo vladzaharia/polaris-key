@@ -74,12 +74,27 @@ import {
   recordSigner,
   RELEASE_KEY_ENV,
 } from "./releaseKeys.js";
+import type { AppContent } from "@polaris-key/protocol/packs";
+import {
+  contentFor,
+  contentRuleProblems,
+  describeContent,
+  embedsFor,
+  markerPins,
+  mergePins,
+  readContentStamp,
+  resolvePins,
+  type SourcedPin,
+} from "./contentStamp.js";
+import { packContext, requirePacksDiscovery } from "./packManifest.js";
 
 export const PUBLISH_USAGE =
   "Usage: pkey release publish --product <slug> --version <v> --dir <path> " +
-  "[--deliverable app] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] " +
+  "[--deliverable app|<packId>] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] " +
   "[--meta builds.json] [--base-url <url>] [--release-key-file <pem>] " +
-  "[--min-supported-seq <n>] [--no-record] [--dry-run]";
+  "[--min-supported-seq <n>] [--no-record] " +
+  "[--content-stamp <file> | --embedded <dir> --pin <packId>@<version> ...] " +
+  "[--out <dir>] [--bases <dir>] [--dry-run]";
 
 /**
  * The sidecar suffixes picked up beside a matched file, and the role each plays. A `.zsync` is an
@@ -132,6 +147,15 @@ export interface PublishOptions {
   signRecord?: (record: ReleaseRecordDoc) => Promise<string>;
   /** Epoch seconds for the record's `issuedAt` (tests). */
   now?: number;
+  /**
+   * `--content-stamp` (P4-03): the `pkey-content/1` stamp the build embeds; its members become the
+   * descriptor's `content`, which `descriptorToRecord` moves into the record (decision 37).
+   */
+  contentStamp?: string;
+  /** `--embedded`: compute the content from the markers under this directory instead. */
+  embedded?: string;
+  /** `--pin <packId>@<version>`: pins for packs this build does not embed. */
+  pins?: string[];
 }
 
 export interface PublishResult {
@@ -148,6 +172,8 @@ export interface PublishResult {
   uploaded: string[];
   skipped: string[];
   warnings: string[];
+  /** The descriptor's `content` (P4-03), when the product declares packs. */
+  content?: AppContent;
 }
 
 // ── 1. Matching ──────────────────────────────────────────────────────────────────────────────
@@ -514,7 +540,7 @@ export async function publishRelease(
   const deliverable = opts.deliverable?.trim() || APP_DELIVERABLE_ID;
   if (deliverable !== APP_DELIVERABLE_ID)
     throw new Error(
-      `--deliverable ${deliverable}: only the app deliverable publishes until pack releases land (P4-02).`,
+      `--deliverable ${deliverable}: publishRelease publishes the app; a pack publishes through publishPack (pkey release publish dispatches).`,
     );
   const tag = opts.tag?.trim() || undefined;
   const version = opts.version?.trim() || tag?.replace(/^v/, "");
@@ -613,6 +639,60 @@ export async function publishRelease(
     extracted,
     provenance: provenanceFrom(opts.env),
   });
+  // P4-03: the packs this release pins and each build embeds (plans/P4-01.md decision 37): both go
+  // into the DESCRIPTOR, and descriptorToRecord moves them into the record.
+  const packs = packContext(loaded).packs;
+  const contentApi = app.content?.contentApi;
+  const wantsContent =
+    opts.contentStamp !== undefined ||
+    opts.embedded !== undefined ||
+    (opts.pins?.length ?? 0) > 0;
+  if (packs.length === 0 && wantsContent)
+    throw new Error(
+      ".pkey/release declares no pack deliverables; --content-stamp, --embedded and --pin stamp an app release's packs.",
+    );
+  if (opts.contentStamp !== undefined && (opts.embedded || opts.pins?.length))
+    throw new Error(
+      "--content-stamp is the stamp the build embedded; it cannot be combined with --embedded or --pin.",
+    );
+  if (packs.length > 0 && contentApi === undefined)
+    throw new Error(
+      ".pkey/release declares packs but no deliverables.app.content.contentApi; run pkey validate.",
+    );
+  if (packs.length > 0 && !wantsContent)
+    throw new Error(
+      ".pkey/release declares packs, so an app release states its pins: pass --content-stamp <file> (the pkey-content.json pkey release content-stamp wrote before the export).",
+    );
+  const embeds: Record<string, string[]> = {};
+  if (packs.length > 0)
+    for (const b of descriptor.builds) {
+      const entry = app.artifacts.find((e) => e.id === b.id)!;
+      b.embeds = embedsFor(entry, packs);
+      embeds[b.id] = b.embeds;
+    }
+  const pinSources: SourcedPin[] = [];
+  const setContent = (content: AppContent) => {
+    const problems = contentRuleProblems(content, contentApi, packs, embeds);
+    if (problems.length)
+      throw new Error(
+        `The release's content breaks the publish rules:\n${problems.map((p) => `  ${p}`).join("\n")}`,
+      );
+    descriptor.content = content;
+  };
+  if (opts.contentStamp !== undefined)
+    setContent(
+      await readContentStamp(path.resolve(opts.cwd, opts.contentStamp)),
+    );
+  else if (opts.embedded !== undefined)
+    pinSources.push(
+      ...(await markerPins(path.resolve(opts.cwd, opts.embedded), {
+        product: opts.product,
+        releaseKeys: context.releaseKeys,
+      })),
+    );
+  const pinsPending = (opts.pins?.length ?? 0) > 0;
+  if (opts.contentStamp === undefined && wantsContent && !pinsPending)
+    setContent(contentFor(contentApi!, packs, mergePins(pinSources)));
   const local = validateReleaseDescriptor(descriptor, context);
   if (!local.ok)
     throw new Error(
@@ -652,12 +732,24 @@ export async function publishRelease(
     uploaded: [],
     skipped: [],
     warnings: match.warnings,
+    ...(descriptor.content ? { content: descriptor.content } : {}),
   };
   if (opts.dryRun) {
     out.write(
       `\nRelease descriptor (${local.releaseId}):\n${JSON.stringify(descriptor, null, 2)}\n`,
     );
     out.write("Local validation: ok\n");
+    if (descriptor.content)
+      describeContent(out, descriptor.content, pinSources);
+    else if (pinsPending)
+      out.write(
+        "Content: --pin resolves through Polaris Key; shown once a CI credential is available\n",
+      );
+    if (packs.length > 0)
+      for (const b of descriptor.builds)
+        out.write(
+          `  embeds ${b.id}: ${b.embeds?.length ? b.embeds.join(", ") : "none"}\n`,
+        );
   }
 
   // 4. Credentials, the ticket, the uploads and the submit.
@@ -700,6 +792,21 @@ export async function publishRelease(
     sleep: opts.sleep,
     log: opts.stderr,
   });
+  // P4-03: no app record carries pins a Worker did not mirror (release.packs in discovery).
+  if (packs.length > 0) await requirePacksDiscovery(client, opts.fetchImpl);
+  if (pinsPending) {
+    pinSources.push(...(await resolvePins(client, opts.pins!)));
+    setContent(contentFor(contentApi!, packs, mergePins(pinSources)));
+    const again = validateReleaseDescriptor(descriptor, context);
+    if (!again.ok)
+      throw new Error(
+        `The release descriptor does not validate with its content:\n${again.errors
+          .map((e) => `  ${e.path} ${e.code}: ${e.message}`)
+          .join("\n")}`,
+      );
+    if (opts.dryRun) describeContent(out, descriptor.content!, pinSources);
+  }
+  if (descriptor.content) result.content = descriptor.content;
 
   const objects = new Map<string, HashedFile>();
   for (const b of hashed) for (const f of b.files) objects.set(f.sha256, f);

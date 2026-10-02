@@ -9,7 +9,7 @@
 #
 # Guide: /docs/build/ci/ on the docs site (packages/docs/src/content/docs/build/ci.md).
 name: Polaris Key publish
-description: Match built files against .pkey/release, upload them and submit the release descriptor to Polaris Key.
+description: Match built files against .pkey/release, upload them and submit the release descriptor (or a pack's signed release record) to Polaris Key.
 author: Polaris Key
 branding:
   icon: upload-cloud
@@ -19,7 +19,7 @@ inputs:
     description: The product slug (must equal .pkey/product's slug).
     required: true
   deliverable:
-    description: The deliverable to publish. Only `app` until pack releases land.
+    description: The deliverable to publish. `app`, or a pack id .pkey/release declares (a pack release, signed with release-key; needs zstd >= 1.5.5, which GitHub's hosted runners carry).
     required: false
     default: app
   version:
@@ -32,7 +32,7 @@ inputs:
     description: The canonical channel the release is published to (stable, beta or a declared one).
     required: false
   dir:
-    description: The directory of built files, searched recursively, relative to the workspace.
+    description: The directory of built files, searched recursively, relative to the workspace. For a pack, each declared variant's payload sits at <dir>/<variant key or "default">/ (one .pck file, or the tree).
     required: true
   source:
     description: Where the bytes live. `r2` uploads them to Polaris Key; `github` locates them on the tagged, immutable GitHub release.
@@ -51,8 +51,23 @@ inputs:
   min-supported-seq:
     description: The release record's minSupportedSeq — the oldest release seq installs on the platforms this release targets should be prompted up to.
     required: false
+  content-stamp:
+    description: App only, when .pkey/release declares packs. The pkey-content.json stamp the build embedded (written by pkey release content-stamp before the export); it becomes the release's content.
+    required: false
+  embedded:
+    description: App only. Instead of content-stamp, compute the content from the pkey-marker/1 markers under this directory (verified against releaseKeys).
+    required: false
+  pins:
+    description: App only. Pins for packs the build does not embed, as <packId>@<version> entries separated by spaces, commas or newlines; resolved through Polaris Key.
+    required: false
+  out:
+    description: Pack only. Keep the signed record and the payloads at <out>/<packId>/<version>/ for the next publish's bases (cache it with actions/cache, keyed by pack id).
+    required: false
+  bases:
+    description: Pack only. Read earlier releases kept by out; the patch.deltaBases newest whose record Polaris Key confirms get deltas.
+    required: false
   dry-run:
-    description: Print the descriptor and the server's verdict; upload and write nothing.
+    description: Print the descriptor (a pack's lint, objects, bytes per strategy and record) and the server's verdict; upload, sign and write nothing.
     required: false
     default: "false"
 outputs:

@@ -1,0 +1,176 @@
+/**
+ * The publish lint of a pack payload, by type (P4-03; notes/S-05 §5 (f), measured in §4.6).
+ *
+ * ── `godot.pck`: THE ADMISSION LIST ──────────────────────────────────────────────────────────
+ *
+ * A `godot.pck` payload, after the strip step (`pck.ts`), may contain only:
+ *
+ *   1. entries under one of the deliverable's `handler.prefixes` (`res://assets/kaykit/` admits
+ *      `assets/kaykit/…`), including their `.remap` and `.import` files;
+ *   2. the `.godot/exported/…` and `.godot/imported/…` files that those in-prefix `.remap` and
+ *      `.import` files point to (their `path=`, `path.<x>=` and `dest_files` values);
+ *   3. `.godot/uid_cache.bin`, which makes the pack's `uid://` references resolve once P4-08
+ *      mounts it with `replace_files=true`.
+ *
+ * Everything else fails with its path, in particular `project.binary`,
+ * `.godot/global_script_class_cache.cfg`, scripts (`.gd`, `.gdc`, `.cs`, and a `.remap` that
+ * points to one, or remaps one), native libraries (`.so`, `.dll`, `.dylib`, `.wasm`, a
+ * `.framework` or `.xcframework`) and `.gdextension` files — under a prefix or not. A
+ * `.godot/exported/` or `.godot/imported/` file no in-prefix `.remap` or `.import` names fails
+ * too: nothing in the pack could load it. P4-08's device-side directory check applies the same
+ * list over the same fixture PCKs (`test/packFixtures.ts`), so the two cannot drift.
+ *
+ * Also: the header's engine `major.minor` must equal `requires.engine` (`godot-4.7`); more than
+ * {@link PCK_WARN_ENTRIES} entries warns and more than {@link PCK_MAX_ENTRIES} fails, because
+ * the mount stall grows with the entry count (S-05 §4.1).
+ *
+ * ── `files.tree` ─────────────────────────────────────────────────────────────────────────────
+ *
+ * A7 §3.3's path rules through client-core's `checkPaths` (the function every applier runs, so
+ * the CLI refuses exactly what a device would), and no symbolic links (the walk in
+ * `packArtifacts.ts` reports them).
+ */
+
+import { checkPaths } from "@polaris-key/client-core/packs";
+import { PCK_STRIP_PATHS, type PckDirectory } from "./pck.js";
+
+/** Above this many entries the lint warns (S-05 §4.1: the mount stall grows with the count). */
+export const PCK_WARN_ENTRIES = 1000;
+/** Above this many entries the lint fails. */
+export const PCK_MAX_ENTRIES = 20000;
+
+export interface LintResult {
+  errors: string[];
+  warnings: string[];
+}
+
+const SCRIPT_RE = /\.(gd|gdc|cs)$/i;
+const NATIVE_RE = /\.(so|dll|dylib|wasm|gdextension)$|\.so\.\d+(\.\d+)*$/i;
+const NATIVE_DIR_RE = /\.(framework|xcframework)$/i;
+
+function isNative(path: string): boolean {
+  if (NATIVE_RE.test(path)) return true;
+  return path.split("/").some((s) => NATIVE_DIR_RE.test(s));
+}
+
+/** Strip `res://` from a Godot path; null when it does not start with it. */
+function resPath(p: string): string | null {
+  return p.startsWith("res://") ? p.slice("res://".length) : null;
+}
+
+/**
+ * The files a `.remap` or `.import` points to, as index paths: every `path="res://…"` and
+ * `path.<x>="res://…"` value, and every string in a `dest_files=[…]` array. `source_file` is the
+ * import's input, not something the pack loads, so it is not a target.
+ */
+export function remapTargets(text: string): string[] {
+  const out = new Set<string>();
+  for (const m of text.matchAll(
+    /^\s*path(?:\.[A-Za-z0-9_-]+)?\s*=\s*"([^"]*)"/gm,
+  )) {
+    const p = resPath(m[1]!);
+    if (p !== null) out.add(p);
+  }
+  for (const m of text.matchAll(/^\s*dest_files\s*=\s*\[([^\]]*)\]/gm))
+    for (const s of m[1]!.matchAll(/"([^"]*)"/g)) {
+      const p = resPath(s[1]!);
+      if (p !== null) out.add(p);
+    }
+  return [...out];
+}
+
+export interface PckLintOptions {
+  /** The deliverable's `handler.prefixes` (`res://…/`). */
+  prefixes: readonly string[];
+  /** The deliverable's `requires.engine` (`godot-<major>.<minor>`). */
+  engine?: string;
+}
+
+/** The admission list, the engine check and the entry-count limits over a stripped PCK. */
+export function lintPck(
+  dir: PckDirectory,
+  bytes: Uint8Array,
+  opts: PckLintOptions,
+): LintResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const prefixes = opts.prefixes
+    .map((p) => resPath(p))
+    .filter((p): p is string => p !== null);
+  const inPrefix = (p: string) => prefixes.some((x) => p.startsWith(x));
+  const { major, minor } = dir.header.engine;
+  if (opts.engine !== undefined && opts.engine !== `godot-${major}.${minor}`)
+    errors.push(
+      `the PCK header says engine ${major}.${minor}.${dir.header.engine.patch}, outside requires.engine ${opts.engine}.`,
+    );
+  const count = dir.entries.length;
+  if (count > PCK_MAX_ENTRIES)
+    errors.push(
+      `${count} entries; a pack is at most ${PCK_MAX_ENTRIES} (the mount stall grows with the entry count, S-05 §4.1). Split the pack.`,
+    );
+  else if (count > PCK_WARN_ENTRIES)
+    warnings.push(
+      `${count} entries, above ${PCK_WARN_ENTRIES}: mounting it stalls longer (S-05 §4.1); consider splitting the pack.`,
+    );
+
+  const stripped = new Set<string>(PCK_STRIP_PATHS);
+  const named = new Set<string>();
+  const deferred: string[] = [];
+  const text = new TextDecoder("utf-8", { fatal: false });
+  for (const e of dir.entries) {
+    const p = e.path;
+    if (stripped.has(p)) {
+      errors.push(`${p}: --export-pack's ${p} replaces the main pack's copy.`);
+      continue;
+    }
+    if (SCRIPT_RE.test(p)) {
+      errors.push(`${p}: a script; a pack carries data only (S-07 row 13).`);
+      continue;
+    }
+    if (isNative(p)) {
+      errors.push(
+        `${p}: a native library or GDExtension; a pack carries data only.`,
+      );
+      continue;
+    }
+    if (p === ".godot/uid_cache.bin") continue;
+    if (inPrefix(p)) {
+      if (p.endsWith(".remap") || p.endsWith(".import")) {
+        const targets = remapTargets(
+          text.decode(bytes.subarray(e.offset, e.offset + e.size)),
+        );
+        const source = p.slice(0, p.lastIndexOf("."));
+        const script = targets.find((t) => SCRIPT_RE.test(t));
+        if (SCRIPT_RE.test(source) || script !== undefined) {
+          errors.push(
+            `${p}: remaps a script${script ? ` (${script})` : ""}; a pack carries data only.`,
+          );
+          continue;
+        }
+        for (const t of targets) named.add(t);
+      }
+      continue;
+    }
+    if (p.startsWith(".godot/exported/") || p.startsWith(".godot/imported/")) {
+      deferred.push(p);
+      continue;
+    }
+    errors.push(
+      `${p}: outside the handler prefixes (${opts.prefixes.join(", ")}).`,
+    );
+  }
+  for (const p of deferred)
+    if (!named.has(p))
+      errors.push(
+        `${p}: no in-prefix .remap or .import names it, so nothing in the pack could load it.`,
+      );
+  return { errors, warnings };
+}
+
+/** A7 §3.3's path rules over a tree's paths, with the failing path. */
+export function lintTreePaths(paths: readonly string[]): LintResult {
+  const r = checkPaths(paths);
+  return r.ok
+    ? { errors: [], warnings: [] }
+    : { errors: [`${r.path}: ${r.error}`], warnings: [] };
+}
