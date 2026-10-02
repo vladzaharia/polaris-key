@@ -16,6 +16,9 @@
  *     appcast and the portal read.
  *   - `outlets` (P3-03): the live outlets with kind, identity and whether an operator narrowed
  *     them — what the signed feed keys its per-outlet entries by.
+ *   - `feedSelection` / `feedStamp` (P3-09): P2b-05's feed selection and its cache stamp, for
+ *     Update's app-updater feeds (WinSparkle, Velopack, App Installer, zsync, the extended
+ *     appcast and version check), which may not import this service.
  *   - `deliveryUrl` (P2b-04): the canonical, immutable byte URL of a release file or of a build's
  *     payload (both as `files/<releaseId>/<name>`), on the bytes host when `BLOB_ORIGIN` is set — what P2b-05's feeds, P2b-06's page, P3-09's updater feeds and
  *     P4-05's pack transports link to.
@@ -26,6 +29,8 @@
 import {
   DEFAULT_TRANSPORT,
   type Delivery,
+  type FeedSelection,
+  type FeedSelectionQuery,
   type HookContext,
 } from "../../core/hooks.js";
 import { bytesHostname } from "../../core/bytesHost.js";
@@ -34,6 +39,8 @@ import { accessModeOf } from "./access.js";
 import { getRollout, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
 import { listOutlets, parseJsonColumn } from "./outlets.js";
+import { selectFeedWith } from "./feeds/select.js";
+import { feedStateStamp } from "./feeds/cache.js";
 
 /** The origin byte URLs are minted on: the bytes host when there is one, else none (a path). */
 function bytesOrigin(env: Env): string {
@@ -143,6 +150,57 @@ export function delivery(ctx: HookContext): Delivery {
         return fileDeliveryUrl(ctx.env, slug, releaseId, payload.name);
       }
       return null;
+    },
+
+    async feedSelection(q: FeedSelectionQuery): Promise<FeedSelection | null> {
+      const catalog = ctx.hooks.releaseCatalog();
+      if (!catalog) return null;
+      const metadata = await catalog.metadataAccess();
+      if (metadata === null) return null;
+      const sel = await selectFeedWith(
+        {
+          db,
+          product: { slug, name: product.name },
+          hooks: ctx.hooks,
+          origin: q.origin,
+          env: ctx.env,
+        },
+        { catalog, notesPublic: metadata === "public" },
+        q.channel,
+        {
+          kinds: q.kinds,
+          outletId: q.outletId ?? null,
+          platform: q.platform,
+          liveness: q.liveness,
+          ...(q.limit !== undefined ? { limit: q.limit } : {}),
+          ...(q.allBuilds !== undefined ? { allBuilds: q.allBuilds } : {}),
+          ...(q.arches ? { arches: q.arches } : {}),
+          ...(q.buildIds ? { buildIds: q.buildIds } : {}),
+          ...(q.payloadSuffixes ? { payloadSuffixes: q.payloadSuffixes } : {}),
+          ...(q.releaseIds ? { releaseIds: q.releaseIds } : {}),
+          ...(q.rollouts ? { rollouts: q.rollouts } : {}),
+          ...(q.withArtifacts ? { withArtifacts: true } : {}),
+        },
+      );
+      if (!sel) return null;
+      return {
+        channel: sel.channel,
+        outlet: {
+          id: sel.outlet.id,
+          kind: sel.outlet.kind,
+          identity: sel.outlet.identity,
+          listing: sel.outlet.listing as Record<string, unknown> | null,
+        },
+        entries: sel.entries,
+        notesPublic: sel.notesPublic,
+      };
+    },
+
+    async feedStamp() {
+      const catalog = ctx.hooks.releaseCatalog();
+      if (!catalog) return null;
+      const metadata = await catalog.metadataAccess();
+      return feedStateStamp(db, slug, catalog, metadata === "public");
     },
   };
 }

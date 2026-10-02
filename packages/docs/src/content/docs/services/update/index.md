@@ -73,6 +73,9 @@ Update through Core's descriptor hooks, never by import, and only while Distribu
 - **[Signed feed](/docs/services/update/signed-feed/)** — `pkey-feed+jws` and the CI-signed
   release records it pins (wire v4): what a v4 SDK decides from, floors, rollouts and halts,
   and the `seq` ceiling recovery.
+- **[App-updater feeds](/docs/services/update/updater-feeds/)** — the extended Sparkle appcast,
+  WinSparkle, Velopack, MSIX App Installer and AppImage zsync, and the extended version check,
+  all rendered from the release records.
 - **[Swift client & Sparkle](/docs/services/update/sparkle/)** — the macOS client target,
   the Sparkle version floor, and the trust anchor Polaris Key deliberately never
   reimplements.

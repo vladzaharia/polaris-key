@@ -104,7 +104,7 @@ optional. A bad value is `invalid_outlet_identity`.
 | `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                                                          |
 | `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                                                 |
 | `ms-store`                 | `productId` (12 characters), `packageFamilyName`                                                                                          |
-| `app-installer`            | `packageFamilyName`                                                                                                                       |
+| `app-installer`            | `packageFamilyName`, `publisher` (the MSIX Publisher, a certificate subject DN starting `CN=`), `updateSettings`                          |
 | `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                    |
 | `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                |
 | `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                         |
@@ -116,6 +116,11 @@ optional. A bad value is `invalid_outlet_identity`.
   digits. The signed update feed turns it into the outlet's `listingUrl`
   (`https://testflight.apple.com/join/<publicLink>`); without it a TestFlight outlet has no
   listing link.
+- **`app-installer`** needs both `packageFamilyName` and `publisher` before
+  `/update/<channel>/app.appinstaller` answers. `updateSettings` is optional:
+  `{hoursBetweenUpdateChecks` (0–255)`, showPrompt, updateBlocksActivation` (needs
+  `showPrompt: true`)`, automaticBackgroundTask}`. See
+  [MSIX App Installer](/docs/services/update/updater-feeds/#msix-app-installer).
 - **Numeric ids** (`appleId`, `steam.appId`, `itch.gameId`) accept a positive integer or a
   string of digits with no leading zero, and are stored as the digit string either way.
 - **`appleId` must match the operator's pin.** The App Store Connect connector runs only while

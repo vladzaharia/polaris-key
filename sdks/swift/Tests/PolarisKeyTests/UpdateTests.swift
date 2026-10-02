@@ -492,9 +492,12 @@ final class UpdateDecideTests: XCTestCase {
     func testATamperedCachedFeedIsDroppedWithItsFloor() async throws {
         let record = recordJws()
         let pin = recordHash(record)
-        var tampered = feedJws(seq: 8, issuedAt: t0 - 60, pin: pin)
-        tampered.removeLast(2)
-        tampered += "AA"
+        // Flip one signature character to a different one. (Replacing the tail with a fixed "AA" was
+        // a no-op whenever a fresh random key's signature already ended in "AA", about 1 run in 256.)
+        var chars = Array(feedJws(seq: 8, issuedAt: t0 - 60, pin: pin))
+        let at = chars.count - 20
+        chars[at] = chars[at] == "A" ? "B" : "A"
+        let tampered = String(chars)
         let foreign = TestSigner(kid: "prod-2026")  // the pinned kid, another key
         let forged = foreign.sign(
             payloadJSON: String(decoding: Base64URL.decode(String(feedJws(seq: 9, issuedAt: t0, pin: pin).split(separator: ".")[1]))!, as: UTF8.self),

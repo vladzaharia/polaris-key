@@ -32,8 +32,9 @@ specific version, pin it in the download route's path segment instead. Anything 
 alphabet answers `404` before resolution, and a well-formed unknown name `404`s exactly like an
 unknown channel appcast. Under `entitled`, the gate evaluates the query
 channel precisely as it would the path spelling, so `?channel=beta` from a stable-only
-license answers `403 channel_not_allowed`. `?arch=` is accepted and discarded — the answer
-names a release, not an asset. The response carries `max-age=120`, the cache policy every
+license answers `403 channel_not_allowed`. Without `?platform=`, `?arch=` is accepted and discarded — the
+answer names a release, not an asset (with `?platform=`, a product that publishes release
+records gets the [extended answer](/docs/services/update/updater-feeds/#the-extended-version-check)). The response carries `max-age=120`, the cache policy every
 moving selector gets. Unlike the
 appcast, the version check is a **metadata** surface — a plain informational read, not a
 pointer to bytes — so it's governed separately; see

@@ -63,13 +63,14 @@ function decodeBase64(value: string): Uint8Array | null {
 
 async function cacheKey(
   product: string,
-  assetId: number,
+  /** What names the signed bytes immutably: a GitHub asset id, or `sha256:<hex>` (P3-09). */
+  subject: number | string,
   signature: string,
   publicKey: string,
 ): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(`${assetId}\u0000${signature}\u0000${publicKey}`),
+    new TextEncoder().encode(`${subject}\u0000${signature}\u0000${publicKey}`),
   );
   const hex = [...new Uint8Array(digest)]
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -129,7 +130,66 @@ export async function verifySparkleSignature(
   product: string,
   input: SparkleVerifyInput,
 ): Promise<boolean> {
-  const { assetId, signature, publicKey } = input;
+  const maxBytes = input.maxBytes ?? MAX_VERIFY_BYTES;
+  return verifyEd25519OverBytes(env, product, {
+    subject: input.assetId,
+    signature: input.signature,
+    publicKey: input.publicKey,
+    maxBytes,
+    ...(input.expectedSize !== undefined
+      ? { expectedSize: input.expectedSize }
+      : {}),
+    ...(input.waitUntil ? { waitUntil: input.waitUntil } : {}),
+    open: async () => {
+      try {
+        return await fetchAssetStream(
+          input.token,
+          input.owner,
+          input.repo,
+          input.assetId,
+          maxBytes,
+          input.fetchImpl,
+        );
+      } catch (err) {
+        if (err instanceof NotFoundError) return null;
+        throw err;
+      }
+    },
+  });
+}
+
+/** What `verifyEd25519OverBytes` checks: a signature, a key, and a way to open the bytes. */
+export interface Ed25519BytesInput {
+  /**
+   * What names the signed bytes IMMUTABLY, so a memoised verdict can never outlive them: a GitHub
+   * asset id (GitHub gives a re-upload a new id), or `sha256:<hex>` for a content-addressed
+   * artifact whose stream is checked against that digest by `open`'s caller (P3-09).
+   */
+  subject: number | string;
+  /** Base64 EdDSA signature. */
+  signature: string;
+  /** The raw 32-byte public key, base64. */
+  publicKey: string;
+  /** Opens the signed bytes; `null` = not there (a final no, never memoised). */
+  open: () => Promise<ReadableStream<Uint8Array> | null>;
+  maxBytes?: number;
+  /** The listed length; a body of any other length is no verdict (never memoised). */
+  expectedSize?: number;
+  waitUntil?: (promise: Promise<unknown>) => void;
+}
+
+/**
+ * The verifier behind `verifySparkleSignature`, over any byte source: precheck, KV memo, then a
+ * streaming check whose final verdicts are memoised (positive 30 days, negative a day). P3-09's
+ * WinSparkle appcast and extended Sparkle appcast verify CI's `.sig` sidecars with it, over the
+ * payload's stored bytes (R2 or GitHub). `false` for every failure; never throws for a bad input.
+ */
+export async function verifyEd25519OverBytes(
+  env: Env,
+  product: string,
+  input: Ed25519BytesInput,
+): Promise<boolean> {
+  const { subject, signature, publicKey } = input;
   const keyBytes = decodeBase64(publicKey);
   const sigBytes = decodeBase64(signature);
   if (!keyBytes || keyBytes.length !== 32) return false;
@@ -139,26 +199,14 @@ export async function verifySparkleSignature(
   // download is opened for it.
   if (!ed25519SignaturePrecheck(keyBytes, sigBytes)) return false;
 
-  const key = await cacheKey(product, assetId, signature, publicKey);
+  const key = await cacheKey(product, subject, signature, publicKey);
   const memo = await env.HOT.get(key);
   if (memo === "1") return true;
   if (memo === "0") return false;
 
   const maxBytes = input.maxBytes ?? MAX_VERIFY_BYTES;
-  let body: ReadableStream<Uint8Array> | null;
-  try {
-    body = await fetchAssetStream(
-      input.token,
-      input.owner,
-      input.repo,
-      assetId,
-      maxBytes,
-      input.fetchImpl,
-    );
-  } catch (err) {
-    if (err instanceof NotFoundError) return false;
-    throw err;
-  }
+  const body = await input.open();
+  if (body === null) return false;
 
   const work = (async () => {
     const verdict = await streamingEd25519Check(

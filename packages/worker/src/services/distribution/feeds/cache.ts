@@ -22,8 +22,12 @@
 import type { Db } from "../../../core/platform.js";
 import type { ReleaseCatalog } from "../../../core/hooks.js";
 
-/** How long a rendered answer is kept: the `max-age` the feed responses carry. */
-export const FEED_CACHE_SECONDS = 300;
+// The cache itself is Core's since P3-09 (Update's app-updater feeds share it).
+export {
+  cachedFeedText,
+  FEED_CACHE_SECONDS,
+  feedCacheKey,
+} from "../../../core/feedCache.js";
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -68,56 +72,4 @@ export async function feedStateStamp(
   return (
     await sha256Hex(JSON.stringify({ rollouts, counts, yanks, notesPublic }))
   ).slice(0, 32);
-}
-
-function store(): Cache | null {
-  try {
-    const c = (globalThis as { caches?: { default?: Cache } }).caches;
-    return c?.default ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** The cache key of one feed answer: `origin` + `path` + `?outlet=` + the state stamp. */
-export function feedCacheKey(
-  origin: string,
-  path: string,
-  outlet: string | null,
-  stamp: string,
-): string {
-  const q = new URLSearchParams();
-  if (outlet) q.set("outlet", outlet);
-  q.set("state", stamp);
-  return `${origin}/__pkey-feed-cache${path}?${q.toString()}`;
-}
-
-/**
- * `compute()`'s text, from the cache when it holds it. A `null` answer (not-found) is never
- * stored. Cache failures fall through to computing.
- */
-export async function cachedFeedText(
-  key: string,
-  compute: () => Promise<string | null>,
-): Promise<string | null> {
-  const cache = store();
-  const req = new Request(key);
-  if (cache) {
-    const hit = await cache.match(req).catch(() => undefined);
-    if (hit) return hit.text();
-  }
-  const text = await compute();
-  if (text !== null && cache)
-    await cache
-      .put(
-        req,
-        new Response(text, {
-          headers: {
-            "content-type": "text/plain; charset=utf-8",
-            "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
-          },
-        }),
-      )
-      .catch(() => undefined);
-  return text;
 }

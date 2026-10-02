@@ -550,7 +550,7 @@
       }
     },
     "outlet_app-installer": {
-      "description": "The identity fields a app-installer outlet reads: packageFamilyName. Other keys are ignored.",
+      "description": "The identity fields a app-installer outlet reads: packageFamilyName, publisher, updateSettings. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -558,6 +558,12 @@
         },
         "packageFamilyName": {
           "$ref": "#/$defs/packageFamilyName"
+        },
+        "publisher": {
+          "$ref": "#/$defs/msixPublisher"
+        },
+        "updateSettings": {
+          "$ref": "#/$defs/appInstallerUpdateSettings"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -771,6 +777,48 @@
       "description": "The Homebrew formula name, for runtime outlet detection (an executable under Cellar/<formula>/).",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@+_-]{0,99}$"
+    },
+    "msixPublisher": {
+      "description": "The MSIX package Publisher (P3-09): the signing certificate's subject DN exactly as the package manifest states it.",
+      "type": "string",
+      "pattern": "^CN=[\\x20-\\x7e]{1,1021}$"
+    },
+    "appInstallerUpdateSettings": {
+      "description": "The <UpdateSettings> of the rendered .appinstaller (P3-09). updateBlocksActivation requires showPrompt: true.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hoursBetweenUpdateChecks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "showPrompt": {
+          "type": "boolean"
+        },
+        "updateBlocksActivation": {
+          "type": "boolean"
+        },
+        "automaticBackgroundTask": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "updateBlocksActivation": {
+            "const": true
+          }
+        },
+        "required": ["updateBlocksActivation"]
+      },
+      "then": {
+        "properties": {
+          "showPrompt": {
+            "const": true
+          }
+        },
+        "required": ["showPrompt"]
+      }
     },
     "scoopPath": {
       "description": "A relative path inside the Windows archive: no drive, no leading separator, no '..'.",

@@ -595,7 +595,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "outlet_app-installer": {
-      "description": "The identity fields a app-installer outlet reads: packageFamilyName. Other keys are ignored.",
+      "description": "The identity fields a app-installer outlet reads: packageFamilyName, publisher, updateSettings. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -603,6 +603,12 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "packageFamilyName": {
           "$ref": "#/$defs/packageFamilyName"
+        },
+        "publisher": {
+          "$ref": "#/$defs/msixPublisher"
+        },
+        "updateSettings": {
+          "$ref": "#/$defs/appInstallerUpdateSettings"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -816,6 +822,48 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "The Homebrew formula name, for runtime outlet detection (an executable under Cellar/<formula>/).",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@+_-]{0,99}$"
+    },
+    "msixPublisher": {
+      "description": "The MSIX package Publisher (P3-09): the signing certificate's subject DN exactly as the package manifest states it.",
+      "type": "string",
+      "pattern": "^CN=[\\\\x20-\\\\x7e]{1,1021}$"
+    },
+    "appInstallerUpdateSettings": {
+      "description": "The <UpdateSettings> of the rendered .appinstaller (P3-09). updateBlocksActivation requires showPrompt: true.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hoursBetweenUpdateChecks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "showPrompt": {
+          "type": "boolean"
+        },
+        "updateBlocksActivation": {
+          "type": "boolean"
+        },
+        "automaticBackgroundTask": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "updateBlocksActivation": {
+            "const": true
+          }
+        },
+        "required": ["updateBlocksActivation"]
+      },
+      "then": {
+        "properties": {
+          "showPrompt": {
+            "const": true
+          }
+        },
+        "required": ["showPrompt"]
+      }
     },
     "scoopPath": {
       "description": "A relative path inside the Windows archive: no drive, no leading separator, no '..'.",
@@ -1800,6 +1848,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "type": "string",
           "maxLength": 127,
           "pattern": "^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$"
+        },
+        "deltaFrom": {
+          "description": "A delta artifact only (the validator checks the role): the build number the delta updates from, rendered as sparkle:deltaFrom (P3-09).",
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$"
         },
         "locations": {
           "type": "array",
@@ -10436,7 +10489,7 @@ var OUTLET_IDENTITY_FIELDS = {
   obtainium: ["artifact", "packageName"],
   "fdroid-repo": ["artifact", "packageName"],
   "ms-store": ["productId", "packageFamilyName"],
-  "app-installer": ["packageFamilyName"],
+  "app-installer": ["packageFamilyName", "publisher", "updateSettings"],
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
@@ -10453,6 +10506,7 @@ var ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 var MAX_PACKAGE_NAME_LENGTH = 255;
 var PLAY_TRACK_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:-]{0,99}$/;
 var MS_PRODUCT_ID_RE = /^[A-Za-z0-9]{12}$/;
+var MSIX_PUBLISHER_PATTERN = /^CN=[\x20-\x7e]{1,1021}$/;
 var PACKAGE_FAMILY_NAME_PATTERN = /^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$/;
 var STEAM_BRANCH_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 var ITCH_TARGET_RE = /^[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{1,64}$/;
@@ -10546,8 +10600,34 @@ function fieldCheck(kind, field) {
       );
     case "scoop":
       return scoopCheck;
+    case "publisher":
+      return pattern(
+        MSIX_PUBLISHER_PATTERN,
+        "the MSIX package Publisher, a certificate subject DN starting CN= (printable ASCII, at most 1024 characters)"
+      );
+    case "updateSettings":
+      return updateSettingsCheck;
   }
 }
+var UPDATE_SETTINGS_KEYS = [
+  "hoursBetweenUpdateChecks",
+  "showPrompt",
+  "updateBlocksActivation",
+  "automaticBackgroundTask"
+];
+var updateSettingsCheck = (v) => {
+  const shape = "must be { hoursBetweenUpdateChecks?: an integer 0-255, showPrompt?, updateBlocksActivation?, automaticBackgroundTask?: booleans }";
+  if (!isRecord(v) || Object.keys(v).some((k) => !UPDATE_SETTINGS_KEYS.includes(k)))
+    return shape;
+  const hours = v.hoursBetweenUpdateChecks;
+  if (hours !== void 0 && !(Number.isSafeInteger(hours) && hours >= 0 && hours <= 255))
+    return shape;
+  for (const k of UPDATE_SETTINGS_KEYS.slice(1))
+    if (v[k] !== void 0 && typeof v[k] !== "boolean") return shape;
+  if (v.updateBlocksActivation === true && v.showPrompt !== true)
+    return "may set updateBlocksActivation only with showPrompt: true (App Installer ignores it otherwise)";
+  return null;
+};
 var scoopPath = (v) => typeof v === "string" && SCOOP_PATH_PATTERN.test(v);
 var scoopCheck = (v) => {
   const shape = "must be { bin?: a relative path or a list of at most 16, shortcuts?: at most 16 [target, name] pairs }";
@@ -11462,6 +11542,20 @@ function validateReleaseDescriptor(descriptor, manifest) {
           "invalid_descriptor_artifact",
           "contentType must be a lower-case type/subtype."
         );
+      if (a.deltaFrom !== void 0) {
+        if (a.role !== "delta")
+          err(
+            `/builds/${bi}/artifacts/${ai}/deltaFrom`,
+            "invalid_delta_from",
+            "deltaFrom applies only to an artifact whose role is delta."
+          );
+        else if (typeof a.deltaFrom !== "string" || !BUILD_NUMBER_RE.test(a.deltaFrom))
+          err(
+            `/builds/${bi}/artifacts/${ai}/deltaFrom`,
+            "invalid_delta_from",
+            "deltaFrom must be 1-64 version characters: the build number the delta updates from."
+          );
+      }
       if (!Array.isArray(a.locations) || a.locations.length === 0 || a.locations.length > MAX_ARTIFACT_LOCATIONS) {
         err(
           `/builds/${bi}/artifacts/${ai}/locations`,
@@ -16876,7 +16970,8 @@ async function checkSignedRecord(jws, record, declared) {
 var PUBLISH_USAGE = "Usage: pkey release publish --product <slug> --version <v> --dir <path> [--deliverable app] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] [--meta builds.json] [--base-url <url>] [--release-key-file <pem>] [--min-supported-seq <n>] [--no-record] [--dry-run]";
 var SIDECARS = [
   [".sig", "signature"],
-  [".sha256", "checksum"]
+  [".sha256", "checksum"],
+  [".zsync", "checksum"]
 ];
 async function scanDir(dir) {
   const out = [];
