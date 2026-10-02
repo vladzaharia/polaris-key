@@ -401,6 +401,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../packages/shared-protocol
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../packages/zstd-wasm
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
