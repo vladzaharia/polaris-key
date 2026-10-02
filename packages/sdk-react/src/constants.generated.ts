@@ -1059,10 +1059,10 @@ export const UPDATE_MATRIX_VERSION = 1;
 export const OUTLET_MATRIX_VERSION = 1;
 
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
-export const PLAN_MATRIX_VERSION = 1;
+export const PLAN_MATRIX_VERSION = 2;
 
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
-export const CONTENT_CORPUS_VERSION = 1;
+export const CONTENT_CORPUS_VERSION = 2;
 
 /** Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`). */
 export const MAX_WIRE_INTEGER = 9007199254740991;

@@ -1208,11 +1208,11 @@ OUTLET_MATRIX_VERSION: Final[int] = 1
 
 
 #: `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
-PLAN_MATRIX_VERSION: Final[int] = 1
+PLAN_MATRIX_VERSION: Final[int] = 2
 
 
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
-CONTENT_CORPUS_VERSION: Final[int] = 1
+CONTENT_CORPUS_VERSION: Final[int] = 2
 
 
 #: Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).

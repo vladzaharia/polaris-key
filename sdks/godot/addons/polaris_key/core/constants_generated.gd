@@ -711,10 +711,10 @@ const UPDATE_MATRIX_VERSION := 1
 const OUTLET_MATRIX_VERSION := 1
 
 ## `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
-const PLAN_MATRIX_VERSION := 1
+const PLAN_MATRIX_VERSION := 2
 
 ## `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
-const CONTENT_CORPUS_VERSION := 1
+const CONTENT_CORPUS_VERSION := 2
 
 ## Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
 const MAX_WIRE_INTEGER := 9007199254740991

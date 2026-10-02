@@ -140,8 +140,8 @@ describe("the sources", () => {
       stageMatrixVersion: 3,
       updateMatrixVersion: 1,
       outletMatrixVersion: 1,
-      planMatrixVersion: 1,
-      contentCorpusVersion: 1,
+      planMatrixVersion: 2,
+      contentCorpusVersion: 2,
     });
     expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
     expect(SOURCES.protocol.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);

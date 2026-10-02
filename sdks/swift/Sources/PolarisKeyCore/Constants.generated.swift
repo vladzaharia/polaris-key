@@ -976,10 +976,10 @@ public let UPDATE_MATRIX_VERSION = 1
 public let OUTLET_MATRIX_VERSION = 1
 
 /// `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
-public let PLAN_MATRIX_VERSION = 1
+public let PLAN_MATRIX_VERSION = 2
 
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
-public let CONTENT_CORPUS_VERSION = 1
+public let CONTENT_CORPUS_VERSION = 2
 
 /// Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
 public let MAX_WIRE_INTEGER = 9007199254740991
