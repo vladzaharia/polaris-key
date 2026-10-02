@@ -1282,6 +1282,94 @@ edits (`rollout_mirrored`); the connector overwrites any operator rollout on the
 (deliverable, outlet, channel) and audits that it did. A tick over unchanged Play state writes no
 audit row.
 
+### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
+
+**New inputs.** Devices report update outcome events in the `updates` key of
+`POST /<p>/devices/report` (unsigned, device-token authenticated, the existing 16 KiB cap). A
+Sentry internal integration posts alerts to `POST /<p>/distribution/hooks/sentry`. Neither input
+can do more than the paths below allow.
+
+- **Report path.** `core/updateHealth.ts` `boundedUpdates` keeps at most 16 entries, each matched
+  field by field against a fixed alphabet (no `|`, the counters' key separator), drops a
+  malformed entry or an unknown event, and strips unknown fields. Counting happens AFTER the
+  snapshot is stored, in `UpdateHealthDO` (one Durable Object per product, deliverable and
+  release) — never D1 — and fails open, so a broken counter cannot cost a device its report.
+- **Inflation.** Counters are deduplicated on (device, `eventId`), and the number the auto-halt
+  judges is DISTINCT DEVICES per event, so one device moves a rate by at most one however many
+  events it invents; the `eventId` space is per device, so a device cannot pre-claim another's
+  ids. Moving a rate needs many registered devices, and `minSample` applied devices must be met.
+  **Under open registration that is cheap:** keyless registration allows 10 per minute per IP, so
+  one IP reaches the default `minSample` of 200 in about twenty minutes, and more IPs go faster.
+  Operators of open-registration products should raise `minSample` well above what an attacker
+  would bother to register, or leave the auto-halt off; the docs page says so.
+- **Dilution.** The same cheap devices can suppress a GENUINE trip: fake `update_applied`
+  devices enlarge the denominator until the true revert rate falls under the threshold. The
+  auto-halt is a safety net, not a guarantee; the funnel, Sentry candidates and the operator's
+  own halt remain the controls.
+- **Object bounds.** An event's (deliverable, release) must be a release Release knows (its
+  catalog hook's `releases(deliverable)`, read once per deliverable per report); an event naming
+  any other release counts nothing and creates no counter object. One report touches at most two
+  (deliverable, release) objects; further groups are dropped, and the two calls run in parallel
+  before the device's 200. So the NUMBER of objects is bounded by the product's real releases,
+  and each object by the caps below: objects ≤ real releases, storage per object ≤ devices × one
+  record (≤ 64 event ids, ≤ 8 pairs) + hours × declared pairs × 7 buckets. Report rate moves
+  only work per request, never what is kept.
+- **Key bounds.** An event's outlet and channel are checked at ingest against the product's
+  declarations, read through Core's hooks (Distribution's live outlets, Release's
+  `knownChannels`; AGENTS.md rule 6): anything else is counted in ONE `unknown` bucket that is
+  never judged and takes no pair. So bucket keys are bounded by what the operator and the
+  manifest declare, and an invented pair cannot crowd out a real one. Per device and per object,
+  at most 64 events are ever counted (beyond that the device counts nothing there) and at most 8
+  distinct (outlet, channel) pairs introduced (further pairs go to `unknown`); each device has
+  exactly one record holding its dedupe list. No per-device rate limit is added on the report:
+  with the object bounds above, the caps bound what any number of reports can store, the report
+  is device-authenticated and 16 KiB-capped, and a limiter would add a Durable Object round trip
+  to every report. A read sums every bucket page by page; past a 500,000-key ceiling it says
+  `truncated` and the auto-halt treats that as no data.
+- **Retention.** The object's alarm deletes buckets older than 30 days (hour-keyed, a range from
+  the start) and device records idle that long (a scan paginated with a `startAfter` cursor that
+  persists between alarms), working until done or until a 10 s budget is spent, then re-arming in
+  a minute while work remains, otherwise in a day, and clearing its storage once empty.
+- **Clock.** A future `at` counts as now; one older than 30 days is not counted.
+
+**The auto-halt is halt-only, operator-owned and off by default.** Its settings live in
+`dist_connector_settings` (connector `auto-halt`, P5-03's table), written by one function,
+`writeAutoHaltSettings`, whose only caller is the console's control (platform-admin session,
+CSRF, rate limit, a `distribution.auto_halt.settings` audit row with the session's subject);
+`test/autoHalt.test.ts` pins that no other file names the writer or writes that row, and no
+ingest, resync or manifest field reaches it — a repo push cannot turn on an automatic halt. The
+tick (the connector cron) halts through P2b-04's `applyRollout` with a third actor kind,
+`system`, which `applyRollout` itself refuses for every verb but `halt` (`system_halt_only`), so
+the automatic path cannot pause, resume, ramp, complete or start a rollout even through a bug in
+its caller. It never touches a `mirrored` (store) rollout — it records an alert for the operator
+— and trips once per (deliverable, outlet, channel, release), so an operator's resume is not
+fought. A halt `applyRollout` refuses (a race: the rollout or its outlet moved since it was
+listed) is recorded on the tick's reading and judged again next tick; it does not fail the cron.
+The first refusal per trip is audited (`distribution.auto_halt.refused`), so a halt refused for
+a lasting reason is visible.
+Residual: a coordinated set of registered devices that crosses `minSample` with false reverts can
+halt a self-hosted rollout — the safe direction — but never expose a build (and see Dilution
+above for the opposite direction).
+
+**The Sentry hook proposes; an operator decides.** The client secret is an outlet credential of
+the new kind `sentry-integration` (P5-01 custody: sealed under its own AAD, written only by the
+Core admin handler, every open audited as `system:distribution` with use `sentry:webhook`). It
+authenticates Sentry to the Worker; the Worker never calls Sentry. The hook answers the service
+not-found shape without a credential, refuses a missing or malformed signature before anything
+is opened, rate-limits per product BEFORE the credential is opened (`sentryWebhook`, fail
+closed, since every open is an audit row), compares the HMAC in constant time, and dedupes on the
+body's SHA-256. A triggered event alert opens at most one `halt-candidate` per matching active or
+paused, non-mirrored rollout; it halts nothing. Confirming halts through `applyRollout` as the
+confirming admin, with the candidate's release pinned (`stale_release` if the rollout moved
+on). A candidate keeps only the rule name and Sentry's numeric issue id, and the events table
+keeps only a reduced record of each delivery, whatever its outcome — `{resource, action, rule,
+issueId, release, environment, outlet}` — never the body, the event's message, exception, user or
+other tags. Residuals: anyone holding the client secret (Sentry, or a leak of it) can open
+candidates and fill the console; they cannot halt. An unsigned flood can starve the per-product
+`sentryWebhook` limiter so that genuine alerts are refused for its duration. Sentry's signature
+covers no timestamp, so a delivery replayed after the 30-day event retention can reopen a
+candidate — harmless, because a candidate still needs an admin to confirm it.
+
 ### The device-code user-code page (P1-06)
 
 **What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
@@ -2016,7 +2104,7 @@ descriptor hook gains a method that writes or a new provider, or a method that r
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching
 is turned on for any byte route; a reader of `dist_rollouts` starts deciding what a device is
 offered (P3-03), or a reader of `dist_availability` does, a store connector is added, gains a
-control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, runs without that identity matching the operator's pin on its credential (a connector whose key reaches several apps added without an `OUTLET_CREDENTIAL_PINS` entry, or a pin check dropped or made optional), lets anything but the Core admin handler write a pin, or starts uploading or submitting (P5-02, P5-02f), an automatic action (the Play vitals auto-halt, P5-03) gains a verb other than halt or a setting any path but the console's audited control can write, or anything but the console's key
+control, calls a host other than its store's API, writes from a store object without first proving it is the outlet's app, takes the app it proves against from anywhere but the manifest's outlet identity, runs without that identity matching the operator's pin on its credential (a connector whose key reaches several apps added without an `OUTLET_CREDENTIAL_PINS` entry, or a pin check dropped or made optional), lets anything but the Core admin handler write a pin, or starts uploading or submitting (P5-02, P5-02f), an automatic action (the Play vitals auto-halt, P5-03; the telemetry auto-halt, P6-03) gains a verb other than halt or a setting any path but the console's audited control can write, the `system` rollout actor gains a verb or a caller outside the auto-halt, a Sentry candidate halts without an operator's confirmation, or the update-health counters start being written to D1 or keyed by anything a device can choose without bound, or anything but the console's key
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to

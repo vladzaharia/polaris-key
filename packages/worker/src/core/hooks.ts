@@ -439,6 +439,12 @@ export interface ReleaseCatalog {
    * classes (R6-01). The template and the binary name are Release's data.
    */
   installScript(origin: string): Promise<string | null>;
+  /**
+   * The channels the product can serve (P6-03): the built-ins, its manual rules and any channel
+   * an `app` release was published to — Release's one definition (`knownChannels`). Read-only;
+   * Core's report path bounds update telemetry with it.
+   */
+  knownChannels(): Promise<string[]>;
 
   // ── Packs (P4-02): what P4-05 serves, P4-09 shows and update reads ──
   /** The declared pack deliverables, by id. */

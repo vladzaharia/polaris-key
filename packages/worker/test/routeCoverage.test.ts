@@ -106,6 +106,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/report", ["post"]],
   // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
   ["/{product}/distribution/hooks/asc", ["post"]],
+  // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
+  ["/{product}/distribution/hooks/sentry", ["post"]],
   // P2b-05: the storefront feeds, the F-Droid relay and its CI route.
   ["/{product}/distribution/altstore/{channel}/source.json", ["get"]],
   ["/{product}/distribution/altstore-pal/{channel}/source.json", ["get"]],
@@ -278,6 +280,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/report",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
+  // P6-03: the Sentry alert webhook, called server-to-server by Sentry.
+  "/{product}/distribution/hooks/sentry",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/feeds/fdroid/{channel}",
   // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.

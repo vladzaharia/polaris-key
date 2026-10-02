@@ -29,6 +29,12 @@
  *     GET  …/distribution/connectors/<kind>                    one connector
  *     POST …/distribution/connectors/<kind>/<control…>         a connector control
  *                                                              (`connectors/asc/controls.ts`)
+ *     GET  …/distribution/update-health[?windowHours=N]        the update funnel per rollout,
+ *                                                              the auto-halt state and the
+ *                                                              Sentry candidates (P6-03)
+ *     POST …/distribution/update-health/settings               the auto-halt settings (audited)
+ *     POST …/distribution/update-health/candidates/<id>/{confirm,dismiss}
+ *                                                              (`updateHealthAdmin.ts`)
  *
  * Narrative-only (the console's API is not in the wire spec). Every write is audited with the
  * session's subject. The session, CSRF, rate-limit and platform-admin gates run in
@@ -98,6 +104,7 @@ import {
 } from "./availability.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { CONNECTORS, connectorOf } from "./connectors/index.js";
+import { handleUpdateHealthAdmin } from "./updateHealthAdmin.js";
 import { buildMatrix, MATRIX_DEFAULT_LIMIT } from "./matrix.js";
 
 /** The console's view of one outlet. */
@@ -143,6 +150,7 @@ export async function handleDistributionAdmin(
   if (rest[0] === "keys") return handleKeysAdmin(ctx);
   if (rest[0] === "connectors") return handleConnectorsAdmin(ctx);
   if (rest[0] === "matrix") return handleMatrixAdmin(ctx);
+  if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {
