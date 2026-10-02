@@ -300,8 +300,12 @@ function corpusProofState(
   const abs = join(root, CORPUS_DIR, file);
   if (!existsSync(abs)) return { active: false, token };
   if (proof.family) {
+    // A directory proof (`content/`) names the family in that directory's `cases.json`.
+    const casesFile = statSync(abs).isDirectory()
+      ? join(abs, "cases.json")
+      : abs;
     try {
-      const data = JSON.parse(readFileSync(abs, "utf8")) as Record<
+      const data = JSON.parse(readFileSync(casesFile, "utf8")) as Record<
         string,
         unknown
       >;
