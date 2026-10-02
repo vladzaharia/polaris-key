@@ -58,7 +58,7 @@
     },
     "update.decide": {
       "status": "implemented",
-      "note": "core/decide.py decide_update over core/check.py run_update_check; client.update.decide() returns the UpdateCheck at the effective clock. The outlet is host-supplied (UpdateClientOptions.outlet) until P3-11."
+      "note": "core/decide.py decide_update over core/check.py run_update_check; client.update.decide() returns the UpdateCheck at the effective clock. The outlet is the host's UpdateClientOptions.outlet, else the in-process detection result (P3-11) over the stamp."
     },
     "update.driver": {
       "status": "planned",
@@ -70,7 +70,10 @@
       "unowned": true,
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
-    "outlet.detect": { "status": "planned", "wp": "P3-11" },
+    "outlet.detect": {
+      "status": "implemented",
+      "note": "core/detection.py detect_outlet over update/outlet.py read_outlet_signals (environment, sys.executable and script path conventions, product-named markers, GetCurrentPackageFamilyName through ctypes); the update client detects when the host names no outlet. PEP 376 INSTALLER names no v4 signal and is not read."
+    },
     "packs.plan": { "status": "planned", "wp": "P4-07" },
     "packs.index": { "status": "planned", "wp": "P4-07" },
     "packs.apply.full": { "status": "planned", "wp": "P4-07" },

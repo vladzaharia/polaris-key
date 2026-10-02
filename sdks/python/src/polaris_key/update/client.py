@@ -59,6 +59,7 @@ from ..core.b64url import b64url_decode
 from ..core.check import FetchOutcome, run_update_check
 from ..core.context import CoreContext
 from ..core.decide import ResolvedOutlet, feed_target, is_valid_host_outlet, resolve_update_outlet
+from ..core.detection import detect_outlet, detection_stamp
 from ..core.errors import PolarisError
 from ..core.feed import reload_feeds
 from ..core.headers import canonical_arch, canonical_platform
@@ -80,6 +81,7 @@ from ..core.release_record import (
 from ..core.semver import compare_semver
 from ..core.token import TokenManager
 from ..discovery import appcast_url_from, update_endpoints_from
+from .outlet import OutletReaderEnvironment, read_outlet_signals
 
 __all__ = [
     "VersionCheck",
@@ -116,15 +118,22 @@ class UpdateClientOptions:
     #: Where this install came from: a kind (``"direct"``, ``"steam"``, …), read as
     #: ``{id: kind, kind}``, or the product's outlet id with its kind,
     #: ``{"id": …, "kind": …, "subkind"?: …}``. It wins over ``stamp`` and ``detected``.
-    #: Without any of the three the outlet is ``unknown``, which is never offered an update, so
-    #: THIS is the option that turns offers on. A pip-installed tool is ``"direct"`` (with
-    #: no subkind); until P3-11 the host supplies it.
+    #: Without it the client detects the outlet (``detect``); with no stamp and no attested
+    #: evidence the outlet is ``unknown``, which is never offered an update. A pip-installed
+    #: tool is ``"direct"`` (with no subkind).
     outlet: Any = None
-    #: The build stamp's outlet fields (``outlet``, ``outletKind``, ``outletSubkind``).
+    #: The build stamp's outlet fields (``outlet``, ``outletKind``, ``outletSubkind``), and
+    #: the product's ``outletIds`` that launcher signals must name.
     stamp: Optional[Mapping[str, Any]] = None
-    #: An outlet detection result (``{"kind": …, "subkind": …}``), until P3-11 detects
-    #: in-process.
+    #: An outlet detection result the host computed itself (``{"kind": …, "subkind": …}``).
+    #: When it is absent and ``outlet`` is too, the client detects in-process (``detect``).
     detected: Optional[Mapping[str, Any]] = None
+    #: Detect the outlet when neither ``outlet`` nor ``detected`` is given: this process's
+    #: signals (``read_outlet_signals``) and the stamp, through ``detect_outlet``, whose
+    #: result goes to ``resolve_update_outlet`` as ``detected`` (plans/P3-01.md §2.9).
+    detect: bool = True
+    #: What the readers look at; this process by default (tests pass a fake install).
+    outlet_environment: Optional[OutletReaderEnvironment] = None
     #: The installed build's build number (informational in v4).
     build_number: Optional[str] = None
     #: The installed build's format (``"zip"``, ``"dmg"``, ``"whl"``, …): a binary build of
@@ -185,6 +194,7 @@ class ReleaseRecordCheck:
 class _Configured:
     release_keys: Dict[str, str]
     outlet: ResolvedOutlet
+    detected: Optional[Dict[str, Any]]
     methods: Tuple[str, ...]
     opts: UpdateClientOptions
 
@@ -271,11 +281,32 @@ def _configure(raw: Any, pinned_trust: Mapping[str, str]) -> _Configured:
         and _optional_string(opts.binary_version)
     ):
         raise _invalid("update.build_number, format, engine and binary_version must be strings.")
-    outlet = resolve_update_outlet(host=opts.outlet, stamp=opts.stamp, detected=opts.detected)
+    if not isinstance(opts.detect, bool):
+        raise _invalid("update.detect must be a boolean.")
+    if opts.outlet_environment is not None and not isinstance(
+        opts.outlet_environment, OutletReaderEnvironment
+    ):
+        raise _invalid("update.outlet_environment must be an OutletReaderEnvironment.")
+    detected: Optional[Dict[str, Any]] = dict(opts.detected) if opts.detected is not None else None
+    # §2.9: detection runs at every launch and is never cached; a host value always wins.
+    if opts.outlet is None and detected is None and opts.detect:
+        stamp = detection_stamp(opts.stamp)
+        detected = detect_outlet(
+            stamp=stamp,
+            signals=read_outlet_signals(
+                opts.outlet_environment,
+                outlet_ids=stamp["outletIds"] if stamp is not None else None,
+            ),
+        )
+    outlet = resolve_update_outlet(host=opts.outlet, stamp=opts.stamp, detected=detected)
     if outlet is None:
         raise _invalid("update.outlet is not a valid outlet.")
     return _Configured(
-        release_keys=release_keys, outlet=outlet, methods=tuple(methods), opts=opts
+        release_keys=release_keys,
+        outlet=outlet,
+        detected=detected,
+        methods=tuple(methods),
+        opts=opts,
     )
 
 
@@ -341,6 +372,20 @@ class UpdateClient:
         )
         #: The v4 calls run one at a time: each is a read-modify-write of the cache slices.
         self._lock = threading.RLock()
+
+    @property
+    def outlet(self) -> Optional[ResolvedOutlet]:
+        """The outlet ``decide()`` uses (``resolve_update_outlet``'s answer), or ``None``
+        without update options. For support diagnostics and UI."""
+        return self._configured.outlet if self._configured else None
+
+    @property
+    def detected(self) -> Optional[Dict[str, Any]]:
+        """The detection result ``outlet`` was resolved from (in-process, or the host's
+        ``detected``); ``None`` when the host named the outlet, turned detection off, or
+        configured no updates."""
+        c = self._configured
+        return dict(c.detected) if c is not None and c.detected is not None else None
 
     def check(self, *, channel: Optional[str] = None) -> VersionCheck:
         """``GET /<p>/update/version`` — the newest build, and whether we are behind it.
