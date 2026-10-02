@@ -115,6 +115,11 @@ export interface UsePolarisKey {
   getConfigSource: (key: string) => ConfigSource;
   getSecret: PolarisAdapter["getSecret"];
   isEntitled: (name: string) => boolean;
+  /** Whether a parity feature works through this adapter (PARITY §2.2). Pure; it reads the
+   *  capability map in `state`, so a component re-renders when discovery changes the answer. */
+  supports: PolarisAdapter["supports"];
+  /** The feature ids `supports()` answers Supported for, in registry order. */
+  caps: PolarisAdapter["caps"];
 }
 
 /** @deprecated See {@link UsePolarisKey} — prefer the per-service hooks. */
@@ -149,6 +154,8 @@ export function usePolarisKey(): UsePolarisKey {
       getConfigSource: (key) => adapter.getConfigSource(key),
       getSecret: (key) => adapter.getSecret(key),
       isEntitled: (name) => adapter.isEntitled(name),
+      supports: (feature) => adapter.supports(feature),
+      caps: () => adapter.caps(),
     }),
     [adapter, state],
   );

@@ -63,6 +63,7 @@ import {
   type OutletStamp,
   type ResolvedOutlet,
 } from "@polaris-key/client-core";
+import type { CapabilityContext } from "@polaris-key/client-core";
 import type {
   BinaryMethod,
   InstalledBuild,
@@ -80,12 +81,17 @@ import {
   readEntitled,
   readEntitledChannels,
 } from "../core/adapter.js";
-import { ErrorCode, Platform, SdkId } from "../constants.generated.js";
+import { ErrorCode, Feature, Platform, SdkId } from "../constants.generated.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
+  capabilityContext,
+  capsIn,
   initialState,
+  refuse,
+  supportsIn,
   type ConfigSource,
+  type Support,
   type DeviceInfo,
   type JSONValue,
   type PolarisAdapter,
@@ -294,6 +300,8 @@ export class BrowserAdapter implements PolarisAdapter {
   private csrf: string | null = null;
   private hadSession = false;
   private capabilities: ServicesMap;
+  /** `supports()`'s inputs: the generated table, runtime `web`, and `capabilities` above. */
+  private readonly capabilityCtx: CapabilityContext;
   private readonly pinned: TrustSet | null;
   private readonly offline: OfflineStore | null;
   /** The re-verified offline state (device id + imported bundle), once loaded. */
@@ -323,6 +331,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.version = opts.version;
     // D-21: the pre-discovery belief. Never all-true.
     this.capabilities = copyServices(opts.expectServices ?? defaultServices());
+    this.capabilityCtx = capabilityContext("web", () => this.capabilities);
     this.pinned = opts.trust?.pinnedKeys ?? null;
     this.offline =
       opts.offlineStore === undefined
@@ -768,17 +777,17 @@ export class BrowserAdapter implements PolarisAdapter {
    * merely unimplemented. `DeviceManager` renders this refusal as an explanation.
    */
   async listDevices(): Promise<DeviceInfo[]> {
-    throw new PolarisError(
-      "device-management-unsupported",
-      "Listing devices is not supported from a browser session.",
-    );
+    refuse(this.capabilityCtx, Feature.devicesManage, {
+      code: "device-management-unsupported",
+      detail: "Listing devices is not supported from a browser session.",
+    });
   }
 
   async renameDevice(_deviceId: string, _label: string | null): Promise<void> {
-    throw new PolarisError(
-      "device-management-unsupported",
-      "Renaming devices is not supported from a browser session.",
-    );
+    refuse(this.capabilityCtx, Feature.devicesManage, {
+      code: "device-management-unsupported",
+      detail: "Renaming devices is not supported from a browser session.",
+    });
   }
 
   async deauthorizeDevice(deviceId: string): Promise<void> {
@@ -787,10 +796,11 @@ export class BrowserAdapter implements PolarisAdapter {
       await this.signOut();
       return;
     }
-    throw new PolarisError(
-      "device-management-unsupported",
-      "Disconnecting another device is not supported from a browser session.",
-    );
+    refuse(this.capabilityCtx, Feature.devicesManage, {
+      code: "device-management-unsupported",
+      detail:
+        "Disconnecting another device is not supported from a browser session.",
+    });
   }
 
   /** `GET /<product>/update/version` — the newest build on a channel plus whether the HOST
@@ -1079,10 +1089,11 @@ export class BrowserAdapter implements PolarisAdapter {
   /** `POST /<p>/devices/report` takes a device bearer, which a cookie session does not hold:
    *  the `devices.report` web N/A (`runtime`), stated rather than silently skipped. */
   async report(): Promise<boolean> {
-    throw new PolarisError(
-      ErrorCode.reportUnsupported,
-      "Device telemetry needs a device token; a browser session has none.",
-    );
+    refuse(this.capabilityCtx, Feature.devicesReport, {
+      code: ErrorCode.reportUnsupported,
+      detail:
+        "Device telemetry needs a device token; a browser session has none.",
+    });
   }
 
   entitledChannels(): string[] {
@@ -1102,8 +1113,19 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   getSecret(_key: string): string | null {
-    // Secrets are never delivered to a browser session — always null.
-    return null;
+    // Secrets are never delivered to a browser session: the `config.secret` web N/A, stated as
+    // a typed refusal rather than an indistinguishable `null`.
+    refuse(this.capabilityCtx, Feature.configSecret, {
+      detail: "Secrets are never delivered to a browser session.",
+    });
+  }
+
+  supports(feature: string): Support {
+    return supportsIn(this.capabilityCtx, feature);
+  }
+
+  caps(): string[] {
+    return capsIn(this.capabilityCtx);
   }
 
   isEntitled(name: string): boolean {
