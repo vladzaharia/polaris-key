@@ -65,6 +65,13 @@ def test_copies_required_packs() -> None:
     assert state.options.requiredPacks == ("core",)
 
 
+def test_copies_essential_packs() -> None:
+    packs = ["hd"]
+    state = initial_boot_state(essential_packs=packs)
+    packs.append("extra")
+    assert state.options.essentialPacks == ("hd",)
+
+
 def test_ignored_event_returns_the_input_object() -> None:
     gate = _run(_TO_GATE)
     late = boot_transition(gate, {"type": "sync.timeout"})
@@ -117,9 +124,12 @@ def test_defaults() -> None:
     assert initial_boot_state() == BootState(
         stage="idle",
         outcome="running",
-        options=BootOptions(allowOffline=True, allowGrace=True, requiredPacks=()),
+        options=BootOptions(
+            allowOffline=True, allowGrace=True, requiredPacks=(), essentialPacks=()
+        ),
         sync="pending",
         resume="shell",
+        canPlayOffline=False,
     )
     assert _run(_TO_GATE[:2]).resume == "guard"
     assert _run(_TO_GATE[:3]).resume == "sync"
@@ -149,3 +159,52 @@ def test_gate_pass_set_is_is_usable(sync: str) -> None:
     ):
         nxt = boot_transition(at_gate, {"type": "gate.status", "status": status})  # type: ignore[typeddict-item]
         assert (nxt.state.stage == "decide") is is_usable(status), status
+
+
+# ── Stage matrix v3 (plans/P4-01.md §2.10): consent and progress payloads ────────────────
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        {"type": "fetch.consent", "bytes": -1, "metered": False},
+        {"type": "fetch.consent", "bytes": 1.5, "metered": False},
+        {"type": "fetch.consent", "bytes": 10.0, "metered": False},
+        {"type": "fetch.consent", "bytes": 2**53, "metered": False},
+        {"type": "fetch.consent", "bytes": True, "metered": False},
+        {"type": "fetch.consent", "bytes": 10, "metered": "no"},
+        {"type": "fetch.consent", "bytes": 10, "metered": 1},
+        {"type": "fetch.consent", "bytes": "10", "metered": True},
+        {"type": "fetch.consent", "metered": True},
+        {"type": "fetch.progress", "done": 2, "total": 1},
+        {"type": "fetch.progress", "done": -1, "total": 1},
+        {"type": "fetch.progress", "done": 0.5, "total": 1},
+        {"type": "fetch.progress", "done": 0, "total": "1"},
+        {"type": "fetch.progress", "done": False, "total": 1},
+        {"type": "fetch.progress", "done": 0, "total": True},
+        {"type": "fetch.progress", "done": 0},
+    ],
+)
+def test_malformed_consent_and_progress_are_ignored(event: Any) -> None:
+    state = _run(_TO_FETCH, required_packs=["core"])
+    result = boot_transition(state, event)
+    assert result.state is state
+    assert result.emits == ()
+
+
+def test_can_play_offline_resets_when_the_playable_offline_stop_is_left() -> None:
+    state = _run(_TO_FETCH, required_packs=["core"], essential_packs=["hd"])
+    state = boot_transition(
+        state, {"type": "fetch.done", "result": "offline", "installed": ["core"]}
+    ).state
+    assert (state.stage, state.canPlayOffline) == ("offline", True)
+    state = boot_transition(state, {"type": "play-offline"}).state
+    assert state.stage == "mount"
+    assert state.canPlayOffline is False
+
+
+def test_fail_is_ignored_while_consent_waits() -> None:
+    state = _run(_TO_FETCH, required_packs=["core"])
+    state = boot_transition(state, {"type": "fetch.consent", "bytes": 1, "metered": True}).state
+    assert (state.stage, state.outcome) == ("fetch", "waiting")
+    assert boot_transition(state, {"type": "fail", "code": "x"}).state is state

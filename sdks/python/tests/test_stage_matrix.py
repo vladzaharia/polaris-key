@@ -52,12 +52,20 @@ _INIT_KWARGS = {
     "allowOffline": "allow_offline",
     "allowGrace": "allow_grace",
     "requiredPacks": "required_packs",
+    "essentialPacks": "essential_packs",
 }
 
 
 def _accepts_key(state: BootState) -> str:
-    """``gate:waiting`` while the gate waits, otherwise the stage."""
-    return "gate:waiting" if state.stage == "gate" and state.outcome == "waiting" else state.stage
+    """``gate:waiting`` while the gate waits, ``fetch:waiting`` while the fetch waits for
+    consent, ``offline:playable`` at a playable offline stop (v3), otherwise the stage."""
+    if state.stage == "gate" and state.outcome == "waiting":
+        return "gate:waiting"
+    if state.stage == "fetch" and state.outcome == "waiting":
+        return "fetch:waiting"
+    if state.stage == "offline" and state.canPlayOffline:
+        return "offline:playable"
+    return state.stage
 
 
 def _probe(state: BootState, where: str) -> int:
@@ -75,7 +83,7 @@ def _probe(state: BootState, where: str) -> int:
 
 def test_version_and_runtime() -> None:
     print(f"stage-matrix runner on Python {platform.python_version()}")
-    assert _MATRIX["stageMatrixVersion"] == 2
+    assert _MATRIX["stageMatrixVersion"] == 3
     assert _MATRIX["maxFailedBoots"] == MAX_FAILED_BOOTS
     assert _MATRIX["bootOkSeconds"] == BOOT_OK_SECONDS
 
@@ -107,6 +115,12 @@ def test_stage_matrix_row(row: Dict[str, Any]) -> None:
         assert list(result.emits) == step["emits"], where
         stages.extend(e["stage"] for e in result.emits if e["type"] == "stage_changed")
         state = result.state
+        # v3: canPlayOffline is true exactly at an offline stop whose emit said so.
+        offline = [e for e in result.emits if e["type"] == "offline"]
+        if offline:
+            assert state.canPlayOffline is offline[0]["canPlayOffline"], where
+        elif result.emits:
+            assert state.canPlayOffline is False, where
         probes += _probe(state, f"{where}, after")
     assert stages == row["expect"]["stages"]
     assert state.stage == row["expect"]["stages"][-1]

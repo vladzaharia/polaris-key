@@ -46,6 +46,7 @@ class ErrorCode:
 	const SERVER_MISCONFIGURED := "server_misconfigured"
 	const INTERNAL_ERROR := "internal_error"
 	const RELEASE_RECORD_REJECTED := "release_record_rejected"
+	const RELEASE_TAG_IS_PACK_RELEASE := "release_tag_is_pack_release"
 	const FEED_NOT_COMPOSABLE := "feed_not_composable"
 	const SERVICE_UNAVAILABLE := "service-unavailable"
 	const SERVICE_DISABLED := "service-disabled"
@@ -104,10 +105,23 @@ class ErrorCode:
 	const FILES_PATH_CONFLICT := "files-path-conflict"
 	const FILES_LAYOUT_MISMATCH := "files-layout-mismatch"
 	const CONTENT_STAMP_INVALID := "content-stamp-invalid"
+	const FULL_CORRUPT := "full-corrupt"
+	const DELTA_ARTIFACT_MISMATCH := "delta-artifact-mismatch"
+	const DELTA_BASE_MISMATCH := "delta-base-mismatch"
+	const DELTA_APPLY_FAILED := "delta-apply-failed"
+	const FILE_CORRUPT := "file-corrupt"
+	const FILE_SOURCE_MISSING := "file-source-missing"
+	const PAYLOAD_HASH_MISMATCH := "payload-hash-mismatch"
+	const PLAN_TRANSPORT_UNSUPPORTED := "plan-transport-unsupported"
+	const PLAN_INSUFFICIENT_DISK := "plan-insufficient-disk"
+	const PLAN_NO_STRATEGY := "plan-no-strategy"
+	const PACK_NO_VARIANT := "pack-no-variant"
+	const PACK_TYPE_UNSUPPORTED := "pack-type-unsupported"
+	const MARKER_REJECTED := "marker-rejected"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "disabled", "oidc_error", "unavailable", "auth_method_disabled", "email_not_configured", "download_auth_required", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "marker-rejected"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -145,6 +159,7 @@ const ERROR_CODE_KINDS := {
 	"server_misconfigured": "wire",
 	"internal_error": "wire",
 	"release_record_rejected": "wire",
+	"release_tag_is_pack_release": "wire",
 	"feed_not_composable": "wire",
 	"service-unavailable": "client",
 	"service-disabled": "client",
@@ -203,6 +218,19 @@ const ERROR_CODE_KINDS := {
 	"files-path-conflict": "client",
 	"files-layout-mismatch": "client",
 	"content-stamp-invalid": "client",
+	"full-corrupt": "client",
+	"delta-artifact-mismatch": "client",
+	"delta-base-mismatch": "client",
+	"delta-apply-failed": "client",
+	"file-corrupt": "client",
+	"file-source-missing": "client",
+	"payload-hash-mismatch": "client",
+	"plan-transport-unsupported": "client",
+	"plan-insufficient-disk": "client",
+	"plan-no-strategy": "client",
+	"pack-no-variant": "client",
+	"pack-type-unsupported": "client",
+	"marker-rejected": "client",
 }
 
 
@@ -249,7 +277,8 @@ class Feature:
 	const OUTLET_DETECT := "outlet.detect"
 	const PACKS_RECORD := "packs.record"
 	const PACKS_PLAN := "packs.plan"
-	const PACKS_INDEX := "packs.index"
+	const PACKS_INDEX_FILES := "packs.index.files"
+	const PACKS_INDEX_CHUNKS := "packs.index.chunks"
 	const PACKS_APPLY_FULL := "packs.apply.full"
 	const PACKS_APPLY_FILE := "packs.apply.file"
 	const PACKS_APPLY_CHUNK := "packs.apply.chunk"
@@ -268,7 +297,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.plan", "packs.index", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -551,6 +580,36 @@ class VariantAxis:
 const VARIANT_AXIS_VALUES := ["texture", "locale", "quality"]
 
 
+## The install planner's strategies (plans/P4-01.md §2.9, A7 §4.2): a plan result's `strategy` and a host's `caps.strategies`. `plan-matrix.json` pins them.
+class PatchStrategy:
+	const NOOP := "noop"
+	const PLATFORM := "platform"
+	const DELTA := "delta"
+	const CHUNK := "chunk"
+	const FILE := "file"
+	const FULL := "full"
+
+
+## Every `PatchStrategy` value, in source order.
+const PATCH_STRATEGY_VALUES := ["noop", "platform", "delta", "chunk", "file", "full"]
+
+
+## How a deliverable's bytes arrive (`TRANSPORTS` in `@polaris-key/manifest`, P2b-02; README §3.1): the planner's `caps.transports` and a platform target's `transport` (plans/P4-01.md §2.9).
+class Transport:
+	const EMBEDDED := "embedded"
+	const PKEY_CDN := "pkey-cdn"
+	const APPLE_BA := "apple-ba"
+	const PLAY_PAD := "play-pad"
+	const STEAM_DEPOT := "steam-depot"
+	const MSIX_OPTIONAL := "msix-optional"
+	const FLATPAK_EXT := "flatpak-ext"
+	const WEB := "web"
+
+
+## Every `Transport` value, in source order.
+const TRANSPORT_VALUES := ["embedded", "pkey-cdn", "apple-ba", "play-pad", "steam-depot", "msix-optional", "flatpak-ext", "web"]
+
+
 ## The `X-PKey-*` request header names (wire contract v3 §5).
 class HeaderName:
 	const ARCH := "X-PKey-Arch"
@@ -592,13 +651,19 @@ const GATE_MATRIX_VERSION := 2
 const FINGERPRINT_VERSION := 1
 
 ## `stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json.
-const STAGE_MATRIX_VERSION := 2
+const STAGE_MATRIX_VERSION := 3
 
 ## `updateMatrixVersion` of conformance/corpus/v2/update-matrix.json.
 const UPDATE_MATRIX_VERSION := 1
 
 ## `outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json.
 const OUTLET_MATRIX_VERSION := 1
+
+## `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
+const PLAN_MATRIX_VERSION := 1
+
+## `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
+const CONTENT_CORPUS_VERSION := 1
 
 ## Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`).
 const MAX_WIRE_INTEGER := 9007199254740991
@@ -641,6 +706,9 @@ const MARKER_FORMAT := "pkey-marker/1"
 
 ## Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 const CONTENT_STAMP_FORMAT := "pkey-content/1"
+
+## Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
+const PLAN_REQUEST_WEIGHT := 16384
 
 ## Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 const CHANNEL_ALIASES := {

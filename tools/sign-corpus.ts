@@ -16,14 +16,17 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Eight files: `cases.json` (signed vectors, the v4 feed and release-record families
-// included), `gate-matrix.json` (§5), `fingerprint.json` (the hardware-hash formulas),
-// `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`, client boot
-// behaviour outside the wire contract, read by conformance/runners/node/stageMatrix.test.ts and
-// the Python, Swift and Godot runners; version 2 adds boot confirmation), `headers.json` (the
+// Nine files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// pack families included), `gate-matrix.json` (§5), `fingerprint.json` (the hardware-hash
+// formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
+// client boot behaviour outside the wire contract, read by
+// conformance/runners/node/stageMatrix.test.ts and the Python, Swift and Godot runners; version
+// 2 adds boot confirmation, version 3 adds packs, plans/P4-01.md §2.10), `headers.json` (the
 // client metadata header values, §5.2), `config-matrix.json` (config resolution and environment
-// values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8) and
-// `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9).
+// values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8),
+// `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9),
+// `plan-matrix.json` (the pack plan, plans/P4-01.md) and `content/` (the content corpus:
+// `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
 // `CARRIED_MATRIX_ROWS` below before deletion. Fourteen are still emitted; one, the pre-R3-01
@@ -51,6 +54,18 @@ import {
 } from "@polaris-key/jws";
 import { ED25519_TORSION_SUBGROUP, ed25519 } from "@noble/curves/ed25519.js";
 import { format } from "prettier";
+import {
+  CONTENT_CASES_NAME,
+  CONTENT_DIR,
+  buildContentCorpus,
+  contentHashBytes,
+  contentRef,
+  contentStrays,
+  loadContentSet,
+  rebuildContentBlobs,
+  type ContentSet,
+  type RefJson,
+} from "./gen-content-corpus.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -245,6 +260,7 @@ const V2_HEADERS_OUT = join(V2_DIR, "headers.json");
 const V2_CONFIG_MATRIX_OUT = join(V2_DIR, "config-matrix.json");
 const V2_UPDATE_MATRIX_OUT = join(V2_DIR, "update-matrix.json");
 const V2_OUTLET_MATRIX_OUT = join(V2_DIR, "outlet-matrix.json");
+const V2_PLAN_MATRIX_OUT = join(V2_DIR, "plan-matrix.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
@@ -2570,6 +2586,9 @@ const STAGE_VOCABULARY = {
     "retry",
     "play-offline",
     "fail",
+    // Version 3 (plans/P4-01.md §2.10): fetch consent and progress.
+    "fetch.consent",
+    "fetch.progress",
   ],
   emits: [
     "stage_changed",
@@ -2580,12 +2599,15 @@ const STAGE_VOCABULARY = {
     "error",
     "boot_rolled_back",
     "boot_ready",
+    "consent_needed",
+    "fetch_progress",
   ],
   guardActions: ["none", "apply-staged", "roll-back"],
 };
 
-/** The plan's "Accepted in" table. A key is a stage, or `gate:waiting` for the gate while it
- *  waits for the player. */
+/** The plan's "Accepted in" table. A key is a stage, `gate:waiting` for the gate while it waits
+ *  for the player, `fetch:waiting` for the fetch while it waits for download consent, or
+ *  `offline:playable` for an offline stop that can play what is present (version 3). */
 const STAGE_ACCEPTS: Record<string, string[]> = {
   idle: ["start"],
   shell: ["shell.done", "fail"],
@@ -2594,11 +2616,13 @@ const STAGE_ACCEPTS: Record<string, string[]> = {
   gate: ["gate.status", "fail"],
   "gate:waiting": ["gate.status", "retry"],
   decide: ["decide.done", "fail"],
-  fetch: ["fetch.done", "fail"],
+  fetch: ["fetch.done", "fetch.consent", "fetch.progress", "fail"],
+  "fetch:waiting": ["fetch.done", "fetch.progress"],
   mount: ["mount.done", "fail"],
   ready: ["background.start"],
   background: ["background.done"],
   offline: ["retry"],
+  "offline:playable": ["retry", "play-offline"],
   blocked: ["retry"],
   error: ["retry"],
 };
@@ -2613,6 +2637,7 @@ interface StageInit {
   allowOffline?: boolean;
   allowGrace?: boolean;
   requiredPacks?: string[];
+  essentialPacks?: string[];
 }
 interface StageRow {
   name: string;
@@ -2649,6 +2674,16 @@ const evBackgroundDone: StageEvent = { type: "background.done" };
 const evRetry: StageEvent = { type: "retry" };
 const evPlayOffline: StageEvent = { type: "play-offline" };
 const evFail = (code: string): StageEvent => ({ type: "fail", code });
+const evConsent = (bytes: number, metered: boolean): StageEvent => ({
+  type: "fetch.consent",
+  bytes,
+  metered,
+});
+const evProgress = (done: number, total: number): StageEvent => ({
+  type: "fetch.progress",
+  done,
+  total,
+});
 
 // Emits.
 const changed = (stage: string, previous: string): StageEmit => ({
@@ -2663,6 +2698,17 @@ const emError = (code: string): StageEmit => ({ type: "error", code });
 const emUpdateAvailable: StageEmit = { type: "update_available" };
 const emRolledBack: StageEmit = { type: "boot_rolled_back" };
 const emBootReady: StageEmit = { type: "boot_ready" };
+const emOfflinePlayable: StageEmit = { type: "offline", canPlayOffline: true };
+const emConsent = (bytes: number, metered: boolean): StageEmit => ({
+  type: "consent_needed",
+  bytes,
+  metered,
+});
+const emProgress = (done: number, total: number): StageEmit => ({
+  type: "fetch_progress",
+  done,
+  total,
+});
 
 const step = (event: StageEvent, ...emits: StageEmit[]): StageStep => ({
   event,
@@ -2701,6 +2747,13 @@ const INIT_D: StageInit = {
 const INIT_D_O: StageInit = { ...INIT_D, allowOffline: false };
 const INIT_D_G: StageInit = { ...INIT_D, allowGrace: false };
 const INIT_D_K: StageInit = { ...INIT_D, requiredPacks: ["core"] };
+/** Version 3's `essentialPacks` (plans/P4-01.md §4.7): `D+KE` and `D+E`. */
+const INIT_D_KE: StageInit = {
+  ...INIT_D,
+  requiredPacks: ["core"],
+  essentialPacks: ["core", "hd"],
+};
+const INIT_D_E: StageInit = { ...INIT_D, essentialPacks: ["hd"] };
 
 /** The stages every row except 34 and 35 enters first. */
 const S_BASE = ["shell", "guard", "sync"];
@@ -3471,6 +3524,205 @@ function stageRows(): StageRow[] {
       ],
       expect: { stages: [...S_BASE, "gate"], outcome: "waiting" },
     },
+    // ── Version 3 (plans/P4-01.md §2.10, §4.7): packs — consent, progress, a playable
+    // offline. Every row runs `P`, then `sync ok`, `gate ok`, `decide.done none`.
+    ...packStageRows(),
+  ];
+}
+
+/** `P`, `sync ok`, `gate ok`, `decide.done none`: every version 3 row's lead-in. */
+const toFetch = (): StageStep[] => [
+  ...prefix(),
+  toGate("ok"),
+  pass(),
+  step(evDecide("none"), changed("fetch", "decide")),
+];
+/** The stages `toFetch` enters. */
+const S_FETCH = [...S_BASE, "gate", "decide", "fetch"];
+const MB50 = 52428800;
+
+/** plans/P4-01.md §4.7's thirteen rows (57–69). */
+function packStageRows(): StageRow[] {
+  const resync = (): StageStep[] => [
+    step(evRetry, changed("sync", "blocked")),
+    toGate("ok"),
+    pass(),
+    step(evDecide("none"), changed("fetch", "decide")),
+  ];
+  const declined = (): StageStep[] => [
+    ...toFetch(),
+    step(evConsent(MB50, true), emConsent(MB50, true)),
+    step(
+      evFetch("declined", []),
+      changed("blocked", "fetch"),
+      emBlocked("content-declined"),
+    ),
+  ];
+  const offlinePlayable = (): StageStep[] => [
+    ...toFetch(),
+    step(
+      evFetch("offline", ["core"]),
+      changed("offline", "fetch"),
+      emOfflinePlayable,
+    ),
+  ];
+  const mountReady = (installed: string[], from = "fetch"): StageStep[] => [
+    step(evFetch("ok", installed), changed("mount", from)),
+    step(evMountDone, changed("ready", "mount"), emBootReady),
+  ];
+  return [
+    {
+      name: "ready — a required download asks first, then fetches with progress",
+      init: INIT_D_K,
+      steps: [
+        ...toFetch(),
+        step(evConsent(MB50, false), emConsent(MB50, false)),
+        step(evProgress(0, MB50), emProgress(0, MB50)),
+        step(evProgress(MB50, MB50), emProgress(MB50, MB50)),
+        ...mountReady(["core"]),
+      ],
+      expect: { stages: [...S_FETCH, "mount", "ready"], outcome: "ready" },
+    },
+    {
+      name: "waiting — consent waits for the player on a metered network",
+      init: INIT_D_K,
+      steps: [...toFetch(), step(evConsent(MB50, true), emConsent(MB50, true))],
+      expect: { stages: S_FETCH, outcome: "waiting" },
+    },
+    {
+      name: "blocked — the player declines a required download",
+      init: INIT_D_K,
+      steps: declined(),
+      expect: { stages: [...S_FETCH, "blocked"], outcome: "blocked" },
+    },
+    {
+      name: "ready — retry after a declined download asks again",
+      init: INIT_D_K,
+      steps: [
+        ...declined(),
+        ...resync(),
+        step(evConsent(MB50, false), emConsent(MB50, false)),
+        step(evProgress(0, MB50), emProgress(0, MB50)),
+        ...mountReady(["core"]),
+      ],
+      expect: {
+        stages: [
+          ...S_FETCH,
+          "blocked",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready",
+        ],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — declining essential content that is not required plays without it",
+      init: INIT_D_E,
+      steps: [
+        ...toFetch(),
+        step(evConsent(1048576, true), emConsent(1048576, true)),
+        step(evFetch("declined", []), changed("mount", "fetch")),
+        step(evMountDone, changed("ready", "mount"), emBootReady),
+      ],
+      expect: { stages: [...S_FETCH, "mount", "ready"], outcome: "ready" },
+    },
+    {
+      name: "offline — essential content cannot download, and the required set is present",
+      init: INIT_D_KE,
+      steps: offlinePlayable(),
+      expect: { stages: [...S_FETCH, "offline"], outcome: "offline" },
+    },
+    {
+      name: "ready — play-offline from that card plays what is present",
+      init: INIT_D_KE,
+      steps: [
+        ...offlinePlayable(),
+        step(evPlayOffline, changed("mount", "offline")),
+        step(evMountDone, changed("ready", "mount"), emBootReady),
+      ],
+      expect: {
+        stages: [...S_FETCH, "offline", "mount", "ready"],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "ready — retry from that card syncs again",
+      init: INIT_D_KE,
+      steps: [
+        ...offlinePlayable(),
+        step(evRetry, changed("sync", "offline")),
+        toGate("ok"),
+        pass(),
+        step(evDecide("none"), changed("fetch", "decide")),
+        ...mountReady(["core", "hd"]),
+      ],
+      expect: {
+        stages: [
+          ...S_FETCH,
+          "offline",
+          "sync",
+          "gate",
+          "decide",
+          "fetch",
+          "mount",
+          "ready",
+        ],
+        outcome: "ready",
+      },
+    },
+    {
+      name: "offline — a missing required pack stays unplayable, and play-offline is ignored",
+      init: INIT_D_KE,
+      steps: [
+        ...toFetch(),
+        step(evFetch("offline", []), changed("offline", "fetch"), emOffline),
+        ignored(evPlayOffline),
+      ],
+      expect: { stages: [...S_FETCH, "offline"], outcome: "offline" },
+    },
+    {
+      name: "ready — a failed essential download never blocks when the required set is present",
+      init: INIT_D_KE,
+      steps: [
+        ...toFetch(),
+        step(evFetch("failed", ["core"]), changed("mount", "fetch")),
+        step(evMountDone, changed("ready", "mount"), emBootReady),
+      ],
+      expect: { stages: [...S_FETCH, "mount", "ready"], outcome: "ready" },
+    },
+    {
+      name: "ready — progress without a consent step",
+      init: INIT_D_K,
+      steps: [
+        ...toFetch(),
+        step(evProgress(0, 1000), emProgress(0, 1000)),
+        step(evProgress(1000, 1000), emProgress(1000, 1000)),
+        ...mountReady(["core"]),
+      ],
+      expect: { stages: [...S_FETCH, "mount", "ready"], outcome: "ready" },
+    },
+    {
+      name: "waiting — fail, a second consent and play-offline are ignored while consent waits",
+      init: INIT_D_K,
+      steps: [
+        ...toFetch(),
+        step(evConsent(1000, false), emConsent(1000, false)),
+        ignored(evFail("consent-failed")),
+        ignored(evConsent(2000, false)),
+        ignored(evPlayOffline),
+      ],
+      expect: { stages: S_FETCH, outcome: "waiting" },
+    },
+    {
+      name: "ready — every essential pack is present: nothing is asked",
+      init: INIT_D_KE,
+      steps: [...toFetch(), ...mountReady(["core", "hd"])],
+      expect: { stages: [...S_FETCH, "mount", "ready"], outcome: "ready" },
+    },
   ];
 }
 
@@ -3529,6 +3781,8 @@ const STAGE_PROBES: StageEvent[] = [
   evRetry,
   evPlayOffline,
   evFail("probe"),
+  evConsent(0, false),
+  evProgress(0, 0),
 ];
 
 /** Throws unless the rows agree with the vocabulary, `accepts`, their own stage lists, and
@@ -3545,10 +3799,18 @@ function checkStageMatrix(
   const same = (a: unknown, b: unknown): boolean =>
     JSON.stringify(a) === JSON.stringify(b);
 
-  // accepts: exactly the 13 stages plus gate:waiting, listing vocabulary events only.
-  const keys = [...v.stages, "gate:waiting"];
+  // accepts: exactly the 13 stages plus gate:waiting, fetch:waiting and offline:playable,
+  // listing vocabulary events only.
+  const keys = [
+    ...v.stages,
+    "gate:waiting",
+    "fetch:waiting",
+    "offline:playable",
+  ];
   if (!same(Object.keys(STAGE_ACCEPTS).sort(), [...keys].sort()))
-    fail("accepts must have the 13 stages and gate:waiting as its keys");
+    fail(
+      "accepts must have the 13 stages, gate:waiting, fetch:waiting and offline:playable as its keys",
+    );
   for (const [key, events] of Object.entries(STAGE_ACCEPTS))
     for (const e of events)
       if (!v.events.includes(e)) fail(`accepts.${key} lists unknown ${e}`);
@@ -3579,7 +3841,7 @@ function checkStageMatrix(
     sync: ["running"],
     gate: ["running", "waiting"],
     decide: ["running"],
-    fetch: ["running"],
+    fetch: ["running", "waiting"],
     mount: ["running"],
     ready: ["ready"],
     background: ["ready"],
@@ -3627,7 +3889,7 @@ function checkStageMatrix(
           if (j !== 0) fail(`${where}: stage_changed must come first`);
           const stage = String(em.stage);
           if (!v.stages.includes(stage)) fail(`${where}: unknown ${stage}`);
-          if (em.previous !== (key === "gate:waiting" ? "gate" : key))
+          if (em.previous !== key.split(":")[0])
             fail(`${where}: stage_changed.previous must be ${key}`);
           used.stages.add(stage);
           used.stages.add(String(em.previous));
@@ -3641,6 +3903,23 @@ function checkStageMatrix(
             fail(`${where}: waiting outside the gate`);
           key = "gate:waiting";
         }
+        // Version 3: consent waits in the fetch, progress resumes it, and a playable offline
+        // stop takes play-offline.
+        if (em.type === "consent_needed") {
+          if (key !== "fetch")
+            fail(`${where}: consent_needed outside the fetch`);
+          key = "fetch:waiting";
+        }
+        if (em.type === "fetch_progress") {
+          if (key !== "fetch" && key !== "fetch:waiting")
+            fail(`${where}: fetch_progress outside the fetch`);
+          key = "fetch";
+        }
+        if (em.type === "offline" && em.canPlayOffline === true) {
+          if (key !== "offline")
+            fail(`${where}: a playable offline outside offline`);
+          key = "offline:playable";
+        }
       }
     }
     if (!same(stages, row.expect.stages))
@@ -3653,6 +3932,11 @@ function checkStageMatrix(
       (row.expect.outcome === "waiting") !== (key === "gate:waiting")
     )
       fail(`${row.name}: the gate's outcome disagrees with its waiting emit`);
+    if (
+      final === "fetch" &&
+      (row.expect.outcome === "waiting") !== (key === "fetch:waiting")
+    )
+      fail(`${row.name}: the fetch's outcome disagrees with its consent emit`);
     used.outcomes.add(row.expect.outcome);
   }
 
@@ -3695,9 +3979,9 @@ function buildStageMatrix(): unknown {
   checkStageMatrix(rows, STAGE_GUARD_CASES);
   checkConfirmCases();
   return {
-    stageMatrixVersion: 2,
+    stageMatrixVersion: 3,
     description:
-      "The boot stage machine (client boot behaviour, outside the wire contract), owned by `@polaris-key/client-core/stages` and ported to every SDK. Each row starts from `initialBootState(init)` (an omitted option takes its default: allowOffline true, allowGrace true, requiredPacks []) and feeds `bootTransition` its steps in order; each step lists the exact emits that event produces, `stage_changed` first. `expect.stages` is every stage entered, in order, and its last entry is the final stage; `expect.outcome` is the final outcome. Events are dotted, emits snake_case, payload keys camelCase and payload values kebab-case. An event the current stage does not accept, or a malformed one, is ignored: the state comes back unchanged with no emits. `accepts` lists what each stage accepts (`gate:waiting` is the gate while it waits for the player), and a runner sends every probe at the initial state and after every step of every row, asserting an unchanged state and no emits exactly when the probe's type is not accepted there. `guardCases` pin `bootGuardAction`, which rolls back at `maxFailedBoots`. Version 2 (plans/P3-01.md §2.10) adds boot confirmation: `confirmCases` pin `bootConfirmation(outcome)`, one per outcome (`now` for waiting, blocked and offline; `after-ok-seconds` for ready, confirmed once the outcome has been `ready` for `bootOkSeconds` with the process alive, or by the game's `confirmBoot()`; `never` for running and error), and a confirmed launch resets `failedBoots` to 0. Append-only: a change to the vocabulary, to `accepts` or to an existing row's expectation bumps `stageMatrixVersion`.",
+      "The boot stage machine (client boot behaviour, outside the wire contract), owned by `@polaris-key/client-core/stages` and ported to every SDK. Each row starts from `initialBootState(init)` (an omitted option takes its default: allowOffline true, allowGrace true, requiredPacks []) and feeds `bootTransition` its steps in order; each step lists the exact emits that event produces, `stage_changed` first. `expect.stages` is every stage entered, in order, and its last entry is the final stage; `expect.outcome` is the final outcome. Events are dotted, emits snake_case, payload keys camelCase and payload values kebab-case. An event the current stage does not accept, or a malformed one, is ignored: the state comes back unchanged with no emits. `accepts` lists what each stage accepts (`gate:waiting` is the gate while it waits for the player), and a runner sends every probe at the initial state and after every step of every row, asserting an unchanged state and no emits exactly when the probe's type is not accepted there. `guardCases` pin `bootGuardAction`, which rolls back at `maxFailedBoots`. Version 2 (plans/P3-01.md §2.10) adds boot confirmation: `confirmCases` pin `bootConfirmation(outcome)`, one per outcome (`now` for waiting, blocked and offline; `after-ok-seconds` for ready, confirmed once the outcome has been `ready` for `bootOkSeconds` with the process alive, or by the game's `confirmBoot()`; `never` for running and error), and a confirmed launch resets `failedBoots` to 0. Version 3 (plans/P4-01.md §2.10) adds packs: the option `essentialPacks` (default []: packs the boot wants before ready but can play without), `fetch.consent {bytes, metered}` (accepted in `fetch`: the outcome waits, key `fetch:waiting`, and `consent_needed` is emitted), `fetch.progress {done, total}` (integers, 0 <= done <= total; accepted in `fetch` and `fetch:waiting`: the outcome runs, `fetch_progress` is emitted), `fetch.done` accepted in `fetch:waiting` and its result `declined`. The fetch rule: with a required pack missing, `offline` stops at `offline {canPlayOffline: false}`, `declined` at `blocked {reason: content-declined}` and anything else at `error {fetch-failed}`; with every required pack present and an essential one missing, `offline` stops at `offline {canPlayOffline: true}` (key `offline:playable`, where `play-offline` goes to `mount`); otherwise `mount`. `BootState.canPlayOffline` is true only at that playable offline stop. Append-only: a change to the vocabulary, to `accepts` or to an existing row's expectation bumps `stageMatrixVersion`.",
     maxFailedBoots: STAGE_MAX_FAILED_BOOTS,
     bootOkSeconds: STAGE_BOOT_OK_SECONDS,
     vocabulary: { ...STAGE_VOCABULARY, confirmations: STAGE_CONFIRMATIONS },
@@ -12599,63 +12883,62 @@ function refEmbedsClaims(e: unknown, ctx: ClaimCtx): boolean {
   return true;
 }
 
-// ── §4.2's fixed object-ref table and §4.3's records ─────────────────────────────────────────
-
-/** Every object a §4.6 record pins, by the blob name it has in the content set (§4.3). Each
- *  `sha256` is the SHA-256 of the name; `bytes` and `size` are §4.3's figures. `refs` marks the
- *  four objects the content set records in `content/blobs/refs.json` instead of shipping. */
-const PACK_OBJECTS: Record<
-  string,
-  { bytes: number; size?: number; refs?: true }
-> = {
-  "payload/v1.full.zst": { bytes: 1196151, size: 5258960 },
-  "payload/v2.full.zst": { bytes: 1201876, size: 5256232, refs: true },
-  "files/v1.files.zst": { bytes: 13505, size: 41870 },
-  "files/v1.gaps.zst": { bytes: 4698, size: 41232, refs: true },
-  "files/v2.files.zst": { bytes: 13783, size: 42700 },
-  "files/v2.gaps.zst": { bytes: 4702, size: 41616 },
-  "deltas/v1-v2.pf.zst": { bytes: 312704 },
-  "patch/v1-v2.files.zst": { bytes: 4009, size: 12950 },
-  "patch/v1-v2.files.data": { bytes: 314899 },
-  "tree/v1.files.zst": { bytes: 13500, size: 39500 },
-  "tree/v2.files.zst": { bytes: 13800, size: 40300 },
-  "patch/v1-v2.tree.zst": { bytes: 4000, size: 12800 },
-  "tree/v1.full.zst": { bytes: 1190000, size: 5217728, refs: true },
-  "tree/v2.full.zst": { bytes: 1195000, size: 5214616, refs: true },
-  "tree/t1.files.zst": { bytes: 1000, size: 3300 },
-  "tree/t1.full.zst": { bytes: 1898, size: 9421 },
+/** The reference helpers the content generator borrows (it imports nothing it checks). */
+const REF_JSON: RefJson = {
+  parseStrict: (text) => refParseStrict(text),
+  nonWire: (text) => refNonWire(text),
+  // A stamp's members sit at its top level; re-rooted under `/content` so §2.5's minimum table
+  // and `refContentClaims` apply unchanged.
+  stampContentClaims: (text) => {
+    const wrapped = `{"content":${text}}`;
+    const parsed = refParseStrict(wrapped);
+    if (!parsed.ok || !isObj(parsed.value)) return false;
+    return refContentClaims(parsed.value.content, ctxOf(wrapped), "/content");
+  },
 };
-const PACK_OBJECT_HASHES = new Set(
-  Object.keys(PACK_OBJECTS).map((n) => sha256Hex(n)),
-);
 
-/** An object ref `{sha256, bytes, size, codec}` from the table. */
+// ── §4.3's records over the content set's object refs (P4-04) ─────────────────────────────────
+
+/** The content set, decoded from the committed inputs in `conformance/corpus/v2/content/blobs/`
+ *  (`tools/gen-content-corpus.ts`). P4-21 pinned a fixed table here; P4-04 re-signs every valid
+ *  record, twin and marker over the real refs, so the two corpora join by hash. */
+let CONTENT_SET: ContentSet | null = null;
+function contentSet(): ContentSet {
+  CONTENT_SET ??= loadContentSet(REF_JSON);
+  return CONTENT_SET;
+}
+/** The object refs every §4.6 record may pin: shipped blobs and `refs.json`'s four entries. */
+function packObjectHashes(): Set<string> {
+  return new Set([...contentSet().objects.values()].map((r) => r.sha256));
+}
+
+/** An object ref `{sha256, bytes, size, codec}` of a content-set object. */
 function objRef(name: string): Record<string, unknown> {
-  const o = PACK_OBJECTS[name];
-  if (!o || o.size === undefined) throw new Error(`no object ref ${name}`);
-  return {
-    sha256: sha256Hex(name),
-    bytes: o.bytes,
-    size: o.size,
-    codec: "zstd",
-  };
+  const r = contentRef(contentSet(), name);
+  return { sha256: r.sha256, bytes: r.bytes, size: r.size, codec: r.codec };
 }
 /** A `{sha256, bytes}` member (a delta's `artifact` or `data`). */
 function hashBytes(name: string): Record<string, unknown> {
-  const o = PACK_OBJECTS[name];
-  if (!o) throw new Error(`no object ${name}`);
-  return { sha256: sha256Hex(name), bytes: o.bytes };
+  return contentHashBytes(contentSet(), name);
 }
 
-/** The payloads. A container's `sha256` is its payload file's; a tree's is its `treeDigest`;
- *  both stand in as the SHA-256 of a name until P4-04 computes them. The tree sizes are the
- *  container sizes less their gaps. */
+/** The payloads: a container's `sha256` is its payload file's; a tree's is its `treeDigest`. */
 const PACK_PAYLOADS = {
-  v1: { size: 5258960, sha256: sha256Hex("pkey-corpus-payload:v1") },
-  v2: { size: 5256232, sha256: sha256Hex("pkey-corpus-payload:v2") },
-  treeV1: { size: 5217728, sha256: sha256Hex("pkey-corpus-tree:v1") },
-  treeV2: { size: 5214616, sha256: sha256Hex("pkey-corpus-tree:v2") },
-  t1: { size: 9421, sha256: sha256Hex("pkey-corpus-tree:t1") },
+  get v1() {
+    return { ...contentSet().c1.payload };
+  },
+  get v2() {
+    return { ...contentSet().c2.payload };
+  },
+  get treeV1() {
+    return { ...contentSet().tree1.payload };
+  },
+  get treeV2() {
+    return { ...contentSet().tree2.payload };
+  },
+  get t1() {
+    return { ...contentSet().t1.payload };
+  },
 };
 
 const LEVELS_HANDLER = {
@@ -12708,7 +12991,7 @@ function levelsV2Variant(): Record<string, unknown> {
         method: "zstd-patch-from",
         scope: "files",
         from: PACK_PAYLOADS.v1.sha256,
-        memBytes: 699312,
+        memBytes: contentSet().memBytes.setC,
         patch: objRef("patch/v1-v2.files.zst"),
         data: hashBytes("patch/v1-v2.files.data"),
       },
@@ -12784,9 +13067,9 @@ function packRecordDocs(): Record<string, Record<string, unknown>> {
               method: "zstd-patch-from",
               scope: "files",
               from: PACK_PAYLOADS.treeV1.sha256,
-              memBytes: 699312,
+              memBytes: contentSet().memBytes.setT,
               patch: objRef("patch/v1-v2.tree.zst"),
-              data: hashBytes("patch/v1-v2.files.data"),
+              data: hashBytes("patch/v1-v2.tree.data"),
             },
           ],
         },
@@ -14673,7 +14956,7 @@ function checkPackClaimCases(corpus: Record<string, AnyCase[]>): void {
     };
     walk(r.doc.variants);
     for (const h of refs)
-      if (!PACK_OBJECT_HASHES.has(h))
+      if (!packObjectHashes().has(h))
         fail(`${r.name} pins ${h}, outside the object table`);
   }
 }
@@ -15169,6 +15452,38 @@ function checkConfirmCases(): void {
       throw new Error(`stage-matrix: confirm ${c.outcome}`);
 }
 
+/** The content corpus over the signed pack records (`tools/gen-content-corpus.ts`), with the join
+ *  self-check: every `refs.json` entry is pinned by a valid record or a `plan-real-*` row. */
+async function buildContent(): Promise<{
+  cases: Record<string, unknown>;
+  planMatrix: Record<string, unknown>;
+}> {
+  const packs = await packRecords();
+  const built = buildContentCorpus(REF_JSON, contentSet(), {
+    get: (name) => {
+      const r = packs.get(name);
+      if (!r) throw new Error(`content corpus: no pack record ${name}`);
+      return { doc: r.doc, sha256: r.sha256 };
+    },
+    appContent: appTwin(packs).content as Record<string, unknown>,
+  });
+  const pinned = new Set<string>();
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (isObj(v)) {
+      if (typeof v.sha256 === "string") pinned.add(v.sha256);
+      Object.values(v).forEach(walk);
+    }
+  };
+  for (const r of packs.values()) walk(r.doc.variants);
+  for (const [name, r] of Object.entries(contentSet().refsJson))
+    if (!pinned.has(r.sha256) && !built.planRealPins.has(name))
+      throw new Error(
+        `content corpus: refs.json ${name} is pinned by no record or plan row`,
+      );
+  return { cases: built.cases, planMatrix: built.planMatrix };
+}
+
 /** Reconcile one generated/source file against its on-disk copy. In `--check` mode a drift
  *  is fatal (returns true so the caller can exit 1); otherwise it's written. */
 function reconcile(path: string, content: string, check: boolean): boolean {
@@ -15194,6 +15509,13 @@ function reconcile(path: string, content: string, check: boolean): boolean {
 
 async function main(): Promise<void> {
   const check = process.argv.includes("--check");
+  // plans/P4-01.md §4.2: the explicit blob rebuild, never in the gate. It writes only
+  // `content/blobs/` (refs.json included); run `pnpm gen:corpus` afterwards.
+  if (process.argv.includes("--rebuild-content-blobs")) {
+    const at = process.argv.indexOf("--payloads");
+    rebuildContentBlobs(REF_JSON, at >= 0 ? process.argv[at + 1] : undefined);
+    return;
+  }
 
   // The fingerprint + device-id vectors. Unsigned (they pin hash formulas, not signatures),
   // but guarded by the same drift gate and mirrored alongside the rest.
@@ -15202,8 +15524,8 @@ async function main(): Promise<void> {
   });
 
   // ── corpus v2 (wire contract v3) ───────────────────────────────────────────
-  // Eight files in one directory so a runner can point at `corpus/v2/` and find everything
-  // it needs, and so `--check` guards the whole set. The `fingerprint.json` formulas are
+  // Nine files and the `content/` directory in one place so a runner can point at `corpus/v2/`
+  // and find everything it needs, and so `--check` guards the whole set. The `fingerprint.json` formulas are
   // unchanged across the wire revisions (`fingerprintVersion` stays 1) and deliberately NOT
   // rebranded — the `pkey-hw:`/`pkey-device:` prefixes are hash domains baked into every
   // enrolled digest, not user-visible identifiers. `stage-matrix.json` pins client boot
@@ -15234,6 +15556,15 @@ async function main(): Promise<void> {
   const v2OutletMatrix = await format(JSON.stringify(buildOutletMatrixV1()), {
     parser: "json",
   });
+  // plans/P4-01.md §4.1–§4.5 (P4-04): the content corpus and `plan-matrix.json`, rebuilt from
+  // the committed inputs after `buildV2` has signed the pack records they join by hash.
+  const content = await buildContent();
+  const contentCases = await format(JSON.stringify(content.cases), {
+    parser: "json",
+  });
+  const planMatrix = await format(JSON.stringify(content.planMatrix), {
+    parser: "json",
+  });
 
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
@@ -15246,8 +15577,18 @@ async function main(): Promise<void> {
     [basename(V2_CONFIG_MATRIX_OUT), v2ConfigMatrix],
     [basename(V2_UPDATE_MATRIX_OUT), v2UpdateMatrix],
     [basename(V2_OUTLET_MATRIX_OUT), v2OutletMatrix],
+    [basename(V2_PLAN_MATRIX_OUT), planMatrix],
   ]);
   let stale = false;
+  // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its
+  // blobs are inputs nothing here writes, and a `content/` directory in a mirror is stray.
+  stale =
+    reconcile(join(CONTENT_DIR, CONTENT_CASES_NAME), contentCases, check) ||
+    stale;
+  for (const path of contentStrays([SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES])) {
+    console.error(`stray: ${path} is not written by the generator`);
+    stale = true;
+  }
   for (const dir of CORPUS_TARGETS) {
     for (const [name, content] of files)
       stale = reconcile(join(dir, name), content, check) || stale;

@@ -12,3 +12,7 @@ actions/publish/dist/** text eol=lf linguist-generated=true
 # hashes the module, so neither may be rewritten on checkout.
 packages/zstd-wasm/src/zdec.wasm binary
 packages/zstd-wasm/src/zdec.wasm.sha256 text eol=lf
+
+# The content corpus's generator inputs (P4-04): hashed byte for byte, so no checkout (the Godot
+# Windows leg runs with core.autocrlf=true) may rewrite a small raw text blob such as refs.json.
+conformance/corpus/v2/content/blobs/** binary

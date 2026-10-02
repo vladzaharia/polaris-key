@@ -45,7 +45,7 @@ import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
 import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
-import { releaseStoreSyncStatements } from "./sync.js";
+import { releaseStoreSync } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { releaseKeysForSync } from "./records.js";
@@ -590,7 +590,14 @@ async function applyRepoManifest(
   // The app deliverable's declaration (P2-04): `release_deliverables.def_json` and the channels'
   // `includes`. Before the truth store below, which classifies by the same declaration.
   if (rel) {
-    stmts.push(...manifestDeliverableStatements(slug, rel.app, now));
+    stmts.push(
+      ...manifestDeliverableStatements(
+        slug,
+        rel.app,
+        now,
+        rel.packDeliverables,
+      ),
+    );
     updated.push("deliverables");
   }
 
@@ -622,7 +629,7 @@ async function applyRepoManifest(
   const syncedCfg = rel ? await getReleaseConfig(db, slug) : cfg;
   if (syncedCfg) {
     // The map just parsed, not the persisted one: this batch is what persists it.
-    const storeStmts = await releaseStoreSyncStatements(
+    const store = await releaseStoreSync(
       env,
       db,
       syncedCfg,
@@ -630,10 +637,17 @@ async function applyRepoManifest(
       fetchImpl,
       rel ? { app: rel.app } : {},
     );
-    if (storeStmts.length > 0) {
-      stmts.push(...storeStmts);
+    if (store.statements.length > 0) {
+      stmts.push(...store.statements);
       updated.push("releases");
     }
+    // A GitHub release tagged with a pack release id (P4-02) is skipped, never merged.
+    for (const tag of store.packTagConflicts)
+      refused.push({
+        code: "release_tag_is_pack_release",
+        path: `releases/${tag}`,
+        message: `GitHub release "${tag}" was not synced: a pack release already has that id`,
+      });
   }
 
   if (stmts.length > 0) {

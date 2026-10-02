@@ -11,8 +11,8 @@
 //
 // The file is decoded into private `Decodable` structs and mapped onto the public types, as
 // `GateMatrixTests` does. The mapping is strict: a value outside the vocabulary fails the test
-// rather than being skipped. Every row and probe is well formed, since Swift cannot express a
-// malformed event.
+// rather than being skipped. Every row and probe is well formed; v3's integer payloads that the
+// corpus would call malformed are unit-tested below.
 
 import Foundation
 import PolarisKeyCore
@@ -46,6 +46,7 @@ final class StageMatrixTests: XCTestCase {
         let allowOffline: Bool?
         let allowGrace: Bool?
         let requiredPacks: [String]?
+        let essentialPacks: [String]?
     }
     private struct RawEvent: Decodable {
         let type: String
@@ -54,6 +55,10 @@ final class StageMatrixTests: XCTestCase {
         let decision: String?
         let installed: [String]?
         let code: String?
+        let bytes: Int?
+        let metered: Bool?
+        let done: Int?
+        let total: Int?
     }
     private struct RawEmit: Decodable {
         let type: String
@@ -63,6 +68,10 @@ final class StageMatrixTests: XCTestCase {
         let reason: String?
         let canPlayOffline: Bool?
         let code: String?
+        let bytes: Int?
+        let metered: Bool?
+        let done: Int?
+        let total: Int?
     }
     private struct Step: Decodable {
         let event: RawEvent
@@ -130,6 +139,16 @@ final class StageMatrixTests: XCTestCase {
         case "fail":
             guard let code = e.code else { throw Unmappable(description: "fail without code") }
             return .fail(code: code)
+        case "fetch.consent":
+            guard let bytes = e.bytes, let metered = e.metered else {
+                throw Unmappable(description: "fetch.consent without bytes or metered")
+            }
+            return .fetchConsent(bytes: bytes, metered: metered)
+        case "fetch.progress":
+            guard let done = e.done, let total = e.total else {
+                throw Unmappable(description: "fetch.progress without done or total")
+            }
+            return .fetchProgress(done: done, total: total)
         default: throw Unmappable(description: "unknown event \(e.type)")
         }
     }
@@ -153,6 +172,16 @@ final class StageMatrixTests: XCTestCase {
             return .error(code: code)
         case "boot_rolled_back": return .bootRolledBack
         case "boot_ready": return .bootReady
+        case "consent_needed":
+            guard let bytes = e.bytes, let metered = e.metered else {
+                throw Unmappable(description: "consent_needed without bytes or metered")
+            }
+            return .consentNeeded(bytes: bytes, metered: metered)
+        case "fetch_progress":
+            guard let done = e.done, let total = e.total else {
+                throw Unmappable(description: "fetch_progress without done or total")
+            }
+            return .fetchProgress(done: done, total: total)
         default: throw Unmappable(description: "unknown emit \(e.type)")
         }
     }
@@ -162,12 +191,17 @@ final class StageMatrixTests: XCTestCase {
         if let allowOffline = i.allowOffline { options.allowOffline = allowOffline }
         if let allowGrace = i.allowGrace { options.allowGrace = allowGrace }
         if let requiredPacks = i.requiredPacks { options.requiredPacks = requiredPacks }
+        if let essentialPacks = i.essentialPacks { options.essentialPacks = essentialPacks }
         return options
     }
 
-    /// `gate:waiting` while the gate waits, otherwise the stage.
+    /// `gate:waiting` while the gate waits, `fetch:waiting` while the fetch waits for consent,
+    /// `offline:playable` at a playable offline stop (v3), otherwise the stage.
     private func acceptsKey(_ state: BootState) -> String {
-        state.stage == .gate && state.outcome == .waiting ? "gate:waiting" : state.stage.rawValue
+        if state.stage == .gate && state.outcome == .waiting { return "gate:waiting" }
+        if state.stage == .fetch && state.outcome == .waiting { return "fetch:waiting" }
+        if state.stage == .offline && state.canPlayOffline { return "offline:playable" }
+        return state.stage.rawValue
     }
 
     /// Sends every probe from `state`; returns how many it sent.
@@ -190,7 +224,7 @@ final class StageMatrixTests: XCTestCase {
         let matrix = try loadMatrix()
         print(
             "stage-matrix runner on \(ProcessInfo.processInfo.operatingSystemVersionString)")
-        XCTAssertEqual(matrix.stageMatrixVersion, 2)
+        XCTAssertEqual(matrix.stageMatrixVersion, 3)
         XCTAssertEqual(matrix.maxFailedBoots, MAX_FAILED_BOOTS)
         XCTAssertEqual(matrix.bootOkSeconds, BOOT_OK_SECONDS)
         XCTAssertEqual(matrix.vocabulary.confirmations, BootConfirmation.allCases.map(\.rawValue))
@@ -220,6 +254,14 @@ final class StageMatrixTests: XCTestCase {
                 XCTAssertEqual(result.emits, try step.emits.map(emit), where_)
                 for case .stageChanged(let stage, _) in result.emits { stages.append(stage.rawValue) }
                 state = result.state
+                // v3: canPlayOffline is true exactly at an offline stop whose emit said so.
+                var offlineEmit: Bool? = nil
+                for case .offline(let can) in result.emits { offlineEmit = can }
+                if let offlineEmit {
+                    XCTAssertEqual(state.canPlayOffline, offlineEmit, where_)
+                } else if !result.emits.isEmpty {
+                    XCTAssertFalse(state.canPlayOffline, where_)
+                }
                 sent += try probe(state, probes, matrix.accepts, "\(where_), after")
                 states += 1
             }
@@ -248,7 +290,10 @@ final class StageMatrixTests: XCTestCase {
             BootState(
                 stage: .idle, outcome: .running, options: BootOptions(), sync: .pending,
                 resume: .shell))
-        XCTAssertEqual(state.options, BootOptions(allowOffline: true, allowGrace: true, requiredPacks: []))
+        XCTAssertEqual(
+            state.options,
+            BootOptions(allowOffline: true, allowGrace: true, requiredPacks: [], essentialPacks: []))
+        XCTAssertFalse(state.canPlayOffline)
         let first = bootTransition(state, .start)
         XCTAssertEqual(first, bootTransition(state, .start))
         XCTAssertEqual(state, initialBootState())
@@ -269,5 +314,42 @@ final class StageMatrixTests: XCTestCase {
             }
             XCTAssertEqual(bootConfirmation(outcome).rawValue, c.expect, c.outcome)
         }
+    }
+
+    // ── Stage matrix v3: the integer payloads the corpus would call malformed ────────
+    private func fetching(_ options: BootOptions) -> BootState {
+        var state = initialBootState(options)
+        let events: [BootEvent] = [
+            .start, .shellDone, .guardDone(.ok), .syncDone(.ok), .gateStatus(.ok),
+            .decideDone(.none),
+        ]
+        for e in events { state = bootTransition(state, e).state }
+        XCTAssertEqual(state.stage, .fetch)
+        return state
+    }
+
+    func testV3IgnoresMalformedConsentAndProgress() {
+        let state = fetching(BootOptions(requiredPacks: ["core"]))
+        let bad: [BootEvent] = [
+            .fetchConsent(bytes: -1, metered: false),
+            .fetchConsent(bytes: 9_007_199_254_740_992, metered: false),
+            .fetchProgress(done: 2, total: 1),
+            .fetchProgress(done: -1, total: 1),
+            .fetchProgress(done: 0, total: 9_007_199_254_740_992),
+        ]
+        for e in bad {
+            let r = bootTransition(state, e)
+            XCTAssertEqual(r.state, state, "\(e)")
+            XCTAssertEqual(r.emits, [], "\(e)")
+        }
+    }
+
+    func testV3ResetsCanPlayOfflineWhenThePlayableStopIsLeft() {
+        var state = fetching(BootOptions(requiredPacks: ["core"], essentialPacks: ["hd"]))
+        state = bootTransition(state, .fetchDone(.offline, installed: ["core"])).state
+        XCTAssertTrue(state.canPlayOffline)
+        state = bootTransition(state, .playOffline).state
+        XCTAssertEqual(state.stage, .mount)
+        XCTAssertFalse(state.canPlayOffline)
     }
 }

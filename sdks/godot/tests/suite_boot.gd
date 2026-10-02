@@ -75,6 +75,9 @@ func _record(boot: PKeyBoot) -> void:
 	boot.error.connect(func(c): _emits.append({"type": "error", "code": c}))
 	boot.boot_rolled_back.connect(func(): _emits.append({"type": "boot_rolled_back"}))
 	boot.boot_ready.connect(func(): _emits.append({"type": "boot_ready"}))
+	# Stage matrix v3. The corpus's numbers parse as floats, so the signal's ints are recorded so.
+	boot.consent_needed.connect(func(b, m): _emits.append({"type": "consent_needed", "bytes": float(b), "metered": m}))
+	boot.fetch_progress.connect(func(d, n): _emits.append({"type": "fetch_progress", "done": float(d), "total": float(n)}))
 
 
 func _row(t: PKeyTestContext, row: Dictionary) -> bool:
@@ -97,6 +100,8 @@ func _row(t: PKeyTestContext, row: Dictionary) -> bool:
 		opts["allow_grace"] = init["allowGrace"]
 	if init.has("requiredPacks"):
 		opts["required_packs"] = init["requiredPacks"]
+	if init.has("essentialPacks"):
+		opts["essential_packs"] = init["essentialPacks"]
 	var good := true
 	var steps: Array = row["steps"]
 	if steps[0]["event"]["type"] != "start":

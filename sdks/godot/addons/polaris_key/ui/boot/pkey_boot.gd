@@ -18,7 +18,9 @@ extends PKeyUiView
 ## view (`show_default_view = false`).
 ##
 ## Options for `run()`: allow_offline (default true), allow_grace (true), required_packs ([],
-## accepted; nothing installs packs until P4-08), sync_timeout_seconds (20, or 45 on a build
+## accepted; nothing installs packs until P4-08), essential_packs ([]: stage matrix v3's packs the
+## boot wants before READY but can play without; an OFFLINE stop with every required pack present
+## offers "Play offline"), sync_timeout_seconds (20, or 45 on a build
 ## without threads, where a bundle verify runs in frame slices: never under 10 s natively or 30 s
 ## sliced, S-04), offer_enrollment (false), release_url (""), keep_update_prompt (true: see the
 ## property), options (a PKeyOptions used when PolarisKey is not configured yet), host (replaces
@@ -38,6 +40,11 @@ signal offline(can_play_offline: bool)
 signal error(code: String)
 signal boot_rolled_back()
 signal boot_ready()
+## Stage matrix v3: the download needs the player's consent (the size disclosure and the cellular
+## choice). The host answers with fetch.done, `declined` included; the consent UI is P4-08's.
+signal consent_needed(bytes: int, metered: bool)
+## Stage matrix v3: download progress, 0 <= done <= total.
+signal fetch_progress(done: int, total: int)
 ## The boot stopped (READY, BLOCKED, OFFLINE or ERROR): the first stop resolves run(); a stop
 ## reached after a Retry arrives only here.
 signal boot_finished(result: PKeyBootResult)
@@ -192,7 +199,8 @@ func run(opts: Dictionary = {}) -> PKeyBootResult:
 	if sdk != null and sdk.has_signal("verify_progress") and not sdk.verify_progress.is_connected(set_verify_progress):
 		sdk.verify_progress.connect(set_verify_progress)
 	var packs = opts.get("required_packs", [])
-	state = PKeyStages.initial_boot_state(opts.get("allow_offline", true) == true, opts.get("allow_grace", true) == true, packs if packs is Array else [])
+	var essential = opts.get("essential_packs", [])
+	state = PKeyStages.initial_boot_state(opts.get("allow_offline", true) == true, opts.get("allow_grace", true) == true, packs if packs is Array else [], essential if essential is Array else [])
 	gate.allow_grace = opts.get("allow_grace", true) == true
 	gate.offer_enrollment = opts.get("offer_enrollment", false) == true
 	gate.release_url = String(opts.get("release_url", ""))
@@ -240,7 +248,8 @@ func retry() -> void:
 	send({"type": "retry"})
 
 
-## Not accepted in v1: `can_play_offline` is never true (plans/P1-09.md decision 12).
+## Accepted only at an OFFLINE stop that can play what is present (`state.canPlayOffline`, stage
+## matrix v3): every required pack installed and an essential one missing.
 func play_offline() -> void:
 	send({"type": "play-offline"})
 
@@ -268,6 +277,10 @@ func _emit(e: Dictionary) -> void:
 			boot_rolled_back.emit()
 		"boot_ready":
 			boot_ready.emit()
+		"consent_needed":
+			consent_needed.emit(int(e["bytes"]), e["metered"] == true)
+		"fetch_progress":
+			fetch_progress.emit(int(e["done"]), int(e["total"]))
 
 
 ## Do the work of the stage just entered and send its event, unless the machine has moved on
@@ -350,6 +363,7 @@ func _stopped() -> void:
 	var r := PKeyBootResult.of(outcome, reason, stages)
 	r.update = update_result
 	r.rolled_back = rolled_back
+	r.can_play_offline = state.get("canPlayOffline") == true
 	result = r
 	boot_finished.emit(r)
 	if outcome == READY and free_on_ready:
@@ -450,8 +464,7 @@ func _render() -> void:
 	show_text(_body, body)
 	show_text(_update_action, t.text("update_action") if stopped and url != "" else "")
 	show_text(_retry, t.text("retry") if stopped else "")
-	# Never true in v1: no path offers play without the required set and a usable gate.
-	show_text(_play_offline, "")
+	show_text(_play_offline, t.text("play_offline") if outcome == OFFLINE and state.get("canPlayOffline") == true else "")
 	gate.visible = show_default_view and waiting_gate
 	if waiting_gate:
 		var st: Dictionary = sdk.status() if sdk != null and sdk.has_method("status") and sdk.get("core") != null else {}

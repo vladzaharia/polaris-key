@@ -6,13 +6,17 @@ import { describe, expect, it } from "vitest";
 import {
   checkPaths,
   contentClaims,
+  frameWindow,
   isPackId,
   objectRef,
+  packSetId,
   parseContentStamp,
   parseFilesIndex,
   releaseRecordClaims,
   treeDigest,
   variantKey,
+  windowAllowed,
+  windowLogMax,
 } from "../src/index.js";
 import * as packs from "../src/packs/index.js";
 
@@ -503,5 +507,122 @@ describe("releaseRecordClaims over pack and app records (§2.3, §2.4)", () => {
         builds: [{ ...app.builds[0], embeds: 7 }],
       }),
     ).toBe(true);
+  });
+});
+
+// ── P4-04: packSetId, windowLogMax and frameWindow (§2.7 rule 3, §2.9). The content corpus pins
+// frameWindow and packSetId across SDKs; these pin the integer edges the corpus cannot reach.
+
+describe("windowLogMax (§2.7 rule 3)", () => {
+  it("is the bit length of memBytes − 1, floored at 10 and capped at P", () => {
+    expect(windowLogMax(0)).toBe(10);
+    expect(windowLogMax(1)).toBe(10);
+    expect(windowLogMax(511)).toBe(10);
+    expect(windowLogMax(1024)).toBe(10);
+    expect(windowLogMax(1025)).toBe(11);
+    // Exactly a power of two: the bit length of m would be one too high.
+    expect(windowLogMax(4194304)).toBe(22);
+    expect(windowLogMax(4194305)).toBe(23);
+    // A floating log2 rounds these up; the integer rule does not.
+    expect(windowLogMax(2 ** 29)).toBe(29);
+    expect(windowLogMax(2 ** 29 + 1)).toBe(30);
+    expect(windowLogMax(2 ** 31)).toBe(31);
+    expect(windowLogMax(2 ** 31 + 1)).toBe(31);
+    expect(windowLogMax(2 ** 40)).toBe(31);
+    expect(windowLogMax(Number.MAX_SAFE_INTEGER)).toBe(31);
+  });
+  it("caps at 30 for a 32-bit or wasm32 decoder", () => {
+    expect(windowLogMax(2 ** 31, 30)).toBe(30);
+    expect(windowLogMax(2 ** 30, 30)).toBe(30);
+    expect(windowLogMax(2 ** 29, 30)).toBe(29);
+  });
+  it("is null for a memBytes that is not a non-negative safe integer, or another P", () => {
+    expect(windowLogMax(-1)).toBeNull();
+    expect(windowLogMax(1.5)).toBeNull();
+    expect(windowLogMax(2 ** 53)).toBeNull();
+    expect(windowLogMax(Number.NaN)).toBeNull();
+    expect(windowLogMax(1024, 29)).toBeNull();
+    expect(windowLogMax(1024, 32)).toBeNull();
+  });
+});
+
+describe("frameWindow (§2.7 rule 3, RFC 8878 §3.1.1)", () => {
+  const hex = (h: string): Uint8Array =>
+    new Uint8Array(h.match(/../g)!.map((b) => parseInt(b, 16)));
+  it("reads a single-segment frame's content size and a descriptor's window", () => {
+    expect(frameWindow(hex("28b52ffd20ff"))).toBe(255);
+    expect(frameWindow(hex("28b52ffd60ffff"))).toBe(65791);
+    expect(frameWindow(hex("28b52ffd005a"))).toBe(2621440);
+    expect(frameWindow(hex("28b52ffd0000"))).toBe(1024);
+  });
+  it("saturates at 2^32", () => {
+    expect(frameWindow(hex("28b52ffde0ffffffffffffffff"))).toBe(2 ** 32);
+    expect(frameWindow(hex("28b52ffd00ff"))).toBe(2 ** 32);
+  });
+  it("reads only the header, so trailing bytes are ignored", () => {
+    expect(frameWindow(hex("28b52ffd20ff0000000000"))).toBe(255);
+  });
+  it("is null for a bad magic, a reserved bit, a short header or a non-array", () => {
+    expect(frameWindow(hex("28b52ffe20ff"))).toBeNull();
+    expect(frameWindow(hex("28b52ffd28ff"))).toBeNull();
+    expect(frameWindow(hex("28b52ffd"))).toBeNull();
+    expect(frameWindow(hex("28b52ffd80"))).toBeNull();
+    expect(frameWindow(new Uint8Array(0))).toBeNull();
+    expect(frameWindow("28b52ffd20ff" as unknown as Uint8Array)).toBeNull();
+  });
+});
+
+describe("windowAllowed (§2.7 rule 3)", () => {
+  // A frame declaring a 2^23 window (Window_Descriptor 0x68).
+  const w23 = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd, 0x80, 0x68, 5, 0, 0, 0]);
+  it("allows a window at 2^windowLogMax and refuses one above it", () => {
+    expect(windowAllowed(w23, 2 ** 23)).toBe(true);
+    expect(windowAllowed(w23, 2 ** 23 - 1)).toBe(true);
+    expect(windowAllowed(w23, 2 ** 22)).toBe(false);
+  });
+  it("refuses an unreadable header or a bad memBytes", () => {
+    expect(windowAllowed(w23.slice(0, 5), 2 ** 30)).toBe(false);
+    expect(windowAllowed(w23, -1)).toBe(false);
+  });
+});
+
+describe("packSetId (§2.9)", () => {
+  const r1 = sha("r1");
+  const r2 = sha("r2");
+  it("hashes the sorted lines, and the empty set hashes the empty string", async () => {
+    expect(await packSetId([])).toBe(sha(""));
+    expect(
+      await packSetId([
+        { packId: "b.x", releaseSha256: r2 },
+        { packId: "a", releaseSha256: r1 },
+      ]),
+    ).toBe(sha(`a ${r1}\nb.x ${r2}\n`));
+  });
+  it("sorts by bytes: a dash before a dot, a prefix first", async () => {
+    expect(
+      await packSetId([
+        { packId: "a.b.c", releaseSha256: r1 },
+        { packId: "a.b-c", releaseSha256: r2 },
+      ]),
+    ).toBe(sha(`a.b-c ${r2}\na.b.c ${r1}\n`));
+  });
+  it("is null for a bad pack id, a bad hash or a duplicate pack", async () => {
+    expect(await packSetId([{ packId: "app", releaseSha256: r1 }])).toBeNull();
+    expect(await packSetId([{ packId: "A", releaseSha256: r1 }])).toBeNull();
+    expect(
+      await packSetId([{ packId: "a", releaseSha256: r1.toUpperCase() }]),
+    ).toBeNull();
+    expect(
+      await packSetId([
+        { packId: "a", releaseSha256: r1 },
+        { packId: "a", releaseSha256: r2 },
+      ]),
+    ).toBeNull();
+    expect(
+      await packSetId([null] as unknown as {
+        packId: string;
+        releaseSha256: string;
+      }[]),
+    ).toBeNull();
   });
 });

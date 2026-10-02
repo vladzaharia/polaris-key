@@ -39,7 +39,9 @@
  *
  * P2b-04 added resolution and source access to `ReleaseCatalog` and rollouts, delivery access and
  * delivery URLs to `Delivery`; P2b-02 implements `outletCapabilities`; P2b-03 added availability,
- * submissions and the key inventory. P2b-05, P2b-06, P3-03, P4-05, P4-14 and P6-03 consume.
+ * submissions and the key inventory; P4-02 added the pack functions to `ReleaseCatalog` and the
+ * delivery gate (`entitlement`) to `Delivery`. P2b-05, P2b-06, P3-03, P4-02 (Release's publish
+ * routes read `delivery.entitlement`), P4-05, P4-09, P4-14 and P6-03 consume.
  */
 
 /// <reference types="@cloudflare/workers-types" />
@@ -234,6 +236,93 @@ export type CatalogSourceRef =
       checksum: boolean;
     };
 
+// ── Packs (P4-02, plans/P4-01.md §6) ─────────────────────────────────────────────────────────
+
+/** A declared pack deliverable (the persisted `.pkey/release` declaration, defaults filled). */
+export interface CatalogPackDeliverable {
+  id: string;
+  /** `godot.pck` | `files.tree` in v1. */
+  packType: string;
+  /** `pinned` in v1. */
+  binding: string;
+  /** `embedded` | `none`. */
+  baseline: string;
+  required: boolean;
+  /** `essential` | `prefetch` | `on-demand`. */
+  delivery: string;
+  /** Every variant key the declaration allows (`""` for an unvaried pack). */
+  variantKeys: string[];
+  /** The licence flag `.pkey/release` ASSERTS, or null. Never the gate (that is
+   *  `Delivery.entitlement`, operator-owned). */
+  assertedEntitlement: string | null;
+}
+
+/** One object of a pack release's variant, as its signed record names it. */
+export interface CatalogPackObject {
+  /** `PACK_OBJECT_ROLES`: `payload` (the `full` object), `files-index`, `files-gaps`, `delta`,
+   *  `patch`, `patch-data`. */
+  role: string;
+  /** SHA-256 and length of the STORED bytes (the blob route's ETag and Repr-Digest). */
+  sha256: string;
+  bytes: number;
+  /** The blob-store key (`gated/` for a gated pack). */
+  key: string;
+  /** The decoded size and codec, when the ref carries them; a delta's base and memory. */
+  meta: Record<string, unknown>;
+}
+
+/** One variant of a pack release. */
+export interface CatalogPackVariant {
+  /** The variant key; `""` for none. */
+  variantKey: string;
+  /** Its `release_builds.build_id`: the variant key, `default` for none. */
+  buildId: string;
+  variant: Record<string, string>;
+  payload: { size: number; sha256: string };
+  /** `requires.engine`, or null. */
+  engine: string | null;
+  objects: CatalogPackObject[];
+}
+
+/** A pack release, from its stored signed record. */
+export interface CatalogPackRelease {
+  release: CatalogRelease;
+  /** The record's hash: what an app release pins. */
+  recordSha256: string;
+  type: string;
+  formatVersion: number;
+  /** The record's `entitlement` (the gate CI signed at publish), or null. */
+  entitlement: string | null;
+  handler: {
+    mountOrder?: number;
+    prefixes?: string[];
+    activation?: string;
+  } | null;
+  variants: CatalogPackVariant[];
+}
+
+/** One file of a pack variant, from its files index. */
+export interface CatalogPackFile {
+  path: string;
+  size: number;
+  sha256: string;
+  /** Container layout only. */
+  offset: number | null;
+  blob: { sha256: string; bytes: number; codec: string; key: string };
+}
+
+/** One pin: app release → the exact pack release it pins (a mirror of the signed `content`). */
+export interface CatalogPin {
+  appReleaseId: string;
+  pack: string;
+  packReleaseId: string;
+  /** The pinned pack record's hash. */
+  recordSha256: string;
+  /** The app release's `expects` entry for the pack. */
+  required: boolean;
+  delivery: string;
+}
+
 /**
  * Release's read-only view of what exists (README §3.2). Every method reads; none writes.
  * Results are ordered deterministically so a consumer's output is stable.
@@ -299,6 +388,32 @@ export interface ReleaseCatalog {
    * classes (R6-01). The template and the binary name are Release's data.
    */
   installScript(origin: string): Promise<string | null>;
+
+  // ── Packs (P4-02): what P4-05 serves, P4-09 shows and update reads ──
+  /** The declared pack deliverables, by id. */
+  packDeliverables(): Promise<CatalogPackDeliverable[]>;
+  /** One pack release with its variants and the objects its record names, or null. */
+  packRelease(
+    deliverableId: string,
+    releaseId: string,
+  ): Promise<CatalogPackRelease | null>;
+  /**
+   * The files of one variant of a pack release, read from its files index in the blob store and
+   * decoded (one index per call, at most `MAX_PUBLISHED_INDEX_BYTES`; a caller walking many
+   * releases drops each before the next). Null when the release, the variant or its readable
+   * index does not exist.
+   */
+  packFiles(
+    releaseId: string,
+    variantKey: string,
+  ): Promise<CatalogPackFile[] | null>;
+  /** What app release `appReleaseId` pins, by pack id. */
+  pins(appReleaseId: string): Promise<CatalogPin[]>;
+  /** Which app releases pin pack release `packReleaseId`, by app release id. */
+  pinnedBy(packReleaseId: string): Promise<CatalogPin[]>;
+  /** The packs build `buildId` of app release `appReleaseId` embeds, or null when its
+   *  descriptor said nothing (or there is no such build). */
+  embeds(appReleaseId: string, buildId: string): Promise<string[] | null>;
 }
 
 // ── delivery (Distribution) ─────────────────────────────────────────────────────────────────
@@ -558,6 +673,16 @@ export interface Delivery {
    * appcast and the portal all read (README §3.5).
    */
   accessMode(deliverable: string): Promise<ReleaseAccess>;
+  /**
+   * The delivery GATE of one deliverable (P4-02, plans/P4-01.md decision 35): the licence flag in
+   * the `entitlement` of the deliverable's OWN `dist_access` row, never the `app` row's (a pack
+   * row is operator-owned from the start, P2b-04), or `null` when the deliverable is ungated.
+   * Release's publish routes read it: the uploads preflight reports it to CI, the stage round
+   * holds every staged object's `gated` flag to it, and pack ingest refuses a record whose
+   * `entitlement` differs. Reads `dist_access` alone, never `releaseCatalog`, so the two hooks
+   * never call each other.
+   */
+  entitlement(deliverable: string): Promise<string | null>;
   /**
    * The canonical, immutable URL of one release file (`name`) or of a build's payload
    * (`buildId`), both minted as `…/files/<releaseId>/<name>` — pinned to the release by id, never

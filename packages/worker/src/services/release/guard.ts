@@ -32,6 +32,18 @@ export const RELEASE_DESCRIBED_BY_SQL = `EXISTS (
      AND json_extract(metadata_json, '$.descriptor.status') = 'ingested'
      AND json_extract(metadata_json, '$.descriptor.sha256') = ?)`;
 
+/**
+ * True unless the release id is held by a NON-app deliverable (a pack, P4-02). Params: product,
+ * release id. A pack release id is `<packId>@<version>` and git allows `@` in a tag, so a GitHub
+ * release can carry the same id as a pack release. The truth-store sync skips such a release
+ * (`sync.ts`), and every row it writes for a release is also guarded with this, so a pack
+ * ingested between the sync's read and its batch is never overwritten either. A release with no
+ * row yet passes: the sync's own metadata insert creates it as an `app` release.
+ */
+export const RELEASE_NOT_FOREIGN_DELIVERABLE_SQL = `NOT EXISTS (
+  SELECT 1 FROM release_metadata
+   WHERE product = ? AND release_id = ? AND deliverable_id <> 'app')`;
+
 function placeholders(sql: string): number {
   return (sql.match(/\?/g) ?? []).length;
 }

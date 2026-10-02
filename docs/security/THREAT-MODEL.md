@@ -374,6 +374,17 @@ holds the bytes), gains no ref it did not earn by uploading, and the signal is n
 sizes; it is accepted as residual and revisited if a tenant ever holds a hash whose bare
 existence is sensitive.
 
+**Stage rounds: a second way to earn a ref (P4-02).** A pack's objects are promoted in rounds
+(`POST /<p>/release/publish/stage`, `services/release/packs/publish.ts`) before its record is
+submitted, because one request cannot promote a whole pack inside the subrequest limit. A round
+earns refs by exactly P2-01's rule (a): it promotes only the verified objects of a ticket this
+token obtained, from the product's own staging prefix, for a pack the product declares, and only
+when each object's `gated` flag equals the pack's delivery gate (`gated_mismatch`). Each promoted
+object earns a `pack-upload` ref, `(product, key, "pack-upload", <packId>)`. That ref is
+possession, not liveness: it lets the blob route serve, under the pack's access mode, an object
+no release names yet; no device fetches it, because devices fetch only what a verified record or
+index names (P4-14's collector drops a `pack-upload` ref no live index lists).
+
 **Residual risk: the parent token.** A13 can write locked prefixes directly (R2's age lock still
 refuses overwrites and deletes within 180 days). It lives only as Worker secrets; nothing logs it,
 and no response contains it (the tests assert it). Rotation: create a new token, set the three
@@ -488,12 +499,15 @@ only a record that does nothing until its service is turned on.
 **The ingest's cost is bounded for untrusted input (the R10 class).** Every row Distribution
 writes comes from one push to a third party's repo and lands in the shared D1 batch, so its count
 is bounded by the validator, not by the push: at most 32 outlets (`MAX_OUTLETS`), and transport
-routes only for the deliverables Release actually ingests — today only `app`, because packs are
-ignored (`pack_deliverables_not_supported`). Routing every declared pack would have let a 64 KiB
-`release.yaml` of `{kind: pack}` entries multiply into ~90,000 statements. A link or resync
-therefore writes at most 32 outlet upserts, one removal sweep, one transport delete and 32
-transport inserts (`test/distributionOutlets.test.ts`, "the ingest's cost is bounded"). When
-packs are ingested (P4-02), the pack count must be bounded before they are routed.
+routes only for `app` today. P4-02 bounds the pack count: a release document declares at most 64
+packs (`MAX_PACK_DELIVERABLES`, `too_many_pack_deliverables`, refused whole before any pack is
+validated), so routing every pack would cost at most (1 + 64) × 32 = 2,080 transport rows,
+where an unbounded 64 KiB `release.yaml` of `{kind: pack}` entries could have multiplied into
+~90,000 statements. Packs are not routed yet, so a link or resync still writes at most 32 outlet
+upserts, one removal sweep, one transport delete and 32 transport inserts
+(`test/distributionOutlets.test.ts`, "the ingest's cost is bounded"); P4-05 routes packs and
+rewrites this paragraph to that worst case. Manifest sync writes one `release_deliverables` row
+per pack, at most 64.
 
 **Residual risk.** Identity and listing fields are manifest-owned and written verbatim (validated
 patterns, https-only URLs, no control characters); a repo writer can point a listing's `iconUrl`
@@ -552,8 +566,12 @@ the old column.
   dropping `.pkey/release` cannot open a `licensed` product — whether the push leaves its
   services on or turns them off for an operator to turn back on ("dropping .pkey/release never
   loosens…"). The ingest skips a claimed row, so `entitled` (no manifest spelling)
-  survives a push. A pack row is operator-only. `update/settings` refuses `artifactsAccess` by
-  name.
+  survives a push. A pack row is operator-only: its `entitlement` is the pack's delivery gate
+  (P4-01 decision 35). Release's publish routes read it through `delivery.entitlement`, CI signs
+  it into each pack record, and the stage round and ingest refuse an object or a record that
+  disagrees (`gated_mismatch`, `pack-entitlement`, `pack-object`). `.pkey/release` may assert a
+  gate, which can only refuse a publish that differs, so no push gates, un-gates or re-flags a
+  pack. `update/settings` refuses `artifactsAccess` by name.
 - **Turning Distribution on cannot loosen access.** Enabling a service in the console
   (`core/servicesAdmin.ts`) runs no ingest, so the `app` row must already be right at that
   moment. Distribution writes it through `manifestIngestAlways` (`core/registry.ts`), the one
@@ -1721,13 +1739,61 @@ markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ing
   value select a code path. Cross-record rules (every expected pack pinned, `embeds` ⊆ pins, no
   entitlement on a required pack) are publish rules, enforced by the CLI and ingest, never
   trusted from a client.
-- **Decoding is bounded before it starts.** `@polaris-key/zstd-wasm`, the decoder-only libzstd
-  1.5.7 WASM the Worker and the browser use, decodes exactly one frame whose declared content
-  size is the caller's, and with a raw-content prefix refuses a frame whose header window is
-  above 2^`windowLogMax` before decoding, because libzstd enforces its own limit only when it
-  streams through a small buffer. Its workerd entry instantiates the module per decode, so no
-  decode's linear memory outlives the call. A files index is refused above
-  `MAX_FILES_INDEX_BYTES` (32 MiB) on a client before it is fetched or decoded.
+- **Decoding is bounded before it starts.** Every decoded length is declared by a signed ref
+  and checked before allocation: a files index or patch descriptor against
+  `MAX_FILES_INDEX_BYTES` (32 MiB) on a client before it is fetched or decoded, its entries
+  against `MAX_INDEX_FILES`, and every object's stored SHA-256 and length against its ref before a
+  byte is decoded, the decoded length against `size` after. Every `zstd-patch-from` frame's header
+  window (`frameWindow`, read from the bytes alone) is checked against
+  2^`windowLogMax(memBytes)` before it is decoded, by the applier itself in every SDK, and refused
+  as `delta-apply-failed`: libzstd enforces its own window limit only when it streams through a
+  small buffer (one-shot decodes, a full-size output buffer and Godot's engine decoder accept the
+  window), so a decoder parameter is never relied on (plans/P4-01.md §2.7 rule 3). The content
+  corpus pins the rule (`frameWindowCases`, `delta-whole-window-over-mem-bytes`,
+  `file-delta-tree-small-window`). `@polaris-key/zstd-wasm`, the decoder-only libzstd 1.5.7 WASM,
+  makes the same check itself: it decodes exactly one frame whose declared content size is the
+  caller's, and with a raw-content prefix refuses a frame whose header window is above
+  2^`windowLogMax` before decoding. Its workerd entry instantiates the module per decode, so no
+  decode's linear memory outlives the call. Today only the corpus generator and the conformance
+  runners call it; the Worker's index ingest (P4-02) and the browser SDK (P4-06) are its first
+  production consumers, and the SDK appliers land in P4-06 to P4-08.
+
+**Pack ingest (P4-02).** The Worker still signs no record: a pack record is CI-signed, and ingest
+(`services/release/packs/`) only verifies it, checks it against the pack's declaration and the
+blob store, and stores it. What the Worker newly does is parse CI-supplied bytes:
+
+- **A new parser of CI-supplied bytes inside a shared isolate.** Ingest and the catalog hook's
+  `packFiles` decode files indexes with `@polaris-key/zstd-wasm` and parse them with
+  client-core's `parseFilesIndex`, inside a Workers isolate of 128 MB that concurrent requests
+  share (notes/E5, E7). Each index is bounded by `MAX_PUBLISHED_INDEX_BYTES` (8 MiB, stored and
+  decoded), refused before anything is read, so one decode and parse peaks near 37 MiB; indexes
+  are held one at a time, each dropped before the next is read, with a fresh WASM instance per
+  decode; and a record's indexes are bounded by `MAX_INGEST_INDEX_BYTES` (64 MiB decoded in all),
+  which bounds the submit's CPU. Sizes always come from the signed record and the stored object,
+  never from the request body.
+- **Possession, checked in batches.** Every object a pack record or one of its indexes names must
+  be stored with its recorded length under the pack's prefix (`gated/` exactly when the record
+  carries an `entitlement`), and the product must already hold a ref to it (`pack-object`): earned
+  in a stage round, in this submit's ticket, or for an earlier release. The check is a
+  `json_each` join of at most 10,000 `[key, bytes]` pairs per query against `blob_objects` and
+  this product's `blob_refs`, so another product's copy of the bytes never counts.
+- **Pins are signed, mirrored, never edited.** An app release's pins come from its signed
+  `content` (the descriptor's, which `descriptor-mismatch` holds to the record); ingest refuses a
+  pin to an unknown, mismatched or yanked pack release, an unpinned required or embedded pack, a
+  gated pack pinned as required, and an embedded pack not pinned. `release_pins` mirrors them
+  for queries only. A declared pack whose stored declaration does not read back fails the app
+  release closed (`pack-unreadable`) rather than skipping its `required` rule.
+- **A GitHub tag cannot overwrite a pack release.** A pack release's id is `<packId>@<version>`
+  and git allows `@` in a tag, so whoever can push a tag to the linked repo can name a GitHub
+  release after a pack release. The truth-store sync skips such a release and reports it
+  (`packTagConflicts`, `release_tag_is_pack_release`), and its metadata, file, build and health rows
+  are guarded at write time to an `app` row, so a stale plan cannot overwrite a pack's metadata (its
+  `$.record` marker, which pins verify against), builds or objects either. One residual: the
+  `release_channels` row a manual-channel regex writes is not guarded, so in the narrow race where
+  a pack is ingested between the sync's read and its batch, the admin channel view may point at the
+  pack release until the next sync rewrites it; nothing serves from that row. The reverse order is a
+  denial of publish, not a takeover: a repo writer who pushes the tag first makes that pack
+  version's publish refuse with `release_exists` (409).
 
 ### Boundaries that are weaker than they look
 
@@ -1985,7 +2051,9 @@ changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);
 a CI scope is added, the publisher policy gains a field, a manifest is allowed to set any part of
-it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02);
+it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02); a new
+way to earn a blob ref is added (P4-02's stage round is the second), or the Worker's index bound
+(`MAX_PUBLISHED_INDEX_BYTES`) is raised;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store

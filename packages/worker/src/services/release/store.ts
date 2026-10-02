@@ -16,12 +16,13 @@ export async function latestReleaseHasDmg(
       WHERE a.product = ? AND a.kind = 'dmg'
         AND a.release_id = (
           SELECT release_id FROM release_metadata
-           WHERE product = ?
+           WHERE product = ? AND deliverable_id = ?
            ORDER BY COALESCE(published_at, 0) DESC, version DESC
            LIMIT 1)
       LIMIT 1`,
     product,
     product,
+    APP_DELIVERABLE_ID,
   );
   return row != null;
 }
@@ -118,7 +119,11 @@ import {
   stmtEnsureAppDeliverable,
   stmtUpsertBuild,
 } from "./model.js";
-import { guardStatement, RELEASE_DESCRIBED_SQL } from "./guard.js";
+import {
+  guardStatement,
+  RELEASE_DESCRIBED_SQL,
+  RELEASE_NOT_FOREIGN_DELIVERABLE_SQL,
+} from "./guard.js";
 
 /** What the truth-store sync needs to know about classification (P2-04). */
 export interface StoreClassificationOptions {
@@ -231,16 +236,22 @@ export interface ReleaseHealthRow {
 
 // ── Readers ──────────────────────────────────────────────────────────────────
 
+/**
+ * The `app` deliverable's releases, newest first: the console's Releases list. A pack release
+ * (P4-02) is not one of them: its rows can name thousands of content objects, and the console's
+ * pack views are P4-09's.
+ */
 export async function listReleaseMetadata(
   db: Db,
   product: string,
   limit = 100,
 ): Promise<ReleaseMetadataRow[]> {
   return db.all<ReleaseMetadataRow>(
-    `SELECT * FROM release_metadata WHERE product = ?
+    `SELECT * FROM release_metadata WHERE product = ? AND deliverable_id = ?
       ORDER BY COALESCE(published_at, 0) DESC, version DESC
       LIMIT ?`,
     product,
+    APP_DELIVERABLE_ID,
     limit,
   );
 }
@@ -284,7 +295,8 @@ export async function listReleaseHealth(
  * sync hands these to `releaseStoreStatements` so it can mark a release that has gone from
  * upstream (P0-03) without the statement builder touching the database. A release CI published
  * through a descriptor with no GitHub release behind it (P2-04: `source_url` NULL, descriptor
- * source `ci`) was never upstream, so its absence from the list means nothing.
+ * source `ci`) was never upstream, so its absence from the list means nothing. Neither was a
+ * pack release (P4-02): only `app` releases come from GitHub.
  */
 export async function listStoredReleaseIds(
   db: Db,
@@ -292,11 +304,31 @@ export async function listStoredReleaseIds(
 ): Promise<string[]> {
   const rows = await db.all<{ release_id: string }>(
     `SELECT release_id FROM release_metadata
-      WHERE product = ?
+      WHERE product = ? AND deliverable_id = ?
         AND NOT (source_url IS NULL
                  AND COALESCE(json_extract(metadata_json, '$.descriptor.source'), '') = 'ci')
       ORDER BY release_id ASC`,
     product,
+    APP_DELIVERABLE_ID,
+  );
+  return rows.map((r) => r.release_id);
+}
+
+/**
+ * The release ids a NON-app deliverable holds (P4-02: pack releases, `<packId>@<version>`). The
+ * truth-store sync skips a GitHub release whose tag is one of these and reports it as a
+ * conflict: git allows `@` in a tag, and a GitHub release must never be merged into a pack row.
+ */
+export async function listForeignDeliverableReleaseIds(
+  db: Db,
+  product: string,
+): Promise<string[]> {
+  const rows = await db.all<{ release_id: string }>(
+    `SELECT release_id FROM release_metadata
+      WHERE product = ? AND deliverable_id <> ?
+      ORDER BY release_id ASC`,
+    product,
+    APP_DELIVERABLE_ID,
   );
   return rows.map((r) => r.release_id);
 }
@@ -349,9 +381,11 @@ export async function releaseIdForVersion(
   version: string,
 ): Promise<string | null> {
   const row = await db.first<{ release_id: string }>(
-    `SELECT release_id FROM release_metadata WHERE product = ? AND version = ?
+    `SELECT release_id FROM release_metadata
+      WHERE product = ? AND deliverable_id = ? AND version = ?
       ORDER BY COALESCE(published_at, 0) DESC LIMIT 1`,
     product,
+    APP_DELIVERABLE_ID,
     version,
   );
   return row?.release_id ?? null;
@@ -506,6 +540,9 @@ function publishedAtSeconds(iso: string | null): number | null {
  * `commit_sha` the descriptor recorded is kept when GitHub has none to offer. Both are decided
  * inside the statement, against the row as it is at that moment, so a descriptor ingested
  * between this sync's read and its batch is never lost.
+ *
+ * Only an `app` row is ever updated (P4-02): a GitHub tag equal to a pack release id
+ * (`<packId>@<version>`) leaves the pack's row exactly as its ingest wrote it.
  */
 function stmtUpsertMetadata(
   row: Omit<ReleaseMetadataRow, "seq" | "channel">,
@@ -533,7 +570,8 @@ function stmtUpsertMetadata(
                             json(json_extract(release_metadata.metadata_json, '$.descriptor')))
             END,
             commit_sha = COALESCE(excluded.commit_sha, release_metadata.commit_sha),
-            modified_at = excluded.modified_at`,
+            modified_at = excluded.modified_at
+          WHERE release_metadata.deliverable_id = '${APP_DELIVERABLE_ID}'`,
     params: [
       row.product,
       row.release_id,
@@ -672,6 +710,9 @@ const ARTIFACT_COLUMNS = [
  * In `sniffed`/`mapped` mode `asDescribed` is the row `described` mode would insert for the same
  * file, and the statement inserts it — under the same name rule — instead of `row` when the
  * release turns out to be described by the time it runs (see `ArtifactSyncMode`).
+ *
+ * In every mode nothing is written to a release a non-app deliverable holds (P4-02). The guard
+ * is on the INSERT's SELECT, so the ON CONFLICT update is never reached either.
  */
 function stmtUpsertArtifact(
   row: ReleaseArtifactRow,
@@ -686,8 +727,13 @@ function stmtUpsertArtifact(
   let params: unknown[];
   if (mode === "described") {
     values = `SELECT ${ARTIFACT_COLUMNS.map(() => "?").join(",")}
-          WHERE NOT ${nameTaken}`;
-    params = [...ARTIFACT_COLUMNS.map((c) => row[c]), ...nameParams];
+          WHERE NOT ${nameTaken} AND ${RELEASE_NOT_FOREIGN_DELIVERABLE_SQL}`;
+    params = [
+      ...ARTIFACT_COLUMNS.map((c) => row[c]),
+      ...nameParams,
+      row.product,
+      row.release_id,
+    ];
   } else {
     if (!asDescribed)
       throw new Error("stmtUpsertArtifact: sniffed/mapped need asDescribed");
@@ -704,8 +750,15 @@ function stmtUpsertArtifact(
     }
     values = `SELECT ${select.join(",\n                 ")}
             FROM (SELECT ${RELEASE_DESCRIBED_SQL} AS described) AS g
-           WHERE NOT (g.described AND ${nameTaken})`;
-    params.push(row.product, row.release_id, ...nameParams);
+           WHERE NOT (g.described AND ${nameTaken})
+             AND ${RELEASE_NOT_FOREIGN_DELIVERABLE_SQL}`;
+    params.push(
+      row.product,
+      row.release_id,
+      ...nameParams,
+      row.product,
+      row.release_id,
+    );
   }
   return {
     sql: `INSERT INTO release_artifacts
@@ -979,39 +1032,44 @@ export function releaseStoreStatements(
               },
               now,
             ),
-            `NOT ${RELEASE_DESCRIBED_SQL}`,
-            [product, releaseId],
+            `NOT ${RELEASE_DESCRIBED_SQL} AND ${RELEASE_NOT_FOREIGN_DELIVERABLE_SQL}`,
+            [product, releaseId, product, releaseId],
           ),
         );
       }
     }
     const refused = opts.refused?.get(releaseId);
     health.push(
-      stmtUpsertHealth({
-        product,
-        subject_kind: "release",
-        subject_id: releaseId,
-        // "Has anything to download at all" is the only judgement this pass can make honestly:
-        // whether the RIGHT assets are present is a per-product policy question, and answering
-        // it is `checkReleaseHealth`'s job (it fetches sidecars and checks the Sparkle key). A
-        // refused `pkey-release.json` (P2-04) degrades the release, with the reason.
-        status: refused
-          ? "degraded"
-          : release.assets.length > 0
-            ? "healthy"
-            : "degraded",
-        checked_at: now,
-        details_json: JSON.stringify({
-          assetCount: release.assets.length,
-          ...(refused ? { descriptor: { refused } } : {}),
+      guardStatement(
+        stmtUpsertHealth({
+          product,
+          subject_kind: "release",
+          subject_id: releaseId,
+          // "Has anything to download at all" is the only judgement this pass can make honestly:
+          // whether the RIGHT assets are present is a per-product policy question, and answering
+          // it is `checkReleaseHealth`'s job (it fetches sidecars and checks the Sparkle key). A
+          // refused `pkey-release.json` (P2-04) degrades the release, with the reason.
+          status: refused
+            ? "degraded"
+            : release.assets.length > 0
+              ? "healthy"
+              : "degraded",
+          checked_at: now,
+          details_json: JSON.stringify({
+            assetCount: release.assets.length,
+            ...(refused ? { descriptor: { refused } } : {}),
+          }),
         }),
-      }),
+        RELEASE_NOT_FOREIGN_DELIVERABLE_SQL,
+        [product, releaseId],
+      ),
     );
   }
   // Builds a listed release no longer has under the map (the map changed or was removed, or a
   // file left). ONE statement per sync, map or not. A release that has an ingested descriptor by
   // the time this runs is skipped by the subquery — the descriptor owns its builds — even when
-  // it was ingested after this sync read the store.
+  // it was ingested after this sync read the store. Only `app` releases' builds are touched: a
+  // pack release's builds are its ingest's (P4-02).
   {
     builds.push({
       sql: `DELETE FROM release_builds
@@ -1021,10 +1079,14 @@ export function releaseStoreStatements(
                  SELECT release_id FROM release_metadata
                   WHERE product = ?
                     AND json_extract(metadata_json, '$.descriptor.status') = 'ingested')
+               AND release_id IN (
+                 SELECT release_id FROM release_metadata
+                  WHERE product = ? AND deliverable_id = '${APP_DELIVERABLE_ID}')
                AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))`,
       params: [
         product,
         JSON.stringify(undescribedReleaseIds),
+        product,
         product,
         JSON.stringify(mappedBuildKeys),
       ],

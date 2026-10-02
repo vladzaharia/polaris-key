@@ -549,11 +549,19 @@
       "allowedNa": []
     },
     {
-      "id": "packs.index",
+      "id": "packs.index.files",
       "family": "packs",
-      "title": "Chunk and files index parsing, path rules",
+      "title": "Files index parsing (`pkey-files/1`), path rules, `treeDigest`",
       "service": "release",
       "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.index.chunks",
+      "family": "packs",
+      "title": "Chunk index parsing",
+      "service": "release",
+      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-10" }],
       "allowedNa": []
     },
     {
@@ -606,6 +614,12 @@
       "service": "release",
       "proof": [
         { "kind": "corpus", "file": "stage-matrix.json", "wp": "P1-09" },
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "family": "packSetIdCases",
+          "wp": "P4-04"
+        },
         { "kind": "unit" }
       ],
       "allowedNa": []

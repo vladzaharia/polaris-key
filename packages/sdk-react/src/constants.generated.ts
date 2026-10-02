@@ -41,6 +41,7 @@ export const ErrorCode = {
   serverMisconfigured: "server_misconfigured",
   internalError: "internal_error",
   releaseRecordRejected: "release_record_rejected",
+  releaseTagIsPackRelease: "release_tag_is_pack_release",
   feedNotComposable: "feed_not_composable",
   serviceUnavailable: "service-unavailable",
   serviceDisabled: "service-disabled",
@@ -99,6 +100,19 @@ export const ErrorCode = {
   filesPathConflict: "files-path-conflict",
   filesLayoutMismatch: "files-layout-mismatch",
   contentStampInvalid: "content-stamp-invalid",
+  fullCorrupt: "full-corrupt",
+  deltaArtifactMismatch: "delta-artifact-mismatch",
+  deltaBaseMismatch: "delta-base-mismatch",
+  deltaApplyFailed: "delta-apply-failed",
+  fileCorrupt: "file-corrupt",
+  fileSourceMissing: "file-source-missing",
+  payloadHashMismatch: "payload-hash-mismatch",
+  planTransportUnsupported: "plan-transport-unsupported",
+  planInsufficientDisk: "plan-insufficient-disk",
+  planNoStrategy: "plan-no-strategy",
+  packNoVariant: "pack-no-variant",
+  packTypeUnsupported: "pack-type-unsupported",
+  markerRejected: "marker-rejected",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -138,6 +152,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "server_misconfigured",
   "internal_error",
   "release_record_rejected",
+  "release_tag_is_pack_release",
   "feed_not_composable",
   "service-unavailable",
   "service-disabled",
@@ -196,6 +211,19 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "files-path-conflict",
   "files-layout-mismatch",
   "content-stamp-invalid",
+  "full-corrupt",
+  "delta-artifact-mismatch",
+  "delta-base-mismatch",
+  "delta-apply-failed",
+  "file-corrupt",
+  "file-source-missing",
+  "payload-hash-mismatch",
+  "plan-transport-unsupported",
+  "plan-insufficient-disk",
+  "plan-no-strategy",
+  "pack-no-variant",
+  "pack-type-unsupported",
+  "marker-rejected",
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
@@ -237,6 +265,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   server_misconfigured: "wire",
   internal_error: "wire",
   release_record_rejected: "wire",
+  release_tag_is_pack_release: "wire",
   feed_not_composable: "wire",
   "service-unavailable": "client",
   "service-disabled": "client",
@@ -295,6 +324,19 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "files-path-conflict": "client",
   "files-layout-mismatch": "client",
   "content-stamp-invalid": "client",
+  "full-corrupt": "client",
+  "delta-artifact-mismatch": "client",
+  "delta-base-mismatch": "client",
+  "delta-apply-failed": "client",
+  "file-corrupt": "client",
+  "file-source-missing": "client",
+  "payload-hash-mismatch": "client",
+  "plan-transport-unsupported": "client",
+  "plan-insufficient-disk": "client",
+  "plan-no-strategy": "client",
+  "pack-no-variant": "client",
+  "pack-type-unsupported": "client",
+  "marker-rejected": "client",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */
@@ -340,7 +382,8 @@ export const Feature = {
   outletDetect: "outlet.detect",
   packsRecord: "packs.record",
   packsPlan: "packs.plan",
-  packsIndex: "packs.index",
+  packsIndexFiles: "packs.index.files",
+  packsIndexChunks: "packs.index.chunks",
   packsApplyFull: "packs.apply.full",
   packsApplyFile: "packs.apply.file",
   packsApplyChunk: "packs.apply.chunk",
@@ -402,7 +445,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "outlet.detect",
   "packs.record",
   "packs.plan",
-  "packs.index",
+  "packs.index.files",
+  "packs.index.chunks",
   "packs.apply.full",
   "packs.apply.file",
   "packs.apply.chunk",
@@ -824,6 +868,52 @@ export const VARIANT_AXIS_VALUES: readonly VariantAxis[] = [
   "quality",
 ];
 
+/** The install planner's strategies (plans/P4-01.md §2.9, A7 §4.2): a plan result's `strategy` and a host's `caps.strategies`. `plan-matrix.json` pins them. */
+export const PatchStrategy = {
+  noop: "noop",
+  platform: "platform",
+  delta: "delta",
+  chunk: "chunk",
+  file: "file",
+  full: "full",
+} as const;
+export type PatchStrategy = (typeof PatchStrategy)[keyof typeof PatchStrategy];
+
+/** Every `PatchStrategy` value, in source order. */
+export const PATCH_STRATEGY_VALUES: readonly PatchStrategy[] = [
+  "noop",
+  "platform",
+  "delta",
+  "chunk",
+  "file",
+  "full",
+];
+
+/** How a deliverable's bytes arrive (`TRANSPORTS` in `@polaris-key/manifest`, P2b-02; README §3.1): the planner's `caps.transports` and a platform target's `transport` (plans/P4-01.md §2.9). */
+export const Transport = {
+  embedded: "embedded",
+  pkeyCdn: "pkey-cdn",
+  appleBa: "apple-ba",
+  playPad: "play-pad",
+  steamDepot: "steam-depot",
+  msixOptional: "msix-optional",
+  flatpakExt: "flatpak-ext",
+  web: "web",
+} as const;
+export type Transport = (typeof Transport)[keyof typeof Transport];
+
+/** Every `Transport` value, in source order. */
+export const TRANSPORT_VALUES: readonly Transport[] = [
+  "embedded",
+  "pkey-cdn",
+  "apple-ba",
+  "play-pad",
+  "steam-depot",
+  "msix-optional",
+  "flatpak-ext",
+  "web",
+];
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 export const HeaderName = {
   arch: "X-PKey-Arch",
@@ -881,13 +971,19 @@ export const GATE_MATRIX_VERSION = 2;
 export const FINGERPRINT_VERSION = 1;
 
 /** `stageMatrixVersion` of conformance/corpus/v2/stage-matrix.json. */
-export const STAGE_MATRIX_VERSION = 2;
+export const STAGE_MATRIX_VERSION = 3;
 
 /** `updateMatrixVersion` of conformance/corpus/v2/update-matrix.json. */
 export const UPDATE_MATRIX_VERSION = 1;
 
 /** `outletMatrixVersion` of conformance/corpus/v2/outlet-matrix.json. */
 export const OUTLET_MATRIX_VERSION = 1;
+
+/** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
+export const PLAN_MATRIX_VERSION = 1;
+
+/** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
+export const CONTENT_CORPUS_VERSION = 1;
 
 /** Wire contract v4 limit `MAX_WIRE_INTEGER` (`@polaris-key/protocol/core`). */
 export const MAX_WIRE_INTEGER = 9007199254740991;
@@ -930,6 +1026,9 @@ export const MARKER_FORMAT = "pkey-marker/1";
 
 /** Packs on the wire: `CONTENT_STAMP_FORMAT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
 export const CONTENT_STAMP_FORMAT = "pkey-content/1";
+
+/** Packs on the wire: `PLAN_REQUEST_WEIGHT` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
+export const PLAN_REQUEST_WEIGHT = 16384;
 
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {

@@ -1,7 +1,7 @@
 class_name PKeyStages
 extends RefCounted
 ## The boot stage machine: a GDScript port of client-core `stages.ts` (plans/P1-09.md §2.2–§2.3,
-## stage matrix version 2 from plans/P3-01.md §2.10). One pure reducer every renderer drives:
+## stage matrix version 2 from plans/P3-01.md §2.10, version 3 from plans/P4-01.md §2.10). One pure reducer every renderer drives:
 ## the host does each stage's work and reports the result as an event; the machine decides the
 ## next stage and what to emit. It does no I/O, reads no clock and never mutates its input, so
 ## `res://tests/corpus/v2/stage-matrix.json` pins it row by row, exactly as it pins the Node,
@@ -13,7 +13,9 @@ extends RefCounted
 ##
 ## Events and emits are Dictionaries in the corpus's shape (dotted event types, snake_case emit
 ## types, camelCase payload keys, kebab-case payload values). The state is a Dictionary:
-## {stage, outcome, options: {allowOffline, allowGrace, requiredPacks}, sync, resume}.
+## {stage, outcome, options: {allowOffline, allowGrace, requiredPacks, essentialPacks}, sync,
+## resume, canPlayOffline}. `canPlayOffline` (v3) is true only at an `offline` stop reached with
+## every required pack present and an essential one missing, where `play-offline` is accepted.
 ##
 ## The normal path is idle → shell → guard → sync → gate → decide → fetch → mount → ready, and
 ## every stage is entered even when it has nothing to do. An event the current stage does not
@@ -30,9 +32,9 @@ const BOOT_STAGES := ["idle", "shell", "guard", "sync", "gate", "decide", "fetch
 ## The outcome a renderer reports: `running` until the boot stops or the gate waits.
 const BOOT_OUTCOMES := ["running", "waiting", "ready", "blocked", "offline", "error"]
 ## The events a host sends, dotted.
-const BOOT_EVENT_TYPES := ["start", "shell.done", "guard.done", "sync.done", "sync.timeout", "gate.status", "decide.done", "fetch.done", "mount.done", "background.start", "background.done", "retry", "play-offline", "fail"]
+const BOOT_EVENT_TYPES := ["start", "shell.done", "guard.done", "sync.done", "sync.timeout", "gate.status", "decide.done", "fetch.done", "mount.done", "background.start", "background.done", "retry", "play-offline", "fail", "fetch.consent", "fetch.progress"]
 ## The emits the machine produces, snake_case: the signal names PKeyBoot exposes.
-const BOOT_EMIT_TYPES := ["stage_changed", "waiting", "update_available", "blocked", "offline", "error", "boot_rolled_back", "boot_ready"]
+const BOOT_EMIT_TYPES := ["stage_changed", "waiting", "update_available", "blocked", "offline", "error", "boot_rolled_back", "boot_ready", "consent_needed", "fetch_progress"]
 ## What `boot_guard_action` decides at launch.
 const BOOT_GUARD_ACTIONS := ["none", "apply-staged", "roll-back"]
 ## What `decide.done` carries. `required` is P1-09's; no v4 update decision maps to it.
@@ -49,19 +51,22 @@ const BOOT_OK_SECONDS := 10
 const LICENSE_STATUSES := ["ok", "grace", "expired", "revoked", "needs-activation", "version-too-old", "version-too-new", "channel-not-entitled", "not-applicable"]
 
 
-## Stage idle, outcome running, sync `pending`, resume `shell`. `required_packs` is copied and
-## must hold strings (anything else is dropped).
-static func initial_boot_state(allow_offline := true, allow_grace := true, required_packs: Array = []) -> Dictionary:
-	var packs: Array = []
-	for p in required_packs:
-		if p is String:
-			packs.append(p)
+## Stage idle, outcome running, sync `pending`, resume `shell`, canPlayOffline false.
+## `required_packs` and `essential_packs` (v3: packs the boot wants before READY but can play
+## without) are copied and must hold strings (anything else is dropped).
+static func initial_boot_state(allow_offline := true, allow_grace := true, required_packs: Array = [], essential_packs: Array = []) -> Dictionary:
 	return {
 		"stage": "idle",
 		"outcome": "running",
-		"options": {"allowOffline": allow_offline, "allowGrace": allow_grace, "requiredPacks": packs},
+		"options": {
+			"allowOffline": allow_offline,
+			"allowGrace": allow_grace,
+			"requiredPacks": _strings(required_packs),
+			"essentialPacks": _strings(essential_packs),
+		},
 		"sync": "pending",
 		"resume": "shell",
+		"canPlayOffline": false,
 	}
 
 
@@ -69,10 +74,12 @@ static func initial_boot_state(allow_offline := true, allow_grace := true, requi
 ## takes its default.
 static func initial_from(init: Dictionary) -> Dictionary:
 	var packs = init.get("requiredPacks", [])
+	var essential = init.get("essentialPacks", [])
 	return initial_boot_state(
 		init.get("allowOffline", true) == true,
 		init.get("allowGrace", true) == true,
 		packs if packs is Array else [],
+		essential if essential is Array else [],
 	)
 
 
@@ -98,11 +105,16 @@ static func boot_confirmation(outcome: String) -> String:
 	return "never"
 
 
-## `gate:waiting` while the gate waits for the player, otherwise the stage: the key of the
-## corpus's `accepts` table.
+## The key of the corpus's `accepts` table: `gate:waiting` while the gate waits for the player,
+## `fetch:waiting` while the fetch waits for download consent and `offline:playable` at a
+## playable offline stop (v3), otherwise the stage.
 static func accepts_key(state: Dictionary) -> String:
 	if state.get("stage") == "gate" and state.get("outcome") == "waiting":
 		return "gate:waiting"
+	if state.get("stage") == "fetch" and state.get("outcome") == "waiting":
+		return "fetch:waiting"
+	if state.get("stage") == "offline" and state.get("canPlayOffline") == true:
+		return "offline:playable"
 	return String(state.get("stage", ""))
 
 
@@ -114,6 +126,8 @@ static func boot_transition(state: Dictionary, event: Variant) -> Dictionary:
 	var e: Dictionary = event
 	var stage: String = state["stage"]
 	var waiting: bool = stage == "gate" and state["outcome"] == "waiting"
+	var fetching: bool = stage == "fetch"
+	var consent_waiting: bool = fetching and state["outcome"] == "waiting"
 	var type = e.get("type")
 	if not (type is String):
 		return _ignore(state)
@@ -157,7 +171,7 @@ static func boot_transition(state: Dictionary, event: Variant) -> Dictionary:
 			return _ignore(state)
 
 		"fetch.done":
-			if stage != "fetch" or not _one_of(e.get("result"), PackedStringArray(["ok", "offline", "failed"])):
+			if not fetching or not _one_of(e.get("result"), PackedStringArray(["ok", "offline", "failed", "declined"])):
 				return _ignore(state)
 			var installed = e.get("installed")
 			if not (installed is Array):
@@ -165,11 +179,32 @@ static func boot_transition(state: Dictionary, event: Variant) -> Dictionary:
 			for id in installed:
 				if not (id is String):
 					return _ignore(state)
-			if not _missing_packs(state, installed):
+			if _missing(state["options"]["requiredPacks"], installed):
+				if e["result"] == "offline":
+					return _go(state, "offline", "offline", {"type": "offline", "canPlayOffline": false})
+				if e["result"] == "declined":
+					return _go(state, "blocked", "blocked", {"type": "blocked", "reason": "content-declined"})
+				return _go(state, "error", "error", {"type": "error", "code": "fetch-failed"})
+			if e["result"] == "offline" and _missing(state["options"]["essentialPacks"], installed):
+				return _go(state, "offline", "offline", {"type": "offline", "canPlayOffline": true}, {"canPlayOffline": true})
+			return _go(state, "mount", "running", null)
+
+		"fetch.consent":
+			if not fetching or consent_waiting:
+				return _ignore(state)
+			if not _count(e.get("bytes")) or not (e.get("metered") is bool):
+				return _ignore(state)
+			return _go(state, "fetch", "waiting", {"type": "consent_needed", "bytes": e["bytes"], "metered": e["metered"]})
+
+		"fetch.progress":
+			if not fetching or not _count(e.get("done")) or not _count(e.get("total")) or float(e["done"]) > float(e["total"]):
+				return _ignore(state)
+			return _go(state, "fetch", "running", {"type": "fetch_progress", "done": e["done"], "total": e["total"]})
+
+		"play-offline":
+			if stage == "offline" and state.get("canPlayOffline") == true:
 				return _go(state, "mount", "running", null)
-			if e["result"] == "offline":
-				return _go(state, "offline", "offline", {"type": "offline", "canPlayOffline": false})
-			return _go(state, "error", "error", {"type": "error", "code": "fetch-failed"})
+			return _ignore(state)
 
 		"mount.done":
 			return _go(state, "ready", "ready", {"type": "boot_ready"}) if stage == "mount" else _ignore(state)
@@ -186,19 +221,18 @@ static func boot_transition(state: Dictionary, event: Variant) -> Dictionary:
 			return _go(state, state["resume"], "running", null, {"sync": "pending"})
 
 		"fail":
-			var failing: bool = PackedStringArray(["shell", "guard", "sync", "decide", "fetch", "mount"]).has(stage) or (stage == "gate" and not waiting)
+			var failing: bool = PackedStringArray(["shell", "guard", "sync", "decide", "mount"]).has(stage) or (stage == "gate" and not waiting) or (fetching and not consent_waiting)
 			if not failing or not (e.get("code") is String):
 				return _ignore(state)
 			return _go(state, "error", "error", {"type": "error", "code": e["code"]})
 
-	# `play-offline` is accepted nowhere in v1: `canPlayOffline` is never true.
 	return _ignore(state)
 
 
 # ── Internals ────────────────────────────────────────────────────────────────────────────
 
 ## Move to `stage` (emitting `stage_changed` first when it changes), then at most one emit. A
-## new state: the input is never mutated.
+## new state: the input is never mutated. `canPlayOffline` resets unless the patch sets it.
 static func _go(state: Dictionary, stage: String, outcome: String, extra: Variant, patch: Dictionary = {}) -> Dictionary:
 	var emits: Array = []
 	if stage != state["stage"]:
@@ -211,6 +245,7 @@ static func _go(state: Dictionary, stage: String, outcome: String, extra: Varian
 		"options": state["options"],
 		"sync": patch.get("sync", state["sync"]),
 		"resume": patch.get("resume", state["resume"]),
+		"canPlayOffline": patch.get("canPlayOffline", false),
 	}
 	return {"state": next, "emits": emits}
 
@@ -262,9 +297,28 @@ static func _gate_holds(state: Dictionary, status: String) -> Dictionary:
 	return _go(state, "gate", "waiting", {"type": "waiting", "status": status})
 
 
-static func _missing_packs(state: Dictionary, installed: Array) -> bool:
+static func _missing(ids: Array, installed: Array) -> bool:
 	var have := PackedStringArray(installed)
-	for id in PackedStringArray(state["options"]["requiredPacks"]):
+	for id in PackedStringArray(ids):
 		if not have.has(id):
 			return true
+	return false
+
+
+## The strings of `list`, copied (anything else is dropped).
+static func _strings(list: Array) -> Array:
+	var out: Array = []
+	for p in list:
+		if p is String:
+			out.append(p)
+	return out
+
+
+## A non-negative integer below 2^53 (v3's consent and progress payloads). Godot reads every JSON
+## number as a float, so an integral float counts; a bool does not.
+static func _count(v: Variant) -> bool:
+	if v is int:
+		return v >= 0 and v < 9007199254740992
+	if v is float:
+		return v >= 0.0 and v < 9007199254740992.0 and v == floorf(v)
 	return false

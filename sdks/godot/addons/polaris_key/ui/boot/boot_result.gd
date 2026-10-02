@@ -4,14 +4,15 @@ extends PKeyResult
 ## stops: `outcome` is PKeyBoot.READY, BLOCKED, OFFLINE or ERROR, the machine's outcome
 ## (stage-matrix.json's vocabulary). `ok` is true only for READY.
 ##
-##   reason        BLOCKED: "update-required" or "not-available"; ERROR: the error code
+##   reason        BLOCKED: "update-required", "not-available" or "content-declined"; ERROR: the error code
 ##                 ("sync-failed", "fetch-failed", or the host's code, which is also `code`);
 ##                 "" otherwise
 ##   stages        every stage entered, in order (the stage_changed sequence)
 ##   update        the update answer when DECIDE found one to show (PKeyUpdateCheck, or the v3
 ##                 PKeyVersionCheck), else null
 ##   rolled_back   the boot guard rolled back to the previous build (P3-10)
-##   can_play_offline  OFFLINE: false on every v1 path
+##   can_play_offline  OFFLINE: true when every required pack is present and an essential one
+##                 could not download, so "Play offline" is offered (stage matrix v3)
 ##
 ## A later stop (after the player pressed Retry on the card) arrives as PKeyBoot.boot_finished
 ## and PolarisKey.boot_finished with a new result.
