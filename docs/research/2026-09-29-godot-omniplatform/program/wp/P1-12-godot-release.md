@@ -159,3 +159,69 @@ GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_t
 - Set the status with
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P1-12 done`, and note
   the milestone in the PR.
+
+## Corrections from the code (recorded during implementation)
+
+- **The human inputs, as the lead decided them.** Licence MIT (the addon's `LICENSE` already
+  existed from the repository's relicensing, commit `7a27c562`), first version 0.1.0 (already
+  `plugin.cfg`'s and `SDK_VERSION`'s value). The tag push and both store submissions stay with the
+  owner: this package prepares them instead. `sdks/godot/store/LISTING.md` has every listing field
+  and `sdks/godot/store/CHECKLIST.md` the step-by-step uploads. The "GitHub Release, Asset Store
+  listing and Asset Library entry exist" criterion is open until the owner has done them.
+- **Two zips, not one.** `polaris-key-godot-vX.Y.Z.zip` is the brief's artefact (only
+  `addons/polaris_key/**`). Godot's asset installer drops a zip's single top-level directory by
+  default when it installs from the Asset Library, and only 4.7 exempts `addons/`
+  (`editor/asset_library/editor_asset_installer.cpp`, "Don't skip "addons" by default"; 4.4, 4.5
+  and 4.6 call `open_asset(file, true)` with no exemption). The legacy library reaches exactly
+  those editors, so it gets `polaris-key-godot-vX.Y.Z-assetlib.zip`, the same files under one
+  wrapper directory. Because the repository is a monorepo, the Asset Library entry uses the
+  **Custom** provider with the release download URL (a GitHub-commit download would install
+  `sdks/godot/addons/...`).
+- **The zips come from a script.** `sdks/godot/tools/package.py` checks the version agreement
+  (plugin.cfg, SDK_VERSION, the tag), zips `git ls-files addons/polaris_key` reproducibly (sorted
+  entries, fixed timestamps and modes; byte-identical on one zlib), requires every `.gd.uid`,
+  `LICENSE` and `README.md`, and extracts the CHANGELOG section used as release notes and as the
+  Asset Store changelog. `sdks/godot/tools/smoke_install.sh` is the clean-install test.
+- **The README split in two.** `sdks/godot/README.md` (the docs page) is now the adopter guide,
+  followed by the service-by-service reference it already had; the contributor sections (layout,
+  running the tests, the runner protocol, the corpus mirror, writing GDScript here, measured
+  pitfalls) moved to `sdks/godot/CONTRIBUTING.md`, with a new "Releasing" section, and the code
+  comments that cited them were re-pointed. `addons/polaris_key/README.md` is a short readme for
+  the plugin folder (the Asset Store rule), not a copy.
+- **Brand assets are generated and never imported.** `pnpm gen:brand` now also writes
+  `addons/polaris_key/brand/` (the kit's bit-less 16 px Pinned K glyphs, the `games/` "Powered by"
+  credit screens and the compact badges, each SVG verbatim after a GENERATED comment) with a
+  `.gdignore`. Measured: an SVG's `.import` file written by 4.7.2 is rewritten by a fresh 4.4.1
+  import (it drops `compress/uastc_level`, `process/channel_remap/*`, …), which the CI job's
+  clean-tree check would fail on. The setup dock rasterises the glyph at run time
+  (`Image.load_svg_from_string`) and sets it as the `EditorDock`'s `dock_icon` on 4.6+. The
+  listing icon is the kit's own `05-app-icons/key/desktop/app-256.png`, linked, not copied.
+- **The engine legs are 4.5.2 and 4.6.3, each with its release template**, pinned in
+  `tools/godot.sha512` (plus the macOS editors and 4.4.1's macOS editor for local runs). Both
+  needed a test fix before they were green, neither a change to a verdict:
+  - **4.5.2 segfaults** reading through a mounted pack whose file is gone: `FileAccessPack` seeks
+    before its null check (4.4.1 checks first; 4.6.3 checks both paths). The `uid` group removed
+    its mounted `dataB.pck`, the next mount (the `types` group's zip) read
+    `res://.godot/uid_cache.bin` through it and the editor crashed. The group now leaves its
+    mounted packs on disk, as a game does; the README's engine notes state the rule.
+  - **4.6.3 cannot mount the `bake` group's 4.7.2-exported base** (`Pack version unsupported: 4`;
+    4.6 reads PCK format 3). Below format 4 the group now checks the refusal and logs that the
+    mounted-base reads are not exercised; every delta-decode check still runs.
+- **Dry run: local, not on GitHub.** This package may not push, so `release-godot.yml` has not run
+  on Actions. Its steps ran locally on macOS: `package.py` twice (identical `SHA256SUMS`), the
+  version check failing on a mismatched tag (shown in the report), and the smoke test over both
+  zips on 4.4.1, 4.5.2, 4.6.3 and 4.7.2. The workflow has a `workflow_dispatch` dry-run mode
+  (every job but the release); the owner checklist runs it before the tag. The smoke test enables
+  the plugin through `EditorInterface.set_plugin_enabled` from a throwaway helper plugin and saves
+  the project settings itself (4.7 writes `project.godot` on its own schedule; it also records the
+  autoload by UID, which the check accepts).
+- **Inventory lines had drifted**; the rows were found by grep. Also fixed beyond the listed paths:
+  the docs site's description in `astro.config.mjs`, `build/index.md`'s SDK row, the client-core
+  README and Swift/Python/Node comments naming three or four runners. Two headings changed, and
+  with them their anchors (`start/` "Five SDKs, one corpus, …" and `contribute/waves/` "… in six
+  languages"); nothing linked to the old anchors.
+- **Parity.** `pnpm parity:check` is green. Godot's two P1 rows that are not implemented stay
+  `planned` and unowned, because the registry allows Godot no `na` for them: `core.store` (no work
+  package owns a desktop keyring; iOS and Android have their stores) and `identity.oidc` (no
+  redirect completion in native Godot; device-code sign-in instead).
+- **Not added:** `PKeyDeviceList` (optional in the brief).
