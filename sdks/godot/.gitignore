@@ -1,2 +1,10 @@
 .godot/
 build/
+# Native plugin binaries installed for a local run (sdks/godot/native/*/build.*): never committed.
+addons/polaris_key/native/bin/
+# The native build inputs and outputs (fetch_deps.sh, build.sh, build.ps1).
+native/.deps/
+native/macos/dist/
+native/windows/dist/
+native/windows/bin/
+native/windows/velopack/shim/target/

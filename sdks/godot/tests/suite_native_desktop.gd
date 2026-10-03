@@ -9,8 +9,9 @@ extends RefCounted
 #
 #   facades  the four facades: unsupported matrix, Sparkle, Velopack, WinSparkle, StoreContext
 #   wiring   bridges -> facades, the updater's bridge config, the Microsoft Store hook, options
+#   export   the macOS export plugin's Sparkle switches (PKeyNativeExport)
 
-const GROUPS := ["facades", "wiring"]
+const GROUPS := ["facades", "wiring", "export"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

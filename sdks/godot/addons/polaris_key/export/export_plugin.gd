@@ -25,8 +25,18 @@ extends EditorExportPlugin
 ##
 ## An export plugin cannot fail an export, so a bad value is a dialog warning
 ## (`_get_export_option_warning`, editor only) and, at export, a push_warning a headless log shows.
+##
+## macOS presets also get P5-07's Sparkle options (`polaris_key/sparkle/*`, PKeyNativeExport): the
+## Info.plist keys, the Disable Library Validation entitlement, never an unsigned export, and the
+## executable bits Sparkle's helpers lose in Godot's copy. Windows exports take the plugins' DLLs and
+## the Velopack shim from the Windows GDExtension's [dependencies], which a Microsoft Store build
+## (`pkey_outlet_ms_store`) leaves out (sdks/godot/native/windows/pkey_win.gdextension).
 
 const S := preload("res://addons/polaris_key/core/build_stamp.gd")
+const N := preload("res://addons/polaris_key/export/native_export.gd")
+
+var _export_path := ""
+var _export_macos := false
 
 
 func _get_name() -> String:
@@ -39,6 +49,13 @@ func _supports_platform(_platform: EditorExportPlatform) -> bool:
 
 func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 	var p := S.platform_for(platform.get_os_name(), PackedStringArray())
+	var options: Array[Dictionary] = _stamp_options(p)
+	if p == "macos":
+		options.append_array(N.options())
+	return options
+
+
+func _stamp_options(p: String) -> Array[Dictionary]:
 	return [
 		{
 			"option": {"name": S.OPTION_OUTLET, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM_SUGGESTION, "hint_string": ",".join(S.OUTLETS)},
@@ -94,7 +111,33 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 			var raw = get_option(S.OPTION_OUTLET_IDS)
 			var parsed: Dictionary = S.parse_outlet_ids(raw)
 			return _join([S.outlet_ids_warning(raw)] + S.merge_bundle_id(parsed["ids"], _preset_bundle_id())["problems"])
+		N.OPTION_ENABLED, N.OPTION_PUBLIC_KEY, N.OPTION_FEED_URL:
+			var sp := _sparkle()
+			return _join(Array(N.problems(sp["key"], sp["feed_url"]))) if sp["enabled"] else ""
 	return ""
+
+
+## The Sparkle options of this macOS preset, environment over preset: {enabled, key, feed_url,
+## automatic_checks}.
+func _sparkle() -> Dictionary:
+	return {
+		"enabled": N.truthy(_get_or_env(N.OPTION_ENABLED, N.ENV_ENABLED, false)),
+		"key": N.public_key(_get_or_env(N.OPTION_PUBLIC_KEY, N.ENV_PUBLIC_KEY, "")),
+		"feed_url": str(_get_or_env(N.OPTION_FEED_URL, N.ENV_FEED_URL, "")).strip_edges(),
+		"automatic_checks": N.truthy(_get_or_env(N.OPTION_AUTOMATIC_CHECKS, "", false)),
+	}
+
+
+func _get_export_options_overrides(platform: EditorExportPlatform) -> Dictionary:
+	var preset := get_export_preset()
+	if preset == null or S.platform_for(platform.get_os_name(), PackedStringArray()) != "macos":
+		return {}
+	var sp := _sparkle()
+	if not sp["enabled"]:
+		return {}
+	var existing := str(preset.get(N.PLIST)) if preset.has(N.PLIST) else ""
+	var codesign := int(preset.get(N.CODESIGN)) if preset.has(N.CODESIGN) else N.CODESIGN_BUILT_IN
+	return N.overrides(existing, codesign, sp["key"], sp["feed_url"], sp["automatic_checks"])
 
 
 func _get_export_features(platform: EditorExportPlatform, _debug: bool) -> PackedStringArray:
@@ -102,8 +145,17 @@ func _get_export_features(platform: EditorExportPlatform, _debug: bool) -> Packe
 	return S.feature_tags(v["outlet"], v["channel"], v["outlet_kind"])
 
 
-func _export_begin(features: PackedStringArray, is_debug: bool, _path: String, _flags: int) -> void:
+func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _flags: int) -> void:
 	var platform := S.platform_for(get_export_platform().get_os_name() if get_export_platform() != null else "", features)
+	_export_path = path
+	_export_macos = platform == "macos" and _sparkle()["enabled"]
+	if _export_macos:
+		var sp := _sparkle()
+		for problem in N.problems(sp["key"], sp["feed_url"]):
+			push_warning("Polaris Key Sparkle: %s" % problem)
+		var preset := get_export_preset()
+		if preset != null and preset.has(N.CODESIGN) and int(preset.get(N.CODESIGN)) == N.CODESIGN_DISABLED:
+			push_warning("Polaris Key Sparkle: codesign/codesign was Disabled; exporting with the built-in ad-hoc signature instead (Sparkle rejects updates to an unsigned export).")
 	var v := _values(platform)
 	for problem in v["problems"]:
 		push_warning("Polaris Key build stamp: %s" % problem)
@@ -123,6 +175,19 @@ func _export_begin(features: PackedStringArray, is_debug: bool, _path: String, _
 		"outlet_ids": v["outlet_ids"],
 	})
 	add_file(S.PATH, S.encode(stamp), false)
+
+
+func _export_end() -> void:
+	if not _export_macos:
+		return
+	_export_macos = false
+	var path := _export_path
+	if not path.ends_with(".app"):
+		push_warning("Polaris Key Sparkle: %s is not a .app, so Sparkle's helpers keep the non-executable mode Godot's copy gave them. Export the .app and package it with sdks/godot/native/macos/sign_and_notarize.sh." % path)
+		return
+	var failed := N.restore_executable_bits(ProjectSettings.globalize_path(path) if path.begins_with("res://") else path)
+	if not failed.is_empty():
+		push_warning("Polaris Key Sparkle: could not chmod 0755 %s (is Sparkle.framework listed in pkey_sparkle.gdextension's [dependencies]?)." % ", ".join(failed))
 
 
 ## The effective values for this export (environment over preset), and every problem with them.

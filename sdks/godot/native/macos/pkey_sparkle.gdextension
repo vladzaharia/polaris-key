@@ -1,0 +1,16 @@
+; PKeySparkleNative (P5-07): the macOS Sparkle bridge. build.sh --install copies this file, the
+; universal libpkey_sparkle.dylib and Sparkle.framework into res://addons/polaris_key/native/bin/.
+; Godot copies a [dependencies] framework into Contents/Frameworks with its symlinks; the export
+; plugin then restores the executable bits the copy drops (notes/S-11 §4.1).
+[configuration]
+entry_symbol = "pkey_sparkle_init"
+compatibility_minimum = "4.4"
+reloadable = false
+
+[libraries]
+macos.debug = "res://addons/polaris_key/native/bin/libpkey_sparkle.dylib"
+macos.release = "res://addons/polaris_key/native/bin/libpkey_sparkle.dylib"
+
+[dependencies]
+macos.debug = { "res://addons/polaris_key/native/bin/Sparkle.framework": "Contents/Frameworks" }
+macos.release = { "res://addons/polaris_key/native/bin/Sparkle.framework": "Contents/Frameworks" }
