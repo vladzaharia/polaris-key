@@ -19,12 +19,10 @@ import {
   HANDLER_PREFIX_PATTERN,
   PACK_ACTIVATIONS,
   PACK_DELIVERIES,
-  PACK_TYPES,
   VARIANT_AXES,
   VARIANT_VALUE_PATTERN,
   type PackActivation,
   type PackDelivery,
-  type PackType,
   type VariantAxis,
 } from "@polaris-key/protocol/packs";
 import { parse as parseYaml } from "yaml";
@@ -338,7 +336,13 @@ export interface ManifestPackDeliverable {
   kind: "pack";
   /** The pack id (the deliverable id; never `app`). */
   id: string;
-  type: PackType;
+  type: ManifestPackType;
+  /**
+   * The type's format version CI signs as the record's `formatVersion` (P4-16): the declared one
+   * for the types that take it (`packTypeTakesFormatVersion`), else 1. `godot.pck` overrides it
+   * with the PCK header's.
+   */
+  formatVersion: number;
   binding: PackBinding;
   baseline: PackBaseline;
   required: boolean;
@@ -723,6 +727,66 @@ export type PackPatchStrategy = (typeof PACK_PATCH_STRATEGIES)[number];
  * (P4-20, CONTENT §6.7 item 8).
  */
 export const PACK_FIELDS_NOT_SUPPORTED = ["removes"] as const;
+/**
+ * The pack types a `.pkey/release` may declare (P4-16, CONTENT §4.2, §13): the v1 pair, the v3
+ * types the SDKs ship handlers for, and any `custom.<name>` ({@link CUSTOM_PACK_TYPE_PATTERN}),
+ * whose handler the game registers. Wider than the protocol's `PACK_TYPES`, which stays what a v1
+ * SDK holds: a record may name any type, and an SDK without a handler finds it unusable.
+ */
+export const MANIFEST_PACK_TYPES = [
+  "godot.pck",
+  "files.tree",
+  "godot.zip",
+  "l10n.table",
+  "data.json",
+  "audio.bank",
+  "ml.model",
+] as const;
+/** A game-registered pack type: `custom.<name>` (CONTENT §4.1 custom types). */
+export const CUSTOM_PACK_TYPE_PATTERN = /^custom\.[a-z][a-z0-9-]{0,31}$/;
+export type ManifestPackType =
+  | (typeof MANIFEST_PACK_TYPES)[number]
+  | `custom.${string}`;
+/** Whether `t` is a type a pack declaration may name. */
+export function isManifestPackType(t: unknown): t is ManifestPackType {
+  return (
+    typeof t === "string" &&
+    ((MANIFEST_PACK_TYPES as readonly string[]).includes(t) ||
+      CUSTOM_PACK_TYPE_PATTERN.test(t))
+  );
+}
+/** The types whose payload is one Godot pack mounted into `res://` at a boot: they declare
+ *  `handler.prefixes` and `requires.engine` and activate on restart. */
+export const MOUNTED_PACK_TYPES = ["godot.pck", "godot.zip"] as const;
+/** Whether a type is mounted into `res://` (`godot.pck`, `godot.zip`). */
+export function isMountedPackType(t: string): boolean {
+  return (MOUNTED_PACK_TYPES as readonly string[]).includes(t);
+}
+/**
+ * Whether a declaration states its type's `formatVersion` (P4-16): `data.json` must (its JSON
+ * Schema version), `l10n.table`, `ml.model`, `audio.bank` and `custom.*` may (default 1).
+ * `godot.pck` takes it from the PCK header; `files.tree` and `godot.zip` are format 1.
+ */
+export function packTypeTakesFormatVersion(t: string): boolean {
+  return (
+    t === "data.json" ||
+    t === "l10n.table" ||
+    t === "ml.model" ||
+    t === "audio.bank" ||
+    CUSTOM_PACK_TYPE_PATTERN.test(t)
+  );
+}
+/** The largest `formatVersion` a declaration may state. */
+export const MAX_PACK_FORMAT_VERSION = 2147483647;
+/**
+ * A well-formed BCP-47 tag (RFC 5646 `langtag` and private use, no grandfathered tags), ASCII
+ * case-insensitive: an `l10n.table` pack's `variants.locale` values. client-core's
+ * `bcp47Canonical` applies the same rule on the device (it also reads Godot's `_` as `-`, which
+ * a variant value cannot carry).
+ */
+export const BCP47_TAG_PATTERN =
+  /^(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{5,8})(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?$/i;
+
 /**
  * One content id in a pack release's `provides` or `removes` (P4-20): opaque, printable ASCII
  * without the space, 1–128 characters. The SDKs' `providesOf` (client-core
@@ -2793,14 +2857,44 @@ function validatePackDeliverable(
       );
   }
   // ── type ──
-  const type = isOneOf(def.type, PACK_TYPES) ? def.type : null;
+  const type = isManifestPackType(def.type) ? def.type : null;
   if (!type)
     add(
       errors,
       "release",
       `${at}/type`,
       "invalid_pack_type",
-      `a pack's type is required and must be one of ${PACK_TYPES.join(", ")}.`,
+      `a pack's type is required and must be one of ${MANIFEST_PACK_TYPES.join(", ")}, or custom.<name> (${CUSTOM_PACK_TYPE_PATTERN.source}) for a type whose handler the game registers.`,
+    );
+  // ── formatVersion (P4-16) ──
+  if (def.formatVersion !== undefined) {
+    if (
+      !Number.isSafeInteger(def.formatVersion) ||
+      (def.formatVersion as number) < 1 ||
+      (def.formatVersion as number) > MAX_PACK_FORMAT_VERSION
+    )
+      add(
+        errors,
+        "release",
+        `${at}/formatVersion`,
+        "invalid_pack_format_version",
+        `formatVersion is an integer from 1 to ${MAX_PACK_FORMAT_VERSION}: the version of the type's own format the device's handler must list.`,
+      );
+    else if (type !== null && !packTypeTakesFormatVersion(type))
+      add(
+        errors,
+        "release",
+        `${at}/formatVersion`,
+        "invalid_pack_format_version",
+        `a ${type} pack takes no formatVersion: ${type === "godot.pck" ? "it is the PCK header's" : "its format is 1"}.`,
+      );
+  } else if (type === "data.json")
+    add(
+      errors,
+      "release",
+      `${at}/formatVersion`,
+      "invalid_pack_format_version",
+      "a data.json pack declares formatVersion, the version of its documents' JSON Schema: a device installs only the versions its handler lists.",
     );
   // ── binding ──
   if (def.binding !== undefined && !isOneOf(def.binding, PACK_BINDINGS))
@@ -2905,7 +2999,7 @@ function validatePackDeliverable(
       );
   }
   const h = asRecord(handler);
-  if (type === "godot.pck") {
+  if (type !== null && isMountedPackType(type)) {
     if (
       h.prefixes === undefined ||
       (h.activation !== undefined && h.activation !== "restart")
@@ -2915,16 +3009,16 @@ function validatePackDeliverable(
         "release",
         `${at}/handler`,
         "invalid_pack_handler",
-        "a godot.pck pack declares handler.prefixes (the res:// directories it mounts) and activates on restart.",
+        `a ${type} pack declares handler.prefixes (the res:// directories it mounts) and activates on restart.`,
       );
-  } else if (type === "files.tree") {
+  } else if (type !== null) {
     if (h.prefixes !== undefined || h.mountOrder !== undefined)
       add(
         errors,
         "release",
         `${at}/handler`,
         "invalid_pack_handler",
-        "a files.tree pack is not mounted into res://, so it takes no handler.prefixes or handler.mountOrder.",
+        `a ${type} pack is not mounted into res://, so it takes no handler.prefixes or handler.mountOrder.`,
       );
   }
   // ── variants ──
@@ -3101,14 +3195,33 @@ function validatePackDeliverable(
       );
   }
 
-  if (type === "godot.pck" && asRecord(requires).engine === undefined)
+  if (
+    type !== null &&
+    isMountedPackType(type) &&
+    asRecord(requires).engine === undefined
+  )
     add(
       errors,
       "release",
       `${at}/requires/engine`,
       "invalid_pack_requires",
-      "a godot.pck pack declares requires.engine (godot-<major>.<minor>): a PCK mounts only into the engine version that exported it.",
+      `a ${type} pack declares requires.engine (godot-<major>.<minor>): a Godot pack mounts only into the engine version that exported it.`,
     );
+  // ── l10n.table: each locale variant is a BCP-47 tag (P4-16) ──
+  if (type === "l10n.table" && isRecord(variants)) {
+    const locales = variants.locale;
+    if (
+      Array.isArray(locales) &&
+      locales.some((l) => typeof l !== "string" || !BCP47_TAG_PATTERN.test(l))
+    )
+      add(
+        errors,
+        "release",
+        `${at}/variants/locale`,
+        "invalid_pack_locale",
+        "an l10n.table pack's locale variants are well-formed BCP-47 tags (fr, pt-BR, zh-Hant-TW): the device refuses a table whose locale is not its variant's.",
+      );
+  }
   // ── entitlement: an assertion of the operator's gate, never the gate (decision 35) ──
   const entitlement = def.entitlement;
   if (entitlement !== undefined) {
@@ -3821,16 +3934,16 @@ function normalizePackDeliverable(
   id: string,
   raw: unknown,
 ): ManifestPackDeliverable | null {
-  if (!isRecord(raw) || raw.kind !== "pack" || !isOneOf(raw.type, PACK_TYPES))
+  if (!isRecord(raw) || raw.kind !== "pack" || !isManifestPackType(raw.type))
     return null;
   const type = raw.type;
   const h = asRecord(raw.handler);
   const handler: ManifestPackDeliverable["handler"] = {
     activation: isOneOf(h.activation, PACK_ACTIVATIONS)
       ? h.activation
-      : type === "files.tree"
-        ? "hot"
-        : "restart",
+      : isMountedPackType(type)
+        ? "restart"
+        : "hot",
   };
   if (Number.isSafeInteger(h.mountOrder))
     handler.mountOrder = h.mountOrder as number;
@@ -3866,6 +3979,13 @@ function normalizePackDeliverable(
     kind: "pack",
     id,
     type,
+    formatVersion:
+      packTypeTakesFormatVersion(type) &&
+      Number.isSafeInteger(raw.formatVersion) &&
+      (raw.formatVersion as number) >= 1 &&
+      (raw.formatVersion as number) <= MAX_PACK_FORMAT_VERSION
+        ? (raw.formatVersion as number)
+        : 1,
     binding: isOneOf(raw.binding, PACK_BINDINGS) ? raw.binding : "pinned",
     baseline: isOneOf(raw.baseline, PACK_BASELINES) ? raw.baseline : "none",
     required: raw.required === true,

@@ -44,6 +44,9 @@ import {
   PACK_FIELDS_NOT_SUPPORTED,
   PACK_PATCH_STRATEGIES,
   PROVIDES_FILE_PATTERN,
+  CUSTOM_PACK_TYPE_PATTERN,
+  MANIFEST_PACK_TYPES,
+  MAX_PACK_FORMAT_VERSION,
   type DescriptorManifest,
   type ParsedManifest,
 } from "../src/index.js";
@@ -303,6 +306,29 @@ function base(): Docs {
             variants: { locale: ["en", "fr"] },
             entitlement: "acmeVpn",
           },
+          // P4-16: the v3 types.
+          "acme.strings": {
+            kind: "pack",
+            type: "l10n.table",
+            formatVersion: 1,
+            variants: { locale: ["en", "pt-BR", "zh-Hant-TW"] },
+          },
+          "acme.balance": {
+            kind: "pack",
+            type: "data.json",
+            formatVersion: 2,
+          },
+          "acme.mods": {
+            kind: "pack",
+            type: "godot.zip",
+            handler: { prefixes: ["res://mods/"] },
+            requires: { engine: "godot-4.7" },
+          },
+          "acme.dialogue": {
+            kind: "pack",
+            type: "custom.dialogue",
+            formatVersion: 3,
+          },
         },
       },
       // NOTE: at the release-document ROOT, not inside the `release` wrapper — the validator
@@ -441,6 +467,9 @@ const mint = (d: Docs) => (d.release as Record<string, any>).edgeMint[0];
 const app = (d: Docs) => rel(d).deliverables.app;
 const core3d = (d: Docs) => rel(d).deliverables["acme.core3d"];
 const l10n = (d: Docs) => rel(d).deliverables["acme.l10n"];
+const strings = (d: Docs) => rel(d).deliverables["acme.strings"];
+const balance = (d: Docs) => rel(d).deliverables["acme.balance"];
+const mods = (d: Docs) => rel(d).deliverables["acme.mods"];
 const entry = (d: Docs) => app(d).artifacts[0];
 const dist = (d: Docs) => d.distribution as Record<string, any>;
 const outlet = (d: Docs, id: string) => dist(d).outlets[id];
@@ -1100,7 +1129,55 @@ const MUTATIONS: Mutation[] = [
     code: "invalid_pack_type",
     file: "release",
     schema: "rejects",
-    mutate: (d) => (core3d(d).type = "l10n.table"),
+    mutate: (d) => (core3d(d).type = "audio.banks"),
+  },
+  {
+    // custom.<name> is lowercase (P4-16).
+    code: "invalid_pack_type",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).type = "custom.Dialogue"),
+  },
+  // ── formatVersion, mounted types, locales (P4-16) ──
+  {
+    code: "invalid_pack_format_version",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (balance(d).formatVersion = 0),
+  },
+  {
+    // godot.pck's format version is its PCK header's.
+    code: "invalid_pack_format_version",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (core3d(d).formatVersion = 3),
+  },
+  {
+    // data.json declares the JSON Schema version of its documents.
+    code: "invalid_pack_format_version",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => delete balance(d).formatVersion,
+  },
+  {
+    // A godot.zip mounts directories like a godot.pck.
+    code: "invalid_pack_handler",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => delete mods(d).handler,
+  },
+  {
+    code: "invalid_pack_requires",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => delete mods(d).requires,
+  },
+  {
+    // A variant value pattern holds it, BCP-47 does not (a 10-letter language subtag).
+    code: "invalid_pack_locale",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (strings(d).variants.locale = ["en", "abcdefghij"]),
   },
   {
     code: "invalid_pack_type",
@@ -2344,7 +2421,10 @@ describe("the pack schema's vocabularies are the validator's constants (P4-02)",
       readFileSync(join(schemasDir, "release.schema.json"), "utf8"),
     );
     const pack = schema.$defs.packDeliverable.properties;
-    expect(pack.type.enum).toEqual([...PACK_TYPES]);
+    expect(pack.type.anyOf[0].enum).toEqual([...MANIFEST_PACK_TYPES]);
+    expect(pack.type.anyOf[1].pattern).toBe(CUSTOM_PACK_TYPE_PATTERN.source);
+    expect(pack.formatVersion.maximum).toBe(MAX_PACK_FORMAT_VERSION);
+    for (const t of PACK_TYPES) expect(MANIFEST_PACK_TYPES).toContain(t);
     expect(pack.binding.enum).toEqual([...PACK_BINDINGS]);
     expect(pack.baseline.enum).toEqual([...PACK_BASELINES]);
     expect(pack.delivery.enum).toEqual([...PACK_DELIVERIES]);

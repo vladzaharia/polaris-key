@@ -392,11 +392,22 @@ deliverables:
 ```
 
 - At most **64** packs (`too_many_pack_deliverables`).
-- **`type`** is required: `godot.pck` or `files.tree` (`invalid_pack_type`). A `godot.pck`
-  pack declares `handler.prefixes` (the `res://` directories it mounts, each ending in `/`),
-  activates on `restart`, and declares `requires.engine` (`godot-<major>.<minor>`). A
-  `files.tree` pack takes no `prefixes` or `mountOrder` and activates `hot` by default
-  (`invalid_pack_handler`, `invalid_pack_requires`).
+- **`type`** is required (`invalid_pack_type`): `godot.pck`, `godot.zip`, `files.tree`,
+  `l10n.table`, `data.json`, `audio.bank`, `ml.model`, or `custom.<name>` for a type whose
+  handler the game registers. What each one carries and what devices check is on
+  [Packs](/docs/services/release/packs/#pack-types). A `godot.pck` or `godot.zip` pack declares
+  `handler.prefixes` (the `res://` directories it mounts, each ending in `/`), activates on
+  `restart`, and declares `requires.engine` (`godot-<major>.<minor>`). Every other type takes no
+  `prefixes` or `mountOrder` and activates `hot` by default (`invalid_pack_handler`,
+  `invalid_pack_requires`).
+- **`formatVersion`** is the version of the type's own format, signed as the record's
+  `formatVersion`; a device installs only the versions its handler lists. A `data.json` pack
+  declares it (the JSON Schema version of its documents); `l10n.table`, `ml.model`, `audio.bank`
+  and `custom.<name>` may (default 1); `godot.pck` (the PCK header's), `godot.zip` and
+  `files.tree` never do (`invalid_pack_format_version`).
+- An **`l10n.table`** pack's `locale` variants are well-formed BCP-47 tags such as `fr`, `pt-BR`
+  or `zh-Hant-TW` (`invalid_pack_locale`): a device refuses a table whose locale is not its
+  variant's.
 - **`binding`** is `pinned`, `compatible` or `standalone` (`invalid_pack_binding`): `pinned`
   means each app release pins the exact pack release it ships with; `compatible` means Release
   resolves the newest release whose `requires.contentApi` range holds each live contentApi
