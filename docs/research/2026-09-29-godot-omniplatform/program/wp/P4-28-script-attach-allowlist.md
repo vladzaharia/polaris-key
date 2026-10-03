@@ -36,3 +36,58 @@ scripts packs may attach, and let CI know about extra script languages.
 - [ ] A pack attaching an unlisted app script is refused on the device; a listed one is admitted.
 - [ ] A custom script extension configured for publish is refused by the CLI lint.
 - [ ] The full green gate passes.
+
+## Corrections from implementation
+
+- **The default is strict.** With no list, a pack attaches no app script and reaches no UID
+  outside its own uid cache, on the device (`PKeyOptions.pack_attachable`) and in the publish
+  lint (`deliverables.app.content.attachable`). A compatibility default would leave the
+  residual open in every app that never configures it, and no shipped pack relies on attaching
+  app scripts (Diceroll's planned packs are assets). Strict is made easy by naming every refused
+  reference in the lint and accepting `res://…/` directories. Recorded in THREAT-MODEL "Pack
+  bytes on the device".
+- **The list holds UIDs, not only scripts.** The engine prefers a resolvable UID over the path,
+  the CLI cannot know what an app UID names, and the device must give the CLI's verdict, so a
+  UID outside the pack's own cache is refused whatever it names unless listed. A pack that
+  reaches a non-script base-game resource by UID (the f_uid packs reach `uid://s05mainbase1`)
+  lists that UID; a non-script app resource referenced by path needs nothing. Godot 4.4+ writes
+  the path and the UID of a script reference, so both are listed; the field is therefore
+  `attachable`, not `attachableScripts`.
+- **A manifest field (rule 9).** `deliverables.app.content.attachable`: 1–256 distinct entries,
+  `res://` paths already normal (the PCK path rules) or directories ending in `/`, or canonical
+  `uid://` (`invalid_app_attachable`; schema pattern, mutation entries for both the schema-
+  expressible and validator-only cases, docs, the authoring skill). It configures the lint only
+  and is never stamped into a release, so there is no wire, corpus or protocol change.
+- **The reference check reads the engine's formats rather than scanning for strings.** From the
+  4.4.1 and 4.7.2 sources (`resource_format_text.cpp`, `resource_format_binary.cpp`,
+  `variant_parser.cpp`): text tags must be one strict line each (the parser keeps the last of a
+  repeated key, accepts comments and StringNames inside a tag), and `Resource("…")` loads any
+  path or UID directly, so it is refused wherever it could parse. The binary loader still
+  honours the pre-4.0 inline `OBJECT_EXTERNAL_RESOURCE` in property data and reuses any cached
+  resource whose path a non-`local://` sub-resource names, so both validators walk the header,
+  tables and every property (all 53 value types; an unknown one is refused) instead of
+  searching bytes; relative paths resolve against the resource's own directory and are refused.
+- **Synthetic binary fixtures had to become real.** `packFixtures.ts`'s `binaryResource` wrote a
+  header and opaque bytes; the walk refuses those, so it now writes Godot's layout (format 6,
+  tables, properties), the RSCC bodies too (`resHead`), and the kaykit fixtures and update
+  objects were regenerated. Every pre-existing verdict is unchanged except `audit-binary-extref`
+  (now refused: the residual it pinned is closed) and `ext-script-ok`, replaced by the `refs-*`
+  fixtures (refused: unlisted text and binary script references, a UID to an app script, a
+  script behind a remap, a reference to a `.remap` file, every ambiguous form; admitted: listed
+  text, binary and directory references, listed UIDs, in-pack and non-script references, and
+  kaykit with no script references). The real 4.7.2 and 4.4.1 imports walk cleanly.
+- **Remaps.** A script behind a pack's own `.remap` is judged where it is: the exported file the
+  remap names is a pack entry and gets the reference check (`refs-remap`). A reference naming a
+  `.remap` or `.import` file is refused.
+- **Real-engine probes.** `_attach_probes` saves a Resource with an app script attached as text,
+  binary and RSCC on the running engine: refused with nothing listed, admitted listed, and, once
+  mounted, the resource loads with the app script attached and the pack's value set (the
+  residual, measured). Saved outside `res://` the engine wrote no UID into the reference. The
+  f_uid exports are refused at their reference to `uid://s05mainbase1` without the list.
+- **Script kinds at publish.** `pkey release publish --script-extensions/--script-types` and the
+  Action's `script-extensions`/`script-types` inputs (godot.pck only; refused for a tree pack or
+  the app, and for a malformed extension or type). They also count as script types in the
+  reference check.
+- **Out of scope.** `files.tree` resources get no reference check (a tree is never mounted into
+  `res://`), and an app resource referenced by path runs whatever the app composed into it;
+  both are recorded as residuals.

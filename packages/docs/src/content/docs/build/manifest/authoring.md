@@ -343,6 +343,7 @@ deliverables:
     content:
       contentApi: 3 # required once any pack is declared
       packChannels: { "diceroll.events.*": events } # optional: route pack families
+      attachable: [res://scripts/die.gd, "uid://c3x1bp7twkd0f"] # optional: app scripts and UIDs packs may reference
     artifacts:
       - {
           id: macos,
@@ -438,6 +439,14 @@ deliverables:
   channel (`invalid_pack_channels`); each key must match a declared pack that publishes to that
   channel (`unknown_pack_channels_target`). `content.holds` is never declared: an app release
   holds a pack at publish, in its content stamp (`invalid_app_content`).
+- **`deliverables.app.content.attachable`** lists what a `godot.pck` pack may reference outside
+  itself: app scripts (`res://scripts/die.gd`), directories of scripts (`res://scripts/dice/`)
+  and UIDs (`uid://…`, in Godot's canonical form, for any app resource a pack reaches by UID).
+  1–256 distinct entries, paths already normal (`invalid_app_attachable`). Absent, a pack
+  attaches no app script and reaches no UID outside its own uid cache: the publish lint refuses
+  such a pack, and so does the device. A script reference Godot 4.4+ writes carries the path and
+  the UID (the one in the script's `.uid` file), so list both. Keep the list equal to the Godot
+  SDK's `PKeyOptions.pack_attachable`; it is never stamped into a release.
 
 Resync writes the declaration to `release_deliverables.def_json` (and each channel's
 `includes` to its channel policy, unless an operator owns that channel). The map also defines

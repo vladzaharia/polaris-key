@@ -2314,8 +2314,42 @@ committed or mounted:
   (`ResourceLoader.get_recognized_extensions_for_type`, minus the generic `tres`/`res`/`tscn`/`scn`
   containers whose content is scanned) and uses every `Script` subclass as a marker, so a
   GDExtension script language installed in the app is covered on the device. The CLI cannot ask
-  an engine: `lintPck` takes `scriptExtensions` and `scriptTypes` for such a language, but
-  `pkey release publish` does not expose them yet, so today the device check alone refuses it.
+  an engine: `lintPck` takes `scriptExtensions` and `scriptTypes` for such a language, exposed
+  as `pkey release publish --script-extensions/--script-types` and the Action's
+  `script-extensions`/`script-types` inputs (P4-28), so CI refuses what the device refuses.
+- **A pack attaches only the app scripts and UIDs the app lists (P4-28).** A data pack's
+  resource can reference a script the app already ships and set its exported properties: a text
+  `[ext_resource type="Script" path="res://…"]`, a binary resource's external-table entry, or a
+  `uid://`. Measured on 4.7.2 (editor and release template) and 4.4.1: a pack resource saved by
+  the engine with an app script attached loads, once mounted, with that script attached and the
+  pack's property value set (`_attach_probes` in the Godot packs suite). The app now lists what
+  packs may attach, in `PKeyOptions.pack_attachable` on the device and
+  `deliverables.app.content.attachable` in `.pkey/release` for the publish lint: `res://` script
+  paths, `res://…/` directories, and canonical `uid://` UIDs. Both validators read every
+  reference of every admitted resource (text tags; the binary header, string table, external
+  and internal tables and every property, walked as the 4.4.1/4.7.2 loader reads them) and
+  refuse, with identical lines (`refs-*` and `audit-binary-extref` in `verdicts.json`): a
+  reference to an app script (a script extension, or the type `Script` or a script class)
+  outside the pack that is not listed, exactly or under a listed directory; a UID that is
+  neither in the pack's own uid cache (which may name only the pack's files) nor listed, because
+  the engine prefers a resolvable UID over the path; and, failing closed, anything they cannot
+  read the way the engine would: a line containing `ext_resource` that is not one strict
+  `[ext_resource key="plain literal" …]` tag (no multi-line tag, comment, StringName, escape or
+  repeated key), the inline `Resource("…")` constructor (which loads any path or UID directly),
+  a path that is not an already-normal `res://` path (relative paths resolve against the
+  resource's own directory) or names a `.remap`/`.import` file, a non-canonical UID, a
+  big-endian or format-7+ binary resource, a sub-resource path that is not `local://` (the
+  loader reuses any cached resource of that path, an app script included), the pre-4.0 inline
+  external reference, an unknown value type, or anything past the end. A script behind a remap
+  is judged where it is: the exported file the pack's `.remap` names is itself a pack entry and
+  gets the same check. **The default is strict: with no list, a pack attaches no app script and
+  reaches no UID outside its own cache.** The alternative, admitting everything unless an app
+  opts in, would leave the residual open in every app that never hears of the setting, and the
+  program has no shipped packs that rely on attaching app scripts (Diceroll's planned packs are
+  assets). An app that does attach scripts lists them once in both places (Godot 4.4+ writes the
+  path and the UID of a script reference, so both), and the lint names every refused reference
+  so the list is easy to complete. Non-script app resources referenced by path (a shared
+  material, an app scene to instance) stay admitted without listing.
 - **A pack's uid cache may name only the pack's own files.** A 4.4/4.5 exporter writes the whole
   project's `uid_cache.bin` into a pack, excluded files included; mounted with
   `replace_files=true`, a foreign entry re-points one of the app's own UIDs at the pack's file
@@ -2335,21 +2369,17 @@ committed or mounted:
   treats the restored install as active (`pack-rolled-back` on an explicit `ensure`). A broken
   pack therefore costs two failed boots once, not on every launch.
 
-Residuals not closed by P4-08:
+Residuals not closed by P4-08 (P4-28 closed two: attaching app scripts, and another script language in CI):
 
-- **A pack may attach and configure scripts the app already ships.** A reference to an app
-  script names no marker, in either format: `[ext_resource type="Script" path="res://…gd"]` in a
-  text resource, or a binary resource's external-resource table entry typed `Script` (the binary
-  loader resolves it by the path's extension). Both pass the scan (pinned by the `ext-script-ok`
-  and `audit-binary-extref` fixtures). A pack can therefore instantiate any script class the build
-  contains, including debug or tool scripts, with exported property values it chooses, and run
-  whatever side effects their `_init` or `_ready` have. That is not downloaded code, but the app
-  must treat pack data as untrusted input. Integrity rests on the release-key signature over the
-  record. Follow-up: an app-declared allow-list of the script paths or UIDs a pack may attach.
-- **Another script language is refused on the device only.** The device asks its engine what a
-  script is; the CLI lint only knows `.gd`, `.gdc`, `.cs` and the built-in markers. An app with a
-  GDExtension script language must declare its extensions and types for CI to refuse them too.
-  Follow-up: expose `scriptExtensions`/`scriptTypes` as a publish setting.
+- **Pack data still drives the app's own code.** Closed by P4-28 for scripts a pack attaches
+  itself, but an app resource a pack references by path (an app scene it instances, a resource
+  that is or embeds a script saved under a resource extension, a node's
+  `instance_placeholder` path the app later loads) runs whatever the app composed into it, and
+  signal connections in a pack scene call methods on the nodes it builds. That is the app's
+  own content, not downloaded code; the app must still treat pack data as untrusted input, and
+  integrity rests on the release-key signature over the record. A `files.tree` pack's resources
+  are not reference-checked (a tree is never mounted into `res://`); an app that loads a
+  resource from a tree file takes the same care as with any `user://` file.
 - **Data replacement under a pack-chosen name.** An in-pack `.godot/imported/…` or
   `.godot/exported/…` file whose name equals the base game's replaces it under
   `replace_files=true`. That changes data, not code, and the record is release-key signed.

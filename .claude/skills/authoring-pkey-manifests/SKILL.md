@@ -103,14 +103,20 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `provides: {required?, from?}` is the save-compatibility policy (`invalid_pack_provides`;
       `from` a repo-relative JSON list of content ids, default `.pkey/provides.json`); `removes`
       is never declared (`pack_field_not_supported`), it is `pkey release publish --removes`.
-      `deliverables.app.content: { contentApi: <int>, packChannels? }` is then required
+      `deliverables.app.content: { contentApi: <int>, packChannels?, attachable? }` is then required
       (`invalid_app_content`); `packChannels` maps a pack id or `prefix.*` to a channel the
       matched packs publish to (`invalid_pack_channels`, `unknown_pack_channels_target`). Holds
-      are never declared: an app release holds a compatible pack at publish.
+      are never declared: an app release holds a compatible pack at publish. `attachable`
+      (P4-28, `invalid_app_attachable`) lists the app scripts (`res://…` paths, `res://…/`
+      directories) and canonical `uid://` UIDs a `godot.pck` pack may reference outside itself;
+      absent, the publish lint and the device refuse any such reference. List a script's path
+      and its UID (Godot 4.4+ writes both), and mirror the list in the Godot SDK's
+      `PKeyOptions.pack_attachable`.
       Codes: `invalid_pack_type`, `invalid_pack_binding`, `invalid_pack_policy`,
       `invalid_pack_handler`, `invalid_pack_variants`, `invalid_pack_requires`,
       `missing_content_api_range`, `standalone_with_content_api`, `unknown_content_api_app`,
       `invalid_pack_conflicts`, `invalid_pack_channels`, `unknown_pack_channels_target`,
+      `invalid_app_attachable`,
       `invalid_pack_patch`, `unknown_entitlement_ref`. Details:
       `packages/docs/src/content/docs/services/release/packs.md`.
 - [ ] If CI should publish releases (P2-02 trusted publishing), declare the publisher in
