@@ -438,6 +438,12 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
 - **Strategies.** The planner picks `delta` (a whole-payload or per-file `zstd --patch-from`
   set), `file` (only the files whose hash is not installed) or `full`; a refused strategy falls
   back to the next, `full` last.
+- **Progress events.** `on(listener)` receives `{packId, phase, done, total}` with `phase`
+  `download`, `apply`, `done`, `state-issue` (once at load, see State below) or `fallback`
+  (P4-18): a strategy failed (`strategy`, and the verdict code in `error`) and the next candidate
+  runs, when there is one. A plan that later succeeds still reports the failure it recovered
+  from; one with nothing left raises the first failure. (`via: "native"` appears only on the web,
+  where the browser's own transport is tried first.)
 - **zstd.** `node:zlib` decodes plain frames where it has zstd (22.15+), streaming a whole
   payload; `--patch-from` frames go through it only when a built-in prefix vector decodes at
   start-up (the dictionary option is ignored before 22.19 and in 24.0–24.5), else through

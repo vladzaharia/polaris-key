@@ -699,9 +699,14 @@ Compression Dictionary Transport, RFC 9842). It adds no authorisation of its own
   payload is `public, max-age=31536000, immutable, no-transform` when every holder is `public`,
   else `private, max-age=31536000, immutable, no-transform`: the browser of a caller who was
   authorised may keep it (and use it as a dictionary), and no shared cache may. That is the one
-  caching difference from the blob route, which answers such a non-public object `private,
-no-store`; the bytes are content-addressed and immutable, and the browser keeping them is the
-  same device that keeps them in OPFS.
+  caching difference from the blob route, which answers such a non-public object
+  `private, no-store`; the bytes are content-addressed and immutable, and the browser keeping
+  them is the same device that keeps them in OPFS. It also covers a pack moved to `entitled`
+  later whose earlier releases' objects stay under `blobs/` (objects never move prefix): the
+  payload URL serves them, to a caller the gate admits, `private, max-age=31536000, immutable`
+  where the blob route says `private, no-store`, so a browser admitted once keeps that copy (and
+  its dictionary) after its grant lapses; no one else's cache holds it, and the gate still
+  decides every new request.
 - **The dictionary's scope is one (pack, variant).** `Use-As-Dictionary`'s match pattern is the
   (pack, variant)'s payload-URL prefix, so a browser never offers one pack's payload for
   another's request, and none is advertised above Chromium's 100 MiB limit.

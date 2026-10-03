@@ -184,7 +184,15 @@ notes win.
   then the plan's remaining ones. `PackProgress` gains `phase: "fallback"` (`strategy`, `error`,
   `via: "native"`), also emitted whenever a candidate fails and the next one runs. Nothing on the
   wire changes: no signed shape, corpus, `PROTOCOL_VERSION` or `errors.json` entry. Node does not
-  wire the port; its behaviour is unchanged.
+  wire the port, but it runs the same engine, so Node now emits the `fallback` event too
+  (documented in its README and on the packs page).
+- **Retroactive plan note for the client-core seam** (accepted by the gate as non-wire): no
+  corpus regeneration and no wire change (no signed shape, `PROTOCOL_VERSION`, corpus file,
+  transcript or `errors.json` entry). Affected: React (the port and the event) and Node (the
+  `fallback` event only). Python, Swift and Godot are unaffected: they have no web transport,
+  and their engines keep their own progress events. Optional follow-ups: a `fallback` progress
+  event in the Python, Swift and Godot engines for parity, and a native payload port for a
+  Godot web shell over the same payload URL.
 - **Container variants only.** A tree's `payload.sha256` is its `treeDigest`, never the hash of a
   response body, so a tree payload can never be a dictionary; the Worker's payload URL refuses a
   tree (`404`). React's built-in handlers (`files.tree`, `data.json`, `l10n.table`, `ml.model`) are
@@ -213,15 +221,32 @@ notes win.
   `encodeBody` itself is not readable on a `Response`, and miniflare's workerd does not encode
   `zstd` either way.
 - **The guard was confirmed and kept.** In Chromium 153 the `?via=dcz` URL still matches the
-  per-(pack, variant) pattern (`Available-Dictionary` is sent), and a CORS-mode fetch from a
-  dedicated worker uses the dictionary.
+  per-(pack, variant) pattern (`Available-Dictionary` is sent), and a credential-less
+  (`credentials: "omit"`) CORS fetch from a dedicated worker registers v1 as a dictionary and uses
+  it for v2, against the Worker's own CORS headers (no `Access-Control-Allow-Credentials`).
+- **No ambient credentials on cross-origin reads (review).** The Worker never sends
+  `Access-Control-Allow-Credentials` (`core/cors.ts`), so a `credentials: "include"` fetch of a
+  CORS-covered route from another origin fails outright. Every such read now uses
+  `credentials: "omit"`; auth, when any, is the explicit bearer. Sites changed in
+  `packages/sdk-react/src`: `packs/browserPacks.ts` (pack records, blob objects: this half was
+  already on main), `packs/nativePayload.ts` (the payload URL), `packs/opfsWorker.ts`
+  (`fetchInto`), `browser/update.ts` (feed and release record), `browser/browserAdapter.ts`
+  (`update/version` only), `browser/catalog.ts` (`config/schema`), `browser/release.ts`
+  (`release/changelog`). The three identity session routes keep `include` (first-party,
+  cookie-bearing, never CORS-covered); `test/credentials.test.ts` pins that list. client-core does
+  no I/O, and Node's `fetch` has no credential mode. The dcz harness now serves the Worker's own
+  `corsPreflight` and `withCors` and refuses any request carrying a cookie (the page seeds one
+  for the server's origin), so a credentialed pack fetch fails the Chromium job.
 - **The OPFS worker** (`opfsWorker.ts`, client `opfsIo.ts`) carries staging only (staged objects and
   the container output), plus `fetchInto` (a payload URL fetched straight into the plan's output,
   hashed as written). The store, the state, the seed indexes and the commit copy stay on the main
   thread; handles under a path are released before the page reads, copies or removes there.
   `createSyncAccessHandle` is exposed in dedicated workers only, so the page cannot feature-test it:
   the worker's `init` creates one. `opfsRoot` (tests) and `opfsWorker: false` keep the main thread;
-  a host `fetchImpl` keeps the transfer on the page.
+  a host `fetchImpl` keeps the transfer on the page. `fetchInto` abandons a transfer after 60 s
+  without a byte (reported as a network error, so the engine falls back), and the worker queues
+  requests per plan (`staging/<planId>`), so one stalled transfer never blocks another plan's
+  I/O.
 - **"Falls back further and reports the failure" with a corrupt artifact** is: dcz fails (reported,
   `via: "native"`), the WASM delta fetches the artifact and refuses it, and, under P4-06's download
   rule (an object whose bytes miss its hash is never applied), the attempt ends `network-error` with
@@ -240,6 +265,15 @@ notes win.
   `browser-firefox` CI job runs it.
 - **`@polaris-key/react/packs`** is a new subpath export: `createBrowserPacks` and the pack ports
   with no React import (the harness, and non-React web hosts such as a Godot web shell, use it).
+- **Follow-up: a deployed-edge smoke test.** Nothing here shows whether Cloudflare's edge hands
+  the Worker the browser's `Accept-Encoding: zstd`/`dcz` and `Available-Dictionary` or
+  normalises them away (E5 §4.1 says shared-dictionary support is passthrough). A smoke test
+  against a deployed environment (staging) should fetch a payload URL from Chromium twice and
+  check for `Content-Encoding: zstd` and then `dcz`. Owner: the lead (a deploy is a human-held
+  input).
+- **The harness imports the Worker's source by relative path** (`dictionary.ts`, `core/cors.ts`):
+  `@polaris-key/worker` exports nothing, and depending on it would make the browser job build
+  the whole Worker. Both modules are pure; the import is commented.
 - **The planner is unchanged.** dcz moves the artifact plus 40 bytes; the 40 are not added to the
   delta's cost (it changes no ordering a real plan has).
 
