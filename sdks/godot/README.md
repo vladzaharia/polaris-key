@@ -950,6 +950,52 @@ delegated bytes, `pack_for`, the update check's step 11 and the facet's holds); 
 `replace_files=true`, the class list unchanged). About 6 s in the editor and 5 s on the macOS
 release template (M-series Mac, 4.7.2).
 
+## Android plugin (`PKeyAndroid`, P5-06)
+
+Android reaches install source, the Keystore, Play In-App Updates, Play Asset Delivery and the
+verified PackageInstaller self-update through `polaris-key-platform` (`sdks/kotlin`) and the
+Godot Android plugin `PolarisKeyAndroid` (`native/android/`, built with `native/android/build.sh`
+into `addons/polaris_key/native/android/bin/`, not committed). The plugin has one method,
+`cmd(json) -> String`; the facade `addons/polaris_key/native/pkey_android.gd` (`PKeyAndroid`) turns
+it into `PKeyResult`s (asynchronous ones awaited by `req`), drains the plugin's event queue every
+frame and emits `update_progress`, `update_result`, `pack_progress`, `install_status` and
+`resumed`. Use the one instance `PKeyAndroid.shared()`.
+
+```gdscript
+var android := PKeyAndroid.shared()
+var src := android.install_source()            # raw: installer, initiator, initiatorCertSha256, …
+var r := await android.update_check()          # play: availability, priority, stalenessDays, …
+r = await android.pack_fetch("foes")           # pack_progress … status 4, then:
+var pck = android.pack_location("foes").detail.location.pck   # mount it now; never persist it
+r = await android.apk_install(path, sha256, version_code)    # direct: verified, then committed
+```
+
+- **Typed unsupported.** Off Android every call is `unsupported` with reason `runtime`; on Android
+  without the plugin, `dependency`; In-App Updates on a direct build or an install Play did not make
+  (installer not `com.android.vending`), Play Asset Delivery on a direct build and the
+  PackageInstaller calls on a play build, `outlet`. A plugin error is `platform-error` with the
+  plugin's fields in `detail`; any In-App Updates failure is `detail.error == "unavailable"`.
+- **Flavours.** The preset's `polaris_key/android_flavor` (`play`, `direct` or `none`;
+  `PKEY_ANDROID_FLAVOR`) picks the AARs; the export plugin
+  (`addons/polaris_key/native/android_export_plugin.gd`, rules in `PKeyAndroidExport`) adds Play
+  Core for play and, for direct only, `REQUEST_INSTALL_PACKAGES` and
+  `UPDATE_PACKAGES_WITHOUT_USER_ACTION`. It needs the Gradle build and warns on a Play outlet with
+  the direct flavour or an F-Droid outlet with the play flavour.
+- **Store.** On Android with the plugin PKeyCore keeps the device id and token in the Keystore
+  (`PKeyKeystoreStore`: migrated from the file store, failures surfaced as `keyring-error`, a lost
+  key surfaced and the device re-activated); `PKeyOptions.store` overrides.
+- **Updates.** The `play` and `play-testing` adapters act on a `store` answer through In-App
+  Updates (flexible, or immediate when the decision is mandatory or critical; complete a downloaded
+  update; silent while Play stages; the listing on any failure or a non-Play install). Direct builds
+  have `apk_install`; the direct adapter does not call it yet. A self-update kills the game and
+  nothing relaunches it: the next launch reads `PKeyAndroid.launch_install_outcome()`, and stale
+  sessions are abandoned at launch.
+- **Tests.** `suite_native_android` (in the `ci` set) runs the facade headless against
+  `tests/support/fake_android_native.gd`: the stubs, the outlet gating, the event mapping, the
+  Keystore store, the export rules and the play adapter. The Kotlin side has its own Robolectric
+  tests (`sdks/kotlin`, the `android` CI job); `native/android/export_check.sh` exports the probe
+  through the Gradle build and, with `DEVICE=`, runs it on an emulator.
+
 ## Config (`PolarisKey.config`)
 
 ```gdscript
