@@ -236,13 +236,15 @@ describe("badge and alt facts", () => {
       }
   });
 
-  it("the phrase and alt texts are the kit's", () => {
+  it("the phrase and alt texts are the kit's (plus our Delivery name for the Star Cut)", () => {
     expect(POWERED_BY.phrase).toBe("Powered by Polaris Key");
     expect(ALT).toEqual({
       key: "Polaris Key",
       update: "Polaris Key Update",
+      delivery: "Polaris Key Delivery",
       poweredBy: "Powered by Polaris Key",
     });
+    expect(LOCKUP_TEMPLATES.delivery.horizontal.title).toBe(ALT.delivery);
     expect(LOCKUP_TEMPLATES.key.horizontal.title).toBe(ALT.key);
     expect(LOCKUP_TEMPLATES.update.horizontal.title).toBe(ALT.update);
   });

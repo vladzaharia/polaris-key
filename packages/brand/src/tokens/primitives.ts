@@ -9,15 +9,25 @@
 
 export const KIT_VERSION = "1.0.0" as const;
 
-/** The two identities in the kit. */
+/**
+ * The two identities in the kit. The kit labels the Star Cut "Star Cut Update" / "Polaris Key
+ * Update"; on our surfaces it is the "Polaris Key Delivery" service mark (owner decision,
+ * 2026-10-03; docs/design/BRAND.md §1.1). The `update` key stays the kit's name for the glyph.
+ */
 export const MARKS = {
   /** The platform mark, "Polaris Key". Gold is the signing bit. */
   key: { name: "Pinned K", alt: "Polaris Key" },
-  /** The service mark for the delivery family (Update, Distribution, the bytes host). */
-  update: { name: "Star Cut Update", alt: "Polaris Key Update" },
+  /** The service mark for the delivery family (the bytes host, Distribution, Update). */
+  update: { name: "Star Cut", alt: "Polaris Key Delivery" },
 } as const;
 
 export type MarkKind = keyof typeof MARKS;
+
+/**
+ * Which lockup: the kit's two (`key`, and `update`, the kit's "Polaris Key Update" original),
+ * or `delivery`, the Star Cut with the "Polaris Key Delivery" wordmark our surfaces use.
+ */
+export type LockupKind = MarkKind | "delivery";
 
 /** Ground the artwork sits on. */
 export type Ground = "dark" | "light";
@@ -71,10 +81,14 @@ export type BadgeLayout = keyof typeof POWERED_BY.minimum;
 /** Clear space around standalone marks and lockups, as a fraction of the glyph height. */
 export const CLEAR_SPACE_RATIO = 0.25;
 
-/** Accessible names (kit README "General use"). */
+/**
+ * Accessible names. `key`, `update` and `poweredBy` are the kit's (README "General use");
+ * `update` names only the kit's own Update files. Our surfaces name the Star Cut `delivery`.
+ */
 export const ALT = {
   key: "Polaris Key",
   update: "Polaris Key Update",
+  delivery: "Polaris Key Delivery",
   poweredBy: "Powered by Polaris Key",
 } as const;
 

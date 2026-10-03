@@ -15,6 +15,9 @@
 //   src/generated/tokens.ts             the same as typed TS constants
 //   src/generated/geometry.ts           kit geometry, variant palettes and the sprite
 //   src/generated/layouts.ts            the lockup and badge colour templates
+//   lockups/delivery/*.svg              the "Polaris Key Delivery" lockups, every layout and kit
+//                                       colour variant (scripts/delivery.ts sets the wordmark
+//                                       from kit/source/fonts/Rubik-Bold.ttf)
 //   sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd    GDScript constants
 //   sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift         Swift constants
 //
@@ -56,7 +59,14 @@ import {
   type ServiceId,
   type Theme,
 } from "../src/tokens/source.js";
-import { KIT_PALETTES, loadKit } from "./kit.js";
+import { DELIVERY_TITLE, deliveryLockups } from "./delivery.js";
+import {
+  KIT_PALETTES,
+  LOCKUP_LAYOUTS,
+  loadKit,
+  renderTemplate,
+  type KitVariant,
+} from "./kit.js";
 
 const PKG = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = join(PKG, "..", "..");
@@ -420,6 +430,9 @@ export const SERVICE_ACCENTS = ${JSON.stringify(m.services)} as const satisfies 
 
 const KIT = loadKit(join(PKG, "kit"));
 
+/** The "Polaris Key Delivery" lockups, set from the bundled Rubik Bold (scripts/delivery.ts). */
+const DELIVERY = deliveryLockups(join(PKG, "kit"), KIT.lockups);
+
 function geometryTs(): string {
   return `${banner("//")}
 
@@ -444,14 +457,17 @@ function layoutsTs(): string {
 
 import type { KitTemplate } from "../marks/types.js";
 
-/** kit/02-lockups: per mark and layout. */
+/**
+ * Per lockup and layout: kit/02-lockups (key, update), and the "${DELIVERY_TITLE}" lockups
+ * (delivery: the kit's Star Cut glyph with a Rubik Bold wordmark set by scripts/delivery.ts).
+ */
 export const LOCKUP_TEMPLATES: Record<
-  "key" | "update",
+  "key" | "update" | "delivery",
   Record<"horizontal" | "stacked" | "compact", KitTemplate>
-> = ${JSON.stringify(KIT.lockups)};
+> = ${JSON.stringify({ ...KIT.lockups, delivery: DELIVERY })};
 
 /** The glyph inside each lockup at its natural size: optical cut and edge length (CSS px). */
-export const LOCKUP_GLYPHS = ${JSON.stringify(KIT.lockupGlyphs)} as const;
+export const LOCKUP_GLYPHS = ${JSON.stringify({ ...KIT.lockupGlyphs, delivery: KIT.lockupGlyphs.update })} as const;
 
 /** kit/03-powered-by: per style and layout. */
 export const BADGE_TEMPLATES: Record<
@@ -764,6 +780,14 @@ interface Target {
   parser?: "typescript" | "json" | "css";
 }
 
+const DELIVERY_VARIANTS: KitVariant[] = [
+  "dark",
+  "light",
+  "mono-black",
+  "mono-white",
+  "currentColor",
+];
+
 const TARGETS: Target[] = [
   { path: "packages/brand/css/tokens.css", render: tokensCss, parser: "css" },
   { path: "packages/brand/css/theme.css", render: themeCss, parser: "css" },
@@ -783,6 +807,12 @@ const TARGETS: Target[] = [
     render: layoutsTs,
     parser: "typescript",
   },
+  ...LOCKUP_LAYOUTS.flatMap((layout) =>
+    DELIVERY_VARIANTS.map((variant) => ({
+      path: `packages/brand/lockups/delivery/delivery-${layout}-${variant}.svg`,
+      render: () => renderTemplate(DELIVERY[layout], KIT_PALETTES[variant]),
+    })),
+  ),
   {
     path: "sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd",
     render: gdScript,

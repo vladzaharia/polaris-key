@@ -108,7 +108,7 @@ function marks(): string {
     sizes
       .map(
         (s) =>
-          `<figure>${markSvg({ kind, size: s, theme, signed: true, title: kind === "key" ? "Polaris Key" : "Polaris Key Update" })}<figcaption>${s} px</figcaption></figure>`,
+          `<figure>${markSvg({ kind, size: s, theme, signed: true, title: kind === "key" ? "Polaris Key" : "Polaris Key Delivery" })}<figcaption>${s} px</figcaption></figure>`,
       )
       .join("");
   return (["dark", "light"] as const)
@@ -132,7 +132,7 @@ function sectionBitDemo(): string {
 function lockups(): string {
   const out: string[] = [];
   for (const t of ["dark", "light"] as const)
-    for (const kind of ["key", "update"] as const)
+    for (const kind of ["key", "delivery"] as const)
       out.push(
         `<div class="ground" data-theme="${t}">${(["horizontal", "stacked", "compact"] as const).map((layout) => lockupSvg({ kind, layout, theme: t, height: layout === "compact" ? 64 : 120 })).join("")}</div>`,
       );

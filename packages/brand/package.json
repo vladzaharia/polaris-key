@@ -1,7 +1,7 @@
 {
   "name": "@polaris-key/brand",
   "version": "0.0.0",
-  "description": "The Polaris Key design system: brand tokens (CSS, Tailwind v4, TS, JSON, GDScript, Swift), Rubik web fonts, the Pinned K and Star Cut Update marks, lockups and \"Powered by\" badges, and the launch-kit assets.",
+  "description": "The Polaris Key design system: brand tokens (CSS, Tailwind v4, TS, JSON, GDScript, Swift), Rubik web fonts, the Pinned K and Star Cut marks, lockups (including the generated Polaris Key Delivery lockups) and \"Powered by\" badges, and the launch-kit assets.",
   "license": "MIT",
   "type": "module",
   "sideEffects": [
@@ -33,6 +33,7 @@
     "./tokens.json": "./tokens.json",
     "./sprite.svg": "./kit/08-developer/polaris-sprite.svg",
     "./marks/*": "./kit/01-marks/*",
+    "./lockups/delivery/*": "./lockups/delivery/*",
     "./lockups/*": "./kit/02-lockups/*",
     "./powered-by/*": "./kit/03-powered-by/*",
     "./web/*": "./kit/04-web/*",
@@ -48,6 +49,7 @@
     "css",
     "fonts",
     "kit",
+    "lockups",
     "tokens.json",
     "LICENSE",
     "THIRD_PARTY_NOTICES",

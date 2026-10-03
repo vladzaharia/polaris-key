@@ -34,7 +34,7 @@ describe("sections track tools/services.json", () => {
       expect(Object.keys(SERVICE_ACCENTS[theme])).toEqual([...SERVICE_IDS]);
   });
 
-  it("the Star Cut Update mark identifies the delivery family; the K everything else", () => {
+  it("the Star Cut (Polaris Key Delivery) mark identifies the delivery family; the K everything else", () => {
     expect(SERVICE_IDS.filter((id) => SERVICE_MARK[id] === "update")).toEqual([
       "distribution",
       "update",
