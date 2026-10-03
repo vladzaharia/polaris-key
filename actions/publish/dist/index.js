@@ -2607,7 +2607,18 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             }
           }
         },
-        "provides": false,
+        "provides": {
+          "description": "The save-compatibility policy (P4-20, CONTENT §6.9): from, a repo-relative path to the JSON array of content ids each release provides (default .pkey/provides.json; each id printable ASCII without spaces, 1 to 128 characters, at most 4096 distinct); required, whether a publish without that list fails (default false). A release that stops providing an id its predecessor provided needs a contentApi bump or pkey release publish --removes.",
+          "type": "object",
+          "properties": {
+            "required": { "type": "boolean" },
+            "from": {
+              "type": "string",
+              "maxLength": 256,
+              "pattern": "^(?!.*(?:^|/)\\\\.{1,2}(?:/|$))[A-Za-z0-9._@+-]+(?:/[A-Za-z0-9._@+-]+){0,31}$"
+            }
+          }
+        },
         "removes": false
       },
       "required": ["kind", "type"],
@@ -3042,17 +3053,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path12) {
-      const ctrl = callVisitor(key, node, visitor, path12);
+    function visit_(key, node, visitor, path13) {
+      const ctrl = callVisitor(key, node, visitor, path13);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path12, ctrl);
-        return visit_(key, ctrl, visitor, path12);
+        replaceNode(key, path13, ctrl);
+        return visit_(key, ctrl, visitor, path13);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path12 = Object.freeze(path12.concat(node));
+          path13 = Object.freeze(path13.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path12);
+            const ci = visit_(i, node.items[i], visitor, path13);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3063,13 +3074,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path12 = Object.freeze(path12.concat(node));
-          const ck = visit_("key", node.key, visitor, path12);
+          path13 = Object.freeze(path13.concat(node));
+          const ck = visit_("key", node.key, visitor, path13);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path12);
+          const cv = visit_("value", node.value, visitor, path13);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3090,17 +3101,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path12) {
-      const ctrl = await callVisitor(key, node, visitor, path12);
+    async function visitAsync_(key, node, visitor, path13) {
+      const ctrl = await callVisitor(key, node, visitor, path13);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path12, ctrl);
-        return visitAsync_(key, ctrl, visitor, path12);
+        replaceNode(key, path13, ctrl);
+        return visitAsync_(key, ctrl, visitor, path13);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path12 = Object.freeze(path12.concat(node));
+          path13 = Object.freeze(path13.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path12);
+            const ci = await visitAsync_(i, node.items[i], visitor, path13);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3111,13 +3122,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path12 = Object.freeze(path12.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path12);
+          path13 = Object.freeze(path13.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path13);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path12);
+          const cv = await visitAsync_("value", node.value, visitor, path13);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3144,23 +3155,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path12) {
+    function callVisitor(key, node, visitor, path13) {
       if (typeof visitor === "function")
-        return visitor(key, node, path12);
+        return visitor(key, node, path13);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path12);
+        return visitor.Map?.(key, node, path13);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path12);
+        return visitor.Seq?.(key, node, path13);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path12);
+        return visitor.Pair?.(key, node, path13);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path12);
+        return visitor.Scalar?.(key, node, path13);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path12);
+        return visitor.Alias?.(key, node, path13);
       return void 0;
     }
-    function replaceNode(key, path12, node) {
-      const parent = path12[path12.length - 1];
+    function replaceNode(key, path13, node) {
+      const parent = path13[path13.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -3779,10 +3790,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path12, value) {
+    function collectionFromPath(schema, path13, value) {
       let v = value;
-      for (let i = path12.length - 1; i >= 0; --i) {
-        const k = path12[i];
+      for (let i = path13.length - 1; i >= 0; --i) {
+        const k = path13[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -3801,7 +3812,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path12) => path12 == null || typeof path12 === "object" && !!path12[Symbol.iterator]().next().done;
+    var isEmptyPath = (path13) => path13 == null || typeof path13 === "object" && !!path13[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -3831,11 +3842,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path12, value) {
-        if (isEmptyPath(path12))
+      addIn(path13, value) {
+        if (isEmptyPath(path13))
           this.add(value);
         else {
-          const [key, ...rest] = path12;
+          const [key, ...rest] = path13;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -3849,8 +3860,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path12) {
-        const [key, ...rest] = path12;
+      deleteIn(path13) {
+        const [key, ...rest] = path13;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -3864,8 +3875,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path12, keepScalar) {
-        const [key, ...rest] = path12;
+      getIn(path13, keepScalar) {
+        const [key, ...rest] = path13;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -3883,8 +3894,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path12) {
-        const [key, ...rest] = path12;
+      hasIn(path13) {
+        const [key, ...rest] = path13;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -3894,8 +3905,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path12, value) {
-        const [key, ...rest] = path12;
+      setIn(path13, value) {
+        const [key, ...rest] = path13;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -6445,9 +6456,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path12, value) {
+      addIn(path13, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path12, value);
+          this.contents.addIn(path13, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -6522,14 +6533,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path12) {
-        if (Collection.isEmptyPath(path12)) {
+      deleteIn(path13) {
+        if (Collection.isEmptyPath(path13)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path12) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path13) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -6544,10 +6555,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path12, keepScalar) {
-        if (Collection.isEmptyPath(path12))
+      getIn(path13, keepScalar) {
+        if (Collection.isEmptyPath(path13))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path12, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path13, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -6558,10 +6569,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path12) {
-        if (Collection.isEmptyPath(path12))
+      hasIn(path13) {
+        if (Collection.isEmptyPath(path13))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path12) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path13) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -6578,13 +6589,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path12, value) {
-        if (Collection.isEmptyPath(path12)) {
+      setIn(path13, value) {
+        if (Collection.isEmptyPath(path13)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path12), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path13), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path12, value);
+          this.contents.setIn(path13, value);
         }
       }
       /**
@@ -8564,9 +8575,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path12) => {
+    visit.itemAtPath = (cst, path13) => {
       let item = cst;
-      for (const [field, index] of path12) {
+      for (const [field, index] of path13) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -8575,23 +8586,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path12) => {
-      const parent = visit.itemAtPath(cst, path12.slice(0, -1));
-      const field = path12[path12.length - 1][0];
+    visit.parentCollection = (cst, path13) => {
+      const parent = visit.itemAtPath(cst, path13.slice(0, -1));
+      const field = path13[path13.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path12, item, visitor) {
-      let ctrl = visitor(item, path12);
+    function _visit(path13, item, visitor) {
+      let ctrl = visitor(item, path13);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path12.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path13.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -8602,10 +8613,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path12);
+            ctrl = ctrl(item, path13);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path12) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path13) : ctrl;
     }
     exports.visit = visit;
   }
@@ -10367,8 +10378,8 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile10 } from "node:fs/promises";
-import path11 from "node:path";
+import { readFile as readFile11 } from "node:fs/promises";
+import path12 from "node:path";
 
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -11099,20 +11110,20 @@ function numberInWireRange(n) {
 function representabilityIssue(value) {
   return walk(value, "", 0);
 }
-function walk(value, path12, depth) {
+function walk(value, path13, depth) {
   if (typeof value === "string") {
-    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path12 } : null;
+    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path13 } : null;
   }
   if (typeof value === "number") {
-    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path12 };
+    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path13 };
   }
   if (value === null || typeof value !== "object")
     return null;
   if (depth + 1 > MAX_VALUE_DEPTH)
-    return { rule: "too-deep", path: path12 };
+    return { rule: "too-deep", path: path13 };
   if (Array.isArray(value)) {
     for (let k = 0; k < value.length; k++) {
-      const issue = walk(value[k], `${path12}/${k}`, depth + 1);
+      const issue = walk(value[k], `${path13}/${k}`, depth + 1);
       if (issue)
         return issue;
     }
@@ -11120,7 +11131,7 @@ function walk(value, path12, depth) {
   }
   const seen = /* @__PURE__ */ new Map();
   for (const [name, member] of Object.entries(value)) {
-    const memberPath = `${path12}/${escapePointer(name)}`;
+    const memberPath = `${path13}/${escapePointer(name)}`;
     if (hasLoneSurrogate(name))
       return { rule: "lone-surrogate", path: memberPath };
     if (name.includes("\0"))
@@ -11676,11 +11687,11 @@ function validateDistribution(errors, doc, ctx) {
       "apiVersion must be pkey.dev/v1 when present."
     );
   }
-  for (const path12 of capabilityPaths(doc)) {
+  for (const path13 of capabilityPaths(doc)) {
     add(
       errors,
       "distribution",
-      path12,
+      path13,
       "capabilities_not_manifest_writable",
       "outlet capabilities are operator-owned and cannot be set in .pkey/distribution; they default per outlet kind and an operator narrows them in the console."
     );
@@ -11854,13 +11865,13 @@ function validateTransports(errors, transports, ctx, kinds) {
       );
     }
   }
-  const checkMap = (path12, raw) => {
+  const checkMap = (path13, raw) => {
     if (raw === void 0) return;
     if (!isRecord(raw)) {
       add(
         errors,
         "distribution",
-        path12,
+        path13,
         "invalid_transport",
         "a transport map must be an object keyed by outlet id."
       );
@@ -11871,7 +11882,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path12}/${outletId}`,
+          `${path13}/${outletId}`,
           "invalid_transport",
           `transports must be one of ${TRANSPORTS.join(", ")}.`
         );
@@ -11882,7 +11893,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path12}/${outletId}`,
+          `${path13}/${outletId}`,
           "unknown_outlet_ref",
           `transport maps may only name outlets declared under outlets.`
         );
@@ -11890,7 +11901,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path12}/${outletId}`,
+          `${path13}/${outletId}`,
           "transport_not_allowed",
           `transport ${transport} cannot carry a deliverable on a ${kind} outlet.`
         );
@@ -11930,11 +11941,11 @@ function capabilityPaths(doc) {
     { node: doc, path: "" }
   ];
   while (stack.length) {
-    const { node, path: path12 } = stack.pop();
+    const { node, path: path13 } = stack.pop();
     if (node === null || typeof node !== "object") continue;
     const entries = Array.isArray(node) ? node.map((v, i) => [String(i), v]) : Object.entries(node);
     for (const [key, child] of entries) {
-      const childPath = `${path12}/${key}`;
+      const childPath = `${path13}/${key}`;
       if (!Array.isArray(node) && key === "capabilities") found.push(childPath);
       stack.push({ node: child, path: childPath });
     }
@@ -12089,8 +12100,8 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add(list, file, path12, code, message) {
-  list.push({ file, path: path12, code, message });
+function add(list, file, path13, code, message) {
+  list.push({ file, path: path13, code, message });
 }
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
@@ -12353,7 +12364,7 @@ function versionFitsScheme(version, scheme) {
 }
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
-  const err = (path12, code, message) => errors.push({ path: path12, code, message });
+  const err = (path13, code, message) => errors.push({ path: path13, code, message });
   if (!isRecord2(descriptor)) {
     err(
       "/",
@@ -12915,7 +12926,24 @@ var MAX_PUBLISHED_INDEX_BYTES = 8388608;
 var PACK_BINDINGS = ["pinned", "compatible", "standalone"];
 var PACK_BASELINES = ["embedded", "none"];
 var PACK_PATCH_STRATEGIES = ["delta", "file", "chunk"];
-var PACK_FIELDS_NOT_SUPPORTED = ["provides", "removes"];
+var PACK_FIELDS_NOT_SUPPORTED = ["removes"];
+var CONTENT_ID_PATTERN = /^[!-~]{1,128}$/;
+var MAX_PROVIDES = 4096;
+var DEFAULT_PROVIDES_FILE = ".pkey/provides.json";
+var PROVIDES_FILE_PATTERN = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+-]+(?:\/[A-Za-z0-9._@+-]+){0,31}$/;
+function providesListProblem(list) {
+  if (!Array.isArray(list)) return "is not an array of content ids";
+  if (list.length > MAX_PROVIDES)
+    return `holds ${list.length} ids; at most ${MAX_PROVIDES}`;
+  const seen = /* @__PURE__ */ new Set();
+  for (const [i, id] of list.entries()) {
+    if (typeof id !== "string" || !CONTENT_ID_PATTERN.test(id))
+      return `entry ${i} (${JSON.stringify(id)?.slice(0, 80)}) is not a content id: printable ASCII without spaces, 1 to 128 characters`;
+    if (seen.has(id)) return `lists ${id} twice`;
+    seen.add(id);
+  }
+  return null;
+}
 var CONTENT_API_RANGE_PATTERN = /^(?:>=|<=|>|<|=)?[1-9][0-9]{0,15}(?: (?:>=|<=|>|<|=)?[1-9][0-9]{0,15}){0,3}$/;
 var PACK_VERSION_RANGE_PATTERN = /^(?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}(?: (?:>=|<=|>|<|=)?[0-9A-Za-z][0-9A-Za-z.+-]{0,63}){0,3}$/;
 var PACK_CHANNELS_KEY_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*(\.\*)?$/;
@@ -13155,7 +13183,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     GROUP_NAME_RE,
     "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$)."
   );
-  for (const [key, path12] of [
+  for (const [key, path13] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
   ]) {
@@ -13163,13 +13191,13 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path12,
+        path13,
         "invalid_semver",
         "Version bounds must be semver strings."
       );
     }
   }
-  for (const [key, path12] of [
+  for (const [key, path13] of [
     [
       productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit,
       "/licensing/defaultDeviceLimit"
@@ -13183,7 +13211,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path12,
+        path13,
         "invalid_number",
         "Value must be a non-negative integer."
       );
@@ -14412,7 +14440,19 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         "release",
         `${at}/${field}`,
         "pack_field_not_supported",
-        `${field} is not supported for packs yet (P4-20 adds provides and removes).`
+        `${field} is never declared: it belongs to one release, so pass it to pkey release publish --${field}.`
+      );
+  }
+  const provides = def.provides;
+  if (provides !== void 0) {
+    const p = isRecord3(provides) ? provides : null;
+    if (!p || p.required !== void 0 && typeof p.required !== "boolean" || p.from !== void 0 && (typeof p.from !== "string" || p.from.length > 256 || !PROVIDES_FILE_PATTERN.test(p.from)))
+      add2(
+        errors,
+        "release",
+        `${at}/provides`,
+        "invalid_pack_provides",
+        `provides is {required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default ${DEFAULT_PROVIDES_FILE}}.`
       );
   }
   const type = isOneOf(def.type, PACK_TYPES) ? def.type : null;
@@ -15270,7 +15310,11 @@ function normalizePackDeliverable(id, raw) {
     },
     versioning: {
       scheme: isOneOf(asRecord(raw.versioning).scheme, VERSION_SCHEMES) ? asRecord(raw.versioning).scheme : "semver"
-    }
+    },
+    provides: isRecord3(raw.provides) ? {
+      required: raw.provides.required === true,
+      from: typeof raw.provides.from === "string" && raw.provides.from.length <= 256 && PROVIDES_FILE_PATTERN.test(raw.provides.from) ? raw.provides.from : DEFAULT_PROVIDES_FILE
+    } : null
   };
 }
 function normalizeTrustedPublisher(raw) {
@@ -15627,36 +15671,36 @@ function validateCatalogShape(catalog) {
   }
   return issues;
 }
-function constrained(errors, file, value, path12, code, re, message) {
+function constrained(errors, file, value, path13, code, re, message) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string" || !re.test(value)) {
-    add2(errors, file, path12, code, message);
+    add2(errors, file, path13, code, message);
   }
 }
-function releaseString(errors, value, path12, code, re, message) {
-  constrained(errors, "release", value, path12, code, re, message);
+function releaseString(errors, value, path13, code, re, message) {
+  constrained(errors, "release", value, path13, code, re, message);
 }
-function boundedText(errors, file, value, path12, code, max, label) {
+function boundedText(errors, file, value, path13, code, max, label) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string") {
-    add2(errors, file, path12, code, `${label} must be a string.`);
+    add2(errors, file, path13, code, `${label} must be a string.`);
     return;
   }
   if (value.length > max || CONTROL_CHAR_RE.test(value)) {
     add2(
       errors,
       file,
-      path12,
+      path13,
       code,
       `${label} must be at most ${max} characters and free of control characters.`
     );
   }
 }
-function constrainedList(errors, file, values, path12, code, re, message) {
+function constrainedList(errors, file, values, path13, code, re, message) {
   if (!Array.isArray(values)) return;
   for (const [i, value] of values.entries()) {
     if (typeof value !== "string" || !re.test(value)) {
-      add2(errors, file, `${path12}/${i}`, code, message);
+      add2(errors, file, `${path13}/${i}`, code, message);
     }
   }
 }
@@ -15864,8 +15908,8 @@ function isOneOf(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add2(list, file, path12, code, message) {
-  list.push({ file, path: path12, code, message });
+function add2(list, file, path13, code, message) {
+  list.push({ file, path: path13, code, message });
 }
 
 // src/bundle.ts
@@ -16401,9 +16445,9 @@ function ciClient(opts) {
   const f = opts.fetchImpl ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
-  const url = (path12) => `${baseUrl}/${encodeURIComponent(product)}/${path12.replace(/^\/+/, "")}`;
-  async function postJson(path12, p) {
-    const target = url(path12);
+  const url = (path13) => `${baseUrl}/${encodeURIComponent(product)}/${path13.replace(/^\/+/, "")}`;
+  async function postJson(path13, p) {
+    const target = url(path13);
     const auth = p.auth !== false;
     if (auth && !opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
@@ -16443,8 +16487,8 @@ function ciClient(opts) {
       await sleep(wait);
     }
   }
-  async function getJson(path12, p) {
-    const target = url(path12);
+  async function getJson(path13, p) {
+    const target = url(path13);
     if (!opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
     let res;
@@ -16650,10 +16694,10 @@ async function resolveCiToken(opts) {
 
 // src/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
-import { readdir as readdir3, readFile as readFile4, stat as stat3 } from "node:fs/promises";
-import path5 from "node:path";
+import { readdir as readdir3, readFile as readFile5, stat as stat3 } from "node:fs/promises";
+import path6 from "node:path";
 
 // src/s3.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -16712,8 +16756,8 @@ function signV4(input) {
 }
 function objectUrl(creds, key) {
   const base = creds.endpoint.replace(/\/+$/, "");
-  const path12 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
-  return new URL(`${base}/${path12}`);
+  const path13 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
+  return new URL(`${base}/${path13}`);
 }
 var TRANSIENT = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 504]);
 async function putFile(opts) {
@@ -17046,9 +17090,9 @@ function u64(buf, at) {
   return Number(v);
 }
 var ZipReader = class _ZipReader {
-  constructor(fh, path12, fileSize, entries, centralDirectoryOffset) {
+  constructor(fh, path13, fileSize, entries, centralDirectoryOffset) {
     this.fh = fh;
-    this.path = path12;
+    this.path = path13;
     this.fileSize = fileSize;
     this.entries = entries;
     this.centralDirectoryOffset = centralDirectoryOffset;
@@ -17058,8 +17102,8 @@ var ZipReader = class _ZipReader {
   fileSize;
   entries;
   centralDirectoryOffset;
-  static async open(path12) {
-    const fh = await open(path12, "r");
+  static async open(path13) {
+    const fh = await open(path13, "r");
     try {
       const { size } = await fh.stat();
       const tailLen = Math.min(size, 65557);
@@ -17072,32 +17116,32 @@ var ZipReader = class _ZipReader {
           break;
         }
       }
-      if (eocd < 0) throw new ZipError(`${path12} is not a ZIP archive`);
+      if (eocd < 0) throw new ZipError(`${path13} is not a ZIP archive`);
       let count = tail.readUInt16LE(eocd + 10);
       let cdSize = tail.readUInt32LE(eocd + 12);
       let cdOffset = tail.readUInt32LE(eocd + 16);
       if (count === 65535 || cdSize === 4294967295 || cdOffset === 4294967295) {
         const loc = eocd - 20;
         if (loc < 0 || tail.readUInt32LE(loc) !== ZIP64_LOCATOR_SIG)
-          throw new ZipError(`${path12}: ZIP64 locator missing`);
+          throw new ZipError(`${path13}: ZIP64 locator missing`);
         const recOffset = u64(tail, loc + 8);
         const rec = Buffer.alloc(56);
         await fh.read(rec, 0, 56, recOffset);
         if (rec.readUInt32LE(0) !== ZIP64_EOCD_SIG)
-          throw new ZipError(`${path12}: ZIP64 end record missing`);
+          throw new ZipError(`${path13}: ZIP64 end record missing`);
         count = u64(rec, 32);
         cdSize = u64(rec, 40);
         cdOffset = u64(rec, 48);
       }
       if (cdOffset + cdSize > size)
-        throw new ZipError(`${path12}: the central directory runs past the end`);
+        throw new ZipError(`${path13}: the central directory runs past the end`);
       const cd = Buffer.alloc(cdSize);
       await fh.read(cd, 0, cdSize, cdOffset);
       const entries = [];
       let p = 0;
       for (let i = 0; i < count; i++) {
         if (p + 46 > cd.length || cd.readUInt32LE(p) !== CDH_SIG)
-          throw new ZipError(`${path12}: a central directory entry is malformed`);
+          throw new ZipError(`${path13}: a central directory entry is malformed`);
         const flags = cd.readUInt16LE(p + 8);
         const method = cd.readUInt16LE(p + 10);
         const crc322 = cd.readUInt32LE(p + 16);
@@ -17138,7 +17182,7 @@ var ZipReader = class _ZipReader {
         });
         p = xEnd + commentLen;
       }
-      return new _ZipReader(fh, path12, size, entries, cdOffset);
+      return new _ZipReader(fh, path13, size, entries, cdOffset);
     } catch (e) {
       await fh.close();
       throw e;
@@ -17176,8 +17220,8 @@ var ZipReader = class _ZipReader {
     return this.fh.close();
   }
 };
-async function withZip(path12, fn) {
-  const zip = await ZipReader.open(path12);
+async function withZip(path13, fn) {
+  const zip = await ZipReader.open(path13);
   try {
     return await fn(zip);
   } finally {
@@ -17629,10 +17673,115 @@ async function buildMetadataFor(platform, format, file) {
   return null;
 }
 
+// src/saveCompat.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash3 } from "node:crypto";
+import { readFile as readFile2 } from "node:fs/promises";
+import path3 from "node:path";
+var byCodeUnit = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.keys(value).sort(byCodeUnit).map(
+      (k) => `${JSON.stringify(k)}:${canonicalJson(value[k])}`
+    ).join(",")}}`;
+  return JSON.stringify(value) ?? "null";
+}
+async function readJson2(file, what) {
+  let text;
+  try {
+    text = await readFile2(file, "utf8");
+  } catch (e) {
+    if (e.code === "ENOENT")
+      throw new Error(`${what} ${file} does not exist.`);
+    throw e;
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error(`${what} ${file} is not JSON: ${e.message}`);
+  }
+}
+function parseRemoves(values) {
+  return values.flatMap((v) => v.split(",")).map((v) => v.trim()).filter((v) => v !== "");
+}
+async function collectProvides(o) {
+  const out = {};
+  const policy = o.pack.provides;
+  let file = null;
+  if (o.providesFile !== void 0) file = path3.resolve(o.cwd, o.providesFile);
+  else if (policy) {
+    const declared = path3.resolve(o.cwd, policy.from);
+    try {
+      await readFile2(declared);
+      file = declared;
+    } catch {
+      if (policy.required)
+        throw new Error(
+          `${o.pack.id} declares provides.required, and ${policy.from} does not exist: write the JSON array of content ids the release provides there (or pass --provides <file>).`
+        );
+      o.warn(
+        `${o.pack.id} declares provides, and ${policy.from} does not exist: the record carries no provides.`
+      );
+    }
+  }
+  if (file !== null) {
+    const list = await readJson2(file, "The provides file");
+    const problem = providesListProblem(list);
+    if (problem)
+      throw new Error(
+        `The provides file ${path3.relative(o.cwd, file) || file} ${problem}.`
+      );
+    out.provides = [...list].sort(byCodeUnit);
+  }
+  if (o.removes && o.removes.length > 0) {
+    const problem = providesListProblem(o.removes);
+    if (problem) throw new Error(`--removes ${problem}.`);
+    out.removes = [...o.removes].sort(byCodeUnit);
+  }
+  return out;
+}
+async function contentInterfaceFingerprint(cwd, file) {
+  const value = await readJson2(
+    path3.resolve(cwd, file),
+    "The content-interface registry"
+  );
+  return createHash3("sha256").update(canonicalJson(value)).digest("hex");
+}
+function judgeContentInterface(answer, fingerprint, contentApi, strict) {
+  const a = answer ?? {};
+  if (a.sha256 === void 0)
+    throw new Error(
+      "The server answered no contentInterface (a Polaris Key without P4-20?); the fingerprint was not stored."
+    );
+  const prev = a.previous ?? null;
+  if (prev === null)
+    return {
+      warning: null,
+      note: "the channel serves no app release yet: nothing to compare"
+    };
+  const name = `${String(prev.releaseId)}`;
+  if (typeof prev.sha256 !== "string")
+    return {
+      warning: null,
+      note: `${name} was published without a fingerprint: nothing to compare`
+    };
+  if (prev.sha256 === fingerprint)
+    return { warning: null, note: `unchanged since ${name}` };
+  if (prev.contentApi !== contentApi)
+    return {
+      warning: null,
+      note: `changed since ${name}, with contentApi ${String(prev.contentApi)} → ${String(contentApi)}`
+    };
+  const warning = `the content interface changed since ${name} (${prev.sha256.slice(0, 12)}… → ${fingerprint.slice(0, 12)}…), but contentApi is still ${String(contentApi)}: packs on that contentApi line may not have the content shape this build expects. Bump deliverables.app.content.contentApi${strict ? "" : ", or pass --strict to fail on this"}.`;
+  if (strict) throw new Error(`--strict: ${warning}`);
+  return { warning, note: `changed since ${name}` };
+}
+
 // src/releaseKeys.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import {
-  createHash as createHash3,
+  createHash as createHash4,
   createPrivateKey,
   createPublicKey,
   generateKeyPairSync
@@ -18862,7 +19011,7 @@ function publicKeyOfPem(pem, source = RELEASE_KEY_ENV) {
   return jwk.x;
 }
 function fingerprintOf(publicKey) {
-  return createHash3("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
+  return createHash4("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
 }
 async function generateReleaseKey(opts) {
   if (!RELEASE_KEY_KID_PATTERN.test(opts.kid))
@@ -18946,8 +19095,8 @@ async function checkSignedRecord(jws, record, declared) {
 
 // src/contentStamp.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir2, readFile as readFile3, writeFile as writeFile4 } from "node:fs/promises";
-import path4 from "node:path";
+import { readdir as readdir2, readFile as readFile4, writeFile as writeFile4 } from "node:fs/promises";
+import path5 from "node:path";
 
 // ../client-core/dist/packs/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -18963,16 +19112,16 @@ var DEVICES = /* @__PURE__ */ new Set([
   ..."123456789".split("").flatMap((d) => [`com${d}`, `lpt${d}`])
 ]);
 var asciiLower = (s) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
-function pathSafe(path12) {
-  const n = utf8Length(path12);
+function pathSafe(path13) {
+  const n = utf8Length(path13);
   if (n < 1 || n > MAX_PACK_PATH_BYTES)
     return false;
-  for (let i = 0; i < path12.length; i++) {
-    const c = path12.charCodeAt(i);
-    if (c < 32 || c > 126 || BAD_CHARS.has(path12[i]))
+  for (let i = 0; i < path13.length; i++) {
+    const c = path13.charCodeAt(i);
+    if (c < 32 || c > 126 || BAD_CHARS.has(path13[i]))
       return false;
   }
-  const segments = path12.split("/");
+  const segments = path13.split("/");
   if (asciiLower(segments[0]) === ".pkey")
     return false;
   for (const s of segments) {
@@ -18989,21 +19138,21 @@ function checkPaths(paths) {
   const seen = /* @__PURE__ */ new Set();
   const lower = /* @__PURE__ */ new Set();
   const dirs = /* @__PURE__ */ new Set();
-  for (const path12 of paths) {
-    if (typeof path12 !== "string" || !pathSafe(path12))
-      return { ok: false, error: "files-unsafe-path", path: String(path12) };
-    if (seen.has(path12))
-      return { ok: false, error: "files-duplicate-path", path: path12 };
-    const lp = asciiLower(path12);
+  for (const path13 of paths) {
+    if (typeof path13 !== "string" || !pathSafe(path13))
+      return { ok: false, error: "files-unsafe-path", path: String(path13) };
+    if (seen.has(path13))
+      return { ok: false, error: "files-duplicate-path", path: path13 };
+    const lp = asciiLower(path13);
     if (lower.has(lp))
-      return { ok: false, error: "files-case-collision", path: path12 };
+      return { ok: false, error: "files-case-collision", path: path13 };
     const parts = lp.split("/");
     const prefixes = [];
     for (let k = 1; k < parts.length; k++)
       prefixes.push(parts.slice(0, k).join("/"));
     if (dirs.has(lp) || prefixes.some((x) => lower.has(x)))
-      return { ok: false, error: "files-path-conflict", path: path12 };
-    seen.add(path12);
+      return { ok: false, error: "files-path-conflict", path: path13 };
+    seen.add(path13);
     lower.add(lp);
     for (const x of prefixes)
       dirs.add(x);
@@ -19361,23 +19510,23 @@ function dataOnlyTextRefusal(bytes) {
       return "content";
   return null;
 }
-function dataOnlyExtension(path12) {
-  const last = path12.slice(path12.lastIndexOf("/") + 1);
+function dataOnlyExtension(path13) {
+  const last = path13.slice(path13.lastIndexOf("/") + 1);
   const dot = last.lastIndexOf(".");
   if (dot < 0)
     return null;
   return last.slice(dot + 1).replace(/[A-Z]/g, (c) => c.toLowerCase());
 }
-function dataOnlyPathRefusal(path12) {
-  if (typeof path12 !== "string" || !pathSafe(path12))
+function dataOnlyPathRefusal(path13) {
+  if (typeof path13 !== "string" || !pathSafe(path13))
     return "extension";
-  const ext = dataOnlyExtension(path12);
+  const ext = dataOnlyExtension(path13);
   if (ext === null || !DATA_ONLY_EXTENSIONS.includes(ext))
     return "extension";
   return null;
 }
-function dataOnlyRefusal(path12, head, tail, full) {
-  const p = dataOnlyPathRefusal(path12);
+function dataOnlyRefusal(path13, head, tail, full) {
+  const p = dataOnlyPathRefusal(path13);
   if (p !== null)
     return p;
   const h = head.subarray(0, DATA_ONLY_HEAD_BYTES);
@@ -19407,12 +19556,12 @@ function dataOnlyRefusal(path12, head, tail, full) {
   for (let k = 0; k + 4 <= t.length; k++)
     if (t[k] === 80 && startsWith(t, k, ZIP_EOCD))
       return "content";
-  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path12)))
+  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path13)))
     return full === void 0 ? "content" : dataOnlyTextRefusal(full);
   return null;
 }
-function dataOnlyFileRefusal(path12, bytes) {
-  return dataOnlyRefusal(path12, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
+function dataOnlyFileRefusal(path13, bytes) {
+  return dataOnlyRefusal(path13, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
 }
 
 // ../client-core/dist/packs/stamp.js
@@ -19562,15 +19711,15 @@ async function requirePacksDiscovery(client, fetchImpl = fetch) {
 // src/packArtifacts.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { execFileSync } from "node:child_process";
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { lstat, readdir, readFile as readFile2 } from "node:fs/promises";
-import path3 from "node:path";
+import { lstat, readdir, readFile as readFile3 } from "node:fs/promises";
+import path4 from "node:path";
 var PATCH_METHOD = "zstd-patch-from";
 var ZSTD_LEVEL = 19;
 var MIN_ZSTD_VERSION = "1.5.5";
 function sha256Hex2(b) {
-  return createHash4("sha256").update(b).digest("hex");
+  return createHash5("sha256").update(b).digest("hex");
 }
 function concat(parts) {
   const n = parts.reduce((a, p) => a + p.byteLength, 0);
@@ -19620,7 +19769,7 @@ function zstdCli(workDir, bin = "zstd") {
     });
   };
   const fresh = (label) => {
-    const d = path3.join(workDir, `${label}${n++}`);
+    const d = path4.join(workDir, `${label}${n++}`);
     mkdirSync(d, { recursive: true });
     return d;
   };
@@ -19631,14 +19780,14 @@ function zstdCli(workDir, bin = "zstd") {
       const inDir = fresh("in");
       const outDir = fresh("out");
       const names = slice.map((b, i) => {
-        const f = path3.join(inDir, `${i}${inExt}`);
+        const f = path4.join(inDir, `${i}${inExt}`);
         writeFileSync(f, b);
         return f;
       });
       run2([...args, "--output-dir-flat", outDir, ...names]);
       for (const i of slice.keys())
         results.push(
-          new Uint8Array(readFileSync(path3.join(outDir, `${i}${outExt}`)))
+          new Uint8Array(readFileSync(path4.join(outDir, `${i}${outExt}`)))
         );
     }
     return results;
@@ -19649,9 +19798,9 @@ function zstdCli(workDir, bin = "zstd") {
     decodeMany: (frames) => many(frames, ["-d", "--long=31"], ".zst", ""),
     patchFrom(base, target) {
       const d = fresh("pf");
-      const b = path3.join(d, "base");
-      const t = path3.join(d, "target");
-      const o = path3.join(d, "out.zst");
+      const b = path4.join(d, "base");
+      const t = path4.join(d, "target");
+      const o = path4.join(d, "out.zst");
       writeFileSync(b, base);
       writeFileSync(t, target);
       run2([`-${ZSTD_LEVEL}`, `--patch-from=${b}`, t, "-o", o]);
@@ -19659,9 +19808,9 @@ function zstdCli(workDir, bin = "zstd") {
     },
     decodePatch(frame, base) {
       const d = fresh("dp");
-      const b = path3.join(d, "base");
-      const f = path3.join(d, "in.zst");
-      const o = path3.join(d, "out");
+      const b = path4.join(d, "base");
+      const f = path4.join(d, "in.zst");
+      const o = path4.join(d, "out");
       writeFileSync(b, base);
       writeFileSync(f, frame);
       run2(["-d", "--long=31", `--patch-from=${b}`, f, "-o", o]);
@@ -19715,7 +19864,7 @@ async function readTree(root) {
     for (const e of entries) {
       const rel = prefix ? `${prefix}/${e.name}` : e.name;
       if (!prefix && e.name === ".pkey") continue;
-      const full = path3.join(dir, e.name);
+      const full = path4.join(dir, e.name);
       const st = await lstat(full);
       if (st.isSymbolicLink()) {
         errors.push(
@@ -19731,7 +19880,7 @@ async function readTree(root) {
         errors.push(`${rel}: not a regular file.`);
         continue;
       }
-      const data = new Uint8Array(await readFile2(full));
+      const data = new Uint8Array(await readFile3(full));
       files.push({
         path: rel,
         size: data.byteLength,
@@ -20091,9 +20240,9 @@ async function findMarkers(dir) {
   async function walk2(d) {
     const entries = await readdir2(d, { withFileTypes: true });
     for (const e of entries) {
-      const full = path4.join(d, e.name);
+      const full = path5.join(d, e.name);
       if (e.isDirectory()) await walk2(full);
-      else if (e.isFile() && (e.name.endsWith(MARKER_SUFFIX) || e.name === "pack.json" && path4.basename(d) === ".pkey"))
+      else if (e.isFile() && (e.name.endsWith(MARKER_SUFFIX) || e.name === "pack.json" && path5.basename(d) === ".pkey"))
         out.push(full);
     }
   }
@@ -20110,7 +20259,7 @@ async function readMarker(file, ctx) {
   const fail3 = (step, why) => {
     throw new Error(`${file}: marker rejected at ${step}: ${why}`);
   };
-  const text = await readFile3(file, "utf8");
+  const text = await readFile4(file, "utf8");
   if (!scanStrictJson(text).ok) fail3("format", "not strict JSON");
   const m = JSON.parse(text);
   if (!m || typeof m !== "object" || m.format !== MARKER_FORMAT || !isPackId(m.packId) || typeof m.version !== "string" || !VERSION_RE4.test(m.version) || typeof m.release !== "string")
@@ -20134,13 +20283,13 @@ async function readMarker(file, ctx) {
     const payloadFile = file.slice(0, -MARKER_SUFFIX.length);
     let bytes;
     try {
-      bytes = await readFile3(payloadFile);
+      bytes = await readFile4(payloadFile);
     } catch {
-      return fail3("payload", `${path4.basename(payloadFile)} is not beside it`);
+      return fail3("payload", `${path5.basename(payloadFile)} is not beside it`);
     }
     identity = { size: bytes.byteLength, sha256: sha256Hex2(bytes) };
   } else {
-    const root = path4.dirname(path4.dirname(file));
+    const root = path5.dirname(path5.dirname(file));
     const tree = await readTree(root);
     identity = await payloadIdentity({ layout: "tree", files: tree.files });
   }
@@ -20343,7 +20492,7 @@ function stampText(content) {
 async function readContentStamp(file) {
   let bytes;
   try {
-    bytes = await readFile3(file);
+    bytes = await readFile4(file);
   } catch {
     throw new Error(`--content-stamp ${file} is not readable.`);
   }
@@ -20415,7 +20564,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   const pins = [];
   if (opts.embedded)
     pins.push(
-      ...await markerPins(path4.resolve(opts.cwd, opts.embedded), {
+      ...await markerPins(path5.resolve(opts.cwd, opts.embedded), {
         product: opts.product,
         releaseKeys: ctx.releaseKeys
       })
@@ -20454,10 +20603,10 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       `The content stamp breaks the publish rules:
 ${problems.map((p) => `  ${p}`).join("\n")}`
     );
-  const file = path4.resolve(opts.cwd, opts.out);
+  const file = path5.resolve(opts.cwd, opts.out);
   await writeFile4(file, stampText(content));
   describeContent(opts.stdout, content, merged);
-  opts.stdout.write(`Wrote ${path4.relative(opts.cwd, file) || file}
+  opts.stdout.write(`Wrote ${path5.relative(opts.cwd, file) || file}
 `);
   return { content, file };
 }
@@ -20475,7 +20624,7 @@ async function scanDir(dir) {
     const entries = await readdir3(d, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
-      const full = path5.join(d, e.name);
+      const full = path6.join(d, e.name);
       if (e.isDirectory()) await walk2(full);
       else if (e.isFile()) out.push({ path: full, name: e.name });
     }
@@ -20513,7 +20662,7 @@ function matchArtifacts(files, entries) {
     }
     if (hits.length > 1) {
       errors.push(
-        `artifacts entry ${entry.id} (${entry.match}) matches ${hits.length} files: ${hits.map((h) => path5.basename(h.path)).join(", ")}. Exactly one file may play a build's ${entry.role}.`
+        `artifacts entry ${entry.id} (${entry.match}) matches ${hits.length} files: ${hits.map((h) => path6.basename(h.path)).join(", ")}. Exactly one file may play a build's ${entry.role}.`
       );
       continue;
     }
@@ -20529,7 +20678,7 @@ function matchArtifacts(files, entries) {
     const matched = [{ ...hit, role: entry.role }];
     for (const [suffix, role] of SIDECARS) {
       const side = files.find(
-        (f) => f.name === `${hit.name}${suffix}` && path5.dirname(f.path) === path5.dirname(hit.path)
+        (f) => f.name === `${hit.name}${suffix}` && path6.dirname(f.path) === path6.dirname(hit.path)
       );
       if (side) matched.push({ ...side, role });
     }
@@ -20552,7 +20701,7 @@ function matchArtifacts(files, entries) {
   return { builds, warnings, errors };
 }
 async function hashFile(file) {
-  const hash = createHash5("sha256");
+  const hash = createHash6("sha256");
   let size = 0;
   for await (const chunk of createReadStream2(file)) {
     const buf = chunk;
@@ -20564,7 +20713,7 @@ async function hashFile(file) {
 async function readMeta(file, entryIds) {
   let raw;
   try {
-    raw = JSON.parse(await readFile4(file, "utf8"));
+    raw = JSON.parse(await readFile5(file, "utf8"));
   } catch (e) {
     throw new Error(
       `--meta ${file} is not readable JSON: ${e.message}`
@@ -20708,6 +20857,11 @@ ${PUBLISH_USAGE}`);
   if (!opts.dir?.trim())
     throw new Error(`--dir is required.
 ${PUBLISH_USAGE}`);
+  if (opts.strict && opts.contentInterface === void 0)
+    throw new Error("--strict needs --content-interface <file>.");
+  const fingerprint = opts.contentInterface !== void 0 ? await contentInterfaceFingerprint(opts.cwd, opts.contentInterface) : null;
+  if (fingerprint !== null) out.write(`Content interface: ${fingerprint}
+`);
   const loaded = await loadManifest(opts.cwd);
   const validation = validateLoadedManifest(loaded);
   if (!validation.ok)
@@ -20726,13 +20880,13 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new Error(
       ".pkey/release declares no deliverables.app with an artifacts map; pkey release publish classifies files only by that map."
     );
-  const dir = path5.resolve(opts.cwd, opts.dir);
+  const dir = path6.resolve(opts.cwd, opts.dir);
   const match = matchArtifacts(await scanDir(dir), app.artifacts);
   for (const w of match.warnings) opts.stderr.write(`warning: ${w}
 `);
   if (match.errors.length) throw new Error(match.errors.join("\n"));
   const meta = opts.meta ? await readMeta(
-    path5.resolve(opts.cwd, opts.meta),
+    path6.resolve(opts.cwd, opts.meta),
     app.artifacts.map((e) => e.id)
   ) : {};
   const hashed = [];
@@ -20768,7 +20922,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   }
   const fileCount = hashed.reduce((n, b) => n + b.files.length, 0);
   out.write(
-    `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path5.relative(opts.cwd, dir) || "."}
+    `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path6.relative(opts.cwd, dir) || "."}
 `
   );
   for (const b of hashed)
@@ -20827,11 +20981,11 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
   };
   if (opts.contentStamp !== void 0)
     setContent(
-      await readContentStamp(path5.resolve(opts.cwd, opts.contentStamp))
+      await readContentStamp(path6.resolve(opts.cwd, opts.contentStamp))
     );
   else if (opts.embedded !== void 0)
     pinSources.push(
-      ...await markerPins(path5.resolve(opts.cwd, opts.embedded), {
+      ...await markerPins(path6.resolve(opts.cwd, opts.embedded), {
         product: opts.product,
         releaseKeys: context.releaseKeys
       })
@@ -20868,7 +21022,24 @@ ${local.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
     uploaded: [],
     skipped: [],
     warnings: match.warnings,
-    ...descriptor.content ? { content: descriptor.content } : {}
+    ...descriptor.content ? { content: descriptor.content } : {},
+    ...fingerprint !== null ? { contentInterface: fingerprint } : {}
+  };
+  const judge = (answer) => {
+    if (fingerprint === null) return;
+    const verdict = judgeContentInterface(
+      answer,
+      fingerprint,
+      descriptor.content?.contentApi ?? null,
+      opts.strict === true
+    );
+    out.write(`Content interface: ${verdict.note}
+`);
+    if (verdict.warning) {
+      result.warnings.push(verdict.warning);
+      opts.stderr.write(`warning: ${verdict.warning}
+`);
+    }
   };
   if (opts.dryRun) {
     out.write(
@@ -20998,11 +21169,24 @@ ${JSON.stringify(record, null, 2)}
       await checkSignedRecord(recordJws, record, declared);
       result.recordJws = recordJws;
       out.write(
-        `Signed the release record (seq ${record.seq}, sha256 ${createHash5("sha256").update(recordJws).digest("hex").slice(0, 12)}…)
+        `Signed the release record (seq ${record.seq}, sha256 ${createHash6("sha256").update(recordJws).digest("hex").slice(0, 12)}…)
 `
       );
     }
   }
+  if (fingerprint !== null && !opts.dryRun)
+    judge(
+      (await client.postJson("release/publish/submit", {
+        what: "Comparing the content interface (dry run)",
+        body: {
+          ticket: ticket.ticket,
+          descriptor,
+          ...recordJws !== void 0 ? { record: recordJws } : {},
+          contentInterface: fingerprint,
+          dryRun: true
+        }
+      })).contentInterface
+    );
   if (source === "r2") {
     for (const o of ticket.objects) {
       if (o.present) {
@@ -21039,10 +21223,12 @@ ${JSON.stringify(record, null, 2)}
       ticket: ticket.ticket,
       descriptor,
       ...recordJws !== void 0 ? { record: recordJws } : {},
+      ...fingerprint !== null ? { contentInterface: fingerprint } : {},
       ...opts.dryRun ? { dryRun: true } : {}
     }
   });
   result.server = server;
+  if (opts.dryRun) judge(server.contentInterface);
   if (opts.dryRun) {
     const unverified = Array.isArray(server.unverified) ? server.unverified.length : 0;
     out.write(
@@ -21128,9 +21314,9 @@ ${CHANNEL_USAGE}`);
 // src/packPublish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { mkdtempSync, rmSync } from "node:fs";
-import { cp, mkdir as mkdir2, readdir as readdir4, readFile as readFile6, writeFile as writeFile6 } from "node:fs/promises";
+import { cp, mkdir as mkdir2, readdir as readdir4, readFile as readFile7, writeFile as writeFile6 } from "node:fs/promises";
 import os from "node:os";
-import path7 from "node:path";
+import path8 from "node:path";
 
 // pkey-zstd-wasm:zstd-wasm-embedded
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -21239,7 +21425,7 @@ function parseVersion(scheme, v) {
 
 // src/pck.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash6 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 var PCK_MAGIC = 1129333831;
 var PACK_DIR_ENCRYPTED = 1;
 var PACK_REL_FILEBASE = 2;
@@ -21314,24 +21500,24 @@ function readPck(b, name = "the payload") {
       const md5 = Buffer.from(b.subarray(p + 16, p + 32)).toString("hex");
       const flags = dv.getUint32(p + 32, true);
       p += 36;
-      const path12 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
+      const path13 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
       if (flags & PACK_FILE_ENCRYPTED)
         throw new PckError(
-          `${path12}: an encrypted entry; a published pack is never encrypted.`
+          `${path13}: an encrypted entry; a published pack is never encrypted.`
         );
       if (flags & (PACK_FILE_REMOVAL | PACK_FILE_DELTA))
         throw new PckError(
-          `${path12}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
+          `${path13}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
         );
       if (flags !== 0)
-        throw new PckError(`${path12}: unknown entry flags ${flags}.`);
-      if (!pckPathOk(path12))
+        throw new PckError(`${path13}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path13))
         throw new PckError(
-          `${path12}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
+          `${path13}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
         );
       if (offset + size > b.byteLength)
-        throw new PckError(`${path12}: its bytes run past the end of the file.`);
-      entries.push({ rawPath, path: path12, offset, size, md5, flags });
+        throw new PckError(`${path13}: its bytes run past the end of the file.`);
+      entries.push({ rawPath, path: path13, offset, size, md5, flags });
     }
     const all = checkPaths(entries.map((e) => e.path));
     if (!all.ok)
@@ -21347,9 +21533,9 @@ function readPck(b, name = "the payload") {
     );
   }
 }
-function pckPathOk(path12) {
-  if (!checkPaths([path12]).ok) return false;
-  return !(path12.includes("..") || path12.includes("./") || path12.includes("//") || path12.endsWith("/") || path12.endsWith("/."));
+function pckPathOk(path13) {
+  if (!checkPaths([path13]).ok) return false;
+  return !(path13.includes("..") || path13.includes("./") || path13.includes("//") || path13.endsWith("/") || path13.endsWith("/."));
 }
 function pad(n, align) {
   const r = n % align;
@@ -21395,11 +21581,11 @@ function writePck(src, header, keep) {
   dv.setUint32(p, keep.length, true);
   p += 4;
   for (const [i, e] of keep.entries()) {
-    const path12 = paths[i];
-    dv.setUint32(p, path12.byteLength, true);
+    const path13 = paths[i];
+    dv.setUint32(p, path13.byteLength, true);
     p += 4;
-    out.set(path12, p);
-    p += path12.byteLength;
+    out.set(path13, p);
+    p += path13.byteLength;
     dv.setBigUint64(p, BigInt(rel[i]), true);
     dv.setBigUint64(p + 8, BigInt(e.size), true);
     out.set(Buffer.from(e.md5, "hex"), p + 16);
@@ -21409,7 +21595,7 @@ function writePck(src, header, keep) {
   return out;
 }
 function sha2562(b) {
-  return createHash6("sha256").update(b).digest("hex");
+  return createHash7("sha256").update(b).digest("hex");
 }
 function stripPck(src, name = "the payload") {
   const dir = readPck(src, name);
@@ -21433,9 +21619,9 @@ function stripPck(src, name = "the payload") {
 
 // src/delegate.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash7, generateKeyPairSync as generateKeyPairSync2 } from "node:crypto";
-import { readFile as readFile5, writeFile as writeFile5 } from "node:fs/promises";
-import path6 from "node:path";
+import { createHash as createHash8, generateKeyPairSync as generateKeyPairSync2 } from "node:crypto";
+import { readFile as readFile6, writeFile as writeFile5 } from "node:fs/promises";
+import path7 from "node:path";
 var CONTENT_KEY_ENV = "PKEY_CONTENT_KEY";
 var CONTENT_KEYS_USAGE = "Usage: pkey release keys generate --content --out <file>";
 var DELEGATE_USAGE = "Usage: pkey release delegate --product <slug> --prefix <packId> --types <type,…> --public-key <base64url> [--expires-in <days>] [--notes <text>] [--release-key-file pem] [--base-url <url>] [--dry-run]";
@@ -21444,7 +21630,7 @@ var MAX_DELEGATION_DAYS = MAX_DELEGATION_TTL_SECONDS / SECONDS_PER_DAY;
 var WINDOW_WARN_DAYS = 14;
 var KEY_B64URL_RE2 = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 var SHA256_RE4 = /^[0-9a-f]{64}$/;
-var sha256Hex3 = (s) => createHash7("sha256").update(s).digest("hex");
+var sha256Hex3 = (s) => createHash8("sha256").update(s).digest("hex");
 var iso = (t) => new Date(t * 1e3).toISOString();
 async function generateContentKey(opts) {
   const { privateKey, publicKey } = generateKeyPairSync2("ed25519");
@@ -21558,7 +21744,7 @@ function parseDelegationTypes(types) {
   return list;
 }
 async function keepSignedDelegation(cwd, jws, sha2564) {
-  const file = path6.join(cwd, `pkey-delegation-${sha2564}.jws`);
+  const file = path7.join(cwd, `pkey-delegation-${sha2564}.jws`);
   await writeFile5(file, `${jws}
 `, { mode: 384, flag: "wx" });
   return file;
@@ -21715,7 +21901,7 @@ Content kid: ${kid}
     }
     throw new Error(
       `${e.message}
-` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path6.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2564}.`)
+` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path7.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2564}.`)
     );
   }
   out.write(
@@ -21847,9 +22033,9 @@ function isScript(p, kinds) {
 }
 var NATIVE_RE = /\.(so|dll|dylib|wasm|gdextension)$|\.so\.\d+(\.\d+)*$/i;
 var NATIVE_DIR_RE = /\.(framework|xcframework)$/i;
-function isNative(path12) {
-  if (NATIVE_RE.test(path12)) return true;
-  return path12.split("/").some((s) => NATIVE_DIR_RE.test(s));
+function isNative(path13) {
+  if (NATIVE_RE.test(path13)) return true;
+  return path13.split("/").some((s) => NATIVE_DIR_RE.test(s));
 }
 function resPath(p) {
   return p.startsWith("res://") ? p.slice("res://".length) : null;
@@ -22121,7 +22307,7 @@ function lintTreePaths(paths) {
 
 // src/packChunks.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash9 } from "node:crypto";
 var CHUNK_MIN_PAYLOAD_BYTES = 4 * 1024 * 1024;
 var CHUNK_PARAMS = {
   chunker: "fastcdc-2016-nc1",
@@ -22139,7 +22325,7 @@ var HEADER_BYTES2 = 64;
 var RECORD_BYTES2 = 48;
 var FLAG_FILE_AWARE2 = 1;
 var TWO_322 = 4294967296;
-var sha256Hex4 = (b) => createHash8("sha256").update(b).digest("hex");
+var sha256Hex4 = (b) => createHash9("sha256").update(b).digest("hex");
 function hexBytes(h) {
   const out = new Uint8Array(h.length / 2);
   for (let i = 0; i < out.length; i++)
@@ -22531,15 +22717,15 @@ async function findPck(dir) {
     throw new Error(
       `${dir} must hold exactly one .pck file (found ${names.length}${names.length ? `: ${names.join(", ")}` : ""}).`
     );
-  return path7.join(dir, names[0]);
+  return path8.join(dir, names[0]);
 }
 async function loadVariant(pack, variant, root) {
   const key = variantKey(variant);
-  const dir = path7.join(root, variantDirName(variant));
+  const dir = path8.join(root, variantDirName(variant));
   if (pack.type === "godot.pck") {
     const file = await findPck(dir);
-    const src = new Uint8Array(await readFile6(file));
-    const name = path7.basename(file);
+    const src = new Uint8Array(await readFile7(file));
+    const name = path8.basename(file);
     const strip = stripPck(src, name);
     const lint = lintPck(strip.directory, strip.bytes, {
       prefixes: pack.handler.prefixes ?? [],
@@ -22584,7 +22770,7 @@ function decodeJwsPayload(jws) {
   }
 }
 async function cachedReleases(bases, packId, warn) {
-  const root = path7.join(bases, packId);
+  const root = path8.join(bases, packId);
   let versions;
   try {
     versions = (await readdir4(root, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name);
@@ -22593,10 +22779,10 @@ async function cachedReleases(bases, packId, warn) {
   }
   const out = [];
   for (const version of versions) {
-    const dir = path7.join(root, version);
+    const dir = path8.join(root, version);
     let jws;
     try {
-      jws = (await readFile6(path7.join(dir, "record.jws"), "utf8")).trim();
+      jws = (await readFile7(path8.join(dir, "record.jws"), "utf8")).trim();
     } catch {
       warn(`--bases: ${dir} has no record.jws; it is not a base.`);
       continue;
@@ -22632,10 +22818,10 @@ async function loadBase(pack, release, keys, warn) {
       );
       continue;
     }
-    const dir = path7.join(release.dir, key || "default");
+    const dir = path8.join(release.dir, key || "default");
     try {
       if (pack.type === "godot.pck") {
-        const bytes = new Uint8Array(await readFile6(await findPck(dir)));
+        const bytes = new Uint8Array(await readFile7(await findPck(dir)));
         const sha = sha256Hex2(bytes);
         if (sha !== v.payload.sha256 || bytes.byteLength !== v.payload.size) {
           warn(
@@ -22667,17 +22853,17 @@ async function chunkChainBase(proven, key, gateClass, warn) {
     const v = c.record.variants.find((x) => variantKey(x.variant) === key);
     if (!v?.chunks || (c.record.entitlement ?? null) !== gateClass) continue;
     const label = `${c.record.deliverable} ${c.version} (${key || "default"})`;
-    const file = path7.join(
+    const file = path8.join(
       c.dir,
       key || "default",
       `chunks.${v.chunks.sha256}`
     );
     let stored;
     try {
-      stored = new Uint8Array(await readFile6(file));
+      stored = new Uint8Array(await readFile7(file));
     } catch {
       warn(
-        `chunk chain ${label}: the cached index ${path7.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`
+        `chunk chain ${label}: the cached index ${path8.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`
       );
       continue;
     }
@@ -22704,7 +22890,7 @@ function markerJson(packId, version, jws) {
 `;
 }
 function markerPathFor(type, location) {
-  return type === "godot.pck" ? `${location}${MARKER_SUFFIX}` : path7.join(location, ...TREE_MARKER_PATH.split("/"));
+  return type === "godot.pck" ? `${location}${MARKER_SUFFIX}` : path8.join(location, ...TREE_MARKER_PATH.split("/"));
 }
 async function publishPack(opts) {
   const out = opts.stdout;
@@ -22749,7 +22935,22 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       `--version ${version} does not parse under ${packId}'s ${pack.versioning.scheme} scheme.`
     );
   const releaseId = `${packId}@${version}`;
-  const root = path7.resolve(opts.cwd, opts.dir);
+  const saveCompat = await collectProvides({
+    cwd: opts.cwd,
+    pack,
+    ...opts.providesFile !== void 0 ? { providesFile: opts.providesFile } : {},
+    removes: opts.removes ?? [],
+    warn
+  });
+  if (saveCompat.provides)
+    out.write(
+      `Provides: ${saveCompat.provides.length} content id${saveCompat.provides.length === 1 ? "" : "s"}${saveCompat.removes ? `; removes ${saveCompat.removes.join(", ")}` : ""}
+`
+    );
+  else if (saveCompat.removes)
+    out.write(`Removes: ${saveCompat.removes.join(", ")}
+`);
+  const root = path8.resolve(opts.cwd, opts.dir);
   const variants = [];
   for (const v of declaredVariants(pack))
     variants.push(await loadVariant(pack, v, root));
@@ -22767,7 +22968,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   for (const v of variants) {
     const n = v.payload.files.length;
     out.write(
-      `- ${(v.key || "default").padEnd(20)} ${path7.relative(opts.cwd, v.location) || "."}: ${n} entr${n === 1 ? "y" : "ies"}${v.stripped.length ? `; strip${opts.dryRun ? " would remove" : "s"} ${v.stripped.join(", ")}` : ""}
+      `- ${(v.key || "default").padEnd(20)} ${path8.relative(opts.cwd, v.location) || "."}: ${n} entr${n === 1 ? "y" : "ies"}${v.stripped.length ? `; strip${opts.dryRun ? " would remove" : "s"} ${v.stripped.join(", ")}` : ""}
 `
     );
   }
@@ -22806,7 +23007,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     out.write("Data-only: every file passes (plans/P4-19.md §2.5)\n");
   }
   const issuedNow = opts.now ?? Math.floor(Date.now() / 1e3);
-  const work = mkdtempSync(path7.join(os.tmpdir(), "pkey-pack-"));
+  const work = mkdtempSync(path8.join(os.tmpdir(), "pkey-pack-"));
   try {
     const z = zstdCli(work, opts.zstdBin);
     const built = /* @__PURE__ */ new Map();
@@ -22900,7 +23101,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     }
     const deltaWanted = pack.patch.strategies.includes("delta") && pack.patch.deltaBases > 0;
     const cached = opts.bases && (deltaWanted || chunked.size > 0) ? (await cachedReleases(
-      path7.resolve(opts.cwd, opts.bases),
+      path8.resolve(opts.cwd, opts.bases),
       packId,
       warn
     )).filter((c) => c.version !== version) : [];
@@ -23195,12 +23396,15 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         activation: pack.handler.activation
       },
       ...gate ? { entitlement: gate } : {},
-      variants: recordVariants
+      variants: recordVariants,
+      // P4-20: the record-level members WIRE-CONTRACT-V4 §2.5.1 reserves.
+      ...saveCompat.provides ? { provides: saveCompat.provides } : {},
+      ...saveCompat.removes ? { removes: saveCompat.removes } : {}
     };
     const payloadBytes = Buffer.byteLength(JSON.stringify(record));
     if (payloadBytes > MAX_RECORD_PAYLOAD_BYTES)
       throw new Error(
-        `The pack record is ${payloadBytes} bytes; a release record is at most ${MAX_RECORD_PAYLOAD_BYTES} (fewer variants or delta bases).`
+        `The pack record is ${payloadBytes} bytes; a release record is at most ${MAX_RECORD_PAYLOAD_BYTES} (fewer variants, delta bases or provided content ids).`
       );
     if (!releaseRecordClaims(record, { expectedAud: opts.product }))
       throw new Error(
@@ -23271,11 +23475,11 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
       if (v.rewrite) {
         await writeFile6(v.location, v.rewrite);
         out.write(
-          `Wrote the stripped ${path7.basename(v.location)} back in place
+          `Wrote the stripped ${path8.basename(v.location)} back in place
 `
         );
       }
-    const objDir = path7.join(work, "objects");
+    const objDir = path8.join(work, "objects");
     await mkdir2(objDir, { recursive: true });
     for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
       const round = list.slice(i, i + STAGE_ROUND_OBJECTS);
@@ -23310,7 +23514,7 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
     const marker2 = markerJson(packId, version, jws);
     for (const v of variants) {
       const file = markerPathFor(pack.type, v.location);
-      await mkdir2(path7.dirname(file), { recursive: true });
+      await mkdir2(path8.dirname(file), { recursive: true });
       await writeFile6(file, marker2);
       result.markers.push(file);
     }
@@ -23319,32 +23523,32 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
 `
     );
     if (opts.out) {
-      const dest = path7.join(path7.resolve(opts.cwd, opts.out), packId, version);
+      const dest = path8.join(path8.resolve(opts.cwd, opts.out), packId, version);
       await mkdir2(dest, { recursive: true });
-      await writeFile6(path7.join(dest, "record.jws"), `${jws}
+      await writeFile6(path8.join(dest, "record.jws"), `${jws}
 `);
       for (const v of variants) {
-        const vdir = path7.join(dest, variantDirName(v.variant));
+        const vdir = path8.join(dest, variantDirName(v.variant));
         await mkdir2(vdir, { recursive: true });
         if (pack.type === "godot.pck")
           await writeFile6(
-            path7.join(vdir, path7.basename(v.location)),
+            path8.join(vdir, path8.basename(v.location)),
             v.payload.bytes
           );
         else
           await cp(v.location, vdir, {
             recursive: true,
-            filter: (src) => path7.relative(v.location, src).split(path7.sep)[0] !== ".pkey"
+            filter: (src) => path8.relative(v.location, src).split(path8.sep)[0] !== ".pkey"
           });
         const ck = builtChunks.get(v.key);
         if (ck)
           await writeFile6(
-            path7.join(vdir, `chunks.${ck.index.ref.sha256}`),
+            path8.join(vdir, `chunks.${ck.index.ref.sha256}`),
             ck.index.stored
           );
       }
       out.write(
-        `Kept the record and payloads at ${path7.relative(opts.cwd, dest) || dest} (for --bases)
+        `Kept the record and payloads at ${path8.relative(opts.cwd, dest) || dest} (for --bases)
 `
       );
     }
@@ -23402,7 +23606,7 @@ async function stageRound(client, round, gated, packId, objDir, opts, result) {
       throw new Error(
         `The ticket names ${o.sha256}, which pkey did not ask for.`
       );
-    const file = path7.join(objDir, obj.sha256);
+    const file = path8.join(objDir, obj.sha256);
     await writeFile6(file, obj.bytes);
     await putFile({
       creds: ticket.credentials,
@@ -23461,8 +23665,8 @@ ${objectCount} distinct objects
 
 // src/revoke.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile7 } from "node:fs/promises";
-import path8 from "node:path";
+import { readFile as readFile8 } from "node:fs/promises";
+import path9 from "node:path";
 var REVOKE_USAGE = "Usage: pkey release revoke <packId>@<version> --reason <text> --product <slug> [--replacement <version>] [--release-key-file pem] [--base-url <url>] [--dry-run]";
 async function requireRevocationsDiscovery(client, fetchImpl = fetch) {
   const url = client.url(".well-known/polaris.json");
@@ -23641,7 +23845,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   let fileJws = null;
   if (!byHash) {
     try {
-      fileJws = (await readFile7(path8.resolve(opts.cwd, opts.delegation), "utf8")).trim();
+      fileJws = (await readFile8(path9.resolve(opts.cwd, opts.delegation), "utf8")).trim();
     } catch (e) {
       throw new Error(
         `--delegation is neither a sha256 nor a readable file (${e.message}).
@@ -23888,8 +24092,8 @@ ${DISTRIBUTION_CI_USAGE}`
   }
   const client = await clientFor2(opts);
   const base = `distribution/rollouts/${encodeURIComponent(opts.outlet)}/${encodeURIComponent(opts.channel)}`;
-  const path12 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
-  const body = await client.postJson(path12, {
+  const path13 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
+  const body = await client.postJson(path13, {
     what: opts.command === "rollout" ? `Rolling out ${opts.releaseId} on ${opts.outlet}/${opts.channel}` : `${opts.command[0].toUpperCase()}${opts.command.slice(1)} on ${opts.outlet}/${opts.channel}`,
     body: {
       ...opts.releaseId ? { releaseId: opts.releaseId } : {},
@@ -23911,25 +24115,25 @@ ${DISTRIBUTION_CI_USAGE}`
 
 // src/schemas.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir3, readdir as readdir5, readFile as readFile8, writeFile as writeFile7 } from "node:fs/promises";
+import { mkdir as mkdir3, readdir as readdir5, readFile as readFile9, writeFile as writeFile7 } from "node:fs/promises";
 import { createRequire } from "node:module";
-import path9 from "node:path";
+import path10 from "node:path";
 async function manifestSchemas() {
   if (typeof define_PKEY_EMBEDDED_SCHEMAS_default !== "undefined")
     return define_PKEY_EMBEDDED_SCHEMAS_default;
   const entry = createRequire(import.meta.url).resolve("@polaris-key/manifest");
-  const dir = path9.join(path9.dirname(entry), "..", "schemas", "v1");
+  const dir = path10.join(path10.dirname(entry), "..", "schemas", "v1");
   const names = (await readdir5(dir)).filter((n) => n.endsWith(".schema.json")).sort();
   const out = {};
   for (const name of names)
-    out[name] = await readFile8(path9.join(dir, name), "utf8");
+    out[name] = await readFile9(path10.join(dir, name), "utf8");
   return out;
 }
 async function writeManifestSchemas(outDir) {
   await mkdir3(outDir, { recursive: true });
   const written = [];
   for (const [name, body] of Object.entries(await manifestSchemas())) {
-    const file = path9.join(outDir, name);
+    const file = path10.join(outDir, name);
     await writeFile7(file, body, "utf8");
     written.push(file);
   }
@@ -23938,26 +24142,26 @@ async function writeManifestSchemas(outDir) {
 
 // src/feeds.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   lstat as lstat2,
   mkdir as mkdir4,
   readdir as readdir6,
-  readFile as readFile9,
+  readFile as readFile10,
   rm,
   rmdir,
   writeFile as writeFile8
 } from "node:fs/promises";
-import path10 from "node:path";
+import path11 from "node:path";
 import { promisify } from "node:util";
 var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
 var FDROID_INDEX_VERSION = 3e4;
 var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
 var LOCALE = "en-US";
 var SAFE_NAME = /^[A-Za-z0-9_~.-]+$/;
-var sha2563 = (b) => createHash9("sha256").update(b).digest("hex");
+var sha2563 = (b) => createHash10("sha256").update(b).digest("hex");
 function sortedJson(value) {
   return JSON.stringify(value, (_k, v) => {
     if (v && typeof v === "object" && !Array.isArray(v)) {
@@ -24223,13 +24427,13 @@ async function findApksigner(explicit, env) {
   if (explicit) return explicit;
   const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
   if (sdk) {
-    const bt = path10.join(sdk, "build-tools");
+    const bt = path11.join(sdk, "build-tools");
     try {
       const versions = (await readdir6(bt)).sort(
         (a, b) => a.localeCompare(b, void 0, { numeric: true })
       );
       for (const v of versions.reverse()) {
-        const p = path10.join(bt, v, "apksigner");
+        const p = path11.join(bt, v, "apksigner");
         if (existsSync(p)) return p;
       }
     } catch {
@@ -24244,7 +24448,7 @@ async function signEntryJar(jar, opts) {
       `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
     );
   const unsigned = `${jar}.unsigned`;
-  await writeFile8(unsigned, await readFile9(jar));
+  await writeFile8(unsigned, await readFile10(jar));
   try {
     await promisify(execFile)(
       tool,
@@ -24285,8 +24489,8 @@ var OUT_DIRS = {
   icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
 };
 async function staleOutFiles(dir, cwd) {
-  const up = path10.relative(dir, path10.resolve(cwd));
-  if (up === "" || up.split(path10.sep)[0] !== ".." && !path10.isAbsolute(up))
+  const up = path11.relative(dir, path11.resolve(cwd));
+  if (up === "" || up.split(path11.sep)[0] !== ".." && !path11.isAbsolute(up))
     throw new Error(
       `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
     );
@@ -24302,7 +24506,7 @@ async function staleOutFiles(dir, cwd) {
   const dirs = [];
   const foreign = [];
   for (const name of (await readdir6(dir)).sort()) {
-    const full = path10.join(dir, name);
+    const full = path11.join(dir, name);
     const st = await lstat2(full);
     if (OUT_FILES.has(name) && st.isFile()) {
       files.push(full);
@@ -24312,10 +24516,10 @@ async function staleOutFiles(dir, cwd) {
     if (pattern2 && st.isDirectory()) {
       let clean = true;
       for (const inner of (await readdir6(full)).sort()) {
-        const f = path10.join(full, inner);
+        const f = path11.join(full, inner);
         if (pattern2.test(inner) && (await lstat2(f)).isFile()) files.push(f);
         else {
-          foreign.push(path10.join(name, inner));
+          foreign.push(path11.join(name, inner));
           clean = false;
         }
       }
@@ -24353,7 +24557,7 @@ async function buildFdroidFeed(opts) {
   if (opts.keystore === void 0 !== (opts.alias === void 0))
     throw new Error(`--keystore and --alias go together.
 ${FEEDS_USAGE}`);
-  const dir = path10.resolve(opts.cwd, opts.out);
+  const dir = path11.resolve(opts.cwd, opts.out);
   await staleOutFiles(dir, opts.cwd);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
@@ -24389,8 +24593,8 @@ ${FEEDS_USAGE}`);
   const prevTs = previous?.repo?.timestamp ?? 0;
   const timestamp = Math.max(now, prevTs + 1);
   const icon = opts.icon ? {
-    name: path10.basename(opts.icon),
-    bytes: await readFile9(path10.resolve(opts.cwd, opts.icon))
+    name: path11.basename(opts.icon),
+    bytes: await readFile10(path11.resolve(opts.cwd, opts.icon))
   } : void 0;
   if (icon && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon.name))
     throw new Error(
@@ -24405,12 +24609,12 @@ ${FEEDS_USAGE}`);
   for (const d of stale.dirs) await rmdir(d);
   const written = {};
   for (const [p, bytes] of repo.files) {
-    const file = path10.join(dir, ...p.split("/"));
-    await mkdir4(path10.dirname(file), { recursive: true });
+    const file = path11.join(dir, ...p.split("/"));
+    await mkdir4(path11.dirname(file), { recursive: true });
     await writeFile8(file, bytes);
     written[p] = file;
   }
-  const jar = path10.join(dir, "entry.jar");
+  const jar = path11.join(dir, "entry.jar");
   await writeFile8(
     jar,
     zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
@@ -24427,13 +24631,13 @@ ${FEEDS_USAGE}`);
   };
   if (!opts.keystore || !opts.alias) {
     out.write(
-      `Wrote the unsigned repository to ${path10.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
+      `Wrote the unsigned repository to ${path11.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
 `
     );
     return result;
   }
   await (opts.sign ?? signEntryJar)(jar, {
-    keystore: path10.resolve(opts.cwd, opts.keystore),
+    keystore: path11.resolve(opts.cwd, opts.keystore),
     alias: opts.alias,
     passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
     env: opts.env,
@@ -24452,7 +24656,7 @@ ${FEEDS_USAGE}`);
   }
   const all = await Promise.all(
     Object.entries(written).map(async ([p, file]) => {
-      const bytes = await readFile9(file);
+      const bytes = await readFile10(file);
       return { path: p, file, sha256: sha2563(bytes), size: bytes.length };
     })
   );
@@ -24601,7 +24805,7 @@ function parseArgs(argv2) {
   return { command, flags, multi, bare, positional };
 }
 async function cmdInit(parsed, cwd, stdout) {
-  const basename = path11.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
+  const basename = path12.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
   const modules = normalizeModules2(flagString(parsed, "modules"));
@@ -24620,7 +24824,7 @@ async function cmdInit(parsed, cwd, stdout) {
 `
   );
   for (const file of result.files)
-    stdout.write(`- ${path11.relative(cwd, file)}
+    stdout.write(`- ${path12.relative(cwd, file)}
 `);
   stdout.write("\nNext: pkey validate\n");
   return 0;
@@ -24656,7 +24860,7 @@ function located(manifest, cwd, msg) {
     release: manifest.releasePath,
     distribution: manifest.distributionPath
   }[msg.file];
-  return `${msg.file}${msg.path}${file ? ` (${path11.relative(cwd, file)})` : ""}`;
+  return `${msg.file}${msg.path}${file ? ` (${path12.relative(cwd, file)})` : ""}`;
 }
 var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
 ${DISTRIBUTION_CI_USAGE}`;
@@ -24684,7 +24888,7 @@ async function cmdDistribution(parsed, cwd, stdout, stderr, ci) {
   const ids = outletIdsFor(manifest, outlet);
   if (!ids) {
     stderr.write(
-      `outlet ${JSON.stringify(outlet)} is not declared in ${path11.relative(cwd, manifest.distributionPath)}
+      `outlet ${JSON.stringify(outlet)} is not declared in ${path12.relative(cwd, manifest.distributionPath)}
 `
     );
     return 1;
@@ -24792,7 +24996,7 @@ async function cmdBundle(parsed, cwd, stdout) {
     force: flagBool(parsed, "force"),
     cookie: process.env[ADMIN_COOKIE_ENV]
   });
-  const rel = path11.relative(cwd, result.file);
+  const rel = path12.relative(cwd, result.file);
   stdout.write(`Minted bundle ${result.bundleId}
 `);
   stdout.write(`- File: ${rel}
@@ -24871,15 +25075,15 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       const dir = flagString(parsed, "dir");
       if (!product || !dir) throw new Error(PUBLISH_USAGE);
       const deliverable = flagString(parsed, "deliverable");
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile10(
-        path11.resolve(cwd, flagString(parsed, "release-key-file")),
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile11(
+        path12.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
       if (parsed.bare.has("pin"))
         throw new Error("--pin needs a value: --pin <packId>@<version>.");
-      const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile10(
-        path11.resolve(cwd, flagString(parsed, "content-key-file")),
+      const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile11(
+        path12.resolve(cwd, flagString(parsed, "content-key-file")),
         "utf8"
       ) : void 0;
       const delegation = flagString(parsed, "delegation");
@@ -24889,6 +25093,15 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           ["content-stamp", "embedded", "pin"],
           `--deliverable ${deliverable} is a pack; these stamp an app release's packs`
         );
+        refuseFlags(
+          parsed,
+          ["content-interface", "strict"],
+          `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`
+        );
+        if (parsed.bare.has("removes") || parsed.bare.has("provides"))
+          throw new Error(
+            "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...]."
+          );
         await publishPack({
           ...common,
           cwd,
@@ -24904,10 +25117,17 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           ...releaseKeyPem !== void 0 ? { releaseKeyPem } : {},
           ...contentKeyPem !== void 0 ? { contentKeyPem } : {},
           ...delegation !== void 0 ? { delegation } : {},
-          ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {}
+          ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
+          ...flagString(parsed, "provides") !== void 0 ? { providesFile: flagString(parsed, "provides") } : {},
+          removes: parseRemoves(parsed.multi["removes"] ?? [])
         });
         return 0;
       }
+      refuseFlags(
+        parsed,
+        ["provides", "removes"],
+        "they list a pack release's content ids; the app's code interface is --content-interface"
+      );
       refuseFlags(
         parsed,
         ["out", "bases"],
@@ -24935,7 +25155,9 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         noRecord: flagBool(parsed, "no-record"),
         contentStamp: flagString(parsed, "content-stamp"),
         embedded: flagString(parsed, "embedded"),
-        pins: parsed.multi["pin"] ?? []
+        pins: parsed.multi["pin"] ?? [],
+        ...flagString(parsed, "content-interface") !== void 0 ? { contentInterface: flagString(parsed, "content-interface") } : {},
+        strict: flagBool(parsed, "strict")
       });
       return 0;
     }
@@ -24970,8 +25192,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           ["replacement"],
           "no release replaces a delegation"
         );
-        const pem = flagString(parsed, "release-key-file") ? await readFile10(
-          path11.resolve(cwd, flagString(parsed, "release-key-file")),
+        const pem = flagString(parsed, "release-key-file") ? await readFile11(
+          path12.resolve(cwd, flagString(parsed, "release-key-file")),
           "utf8"
         ) : void 0;
         await revokeDelegation({
@@ -24986,8 +25208,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         return 0;
       }
       if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile10(
-        path11.resolve(cwd, flagString(parsed, "release-key-file")),
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile11(
+        path12.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await revokePackRelease({
@@ -25009,8 +25231,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       if (!product || !prefix || !types || !publicKey)
         throw new Error(DELEGATE_USAGE);
       const expires = flagString(parsed, "expires-in");
-      const pem = flagString(parsed, "release-key-file") ? await readFile10(
-        path11.resolve(cwd, flagString(parsed, "release-key-file")),
+      const pem = flagString(parsed, "release-key-file") ? await readFile11(
+        path12.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await delegateContentKey({
@@ -25034,7 +25256,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         if (parsed.positional[1] !== "generate" || !outFile || kid)
           throw new Error(CONTENT_KEYS_USAGE);
         const generated2 = await generateContentKey({
-          out: path11.resolve(cwd, outFile)
+          out: path12.resolve(cwd, outFile)
         });
         stdout.write(generatedContentKeyText(generated2));
         return 0;
@@ -25043,7 +25265,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         throw new Error(KEYS_USAGE);
       const generated = await generateReleaseKey({
         kid,
-        out: path11.resolve(cwd, outFile),
+        out: path12.resolve(cwd, outFile),
         force: flagBool(parsed, "force")
       });
       stdout.write(generatedKeyText(generated));
@@ -25109,10 +25331,10 @@ async function cmdManifest(parsed, cwd, stdout) {
   const outDir = flagString(parsed, "out");
   if (parsed.positional[0] !== "schemas" || !outDir)
     throw new Error(MANIFEST_USAGE);
-  const written = await writeManifestSchemas(path11.resolve(cwd, outDir));
+  const written = await writeManifestSchemas(path12.resolve(cwd, outDir));
   stdout.write(`Wrote ${written.length} schemas:
 `);
-  for (const file of written) stdout.write(`- ${path11.relative(cwd, file)}
+  for (const file of written) stdout.write(`- ${path12.relative(cwd, file)}
 `);
   return 0;
 }
@@ -25153,10 +25375,11 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
               [--base-url url] [--release-key-file pem] [--min-supported-seq n]
               [--no-record] [--content-stamp file | --embedded dir --pin pack@v ...]
-              [--dry-run]
+              [--content-interface registry.json [--strict]] [--dry-run]
   pkey release publish --product slug --version v --dir path --deliverable packId
               [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
               [--content-key-file pem --delegation sha256]
+              [--provides ids.json] [--removes id[,id...] ...]
   pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
               [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
   pkey release revoke packId@version --reason text --product slug [--replacement version]
@@ -25202,6 +25425,13 @@ for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundle
 the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record,
 uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the
 record, payloads and chunk indexes for the next publish's --bases.
+Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or
+the pack's declared provides.from (default .pkey/provides.json; provides.required fails a
+publish without it); Polaris Key refuses a release that stops providing an id its predecessor
+provided at a live contentApi level both support, unless --removes acknowledges it. An app
+publish with --content-interface hashes that registry (canonical JSON, SHA-256), stores it with
+the release and warns when it changed since the channel's current app release while contentApi
+did not (--strict fails instead, before anything is uploaded).
 pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one
 release for this app release (written into the stamp's holds; never a pinned pack).
 pkey release revoke signs a kind: revocation release record with the release key and submits it:
