@@ -32,7 +32,12 @@ public enum DeviceID {
         #if os(macOS)
         return macPlatformUUID()
         #elseif os(iOS)
-        return UIDevice.current.identifierForVendor?.uuidString
+        // UIDevice is main-actor isolated (an error under Swift 6 on Xcode 16). Read it on the
+        // main thread: directly when already there, otherwise hop with a synchronous dispatch.
+        let read: @Sendable () -> String? = {
+            MainActor.assumeIsolated { UIDevice.current.identifierForVendor?.uuidString }
+        }
+        return Thread.isMainThread ? read() : DispatchQueue.main.sync(execute: read)
         #else
         return nil
         #endif
