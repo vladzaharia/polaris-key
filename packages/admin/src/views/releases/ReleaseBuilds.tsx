@@ -310,11 +310,15 @@ export function locationLabels(
 /** A SHA-256 shortened to its first 12 hex digits, with the full value one click away. */
 export function Sha256({ value }: { value: string }): React.ReactElement {
   const [copied, setCopied] = React.useState(false);
+  // The "copied" reset is cancelled on unmount so it never outlives the view.
+  const timer = React.useRef<ReturnType<typeof setTimeout>>();
+  React.useEffect(() => () => clearTimeout(timer.current), []);
   const copy = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       // No clipboard (insecure context, denied permission): the full hash is in the title.
     }
