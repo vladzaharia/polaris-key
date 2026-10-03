@@ -530,14 +530,14 @@ export async function applyMsStoreState(
   }
   for (const { r, release, outlet } of speaking.values()) {
     const s = r.submission;
-    const state = statusRow(s.status).submission!;
+    const verdict = statusRow(s.status).submission!;
     const verdictAt = s.certificationReports.at(-1);
     await reportSubmission(ctx, writer, {
       release,
       outlet,
-      state,
+      state: verdict,
       since:
-        (state === "approved" || state === "rejected") &&
+        (verdict === "approved" || verdict === "rejected") &&
         verdictAt !== undefined &&
         verdictAt <= run.now
           ? verdictAt
