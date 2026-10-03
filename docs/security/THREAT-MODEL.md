@@ -1602,6 +1602,108 @@ candidates and fill the console; they cannot halt. An unsigned flood can starve 
 covers no timestamp, so a delivery replayed after the 30-day event retention can reopen a
 candidate — harmless, because a candidate still needs an admin to confirm it.
 
+### The commerce bridge: store purchases as licence flags (P6-01)
+
+**What it changes.** A verified App Store, Google Play or Steam purchase of a product the
+operator mapped (`dist_store_products`) puts a licence flag on the buyer's licence
+(`license_store_grants`), which `core/payload.ts` merges into every licence document after the
+licence profiles and before the licence's own overrides. The asset is therefore the same as
+AT-1's: a flag that unlocks paid content. The new inputs are a device's claim
+(`POST /<p>/distribution/commerce/claim`, device token), the binding read
+(`GET …/commerce/binding`), and two store notification hooks (`POST …/hooks/app-store`,
+`POST …/hooks/play-rtdn`). The licence document's shape and `PROTOCOL_VERSION` do not change: a
+flag was always a licence entitlement.
+
+**Who writes a grant.** Only License, through Core's `applyStoreGrant` descriptor method
+(`core/storeGrants.ts`, `core/registry.ts`), and only on a purchase Distribution has verified
+with its store. Core asks License only while License is enabled for the product
+(`license_disabled` otherwise, before any License code runs), so the coherence rule "commerce
+needs License" is structural; the admin API also refuses commerce settings and product mappings
+with License off (409 `commerce_requires_license`) and every commerce route answers the service
+not-found. The write path is the authorizeRegistration pattern, not a descriptor hook: hooks stay
+read-only (§ Service boundaries). Every grant change is an audit row as `system:commerce` naming
+the flag and the store, never a token.
+
+**Forged purchases and notifications.**
+
+- **App Store.** A StoreKit JWS, a Notifications V2 `signedPayload` and its
+  `signedTransactionInfo` are verified by `core/x509.ts` + `commerce/apple.ts`: exactly three
+  certificates, the last byte-identical to Apple Root CA - G3 pinned in code (`appleRoot.ts`,
+  fingerprint pinned by a test), each link's issuer name, CA bit, keyUsage and signature checked,
+  Apple's intermediate (`1.2.840.113635.100.6.2.1`) and leaf (`1.2.840.113635.100.6.11.1`)
+  marker OIDs required, unknown critical extensions refused, validity checked at the payload's
+  `signedDate` (never later than now), then the ES256 signature under the leaf key. A forged
+  notification is 401 before anything is stored. StoreKit Testing's self-signed `Xcode` chain
+  fails the chain and the environment check. The pinned root can be replaced only by a test-only
+  setter that a test keeps every `src/` file from naming.
+- **The device only forwards.** A claimed App Store transaction is re-read from the App Store
+  Server API with the operator's `app-store-server-key` and Apple's fresh copy decides; a
+  notification is a hint the same way (it names the transaction; the API says what it is). Play
+  decides from `purchases.products.get` through P5-03's client; Steam from
+  `AuthenticateUserTicket` and `CheckAppOwnership`. Nothing a device sends is trusted as a
+  purchase state.
+- **Play push.** The Pub/Sub push request must carry a Google-signed OIDC token: Google's JWKS
+  (KV-cached for an hour, refetched at most once a minute for an unknown `kid`), issuer
+  `https://accounts.google.com`, the operator's audience, `email` equal to the push
+  subscription's service account and `email_verified`. Without all five the request is 401
+  before the body is read. A valid push still only names a purchase token for the API to read.
+- **Steam.** The ticket is authenticated FOR the caller's binding (`identity`), so a ticket
+  captured from another player's session does not authenticate for this licence; ownership must be
+  the account's own (`ownersteamid` = `steamid`: a Family Sharing borrower gets nothing) and not a
+  timed trial.
+
+**Cross-licence claims.** Every purchase is bound before it is made: the licence's binding UUID
+(random, not the licence id, not PII) is handed to the store as Apple's `appAccountToken`, Play's
+`obfuscatedAccountId` or the Steam ticket identity. A claim grants only when the STORE's record
+names the caller's own binding (`binding_mismatch` otherwise) and refuses a purchase with no
+binding (`unbound`); once a purchase key (SHA-256 of the store's key) is recorded for a licence, no
+other licence can claim it (`bound_elsewhere`), whatever binding a later record carries. The
+binding is compared as a UUID (S-09: Apple's JWS carries it in lower case). Residual: anyone who
+learns a licence's binding can make a purchase that grants THAT licence — a gift, not a theft;
+the binding read needs the licence's own device token.
+
+**Replay.** Notifications are deduplicated on their own id (`notificationUUID`, the Pub/Sub
+`messageId`) in `dist_connector_events`; a `failed` delivery may be redelivered by the store and
+is processed again. A fresh notification or claim for a purchase already recorded is idempotent:
+the grant upsert changes nothing and audits nothing (`changed: false`). An old notification
+replayed after the events table's 30-day retention re-reads the store, which answers the current
+state — so a replay can only restate the truth.
+
+**Sandbox leaks.** A production product refuses App Store `Sandbox` transactions and Play
+licence-tester purchases (`purchaseType` 0) unless the operator turned on `acceptSandbox` /
+`acceptTestPurchases` in the commerce settings (operator-owned, audited, never manifest-writable);
+`Xcode` is refused always. A sandbox notification delivered to a production product is stored as
+`ignored` with a 200, so Apple stops retrying, and grants nothing. Sandbox transactions are read
+from Apple's sandbox host, never the production one.
+
+**Credentials and pins.** Two outlet-credential kinds join P5-01's custody: `app-store-server-key`
+(the In-App Purchase key, pinned to the bundle id) and `steam-publisher-key` (pinned to the game's
+app id); Play reuses the `google-service-account` pinned to the package. A store runs only when
+its commerce settings name the app AND an active credential is pinned to that same app, so a repo
+writer cannot aim the operator's key at another app (the settings are operator-owned too). The
+Steam key rides in a query string to `partner.steam-api.com`, so no error carries a URL; every
+store call is redirect-free and capped (`commerce/http.ts`).
+
+**Gated delivery and the App Store's cross-store rule.** The flag is enforced at delivery like any
+licence flag (`entitlementFlagRefusal`). App Store 3.1.3(b) — a flag bought elsewhere unlocks on an
+Apple outlet only if also sold there — is applied by the SDK (`PolarisKey.commerce.hidden_here`,
+from the binding route's product list), not by the Worker: delivery requests carry no outlet, so
+the Worker cannot tell an Apple build's download from another's. A modified client can ignore the
+rule; that is a store-policy matter, not an entitlement bypass (the player paid for the flag).
+
+**Lost or late signals.** Apple redelivers a notification answered non-2xx for days, Pub/Sub
+redelivers with backoff, and the hooks answer 503 on a store outage for exactly that reason. Play
+voids are also polled daily (Voided Purchases API, 30 days back); Steam pushes nothing, so active
+Steam grants are re-checked weekly and on every claim. Residual: a Steam refund keeps its flag for
+up to a week; an App Store refund whose notifications all fail keeps its flag until a later
+notification or claim re-reads the transaction (no App Store poll exists).
+
+**Abuse.** Claims are rate-limited per licence (`commerceClaim`) and the hooks per product
+(`appStoreHook`, `playRtdnHook`), all failing closed: a claim can open a credential (an audit row)
+and spend a store's API quota. Bodies are capped (32 KiB claims, 64 KiB hooks). Purchase keys are
+stored only as SHA-256; `detail_json` keeps the store ids a re-check needs (a Play purchase token,
+an order id, a Steam ID) and is never shown in full on the console.
+
 ### The device-code user-code page (P1-06)
 
 **What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
@@ -3027,6 +3129,9 @@ header and the stored artifact (P4-18), a ref kind other than `pack-upload` or `
 `pack-upload`, deletes an object that has a ref, deletes before the bucket lock's age, restores a
 ref no live release's verified record or index names, or its claim stops being checked by
 `recordObject`; or anything but an operator's audited override releases a readiness hold (P4-14);
+the commerce bridge (P6-01) gains a store, a writer of `license_store_grants` other than License's
+`applyStoreGrant`, a root other than Apple Root CA - G3, a way to grant without the store's own
+record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store

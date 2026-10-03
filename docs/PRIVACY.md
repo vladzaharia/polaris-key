@@ -101,6 +101,19 @@ only; no crash payload is stored. Of each Sentry delivery the Worker keeps only 
 rule, issueId, release, environment, outlet}` (30 days, with the connector event log), never the
 crash message, exception, user or other tags.
 
+### Store purchases — the commerce bridge (P6-01, products that sell through a store)
+
+When a player claims a store purchase, the Worker keeps what it needs to keep the licence flag
+honest: the SHA-256 of the store's purchase key (never the key itself), the store product id, the
+licence it was bound to, its state and environment, and the store ids a later re-check needs — an
+App Store transaction id, a Play purchase token and order id, or a **Steam ID** (a Steam account
+number) with the DLC's app id. The licence's purchase **binding** is a random UUID handed to the
+store; it is not the licence id and identifies no one by itself. Store notifications are kept as
+received (Apple's signed payload, Play's notification body: product and purchase ids, no name,
+email or payment data) for 30 days, with the connector event log.
+
+Used for: granting and revoking the purchased licence flag, and nothing else.
+
 ### Not collected
 
 Hostname, OS username, IP-derived geolocation, browsing or file activity, a list of installed
@@ -115,6 +128,9 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 | Drift and mismatch events                                                                                                                  | `audit`                                         | Retained with the product's audit log                                                           |
 | Update outcome events (latest report's `updates`)                                                                                          | `devices.reported_json`                         | Replaced by the next report; deleted with the device                                            |
 | Update outcome counters (per release, outlet, channel, event) and one record per device (its counted event ids, to count distinct devices) | `UpdateHealthDO` (a Durable Object per release) | 30 days (a device record: 30 days after its last event), then deleted by the object's own sweep |
+| Store purchases (hashed key, product, licence, state, re-check ids incl. a Steam ID) and the licence's store grants                        | `dist_purchases`, `license_store_grants`        | Kept while the licence exists; a refund marks them revoked                                      |
+| Purchase binding (random UUID per licence)                                                                                                 | `dist_purchase_bindings`                        | Kept while the licence exists                                                                   |
+| Store notifications (as received)                                                                                                          | `dist_connector_events`                         | 30 days                                                                                         |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the

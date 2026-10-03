@@ -182,3 +182,80 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 ## Plan amendments (S-09)
 
 The spike note [`notes/S-09-apple-storekit-distributor.md`](../../notes/S-09-apple-storekit-distributor.md) changes this package: its §Recommendation and §Proposed edits for this package override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-03. The code is the fact where this brief and the code
+disagree. S-09's P6-01 edit was followed: `environment: "Xcode"` and any `x5c` not ending at
+Apple Root CA - G3 are refused, `appAccountToken` is compared as a UUID, and the client finishes
+a transaction only after a claim answered ok (P5-05's hand-off).
+
+- **Where it lives (confirmed).** Store-facing code in `services/distribution/commerce/`
+  (`apple.ts`, `play.ts`, `steam.ts`, `state.ts`, `settings.ts`, `recheck.ts`, `admin.ts`,
+  `index.ts`), the X.509 verifier in `src/core/x509.ts`, Apple Root CA - G3 pinned by bytes in
+  `commerce/appleRoot.ts` (fingerprint pinned by `test/x509.test.ts`).
+- **`applyStoreGrant` is a `ServiceDescriptor` method, not a descriptor hook.** Hooks are
+  read-only by rule (`core/hooks.ts`), so the write follows `authorizeRegistration` exactly:
+  Core declares it (`core/storeGrants.ts`, `core/registry.ts` `applyStoreGrant`, failing closed
+  with License off), License implements it (`services/license/storeGrants.ts`), and Core hands
+  Distribution a bound writer on `ServiceContext.storeGrants` / `ScheduledServiceContext.storeGrants`.
+- **Coherence rule "commerce needs License".** Not a `validateServices` code: commerce is not a
+  service in `tools/services.json`, and a new code would ripple into the manifest validator and
+  its rule-9 gates for a concept no manifest names. It is enforced structurally instead: the grant
+  writer answers `license_disabled` with License off, every commerce route answers Core's
+  not-found, and the admin API refuses commerce settings and mappings with
+  `409 commerce_requires_license`.
+- **Grant layer.** `core/storeGrants.ts` `storeGrantLayer` feeds `resolveMergedPayload` after the
+  licence profiles and before `overrides_json`; each grant is `{state: "default", value: true}`,
+  so the licence's overrides win whatever their state, and an operator's `enforced`/`hidden`
+  PROFILE entry for the same flag is not displaced by a purchase.
+- **Tables.** As proposed, plus bookkeeping columns: `dist_store_products.modified_at` and
+  `modified_by`, `dist_purchase_bindings.created_at`. Uniqueness (one binding per licence, one
+  licence per binding) is table constraints, so no index-assertion entry is needed. The operator
+  settings (bundle id, package, Steam app id, push audience and account, sandbox switches) live in
+  P5-03's `dist_connector_settings` under connector `commerce`, not a new table. Notifications
+  are logged in P5-02's `dist_connector_events` (connectors `app-store-notifications`,
+  `play-rtdn`).
+- **Credentials.** Two new pinned kinds: `app-store-server-key` (pin: bundle id) and
+  `steam-publisher-key` (pin: app id). Play reuses the `google-service-account` pinned to the
+  package. A store runs only with its settings block AND an active credential pinned to the same
+  app. The App Store Server API token is `core/outletTokens.ts` `appStoreServerToken` (20-minute
+  ES256, `bid`).
+- **Errors reuse registered wire codes**, with a `reason` beside `error` (no `errors.json`
+  change): `not_entitled`/`no_license`, `forbidden`/`binding_mismatch|bound_elsewhere|unbound|not_owned`,
+  `bad_request`/a store reason, `not_found`/`unmapped_product`, and `503 unavailable`/`store_unavailable`.
+- **Binding route** also returns the mapped store products (what to sell, and the input of the
+  App Store 3.1.3(b) rule below).
+- **Strict binding.** A purchase whose store record carries no binding is refused (`unbound`);
+  the first licence a purchase is recorded for keeps it (`bound_elsewhere` for any other).
+  App Store Family Sharing copies (`inAppOwnershipType: FAMILY_SHARED`) are refused (the grant
+  belongs to the purchaser's licence); `REVOKE` revokes.
+- **Apple chain time.** The chain is verified at the payload's `signedDate` (never later than
+  now), the App Store Server Library's offline rule, so an old StoreKit JWS stays checkable after
+  Apple rotates its leaf; Apple's freshly signed Server API copy decides every grant anyway.
+- **Notifications are processed inline** and answer `503` on a store outage so the STORE
+  redelivers (Apple and Pub/Sub both retry a non-2xx) — unlike the ASC webhook's answer-then-work,
+  whose store does not retry.
+- **Steam.** The web-API ticket's identity must be the caller's binding (a captured ticket does
+  not authenticate for another licence); ownership must be the account's own (`ownersteamid`) and
+  not a timed trial; `CheckAppOwnership/v4` on `partner.steam-api.com`. A non-owner gets nothing
+  and no record.
+- **P5-03's client**: `GoogleApiClient`'s custom-method union gained `"acknowledge"` (the only
+  change to that file).
+- **Cross-store rule (3.1.3(b)) is enforced in the SDK, not at gated delivery.** Delivery
+  requests carry no outlet, so the Worker cannot tell an Apple build's request from another's;
+  adding an outlet to delivery requests is a wire change (plan mode). `PolarisKey.commerce.hidden_here`
+  / `is_unlocked` apply it on `app-store`/`testflight` outlets from the binding route's products.
+  Proposed follow-up below.
+- **Transcript.** `commerce.receipt`'s transcript proof is `conformance/transcripts/commerce-claim.json`
+  (binding, a Steam claim that grants, a non-owner refused), recorded with two new transcript
+  actions, `commerceBinding` and `commerceClaim` (`packages/worker/test/transcripts/format.ts`);
+  only the Godot replayer runs it (the other SDKs leave `commerce.receipt` planned).
+- **Workerd.** `test-workerd/commerce.test.ts` runs the X.509 verifier, the App Store JWS check and
+  the Play push-token check in the runtime.
+
+**Proposed follow-ups (unowned).** (1) Enforce 3.1.3(b) at the Worker's gated delivery once
+delivery requests carry the requesting outlet — a wire change, plan mode. (2) An App Store
+re-check poll (transaction history) as a backstop for lost notifications. (3) `commerce.receipt`
+in the Node, Python, Swift and React SDKs (still planned, no owner). (4) A console view of the
+commerce state (admin API only today).
