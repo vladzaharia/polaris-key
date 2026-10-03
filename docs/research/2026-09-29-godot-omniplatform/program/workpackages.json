@@ -1744,7 +1744,7 @@
       "optional": false,
       "refs": ["wp/P4-08-godot-packs.md"],
       "brief": "wp/P4-27-rscc-scan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-28",
