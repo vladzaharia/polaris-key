@@ -44,7 +44,8 @@ The connector runs for a product when all of these hold:
 
    The non-flighted submission — what everyone gets from the Store — is always the `stable`
    channel. A flight Partner Center lists that your map does not name is shown as **unmapped**,
-   logged once, and otherwise ignored: the connector does not read its submissions.
+   recorded once in the activity log (`distribution.connector.flight_unmapped`), and otherwise
+   ignored: the connector does not read its submissions.
 
 2. An **`ms-partner-center` outlet credential** is stored on the Secrets tab — the Entra ID app's
    tenant id, client id, client secret and seller id — **pinned** to this product's app: the same

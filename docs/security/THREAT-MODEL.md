@@ -1435,8 +1435,9 @@ price tier; pricing is never parsed.
 
 **The mirror is not an access control.** Gradual rollout applies to MSIX packages only and a halt
 never rolls installed users back; `dist_rollouts` rows with `source = ms-store` inform the feed
-(P3-03) and the console. A flight Partner Center lists that no outlet maps is stored, logged once
-and never read further. A tick over unchanged Store state writes no audit row.
+(P3-03) and the console. A flight Partner Center lists that no outlet maps is stored, audited once
+(`distribution.connector.flight_unmapped`; the Worker has no console logging, R12) and never read
+further. A tick over unchanged Store state writes no audit row.
 
 ### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
 

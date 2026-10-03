@@ -672,7 +672,6 @@ describe("flights", () => {
   });
 
   it("an unknown flight is ignored and logged: listed, stored unmapped, never read, nothing written", async () => {
-    const info = vi.spyOn(console, "info").mockImplementation(() => {});
     const w = await world();
     await poll(w);
     expect(w.fake.requests.some((r) => r.path.includes(INSIDERS_FLIGHT))).toBe(
@@ -685,22 +684,22 @@ describe("flights", () => {
       null,
       "unmapped",
     ]);
-    const logged = info.mock.calls
-      .map((c) => String(c[0]))
-      .filter((l) => l.includes("msstore.flight.unmapped"));
-    expect(logged).toHaveLength(1);
-    expect(JSON.parse(logged[0]!)).toMatchObject({
-      product: SLUG,
-      flightId: INSIDERS_FLIGHT,
-      friendlyName: "Insiders",
-    });
-    // Logged once, not every tick.
+    // Logged as one audit row (the Worker has no console logging).
+    const unmapped = async () =>
+      (await audits(w.db)).filter(
+        (a) => a.action === "distribution.connector.flight_unmapped",
+      );
+    expect(await unmapped()).toEqual([
+      {
+        action: "distribution.connector.flight_unmapped",
+        actor_sub: "connector:ms-store",
+        target_id: INSIDERS_FLIGHT,
+        summary: `Microsoft Store lists the package flight Insiders (${INSIDERS_FLIGHT}), which no ms-store outlet maps (outlets.<id>.flights): ignored`,
+      },
+    ]);
+    // Once, not every tick.
     await poll(w, NOW + 900);
-    expect(
-      info.mock.calls.filter((c) =>
-        String(c[0]).includes("msstore.flight.unmapped"),
-      ),
-    ).toHaveLength(1);
+    expect(await unmapped()).toHaveLength(1);
     expect((await rollouts(w.db)).map((r) => r.channel).sort()).toEqual([
       "beta",
       "stable",

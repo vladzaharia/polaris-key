@@ -14,7 +14,7 @@
  * actor `connector:ms-store`:
  *
  *   - **Connector objects**: the application, every listed flight (an unmapped one is stored,
- *     shown and logged once, never read further or written anywhere else), and every submission
+ *     shown and audited once, never read further or written anywhere else), and every submission
  *     read (status, errors, report dates, package versions, rollout). A submission no longer
  *     pending or last published is retired.
  *   - **Availability** of every build whose `buildNumber` equals a package version of a read
@@ -369,16 +369,16 @@ export async function applyMsStoreState(
       },
       terminal: false,
     });
+    // "Ignored and logged": one audit row when an unmapped flight first appears (or changes),
+    // not one per tick. The Worker has no console logging (R12).
     if (!routes.length && changed)
-      console.info(
-        JSON.stringify({
-          event: "msstore.flight.unmapped",
-          product: run.product,
-          flightId: f.flightId,
-          friendlyName: f.friendlyName,
-          message:
-            "a Microsoft Store package flight no ms-store outlet maps (outlets.<id>.flights) was ignored",
-        }),
+      await auditConnector(
+        ctx,
+        MSSTORE_CONNECTOR,
+        MSSTORE_LABEL,
+        "distribution.connector.flight_unmapped",
+        { kind: "flight", id: f.flightId },
+        `Microsoft Store lists the package flight ${f.friendlyName ?? f.flightId} (${f.flightId}), which no ms-store outlet maps (outlets.<id>.flights): ignored`,
       );
   }
   const listedFlights = new Set(state.flights.map((f) => f.flightId));
@@ -556,8 +556,12 @@ export async function applyMsStoreState(
     applied++;
   }
 
-  // 5. The outlet rollout of each Published submission on each of its (outlet, channel).
-  for (const r of state.submissions) {
+  // 5. The outlet rollout of each Published submission on each of its (outlet, channel), oldest
+  //    submission first so that the newest speaks last on a shared (outlet, channel).
+  const byAge = [...state.submissions].sort((a, b) =>
+    compareSubmissionIds(a.submission.id, b.submission.id),
+  );
+  for (const r of byAge) {
     const rollout = rolloutOfSubmission(r.submission);
     const release = releaseOf(r.submission, resolved);
     if (!rollout || !release) continue;
