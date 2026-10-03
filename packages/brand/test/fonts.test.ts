@@ -53,7 +53,7 @@ describe("fonts.css", () => {
       const file = /url\("\.\/rubik-(latin(?:-ext)?)-\d+\.woff2"\)/.exec(
         f,
       )![1]!;
-      const declared = /unicode-range: ([^;]+);/
+      const declared = /unicode-range:\s*([^;]+);/
         .exec(f)![1]!
         .replace(/\s+/g, "");
       expect(declared).toBe(ranges[file]);
