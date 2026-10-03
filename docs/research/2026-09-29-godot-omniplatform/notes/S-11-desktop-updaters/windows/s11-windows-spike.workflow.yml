@@ -1,0 +1,306 @@
+# TEMPORARY (spike S-11). Lives only on branch spike/S-11-windows, which is deleted after the run.
+# No secrets, no deploy, no tags: it measures Velopack, WinSparkle and StoreContext from a Godot
+# export on windows-latest, with feeds rendered by the Worker's own renderers.
+name: s11-windows-spike
+on:
+  push:
+    branches: [spike/S-11-windows]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      S11: C:\s11
+      GODOT_VER: 4.7.2-stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Environment
+        run: |
+          New-Item -ItemType Directory -Force $env:S11, "$env:S11\logs", "$env:S11\serve\velopack", "$env:S11\serve\ws", "$env:S11\out" | Out-Null
+          $o = [ordered]@{}
+          $o.os = (Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | ConvertTo-Json -Compress)
+          $o.cpu = (Get-CimInstance Win32_Processor | Select-Object -First 1 Name, NumberOfLogicalProcessors | ConvertTo-Json -Compress)
+          $o.ram_gb = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+          $o.image = "$env:ImageOS $env:ImageVersion"
+          $o.node = (node --version); $o.python = (python --version); $o.cargo = (cargo --version); $o.dotnet = (dotnet --version)
+          $o.session = (query session 2>&1 | Out-String)
+          $o.interactive = [Environment]::UserInteractive
+          $o | ConvertTo-Json | Tee-Object "$env:S11\logs\environment.json"
+          exit 0
+
+      - name: Repo feed code (pnpm install + build the worker's deps)
+        run: |
+          $t = Measure-Command { pnpm install --frozen-lockfile; pnpm --filter "@polaris-key/worker^..." build }
+          "repo_build_s=$([math]::Round($t.TotalSeconds,1))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+
+      - name: Downloads (Godot, templates, Velopack libc, WinSparkle, vpk, Inno Setup)
+        run: |
+          $d = "$env:S11\dl"; New-Item -ItemType Directory -Force $d | Out-Null
+          $t = Measure-Command {
+            $ProgressPreference = "SilentlyContinue"
+            $u = "https://github.com"
+            Invoke-WebRequest "$u/godotengine/godot/releases/download/$env:GODOT_VER/Godot_v$($env:GODOT_VER)_win64.exe.zip" -OutFile "$d\Godot_v$($env:GODOT_VER)_win64.exe.zip"
+            Invoke-WebRequest "$u/godotengine/godot/releases/download/$env:GODOT_VER/Godot_v$($env:GODOT_VER)_export_templates.tpz" -OutFile "$d\Godot_v$($env:GODOT_VER)_export_templates.tpz"
+            Invoke-WebRequest "$u/velopack/velopack/releases/download/1.2.161/velopack_libc_1.2.161.zip" -OutFile "$d\velopack_libc_1.2.161.zip"
+            Invoke-WebRequest "$u/vslavik/winsparkle/releases/download/v0.9.4/WinSparkle-0.9.4.zip" -OutFile "$d\WinSparkle-0.9.4.zip"
+          }
+          "downloads_s=$([math]::Round($t.TotalSeconds,1))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+          Expand-Archive "$d\Godot_v$($env:GODOT_VER)_win64.exe.zip" "$d\godot"
+          $tpl = "$env:APPDATA\Godot\export_templates\4.7.2.stable"; New-Item -ItemType Directory -Force $tpl | Out-Null
+          tar -xf "$d\Godot_v$($env:GODOT_VER)_export_templates.tpz" -C $d templates/windows_release_x86_64.exe templates/version.txt
+          Copy-Item "$d\templates\*" $tpl
+          Expand-Archive "$d\velopack_libc_1.2.161.zip" "$d\vlibc"
+          Expand-Archive "$d\WinSparkle-0.9.4.zip" "$d\ws"
+          dotnet tool install -g vpk --version 1.2.161
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          Get-ChildItem $tpl, "$d\godot" | Format-Table Name, Length
+
+      - name: Cache godot-cpp build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            spike-s11/ext/godot-cpp
+            spike-s11/ext/.sconsign.dblite
+          key: s11-godot-cpp-10.0.0-msvc-r2
+      - name: Build godot-cpp and the Windows GDExtension
+        working-directory: spike-s11/ext
+        run: |
+          pip install scons==4.11.1 | Out-Null
+          if (-not (Test-Path godot-cpp\SConstruct)) { git clone -q --depth 1 -b 10.0.0-stable https://github.com/godotengine/godot-cpp }
+          New-Item -ItemType Directory -Force deps\velopack | Out-Null
+          Copy-Item -Recurse "$env:S11\dl\vlibc\include", "$env:S11\dl\vlibc\lib" deps\velopack\
+          $t = Measure-Command { scons platform=windows target=template_release arch=x86_64 api_version=4.7 disable_exceptions=no use_mingw=no -j4 2>&1 | Tee-Object "$env:S11\logs\scons.log" | Select-Object -Last 30 }
+          "gdextension_build_s=$([math]::Round($t.TotalSeconds,1))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+          Get-ChildItem bin | Format-Table Name, Length
+          if (-not (Test-Path bin\pkey_win.dll)) { Get-Content "$env:S11\logs\scons.log" -Tail 60; throw "no dll" }
+          $b = "..\game\addons\pkey_native\bin"; New-Item -ItemType Directory -Force $b | Out-Null
+          Copy-Item bin\pkey_win.dll $b
+          Copy-Item "$env:S11\dl\vlibc\lib\velopack_libc_win_x64_msvc.dll" "$b\velopack_libc.dll"  # the import lib names velopack_libc.dll
+          Copy-Item "$env:S11\dl\ws\WinSparkle-0.9.4\x64\Release\WinSparkle.dll" $b
+          $db = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio" -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue | Where-Object FullName -match "Hostx64\\x64" | Select-Object -First 1
+          if ($db) { & $db.FullName /dependents bin\pkey_win.dll | Tee-Object "$env:S11\logs\dumpbin_pkey_win.txt" }
+          exit 0
+      - name: Save godot-cpp build
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            spike-s11/ext/godot-cpp
+            spike-s11/ext/.sconsign.dblite
+          key: s11-godot-cpp-10.0.0-msvc-r2
+
+      - name: Build the Velopack shim
+        working-directory: spike-s11/shim
+        run: |
+          $t = Measure-Command { cargo build --release 2>&1 | Select-Object -Last 5 }
+          "shim_build_s=$([math]::Round($t.TotalSeconds,1))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+          Get-Item target\release\s11shim.exe | Format-Table Name, Length
+
+      - name: Export Godot (v1.0.0, v1.0.1) and package (vpk full+delta, Inno installers)
+        working-directory: spike-s11
+        run: |
+          $godot = (Get-ChildItem "$env:S11\dl\godot\*console*.exe" | Select-Object -First 1).FullName
+          & $godot --headless --path game --import 2>&1 | Select-Object -Last 3
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source; if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          foreach ($v in "1.0.0", "1.0.1") {
+            (Get-Content game\project.godot) -replace '^config/version=.*', "config/version=`"$v`"" | Set-Content game\project.godot
+            # Velopack layout: shim = S11Game.exe (--mainExe), Godot = s11game_godot.exe
+            $vp = "$env:S11\out\vp-$v"; New-Item -ItemType Directory -Force $vp | Out-Null
+            & $godot --headless --path game --export-release Windows "$vp\s11game_godot.exe" > "$env:S11\logs\export_vp_$v.log" 2>&1
+            Get-Content "$env:S11\logs\export_vp_$v.log" | Select-String -Pattern "ERROR|WARNING" -Context 0,2
+            Copy-Item shim\target\release\s11shim.exe "$vp\S11Game.exe"
+            # WinSparkle layout: plain export
+            $ws = "$env:S11\out\ws-$v"; New-Item -ItemType Directory -Force $ws | Out-Null
+            & $godot --headless --path game --export-release Windows "$ws\s11game.exe" > "$env:S11\logs\export_ws_$v.log" 2>&1
+            Get-Content "$env:S11\logs\export_ws_$v.log" | Select-String -Pattern "ERROR|WARNING" -Context 0,2
+            Get-ChildItem $vp, $ws | Format-Table FullName, Length
+            $t = Measure-Command { vpk pack --runtime win-x64 --packId S11Game --packVersion $v --packDir $vp --mainExe S11Game.exe --outputDir "$env:S11\out\releases" --yes 2>&1 | Tee-Object "$env:S11\logs\vpk_$v.log" | Select-Object -Last 8 }
+            "vpk_pack_${v}_s=$([math]::Round($t.TotalSeconds,1))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+            if ($v -eq "1.0.0") { Copy-Item "$env:S11\out\releases\S11Game-win-Setup.exe" "$env:S11\out\releases\S11Game-1.0.0-Setup.exe" }
+            & $iscc /Q /DAppVer=$v /DSrcDir=$ws /DOutDir="$env:S11\out\installers" installer\s11.iss
+          }
+          Get-ChildItem "$env:S11\out\releases", "$env:S11\out\installers" | Format-Table Name, Length
+
+      - name: Render feeds with the Worker's renderers; sign and verify with Ed25519
+        run: |
+          $rel = "$env:S11\out\releases"
+          Copy-Item "$rel\S11Game-1.0.1-full.nupkg", "$rel\S11Game-1.0.1-delta.nupkg" "$env:S11\serve\velopack\"
+          Copy-Item "$env:S11\out\installers\S11WinSparkle-1.0.1-setup.exe" "$env:S11\serve\ws\"
+          node -e @'
+          const c=require("crypto"),fs=require("fs");const {privateKey,publicKey}=c.generateKeyPairSync("ed25519");
+          const pub=publicKey.export({format:"der",type:"spki"}).subarray(-32).toString("base64");
+          const f=process.env.S11+"\\serve\\ws\\S11WinSparkle-1.0.1-setup.exe";
+          fs.writeFileSync(f+".sig",c.sign(null,fs.readFileSync(f),privateKey).toString("base64"));
+          fs.writeFileSync(process.env.S11+"\\pub.b64",pub);
+          fs.writeFileSync(process.env.S11+"\\eddsa_seed.b64",privateKey.export({format:"der",type:"pkcs8"}).subarray(-32).toString("base64"));
+          '@
+          $pub = Get-Content "$env:S11\pub.b64"
+          $wst = "$env:S11\dl\ws\WinSparkle-0.9.4\bin\winsparkle-tool.exe"
+          & $wst --help 2>&1 | Select-Object -First 25 | Tee-Object "$env:S11\logs\winsparkle_tool_help.txt"
+          $f = "$env:S11\serve\ws\S11WinSparkle-1.0.1-setup.exe"
+          $toolSig = (& $wst sign -f "$env:S11\eddsa_seed.b64" $f 2>&1 | Out-String).Trim()
+          $nodeSig = (Get-Content "$f.sig").Trim()
+          $ver = (& $wst verify -p $pub -s $nodeSig $f 2>&1 | Out-String).Trim()
+          @{ tool_sig=$toolSig; node_sig=$nodeSig; identical=($toolSig -eq $nodeSig); tool_verify_of_node_sig=$ver; tool_verify_rc=$LASTEXITCODE } | ConvertTo-Json | Tee-Object "$env:S11\logs\winsparkle_tool_sign.json"
+          $s = $env:S11 -replace '\\','/'
+          @{ outDir="$s/serve/velopack"; baseUrl="http://127.0.0.1:8711/velopack"; publicKey=$pub; productName="S11Game"; kind="velopack"; feedName="releases.win.json";
+             releases=@(@{ version="1.0.1"; file="$s/serve/velopack/S11Game-1.0.1-full.nupkg"; deltas=@(@{ file="$s/serve/velopack/S11Game-1.0.1-delta.nupkg" }) }) } | ConvertTo-Json -Depth 6 | Set-Content "$env:S11\spec_vp.json"
+          @{ outDir="$s/serve/ws"; baseUrl="http://127.0.0.1:8711/ws"; publicKey=$pub; productName="S11WinSparkle"; kind="winsparkle"; feedName="appcast.xml";
+             releases=@(@{ version="1.0.1"; format="inno"; arch="x86_64"; file="$s/serve/ws/S11WinSparkle-1.0.1-setup.exe"; sig="$s/serve/ws/S11WinSparkle-1.0.1-setup.exe.sig" }) } | ConvertTo-Json -Depth 6 | Set-Content "$env:S11\spec_ws.json"
+          New-Item -ItemType Directory -Force "$env:S11\serve\velopack-rel" | Out-Null
+          Copy-Item "$rel\S11Game-1.0.1-full.nupkg", "$rel\S11Game-1.0.1-delta.nupkg" "$env:S11\serve\velopack-rel\"
+          @{ outDir="$s/serve/velopack-rel"; baseUrl="http://127.0.0.1:8711/velopack-rel"; publicKey=$pub; productName="S11Game"; kind="velopack"; feedName="releases.win.json"; fileNameMode="basename";
+             releases=@(@{ version="1.0.1"; file="$s/serve/velopack-rel/S11Game-1.0.1-full.nupkg"; deltas=@(@{ file="$s/serve/velopack-rel/S11Game-1.0.1-delta.nupkg" }) }) } | ConvertTo-Json -Depth 6 | Set-Content "$env:S11\spec_vprel.json"
+          $env:REPO = "$env:GITHUB_WORKSPACE"
+          node_modules\.bin\tsx spike-s11\feeds\gen_feeds.mts "$env:S11\spec_vprel.json" | Tee-Object "$env:S11\logs\gen_vprel.json"
+          Copy-Item "$env:S11\serve\velopack-rel\releases.win.json" "$env:S11\logs\releases.win.basename.json"
+          node_modules\.bin\tsx spike-s11\feeds\gen_feeds.mts "$env:S11\spec_vp.json" | Tee-Object "$env:S11\logs\gen_vp.json"
+          node_modules\.bin\tsx spike-s11\feeds\gen_feeds.mts "$env:S11\spec_ws.json" | Tee-Object "$env:S11\logs\gen_ws.json"
+          Get-Content "$env:S11\serve\velopack\releases.win.json"; Get-Content "$env:S11\serve\ws\appcast.xml"
+          Copy-Item "$env:S11\serve\velopack\releases.win.json", "$env:S11\serve\ws\appcast.xml" "$env:S11\logs\"
+          Copy-Item "$env:S11\out\releases\releases.win.json" "$env:S11\logs\vpk_generated_releases.win.json"
+
+      - name: Start the feed server
+        run: |
+          $env:SRV_LOG = "$env:S11\logs\srv.log"
+          Start-Process python -ArgumentList "spike-s11\server.py", "8711", "$env:S11\serve" -WindowStyle Hidden
+          Start-Sleep 2
+          (Invoke-WebRequest http://127.0.0.1:8711/ws/appcast.xml -UseBasicParsing).StatusCode
+
+      - name: "Scenario V: Velopack (install v1, GDExtension check, delta download, apply on exit, restart into v1.0.1)"
+        continue-on-error: true
+        run: |
+          function Cfg($mode, $log, $extra) { $c = @{ mode=$mode; feed="http://127.0.0.1:8711/velopack"; log="C:/s11/logs/$log"; target_version="1.0.1"; quit_after_s=90; pub=(Get-Content "$env:S11\pub.b64"); headers=@{ Authorization="Bearer s11-test-token" } }; if ($extra) { $extra.GetEnumerator() | % { $c[$_.Key] = $_.Value } }; $c | ConvertTo-Json | Set-Content "$env:S11\config.json" }
+          Cfg "none" "vp_install.log"
+          $t = Measure-Command { Start-Process "$env:S11\out\releases\S11Game-1.0.0-Setup.exe" -ArgumentList "--silent" -Wait }
+          "velopack_setup_silent_s=$([math]::Round($t.TotalSeconds,1))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+          Start-Sleep 5
+          $app = "$env:LOCALAPPDATA\S11Game"
+          Get-ChildItem -Recurse $app -Depth 2 | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 300
+          Get-Process s11game_godot -ErrorAction SilentlyContinue | Stop-Process -Force
+          Cfg "velopack" "vp_update.log"
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          Start-Process "$app\current\S11Game.exe"
+          while ($sw.Elapsed.TotalSeconds -lt 120) { Start-Sleep -Milliseconds 500; if ((Test-Path C:\s11\logs\vp_update.log) -and (Select-String -Quiet target_reached_or_idle C:\s11\logs\vp_update.log)) { break } }
+          "velopack_update_to_target_s=$([math]::Round($sw.Elapsed.TotalSeconds,2))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+          Start-Sleep 3
+          Get-Content C:\s11\logs\vp_update.log
+          Get-Content C:\s11\logs\shim.log -ErrorAction SilentlyContinue
+          Get-ChildItem -Recurse $app -Depth 2 | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 300
+          Get-ChildItem $app -Filter *.log -Recurse | % { Copy-Item $_.FullName "$env:S11\logs\velopack_$($_.Name)" }
+          Get-ChildItem $env:TEMP -Filter "velopack*" -ErrorAction SilentlyContinue | % { Copy-Item $_.FullName "$env:S11\logs\" -Recurse }
+
+      - name: "Scenario V2: same install, feed with basename FileName (the proposed renderer fix)"
+        continue-on-error: true
+        run: |
+          @{ mode="velopack"; feed="http://127.0.0.1:8711/velopack-rel"; log="C:/s11/logs/vp_update_rel.log"; target_version="1.0.1"; quit_after_s=90 } | ConvertTo-Json | Set-Content "$env:S11\config.json"
+          $app = "$env:LOCALAPPDATA\S11Game"
+          Get-ChildItem -Recurse "$app\packages" -ErrorAction SilentlyContinue | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 300
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          Start-Process "$app\current\S11Game.exe"
+          while ($sw.Elapsed.TotalSeconds -lt 120) { Start-Sleep -Milliseconds 250; if ((Test-Path C:\s11\logs\vp_update_rel.log) -and (Select-String -Quiet target_reached_or_idle C:\s11\logs\vp_update_rel.log)) { break } }
+          "velopack_rel_update_to_target_s=$([math]::Round($sw.Elapsed.TotalSeconds,2))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+          Start-Sleep 3
+          Get-Content C:\s11\logs\vp_update_rel.log
+          Get-Content "$app\current\sq.version" -ErrorAction SilentlyContinue
+          Get-ChildItem -Recurse "$app\packages" -ErrorAction SilentlyContinue | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 300
+          Get-ChildItem $app -Recurse -Filter *.log -ErrorAction SilentlyContinue | % { Copy-Item $_.FullName "$env:S11\logs\velopack_app_$($_.Name)" }
+          Get-ChildItem "$env:LOCALAPPDATA" -Filter "velopack*.log" -Recurse -Depth 2 -ErrorAction SilentlyContinue | % { Copy-Item $_.FullName "$env:S11\logs\" }
+
+      - name: "Scenario H: Velopack hook timings on Windows (shim vs Godot as --mainExe)"
+        continue-on-error: true
+        run: |
+          $app = "$env:LOCALAPPDATA\S11Game\current"
+          python spike-s11\time_hooks.py shim "$app\S11Game.exe" 5 | Tee-Object "$env:S11\logs\hooks_shim.jsonl"
+          python spike-s11\time_hooks.py godot_main_exe "$app\s11game_godot.exe" 5 | Tee-Object "$env:S11\logs\hooks_godot.jsonl"
+
+      - name: "Scenario W: WinSparkle (install v1 Inno, GDExtension check_update_with_ui_and_install, EdDSA, installer run, relaunch)"
+        continue-on-error: true
+        run: |
+          function Cfg($mode, $log, $extra) { $c = @{ mode=$mode; feed="http://127.0.0.1:8711/ws/appcast.xml"; log="C:/s11/logs/$log"; target_version="1.0.1"; quit_after_s=120; pub=(Get-Content "$env:S11\pub.b64"); headers=@{ Authorization="Bearer s11-test-token" } }; if ($extra) { $extra.GetEnumerator() | % { $c[$_.Key] = $_.Value } }; $c | ConvertTo-Json | Set-Content "$env:S11\config.json" }
+          Cfg "none" "ws_install.log"
+          Start-Process "$env:S11\out\installers\S11WinSparkle-1.0.0-setup.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES" -Wait
+          Start-Sleep 4
+          $app = "$env:LOCALAPPDATA\S11WinSparkle"
+          Get-ChildItem $app | Format-Table Name, Length
+          Cfg "winsparkle" "ws_update.log"
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          Start-Process "$app\s11game.exe"
+          while ($sw.Elapsed.TotalSeconds -lt 150) { Start-Sleep -Milliseconds 500; if ((Test-Path C:\s11\logs\ws_update.log) -and (Select-String -Quiet target_reached_or_idle C:\s11\logs\ws_update.log)) { break } }
+          "winsparkle_update_to_target_s=$([math]::Round($sw.Elapsed.TotalSeconds,2))" | Tee-Object -Append "$env:S11\logs\timings.txt"
+          Start-Sleep 3
+          Get-Content C:\s11\logs\ws_update.log
+          Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" | Where-Object DisplayName -like "S11WinSparkle*" | Select-Object DisplayName, DisplayVersion | Format-List
+          Get-ChildItem "HKCU:\Software\PolarisKeyS11" -Recurse -ErrorAction SilentlyContinue | Out-String
+          Get-Process | Where-Object { $_.ProcessName -match "s11|setup" } | Format-Table ProcessName, Id, MainWindowTitle
+
+      - name: "Scenario S: StoreContext from an unpackaged Godot app; facade dependency answers"
+        continue-on-error: true
+        run: |
+          function Cfg($mode, $log) { @{ mode=$mode; log="C:/s11/logs/$log"; target_version="9.9.9"; quit_after_s=40; feed="http://127.0.0.1:8711/ws/appcast.xml"; pub=(Get-Content "$env:S11\pub.b64") } | ConvertTo-Json | Set-Content "$env:S11\config.json" }
+          $exe = "$env:S11\out\ws-1.0.0\s11game.exe"
+          Cfg "store" "store_unpackaged.log"; Start-Process $exe -Wait; Get-Content C:\s11\logs\store_unpackaged.log
+          # facade: WinSparkle.dll absent (runtime-loaded) -> load() answers dependency
+          $nows = "$env:S11\out\nows"; Copy-Item -Recurse "$env:S11\out\ws-1.0.0" $nows; Remove-Item "$nows\WinSparkle.dll"
+          Cfg "winsparkle" "facade_no_winsparkle.log"; Start-Process "$nows\s11game.exe" -Wait; Get-Content C:\s11\logs\facade_no_winsparkle.log
+          # facade: velopack_libc DLL absent (import-linked) -> the whole extension fails to load, no classes
+          $novp = "$env:S11\out\novp"; Copy-Item -Recurse "$env:S11\out\ws-1.0.0" $novp; Remove-Item "$novp\velopack_libc.dll"
+          Cfg "velopack" "facade_no_velopack.log"; Start-Process "$novp\s11game.exe" -Wait; Get-Content C:\s11\logs\facade_no_velopack.log
+          # Velopack open() from a NON-Velopack install (the WinSparkle layout)
+          Cfg "velopack" "velopack_not_installed.log"; Start-Process $exe -Wait; Get-Content C:\s11\logs\velopack_not_installed.log
+
+      - name: "Scenario M: loose-registered MSIX layout (developer mode, unsigned): identity, StoreContext, user://"
+        continue-on-error: true
+        run: |
+          reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f
+          $dir = "$env:S11\out\msix-layout"; Copy-Item -Recurse "$env:S11\out\ws-1.0.0" $dir
+          [IO.File]::WriteAllBytes("$dir\logo.png", [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
+          @'
+          <?xml version="1.0" encoding="utf-8"?>
+          <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">
+            <Identity Name="PolarisKeyS11.S11Game" Publisher="CN=PolarisKeyS11" Version="1.0.0.0" ProcessorArchitecture="x64" />
+            <Properties><DisplayName>S11Game</DisplayName><PublisherDisplayName>PolarisKeyS11</PublisherDisplayName><Logo>logo.png</Logo></Properties>
+            <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" /></Dependencies>
+            <Resources><Resource Language="en-us" /></Resources>
+            <Applications><Application Id="App" Executable="s11game.exe" EntryPoint="Windows.FullTrustApplication">
+              <uap:VisualElements DisplayName="S11Game" Description="S11" BackgroundColor="transparent" Square150x150Logo="logo.png" Square44x44Logo="logo.png" />
+            </Application></Applications>
+            <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+          </Package>
+          '@ | Set-Content -Encoding utf8 "$dir\AppxManifest.xml"
+          Add-AppxPackage -Register "$dir\AppxManifest.xml" 2>&1 | Out-String
+          $pkg = Get-AppxPackage PolarisKeyS11.S11Game; $pkg | Format-List Name, PackageFullName, PackageFamilyName, InstallLocation, SignatureKind, IsDevelopmentMode
+          @{ mode="store"; log="C:/s11/logs/store_packaged.log"; target_version="9.9.9"; quit_after_s=40 } | ConvertTo-Json | Set-Content "$env:S11\config.json"
+          Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!App"
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          while ($sw.Elapsed.TotalSeconds -lt 45) { Start-Sleep -Milliseconds 500; if ((Test-Path C:\s11\logs\store_packaged.log) -and (Select-String -Quiet exit_tree C:\s11\logs\store_packaged.log)) { break } }
+          Get-Content C:\s11\logs\store_packaged.log -ErrorAction SilentlyContinue
+          Get-ChildItem -Recurse "$env:LOCALAPPDATA\Packages\$($pkg.PackageFamilyName)" -ErrorAction SilentlyContinue | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 400 | Tee-Object "$env:S11\logs\msix_packages_dir.txt"
+          Test-Path "$env:APPDATA\Godot\app_userdata\S11Game\s11_probe.txt" | % { "real_appdata_probe_exists=$_" } | Tee-Object -Append "$env:S11\logs\msix_packages_dir.txt"
+          Test-Path "$dir\w.txt" | % { "layout_dir_w_txt_exists=$_" } | Tee-Object -Append "$env:S11\logs\msix_packages_dir.txt"
+
+      - name: Collect
+        if: always()
+        run: |
+          Copy-Item "$env:S11\out\releases\*.json", "$env:S11\out\releases\*.nupkg" "$env:S11\logs\" -ErrorAction SilentlyContinue
+          Get-ChildItem "$env:S11\out\releases", "$env:S11\out\installers" -ErrorAction SilentlyContinue | Select-Object Name, Length | ConvertTo-Json | Set-Content "$env:S11\logs\artifact_sizes.json"
+          Get-ChildItem "$env:S11\out" -Recurse -Include *.exe, *.dll -ErrorAction SilentlyContinue | Select-Object FullName, Length | ConvertTo-Json | Set-Content "$env:S11\logs\binaries.json"
+          Remove-Item "$env:S11\eddsa_seed.b64" -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: s11-windows-logs
+          path: C:\s11\logs
+          retention-days: 3

@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# S-11: build pkey_win.dll with godot-cpp's own flags (godot-cpp checked out at ./godot-cpp,
+# velopack_libc at ./deps/velopack). scons platform=windows target=template_release api_version=4.7 disable_exceptions=no
+env = SConscript("godot-cpp/SConstruct")
+env.Append(CPPPATH=["src/", "deps/velopack/include"])
+env.Append(LIBPATH=["deps/velopack/lib"])
+env.Append(LIBS=["velopack_libc_win_x64_msvc.dll", "WindowsApp", "ole32", "user32"])
+env.Append(CCFLAGS=["/bigobj"])
+# C++/WinRT needs C++20 coroutines on VS 2026 (its C++17 path uses <experimental/coroutine>, which
+# the VS 2026 STL rejects). godot-cpp itself stays at C++17; only this translation unit moves.
+ext = env.Clone()
+ext["CXXFLAGS"] = [f for f in ext["CXXFLAGS"] if not str(f).startswith("/std:")] + ["/std:c++20"]
+objs = [ext.SharedObject(s) for s in Glob("src/*.cpp")]
+library = env.SharedLibrary("bin/pkey_win{}".format(env["SHLIBSUFFIX"]), source=objs)
+Default(library)

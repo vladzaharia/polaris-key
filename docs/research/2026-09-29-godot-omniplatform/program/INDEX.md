@@ -184,19 +184,19 @@ keys, devices). _Optional_ work packages are off the required path.
 
 11 work packages, 7.25–11.25 weeks.
 
-| Id                                               | Title                                                                                                           | Depends on | Role         | Weeks    | Status |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | -------- | ------ |
-| [S-01](wp/S-01-apple-background-assets.md) ✋    | Spike: Apple-hosted Background Assets from a Godot iOS export                                                   | —          | spike-runner | 1–1.5    | done   |
-| [S-02](wp/S-02-r2-range.md) ✋                   | Spike: Range, If-Range and cold-miss behaviour of R2 behind a custom domain                                     | —          | spike-runner | 0.5      | done   |
-| [S-03](wp/S-03-chunk-size-real-history.md) ✋    | Spike: chunk size and reuse on real Diceroll PCK history                                                        | —          | spike-runner | 0.5–0.75 | done   |
-| [S-04](wp/S-04-low-end-performance.md) ✋        | Spike: crypto, hashing and zstd on low-end Android, iOS and mobile/WebKit browsers                              | —          | spike-runner | 1        | done   |
-| [S-05](wp/S-05-godot-platform-mechanics.md) ✋   | Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks) | —          | spike-runner | 1.5–2    | done   |
-| [S-06](wp/S-06-outlet-signals.md) ✋             | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | done   |
-| [S-07](wp/S-07-policy-recheck.md)                | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done   |
-| [S-08](wp/S-08-cloudflare-async-compute.md) ✋   | Cloudflare Queues, Workflows and Containers for lazy deltas                                                     | —          | spike-runner | 0.5–1    | done   |
-| [S-09](wp/S-09-apple-storekit-distributor.md) ✋ | StoreKit 2, AppTransaction, AppDistributor, Keychain and the Godot iOS binding                                  | —          | spike-runner | 0.5–1    | done   |
-| [S-10](wp/S-10-android-play-installer.md) ✋     | Play In-App Updates, Play Asset Delivery, PackageInstaller and the Godot Android binding                        | —          | spike-runner | 0.5–1    | todo   |
-| [S-11](wp/S-11-desktop-updaters.md) ✋           | Sparkle, Velopack, WinSparkle and StoreContext from a Godot desktop app                                         | —          | spike-runner | 0.5–1    | todo   |
+| Id                                               | Title                                                                                                           | Depends on | Role         | Weeks    | Status    |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | -------- | --------- |
+| [S-01](wp/S-01-apple-background-assets.md) ✋    | Spike: Apple-hosted Background Assets from a Godot iOS export                                                   | —          | spike-runner | 1–1.5    | done      |
+| [S-02](wp/S-02-r2-range.md) ✋                   | Spike: Range, If-Range and cold-miss behaviour of R2 behind a custom domain                                     | —          | spike-runner | 0.5      | done      |
+| [S-03](wp/S-03-chunk-size-real-history.md) ✋    | Spike: chunk size and reuse on real Diceroll PCK history                                                        | —          | spike-runner | 0.5–0.75 | done      |
+| [S-04](wp/S-04-low-end-performance.md) ✋        | Spike: crypto, hashing and zstd on low-end Android, iOS and mobile/WebKit browsers                              | —          | spike-runner | 1        | done      |
+| [S-05](wp/S-05-godot-platform-mechanics.md) ✋   | Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks) | —          | spike-runner | 1.5–2    | done      |
+| [S-06](wp/S-06-outlet-signals.md) ✋             | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | done      |
+| [S-07](wp/S-07-policy-recheck.md)                | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done      |
+| [S-08](wp/S-08-cloudflare-async-compute.md) ✋   | Cloudflare Queues, Workflows and Containers for lazy deltas                                                     | —          | spike-runner | 0.5–1    | done      |
+| [S-09](wp/S-09-apple-storekit-distributor.md) ✋ | StoreKit 2, AppTransaction, AppDistributor, Keychain and the Godot iOS binding                                  | —          | spike-runner | 0.5–1    | done      |
+| [S-10](wp/S-10-android-play-installer.md) ✋     | Play In-App Updates, Play Asset Delivery, PackageInstaller and the Godot Android binding                        | —          | spike-runner | 0.5–1    | todo      |
+| [S-11](wp/S-11-desktop-updaters.md) ✋           | Sparkle, Velopack, WinSparkle and StoreContext from a Godot desktop app                                         | —          | spike-runner | 0.5–1    | in-review |
 
 ## D: Diceroll adoption (vladzaharia/diceroll)
 
