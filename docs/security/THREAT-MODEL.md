@@ -1439,6 +1439,21 @@ never rolls installed users back; `dist_rollouts` rows with `source = ms-store` 
 (`distribution.connector.flight_unmapped`; the Worker has no console logging, R12) and never read
 further. A tick over unchanged Store state writes no audit row.
 
+**The fallback keeps the feed honest.** While a gradual rollout is partial (not started, in
+progress or stopped), everyone outside it gets the `fallbackSubmissionId` submission. The poller
+reads that submission too (role `fallback`, same app or flight path, the id checked like any
+other) and keeps its builds `live`, so availability — and through it `feeds/select.ts` and the
+signed feed — never shows the previous version as `removed` while the Store still serves it, nor
+shows nothing live at all after a halt. The fallback never mirrors a rollout and never writes its
+release's submission row; it stops being read once the rollout completes, and its builds then
+become `removed` like any build no read submission carries.
+
+**Bounded, redirect-free reads.** Both the token request and every API request use
+`redirect: "manual"` and treat any 3xx as a failure, so neither the client secret nor the bearer
+token is re-sent to a URL a response names; bodies are read through `core/readCapped.ts`
+(`readCappedText`, 64 KiB for a token, 4 MiB for an API response) and a submission's package list
+is capped at 64 entries.
+
 ### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
 
 **New inputs.** Devices report update outcome events in the `updates` key of

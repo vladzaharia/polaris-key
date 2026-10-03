@@ -1,6 +1,6 @@
 ---
 sidebar:
-  order: 6
+  order: 7
 title: "Microsoft Store connector"
 description: "How Distribution follows a product's Microsoft Store submissions — the submission API read on the 15-minute connector cron, submission status and certification outcomes, package flights mapped to channels, gradual package rollouts mirrored as outlet rollouts — and what the read-only connector never does."
 ---
@@ -108,7 +108,8 @@ app** and re-pin.
 
 ## What it reads
 
-Every tick sends only these GETs, to `https://manage.devcenter.microsoft.com`:
+Every tick sends only these GETs, to `https://manage.devcenter.microsoft.com`, plus the
+fallback submission of a published one whose gradual rollout is partial:
 
 ```http
 GET /v1.0/my/applications/{productId}
@@ -168,12 +169,19 @@ the connector reported before that no submission carries any more becomes `remov
 
 A published submission's gradual package rollout is mirrored on each of its (outlet, channel):
 
-| `packageRolloutStatus`            | Outlet rollout                               | Availability |
-| --------------------------------- | -------------------------------------------- | ------------ |
-| `PackageRolloutInProgress`        | `active`, at the percentage (25 % = 2500 bp) | `live`       |
-| `PackageRolloutStopped`           | `halted`                                     | `approved`   |
-| `PackageRolloutComplete`, or none | `complete` (10000 basis points)              | `live`       |
-| `PackageRolloutNotStarted`        | none                                         | `live`       |
+| `packageRolloutStatus`            | Outlet rollout                               | The new submission's builds | The fallback submission's builds |
+| --------------------------------- | -------------------------------------------- | --------------------------- | -------------------------------- |
+| `PackageRolloutInProgress`        | `active`, at the percentage (25 % = 2500 bp) | `live`                      | `live`                           |
+| `PackageRolloutStopped`           | `halted`                                     | `approved`                  | `live`                           |
+| `PackageRolloutNotStarted`        | none                                         | `approved`                  | `live`                           |
+| `PackageRolloutComplete`, or none | `complete` (10000 basis points)              | `live`                      | not read (`removed`)             |
+
+While a rollout is partial, every customer it does not reach gets the **fallback submission**
+(`fallbackSubmissionId`, normally the previously published one). The connector reads it too and
+keeps its builds `live` beside the new submission's, as the Google Play connector keeps the
+previous completed release live beside a staged or halted one. The fallback never mirrors a
+rollout and never changes its release's submission row. Once the rollout completes, the fallback
+is no longer read, and its builds become `removed` unless the new submission carries them.
 
 The row is marked `mirrored` and refuses direct edits; change the rollout with CI or in Partner
 Center. Gradual rollout applies to MSIX packages only, and **halting it never rolls installed

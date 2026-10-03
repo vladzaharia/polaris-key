@@ -148,9 +148,23 @@ code and the documentation, and records it here.
    refuses any `console.` in `src/`), so an unmapped flight is recorded as one
    `distribution.connector.flight_unmapped` audit row (actor `connector:ms-store`) when it first
    appears or changes, not on every tick, and is shown as `unmapped` on the connector status.
-9. **What is never stored.** A submission's `fileUploadUrl` is a writable Azure Blob SAS URI; the
-   parser drops it (and listings, pricing and certification report URLs), asserted by scanning
-   every table after a poll.
+9. **The fallback submission is read (review fix).** While a published submission's gradual
+   rollout is partial (`PackageRolloutNotStarted`, `…InProgress` or `…Stopped`) and names a
+   `fallbackSubmissionId`, the poller also reads that submission (role `fallback`, same app or
+   flight path). Its builds stay `live` while it serves; it never mirrors a rollout and never
+   writes its release's submission row (Play's semantics: the previous completed release stays
+   live beside a staged or halted one). Once the rollout completes it is no longer read and its
+   builds become `removed`. A published submission whose rollout has not started is `approved`.
+10. **Bounded, redirect-free reads (review fix).** `msstore/client.ts` and `msstore/token.ts` send
+    `redirect: "manual"`, treat any 3xx as a failure, and read bodies through the new shared
+    `core/readCapped.ts` (`readCappedText`, factored out of `services/release/github.ts`, which
+    now delegates to it). Package lists are capped at 64 like details and reports.
+    **Follow-up (P5-02 / P5-03 owners):** the `asc` and `play` clients and their token exchanges in
+    `core/outletTokens.ts` still follow redirects and read unbounded bodies; they need the same
+    treatment. Not changed here.
+11. **What is never stored.** A submission's `fileUploadUrl` is a writable Azure Blob SAS URI; the
+    parser drops it (and listings, pricing and certification report URLs), asserted by scanning
+    every table after a poll.
 
 ## Steps
 
