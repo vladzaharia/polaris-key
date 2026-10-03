@@ -7,10 +7,13 @@ export function serviceAccent(id: ServiceId, theme: Theme = "dark") {
 }
 
 /**
- * The colour of the K's terminal bit in a section's console header: the kit gold on the
- * platform (core) pages, the section's accent everywhere else (docs/design/BRAND.md, "The section
- * bit"). Only ever drawn on the display cut at >= 48 px.
+ * The colour of the K's terminal bit in a service section's console header, or `null` for core:
+ * the platform (core) pages draw no bit at all (owner decision 2026-10-03, docs/design/BRAND.md
+ * §6, "The section bit"). Only ever drawn on the display cut at >= 48 px.
  */
-export function sectionBit(id: ServiceId, theme: Theme = "dark"): string {
+export function sectionBit(
+  id: ServiceId,
+  theme: Theme = "dark",
+): string | null {
   return SERVICE_ACCENTS[theme][id].bit;
 }

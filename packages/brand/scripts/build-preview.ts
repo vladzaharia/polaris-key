@@ -125,7 +125,7 @@ function sectionBitDemo(): string {
       `<button type="button" data-pick="${id}">${SERVICE_LABEL[id]}</button>`,
   ).join("");
   return `<div class="header-demo" id="header-demo" data-service="core">${markSvg({ size: 48, bit: "section", theme: "dark" }).replace("<svg", '<svg class="demo-dark"')}${markSvg({ size: 48, bit: "section", theme: "light" }).replace("<svg", '<svg class="demo-light"')}<strong>Console</strong><span class="crumb">section: <b id="crumb">Core</b></span></div><div class="row">${buttons}</div>
-<p>The bit eases between sections over <code>--pk-duration-base</code>; with reduced motion it switches instantly. The star never changes. Proofs at 32/40/48 px:</p>
+<p>On core (the platform) the K has no terminal bit at all; in a service section the bit takes that section's accent and eases between sections over <code>--pk-duration-base</code> (with reduced motion it switches instantly). The star never changes. Proofs at 32/40/48 px:</p>
 <div class="row"><a href="proofs/section-bit-dark.png"><img src="proofs/section-bit-dark.png" alt="Section-bit proof sheet, dark" width="380"></a><a href="proofs/section-bit-light.png"><img src="proofs/section-bit-light.png" alt="Section-bit proof sheet, light" width="380"></a></div>`;
 }
 

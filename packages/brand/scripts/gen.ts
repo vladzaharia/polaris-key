@@ -93,10 +93,19 @@ export function serviceAccent(theme: Theme, id: ServiceId) {
   return T[theme].accent[SERVICE_FAMILY[id]];
 }
 
-/** The section bit: the kit gold on core, the section's accent `solid` everywhere else. */
-export function sectionBit(theme: Theme, id: ServiceId): string {
-  return id === "core" ? T[theme].signed.mark : serviceAccent(theme, id).solid;
+/**
+ * The section bit: the section's accent `solid`, or null on core. The platform (core) pages draw
+ * no bit at all (owner decision 2026-10-03, docs/design/BRAND.md §6).
+ */
+export function sectionBit(theme: Theme, id: ServiceId): string | null {
+  return id === "core" ? null : serviceAccent(theme, id).solid;
 }
+
+/** The section ids that carry a bit: every service, never core. */
+const BIT_IDS = SERVICE_IDS.filter((id) => id !== "core");
+
+/** The service section's bit, for outputs that only list BIT_IDS. */
+const bitOf = (theme: Theme, id: ServiceId): string => sectionBit(theme, id)!;
 
 // ── CSS ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -122,7 +131,8 @@ function themeVars(theme: Theme): [string, string][] {
     v.push([`service-${id}-fg`, a.fg]);
     v.push([`service-${id}-on`, a.on]);
     v.push([`service-${id}-subtle`, a.subtle]);
-    v.push([`service-${id}-bit`, sectionBit(theme, id)]);
+    const bit = sectionBit(theme, id);
+    if (bit !== null) v.push([`service-${id}-bit`, bit]);
   }
   for (const s of STATUS_IDS) {
     const st = t.status[s];
@@ -144,13 +154,17 @@ function themeVars(theme: Theme): [string, string][] {
 const decl = (vars: [string, string][]) =>
   vars.map(([k, v]) => `  --pk-${k}: ${v};`).join("\n");
 
+// Core has no section bit: --pk-section-bit is `none` and the live bit is not displayed.
 const sectionDecl = (id: ServiceId) =>
   [
     `  --pk-accent: var(--pk-service-${id});`,
     `  --pk-accent-fg: var(--pk-service-${id}-fg);`,
     `  --pk-accent-on: var(--pk-service-${id}-on);`,
     `  --pk-accent-subtle: var(--pk-service-${id}-subtle);`,
-    `  --pk-section-bit: var(--pk-service-${id}-bit);`,
+    id === "core"
+      ? `  --pk-section-bit: none;`
+      : `  --pk-section-bit: var(--pk-service-${id}-bit);`,
+    `  --pk-section-bit-display: ${id === "core" ? "none" : "inline"};`,
   ].join("\n");
 
 function scaleVars(): [string, string][] {
@@ -202,7 +216,9 @@ function tokensCss(): string {
  *
  * SECTION. data-service="core|license|config|release|distribution|update|identity" on (or
  * inside) the themed element re-points --pk-accent*, and --pk-section-bit, at that section.
- * With no data-service the platform (core) values apply.
+ * With no data-service the platform (core) values apply. Core has no section bit: the Pinned K
+ * carries no terminal bit on platform pages (--pk-section-bit: none, and the live bit is
+ * display: none); only service sections draw it, in their accent.
  */
 
 :root {
@@ -263,6 +279,13 @@ ${durations}
 /* The section bit eases between section colours; the star never animates. */
 .polaris-section-bit {
   transition: fill var(--pk-duration-base) var(--pk-ease-standard);
+}
+
+/* The live section bit (bit="section"): the nearest data-service picks its colour, and core
+   (or no data-service) does not display it at all. A class rule, never an inline style. */
+.polaris-live-bit {
+  fill: var(--pk-section-bit);
+  display: var(--pk-section-bit-display);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -420,10 +443,16 @@ import type { ServiceId, Theme } from "../tokens/source.js";
 /** Every semantic colour, resolved to hex, per theme. */
 export const THEME_TOKENS = ${JSON.stringify(m.themes)} as const satisfies Record<Theme, ResolvedTheme>;
 
-/** Per theme, each section's accent (solid, fg, on, subtle) and its section-bit colour. */
+/**
+ * Per theme, each section's accent (solid, fg, on, subtle) and its section-bit colour; bit is
+ * null on core, which draws no bit.
+ */
 export const SERVICE_ACCENTS = ${JSON.stringify(m.services)} as const satisfies Record<
   Theme,
-  Record<ServiceId, { solid: string; fg: string; on: string; subtle: string; bit: string }>
+  Record<
+    ServiceId,
+    { solid: string; fg: string; on: string; subtle: string; bit: string | null }
+  >
 >;
 `;
 }
@@ -524,18 +553,21 @@ function gdTheme(theme: Theme): string {
     c(`SERVICE_${upper(id)}_FG`, a.fg);
     c(`SERVICE_${upper(id)}_ON`, a.on);
     c(`SERVICE_${upper(id)}_SUBTLE`, a.subtle);
-    c(`SERVICE_${upper(id)}_BIT`, sectionBit(theme, id));
+    const bit = sectionBit(theme, id);
+    if (bit !== null) c(`SERVICE_${upper(id)}_BIT`, bit);
   }
   return out.join("\n");
 }
 
 function gdScript(): string {
   const svc = (theme: Theme, part: "solid" | "fg" | "on" | "subtle" | "bit") =>
-    SERVICE_IDS.map((id) => {
-      const v =
-        part === "bit" ? sectionBit(theme, id) : serviceAccent(theme, id)[part];
-      return `\t"${id}": ${gdColor(v)},`;
-    }).join("\n");
+    (part === "bit" ? BIT_IDS : SERVICE_IDS)
+      .map((id) => {
+        const v =
+          part === "bit" ? bitOf(theme, id) : serviceAccent(theme, id)[part];
+        return `\t"${id}": ${gdColor(v)},`;
+      })
+      .join("\n");
   return `${banner("#")}
 class_name PKeyBrand
 extends RefCounted
@@ -545,7 +577,8 @@ extends RefCounted
 ##
 ## Dark is the default theme (the kit's page ground #060912). Choose the optical cut by the
 ## DISPLAYED size: below 24 px the 16 px favicon cut, 24-32 px the service cut, above that the
-## display master; gold only on the K's terminal bit at a glyph of 48 px or more.
+## display master. The default mark has no terminal bit; a service section's bit (its accent)
+## shows only at a glyph of 48 px or more, and core draws none.
 
 
 ## Kit primitives, verbatim (kit/08-developer/tokens.json).
@@ -616,10 +649,17 @@ static func service_fg(service: String, dark: bool = true) -> Color:
 \treturn table.get(service, table["core"])
 
 
-## The K's terminal-bit colour for a section: kit gold on core, the accent elsewhere.
+## Whether a section draws the K's terminal bit: every service section does; core (the platform)
+## and unknown ids do not. The default Polaris Key mark has no bit.
+static func has_section_bit(service: String) -> bool:
+\treturn _BIT_DARK.has(service)
+
+
+## The K's terminal-bit colour for a service section (its accent). Core and unknown ids have no
+## bit and answer transparent; check has_section_bit() and leave the bit out instead.
 static func section_bit(service: String, dark: bool = true) -> Color:
 \tvar table: Dictionary = _BIT_DARK if dark else _BIT_LIGHT
-\treturn table.get(service, table["core"])
+\treturn table.get(service, Color(0, 0, 0, 0))
 
 
 ## Which optical cut a mark displayed at \`size\` logical pixels uses.
@@ -642,6 +682,8 @@ static func bit_visible(size: float) -> bool:
 function swiftRgb(hex: string): string {
   return `BrandColor(hex: 0x${hex.slice(1)})`;
 }
+
+const bitSwift = (hex: string | null) => (hex === null ? "nil" : swiftRgb(hex));
 
 function swiftTheme(theme: Theme): string {
   const t = T[theme];
@@ -677,7 +719,7 @@ function swiftSource(): string {
   const table = (theme: Theme) =>
     SERVICE_IDS.map((id) => {
       const a = serviceAccent(theme, id);
-      return `            "${id}": BrandAccent(solid: ${swiftRgb(a.solid)}, fg: ${swiftRgb(a.fg)}, on: ${swiftRgb(a.on)}, subtle: ${swiftRgb(a.subtle)}, bit: ${swiftRgb(sectionBit(theme, id))}),`;
+      return `            "${id}": BrandAccent(solid: ${swiftRgb(a.solid)}, fg: ${swiftRgb(a.fg)}, on: ${swiftRgb(a.on)}, subtle: ${swiftRgb(a.subtle)}, bit: ${bitSwift(sectionBit(theme, id))}),`;
     }).join("\n");
   return `${banner("//")}
 
@@ -703,13 +745,14 @@ public struct BrandColor: Sendable, Equatable, Hashable {
 }
 
 /// One section's accent in one theme: \`solid\` for indicators and fills, \`fg\` for text, \`on\` for
-/// text on a solid fill, \`subtle\` for a tinted surface, \`bit\` for the K's terminal bit.
+/// text on a solid fill, \`subtle\` for a tinted surface, \`bit\` for the K's terminal bit (nil on
+/// core: the platform draws no bit).
 public struct BrandAccent: Sendable, Equatable {
     public let solid: BrandColor
     public let fg: BrandColor
     public let on: BrandColor
     public let subtle: BrandColor
-    public let bit: BrandColor
+    public let bit: BrandColor?
 }
 
 /// Polaris Key brand tokens (@polaris-key/brand). Dark is the default theme.

@@ -112,17 +112,47 @@ describe("the section bit (bit override)", () => {
         expect(serviceAccent(id, theme).bit).toBe(fill);
         expect(resolveBitFill(id, theme)).toBe(fill);
         expect(markSvg({ size: 48, theme, bit: id })).toContain(
-          `<path d="${BIT_PATH}" fill="${fill}"></path>`,
+          `<path d="${BIT_PATH}" fill="${fill}" class="polaris-section-bit"></path>`,
         );
       }
     },
   );
 
-  it("core (the platform) keeps the kit gold", () => {
-    expect(sectionBit("core", "dark")).toBe(BRAND.gold.dark);
-    expect(sectionBit("core", "light")).toBe(BRAND.gold.light);
-    expect(resolveBitFill("core", "dark")).toBe(BRAND.gold.dark);
+  it("core (the platform) has no bit at all", () => {
+    expect(sectionBit("core", "dark")).toBeNull();
+    expect(sectionBit("core", "light")).toBeNull();
+    expect(resolveBitFill("core", "dark")).toBeNull();
+    expect(resolveBitFill("none", "mono")).toBeNull();
     expect(resolveBitFill("gold", "light")).toBe(BRAND.gold.light);
+  });
+
+  it.each(["none", "core"] as const)(
+    'bit="%s" leaves the bit path out entirely, signed or not, in every theme',
+    (bit) => {
+      for (const theme of ["dark", "light", "mono"] as const) {
+        for (const signed of [false, true]) {
+          const m = markParts({ size: 96, theme, bit, signed });
+          expect(m.parts.map((p) => p.role)).toEqual(["body", "body", "star"]);
+          expect(markSvg({ size: 96, theme, bit, signed })).not.toContain(
+            BIT_PATH,
+          );
+        }
+      }
+    },
+  );
+
+  it("the no-bit mark keeps the glyph's geometry and size", () => {
+    const withBit = markParts({ size: 96, bit: "license" });
+    const without = markParts({ size: 96, bit: "none" });
+    expect([without.size, without.grid, without.cut]).toEqual([
+      withBit.size,
+      withBit.grid,
+      withBit.cut,
+    ]);
+    expect(without.parts).toEqual(
+      withBit.parts.filter((p) => p.role !== "gold"),
+    );
+    expect(markSvg({ size: 96, bit: "none" })).toBe(markSvg({ size: 96 }));
   });
 
   it("no bit below the minimum size, whatever the override", () => {
@@ -131,11 +161,27 @@ describe("the section bit (bit override)", () => {
         expect(markSvg({ size, bit })).not.toContain(BIT_PATH);
   });
 
-  it('"section" follows tokens.css with a gold fallback and the transition class', () => {
+  it('"section" follows tokens.css through classes, with no inline style and no gold fallback', () => {
     const svg = markSvg({ size: 48, bit: "section" });
     expect(svg).toContain(
-      `<path d="${BIT_PATH}" fill="#ffc24d" style="fill:var(--pk-section-bit, #ffc24d)" class="polaris-section-bit"></path>`,
+      `<path d="${BIT_PATH}" fill="none" class="polaris-section-bit polaris-live-bit"></path>`,
     );
+    expect(svg).not.toContain("style=");
+    expect(svg).not.toContain(BRAND.gold.dark);
+  });
+
+  it("never emits an inline style (CSP-safe, innerHTML included)", () => {
+    for (const bit of [
+      "section",
+      "license",
+      "gold",
+      "#123456",
+      "none",
+    ] as const)
+      for (const theme of ["dark", "light", "mono"] as const) {
+        expect(markSvg({ size: 96, bit, theme })).not.toContain("style");
+        expect(lockupSvg({ bit, theme })).not.toContain("style");
+      }
   });
 
   it("the star never changes: same fill, no class, no style, whatever the bit", () => {
@@ -144,7 +190,6 @@ describe("the section bit (bit override)", () => {
         (p) => p.role === "star",
       )!;
       expect(star.fill).toBe(BRAND.star.dark);
-      expect(star.style).toBeUndefined();
       expect(star.className).toBeUndefined();
     }
   });
@@ -193,24 +238,38 @@ describe("accessibility", () => {
 });
 
 describe("lockups", () => {
-  it("natural size is the kit's, with the bit (the kit's horizontal lockup is signed)", () => {
+  it("natural size is the kit's, and the default lockup has no bit", () => {
     const m = lockupMetrics({ layout: "horizontal" });
-    expect([m.width, m.height, m.glyphPx, m.bit]).toEqual([472, 160, 96, true]);
-    expect(lockupSvg({})).toContain('fill="#ffc24d" d="M70 85');
+    expect([m.width, m.height, m.glyphPx, m.bit]).toEqual([
+      472,
+      160,
+      96,
+      false,
+    ]);
+    expect(lockupSvg({})).not.toContain("M70 85");
+    expect(lockupSvg({ bit: "none", signed: true })).not.toContain("M70 85");
+    expect(lockupSvg({ bit: "core" })).not.toContain("M70 85");
+    expect(lockupSvg({ bit: "none" })).toBe(lockupSvg({}));
+    // The kit's signed artwork stays available on request.
+    expect(lockupSvg({ signed: true })).toContain('fill="#ffc24d" d="M70 85');
   });
 
   it("drops the bit once the glyph renders below 48 px", () => {
     // horizontal: glyph is 96/160 of the height, so 80 px tall is the threshold.
-    expect(lockupMetrics({ height: 80 }).bit).toBe(true);
-    expect(lockupMetrics({ height: 79 }).bit).toBe(false);
-    expect(lockupSvg({ height: 79 })).not.toContain("M70 85");
+    expect(lockupMetrics({ height: 80, signed: true }).bit).toBe(true);
+    expect(lockupMetrics({ height: 79, signed: true }).bit).toBe(false);
+    expect(lockupSvg({ height: 79, signed: true })).not.toContain("M70 85");
     // stacked: glyph is 136/300 of the height.
-    expect(lockupMetrics({ layout: "stacked", height: 106 }).bit).toBe(true);
-    expect(lockupMetrics({ layout: "stacked", height: 105 }).bit).toBe(false);
+    expect(
+      lockupMetrics({ layout: "stacked", height: 106, bit: "config" }).bit,
+    ).toBe(true);
+    expect(
+      lockupMetrics({ layout: "stacked", height: 105, bit: "config" }).bit,
+    ).toBe(false);
   });
 
   it("the compact lockup uses the service cut and never carries a bit", () => {
-    const m = lockupMetrics({ layout: "compact", height: 640 });
+    const m = lockupMetrics({ layout: "compact", height: 640, signed: true });
     expect(m.cut).toBe("service");
     expect(m.bit).toBe(false);
   });
@@ -218,10 +277,10 @@ describe("lockups", () => {
   it("the section bit applies to the lockup too", () => {
     const svg = lockupSvg({ bit: "config" });
     expect(svg).toContain(
-      `fill="${SERVICE_ACCENTS.dark.config.solid}" d="${BIT_PATH}"`,
+      `fill="${SERVICE_ACCENTS.dark.config.solid}" class="polaris-section-bit" d="${BIT_PATH}"`,
     );
     expect(lockupSvg({ bit: "section", theme: "light" })).toContain(
-      `style="fill:var(--pk-section-bit, #d07a00)" class="polaris-section-bit"`,
+      `fill="none" class="polaris-section-bit polaris-live-bit" d="${BIT_PATH}"`,
     );
     expect(lockupSvg({ signed: false })).not.toContain(BIT_PATH);
   });

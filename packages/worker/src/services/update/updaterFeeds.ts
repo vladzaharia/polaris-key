@@ -556,7 +556,7 @@ function velopackTarget(
  * says, the artifact whose bytes give the SHA-1, and the immutable delivery URL the package
  * route redirects to.
  */
-interface VelopackCandidate {
+export interface VelopackCandidate {
   asset: Omit<VelopackAsset, "SHA1">;
   artifact: CatalogSourceArtifact;
   url: string;
@@ -588,9 +588,19 @@ async function velopackCandidates(
     limit: VELOPACK_RELEASES,
     withArtifacts: true,
   });
-  if (!sel) return null;
+  return sel ? velopackCandidatesFrom(sel.entries) : null;
+}
+
+/**
+ * The Velopack candidates of a selection (newest first), with no I/O: `velopackCandidates`'s
+ * second half, exported so P5-07's end-to-end runs (sdks/godot/native/e2e/gen_feeds.mts) build
+ * their feed with this exact code over local files.
+ */
+export function velopackCandidatesFrom(
+  entries: readonly FeedSelectionEntry[],
+): VelopackCandidate[] {
   const out: VelopackCandidate[] = [];
-  for (const [i, e] of sel.entries.entries()) {
+  for (const [i, e] of entries.entries()) {
     const packageId = velopackPackageId(e.name, e.version);
     if (!packageId || !e.sha256 || e.size === null) continue;
     const notes = velopackNotes(e.notes);
@@ -665,35 +675,47 @@ function serveVelopack(
       render: async (r) => {
         const candidates = await velopackCandidates(r, channel, target);
         if (!candidates) return null;
-        const assets: VelopackAsset[] = [];
-        const unlisted = new Set<VelopackCandidate>();
-        for (const c of candidates) {
-          const sha1 =
-            c.full && unlisted.has(c.full)
-              ? null
-              : await artifactSha1(r.artifacts, c.artifact);
-          if (!sha1) {
-            unlisted.add(c);
-            continue;
-          }
-          const a = c.asset;
-          assets.push({
-            PackageId: a.PackageId,
-            Version: a.Version,
-            Type: a.Type,
-            FileName: a.FileName,
-            SHA1: sha1.toUpperCase(),
-            SHA256: a.SHA256,
-            Size: a.Size,
-            NotesMarkdown: a.NotesMarkdown,
-            NotesHTML: a.NotesHTML,
-          });
-        }
-        return renderVelopackFeed(assets);
+        return renderVelopackFeed(
+          await velopackAssets(candidates, (a) => artifactSha1(r.artifacts, a)),
+        );
       },
     },
     recorded,
   );
+}
+
+/**
+ * The feed's assets for `candidates`, in order, with each SHA-1 from `sha1Of` (the stored bytes').
+ * A package whose bytes give no SHA-1 is left out, and so are the deltas listed only with a full
+ * package that was left out. Exported with `velopackCandidatesFrom` for P5-07's end-to-end runs.
+ */
+export async function velopackAssets(
+  candidates: readonly VelopackCandidate[],
+  sha1Of: (artifact: CatalogSourceArtifact) => Promise<string | null>,
+): Promise<VelopackAsset[]> {
+  const assets: VelopackAsset[] = [];
+  const unlisted = new Set<VelopackCandidate>();
+  for (const c of candidates) {
+    const sha1 =
+      c.full && unlisted.has(c.full) ? null : await sha1Of(c.artifact);
+    if (!sha1) {
+      unlisted.add(c);
+      continue;
+    }
+    const a = c.asset;
+    assets.push({
+      PackageId: a.PackageId,
+      Version: a.Version,
+      Type: a.Type,
+      FileName: a.FileName,
+      SHA1: sha1.toUpperCase(),
+      SHA256: a.SHA256,
+      Size: a.Size,
+      NotesMarkdown: a.NotesMarkdown,
+      NotesHTML: a.NotesHTML,
+    });
+  }
+  return assets;
 }
 
 /**

@@ -1,0 +1,28 @@
+; Engine configuration file.
+; P5-07's end-to-end probe (sdks/godot/native/e2e/). The run scripts copy this project to a work
+; directory, add addons/polaris_key and the native plugins, write res://e2e.json and the export
+; preset, set application/config/version per build, and export it.
+
+config_version=5
+
+[application]
+
+config/name="PKeyE2E"
+config/version="1.0.0"
+run/main_scene="res://main.tscn"
+run/flush_stdout_on_print=true
+
+[autoload]
+
+PolarisKey="*res://addons/polaris_key/polaris_key.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/polaris_key/plugin.cfg")
+
+[rendering]
+
+textures/vram_compression/import_etc2_astc=true
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

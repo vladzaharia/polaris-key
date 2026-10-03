@@ -81,5 +81,11 @@ conformance/corpus/v2/content/blobs/
 # @polaris-key/brand's copy of the launch kit: verbatim vendor files, checksum-tested against the
 # kit's SHA256SUMS.txt (packages/brand/test/kit-fidelity.test.ts), so prettier must never rewrite them.
 packages/brand/kit/
+# The Godot native plugins' fetched inputs and build outputs (P5-07; git-ignored by sdks/godot/.gitignore).
+sdks/godot/native/.deps/
+sdks/godot/native/macos/dist/
+sdks/godot/native/windows/dist/
+sdks/godot/native/windows/bin/
+sdks/godot/native/windows/velopack/shim/target/
 # P5-05: the hosted XCTest project's generated project, derived data and logs (run.sh).
 sdks/swift/PlatformHostTests/build/

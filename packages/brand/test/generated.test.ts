@@ -49,6 +49,14 @@ describe("generator drift", () => {
         `solid: BrandColor(hex: 0x${SERVICE_ACCENTS.dark[id].solid.slice(1)})`,
       );
     }
+    // Core draws no bit: no core entry in the Godot bit tables, and a nil bit in Swift.
+    expect(gd).toContain(
+      "static func has_section_bit(service: String) -> bool:",
+    );
+    expect(gd).not.toContain("SERVICE_CORE_BIT");
+    expect(gd).not.toMatch(/_BIT_(DARK|LIGHT) := \{[^}]*"core"/);
+    expect(swift).toMatch(/"core": BrandAccent\([^\n]*, bit: nil\)/);
+    expect(swift).toContain("public let bit: BrandColor?");
     expect(gd).toContain("class_name PKeyBrand");
     expect(gd.startsWith("# GENERATED FILE")).toBe(true);
     expect(swift.startsWith("// GENERATED FILE")).toBe(true);
@@ -89,10 +97,20 @@ describe("tokens.css", () => {
       const b = block(`[data-service="${id}"]`);
       expect(b).toContain(`--pk-accent: var(--pk-service-${id});`);
       expect(b).toContain(`--pk-section-bit: var(--pk-service-${id}-bit);`);
+      expect(b).toContain(`--pk-section-bit-display: inline;`);
     }
-    expect(css).toContain(
-      `--pk-service-core-bit: ${THEME_TOKENS.dark.signed.mark};`,
+  });
+
+  it("core defines no section bit: no gold, and the live bit is not displayed", () => {
+    expect(css).not.toContain("--pk-service-core-bit");
+    const core = block(`:root,\n[data-theme],\n[data-service="core"]`);
+    expect(core).toContain("--pk-section-bit: none;");
+    expect(core).toContain("--pk-section-bit-display: none;");
+    expect(css).toMatch(
+      /\.polaris-live-bit \{\s*fill: var\(--pk-section-bit\);\s*display: var\(--pk-section-bit-display\);/,
     );
+    for (const theme of ["dark", "light"] as const)
+      expect(SERVICE_ACCENTS[theme].core.bit).toBeNull();
   });
 
   it("collapses motion under prefers-reduced-motion and never animates more than the bit", () => {

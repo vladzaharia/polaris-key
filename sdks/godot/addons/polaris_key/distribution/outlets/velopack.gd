@@ -10,8 +10,10 @@ extends PKeyNativeBridge
 ## A Velopack install ships P5-07's launcher shim as `--mainExe`, which answers the
 ## `--veloapp-*` hooks in milliseconds without starting the engine. An update replaces the whole
 ## app directory, so a Velopack install never takes a sidecar-PCK swap (PKeySidecarSwap refuses
-## `velopack`). P5-07 ships the plugin, an Engine singleton `PolarisKeyVelopack`; without it every
-## call answers `unsupported` (`dependency`) and the adapter opens the build's download link.
+## `velopack`). The native side is P5-07's PKeyVelopack facade over the Windows GDExtension's
+## `PKeyVelopackNative` (or an Engine singleton `PolarisKeyVelopack`); without it every call
+## answers `unsupported` (`dependency`; `runtime` off Windows or outside a Velopack install) and
+## the adapter opens the build's download link.
 
 ## The channel the app was packed with (`vpk pack --channel`).
 var velopack_channel := ""
@@ -23,3 +25,7 @@ func id() -> String:
 
 func singleton_name() -> String:
 	return "PolarisKeyVelopack"
+
+
+func make_facade() -> PKeyNativeFacade:
+	return PKeyVelopack.new(env)

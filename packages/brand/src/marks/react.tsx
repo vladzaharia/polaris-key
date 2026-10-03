@@ -5,7 +5,9 @@
 // `PolarisMark` is a faithful port of the kit's kit/08-developer/PolarisMark.tsx (optical cut by
 // displayed size, dark/light/mono themes, gold only when signed and >= 48 px, title or
 // decorative), extended with the `bit` prop for the console's section bit (docs/design/BRAND.md
-// "The section bit"). Lockups and badges render the kit's own artwork from colour templates.
+// "The section bit"). The default mark has no bit; `bit="none"` (or "core") says so explicitly.
+// Lockups and badges render the kit's own artwork from colour templates. Nothing here emits an
+// inline style, so the markup (lockup innerHTML included) is CSP-safe.
 
 import * as React from "react";
 
@@ -30,15 +32,6 @@ type SvgProps = Omit<
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const round = (n: number) => Math.round(n * 100) / 100;
-
-function parseStyle(style: string): React.CSSProperties {
-  const out: Record<string, string> = {};
-  for (const decl of style.split(";")) {
-    const i = decl.indexOf(":");
-    if (i > 0) out[decl.slice(0, i).trim()] = decl.slice(i + 1).trim();
-  }
-  return out as React.CSSProperties;
-}
 
 export type PolarisMarkProps = SvgProps & MarkOptions;
 
@@ -69,13 +62,7 @@ export function PolarisMark({
     >
       {title ? <title>{title}</title> : null}
       {m.parts.map((p, i) => (
-        <path
-          key={i}
-          d={p.d}
-          fill={p.fill}
-          style={p.style ? parseStyle(p.style) : undefined}
-          className={p.className}
-        />
+        <path key={i} d={p.d} fill={p.fill} className={p.className} />
       ))}
     </svg>
   );
@@ -84,9 +71,10 @@ export function PolarisMark({
 export type PolarisLockupProps = SvgProps & LockupOptions;
 
 /**
- * A kit wordmark lockup (horizontal, stacked or compact) for either mark. The K's terminal bit
- * shows only while the glyph renders at 48 px or more; use the compact lockup when the full
- * wordmark would push the mark below that.
+ * A kit wordmark lockup (horizontal, stacked or compact) for either mark. The default lockup has
+ * no terminal bit; a section bit (`bit`) or the kit gold (`signed`) shows only while the glyph
+ * renders at 48 px or more; use the compact lockup when the full wordmark would push the mark
+ * below that.
  */
 export function PolarisLockup({
   kind,

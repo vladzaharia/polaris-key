@@ -39,23 +39,29 @@ export const THEME_TOKENS = {
         on: "#060912",
         subtle: "#1d2418",
       },
-      cyan: {
-        solid: "#12bcd5",
-        fg: "#12bcd5",
+      yellow: {
+        solid: "#fac700",
+        fg: "#fac700",
         on: "#060912",
-        subtle: "#071e29",
+        subtle: "#232010",
       },
-      teal: {
-        solid: "#3eeedb",
-        fg: "#3eeedb",
+      cyan: {
+        solid: "#00dbfd",
+        fg: "#00dbfd",
         on: "#060912",
-        subtle: "#0d242a",
+        subtle: "#05222e",
       },
       green: {
         solid: "#39d075",
         fg: "#39d075",
         on: "#060912",
         subtle: "#0c211e",
+      },
+      tangerine: {
+        solid: "#fe8001",
+        fg: "#fe8001",
+        on: "#060912",
+        subtle: "#241710",
       },
       orchid: {
         solid: "#d77df2",
@@ -72,10 +78,10 @@ export const THEME_TOKENS = {
         subtle: "#10211f",
       },
       warning: {
-        fg: "#ff8f57",
+        fg: "#c38d18",
         on: "#060912",
-        border: "#c2612d",
-        subtle: "#24191a",
+        border: "#896100",
+        subtle: "#1d1913",
       },
       danger: {
         fg: "#f2513f",
@@ -127,23 +133,29 @@ export const THEME_TOKENS = {
         on: "#060912",
         subtle: "#e9ede6",
       },
-      cyan: {
-        solid: "#006270",
-        fg: "#006270",
+      yellow: {
+        solid: "#8b6902",
+        fg: "#866500",
         on: "#ffffff",
-        subtle: "#dde9f1",
+        subtle: "#ebeae6",
       },
-      teal: {
-        solid: "#01948a",
-        fg: "#00736b",
+      cyan: {
+        solid: "#0390a6",
+        fg: "#007487",
         on: "#060912",
-        subtle: "#deeef3",
+        subtle: "#deeef6",
       },
       green: {
         solid: "#05773b",
         fg: "#05773b",
         on: "#ffffff",
         subtle: "#deebeb",
+      },
+      tangerine: {
+        solid: "#b95800",
+        fg: "#aa5000",
+        on: "#ffffff",
+        subtle: "#f0e8e6",
       },
       orchid: {
         solid: "#9e34ae",
@@ -160,10 +172,10 @@ export const THEME_TOKENS = {
         subtle: "#e0ebeb",
       },
       warning: {
-        fg: "#a24112",
+        fg: "#814d00",
         on: "#ffffff",
-        border: "#c75d29",
-        subtle: "#eee6e7",
+        border: "#9d6726",
+        subtle: "#eae7e6",
       },
       danger: {
         fg: "#be2323",
@@ -188,7 +200,10 @@ export const THEME_TOKENS = {
   },
 } as const satisfies Record<Theme, ResolvedTheme>;
 
-/** Per theme, each section's accent (solid, fg, on, subtle) and its section-bit colour. */
+/**
+ * Per theme, each section's accent (solid, fg, on, subtle) and its section-bit colour; bit is
+ * null on core, which draws no bit.
+ */
 export const SERVICE_ACCENTS = {
   dark: {
     core: {
@@ -196,7 +211,7 @@ export const SERVICE_ACCENTS = {
       fg: "#9a5cff",
       on: "#060912",
       subtle: "#18132e",
-      bit: "#ffc24d",
+      bit: null,
     },
     license: {
       solid: "#c6e940",
@@ -206,18 +221,18 @@ export const SERVICE_ACCENTS = {
       bit: "#c6e940",
     },
     config: {
-      solid: "#12bcd5",
-      fg: "#12bcd5",
+      solid: "#fac700",
+      fg: "#fac700",
       on: "#060912",
-      subtle: "#071e29",
-      bit: "#12bcd5",
+      subtle: "#232010",
+      bit: "#fac700",
     },
     release: {
-      solid: "#3eeedb",
-      fg: "#3eeedb",
+      solid: "#00dbfd",
+      fg: "#00dbfd",
       on: "#060912",
-      subtle: "#0d242a",
-      bit: "#3eeedb",
+      subtle: "#05222e",
+      bit: "#00dbfd",
     },
     distribution: {
       solid: "#39d075",
@@ -227,11 +242,11 @@ export const SERVICE_ACCENTS = {
       bit: "#39d075",
     },
     update: {
-      solid: "#39d075",
-      fg: "#39d075",
+      solid: "#fe8001",
+      fg: "#fe8001",
       on: "#060912",
-      subtle: "#0c211e",
-      bit: "#39d075",
+      subtle: "#241710",
+      bit: "#fe8001",
     },
     identity: {
       solid: "#d77df2",
@@ -247,7 +262,7 @@ export const SERVICE_ACCENTS = {
       fg: "#7a2fff",
       on: "#ffffff",
       subtle: "#eae4ff",
-      bit: "#d07a00",
+      bit: null,
     },
     license: {
       solid: "#708d00",
@@ -257,18 +272,18 @@ export const SERVICE_ACCENTS = {
       bit: "#708d00",
     },
     config: {
-      solid: "#006270",
-      fg: "#006270",
+      solid: "#8b6902",
+      fg: "#866500",
       on: "#ffffff",
-      subtle: "#dde9f1",
-      bit: "#006270",
+      subtle: "#ebeae6",
+      bit: "#8b6902",
     },
     release: {
-      solid: "#01948a",
-      fg: "#00736b",
+      solid: "#0390a6",
+      fg: "#007487",
       on: "#060912",
-      subtle: "#deeef3",
-      bit: "#01948a",
+      subtle: "#deeef6",
+      bit: "#0390a6",
     },
     distribution: {
       solid: "#05773b",
@@ -278,11 +293,11 @@ export const SERVICE_ACCENTS = {
       bit: "#05773b",
     },
     update: {
-      solid: "#05773b",
-      fg: "#05773b",
+      solid: "#b95800",
+      fg: "#aa5000",
       on: "#ffffff",
-      subtle: "#deebeb",
-      bit: "#05773b",
+      subtle: "#f0e8e6",
+      bit: "#b95800",
     },
     identity: {
       solid: "#9e34ae",
@@ -296,6 +311,12 @@ export const SERVICE_ACCENTS = {
   Theme,
   Record<
     ServiceId,
-    { solid: string; fg: string; on: string; subtle: string; bit: string }
+    {
+      solid: string;
+      fg: string;
+      on: string;
+      subtle: string;
+      bit: string | null;
+    }
   >
 >;

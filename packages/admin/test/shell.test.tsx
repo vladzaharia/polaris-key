@@ -7,6 +7,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { BRAND, SERVICE_ACCENTS } from "@polaris-key/brand";
 import { App } from "../src/App.js";
 import { resetCache } from "../src/context.js";
 import { setLoginRedirectForTests } from "../src/api.js";
@@ -269,43 +270,60 @@ describe("per-section accents (D-17)", () => {
 });
 
 describe("the header mark's section bit (BRAND.md §6)", () => {
-  it("follows the route: core (the kit gold) on platform pages, the section's accent elsewhere", async () => {
+  // The display cut's terminal bit (the kit's "gold" path).
+  const BIT_D = "M70 85 L84 71 L90 77 L76 91 Z";
+
+  it("follows the route: no bit at all on platform pages, the section's accent elsewhere", async () => {
     boot(ALL_ON, "#/p/djdl/overview");
     const brand = await screen.findByRole("button", {
       name: "Polaris Key dashboard",
     });
-    // The 48 px display-cut Pinned K, with its terminal bit drawn to read --pk-section-bit.
     const mark = brand.querySelector("svg")!;
     expect(mark.getAttribute("width")).toBe("48");
-    const bit = (): Element | null =>
-      brand.querySelector("path.polaris-section-bit");
-    expect(bit()).not.toBeNull();
-    expect(bit()!.getAttribute("style") ?? "").toContain("--pk-section-bit");
-    // The section the bit resolves against: the nearest data-service ancestor, and <html>, which
-    // is what portalled dialogs and menus inherit.
-    const section = (): string | null | undefined =>
-      bit()?.closest("[data-service]")?.getAttribute("data-service");
+    // The theme the mark is drawn for (the provider mirrors it onto <html> as a class).
+    const theme = (): "dark" | "light" =>
+      document.documentElement.classList.contains("light") ? "light" : "dark";
+    const bit = (): Element | null => brand.querySelector(`path[d="${BIT_D}"]`);
+    const paths = (): number => brand.querySelectorAll("svg path").length;
     const htmlSection = (): string | null =>
       document.documentElement.getAttribute("data-service");
-    expect(section()).toBe("core");
+
+    // Core: the bare Pinned K. The bit's path is not in the DOM at all (not painted clear), and
+    // no section-bit element exists; only the K's two bodies and the star remain.
     expect(htmlSection()).toBe("core");
+    expect(bit()).toBeNull();
+    expect(brand.querySelector(".polaris-section-bit")).toBeNull();
+    expect(paths()).toBe(3);
+    expect(brand.innerHTML).not.toContain(BRAND.gold.dark);
+    expect(brand.innerHTML).not.toContain(BRAND.gold.light);
 
     const nav = screen.getByRole("navigation", { name: "Primary" });
     await userEvent.click(within(nav).getByRole("button", { name: "Tiers" }));
-    await waitFor(() => expect(section()).toBe("license"));
+    await waitFor(() => expect(bit()).not.toBeNull());
     expect(htmlSection()).toBe("license");
+    expect(bit()!.getAttribute("fill")).toBe(
+      SERVICE_ACCENTS[theme()].license.bit,
+    );
+    expect(bit()!.classList.contains("polaris-section-bit")).toBe(true);
+    expect(bit()!.hasAttribute("style")).toBe(false);
+    expect(paths()).toBe(4);
 
     await userEvent.click(
       within(nav).getByRole("button", { name: "Profiles" }),
     );
-    await waitFor(() => expect(section()).toBe("config"));
+    await waitFor(() =>
+      expect(bit()?.getAttribute("fill")).toBe(
+        SERVICE_ACCENTS[theme()].config.bit,
+      ),
+    );
     expect(htmlSection()).toBe("config");
 
     await userEvent.click(
       within(nav).getByRole("button", { name: "Dashboard" }),
     );
-    await waitFor(() => expect(section()).toBe("core"));
+    await waitFor(() => expect(bit()).toBeNull());
     expect(htmlSection()).toBe("core");
+    expect(paths()).toBe(3);
   });
 
   it("leaves <html> unsectioned once the shell is gone", async () => {
