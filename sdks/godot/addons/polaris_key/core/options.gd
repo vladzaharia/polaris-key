@@ -59,6 +59,11 @@ const CONFIG_ENV_NEVER := 2
 ## AltStore PAL sources, Obtainium, F-Droid repositories and an iOS web-distribution page carry
 ## none): the source, repository or page this build was published through (P3-10). Empty: none.
 @export var update_page_url := ""
+## The base64 Ed25519 public key Sparkle and WinSparkle verify updates with (`generate_keys` /
+## `winsparkle-tool`; CI holds the private half, never the Worker). WinSparkle (P5-07) reads it
+## at run time; the export plugin writes it into a macOS build's Info.plist as SUPublicEDKey, the
+## only place Sparkle reads it. Empty: Sparkle and WinSparkle refuse to start.
+@export var update_eddsa_public_key := ""
 ## Detect the outlet at run time when update_outlet is empty (P3-11): this build's signals
 ## (PKeyOutletSignals) and the stamp, through PKeyOutlet.detect_outlet, whose result goes to
 ## PKeyDecision.resolve_update_outlet as `detected`. Off: the stamp alone decides.

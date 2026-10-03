@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# fetch_godot.sh <version> <dir> [--template | --ios-template]
+# fetch_godot.sh <version> <dir> [--template | --host-template | --ios-template]
 #
 # Puts the official Godot <version> editor for this host at <dir>/godot and, with --template
 # (Linux only), the official linux_release.x86_64 export template at
-# <dir>/linux_release.x86_64. Every download is checked against its upstream SHA-512 in
+# <dir>/linux_release.x86_64. --host-template (P5-07's native-desktop jobs) fetches this host's
+# release template instead: <dir>/linux_release.x86_64, <dir>/macos.zip or
+# <dir>/windows_release_x86_64.exe. Every download is checked against its upstream SHA-512 in
 # tools/godot.sha512 before use; an unpinned file is refused. Does nothing when <dir> already
 # holds the binaries (a CI cache hit).
 #
@@ -22,7 +24,7 @@
 set -eu
 
 if [ $# -lt 2 ]; then
-  echo "usage: fetch_godot.sh <version> <dir> [--template]" >&2
+  echo "usage: fetch_godot.sh <version> <dir> [--template | --host-template | --ios-template]" >&2
   exit 2
 fi
 VERSION="$1"
@@ -35,7 +37,14 @@ need_editor=1
 need_template=0
 need_ios=0
 [ -x "$DIR/godot" ] && need_editor=0
-if [ "$TEMPLATE" = "--template" ] && [ ! -x "$DIR/linux_release.x86_64" ]; then
+TEMPLATE_FILE=linux_release.x86_64
+if [ "$TEMPLATE" = "--host-template" ]; then
+  case "$(uname -s)" in
+    Darwin) TEMPLATE_FILE=macos.zip ;;
+    MINGW* | MSYS* | CYGWIN*) TEMPLATE_FILE=windows_release_x86_64.exe ;;
+  esac
+fi
+if { [ "$TEMPLATE" = "--template" ] || [ "$TEMPLATE" = "--host-template" ]; } && [ ! -f "$DIR/$TEMPLATE_FILE" ]; then
   need_template=1
 fi
 if [ "$TEMPLATE" = "--ios-template" ] && [ ! -f "$DIR/templates/ios.zip" ]; then
@@ -117,16 +126,20 @@ if [ "$need_editor" = 1 ]; then
 fi
 
 if [ "$need_template" = 1 ]; then
-  if [ "$(uname -s)" != Linux ]; then
-    echo "fetch_godot: --template fetches the Linux template; run it on Linux" >&2
+  if [ "$TEMPLATE" = "--template" ] && [ "$(uname -s)" != Linux ]; then
+    echo "fetch_godot: --template fetches the Linux template; run it on Linux (or use --host-template)" >&2
     exit 1
   fi
   tpz="Godot_v${VERSION}-stable_export_templates.tpz"
   fetch "$tpz"
-  unzip -q -o -j "$WORK/$tpz" "templates/linux_release.x86_64" -d "$WORK"
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q -o -j "$WORK/$tpz" "templates/$TEMPLATE_FILE" -d "$WORK"
+  else
+    7z e -y -bd "-o$(cygpath -w "$WORK")" "$(cygpath -w "$WORK/$tpz")" "templates/$TEMPLATE_FILE" >/dev/null
+  fi
   rm -f "$WORK/$tpz"
-  mv "$WORK/linux_release.x86_64" "$DIR/linux_release.x86_64"
-  chmod +x "$DIR/linux_release.x86_64"
+  mv "$WORK/$TEMPLATE_FILE" "$DIR/$TEMPLATE_FILE"
+  chmod +x "$DIR/$TEMPLATE_FILE"
 fi
 
 if [ "$need_ios" = 1 ]; then

@@ -1884,7 +1884,7 @@
       "optional": false,
       "refs": ["README §5.10", "notes/E3"],
       "brief": "wp/P5-07-desktop-plugins.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-08",
@@ -1996,7 +1996,7 @@
       "optional": true,
       "refs": ["README §3.11", "README §11 decision 9"],
       "brief": "wp/P6-04-hosted-web.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "P6-05",
