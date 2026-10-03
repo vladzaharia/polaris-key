@@ -102,7 +102,9 @@ export type OutletCredentialKind =
   | "asc-webhook-secret"
   | "google-service-account"
   | "ms-partner-center"
-  | "sentry-integration";
+  | "sentry-integration"
+  | "app-store-server-key"
+  | "steam-publisher-key";
 
 /** One outlet credential as the admin API lists it: metadata and health, never the value. */
 export interface OutletCredentialInfo {
