@@ -359,7 +359,13 @@ export function binaryRefs(
     const nstr = u32();
     // GAP A: the string-table entries that name `resource_path` (a property may use one).
     const rpNames = new Set<number>();
-    for (let i = 0; i < nstr; i++) if (isResourcePath(str())) rpNames.add(i);
+    // Entries that are not valid UTF-8: a property name may not be one (the loader rewrites it).
+    const badNames = new Set<number>();
+    for (let i = 0; i < nstr; i++) {
+      const entry = str();
+      if (isResourcePath(entry)) rpNames.add(i);
+      if (!nameUtf8(entry)) badNames.add(i);
+    }
     const refs: ResourceRef[] = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
@@ -400,8 +406,10 @@ export function binaryRefs(
         const inline = b.subarray(pos, pos + n);
         pos += n;
         if (prop && isResourcePath(inline)) throw new Stop(RESOURCE_PATH_WHY);
+        if (prop && !nameUtf8(inline)) throw fail();
       } else if (id >= nstr) throw fail();
       else if (prop && rpNames.has(id)) throw new Stop(RESOURCE_PATH_WHY);
+      else if (prop && badNames.has(id)) throw fail();
     };
     // GAP B: the saver writes the internal resources in order after the tables, so each offset
     // must follow the tables and its predecessor, and each walk end by its successor's offset:
@@ -567,6 +575,19 @@ function isResourcePath(s: Uint8Array): boolean {
   if (cut.length >= 3 && cut[0] === 0xef && cut[1] === 0xbb && cut[2] === 0xbf)
     cut = cut.subarray(3);
   return Buffer.from(cut).equals(RESOURCE_PATH);
+}
+
+/** Whether a binary string, up to its first NUL, is valid UTF-8 (`PKeyPck.name_utf8`). */
+function nameUtf8(s: Uint8Array): boolean {
+  const z = s.indexOf(0);
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(
+      z === -1 ? s : s.subarray(0, z),
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** The ids a uid cache registers (u32 count; per entry i64 id, u32 length, path); [] if malformed. */

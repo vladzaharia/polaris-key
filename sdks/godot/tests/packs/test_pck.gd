@@ -14,6 +14,9 @@ const DIR := "res://tests/fixtures/packs/check"
 ## replaced spent about 62 ms per MiB of hits (measured on 4 MiB of 'G'), about 4 s on this body
 ## for that marker alone, and per entry, with 256 MiB declarable then.
 const G_RUN_BOUND_MS := 5000
+## The GAP D bound (P4-28 audit): 2,001 references to two large app scenes, each typed from its
+## first RSCC block once. Measured in the editor and template runs; see the brief.
+const TYPE_SCALE_BOUND_MS := 3000
 
 
 func run(t: PKeyTestContext) -> void:
@@ -83,6 +86,7 @@ func run(t: PKeyTestContext) -> void:
 	_attach_probes(t)
 	_type_probes(t)
 	_cache_probe(t)
+	_type_scale_probe(t)
 	_rscc_probes(t)
 	_script_kinds_api(t)
 
@@ -234,6 +238,55 @@ func _type_probes(t: PKeyTestContext) -> void:
 		var src := PKeyByteSource.file(out)
 		var lines := PKeyPck.lint_lines(src, PKeyPck.read_directory(src), ["res://packs/type/"], null, c[2])
 		S.check_same(t, "pck type: %s" % c[0], Array(lines), [] if c[3] == "" else [c[3]])
+	S.remove_tree(scratch)
+
+
+## P4-28 audit GAP D: an app scene's type is read from its first RSCC block only, once per path
+## per check. Two engine-compressed app scenes are made available as app files through a helper
+## pack (res://pkeygen/): one of about 30 MB of incompressible data, one declaring more than the
+## pack cap (64 MiB). A pack .tres naming the first in 2,000 ext_resource tags typed Resource,
+## and the second once, is admitted, both typed PackedScene, within TYPE_SCALE_BOUND_MS.
+func _type_scale_probe(t: PKeyTestContext) -> void:
+	var scratch := S.scratch("pck-scale")
+	var zeros := PackedByteArray()
+	zeros.resize(PKeyPck.RSCC_MAX_TOTAL + 4194304)
+	var files := {"big.scn": Crypto.new().generate_random_bytes(30000000), "huge.scn": zeros}
+	var entries: Array = []
+	for name in files:
+		var node := Node.new()
+		node.set_meta("blob", files[name])
+		var scene := PackedScene.new()
+		scene.pack(node)
+		node.free()
+		var out := scratch.path_join(name)
+		if not t.check("pck scale: %s saved compressed" % name, ResourceSaver.save(scene, out, ResourceSaver.FLAG_COMPRESS) == OK):
+			S.remove_tree(scratch)
+			return
+		entries.append({"path": "res://pkeygen/%s" % name, "source": PKeyByteSource.file(out)})
+	files.clear()
+	zeros = PackedByteArray()
+	var helper := scratch.path_join("pkeygen.pck")
+	var ver := PKeyPck.helper_version()
+	var huge_head := FileAccess.get_file_as_bytes(scratch.path_join("huge.scn")).slice(0, 16)
+	t.check("pck scale: the large app scene declares more than the pack cap", huge_head.size() == 16 and huge_head.decode_u32(12) > PKeyPck.RSCC_MAX_TOTAL, "%d" % (huge_head.decode_u32(12) if huge_head.size() == 16 else -1))
+	if PKeyPck.write(helper, entries, ver) != OK or PKeyPck.engine_check(PKeyPck.read_directory(PKeyByteSource.file(helper))["header"]) != "" or not PKeyPck.mount(helper, true):
+		t.info("pck scale: the helper pack did not mount on this engine; probe skipped")
+		S.remove_tree(scratch)
+		return
+	t.check("pck scale: types are read from block 0 (big, over the cap)", PKeyPck._remapped_type("res://pkeygen/big.scn") == "PackedScene" and PKeyPck._remapped_type("res://pkeygen/huge.scn") == "PackedScene", "%s %s" % [PKeyPck._remapped_type("res://pkeygen/big.scn"), PKeyPck._remapped_type("res://pkeygen/huge.scn")])
+	var text := "[gd_resource type=\"Resource\" load_steps=2002 format=3]\n\n"
+	for i in 2000:
+		text += "[ext_resource type=\"Resource\" path=\"res://pkeygen/big.scn\" id=\"%d\"]\n" % i
+	text += "[ext_resource type=\"Resource\" path=\"res://pkeygen/huge.scn\" id=\"huge\"]\n\n[resource]\n"
+	var pck := scratch.path_join("many.pck")
+	PKeyPck.write(pck, [{"path": "res://packs/many/x.tres", "bytes": text.to_utf8_buffer()}], ver)
+	var src := PKeyByteSource.file(pck)
+	var started := Time.get_ticks_msec()
+	var lines := PKeyPck.lint_lines(src, PKeyPck.read_directory(src), ["res://packs/many/"], null, [])
+	var ms := Time.get_ticks_msec() - started
+	t.info("pck scale: 2,001 references to two large app scenes checked in %d ms" % ms)
+	S.check_same(t, "pck scale: 2,000 references to one ~30 MB app scene and one over the cap are admitted", Array(lines), [])
+	t.check("pck scale: …within %d ms" % TYPE_SCALE_BOUND_MS, ms < TYPE_SCALE_BOUND_MS, "%d ms" % ms)
 	S.remove_tree(scratch)
 
 

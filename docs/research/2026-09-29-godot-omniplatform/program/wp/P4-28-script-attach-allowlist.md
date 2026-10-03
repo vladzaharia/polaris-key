@@ -109,3 +109,11 @@ scripts packs may attach, and let CI know about extra script languages.
   scripts saved under resource extensions; documented in the threat model, ci.md and
   authoring.md). The f_uid exports are now admitted on the device without a list. The shared
   fixtures resolve nothing on the device, so their verdicts stay identical.
+- **Audit follow-up (GAP D).** The device reads an app RSCC scene's type from its first block
+  only (`PKeyPck.rscc_first_block`, sharing `rscc_body`'s header rules and frame walk through
+  `_rscc_head`, `_rscc_block_size` and `_rscc_decode`; the total cap does not apply to app files)
+  and memoises each path's type per directory check (`tree_check` runs no reference check, so it
+  needs none). Device probe `_type_scale_probe`: a pack `.tres` with 2,000 `ext_resource` tags
+  typed `Resource` naming one ~30 MB app scene, plus one naming a scene declaring 71,303,793
+  bytes (over the 64 MiB pack cap), is admitted with both typed PackedScene: 25 ms in the 4.7.2 editor, 21 ms on the 4.7.2 release template and 24 ms on 4.4.1 (bound `TYPE_SCALE_BOUND_MS` = 3,000). Both validators also refuse a binary property
+  name that is not valid UTF-8 (`refs-name-utf8`).

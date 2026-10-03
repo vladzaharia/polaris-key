@@ -527,23 +527,16 @@ const ZSTD_MAGIC := 0xFD2FB528
 ## Thread-safe: ints and PackedByteArrays only.
 static func rscc_body(data: PackedByteArray, budget: Variant = null) -> Dictionary:
 	var n := data.size()
-	if n < 16:
-		return {"why": "whose header is truncated"}
-	var mode := data.decode_u32(4)
-	if mode != RSCC_MODE_ZSTD:
-		return {"why": "in compression mode %d; only zstd (mode %d) is inspected" % [mode, RSCC_MODE_ZSTD]}
-	var bs := data.decode_u32(8)
-	if bs < RSCC_MIN_BLOCK or bs > RSCC_MAX_BLOCK:
-		return {"why": "with block size %d, outside %d..%d" % [bs, RSCC_MIN_BLOCK, RSCC_MAX_BLOCK]}
-	var total := data.decode_u32(12)
-	if total > RSCC_MAX_TOTAL:
-		return {"why": "that declares %d bytes, above the %d-byte cap" % [total, RSCC_MAX_TOTAL]}
+	var h := _rscc_head(data, true)
+	if h.has("why"):
+		return h
+	var bs: int = h["bs"]
+	var total: int = h["total"]
+	var bc: int = h["bc"]
 	if budget is Dictionary:
 		budget["used"] = int(budget.get("used", 0)) + total
 		if int(budget["used"]) > RSCC_PACK_BUDGET:
 			return {"why": "that takes the pack's declared RSCC bytes to %d, past the %d-byte budget" % [int(budget["used"]), RSCC_PACK_BUDGET]}
-	@warning_ignore("integer_division")
-	var bc := total / bs + 1
 	var table_end := 16 + 4 * bc
 	if table_end > n:
 		return {"why": "whose block table runs past the end"}
@@ -561,22 +554,77 @@ static func rscc_body(data: PackedByteArray, budget: Variant = null) -> Dictiona
 		return {"why": "without its closing RSCC magic"}
 	if pos + 4 != n:
 		return {"why": "with bytes after its closing RSCC magic"}
-	var last_size := total - (bc - 1) * bs
 	# Every frame's structure first, so nothing is allocated for a resource that cannot decode.
 	for i in bc:
-		var want := last_size if i == bc - 1 else bs
+		var want := _rscc_block_size(h, i)
 		if not zstd_frame_ok(data.slice(starts[i], starts[i] + sizes[i]), want):
 			return {"why": "whose block %d is not one zstd frame of %d bytes" % [i, want]}
 	var body := PackedByteArray()
 	for i in bc:
-		var want := last_size if i == bc - 1 else bs
-		if want == 0:
-			continue
-		var out := data.slice(starts[i], starts[i] + sizes[i]).decompress(want, FileAccess.COMPRESSION_ZSTD)
+		var want := _rscc_block_size(h, i)
+		var out := _rscc_decode(data.slice(starts[i], starts[i] + sizes[i]), want)
 		if out.size() != want:
 			return {"why": "whose block %d does not decode to %d bytes" % [i, want]}
 		body.append_array(out)
 	return {"body": body}
+
+
+## The RSCC header (`rscc_body`'s first rules, the same words): zstd only, the block size in
+## RSCC_MIN_BLOCK..RSCC_MAX_BLOCK and, with `cap`, the total at most RSCC_MAX_TOTAL. {bs, total,
+## bc} or {why}.
+static func _rscc_head(head: PackedByteArray, cap: bool) -> Dictionary:
+	if head.size() < 16:
+		return {"why": "whose header is truncated"}
+	var mode := head.decode_u32(4)
+	if mode != RSCC_MODE_ZSTD:
+		return {"why": "in compression mode %d; only zstd (mode %d) is inspected" % [mode, RSCC_MODE_ZSTD]}
+	var bs := head.decode_u32(8)
+	if bs < RSCC_MIN_BLOCK or bs > RSCC_MAX_BLOCK:
+		return {"why": "with block size %d, outside %d..%d" % [bs, RSCC_MIN_BLOCK, RSCC_MAX_BLOCK]}
+	var total := head.decode_u32(12)
+	if cap and total > RSCC_MAX_TOTAL:
+		return {"why": "that declares %d bytes, above the %d-byte cap" % [total, RSCC_MAX_TOTAL]}
+	@warning_ignore("integer_division")
+	return {"bs": bs, "total": total, "bc": total / bs + 1}
+
+
+## Block `i`'s decoded size: the block size, the last one the remainder.
+static func _rscc_block_size(h: Dictionary, i: int) -> int:
+	var bc: int = h["bc"]
+	return int(h["total"]) - (bc - 1) * int(h["bs"]) if i == bc - 1 else int(h["bs"])
+
+
+## One frame `zstd_frame_ok` passed, decoded with exactly `want` bytes of room (an empty block is
+## never decoded: `decompress` takes no zero size). The caller compares the size.
+static func _rscc_decode(frame: PackedByteArray, want: int) -> PackedByteArray:
+	if want == 0:
+		return PackedByteArray()
+	return frame.decompress(want, FileAccess.COMPRESSION_ZSTD)
+
+
+## Block 0 of the `RSCC` resource behind `src`, decoded, or {why} (P4-28 audit GAP D: a resource's
+## type sits at the start of its body). Only the header, the first table entry and the first frame
+## are read; the header rules of `rscc_body` apply but the total cap (an app scene may declare more
+## than a pack may), and the frame is walked and decoded to exactly its declared size.
+static func rscc_first_block(src: PKeyByteSource) -> Dictionary:
+	var h := _rscc_head(src.read(0, 16), false)
+	if h.has("why"):
+		return h
+	var table_end := 16 + 4 * int(h["bc"])
+	var entry := src.read(16, 4)
+	if entry.size() != 4 or table_end > src.size:
+		return {"why": "whose block table runs past the end"}
+	var cs := entry.decode_u32(0)
+	if cs > src.size - table_end:
+		return {"why": "whose block 0 runs past the end"}
+	var want := _rscc_block_size(h, 0)
+	var frame := src.read(table_end, cs)
+	if frame.size() != cs or not zstd_frame_ok(frame, want):
+		return {"why": "whose block 0 is not one zstd frame of %d bytes" % want}
+	var out := _rscc_decode(frame, want)
+	if out.size() != want:
+		return {"why": "whose block 0 does not decode to %d bytes" % want}
+	return {"body": out}
 
 
 ## Whether `f` is exactly one zstd frame whose header declares `size` content bytes (rscc.ts
@@ -893,8 +941,8 @@ static func _uid_problem(u: int, raw: String, ctx: Dictionary) -> String:
 ## whatever the reference's `type` hint says (the engine picks a loader by extension, so a GDScript
 ## saved as `.tres` loads as a script). A `.remap` (an exported text resource) is followed first.
 ## A resource that exists but whose type the engine cannot tell counts as a script (fails closed).
-static func _app_script_type(p: String) -> bool:
-	var t := _remapped_type(p)
+static func _app_script_type(p: String, memo: Dictionary = {}) -> bool:
+	var t := _remapped_type(p, memo)
 	if t == "":
 		return ResourceLoader.exists(p)
 	return t == "Script" or ClassDB.is_parent_class(t, "Script")
@@ -905,8 +953,18 @@ static func _app_script_type(p: String) -> bool:
 ## `.remap` (an exported resource) is followed first; an imported file's type is its `.import`'s
 ## `type="…"`; a binary resource's (`RSRC`, or a bounded `RSCC` body) is its header's; a text
 ## resource's is its `[gd_resource type="…"]` head (`[gd_scene` is a PackedScene). "" when there is
-## no such file or its type cannot be read.
-static func _remapped_type(p: String) -> String:
+## no such file or its type cannot be read. An `RSCC` file is read only to its first block
+## (`rscc_first_block`), and `memo` (one per directory check) keeps each path's answer, so a pack
+## naming one large app scene many times costs one header read (P4-28 audit GAP D).
+static func _remapped_type(p: String, memo: Dictionary = {}) -> String:
+	if memo.has(p):
+		return memo[p]
+	var t := _read_type(p)
+	memo[p] = t
+	return t
+
+
+static func _read_type(p: String) -> String:
 	var target := p
 	if FileAccess.file_exists(p + ".remap"):
 		for v in remap_values(FileAccess.get_file_as_bytes(p + ".remap").get_string_from_utf8()):
@@ -926,8 +984,8 @@ static func _remapped_type(p: String) -> String:
 	if head.get_string_from_ascii() == "RSRC":
 		body = f.get_buffer(mini(f.get_length() - 4, 65536))
 	elif head.get_string_from_ascii() == "RSCC":
-		var whole := head + f.get_buffer(f.get_length() - 4)
-		var r := rscc_body(whole)
+		f.close()
+		var r := rscc_first_block(PKeyByteSource.file(target))
 		if r.has("why"):
 			return ""
 		body = r["body"]
@@ -981,7 +1039,7 @@ static func _path_problem(p: String, t: Variant, ctx: Dictionary) -> String:
 	if not script and t is String:
 		script = t == "Script" or (_script_kinds()["markers"] as PackedStringArray).has(t)
 	if not script and ctx.get("resolve", false):
-		script = _app_script_type(p)
+		script = _app_script_type(p, ctx.get("types", {}))
 	if not script:
 		return ""
 	var att: Dictionary = ctx["attachable"]
@@ -1071,8 +1129,11 @@ static func binary_refs(b: PackedByteArray, start: int) -> Dictionary:
 	var i := 0
 	# GAP A: the string-table entries that name `resource_path` (a property may use one).
 	while r.ok and i < nstr:
-		if is_resource_path(r.read_str()):
+		var entry := r.read_str()
+		if is_resource_path(entry):
 			r.rp_names[i] = true
+		if not name_utf8(entry):
+			r.bad_names[i] = true
 		i += 1
 	var refs: Array = []
 	var next := r.u32()
@@ -1221,6 +1282,8 @@ class _BinaryReader:
 	## GAP A: string-table indices naming `resource_path`, and whether a property used one.
 	var rp_names := {}
 	var rp_hit := false
+	## String-table indices that are not valid UTF-8 (a property may not use one).
+	var bad_names := {}
 
 	func _init(p_b: PackedByteArray, p_start: int) -> void:
 		b = p_b
@@ -1296,13 +1359,18 @@ class _BinaryReader:
 			if not need(n):
 				return
 			pos += n
-			if prop and PKeyPck.is_resource_path(b.slice(pos - n, pos)):
+			var inline := b.slice(pos - n, pos)
+			if prop and PKeyPck.is_resource_path(inline):
 				rp_hit = true
+				ok = false
+			elif prop and not PKeyPck.name_utf8(inline):
 				ok = false
 		elif id >= nstr:
 			ok = false
 		elif prop and rp_names.has(id):
 			rp_hit = true
+			ok = false
+		elif prop and bad_names.has(id):
 			ok = false
 
 
@@ -1314,6 +1382,13 @@ static func is_resource_path(s: PackedByteArray) -> bool:
 	if cut.size() >= 3 and cut[0] == 0xEF and cut[1] == 0xBB and cut[2] == 0xBF:
 		cut = cut.slice(3)
 	return cut == "resource_path".to_ascii_buffer()
+
+
+## Whether a binary string, up to its first NUL, is valid UTF-8 (a property name that is not is
+## refused: the loader would rewrite it).
+static func name_utf8(s: PackedByteArray) -> bool:
+	var z := s.find(0)
+	return utf8_valid(s if z == -1 else s.slice(0, z))
 
 
 ## The ids a uid cache registers, as {id: true}; {} when it is malformed.
@@ -1380,7 +1455,7 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 		if e["path"] == UID_CACHE:
 			pack_uids = uid_cache_ids(source.read(int(e["offset"]), int(e["size"])))
 	# P4-28: what the pack's resources may reference outside the pack.
-	var ref_ctx := {"in_pack": in_pack, "pack_uids": pack_uids, "attachable": parse_attachable(attachable), "resolve": true}
+	var ref_ctx := {"in_pack": in_pack, "pack_uids": pack_uids, "attachable": parse_attachable(attachable), "resolve": true, "types": {}}
 	for e in entries:
 		var p: String = e["path"]
 		if p == STRIP_PROJECT_BINARY or p == STRIP_CLASS_CACHE:

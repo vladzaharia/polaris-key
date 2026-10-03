@@ -906,6 +906,24 @@ function refsFixtures(): CheckFixture[] {
       ],
     },
     {
+      // A property name that is not valid UTF-8 (the loader would rewrite it) is refused.
+      name: "refs-name-utf8",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}badname.res`,
+          binaryResource(["Resource"], ["data"], 27, "RSRC", {
+            extraProps: [
+              {
+                name: 0x80000000 | 2,
+                value: cat(new Uint8Array([0xff, 0xfe]), u32(1)),
+              },
+            ],
+          }),
+        ],
+      ],
+    },
+    {
       // Audit GAP B: internal resources sharing one offset would re-walk the same bytes.
       name: "refs-overlap-offsets",
       files: [

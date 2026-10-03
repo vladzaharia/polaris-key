@@ -255,6 +255,12 @@
       ],
       "warnings": []
     },
+    "refs-name-utf8": {
+      "errors": [
+        "assets/kaykit/badname.res: is a binary resource whose properties cannot be read, so the device cannot tell what it loads."
+      ],
+      "warnings": []
+    },
     "refs-overlap-offsets": {
       "errors": [
         "assets/kaykit/overlap.res: is a binary resource whose properties cannot be read, so the device cannot tell what it loads."

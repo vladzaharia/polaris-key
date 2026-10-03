@@ -2356,7 +2356,11 @@ committed or mounted:
   script extension the device reads the resource's real type the way the loaders do (through a
   `.remap` on an export; an imported file's `.import` type; a binary header's type; a text
   resource's head) and treats a `Script` subclass, or a resource that exists but whose type it
-  cannot read, as a script that must be listed. A UID outside the pack's cache that the app
+  cannot read, as a script that must be listed. A compressed app scene is read only to its
+  first block (the type sits at the start of the body; the per-pack cap does not apply to app
+  files, so a model over 64 MiB still types as a PackedScene), and each path is read once per
+  check, so a pack naming one large app scene in thousands of tags costs one header read
+  (P4-28 audit GAP D; 2,001 references to a 30 MB and an over-cap scene check in about 30 ms). A UID outside the pack's cache that the app
   registers (`ResourceUID`) is judged by the path it names: an app texture or scene passes, an
   app script needs listing; one the app does not register needs listing. These lookups are
   device-only. The CLI cannot see the app's files or UIDs, so it judges the hint and refuses every
@@ -2376,7 +2380,8 @@ committed or mounted:
 - **The binary walk is linear (P4-28 audit GAP B).** Internal-resource offsets must follow the
   tables in strictly ascending order and each walk must end by the next offset, as the saver
   writes them (the real 4.7.2 and 4.4.1 imports do), so no byte is walked twice; the walked
-  total is also capped at the stream length. Overlapping offsets, which would let a few million
+  total is also capped at the stream length, and a property name that is not valid UTF-8 (which
+  the loader would rewrite) is refused (`refs-name-utf8`). Overlapping offsets, which would let a few million
   table entries re-walk one large blob on the device's worker, are refused
   (`refs-overlap-offsets`).
 - **A pack's uid cache may name only the pack's own files.** A 4.4/4.5 exporter writes the whole

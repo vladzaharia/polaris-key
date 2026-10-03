@@ -22424,7 +22424,12 @@ function binaryRefs(b, start) {
     part = "reference tables";
     const nstr = u32();
     const rpNames = /* @__PURE__ */ new Set();
-    for (let i = 0; i < nstr; i++) if (isResourcePath(str())) rpNames.add(i);
+    const badNames = /* @__PURE__ */ new Set();
+    for (let i = 0; i < nstr; i++) {
+      const entry = str();
+      if (isResourcePath(entry)) rpNames.add(i);
+      if (!nameUtf8(entry)) badNames.add(i);
+    }
     const refs = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
@@ -22464,8 +22469,10 @@ function binaryRefs(b, start) {
         const inline = b.subarray(pos, pos + n);
         pos += n;
         if (prop && isResourcePath(inline)) throw new Stop(RESOURCE_PATH_WHY);
+        if (prop && !nameUtf8(inline)) throw fail3();
       } else if (id >= nstr) throw fail3();
       else if (prop && rpNames.has(id)) throw new Stop(RESOURCE_PATH_WHY);
+      else if (prop && badNames.has(id)) throw fail3();
     };
     let walked = 0;
     for (let i = 0; i < offsets.length; i++) {
@@ -22630,6 +22637,17 @@ function isResourcePath(s) {
   if (cut.length >= 3 && cut[0] === 239 && cut[1] === 187 && cut[2] === 191)
     cut = cut.subarray(3);
   return Buffer.from(cut).equals(RESOURCE_PATH);
+}
+function nameUtf8(s) {
+  const z = s.indexOf(0);
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(
+      z === -1 ? s : s.subarray(0, z)
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 function uidCacheIds(data) {
   if (data.byteLength < 4) return [];
