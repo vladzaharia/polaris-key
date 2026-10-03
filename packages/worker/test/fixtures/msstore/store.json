@@ -1,0 +1,320 @@
+{
+  "$comment": "Recorded from Microsoft's documentation, not a live account (P5-04): the token response of https://login.microsoftonline.com/<tenant_id>/oauth2/token (v1 client-credentials, expires_in as a string), and the resources of 'Get app data', 'Manage app submissions', 'Get package flights for an app' and 'Manage package flight submissions' (learn.microsoft.com/windows/uwp/monetize/, fetched 2026-10-03; S-07 row 18). Ids, versions, statuses and rollout values are the fixture's; field names and shapes are the documentation's. fileUploadUrl is a SAS URI the connector must never store.",
+  "token": {
+    "token_type": "Bearer",
+    "expires_in": "3599",
+    "ext_expires_in": "3599",
+    "expires_on": "1790003599",
+    "not_before": "1790000000",
+    "resource": "https://manage.devcenter.microsoft.com",
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.fixture.token"
+  },
+  "application": {
+    "id": "9NBLGGH4R315",
+    "primaryName": "djdl",
+    "packageFamilyName": "Acme.Djdl_ng6try80pwt52",
+    "packageIdentityName": "Acme.Djdl",
+    "publisherName": "CN=Acme",
+    "firstPublishedDate": "2023-06-01T00:00:00Z",
+    "lastPublishedApplicationSubmission": {
+      "id": "1152921504621086517",
+      "resourceLocation": "applications/9NBLGGH4R315/submissions/1152921504621086517"
+    },
+    "pendingApplicationSubmission": {
+      "id": "1152921504621243487",
+      "resourceLocation": "applications/9NBLGGH4R315/submissions/1152921504621243487"
+    },
+    "hasAdvancedListingPermission": true
+  },
+  "submissions": {
+    "1152921504621086517": {
+      "id": "1152921504621086517",
+      "applicationCategory": "Games_Simulation",
+      "pricing": {
+        "trialPeriod": "NoFreeTrial",
+        "marketSpecificPricings": {},
+        "sales": [],
+        "priceId": "Free",
+        "isAdvancedPricingModel": true
+      },
+      "visibility": "Public",
+      "targetPublishMode": "Immediate",
+      "targetPublishDate": "1601-01-01T00:00:00Z",
+      "listings": {
+        "en-us": {
+          "baseListing": {
+            "description": "djdl",
+            "title": "djdl",
+            "releaseNotes": "",
+            "images": []
+          }
+        }
+      },
+      "hardwarePreferences": [],
+      "automaticBackupEnabled": false,
+      "canInstallOnRemovableMedia": true,
+      "isGameDvrEnabled": false,
+      "gamingOptions": [],
+      "hasExternalInAppProducts": false,
+      "meetAccessibilityGuidelines": true,
+      "notesForCertification": "",
+      "status": "Published",
+      "statusDetails": {
+        "errors": [],
+        "warnings": [],
+        "certificationReports": [
+          {
+            "date": "2023-11-01T10:00:00Z",
+            "reportUrl": "https://partner.microsoft.com/dashboard/products/9NBLGGH4R315/submissions/1152921504621086517/CertificationReport"
+          }
+        ]
+      },
+      "fileUploadUrl": "https://productingestionbin1.blob.core.windows.net/ingestion/387a9ea8-a412-43a9-8fb3-a38d03eb483d?sv=2014-02-14&sr=b&sig=FIXTUREsasSIGNATUREpublished%3D&se=2026-10-03T18:32:26Z&sp=rwl",
+      "applicationPackages": [
+        {
+          "fileName": "djdl_1.0.0.0_x64.msix",
+          "fileStatus": "Uploaded",
+          "id": "1152921504620138797",
+          "version": "1.0.0.0",
+          "architecture": "x64",
+          "languages": ["en-US"],
+          "capabilities": ["runFullTrust"],
+          "minimumDirectXVersion": "None",
+          "minimumSystemRam": "None",
+          "targetDeviceFamilies": ["Windows.Desktop min version 10.0.17763.0"]
+        }
+      ],
+      "packageDeliveryOptions": {
+        "packageRollout": {
+          "isPackageRollout": true,
+          "packageRolloutPercentage": 25.0,
+          "packageRolloutStatus": "PackageRolloutInProgress",
+          "fallbackSubmissionId": "1152921504621000001"
+        },
+        "isMandatoryUpdate": false,
+        "mandatoryUpdateEffectiveDate": "1601-01-01T00:00:00.0000000Z"
+      },
+      "enterpriseLicensing": "Online",
+      "allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies": true,
+      "allowTargetFutureDeviceFamilies": {
+        "Desktop": true,
+        "Mobile": false,
+        "Holographic": false,
+        "Xbox": false,
+        "Team": false
+      },
+      "friendlyName": "Submission 4",
+      "trailers": []
+    },
+    "1152921504621243487": {
+      "id": "1152921504621243487",
+      "applicationCategory": "Games_Simulation",
+      "pricing": {
+        "trialPeriod": "NoFreeTrial",
+        "marketSpecificPricings": {},
+        "sales": [],
+        "priceId": "Free",
+        "isAdvancedPricingModel": true
+      },
+      "visibility": "Public",
+      "targetPublishMode": "Immediate",
+      "targetPublishDate": "1601-01-01T00:00:00Z",
+      "listings": {},
+      "notesForCertification": "",
+      "status": "Certification",
+      "statusDetails": {
+        "errors": [],
+        "warnings": [
+          {
+            "code": "ListingOptOutWarning",
+            "details": "A listing from a previous submission was not included."
+          }
+        ],
+        "certificationReports": []
+      },
+      "fileUploadUrl": "https://productingestionbin1.blob.core.windows.net/ingestion/8b389577-5d5e-4cbe-a744-1ff2e97a9eb8?sv=2014-02-14&sr=b&sig=FIXTUREsasSIGNATUREpending%3D&se=2026-10-03T21:29:44Z&sp=rwl",
+      "applicationPackages": [
+        {
+          "fileName": "djdl_1.1.0.0_x64.msix",
+          "fileStatus": "Uploaded",
+          "id": "1152921504620138900",
+          "version": "1.1.0.0",
+          "architecture": "x64",
+          "languages": ["en-US"],
+          "capabilities": ["runFullTrust"],
+          "minimumDirectXVersion": "None",
+          "minimumSystemRam": "None",
+          "targetDeviceFamilies": ["Windows.Desktop min version 10.0.17763.0"]
+        },
+        {
+          "fileName": "djdl_1.1.0.0_arm64.msix",
+          "fileStatus": "Uploaded",
+          "id": "1152921504620138901",
+          "version": "1.1.0.0",
+          "architecture": "Arm64",
+          "languages": ["en-US"],
+          "capabilities": ["runFullTrust"],
+          "minimumDirectXVersion": "None",
+          "minimumSystemRam": "None",
+          "targetDeviceFamilies": ["Windows.Desktop min version 10.0.17763.0"]
+        },
+        {
+          "fileName": "djdl_0.9.0.0_x64.msix",
+          "fileStatus": "PendingDelete",
+          "id": "1152921504620138500",
+          "version": "0.9.0.0",
+          "architecture": "x64",
+          "languages": ["en-US"],
+          "capabilities": [],
+          "minimumDirectXVersion": "None",
+          "minimumSystemRam": "None",
+          "targetDeviceFamilies": ["Windows.Desktop min version 10.0.17763.0"]
+        }
+      ],
+      "packageDeliveryOptions": {
+        "packageRollout": {
+          "isPackageRollout": false,
+          "packageRolloutPercentage": 0.0,
+          "packageRolloutStatus": "PackageRolloutNotStarted",
+          "fallbackSubmissionId": "0"
+        },
+        "isMandatoryUpdate": false,
+        "mandatoryUpdateEffectiveDate": "1601-01-01T00:00:00.0000000Z"
+      },
+      "friendlyName": "Submission 5",
+      "trailers": []
+    }
+  },
+  "listflights": {
+    "value": [
+      {
+        "flightId": "7bfc11d5-f710-47c5-8a98-e04bb5aad310",
+        "friendlyName": "Beta testers",
+        "lastPublishedFlightSubmission": {
+          "id": "1152921504621086600",
+          "resourceLocation": "flights/7bfc11d5-f710-47c5-8a98-e04bb5aad310/submissions/1152921504621086600"
+        },
+        "groupIds": ["1152921504606962205"],
+        "rankHigherThan": "Non-flighted submission"
+      },
+      {
+        "flightId": "cd2e368a-0da5-4026-9f34-0e7934bc6f23",
+        "friendlyName": "Insiders",
+        "lastPublishedFlightSubmission": {
+          "id": "1152921504621086700",
+          "resourceLocation": "flights/cd2e368a-0da5-4026-9f34-0e7934bc6f23/submissions/1152921504621086700"
+        },
+        "pendingFlightSubmission": {
+          "id": "1152921504621243649",
+          "resourceLocation": "flights/cd2e368a-0da5-4026-9f34-0e7934bc6f23/submissions/1152921504621243649"
+        },
+        "groupIds": ["1152921504606962206"],
+        "rankHigherThan": "Beta testers"
+      }
+    ],
+    "totalCount": 2
+  },
+  "flightSubmissions": {
+    "7bfc11d5-f710-47c5-8a98-e04bb5aad310": {
+      "1152921504621086600": {
+        "id": "1152921504621086600",
+        "flightId": "7bfc11d5-f710-47c5-8a98-e04bb5aad310",
+        "status": "Published",
+        "statusDetails": {
+          "errors": [],
+          "warnings": [],
+          "certificationReports": [
+            {
+              "date": "2023-11-10T08:00:00Z",
+              "reportUrl": "https://partner.microsoft.com/dashboard/products/9NBLGGH4R315/flights/report"
+            }
+          ]
+        },
+        "flightPackages": [
+          {
+            "fileName": "djdl_1.1.0.0_x64.msix",
+            "fileStatus": "Uploaded",
+            "id": "1152921504620138900",
+            "version": "1.1.0.0",
+            "architecture": "x64",
+            "languages": ["en-us"],
+            "capabilities": [],
+            "minimumDirectXVersion": "None",
+            "minimumSystemRam": "None"
+          }
+        ],
+        "packageDeliveryOptions": {
+          "packageRollout": {
+            "isPackageRollout": false,
+            "packageRolloutPercentage": 0.0,
+            "packageRolloutStatus": "PackageRolloutNotStarted",
+            "fallbackSubmissionId": "0"
+          },
+          "isMandatoryUpdate": false,
+          "mandatoryUpdateEffectiveDate": "1601-01-01T00:00:00.0000000Z"
+        },
+        "fileUploadUrl": "https://productingestionbin1.blob.core.windows.net/ingestion/8b389577-5d5e-4cbe-a744-1ff2e97a9eb9?sv=2014-02-14&sr=b&sig=FIXTUREsasSIGNATUREflight%3D&se=2026-10-03T21:29:44Z&sp=rwl",
+        "targetPublishMode": "Immediate",
+        "targetPublishDate": "",
+        "notesForCertification": ""
+      }
+    },
+    "cd2e368a-0da5-4026-9f34-0e7934bc6f23": {
+      "1152921504621086700": {
+        "id": "1152921504621086700",
+        "flightId": "cd2e368a-0da5-4026-9f34-0e7934bc6f23",
+        "status": "Published",
+        "statusDetails": {
+          "errors": [],
+          "warnings": [],
+          "certificationReports": []
+        },
+        "flightPackages": [],
+        "packageDeliveryOptions": {},
+        "targetPublishMode": "Immediate"
+      },
+      "1152921504621243649": {
+        "id": "1152921504621243649",
+        "flightId": "cd2e368a-0da5-4026-9f34-0e7934bc6f23",
+        "status": "PendingCommit",
+        "statusDetails": {
+          "errors": [],
+          "warnings": [],
+          "certificationReports": []
+        },
+        "flightPackages": [],
+        "packageDeliveryOptions": {},
+        "targetPublishMode": "Immediate"
+      }
+    }
+  },
+  "pricingVersion2": {
+    "$comment": "An app on Pricing Version 2: 'the API will return an unknown tier for the pricing part' (create-and-manage-submissions-using-windows-store-services). Status, packages and packageRollout read as usual.",
+    "pricing": {
+      "trialPeriod": "NoFreeTrial",
+      "marketSpecificPricings": {},
+      "sales": [],
+      "priceId": "Unknown",
+      "isAdvancedPricingModel": true
+    }
+  },
+  "certificationFailed": {
+    "$comment": "statusDetails of a failed certification: the status detail resource (code, details) and a certification report resource (date, reportUrl).",
+    "status": "CertificationFailed",
+    "statusDetails": {
+      "errors": [
+        {
+          "code": "Other",
+          "details": "10.1.4.4 Inaccurate Functionality: the product crashed on launch."
+        }
+      ],
+      "warnings": [],
+      "certificationReports": [
+        {
+          "date": "2023-11-14T20:00:00Z",
+          "reportUrl": "https://partner.microsoft.com/dashboard/products/9NBLGGH4R315/submissions/1152921504621243487/CertificationReport"
+        }
+      ]
+    }
+  }
+}
