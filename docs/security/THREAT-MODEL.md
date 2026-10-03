@@ -1984,6 +1984,34 @@ Residuals, stated rather than defended:
 - **`blob_gc_log` names keys, not tenants, for deletions.** An object's deletion is attributed to
   no product; the `ref-dropped` rows say which product dropped the last ref.
 
+### The compatibility matrix and the device simulator (P4-15)
+
+P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
+`GET …/update/simulate`. Both sit behind the platform-admin session, CSRF and rate-limit gates of
+`admin/api.ts`, write nothing and audit nothing, and add no wire member.
+
+- **No product-key use.** To run client-core's own update check (no second implementation),
+  `simulate` must hand the device a signed feed. It signs the document `documentFor` composes with
+  an **ephemeral** Ed25519 key generated per request (WebCrypto), and the simulated device trusts
+  that ephemeral public key for the feed. The module never reads the product's signing key: the
+  admin handler passes it only the product's slug and no `env`, so nothing on this path can unseal
+  a key, and a test asserts no other product field is read. The console therefore cannot be used as
+  a product-key signing oracle, and the product key is not exercised on every console click. The
+  ephemeral key is dropped with the request; the JWS is never stored, returned or served, and the
+  channel's `seq` does not move.
+- **The feed signature is not under test here.** Because the device trusts the ephemeral key, the
+  simulator says nothing about the product key's signature over the real feed; the conformance
+  corpus and the feed route's own tests cover that. The product's PUBLIC keys (public columns
+  only) stay in the simulated trust set, so the refusal of a release key equal to a product key
+  still runs as on a device.
+- **Records stay real.** The simulator's record fetches read `getRecordByHash`, the store the
+  record route serves, and verify against the product's real release keys, so record, revocation
+  and replacement verification (P4-13), and the delegated-record path with its delegation
+  revocations (P4-19), run exactly as on a device; a record that fails is reported in `errors`,
+  never trusted.
+- **No cross-tenant read.** Both routes read only the session's product; a device id passed for the
+  rollout buckets is hashed in memory and echoed back, never stored.
+
 ### Packs on the wire (packs v1, P4-21)
 
 Packs v1 (`plans/P4-01.md`; WIRE-CONTRACT-V4 §2.5.1–§2.7, §3.7) adds no `typ`, no feed field and

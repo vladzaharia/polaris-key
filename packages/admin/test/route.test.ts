@@ -250,7 +250,7 @@ describe("SECTIONS", () => {
       ],
       license: ["licenses", "tiers", "fingerprints"],
       config: ["config", "profiles"],
-      release: ["releases", "deliverables"],
+      release: ["releases", "deliverables", "compatibility"],
       distribution: [
         "distribution",
         "distribution-matrix",

@@ -153,3 +153,64 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-19.md`](../plans/P4-19.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+- **The simulator runs the device's own check, not only the feed composer.** `GET …/update/simulate`
+  builds the document the feed route would sign (`composeChannelFeed` + `documentFor`, so P4-12's
+  stored sets, P4-13's floors, narrowing and revocations, P4-14's gates and the size shedding all
+  apply), signs it with an **ephemeral Ed25519 key generated per request** (never the product key:
+  the module gets only the product slug and no `env`, and a test asserts it reads nothing else),
+  and runs client-core's `runUpdateCheck` over it with the device trusting that ephemeral key (plus
+  the product's public keys, for the release-key refusal). Record fetches are answered from
+  Release's record store and verified against the real release keys. The feed signature itself is
+  not under test in the simulator; the corpus covers it. That is the
+  whole of P3-01 §2.5 and P4-13 §2.5–§2.6 (pins, holds, floors, revocations and replacements,
+  gates and buckets, `selectPackRows`), with no reimplementation. The device is a **fresh** one:
+  no cache, no stored revocations, its active set the build's embedded baselines.
+- **"The set that device runs"** is the active set with the decision applied (`packs`: installs
+  added, revokes removed; any other answer leaves it), and `packSetId` is client-core's over it —
+  the value an SDK reports. A device on an older release of a self-updating outlet is offered the
+  binary first and content waits (P4-13 §2.6 step 3); the simulator shows that, not a set the
+  device would not take. `activePackSetId` (before the check) and `reported` (a device's
+  `packSetId`, compared) are extra members for support.
+- **Extra query members**: `channel` (default `stable`), `device` (the install id the rollout
+  buckets hash; absent = outside every client rollout, as an SDK without one), `methods` (default
+  `download`, the Node SDK's default) and `packSetId`.
+- **Effective binding is always available**: P4-13 has landed, so the "not yet available" branch
+  was not built. The reason kinds are `app-pin`, `app-hold`, `transport` (from P4-13's
+  `effectivePackBindings` and the outlet's transport row), `declared` and `undeclared`.
+- **Cell rules, made exact.** `compatible` reuses P4-12's `levelInRange` and the engine stage's
+  rule, extracted from `computeStage` as the exported `variantRunsOn` so the matrix and the resolver
+  cannot drift. A `standalone` pack is compatible on the engine alone; a `pinned`-binding pack is
+  `incompatible` except where pinned (it reaches a device only through a pin). `current` is
+  "a stored `release_sets` row serving this app release (live channel, its level, a build's
+  platform and engine) names it".
+- **Liveness overlay source**: Distribution's matrix (`GET …/distribution/matrix?deliverable=app`,
+  P2b-06), not the per-release availability route, because it is one request and already carries
+  P4-14's `cell.readiness`, which the overlay renders (held, or not ready on a store outlet).
+  The SPA's `MatrixCellDto` gained the optional `readiness` it was missing.
+- **P4-19 merged first (1f0b6482); P4-15 wired delegation second.** The matrix's `revokedBy`
+  (`release/packs/compat.ts`) reads every revocation in force (`readAllRevocations`: record and
+  `kind: delegation`) and each pack release's delegation hash (`release_delegated_records`, Release's
+  own table, read inside Release), and decides with client-core's `recordRevoked`: a release signed
+  under a revoked delegation is `revoked`, its reason naming the delegation. The simulator needed no
+  change to apply it — `runUpdateCheck` verifies the delegated record and applies the delegation's
+  revocation from the feed; tests show a delegated release taken before the revocation, replaced
+  after, the simulator's answer equal to an SDK's, and client-core's check revoking an active
+  delegated release. The simulator's per-pack `revocations` gained `kind`.
+- **A revocation no app release pins or holds and no row lists is not in the feed** (P4-13
+  decision 14), so the simulator shows none for it; the matrix still marks the release revoked.
+- **Routes are narrative-only** (`adminApi` is in `routeCoverage`'s `NARRATIVE_ONLY`): no OpenAPI
+  change. Both are read-only; the ephemeral-key signature has a threat-model entry
+  ("The compatibility matrix and the device simulator (P4-15)").
+- **Test fixture**: `packWorld` gained an `android` option and `declareContentApi(level)` (a
+  resync of a changed `.pkey/release`), needed to publish 1.4 at level 3 and 1.5 at level 4.
+- **Paging and caps (review S2).** `GET …/release/compat` takes `offset` beside `limit`: live app
+  releases always, then the window [`offset`, `offset + limit`) of each channel's and each pack's
+  releases; set members always. The pack rows come from a windowed query (`ROW_NUMBER() OVER
+(PARTITION BY deliverable_id …)`) and the builds query reads only the releases shown, so a pack's
+  whole history is never loaded. App releases are capped at 200 per response (live first; `capped`
+  says so). The console pages with **Older releases** / **Newer releases**, and the liveness overlay
+  says "unknown (outside Distribution's newest 50)" for a release Distribution's matrix does not
+  list.

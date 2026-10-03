@@ -19,6 +19,11 @@
  *                                                        one variant's files, from its index
  *     GET    …/release/delegations                      the content keys (P4-19), read-only
  *
+ * and the compatibility matrix (P4-15, `packs/compat.ts`):
+ *
+ *     GET    …/release/compat[?limit=N&offset=M]        app releases × pack releases, a cell
+ *                                                        state per pair, the live levels
+ *
  * All of them are narrative-only (the console's API is not in the wire spec), audited with the
  * session's subject, and invalidate the product's cached resolutions.
  *
@@ -81,6 +86,13 @@ import {
   packFilesView,
   packReleasesView,
 } from "./packs/adminView.js";
+import {
+  COMPAT_MAX_LIMIT,
+  COMPAT_MAX_OFFSET,
+  compatView,
+  parseCompatLimit,
+  parseCompatOffset,
+} from "./packs/compat.js";
 import {
   channelNames,
   clearChannelFloor,
@@ -199,6 +211,35 @@ export async function handleReleaseAdmin(
       })),
       floors: (await listChannelFloors(db, slug)).map(floorView),
     });
+  }
+
+  if (rest.length === 1 && rest[0] === "compat") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const params = new URL(req.url).searchParams;
+    const limit = parseCompatLimit(params.get("limit"));
+    if (limit === null)
+      return err(
+        400,
+        ErrorCode.BadRequest,
+        `limit must be an integer from 1 to ${COMPAT_MAX_LIMIT}`,
+      );
+    const offset = parseCompatOffset(params.get("offset"));
+    if (offset === null)
+      return err(
+        400,
+        ErrorCode.BadRequest,
+        `offset must be an integer from 0 to ${COMPAT_MAX_OFFSET}`,
+      );
+    return adminJson(
+      await compatView(
+        db,
+        slug,
+        await getReleaseConfig(db, slug),
+        limit,
+        offset,
+      ),
+    );
   }
 
   if (rest[0] !== "resync") return adminNotFound();

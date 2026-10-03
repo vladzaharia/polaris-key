@@ -390,6 +390,10 @@ Packs appear in the Release section beside the app; there is no separate content
   release shows each variant's engine, payload size, full-download bytes and its delta menu (each
   delta's base version and download bytes), as the signed record gives them, and a variant's
   files on request.
+- **Compatibility** sets app releases against pack releases, each cell pinned, held, compatible,
+  incompatible or revoked, with the live contentApi levels and per-outlet liveness, and
+  simulates what a device running one app release on one outlet gets
+  ([Compatibility and the device simulator](/docs/services/release/compatibility/)).
 - **Releases**: an app release's expanded row shows its `contentApi`, the pack release it pins
   for each pack (with `required`, `delivery` and whether the pinned release is yanked) and an
   **Embeds** column, the packs each build ships embedded.
