@@ -82,8 +82,15 @@ if (Test-Path $bin) { Remove-Item -Recurse -Force $bin }
 New-Item -ItemType Directory -Force $bin | Out-Null
 Copy-Item "$Work\ext\*" $bin
 Set-Content "$game\e2e.json" ('{"config": "' + (& $fwd "$Work\run\config.json") + '"}')
-& $Godot --headless --path $game --import *> "$Work\logs\import1.log"
-& $Godot --headless --path $game --import *> "$Work\logs\import2.log"
+# Godot with a time limit (a hung editor fails this run with its log, not the job's limit).
+function RunGodot([string[]]$arguments, [string]$log, [int]$seconds = 300) {
+  Write-Host ("── godot {0} at {1:HH:mm:ss}" -f ($arguments -join " "), (Get-Date))
+  $p = Start-Process $Godot -ArgumentList $arguments -PassThru -NoNewWindow -RedirectStandardOutput $log -RedirectStandardError "$log.err"
+  if (-not $p.WaitForExit($seconds * 1000)) { Write-Host "── godot timed out after $seconds s; killing it"; $p.Kill($true); return 124 }
+  return $p.ExitCode
+}
+RunGodot @("--headless", "--path", "`"$game`"", "--import") "$Work\logs\import1.log" | Out-Null
+RunGodot @("--headless", "--path", "`"$game`"", "--import") "$Work\logs\import2.log" | Out-Null
 
 function Export([string]$version, [string]$dir, [string]$exe, [string]$outlet = "direct") {
   (Get-Content "$game\project.godot") -replace '^config/version=.*', "config/version=`"$version`"" | Set-Content "$game\project.godot"
@@ -113,7 +120,7 @@ application/modify_resources=false
 polaris_key/outlet="$outlet"
 "@ | Set-Content "$game\export_presets.cfg"
   New-Item -ItemType Directory -Force $dir | Out-Null
-  & $Godot --headless --path $game --export-release "Windows Desktop" (Join-Path $dir $exe) *> "$Work\logs\export-$(Split-Path $dir -Leaf).log"
+  RunGodot @("--headless", "--path", "`"$game`"", "--export-release", "`"Windows Desktop`"", "`"$(Join-Path $dir $exe)`"") "$Work\logs\export-$(Split-Path $dir -Leaf).log" | Out-Null
   Check "export $version -> $(Split-Path $dir -Leaf)\$exe" ((Test-Path (Join-Path $dir $exe)) -and (Test-Path (Join-Path $dir "pkey_win.dll"))) (Get-Content "$Work\logs\export-$(Split-Path $dir -Leaf).log" -Tail 5 | Out-String)
 }
 foreach ($v in "1.0.0", "1.0.1") {
@@ -169,6 +176,7 @@ $server = Start-Process python -ArgumentList "`"$e2e\server.py`"", $Port, "`"$Wo
 Start-Sleep 2
 
 function RunCase([string]$name, [string]$exe, [string]$case, [string]$feed, [int]$timeout, [switch]$WaitTarget) {
+  Write-Host ("── case {0} starting at {1:HH:mm:ss}" -f $name, (Get-Date))
   $log = "$Work\logs\case-$name.jsonl"
   @{ case = $case; feed = $feed; log = (& $fwd $log); headers = @{ Authorization = "Bearer e2e-token" }; public_key = $pub; target_version = "1.0.1"; quit_after_s = $timeout } | ConvertTo-Json | Set-Content "$Work\run\config.json"
   $script:mark = if (Test-Path "$Work\logs\srv.log") { (Get-Content "$Work\logs\srv.log").Count } else { 0 }
@@ -183,8 +191,18 @@ function RunCase([string]$name, [string]$exe, [string]$case, [string]$feed, [int
     if (-not $WaitTarget -and $text -match '"event":"exit_tree"') { break }
   }
   Start-Sleep 2
+  StopGames
   Write-Host ("── case {0}: {1:N1} s" -f $name, $sw.Elapsed.TotalSeconds)
   if (Test-Path $log) { Get-Content $log | ForEach-Object { $_.Substring(0, [Math]::Min(400, $_.Length)) } }
+}
+# Run an installer and wait for IT (not for the game it may start) at most 180 s.
+function Install([string]$exe, [string[]]$arguments) {
+  Write-Host "── install $(Split-Path $exe -Leaf) $($arguments -join ' ')"
+  $p = Start-Process $exe -ArgumentList $arguments -PassThru
+  if (-not $p.WaitForExit(180000)) { Write-Host "── install timed out; killing it"; $p.Kill($true) }
+}
+function StopGames() {
+  Get-Process pkeye2e, PKeyE2E, PKeyE2E_godot -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }
 function HttpSince() { if (Test-Path "$Work\logs\srv.log") { Get-Content "$Work\logs\srv.log" | Select-Object -Skip $script:mark } else { @() } }
 
@@ -206,7 +224,7 @@ JCheck "store: the native query on its MTA thread answers 0x803F6101, read as ru
 
 # 4d. Velopack.
 @{ case = "idle"; log = (& $fwd "$Work\logs\case-vp-install.jsonl"); quit_after_s = 10 } | ConvertTo-Json | Set-Content "$Work\run\config.json"
-Start-Process "$rel\PKeyE2E-1.0.0-Setup.exe" -ArgumentList "--silent" -Wait
+Install "$rel\PKeyE2E-1.0.0-Setup.exe" @("--silent")
 Start-Sleep 4
 Get-Process PKeyE2E_godot -ErrorAction SilentlyContinue | Stop-Process -Force
 $app = "$env:LOCALAPPDATA\PKeyE2E"
@@ -219,7 +237,7 @@ Check "velopack: the delta was fetched through the 302 package route, not the fu
 
 # 4e. WinSparkle.
 @{ case = "idle"; log = (& $fwd "$Work\logs\case-ws-install.jsonl"); quit_after_s = 10 } | ConvertTo-Json | Set-Content "$Work\run\config.json"
-Start-Process "$Work\out\installers\PKeyE2EWS-1.0.0-setup.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES" -Wait
+Install "$Work\out\installers\PKeyE2EWS-1.0.0-setup.exe" @("/VERYSILENT", "/SUPPRESSMSGBOXES")
 Start-Sleep 4
 Get-Process pkeye2e -ErrorAction SilentlyContinue | Stop-Process -Force
 $wsapp = "$env:LOCALAPPDATA\PKeyE2EWS"

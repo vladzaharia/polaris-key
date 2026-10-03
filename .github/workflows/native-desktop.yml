@@ -68,6 +68,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "@polaris-key/worker^..." build
       - name: macOS end-to-end
+        timeout-minutes: 25
         run: |
           D="$HOME/.cache/pkey-godot/native-$GODOT_VERSION"
           GODOT_BIN="$D/Godot.app/Contents/MacOS/Godot" \
@@ -119,6 +120,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "@polaris-key/worker^..." build
       - name: Windows end-to-end
+        # Bounded, so a hung case fails with its log instead of running into the job's limit.
+        timeout-minutes: 30
         run: |
           $d = Join-Path $HOME ".cache/pkey-godot/native-$env:GODOT_VERSION"
           pwsh -NoProfile -File sdks/godot/native/e2e/windows/run.ps1 `
