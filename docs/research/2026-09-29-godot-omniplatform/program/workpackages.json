@@ -1548,7 +1548,7 @@
       "optional": false,
       "refs": ["CONTENT §10 web", "notes/A7 §9"],
       "brief": "wp/P4-18-web-dcz.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-19",
@@ -1830,7 +1830,7 @@
       "optional": false,
       "refs": ["README §3.8", "notes/E3"],
       "brief": "wp/P5-04-msstore-connector.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-05",

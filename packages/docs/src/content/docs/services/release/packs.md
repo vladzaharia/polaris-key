@@ -542,9 +542,11 @@ It carries `chunks: true` on a Worker that ingests chunk indexes; without it the
 
 ## Delivering packs
 
-Distribution serves a pack's objects by SHA-256 on the blob route only, under the pack's own
+Distribution serves a pack's objects by SHA-256 on the blob route, under the pack's own
 delivery access and, for a gated pack, its current gate; a pack's files are never served by the
-`files` or `builds` routes. Each outlet's transport for the pack (`pkey-cdn`, `web` or
+`files` or `builds` routes. For a browser, a container's payload and its deltas are also served
+decoded by the payload URL, with Compression Dictionary Transport
+([Web deltas](/docs/services/distribution/delivery/#web-deltas-the-payload-url)). Each outlet's transport for the pack (`pkey-cdn`, `web` or
 `embedded` in v1) decides where it is live. See
 [Pack bytes](/docs/services/distribution/delivery/#pack-bytes) and
 [Availability](/docs/services/distribution/availability/).
@@ -555,7 +557,10 @@ A build learns its pins from the **content stamp** (`pkey-content.json`) it ship
 network: a build without one has no packs. The SDK fetches each pinned pack record by hash,
 verifies it against the app's pinned release keys, picks the variant for the device, plans the
 cheapest way from what is installed (a delta, the changed files, or the whole payload), verifies
-every byte against the record and swaps the installed release atomically. Embedded baselines are
+every byte against the record and swaps the installed release atomically. When a strategy fails
+it falls back to the plan's next one, and the pack facet emits a `fallback` progress event
+(`strategy`, `error`; on the web `via: "native"` when the browser's own transport failed), so a
+host sees a failure even when a later strategy recovers. Embedded baselines are
 verified once from their markers and then count as installed. Devices report the id of the pack
 set they run (`content.packSetId`) on `devices/report`.
 

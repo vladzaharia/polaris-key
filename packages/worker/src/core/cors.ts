@@ -122,6 +122,9 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "distribution/builds/{selector}/{buildId}",
   "distribution/files/{releaseId}/{name}",
   "distribution/blobs/sha256/{sha256}",
+  // P4-18: a pack's decoded container payload (Compression Dictionary Transport), fetched by a
+  // page cross-origin under the product's allowlist.
+  "distribution/packs/{pack}/{variant}/payload/{sha256}",
   // P2b-05: the public storefront feeds — web tools (source browsers) read them; native clients
   // ignore CORS. The F-Droid relay's one-segment files (`entry.jar`, `index-v2.json`) are
   // covered; the CI route `distribution/feeds/fdroid/{channel}` is not.

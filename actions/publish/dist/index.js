@@ -586,7 +586,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "outlet_ms-store": {
-      "description": "The identity fields a ms-store outlet reads: productId, packageFamilyName. Other keys are ignored.",
+      "description": "The identity fields a ms-store outlet reads: productId, packageFamilyName, flights. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -597,6 +597,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "packageFamilyName": {
           "$ref": "#/$defs/packageFamilyName"
+        },
+        "flights": {
+          "$ref": "#/$defs/flights"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -776,6 +779,15 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     "productId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9]{12}$"
+    },
+    "flights": {
+      "description": "Declared channel → Microsoft Store package flight (its friendly name or flight id). Keys must be declared channels (validator-checked).",
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:()-]{0,99}$"
+      }
     },
     "packageFamilyName": {
       "description": "The MSIX package family name, <Name>_<PublisherId>.",
@@ -11495,7 +11507,7 @@ var OUTLET_IDENTITY_FIELDS = {
   "play-testing": ["packageName", "tracks"],
   obtainium: ["artifact", "packageName"],
   "fdroid-repo": ["artifact", "packageName"],
-  "ms-store": ["productId", "packageFamilyName"],
+  "ms-store": ["productId", "packageFamilyName", "flights"],
   "app-installer": ["packageFamilyName", "publisher", "updateSettings"],
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
@@ -11513,6 +11525,7 @@ var ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 var MAX_PACKAGE_NAME_LENGTH = 255;
 var PLAY_TRACK_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:-]{0,99}$/;
 var MS_PRODUCT_ID_RE = /^[A-Za-z0-9]{12}$/;
+var MS_FLIGHT_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:()-]{0,99}$/;
 var MSIX_PUBLISHER_PATTERN = /^CN=[\x20-\x7e]{1,1021}$/;
 var PACKAGE_FAMILY_NAME_PATTERN = /^[A-Za-z0-9.-]{3,50}_[a-z0-9]{13}$/;
 var STEAM_BRANCH_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -11580,6 +11593,8 @@ function fieldCheck(kind, field) {
       return channelMap(PLAY_TRACK_RE, "Play track");
     case "productId":
       return pattern(MS_PRODUCT_ID_RE, "a 12-character Microsoft Store id");
+    case "flights":
+      return channelMap(MS_FLIGHT_RE, "Microsoft Store package flight");
     case "packageFamilyName":
       return pattern(
         PACKAGE_FAMILY_NAME_PATTERN,
@@ -11851,7 +11866,7 @@ function validateOutlet(errors, id, entry, ctx, kinds) {
         `outlets.${id}.artifact must name an id in .pkey/release deliverables.app.artifacts.`
       );
     }
-    if (field === "tracks" || field === "branches") {
+    if (field === "tracks" || field === "branches" || field === "flights") {
       for (const channel of Object.keys(value)) {
         if (!ctx.channels.has(channel)) {
           add(

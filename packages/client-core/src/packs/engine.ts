@@ -26,6 +26,7 @@ import type {
   FilesIndexDoc,
   PackRecordDoc,
   PackVariant,
+  PayloadDelta,
 } from "@polaris-key/protocol/packs";
 import type { PackTarget } from "@polaris-key/protocol/update";
 import { PolarisError } from "../errors.js";
@@ -302,12 +303,60 @@ export interface EmbeddedBaseline {
 export interface PackProgress {
   packId: string;
   /** `state-issue` is emitted once at `load` when the state document cannot be trusted (then
-   *  `packId` is empty, the counts are 0 and `issue` says why). */
-  phase: "download" | "apply" | "done" | "state-issue";
+   *  `packId` is empty, the counts are 0 and `issue` says why). `fallback` (P4-18) reports a
+   *  strategy that failed, with `strategy`, `error` and, for the host's native payload
+   *  transport, `via: "native"`; the next candidate runs, when there is one. */
+  phase: "download" | "apply" | "done" | "state-issue" | "fallback";
   done: number;
   total: number;
   issue?: "torn" | "unreadable";
+  /** `fallback` only: the strategy that failed. */
+  strategy?: string;
+  /** `fallback` only: why (a verdict code, or the native transport's reason). */
+  error?: string;
+  /** `fallback` only: `native` when the host's native payload transport failed. */
+  via?: "native";
 }
+
+/**
+ * P4-18: one request to the host's native payload transport (`PackEngineOptions.nativePayload`):
+ * the whole payload of a `container` variant (`delta` null, the `full` strategy) or a planned
+ * `zstd-patch-from` payload delta executed by the platform itself, for the web through the
+ * browser's own zstd and Compression Dictionary Transport (RFC 9842). The bytes arrive DECODED.
+ */
+export interface NativePayloadRequest {
+  packId: string;
+  planId: string;
+  variant: PackVariant;
+  /** The payload delta to execute, or null for the whole payload. */
+  delta: PayloadDelta | null;
+  /** The installed payload the delta's `from` names (its SHA-256 and size), when `delta` is set. */
+  base: { sha256: string; size: number } | null;
+  /** The record's `entitlement` is set: the pack's objects are gated. */
+  gated: boolean;
+  /** The plan's container output, empty: the payload is written from offset 0, in order. A host
+   *  whose storage writes the same output out of band may do that instead. */
+  sink: ByteSink;
+  /** The bytes received so far on the wire, for progress. */
+  onBytes(n: number): void;
+}
+
+/**
+ * What the native transport did. `null`: it declined (nothing was written; no dictionary was
+ * offered, the server refused, the platform cannot); the engine runs the strategy itself.
+ * Otherwise the size and SHA-256 it measured over exactly the bytes it wrote, which the engine
+ * compares with the record (`payload.size`, `payload.sha256`); a mismatch or `ok: false` is
+ * reported (`fallback`, `via: "native"`) and the engine runs the strategy itself, from an empty
+ * output.
+ */
+export type NativePayloadResult =
+  | null
+  | { ok: true; size: number; sha256: string }
+  | { ok: false; error: string };
+
+export type NativePayloadPort = (
+  req: NativePayloadRequest,
+) => Promise<NativePayloadResult>;
 
 export interface PackEngineOptions {
   /** The product: every record's `aud`. */
@@ -364,6 +413,14 @@ export interface PackEngineOptions {
    * chunk strategy is never planned, so it can never get stuck on a range it cannot send.
    */
   rangeRequests?: boolean;
+  /**
+   * P4-18: a native payload transport, tried first for a `container` variant's `full` strategy
+   * and for a planned `zstd-patch-from` payload delta (never for a delegated release). It is how
+   * those strategies execute on the platform, not a new strategy: the plan, its costs and its
+   * fallbacks are unchanged, and when it declines or fails the engine fetches and applies the
+   * same candidate itself, then the plan's remaining candidates.
+   */
+  nativePayload?: NativePayloadPort;
 }
 
 /** The error the pipeline raises when it cannot proceed. `code` is a registered client code
@@ -2181,37 +2238,55 @@ export class PackEngine {
           : objects.reduce((a, o) => a + o.bytes, 0);
       const progress = { done: 0, total };
       this.emit({ packId, phase: "download", done: 0, total });
-      for (const o of objects)
-        if (!(await this.download(planId, packId, o, progress)))
-          // The journal and what is staged stay for the next `ensure`, which resumes them.
-          throw new PackError(
-            "network-error",
-            `Fetching ${packId}'s objects failed; the next ensure resumes.`,
-            { packId },
-          );
-      if (cand.strategy !== "chunk")
-        this.emit({ packId, phase: "apply", done: total, total });
       // plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
       const seen: { refusal: DataOnlyRefusalSeen | null } = { refusal: null };
-      const result: ApplyResult | { verdict: ChunkVerdict } =
-        cand.strategy === "chunk"
-          ? await this.applyChunkPlan(
+      // P4-18: the host's native payload transport first, for a container's `full` or payload
+      // delta; null when it declined or failed, and then the candidate runs here.
+      const native =
+        delegation === null
+          ? await this.applyNative(
               planId,
               packId,
-              variant,
-              pre.chunk,
-              delegation,
-              total,
-            )
-          : await this.apply(
-              planId,
-              packId,
+              record,
               cand.strategy,
               cand.delta ?? null,
               variant,
-              seeds,
-              delegation !== null ? seen : null,
+              progress,
+            )
+          : null;
+      let result: ApplyResult | { verdict: ChunkVerdict };
+      if (native !== null) result = native;
+      else {
+        for (const o of objects)
+          if (!(await this.download(planId, packId, o, progress)))
+            // The journal and what is staged stay for the next `ensure`, which resumes them.
+            throw new PackError(
+              "network-error",
+              `Fetching ${packId}'s objects failed; the next ensure resumes.`,
+              { packId },
             );
+        if (cand.strategy !== "chunk")
+          this.emit({ packId, phase: "apply", done: total, total });
+        result =
+          cand.strategy === "chunk"
+            ? await this.applyChunkPlan(
+                planId,
+                packId,
+                variant,
+                pre.chunk,
+                delegation,
+                total,
+              )
+            : await this.apply(
+                planId,
+                packId,
+                cand.strategy,
+                cand.delta ?? null,
+                variant,
+                seeds,
+                delegation !== null ? seen : null,
+              );
+      }
       if (cand.strategy === "chunk")
         this.emit({ packId, phase: "apply", done: total, total });
       if (seen.refusal !== null) {
@@ -2284,6 +2359,15 @@ export class PackEngine {
           detail: cand.strategy,
         },
       );
+      // P4-18: reported, so a host sees the failure a later candidate recovers from.
+      this.emit({
+        packId,
+        phase: "fallback",
+        done: 0,
+        total,
+        strategy: cand.strategy,
+        error: f.error,
+      });
       await this.opts.storage.removeStaging(planId).catch(() => undefined);
     }
     this.doc = abandonInstall(this.requireLoaded(), packId);
@@ -2300,6 +2384,82 @@ export class PackEngine {
   private knownActivation(record: PackRecordDoc): boolean {
     const a = record.handler?.activation;
     return a === undefined || a === "hot" || a === "restart";
+  }
+
+  /**
+   * P4-18: run a container's `full` or `zstd-patch-from` payload delta through the host's native
+   * payload transport, when there is one. Null when there is none, the candidate is not one it
+   * runs, it declined, or it failed (reported as `fallback`, `via: "native"`): the engine then
+   * runs the candidate itself, and `output()` hands it an empty output again.
+   */
+  private async applyNative(
+    planId: string,
+    packId: string,
+    record: PackRecordDoc,
+    strategy: string,
+    deltaId: string | null,
+    variant: PackVariant,
+    progress: { done: number; total: number },
+  ): Promise<ApplyResult | null> {
+    const port = this.opts.nativePayload;
+    if (!port || variant.files.layout !== "container") return null;
+    let delta: PayloadDelta | null = null;
+    let base: { sha256: string; size: number } | null = null;
+    if (strategy === "delta") {
+      const d = (variant.deltas ?? []).find(
+        (x) => x.scope === "payload" && x.artifact.sha256 === deltaId,
+      ) as PayloadDelta | undefined;
+      if (!d || d.method !== "zstd-patch-from") return null;
+      const i = this.installsOf(packId).find(
+        (x) => x.payloadSha256 === d.from && x.layout === "container",
+      );
+      if (!i) return null;
+      delta = d;
+      base = { sha256: i.payloadSha256, size: i.payloadSize };
+    } else if (strategy !== "full") return null;
+    const out = await this.opts.storage.output(planId, "container");
+    if (!out.sink) return null;
+    let r: NativePayloadResult;
+    try {
+      r = await port({
+        packId,
+        planId,
+        variant,
+        delta,
+        base,
+        gated: record.entitlement !== undefined,
+        sink: out.sink,
+        onBytes: (n) => {
+          progress.done = Math.min(n, progress.total);
+          this.emit({
+            packId,
+            phase: "download",
+            done: progress.done,
+            total: progress.total,
+          });
+        },
+      });
+    } catch {
+      r = { ok: false, error: "network-error" };
+    }
+    if (r === null) return null;
+    const payload = variant.payload;
+    if (r.ok && r.size === payload.size && r.sha256 === payload.sha256)
+      return { verdict: { ok: true, sha256: payload.sha256, size: r.size } };
+    this.emit({
+      packId,
+      phase: "fallback",
+      done: 0,
+      total: progress.total,
+      strategy,
+      error: r.ok
+        ? delta
+          ? "delta-apply-failed"
+          : "payload-hash-mismatch"
+        : r.error,
+      via: "native",
+    });
+    return null;
   }
 
   /** The objects a strategy fetches, in order; null when the strategy cannot run here. */

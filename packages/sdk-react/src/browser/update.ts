@@ -139,7 +139,8 @@ async function getJose(
   try {
     res = await o.fetchImpl(url.toString(), {
       method: "GET",
-      credentials: "include",
+      // Bearer-only, CORS-covered routes: no ambient credential (`core/cors.ts`).
+      credentials: "omit",
       headers: { accept: "application/jose", ...o.headers },
     });
   } catch {

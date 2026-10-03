@@ -19,7 +19,7 @@ import {
   parseFilesIndex,
   variantKey,
 } from "@polaris-key/client-core/packs";
-import type { PackRecordDoc } from "@polaris-key/protocol/packs";
+import type { PackRecordDoc, PayloadDelta } from "@polaris-key/protocol/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import type {
   CatalogHold,
@@ -28,6 +28,7 @@ import type {
   CatalogPackDeliverable,
   CatalogPackFile,
   CatalogPackFloor,
+  CatalogPackPayload,
   CatalogPackRelease,
   CatalogPin,
   CatalogRelease,
@@ -54,6 +55,7 @@ type PackCatalog = Pick<
   | "packRelease"
   | "packFiles"
   | "packChunks"
+  | "packPayload"
   | "pins"
   | "pinnedBy"
   | "embeds"
@@ -260,6 +262,48 @@ export async function packReleasesMany(
   return out;
 }
 
+/** How many of a pack's newest releases `packPayload` reads, a page at a time (P4-18). A payload
+ *  older than that answers not-found on the payload URL, and the SDK takes the blob route. */
+export const MAX_PAYLOAD_SCAN = 200;
+const PAYLOAD_SCAN_PAGE = 20;
+
+/** The payload URL's view of one variant (`packPayload`), or null for a tree or another hash. */
+function payloadView(
+  found: FoundPackRecord,
+  buildId: string,
+  payloadSha256: string,
+): CatalogPackPayload | null {
+  const v = found.record.variants.find(
+    (x) => variantBuildId(x.variant) === buildId,
+  );
+  if (
+    !v ||
+    v.files?.layout !== "container" ||
+    v.payload?.sha256 !== payloadSha256
+  )
+    return null;
+  return {
+    releaseId: found.release.releaseId,
+    gated: found.record.entitlement !== undefined,
+    payload: { size: v.payload.size, sha256: v.payload.sha256 },
+    full: {
+      sha256: v.full.sha256,
+      bytes: v.full.bytes,
+      size: v.full.size,
+      codec: v.full.codec,
+    },
+    deltas: (v.deltas ?? [])
+      .filter(
+        (d): d is PayloadDelta =>
+          d.scope === "payload" && d.method === "zstd-patch-from",
+      )
+      .map((d) => ({
+        from: d.from,
+        artifact: { sha256: d.artifact.sha256, bytes: d.artifact.bytes },
+      })),
+  };
+}
+
 export function packCatalog(ctx: {
   db: Db;
   env: Env;
@@ -367,6 +411,32 @@ export function packCatalog(ctx: {
         out.push({ bundleKey: keys[bundle]!, offset, bytes: clen });
       }
       return out;
+    },
+
+    async packPayload(deliverableId, buildId, payloadSha256) {
+      // P4-18: the record is the truth, and no column holds a variant's payload hash, so the
+      // pack's releases are read newest first (the target of an update is nearly always the
+      // first), a page at a time, at most `MAX_PAYLOAD_SCAN`.
+      for (let at = 0; at < MAX_PAYLOAD_SCAN; at += PAYLOAD_SCAN_PAGE) {
+        const rows = await db.all<PackRecordRow>(
+          `${PACK_RECORD_SELECT}
+            WHERE r.product = ? AND r.kind = 'pack' AND m.deliverable_id = ?
+            ORDER BY m.seq DESC, r.release_id DESC LIMIT ? OFFSET ?`,
+          slug,
+          deliverableId,
+          PAYLOAD_SCAN_PAGE,
+          at,
+        );
+        for (const row of rows) {
+          const found = foundOf(row);
+          const view = found
+            ? payloadView(found, buildId, payloadSha256)
+            : null;
+          if (view) return view;
+        }
+        if (rows.length < PAYLOAD_SCAN_PAGE) break;
+      }
+      return null;
     },
 
     async pins(appReleaseId) {

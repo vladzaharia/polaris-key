@@ -8,6 +8,8 @@
  *     /distribution/builds/:selector/:buildId                GET|HEAD, also on the bytes host
  *     /distribution/files/:releaseId/:name                   GET|HEAD, also on the bytes host
  *     /distribution/blobs/sha256/:hash                       GET|HEAD, also on the bytes host
+ *     /distribution/packs/:pack/:variant/payload/:sha256     GET|HEAD, also on the bytes host
+ *                                                            (P4-18, `payload.ts`)
  *     /distribution/rollouts/:outlet/:channel                POST, `pkeyci_` + distribution:rollout
  *     /distribution/rollouts/:outlet/:channel/{pause,resume,halt,complete}   POST, same
  *     /distribution/report                                   POST, `pkeyci_` + distribution:report

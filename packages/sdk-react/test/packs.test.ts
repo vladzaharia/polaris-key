@@ -251,7 +251,7 @@ describe("createBrowserPacks (update.packs, web)", () => {
     ).toBe('{"hello":"bonjour"}');
     expect(await p.readFile("djdl.l10n", "nope")).toBeNull();
     expect(phases).toContain("done");
-    expect(calls.every((c) => c.credentials === "include")).toBe(true);
+    expect(calls.every((c) => c.credentials === "omit")).toBe(true);
     expect(await p.packSetId()).toBe(
       await packSetId([
         { packId: "djdl.l10n", releaseSha256: v1.recordSha256 },

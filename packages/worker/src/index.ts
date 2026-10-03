@@ -8,6 +8,26 @@ import { handleScheduled } from "./scheduled.js";
 export { RateLimitDO } from "./rateLimitDo.js";
 export { UpdateHealthDO } from "./updateHealthDo.js";
 
+/**
+ * P4-18: the payload URL sends bytes that are ALREADY encoded (the stored zstd frame, or a dcz
+ * stream), so the runtime must send them as they are rather than encode the body for the
+ * `Content-Encoding` it sees. `encodeBody: "manual"` says so; the layers between the handler and
+ * here rebuild the response and drop it, so it is set once, at the edge, for exactly those two
+ * codings (nothing else here sets either).
+ */
+export function preEncoded(res: Response): Response {
+  const coding = (res.headers.get("content-encoding") ?? "")
+    .trim()
+    .toLowerCase();
+  if (coding !== "zstd" && coding !== "dcz") return res;
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers,
+    encodeBody: "manual",
+  });
+}
+
 export default {
   async fetch(
     req: Request,
@@ -23,7 +43,9 @@ export default {
     // their own.
     // `ctx` lets a handler answer first and finish afterwards (P5-02: a store webhook's
     // follow-up API read), through `ServiceContext.waitUntil`.
-    return secureResponse(await dispatch(req, env, new D1Db(env.DB), ctx));
+    return preEncoded(
+      secureResponse(await dispatch(req, env, new D1Db(env.DB), ctx)),
+    );
   },
 
   /**

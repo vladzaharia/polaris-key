@@ -9,14 +9,19 @@
 //   <root>/store/<packId>/<payloadSha256>/    a committed payload; `.pkey/files.json` beside it
 //   <root>/index/<sha256>                     seed chunk indexes by `chunks.sha256` (P4-11)
 //
-// It uses only the main-thread API (`createWritable`, `getFile`), which Chromium, Firefox and
-// Safari 17+ ship. A directory cannot be renamed portably, so commit copies the staged output
-// into the store and then drops it; the state's pointer swap happens only after the copy.
+// Staging bytes (objects being fetched, the payload being built) go through `opfsIo.ts`: a
+// dedicated worker holding sync access handles when the page can start one (P4-18; it also
+// fetches a payload URL straight into the output), else the main-thread API (`createWritable`,
+// `getFile`), which Chromium, Firefox and Safari 17+ ship. Everything else (the state, the store,
+// the seed indexes) stays on the main thread. A directory cannot be renamed portably, so commit
+// copies the staged output into the store and then drops it; the state's pointer swap happens
+// only after the copy.
 // Storage can be evicted: a missing payload fails `verify` on load, and the engine plans from
 // scratch. `requestPersistence()` asks the browser to keep it (after engagement).
 
 import type { FilesIndexDoc } from "@polaris-key/protocol/packs";
 import { MAX_CHUNK_INDEX_BYTES } from "@polaris-key/protocol/core";
+import { mainThreadIo, type FetchIntoResult, type OpfsIo } from "./opfsIo.js";
 import {
   treeDigest,
   type ByteSink,
@@ -140,16 +145,6 @@ async function writeWhole(fh: FileHandle, bytes: Uint8Array): Promise<void> {
   await w.close();
 }
 
-async function writeAt(
-  fh: FileHandle,
-  offset: number,
-  bytes: Uint8Array,
-): Promise<void> {
-  const w = await fh.createWritable({ keepExistingData: true });
-  await w.write({ type: "write", position: offset, data: bytes });
-  await w.close();
-}
-
 /** A file's SHA-256, read in 1 MiB slices. */
 async function hashFile(
   fh: FileHandle,
@@ -214,6 +209,19 @@ export interface OpfsPackStore {
   state: PackStateStore;
   /** The sibling `revocations.json` (plans/P4-13.md §2.5). */
   revocations: PackStateStore;
+  /** How staging bytes move: `worker` (sync access handles) or `main`. */
+  io: OpfsIo["kind"];
+  /**
+   * P4-18, worker only: fetch `url` straight into plan `planId`'s container output (decoded,
+   * measured as it is written), or undefined when the store has no worker.
+   */
+  fetchIntoOutput(
+    planId: string,
+    url: string,
+    init: { headers: Record<string, string> },
+    limit: number,
+    onBytes: (n: number) => void,
+  ): Promise<FetchIntoResult | undefined>;
 }
 
 /**
@@ -225,6 +233,8 @@ export async function opfsPackStore(opts: {
   product: string;
   sha256: Sha256Port;
   root?: DirHandle;
+  /** The staging I/O (`opfsIo.ts`); default the main thread over `root`. */
+  io?: OpfsIo;
 }): Promise<OpfsPackStore> {
   let base = opts.root;
   if (!base) {
@@ -238,6 +248,7 @@ export async function opfsPackStore(opts: {
     base = (await nav.storage.getDirectory()) as DirHandle;
   }
   const root = (await dir(base, ["polaris-key", opts.product, "packs"], true))!;
+  const io: OpfsIo = opts.io ?? mainThreadIo(root, opts.sha256);
   const readIndex = async (location: string): Promise<FilesIndexDoc | null> => {
     const fh = await fileAt(
       root,
@@ -290,8 +301,6 @@ export async function opfsPackStore(opts: {
       let pendingBytes = 0;
       const flush = async (): Promise<void> => {
         if (pendingBytes === 0) return;
-        const fh = (await fileAt(root, parts, true))!;
-        const f = await fh.getFile();
         const all = new Uint8Array(pendingBytes);
         let at = 0;
         for (const p of pending) {
@@ -300,21 +309,21 @@ export async function opfsPackStore(opts: {
         }
         pending = [];
         pendingBytes = 0;
-        await writeAt(fh, f.size, all);
+        await io.writeAt(parts, (await io.size(parts)) ?? 0, all);
       };
       const size = async (): Promise<number> => {
         await flush();
-        const fh = await fileAt(root, parts, false);
-        return fh ? (await fh.getFile()).size : 0;
+        return (await io.size(parts)) ?? 0;
       };
       const obj: StagedObject = {
         size,
         source: async () => {
           const n = await size();
-          const fh = await fileAt(root, parts, false);
-          return fh
-            ? source(fh, n)
-            : { size: 0, read: async () => new Uint8Array() };
+          return {
+            size: n,
+            read: (offset: number, length: number) =>
+              io.read(parts, offset, Math.max(0, Math.min(length, n - offset))),
+          };
         },
         append: async (bytes) => {
           pending.push(bytes.slice());
@@ -324,6 +333,7 @@ export async function opfsPackStore(opts: {
         reset: async () => {
           pending = [];
           pendingBytes = 0;
+          await io.release(parts);
           await remove(root, parts);
         },
       };
@@ -342,16 +352,16 @@ export async function opfsPackStore(opts: {
     }> {
       await outputs.get(planId)?.flush();
       outputs.delete(planId);
+      const outPath = ["staging", planId, "out", CONTAINER_FILE];
       // A chunk plan (P4-11) resumes over what an earlier attempt wrote.
       const keep =
         outOpts?.resume === true &&
         layout !== "tree" &&
-        (await fileAt(
-          root,
-          ["staging", planId, "out", CONTAINER_FILE],
-          false,
-        )) !== null;
-      if (!keep) await remove(root, ["staging", planId, "out"]);
+        (await io.size(outPath)) !== null;
+      if (!keep) {
+        await io.release(["staging", planId, "out"]);
+        await remove(root, ["staging", planId, "out"]);
+      }
       const out = (await dir(root, ["staging", planId, "out"], true))!;
       if (layout === "tree")
         return {
@@ -368,7 +378,7 @@ export async function opfsPackStore(opts: {
             },
           },
         };
-      const fh = await out.getFileHandle(CONTAINER_FILE, { create: true });
+      await out.getFileHandle(CONTAINER_FILE, { create: true });
       let start = 0;
       let parts: Uint8Array[] = [];
       let bytes = 0;
@@ -382,7 +392,7 @@ export async function opfsPackStore(opts: {
         }
         parts = [];
         bytes = 0;
-        await writeAt(fh, start, all);
+        await io.writeAt(outPath, start, all);
       };
       outputs.set(planId, { flush });
       return {
@@ -397,10 +407,7 @@ export async function opfsPackStore(opts: {
         },
         read: async (offset, length) => {
           await flush();
-          const f = await fh.getFile();
-          const end = Math.min(f.size, offset + length);
-          if (end <= offset) return new Uint8Array();
-          return new Uint8Array(await f.slice(offset, end).arrayBuffer());
+          return io.read(outPath, offset, length);
         },
       };
     },
@@ -446,6 +453,8 @@ export async function opfsPackStore(opts: {
     async commit(planId, packId, payloadSha256, _layout, index) {
       await outputs.get(planId)?.flush();
       outputs.delete(planId);
+      // The worker's handles lock their files: the copy below reads them on this thread.
+      await io.release(["staging", planId]);
       const location = `store/${packId}/${payloadSha256}`;
       const out = await dir(root, ["staging", planId, "out"], false);
       if (!out) throw new Error(`no output for plan ${planId}`);
@@ -554,6 +563,7 @@ export async function opfsPackStore(opts: {
       for (const k of [...staged.keys()])
         if (k.startsWith(`${planId}/`)) staged.delete(k);
       outputs.delete(planId);
+      await io.release(["staging", planId]);
       await remove(root, ["staging", planId]);
     },
 
@@ -640,5 +650,22 @@ export async function opfsPackStore(opts: {
   // plans/P4-13.md §2.5: the sibling revocations, never created empty.
   const revocations = documentStore("revocations.json");
 
-  return { storage, state, revocations };
+  return {
+    storage,
+    state,
+    revocations,
+    io: io.kind,
+    async fetchIntoOutput(planId, url, init, limit, onBytes) {
+      if (!io.fetchInto) return undefined;
+      // The engine has just opened the output empty; nothing is buffered for it.
+      await outputs.get(planId)?.flush();
+      return io.fetchInto(
+        ["staging", planId, "out", CONTAINER_FILE],
+        url,
+        init,
+        limit,
+        onBytes,
+      );
+    },
+  };
 }

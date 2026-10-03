@@ -31,7 +31,8 @@ export async function fetchCatalog(
   try {
     const res = await opts.fetchImpl(url, {
       method: "GET",
-      credentials: "include",
+      // Bearer-only, CORS-covered route: no ambient credential (`core/cors.ts`).
+      credentials: "omit",
       headers: { accept: "application/json", ...(opts.headers ?? {}) },
     });
     if (!res.ok) return null;

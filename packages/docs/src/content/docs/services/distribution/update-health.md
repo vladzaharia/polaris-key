@@ -1,6 +1,6 @@
 ---
 sidebar:
-  order: 7
+  order: 8
 title: "Update health"
 description: "The update outcome events devices report, the funnel the console shows per rollout, the opt-in halt-only auto-halt on revert and boot-rollback rates, and Sentry alerts that open halt candidates an operator confirms — with the SDK tagging convention."
 ---
