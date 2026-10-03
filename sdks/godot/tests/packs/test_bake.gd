@@ -41,10 +41,20 @@ func run(t: PKeyTestContext) -> void:
 	DirAccess.make_dir_recursive_absolute(storage.store_dir())
 	t.check("bake: the v1 base is in the store", S.write_file(base_path, v1))
 	var dir := PKeyPck.read_directory(PKeyByteSource.memory(v1))
-	# Mounted as a game mounts it (replace_files=true), so these paths are served by this file.
-	t.check("bake: the base mounts", PKeyPck.mount(base_path, true))
-	var before := _reads(dir["entries"])
-	t.check("bake: the mounted base's entries read through res://", before.size() >= 10 and not before.values().has("<unreadable>"), "%d entries" % before.size())
+	# Mounted as a game mounts it (replace_files=true), so these paths are served by this file. The
+	# fixture is a 4.7.2 export (PCK format 4); 4.6 reads format 3 at most, so there it must refuse
+	# to mount, and the delta cases below decode over an unmounted base (P1-12's 4.6 leg).
+	var base_format := int(dir["header"]["formatVersion"])
+	var engine_format := PKeyPck.helper_version()
+	var before := {}
+	if base_format <= engine_format:
+		t.check("bake: the base mounts", PKeyPck.mount(base_path, true))
+		before = _reads(dir["entries"])
+		t.check("bake: the mounted base's entries read through res://", before.size() >= 10 and not before.values().has("<unreadable>"), "%d entries" % before.size())
+	else:
+		t.check("bake: a PCK format %d base does not mount on an engine that reads format %d" % [base_format, engine_format], engine_format > 0 and not PKeyPck.mount(base_path, true))
+		before = _reads(dir["entries"])
+		t.info("bake: the mounted-base reads are not exercised on %s (the fixture is PCK format %d)" % [Engine.get_version_info().string, base_format])
 
 	var objects := func(h: String) -> Variant:
 		var p := UPDATE.path_join("objects").path_join(h)
