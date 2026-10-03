@@ -349,8 +349,8 @@ package, and every decision in §8.1 that names it as owner, override this brief
   `packages/cli/test/fixtures/godot-real-imports/`) pin it: `audit-real-import-texture` is
   admitted; in `audit-real-import-model` the `.glb.import` passes but the imported `.scn` is
   `RSCC` (FileAccessCompressed, zstd blocks of 4096) and is refused by the RSCC rule. Every
-  imported model is therefore refused today: a decision is needed on inspecting RSCC
-  (decompress the zstd blocks, bounded, and scan) in both validators.
+  imported model was therefore refused; P4-27 decompresses RSCC, bounded, in both validators, and
+  `audit-real-import-model` is now admitted.
 - **BOM before a text head (P4-22 review).** Both sniffers skip a leading UTF-8 BOM before the
   `[gd_scene`/`[gd_resource` head test (the device reads 67 bytes so its window equals the CLI's),
   pinned by `audit-bom-head` (`level.bin`, refused on both sides).

@@ -21820,6 +21820,133 @@ async function contentSigner(o) {
 
 // src/packLint.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/rscc.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var RSCC_MAX_TOTAL = 67108864;
+var RSCC_PACK_BUDGET = 536870912;
+var ZSTD_BLOCK_MAX = 131072;
+var RSCC_MIN_BLOCK = 4096;
+var RSCC_MAX_BLOCK = 1048576;
+var RSCC_MODE_ZSTD = 2;
+var ZSTD_MAGIC = 4247762216;
+function zstdFrameOk(f, size) {
+  const n = f.byteLength;
+  if (n < 6) return false;
+  const dv = new DataView(f.buffer, f.byteOffset, n);
+  if (dv.getUint32(0, true) !== ZSTD_MAGIC) return false;
+  const fhd = f[4];
+  const fcsFlag = fhd >> 6;
+  const single = fhd >> 5 & 1;
+  const checksum = fhd >> 2 & 1;
+  if ((fhd & 8) !== 0 || (fhd & 3) !== 0) return false;
+  if (single !== 1) return false;
+  let p = 5;
+  const fcsLen = [1, 2, 4, 8][fcsFlag];
+  if (p + fcsLen > n) return false;
+  let fcs;
+  if (fcsLen === 1) fcs = f[p];
+  else if (fcsLen === 2) fcs = dv.getUint16(p, true) + 256;
+  else if (fcsLen === 4) fcs = dv.getUint32(p, true);
+  else {
+    if (dv.getUint32(p + 4, true) !== 0) return false;
+    fcs = dv.getUint32(p, true);
+  }
+  if (fcs !== size) return false;
+  p += fcsLen;
+  for (; ; ) {
+    if (p + 3 > n) return false;
+    const h = f[p] | f[p + 1] << 8 | f[p + 2] << 16;
+    p += 3;
+    const last = h & 1;
+    const type = h >> 1 & 3;
+    const bsize = h >>> 3;
+    if (type === 3) return false;
+    if (bsize > ZSTD_BLOCK_MAX || bsize > size) return false;
+    if (size === 0 && (type !== 0 || bsize !== 0)) return false;
+    const payload = type === 1 ? 1 : bsize;
+    if (payload > n - p) return false;
+    p += payload;
+    if (last === 1) break;
+  }
+  if (checksum === 1) {
+    if (size === 0) return false;
+    p += 4;
+  }
+  return p === n;
+}
+function rsccBody(data, decode2 = decode, budget) {
+  const n = data.byteLength;
+  if (n < 16) return { why: "whose header is truncated" };
+  const dv = new DataView(data.buffer, data.byteOffset, n);
+  const mode = dv.getUint32(4, true);
+  if (mode !== RSCC_MODE_ZSTD)
+    return {
+      why: `in compression mode ${mode}; only zstd (mode ${RSCC_MODE_ZSTD}) is inspected`
+    };
+  const bs = dv.getUint32(8, true);
+  if (bs < RSCC_MIN_BLOCK || bs > RSCC_MAX_BLOCK)
+    return {
+      why: `with block size ${bs}, outside ${RSCC_MIN_BLOCK}..${RSCC_MAX_BLOCK}`
+    };
+  const total = dv.getUint32(12, true);
+  if (total > RSCC_MAX_TOTAL)
+    return {
+      why: `that declares ${total} bytes, above the ${RSCC_MAX_TOTAL}-byte cap`
+    };
+  if (budget !== void 0) {
+    budget.used += total;
+    if (budget.used > RSCC_PACK_BUDGET)
+      return {
+        why: `that takes the pack's declared RSCC bytes to ${budget.used}, past the ${RSCC_PACK_BUDGET}-byte budget`
+      };
+  }
+  const bc = Math.floor(total / bs) + 1;
+  const tableEnd = 16 + 4 * bc;
+  if (tableEnd > n) return { why: "whose block table runs past the end" };
+  const starts = [];
+  const sizes = [];
+  let pos = tableEnd;
+  for (let i = 0; i < bc; i++) {
+    const cs = dv.getUint32(16 + 4 * i, true);
+    if (cs > n - pos) return { why: `whose block ${i} runs past the end` };
+    starts.push(pos);
+    sizes.push(cs);
+    pos += cs;
+  }
+  if (pos + 4 > n || data[pos] !== 82 || data[pos + 1] !== 83 || data[pos + 2] !== 67 || data[pos + 3] !== 67)
+    return { why: "without its closing RSCC magic" };
+  if (pos + 4 !== n) return { why: "with bytes after its closing RSCC magic" };
+  const want = (i) => i === bc - 1 ? total - (bc - 1) * bs : bs;
+  const frame = (i) => data.subarray(starts[i], starts[i] + sizes[i]);
+  for (let i = 0; i < bc; i++)
+    if (!zstdFrameOk(frame(i), want(i)))
+      return {
+        why: `whose block ${i} is not one zstd frame of ${want(i)} bytes`
+      };
+  const body = new Uint8Array(total);
+  for (let i = 0; i < bc; i++) {
+    const w = want(i);
+    if (w === 0) continue;
+    let out;
+    try {
+      out = decode2(frame(i), w);
+    } catch {
+      return { why: `whose block ${i} does not decode to ${w} bytes` };
+    }
+    if (out.byteLength !== w)
+      return { why: `whose block ${i} does not decode to ${w} bytes` };
+    body.set(out, i * bs);
+  }
+  return { body };
+}
+function rsccBodyIsResource(body) {
+  if (body.byteLength < 20) return false;
+  const dv = new DataView(body.buffer, body.byteOffset, body.byteLength);
+  return dv.getUint32(0, true) <= 1 && dv.getUint32(4, true) <= 1;
+}
+
+// src/packLint.ts
 var PCK_WARN_ENTRIES = 1e3;
 var PCK_MAX_ENTRIES = 2e4;
 var SCRIPT_RE = /\.(gd|gdc|cs)$/i;
@@ -21982,6 +22109,7 @@ function lintPck(dir, bytes, opts) {
   const text = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
+  const budget = { used: 0 };
   for (const e of dir.entries) {
     const p = e.path;
     if (stripped.has(p)) {
@@ -22010,7 +22138,8 @@ function lintPck(dir, bytes, opts) {
     const code = embeddedCode(
       p,
       bytes.subarray(e.offset, e.offset + e.size),
-      kinds.markers
+      kinds.markers,
+      budget
     );
     if (code !== null) {
       errors.push(`${p}: ${code}; a pack carries data only.`);
@@ -22070,10 +22199,16 @@ function lintPck(dir, bytes, opts) {
 }
 var TEXT_RESOURCE_RE = /\.(tscn|tres|escn)$/i;
 var BINARY_RESOURCE_RE = /\.(scn|res)$/i;
-function embeddedCode(p, data, markers = SCRIPT_MARKERS) {
+function embeddedCode(p, data, markers = SCRIPT_MARKERS, budget = { used: 0 }) {
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
-  if (magic === "RSCC")
-    return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed";
+  if (magic === "RSCC") {
+    const r = rsccBody(data, void 0, budget);
+    if ("why" in r) return `a compressed binary resource (RSCC) ${r.why}`;
+    if (!rsccBodyIsResource(r.body))
+      return "a compressed binary resource (RSCC) whose body is not a binary resource";
+    const m = marker(r.body, markers);
+    return m === null ? null : `a compressed binary resource (RSCC) that names ${m} (an embedded script or its source)`;
+  }
   if (magic === "RSRC") {
     const m = marker(data, markers);
     return m === null ? null : `a binary resource that names ${m} (an embedded script or its source)`;

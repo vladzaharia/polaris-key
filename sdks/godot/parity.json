@@ -158,7 +158,7 @@
     },
     "packs.handlers": {
       "status": "implemented",
-      "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount: normal paths only, resources judged by content (RSRC/text head, RSCC refused), remap/import targets and uid_cache.bin entries inside the pack; files.tree outputs content-scanned too; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
+      "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount: normal paths only, resources judged by content (RSRC/text head; RSCC decompressed, bounded, then scanned, P4-27), remap/import targets and uid_cache.bin entries inside the pack; files.tree outputs content-scanned too; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
     },
     "packs.provides": {
       "status": "planned",
