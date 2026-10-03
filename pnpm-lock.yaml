@@ -63,6 +63,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../../../packages/shared-protocol
+      '@polaris-key/react':
+        specifier: workspace:*
+        version: link:../../../packages/sdk-react
       '@polaris-key/zstd-wasm':
         specifier: workspace:*
         version: link:../../../packages/zstd-wasm

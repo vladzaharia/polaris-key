@@ -302,7 +302,7 @@ export async function workerIo(
 
 /**
  * Start the store's worker (`opfsWorker.ts`, a module worker beside this file), or null where
- * there is none to start: no `Worker`, or no `createSyncAccessHandle` on file handles.
+ * there is none to start (no `Worker`, no OPFS) or it cannot run (no sync access handle there).
  */
 export async function startOpfsWorker(
   root: readonly string[],
@@ -312,14 +312,10 @@ export async function startOpfsWorker(
     Worker?: unknown;
     FileSystemFileHandle?: { prototype: object };
   };
-  if (!spawn) {
-    if (typeof g.Worker !== "function") return null;
-    if (
-      !g.FileSystemFileHandle ||
-      !("createSyncAccessHandle" in g.FileSystemFileHandle.prototype)
-    )
-      return null;
-  }
+  // `createSyncAccessHandle` is exposed in dedicated workers only, so the page cannot test for
+  // it: the worker's `init` creates one, and a worker that cannot is refused there.
+  if (!spawn && (typeof g.Worker !== "function" || !g.FileSystemFileHandle))
+    return null;
   let worker: WorkerLike;
   try {
     // Written out literally: bundlers (Vite, webpack, Rollup, esbuild plugins) recognise exactly

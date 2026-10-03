@@ -60,6 +60,8 @@ export interface NativePayloadEvent {
   error?: string;
   /** Decoded bytes written. */
   bytes?: number;
+  /** Where the transfer ran: the OPFS store's worker (`fetchInto`), or the page. */
+  via: "worker" | "page";
 }
 
 export interface BrowserNativePayloadOptions {
@@ -114,6 +116,8 @@ function urlFor(
 export function browserNativePayload(
   o: BrowserNativePayloadOptions,
 ): NativePayloadPort {
+  // Called unbound: `window.fetch` refuses any other `this`.
+  const fetchImpl = o.fetchImpl;
   return async (req) => {
     const url = urlFor(o, req);
     if (url === null) return null;
@@ -127,9 +131,14 @@ export function browserNativePayload(
     const onBytes = (n: number) =>
       req.onBytes(limit > 0 ? Math.floor((n * wire) / limit) : 0);
     const headers = { ...(o.headers ?? {}) };
-    const emit = (e: Omit<NativePayloadEvent, "packId" | "kind">) => {
+    const emit = (e: Omit<NativePayloadEvent, "packId" | "kind" | "via">) => {
       try {
-        o.onEvent?.({ packId: req.packId, kind, ...e });
+        o.onEvent?.({
+          packId: req.packId,
+          kind,
+          via: o.fetchIntoOutput ? "worker" : "page",
+          ...e,
+        });
       } catch {
         // A listener never fails an install.
       }
@@ -164,7 +173,7 @@ export function browserNativePayload(
 
     let res: Response;
     try {
-      res = await o.fetchImpl(url, { credentials: "include", headers });
+      res = await fetchImpl(url, { credentials: "include", headers });
     } catch (e) {
       emit({ outcome: "failed", error: (e as Error).message });
       return { ok: false, error: "network-error" };

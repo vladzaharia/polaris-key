@@ -42,6 +42,10 @@
     "./release": {
       "types": "./dist/release/index.d.ts",
       "default": "./dist/release/index.js"
+    },
+    "./packs": {
+      "types": "./dist/packs/index.d.ts",
+      "default": "./dist/packs/index.js"
     }
   },
   "files": [

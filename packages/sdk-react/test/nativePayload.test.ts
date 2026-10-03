@@ -329,7 +329,13 @@ describe("browserNativePayload (P4-18)", () => {
       expect(await p(nativeReq(v1, { written }))).toBeNull();
       expect(written).toEqual([]);
       expect(events).toEqual([
-        { packId: PACK, kind: "zstd", outcome: "declined", status },
+        {
+          packId: PACK,
+          kind: "zstd",
+          via: "page",
+          outcome: "declined",
+          status,
+        },
       ]);
     }
   });
