@@ -220,7 +220,7 @@ The spike note [`notes/S-08-cloudflare-async-compute.md`](../../notes/S-08-cloud
 - **The R2 rules are two, one per final payload prefix:** `blobs/sha256/` and
   `gated/blobs/sha256/`. Both prefixes also hold file blobs and indexes, and no narrower prefix
   exists. The consumer resolves each event through the key's `pack-object` refs and acknowledges
-  anything that is not a pack payload of an opted-in product. An event that arrives before its
+  anything that is not a pack payload of an opted-in product; an object of at most 1 MiB is acknowledged at once (it cannot save the 1 MiB the policy asks for). An event that arrives before its
   record's ingest is retried 3 times, 5 minutes apart. A new payload has no demand of its own yet,
   so an event fans out to the payloads most devices sit on (`installedBase`: devices that last
   moved to X are on X), at most 3 pair jobs.

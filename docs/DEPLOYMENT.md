@@ -424,7 +424,8 @@ this changes behaviour until an operator turns it on.
    No suffix. Never put a rule on `staging/` (a staged object may never be published) or on
    `deltas/` (the consumer's own output would feed back into it). Every object under the two
    prefixes, pack payloads and file blobs alike, produces one message; the consumer
-   acknowledges anything that is not a pack payload of an opted-in product without work.
+   acknowledges an object of at most 1 MiB at once, and anything that is not a pack payload of
+   an opted-in product after one lookup.
 
 4. **Turn it on** for a product: set `LAZY_DELTAS = "on"` in BOTH scripts' `[env.<env>.vars]`,
    deploy both, then opt the product in (RUNBOOK "Lazy deltas").

@@ -35,6 +35,8 @@ export interface BlobEventMessage {
   key: string;
   sha256: string;
   gated: boolean;
+  /** The stored size the event reports (`object.size`), or null when it carries none. */
+  size: number | null;
 }
 
 export type DeltaMessage = PairMessage | BlobEventMessage;
@@ -90,6 +92,12 @@ export function parseDeltaMessage(body: unknown): DeltaMessage | null {
       key: object.key,
       sha256: parsed.sha256,
       gated: parsed.gated,
+      size:
+        typeof object.size === "number" &&
+        Number.isSafeInteger(object.size) &&
+        object.size >= 0
+          ? object.size
+          : null,
     };
   }
   return null;

@@ -25,8 +25,9 @@
  *                  either side is gated) through `putVerified`, its `blob_objects` row, the
  *                  product's `lazy-delta` ref, and the `ready` row with its descriptor.
  *
- * An R2 event names one new object. Its pack-object holders say which pack release and variant
- * it is the `full` object of; its likely bases are the payloads most devices sit on
+ * An R2 event names one new object; one of at most 1 MiB is acknowledged at once (it cannot be
+ * a payload worth a delta). Its pack-object holders say which pack release and variant it is the
+ * `full` object of; its likely bases are the payloads most devices sit on
  * (`installedBase`), and each becomes a pair job on the same queue. An event that arrives
  * before the record's ingest is retried a few times, then dropped.
  *
@@ -67,6 +68,7 @@ import {
 import {
   LAZY_DELTA_LEVEL,
   LAZY_DELTA_METHOD,
+  MIN_SAVING_BYTES,
   PERMANENT_REFUSALS,
   baseRefusal,
   lazyDescriptor,
@@ -351,6 +353,10 @@ async function runBlobEvent(
 ): Promise<DeltaOutcome> {
   const { env, db, now, queue } = deps;
   if (!lazyDeltasOn(env)) return ack("disabled");
+  // Most objects under the payload prefixes are file blobs and indexes. A `full` object of at
+  // most 1 MiB can never be beaten by 1 MiB (`MIN_SAVING_BYTES`), so a small object is not
+  // worth a lookup, let alone the retries that wait for a record's ingest.
+  if (m.size !== null && m.size <= MIN_SAVING_BYTES) return ack("too-small");
   const holders = await packObjectHolders(db, m.key);
   if (holders.length === 0) {
     for (const product of await uploadHolders(db, m.key))

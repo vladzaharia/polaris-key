@@ -582,12 +582,17 @@ describe("the queue consumer", () => {
     const event = {
       account: "acct",
       bucket: "polaris-key-blobs-prod",
-      object: { key: blobKey(sha(w.v2.payload)), size: 1, eTag: "x" },
+      object: { key: blobKey(sha(w.v2.payload)), eTag: "x" },
       action: "PutObject",
       eventTime: "2026-10-03T00:00:00Z",
     };
     const out = await processDeltaMessage(event, 1, w.deps());
     expect(out.result).toBe("fanned-out:1");
+    // An object of at most 1 MiB is never a payload worth a delta: no lookup, no wait.
+    const small = { ...event, object: { ...event.object, size: 1024 * 1024 } };
+    expect((await processDeltaMessage(small, 1, w.deps())).result).toBe(
+      "too-small",
+    );
     expect(w.sent).toEqual([pairOf(w)]);
     // A blob no pack record names: nothing; one only an opted-in product uploaded: wait for it.
     const unknown = { ...event, object: { key: blobKey("9".repeat(64)) } };
@@ -642,6 +647,7 @@ describe("the queue consumer", () => {
       key: `gated/${blobKey(A)}`,
       sha256: A,
       gated: true,
+      size: null,
     });
     expect((await processDeltaMessage("junk", 1, w.deps())).result).toBe(
       "malformed",
