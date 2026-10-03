@@ -53,7 +53,9 @@ func in_app_update(a: PKeyAndroid, decision: Dictionary) -> PKeyApplyResult:
 		var done := await a.update_complete()
 		return _hook("complete", s) if done.ok else null
 	if availability == PKeyAndroid.AVAILABILITY_IN_PROGRESS and status >= 1 and status <= 3:
-		if urgent and s.get("immediateAllowed") == true:
+		# Play's resume rule: an interrupted immediate update is started again, whatever the
+		# allowed types say while it is in progress.
+		if urgent:
 			return await _start(a, "immediate", s)
 		return _hook("progress", s)
 	if availability == PKeyAndroid.AVAILABILITY_AVAILABLE:

@@ -150,13 +150,17 @@ public class InAppUpdates(private val manager: AppUpdateManager) {
      */
     public fun start(type: Int, activity: Activity, requestCode: Int = REQUEST_CODE): StartResult {
         val i = info ?: return StartResult(false, "no-check")
-        if (i.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE &&
-            !(type == AppUpdateType.IMMEDIATE && i.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS)
-        ) {
+        // Play's resume rule: an immediate update already in progress is started again as is,
+        // whatever the allowed types now say.
+        val resuming = type == AppUpdateType.IMMEDIATE &&
+            i.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
+        if (i.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE && !resuming) {
             return StartResult(false, "not-available")
         }
         val options = AppUpdateOptions.defaultOptions(type)
-        if (!i.isUpdateTypeAllowed(options)) return StartResult(false, "type-not-allowed", i.getFailedUpdatePreconditions(options).toList())
+        if (!resuming && !i.isUpdateTypeAllowed(options)) {
+            return StartResult(false, "type-not-allowed", i.getFailedUpdatePreconditions(options).toList())
+        }
         val started = manager.startUpdateFlowForResult(i, activity, options, requestCode)
         // An AppUpdateInfo is single-use for a flow: the next start needs a fresh check.
         if (started) info = null

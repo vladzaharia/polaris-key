@@ -19,7 +19,8 @@ import org.godotengine.godot.plugin.UsedByGodot
  * shadowed in GDScript and silently return null (notes/S-10 §5).
  */
 class PolarisKeyAndroidPlugin(godot: Godot) : GodotPlugin(godot), Host {
-    private val commands: Commands by lazy { Commands(this) }
+    private val commandsLazy = lazy { Commands(this) }
+    private val commands: Commands by commandsLazy
 
     override fun getPluginName(): String = "PolarisKeyAndroid"
 
@@ -51,6 +52,6 @@ class PolarisKeyAndroidPlugin(godot: Godot) : GodotPlugin(godot), Host {
     }
 
     override fun onMainDestroy() {
-        commands.close()
+        if (commandsLazy.isInitialized()) commands.close()
     }
 }

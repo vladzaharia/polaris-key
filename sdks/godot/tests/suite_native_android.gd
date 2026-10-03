@@ -343,7 +343,7 @@ func _play(t: PKeyTestContext) -> void:
 	f.update = {"availability": 3, "installStatus": 11, "readyToComplete": true, "flexibleAllowed": false, "immediateAllowed": false}
 	r = await adapter.apply(store, host)
 	t.check("play: a downloaded update is completed", r.behaviour == PKeyApplyResult.HOOK and r.detail.get("step") == "complete" and f.ops_called("iau_complete") == 1)
-	f.update = {"availability": 3, "installStatus": 2, "readyToComplete": false, "flexibleAllowed": false, "immediateAllowed": true}
+	f.update = {"availability": 3, "installStatus": 2, "readyToComplete": false, "flexibleAllowed": false, "immediateAllowed": false}
 	r = await adapter.apply(store, host)
 	t.check("play: an update in progress shows progress", r.detail.get("step") == "progress")
 	r = await adapter.apply(urgent, host)

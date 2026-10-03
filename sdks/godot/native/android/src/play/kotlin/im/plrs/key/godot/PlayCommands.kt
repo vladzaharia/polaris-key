@@ -35,12 +35,14 @@ class PlayCommands(
         out.put("inAppUpdates", true).put("assetPacks", true)
     }
 
-    /** Created on the UI thread on first use, with the listener registered. */
+    /** Created on first use (UI or render thread), with the listener registered once. */
+    @Synchronized
     private fun updates(): InAppUpdates = updates ?: (updateManager?.let { InAppUpdates(it()) } ?: InAppUpdates(c.host.appContext)).also {
         it.addListener(updateListener)
         updates = it
     }
 
+    @Synchronized
     private fun packs(): AssetPacks = packs ?: AssetPacks(packManager?.invoke() ?: PlayPackManager(c.host.appContext)).also {
         it.listen(packListener)
         packs = it
