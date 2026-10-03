@@ -1,0 +1,1478 @@
+{
+  "$comment": "P4-16: the shared cases for the v3 pack-type handlers' checks (l10n.table, data.json, ml.model, audio.bank) and the BCP-47 rule. Every SDK that implements a type runs its cases through its own handler and must reach the same verdict: {ok: true, ...the parsed result} or {ok: false, detail, path}. Files are listed in index (path byte) order; `text` is UTF-8, `base64` is raw bytes. Not a corpus file: unit-test input (the brief's shared fixture set). Python and Swift read this file; Godot keeps a byte-identical copy at sdks/godot/tests/fixtures/pack_type_cases.json, checked by client-core's test.",
+  "bcp47": [
+    {
+      "tag": "fr",
+      "ok": true
+    },
+    {
+      "tag": "en-US",
+      "ok": true
+    },
+    {
+      "tag": "pt_BR",
+      "ok": true,
+      "canonical": "pt-BR"
+    },
+    {
+      "tag": "zh-Hant-TW",
+      "ok": true
+    },
+    {
+      "tag": "es-419",
+      "ok": true
+    },
+    {
+      "tag": "sl-rozaj-biske",
+      "ok": true
+    },
+    {
+      "tag": "de-CH-1996",
+      "ok": true
+    },
+    {
+      "tag": "en-a-myext-b-another",
+      "ok": true
+    },
+    {
+      "tag": "en-x-private",
+      "ok": true
+    },
+    {
+      "tag": "zh-yue-HK",
+      "ok": true
+    },
+    {
+      "tag": "EN-us",
+      "ok": true
+    },
+    {
+      "tag": "",
+      "ok": false
+    },
+    {
+      "tag": "e",
+      "ok": false
+    },
+    {
+      "tag": "english",
+      "ok": true
+    },
+    {
+      "tag": "en-",
+      "ok": false
+    },
+    {
+      "tag": "en--US",
+      "ok": false
+    },
+    {
+      "tag": "en US",
+      "ok": false
+    },
+    {
+      "tag": "en-US\n",
+      "ok": false
+    },
+    {
+      "tag": "123",
+      "ok": false
+    },
+    {
+      "tag": "en-a",
+      "ok": false
+    },
+    {
+      "tag": "en-x",
+      "ok": false
+    },
+    {
+      "tag": "abcdefghi",
+      "ok": false
+    },
+    {
+      "tag": "fr-FR-x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "ok": false
+    },
+    {
+      "tag": "fr\u00e9",
+      "ok": false
+    }
+  ],
+  "dataJson": [
+    {
+      "name": "two-documents",
+      "files": [
+        {
+          "path": "balance.json",
+          "text": "{\"hp\": 10, \"items\": [1, 2.5, \"x\", null, true]}"
+        },
+        {
+          "path": "events/winter.json",
+          "text": "{\"events\": [{\"id\": \"snow\"}]}\n"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "documents": {
+          "balance.json": {
+            "hp": 10,
+            "items": [1, 2.5, "x", null, true]
+          },
+          "events/winter.json": {
+            "events": [
+              {
+                "id": "snow"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "content-not-extension",
+      "files": [
+        {
+          "path": "notes.txt",
+          "text": "{\"a\": 1}"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "documents": {
+          "notes.txt": {
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "empty-payload",
+      "files": [],
+      "expect": {
+        "ok": true,
+        "documents": {}
+      }
+    },
+    {
+      "name": "trailing-comma-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "{\"a\": 1}"
+        },
+        {
+          "path": "b.json",
+          "text": "{\"a\": 1,}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "b.json"
+      }
+    },
+    {
+      "name": "duplicate-member-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "{\"a\": 1, \"a\": 2}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "bom-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "\ufeff{\"a\": 1}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "comment-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "{\"a\": 1} // no"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "two-values-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "{} {}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "top-level-array-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "[1, 2]"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "top-level-scalar-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "\"x\""
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "nan-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": "{\"a\": NaN}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "invalid-utf8-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "base64": "eyJhIjogIv8ifQ=="
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "empty-file-refused",
+      "files": [
+        {
+          "path": "a.json",
+          "text": ""
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "json",
+        "path": "a.json"
+      }
+    },
+    {
+      "name": "over-size-refused",
+      "options": {
+        "maxFileBytes": 8
+      },
+      "files": [
+        {
+          "path": "a.json",
+          "text": "{\"a\": 12}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "size",
+        "path": "a.json"
+      }
+    }
+  ],
+  "l10nTable": [
+    {
+      "name": "json-table",
+      "variant": {
+        "locale": "fr"
+      },
+      "files": [
+        {
+          "path": "fr.json",
+          "text": "{\"locale\": \"fr\", \"messages\": {\"hello\": \"Bonjour\", \"bye\": \"Au revoir\"}, \"note\": 1}"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "fr.json",
+            "locale": "fr",
+            "messages": [
+              {
+                "context": null,
+                "id": "bye",
+                "plural": null,
+                "strings": ["Au revoir"]
+              },
+              {
+                "context": null,
+                "id": "hello",
+                "plural": null,
+                "strings": ["Bonjour"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "json-table-bom-and-whitespace",
+      "variant": {},
+      "files": [
+        {
+          "path": "t",
+          "text": "\ufeff \n {\"locale\": \"pt_BR\", \"messages\": {\"a\": \"b\"}}"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "t",
+            "locale": "pt-BR",
+            "messages": [
+              {
+                "context": null,
+                "id": "a",
+                "plural": null,
+                "strings": ["b"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "po-table",
+      "variant": {
+        "locale": "fr"
+      },
+      "files": [
+        {
+          "path": "fr.po",
+          "text": "# French\nmsgid \"\"\nmsgstr \"\"\n\"Project-Id-Version: x\\n\"\n\"Language: fr\\n\"\n\"Plural-Forms: nplurals=2; plural=(n > 1);\\n\"\n\n#: main.gd:1\nmsgid \"hello\"\nmsgstr \"Bonjour\"\n\nmsgctxt \"menu\"\nmsgid \"open\"\nmsgstr \"\"\n\"Ouv\"\n\"rir\"\n\nmsgid \"apple\"\nmsgid_plural \"apples\"\nmsgstr[0] \"pomme\"\nmsgstr[1] \"pommes\"\n\nmsgid \"esc\"\nmsgstr \"a\\\"b\\\\c\\nd\\te\"\n"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "fr.po",
+            "locale": "fr",
+            "messages": [
+              {
+                "context": null,
+                "id": "hello",
+                "plural": null,
+                "strings": ["Bonjour"]
+              },
+              {
+                "context": "menu",
+                "id": "open",
+                "plural": null,
+                "strings": ["Ouvrir"]
+              },
+              {
+                "context": null,
+                "id": "apple",
+                "plural": "apples",
+                "strings": ["pomme", "pommes"]
+              },
+              {
+                "context": null,
+                "id": "esc",
+                "plural": null,
+                "strings": ["a\"b\\c\nd\te"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "po-crlf",
+      "variant": {},
+      "files": [
+        {
+          "path": "de.po",
+          "text": "msgid \"\"\r\nmsgstr \"Language: de\\n\"\r\n\r\nmsgid \"a\"\r\nmsgstr \"b\"\r\n"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "de.po",
+            "locale": "de",
+            "messages": [
+              {
+                "context": null,
+                "id": "a",
+                "plural": null,
+                "strings": ["b"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "csv-table",
+      "variant": {},
+      "files": [
+        {
+          "path": "strings.csv",
+          "text": "keys,en,fr\r\nhello,Hello,Bonjour\r\n\"quote\",\"say \"\"hi\"\", ok\",\"dis \"\"salut\"\"\"\r\nmulti,\"line1\nline2\",x\r\n\r\nlast,a,b\r\n"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "strings.csv",
+            "locale": "en",
+            "messages": [
+              {
+                "context": null,
+                "id": "hello",
+                "plural": null,
+                "strings": ["Hello"]
+              },
+              {
+                "context": null,
+                "id": "quote",
+                "plural": null,
+                "strings": ["say \"hi\", ok"]
+              },
+              {
+                "context": null,
+                "id": "multi",
+                "plural": null,
+                "strings": ["line1\nline2"]
+              },
+              {
+                "context": null,
+                "id": "last",
+                "plural": null,
+                "strings": ["a"]
+              }
+            ]
+          },
+          {
+            "path": "strings.csv",
+            "locale": "fr",
+            "messages": [
+              {
+                "context": null,
+                "id": "hello",
+                "plural": null,
+                "strings": ["Bonjour"]
+              },
+              {
+                "context": null,
+                "id": "quote",
+                "plural": null,
+                "strings": ["dis \"salut\""]
+              },
+              {
+                "context": null,
+                "id": "multi",
+                "plural": null,
+                "strings": ["x"]
+              },
+              {
+                "context": null,
+                "id": "last",
+                "plural": null,
+                "strings": ["b"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "csv-no-trailing-newline",
+      "variant": {
+        "locale": "FR"
+      },
+      "files": [
+        {
+          "path": "fr.csv",
+          "text": "id,fr\nk,v"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "fr.csv",
+            "locale": "fr",
+            "messages": [
+              {
+                "context": null,
+                "id": "k",
+                "plural": null,
+                "strings": ["v"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "several-files",
+      "variant": {
+        "locale": "de"
+      },
+      "files": [
+        {
+          "path": "a.json",
+          "text": "{\"locale\": \"de\", \"messages\": {\"x\": \"y\"}}"
+        },
+        {
+          "path": "b.csv",
+          "text": "key,de\nz,w\n"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "a.json",
+            "locale": "de",
+            "messages": [
+              {
+                "context": null,
+                "id": "x",
+                "plural": null,
+                "strings": ["y"]
+              }
+            ]
+          },
+          {
+            "path": "b.csv",
+            "locale": "de",
+            "messages": [
+              {
+                "context": null,
+                "id": "z",
+                "plural": null,
+                "strings": ["w"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong-locale-refused",
+      "variant": {
+        "locale": "fr"
+      },
+      "files": [
+        {
+          "path": "de.json",
+          "text": "{\"locale\": \"de\", \"messages\": {\"a\": \"b\"}}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "locale",
+        "path": "de.json"
+      }
+    },
+    {
+      "name": "csv-extra-locale-refused",
+      "variant": {
+        "locale": "fr"
+      },
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr,de\na,b,c\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "locale",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "malformed-locale-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.json",
+          "text": "{\"locale\": \"not a tag\", \"messages\": {}}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "locale",
+        "path": "x.json"
+      }
+    },
+    {
+      "name": "po-without-language-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.po",
+          "text": "msgid \"\"\nmsgstr \"Project-Id-Version: 1\\n\"\n\nmsgid \"a\"\nmsgstr \"b\"\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "x.po"
+      }
+    },
+    {
+      "name": "po-without-header-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.po",
+          "text": "msgid \"a\"\nmsgstr \"b\"\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "x.po"
+      }
+    },
+    {
+      "name": "po-bad-escape-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.po",
+          "text": "msgid \"\"\nmsgstr \"Language: fr\\n\"\n\nmsgid \"a\"\nmsgstr \"\\u0041\"\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "x.po"
+      }
+    },
+    {
+      "name": "po-duplicate-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.po",
+          "text": "msgid \"\"\nmsgstr \"Language: fr\\n\"\n\nmsgid \"a\"\nmsgstr \"b\"\n\nmsgid \"a\"\nmsgstr \"c\"\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "x.po"
+      }
+    },
+    {
+      "name": "po-plural-index-gap-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.po",
+          "text": "msgid \"\"\nmsgstr \"Language: fr\\n\"\n\nmsgid \"a\"\nmsgid_plural \"as\"\nmsgstr[0] \"b\"\nmsgstr[2] \"c\"\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "x.po"
+      }
+    },
+    {
+      "name": "po-incomplete-entry-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.po",
+          "text": "msgid \"\"\nmsgstr \"Language: fr\\n\"\n\nmsgid \"a\"\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "x.po"
+      }
+    },
+    {
+      "name": "po-garbage-line-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "x.po",
+          "text": "msgid \"\"\nmsgstr \"Language: fr\\n\"\n\nmsgid \"a\"\nmsgstr \"b\"\nextends Node\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "x.po"
+      }
+    },
+    {
+      "name": "csv-ragged-row-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr\na,b,c\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "csv-duplicate-key-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr\na,b\na,c\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "csv-empty-key-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr\n,b\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "csv-unterminated-quote-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr\na,\"b\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "csv-text-after-quote-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr\na,\"b\"c\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "csv-header-only-locale-missing-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys\na\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "csv-duplicate-locale-column-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr,FR\na,b,c\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "json-table-non-string-message-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.json",
+          "text": "{\"locale\": \"fr\", \"messages\": {\"a\": 1}}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.json"
+      }
+    },
+    {
+      "name": "json-table-not-strict-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.json",
+          "text": "{\"locale\": \"fr\", \"messages\": {\"a\": \"b\",}}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.json"
+      }
+    },
+    {
+      "name": "nul-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr\na,b\u0000\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "invalid-utf8-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "base64": "a2V5cyxmcgphLP8K"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "empty-file-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": " \n\t"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.csv"
+      }
+    },
+    {
+      "name": "over-size-refused",
+      "variant": {},
+      "options": {
+        "maxFileBytes": 4
+      },
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "keys,fr\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "size",
+        "path": "t.csv"
+      }
+    }
+  ],
+  "mlModel": [
+    {
+      "name": "fits",
+      "options": {
+        "runtimes": ["onnx", "gguf"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"net.onnx\", \"memBytes\": 1000, \"quantization\": \"int8\"}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": true,
+      "expect": {
+        "ok": true,
+        "file": "net.onnx"
+      }
+    },
+    {
+      "name": "no-load-test",
+      "options": {
+        "runtimes": ["gguf"],
+        "ramBytes": 10,
+        "vramBytes": 5
+      },
+      "files": [
+        {
+          "path": "m/q4.gguf",
+          "text": "GGUF"
+        },
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"gguf\", \"file\": \"m/q4.gguf\", \"memBytes\": 10, \"vramBytes\": 5}"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": true,
+        "file": "m/q4.gguf"
+      }
+    },
+    {
+      "name": "memory-over-budget-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 999
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"net.onnx\", \"memBytes\": 1000}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": true,
+      "expect": {
+        "ok": false,
+        "detail": "memory",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "vram-over-budget-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"net.onnx\", \"memBytes\": 1, \"vramBytes\": 1}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "memory",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "runtime-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"gguf\", \"file\": \"net.gguf\", \"memBytes\": 1}"
+        },
+        {
+          "path": "net.gguf",
+          "text": "GGUF"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "runtime",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "quantization-refused",
+      "options": {
+        "runtimes": ["gguf"],
+        "ramBytes": 1000,
+        "quantizations": ["q8_0"]
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"gguf\", \"file\": \"net.gguf\", \"memBytes\": 1, \"quantization\": \"q4-k-m\"}"
+        },
+        {
+          "path": "net.gguf",
+          "text": "GGUF"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "quantization",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "quantization-absent-refused",
+      "options": {
+        "runtimes": ["gguf"],
+        "ramBytes": 1000,
+        "quantizations": ["q8-0"]
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"gguf\", \"file\": \"net.gguf\", \"memBytes\": 1}"
+        },
+        {
+          "path": "net.gguf",
+          "text": "GGUF"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "quantization",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "load-test-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"net.onnx\", \"memBytes\": 1}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": false,
+      "expect": {
+        "ok": false,
+        "detail": "load-test",
+        "path": "net.onnx"
+      }
+    },
+    {
+      "name": "descriptor-missing-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "descriptor-file-not-in-index-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"./net.onnx\", \"memBytes\": 1}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "descriptor-file-is-itself-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"model.json\", \"memBytes\": 1}"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "descriptor-bad-integer-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"net.onnx\", \"memBytes\": 1.5}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "descriptor-negative-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"net.onnx\", \"memBytes\": -1}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "descriptor-bad-runtime-token-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"ONNX\", \"file\": \"net.onnx\", \"memBytes\": 1}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "descriptor-not-strict-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"net.onnx\", \"memBytes\": 1, \"memBytes\": 2}"
+        },
+        {
+          "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    }
+  ],
+  "audioBank": [
+    {
+      "name": "fmod-banks",
+      "options": {
+        "middleware": "fmod",
+        "version": "2.02.22"
+      },
+      "files": [
+        {
+          "path": "Master.bank",
+          "text": "RIFF"
+        },
+        {
+          "path": "Master.strings.bank",
+          "text": "RIFF"
+        },
+        {
+          "path": "bank.json",
+          "text": "{\"middleware\": \"fmod\", \"version\": \"2.02.19\", \"banks\": [\"Master.strings.bank\", \"Master.bank\"]}"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "banks": ["Master.strings.bank", "Master.bank"]
+      }
+    },
+    {
+      "name": "default-bank-order",
+      "options": {
+        "middleware": "wwise",
+        "version": "2023.1"
+      },
+      "files": [
+        {
+          "path": "Init.bnk",
+          "text": "BKHD"
+        },
+        {
+          "path": "bank.json",
+          "text": "{\"middleware\": \"wwise\", \"version\": \"2023.1.4\"}"
+        },
+        {
+          "path": "sfx/Main.bnk",
+          "text": "BKHD"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "banks": ["Init.bnk", "sfx/Main.bnk"]
+      }
+    },
+    {
+      "name": "middleware-mismatch-refused",
+      "options": {
+        "middleware": "fmod",
+        "version": "2.02.22"
+      },
+      "files": [
+        {
+          "path": "Init.bnk",
+          "text": "BKHD"
+        },
+        {
+          "path": "bank.json",
+          "text": "{\"middleware\": \"wwise\", \"version\": \"2.02\"}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "middleware",
+        "path": "bank.json"
+      }
+    },
+    {
+      "name": "version-mismatch-refused",
+      "options": {
+        "middleware": "fmod",
+        "version": "2.02.22"
+      },
+      "files": [
+        {
+          "path": "Master.bank",
+          "text": "RIFF"
+        },
+        {
+          "path": "bank.json",
+          "text": "{\"middleware\": \"fmod\", \"version\": \"2.03.0\"}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "middleware",
+        "path": "bank.json"
+      }
+    },
+    {
+      "name": "descriptor-missing-refused",
+      "options": {
+        "middleware": "fmod",
+        "version": "2.02"
+      },
+      "files": [
+        {
+          "path": "Master.bank",
+          "text": "RIFF"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "bank.json"
+      }
+    },
+    {
+      "name": "descriptor-unknown-bank-refused",
+      "options": {
+        "middleware": "fmod",
+        "version": "2.02"
+      },
+      "files": [
+        {
+          "path": "Master.bank",
+          "text": "RIFF"
+        },
+        {
+          "path": "bank.json",
+          "text": "{\"middleware\": \"fmod\", \"version\": \"2.02\", \"banks\": [\"Other.bank\"]}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "bank.json"
+      }
+    },
+    {
+      "name": "descriptor-duplicate-bank-refused",
+      "options": {
+        "middleware": "fmod",
+        "version": "2.02"
+      },
+      "files": [
+        {
+          "path": "Master.bank",
+          "text": "RIFF"
+        },
+        {
+          "path": "bank.json",
+          "text": "{\"middleware\": \"fmod\", \"version\": \"2.02\", \"banks\": [\"Master.bank\", \"Master.bank\"]}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "bank.json"
+      }
+    },
+    {
+      "name": "descriptor-bad-version-refused",
+      "options": {
+        "middleware": "fmod",
+        "version": "2.02"
+      },
+      "files": [
+        {
+          "path": "Master.bank",
+          "text": "RIFF"
+        },
+        {
+          "path": "bank.json",
+          "text": "{\"middleware\": \"fmod\", \"version\": \"2.x\"}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "bank.json"
+      }
+    }
+  ]
+}

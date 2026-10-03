@@ -128,6 +128,9 @@ func _init(p_storage: PKeyPackStorage = null) -> void:
 	PKeyPck.warm()
 	register_handler(PKeyFilesTreeHandler.new())
 	register_handler(PKeyGodotPckHandler.new())
+	register_handler(PKeyGodotZipHandler.new())
+	register_handler(PKeyDataJsonHandler.new())
+	register_handler(PKeyL10nTableHandler.new())
 	now = func() -> int: return int(Time.get_unix_time_from_system())
 	new_plan_id = func() -> String: return Crypto.new().generate_random_bytes(12).hex_encode()
 

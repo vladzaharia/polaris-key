@@ -962,10 +962,10 @@ static func capabilities() -> Dictionary:
 		"packs.apply.delta": {"status": "implemented", "service": "release", "na": []},
 		"packs.state": {"status": "implemented", "service": "release", "na": []},
 		"packs.handlers": {"status": "implemented", "service": "release", "na": []},
-		"packs.type.godot.zip": {"status": "planned", "service": "release", "na": []},
-		"packs.type.l10n.table": {"status": "planned", "service": "release", "na": []},
-		"packs.type.data.json": {"status": "planned", "service": "release", "na": []},
-		"packs.type.audio.bank": {"status": "planned", "service": "release", "na": []},
+		"packs.type.godot.zip": {"status": "implemented", "service": "release", "na": []},
+		"packs.type.l10n.table": {"status": "implemented", "service": "release", "na": []},
+		"packs.type.data.json": {"status": "implemented", "service": "release", "na": []},
+		"packs.type.audio.bank": {"status": "implemented", "service": "release", "na": []},
 		"packs.type.ml.model": {"status": "na", "service": "release", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.provides": {"status": "implemented", "service": "release", "na": []},
 		"packs.transport.apple": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -979,4 +979,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "85bb147fa0e772d3c841982db2b6e04f18eea6d36b19c35eedf557399d379f30"
+const CAPABILITY_DIGEST := "56cc46e8610ef89ebcdcabda32d64e74bb6135be600903f6eb6d9e0ec74b7dd2"

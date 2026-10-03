@@ -162,7 +162,7 @@ static func tree_pack(pack_id: String, version: String, seq: int, files: Diction
 			objects[sha(data)] = data
 			deltas.append({"method": "zstd-patch-from", "scope": "files", "from": from["treeDigest"], "memBytes": mem, "patch": {"sha256": sha(patch), "bytes": patch.size(), "size": patch.size(), "codec": "none"}, "data": {"sha256": sha(data), "bytes": data.size()}})
 	var variant := {
-		"variant": {}, "payload": {"size": full.size(), "sha256": digest},
+		"variant": opts.get("variant", {}), "payload": {"size": full.size(), "sha256": digest},
 		"full": {"sha256": sha(full), "bytes": full.size(), "size": full.size(), "codec": "none"},
 		"files": {"format": "pkey-files/1", "layout": "tree", "sha256": sha(index), "bytes": int(opts.get("indexBytes", index.size())), "size": int(opts.get("indexBytes", index.size())), "codec": "none"},
 	}
@@ -170,7 +170,7 @@ static func tree_pack(pack_id: String, version: String, seq: int, files: Diction
 		variant["deltas"] = deltas
 	var record := {
 		"schemaVersion": 1, "aud": PRODUCT, "deliverable": pack_id, "kind": "pack", "version": version, "seq": seq,
-		"issuedAt": 1759300000 + seq, "type": String(opts.get("type", "files.tree")), "formatVersion": 1,
+		"issuedAt": 1759300000 + seq, "type": String(opts.get("type", "files.tree")), "formatVersion": int(opts.get("formatVersion", 1)),
 		"handler": {"activation": String(opts.get("activation", "hot"))}, "variants": [variant],
 	}
 	if opts.get("entitlement", "") != "":
