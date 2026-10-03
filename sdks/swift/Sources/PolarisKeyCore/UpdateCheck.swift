@@ -150,12 +150,19 @@ public struct UpdateCheckContent: Sendable {
     /// its `variants` with `engine` and `axes`). Core cannot see the packs target, so the host
     /// hands its selection in; `PacksClient.contentInput()` does.
     public var selectsVariant: @Sendable (_ variants: [JSONValue]) -> Bool
+    /// The delegated releases the pack engine knows (`delegatedReleases()`, plans/P4-19.md §2.7):
+    /// record hash → its pack and delegation hash. A delegation entry naming one of these
+    /// delegations is relevant at step 11, and each release whose delegation is revoked joins the
+    /// decision's revocations.
+    public var delegated: [String: DelegatedRelease]
 
     public init(
         stamp: UpdateContentStamp, active: [String: ReleasePin], engine: String?,
         axes: [String: [String]], revoked: [String: VerifiedRevocation], relearn: [String] = [],
-        selectsVariant: @escaping @Sendable (_ variants: [JSONValue]) -> Bool
+        selectsVariant: @escaping @Sendable (_ variants: [JSONValue]) -> Bool,
+        delegated: [String: DelegatedRelease] = [:]
     ) {
+        self.delegated = delegated
         self.stamp = stamp
         self.active = active
         self.engine = engine
@@ -318,6 +325,10 @@ public func runUpdateCheck(
                     errors.append(UpdateCheckError(code: ErrorCode.recordMismatch))
                 case .refused(let step):
                     errors.append(UpdateCheckError(code: ErrorCode.recordRejected, detail: step.rawValue))
+                case .delegated:
+                    // An app record never takes the delegated path (plans/P4-19.md §2.4): no
+                    // delegation is passed here, so this does not occur.
+                    errors.append(UpdateCheckError(code: ErrorCode.recordRejected, detail: "jws"))
                 }
             }
         }
@@ -387,9 +398,17 @@ private func contentSteps(
     for pin in c.active.values { H.insert(pin.sha256) }
     for p in c.stamp.pins { H.insert(p.release.sha256) }
     for h in c.stamp.holds ?? [] { H.insert(h.release.sha256) }
+    // plans/P4-19.md §2.7: H's pack set (the stamp's expects, pins and holds, the active installs
+    // and the feed targets), for the relevance of delegation entries.
+    var packsH = Set(c.active.keys)
+    for p in c.stamp.pins { packsH.insert(p.pack) }
+    for e in c.stamp.expects { packsH.insert(e.pack) }
+    for h in c.stamp.holds ?? [] { packsH.insert(h.pack) }
+    let delegations = Set(c.delegated.values.map(\.delegation))
     if let ps = fc.packSets {
         let targets = selectPackRows(
             ps, contentApi: c.stamp.contentApi, platform: platform, engine: engine, axes: c.axes)
+        packsH.formUnion(targets.keys)
         for h in targets.values {
             H.insert(h)
             for o in (ps.outlets ?? [:]).values {
@@ -400,7 +419,14 @@ private func contentSteps(
         }
     }
 
-    // Step 11.
+    // Step 11. A pack-record entry is relevant when its target is in H; a delegation entry
+    // (plans/P4-19.md §2.7) when its target is the delegation of a delegated release this host
+    // knows, or its scope root covers, by whole segments, a pack in H's pack set.
+    let relevant: (FeedRevocation) -> Bool = { entry in
+        entry.kind == "delegation"
+            ? delegations.contains(entry.target) || packsH.contains { coversPack(entry.pack, $0) }
+            : H.contains(entry.target)
+    }
     var stored = c.revoked
     var learned: [LearnedRevocation] = []
     // The feed entries step 11 considers (target in H) that are now known: already stored with
@@ -408,7 +434,7 @@ private func contentSteps(
     var known = Set<String>()
     var fetches = 0
     for entry in fc.revocations ?? [] {
-        guard H.contains(entry.target) else { continue }
+        guard relevant(entry) else { continue }
         let have = stored[entry.target]
         if let have, have.record == entry.record {
             known.insert(entry.record)
@@ -444,7 +470,9 @@ private func contentSteps(
     for target in stored.keys.sorted() {
         let rev = stored[target]!
         var usable = false
-        if let rep = rev.replacement, H.contains(target), stored[rep.sha256] == nil,
+        // A delegation target has no replacement (plans/P4-19.md §2.6): one is ignored.
+        let replacement = delegations.contains(target) ? nil : rev.replacement
+        if let rep = replacement, H.contains(target), stored[rep.sha256] == nil,
             case .ok(let body) = await fetchRecord(rep.sha256)
         {
             let v = verifyReleaseRecord(
@@ -458,7 +486,17 @@ private func contentSteps(
             }
         }
         revInput.append(
-            ContentRevocationInput(target: target, pack: rev.pack, replacement: rev.replacement, replacementUsable: usable))
+            ContentRevocationInput(target: target, pack: rev.pack, replacement: replacement, replacementUsable: usable))
+    }
+    // plans/P4-19.md §2.7: each known delegated release whose delegation is revoked is revoked for
+    // the decision, with no replacement.
+    let targets = Set(stored.keys)
+    for record in c.delegated.keys.sorted() {
+        let d = c.delegated[record]!
+        if recordRevoked(record, d.delegation, targets) == .delegation {
+            revInput.append(
+                ContentRevocationInput(target: record, pack: d.pack, replacement: nil, replacementUsable: false))
+        }
     }
 
     // Step 13: the bucket of every gate salt.
@@ -477,7 +515,7 @@ private func contentSteps(
     var relearnCleared: [String] = []
     if feedSource == .network, let revs = fc.revocations {
         for p in c.relearn {
-            let all = revs.filter { $0.pack == p && H.contains($0.target) }.allSatisfy { known.contains($0.record) }
+            let all = revs.filter { $0.pack == p && relevant($0) }.allSatisfy { known.contains($0.record) }
             if all { relearnCleared.append(p) }
         }
     }

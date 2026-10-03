@@ -42,11 +42,17 @@ public struct PackInstall: Sendable, Equatable, Hashable {
     public var embedded: Bool?
     /// Epoch seconds of the commit.
     public var installedAt: Int
+    /// The delegation's compact JWS, verbatim, when a delegated content key signed `record`
+    /// (plans/P4-19.md §2.7): reload re-verifies it through the delegated path (its hash must be
+    /// the record's kid hex). Nil for a release-signed install; optional, so `PACK_STATE_VERSION`
+    /// stays 1.
+    public var delegation: String?
 
     public init(
         packId: String, record: String, recordSha256: String, version: String, seq: Int,
         type: String, variant: String, layout: String, payloadSha256: String, payloadSize: Int,
-        activation: String, location: String, embedded: Bool? = nil, installedAt: Int
+        activation: String, location: String, embedded: Bool? = nil, installedAt: Int,
+        delegation: String? = nil
     ) {
         self.packId = packId
         self.record = record
@@ -62,6 +68,7 @@ public struct PackInstall: Sendable, Equatable, Hashable {
         self.location = location
         self.embedded = embedded
         self.installedAt = installedAt
+        self.delegation = delegation
     }
 
     public var json: JSONValue {
@@ -74,6 +81,7 @@ public struct PackInstall: Sendable, Equatable, Hashable {
             "installedAt": .int(installedAt),
         ]
         if let embedded { o["embedded"] = .bool(embedded) }
+        if let delegation { o["delegation"] = .string(delegation) }
         return .object(o)
     }
 }
@@ -102,10 +110,13 @@ public struct PackJournal: Sendable, Equatable {
     public var delta: String?
     public var objects: [JournalObject]
     public var startedAt: Int
+    /// The delegation's compact JWS for a delegated record (as `PackInstall.delegation`).
+    public var delegation: String?
 
     public init(
         planId: String, packId: String, record: String, recordSha256: String, variant: String,
-        strategy: String, delta: String? = nil, objects: [JournalObject], startedAt: Int
+        strategy: String, delta: String? = nil, objects: [JournalObject], startedAt: Int,
+        delegation: String? = nil
     ) {
         self.planId = planId
         self.packId = packId
@@ -116,6 +127,7 @@ public struct PackJournal: Sendable, Equatable {
         self.delta = delta
         self.objects = objects
         self.startedAt = startedAt
+        self.delegation = delegation
     }
 
     public var json: JSONValue {
@@ -130,6 +142,7 @@ public struct PackJournal: Sendable, Equatable {
             "startedAt": .int(startedAt),
         ]
         if let delta { o["delta"] = .string(delta) }
+        if let delegation { o["delegation"] = .string(delegation) }
         return .object(o)
     }
 }
@@ -223,11 +236,17 @@ private func asInstall(_ v: JSONValue, _ packId: String) -> PackInstall? {
     }
     guard let activation = o["activation"]?.stringValue, activation == "hot" || activation == "restart"
     else { return nil }
+    // plans/P4-19.md §2.7: absent, or a string.
+    var delegation: String?
+    if let d = o["delegation"] {
+        guard let x = d.stringValue else { return nil }
+        delegation = x
+    }
     return PackInstall(
         packId: packId, record: s["record"]!, recordSha256: rs, version: s["version"]!, seq: seq,
         type: s["type"]!, variant: s["variant"]!, layout: s["layout"]!, payloadSha256: ps,
         payloadSize: size, activation: activation, location: s["location"]!, embedded: embedded,
-        installedAt: at)
+        installedAt: at, delegation: delegation)
 }
 
 private func asJournal(_ v: JSONValue, _ packId: String) -> PackJournal? {
@@ -243,6 +262,11 @@ private func asJournal(_ v: JSONValue, _ packId: String) -> PackJournal? {
         guard let s = d.stringValue else { return nil }
         delta = s
     }
+    var delegation: String?
+    if let d = o["delegation"] {
+        guard let x = d.stringValue else { return nil }
+        delegation = x
+    }
     guard wholeMatches("[A-Za-z0-9_-]{1,64}", planId) != nil else { return nil }
     guard let started = nat(o["startedAt"]), let list = o["objects"]?.arrayValue else { return nil }
     var objects: [JournalObject] = []
@@ -254,7 +278,8 @@ private func asJournal(_ v: JSONValue, _ packId: String) -> PackJournal? {
     }
     return PackJournal(
         planId: planId, packId: packId, record: record, recordSha256: rs, variant: variant,
-        strategy: strategy, delta: delta, objects: objects, startedAt: started)
+        strategy: strategy, delta: delta, objects: objects, startedAt: started,
+        delegation: delegation)
 }
 
 /// Whether stored text is at least a version-1 state document's shape.

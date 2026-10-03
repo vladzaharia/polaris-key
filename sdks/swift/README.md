@@ -576,6 +576,21 @@ try await update.packs.confirm()                             // this boot is hea
   `recoverState()` clears it. At most 256 targets are kept, the oldest dropped first.
   `revocations()` reports them. **A product that has never had a revocation has no
   `revocations.json`, no flag and no `relearn`, and behaves exactly as before.**
+- **Delegated content** (P4-19, P4-25). A compatible or standalone pack release signed by a
+  delegated content key installs through the same engine when it arrives as a feed target
+  (`ensureReleases`): the delegation its `pkd1-` kid names is fetched from the record route (at
+  most 16 per call, kept for the process), verified against `pinnedReleaseKeys` only, and stored
+  with the install (`PackInstall.delegation`), so a reload re-verifies it offline and after its
+  window. Every file must pass the data-only rule (`DataOnly.swift`): an extension allow-list over
+  the files index before any payload object is fetched, then a head sniff, a tail sniff and, for
+  `json`, `csv`, `tsv`, `po` and `txt`, a whole-file text rule as each file is written; a refusal
+  is `pack-not-data-only` with the `path` and the rule as `detail`. A release under a revoked
+  delegation is `pack-revoked`, detail `delegation`, and stops running. The stamp's pins and
+  holds, a revocation's replacement and embedded baselines never take the delegated path, and a
+  `pinnedReleaseKeys` kid matching `pkd1-<64 hex>` is `invalid-options`. Parse delegated text only
+  with a pure JSON or CSV parser. `DelegationConformanceTests` runs every `delegationCases` and
+  `dataOnlyCases` vector through `verifyReleaseRecord(options: …delegation:)`,
+  `verifyRevocation`, `recordRevoked`, `verifyFeed` and `dataOnlyRefusal`.
 - **Telemetry.** `devices/report` carries `content: {packSetId}` of the running set once a stamp
   is configured.
 - **Handlers.** `registerHandler(_:)` adds a type (`layout` `tree` or `container`, `activation`
@@ -592,6 +607,15 @@ destructure positionally need updating:
 - `binary`'s `prestage` is now `[PackTarget]`.
 - `RESERVED_RECORD_KINDS` is removed (`revocation` is now a real record kind).
 - `runBootFetch` and `PacksClient.bootFetch` return a 3-tuple that adds `background`.
+
+### Source changes (P4-25)
+
+- `VerifyReleaseRecordResult` gains `.delegated(ReleaseRecordDoc, RecordDelegation)`, returned
+  only when `VerifyReleaseRecordOptions.delegation` is passed; `record` covers both success cases
+  and `delegation` reads the new one. Exhaustive switches need the new case.
+- `ReleaseRecordStep` gains `.delegation` and `.scope`.
+- `FeedRevocation` gains `kind: String?` (default `nil`), and `PackInstall` and `PackJournal`
+  gain `delegation: String?` (default `nil`).
 
 ## Channels
 
