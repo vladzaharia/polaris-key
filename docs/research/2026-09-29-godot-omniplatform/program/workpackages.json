@@ -1518,7 +1518,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.5],
-      "deps": ["P4-22", "P3-03"],
+      "deps": ["P4-22", "P3-03", "S-08"],
       "planMode": false,
       "gates": ["migration", "table-owners", "threat-model"],
       "humanInputs": [
@@ -1839,7 +1839,7 @@
       "lane": "native",
       "role": "pkey-implementer",
       "estimateWeeks": [2, 3],
-      "deps": ["P3-10", "S-01"],
+      "deps": ["P3-10", "S-01", "S-09"],
       "planMode": false,
       "gates": ["ci:macos-26"],
       "humanInputs": ["Apple developer account", "test devices"],
@@ -1856,7 +1856,7 @@
       "lane": "native",
       "role": "pkey-implementer",
       "estimateWeeks": [2, 3],
-      "deps": ["P3-10", "S-05"],
+      "deps": ["P3-10", "S-05", "S-10"],
       "planMode": false,
       "gates": ["ci:android"],
       "humanInputs": ["Play Console test track", "test devices"],
@@ -1873,7 +1873,7 @@
       "lane": "native",
       "role": "pkey-implementer",
       "estimateWeeks": [2, 3],
-      "deps": ["P3-10", "S-05"],
+      "deps": ["P3-10", "S-05", "S-11"],
       "planMode": false,
       "gates": ["ci:macos", "ci:windows"],
       "humanInputs": [
@@ -2186,6 +2186,82 @@
       "refs": ["README §12 policy drift"],
       "brief": "wp/S-07-policy-recheck.md",
       "status": "done"
+    },
+    {
+      "id": "S-08",
+      "title": "Cloudflare Queues, Workflows and Containers for lazy deltas",
+      "phase": "S",
+      "lane": "spike",
+      "role": "pkey-spike-runner",
+      "estimateWeeks": [0.5, 1],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [
+        "Workers Paid with Queues, Workflows and Containers enabled (live parts only)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [],
+      "brief": "wp/S-08-cloudflare-async-compute.md",
+      "status": "todo"
+    },
+    {
+      "id": "S-09",
+      "title": "StoreKit 2, AppTransaction, AppDistributor, Keychain and the Godot iOS binding",
+      "phase": "S",
+      "lane": "spike",
+      "role": "pkey-spike-runner",
+      "estimateWeeks": [0.5, 1],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [
+        "Apple developer account and a device (device-only parts)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [],
+      "brief": "wp/S-09-apple-storekit-distributor.md",
+      "status": "todo"
+    },
+    {
+      "id": "S-10",
+      "title": "Play In-App Updates, Play Asset Delivery, PackageInstaller and the Godot Android binding",
+      "phase": "S",
+      "lane": "spike",
+      "role": "pkey-spike-runner",
+      "estimateWeeks": [0.5, 1],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [
+        "Play Console test track and a device (Play-install parts)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [],
+      "brief": "wp/S-10-android-play-installer.md",
+      "status": "todo"
+    },
+    {
+      "id": "S-11",
+      "title": "Sparkle, Velopack, WinSparkle and StoreContext from a Godot desktop app",
+      "phase": "S",
+      "lane": "spike",
+      "role": "pkey-spike-runner",
+      "estimateWeeks": [0.5, 1],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [
+        "code-signing certificates and a Partner Center app (signed parts)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [],
+      "brief": "wp/S-11-desktop-updaters.md",
+      "status": "todo"
     },
     {
       "id": "D-01",
