@@ -7,3 +7,19 @@ packages:
 overrides:
   "@types/node": ^22.14.0
   jiti: ^2.7.0
+  # Security floors for transitive dependencies (Dependabot). Each selector stays inside the
+  # major its parents ask for, so these only lift a lockfile pin to the patched release. None of
+  # these packages ships in the Worker bundle, a published package or the Action bundle; they are
+  # build/test tooling (wrangler/miniflare, vitest, astro, vite, babel, changesets, ajv).
+  "undici@^7": ^7.29.1
+  "undici@^8": ^8.10.2
+  "ws@^8": ^8.21.0
+  "sharp@<0.35.4": ^0.35.4
+  "devalue@^5": ^5.9.3
+  "fast-uri@^3": ^3.1.8
+  "browserslist@^4": ^4.28.7
+  "baseline-browser-mapping@^2": ^2.11.0
+  "postcss@^8": ^8.5.23
+  "js-yaml@^3": ^3.15.2
+  "js-yaml@^4": ^4.3.2
+  "esbuild@>=0.27.3 <0.28.1": ^0.28.1
