@@ -2163,6 +2163,66 @@ Residuals, stated rather than defended:
 - **`blob_gc_log` names keys, not tenants, for deletions.** An object's deletion is attributed to
   no product; the `ref-dropped` rows say which product dropped the last ref.
 
+### Lazy hot-pair deltas (P4-17)
+
+P4-17 adds install telemetry (`devices/report`'s `packInstalls`), a demand store in D1, a queue
+(`pkey-deltas-<env>`, with a dead-letter queue) fed by the nightly sweep and by an R2
+event-notification rule on the payload prefixes, and a **second Worker script**, the consumer
+(`polaris-key-deltas-<env>`, `wrangler.deltas.toml`), which encodes `zstd-patch-from` deltas in
+WebAssembly (`@polaris-key/zstd-wasm/encoder`, level 9, levels above 15 refused, 32 MiB per side).
+It adds no route and no wire member. Off by default twice: the `LAZY_DELTAS` var in both scripts
+and a per-product `lazy_delta_settings` row.
+
+- **A lazy delta carries no trust of its own.** It is in no CI-signed record. A device that is
+  offered one checks the artifact's SHA-256 and length, that its base is the installed payload,
+  and that the output's SHA-256 is the target's, which comes from the CI-signed pack record
+  (A7 §3.4); any mismatch fails the strategy and the device falls back. **A compromised Worker
+  (either script) can therefore offer junk deltas, which costs bandwidth and CPU, never
+  integrity.** The same window check every applier makes (`windowLogMax` from `memBytes`) bounds a
+  hostile frame's memory before it is decoded.
+- **No byte work on the request path.** The report handler only upserts D1 counters for an
+  opted-in product; it reads no payload, decodes nothing and enqueues nothing (asserted by
+  `test/register.test.ts` with a blob store that throws on use, and by a source check that only
+  `src/deltasEntry.ts` imports the encoder). Every encode runs in the consumer, one message at a
+  time (batch 1, concurrency 1), so an encode never shares an isolate with a request or with a
+  second encode.
+- **Telemetry cannot write bytes, only counts.** A device can claim any (from, to) pair, but a
+  claim only adds one row per device and pair; the consumer encodes only between two payloads of
+  the same pack and variant that stored CI-signed records name, which the product holds refs to
+  (possession, as for every other ref), under the threshold (25 distinct devices in 7 days by
+  default) and the daily cap (20 per product by default). A fleet of forged devices can at most
+  make the product spend its daily cap on deltas it did not need; they are verified like any
+  other. The inputs are checked against the payload hashes the records name before encoding,
+  and the frame is decoded over the base and compared with the target before it is stored.
+- **Publish rules hold.** Never against a base starting with `37 A4 30 EC`; one bare frame with
+  its content size and checksum; stored only through `putVerified` (R2 checks the SHA-256, the
+  write is create-only) under `deltas/<from>/<to>.zstd-patch-from`, or under `gated/` when either
+  side is gated, so a gated delta is served (once the feed offers it) only through the same
+  delivery authorisation as the gated payloads.
+- **The ref a lazy delta earns.** The consumer records the object (`blob_objects`, kind `delta`)
+  and a `lazy-delta` ref for the product whose two payloads it read. The key is content-derived,
+  so two products with the same pair of payloads reach the same object; each earns its ref only
+  through its own possession of both payloads (its `pack-object` refs) and its own opt-in, never
+  from the other's. The collector never drops a `lazy-delta` ref; the sweep drops it when the
+  delta goes cold (no device reported the pair for 30 days), after which the collector's normal
+  mark, grace and lock rules apply.
+- **Poison and replay.** Each message is acknowledged or retried on its own; a malformed one is
+  acknowledged without work. Idempotency comes from the pair's `release_lazy_deltas` row and the
+  deterministic key (`head` before work, create-only put), never from the event: a duplicate or a
+  re-PUT event does nothing.
+
+Residuals, stated rather than defended:
+
+- **The delta menu is not served yet.** Offering a lazy delta to devices needs the feed's
+  reserved `deltas` member to be given a shape, which is a wire change (WIRE-CONTRACT-V4 §2.4;
+  P4-17's Corrections). Until then generated deltas are stored and recorded only.
+- **Demand rows hold device ids.** `delta_demand_devices` keeps (device, pair, strategy, time) for
+  30 days to count distinct devices (docs/PRIVACY.md); they are not purged with the device.
+- **workerd enforces neither 128 MB nor `cpu_ms` locally** (notes/S-08 §2.5). The memory budget is
+  a test against the encoder's own measurement (≤ 96 MiB at the cap), and the cap is the only
+  defence against an isolate OOM in production; a pair above it is refused as
+  `over-worker-cap`, never attempted.
+
 ### The compatibility matrix and the device simulator (P4-15)
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and

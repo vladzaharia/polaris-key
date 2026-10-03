@@ -184,3 +184,71 @@ package, and every decision in §8.1 that names it as owner, override this brief
 ## Plan amendments (S-08)
 
 The spike note [`notes/S-08-cloudflare-async-compute.md`](../../notes/S-08-cloudflare-async-compute.md) changes this package: its §6 recommendation (Queues plus a WASM zstd encoder in a separate consumer Worker; level 9, levels above 15 refused; a 32 MiB per-side cap; no Workflows or Containers, which move to a later P4-17b) and its §8 owner steps override this brief where they differ. Human inputs shrink to Workers Paid with Queues enabled and an R2 event-notification rule.
+
+## Corrections from implementation
+
+- **The delta menu is a wire change, so it is not in this package.** The brief says "Plan mode:
+  no" because it assumed the feed already has a delta menu. It does not:
+  WIRE-CONTRACT-V4 §2.4 lists `deltas` (P4-17) only as a **reserved** feed member that v4
+  verifiers ignore, with no shape. Giving it a shape, reading it in client-core (`feedContent`),
+  adding `feedContentCases` and porting the reader to every SDK is the same kind of change P4-13
+  made under plan mode. Per AGENTS.md and the lead's instruction it was not improvised. Everything
+  up to the menu ships: telemetry, demand, policy, queue, consumer, encoder, storage, descriptor
+  rows and cold marking. Generated deltas are stored, verified and recorded, and nothing offers
+  them to devices yet. The fourth acceptance criterion (the feed lists the lazy delta and the
+  planner picks it) moves to a plan-mode follow-up. `release_lazy_deltas.descriptor_json` already
+  holds `{method, scope, from, to, size, memBytes, windowLog, artifact}`, and
+  `readyDeltasTo(db, product, to)` is the composer's read.
+- **The per-product opt-in is a D1 row, not `patch.deltaBases: hot-pairs`.**
+  `.pkey/release`'s `patch.deltaBases` is an integer from 0 to `MAX_PACK_DELTA_BASES` that the CLI
+  uses as the number of CI bases. A string value would be a manifest validator and schema change
+  (rule 9) plus a CLI change. The lead specified `LAZY_DELTAS` as a per-product opt-in flag, so
+  this package uses two switches, both off by default:
+  - the `LAZY_DELTAS` var, a kill switch in both Worker scripts;
+  - a `lazy_delta_settings` row per product (`enabled`, plus optional `hot_devices` and
+    `daily_cap`), set by an operator (RUNBOOK "Lazy deltas"). Enabling a product never needs a
+    deploy (rule 5).
+- **The encoder's frame is not byte-identical to the CLI's.** S-08 measured identity with a
+  buffered input. That needs a second target-sized buffer: about 116 MiB at the 32 MiB cap,
+  against the 96 MiB budget. The committed encoder reads the target from a stable input buffer
+  (`ZSTD_c_stableInBuffer`) and stream-decodes `zstd`-coded inputs into place
+  (`ZSTD_d_stableOutBuffer`), so the compressed bytes are never resident. That keeps the cap at
+  about 84 MiB. On the corpus v1 → v2 pair the frame is 9 bytes smaller than
+  `zstd --single-thread -9` (325,258 against 325,267 bytes). The test pins its SHA-256 and decodes
+  it back. Every frame is verified by decoding before it is stored, so identity was never a
+  correctness property.
+- **The R2 rules are two, one per final payload prefix:** `blobs/sha256/` and
+  `gated/blobs/sha256/`. Both prefixes also hold file blobs and indexes, and no narrower prefix
+  exists. The consumer resolves each event through the key's `pack-object` refs and acknowledges
+  anything that is not a pack payload of an opted-in product. An event that arrives before its
+  record's ingest is retried 3 times, 5 minutes apart. A new payload has no demand of its own yet,
+  so an event fans out to the payloads most devices sit on (`installedBase`: devices that last
+  moved to X are on X), at most 3 pair jobs.
+- **There is no `queue` export on the request Worker.** The consumer is its own script
+  (`src/deltasEntry.ts`, `wrangler.deltas.toml`, deployed as `polaris-key-deltas-<env>`), as S-08
+  §6.2 recommends, and it is the only module that imports the encoder. `src/index.ts` is
+  unchanged. The request Worker only produces (`DELTA_QUEUE`), from the nightly sweep.
+- **The report handler never sends to the queue.** The brief allows it ("at most"). Hot pairs are
+  found by the nightly sweep instead, so the request path is D1-only. The test asserts both: it
+  touches no blob store and sends nothing.
+- **Delta installs are stored, not counted.** A `strategy: "delta"` entry is not demand, but its
+  row keeps a generated delta warm, so cold marking is "no device reported the pair, by any
+  strategy, for 30 days".
+- **The demand tables are Core's.** The report handler is in `core/devices.ts` and may not import
+  a service (rule 6), so `lazy_delta_settings`, `delta_demand_devices` and `delta_demand` belong
+  to Core (`core/deltaDemand.ts`). Only `release_lazy_deltas` is Release's.
+- **The `packInstalls` emission is in client-core and the Node SDK only.**
+  - `PackEngine.packInstalls()` keeps the last 8 finished installs. A first install is not
+    reported.
+  - `@polaris-key/node` sends them.
+  - React, Python, Swift and Godot are follow-ups, as is P6-03's `updates`, which no SDK emits yet
+    either.
+  - `durationMs` is accepted but not sent: the engine's clock is in seconds.
+- **The report test lives in `test/register.test.ts`.** The brief's pointer is right. The comment
+  in `core/devices.ts` still names `licensingEdge.test.ts`.
+- **HTTP transcripts were regenerated.** The report allowlist the transcripts record (`allowedKeys`)
+  gained `packInstalls`. The regeneration ran through `pnpm gen:transcripts`, with the Swift and
+  Godot mirrors.
+- **The `dev` queues do not exist yet.** `wrangler.toml` and `wrangler.deltas.toml` bind
+  `pkey-deltas-dev` and `pkey-deltas-dlq-dev` for the `dev` environment, as for the others. They
+  must be created before `dev` is deployed (DEPLOYMENT §3 "Lazy deltas").
