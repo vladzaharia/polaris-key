@@ -2,7 +2,8 @@
 //
 //   signal                    read from
 //   ────────────────────────  ──────────────────────────────────────────────────────────────────
-//   ios.appDistributor        MarketplaceKit `AppDistributor.current`, behind #available(iOS 17.4)
+//   ios.appDistributor        MarketplaceKit `AppDistributor.current` (PolarisKeyPlatform's
+//                             `SystemDistributor`), behind #available(iOS 17.4)
 //                             (the package floor is iOS 17), raced against a deadline: it never
 //                             returned on the simulator (S-06 §1), so a timeout records `timeout`,
 //                             which is no evidence. Its `web` case exists from iOS 17.5 only.
@@ -24,10 +25,7 @@
 
 import Foundation
 import PolarisKeyCore
-
-#if canImport(MarketplaceKit) && os(iOS)
-import MarketplaceKit
-#endif
+import PolarisKeyPlatform
 #if os(macOS)
 import Security
 #endif
@@ -117,24 +115,15 @@ public final class OutletReaderEnvironment: Sendable, Equatable {
 }
 
 /// `AppDistributor.current` mapped to its signal value, where MarketplaceKit exists (iOS 17.4+).
+/// The call itself is PolarisKeyPlatform's (`SystemDistributor`, P5-05), so the package holds one
+/// AppDistributor call; an error reads `other` (no evidence), as before.
 private func platformAppDistributor() -> (@Sendable () async -> String?)? {
-    #if canImport(MarketplaceKit) && os(iOS)
-    if #available(iOS 17.4, *) {
-        return {
-            guard let d = try? await AppDistributor.current else { return "other" }
-            switch d {
-            case .appStore: return "appStore"
-            case .testFlight: return "testFlight"
-            case .marketplace(let id): return "marketplace:\(id)"
-            case .other: return "other"
-            default:
-                if #available(iOS 17.5, *), case .web = d { return "web" }
-                return "other"
-            }
-        }
+    let availability = PlatformAvailability.current
+    guard availability.appDistributor else { return nil }
+    return {
+        guard let d = try? await SystemDistributor().current() else { return "other" }
+        return signal(for: d, availability: availability)
     }
-    #endif
-    return nil
 }
 
 /// The leaf certificate's common name, without a team suffix (`Developer ID Application: X (T)`

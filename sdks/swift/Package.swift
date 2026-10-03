@@ -23,7 +23,16 @@ import PackageDescription
 //                   libzstd (the official facebook/zstd SwiftPM package, pinned 1.5.7, since
 //                   Apple's Compression has no zstd) and never Sparkle.       (deps Core, libzstd)
 //   PolarisKeyUpdate   the update client (`UpdateClient`, its `packs` facet) and the Sparkle
-//                   wiring, which alone is macOS ONLY.              (deps Core, Packs, Sparkle)
+//                   wiring, which alone is macOS ONLY.    (deps Core, Packs, Platform, Sparkle)
+//   PolarisKeyPlatform the Apple platform edges (P5-05): AppDistributor, AppTransaction,
+//                   StoreKit 2, Keychain and Background Assets. STANDALONE: it depends on no
+//                   other target, so the Godot GDExtension (sdks/godot/native/ios/) and later
+//                   Unity, MAUI and Tauri link it alone. Code that needs an Xcode 26+ SDK is
+//                   behind `#if compiler(>=6.3/6.4)`, because the macos-15 job compiles this
+//                   package with Xcode 16.4.                                   (deps none)
+//   PolarisKeyPlatformC the C surface over it (`pkp_call`, `pkp_free`,
+//                   `pkp_set_event_callback`), linked by native hosts only, so a Swift
+//                   consumer of PolarisKeyPlatform exports no `pkp_*` symbols.  (deps Platform)
 //   PolarisKeyUI       the drop-in SwiftUI gate.              (deps Core + License + Config)
 //   PolarisKey      the umbrella: `PolarisKeyClient` + `@_exported import` of the
 //                   cross-platform modules (Core, License, Config, Identity, Release), so a
@@ -69,6 +78,10 @@ let package = Package(
         .library(name: "PolarisKeyUpdate", targets: ["PolarisKeyUpdate"]),
         // Brandable SwiftUI login/gate components layered over the services.
         .library(name: "PolarisKeyUI", targets: ["PolarisKeyUI"]),
+        // The Apple platform edges (P5-05), and their C surface for native hosts (only a native
+        // host links PolarisKeyPlatformC, so Swift consumers export no `pkp_*` symbols).
+        .library(name: "PolarisKeyPlatform", targets: ["PolarisKeyPlatform"]),
+        .library(name: "PolarisKeyPlatformC", targets: ["PolarisKeyPlatformC"]),
     ],
     dependencies: [
         // D-24: Sparkle continues as the update mechanism. 2.9.6 is the security floor: the
@@ -114,10 +127,21 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
+            name: "PolarisKeyPlatform",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .target(
+            name: "PolarisKeyPlatformC",
+            dependencies: ["PolarisKeyPlatform"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .target(
             name: "PolarisKeyUpdate",
             dependencies: [
                 "PolarisKeyCore",
                 "PolarisKeyPacks",
+                // The one AppDistributor call lives in PolarisKeyPlatform (P5-05).
+                "PolarisKeyPlatform",
                 .product(
                     name: "Sparkle", package: "Sparkle",
                     condition: .when(platforms: [.macOS])),
@@ -157,6 +181,14 @@ let package = Package(
                 .copy("Resources/v2"),
                 .copy("Resources/transcripts"),
             ],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // PolarisKeyPlatform against fakes only: StoreKit Testing loads no products under
+        // `swift test`, and the Keychain answers -34018 without a host app (S-09). The StoreKit
+        // tests run in the hosted XCTest project under PlatformHostTests/ instead.
+        .testTarget(
+            name: "PolarisKeyPlatformTests",
+            dependencies: ["PolarisKeyPlatform", "PolarisKeyPlatformC"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
     ]

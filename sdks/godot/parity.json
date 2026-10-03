@@ -27,8 +27,8 @@
     "core.caps": { "status": "implemented" },
     "core.store": {
       "status": "planned",
-      "wp": "P5-05",
-      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent); the Keychain binding is P5-05's and the Keystore binding P5-06's; no work package owns a desktop keyring."
+      "wp": "P5-06",
+      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). P5-05 adds the iOS Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group, migrated from the file store, failures surfaced as keyring-error), which PKeyCore picks by default on iOS when the Apple plugin is present. The Android Keystore store is P5-06's; no work package owns a desktop keyring."
     },
     "license.gate": {
       "status": "implemented"
@@ -119,7 +119,7 @@
     },
     "outlet.detect": {
       "status": "implemented",
-      "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper, web display mode); the iOS AppDistributor and Windows package readers are hooks that answer unavailable until P5-05 and a Windows native reader. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
+      "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper, web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
     },
     "packs.record": {
       "status": "implemented",
@@ -198,24 +198,12 @@
     "packs.transport.apple": {
       "status": "planned",
       "wp": "P5-08",
-      "note": "iOS goes through P5-05's plugin; no work package owns a macOS binding (program README §9).",
+      "note": "iOS goes through P5-05's plugin: PKeyApple (native/pkey_apple.gd) exposes AssetPackManager (ensure, status, checkForUpdates, remove, url(for:), pack_progress / pack_ready / pack_failed), Unsupported below iOS 26.4 (version) and in builds without the extension (outlet); P5-08 wires it as the apple-ba transport. No work package owns a macOS binding (program README §9).",
       "except": [
-        {
-          "runtime": "linux",
-          "reason": "runtime"
-        },
-        {
-          "runtime": "windows",
-          "reason": "runtime"
-        },
-        {
-          "runtime": "android",
-          "reason": "runtime"
-        },
-        {
-          "runtime": "web",
-          "reason": "runtime"
-        }
+        { "runtime": "linux", "reason": "runtime" },
+        { "runtime": "windows", "reason": "runtime" },
+        { "runtime": "android", "reason": "runtime" },
+        { "runtime": "web", "reason": "runtime" }
       ]
     },
     "packs.transport.play": {
@@ -326,7 +314,8 @@
     },
     "commerce.receipt": {
       "status": "planned",
-      "wp": "P6-01"
+      "wp": "P6-01",
+      "note": "P5-05's PKeyApple carries the StoreKit 2 client (products, purchase with appAccountToken, entitlements, the deduplicated Transaction.updates listener, finish after the server records the purchase; every result carries the signed JWS); P6-01 builds the server-side bridge."
     }
   }
 }

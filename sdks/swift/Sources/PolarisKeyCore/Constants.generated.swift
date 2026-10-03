@@ -92,6 +92,7 @@ public enum ErrorCode {
     public static let httpError = "http-error"
     public static let invalidResponse = "invalid-response"
     public static let storeFailed = "store-failed"
+    public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
     public static let feedRejected = "feed-rejected"
@@ -230,6 +231,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "http-error",
     "invalid-response",
     "store-failed",
+    "platform-error",
     "no-token",
     "mint-unavailable",
     "feed-rejected",
@@ -368,6 +370,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "http-error": "client",
     "invalid-response": "client",
     "store-failed": "client",
+    "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",
     "feed-rejected": "client",
