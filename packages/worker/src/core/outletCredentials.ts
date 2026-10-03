@@ -281,8 +281,9 @@ export async function validateOutletCredential<K extends OutletCredentialKind>(
  *   - **Audited.** Every change of a pin is its own `outlet_credential.pin` audit row (old and
  *     new value) written by the admin handler, apart from the `outlet_credential.set` row.
  *
- * Reuse by other connectors (P5-04 Microsoft Store next): add one entry here — as P5-03 did for
- * the Play app's package name (`google-service-account`, field `packageName`) — and call
+ * Reuse by other connectors: add one entry here — as P5-03 did for the Play app's package name
+ * (`google-service-account`, field `packageName`) and P5-04 for the Microsoft Store app's Store
+ * ID (`ms-partner-center`, field `productId`) — and call
  * `checkOutletCredentialPin(info, identity.<field>)` in that connector's setup before it opens
  * anything, refusing every control and webhook when it is not `ok`. Nothing else in this module or
  * the admin handler changes: the PUT body's `pin`, the list's `pins` map, the audit row and the
@@ -320,6 +321,15 @@ export const OUTLET_CREDENTIAL_PINS: Readonly<
     label: "Google Play package name",
     message:
       "pin must be the Google Play app's package name (an Android application id such as com.example.game)",
+  },
+  // A Partner Center Entra app with the Manager role reaches every app of the seller account
+  // (P5-04). The manifest's `ms-store` `productId` rule: the 12-character Store ID.
+  "ms-partner-center": {
+    field: "productId",
+    pattern: /^[A-Za-z0-9]{12}$/,
+    label: "Microsoft Store product id (Store ID)",
+    message:
+      "pin must be the Microsoft Store product id (the app's 12-character Store ID, such as 9NBLGGH4R315)",
   },
 };
 

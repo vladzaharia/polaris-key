@@ -4,10 +4,11 @@ extends RefCounted
 ## overriding them (tests/support/fake_outlet_env.gd). This class is the real runtime: OS,
 ## FileAccess, DirAccess, Engine singletons, JavaClassWrapper and JavaScriptBridge.
 ##
-## The two native readers are hooks that answer null ("unavailable", no evidence) until their
-## plugins land: ios_app_distributor() (AppDistributor.current, P5-05's Apple plugin package) and
-## windows_package() (package identity, SignatureKind, App Installer URI and external location,
-## a Windows native reader). Android needs no plugin: getInstallSourceInfo and the initiator's
+## Two readers are native: ios_app_distributor() and ios_bundle_evidence() answer this launch's
+## `distributor` read through PKeyApple (P5-05's Apple plugin; null, no evidence, before it
+## arrives or without the plugin), and windows_package() (package identity, SignatureKind, App
+## Installer URI and external location) is a hook that answers null until a Windows native reader
+## lands. Android needs no plugin: getInstallSourceInfo and the initiator's
 ## certificate digest are pure GDScript through AndroidRuntime and JavaClassWrapper (Godot 4.4+,
 ## measured on 4.7.2 in notes/S-06 §7).
 
@@ -128,9 +129,30 @@ static func _jstr(v: Variant) -> Variant:
 
 
 ## AppDistributor.current as a signal value (`appStore`, `testFlight`, `marketplace:<id>`,
-## `web`, `other`, `timeout`), or null: unavailable until P5-05's Apple plugin answers it.
+## `web`, `other`, `timeout`), or null (no evidence): this launch's PKeyApple distributor read,
+## raced against its 2 s deadline (PKeyApple.start_launch_reads(), started by the PolarisKey
+## autoload on iOS). Its `unavailable` maps to `timeout` after a timeout and to null otherwise.
 func ios_app_distributor() -> Variant:
-	return null
+	var d = PKeyApple.launch_distributor()
+	if not (d is Dictionary) or not (d.get("signal") is String):
+		return null
+	if d["signal"] == "unavailable":
+		return "timeout" if d.get("reason") == "timeout" else null
+	return d["signal"]
+
+
+## The static bundle evidence read with the distributor: {provisioned: bool,
+## altBundleIdentifier: String|null, bundleIdentifier: String|null}, or null without the plugin.
+## It can veto a store outlet and never selects one.
+func ios_bundle_evidence() -> Variant:
+	var d = PKeyApple.launch_distributor()
+	if not (d is Dictionary) or not d.has("provisioned"):
+		return null
+	return {
+		"provisioned": d.get("provisioned") == true,
+		"altBundleIdentifier": d.get("altBundleIdentifier") if d.get("altBundleIdentifier") is String else null,
+		"bundleIdentifier": d.get("bundleIdentifier") if d.get("bundleIdentifier") is String else null,
+	}
 
 
 ## The Windows package reader: {packageIdentity, signatureKind, appInstallerUri,

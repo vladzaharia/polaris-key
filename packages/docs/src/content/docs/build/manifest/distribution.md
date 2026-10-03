@@ -103,7 +103,7 @@ optional. A bad value is `invalid_outlet_identity`.
 | `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                                                                   |
 | `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                                                          |
 | `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                                                 |
-| `ms-store`                 | `productId` (12 characters), `packageFamilyName`                                                                                          |
+| `ms-store`                 | `productId` (12 characters), `packageFamilyName`, `flights` (channel → package flight)                                                    |
 | `app-installer`            | `packageFamilyName`, `publisher` (the MSIX Publisher, a certificate subject DN starting `CN=`), `updateSettings`                          |
 | `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                    |
 | `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                |
@@ -130,7 +130,14 @@ optional. A bad value is `invalid_outlet_identity`.
   manifest can describe the app, but not choose which app the operator's key works on.
 - **`artifact`** must name an `id` in `.pkey/release`'s `deliverables.app.artifacts` —
   otherwise `unknown_artifact_ref`.
-- **`tracks` and `branches`** keys must be declared channels — `stable`, `beta`, a manual
+- **`productId` must match the operator's pin.** The Microsoft Store connector runs only while
+  this `productId` equals the Store ID a platform admin pinned on the product's
+  `ms-partner-center` credential (see
+  [Microsoft Store](/docs/services/distribution/microsoft-store/#pinning-the-app)).
+- **`flights`** maps a declared channel to a Microsoft Store package flight, named by its
+  Partner Center friendly name or its flight id. The non-flighted submission is always the
+  `stable` channel, so `flights` names only the others (`{ beta: "Beta testers" }`).
+- **`tracks`, `branches` and `flights`** keys must be declared channels — `stable`, `beta`, a manual
   channel, or one of `deliverables.app.channels` — otherwise `unknown_channel_ref`.
 - **`packageFamilyName`** is the MSIX `<Name>_<PublisherId>`, the publisher id being 13
   characters. The Microsoft Store and App Installer entries may differ: a Store-signed and a

@@ -260,13 +260,110 @@ jobs:
       - run: swift test --package-path sdks/swift
       # P4-07: packs (PolarisKeyPacks, linking libzstd) and the update client that carries
       # `update.packs` build for iOS without Sparkle, whose product is conditioned to macOS.
-      - name: iOS build (packs, update)
+      - name: iOS build (packs, update, platform)
         working-directory: sdks/swift
+        # P5-05: PolarisKeyPlatform compiles here with Xcode 16.4 (Swift 6.1) because its Xcode 26+
+        # SDK code (AssetPackManager and the 26.4 Background Assets methods) is behind
+        # `#if compiler(>=6.3)`; this step proves the guards hold. The macos-26 job below compiles
+        # the guarded code.
+        # Warnings are errors for the P5-05 targets only: with SWIFT_TREAT_WARNINGS_AS_ERRORS the
+        # clang importer's libzstd configuration-macro warnings fail PolarisKeyPacks (measured
+        # with Xcode 26.6), which is not this job's concern.
         run: |
           for scheme in PolarisKeyPacks PolarisKeyUpdate; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO -quiet build
           done
+          for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
+          done
+
+  # P5-05: the Apple platform plugin with the Xcode 26 SDK. macos-26 (arm64, GA) ships Xcode
+  # 26.0.1 to 26.6 (26.6 the default) and the iOS 26.2, 26.4 and 26.5 simulator runtimes. Xcode
+  # is PINNED to 26.6 and the job fails unless the compiler is Swift 6.3 or later: the
+  # Background Assets client is behind `#if compiler(>=6.3)`, so an older default Xcode would
+  # silently compile it out. Steps: the package's `swift test` (fakes only) and an iOS build of every
+  # library with warnings as errors; the hosted XCTest project (StoreKit Testing needs a host
+  # app with get-task-allow; it asserts the product count); the xcframework for device and
+  # simulator; the iOS export check (store preset has the Background Assets extension, App
+  # Group and BA keys, sideload has none; both build for the device, unsigned); the PKeyApple
+  # facade's headless stub tests. No Apple account, certificate or App Store Connect is used.
+  apple:
+    name: Apple plugin (macos-26)
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          swift --version
+          v="$(swift --version 2>&1 | sed -n 's/.*Swift version \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1)"
+          major="${v%%.*}"; minor="${v#*.}"
+          if [ -z "$v" ] || [ "$major" -lt 6 ] || { [ "$major" -eq 6 ] && [ "$minor" -lt 3 ]; }; then
+            echo "Swift $v is below 6.3: the guarded Background Assets code would not compile" >&2
+            exit 1
+          fi
+      - name: swift build + test (warnings as errors)
+        run: |
+          swift build --package-path sdks/swift -Xswiftc -warnings-as-errors
+          swift test --package-path sdks/swift
+      - name: iOS build of every library
+        working-directory: sdks/swift
+        # Every library builds for iOS; the P5-05 targets with warnings as errors (the libzstd
+        # importer warnings make PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS).
+        run: |
+          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
+            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO -quiet build
+          done
+          for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
+          done
+      - name: hosted StoreKit / Keychain tests (iOS simulator)
+        # XcodeGen 2.45.4, the release asset checked against its SHA-256.
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/xcodegen.zip" \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.45.4/xcodegen.zip
+          echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          XCODEGEN="$RUNNER_TEMP/xcodegen/bin/xcodegen" sdks/swift/PlatformHostTests/run.sh
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkey-godot/4.7.2-ios
+          key: pkey-godot-4.7.2-ios-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      - name: Godot 4.7.2 editor and iOS export templates
+        run: |
+          D="$HOME/.cache/pkey-godot/4.7.2-ios"
+          sdks/godot/tools/fetch_godot.sh 4.7.2 "$D" --ios-template
+          T="$HOME/Library/Application Support/Godot/export_templates/4.7.2.stable"
+          mkdir -p "$T" && cp "$D/templates/ios.zip" "$D/templates/version.txt" "$T/"
+      - name: xcframework (device + simulator)
+        run: GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" sdks/godot/native/ios/build.sh
+      - name: iOS export check (store vs sideload, device builds)
+        run: |
+          gem install --user-install xcodeproj -v 1.27.0 --no-document
+          export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH" GEM_HOME="$(ruby -e 'print Gem.user_dir')"
+          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" BUILD=1 sdks/godot/native/ios/export_check.sh
+      - name: PKeyApple facade stub tests (headless)
+        run: |
+          rm -rf sdks/godot/addons/polaris_key/native/ios
+          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" PKEY_TEST_SUITES=native_apple,update sdks/godot/tools/run_tests.sh
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-logs
+          path: |
+            sdks/swift/PlatformHostTests/build/logs/
+            sdks/godot/build/ios_export_check/logs/
+            sdks/godot/build/logs/
 
   # The Godot SDK (sdks/godot): pure-GDScript SHA-512, both Ed25519 verifiers and the corpus
   # `jwsCases`, read from the generator-owned res:// mirror. PARITY requires the runner on the

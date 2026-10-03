@@ -390,6 +390,7 @@ function base(): Docs {
         "ms-store": {
           productId: "9NBLGGH4NNS1",
           packageFamilyName: "Acme.Desktop_abcdefghjkmnp",
+          flights: { beta: "Beta testers" },
         },
         "app-installer": {
           packageFamilyName: "Acme.Desktop_1a2b3c4d5e6f7",
@@ -2085,6 +2086,12 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (outlet(d, "steam").branches = ["beta"]),
   },
   {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "ms-store").flights = { beta: "-beta" }),
+  },
+  {
     code: "unknown_artifact_ref",
     file: "distribution",
     schema: "accepts",
@@ -2101,6 +2108,12 @@ const MUTATIONS: Mutation[] = [
     file: "distribution",
     schema: "accepts",
     mutate: (d) => (outlet(d, "steam").branches.events = "events"),
+  },
+  {
+    code: "unknown_channel_ref",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (outlet(d, "ms-store").flights.canary = "Canary ring"),
   },
   {
     code: "unknown_deliverable_ref",

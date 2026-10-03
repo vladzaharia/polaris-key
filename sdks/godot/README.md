@@ -950,6 +950,53 @@ delegated bytes, `pack_for`, the update check's step 11 and the facet's holds); 
 `replace_files=true`, the class list unchanged). About 6 s in the editor and 5 s on the macOS
 release template (M-series Mac, 4.7.2).
 
+## Apple plugin (`PKeyApple`, P5-05)
+
+iOS reaches AppDistributor, AppTransaction, StoreKit 2, the Keychain and Background Assets
+through PolarisKeyPlatform (`sdks/swift`) and a GDExtension written against Godot's C interface
+(no godot-cpp, no SwiftGodot). The native class `PolarisKeyApple` has one static
+`cmd(json) -> String`; the facade `addons/polaris_key/native/pkey_apple.gd` (`PKeyApple`) turns
+it into typed coroutines returning `PKeyResult`, drains the native event queue every frame and
+emits `transaction_updated(jws, transaction)`, `pack_progress(id, bytes, total)`,
+`pack_ready(id, path)` and `pack_failed(id, err)` on the main thread.
+
+```gdscript
+var apple := PKeyApple.shared()
+var d := await apple.distributor()          # detail: {signal, reason?, provisioned, …}
+var p := await apple.products(["gg.vlad.diceroll.pack.foes"])
+var b := await apple.purchase("gg.vlad.diceroll.pack.foes", app_account_token)
+# the server records b.detail.transaction.jws (P6-01), then:
+await apple.finish(b.detail.transaction.id)
+var r := await apple.ensure_packs([{"id": "foes-c3", "path": "foes/content.pck"}])
+```
+
+Without the native class every call answers Unsupported: `runtime` off iOS, `dependency` on an
+iOS build without the xcframework. Background Assets also answers `version` below iOS 26.4 and
+`outlet` in a build without the extension. On iOS with the plugin, `PKeyCore` stores the device
+id and the token in the Keychain (`PKeyKeychainStore`, migrated from the file store), and the
+`PolarisKey` autoload starts this launch's AppDistributor read, which outlet detection uses as
+`ios.appDistributor`, `ios.provisioningProfile` and `ios.bundleIdRewrite` once it arrives.
+
+Building and exporting (macOS with Xcode 26+):
+
+```sh
+GODOT_BIN=godot sdks/godot/native/ios/build.sh   # addons/polaris_key/native/ios/pkey_apple.xcframework
+                                                 # + its .gdextension (build products, not committed)
+godot --headless --export-release "iOS (App Store)" build/ios/Game.ipa   # Export Project Only
+sdks/godot/native/ios/patch_export.sh build/ios  # adds the Background Assets extension when the
+                                                 # preset asked for it
+```
+
+The iOS preset option `polaris_key/apple_background_assets` (`auto`, `on`, `off`; env
+`PKEY_APPLE_BACKGROUND_ASSETS`) marks the exported Info.plist; `auto` is on for `app-store` and
+`testflight` and off for sideload outlets, whose IPAs ship no extension. `patch_export.sh` runs
+S-01's `patch_ba.rb` unchanged (Ruby `xcodeproj` 1.27). The preset's
+`application/min_ios_version` must be at least 17.0. `native/ios/export_check.sh` checks a store
+and a sideload export end to end; `native/ios/sim_check.sh` runs the binding in Godot on the iOS
+simulator (it needs an arm64 simulator `libgodot.a`: the official 4.7.2 template's simulator
+slice is x86_64 only). Archiving and signing need the owner's Apple account and are not
+scripted here.
+
 ## Config (`PolarisKey.config`)
 
 ```gdscript

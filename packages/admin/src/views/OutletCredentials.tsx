@@ -121,6 +121,10 @@ const KINDS: {
   {
     value: "ms-partner-center",
     label: "Microsoft Partner Center app",
+    pin: {
+      label: "Microsoft Store product id (Store ID)",
+      help: "The 12-character Store ID of the one Microsoft Store app this Entra app may read for this product. The connector stays off unless .pkey/distribution names the same productId.",
+    },
     fields: [
       { key: "tenantId", label: "Tenant ID" },
       { key: "clientId", label: "Client ID" },
@@ -208,7 +212,9 @@ export function OutletCredentials({
       ? "appleId"
       : k === "google-service-account"
         ? "packageName"
-        : null);
+        : k === "ms-partner-center"
+          ? "productId"
+          : null);
 
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
