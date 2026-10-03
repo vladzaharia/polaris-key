@@ -583,7 +583,7 @@ public actor PackEngine {
     public func isAvailable(_ contentId: String) async throws -> Bool {
         _ = try requireLoaded()
         let granted = await opts.entitlements()
-        for i in running.values where providesMemo.facts(i.packId + "\u{0}" + i.recordSha256, i.record).answers(contentId, granted) {
+        for i in running.values where providesMemo.facts(ProvidesMemo.key(i.packId, i.recordSha256), i.record).answers(contentId, granted) {
             return true
         }
         return false
@@ -607,7 +607,10 @@ public actor PackEngine {
             PackTarget(pack: $0.pack, release: ReleasePin(sha256: $0.sha256, seq: $0.seq, version: $0.version))
         }
         let granted = await opts.entitlements()
-        for t in list where !isRevoked(t.release.sha256) {
+        // A revoked record, or one signed under a revoked delegation (checked here too, because a
+        // memo hit skips `fetchVerified`'s own check).
+        let delegated = delegatedReleases()
+        for t in list where revokedBy(t.release.sha256, delegated[t.release.sha256]?.delegation) == nil {
             if let f = await targetFacts(t), f.answers(contentId, granted) {
                 return PackProvider(packId: t.pack, release: t.release)
             }
@@ -619,9 +622,7 @@ public actor PackEngine {
     /// fetched and verified (`fetchVerified`); nil when that fails.
     private func targetFacts(_ t: PackTarget) async -> ProvidesFacts? {
         let sha = t.release.sha256
-        // Keyed by pack and hash: a hash alone would let a target naming another pack's record
-        // answer for it.
-        let key = t.pack + "\u{0}" + sha
+        let key = ProvidesMemo.key(t.pack, sha)
         if let hit = providesMemo.get(key) { return hit }
         guard let doc else { return nil }
         for case let i? in [doc.active[t.pack], doc.previous[t.pack], running[t.pack], embedded[t.pack]]
@@ -1104,10 +1105,6 @@ public actor PackEngine {
         return out
     }
 
-    /// Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
-    /// seeds, the index and the plan.
-    /// Step 2 for one release: the record fetched by hash and verified against the pinned release
-    /// keys with `pin: {kind: "pack", deliverable, version, seq}`. Throws a `PackError`.
     /// Step 2 for one pin: the record fetched by hash and verified against the pinned release
     /// keys, a delegated one through its delegation (plans/P4-19.md §2.3). Returns the body, the
     /// record and the delegation's compact JWS (or nil). `preflight` and `packFor` (P4-20) share
@@ -1165,6 +1162,8 @@ public actor PackEngine {
         return (body, record, delegated)
     }
 
+    /// Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
+    /// seeds, the index and the plan.
     private func preflight(_ packId: String, want: ReleasePin? = nil) async throws -> Preflight {
         let doc = try requireLoaded()
         guard let stamp = opts.stamp else {

@@ -157,11 +157,18 @@ Set the status in the PR that completes the work:
 - **Size.** Diceroll's registry, overcounted to ~1,215 namespaced ids, is 22,435 bytes of
   payload, inside the 65,536-byte cap. `MAX_PROVIDES` is 4,096 ids of at most 128 characters
   (printable ASCII without the space).
-- **Predecessor.** A pack record's `seq` always rises, so P is the stored pack record of the
-  deliverable with the highest `seq`, whatever its channel; provides is record-level, so
-  variants do not matter. A release with no `requires.contentApi` range supports every level;
-  two unranged releases are always compared. Live levels are every channel's live app releases'
-  contentApi values. A record without `provides` after one that had it drops every id.
+- **Predecessor (corrected on review, B1).** P is the stored pack record of the deliverable on
+  the SAME channel (`COALESCE(release_metadata.channel, 'stable')` equal to the new record's
+  channel, `stable` when it names none) with the highest `seq`; a record's `seq` always rises,
+  and provides is record-level, so variants do not matter. Comparing across channels broke the
+  check both ways: a beta addition forced a false `removes` on stable, and a beta `removes` let a
+  stable release drop the id silently. The live levels are those of the app releases that the
+  new release's channel serves: each app channel's routed pack channel (`packChannels`, else the
+  app channel), with its `includes` (beta includes stable). A release with no
+  `requires.contentApi` range supports every level; two unranged releases are always compared. A
+  record without `provides` after one that had it drops every id. Not done: comparing also with
+  the latest record of every other channel the new release will be served on (a stable release
+  reaches beta players through `includes`).
 - **Refusal reasons.** `pack-provides` (malformed list, or missing under `provides.required`) and
   `provides-dropped`; warnings are a new optional `warnings` member of the pack submit answer.
   The check runs before the ticket round is promoted.
@@ -183,5 +190,9 @@ Set the status in the PR that completes the work:
   fetch-and-verify helpers (as client-core's `fetchVerified`), so `pack_for`/`packFor` resolve a
   delegated feed target's `provides` through its delegation; both reset the delegation budget
   like `ensure`. Godot's `pack_for` calls P4-24's `is_revoked` directly.
+- **Review fixes.** `packFor` checks `revokedBy(sha, the delegation it was signed under)`, so a
+  memoised delegated target stops answering once its delegation is revoked in-process (client-core,
+  Python, Swift, with tests); a misspelt `provides` member is refused (`additionalProperties:
+false`, a validator check and a mutation entry).
 - **`supports()` examples.** The Node and Swift capability tests used `packs.provides` as their
   example of a planned feature; they now use `packs.apply.chunk`.

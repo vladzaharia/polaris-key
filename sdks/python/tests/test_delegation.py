@@ -541,3 +541,23 @@ def test_pack_for_resolves_a_delegated_feed_targets_provides() -> None:
     bare = engine(server, {})
     bare.load()
     assert bare.pack_for("event.halloween", [target(pack)]) is None
+
+
+def test_pack_for_stops_naming_a_memoised_delegated_target_once_its_delegation_is_revoked() -> None:
+    ck = content_key_pair()
+    d = delegation_for("djdl.events", ck["pub"])
+    pack = tree_pack(
+        "djdl.events.halloween",
+        "1.0.0",
+        1,
+        {"a.json": "{}"},
+        issued_at=1759250000,
+        signer={"pem": ck["pem"], "kid": d["kid"]},
+        record_extra={"provides": ["event.halloween"]},
+    )
+    e = engine(ByteServer.of(pack), {d["sha256"]: d["jws"]})
+    e.load()
+    assert e.pack_for("event.halloween", [target(pack)]) is not None
+    rev = delegation_revocation_for(d, "djdl.events")
+    e.record_revocations([{"revocation": verified(rev), "jws": rev["jws"]}])
+    assert e.pack_for("event.halloween", [target(pack)]) is None

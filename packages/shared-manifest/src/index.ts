@@ -2776,6 +2776,8 @@ function validatePackDeliverable(
     const p = isRecord(provides) ? provides : null;
     if (
       !p ||
+      // A typo (`requried`) must not silently leave a policy off.
+      Object.keys(p).some((k) => k !== "required" && k !== "from") ||
       (p.required !== undefined && typeof p.required !== "boolean") ||
       (p.from !== undefined &&
         (typeof p.from !== "string" ||
@@ -2787,7 +2789,7 @@ function validatePackDeliverable(
         "release",
         `${at}/provides`,
         "invalid_pack_provides",
-        `provides is {required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default ${DEFAULT_PROVIDES_FILE}}.`,
+        `provides is {required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default ${DEFAULT_PROVIDES_FILE}}, and nothing else.`,
       );
   }
   // ── type ──

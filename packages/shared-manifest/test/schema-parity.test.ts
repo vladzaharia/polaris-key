@@ -1352,6 +1352,13 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (core3d(d).provides.required = "yes"),
   },
   {
+    // A misspelt member is refused, never ignored.
+    code: "invalid_pack_provides",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).provides.requried = true),
+  },
+  {
     // Repo-relative, never escaping the repository.
     code: "invalid_pack_provides",
     file: "release",

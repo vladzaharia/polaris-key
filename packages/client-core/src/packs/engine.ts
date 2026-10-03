@@ -640,8 +640,17 @@ export class PackEngine {
           release: p.release,
         }));
       const granted = this.opts.entitlements?.() ?? null;
+      const delegated = this.delegatedReleases();
       for (const t of list) {
-        if (this.isRevoked(t.release.sha256)) continue;
+        // A revoked record, or one signed under a revoked delegation (checked here too, because
+        // a memo hit skips `fetchVerified`'s own check).
+        if (
+          this.revokedBy(
+            t.release.sha256,
+            delegated[t.release.sha256]?.delegation ?? null,
+          ) !== null
+        )
+          continue;
         const f = await this.targetFacts(t);
         if (f && f.provides.has(contentId) && entitled(f, granted))
           return {

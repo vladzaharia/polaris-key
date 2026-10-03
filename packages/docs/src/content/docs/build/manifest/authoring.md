@@ -428,7 +428,7 @@ deliverables:
   older Worker's resync and an older CLI's validation refuse it.
 - **`versioning.scheme`** as for the app (default `semver`).
 - **`provides`** is the pack's save-compatibility policy: `{required?: boolean, from?: path}`
-  (`invalid_pack_provides`). `from` is a repo-relative path to the JSON array of content ids each
+  and nothing else, so a misspelt member is refused (`invalid_pack_provides`). `from` is a repo-relative path to the JSON array of content ids each
   release provides (default `.pkey/provides.json`; no `.` or `..` segment, at most 256
   characters); `required: true` fails a publish without that file. See
   [Save compatibility](/docs/services/release/packs/#save-compatibility).

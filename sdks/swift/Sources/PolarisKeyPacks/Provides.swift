@@ -107,14 +107,18 @@ let MAX_PROVIDES_MEMO = 1024
 struct ProvidesMemo {
     private var table: [String: ProvidesFacts] = [:]
 
-    func get(_ sha256: String) -> ProvidesFacts? { table[sha256] }
+    /// The memo key of a pack's release: its pack id and record hash (a hash alone would let a
+    /// target that names another pack's record answer for it).
+    static func key(_ packId: String, _ recordSha256: String) -> String { packId + "\u{0}" + recordSha256 }
 
-    /// The facts of a verified record's compact JWS, memoised by its hash.
-    mutating func facts(_ sha256: String, _ jws: String) -> ProvidesFacts {
-        if let hit = table[sha256] { return hit }
+    func get(_ key: String) -> ProvidesFacts? { table[key] }
+
+    /// The facts of a verified record's compact JWS, memoised under `key` (`ProvidesMemo.key`).
+    mutating func facts(_ key: String, _ jws: String) -> ProvidesFacts {
+        if let hit = table[key] { return hit }
         let f = ProvidesFacts(record: verifiedPayloadOf(jws))
         if table.count >= MAX_PROVIDES_MEMO { table.removeAll() }
-        table[sha256] = f
+        table[key] = f
         return f
     }
 }

@@ -624,8 +624,12 @@ class PackEngine:
                 else [_target(p) for p in ((self._stamp or {}).get("pins") or ())]
             )
             granted = self._entitlements() if self._entitlements is not None else None
+            delegated = self.delegated_releases()
             for pack_id, release in items:
-                if self.is_revoked(release["sha256"]):
+                # A revoked record, or one signed under a revoked delegation (checked here too,
+                # because a memo hit skips `_fetch_verified`'s own check).
+                d = delegated.get(release["sha256"])
+                if self.revoked_by(release["sha256"], d["delegation"] if d else None) is not None:
                     continue
                 f = self._target_facts(pack_id, release)
                 if f is not None and content_id in f.provides and entitled(f, granted):

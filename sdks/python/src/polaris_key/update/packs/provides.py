@@ -124,16 +124,16 @@ class ProvidesMemo:
         self._limit = limit
         self._facts: Dict[str, ProvidesFacts] = {}
 
-    def get(self, sha256: str) -> Optional[ProvidesFacts]:
-        return self._facts.get(sha256)
+    def get(self, key: str) -> Optional[ProvidesFacts]:
+        return self._facts.get(key)
 
-    def facts_of(self, sha256: str, jws: str) -> ProvidesFacts:
-        """The facts of the verified record ``jws`` whose hash is ``sha256``."""
-        hit = self._facts.get(sha256)
+    def facts_of(self, key: str, jws: str) -> ProvidesFacts:
+        """The facts of the verified record ``jws``, memoised under ``key`` (``memo_key``)."""
+        hit = self._facts.get(key)
         if hit is not None:
             return hit
         f = provides_facts(verified_payload_of(jws))
         if len(self._facts) >= self._limit:
             self._facts.clear()
-        self._facts[sha256] = f
+        self._facts[key] = f
         return f

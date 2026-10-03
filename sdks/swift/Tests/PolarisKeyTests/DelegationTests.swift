@@ -194,6 +194,23 @@ final class DelegatedEngineTests: XCTestCase {
         }
     }
 
+    func testPackForStopsNamingAMemoisedDelegatedTargetOnceItsDelegationIsRevoked() async throws {
+        let ck = contentKeyPair()
+        let d = delegationFor(deliverable: "djdl.events", publicKey: ck.pub)
+        let pack = treePack(
+            packId: "djdl.events.halloween", version: "1.0.0", seq: 1, files: ["a.json": "{}"],
+            signer: (ck.key, d.kid), issuedAt: 1_759_250_000,
+            recordExtra: ["provides": .array([.string("event.halloween")])])
+        let e = engine(server: ByteServer(pack), delegations: [d.sha256: d.jws])
+        _ = try await e.load()
+        let first = try await e.packFor("event.halloween", targets: [target(pack)])
+        XCTAssertNotNil(first)
+        let rev = delegationRevocationFor((jws: d.jws, sha256: d.sha256, kid: d.kid), deliverable: "djdl.events")
+        try await e.recordRevocations([try verified(rev)])
+        let after = try await e.packFor("event.halloween", targets: [target(pack)])
+        XCTAssertNil(after)
+    }
+
     func testReSniffsAReusedInstallOnANoopPlan() async throws {
         let files: [String: Any] = ["cfg.txt": #"x = Object(GDScript,"script/source":"extends Node")"# + "\n"]
         let released = treePack(packId: "djdl.events.halloween", version: "0.9.0", seq: 1, files: files)

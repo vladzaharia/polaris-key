@@ -169,6 +169,7 @@ interface PackOpts {
   contentApi?: string | null;
   provides?: unknown;
   removes?: unknown;
+  channel?: string;
   dryRun?: boolean;
 }
 
@@ -199,6 +200,7 @@ async function submitPack(pack: string, version: string, o: PackOpts = {}) {
     }),
     ...(o.provides !== undefined ? { provides: o.provides } : {}),
     ...(o.removes !== undefined ? { removes: o.removes } : {}),
+    ...(o.channel !== undefined ? { channel: o.channel } : {}),
   };
   const res = await post("publish/submit", {
     record: await signRecord(record),
@@ -337,6 +339,37 @@ describe("provides and removes at publish (P4-20)", () => {
     expect(r.status).toBe(400);
     expect(r.body.reason).toBe("provides-dropped");
     expect(r.body.message).toContain("3 content ids");
+  });
+
+  it("compares with the predecessor on the same channel: a beta addition needs no stable removes", async () => {
+    await publishPack(FOES, "1.1.0", {
+      channel: "beta",
+      provides: ["foe.dragon", "foe.goblin", "foe.orc", "foe.troll"],
+    });
+    // The stable hotfix keeps stable's ids; beta's foe.dragon is not stable's to drop.
+    await publishPack(FOES, "1.0.1", {
+      provides: ["foe.goblin", "foe.orc", "foe.troll"],
+    });
+  });
+
+  it("a beta removes never lets stable drop the id", async () => {
+    await publishPack(FOES, "1.1.0", {
+      channel: "beta",
+      provides: ["foe.goblin", "foe.orc"],
+      removes: ["foe.troll"],
+    });
+    const r = await submitPack(FOES, "1.0.1", {
+      provides: ["foe.goblin", "foe.orc"],
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.reason).toBe("provides-dropped");
+    expect(r.body.message).toContain("foe.troll");
+    expect(r.body.message).toContain(`${FOES}@1.0.0`);
+    // Stable acknowledges it itself.
+    await publishPack(FOES, "1.0.1", {
+      provides: ["foe.goblin", "foe.orc"],
+      removes: ["foe.troll"],
+    });
   });
 
   it("the dry run answers the same and writes nothing", async () => {

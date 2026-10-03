@@ -11,8 +11,9 @@
  *   pack-provides     a list that is not an array of at most `MAX_PROVIDES` distinct content ids
  *                     (`CONTENT_ID_PATTERN`), or no `provides` while the pack's declared policy
  *                     says `provides.required`;
- *   provides-dropped  for the predecessor P (the stored pack record of the same deliverable with
- *                     the highest seq; a record's seq always rises) and every live contentApi
+ *   provides-dropped  for the predecessor P (the stored pack record of the same deliverable ON
+ *                     THE SAME CHANNEL, `stable` when none is named, with the highest seq; a
+ *                     record's seq always rises) and every live contentApi
  *                     level that both P and the new release N support,
  *                     provides(P) \ provides(N) ⊄ removes(N). The refusal names each dropped id
  *                     (the first 20, and how many more) and the levels.
@@ -20,8 +21,8 @@
  * WHICH LEVELS. A release supports a level when its `requires.contentApi.app` range holds it; a
  * release without a range (a `pinned` or `standalone` pack) supports every level. When neither
  * release has a range they are on the same line by definition and the rule applies whatever is
- * live. Otherwise the live levels are the contentApi values of every channel's live app releases
- * (P4-12's resolver); when N supports none of the levels P supports, N is a contentApi bump and
+ * live. Otherwise the live levels are the contentApi values of the live app releases that the
+ * new release's channel serves (each app channel's routed pack channel, with its `includes`); when N supports none of the levels P supports, N is a contentApi bump and
  * the check passes. A predecessor without `provides` leaves nothing to compare. A record without
  * `provides` provides nothing, so after a predecessor that listed ids it must list them in
  * `removes` (or declare `provides.required` to catch the omission earlier).
@@ -32,6 +33,7 @@
 
 import {
   APP_DELIVERABLE_ID,
+  packChannelFor,
   providesListProblem,
   type ManifestPackDeliverable,
 } from "@polaris-key/manifest";
@@ -40,6 +42,7 @@ import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import type { Db } from "../../../core/platform.js";
 import type { ReleaseConfigRow } from "../config.js";
 import type { PackRefusal } from "./ingest.js";
+import { channelClosure } from "../resolve.js";
 import { levelInRange, PackResolver } from "./resolve.js";
 import { loadResolutionState } from "./sets.js";
 
@@ -116,18 +119,31 @@ function setOf(list: unknown): Set<string> {
   );
 }
 
-/** Every channel's live contentApi levels (P4-12's resolver), ascending. */
+/**
+ * The live contentApi levels at which a release of `pack` on pack channel `channel` is served:
+ * for every app channel's live app releases (P4-12's resolver), the pack's routed channel there
+ * (`packChannels`, else the app channel) and everything it includes must contain `channel`
+ * (`beta` includes `stable`, so a stable pack release reaches beta players too). Ascending.
+ */
 async function liveLevels(
   db: Db,
   product: string,
   cfg: ReleaseConfigRow | null,
+  pack: string,
+  channel: string,
 ): Promise<number[]> {
   const state = await loadResolutionState(db, product, cfg);
   if (!state) return [];
   const resolver = new PackResolver(state.input);
+  const policies =
+    state.input.packs.find((p) => p.id === pack)?.policies ?? new Map();
   const out = new Set<number>();
-  for (const channel of state.input.channels)
-    for (const r of resolver.live(channel)) out.add(r.contentApi);
+  for (const app of state.input.channels)
+    for (const r of resolver.live(app)) {
+      const routed =
+        packChannelFor(resolver.levelMapping(app, r.contentApi), pack) ?? app;
+      if (channelClosure(routed, policies).has(channel)) out.add(r.contentApi);
+    }
   return [...out].sort((a, b) => a - b);
 }
 
@@ -142,13 +158,20 @@ export async function checkProvidesKept(
   record: PackRecordDoc,
   cfg: ReleaseConfigRow | null,
 ): Promise<ProvidesCheck> {
+  // The predecessor on the SAME channel: a beta release must not move stable's baseline, in
+  // either direction (a beta addition would force a false `removes` on stable; a beta `removes`
+  // would let stable drop the id silently).
+  const channel = record.channel ?? "stable";
   const row = await db.first<{ jws: string; release_id: string }>(
-    `SELECT jws, release_id FROM release_records
-      WHERE product = ? AND deliverable_id = ? AND kind = 'pack' AND seq < ?
-      ORDER BY seq DESC LIMIT 1`,
+    `SELECT r.jws, r.release_id FROM release_records r
+       JOIN release_metadata m ON m.product = r.product AND m.release_id = r.release_id
+      WHERE r.product = ? AND r.deliverable_id = ? AND r.kind = 'pack' AND r.seq < ?
+        AND COALESCE(m.channel, 'stable') = ?
+      ORDER BY r.seq DESC LIMIT 1`,
     product,
     record.deliverable,
     record.seq,
+    channel,
   );
   const prior = row ? payloadOf(row.jws) : null;
   const removes = setOf(listOf(record, "removes"));
@@ -184,7 +207,9 @@ export async function checkProvidesKept(
   let where: string;
   if (was === null && now === null) where = "every contentApi level";
   else {
-    const shared = (await liveLevels(db, product, cfg)).filter(
+    const shared = (
+      await liveLevels(db, product, cfg, record.deliverable, channel)
+    ).filter(
       (l) =>
         (was === null || levelInRange(was, l)) &&
         (now === null || levelInRange(now, l)),
