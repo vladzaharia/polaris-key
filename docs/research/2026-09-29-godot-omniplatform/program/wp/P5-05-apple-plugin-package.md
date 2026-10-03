@@ -196,3 +196,98 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
 ## Plan amendments (S-09)
 
 The spike note [`notes/S-09-apple-storekit-distributor.md`](../../notes/S-09-apple-storekit-distributor.md) changes this package: its §Recommendation and §Proposed edits for this package override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-03. The code is the fact where this brief and the code
+disagree; S-09's §Recommendation was followed except where noted.
+
+- **Target.** `PolarisKeyPlatform` in `sdks/swift` (tools 6.0, Swift 6 mode, iOS 17 / macOS 14),
+  standalone (no dependency on other targets), with its own test target
+  `PolarisKeyPlatformTests` (fakes only). Its JSON tree is `PlatformJSON`, not `JSONValue`, so a
+  module importing PolarisKeyCore and PolarisKeyPlatform sees no clash. P3-11 had already added
+  `AppDistributor.current` to `PolarisKeyUpdate`'s outlet reader; that reader now calls
+  `PolarisKeyPlatform.SystemDistributor`, so the package holds one AppDistributor call (its
+  `timeout` and error-reads-`other` behaviour is unchanged).
+- **Gating as a value.** OS gates are a `PlatformAvailability` value (17.4, 17.5, 26.4, 27, 18.4),
+  so `swift test` proves "unavailable below 17.4", "no `web` below 17.5" and "26.0–26.3 is
+  unavailable" with fakes. The distributor's `unavailable` carries a `reason` (`version`,
+  `runtime`, `timeout`, `error: …`); the Godot outlet env maps `timeout` to the corpus's
+  `timeout` signal and every other `unavailable` to no signal.
+- **Xcode 16.4.** The Background Assets client is behind `#if compiler(>=6.3)` (Xcode 26.4 ships
+  Swift 6.3, confirmed), the iOS 27 manifest branch behind `#if compiler(>=6.4)`, and
+  `currentEntitlements(for:)` behind `#if compiler(>=6.1)` plus `#available(iOS 18.4)`.
+  `AppTransaction.storeType`/`.all`/`.revocationDate` are not used. Both CI routes are taken:
+  the macos-15 job still compiles the whole package (and now builds PolarisKeyPlatform for iOS
+  with warnings as errors), and a new `apple` job runs on `macos-26` (GA, Xcode 26.6). Locally
+  verified: the package with the gated branches forced off type-checks for iOS and macOS, and
+  the target plus its tests type-check on the Swift 6.0.3, 6.1.3 and 6.2.4 Linux images
+  (`sdks/swift/tools/typecheck-platform-old-swift.sh`). Xcode 16.4 itself was not run here
+  (owner checklist row 9).
+- **GDExtension registration.** S-09's probe used `classdb_register_extension_class6`, which
+  exists only from Godot 4.7, with `compatibility_minimum = "4.5"`: a 4.5 or 4.6 engine would
+  have refused to initialise it. The glue tries `…6`, then `…5`, then `…4` (the 4/5 creation-info
+  struct is one frozen layout), so `compatibility_minimum` is **4.4**. Only the 4.7 path was run
+  (iOS simulator, Godot 4.7.2); 4.4–4.6 on iOS is unmeasured.
+- **The `.gdextension` is not committed in the addon.** A desktop editor reports a
+  `.gdextension` with no library for its own OS on every scan ("No GDExtension library found
+  for current OS"), contrary to S-09's "logs nothing" (that was measured at run time, not at an
+  editor scan). The source is `sdks/godot/native/ios/pkey_apple.gdextension`; `build.sh`
+  installs it beside the xcframework in `addons/polaris_key/native/ios/`, which `.gitignore`
+  keeps out of the repo. `sdks/godot/native/` carries a `.gdignore`.
+- **Floors.** The xcframework is built at iOS 17.0 (the package floor) and `build.sh` refuses
+  lower; the export plugin warns when a preset's `application/min_ios_version` is below 17.0
+  (Godot's default is 15.0).
+- **Export wiring.** One iOS-only preset option, `polaris_key/apple_background_assets`
+  (`auto`/`on`/`off`, env `PKEY_APPLE_BACKGROUND_ASSETS`; `auto` = on for `app-store` and
+  `testflight` only). It writes `PKeyAppleBackgroundAssets` and `PKeyAppleAppGroup` into the
+  exported Info.plist through `add_apple_embedded_platform_plist_content` (4.5+) or
+  `add_ios_plist_content` (4.4); `native/ios/patch_export.sh` reads the mark and runs S-01's
+  `patch_ba.rb` byte for byte. No framework needs `add_*_framework`: the GDExtension export
+  embeds the xcframework, and the dynamic framework carries its own system-framework links.
+- **iOS export needs** an app icon and `textures/vram_compression/import_etc2_astc=true`; the
+  checks' throwaway projects set both (an export without them fails with an empty
+  "configuration errors" message).
+- **Store.** The core.store work is `PKeyKeychainStore` (Godot), picked by default on iOS when
+  the plugin is present: device id and token in the Keychain, the cache in the file store, the
+  file store's token and device id migrated on first read, failures surfaced as
+  `degraded: keyring-error` and never downgraded to a token file. `KeychainStore` (Swift) is
+  unchanged and still uses `AfterFirstUnlock` for the token; flagged for the Swift SDK owner.
+- **New client error code** `platform-error` (conformance/parity/errors.json; constants
+  regenerated for every SDK) for a plugin error or an unreadable reply.
+- **Parity.** Godot `core.store` moves from `planned P5-05` to `planned P5-06` (Android Keystore
+  remains; no package owns a desktop keyring); notes on `outlet.detect`, `packs.transport.apple`
+  (still P5-08) and `commerce.receipt` (still P6-01) in the Godot and Swift manifests. No
+  feature became `implemented` and no N/A was added.
+- **Tests.** Hosted XCTest project `sdks/swift/PlatformHostTests` (XcodeGen, host app with
+  `get-task-allow`, `run.sh` erases a dedicated simulator first). Its warnings-as-errors is set
+  on the app only: StoreKitTest's own headers use APIs deprecated in iOS 18, and the flag
+  reaches the clang importer. A negative control without `get-task-allow` on an erased
+  simulator fails on the product-count assertion, as intended. Godot: `suite_native_apple` in
+  the `ci` set; `native/ios/export_check.sh` (store vs sideload, device builds) and
+  `native/ios/sim_check.sh` (the binding in Godot 4.7.2 on the iOS 26.5 simulator; local only,
+  it needs an arm64 simulator `libgodot.a`). The simulator run needs `audio/driver/driver=Dummy`:
+  Godot's CoreAudio start aborts with an RPC timeout there.
+- **Read-first correction.** The coordinator pointed at notes/S-06 §6, which is the itch section;
+  the AppDistributor facts used here are S-06 §1 and its rule 5.
+
+### Owner checklist (device, account, TestFlight; not run)
+
+Needs the Apple developer account (Team ID, an App ID with App Groups plus the extension's App
+ID, sandbox IAP products, a Sandbox Apple Account), an iOS 26.4+ device, an iOS 17.4–25.x device
+and TestFlight access. Build a store preset with `native/ios/build.sh`, export, `patch_export.sh`,
+then archive and sign with both provisioning profiles.
+
+| #   | Run                                                                      | Record                                                                                                | Default until then                     |
+| --- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 1   | TestFlight install; `PKeyApple.shared().distributor()`                   | signal and ms; `provisioned`                                                                          | `testFlight`; `unavailable` on timeout |
+| 2   | Development-signed install from Xcode                                    | signal; `provisioned: true`                                                                           | no evidence                            |
+| 3   | Sandbox purchase with an `appAccountToken`                               | JWS `x5c` length 3 chaining to Apple Root CA G3, `environment: Sandbox`; the sheet over Godot's scene | as Apple documents                     |
+| 4   | `app_transaction()` on the same install                                  | environment, `originalAppVersion` (`1.0` expected), sign-in prompt                                    | commerce only                          |
+| 5   | Refund the sandbox purchase                                              | one `transaction_updated` with `revoked: true`, latency                                               | server notifications are authoritative |
+| 6   | Keychain: set, delete the app, reinstall, get (26.4+ and older iOS)      | which items survive                                                                                   | assume they may not                    |
+| 7   | Keychain after a restart, before first unlock, from a background launch  | `AfterFirstUnlockThisDeviceOnly` readable?                                                            | as documented                          |
+| 8   | TestFlight processing of the patched build with `pkey_apple.framework`   | result                                                                                                | assume it passes (S-01)                |
+| 9   | One CI run of the macos-15 job (Xcode 16.4) and the macos-26 `apple` job | compile errors in guarded code, hosted tests                                                          | the guards above                       |
+| 10  | An Apple-hosted test pack: `ensure_packs` then mount the path            | `pack_ready` path readable on device                                                                  | `pkey-cdn` fallback                    |
+| 11  | The binding on a Godot 4.5 or 4.6 iOS build                              | `PolarisKeyApple` registers (the `…5` path)                                                           | unmeasured                             |
