@@ -81,7 +81,7 @@ jobs:
       - name: The canonical zip holds addons/polaris_key/** only
         run: |
           zip="build/a/polaris-key-godot-v${TAG#godot-v}.zip"
-          unzip -Z1 "$zip" | grep -v '^addons/polaris_key/' && { echo "entries outside addons/polaris_key/" >&2; exit 1; } || true
+          unzip -Z1 "$zip" | grep -vE '^addons/(polaris_key/.*)?$' && { echo "entries outside addons/polaris_key/" >&2; exit 1; } || true
           for f in plugin.cfg LICENSE README.md polaris_key.gd polaris_key.gd.uid; do
             unzip -Z1 "$zip" | grep -qx "addons/polaris_key/$f" || { echo "missing $f" >&2; exit 1; }
           done
