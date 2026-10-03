@@ -19507,6 +19507,27 @@ function parseChunkIndexBytes(b, payload) {
   };
 }
 
+// ../client-core/dist/packs/ports.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var READ_CHUNK = 1 << 20;
+function memorySource(bytes) {
+  return {
+    size: bytes.byteLength,
+    read: (offset, length) => Promise.resolve(bytes.subarray(Math.min(offset, bytes.byteLength), Math.min(offset + length, bytes.byteLength)))
+  };
+}
+async function readAll(source) {
+  const out = new Uint8Array(source.size);
+  for (let at = 0; at < source.size; ) {
+    const chunk = await source.read(at, Math.min(READ_CHUNK, source.size - at));
+    if (chunk.byteLength === 0)
+      break;
+    out.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return out;
+}
+
 // ../client-core/dist/packs/dataonly.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var ascii = (s) => [...s].map((c) => c.charCodeAt(0));
@@ -19749,27 +19770,6 @@ function windowAllowed(frame, memBytes, p = 31) {
   const limit = windowLogMax(memBytes, p);
   const window = frameWindow(frame);
   return limit !== null && window !== null && window <= 2 ** limit;
-}
-
-// ../client-core/dist/packs/ports.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var READ_CHUNK = 1 << 20;
-function memorySource(bytes) {
-  return {
-    size: bytes.byteLength,
-    read: (offset, length) => Promise.resolve(bytes.subarray(Math.min(offset, bytes.byteLength), Math.min(offset + length, bytes.byteLength)))
-  };
-}
-async function readAll(source) {
-  const out = new Uint8Array(source.size);
-  for (let at = 0; at < source.size; ) {
-    const chunk = await source.read(at, Math.min(READ_CHUNK, source.size - at));
-    if (chunk.byteLength === 0)
-      break;
-    out.set(chunk, at);
-    at += chunk.byteLength;
-  }
-  return out;
 }
 
 // ../client-core/dist/packs/handlers/types.js
