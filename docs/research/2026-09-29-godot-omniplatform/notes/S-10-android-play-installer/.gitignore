@@ -1,0 +1,16 @@
+build/
+out/
+logs/
+keys/
+results/
+editor/
+*.jar
+plugin/.gradle/
+plugin/build/
+plugin/plugin/build/
+plugin/local.properties
+plugin/gradlew
+plugin/gradlew.bat
+plugin/gradle/wrapper/gradle-wrapper.jar
+game/.godot/
+game/addons/pkey_s10/bin/
