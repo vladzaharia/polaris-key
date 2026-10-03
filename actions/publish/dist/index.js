@@ -2610,6 +2610,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "provides": {
           "description": "The save-compatibility policy (P4-20, CONTENT §6.9): from, a repo-relative path to the JSON array of content ids each release provides (default .pkey/provides.json; each id printable ASCII without spaces, 1 to 128 characters, at most 4096 distinct); required, whether a publish without that list fails (default false). A release that stops providing an id its predecessor provided needs a contentApi bump or pkey release publish --removes.",
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "required": { "type": "boolean" },
             "from": {
@@ -14446,13 +14447,14 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const provides = def.provides;
   if (provides !== void 0) {
     const p = isRecord3(provides) ? provides : null;
-    if (!p || p.required !== void 0 && typeof p.required !== "boolean" || p.from !== void 0 && (typeof p.from !== "string" || p.from.length > 256 || !PROVIDES_FILE_PATTERN.test(p.from)))
+    if (!p || // A typo (`requried`) must not silently leave a policy off.
+    Object.keys(p).some((k) => k !== "required" && k !== "from") || p.required !== void 0 && typeof p.required !== "boolean" || p.from !== void 0 && (typeof p.from !== "string" || p.from.length > 256 || !PROVIDES_FILE_PATTERN.test(p.from)))
       add2(
         errors,
         "release",
         `${at}/provides`,
         "invalid_pack_provides",
-        `provides is {required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default ${DEFAULT_PROVIDES_FILE}}.`
+        `provides is {required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default ${DEFAULT_PROVIDES_FILE}}, and nothing else.`
       );
   }
   const type = isOneOf(def.type, PACK_TYPES) ? def.type : null;
