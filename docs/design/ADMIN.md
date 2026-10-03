@@ -2188,3 +2188,12 @@ does not apply. Each addition still needs:
    - **(a) Recommended:** structured per-entry form plus JSON mode plus review diff.
    - **(b)** JSON/YAML mode plus review diff only, with the form in a follow-up. Saves about a third
      of chunk 7.
+
+## Lead decisions (2026-10-03)
+
+- **Q1 (section bit at header size):** pending the brand package's legibility proof (BRAND.md "the section bit"); chunk 2 implements whichever the brand contract specifies.
+- **Q2:** keep hash routing.
+- **Q3:** approved: TanStack Query/Table/Virtual, react-hook-form, cmdk, sonner, jsdiff, CodeMirror 6 (lazy), vitest-axe.
+- **Q4:** approved: A-1…A-7 land inside their area chunks; A-8…A-10 as the chunks need them.
+- **Q5:** catalog editor v1 ships the structured per-entry form plus JSON and diff.
+- **Bugs found by the audit** (double-submit `Button`, disabled-button tooltips, stale session, auto-filled `confirmSlug`, first catalog publish, refetch wiping edits, non-atomic Update settings save) are fixed in the chunk that owns each view; the `confirmSlug` auto-fill is fixed in chunk 4 at the latest because it defeats a guard.
