@@ -41,7 +41,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { NOW } from "./seed.js";
+import { mkReq, NOW, seedLicenseWithKey } from "./seed.js";
 import { asR2, R2Mock } from "./r2Mock.js";
 import {
   call,
@@ -60,6 +60,9 @@ import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
+import { loadProduct } from "../src/core/products.js";
+import { handleActivate } from "../src/services/license/activation.js";
+import { hashKey } from "../src/crypto.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import {
   setChannelPolicy,
@@ -722,7 +725,7 @@ describe("updater feeds: content", () => {
     expect(body).not.toMatch(/nupkg|msixbundle|AppImage/);
   });
 
-  it("Velopack: a full and delta pair per release, absolute FileNames, verified SHA1/SHA256", async () => {
+  it("Velopack: a full and delta pair per release, bare FileNames, verified SHA1/SHA256", async () => {
     const w = await world();
     const { body } = await text(
       w,
@@ -731,20 +734,26 @@ describe("updater feeds: content", () => {
     const doc = JSON.parse(body) as { Assets: Array<Record<string, any>> };
     const v13 = doc.Assets.filter((a) => a.Version === "1.3.0-beta.1");
     expect(v13.map((a) => a.Type)).toEqual(["Full", "Delta"]);
+    expect(v13.map((a) => a.FileName)).toEqual([
+      "Djdl-1.3.0-beta.1-full.nupkg",
+      "Djdl-1.3.0-beta.1-delta.nupkg",
+    ]);
     // Only the newest release's full package: Velopack applies deltas to the one it holds.
     expect(doc.Assets.filter((a) => a.Type === "Full")).toHaveLength(1);
+    for (const a of doc.Assets) {
+      // A bare file name: Velopack's Rust core saves to `packages_dir.join(FileName)`.
+      expect(a.FileName).toMatch(/^[A-Za-z0-9][A-Za-z0-9._+-]*\.nupkg$/);
+      expect(a.FileName).not.toMatch(/[/\\:]/);
+    }
     for (const a of v13) {
       expect(a.PackageId).toBe("Djdl");
-      expect(
-        a.FileName.startsWith(`${BYTES_ORIGIN}/${SLUG}/distribution/files/`),
-      ).toBe(true);
-      const name = decodeURIComponent(a.FileName.split("/").pop()!);
-      const bytes = bytesOf(name);
+      const bytes = bytesOf(a.FileName);
       expect(a.SHA1).toBe(sha1(bytes).toUpperCase());
       expect(a.SHA256).toBe(sha(bytes).toUpperCase());
       expect(a.Size).toBe(bytes.length);
     }
     expect(body).not.toContain("1.1.5");
+    expect(body).not.toContain("://");
   });
 
   it("stored bytes that are not the recorded ones never yield a SHA1 or a signature", async () => {
@@ -926,6 +935,225 @@ describe("updater feeds: content", () => {
       await expect(get(w, `update/version?${q}`), q).rejects.toThrow(
         /installation token/,
       );
+  });
+});
+
+// ── The Velopack package route ───────────────────────────────────────────────────────────────
+
+/** The delivery URL of release `version`'s file `name`, on the bytes host. */
+function fileUrl(w: World, version: string, name: string): string {
+  return `${BYTES_ORIGIN}/${SLUG}/distribution/files/${encodeURIComponent(
+    w.releases[version]!,
+  )}/${name}`;
+}
+
+let devices = 0;
+/** A device token on a usable licence of the product (what `licensed` delivery asks for). */
+async function deviceToken(w: World): Promise<string> {
+  devices += 1;
+  const { key } = await seedLicenseWithKey(w.db, SLUG, {
+    id: `lic_vp_${devices}`,
+  });
+  // The seed hashes the key unpeppered; this env peppers (the CI token needs a pepper).
+  await w.db.run(
+    "UPDATE keys_index SET key_hash = ? WHERE key_hash = ?",
+    await hashKey(key, w.env.KEY_HASH_PEPPER),
+    await hashKey(key),
+  );
+  const product = (await loadProduct(w.env, w.db, SLUG))!;
+  const act = await handleActivate(
+    mkReq("POST", {
+      authorization: `Bearer ${key}`,
+      "x-pkey-device": `dev-vp-${devices}`,
+    }),
+    w.env,
+    w.db,
+    product,
+    NOW,
+  );
+  expect(act.status, await act.clone().text()).toBe(200);
+  return ((await act.json()) as { token: string }).token;
+}
+
+describe("updater feeds: the Velopack package route", () => {
+  it("every FileName the feed lists redirects to that package's delivery URL, whose bytes it is", async () => {
+    const w = await world();
+    for (const [channel, feed] of [
+      ["beta", "releases.win-x64.json"],
+      ["stable", "releases.win.json"],
+    ] as const) {
+      const doc = JSON.parse(
+        (await text(w, `update/${channel}/velopack/${feed}`)).body,
+      ) as { Assets: Array<Record<string, any>> };
+      expect(doc.Assets.length, channel).toBeGreaterThan(0);
+      for (const a of doc.Assets) {
+        const path = `update/${channel}/velopack/${a.FileName}`;
+        const res = await get(w, path);
+        expect(res.status, path).toBe(302);
+        expect(res.headers.get("location"), path).toBe(
+          fileUrl(w, a.Version, a.FileName),
+        );
+        expect(res.headers.get("cache-control"), path).toBe(
+          "public, max-age=300",
+        );
+        expect(res.headers.get("x-content-type-options"), path).toBe("nosniff");
+        expect(await res.text(), path).toBe("");
+        // The client resolves the name against the feed URL: the same path, relatively.
+        expect(
+          new URL(
+            a.FileName,
+            `${CONSOLE}/${SLUG}/update/${channel}/velopack/${feed}?arch=x64`,
+          ).pathname,
+        ).toBe(`/${SLUG}/${path}`);
+        // The second hop serves the package's own bytes.
+        const bytes = await call(
+          w.env,
+          w.db,
+          noFetch,
+          res.headers.get("location")!,
+          {},
+        );
+        expect(bytes.status, path).toBe(200);
+        const got = new Uint8Array(await bytes.arrayBuffer());
+        expect(sha(got), path).toBe(a.SHA256.toLowerCase());
+      }
+    }
+  });
+
+  it("HEAD redirects as GET does; other methods are not a route", async () => {
+    const w = await world();
+    const path = `${CONSOLE}/${SLUG}/update/beta/velopack/Djdl-1.3.0-beta.1-delta.nupkg`;
+    const head = await call(w.env, w.db, noFetch, path, { method: "HEAD" });
+    expect(head.status).toBe(302);
+    expect(head.headers.get("location")).toBe(
+      fileUrl(w, "1.3.0-beta.1", "Djdl-1.3.0-beta.1-delta.nupkg"),
+    );
+    const postRes = await call(w.env, w.db, noFetch, path, { method: "POST" });
+    expect(postRes.status).not.toBe(302);
+    expect(postRes.headers.get("location")).toBeNull();
+  });
+
+  it("a file the feed does not list is not found", async () => {
+    const w = await world();
+    for (const file of [
+      // Unknown.
+      "Nope-9.9.9-full.nupkg",
+      // An older full package: the feed lists only the newest one.
+      "Djdl-1.0.0-full.nupkg",
+      // The yanked release, and the release still held by its rollout on stable.
+      "Djdl-1.1.5-delta.nupkg",
+      "Djdl-1.2.0-full.nupkg",
+      // Another channel's package.
+      "Djdl-1.3.0-beta.1-full.nupkg",
+      // A file of a listed release that is not a Velopack package.
+      "djdl-1.1.0-windows-x64-setup.nupkg",
+    ]) {
+      const res = await get(w, `update/stable/velopack/${file}`);
+      expect(res.status, file).toBe(404);
+      expect(res.headers.get("location"), file).toBeNull();
+    }
+    // The beta channel lists 1.3.0-beta.1's full package.
+    expect(
+      (await get(w, "update/beta/velopack/Djdl-1.3.0-beta.1-full.nupkg"))
+        .status,
+    ).toBe(302);
+  });
+
+  it("a yank takes a package off the route at once, as off the feed", async () => {
+    const w = await world();
+    const path = "update/stable/velopack/Djdl-1.1.0-delta.nupkg";
+    expect((await get(w, path)).status).toBe(302);
+    await yankRelease(w.db, SLUG, w.releases["1.1.0"]!, "bad", "admin:u1", NOW);
+    expect((await get(w, path)).status).toBe(404);
+  });
+
+  it("a package whose stored bytes are not the recorded ones is not redirected to, nor its release's deltas", async () => {
+    const w = await world();
+    const real = bytesOf("Djdl-1.1.0-full.nupkg");
+    w.r2.seed(
+      `blobs/sha256/${sha(real)}`,
+      bytesOf("Djdl-1.1.0-full.nupkg (tampered)"),
+      { withSha256: true },
+    );
+    const feed = JSON.parse(
+      (await text(w, "update/stable/velopack/releases.win-x64.json")).body,
+    ) as { Assets: Array<Record<string, any>> };
+    expect(feed.Assets.map((a) => a.FileName)).not.toContain(
+      "Djdl-1.1.0-full.nupkg",
+    );
+    expect(feed.Assets.map((a) => a.FileName)).not.toContain(
+      "Djdl-1.1.0-delta.nupkg",
+    );
+    for (const file of ["Djdl-1.1.0-full.nupkg", "Djdl-1.1.0-delta.nupkg"])
+      expect(
+        (await get(w, `update/stable/velopack/${file}`)).status,
+        file,
+      ).toBe(404);
+  });
+
+  it("refuses traversal, separators, escapes and odd characters before any read", async () => {
+    const w = await world();
+    for (const file of [
+      "..%2F..%2Fsecret.nupkg",
+      "%2e%2e%2fDjdl-1.1.0-full.nupkg",
+      "Djdl-1.1.0-full.nupkg%00",
+      "Djdl-1.1.0-full.nupkg%2F",
+      "Djdl%2D1.1.0-full.nupkg",
+      ".hidden.nupkg",
+      "-Djdl-1.1.0-full.nupkg",
+      "Djdl..1.1.0-full.nupkg",
+      "Djdl-1.1.0-full.nupkg.exe",
+      "Djdl-1.1.0-full.NUPKG",
+      "Djdl 1.1.0-full.nupkg",
+      "Djdl-1.1.0-full%20.nupkg",
+      "Djdl-1.1.0-full.nupkg%5C",
+      "C:Djdl-1.1.0-full.nupkg",
+      `${"A".repeat(201)}.nupkg`,
+      "RELEASES",
+      "releases.amiga.json",
+    ]) {
+      const res = await get(w, `update/stable/velopack/${file}`);
+      expect(res.status, file).toBe(404);
+      expect(res.headers.get("location"), file).toBeNull();
+    }
+    // A nested path is no route either.
+    expect(
+      (await get(w, "update/stable/velopack/x/Djdl-1.1.0-full.nupkg")).status,
+    ).toBe(404);
+  });
+
+  it("access is the feed's: refused without a licensed device exactly as the feed is, redirected with one", async () => {
+    const w = await world({ access: "licensed" });
+    const feed = await get(w, "update/stable/velopack/releases.win-x64.json");
+    const pkg = await get(w, "update/stable/velopack/Djdl-1.1.0-delta.nupkg");
+    expect(feed.status).toBe(401);
+    expect(pkg.status).toBe(feed.status);
+    expect(await pkg.json()).toEqual(await feed.json());
+    expect(pkg.headers.get("location")).toBeNull();
+    expect(pkg.headers.get("cache-control") ?? "").not.toMatch(/^public/);
+    // An unknown name under a refusal is refused, not "not found": nothing is looked up first.
+    expect(
+      (await get(w, "update/stable/velopack/Nope-9.9.9-full.nupkg")).status,
+    ).toBe(401);
+
+    const token = await deviceToken(w);
+    const authz = { authorization: `Bearer ${token}` };
+    const ok = await get(
+      w,
+      "update/stable/velopack/Djdl-1.1.0-delta.nupkg",
+      authz,
+    );
+    expect(ok.status).toBe(302);
+    expect(ok.headers.get("location")).toBe(
+      fileUrl(w, "1.1.0", "Djdl-1.1.0-delta.nupkg"),
+    );
+    expect(ok.headers.get("cache-control")).toBe("private, no-store");
+    // The target enforces the same access on its own: anonymous refused, the device served.
+    const target = ok.headers.get("location")!;
+    expect((await call(w.env, w.db, noFetch, target, {})).status).toBe(401);
+    expect(
+      (await call(w.env, w.db, noFetch, target, { headers: authz })).status,
+    ).toBe(200);
   });
 });
 

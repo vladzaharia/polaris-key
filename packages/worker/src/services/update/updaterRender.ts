@@ -15,8 +15,12 @@
  *     enclosure per Windows installer build with `sparkle:os` and `sparkle:installerArguments`,
  *     versions repeated on the enclosure; WinSparkle has no channels, so the URL is per channel.
  *   - Velopack (`renderVelopackFeed`, notes/E3 §A3.1): `{"Assets": [...]}` with `PackageId`,
- *     `Version`, `Type` (`Full` | `Delta`), `FileName` as an ABSOLUTE distribution URL (Velopack
- *     downloads an absolute `FileName` as is), `SHA1`, `SHA256`, `Size` and the notes.
+ *     `Version`, `Type` (`Full` | `Delta`), `FileName` as the BARE package file name (as `vpk`
+ *     writes it), `SHA1`, `SHA256`, `Size` and the notes. Not a URL: Velopack's Rust core
+ *     (`velopack_libc`, the Rust crate) downloads `url.join(FileName)` but also saves to
+ *     `packages_dir.join(FileName)`, so an absolute URL fails the local write on Windows (os error
+ *     123, notes/S-11 §4.2). The client resolves the bare name against the feed URL, which lands
+ *     on `…/velopack/<FileName>`: a 302 to the package's immutable delivery URL (`updaterFeeds.ts`).
  *   - App Installer (`renderAppInstaller`, notes/E3 §A2): the 2021 schema; `Uri` is the URL the
  *     file is served from; the main package's `Name` and `Publisher` from `.pkey/distribution`;
  *     the build's four-part version; `OnLaunch`, `ShowPrompt`, `UpdateBlocksActivation` and

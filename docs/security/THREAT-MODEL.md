@@ -959,6 +959,20 @@ gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Up
   check. The cache key carries every input the body depends on. That includes the
   `.appinstaller`'s rendered `Uri`, so one spelling of `?arch=` cannot plant its `Uri` in
   another's cached answer.
+- **The Velopack package route (notes/S-11 §5.1).** The Velopack feed names each package by its
+  bare `FileName`, because Velopack's Rust core also saves to `packages_dir.join(FileName)` and an
+  absolute URL fails that write. The client resolves the name against the feed URL, so
+  `GET /<p>/update/<channel>/velopack/<FileName>` answers a `302` to the package's immutable
+  delivery URL. It is not a new way in. The name must be one plain `.nupkg` file name (a fixed
+  alphabet, no separator, no `..`, no leading dot, no escape: the router does not percent-decode,
+  so `%2F` and `%2e` are refused as `%`) before any read. The route runs the feed's own pipeline:
+  the same `updateFeed` limit, the same access decision (`kind: velopack`), and the same cache rule.
+  It redirects only to a package the feed lists for one of the six Velopack targets: the same
+  selection (`velopackCandidates`) and the same SHA-1 check over the stored bytes. So a yank or
+  halt removes a package from the route on the next request. A caller refused the feed is refused
+  the route with the same answer, an unknown name included. `Location` is always our own delivery
+  URL, which checks the delivery access again on its own. Under a non-public delivery a client that
+  drops `Authorization` on the redirect is refused at the second hop, which fails closed.
 - **Residual.** The `deltaFrom`, the App Installer identity and update settings, and the build
   format that picks WinSparkle's installer arguments are CI or manifest claims. A wrong value makes
   an updater fail or fall back to the full package. It never changes which bytes are served,

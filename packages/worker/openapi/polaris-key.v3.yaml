@@ -4471,7 +4471,10 @@ paths:
                           version: { type: string }
                           contentApi: { type: [integer, "null"] }
                           sha256:
-                            { type: [string, "null"], pattern: "^[0-9a-f]{64}$" }
+                            {
+                              type: [string, "null"],
+                              pattern: "^[0-9a-f]{64}$",
+                            }
                   record:
                     type: object
                     description: >
@@ -4909,8 +4912,10 @@ paths:
         release's `-full.nupkg` payload (`Type: Full`) and the `-delta.nupkg` delta artifacts
         (`Type: Delta`) of up to ten releases with a stored record, newest first (Velopack
         applies deltas to the full package it holds, so older full packages are not listed):
-        `PackageId` from the package file name, `Version`, `FileName` as the ABSOLUTE immutable
-        distribution URL, `SHA256` from the record, `SHA1` computed by a streaming digest over
+        `PackageId` from the package file name, `Version`, `FileName` as the BARE package file
+        name (Velopack's Rust core saves to `packages_dir.join(FileName)`, so a URL there fails
+        the local write; the client resolves the name against this feed's URL, which lands on
+        `getVelopackPackage`), `SHA256` from the record, `SHA1` computed by a streaming digest over
         the stored bytes (which also checks the recorded SHA-256) and memoised, `Size`, and the
         release notes. No rollout concept: the previous release until a rollout completes.
         Access, caching and `ETag` as the WinSparkle appcast. Discovery:
@@ -4949,13 +4954,72 @@ paths:
                         PackageId: { type: string }
                         Version: { type: string }
                         Type: { type: string, enum: [Full, Delta] }
-                        FileName: { type: string, format: uri }
+                        FileName:
+                          type: string
+                          pattern: "^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\\.nupkg$"
+                          description: >
+                            The bare package file name, never a URL or a path; fetched from
+                            `…/velopack/{FileName}`.
                         SHA1: { type: string, pattern: "^[0-9A-F]{40}$" }
                         SHA256: { type: string, pattern: "^[0-9A-F]{64}$" }
                         Size: { type: integer, minimum: 0 }
                         NotesMarkdown: { type: string }
                         NotesHTML: { type: string }
         "304": { description: Not modified. }
+        "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
+        "403": { $ref: "#/components/responses/ReleaseForbidden" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "429":
+          description: The feed rate limit — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /{product}/update/{channel}/velopack/{fileName}:
+    get:
+      operationId: getVelopackPackage
+      tags: [update]
+      summary: A package the Velopack feed lists, by its file name
+      description: >
+        notes/S-11 §5.1. Where a Velopack client fetches a package: the feed names each one by
+        its bare `FileName`, and the client resolves that against the feed URL
+        (`…/velopack/releases.<velopackChannel>.json` → `…/velopack/<FileName>`). Answers `302`
+        to the package's immutable delivery URL (`…/distribution/files/<releaseId>/<name>`, on
+        the bytes host when one is configured), which enforces the delivery access again on its
+        own. The lookup is the feed's own selection, for every Velopack target (`win`, `osx`,
+        `linux` × x64, arm64): the newest release's `-full.nupkg` and the descriptor-named
+        `-delta.nupkg` files of up to ten releases with a stored record, and only one whose
+        stored bytes give the feed's `SHA1`. Anything the feed does not list is 404. Access is
+        the feed's: the app's delivery access, the same refusals (`401`/`403`), the same
+        `updateFeed` rate limit; `public` caches `public, max-age=300`, every other mode
+        `private, no-store`. A `fileName` outside the pattern (a separator, `..`, a leading dot,
+        an escape, any other character, or another extension) is 404 before any read. A client
+        need not resend `Authorization` across the redirect (notes/S-11 §5.2: the measured
+        updaters drop it cross-origin), so under a non-public delivery the second hop may be
+        refused; public delivery is the measured Velopack path.
+      security: [{}, { deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/Channel" }
+        - name: fileName
+          in: path
+          required: true
+          description: >
+            A `FileName` from the feed: one segment, `vpk`'s `<packId>-<version>[-<channel>]-full.nupkg`
+            or `-delta.nupkg`. A name starting `releases.` is the feed, not a package.
+          schema:
+            type: string
+            pattern: "^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\\.nupkg$"
+        - name: outlet
+          in: query
+          required: false
+          schema: { type: string, pattern: "^[a-z][a-z0-9-]{0,63}$" }
+      responses:
+        "302":
+          description: The package's immutable delivery URL, in `Location`. No body.
+          headers:
+            Location:
+              required: true
+              schema: { type: string, format: uri }
         "401": { $ref: "#/components/responses/ReleaseUnauthorized" }
         "403": { $ref: "#/components/responses/ReleaseForbidden" }
         "404": { $ref: "#/components/responses/LegacyNotFound" }

@@ -126,8 +126,24 @@ is x64. Velopack's other query parameters change nothing.
 
 `Assets` lists the newest release's `-full.nupkg` payload (`Type: Full`) and the `-delta.nupkg`
 delta artifacts (`Type: Delta`) of up to ten releases. Velopack applies deltas to the full package
-it already holds, so older full packages are not listed. `PackageId` comes from the package file name, and
-`FileName` is the absolute delivery URL (Velopack downloads an absolute URL as it is).
+it already holds, so older full packages are not listed. `PackageId` comes from the package file
+name.
+
+`FileName` is the bare package file name, as `vpk` writes it (`Djdl-1.2.0-full.nupkg`), never a
+URL. Velopack's Rust core (`velopack_libc` for C and C++, and the Rust crate) downloads
+`url.join(FileName)` but also saves the package to `packages_dir.join(FileName)`. An absolute URL
+there is not a valid Windows file name, so the download succeeds and the update then fails with
+`os error 123`. The client resolves the bare name against the feed URL, which lands on
+`…/update/<polaris channel>/velopack/<FileName>`. That route answers a `302` to the package's
+immutable delivery URL.
+
+The package route answers only for a file the feed lists, for any of the Velopack targets (`win`,
+`osx` or `linux`, each with x64 or arm64). Anything else is a `404`, as is a name that is not one
+plain `.nupkg` file name: a separator, `..`, a leading dot or an escape. Its access, rate limit
+and caching are the feed's own, so it serves nobody the feed would refuse. The delivery URL it
+points at checks the delivery access again. Under a non-public delivery a client may drop
+`Authorization` on the redirect, as the measured updaters do across origins, and the second hop is
+then refused. Public delivery is the measured Velopack path.
 
 ## MSIX App Installer
 
