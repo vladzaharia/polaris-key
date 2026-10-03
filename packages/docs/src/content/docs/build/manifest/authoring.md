@@ -256,7 +256,9 @@ See [Privacy](/docs/users/privacy/) for exactly what a fingerprint contains and 
 A `.pkey/release` document may declare the product's **app deliverable** and an **artifact
 map** that says what every file of a release is. Without the block the product keeps the
 implicit `app` deliverable and its release files are classified by filename, as before (a
-`.dmg` is macOS, `-arm64` is arm64, and an `.apk`, `.ipa`, `.exe` or `.pck` is just `other`).
+`.dmg` is macOS, `-arm64` is arm64, and an `.apk`, `.ipa`, `.exe` or `.pck` is just `other`;
+a platform-only extension or name token still names the platform, so `.app.zip` is macOS,
+`.apk` Android, `.ipa` iOS and `-win64` Windows).
 With it, files are classified **by declaration, not by sniffing**:
 
 ```yaml
@@ -327,6 +329,46 @@ release:
 - **`embeds`** (optional, on an `artifacts` entry) lists the packs that build ships inside
   it: declared pack ids, at most 64 (`invalid_build_embeds`). Omitted means every
   `baseline: embedded` pack; `[]` means none, as for a lean web build.
+
+### How builds are labelled
+
+Every surface that shows a build or a release file to a person — the console's release
+detail, artifact lists and distribution matrix, release health, the customer portal's
+downloads, the public download page and `pkey release publish` — names it by **platform and
+architecture together**, through one formatter (`buildLabel` in `@polaris-key/manifest`). The
+stored and signed values (`platform: macos`, `arch: arm64`) never change; only the text a
+person reads does.
+
+| `platform` | `arch`      | Short label            | Long label (tooltips, logs)   |
+| ---------- | ----------- | ---------------------- | ----------------------------- |
+| `macos`    | `arm64`     | macOS Apple silicon    | macOS · Apple silicon (arm64) |
+| `macos`    | `x86_64`    | macOS Intel            | macOS · Intel (x86_64)        |
+| `macos`    | `universal` | macOS Universal        | macOS · Universal             |
+| `windows`  | `x86_64`    | Windows x64            | Windows · x64 (x86_64)        |
+| `windows`  | `arm64`     | Windows Arm64          | Windows · Arm64               |
+| `linux`    | `arm64`     | Linux ARM64            | Linux · ARM64                 |
+| `android`  | `armv7`     | Android armv7          | Android · armv7               |
+| `ios`      | `arm64`     | iOS / iPadOS           | iOS / iPadOS                  |
+| `web`      | `wasm32`    | Web                    | Web                           |
+| none       | `any`       | All platforms          | All platforms                 |
+| none       | `arm64`     | Unknown platform ARM64 | Unknown platform · ARM64      |
+
+- `any` on a named platform reads as **Universal**; an arch the platform implies (every iOS
+  build is arm64, every web build WebAssembly) is left out. The download page says "iPhone and
+  iPad" for iOS.
+- A value the formatter does not know passes through verbatim (`beos · riscv64`).
+- A file with no platform of its own takes its **build's** platform; a file tied to no build
+  takes the platform its name declares (`djdl-arm64.app.zip` is macOS). Only when nothing
+  determines one does a label read "Unknown platform".
+- `pkey release publish` prints each matched file with its build's long label:
+  `- macos  payload  Diceroll-1.2.0-macos.zip (macOS · Universal · zip; …)`.
+
+**Name builds and files by platform and arch.** A build's id is what the CLI, release health
+and the distribution matrix show first, so give it both halves: `macos-arm64`, `win-x64`,
+`linux-arm64`, not `arm64`. An id that is an architecture alone is the warning
+`bare_arch_artifact_id`. Name the files the same way — `djdl-macos-arm64.app.zip`, not
+`djdl-arm64.app.zip` — so a file reads correctly even where it is listed on its own, and a
+product without an artifact map still sniffs the right platform.
 
 ### Pack deliverables
 
