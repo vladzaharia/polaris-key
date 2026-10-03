@@ -17,6 +17,7 @@ export {
 export {
   checkPaths,
   parseFilesIndex,
+  strictParse,
   treeDigest,
   type CheckPathsResult,
   type FilesErrorCode,

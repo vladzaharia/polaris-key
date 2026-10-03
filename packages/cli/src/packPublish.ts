@@ -55,7 +55,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { ManifestPackDeliverable } from "@polaris-key/manifest";
+import {
+  isMountedPackType,
+  type ManifestPackDeliverable,
+} from "@polaris-key/manifest";
 import {
   MARKER_FORMAT,
   MAX_RECORD_JWS_BYTES,
@@ -94,7 +97,8 @@ import {
   requirePacksDiscovery,
   variantDirName,
 } from "./packManifest.js";
-import { readPck, stripPck } from "./pck.js";
+import { readPck, stripPck, type PckDirectory } from "./pck.js";
+import { lintTypeTree, readGodotZip } from "./packTypes.js";
 import {
   CONTENT_KEY_ENV,
   contentSigner,
@@ -232,11 +236,11 @@ export interface PackPublishResult {
 // ── 1. The declaration and the payloads ──────────────────────────────────────
 
 /** The one `*.pck` file directly in `dir` (markers excluded). */
-async function findPck(dir: string): Promise<string> {
+async function findPck(dir: string, ext = ".pck"): Promise<string> {
   let names: string[];
   try {
     names = (await readdir(dir, { withFileTypes: true }))
-      .filter((e) => e.isFile() && e.name.endsWith(".pck"))
+      .filter((e) => e.isFile() && e.name.endsWith(ext))
       .map((e) => e.name)
       .sort();
   } catch (e) {
@@ -246,7 +250,7 @@ async function findPck(dir: string): Promise<string> {
   }
   if (names.length !== 1)
     throw new Error(
-      `${dir} must hold exactly one .pck file (found ${names.length}${names.length ? `: ${names.join(", ")}` : ""}).`,
+      `${dir} must hold exactly one ${ext} file (found ${names.length}${names.length ? `: ${names.join(", ")}` : ""}).`,
     );
   return path.join(dir, names[0]!);
 }
@@ -296,19 +300,61 @@ export async function loadVariant(
       lintWarnings: lint.warnings.map((w) => `${name}: ${w}`),
     };
   }
+  if (pack.type === "godot.zip") {
+    // P4-16: a zip of stored entries, read strictly, then the godot.pck admission list.
+    const file = await findPck(dir, ".zip");
+    const bytes = new Uint8Array(await readFile(file));
+    const name = path.basename(file);
+    let zipDir: PckDirectory;
+    try {
+      zipDir = readGodotZip(bytes, name);
+    } catch (e) {
+      return {
+        variant,
+        key,
+        location: file,
+        payload: { layout: "container", bytes, files: [] },
+        stripped: [],
+        formatVersion: 1,
+        lintErrors: [(e as Error).message],
+        lintWarnings: [],
+      };
+    }
+    const lint = lintPck(zipDir, bytes, {
+      prefixes: pack.handler.prefixes ?? [],
+    });
+    const payload = containerPayload(bytes, zipDir);
+    const paths = lintTreePaths(payload.files.map((f) => f.path));
+    return {
+      variant,
+      key,
+      location: file,
+      payload,
+      stripped: [],
+      formatVersion: 1,
+      lintErrors: [...lint.errors, ...paths.errors].map((e) => `${name}: ${e}`),
+      lintWarnings: lint.warnings.map((w) => `${name}: ${w}`),
+    };
+  }
   const tree = await readTree(dir);
   const paths = lintTreePaths(tree.files.map((f) => f.path));
+  // P4-16: the type's own lint (data.json, l10n.table, ml.model, audio.bank), only over a tree
+  // whose paths already pass.
+  const typed =
+    tree.errors.length === 0 && paths.errors.length === 0
+      ? await lintTypeTree(pack.type, tree.files, variant)
+      : { errors: [], warnings: [] };
   return {
     variant,
     key,
     location: dir,
     payload: { layout: "tree", files: tree.files },
     stripped: [],
-    formatVersion: 1,
-    lintErrors: [...tree.errors, ...paths.errors].map(
+    formatVersion: pack.formatVersion,
+    lintErrors: [...tree.errors, ...paths.errors, ...typed.errors].map(
       (e) => `${variantDirName(variant)}/${e}`,
     ),
-    lintWarnings: [],
+    lintWarnings: typed.warnings.map((w) => `${variantDirName(variant)}/${w}`),
   };
 }
 
@@ -413,8 +459,11 @@ async function loadBase(
     }
     const dir = path.join(release.dir, key || "default");
     try {
-      if (pack.type === "godot.pck") {
-        const bytes = new Uint8Array(await readFile(await findPck(dir)));
+      if (isMountedPackType(pack.type)) {
+        const zip = pack.type === "godot.zip";
+        const bytes = new Uint8Array(
+          await readFile(await findPck(dir, zip ? ".zip" : ".pck")),
+        );
         const sha = sha256Hex(bytes);
         if (sha !== v.payload.sha256 || bytes.byteLength !== v.payload.size) {
           warn(
@@ -422,7 +471,10 @@ async function loadBase(
           );
           continue;
         }
-        const p = containerPayload(bytes, readPck(bytes, label));
+        const p = containerPayload(
+          bytes,
+          zip ? readGodotZip(bytes, label) : readPck(bytes, label),
+        );
         payloads.set(key, { sha256: sha, bytes, files: p.files });
       } else {
         const tree = await readTree(dir);
@@ -505,7 +557,7 @@ export function markerJson(
 
 /** Where a variant's marker goes: beside a single file, inside a tree. */
 export function markerPathFor(type: string, location: string): string {
-  return type === "godot.pck"
+  return isMountedPackType(type)
     ? `${location}${MARKER_SUFFIX}`
     : path.join(location, ...TREE_MARKER_PATH.split("/"));
 }
@@ -1219,7 +1271,7 @@ export async function publishPack(
       for (const v of variants) {
         const vdir = path.join(dest, variantDirName(v.variant));
         await mkdir(vdir, { recursive: true });
-        if (pack.type === "godot.pck")
+        if (isMountedPackType(pack.type))
           await writeFile(
             path.join(vdir, path.basename(v.location)),
             (v.payload as { bytes: Uint8Array }).bytes,
