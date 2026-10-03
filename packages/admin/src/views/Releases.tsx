@@ -41,6 +41,7 @@ import {
   type PolicyAction,
 } from "./releases/PolicyActionDialog.js";
 import { releaseSourceOf } from "./products/util.js";
+import { qk } from "../console/data/queries.js";
 
 /**
  * Releases view: the release TRUTH STORE, the channels that serve from it, and the
@@ -64,14 +65,14 @@ import { releaseSourceOf } from "./products/util.js";
  * whether it is current; they follow it rather than standing in for it.
  */
 export function Releases({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.product(slug), () =>
     api.product(slug).then((r) => r.product),
   );
-  const health = useResource(`release-health:${slug}`, () =>
+  const health = useResource(qk.releaseHealth(slug), () =>
     api.releaseHealth(slug).then((r) => r.health),
   );
-  const store = useResource(`releases:${slug}`, () => api.releases(slug));
-  const channels = useResource(`release-channels:${slug}`, () =>
+  const store = useResource(qk.releases(slug), () => api.releases(slug));
+  const channels = useResource(qk.channels(slug), () =>
     api.releaseChannels(slug),
   );
   const [action, setAction] = React.useState<PolicyAction | null>(null);

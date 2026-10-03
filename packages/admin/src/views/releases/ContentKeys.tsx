@@ -16,6 +16,7 @@ import {
   type ColumnDef,
 } from "../../components/ui/index.js";
 import { absoluteTime } from "../format.js";
+import { qk } from "../../console/data/queries.js";
 
 /**
  * The Release section's "Content keys" table (P4-19, plans/P4-19.md §6.3, decision 11): every
@@ -26,7 +27,7 @@ import { absoluteTime } from "../format.js";
  * console ones, so the Worker never holds the power to grant publishing.
  */
 export function ContentKeys({ slug }: { slug: string }): React.ReactElement {
-  const list = useResource(`delegations:${slug}`, () => api.delegations(slug));
+  const list = useResource(qk.delegations(slug), () => api.delegations(slug));
   const rows = list.data?.delegations ?? [];
   const columns: ColumnDef<DelegationDto>[] = [
     {

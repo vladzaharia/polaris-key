@@ -30,6 +30,8 @@ import {
   Skeleton,
   useToast,
 } from "../components/ui/index.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * Edge-mint recipe approval (P0-12). A recipe arrives from the product's `.pkey/` manifest, so
@@ -203,9 +205,8 @@ export function EdgeMintRecipes({
 }: {
   slug: string;
 }): React.ReactElement | null {
-  const { data, loading, error, reload } = useResource(
-    `edge-mint:${slug}`,
-    () => api.edgeMintRecipes(slug),
+  const { data, loading, error, reload } = useResource(qk.mint(slug), () =>
+    api.edgeMintRecipes(slug),
   );
   const toast = useToast();
   const [approving, setApproving] = React.useState<EdgeMintRecipe | null>(null);
@@ -232,16 +233,19 @@ export function EdgeMintRecipes({
   // recorded; a push that flips it in between is refused (409).
   const licenseEnabled = data?.licenseEnabled !== false;
 
+  // After an approve or revoke, success or not: a refusal (409) means the recipe moved under the
+  // operator, so the list must show it as it now stands.
   const refresh = (): void => {
-    invalidate(`edge-mint:${slug}`);
-    invalidate(`product:${slug}`);
+    invalidate(qk.mint(slug));
+    invalidate(qk.product(slug));
   };
 
   const approve = async (): Promise<void> => {
     if (!approving) return;
     setBusy(true);
     try {
-      await api.approveEdgeMintRecipe(
+      await mutate(
+        "approveEdgeMintRecipe",
         slug,
         approving.id,
         fieldsOf(approving),
@@ -272,7 +276,7 @@ export function EdgeMintRecipes({
     if (!revoking) return;
     setBusy(true);
     try {
-      await api.revokeEdgeMintRecipe(slug, revoking.id);
+      await mutate("revokeEdgeMintRecipe", slug, revoking.id);
       toast.success(
         "Approval revoked",
         `“${revoking.id}” no longer mints until approved again.`,

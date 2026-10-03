@@ -1,7 +1,5 @@
 import * as React from "react";
 import type { ProductCatalog } from "../../api.js";
-import { api } from "../../api.js";
-import { invalidate } from "../../context.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
@@ -17,6 +15,7 @@ import {
   useToast,
 } from "../../components/ui/index.js";
 import { parseCatalogDraft } from "./helpers.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * "Publish new version" flow. Seeds a JSON editor from the active catalog, bumps the
@@ -65,12 +64,11 @@ export function PublishDialog({
     setSubmitting(true);
     setServerError(null);
     try {
-      const res = await api.publishSchema(slug, parsed.catalog);
+      const res = await mutate("publishSchema", slug, parsed.catalog);
       toast.success(
         "Catalog published",
         `Schema version is now v${res.schemaVersion}.`,
       );
-      invalidate(`schema:${slug}`);
       onOpenChange(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Publish failed.";

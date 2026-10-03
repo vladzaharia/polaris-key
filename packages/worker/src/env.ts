@@ -47,6 +47,12 @@ export interface Env {
    * F-Droid, Scoop) out. A `[vars]` value, public, per environment.
    */
   CONSOLE_ORIGIN?: string;
+  /**
+   * Which deployment this Worker is: `prod`, `staging` or `dev` (ADMIN.md A-1). `/manage/api/me`
+   * echoes it so the console can badge staging and dev; unset or anything else reads as `null`
+   * and no badge shows. A `[vars]` value, public, per environment.
+   */
+  PKEY_ENVIRONMENT?: string;
 
   // platform-wide secrets / vars (optional so tests can omit them)
   //

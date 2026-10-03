@@ -19,7 +19,7 @@ import {
   type ServiceSlug,
   type ServicesResponse,
 } from "../../api.js";
-import { invalidate, useResource } from "../../context.js";
+import { useResource } from "../../context.js";
 import {
   SERVICE_SLUGS,
   SERVICE_TABLE,
@@ -47,6 +47,8 @@ import {
   Switch,
   useToast,
 } from "../../components/ui/index.js";
+import { qk } from "../../console/data/queries.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * Which services this product runs (D-15) — the single authority every other console affordance
@@ -126,7 +128,7 @@ const ERROR_TARGETS: Record<string, (ServiceSlug | "registration")[]> = {
 
 export function ServicesCard({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
-  const { data, loading, error, reload } = useResource(`services:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.services(slug), () =>
     api.services(slug),
   );
 
@@ -192,7 +194,7 @@ export function ServicesCard({ slug }: { slug: string }): React.ReactElement {
     setSaving(true);
     clearRejection();
     try {
-      await api.updateServices(slug, {
+      await mutate("updateServices", slug, {
         services: Object.fromEntries(
           SERVICE_ROWS.map((row) => [row.slug, { enabled: enabled[row.slug] }]),
         ) as Record<ServiceSlug, { enabled: boolean }>,
@@ -201,10 +203,8 @@ export function ServicesCard({ slug }: { slug: string }): React.ReactElement {
             ? null
             : (registration as RegistrationPolicy),
       });
-      invalidate(`services:${slug}`);
       // The sidebar filters its sections on the product row's copy of this set, so the nav is
       // stale the moment this lands.
-      invalidate(`product:${slug}`);
       toast.success("Services updated");
     } catch (err) {
       // Two distinct classes of 422, and conflating them would misplace the message.
@@ -233,9 +233,7 @@ export function ServicesCard({ slug }: { slug: string }): React.ReactElement {
   const onRevert = async (): Promise<void> => {
     setReverting(true);
     try {
-      await api.revertServices(slug);
-      invalidate(`services:${slug}`);
-      invalidate(`product:${slug}`);
+      await mutate("revertServices", slug);
       toast.success(
         "Returned to manifest control",
         "Nothing changed live — the manifest re-applies on the next resync.",

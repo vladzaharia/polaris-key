@@ -13,6 +13,7 @@ import {
   EmptyState,
   Skeleton,
 } from "../components/ui/index.js";
+import { qk } from "../console/data/queries.js";
 
 /**
  * The Distribution section's overview — how releases reach devices and outlets.
@@ -59,7 +60,7 @@ const HOOKS: readonly HookRow[] = [
 ];
 
 export function Distribution({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`services:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.services(slug), () =>
     api.services(slug),
   );
 
@@ -237,9 +238,8 @@ const STATE_VARIANT: Record<
 
 /** The outlet rollouts recorded for this product (P2b-04), read-only, with today's caveat. */
 function RolloutsCard({ slug }: { slug: string }): React.ReactElement {
-  const { data, error } = useResource<RolloutsResponse>(
-    `distribution-rollouts:${slug}`,
-    () => api.rollouts(slug),
+  const { data, error } = useResource<RolloutsResponse>(qk.rollouts(slug), () =>
+    api.rollouts(slug),
   );
   return (
     <Card>

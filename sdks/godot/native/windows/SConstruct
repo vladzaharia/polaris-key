@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+# The Windows GDExtension, pkey_win.dll (P5-07; notes/S-11 §4.5, §8 step 1). build.ps1 runs it:
+#
+#   scons godot_cpp=<deps>/godot-cpp velopack=<deps>/velopack platform=windows \
+#         target=template_release arch=x86_64 api_version=4.4 disable_exceptions=no use_mingw=no
+#
+# SCons >= 4.11 (it knows Visual Studio 2026; 4.9 falls back to MinGW and fails on /bigobj).
+# godot-cpp is built with exceptions on, because C++/WinRT reports errors as hresult_error. The
+# StoreContext file alone is compiled as C++20 (C++/WinRT under C++17 needs
+# <experimental/coroutine>, which the VS 2026 STL rejects); godot-cpp stays at C++17. No updater
+# library is linked: velopack_libc.dll and WinSparkle.dll are loaded at run time.
+import os
+
+godot_cpp = ARGUMENTS.get("godot_cpp", "../.deps/godot-cpp")
+velopack = ARGUMENTS.get("velopack", "../.deps/velopack")
+# Keep SCons' signature database beside godot-cpp, so caching that one directory makes a CI
+# rebuild incremental (an uncached godot-cpp build takes 287-503 s on windows-latest).
+SConsignFile(os.path.join(os.path.abspath(godot_cpp), ".sconsign-pkey-win"))
+
+env = SConscript(os.path.join(godot_cpp, "SConstruct"))
+env.Append(CPPPATH=["src/", os.path.join(velopack, "include")])
+env.Append(LIBS=["WindowsApp", "ole32", "user32"])
+env.Append(CCFLAGS=["/bigobj"])
+
+cpp20 = env.Clone()
+cpp20["CXXFLAGS"] = [f for f in cpp20["CXXFLAGS"] if not str(f).startswith("/std:")] + ["/std:c++20"]
+
+objects = [env.SharedObject(s) for s in ["src/register.cpp", "velopack/pkey_velopack.cpp", "winsparkle/pkey_winsparkle.cpp"]]
+objects.append(cpp20.SharedObject("storecontext/pkey_storecontext.cpp"))
+library = env.SharedLibrary("bin/pkey_win{}".format(env["SHLIBSUFFIX"]), source=objects)
+Default(library)

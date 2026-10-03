@@ -1,7 +1,7 @@
 import * as React from "react";
 import { AlertTriangle, Fingerprint, Undo2 } from "lucide-react";
 import { api, type FingerprintMode, type FingerprintProbeDto } from "../api.js";
-import { invalidate, useResource } from "../context.js";
+import { useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
 import {
   Badge,
@@ -26,6 +26,8 @@ import {
   useToast,
   type ColumnDef,
 } from "../components/ui/index.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * Enrollment & fingerprints — the License section's answer to "which machine is this, and how
@@ -48,7 +50,7 @@ export function FingerprintPolicy({
 }: {
   slug: string;
 }): React.ReactElement {
-  const policy = useResource(`fingerprint-policy:${slug}`, () =>
+  const policy = useResource(qk.fingerprintPolicy(slug), () =>
     api.fingerprintPolicy(slug),
   );
 
@@ -100,7 +102,7 @@ export function FingerprintPolicy({
 // ── enrollment (read-only projection of the service set) ──────────────────────
 
 function EnrollmentCard({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error } = useResource(`services:${slug}`, () =>
+  const { data, loading, error } = useResource(qk.services(slug), () =>
     api.services(slug),
   );
 
@@ -214,8 +216,10 @@ function PolicyCard({
     try {
       // `probes` is omitted deliberately: the PATCH replaces the whole array, so sending the
       // list back unchanged would claim admin ownership of a list this view cannot edit.
-      await api.updateFingerprintPolicy(slug, { enabled, defaultMode: mode });
-      invalidate(`fingerprint-policy:${slug}`);
+      await mutate("updateFingerprintPolicy", slug, {
+        enabled,
+        defaultMode: mode,
+      });
       toast.success("Fingerprint policy saved");
     } catch (err) {
       toast.error(
@@ -230,8 +234,7 @@ function PolicyCard({
   const onRevert = async (): Promise<void> => {
     setReverting(true);
     try {
-      await api.revertFingerprintPolicy(slug);
-      invalidate(`fingerprint-policy:${slug}`);
+      await mutate("revertFingerprintPolicy", slug);
       toast.success(
         "Returned to manifest control",
         "The manifest’s policy re-applies on the next resync.",

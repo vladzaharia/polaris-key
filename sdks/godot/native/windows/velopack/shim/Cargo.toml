@@ -1,0 +1,21 @@
+[package]
+name = "pkey_velopack_shim"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "Polaris Key (P5-07): the Velopack --mainExe in front of a Godot Windows export"
+
+[[bin]]
+name = "pkey_velopack_shim"
+path = "src/main.rs"
+
+[dependencies]
+# Pinned with velopack_libc in native/deps.env; Cargo.lock pins the rest.
+velopack = "=1.2.161"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"
