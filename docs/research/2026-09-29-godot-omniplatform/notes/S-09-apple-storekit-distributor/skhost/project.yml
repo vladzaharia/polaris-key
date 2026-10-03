@@ -1,0 +1,57 @@
+name: SKHost
+options:
+  bundleIdPrefix: dev.polariskey.research
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  PKPlatformProbe:
+    path: ../pkplat
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+targets:
+  SKHost:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: PKPlatformProbe
+        product: PKPlatform
+    info:
+      path: App/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleShortVersionString: "1.4"
+        CFBundleVersion: "14"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.research.skhost
+        CODE_SIGN_ENTITLEMENTS: App/SKHost.entitlements
+  SKHostTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [HostTests]
+    dependencies:
+      - target: SKHost
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/SKHost.app/SKHost"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.research.skhost.tests
+schemes:
+  SKHost:
+    build:
+      targets:
+        SKHost: all
+        SKHostTests: [test]
+    run:
+      config: Debug
+      storeKitConfiguration: HostTests/Products.storekit
+    test:
+      config: Debug
+      targets: [SKHostTests]

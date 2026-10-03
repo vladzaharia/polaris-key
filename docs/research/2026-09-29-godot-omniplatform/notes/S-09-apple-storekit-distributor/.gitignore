@@ -1,0 +1,9 @@
+build/
+godot-src/
+.gems/
+.build/
+.swiftpm/
+.godot/
+skhost/*.xcodeproj/
+gdx/godot/bin/pkap.xcframework/
+gdx/godot/icon.png
