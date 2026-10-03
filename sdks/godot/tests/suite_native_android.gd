@@ -17,9 +17,31 @@ extends RefCounted
 #   export    PKeyAndroidExport: the AARs, Play Core and the two direct-only manifest entries per
 #             flavour, and the warnings
 #   play      PKeyPlayAdapter's In-App Updates path (notes/S-10 §Results 1) and its listing fallback
+#   direct    the Android direct path: PKeyApkUpdate over a loopback server (download into private
+#             storage, the record's size and SHA-256, then apk_install), the apk bridge, and
+#             PKeyDirectAdapter routing `native` to install_apk with the link only on unsupported
 
 
 const E := preload("res://addons/polaris_key/native/android_export.gd")
+
+
+class ApkHost:
+	extends RefCounted
+	var opened: Array[String] = []
+	var installs := 0
+	var answer: PKeyApplyResult = null
+	var available := true
+
+	func open_url(url: String) -> bool:
+		opened.append(url)
+		return true
+
+	func context(_decision: Dictionary) -> Dictionary:
+		return {"platform": "android", "page_url": "", "release_url": "https://example.com/releases", "build_url": "https://dl.example.com/builds/b1", "native_bridge": "apk", "native_available": available}
+
+	func install_apk(_check: PKeyUpdateCheck) -> PKeyApplyResult:
+		installs += 1
+		return answer
 
 
 class FakeHost:
@@ -42,6 +64,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_keystore(t)
 	_export(t)
 	await _play(t)
+	await _direct(t)
 	return true
 
 
@@ -376,6 +399,88 @@ func _play(t: PKeyTestContext) -> void:
 	t.check("play: off Android the listing as before", r.behaviour == PKeyApplyResult.LINK and host.opened.size() == 1)
 	var testing := PKeyPlayTestingAdapter.new()
 	t.check("play: the testing tracks use the same adapter", testing is PKeyPlayAdapter and testing.kind == "play-testing")
+
+
+func _direct(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var server := PKeyFakeServer.new()
+	tree.root.add_child(server)
+	if not t.check("direct: the loopback server listens", server.listen()):
+		server.queue_free()
+		return
+	var apk := PackedByteArray()
+	apk.resize(70000)
+	for i in apk.size():
+		apk[i] = (i * 31) % 251
+	var sha := PKeyReleaseRecord.sha256_hex(apk)
+	server.handler = func(_req: Dictionary) -> Dictionary: return {"status": 200, "headers": {"Content-Type": "application/vnd.android.package-archive"}, "body": apk}
+	var dir := "user://pkey_test_apk_%d" % Time.get_ticks_usec()
+	var req := func(art: Variant) -> Dictionary: return {"url": server.base_url() + "/builds/b1", "headers": {}, "dir": dir, "artifact": art, "version": "1.1.0", "build": "b1", "timeout": 10.0}
+
+	var d := _fake("direct")
+	var a := _android("android", d)
+	var r: PKeyApplyResult = await PKeyApkUpdate.run(a, req.call({"sha256": sha, "size": apk.size()}))
+	t.check("direct: a verified APK is downloaded and committed", r.ok and r.behaviour == PKeyApplyResult.HOOK and r.bridge == "apk" and r.version == "1.1.0" and int(r.detail.get("session")) == 7)
+	var q: Dictionary = d.last_call("pi_install")
+	t.check("direct: apk_install gets the record's SHA-256 and a private absolute path", q.get("sha256") == sha and str(q.get("path")).is_absolute_path() and str(q.get("path")).ends_with("/update.apk") and not str(q.get("path")).begins_with("user://"))
+	t.check("direct: no versionCode is invented (the record carries none)", not q.has("versionCode"))
+	t.check("direct: the player already chose to update: no extra Android prompt is asked for", q.get("silent") == true and q.get("prompt") == true)
+	t.check("direct: the downloaded file is removed once the session holds it", not FileAccess.file_exists(dir.path_join("update.apk")))
+
+	var before := d.ops_called("pi_install")
+	r = await PKeyApkUpdate.run(a, req.call({"sha256": "0".repeat(64), "size": apk.size()}))
+	t.check("direct: bytes that miss the record's SHA-256 are refused before the plugin", not r.ok and r.code == PKeyErrors.PAYLOAD_MISMATCH and d.ops_called("pi_install") == before)
+	r = await PKeyApkUpdate.run(a, req.call({"sha256": sha, "size": apk.size() + 1}))
+	t.check("direct: a size that is not the record's is refused", not r.ok and d.ops_called("pi_install") == before)
+	r = await PKeyApkUpdate.run(a, req.call(null))
+	t.check("direct: a record without the build's payload is record-mismatch", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH)
+	d.refuse = ["signer_mismatch"]
+	r = await PKeyApkUpdate.run(a, req.call({"sha256": sha, "size": apk.size()}))
+	t.check("direct: the plugin's refusal is swap-refused with its reasons", not r.ok and r.code == PKeyErrors.SWAP_REFUSED and r.detail.get("refused") == ["signer_mismatch"])
+	d.refuse = []
+
+	var hits := server.requests.size()
+	r = await PKeyApkUpdate.run(_android("android", _fake("play")), req.call({"sha256": sha, "size": apk.size()}))
+	t.check("direct: a play build answers unsupported (outlet) without downloading", not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "outlet" and server.requests.size() == hits)
+	r = await PKeyApkUpdate.run(_android("linux"), req.call({"sha256": sha, "size": apk.size()}))
+	t.check("direct: off Android it answers unsupported (runtime)", r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "runtime")
+	server.queue_free()
+	_rmrf(dir)
+
+	var bridge := PKeyApkBridge.new()
+	bridge.android = _android("android", _fake("direct"))
+	t.check("direct: the apk bridge is available on a direct build", bridge.is_available() and bridge.id() == "apk")
+	bridge.android = _android("android", _fake("play"))
+	t.check("direct: …and not on a play build, so the decision never offers native there", not bridge.is_available())
+	var u := PKeyUpdater.new()
+	var env := PKeyFakeUpdaterEnv.new()
+	env.os = "android"
+	u.env = env
+	t.check("direct: the updater's native bridge on Android is apk", u.native_bridge_name() == "apk" and u.bridge("apk") is PKeyApkBridge)
+
+	var decision := {"action": "binary", "method": "native", "release": {"version": "1.1.0", "seq": 3, "sha256": "ab".repeat(32)}, "build": "b1", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}
+	var adapter := PKeyDirectAdapter.new()
+	var check := PKeyUpdateCheck.new(true)
+	check.decision = decision
+	var host := ApkHost.new()
+	host.answer = PKeyApplyResult.of(PKeyApplyResult.HOOK, {"bridge": "apk", "method": "native"})
+	var plan := adapter.describe(decision, host.context(decision))
+	t.check("direct: the prompt offers the install on a direct build", plan["behaviour"] == PKeyApplyResult.HOOK and plan["bridge"] == "apk" and plan["action"] == "update_install")
+	r = await adapter.apply(decision, host, check)
+	t.check("direct: native on Android goes to install_apk, no link", r.ok and r.bridge == "apk" and host.installs == 1 and host.opened.is_empty())
+	host.answer = PKeyApplyResult.failed(PKeyErrors.UNSUPPORTED, "no plugin", {"reason": "dependency"})
+	r = await adapter.apply(decision, host, check)
+	t.check("direct: an unsupported answer falls back to the download link", r.behaviour == PKeyApplyResult.LINK and host.opened.size() == 1 and r.detail.get("fallback_from") == "apk")
+	host.opened.clear()
+	host.answer = PKeyApplyResult.failed(PKeyErrors.PAYLOAD_MISMATCH, "bad bytes")
+	r = await adapter.apply(decision, host, check)
+	t.check("direct: any other failure is reported, never papered over with a link", not r.ok and r.code == PKeyErrors.PAYLOAD_MISMATCH and host.opened.is_empty())
+	r = await adapter.apply(decision, host, null)
+	t.check("direct: installing needs the check (its verified record)", not r.ok and r.code == PKeyErrors.INVALID_OPTIONS)
+	host.available = false
+	host.installs = 0
+	r = await adapter.apply(decision, host, check)
+	t.check("direct: without the plugin the plan is the download link", r.behaviour == PKeyApplyResult.LINK and host.installs == 0)
 
 
 static func _rmrf(path: String) -> void:

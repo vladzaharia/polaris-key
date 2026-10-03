@@ -60,7 +60,9 @@ headless Gradle export 9–16 s (direct APK 73.6 MB arm64, play AAB 29.2 MB); th
 both permissions, the meta-data and the receiver, no Play Core; the play AAB has no install
 permission, no session code and no direct class. On the emulator: a Keystore round trip 9–14 ms
 (software-backed, `securityLevel` 0); refusals for a public path and a wrong hash (115–270 ms for
-74 MB); a real silent v1 → v2 self-update (`apk_install` 471 ms to commit, no prompt), after which
+74 MB); a real silent v1 → v2 self-update (`apk_install` 471 ms to commit, no prompt; and again
+through the update driver, `PKeyDirectAdapter` → `PKeyApkUpdate`, download from a loopback server
+plus verify plus commit in 1.2 s), after which
 the next launch reads the journaled `success` and an install source of `selfUpdated` with
 `packageSource` 0; In-App Updates `outlet` for a non-Play install; an on-demand pack under
 `--local-testing` fetched (PENDING → DOWNLOADING → TRANSFERRING → COMPLETED), located under

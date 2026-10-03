@@ -221,10 +221,21 @@ disagree; S-10's §Recommendation and §Proposed edits were followed except wher
 - **Update driver.** P3-10 is done, so the In-App Updates path landed here, in
   `distribution/outlets/play.gd` (S-10's table; `play-testing` now extends the play adapter). The
   "no update in the decision, priority ≥ 4" column of S-10's table is not wired (an adapter only
-  acts on a decision that has an action). **The direct adapter does not call `apk_install` yet**:
-  on Android `native_bridge_name()` is empty, so a direct build's `binary` answer keeps the
-  `download` link. Wiring it needs the build's APK SHA-256 and versionCode from a verified record
-  and a private download; that has no owner (flagged to the lead).
+  acts on a decision that has an action).
+- **Direct path (lead decision, after the first review).** On Android `native_bridge_name()` is
+  `apk` (`distribution/outlets/apk.gd`, `PKeyApkBridge`), available only on a direct-flavour build
+  with the plugin, so `binary {method: native}` is offered there when the game lists `native` in
+  `update_methods`. `PKeyDirectAdapter.apply` routes it to `PKeyUpdater.install_apk(check)`
+  (`updater/apk_update.gd`, `PKeyApkUpdate`): download through `PKeyDownload` (discovery's
+  builds URL, Range resume) into `user://pkey/<product>/updates/apk/` (the app's files directory),
+  check the size and SHA-256 of the build's one `payload` artifact in the verified record, call
+  `apk_install` (no extra Android prompt is requested: the player chose to update; Android still
+  prompts when it requires it), queue `update_downloaded`, delete the copy once the session holds
+  it. The link is opened only when the plugin answers unsupported; a download, hash or plugin
+  refusal is reported as a failure. **Gap:** the signed record carries no Android versionCode
+  (`builds[].buildNumber` is a free string, not defined as one), so no expected versionCode is
+  passed; the plugin still refuses a versionCode that is not above the installed one. No wire
+  change was made. The emulator run now installs v2 through the adapter (below).
 - **Launch work** runs when `PKeyAndroid.shared()` enters the tree (PKeyCore creates it through the
   store selection on Android), not from `polaris_key.gd`: read and clear the last journaled
   install status, abandon stale sessions.
@@ -253,6 +264,13 @@ disagree; S-10's §Recommendation and §Proposed edits were followed except wher
   initiator = the game, `packageSource` 0) and the play sequence (Keystore; In-App Updates
   `outlet` for a non-Play install; an on-demand pack under `--local-testing` fetched, located and
   mounted in 1.8 ms). Android 15/16 images were not run for this package (S-10 ran 14 and 16).
+- After the direct-path wiring, the same emulator run installs v2 THROUGH THE UPDATE DRIVER:
+  `PKeyDirectAdapter.apply` on a `binary {method: native}` decision with a record listing v2's
+  payload (size, SHA-256) → `PKeyApkUpdate`: download of the 75 MB APK from a loopback server (adb
+  reverse) into `user://`, verified, `apk_install`, committed with no prompt, 1.2 s in all; the
+  next launch reads `success` and `selfUpdated`. The probe host stands in for `PKeyUpdater`
+  (`install_apk`'s body with the probe's URL and record), because a configured PKeyCore needs a
+  server. The probe preset needs `permissions/internet=true` (Godot's Android default is off).
 
 ### Owner checklist (needs a Play Console app and devices; nothing here was run)
 

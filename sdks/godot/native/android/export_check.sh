@@ -15,8 +15,10 @@
 # Play Console):
 #   direct  capabilities, install source, a Keystore round trip in the real AndroidKeyStore,
 #           In-App Updates refused (outlet), refusals (wrong hash, public path), then a REAL silent
-#           self-update v1 -> v2 through PackageInstaller and, on the next launch, the journaled
-#           outcome and the self-updated install source
+#           self-update v1 -> v2 THROUGH THE UPDATE DRIVER (PKeyDirectAdapter -> PKeyApkUpdate:
+#           download from a loopback server over adb reverse, the record's size and SHA-256,
+#           PackageInstaller) and, on the next launch, the journaled outcome and the self-updated
+#           install source
 #   play    capabilities, Keystore, In-App Updates refused for a non-Play install (outlet), and Play
 #           Asset Delivery under local testing: fetch, COMPLETED, getPackLocation, mount
 #
@@ -147,6 +149,7 @@ version/name="1.0.$vc"
 package/unique_name="$pkg"
 package/name="PKey probe"
 package/signed=true
+permissions/internet=true
 polaris_key/android_flavor="$flavor"
 polaris_key/outlet="$([ "$flavor" = play ] && echo play || echo direct)"
 EOT
@@ -226,9 +229,9 @@ if [ -n "${DEVICE:-}" ]; then
   A() { "$ADB" -s "$DEVICE" "$@"; }
   A get-state >/dev/null 2>&1 || "$ADB" connect "$DEVICE" >/dev/null
   # run_plan <pkg> <case> <steps-json> [versionCode] [timeout]: launch the probe, wait, pull.
-  run_plan() {
-    local pkg="$1" case="$2" steps="$3" vc="${4:--1}" tmo="${5:-90}" ext="/sdcard/Android/data/$1/files"
-    printf '{"case":"%s","versionCode":%s,"steps":%s}' "$case" "$vc" "$steps" >"$OUT/plan_$case.json"
+  run_plan() { # run_plan <pkg> <case> <steps> [versionCode] [timeout] [extra plan members, ending in a comma]
+    local pkg="$1" case="$2" steps="$3" vc="${4:--1}" tmo="${5:-90}" extra="${6:-}" ext="/sdcard/Android/data/$1/files"
+    printf '{%s"case":"%s","versionCode":%s,"steps":%s}' "$extra" "$case" "$vc" "$steps" >"$OUT/plan_$case.json"
     A shell mkdir -p "$ext"
     A push "$OUT/plan_$case.json" "$ext/plan.json" >/dev/null
     A shell rm -f "$ext/result_$case.json"
@@ -266,8 +269,19 @@ EOP
   expect d_basic 's["update_check"]["code"] == "unsupported" and s["update_check"]["detail"]["reason"] == "outlet"' "direct: In-App Updates unsupported (outlet)"
   expect d_basic '"path_not_private" in s["verify_public"]["detail"]["verify"]["refused"]' "direct: an APK in public storage is refused"
   expect d_basic 's["verify_wrong_hash"]["detail"]["verify"]["refused"] == ["hash_mismatch"]' "direct: a wrong hash is refused"
-  run_plan "$P" d_update '["apk_install"]' 2 60
-  expect d_update 's["apk_install"]["ok"] and s["apk_install"]["detail"]["committed"]' "direct: the verified v2 is committed"
+  # The update driver end to end: the direct adapter downloads v2 from a loopback server (adb
+  # reverse), checks it against the record's artifact and installs it through the plugin.
+  APK_SHA="$(shasum -a 256 "$OUT/direct-v2.apk" | cut -d' ' -f1)"
+  APK_SIZE="$(wc -c <"$OUT/direct-v2.apk" | tr -d ' ')"
+  (cd "$OUT" && exec python3 -m http.server 8765 --bind 127.0.0.1 >"$LOGS/http.log" 2>&1) &
+  HTTP_PID=$!
+  A reverse tcp:8765 tcp:8765 >/dev/null
+  sleep 1
+  run_plan "$P" d_update '["adapter_install"]' 2 120 "\"apkUrl\":\"http://127.0.0.1:8765/direct-v2.apk\",\"apkSha256\":\"$APK_SHA\",\"apkSize\":$APK_SIZE,"
+  kill "$HTTP_PID" 2>/dev/null || true
+  A reverse --remove tcp:8765 >/dev/null 2>&1 || true
+  expect d_update 's["adapter_install"]["plan"]["bridge"] == "apk" and s["adapter_install"]["plan"]["behaviour"] == "hook"' "direct: the adapter offers the apk install"
+  expect d_update 's["adapter_install"]["ok"] and s["adapter_install"]["detail"]["bridge"] == "apk" and not s["adapter_install"]["opened"]' "direct: the adapter downloaded, verified and committed v2 (no link opened)"
   for _ in $(seq 1 30); do
     A shell dumpsys package "$P" | grep -q 'versionCode=2' && break
     sleep 1

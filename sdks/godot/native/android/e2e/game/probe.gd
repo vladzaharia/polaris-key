@@ -12,6 +12,33 @@ extends Node
 ##   verify_wrong_hash                  apk_verify(ext/update.apk copied private, a wrong hash)
 ##   apk_install                        copy ext/update.apk into user://, hash it, apk_install(vc)
 ##   verify_public                      apk_verify straight from external storage (path_not_private)
+##   adapter_install                    the update driver end to end: PKeyDirectAdapter.apply on a
+##                                      binary {method: native} decision, through a host whose
+##                                      install_apk(check) is PKeyUpdater.install_apk's body
+##                                      (PKeyApkUpdate.run: download plan.apkUrl into user://, check
+##                                      plan.apkSha256 / apkSize as the record's artifact, install)
+
+
+class ProbeHost:
+	extends RefCounted
+	var android: PKeyAndroid
+	var plan: Dictionary
+	var opened: Array = []
+
+	func context(_d: Dictionary) -> Dictionary:
+		var b := PKeyApkBridge.new()
+		b.android = android
+		return {"platform": "android", "page_url": "", "release_url": "", "build_url": str(plan.get("apkUrl", "")), "native_bridge": "apk", "native_available": b.is_available()}
+
+	func open_url(url: String) -> bool:
+		opened.append(url)
+		return true
+
+	func install_apk(check: PKeyUpdateCheck) -> PKeyApplyResult:
+		return await PKeyApkUpdate.run(android, {
+			"url": str(plan.get("apkUrl", "")), "headers": {}, "dir": "user://pkey/probe/updates/apk",
+			"artifact": PKeySidecarSwap.payload_of(check.record_doc, "b1"), "version": "1.0.2", "build": "b1", "timeout": 120.0,
+		})
 
 var android: PKeyAndroid
 var result := {}
@@ -132,5 +159,17 @@ func _step(st: String, plan: Dictionary) -> Dictionary:
 			var p := _private_copy()
 			var r := _r(await android.apk_install(p, _sha256(p), int(plan.get("versionCode", -1))))
 			r["can_install"] = _r(android.apk_can_install())
+			return r
+		"adapter_install":
+			var host := ProbeHost.new()
+			host.android = android
+			host.plan = plan
+			var check := PKeyUpdateCheck.new(true)
+			check.decision = {"action": "binary", "method": "native", "release": {"version": "1.0.2", "seq": 2, "sha256": "0".repeat(64)}, "build": "b1", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}
+			check.record_doc = {"builds": [{"id": "b1", "platform": "android", "arch": "arm64", "format": "apk", "artifacts": [{"name": "update.apk", "role": "payload", "sha256": str(plan.get("apkSha256", "")), "size": int(plan.get("apkSize", 0))}]}]}
+			var adapter := PKeyDirectAdapter.new()
+			var r := _r(await adapter.apply(check.decision, host, check))
+			r["plan"] = adapter.describe(check.decision, host.context(check.decision))
+			r["opened"] = host.opened
 			return r
 	return {"ok": false, "error": "unknown step"}

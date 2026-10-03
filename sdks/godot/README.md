@@ -1033,8 +1033,13 @@ r = await android.apk_install(path, sha256, version_code)    # direct: verified,
   key surfaced and the device re-activated); `PKeyOptions.store` overrides.
 - **Updates.** The `play` and `play-testing` adapters act on a `store` answer through In-App
   Updates (flexible, or immediate when the decision is mandatory or critical; complete a downloaded
-  update; silent while Play stages; the listing on any failure or a non-Play install). Direct builds
-  have `apk_install`; the direct adapter does not call it yet. A self-update kills the game and
+  update; silent while Play stages; the listing on any failure or a non-Play install). On a direct
+  build the decision offers `binary {method: native}` (the `apk` bridge is available there only,
+  and `native` must be among `PKeyOptions.update_methods`); the player's update action runs
+  `PKeyUpdater.install_apk(check)` (`PKeyApkUpdate`): the record's APK is downloaded into
+  `user://pkey/<product>/updates/apk/`, checked against the verified record's payload size and
+  SHA-256, and handed to `apk_install`. The download link is opened only when the plugin answers
+  unsupported. A self-update kills the game and
   nothing relaunches it: the next launch reads `PKeyAndroid.launch_install_outcome()`, and stale
   sessions are abandoned at launch.
 - **Tests.** `suite_native_android` (in the `ci` set) runs the facade headless against

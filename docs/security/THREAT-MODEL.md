@@ -2659,9 +2659,12 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   racing the verification cannot swap the file. Android itself refuses a different signer as an
   update; the plugin's check makes that refusal explicit and earlier. Key rotation (a signing
   lineage) is refused by the equality rule, which is deliberate until a product needs rotation.
-- **What decides the hash.** The expected SHA-256 and versionCode come from the caller; in the SDK
-  they must come from a verified release record, never from the download response. The direct
-  adapter does not call the installer yet, so no path feeds it an unverified hash today.
+- **What decides the hash.** The direct adapter's Android path (`PKeyApkUpdate`, run only from the
+  player's update action) takes the expected SHA-256 and size from the build's `payload` artifact
+  in the VERIFIED signed release record, never from the feed or the download response; the bytes
+  are checked against it before the plugin sees them, and the plugin hashes them twice more. The
+  record has no Android versionCode, so none is expected: the plugin's "higher than installed",
+  package and signer rules still apply. The download URL only says where to fetch.
 - **Silent installs.** `USER_ACTION_NOT_REQUIRED` is honoured only when the user allowed installs
   from the game and no other installer owns its updates; an install owned by Play, F-Droid or
   Obtainium prompts and names the owner (notes/S-10 §3). Ownership is never requested.
