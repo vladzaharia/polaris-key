@@ -166,3 +166,7 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
 - `PKeyAndroid` and its signals; P5-08's `content/transports/play_pad.gd` and P3-10's
   `distribution/outlets/play.gd` and `apk.gd` call it.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-06 done`.
+
+## Plan amendments (S-10)
+
+The spike note [`notes/S-10-android-play-installer.md`](../../notes/S-10-android-play-installer.md) changes this package: its §Recommendation and §Proposed edits for P5-06 override this brief where they differ.

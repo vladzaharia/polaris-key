@@ -489,6 +489,14 @@ func _zip(t: PKeyTestContext) -> void:
 	var good := _make_zip({"pkey_zip_test/hello.txt": "zip says hi", "pkey_zip_test/data/n.json": "{\"n\": 1}"})
 	var chk := PKeyGodotZipHandler.check(PKeyByteSource.memory(good), {"handler": {"prefixes": prefixes}}, {})
 	t.check("zip: a stored zip passes the zip and admission checks", chk["ok"] and int(chk["count"]) == 2, S.canon(chk))
+	# P4-28: the reference check applies to a zip too, with the app's attachable list forwarded.
+	var scene := "[gd_scene load_steps=2 format=3]\n\n[ext_resource type=\"Script\" path=\"res://scripts/die.gd\" id=\"1\"]\n\n[node name=\"Die\" type=\"Node3D\"]\nscript = ExtResource(\"1\")\n"
+	var refzip := _make_zip({"pkey_zip_test/die.tscn": scene})
+	var unlisted := PKeyGodotZipHandler.check(PKeyByteSource.memory(refzip), {"handler": {"prefixes": prefixes}}, {})
+	t.check("zip: an unlisted app script reference is refused (P4-28)", not unlisted["ok"] and unlisted.get("path") == "pkey_zip_test/die.tscn" and String(unlisted.get("detail", "")).contains("which the app does not list as attachable"), S.canon(unlisted))
+	var zipref := PKeyGodotZipHandler.new()
+	zipref.attachable = PackedStringArray(["res://scripts/die.gd"])
+	t.check("zip: listed (the handler's attachable, as PolarisKey.update.packs sets it), it is admitted", zipref.check_output(PKeyByteSource.memory(refzip), {"handler": {"prefixes": prefixes}}, {})["ok"])
 	var p := _zip_pack("djdl.zipdlc", 1, good, prefixes)
 	var e := _engine("types-zip", [p], p)
 	await e.load_state([])

@@ -1,0 +1,12 @@
+{
+  "name": "@polaris-key/brand-react19",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Test fixture: React 19 for @polaris-key/brand's react19 vitest project (the package's peer range is >=18, so its components render under both majors). No scripts, nothing to build.",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}

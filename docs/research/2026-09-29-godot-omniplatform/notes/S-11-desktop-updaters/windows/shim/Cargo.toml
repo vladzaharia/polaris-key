@@ -1,0 +1,14 @@
+[package]
+name = "s11shim"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "S-11: Velopack launcher shim in front of a Godot export (research code, from S-05's launcher)"
+
+[dependencies]
+velopack = "=1.2.161"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true

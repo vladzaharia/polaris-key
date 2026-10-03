@@ -755,8 +755,26 @@ else about it is refused. An in-prefix `.remap`/`.import` is refused for a NUL o
 a backslash, invalid UTF-8, a byte-order mark, or a line with a `path` key anywhere in it that is
 not exactly `path[.<x>] = "<plain literal>"`. Besides `.gd`/`.gdc`/`.cs`, the
 device refuses every extension a loader claims for `Script` (`PKeyPck.refresh_script_kinds`, run by
-`warm()`); the CLI takes `scriptExtensions`/`scriptTypes` for another script language. A
-`files.tree` output's files get the same scan. The device check is held to the CLI's verdicts line for line
+`warm()`); the CLI takes `scriptExtensions`/`scriptTypes` (`pkey release publish
+--script-extensions/--script-types`, the Action's `script-extensions`/`script-types`) for another
+script language. Every admitted resource's references outside the pack are checked too (P4-28,
+`PKeyPck.refs_problem`): a text `[ext_resource]` or binary external entry naming an app script (a
+script extension, or the type `Script` or a script class) is refused unless
+`PKeyOptions.pack_attachable` lists it (a `res://` path, or under a listed `res://…/`
+directory; an app resource without a script extension is judged by its real type, read from its
+file, whatever the reference's `type` hint says), and a `uid://` the pack's own uid cache does not
+register is judged by the path the app's `ResourceUID` maps it to, or refused unless listed when
+the app does not register it (the CLI cannot resolve app UIDs, so it refuses every unlisted one);
+a sub-resource setting `resource_path` (which would enter the resource cache under an app path)
+and overlapping internal-resource offsets are refused;
+a reference the check cannot read the way the engine would (an `ext_resource` line that is not
+one strict tag, an inline `Resource("…")`, a relative or non-normal path, a `.remap`/`.import`
+path, a non-canonical UID, a big-endian or format-7+ binary, a non-`local://` sub-resource path,
+the pre-4.0 inline external reference, an unknown value type) is refused. The default, an empty
+list, attaches nothing; `configure` refuses a malformed entry (`invalid-options`). Mirror the
+list in `.pkey/release` as `deliverables.app.content.attachable` so CI refuses the same packs. A
+`files.tree` output's files get the same content scan (not the reference check: a tree is never
+mounted into `res://`). The device check is held to the CLI's verdicts line for line
 over P4-03's fixture PCKs. Packs are data-only on every build (S-07 row 13; `downloadedScripts` is
 not in v1; docs/security/THREAT-MODEL.md, "Pack bytes on the device").
 

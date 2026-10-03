@@ -25,6 +25,8 @@ import {
   verifyStaged,
 } from "../src/core/blobs.js";
 import { D1Db } from "../src/db/d1.js";
+import { inertDocumentPolicy } from "../src/core/bytesHost.js";
+import { landingCsp } from "../src/core/bytesLanding.js";
 import { NOW, seedProduct } from "./seed.js";
 
 const MiB = 1024 * 1024;
@@ -301,7 +303,8 @@ describe("blobResponse on R2", R2_LANE, () => {
 describe("bytes host isolation on workerd", R2_LANE, () => {
   it("the console, portal and docs answer not-found, sandboxed, on the bytes host", async () => {
     for (const path of [
-      "/",
+      "/index.html",
+      "/favicon.ico",
       "/manage",
       "/docs",
       "/djdl/.well-known/polaris.json",
@@ -319,6 +322,39 @@ describe("bytes host isolation on workerd", R2_LANE, () => {
         expect(res.headers.get("set-cookie"), at).toBeNull();
       }
     }
+  });
+});
+
+describe("the bytes host's landing page on workerd", () => {
+  it("GET / is the static page under its inert policy; the brand module loads in workerd", async () => {
+    for (const host of ["dl.workerd.test", "dl.workerd.test."]) {
+      const res = await SELF.fetch(`https://${host}/`, {
+        headers: { cookie: "__Host-pkey_admin=x" },
+      });
+      expect(res.status, host).toBe(200);
+      expect(res.headers.get("content-type"), host).toBe(
+        "text/html; charset=utf-8",
+      );
+      const csp = res.headers.get("content-security-policy")!;
+      expect(csp, host).toBe(await landingCsp());
+      expect(inertDocumentPolicy(csp), host).toBe(true);
+      expect(csp, host).not.toMatch(/script/);
+      expect(res.headers.get("x-content-type-options"), host).toBe("nosniff");
+      expect(res.headers.get("set-cookie"), host).toBeNull();
+      const html = await res.text();
+      expect(html, host).toContain('aria-label="Polaris Key Delivery"');
+      expect(html, host).not.toMatch(/<script/i);
+    }
+    const post = await SELF.fetch("https://dl.workerd.test/", {
+      method: "POST",
+    });
+    expect(post.status).toBe(404);
+    expect(post.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    // The console host's `/` is not the landing page.
+    const consoleRoot = await SELF.fetch("https://key.plrs.im/");
+    expect(await consoleRoot.text()).not.toContain(
+      "The download host for games and apps",
+    );
   });
 });
 

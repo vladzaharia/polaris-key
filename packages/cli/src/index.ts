@@ -808,6 +808,17 @@ async function cmdRelease(
           throw new Error(
             "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...].",
           );
+        if (
+          parsed.bare.has("script-extensions") ||
+          parsed.bare.has("script-types")
+        )
+          throw new Error(
+            "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...].",
+          );
+        const scriptExtensions = parseRemoves(
+          parsed.multi["script-extensions"] ?? [],
+        );
+        const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
         // P4-03: a pack release.
         await publishPack({
           ...common,
@@ -829,6 +840,9 @@ async function cmdRelease(
             ? { providesFile: flagString(parsed, "provides") }
             : {}),
           removes: parseRemoves(parsed.multi["removes"] ?? []),
+          // P4-28: another script language's extensions and types, for the PCK lint.
+          ...(scriptExtensions.length ? { scriptExtensions } : {}),
+          ...(scriptTypes.length ? { scriptTypes } : {}),
         });
         return 0;
       }
@@ -836,6 +850,11 @@ async function cmdRelease(
         parsed,
         ["provides", "removes"],
         "they list a pack release's content ids; the app's code interface is --content-interface",
+      );
+      refuseFlags(
+        parsed,
+        ["script-extensions", "script-types"],
+        "they configure a godot.pck pack's lint",
       );
       refuseFlags(
         parsed,
@@ -1125,6 +1144,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
               [--content-key-file pem --delegation sha256]
               [--provides ids.json] [--removes id[,id...] ...]
+              [--script-extensions ext[,ext...]] [--script-types Type[,Type...]]
   pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
               [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
   pkey release revoke packId@version --reason text --product slug [--replacement version]
@@ -1170,6 +1190,11 @@ for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundle
 the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record,
 uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the
 record, payloads and chunk indexes for the next publish's --bases.
+A godot.pck lint (P4-28) refuses a resource that references an app script or a UID outside the
+pack's uid cache unless .pkey/release lists it in deliverables.app.content.attachable (the
+device's PKeyOptions.pack_attachable), and refuses as scripts .gd, .gdc, .cs plus
+--script-extensions (bare extensions of a GDExtension script language) and the class names
+--script-types gives (the device asks its engine for both).
 Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or
 the pack's declared provides.from (default .pkey/provides.json; provides.required fails a
 publish without it); Polaris Key refuses a release that stops providing an id its predecessor

@@ -100,8 +100,8 @@ missing, so boot never fails for want of a native library.
   update, then start Godot beside it with the same arguments; hooks answered in 7–11 ms). Godot as
   `--mainExe` with an autoload that quits from `_init` on `--veloapp-*` also stayed inside the
   limits (1.0–1.7 s) but starts a window per hook. The macOS run is in
-  `prototype/platform-mechanics/e_velopack/`; the Windows run is still outstanding, so repeat
-  `time_hooks.py` on Windows in this package.
+  `prototype/platform-mechanics/e_velopack/`. [S-11](../../notes/S-11-desktop-updaters.md) §4.2
+  measured Windows: the shim answered every hook in 9–15 ms, Godot as `--mainExe` in 455–487 ms.
 - **MSIX** (S-05 §4.4, documentation only): the install directory is read-only; `user://` lands in
   `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`, survives updates and is removed on
   uninstall. Keep the default virtualization (disabling it needs the `unvirtualizedResources`
@@ -110,14 +110,46 @@ missing, so boot never fails for want of a native library.
   input. Unit-test the GDExtension's argument handling; leave the Store calls to a device checklist.
 - **GDExtensions on macOS** force the Disable Library Validation entitlement (notes/E4 §2.1); the
   export plugin adds it only when the Sparkle plugin is enabled.
+- **Measured by [S-11](../../notes/S-11-desktop-updaters.md)** (prototypes in
+  `notes/S-11-desktop-updaters/`; recipe in its §8):
+  - **The Worker's Velopack feed must change first.** Its absolute `FileName` makes every Rust-core
+    Velopack client (`velopack_libc`, the shim) fail with Windows `os error 123` after download.
+    A bare file name plus a redirect route works (S-11 §5.1). The fix is a Worker change outside
+    this package; land it before step 3.
+  - Godot 4.7.2's `[dependencies]` copy drops the executable bit on `Sparkle`, `Autoupdate`,
+    `Updater`, `Downloader` and `Installer`; the export plugin must `chmod 0755` them after export.
+  - Never export with `codesign/codesign=0`: the template keeps its Developer ID signature on a
+    modified bundle and Sparkle rejects every update ("code signing signature is corrupted").
+  - Sparkle drops the bearer header on a cross-origin redirect; Velopack sends no headers unless
+    given through `vpkc_new_source_http_url_with_options`.
+  - Threads: Sparkle calls back on the main thread; WinSparkle and Velopack call back on their own
+    threads (`call_deferred` everything); StoreContext's blocking calls need an MTA worker thread.
+  - Load `WinSparkle.dll` and `velopack_libc.dll` at run time (or link Velopack statically).
+    Import-linking `velopack_libc.dll` makes its absence unload all three Windows backends. Its
+    import library expects the name `velopack_libc.dll`.
+  - Windows build: SCons ≥ 4.11 (VS 2026), godot-cpp `disable_exceptions=no`, `/std:c++20` on
+    the C++/WinRT file, and a cache of `godot-cpp/` plus `.sconsign.dblite` (the uncached build
+    takes 287–503 s on `windows-latest`, cached 28 s).
+  - Add a headless `SPUUserDriver` test mode so the macOS end-to-end test runs unattended.
+  - S-11 §7 lists what only certificates or a Partner Center app can verify.
 - **Size risk.** Four native components in 1–1.5 weeks is tight; if it grows past half again,
   split StoreContext into its own package and say so in the PR.
+- **Lead follow-up (2026-10-03, branch `fix/delivery-surface`): non-public Velopack delivery.**
+  The Velopack feed now names each package by its bare `FileName`, and the client fetches
+  `…/update/<channel>/velopack/<FileName>`, which answers a cross-origin `302` to the package's
+  delivery URL on the bytes host. Under licensed or entitled delivery the measured updaters drop
+  `Authorization` on that cross-origin redirect (S-11 §5.2), so the second hop is refused (fail
+  closed). Public delivery works today. Before P5-07 relies on Velopack for a non-public delivery,
+  it must make the package route either stream the bytes same-origin (no redirect) or redirect to
+  a signed, short-lived `Location` that needs no `Authorization`; until then, gate Velopack on
+  public delivery and say so in the facade's error.
 
 ## Steps
 
 1. GDScript facades and stub tests (no native code needed).
 2. Sparkle bridge, export wiring, signing script; a test app updates from a local appcast.
-3. Velopack shim and GDExtension; a test app updates from a local `releases.win.json`.
+3. Velopack shim and GDExtension; a test app updates from a local `releases.win.json` rendered by
+   the Worker (after the `FileName` fix, S-11 §5.1).
 4. WinSparkle GDExtension; a test installer build updates from a local appcast.
 5. StoreContext GDExtension; device checklist with a Store-associated MSIX.
 6. CI jobs; `parity.json` (`update.driver` on macOS and Windows).

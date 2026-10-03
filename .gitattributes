@@ -16,3 +16,9 @@ packages/zstd-wasm/src/zdec.wasm.sha256 text eol=lf
 # The content corpus's generator inputs (P4-04): hashed byte for byte, so no checkout (the Godot
 # Windows leg runs with core.autocrlf=true) may rewrite a small raw text blob such as refs.json.
 conformance/corpus/v2/content/blobs/** binary
+
+# @polaris-key/brand's launch-kit copy is checksum-tested byte for byte (kit/SHA256SUMS.txt) and its
+# fonts are binaries: no checkout may rewrite line endings in either.
+packages/brand/kit/** binary
+packages/brand/fonts/*.woff2 binary
+packages/brand/preview/proofs/*.png binary

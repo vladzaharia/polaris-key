@@ -1762,7 +1762,7 @@
       "optional": false,
       "refs": ["wp/P4-08-godot-packs.md"],
       "brief": "wp/P4-28-script-attach-allowlist.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-01",
@@ -2242,7 +2242,7 @@
       "optional": false,
       "refs": [],
       "brief": "wp/S-10-android-play-installer.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "S-11",
@@ -2261,7 +2261,7 @@
       "optional": false,
       "refs": [],
       "brief": "wp/S-11-desktop-updaters.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "D-01",

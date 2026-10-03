@@ -1,5 +1,7 @@
 packages:
   - "packages/*"
+  # React 19 for @polaris-key/brand's second test project (its peer range is >=18).
+  - "packages/brand/test/react19"
   - "tools"
   - "conformance/runners/node"
   - "conformance/runners/browser"

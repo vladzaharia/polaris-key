@@ -1,0 +1,11 @@
+[configuration]
+entry_symbol = "pkey_sparkle_init"
+compatibility_minimum = "4.5"
+
+[libraries]
+macos.debug = "res://addons/pkey_native/bin/libpkey_sparkle.dylib"
+macos.release = "res://addons/pkey_native/bin/libpkey_sparkle.dylib"
+
+[dependencies]
+macos.debug = { "res://addons/pkey_native/bin/Sparkle.framework": "Contents/Frameworks" }
+macos.release = { "res://addons/pkey_native/bin/Sparkle.framework": "Contents/Frameworks" }

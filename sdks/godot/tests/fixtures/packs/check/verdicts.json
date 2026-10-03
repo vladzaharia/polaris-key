@@ -39,10 +39,6 @@
       ],
       "warnings": []
     },
-    "ext-script-ok": {
-      "errors": [],
-      "warnings": []
-    },
     "embedded-binary": {
       "errors": [
         "assets/kaykit/a.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
@@ -121,7 +117,9 @@
       "warnings": []
     },
     "audit-binary-extref": {
-      "errors": [],
+      "errors": [
+        "assets/kaykit/extref.res: references the app script res://scripts/die.gd, which the app does not list as attachable."
+      ],
       "warnings": []
     },
     "audit-remap-dodges": {
@@ -157,6 +155,119 @@
       "warnings": []
     },
     "audit-real-import-model": {
+      "errors": [],
+      "warnings": []
+    },
+    "refs-text-unlisted": {
+      "errors": [
+        "assets/kaykit/die.tscn: references the app script res://scripts/die.gd, which the app does not list as attachable.",
+        "assets/kaykit/typed.tscn: references the app script res://shared/brain.tres, which the app does not list as attachable."
+      ],
+      "warnings": []
+    },
+    "refs-text-listed": {
+      "attachable": [
+        "res://scripts/die.gd"
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    "refs-dir": {
+      "attachable": [
+        "res://scripts/dice/"
+      ],
+      "errors": [
+        "assets/kaykit/b.tscn: references the app script res://scripts/dicey.gd, which the app does not list as attachable.",
+        "assets/kaykit/c.tscn: references the app script res://tools/debug.gd, which the app does not list as attachable."
+      ],
+      "warnings": []
+    },
+    "refs-binary-listed": {
+      "attachable": [
+        "res://scripts/die.gd"
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    "refs-uid-app-script": {
+      "attachable": [
+        "res://scripts/die.gd"
+      ],
+      "errors": [
+        "assets/kaykit/die.tscn: references uid://dw1, outside the pack's uid cache, which the app does not list as attachable.",
+        "assets/kaykit/byuid.tres: references uid://dw1, outside the pack's uid cache, which the app does not list as attachable.",
+        "assets/kaykit/shared.res: references uid://v0cuir, outside the pack's uid cache, which the app does not list as attachable."
+      ],
+      "warnings": []
+    },
+    "refs-uid-listed": {
+      "attachable": [
+        "res://scripts/die.gd",
+        "uid://dw1",
+        "uid://v0cuir"
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    "refs-remap": {
+      "errors": [
+        ".godot/exported/7/export-proxy.scn: references the app script res://scripts/debug.gd, which the app does not list as attachable.",
+        "assets/kaykit/remapref.tscn: references res://assets/kaykit/proxy.tscn.remap, a .remap or .import file, so the device cannot tell what it loads."
+      ],
+      "warnings": []
+    },
+    "refs-ambiguous": {
+      "attachable": [
+        "res://scripts/die.gd"
+      ],
+      "errors": [
+        "assets/kaykit/multiline.tres: has an ext_resource tag on line 3 the engine could read differently, so the device cannot tell what it loads.",
+        "assets/kaykit/dupkey.tres: has an ext_resource tag on line 3 the engine could read differently, so the device cannot tell what it loads.",
+        "assets/kaykit/comment.tres: has an ext_resource tag on line 3 the engine could read differently, so the device cannot tell what it loads.",
+        "assets/kaykit/stringname.tres: has an ext_resource tag on line 3 the engine could read differently, so the device cannot tell what it loads.",
+        "assets/kaykit/escaped.tres: has an ext_resource tag on line 3 the engine could read differently, so the device cannot tell what it loads.",
+        "assets/kaykit/inline.tres: loads a resource by path inline (Resource(...)), so the device cannot tell what it loads.",
+        "assets/kaykit/inline-comment.tres: loads a resource by path inline (Resource(...)), so the device cannot tell what it loads.",
+        "assets/kaykit/relative.tres: references debug.gd, which is not a normal res:// path or uid://, so the device cannot tell what it loads.",
+        "assets/kaykit/dotdot.tres: references res://scripts/../tools/debug.gd, which is not a normal res:// path or uid://, so the device cannot tell what it loads.",
+        "assets/kaykit/baduid.tres: references uid://zz, which is not a canonical uid://, so the device cannot tell what it loads.",
+        "assets/kaykit/big-endian.res: is a big-endian binary resource, so the device cannot tell what it loads.",
+        "assets/kaykit/format7.res: is a binary resource in format 7, above 6, so the device cannot tell what it loads.",
+        "assets/kaykit/cached.res: has a sub-resource path that is not local:// (res://tools/debug.gd), so the device cannot tell what it loads.",
+        "assets/kaykit/inline-ext.res: has an inline external reference (the pre-4.0 binary form), so the device cannot tell what it loads.",
+        "assets/kaykit/unknown-type.res: has a value of unknown type 99, so the device cannot tell what it loads.",
+        "assets/kaykit/truncated.res: is a binary resource whose reference tables cannot be read, so the device cannot tell what it loads.",
+        "assets/kaykit/relative.res: references debug.gd, which is not a normal res:// path or uid://, so the device cannot tell what it loads."
+      ],
+      "warnings": []
+    },
+    "refs-resource-path-text": {
+      "errors": [
+        "assets/kaykit/poison.tres: sets resource_path, which can put it in the resource cache under an app path.",
+        "assets/kaykit/escaped.tres: sets resource_path, which can put it in the resource cache under an app path."
+      ],
+      "warnings": []
+    },
+    "refs-resource-path-binary": {
+      "errors": [
+        "assets/kaykit/poison.res: sets resource_path, which can put it in the resource cache under an app path.",
+        "assets/kaykit/inline.res: sets resource_path, which can put it in the resource cache under an app path."
+      ],
+      "warnings": []
+    },
+    "refs-name-utf8": {
+      "errors": [
+        "assets/kaykit/badname.res: is a binary resource whose properties cannot be read, so the device cannot tell what it loads."
+      ],
+      "warnings": []
+    },
+    "refs-overlap-offsets": {
+      "errors": [
+        "assets/kaykit/overlap.res: is a binary resource whose properties cannot be read, so the device cannot tell what it loads."
+      ],
+      "warnings": []
+    },
+    "refs-admitted": {
       "errors": [],
       "warnings": []
     },

@@ -189,6 +189,11 @@ func start() -> PKeyResult:
 	e.entitlements = func() -> Variant: return _granted(core)
 	for h in _pending_handlers:
 		e.register_handler(h)
+	# P4-28: what packs may attach (the built-in handlers, unless a custom one replaced them).
+	for t in ["godot.pck", "godot.zip"]:
+		var h = e.handlers.get(t)
+		if h is PKeyGodotPckHandler or h is PKeyGodotZipHandler:
+			h.attachable = core.options.pack_attachable
 	e.progress.connect(_on_progress)
 	var emb := PKeyPackEmbeddedTransport.new(embedded_dir)
 	var baselines: Array = await PKeyPackJob.run(emb.embedded, "PolarisKey embedded packs")
@@ -721,7 +726,9 @@ func mount() -> Dictionary:
 		var src := PKeyByteSource.file(String(i["location"]), int(i["payloadSize"]))
 		var handler = engine.handlers.get(i["type"])
 		var checker: Callable = PKeyGodotZipHandler.check if i["type"] == "godot.zip" else PKeyGodotPckHandler.check
-		var chk: Dictionary = await PKeyPackJob.run(checker.bind(src, rec, variant), "PolarisKey pack check")
+		# P4-28: both checkers take the app's attachable list (set on the built-in handlers at start).
+		var attachable = handler.attachable if (handler is PKeyGodotPckHandler or handler is PKeyGodotZipHandler) else PackedStringArray()
+		var chk: Dictionary = await PKeyPackJob.run(checker.bind(src, rec, variant, attachable), "PolarisKey pack check")
 		if not chk["ok"]:
 			out["refused"].append({"packId": id, "code": chk["code"], "detail": chk.get("detail", "")})
 			pack_failed.emit(id, String(chk["code"]))

@@ -142,7 +142,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-25](wp/P4-25-delegation-python-swift.md) ⚑       | Content-key delegation in Python and Swift                                                                                                              | P4-19, P4-23                             | sdk-porter     | 0.75–1    | done   |
 | [P4-26](wp/P4-26-delegation-godot.md) ⚑              | Content-key delegation in Godot                                                                                                                         | P4-19, P4-24                             | godot-engineer | 0.5–0.75  | done   |
 | [P4-27](wp/P4-27-rscc-scan.md)                       | Scan compressed (RSCC) resources in packs so imported models are admitted                                                                               | P4-08, P4-22                             | godot-engineer | 0.5–0.75  | done   |
-| [P4-28](wp/P4-28-script-attach-allowlist.md)         | Script attachment allow-list and publish script-kind settings                                                                                           | P4-08                                    | godot-engineer | 0.5–1     | todo   |
+| [P4-28](wp/P4-28-script-attach-allowlist.md)         | Script attachment allow-list and publish script-kind settings                                                                                           | P4-08                                    | godot-engineer | 0.5–1     | done   |
 
 ## P5: Distribution connectors and native plugins
 
@@ -195,8 +195,8 @@ keys, devices). _Optional_ work packages are off the required path.
 | [S-07](wp/S-07-policy-recheck.md)                | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done   |
 | [S-08](wp/S-08-cloudflare-async-compute.md) ✋   | Cloudflare Queues, Workflows and Containers for lazy deltas                                                     | —          | spike-runner | 0.5–1    | done   |
 | [S-09](wp/S-09-apple-storekit-distributor.md) ✋ | StoreKit 2, AppTransaction, AppDistributor, Keychain and the Godot iOS binding                                  | —          | spike-runner | 0.5–1    | done   |
-| [S-10](wp/S-10-android-play-installer.md) ✋     | Play In-App Updates, Play Asset Delivery, PackageInstaller and the Godot Android binding                        | —          | spike-runner | 0.5–1    | todo   |
-| [S-11](wp/S-11-desktop-updaters.md) ✋           | Sparkle, Velopack, WinSparkle and StoreContext from a Godot desktop app                                         | —          | spike-runner | 0.5–1    | todo   |
+| [S-10](wp/S-10-android-play-installer.md) ✋     | Play In-App Updates, Play Asset Delivery, PackageInstaller and the Godot Android binding                        | —          | spike-runner | 0.5–1    | done   |
+| [S-11](wp/S-11-desktop-updaters.md) ✋           | Sparkle, Velopack, WinSparkle and StoreContext from a Godot desktop app                                         | —          | spike-runner | 0.5–1    | done   |
 
 ## D: Diceroll adoption (vladzaharia/diceroll)
 

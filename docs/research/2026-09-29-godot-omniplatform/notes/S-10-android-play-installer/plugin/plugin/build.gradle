@@ -1,0 +1,27 @@
+plugins {
+  id 'com.android.library'
+  id 'org.jetbrains.kotlin.android'
+}
+android {
+  namespace 'org.polariskey.s10'
+  compileSdk 36
+  defaultConfig { minSdk 24 }
+  flavorDimensions += "channel"
+  productFlavors {
+    play { dimension "channel" }
+    direct { dimension "channel" }
+  }
+  buildFeatures { buildConfig true }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+  kotlinOptions { jvmTarget = "17" }
+  testOptions { unitTests { includeAndroidResources = true; returnDefaultValues = true } }
+}
+dependencies {
+  compileOnly "org.godotengine:godot:4.7.2.stable"
+  playImplementation "com.google.android.play:app-update:2.1.0"
+  playImplementation "com.google.android.play:asset-delivery:2.3.0"
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.robolectric:robolectric:4.14.1"
+  testImplementation "androidx.test:core:1.6.1"
+  testImplementation "org.godotengine:godot:4.7.2.stable"
+}

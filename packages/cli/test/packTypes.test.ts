@@ -297,7 +297,7 @@ const EXTRA = `    diceroll.events:
         engine: godot-4.7
 `;
 
-async function repo(dist: Record<string, Uint8Array>) {
+async function repo(dist: Record<string, Uint8Array>, attachable?: string) {
   return packRepo(
     key,
     {
@@ -305,7 +305,7 @@ async function repo(dist: Record<string, Uint8Array>) {
       ...l10nTrees(),
       ...dist,
     },
-    { extraPacks: EXTRA },
+    { extraPacks: EXTRA, ...(attachable ? { attachable } : {}) },
   );
 }
 
@@ -407,5 +407,45 @@ describe("pkey release publish for the v3 types", () => {
       publishPack(opts(cwd2, server2, "diceroll.mods").o),
     ).rejects.toThrow(/mods\.zip: .*local header disagrees/);
     expect(server2.calls).toEqual([]);
+  });
+
+  it("P4-28: lints a godot.zip with the attachable list and the script kinds, like a godot.pck", async () => {
+    const scene = enc(
+      '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://scripts/die.gd" id="1"]\n\n[node name="Die" type="Node3D"]\nscript = ExtResource("1")\n',
+    );
+    const zip = new Uint8Array(
+      zipStore(
+        [
+          ...kaykitV2(),
+          ["assets/kaykit/die.tscn", scene] as [string, Uint8Array],
+          ["assets/kaykit/brain.lua", enc("print(1)\n")] as [
+            string,
+            Uint8Array,
+          ],
+        ].map(([name, data]) => ({ name, data })),
+      ),
+    );
+    const refused = await repo({ "mods/default/mods.zip": zip });
+    await expect(
+      publishPack(opts(refused, packServer(), "diceroll.mods").o),
+    ).rejects.toThrow(
+      /mods\.zip: assets\/kaykit\/die\.tscn: references the app script res:\/\/scripts\/die\.gd, which the app does not list as attachable\./,
+    );
+    const listed = await repo(
+      { "mods/default/mods.zip": zip },
+      '["res://scripts/die.gd"]',
+    );
+    const server = packServer();
+    const res = await publishPack(opts(listed, server, "diceroll.mods").o);
+    expect(res.record).toMatchObject({ type: "godot.zip" });
+    await expect(
+      publishPack({
+        ...opts(listed, packServer(), "diceroll.mods").o,
+        version: "1.0.1",
+        scriptExtensions: ["lua"],
+      }),
+    ).rejects.toThrow(
+      /mods\.zip: assets\/kaykit\/brain\.lua: a script; a pack carries data only/,
+    );
   });
 });

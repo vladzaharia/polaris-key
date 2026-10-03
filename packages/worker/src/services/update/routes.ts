@@ -10,6 +10,7 @@
  *     /update/<channel>/winsparkle.xml, /update/<channel>/velopack/releases.<vch>.json,
  *     /update/<channel>/app.appinstaller, /update/<channel>/<buildId>.AppImage.zsync
  *                                            (P3-09, the app-updater feeds: `updaterFeeds.ts`)
+ *     /update/<channel>/velopack/<FileName>  (notes/S-11 §5.1: 302 to a listed Velopack package)
  *
  * The appcasts and the version check have two paths since P3-09: a product that publishes
  * release records gets the EXTENDED appcast (`updaterFeeds.ts`, rendered from the records and
