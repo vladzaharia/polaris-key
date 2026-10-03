@@ -113,6 +113,7 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 | `@polaris-key/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`                                 |
 | `@polaris-key/react/update`   | `useLatestVersion`, `useUpdateDecision`, `<UpdatePrompt>`, `createBrowserPacks`       |
 | `@polaris-key/react/release`  | `useChangelog`                                                                        |
+| `@polaris-key/react/packs`    | `createBrowserPacks` and the pack ports, with no React import (P4-18)                 |
 
 ## Components
 
@@ -285,10 +286,14 @@ const strings = await packs.readFile("diceroll.l10n", "fr/strings.json");
 - **Storage.** OPFS by default: the Cache API refuses 206 responses. Without OPFS, `ensure`
   raises `not-configured` unless the host passes `storage: "memory"` (or a store of its own);
   there is no silent fallback. Call `requestPersistence()` after engagement; an evicted payload
-  fails the reload's check and is planned again from scratch.
+  fails the reload's check and is planned again from scratch. Staging bytes go through a
+  dedicated module worker holding sync access handles (`opfsWorker.js`, beside the SDK's
+  modules; bundlers emit it from `new Worker(new URL(…, import.meta.url))`) whenever one starts,
+  else through the main-thread API. `opfsWorker: false` keeps the main thread; a function spawns
+  your own copy of the worker; `opfsRoot` (tests) keeps the main thread too.
 - **zstd and SHA-256.** `@polaris-key/zstd-wasm`'s browser entry (wasm32, so the delta memory
   budget is at most 2^30) and `hash-wasm` (streaming; WebCrypto's digest does not stream).
-  `dcz` in Chromium is P4-18. **Both are WebAssembly modules: a page with a Content Security
+  **Both are WebAssembly modules: a page with a Content Security
   Policy needs `'wasm-unsafe-eval'` in `script-src`** to compile them.
 - **Memory.** The default budget is a quarter of `navigator.deviceMemory`, clamped to
   64 MiB–2^30 (256 MiB when the browser does not report it; `defaultWebMemBudget()`). A delta
@@ -310,12 +315,51 @@ const strings = await packs.readFile("diceroll.l10n", "fr/strings.json");
   reports. On desktop the host's `@polaris-key/node` client reports it.
 - Errors are client-core's `PackError` (`code`, `detail`, `path`), exported from
   `@polaris-key/react` and `@polaris-key/react/update`.
+- **Web deltas** (P4-18, see below).
 - **Delegated content** (P4-19). Content-key releases of compatible or standalone packs install
   through the same engine, on the web and through the desktop bridge: the delegation is fetched
   by the hash in the record's `pkd1-` kid and verified against `pinnedReleaseKeys` only, every
   file passes the data-only rule (`pack-not-data-only`, with the `path`), and a release under a
   revoked delegation is `pack-revoked`, detail `delegation`. A pinned release kid matching
   `pkd1-<64 hex>` is `invalid-options`. There is no UI change.
+
+### What the web gets: payload URLs and Compression Dictionary Transport
+
+A browser has no native zstd API (`DecompressionStream` offers gzip and deflate only), but it
+does decode HTTP content encodings. So for a **container** variant (a pack type whose handler is
+`layout: "container"`, such as one a host registers for `godot.pck`), the SDK runs the plan's
+`full` and `zstd-patch-from` delta strategies through Distribution's **payload URL** first:
+
+- **The whole payload** comes from `…/distribution/packs/<pack>/<variant>/payload/<sha256>`
+  with `Content-Encoding: zstd`; the browser decodes it (no WASM), and for an ungated payload of
+  at most 100 MiB keeps the decoded body as a **dictionary** for that pack and variant.
+- **A planned delta** asks for the target's payload URL with `?via=dcz`. When the browser still
+  holds the installed payload as a dictionary (Chromium and Edge 130+), it offers it, and the
+  Worker answers `Content-Encoding: dcz`: the stored delta plus 40 bytes, applied natively (the
+  content corpus's 5.26 MB v1 → v2 update moves 312,744 bytes). Without a dictionary the Worker
+  answers `409` with no body, never a silent full download.
+- **Every result is verified** (size and SHA-256 against the signed record): the dictionary is
+  in the evictable HTTP cache. A decline (`409`, `406`) runs the same strategy over the blob route
+  with the WASM decoder; a failure (a broken transfer, a wrong hash) is reported as a `fallback`
+  pack event (`via: "native"`) and does the same; then the plan's remaining candidates follow.
+- In the OPFS store the transfer runs in the store's worker, straight into the plan's output.
+
+| Situation                                                        | What runs                               |
+| ---------------------------------------------------------------- | --------------------------------------- |
+| Chromium, base installed whole through the payload URL           | dcz: the delta plus 40 bytes, no WASM   |
+| Base evicted, or never fetched whole (chunk-assembled, embedded) | `409`, then the WASM delta (blob route) |
+| Firefox, Safari (no Compression Dictionary Transport)            | `409`, then the WASM delta              |
+| A gated pack (`private, no-store`: never a dictionary)           | no dcz request; the WASM delta          |
+| A base over 100 MiB (Chromium's dictionary limit)                | no dcz request; the WASM delta          |
+| A tree pack (`files.tree`, `data.json`, `l10n.table`)            | unchanged: the blob route and WASM      |
+
+`nativePayload: false` turns this off (always the blob route and WASM), and
+`onNativePayload(e)` reports each attempt (`kind` `zstd` or `dcz`, `outcome` `used`, `declined`
+with the `status`, or `failed`, and `via` `worker` or `page`). The payload URL is derived from
+`distribution.endpoints.blobs` (its sibling path on the same host); a blob template that is not
+the canonical `…/distribution/blobs/sha256/{sha256}` turns it off. The page fetches it
+cross-origin under the product's `web.origins`, like the blob route. Godot web builds that fetch
+the target payload URL through the browser get dcz the same way.
 
 ## Desktop bridge contract (protocol v3)
 

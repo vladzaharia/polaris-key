@@ -542,9 +542,11 @@ It carries `chunks: true` on a Worker that ingests chunk indexes; without it the
 
 ## Delivering packs
 
-Distribution serves a pack's objects by SHA-256 on the blob route only, under the pack's own
+Distribution serves a pack's objects by SHA-256 on the blob route, under the pack's own
 delivery access and, for a gated pack, its current gate; a pack's files are never served by the
-`files` or `builds` routes. Each outlet's transport for the pack (`pkey-cdn`, `web` or
+`files` or `builds` routes. For a browser, a container's payload and its deltas are also served
+decoded by the payload URL, with Compression Dictionary Transport
+([Web deltas](/docs/services/distribution/delivery/#web-deltas-the-payload-url)). Each outlet's transport for the pack (`pkey-cdn`, `web` or
 `embedded` in v1) decides where it is live. See
 [Pack bytes](/docs/services/distribution/delivery/#pack-bytes) and
 [Availability](/docs/services/distribution/availability/).

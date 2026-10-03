@@ -171,5 +171,77 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
   the target payload URL; a Godot web runner can confirm it later.
 - The `Use-As-Dictionary` path scheme is what any later web SDK (Blazor, X-01) relies on.
 
+## Corrections from implementation
+
+Recorded 2026-10-03. The code is the fact; where this brief and the code differ, the code and these
+notes win.
+
+- **The dcz path needed one client-core seam.** The delta strategy is client-core's engine, so the
+  React SDK cannot run it differently without a port. `PackEngineOptions.nativePayload` (optional,
+  `NativePayloadPort`) is tried first for a `container` variant's `full` and for a planned
+  `zstd-patch-from` payload delta (never a delegated release); the engine compares the reported size
+  and SHA-256 with the record, and on a decline (`null`) or a failure runs the same candidate itself,
+  then the plan's remaining ones. `PackProgress` gains `phase: "fallback"` (`strategy`, `error`,
+  `via: "native"`), also emitted whenever a candidate fails and the next one runs. Nothing on the
+  wire changes: no signed shape, corpus, `PROTOCOL_VERSION` or `errors.json` entry. Node does not
+  wire the port; its behaviour is unchanged.
+- **Container variants only.** A tree's `payload.sha256` is its `treeDigest`, never the hash of a
+  response body, so a tree payload can never be a dictionary; the Worker's payload URL refuses a
+  tree (`404`). React's built-in handlers (`files.tree`, `data.json`, `l10n.table`, `ml.model`) are
+  all trees, so the web-delta path applies to container types a host registers (a Godot web host's
+  `godot.pck`); tree packs keep the blob route and WASM.
+- **The payload URL is derived from `distribution.endpoints.blobs`** (its sibling path on the same
+  host), not advertised in discovery: a new discovery template is an addition to WIRE-CONTRACT-V4's
+  discovery shape, which this brief did not plan. A blob template that is not the canonical
+  `…/distribution/blobs/sha256/{sha256}` turns the path off. **Follow-up:** advertise
+  `distribution.endpoints.payload` (a wire-contract addition, plan mode; owner: the lead, or P5-08).
+- **The lookup reads the pack's newest 200 records.** No D1 column holds a variant's payload hash,
+  and the record is the truth, so `ReleaseCatalog.packPayload` (a new optional hook, Release's
+  `packs/catalog.ts`) reads the pack's records newest first, 20 a page, at most
+  `MAX_PAYLOAD_SCAN` = 200. An older payload answers `404` and the SDK takes the blob route.
+- **Access is `decideBlob`, per object** (the `full`; for dcz also the artifact, which must be stored
+  with its checksum, else the answer falls back to the full payload). One caching difference from
+  the blob route: an ungated payload that is not public (the pack needs a licence) is
+  `private, max-age=31536000, immutable, no-transform`, so the authorised browser may keep it as a
+  dictionary; the blob route keeps such objects `private, no-store`. Gated payloads stay
+  `private, no-store` and never carry `Use-As-Dictionary`. The threat model's re-review trigger
+  ("a route other than the blob route serves a pack's object") now names the payload URL and its
+  limits.
+- **`encodeBody: "manual"` is set at the edge** (`index.ts` `preEncoded`, for `zstd` and `dcz`
+  only): the dispatcher's layers rebuild every response and would drop it. The workerd lane pins the
+  route end to end (the frame and the dcz stream leave byte-exact) and `FixedLengthStream` framing;
+  `encodeBody` itself is not readable on a `Response`, and miniflare's workerd does not encode
+  `zstd` either way.
+- **The guard was confirmed and kept.** In Chromium 153 the `?via=dcz` URL still matches the
+  per-(pack, variant) pattern (`Available-Dictionary` is sent), and a CORS-mode fetch from a
+  dedicated worker uses the dictionary.
+- **The OPFS worker** (`opfsWorker.ts`, client `opfsIo.ts`) carries staging only (staged objects and
+  the container output), plus `fetchInto` (a payload URL fetched straight into the plan's output,
+  hashed as written). The store, the state, the seed indexes and the commit copy stay on the main
+  thread; handles under a path are released before the page reads, copies or removes there.
+  `createSyncAccessHandle` is exposed in dedicated workers only, so the page cannot feature-test it:
+  the worker's `init` creates one. `opfsRoot` (tests) and `opfsWorker: false` keep the main thread;
+  a host `fetchImpl` keeps the transfer on the page.
+- **"Falls back further and reports the failure" with a corrupt artifact** is: dcz fails (reported,
+  `via: "native"`), the WASM delta fetches the artifact and refuses it, and, under P4-06's download
+  rule (an object whose bytes miss its hash is never applied), the attempt ends `network-error` with
+  v1 still active; the next ensure retries. A delta that downloads intact but does not apply falls to
+  the plan's next candidate, each failure reported (client-core's `packsNative.test.ts`).
+- **"Dictionary cleared" in Chromium** is CDP `Network.clearBrowserCache` (a Vitest browser
+  command): `Clear-Site-Data: "cache"` on a cross-origin fetch did not drop the dictionary.
+- **The Chromium harness server is Node, not the Worker.** `dcz.setup.ts` answers the payload URL
+  with the Worker's own `dictionary.ts` (the header values and framing); the Worker's routing,
+  access and R2 reads are pinned by `distributionPayload.test.ts` and the workerd lane. The over
+  100 MiB case is pinned in the Worker (no `Use-As-Dictionary` above 100 MiB) and in React (no dcz
+  request for a base above it); the browser's own 100 MiB cap is A7's measurement, not re-run.
+- **WebKit under Playwright has no OPFS** (ephemeral contexts: `UnknownError`), so that engine runs
+  the harness over the in-memory store; Chromium asserts OPFS and the worker. Firefox could not be
+  launched locally (Playwright's Firefox fails at profile creation on this machine); the
+  `browser-firefox` CI job runs it.
+- **`@polaris-key/react/packs`** is a new subpath export: `createBrowserPacks` and the pack ports
+  with no React import (the harness, and non-React web hosts such as a Godot web shell, use it).
+- **The planner is unchanged.** dcz moves the artifact plus 40 bytes; the 40 are not added to the
+  delta's cost (it changes no ordering a real plan has).
+
 Set the status in the PR that completes the work:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-18 done`.
