@@ -39,7 +39,7 @@ an operator has to be able to reach **Services** even for a product that runs no
 
 ## License
 
-Accent `key`. Shown only when the product's **License** service is on. Three tabs answer one question at
+Accent `license`. Shown only when the product's **License** service is on. Three tabs answer one question at
 different distances: on what terms does a machine get a seat.
 
 | Tab                           | What it's for                                                                                                                                                                                                                                                                                                           |
@@ -104,7 +104,7 @@ Settings.
 
 ## Identity
 
-Accent `id`. Shown only when **Identity** is on. One tab: **Sign-in & portal**, itself two cards:
+Accent `identity`. Shown only when **Identity** is on. One tab: **Sign-in & portal**, itself two cards:
 
 - **Customer portal** — the per-product module toggles (portal enabled, OIDC account linking,
   email magic links, license-key claim, release downloads) and the tri-state automatic
