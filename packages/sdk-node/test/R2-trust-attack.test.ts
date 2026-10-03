@@ -143,7 +143,7 @@ function makeConfigDoc(o: DocOverrides): ConfigDoc {
       },
     },
     secrets: {
-      "soundcloud.oauth": {
+      "serviceA.oauth": {
         state: "hidden",
         value: o.secret ?? "FORGED-SECRET",
         updatedAt: t,
@@ -326,7 +326,7 @@ describe("R2-02 · trust-set poisoning: the on-disk cache OVERRIDES a pinned kid
     expect(r.documents.config?.kind).toBe("error");
     expect(client.isLicensed()).toBe(false);
     expect(client.license.isEntitled("polarisVpn")).toBe(false);
-    expect(client.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(client.config.getSecret("serviceA.oauth")).toBeNull();
     expect(client.license.getProfile()).toBeNull();
     client.close();
   });
@@ -650,7 +650,7 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
     expect(client.license.isEntitled("polarisVpn")).toBe(false);
-    expect(client.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(client.config.getSecret("serviceA.oauth")).toBeNull();
     client.close();
 
     // The same holds for a correctly-versioned v3 record whose artifacts were never signed by
@@ -680,7 +680,7 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
     const c2 = await PolarisKeyClient.create(offline);
     expect(c2.status().status).toBe("needs-activation");
     expect(c2.license.getEntitlements()).toEqual({});
-    expect(c2.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(c2.config.getSecret("serviceA.oauth")).toBeNull();
     c2.close();
   });
 
@@ -760,7 +760,7 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
     expect(r.documents.license?.kind).toBe("error");
     expect(r.documents.config?.kind).toBe("error");
     // Nothing previously held was disturbed: the CURRENT documents still answer the reads.
-    expect(client.config.getSecret("soundcloud.oauth")).toBe("CURRENT-SECRET");
+    expect(client.config.getSecret("serviceA.oauth")).toBe("CURRENT-SECRET");
     expect(client.status().status).toBe("ok");
     client.close();
 
@@ -835,7 +835,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     expect(client.isLicensed()).toBe(false);
     expect(client.license.isEntitled("polarisVpn")).toBe(false);
     expect(client.license.getEntitlements()).toEqual({});
-    expect(client.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(client.config.getSecret("serviceA.oauth")).toBeNull();
     expect(client.getConfig("quality.floor", 1)).toBe(1);
     client.close();
   });
@@ -1092,7 +1092,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
             },
           },
           secrets: {
-            "soundcloud.oauth": {
+            "serviceA.oauth": {
               state: "hidden",
               value: "V2-SECRET",
               updatedAt: t,
@@ -1123,7 +1123,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(client.license.isEntitled("polarisVpn")).toBe(false);
     expect(client.license.getEntitlements()).toEqual({});
     expect(client.license.getProfile()).toBeNull();
-    expect(client.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(client.config.getSecret("serviceA.oauth")).toBeNull();
     expect(client.getConfig("quality.floor", "mp3")).toBe("mp3");
     // Never read ⇒ never rewritten: the v2 record is still sitting there verbatim, and no v3
     // record was synthesised from it.
@@ -1174,7 +1174,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     const stale = await PolarisKeyClient.create(offline);
     expect(stale.status().status).toBe("needs-activation");
     expect(stale.license.isEntitled("polarisVpn")).toBe(false);
-    expect(stale.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(stale.config.getSecret("serviceA.oauth")).toBeNull();
     expect(stale.getSyncState().highWaterMark).toBe(0); // not even the clock floor moved
     stale.close();
 
@@ -1186,7 +1186,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     const current = await PolarisKeyClient.create(offline);
     expect(current.status().status).toBe("ok");
     expect(current.license.isEntitled("polarisVpn")).toBe(true);
-    expect(current.config.getSecret("soundcloud.oauth")).toBe("STOWAWAY");
+    expect(current.config.getSecret("serviceA.oauth")).toBe("STOWAWAY");
     current.close();
   });
 
@@ -1231,7 +1231,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(client.license.getEntitlements()).toEqual({});
     // …and the honest config slice is unaffected.
     expect(client.getConfig("quality.floor", 1)).toBe(9999);
-    expect(client.config.getSecret("soundcloud.oauth")).toBe("REAL-SECRET");
+    expect(client.config.getSecret("serviceA.oauth")).toBe("REAL-SECRET");
     client.close();
 
     // The mirror image: a licence artifact planted in `docs.config` yields no config, while
@@ -1258,7 +1258,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     });
     expect(mirrored.status().status).toBe("ok");
     expect(mirrored.license.isEntitled("polarisVpn")).toBe(true);
-    expect(mirrored.config.getSecret("soundcloud.oauth")).toBeNull();
+    expect(mirrored.config.getSecret("serviceA.oauth")).toBeNull();
     expect(mirrored.getConfig("quality.floor", 1)).toBe(1);
     expect(mirrored.config.schemaVersion()).toBeNull();
     mirrored.close();

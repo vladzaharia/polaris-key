@@ -36,11 +36,7 @@
     "provider": "platform",
     "redirectUris": ["https://key.plrs.im/djdl/identity/auth/callback"],
     "groupRoleMap": {
-      "family": {
-        "role": "user",
-        "tier": "standard"
-      },
-      "friends": {
+      "members": {
         "role": "user",
         "tier": "standard"
       },
@@ -60,15 +56,15 @@
   ],
   "provisioning": [
     {
-      "claim": "remnawaveAccess",
+      "claim": "vpnAccess",
       "entitlementKey": "polarisVpn",
       "entitlementValue": true
     },
     {
-      "claim": "remnawaveSub",
+      "claim": "vpnSub",
       "secretKey": "proxy.subscriptionUrl",
-      "secretUrlTemplate": "https://vpn.polaris.rest/{claim}",
-      "allowedHosts": ["vpn.polaris.rest"]
+      "secretUrlTemplate": "https://vpn.example.com/{claim}",
+      "allowedHosts": ["vpn.example.com"]
     }
   ],
   "edgeMint": [
@@ -76,15 +72,15 @@
       "id": "applemusic",
       "alg": "ES256",
       "signingKeySecret": "EDGE_MINT__DJDL__APPLEMUSIC",
-      "kid": "7L3Q6F68Y4",
+      "kid": "KEYID00000",
       "claimsTemplate": {
-        "iss": "48H7CLBV8Y"
+        "iss": "TEAM000000"
       },
       "ttlSeconds": 3600
     }
   ],
   "release": {
-    "ghOwner": "vladzaharia",
+    "ghOwner": "example-org",
     "ghRepo": "djdl",
     "ghInstallationId": 0,
     "channelWorkflow": "channel.yml",

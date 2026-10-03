@@ -14,24 +14,24 @@
         "items": {
           "type": "string",
           "enum": [
-            "soulseek",
-            "bandcamp",
-            "soundcloud",
-            "youtube",
-            "spotify",
-            "appleMusic"
+            "sourceA",
+            "sourceB",
+            "sourceC",
+            "sourceD",
+            "sourceE",
+            "sourceF"
           ]
         },
         "uniqueItems": true,
         "minItems": 1
       },
       "default": [
-        "soulseek",
-        "bandcamp",
-        "soundcloud",
-        "youtube",
-        "spotify",
-        "appleMusic"
+        "sourceA",
+        "sourceB",
+        "sourceC",
+        "sourceD",
+        "sourceE",
+        "sourceF"
       ],
       "managementDefault": "default"
     },
@@ -256,7 +256,7 @@
       "kind": "config",
       "category": "VPN",
       "label": "Route through VPN",
-      "description": "Tunnel downloads + Soulseek through the Polaris VPN.",
+      "description": "Route outbound traffic through the VPN.",
       "accessor": "proxy.enabled",
       "schema": {
         "type": "boolean"
@@ -315,7 +315,7 @@
       "secret": true,
       "category": "VPN",
       "label": "VPN subscription URL",
-      "description": "Polaris/Remnawave subscription URL. Usually auto-provisioned from the IdP.",
+      "description": "VPN subscription URL. Usually auto-provisioned from the IdP.",
       "accessor": "proxy.subscriptionUrl",
       "schema": {
         "type": "string",
@@ -331,13 +331,13 @@
       }
     },
     {
-      "key": "soundcloud.oauth",
+      "key": "serviceA.oauth",
       "kind": "secret",
       "secret": true,
       "category": "Accounts",
-      "label": "SoundCloud OAuth token",
-      "description": "Improves SoundCloud bitrate when present.",
-      "accessor": "soundcloud.oauth",
+      "label": "Service A OAuth token",
+      "description": "Optional Service A credential.",
+      "accessor": "serviceA.oauth",
       "schema": {
         "type": "string",
         "minLength": 1,
@@ -348,13 +348,13 @@
       }
     },
     {
-      "key": "spotify.clientId",
+      "key": "serviceB.clientId",
       "kind": "secret",
       "secret": true,
       "category": "Accounts",
-      "label": "Spotify client ID",
-      "description": "Custom Spotify app client id (optional).",
-      "accessor": "spotify.clientId",
+      "label": "Service B client ID",
+      "description": "Custom Service B app client id (optional).",
+      "accessor": "serviceB.clientId",
       "schema": {
         "type": "string",
         "minLength": 1,
@@ -365,13 +365,13 @@
       }
     },
     {
-      "key": "spotify.refreshToken",
+      "key": "serviceB.refreshToken",
       "kind": "secret",
       "secret": true,
       "category": "Accounts",
-      "label": "Spotify refresh token",
-      "description": "OAuth refresh token for the Spotify Web API.",
-      "accessor": "spotify.refreshToken",
+      "label": "Service B refresh token",
+      "description": "OAuth refresh token for the Service B API.",
+      "accessor": "serviceB.refreshToken",
       "schema": {
         "type": "string",
         "minLength": 1,
@@ -403,13 +403,13 @@
       }
     },
     {
-      "key": "appleMusic.userToken",
+      "key": "serviceC.userToken",
       "kind": "secret",
       "secret": true,
       "category": "Accounts",
-      "label": "Apple Music user token",
-      "description": "MusicKit Music User Token for the official Apple Music API.",
-      "accessor": "appleMusic.userToken",
+      "label": "Service C user token",
+      "description": "User token for the Service C API.",
+      "accessor": "serviceC.userToken",
       "schema": {
         "type": "string",
         "minLength": 1,
@@ -423,14 +423,14 @@
       "key": "polarisVpn",
       "kind": "flag",
       "category": "VPN",
-      "label": "Polaris VPN",
-      "description": "Master switch for VPN support. Auto-enabled when the IdP grants remnawaveAccess.",
+      "label": "VPN",
+      "description": "Master switch for VPN support. Auto-enabled when the IdP grants vpnAccess.",
       "schema": {
         "type": "boolean"
       },
       "default": false,
       "userGrant": true,
-      "grantLabel": "Polaris VPN",
+      "grantLabel": "VPN",
       "ui": {
         "widget": "switch"
       }

@@ -92,17 +92,17 @@ until the next resync re-applies the manifest.
    repo. `pkey init` can scaffold them; edit them until `pkey validate` passes. `pkey validate`
    prints the enabled services in slug vocabulary, so it is also the check that §2 says what you
    meant.
-2. Install the Polaris Key GitHub App on `vladzaharia/djdl`, then link the repo in the
+2. Install the Polaris Key GitHub App on the product repository, then link the repo in the
    admin console. Polaris Key fetches the default-branch `.pkey/` files, validates them, mints a
    sealed Ed25519 product signing key in `product_keys`, and returns the public trust key.
    Confirm the GitHub App webhook is active so future default-branch `.pkey/` changes sync
    automatically and appear in the Releases view with changed paths and validation errors.
-3. In Settings, set every required product secret shown by setup health. For djdl this
-   includes the OIDC client secret and the Apple MusicKit edge-mint private key. These are
+3. In Settings, set every required product secret shown by setup health. That can
+   include an OIDC client secret and one edge-mint private key per recipe. These are
    write-only admin/API values stored sealed in `product_secrets`; they are not Worker
-   secrets and are never echoed back. Set the MusicKit key with usage **Edge-mint signing
+   secrets and are never echoed back. Set each edge-mint key with usage **Edge-mint signing
    key** (a general secret cannot sign: the token route answers `500 misconfigured`), then
-   approve the `applemusic` recipe in the **Edge-mint recipes** card on the Secrets view.
+   approve the recipe in the **Edge-mint recipes** card on the Secrets view.
    Until it is approved the token route answers `404`, like an unknown recipe. See
    [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
 4. Verify the Core surfaces answer and the services map says what you declared:
@@ -207,7 +207,7 @@ namespaced under the service that owns it:
 | request headers                                           | `X-DJDL-Device/Version/Channel` → `X-PKey-Device/Version/Channel`, plus `X-PKey-SDK`, `X-PKey-SDK-Version`, `X-PKey-Platform`, `X-PKey-Arch`.                                                                                                                                                        |
 | `src/integrations/remoteConfig/verify.ts`                 | Set the prod entry in `TRUSTED_KEYS` to the kid → base64url pubkey pair the console returned when it minted the signing key. **Keep** the committed test kid so the checked-in vector still verifies. Expect `iss` `key.plrs.im` and `aud` `djdl`, and `typ` `pkey-license+jws` / `pkey-config+jws`. |
 | `macos/project.yml`                                       | `SUFeedURL → https://key.plrs.im/djdl/appcast.xml` (keep `SUPublicEDKey`) — see §6.                                                                                                                                                                                                                  |
-| `macos/djdl/Services/AppleMusicAuthService.swift`         | dev-token URL → `https://key.plrs.im/djdl/config/mint/applemusic/token`; auth page → `…/config/mint/applemusic/auth`.                                                                                                                                                                                |
+| edge-mint clients                                         | Fetch third-party tokens from `https://key.plrs.im/djdl/config/mint/<recipe>/token`; auth page → `…/config/mint/<recipe>/auth`. |
 | `LicenseGateView.swift` / landing / `CloudSettings.swift` | use the Polaris Key host, `key.plrs.im`; OIDC starts at `/djdl/identity/auth/start` and returns to `/djdl/identity/auth/callback` (register that redirect URI with the IdP).                                                                                                                         |
 
 The macOS app keeps **delegating licensing to the embedded engine** (it is not retrofitted

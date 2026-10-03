@@ -92,7 +92,7 @@ function configDoc(deviceId: string, at: number): ConfigDoc {
       "quality.floor": { state: "enforced", value: "flac", updatedAt: at },
     },
     secrets: {
-      "soundcloud.oauth": { state: "hidden", value: "tok", updatedAt: at },
+      "serviceA.oauth": { state: "hidden", value: "tok", updatedAt: at },
     },
   };
 }
@@ -269,7 +269,7 @@ describe("PolarisKeyClient — activation + reads", () => {
     expect(client.config.getConfig("quality.floor", "any")).toBe("flac");
     expect(client.getConfig("missing.key", "fallback")).toBe("fallback");
     expect(client.config.getConfigSource("quality.floor")).toBe("enforced");
-    expect(client.config.getSecret("soundcloud.oauth")).toBe("tok");
+    expect(client.config.getSecret("serviceA.oauth")).toBe("tok");
     expect(client.config.getSecret("nope")).toBeNull();
     expect(client.config.schemaVersion()).toBe(4);
     // `hidden` keys are applied but never enumerated; `enforced` ones are shown read-only.

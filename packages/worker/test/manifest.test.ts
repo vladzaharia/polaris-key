@@ -45,7 +45,7 @@ const PRODUCT = {
   ],
   provisioning: [
     {
-      claim: "remnawaveAccess",
+      claim: "vpnAccess",
       entitlementKey: "polarisVpn",
       entitlementValue: true,
     },
