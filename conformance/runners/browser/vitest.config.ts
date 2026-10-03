@@ -5,6 +5,9 @@ import { defineConfig } from "vitest/config";
 interface PlaywrightPage {
   context(): {
     browser(): { browserType(): { name(): string } } | null;
+    addCookies(
+      cookies: { name: string; value: string; url: string }[],
+    ): Promise<void>;
     newCDPSession(page: PlaywrightPage): Promise<{
       send(method: string, params?: Record<string, unknown>): Promise<unknown>;
       detach(): Promise<void>;
@@ -57,6 +60,14 @@ export default defineConfig({
       screenshotFailures: false,
       instances: [{ browser: engineFromArgv(process.argv) }],
       commands: {
+        // P4-18 review (`dcz.browser.test.ts`): a cookie for the payload server's origin, so any
+        // pack fetch that carried ambient credentials would show (the server refuses it).
+        async seedCookie(ctx, url: string) {
+          const page = (ctx as unknown as { page: PlaywrightPage }).page;
+          await page
+            .context()
+            .addCookies([{ name: "pkey_ambient", value: "1", url }]);
+        },
         // P4-18 (`dcz.browser.test.ts`): drop the browser's Compression Dictionary Transport
         // dictionaries, as cache eviction would. Chromium alone keeps any (over CDP); elsewhere
         // there is nothing to drop.

@@ -3,7 +3,9 @@
 // browser's ports:
 //
 //   transport  the pinned pack record from discovery's `release.endpoints.record`, objects from
-//              `distribution.endpoints.blobs` with `Range`/`If-Range`, credentialed `fetch`;
+//              `distribution.endpoints.blobs` with `Range`/`If-Range`, `fetch` with no ambient
+//              credential (`credentials: "omit"`: the Worker never sends
+//              `Access-Control-Allow-Credentials`, so a credentialed cross-origin fetch fails);
 //              P4-18: a container's `full` and payload delta first through the payload URL
 //              (`nativePayload.ts`: the browser's own zstd, and Compression Dictionary Transport
 //              in Chromium), then the same candidate through the blob route and WASM;
@@ -399,7 +401,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
             return { ok: false, code: ErrorCode.serviceUnavailable };
           try {
             const res = await fetchImpl(expand(t, sha), {
-              credentials: "include",
+              credentials: "omit",
               headers: { accept: "application/jose", ...(opts.headers ?? {}) },
             });
             if (!res.ok) return { ok: false, code: ErrorCode.networkError };
@@ -428,7 +430,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
           else if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
           if (req.ifRange !== null) headers["if-range"] = req.ifRange;
           const res = await fetchImpl(expand(t, req.sha256), {
-            credentials: "include",
+            credentials: "omit",
             headers,
           });
           const body = res.body;

@@ -239,7 +239,7 @@ describe("browserNativePayload (P4-18)", () => {
       baseUrl: BASE,
       fetchImpl: (async (input: string | URL | Request, init?: RequestInit) => {
         urls.push(String(input));
-        expect(init?.credentials).toBe("include");
+        expect(init?.credentials).toBe("omit");
         return respond(String(input));
       }) as typeof fetch,
       sha256: sha256Port,

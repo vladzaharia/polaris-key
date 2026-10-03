@@ -37,6 +37,8 @@ const scope = globalThis as unknown as {
 };
 
 const CHUNK = 1 << 20;
+/** A payload transfer with no byte for this long is abandoned (60 s). */
+const FETCH_IDLE_MS = 60_000;
 let root: DirH | null = null;
 const handles = new Map<string, SyncHandle>();
 const keyOf = (path: readonly string[]) => path.join("/");
@@ -164,63 +166,104 @@ async function run(
       return { value: { size, sha256: hasher.digest("hex") } };
     }
     case "fetchInto": {
-      const res = await fetch(req.url, {
-        credentials: "include",
-        headers: req.headers,
-      });
-      if (res.status !== 200) {
-        await res.body?.cancel().catch(() => undefined);
-        return { value: { status: res.status } };
-      }
-      const h = (await handle(req.path, true))!;
-      h.truncate(0);
-      const hasher = await createSHA256();
-      hasher.init();
-      let at = 0;
-      let lastPost = 0;
-      const reader = res.body!.getReader();
-      try {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (at + value.byteLength > req.limit) {
-            await reader.cancel().catch(() => undefined);
-            h.truncate(0);
-            return { value: { status: 200, error: "too-large" } };
-          }
-          writeAll(h, value, at);
-          hasher.update(value);
-          at += value.byteLength;
-          if (at - lastPost >= CHUNK) {
-            lastPost = at;
-            scope.postMessage({ id: req.id, progress: at });
-          }
-        }
-      } catch (e) {
-        // A transfer that fails part way (a network error, a body the browser cannot decode).
-        h.truncate(0);
-        return {
-          value: {
-            status: 200,
-            error: `network-error: ${(e as Error).message ?? e}`,
-          },
-        };
-      }
-      h.flush();
-      scope.postMessage({ id: req.id, progress: at });
-      return {
-        value: { status: 200, size: at, sha256: hasher.digest("hex") },
+      // A stalled transfer is abandoned: no byte (or no response) for `idleMs` aborts it, and
+      // it is reported as a network error, so the engine falls back to the blob route.
+      const abort = new AbortController();
+      const idleMs = req.idleMs ?? FETCH_IDLE_MS;
+      let timer = setTimeout(() => abort.abort(), idleMs);
+      const touch = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => abort.abort(), idleMs);
       };
+      try {
+        return await fetchInto(req, abort.signal, touch);
+      } catch (e) {
+        if (abort.signal.aborted)
+          return { value: { status: 200, error: "network-error: stalled" } };
+        throw e;
+      } finally {
+        clearTimeout(timer);
+      }
     }
   }
 }
 
-// One request at a time, in order: the client awaits every write before the next, and a fetch
-// must not interleave with a write to the same handle.
-let queue: Promise<void> = Promise.resolve();
+async function fetchInto(
+  req: Extract<WorkerRequest, { op: "fetchInto" }>,
+  signal: AbortSignal,
+  touch: () => void,
+): Promise<{ value: unknown }> {
+  const res = await fetch(req.url, {
+    // No ambient credential: the Worker never sends Access-Control-Allow-Credentials, so a
+    // credentialed cross-origin fetch fails CORS. Auth, when any, is an explicit bearer.
+    credentials: "omit",
+    headers: req.headers,
+    signal,
+  });
+  touch();
+  if (res.status !== 200) {
+    await res.body?.cancel().catch(() => undefined);
+    return { value: { status: res.status } };
+  }
+  const h = (await handle(req.path, true))!;
+  h.truncate(0);
+  const hasher = await createSHA256();
+  hasher.init();
+  let at = 0;
+  let lastPost = 0;
+  const reader = res.body!.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      touch();
+      if (at + value.byteLength > req.limit) {
+        await reader.cancel().catch(() => undefined);
+        h.truncate(0);
+        return { value: { status: 200, error: "too-large" } };
+      }
+      writeAll(h, value, at);
+      hasher.update(value);
+      at += value.byteLength;
+      if (at - lastPost >= CHUNK) {
+        lastPost = at;
+        scope.postMessage({ id: req.id, progress: at });
+      }
+    }
+  } catch (e) {
+    // A transfer that fails part way (a network error, a body the browser cannot decode).
+    h.truncate(0);
+    return {
+      value: {
+        status: 200,
+        error: `network-error: ${(e as Error).message ?? e}`,
+      },
+    };
+  }
+  h.flush();
+  scope.postMessage({ id: req.id, progress: at });
+  return {
+    value: { status: 200, size: at, sha256: hasher.digest("hex") },
+  };
+}
+
+/**
+ * The queue a request runs on: one per plan (`staging/<planId>`, the first two path segments), so
+ * requests to one plan's files run in order (a fetch never interleaves with a write to the same
+ * handle) while a stalled transfer of one plan never blocks another plan's I/O. `init` runs on a
+ * queue of its own, before anything else is sent.
+ */
+function queueKey(req: WorkerRequest): string {
+  const path =
+    req.op === "init" ? null : req.op === "release" ? req.prefix : req.path;
+  return path === null ? "\u0000init" : path.slice(0, 2).join("/");
+}
+
+const queues = new Map<string, Promise<void>>();
 scope.addEventListener("message", (e) => {
   const req = e.data;
-  queue = queue.then(async () => {
+  const key = queueKey(req);
+  const next = (queues.get(key) ?? Promise.resolve()).then(async () => {
     try {
       const { value, transfer } = await run(req);
       scope.postMessage({ id: req.id, ok: true, value }, transfer ?? []);
@@ -232,5 +275,10 @@ scope.addEventListener("message", (e) => {
         name: (err as { name?: string }).name,
       });
     }
+  });
+  queues.set(key, next);
+  // Forget a drained queue, so the map holds only plans with work in flight.
+  void next.then(() => {
+    if (queues.get(key) === next) queues.delete(key);
   });
 });

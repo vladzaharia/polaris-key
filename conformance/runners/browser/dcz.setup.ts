@@ -28,6 +28,14 @@ import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
 import { signJws } from "@polaris-key/jws";
 import { decode, decodeWithPrefix } from "@polaris-key/zstd-wasm";
+// Relative imports of the Worker's source, on purpose: `@polaris-key/worker` exports nothing (it
+// is a deployed Worker, not a library), and depending on it would make this job build the whole
+// Worker. Both modules are pure: `dictionary.ts` imports nothing, `cors.ts` only workspace
+// packages the Worker already resolves.
+import {
+  corsPreflight,
+  withCors,
+} from "../../../packages/worker/src/core/cors.js";
 import {
   choosePayloadAnswer,
   dczHeader,
@@ -294,6 +302,8 @@ interface LogEntry {
   status: number;
   sent: "zstd" | "dcz" | "identity" | "blob" | "record" | "none";
   bytes: number;
+  /** The request carried a `Cookie`: an ambient credential, refused with `400`. */
+  cookie: boolean;
 }
 
 export default async function setup(project: TestProject) {
@@ -308,30 +318,32 @@ export default async function setup(project: TestProject) {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://x");
     const origin = req.headers.origin;
-    const cors: Record<string, string> = origin
-      ? {
-          "access-control-allow-origin": origin,
-          "access-control-allow-credentials": "true",
-          "access-control-expose-headers":
-            "content-encoding, use-as-dictionary",
-          vary: "Origin",
-        }
-      : {};
-    if (req.method === "OPTIONS") {
-      res.writeHead(204, {
-        ...cors,
-        "access-control-allow-methods": "GET, HEAD",
-        "access-control-allow-headers": "range, if-range",
-        "access-control-max-age": "600",
-      });
-      return res.end();
-    }
+    // The Worker's own CORS (`core/cors.ts`), for a product whose `web.origins` lists the test
+    // page: the same allow/expose headers, the same `Vary: Origin`, and never
+    // `Access-Control-Allow-Credentials`, so a credentialed fetch fails here as it would there.
+    const corsProduct = { webOrigins: origin ? [origin] : [] };
+    const asked = new Request(`http://127.0.0.1${url.pathname}`, {
+      headers: origin ? { origin } : {},
+    });
+    const corsHeaders = (res: Response): Record<string, string> =>
+      Object.fromEntries(res.headers.entries());
+    if (req.method === "OPTIONS")
+      return (
+        res.writeHead(204, corsHeaders(corsPreflight(corsProduct, asked))),
+        res.end()
+      );
+    const withWorkerCors = (headers: Record<string, string>) =>
+      corsHeaders(
+        withCors(corsProduct, asked, new Response(null, { headers })),
+      );
     if (url.pathname === "/log") {
-      res.writeHead(200, {
-        ...cors,
-        "content-type": "application/json",
-        "cache-control": "no-store",
-      });
+      res.writeHead(
+        200,
+        withWorkerCors({
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        }),
+      );
       return res.end(JSON.stringify(log));
     }
     const m = /^\/([a-z0-9-]+)\/(.*)$/.exec(url.pathname);
@@ -348,6 +360,7 @@ export default async function setup(project: TestProject) {
       status: 404,
       sent: "none",
       bytes: 0,
+      cookie: req.headers.cookie !== undefined,
     };
     log.push(entry);
     const send = (
@@ -359,10 +372,13 @@ export default async function setup(project: TestProject) {
       entry.status = status;
       entry.sent = sent;
       entry.bytes = body?.byteLength ?? 0;
-      res.writeHead(status, { ...cors, ...headers });
+      res.writeHead(status, withWorkerCors(headers));
       res.end(body ? Buffer.from(body) : undefined);
     };
     if (!releases) return send(404, {}, null, "none");
+    // No pack fetch may carry an ambient credential (the page seeds a cookie for this origin).
+    if (entry.cookie)
+      return send(400, { "cache-control": "no-store" }, null, "none");
 
     const rec = /^release\/records\/([0-9a-f]{64})$/.exec(rest);
     if (rec) {
@@ -412,7 +428,7 @@ export default async function setup(project: TestProject) {
         })),
       });
       const headers: Record<string, string> = {
-        vary: `${PAYLOAD_VARY}, Origin`,
+        vary: PAYLOAD_VARY,
         "content-type": "application/octet-stream",
       };
       if (answer.kind === "refuse")

@@ -29,6 +29,8 @@ declare module "vitest/browser" {
   interface BrowserCommands {
     /** `vitest.config.ts`: drop Chromium's dictionaries (false: this engine keeps none). */
     clearDictionaries(): Promise<boolean>;
+    /** `vitest.config.ts`: set a cookie for `url`'s origin in this browser context. */
+    seedCookie(url: string): Promise<void>;
   }
 }
 
@@ -44,6 +46,7 @@ interface LogEntry {
   status: number;
   sent: string;
   bytes: number;
+  cookie: boolean;
 }
 
 async function serverLog(product: string): Promise<LogEntry[]> {
@@ -134,6 +137,9 @@ function facet(product: string) {
 beforeAll(async () => {
   console.log(`[dcz] ${navigator.userAgent}; server ${fx.origin}`);
   await loadZstdWasm();
+  // An ambient credential exists for the payload server: a credentialed fetch would carry it,
+  // and the server refuses any request that does.
+  await commands.seedCookie(`${fx.origin}/`);
   try {
     for (const product of Object.keys(fx.products)) await freshOpfs(product);
     opfs = true;
@@ -149,6 +155,15 @@ beforeAll(async () => {
 describe("web deltas over Compression Dictionary Transport (P4-18)", () => {
   it("fetches cross-origin, under CORS", () => {
     expect(new URL(fx.origin).origin).not.toBe(location.origin);
+  });
+
+  it("the harness would see an ambient credential: a credentialed fetch carries the cookie and fails CORS", async () => {
+    // The Worker's CORS sends no `Access-Control-Allow-Credentials`: the page cannot read it.
+    await expect(
+      fetch(`${fx.origin}/log`, { credentials: "include" }),
+    ).rejects.toThrow();
+    const ok = await fetch(`${fx.origin}/log`, { credentials: "omit" });
+    expect(ok.status).toBe(200);
   });
 
   it("updates A7's v1 → v2 by dcz: the artifact plus 40 bytes, v2's SHA-256", async () => {
@@ -260,5 +275,14 @@ describe("web deltas over Compression Dictionary Transport (P4-18)", () => {
     expect(log.filter((e) => e.sent === "blob").map((e) => e.path)).toContain(
       `/dcz-g/distribution/blobs/sha256/${p.artifactSha256}`,
     );
+  });
+
+  it("sent no pack request with an ambient credential, in any case above", async () => {
+    const all = (await (
+      await fetch(`${fx.origin}/log`, { cache: "no-store" })
+    ).json()) as LogEntry[];
+    const packs = all.filter((e) => e.product.startsWith("dcz-"));
+    expect(packs.length).toBeGreaterThan(0);
+    expect(packs.filter((e) => e.cookie)).toEqual([]);
   });
 });

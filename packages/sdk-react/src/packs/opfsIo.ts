@@ -35,7 +35,7 @@ export interface OpfsIo {
   /** The file's size and SHA-256. */
   hash(path: OpfsPath): Promise<{ size: number; sha256: string }>;
   /**
-   * Worker only: `GET url` (credentials included) and write the decoded body to `path` from
+   * Worker only: `GET url` (no ambient credential: `credentials: "omit"`) and write the decoded body to `path` from
    * offset 0, refusing more than `limit` bytes. Anything but a `200` writes nothing.
    */
   fetchInto?(
@@ -157,6 +157,8 @@ export type WorkerRequest =
       url: string;
       headers: Record<string, string>;
       limit: number;
+      /** Abandon the transfer after this long without a byte (default 60 s). */
+      idleMs?: number;
     };
 
 /** A request before the client numbers it. */

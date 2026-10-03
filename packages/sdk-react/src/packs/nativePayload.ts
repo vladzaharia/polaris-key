@@ -173,7 +173,9 @@ export function browserNativePayload(
 
     let res: Response;
     try {
-      res = await fetchImpl(url, { credentials: "include", headers });
+      // `omit`: the Worker sends no `Access-Control-Allow-Credentials` (`core/cors.ts`), so a
+      // credentialed cross-origin fetch fails CORS; auth, when any, is an explicit header.
+      res = await fetchImpl(url, { credentials: "omit", headers });
     } catch (e) {
       emit({ outcome: "failed", error: (e as Error).message });
       return { ok: false, error: "network-error" };
