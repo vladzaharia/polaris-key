@@ -21,7 +21,7 @@
  * only ready pages, so every capability stays reachable and no URL is a dead end. An area chunk
  * flips `ready` and deletes `host` when it builds the page.
  *
- * The worker's docsLinks gate (packages/worker/test/docsLinks.test.ts) reads every "/docs/…"
+ * The worker's docsLinks gate (packages/worker/test/docsLinks.test.ts) reads every quoted docs path
  * literal in this file and asserts the page exists in the built docs site.
  */
 
