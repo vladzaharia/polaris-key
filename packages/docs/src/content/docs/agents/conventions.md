@@ -1,6 +1,6 @@
 ---
 title: "Conventions and drift gates"
-description: "The green gate and the hard rules, distilled — plus the six drift gates, what each catches, and the command that runs it."
+description: "The green gate and the hard rules, distilled — plus the seven drift gates, what each catches, and the command that runs it."
 sidebar:
   order: 3
 ---
@@ -87,7 +87,7 @@ deliberately lightweight. A green hook is not a green gate.
 
 ## The drift-gate inventory
 
-Six gates exist because six things can silently fall out of step. Each one turns "someone forgot"
+Seven gates exist because seven things can silently fall out of step. Each one turns "someone forgot"
 into a red build.
 
 ### 1. Conformance corpus
@@ -148,6 +148,16 @@ generators.
 | **Command** | `pnpm --filter @polaris-key/docs build && pnpm --filter @polaris-key/worker test docsLinks`                                                                                                                                                                                                                                                                                                                                                          |
 
 Also skips cleanly when the slug manifest is absent.
+
+### 7. Console CSP parity
+
+|             |                                                                                                                                                                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catches** | An inline script in the console or portal shell (`packages/admin/index.html`, `manage.html`) that the SPA CSP does not allow, or an allowance left behind after the script changed. Today there is one inline script, the pre-paint theme script                                                               |
+| **How**     | `packages/worker/src/adminCsp.ts` lists the scripts' SHA-256 hashes for `appSecurityHeaders`. `packages/admin/test/theme.test.tsx` hashes the script in both HTML sources and requires it to be listed; `packages/worker/test/adminCspParity.test.ts` sweeps the built shells and requires the set to be equal |
+| **Command** | `pnpm --filter @polaris-key/admin test theme`, then `pnpm --filter @polaris-key/admin build && pnpm --filter @polaris-key/worker test adminCspParity`                                                                                                                                                          |
+
+The worker half skips cleanly when the admin `dist` is absent; the admin half always runs.
 
 ## Two structural gates that are not about drift
 
