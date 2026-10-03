@@ -1,4 +1,5 @@
 import { playwright } from "@vitest/browser-playwright";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 /** The slice of Playwright's `Page` the command below uses. */
@@ -43,7 +44,20 @@ function engineFromArgv(argv: readonly string[]): Engine {
   return "chromium";
 }
 
+// `dcz.setup.ts` imports the Worker's pure `core/cors.ts` so the harness answers with production
+// CORS. That file imports `@polaris-key/manifest` and `@polaris-key/protocol`, which Node would
+// look up beside the Worker; CI installs only this runner's graph (`pnpm install
+// --filter=...conformance-browser...`), so `packages/worker/node_modules` does not exist there.
+// Resolve both from this package's own dependencies instead.
+const OWN_DEPS = ["@polaris-key/manifest", "@polaris-key/protocol"] as const;
+
 export default defineConfig({
+  resolve: {
+    alias: OWN_DEPS.map((name) => ({
+      find: new RegExp(`^${name.replace("/", "\\/")}$`),
+      replacement: fileURLToPath(import.meta.resolve(name)),
+    })),
+  },
   test: {
     include: ["*.test.ts"],
     // P4-18: the payload-URL server `dcz.browser.test.ts` fetches from (cross-origin, Node side).
