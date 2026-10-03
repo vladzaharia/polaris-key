@@ -76,6 +76,23 @@ private func expectPackError(
     }
 }
 
+final class StrictUTF8Tests: XCTestCase {
+    /// The text rule decodes strictly, as client-core's fatal `TextDecoder` (Amendment A1): an
+    /// overlong form, a surrogate, a value above U+10FFFF, a byte that never starts a sequence or a
+    /// truncated sequence is refused; the largest values just inside each bound pass.
+    func testIsStrictUTF8ThroughTheTextRule() {
+        let refused: [[UInt8]] = [
+            [0xc0, 0x80], [0xe0, 0x80, 0x80], [0xed, 0xa0, 0x80], [0xf4, 0x90, 0x80, 0x80], [0xf5], [0xe2, 0x82],
+        ]
+        for b in refused {
+            XCTAssertEqual(dataOnlyRefusal("a.txt", head: b, tail: b, full: b), .content, "\(b)")
+        }
+        for b: [UInt8] in [[0xed, 0x9f, 0xbf], [0xf4, 0x8f, 0xbf, 0xbf]] {
+            XCTAssertNil(dataOnlyRefusal("a.txt", head: b, tail: b, full: b), "\(b)")
+        }
+    }
+}
+
 final class DelegatedEngineTests: XCTestCase {
     func testKidHelpers() {
         let f = fixture()

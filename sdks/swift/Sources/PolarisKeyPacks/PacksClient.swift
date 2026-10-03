@@ -354,7 +354,9 @@ public actor PacksClient {
                 entitlements: { await PacksClient.entitlements(core) },
                 now: { await core.now() },
                 handlers: opts.handlers + pendingHandlers.with { $0 },
-                // plans/P4-19.md §2.4: a hold's release never takes the delegated path.
+                // plans/P4-19.md §2.4: a hold's release never takes the delegated path. Unusable
+                // stamp holds (`stampHolds` gives nil) are treated as no holds: the record hash a
+                // decision names still binds the bytes.
                 holds: ((try? readStampBytes()) ?? nil).flatMap { stampHolds($0) } ?? []))
         let listeners = self.listeners
         engine.on { e in for l in listeners.with({ Array($0.values) }) { l(e) } }
