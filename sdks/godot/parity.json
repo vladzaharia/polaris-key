@@ -129,7 +129,10 @@
       "status": "implemented",
       "note": "P4-24: core/release_record.gd revocation_of / verify_revocation / newer_revocation (every revocationCases vector), packs/revocations.gd (the sibling content/revocations.json: written only with a first entry and revocationsStored first, re-verified on load, torn quarantined with relearn, unreadable writes nothing, the 256 cap, recover_state clears relearn) and the engine's pack-revoked."
     },
-    "packs.delegation": { "status": "planned", "wp": "P4-26" },
+    "packs.delegation": {
+      "status": "implemented",
+      "note": "P4-26: core/release_record.gd verify_release_record (the delegated path, steps 13 and 16), verify_delegation (cached per hash and trust inputs), record_revoked; packs/dataonly.gd data_only_refusal with Amendment A1 (strict UTF-8 by hand, the text rule); the PackEngine fetches delegations only on the delegated surface (at most 16 per call), refuses non-data-only delegated installs with pack-not-data-only (before any payload fetch, while writing, and on a noop reuse), keeps the install's delegation and reloads through it, refuses releases under a revoked delegation (pack-revoked, detail delegation), never plans the GDDL route for delegated bytes and never mounts a delegated install; step 11 delegation relevance and the decision-input expansion in PKeyUpdateFlow; every delegationCases and dataOnlyCases vector on the editor and the release template."
+    },
     "packs.plan": {
       "status": "implemented",
       "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json (v2) row, variant case and target case on the editor and the release template; plan_target applies the P4-10 §2.5 chunk rule when given a chunk index (Godot parses none until P4-11)."

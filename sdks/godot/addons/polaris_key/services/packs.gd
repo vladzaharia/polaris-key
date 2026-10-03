@@ -170,6 +170,10 @@ func start() -> PKeyResult:
 	e.release_keys = core.options.pinned_release_keys
 	e.product_trust = func() -> Dictionary: return core.trust.effective()
 	e.stamp = content
+	# plans/P4-19.md §2.4: a hold's release is a release-key surface, never delegated.
+	var stamp_bytes := PKeyPackStorage.read_bytes(stamp_path) if content is Dictionary else {"ok": false}
+	if stamp_bytes["ok"] and not stamp_bytes.has("missing"):
+		e.holds = PKeyPackClaims.stamp_holds(stamp_bytes["bytes"])
 	e.prefs = prefs()
 	e.patch_methods = [PKeyConstants.PatchMethod.ZSTD_PATCH_FROM] if e.zstd.patch_from_available() else []
 	e.mem_budget = mem_budget
@@ -322,7 +326,8 @@ func revocations() -> Dictionary:
 
 ## The update check's content input (plans/P4-13.md §2.5, §2.6; PKeyUpdateFlow `content`): the
 ## stamp and its holds, the running releases (embedded baselines included), the host's engine and
-## variant axes, and the engine's verified revocations and `relearn`. null when the build ships no
+## variant axes, the engine's verified revocations and `relearn`, and the delegated releases it
+## knows (plans/P4-19.md §2.7). null when the build ships no
 ## content stamp or packs cannot start (the decision then runs without content, as before P4-13).
 ## A coroutine.
 func content_input() -> Variant:
@@ -343,7 +348,7 @@ func content_input() -> Variant:
 	var revs := engine.revocations()
 	return {
 		"stamp": content, "holds": holds, "active": active, "engine": p["engine"], "axes": p["axes"],
-		"revoked": revs["verified"], "relearn": revs["relearn"],
+		"revoked": revs["verified"], "relearn": revs["relearn"], "delegated": engine.delegated_releases(),
 	}
 
 
@@ -665,10 +670,16 @@ func mount() -> Dictionary:
 	var tree := Engine.get_main_loop() as SceneTree
 	for i in queue:
 		var id: String = i["packId"]
-		# plans/P4-13.md §2.5: a revoked release is never mounted.
-		if engine.is_revoked(i["recordSha256"]):
+		# plans/P4-13.md §2.5: a revoked release is never mounted (its record, or the delegation it
+		# was signed under).
+		if engine.install_revoked(i):
 			out["refused"].append({"packId": id, "code": PKeyConstants.ErrorCode.PACK_REVOKED, "detail": "revoked by its developer"})
 			pack_failed.emit(id, PKeyConstants.ErrorCode.PACK_REVOKED)
+			continue
+		# plans/P4-19.md §2.5: no delegated file ever reaches load_resource_pack.
+		if i.has("delegation"):
+			out["refused"].append({"packId": id, "code": PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "detail": "a delegated release is never mounted"})
+			pack_failed.emit(id, PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY)
 			continue
 		var rec = engine.records.get(i["recordSha256"])
 		var variant = _variant_of(rec, i)

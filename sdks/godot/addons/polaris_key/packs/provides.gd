@@ -120,8 +120,10 @@ func is_available(content_id: String) -> bool:
 ## `targets`: a packs decision's install list ([{pack, release: {sha256, seq, version}}]), else
 ## the content stamp's pins in stamp order. Each target's facts come from an install or embedded
 ## baseline of that release, else from its record fetched by hash and verified as `ensure`
-## verifies it. The first target, in order, that provides the id and is entitled answers. A target
-## that cannot be fetched or verified, or is revoked, is skipped. A coroutine returning
+## verifies it (a delegated record through its delegation, on the delegated surface only:
+## plans/P4-19.md §2.4). The first target, in order, that provides the id and is entitled answers.
+## A target that cannot be fetched or verified, or is revoked (its record, or the delegation it was
+## signed under), is skipped. A coroutine returning
 ## {packId, release: {sha256, seq, version}} or null. Serialised with the engine's calls.
 func pack_for(content_id: String, targets: Variant = null) -> Variant:
 	if engine == null:
@@ -135,11 +137,15 @@ func pack_for(content_id: String, targets: Variant = null) -> Variant:
 		elif engine.stamp is Dictionary and engine.stamp.get("pins") is Array:
 			list = engine.stamp["pins"]
 		var granted = _granted()
+		engine._delegation_budget = PKeyConstants.MAX_DELEGATIONS_PER_CHECK
+		var delegated: Dictionary = engine.delegated_releases()
 		for t in list:
 			if not _target_ok(t):
 				continue
 			var rel: Dictionary = t["release"]
-			if _revoked(String(rel["sha256"])):
+			# A revoked record, or one signed under a revoked delegation (checked here too, because a
+			# memo hit skips fetch_verified's own check).
+			if _revoked(String(rel["sha256"]), delegated):
 				continue
 			var f = await _target_facts(t)
 			if f is Dictionary and f["provides"].has(content_id) and entitled(f, granted):
@@ -155,9 +161,12 @@ func _granted() -> Variant:
 	return engine.entitlements.call() if engine.entitlements.is_valid() else null
 
 
-## Whether a verified revocation names the release (the engine's revocations, P4-24).
-func _revoked(sha256: String) -> bool:
-	return engine.is_revoked(sha256) == true
+## Whether a verified revocation names the release or the delegation it was signed under (the
+## engine's revocations, P4-24; plans/P4-19.md §2.3). `delegated`: the engine's
+## delegated_releases().
+func _revoked(sha256: String, delegated: Dictionary = {}) -> bool:
+	var d = delegated.get(sha256)
+	return engine.revoked_by(sha256, d["delegation"] if d is Dictionary else null) != null
 
 
 static func _target_ok(t: Variant) -> bool:
@@ -207,19 +216,12 @@ func _target_facts(t: Dictionary) -> Variant:
 	return _remember(sha, rec)
 
 
-## Preflight step 2 for one target: the record fetched by hash and verified against the pinned
-## release keys with `pin: {kind: "pack", deliverable, version, seq}`. The verified record, or null.
+## Preflight step 2 for one target (PKeyPackEngine.fetch_verified): the record fetched by hash and
+## verified against the pinned release keys with `pin: {kind: "pack", deliverable, version, seq}`,
+## a delegated one through its delegation on the delegated surface. The verified record, or null
+## (a refusal, or a release under a revoked delegation).
 func _fetch_verified(pack_id: String, rel: Dictionary) -> Variant:
-	var sha: String = rel["sha256"]
-	var got: Dictionary = await engine.transport.fetch_record(sha)
-	if not got.get("ok", false):
+	var fv: Dictionary = await engine.fetch_verified(pack_id, rel)
+	if fv.has("error"):
 		return null
-	var v: Dictionary = await PKeyReleaseRecord.verify_release_record(got["body"], {
-		"release_keys": engine.release_keys, "product_trust": engine.product_trust.call() if engine.product_trust.is_valid() else {},
-		"expected_aud": engine.product, "expected_hash": sha, "offload": engine.offload,
-		"pin": {"kind": "pack", "deliverable": pack_id, "version": rel["version"], "seq": rel["seq"]},
-	})
-	if not v["ok"]:
-		return null
-	engine.records[sha] = v["record"]
-	return v["record"]
+	return fv["record"]

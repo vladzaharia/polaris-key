@@ -20,7 +20,9 @@ port of client-core's pack core and pipeline, the `godot.pck` and `files.tree` h
 bake through the engine's own decoder, the device-side directory check, and PKeyBoot's FETCH,
 MOUNT and BACKGROUND stages (see "Packs"). P4-24 adds the content decision (the feed's
 `packSets`, `packFloors` and `revocations`, CI-signed revocation records, the `packs` answer,
-`content-floor` and `revoked-content`) and the device's revocations (see "Revocations").
+`content-floor` and `revoked-content`) and the device's revocations (see "Revocations"). P4-26
+adds content-key delegation: data-only pack releases signed by a delegated content key, and the
+data-only rule (see "Content-key delegation").
 
 ## Layout
 
@@ -72,7 +74,9 @@ sdks/godot/
     services/packs.gd         PKeyPacks (PolarisKey.update.packs, P4-08): start, ensure, estimate,
                               mount, boot_fetch, background, state, path, rollback, confirm,
                               packSetId, is_available, pack_for; the pack signals; P4-24:
-                              ensure_releases, revocations, content_input, record_revocations
+                              ensure_releases, revocations, content_input, record_revocations;
+                              P4-26: the stamp's holds reach the engine, content_input's
+                              `delegated`, a delegated install is never mounted
     packs/                    the pack core, ported from client-core `packs/`: pack_claims.gd
                               (PKeyPackClaims: pack ids, object refs, content claims, the pack
                               record claims, variant keys, packSetId, the content stamp), files.gd
@@ -81,7 +85,9 @@ sdks/godot/
                               apply.gd (PKeyPackApply: full, delta, file), marker.gd, state.gd
                               (PKeyPackState), revocations.gd (PKeyPackRevocations: the sibling
                               revocations.json, P4-24), engine.gd (PKeyPackEngine: the pipeline,
-                              pack-revoked), and the
+                              pack-revoked; P4-26: fetch_verified, the delegated surface,
+                              pack-not-data-only, revoked_by, delegated_releases), dataonly.gd
+                              (PKeyDataOnly: the data-only rule, P4-26), and the
                               Godot ports: zstd.gd (PKeyPackZstd: decompress, the window rule,
                               GDDL prefix decodes), pck.gd (PKeyPck: the PCK reader, the header and
                               directory checks, helper packs, the trailer), storage.gd
@@ -114,7 +120,10 @@ sdks/godot/
                               commit_feed (`pkey-feed+jws`), feed_content, with_feed_content
     core/release_record.gd    PKeyReleaseRecord: record_hash, release_record_claims,
                               verify_release_record (`pkey-release+jws`, hash before signature),
-                              revocation_of, verify_revocation, newer_revocation
+                              revocation_of, verify_revocation, newer_revocation; P4-26:
+                              verify_release_record's `delegation` (steps 13 and 16),
+                              delegation_hash_of, delegation_of, verify_delegation, covers_pack,
+                              record_revoked
     core/store/               PKeyStore, PKeyFileStore (0600, temp + rename), PKeyMemoryStore
     core/transport.gd         PKeyTransport: redirects by hand, credentials dropped cross-origin
     core/discovery.gd, sync.gd, token.gd, headers.gd, errors.gd, result.gd, caps.gd, semver.gd, device_id.gd
@@ -151,7 +160,7 @@ sdks/godot/
     updater/                  the updater suite's groups (adapters, bridges, download, swap,
                               guard, boot, grep) and their support.gd
     packs/                    the packs suite's groups (content, plan, records, pck, bake, engine,
-                              state, http, boot, guard, uid, revocations), support.gd and
+                              state, http, boot, guard, uid, revocations, delegation), support.gd and
                               fixtures.gd (pack
                               records signed with the corpus's test release key by
                               support/test_signer.gd, a fake pack transport)
@@ -830,6 +839,42 @@ and `record_revocations()` are what `decide()` uses. `boot_fetch` takes a `packs
 `install` (PKeyBootHost passes it): required and essential entries install before mount, the rest
 wait in `background_targets` for BACKGROUND.
 
+**Content-key delegation** (plans/P4-19.md §2.3–§2.7 with Amendment A1; P4-26). A CI-signed `kind:
+delegation` record lets one content key sign tree-layout pack releases of `files.tree`,
+`data.json` or `l10n.table` under a pack-id scope (whole segments: `djdl.events` covers
+`djdl.events.halloween`, never `djdl.eventsx`) inside a signing window. A delegated record names
+its delegation in its header (`kid: pkd1-<sha256 of the delegation>`):
+
+- `PKeyReleaseRecord.verify_release_record(body, {…, delegation})` verifies the delegation against
+  the pinned release keys only (one level: never through another delegation; its key is no
+  release or product key), then the record with the delegated key, then step 16 (`scope`). A
+  pinned `pkd1-` kid is `invalid-options`. Verified delegations are cached per hash and trust
+  inputs.
+- The engine fetches a delegation by that hash (at most 16 distinct ones per call) only for a
+  target that is neither the stamp's pin or hold for the pack nor a stored revocation's
+  replacement: those are release-key surfaces, where the record is refused at `jws`. `pack_for`
+  goes through the same path.
+- A delegated release passes the data-only rule (`PKeyDataOnly.data_only_refusal`): the extension
+  allow-list over the files index before any payload object is fetched, then, for every file the
+  applier writes (and every file a `noop` reuse would keep), a padding-proof 64-byte head sniff, a
+  tail sniff over the last 65,557 bytes and, for json/csv/tsv/po/txt, the whole-file text rule
+  (strict UTF-8, no NUL, no script marker raw or with backslashes removed, no `\u`/`\U` escape
+  that could spell ASCII). A refusal aborts the plan with `pack-not-data-only`, whose detail
+  names the `path` and the rule (`extension` or `content`). The `files.tree` handler also asserts
+  every staged path is its own `simplify_path()`.
+- The install keeps the delegation verbatim (`delegation` in `state.json`) and reloads through it,
+  so it stays valid after the window. A revocation of the delegation (a feed entry whose `kind` is
+  `delegation`) stops every release under it: `pack-revoked`, detail `delegation`. `decide()`
+  treats such entries as relevant when they name the delegation of a delegated release the engine
+  knows or their scope covers a pack the stamp, the running set or the feed names, and revokes the
+  delegated releases for the decision.
+- **A delegated file never reaches `load_resource_pack`.** A delegated plan (or one starting from a
+  delegated install) never takes the GDDL `zstd-patch-from` route, which mounts helper packs
+  holding the base and the frame; the `godot.pck` handler and `mount()` refuse an install that
+  carries a delegation. Apps must parse delegated text with pure JSON or CSV parsers
+  (`JSON.parse_string`), never `str_to_var`, `ConfigFile` or `JSON.to_native(…, true)`, and never
+  write delegated bytes under a code extension.
+
 **Signals**: `pack_progress(id, bytes, total)`, `set_changed(activation)` (a commit or rollback
 changed the active set: `hot` now, `restart` at this boot's mount or the next boot),
 `pack_ready(id)` (usable in this process: a hot commit, or a mount), `pack_failed(id, err)`.
@@ -855,7 +900,10 @@ state (the hardened state); http (the real transport against PKeyFakeServer); bo
 and signal order); guard (two failed boots roll the set back, with and without the binary);
 revocations (`revocations.json`: two loads, torn, unreadable with and without the flag, the flag
 restored, the cap, `pack-revoked` with and without `relearn`, the update check's content steps,
-and the facet's `packs` answer through FETCH and BACKGROUND); uid
+and the facet's `packs` answer through FETCH and BACKGROUND); delegation (strict UTF-8 vectors, the
+delegated surfaces, `pack-not-data-only` before fetch, while writing and on reuse, a delegation
+revocation, reload through the stored delegation, the 16-delegation bound, no GDDL mount of
+delegated bytes, `pack_for`, the update check's step 11 and the facet's holds); uid
 (two independently built, stripped packs resolve their own and this project's `uid://` with
 `replace_files=true`, the class list unchanged). About 6 s in the editor and 5 s on the macOS
 release template (M-series Mac, 4.7.2).

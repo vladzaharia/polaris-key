@@ -63,14 +63,43 @@ static func ints(v: Variant) -> Variant:
 	return v
 
 
-## A signed pack record: {jws, sha256, record}. Signatures are cached by payload text.
-static func sign_record(record: Dictionary) -> Dictionary:
+## A signed pack record: {jws, sha256, record}. Signatures are cached by kid and payload text.
+## `signer`: {seed, kid} to sign with another key (a delegated content key, plans/P4-19.md §2.2);
+## the release key by default.
+static func sign_record(record: Dictionary, signer: Variant = null) -> Dictionary:
 	_load_keys()
 	var text := JSON.stringify(ints(record))
-	if not _signed.has(text):
-		_signed[text] = PKeyTestSigner.sign_jws(text, _seed, RELEASE_KID, "pkey-release+jws")
-	var jws: String = _signed[text]
+	var seed: PackedByteArray = signer["seed"] if signer is Dictionary else _seed
+	var kid: String = signer["kid"] if signer is Dictionary else RELEASE_KID
+	var key := kid + " " + text
+	if not _signed.has(key):
+		_signed[key] = PKeyTestSigner.sign_jws(text, seed, kid, "pkey-release+jws")
+	var jws: String = _signed[key]
 	return {"jws": jws, "sha256": sha(jws.to_utf8_buffer()), "record": record}
+
+
+## TEST ONLY: the corpus generator's deterministic content key `label` (tools/sign-corpus.ts
+## `contentKey`: the seed is SHA-256 of `pkey-corpus-content-key:<label>`): {seed, publicKey}.
+static func content_key(label: String) -> Dictionary:
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	ctx.update(("pkey-corpus-content-key:%s" % label).to_utf8_buffer())
+	var seed := ctx.finish()
+	return {"seed": seed, "publicKey": PKeyB64Url.encode(PKeyTestSigner.public_key(seed))}
+
+
+## A `kind: delegation` record (plans/P4-19.md §2.2) granting `key` (content_key's) the scope root
+## `root` for `types`, signed with the release key: {jws, sha256, signer: {seed, kid: pkd1-<sha256>}}.
+## `opts`: issuedAt, expiresAt, seq, kid (the signing release key).
+static func delegation_for(key: Dictionary, root: String, types: Array, opts: Dictionary = {}) -> Dictionary:
+	var doc := {
+		"schemaVersion": 1, "aud": PRODUCT, "deliverable": root, "kind": "delegation", "version": str(int(opts.get("seq", 1))),
+		"seq": int(opts.get("seq", 1)), "issuedAt": int(opts.get("issuedAt", 1759000000)), "expiresAt": int(opts.get("expiresAt", 1769000000)),
+		"delegate": {"publicKey": key["publicKey"]}, "types": types,
+	}
+	var jws := sign_with(doc, String(opts.get("kid", RELEASE_KID)), "pkey-release+jws")
+	var h := sha(jws.to_utf8_buffer())
+	return {"jws": jws, "sha256": h, "doc": doc, "signer": {"seed": key["seed"], "kid": "pkd1-" + h}}
 
 
 ## Any document signed with the corpus's TEST key `kid` (a release or product key) and `typ`.
@@ -175,7 +204,9 @@ static func tree_pack(pack_id: String, version: String, seq: int, files: Diction
 	}
 	if opts.get("entitlement", "") != "":
 		record["entitlement"] = opts["entitlement"]
-	var s := sign_record(record)
+	if opts.get("extra") is Dictionary:
+		record.merge(opts["extra"], true)
+	var s := sign_record(record, opts.get("signer"))
 	return {"packId": pack_id, "version": version, "seq": seq, "jws": s["jws"], "recordSha256": s["sha256"], "record": record,
 		"treeDigest": digest, "size": full.size(), "objects": objects, "files": bytes, "indexSha256": sha(index), "fullSha256": sha(full)}
 

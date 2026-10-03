@@ -44,6 +44,20 @@ extends RefCounted
 ## targets are kept (the oldest dropped first). A product with no revocations has no file, no flag
 ## and no `relearn`, so nothing here can refuse a mount: it behaves exactly as before.
 ##
+## Content-key delegation (plans/P4-19.md §2.3–§2.7): a pack record whose kid is `pkd1-<hash>`
+## names a delegation, fetched by that hash (at most MAX_DELEGATIONS_PER_CHECK distinct ones per
+## call) ONLY on the delegated surface: a target that is neither the stamp's pin or hold for the
+## pack nor a stored revocation's replacement (those are release-key surfaces; there the record is
+## refused at `jws`). A delegated release passes the data-only rule (PKeyDataOnly): the path rule
+## over the files index before any payload object is fetched, and the whole rule over every file
+## the applier writes, a reused (`noop`) install's files included; a refusal aborts the plan with
+## `pack-not-data-only` (detail {path, detail: extension | content}). Its install keeps the
+## delegation (`delegation`) and reloads through it, so it stays valid after the window. A release
+## under a revoked delegation is `pack-revoked` (detail `delegation`) and never activates. No
+## delegated byte ever reaches `load_resource_pack`: a delegated plan never uses the GDDL
+## `zstd-patch-from` route (which mounts helper packs holding the base and frame), and the
+## `godot.pck` handler and the mount refuse an install that carries a delegation.
+##
 ## Every call is a coroutine returning a PKeyResult (or a Dictionary for `estimate`); calls are
 ## serialised. Progress: `progress(event)` with {packId, phase: download | apply | done |
 ## state-issue, done, total, issue?}.
@@ -60,6 +74,9 @@ var release_keys := {}
 var product_trust := Callable()
 ## The running build's content stamp (`parse_content_stamp`'s `content`), or null: no packs.
 var stamp: Variant = null
+## The stamp's holds (`PKeyPackClaims.stamp_holds`; null when there are none or they are
+## unusable): a hold's release is a release-key surface, never delegated (plans/P4-19.md §2.4).
+var holds: Variant = null
 ## Variant preferences: {engine: "godot-<major>.<minor>", axes: {axis: [values…]}}.
 var prefs := {"engine": null, "axes": {}}
 var zstd := PKeyPackZstd.new()
@@ -120,6 +137,13 @@ var _rev_jws := {}
 var _rev_file := false
 ## The last object fetch was refused with 403 (P4-05: `delivery_gate_missing`, `not_entitled`).
 var _denied := false
+## plans/P4-19.md §2.3: delegation records fetched in this process, by hash (each bound to its
+## hash, and re-verified at every use against the current trust inputs).
+var _delegation_bodies := {}
+## The distinct delegations this call may still fetch (MAX_DELEGATIONS_PER_CHECK, reset per call).
+var _delegation_budget := PKeyConstants.MAX_DELEGATIONS_PER_CHECK
+## The delegated releases verified in this process: record hash -> {pack, delegation}.
+var _delegated_known := {}
 
 
 func _init(p_storage: PKeyPackStorage = null) -> void:
@@ -261,7 +285,7 @@ func load_state(embedded: Array = []) -> Dictionary:
 	# This boot's set: every active install (restart packs mount at this boot), else the embedded
 	# baseline. A revoked release never activates or mounts (`pack-revoked`).
 	for id in doc["active"]:
-		if not is_revoked(doc["active"][id]["recordSha256"]):
+		if not install_revoked(doc["active"][id]):
 			await _activate(doc["active"][id])
 	for id in _embedded:
 		if not running.has(id) and not _embedded_refused(_embedded[id]):
@@ -283,7 +307,7 @@ class _Verifier extends RefCounted:
 		engine = e
 
 	func install(i: Dictionary) -> bool:
-		if not await engine._verify_stored_record(i["record"], i["recordSha256"], i["packId"], i):
+		if not await engine._verify_stored_record(i["record"], i["recordSha256"], i["packId"], i, i.get("delegation")):
 			return false
 		# An embedded baseline registered this process was measured and matched already.
 		var e = engine._embedded.get(i["packId"])
@@ -297,7 +321,7 @@ class _Verifier extends RefCounted:
 		return st == 1
 
 	func journal(j: Dictionary) -> bool:
-		return await engine._verify_stored_record(j["record"], j["recordSha256"], j["packId"])
+		return await engine._verify_stored_record(j["record"], j["recordSha256"], j["packId"], null, j.get("delegation"))
 
 
 ## The torn hold's snapshot: the saved one, else the store's listing now (saved). null when it
@@ -399,10 +423,10 @@ func _rollback_one(pack_id: String) -> PKeyResult:
 	var before = doc["active"].get(pack_id)
 	var prev = doc["previous"].get(pack_id)
 	# plans/P4-13.md §2.5: never back to a revoked release.
-	if prev is Dictionary and is_revoked(prev["recordSha256"]):
+	if prev is Dictionary and install_revoked(prev):
 		return PKeyResult.success(false)
 	if prev is Dictionary and _unverified_previous.has(pack_id):
-		var ok: bool = await _verify_stored_record(prev["record"], prev["recordSha256"], pack_id, prev)
+		var ok: bool = await _verify_stored_record(prev["record"], prev["recordSha256"], pack_id, prev, prev.get("delegation"))
 		if ok:
 			ok = await PKeyPackJob.run(storage.verify.bind(prev), "PolarisKey pack verify") == 1
 		if not ok:
@@ -464,6 +488,7 @@ func ensure(pack_ids: Array) -> PKeyResult:
 	if bad != null:
 		_leave()
 		return _result(bad["error"])
+	_delegation_budget = PKeyConstants.MAX_DELEGATIONS_PER_CHECK
 	var out: Array = []
 	for id in pack_ids:
 		var r: Dictionary = await _ensure_one(String(id))
@@ -485,6 +510,7 @@ func ensure_releases(targets: Array) -> PKeyResult:
 	if bad != null:
 		_leave()
 		return _result(bad["error"])
+	_delegation_budget = PKeyConstants.MAX_DELEGATIONS_PER_CHECK
 	var out: Array = []
 	for t in targets:
 		var pack_id := String(t.get("pack", "")) if t is Dictionary else ""
@@ -529,6 +555,7 @@ func _estimate_all(items: Array) -> Dictionary:
 			out["refused"].append({"packId": it["pack"], "code": bad["error"]["code"]})
 		_leave()
 		return out
+	_delegation_budget = PKeyConstants.MAX_DELEGATIONS_PER_CHECK
 	for it in items:
 		var id: String = it["pack"]
 		var pre: Dictionary = await _preflight(id, it.get("release"))
@@ -630,6 +657,46 @@ func record_revocations(learned: Array, relearn_cleared: Array = []) -> PKeyResu
 ## Whether a release is revoked (stored, or verified in this process).
 func is_revoked(record_sha256: Variant) -> bool:
 	return record_sha256 is String and (rev_doc["revoked"].has(record_sha256) or _rev_verified.has(record_sha256))
+
+
+## Why a release is revoked (plans/P4-19.md §2.3, PKeyReleaseRecord.record_revoked): "record"
+## when its own hash is a target, "delegation" when the delegation it was signed under is (stored,
+## or verified in this process), else null.
+func revoked_by(record_sha256: Variant, delegation_sha256: Variant) -> Variant:
+	if is_revoked(record_sha256):
+		return "record"
+	if delegation_sha256 is String and is_revoked(delegation_sha256):
+		return "delegation"
+	return null
+
+
+## Whether an install is revoked: its record, or the delegation it was signed under.
+func install_revoked(i: Dictionary) -> bool:
+	return revoked_by(i.get("recordSha256"), install_delegation(i)) != null
+
+
+## The delegation hash of a delegated install (it carries its delegation, and its record's kid
+## names it), or null for a release-signed one.
+static func install_delegation(i: Dictionary) -> Variant:
+	return PKeyReleaseRecord.delegation_hash_of(i.get("record")) if i.get("delegation") is String else null
+
+
+## The delegated releases this engine knows (plans/P4-19.md §2.7): every stored or running install
+## a content key signed, and every delegated target verified in this process, as record hash ->
+## {pack, delegation}. The update check adds a decision revocation for each one whose delegation is
+## revoked, and treats a delegation entry naming one of these delegations as relevant (step 11).
+func delegated_releases() -> Dictionary:
+	var out: Dictionary = _delegated_known.duplicate(true)
+	var installs: Array = []
+	if doc is Dictionary:
+		installs.append_array(doc["active"].values())
+		installs.append_array(doc["previous"].values())
+	installs.append_array(running.values())
+	for i in installs:
+		var h = install_delegation(i)
+		if h != null:
+			out[i["recordSha256"]] = {"pack": i["packId"], "delegation": h}
+	return out
 
 
 ## The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in `relearn`;
@@ -745,7 +812,7 @@ func _persist_flag() -> bool:
 func _unmount_revoked() -> void:
 	for id in running.keys():
 		var i: Dictionary = running[id]
-		if not is_revoked(i["recordSha256"]):
+		if not install_revoked(i):
 			continue
 		var h = handlers.get(i["type"])
 		if h != null:
@@ -765,15 +832,19 @@ func _activate(i: Dictionary) -> void:
 	running[i["packId"]] = i
 
 
-## Steps 12–15 again over a stored record, with its own pack id as the pin (and, for an install,
-## its version, seq, variant, payload and type as stored). A coroutine.
-func _verify_stored_record(jws: Variant, sha256: Variant, pack_id: String, install: Variant = null) -> bool:
+## Steps 12–16 again over a stored record, with its own pack id as the pin (and, for an install,
+## its version, seq, variant, payload and type as stored); a delegated record through its stored
+## delegation (plans/P4-19.md §2.4: an installed release stays valid after its window). A coroutine.
+func _verify_stored_record(jws: Variant, sha256: Variant, pack_id: String, install: Variant = null, delegation: Variant = null) -> bool:
 	if not (jws is String) or not (sha256 is String):
 		return false
-	var r: Dictionary = await PKeyReleaseRecord.verify_release_record(jws, {
+	var opts := {
 		"release_keys": release_keys, "product_trust": product_trust.call() if product_trust.is_valid() else {},
 		"expected_aud": product, "expected_hash": sha256, "offload": offload,
-	})
+	}
+	if delegation is String:
+		opts["delegation"] = delegation
+	var r: Dictionary = await PKeyReleaseRecord.verify_release_record(jws, opts)
 	if not r["ok"]:
 		return false
 	var rec: Dictionary = r["record"]
@@ -869,6 +940,9 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 		return _err(PKeyConstants.ErrorCode.PACK_REVOKED, "%s@%s was revoked by its developer." % [pack_id, str(pin["release"].get("version"))], pack_id)
 	var current = doc["active"].get(pack_id)
 	if current is Dictionary and current["recordSha256"] == pin_sha:
+		# plans/P4-19.md §2.6: a release under a revoked delegation is refused like a revoked one.
+		if install_revoked(current):
+			return _err(PKeyConstants.ErrorCode.PACK_REVOKED, "%s@%s was signed under a delegation its developer revoked." % [pack_id, str(pin["release"].get("version"))], pack_id, {"detail": "delegation"})
 		return {"kind": "current", "install": current}
 	var emb = _embedded.get(pack_id)
 	if emb is Dictionary and _embedded_refused(emb):
@@ -882,23 +956,14 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 		if stand_in is Dictionary:
 			return {"kind": "held", "install": stand_in}
 
-	# 2. The pinned record, by hash, against the pinned release keys.
-	var got: Dictionary = await transport.fetch_record(pin_sha)
-	if not got["ok"]:
-		return _err(String(got["code"]), "Fetching %s's record failed (%s)." % [pack_id, got["code"]], pack_id)
-	var body = got["body"]
-	var v: Dictionary = await PKeyReleaseRecord.verify_release_record(body, {
-		"release_keys": release_keys, "product_trust": product_trust.call() if product_trust.is_valid() else {},
-		"expected_aud": product, "expected_hash": pin_sha, "offload": offload,
-		"pin": {"kind": "pack", "deliverable": pack_id, "version": pin["release"]["version"], "seq": pin["release"]["seq"]},
-	})
-	if not v["ok"]:
-		if v["step"] == "cross-check":
-			return _err(String(PKeyErrors.RECORD_MISMATCH), "%s's record is not the pinned release." % pack_id, pack_id)
-		return _err(String(PKeyErrors.RECORD_REJECTED), "%s's record was refused at %s." % [pack_id, v["step"]], pack_id, {"step": v["step"]})
-	var record: Dictionary = v["record"]
-	records[pin_sha] = record
-	var body_text: String = body.get_string_from_ascii() if body is PackedByteArray else String(body)
+	# 2. The pinned record, by hash, against the pinned release keys (or, on the delegated surface,
+	# through its delegation).
+	var fv: Dictionary = await fetch_verified(pack_id, pin["release"])
+	if fv.has("error"):
+		return fv
+	var record: Dictionary = fv["record"]
+	var body_text: String = fv["body"]
+	var delegated = fv["delegation"]
 
 	# 3. Type, entitlement, variant.
 	var handler = handlers.get(record["type"])
@@ -952,6 +1017,14 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 				return _err(r["error"], "%s's files index was refused." % pack_id, pack_id, {"path": r.get("path", "")})
 		elif variant["files"]["layout"] == "tree":
 			return _err(_fetch_code(), "Fetching %s's files index failed." % pack_id, pack_id)
+	# plans/P4-19.md §2.5: a delegated release's path rule over the files index, before any payload
+	# object is fetched.
+	if delegated != null:
+		if not (index is Dictionary):
+			return _err(PKeyPackFiles.FILES_INDEX_INVALID, "%s's files index is required for a delegated release." % pack_id, pack_id)
+		for f in index["files"]:
+			if PKeyDataOnly.data_only_path_refusal(f["path"]) != "":
+				return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "%s holds %s, which a delegated content key may not ship." % [pack_id, f["path"]], pack_id, {"path": f["path"], "detail": PKeyDataOnly.RULE_EXTENSION})
 	var target := PKeyPackSelect.plan_target(variant, pin_sha, index)
 	if one_shot_budget >= 0 and target["full"] != null and float(variant["full"]["bytes"]) + float(variant["full"]["size"]) > float(one_shot_budget):
 		target["full"] = null
@@ -964,8 +1037,17 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 			for f in files:
 				hashes.append(f["sha256"])
 		planner_installed.append({"release": i["recordSha256"], "payloadSha256": i["payloadSha256"], "files": hashes})
+	# No delegated byte may reach `load_resource_pack`: the GDDL `zstd-patch-from` route mounts
+	# helper packs holding the delta's base files and frame, so it is never planned when the target
+	# or any install it could start from was signed by a content key (`file` and `full` remain).
+	var methods: Array = patch_methods
+	if delegated != null:
+		methods = []
+	for i in installs:
+		if i.get("delegation") is String:
+			methods = []
 	var caps := {
-		"strategies": strategies, "patchMethods": patch_methods, "transports": transports,
+		"strategies": strategies, "patchMethods": methods, "transports": transports,
 		"memBudget": mem_budget, "freeDisk": storage.free_disk(),
 	}
 	var p := PKeyPackSelect.plan({"target": target, "installed": planner_installed, "caps": caps})
@@ -973,8 +1055,94 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 		return _err(p["error"], "No way to install %s: %s." % [pack_id, p["error"]], pack_id)
 	return {
 		"kind": "plan", "body": body_text, "recordSha256": pin_sha, "record": record, "variant": variant,
-		"installs": installs, "seeds": seeds, "planId": plan_id, "index": index, "plan": p,
+		"installs": installs, "seeds": seeds, "planId": plan_id, "index": index, "plan": p, "delegation": delegated,
 	}
+
+
+## Step 2 for one release ({sha256, seq, version}) of `pack_id`: the record fetched by hash and
+## verified against the pinned release keys with `pin: {kind: "pack", deliverable, version, seq}`;
+## a `pkd1-` kid through its delegation, fetched by hash, but only on the delegated surface
+## (plans/P4-19.md §2.3, §2.4; elsewhere step 13 refuses it at `jws`). `_preflight` and
+## PKeyPackProvides.pack_for share it (client-core `fetchVerified`). A coroutine returning {body
+## (ASCII text), record, delegation (its compact JWS, or null)} or an error (`record-mismatch`,
+## `record-rejected` {step}, `pack-revoked` {detail: delegation}, a fetch code {detail: delegation}
+## for the delegation itself).
+func fetch_verified(pack_id: String, release: Dictionary) -> Dictionary:
+	var want: String = release["sha256"]
+	var got: Dictionary = await transport.fetch_record(want)
+	if not got["ok"]:
+		return _err(String(got["code"]), "Fetching %s's record failed (%s)." % [pack_id, got["code"]], pack_id)
+	var body = got["body"]
+	var opts := {
+		"release_keys": release_keys, "product_trust": product_trust.call() if product_trust.is_valid() else {},
+		"expected_aud": product, "expected_hash": want, "offload": offload,
+		"pin": {"kind": "pack", "deliverable": pack_id, "version": release["version"], "seq": release["seq"]},
+	}
+	var dh = PKeyReleaseRecord.delegation_hash_of(body)
+	var delegation = null
+	if dh != null and _delegated_allowed(pack_id, want):
+		var d: Dictionary = await _fetch_delegation(pack_id, dh)
+		if d.has("error"):
+			return d
+		delegation = d["body"]
+		opts["delegation"] = delegation
+	var v: Dictionary = await PKeyReleaseRecord.verify_release_record(body, opts)
+	if not v["ok"]:
+		if v["step"] == "cross-check":
+			return _err(String(PKeyErrors.RECORD_MISMATCH), "%s's record is not the pinned release." % pack_id, pack_id)
+		return _err(String(PKeyErrors.RECORD_REJECTED), "%s's record was refused at %s." % [pack_id, v["step"]], pack_id, {"step": v["step"]})
+	var record: Dictionary = v["record"]
+	records[want] = record
+	var dv = v.get("delegation")
+	if dv is Dictionary:
+		_delegated_known[want] = {"pack": pack_id, "delegation": dv["sha256"]}
+		if revoked_by(want, dv["sha256"]) != null:
+			return _err(PKeyConstants.ErrorCode.PACK_REVOKED, "%s@%s was signed under a delegation its developer revoked." % [pack_id, str(release.get("version"))], pack_id, {"detail": "delegation"})
+	var body_text: String = body.get_string_from_ascii() if body is PackedByteArray else String(body)
+	return {"body": body_text, "record": record, "delegation": delegation if dv is Dictionary else null}
+
+
+## §2.4's delegated surface: never the stamp's pin or hold for the pack, never a stored
+## revocation's replacement (release-key surfaces vouch for exact bytes).
+func _delegated_allowed(pack_id: String, sha256: String) -> bool:
+	if stamp is Dictionary and stamp.get("pins") is Array:
+		for p in stamp["pins"]:
+			if p is Dictionary and PKeyPackClaims.same(p.get("pack"), pack_id) and p.get("release") is Dictionary and PKeyPackClaims.same(p["release"].get("sha256"), sha256):
+				return false
+	var hs = holds
+	if not (hs is Array) and stamp is Dictionary:
+		hs = stamp.get("holds")
+	if hs is Array:
+		for h in hs:
+			if h is Dictionary and PKeyPackClaims.same(h.get("pack"), pack_id) and h.get("release") is Dictionary and PKeyPackClaims.same(h["release"].get("sha256"), sha256):
+				return false
+	for t in _rev_verified:
+		var rep = _rev_verified[t].get("replacement")
+		if rep is Dictionary and PKeyPackClaims.same(rep.get("sha256"), sha256):
+			return false
+	return true
+
+
+## A delegation record by hash: this process's copy, else fetched (at most
+## MAX_DELEGATIONS_PER_CHECK distinct ones per call; a target beyond that waits for the next). A
+## coroutine returning {body} (ASCII text) or an error (`network-error` at the bound, or the fetch's
+## code), each with detail `delegation`.
+func _fetch_delegation(pack_id: String, h: String) -> Dictionary:
+	if _delegation_bodies.has(h):
+		return {"body": _delegation_bodies[h]}
+	if _delegation_budget <= 0:
+		return _err(String(PKeyErrors.NETWORK), "%s's delegation was not fetched: this call reached its delegation bound; the next one retries." % pack_id, pack_id, {"detail": "delegation"})
+	_delegation_budget -= 1
+	var got: Dictionary = await transport.fetch_record(h)
+	if not got["ok"]:
+		return _err(String(got["code"]), "Fetching %s's delegation failed (%s)." % [pack_id, got["code"]], pack_id, {"detail": "delegation"})
+	var body = got["body"]
+	var bytes: PackedByteArray = body if body is PackedByteArray else String(body).to_utf8_buffer()
+	var text := bytes.get_string_from_ascii()
+	# Kept only when it is the record the hash names; verify_release_record checks it again.
+	if PKeyReleaseRecord.sha256_hex(bytes) == h and text.to_ascii_buffer() == bytes:
+		_delegation_bodies[h] = text
+	return {"body": text}
 
 
 func _ensure_one(pack_id: String, target: Variant = null) -> Dictionary:
@@ -1013,6 +1181,7 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 	var plan_id: String = pre["planId"]
 	var index = pre["index"]
 	var p: Dictionary = pre["plan"]
+	var delegation = pre.get("delegation")
 	_preflight_plans.erase(pack_id)
 	if p["strategy"] == "noop":
 		var same = null
@@ -1020,7 +1189,18 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 			if i["payloadSha256"] == variant["payload"]["sha256"]:
 				same = i
 				break
-		return await _commit(pack_id, pre["body"], pre["recordSha256"], record, variant, same["location"], plan_id, true)
+		# plans/P4-19.md Amendment A1: a delegated release that reuses an install holding the same
+		# payload re-sniffs that install's files, so the rule holds whatever admitted the bytes.
+		if delegation != null:
+			var seed = seeds.get(same["location"])
+			var files = seed["files"] if seed is Dictionary else null
+			if not (files is Array):
+				return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "%s's reused install cannot be re-checked by the data-only rule." % pack_id, pack_id, {"path": "", "detail": PKeyDataOnly.RULE_CONTENT})
+			for f in files:
+				var rule: String = await PKeyPackJob.run(_resniff.bind(f), "PolarisKey pack data-only")
+				if rule != "":
+					return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "%s holds %s, which a delegated content key may not ship (%s)." % [pack_id, f["path"], rule], pack_id, {"path": f["path"], "detail": rule})
+		return await _commit(pack_id, pre["body"], pre["recordSha256"], record, variant, same["location"], plan_id, true, delegation)
 	if p["strategy"] == "platform":
 		return _err(PKeyConstants.ErrorCode.PLAN_TRANSPORT_UNSUPPORTED, "%s is platform-bound." % pack_id, pack_id)
 
@@ -1044,6 +1224,8 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 		}
 		if cand.has("delta"):
 			journal["delta"] = cand["delta"]
+		if delegation != null:
+			journal["delegation"] = delegation
 		doc = PKeyPackState.begin_install(doc, journal)
 		var code := _persist()
 		if code != "":
@@ -1055,7 +1237,17 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 				# The journal and what is staged stay for the next ensure, which resumes them.
 				return _err(_fetch_code(), "Fetching %s's objects failed; the next ensure resumes." % pack_id, pack_id)
 		_emit({"packId": pack_id, "phase": "apply", "done": total, "total": total})
-		var result: Dictionary = await _apply(plan_id, pack_id, cand["strategy"], cand.get("delta"), variant, seeds)
+		# plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
+		var gate: PKeyDataOnly.DataOnlySink = null
+		var result: Dictionary = await _apply(plan_id, pack_id, cand["strategy"], cand.get("delta"), variant, seeds, delegation != null)
+		gate = result.get("data_only")
+		if gate != null and gate.refusal != null:
+			# A refusal aborts the plan: no fallback, staging discarded.
+			doc = PKeyPackState.abandon_install(doc, pack_id)
+			_persist()
+			storage.remove_staging(plan_id)
+			var ref: Dictionary = gate.refusal
+			return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "%s holds %s, which a delegated content key may not ship (%s)." % [pack_id, ref["path"], ref["rule"]], pack_id, {"path": ref["path"], "detail": ref["rule"]})
 		if result["verdict"]["ok"]:
 			# The handler's check over the verified output (godot.pck: header and directory).
 			var handler = handlers.get(record["type"])
@@ -1083,7 +1275,7 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 					first_failure = _err(String(PKeyErrors.STORE_FAILED), "%s could not be committed to the store." % pack_id, pack_id, {"step": cand["strategy"]})
 				storage.remove_staging(plan_id)
 				continue
-			var c: Dictionary = await _commit(pack_id, pre["body"], pre["recordSha256"], record, variant, location, plan_id, false)
+			var c: Dictionary = await _commit(pack_id, pre["body"], pre["recordSha256"], record, variant, location, plan_id, false, delegation)
 			_emit({"packId": pack_id, "phase": "done", "done": total, "total": total})
 			return c
 		var f: Dictionary = result["verdict"]
@@ -1165,7 +1357,9 @@ static func _find_delta_index(variant: Dictionary, id: Variant) -> int:
 
 ## Run the applier for one candidate over the staged objects. Full and file run on a worker
 ## thread; a delta (which mounts the engine's decoder packs) on the main thread. A coroutine.
-func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, variant: Dictionary, seeds: Dictionary) -> Dictionary:
+## With `data_only`, the tree sink is a PKeyDataOnly.DataOnlySink (a delegated install), returned
+## as the result's `data_only`.
+func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, variant: Dictionary, seeds: Dictionary, data_only := false) -> Dictionary:
 	var st := storage
 	var objects := func(sha256: String) -> Variant:
 		var n := st.staged_size(plan_id, sha256)
@@ -1175,6 +1369,10 @@ func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, 
 	var out := storage.output(plan_id, variant["files"]["layout"])
 	if out.is_empty():
 		return {"verdict": {"ok": false, "error": String(PKeyErrors.STORE_FAILED)}}
+	var gate: PKeyDataOnly.DataOnlySink = null
+	if data_only and out.has("tree"):
+		gate = PKeyDataOnly.DataOnlySink.new(out["tree"])
+		out["tree"] = gate
 	var ports := {"objects": objects, "zstd": zstd}
 	ports.merge(out)
 	var installed: Array = []
@@ -1211,7 +1409,14 @@ func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, 
 	for sink_key in ["sink", "tree"]:
 		if out.has(sink_key) and not out[sink_key].close() and r["verdict"]["ok"]:
 			r = {"verdict": {"ok": false, "error": String(PKeyErrors.STORE_FAILED)}}
+	if gate != null:
+		r["data_only"] = gate
 	return r
+
+
+## The data-only rule over one reused file ({path, source}); "" when admitted. Thread-safe.
+static func _resniff(f: Dictionary) -> String:
+	return PKeyDataOnly.data_only_file_refusal(String(f["path"]), PKeyByteSource.read_all(f["source"]))
 
 
 func _bake_note(file: String, size: int, plan_id: String) -> bool:
@@ -1219,7 +1424,7 @@ func _bake_note(file: String, size: int, plan_id: String) -> bool:
 
 
 ## Commit: the pointer swap, activation, garbage collection. A coroutine.
-func _commit(pack_id: String, record_jws: String, record_sha256: String, record: Dictionary, variant: Dictionary, location: String, staging_plan: String, reused: bool) -> Dictionary:
+func _commit(pack_id: String, record_jws: String, record_sha256: String, record: Dictionary, variant: Dictionary, location: String, staging_plan: String, reused: bool, delegation: Variant = null) -> Dictionary:
 	var install := {
 		"packId": pack_id, "record": record_jws, "recordSha256": record_sha256, "version": record["version"],
 		"seq": record["seq"], "type": record["type"], "variant": PKeyPackClaims.variant_key(variant["variant"]),
@@ -1229,6 +1434,8 @@ func _commit(pack_id: String, record_jws: String, record_sha256: String, record:
 	}
 	if _embedded.has(pack_id) and _embedded[pack_id]["location"] == location:
 		install["embedded"] = true
+	if delegation is String:
+		install["delegation"] = delegation
 	# A fresh commit supersedes this pack's entries whose check could not run; an active one
 	# becomes `previous`, re-verified before a rollback uses it.
 	var carried = _deferred["active"].get(pack_id)

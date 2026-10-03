@@ -1,7 +1,7 @@
 extends RefCounted
 # @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers
 # @pkey-feature update.feed release.record update.decide outlet.detect
-# @pkey-feature update.content packs.revoke
+# @pkey-feature update.content packs.revoke packs.delegation
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
 # `pnpm gen:corpus`; never
@@ -32,9 +32,12 @@ extends RefCounted
 #   revocationCases  PKeyReleaseRecord.verify_revocation  §2.3 steps 12–16, the body alone
 #                    (revocation_of), superseding (newer_revocation); replacement mode through
 #                    verify_release_record
-#   delegationCases  plans/P4-19.md: the three `feed` cases (a revocation entry's `kind`) through
-#                    verify_feed + feed_content; every other case is declared planned (P4-26) by
-#                    exact id (DELEGATION_PLANNED), with parity.json's packs.delegation entry
+#   delegationCases  plans/P4-19.md §4.2: `record` and `release-only` through
+#                    verify_release_record (a delegation passed in `record` mode only): ok with kind
+#                    and the result's `delegation`, or the refusing step (`delegation`, `scope` and
+#                    the rest), then record_revoked over `revoked`; `revocation` through
+#                    verify_revocation; `feed` (a revocation entry's `kind`) through verify_feed +
+#                    feed_content
 #   update-matrix    vocabulary (the generated enums and PKeyVersion.SCHEMES), versionCases
 #                    (PKeyVersion.compare_versions), capabilityCases (effective_capabilities),
 #                    outletCases (resolve_update_outlet), bucketVectors (rollout_bucket), rows
@@ -68,27 +71,6 @@ const UPDATE_MATRIX := "res://tests/corpus/v2/update-matrix.json"
 const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
 const HEADERS_VERSION := 1
 const CORPUS_VERSION := 2
-## plans/P4-19.md §4: the delegationCases Godot declares planned until P4-26, by exact id (every
-## case but the three `feed` ones, which feed_content already reads).
-const DELEGATION_PLANNED := [
-	"delegated-valid-files-tree", "delegated-valid-data-json", "delegated-valid-prefix-is-pack-id",
-	"delegated-valid-delegation-by-2027-key", "delegated-valid-window-start",
-	"delegated-valid-window-end", "delegated-valid-unknown-types-ignored",
-	"release-kid-ignores-delegation", "delegation-record-verify-only", "delegation-unpinned-signer",
-	"delegation-signed-by-product-key", "delegation-hash-mismatch", "delegation-not-a-delegation",
-	"delegation-signed-by-content-key", "delegation-types-missing", "delegation-types-none-effective",
-	"delegation-types-too-many", "delegation-types-duplicate", "delegation-ttl-over-max",
-	"delegation-expires-before-issued", "delegation-expiresat-token",
-	"delegation-public-key-malformed", "delegation-key-is-release-key",
-	"delegation-key-is-product-key", "delegation-deliverable-app", "delegated-no-delegation-supplied",
-	"delegated-wrong-signer", "delegated-kid-malformed", "revocation-signed-by-content-key",
-	"app-record-by-content-key-release-only", "delegated-godot-pck", "delegated-type-not-delegated",
-	"delegated-container-layout", "delegated-outside-prefix", "delegated-prefix-not-segment",
-	"delegated-after-window", "delegated-before-window", "app-record-by-content-key",
-	"delegation-by-content-key-as-record", "revocation-of-delegation-valid",
-	"delegated-revoked-delegation", "delegated-revoked-record",
-	"revocation-of-delegation-replacement-ignored",
-]
 const FLOORS := {
 	"jwsCases": 36,
 	"licenseDocCases": 16,
@@ -614,32 +596,59 @@ func _revocation_cases(t: PKeyTestContext, cases: Array) -> void:
 	_coverage(t, "revocationCases", evaluated, cases.size(), _ms_since(t0))
 
 
-# ── delegationCases (plans/P4-19.md): the feed cases run; the rest are planned (P4-26) ─────
+# ── delegationCases (plans/P4-19.md §4.2) ────────────────────────────────────────────────
 
 func _delegation_cases(t: PKeyTestContext, cases: Array) -> void:
-	var planned: Array = []
-	var feed_cases: Array = []
-	for c in cases:
-		if c is Dictionary and c.get("mode") == "feed":
-			feed_cases.append(c)
-		elif c is Dictionary:
-			planned.append(c.get("id"))
-	t.check("delegationCases: every non-feed case is exactly the planned ids (P4-26)", _json_eq(planned, DELEGATION_PLANNED), JSON.stringify(planned))
-	var parity = PKeyPacksTestSupport.read_json("res://parity.json")
-	var f = parity.get("features", {}).get("packs.delegation") if parity is Dictionary else null
-	t.check("delegationCases: parity.json declares packs.delegation planned in P4-26", f is Dictionary and f.size() == 2 and f.get("status") == "planned" and f.get("wp") == "P4-26", JSON.stringify(f))
-	var evaluated := planned.size()
+	var evaluated := 0
 	var t0 := Time.get_ticks_usec()
-	for c in feed_cases:
-		var e = c.get("expect")
-		var r := await PKeyFeed.verify_feed(c["jws"], {
-			"trust": c["trust"], "expected_aud": c["expectedAud"], "channel": c["channel"],
-			"platform": c["platform"], "now": c["now"], "check_freshness": c["checkFreshness"],
-		})
+	var modes := {}
+	for i in cases.size():
+		var c = cases[i]
+		var e = c.get("expect") if c is Dictionary else null
+		var ok_shape: bool = c is Dictionary and c.get("id") is String and c.get("jws") is String \
+				and ["record", "release-only", "revocation", "feed"].has(c.get("mode")) and e is Dictionary \
+				and (e.get("verify") == "ok" or (e.get("verify") == "fail" and e.get("step") is String))
+		if not t.check("delegationCases %d well-formed" % i, ok_shape):
+			continue
+		var id: String = c["id"]
+		modes[c["mode"]] = int(modes.get(c["mode"], 0)) + 1
 		evaluated += 1
-		if t.check("%s verifies" % c["id"], r["ok"] and e is Dictionary, str(r.get("reason"))):
-			t.check("%s content" % c["id"], _json_eq(r["content"], e.get("content")), JSON.stringify(r["content"]).left(400))
-	t.info("planned: P4-26 (packs.delegation): %d delegationCases; %d feed cases run" % [planned.size(), feed_cases.size()])
+		if c["mode"] == "feed":
+			var r := await PKeyFeed.verify_feed(c["jws"], {
+				"trust": c["trust"], "expected_aud": c["expectedAud"], "channel": c["channel"],
+				"platform": c["platform"], "now": c["now"], "check_freshness": c["checkFreshness"],
+			})
+			if t.check("%s verifies" % id, r["ok"], str(r.get("reason"))):
+				t.check("%s content" % id, _json_eq(r["content"], e.get("content")), JSON.stringify(r["content"]).left(400))
+			continue
+		var want: String = "ok" if e["verify"] == "ok" else e["step"]
+		if c["mode"] == "revocation":
+			var rv := await PKeyReleaseRecord.verify_revocation(c["jws"], _revocation_opts(c))
+			var got_v: String = "ok" if rv["ok"] else String(rv.get("step"))
+			if t.check("%s → %s" % [id, want], got_v == want, "got %s" % got_v) and rv["ok"]:
+				var rev: Dictionary = rv["revocation"]
+				var body := {"pack": rev["pack"], "target": rev["target"], "replacement": rev["replacement"], "reason": rev["reason"], "issuedAt": rev["issuedAt"]}
+				t.check("%s revocation" % id, _json_eq(body, e.get("revocation")), JSON.stringify(body))
+			continue
+		var opts := {
+			"release_keys": c["releaseKeys"], "product_trust": c["productTrust"], "expected_aud": c["expectedAud"],
+			"expected_hash": c["expectedHash"],
+		}
+		if c.get("pin") is Dictionary:
+			opts["pin"] = c["pin"]
+		if c["mode"] == "record" and c.get("delegation") is String:
+			opts["delegation"] = c["delegation"]
+		var r := await PKeyReleaseRecord.verify_release_record(c["jws"], opts)
+		var got: String = "ok" if r["ok"] else String(r.get("step"))
+		if not t.check("%s → %s" % [id, want], got == want, "got %s" % got) or not r["ok"]:
+			continue
+		t.check("%s kind" % id, _json_eq(r["record"].get("kind"), e.get("kind")))
+		t.check("%s delegation" % id, _json_eq(r["delegation"], e.get("delegation")), JSON.stringify(r["delegation"]))
+		if c.has("revoked"):
+			var d = r["delegation"]
+			var why = PKeyReleaseRecord.record_revoked(c["expectedHash"], d["sha256"] if d is Dictionary else null, c["revoked"])
+			t.check("%s record_revoked" % id, _json_eq(why, e.get("revoked")), str(why))
+	t.info("delegationCases by mode: %s" % JSON.stringify(modes))
 	_coverage(t, "delegationCases", evaluated, cases.size(), _ms_since(t0))
 
 

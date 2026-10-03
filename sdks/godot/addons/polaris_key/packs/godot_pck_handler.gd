@@ -66,7 +66,13 @@ func check_output(source: PKeyByteSource, record: Dictionary, variant: Dictionar
 	return check(source, record, variant)
 
 
+## A release a delegated content key signed is never mounted (plans/P4-19.md §2.5: no delegated
+## file reaches `load_resource_pack`). Step 16 already refuses a delegated `godot.pck`; this holds
+## even if a stored install claimed otherwise.
 func activate(install: Dictionary) -> void:
+	if install.has("delegation"):
+		push_error("PolarisKey: %s carries a delegation; a delegated release is never mounted." % install.get("packId", ""))
+		return
 	to_mount[install["packId"]] = install
 
 

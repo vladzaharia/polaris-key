@@ -48,8 +48,8 @@ Port P4-19's content-key delegation to the Godot SDK, so every `delegationCases`
 
 ## Acceptance
 
-- [ ] Every `delegationCases` and `dataOnlyCases` row passes in the editor and the release template.
-- [ ] Non-normalised paths and extension-disguised resources are refused (P4-08 review lesson).
+- [x] Every `delegationCases` and `dataOnlyCases` row passes in the editor and the release template.
+- [x] Non-normalised paths and extension-disguised resources are refused (P4-08 review lesson).
 - [ ] The full green gate passes.
 
 ## Hand-off from P4-24
@@ -60,3 +60,43 @@ P4-24 ported the feed revocation `kind` rule into `PKeyFeed.feed_content`, but G
 delegated install. When this package adds delegation support, restore client-core's relevance rule:
 delegation entries count as relevant for `relearn` clearing, exactly as `check.ts` does. Also remove
 the `DELEGATION_PLANNED` and `DATA_ONLY_PLANNED` lists once the sections run for real.
+
+## Corrections from implementation
+
+- **Names.** The plan's `PKeyRecord` is the existing `PKeyReleaseRecord` (`core/release_record.gd`):
+  the chain (`delegation_hash_of`, `delegated_kid`, `delegation_of`, `verify_delegation`,
+  `covers_pack`, `record_revoked`, `is_delegated_kid`) lives beside `verify_release_record`, whose
+  result gains `delegation` (null for a release key). `PKeyDataOnly` is `packs/dataonly.gd`, beside
+  client-core's `packs/dataonly.ts`; "" is client-core's null (admitted).
+- **The delegation cache.** `verify_delegation` caches a verified delegation in the process under its
+  hash, `expectedAud` and SHA-256 digests of the sorted pinned release keys and product trust set
+  (plan §2.3), at most 64 entries; a hit still checks that the bytes hash to the kid. The engine
+  also keeps fetched delegation bodies by hash and re-verifies them at every use, as client-core,
+  Python and Swift do.
+- **Strict UTF-8 and the text rule.** `PKeyDataOnly.is_strict_utf8` checks the WHATWG ranges by
+  hand (TextDecoder fatal's verdict: overlongs, encoded surrogates, above U+10FFFF, truncated and
+  stray bytes refused), with direct vectors in the new `delegation` packs group. The NUL check runs
+  on the bytes; the rest runs on the losslessly decoded String: each `\u`/`\U` occurrence is found
+  natively (client-core visits every backslash, which reaches the same occurrences) and the five
+  markers are searched raw and with backslashes removed. About 820 KB of JSON takes 38 ms in the
+  editor and 32 ms on the release template.
+- **Holds.** As in P4-25, the engine gains `holds` (the stamp's `stamp_holds`, set by
+  `PolarisKey.update.packs.start()`), so a held release is never delegated; the facet test pins it.
+- **No delegated byte is mounted, including by the GDDL route.** Godot decodes `zstd-patch-from`
+  deltas by mounting helper packs that hold the delta's base files and frame (P4-08), which would
+  put delegated bytes through `load_resource_pack`. A delegated plan, or one whose installs include
+  a delegated one, therefore plans without `zstd-patch-from` (`file` and `full` remain). The
+  `godot.pck` handler's `activate` and `PolarisKey.update.packs.mount()` also refuse any install
+  that carries a delegation (step 16 already refuses a delegated `godot.pck`).
+- **The `simplify_path()` assertion** is in two places: `PKeyDataOnly.data_only_path_refusal`
+  (rule 1) and `PKeyFilesTreeHandler.check_tree`, which refuses (`files-unsafe-path`) any staged
+  path that is not its own `simplify_path()` before the existing tree check. The files index's path
+  rules make both the identity on every admitted path.
+- **`pack_for`.** `PKeyPackProvides` now verifies a target through `PKeyPackEngine.fetch_verified`
+  (shared with `_preflight`, as client-core's `fetchVerified`), resets the delegation bound per call,
+  and skips a target whose record or delegation is revoked before the memo is consulted.
+- **A pinned `pkd1-` kid** is refused by `PKeyCore.check_update_options` (`invalid-options`), as in
+  sdk-node, Python and Swift.
+- **Timings (M-series Mac, 4.7.2).** The `delegationCases` section runs inside the conformance
+  suite; `dataOnlyCases` takes 7.8 ms in the editor and 6.2 ms on the template; the `delegation`
+  packs group 3.7 s in the editor and 2.9 s on the template (most of it the test signer).
