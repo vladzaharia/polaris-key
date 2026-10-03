@@ -104,6 +104,15 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
+# Lazy hot-pair deltas (P4-17; docs/DEPLOYMENT.md "Lazy deltas"). Each environment binds the
+# queue pkey-deltas-<env> as a PRODUCER (DELTA_QUEUE) for the nightly sweep; `queues` is NOT
+# inheritable, so each environment carries its own. The CONSUMER is a second Worker script,
+# `polaris-key-deltas-<env>` from wrangler.deltas.toml, with the dead-letter queue
+# pkey-deltas-dlq-<env>: an encode never runs in this Worker's isolates. `LAZY_DELTAS = "off"`
+# keeps the whole subsystem dormant until an operator turns it on and opts a product in.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # Per-environment bindings. The D1 database and KV namespace are created once,
 # per environment, with wrangler (see docs/DEPLOYMENT.md "Cloudflare resources"):
 #   wrangler d1 create polaris_key_<env>          -> database_id
@@ -135,6 +144,11 @@ database_id = "4bcb24b2-80af-4180-abcc-0e5e99564ed8"
 [[env.prod.r2_buckets]]
 binding = "BLOBS"
 bucket_name = "polaris-key-blobs-prod"
+# P4-17: the lazy-delta queue, PRODUCER only (the nightly sweep's hot pairs). Its consumer is the
+# separate `polaris-key-deltas-prod` script (wrangler.deltas.toml).
+[[env.prod.queues.producers]]
+binding = "DELTA_QUEUE"
+queue = "pkey-deltas-prod"
 [env.prod.vars]
 BLOB_ORIGIN = "https://dl.plrs.im"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
@@ -142,6 +156,9 @@ CONSOLE_ORIGIN = "https://key.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
 # same bucket as the BLOBS binding above; the S3 API names buckets, the binding does not).
 BLOBS_BUCKET_NAME = "polaris-key-blobs-prod"
+# P4-17: lazy hot-pair deltas' kill switch. `on` lets products opted in through
+# `lazy_delta_settings` count demand and generate deltas; anything else turns it all off.
+LAZY_DELTAS = "off"
 [[env.prod.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@plrs.im"]
@@ -169,6 +186,11 @@ database_id = "REPLACE_ME_STAGING_D1_ID"
 [[env.staging.r2_buckets]]
 binding = "BLOBS"
 bucket_name = "polaris-key-blobs-staging"
+# P4-17: the lazy-delta queue, PRODUCER only (the nightly sweep's hot pairs). Its consumer is the
+# separate `polaris-key-deltas-staging` script (wrangler.deltas.toml).
+[[env.staging.queues.producers]]
+binding = "DELTA_QUEUE"
+queue = "pkey-deltas-staging"
 [env.staging.vars]
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
@@ -176,6 +198,9 @@ CONSOLE_ORIGIN = "https://key-staging.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
 # same bucket as the BLOBS binding above; the S3 API names buckets, the binding does not).
 BLOBS_BUCKET_NAME = "polaris-key-blobs-staging"
+# P4-17: lazy hot-pair deltas' kill switch. `on` lets products opted in through
+# `lazy_delta_settings` count demand and generate deltas; anything else turns it all off.
+LAZY_DELTAS = "off"
 
 [env.dev]
 [[env.dev.routes]]
@@ -200,6 +225,11 @@ database_id = "REPLACE_ME_DEV_D1_ID"
 [[env.dev.r2_buckets]]
 binding = "BLOBS"
 bucket_name = "polaris-key-blobs-dev"
+# P4-17: the lazy-delta queue, PRODUCER only (the nightly sweep's hot pairs). Its consumer is the
+# separate `polaris-key-deltas-dev` script (wrangler.deltas.toml).
+[[env.dev.queues.producers]]
+binding = "DELTA_QUEUE"
+queue = "pkey-deltas-dev"
 [env.dev.vars]
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
@@ -207,6 +237,9 @@ CONSOLE_ORIGIN = "https://key-dev.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
 # same bucket as the BLOBS binding above; the S3 API names buckets, the binding does not).
 BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
+# P4-17: lazy hot-pair deltas' kill switch. `on` lets products opted in through
+# `lazy_delta_settings` count demand and generate deltas; anything else turns it all off.
+LAZY_DELTAS = "off"
 
 # Trusted publishing (P2-02; optional — without them /release/publish/uploads answers 404):
 #   R2_ACCOUNT_ID, R2_PARENT_ACCESS_KEY_ID, R2_PARENT_SECRET_ACCESS_KEY (docs/DEPLOYMENT.md).

@@ -601,7 +601,7 @@ paths:
         per report; deleted with the device.
 
 
-        Twenty top-level keys survive the allowlist; anything else is dropped SILENTLY
+        Twenty-one top-level keys survive the allowlist; anything else is dropped SILENTLY
         rather than refused, so a newer SDK reporting a field this worker does not know still
         succeeds. `os`/`hardware`/`runtime`/`locale`/`timezone`/`probes` are projected into
         typed columns (strings truncated to 128 chars, probe ids and probe versions to 64);
@@ -619,7 +619,13 @@ paths:
         Supported for right now (`core.verify`, `update.decide`, …). It keeps only strings
         shaped like a feature id (at most 64 chars), deduplicated, at most 128; ids are not
         checked against the registry, so a newer SDK's features survive. A non-array `caps`
-        is dropped. An empty body is valid and means `{}`. Auth requires a usable license only
+        is dropped. `packInstalls` (P4-17) carries at most 8 recent pack installs (pack, the
+        `from` and `to` payload hashes, the strategy, sizes and timings), each validated (a
+        malformed entry is dropped, unknown fields are stripped, `failureStage` is cut to 128
+        characters); for a product that opted into lazy deltas they are counted, once per device
+        and pair, as demand for a server-generated delta, and an entry whose strategy is `delta`
+        is not demand. Counting is D1 only and fails open. An empty body is valid and means
+        `{}`. Auth requires a usable license only
         when the product enables the License service (D-08).
       security: [{ deviceToken: [] }]
       parameters: [{ $ref: "#/components/parameters/Product" }]
@@ -2361,7 +2367,12 @@ paths:
           in: path
           required: true
           description: The pack id.
-          schema: { type: string, pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$", maxLength: 64 }
+          schema:
+            {
+              type: string,
+              pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+              maxLength: 64,
+            }
         - name: variant
           in: path
           required: true
@@ -2427,7 +2438,12 @@ paths:
         - { $ref: "#/components/parameters/Product" }
         - { name: pack, in: path, required: true, schema: { type: string } }
         - { name: variant, in: path, required: true, schema: { type: string } }
-        - { name: sha256, in: path, required: true, schema: { type: string, pattern: "^[0-9a-f]{64}$" } }
+        - {
+            name: sha256,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[0-9a-f]{64}$" },
+          }
       responses:
         "200":
           description: The answer's headers, no body.
@@ -8034,10 +8050,10 @@ components:
       type: object
       description: >
         The device's software snapshot. Deliberately narrow: no installed-app enumeration,
-        only product-declared probes. Twenty top-level keys survive the allowlist and
+        only product-declared probes. Twenty-one top-level keys survive the allowlist and
         anything else is dropped silently. The first six are projected into typed columns
         (strings truncated to 128 characters); the rest are stored as an opaque blob, with
-        `engine`, `outlet`, `content`, `updates` and `caps` bounded first.
+        `engine`, `outlet`, `content`, `updates`, `caps` and `packInstalls` bounded first.
       additionalProperties: false
       properties:
         os:
@@ -8152,6 +8168,50 @@ components:
             type: string
             maxLength: 64
             pattern: "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
+        packInstalls:
+          type: array
+          maxItems: 8
+          description: >
+            Recent pack installs (P4-17, CONTENT §8.1), the input of lazy hot-pair deltas. At most
+            8 are read; an entry that does not match this schema is dropped and the rest are
+            kept. For a product that opted in, each (pack, from, to) counts once per device;
+            when at least 25 devices (configurable per product) moved between the same two
+            payloads without a delta within 7 days, the Worker may generate one off the request
+            path. An entry whose `strategy` is `delta` is not counted as demand. No hardware value
+            and no user identifier is carried.
+          items: { $ref: "#/components/schemas/PackInstall" }
+    PackInstall:
+      type: object
+      description: One pack install a device reports (P4-17).
+      required: [pack, from, to, strategy]
+      additionalProperties: false
+      properties:
+        pack:
+          type: string
+          maxLength: 64
+          pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+          description: The pack id (its deliverable id).
+        from:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: The installed release's `payload.sha256` before the install.
+        to:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: The new release's `payload.sha256`.
+        strategy:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{0,31}$"
+          description: The strategy that installed it (`delta`, `chunk`, `file`, `full`, …).
+        bytes: { type: integer, minimum: 0, description: Bytes downloaded. }
+        durationMs: { type: integer, minimum: 0 }
+        fallbackUsed:
+          type: boolean
+          description: A strategy failed first and a fallback installed it.
+        failureStage:
+          type: string
+          maxLength: 128
+          description: Where the first strategy failed, when one did (printable ASCII).
     UpdateOutcomeEvent:
       type: object
       description: One update outcome event a device reports (P6-03).
