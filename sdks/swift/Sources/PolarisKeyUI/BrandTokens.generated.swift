@@ -147,9 +147,9 @@ public enum PolarisBrand {
             "core": BrandAccent(solid: BrandColor(hex: 0x9a5cff), fg: BrandColor(hex: 0x9a5cff), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x18132e), bit: nil),
             "license": BrandAccent(solid: BrandColor(hex: 0xc6e940), fg: BrandColor(hex: 0xc6e940), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x1d2418), bit: BrandColor(hex: 0xc6e940)),
             "config": BrandAccent(solid: BrandColor(hex: 0x12bcd5), fg: BrandColor(hex: 0x12bcd5), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x071e29), bit: BrandColor(hex: 0x12bcd5)),
-            "release": BrandAccent(solid: BrandColor(hex: 0x3eeedb), fg: BrandColor(hex: 0x3eeedb), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x0d242a), bit: BrandColor(hex: 0x3eeedb)),
+            "release": BrandAccent(solid: BrandColor(hex: 0x01f8e5), fg: BrandColor(hex: 0x01f8e5), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x05262b), bit: BrandColor(hex: 0x01f8e5)),
             "distribution": BrandAccent(solid: BrandColor(hex: 0x39d075), fg: BrandColor(hex: 0x39d075), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x0c211e), bit: BrandColor(hex: 0x39d075)),
-            "update": BrandAccent(solid: BrandColor(hex: 0x39d075), fg: BrandColor(hex: 0x39d075), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x0c211e), bit: BrandColor(hex: 0x39d075)),
+            "update": BrandAccent(solid: BrandColor(hex: 0xfe8001), fg: BrandColor(hex: 0xfe8001), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x241710), bit: BrandColor(hex: 0xfe8001)),
             "identity": BrandAccent(solid: BrandColor(hex: 0xd77df2), fg: BrandColor(hex: 0xd77df2), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x1f172d), bit: BrandColor(hex: 0xd77df2)),
     ]
 
@@ -157,9 +157,9 @@ public enum PolarisBrand {
             "core": BrandAccent(solid: BrandColor(hex: 0x7a2fff), fg: BrandColor(hex: 0x7a2fff), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xeae4ff), bit: nil),
             "license": BrandAccent(solid: BrandColor(hex: 0x708d00), fg: BrandColor(hex: 0x556e00), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0xe9ede6), bit: BrandColor(hex: 0x708d00)),
             "config": BrandAccent(solid: BrandColor(hex: 0x006270), fg: BrandColor(hex: 0x006270), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xdde9f1), bit: BrandColor(hex: 0x006270)),
-            "release": BrandAccent(solid: BrandColor(hex: 0x01948a), fg: BrandColor(hex: 0x00736b), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0xdeeef3), bit: BrandColor(hex: 0x01948a)),
+            "release": BrandAccent(solid: BrandColor(hex: 0x00948c), fg: BrandColor(hex: 0x00766f), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0xddeef4), bit: BrandColor(hex: 0x00948c)),
             "distribution": BrandAccent(solid: BrandColor(hex: 0x05773b), fg: BrandColor(hex: 0x05773b), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xdeebeb), bit: BrandColor(hex: 0x05773b)),
-            "update": BrandAccent(solid: BrandColor(hex: 0x05773b), fg: BrandColor(hex: 0x05773b), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xdeebeb), bit: BrandColor(hex: 0x05773b)),
+            "update": BrandAccent(solid: BrandColor(hex: 0x974600), fg: BrandColor(hex: 0x974600), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xede6e6), bit: BrandColor(hex: 0x974600)),
             "identity": BrandAccent(solid: BrandColor(hex: 0x9e34ae), fg: BrandColor(hex: 0x9e34ae), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xede4f7), bit: BrandColor(hex: 0x9e34ae)),
     ]
 

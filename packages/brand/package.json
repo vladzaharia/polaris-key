@@ -61,7 +61,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && tsx scripts/build-preview.ts",
     "gen": "tsx scripts/gen.ts",
-    "proofs": "tsx scripts/render-proofs.ts",
+    "proofs": "tsx scripts/render-proofs.ts && tsx scripts/render-accent-proofs.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "prettier --check \"src/**/*.{ts,tsx}\" \"test/**/*.{ts,tsx}\" \"scripts/**/*.ts\" \"css/**/*.css\" \"fonts/**/*.css\"",

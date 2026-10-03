@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { deltaEOK, hexToOklch, hslHue } from "../src/color.js";
+import { deltaE2000, deltaEOK, hexToOklch, hslHue } from "../src/color.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import { BRAND } from "../src/tokens/primitives.js";
 import { COLOR_RULES, colorViolations } from "../src/tokens/rules.js";
@@ -84,19 +84,13 @@ describe("pairwise distinctness", () => {
     },
   );
 
-  it("every section maps to a family and only the delivery pair shares one", () => {
-    const byFamily = new Map<string, string[]>();
-    for (const id of SERVICE_IDS)
-      byFamily.set(SERVICE_FAMILY[id], [
-        ...(byFamily.get(SERVICE_FAMILY[id]) ?? []),
-        id,
-      ]);
-    const shared = [...byFamily.values()].filter((ids) => ids.length > 1);
-    expect(shared).toEqual([["distribution", "update"]]);
-    for (const theme of THEMES)
-      expect(SERVICE_ACCENTS[theme].distribution).toEqual(
-        SERVICE_ACCENTS[theme].update,
-      );
+  it("every section has its own family (Distribution and Update no longer share green)", () => {
+    const families = SERVICE_IDS.map((id) => SERVICE_FAMILY[id]);
+    expect(new Set(families).size).toBe(SERVICE_IDS.length);
+    expect([...families].sort()).toEqual([...ACCENT_FAMILIES].sort());
+    expect(SERVICE_FAMILY.update).toBe("tangerine");
+    expect(SERVICE_ACCENTS.dark.distribution.solid).toBe("#39d075");
+    expect(SERVICE_ACCENTS.light.distribution.solid).toBe("#05773b");
   });
 
   it("no service accent is the platform violet's neighbour", () => {
@@ -106,6 +100,71 @@ describe("pairwise distinctness", () => {
           deltaEOK(SERVICE_ACCENTS[theme][id].solid, BRAND.violet[theme]),
         ).toBeGreaterThanOrEqual(COLOR_RULES.accentMinDeltaE);
   });
+});
+
+// CIEDE2000 floors (owner request 2026-10-03, after Release read too close to Config). Each floor
+// sits just under the minimum the approved palette measures (scripts/tune-accents.ts and
+// docs/design/BRAND.md §5.1 carry the full table), so any change that brings two accents closer
+// fails here:
+//   * service vs service: 19.5. Measured minimum 19.8 (light License/Distribution, chartreuse vs
+//     green, approved 2026-10-03). ΔE00 ≈ 20 reads as a different colour at a glance.
+//   * the platform violet vs any service: 13. Measured minimum 13.2 (light Identity orchid),
+//     the documented tightest fit between the violet and the reserved rose (§5.3).
+//   * any service vs the kit gold, the UI signed colour, the kit rose and the danger tokens: 16.5.
+//     Measured minimum 16.7 (light Update tangerine vs danger).
+// A flat 20 (the first proposal) would fail on owner-approved pairs that no Release or Update
+// choice can move.
+export const DE00_FLOORS = { services: 19.5, platform: 13, references: 16.5 };
+
+describe("CIEDE2000 distinctness", () => {
+  const services = SERVICE_IDS.filter((s) => s !== "core");
+  const pairs = THEMES.flatMap((theme) =>
+    services.flatMap((a, i) =>
+      services.slice(i + 1).map((b) => [theme, a, b] as const),
+    ),
+  );
+  it.each(pairs)(
+    `%s: %s vs %s, ΔE00 >= ${DE00_FLOORS.services}`,
+    (theme, a, b) => {
+      expect(
+        deltaE2000(
+          SERVICE_ACCENTS[theme][a].solid,
+          SERVICE_ACCENTS[theme][b].solid,
+        ),
+      ).toBeGreaterThanOrEqual(DE00_FLOORS.services);
+    },
+  );
+
+  it.each(THEMES)(
+    `%s: the platform violet vs every service, ΔE00 >= ${DE00_FLOORS.platform}`,
+    (theme) => {
+      for (const id of services)
+        expect(
+          deltaE2000(SERVICE_ACCENTS[theme][id].solid, BRAND.violet[theme]),
+          id,
+        ).toBeGreaterThanOrEqual(DE00_FLOORS.platform);
+    },
+  );
+
+  it.each(THEMES)(
+    `%s: every service vs gold, signed, rose and danger, ΔE00 >= ${DE00_FLOORS.references}`,
+    (theme) => {
+      const t = THEME_TOKENS[theme];
+      const refs = {
+        gold: BRAND.gold[theme],
+        signed: t.signed.solid,
+        rose: BRAND.rose[theme],
+        danger: t.status.danger.fg,
+        dangerBorder: t.status.danger.border,
+      };
+      for (const id of services)
+        for (const [k, v] of Object.entries(refs))
+          expect(
+            deltaE2000(SERVICE_ACCENTS[theme][id].solid, v),
+            `${id} vs ${k}`,
+          ).toBeGreaterThanOrEqual(DE00_FLOORS.references);
+    },
+  );
 });
 
 describe("status colours stay clear of the brand rules", () => {

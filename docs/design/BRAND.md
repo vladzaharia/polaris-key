@@ -288,6 +288,12 @@ and strong text all clear 4.5:1 on it).
 - **Not confusable with gold**: ΔEOK ≥ 0.12 from both the kit gold and the UI `signed` colour.
 - **Distinct**: pairwise ΔEOK ≥ 0.12 between families in each theme (achieved minimum: 0.136 dark,
   violet/orchid; 0.121 light, cyan/green). ΔEOK 0.02 is about a just-noticeable difference.
+- **Distinct in CIEDE2000** (added 2026-10-03): service vs service ΔE00 ≥ 19.5 (measured minimum
+  19.8, light License/Distribution); the platform violet vs any service ≥ 13 (measured 13.2, light
+  Identity); any service vs the kit gold, the UI signed colour, the kit rose and danger ≥ 16.5
+  (measured 16.7, light Update vs danger). Each floor sits just under the approved palette's
+  minimum, so a regression fails. A flat 20 would fail on owner-approved pairs that no Release or
+  Update choice can move. Full matrix: `packages/brand/preview/proofs/accents-{dark,light}.png`.
 - **WCAG AA** as above, both themes.
 
 `colorViolations(hex, theme)` (exported) runs the hue and gold checks on any candidate colour.
@@ -299,19 +305,34 @@ and strong text all clear 4.5:1 on it).
 | **Core**         | Pinned K | violet     | `#9a5cff` (4.6)                | `#7a2fff` (4.9)   | `#7a2fff` (4.9) | indigo        |
 | **License**      | Pinned K | chartreuse | `#c6e940` (12.9)               | `#708d00` (3.3)   | `#556e00` (5.0) | amber         |
 | **Config**       | Pinned K | cyan       | `#12bcd5` (7.8)                | `#006270` (6.1)   | `#006270` (6.1) | cyan          |
-| **Release**      | Pinned K | teal       | `#3eeedb` (12.3)               | `#01948a` (3.2)   | `#00736b` (4.9) | violet        |
+| **Release**      | Pinned K | teal       | `#01f8e5` (13.3)               | `#00948c` (3.2)   | `#00766f` (4.7) | violet        |
 | **Distribution** | Star Cut | green      | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | orange        |
-| **Update**       | Star Cut | green      | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | green         |
+| **Update**       | Star Cut | tangerine  | `#fe8001` (7.1)                | `#974600` (5.7)   | `#974600` (5.7) | green         |
 | **Identity**     | Pinned K | orchid     | `#d77df2` (6.9)                | `#9e34ae` (5.1)   | `#9e34ae` (5.1) | rose          |
 
-`on` is `#060912` on every dark solid (5.1–14.3:1) and on the light chartreuse and teal solids;
-`#ffffff` on the other light solids (5.7–7.0:1). The full set (subtle values, bit colours) is in
+`on` is `#060912` on every dark solid (5.1–14.7:1) and on the light chartreuse and teal solids
+(5.2–5.3:1); `#ffffff` on the other light solids (5.7–7.0:1). The full set (subtle values, bit colours) is in
 `tokens.json` and the preview.
 
 OKLCH design values (dark solid / light solid): violet = the kit's; chartreuse `0.88 0.19 121` /
-`0.60 0.15 123`; cyan `0.73 0.125 212` / `0.455 0.085 212`; teal `0.86 0.14 184` /
-`0.60 0.105 186`; green `0.76 0.18 152` / `0.50 0.13 152`; orchid `0.73 0.185 318` /
-`0.53 0.20 322`.
+`0.60 0.15 123`; cyan `0.73 0.125 212` / `0.455 0.085 212`; teal `0.88 0.155 185` /
+`0.60 0.105 188` (fg `0.51`); green `0.76 0.18 152` / `0.50 0.13 152`; tangerine
+`0.73 0.185 53` / `0.49 0.13 51`; orchid `0.73 0.185 318` / `0.53 0.20 322`.
+
+Release and Update were chosen by `packages/brand/scripts/tune-accents.ts`, a reproducible grid
+search: among values that pass every rule above, inside the palette's lightness band and at least
+as vivid as Config's cyan, it takes the one with the largest minimum ΔE00 to every other accent,
+the violet, gold, signed, rose and danger. Before (2026-10-03 morning) and after:
+
+| Pair (ΔE00)             | Before dark | After dark | Before light | After light |
+| ----------------------- | ----------- | ---------- | ------------ | ----------- |
+| Release vs Config       | 18.8        | 20.1       | 20.6         | 20.3        |
+| Release vs Distribution | 19.3        | 20.6       | 19.9         | 20.5        |
+| Distribution vs Update  | 0.0         | 56.6       | 0.0          | 47.4        |
+| Update vs gold          | 38.5        | 20.0       | 46.7         | 21.1        |
+| Update vs danger        | 72.3        | 20.3       | 64.3         | 16.7        |
+| Update vs warning       | 57.1        | 8.9        | 52.3         | 5.5         |
+| Lowest service pair     | 0.0         | 20.1       | 0.0          | 19.8        |
 
 ### 5.3 Reasoning
 
@@ -327,21 +348,25 @@ left (25–60°) holds the warning and danger statuses. What remains is chartreu
   that clears the gold by ΔE ≥ 0.12.
 - **Config keeps cyan**, nudged to OKLCH 212° so it stays out of the HSL blue band.
 - **Release: violet → teal.** Violet is the platform's alone, and a violet section bit would
-  vanish into the violet K.
-- **Distribution and Update share one accent: green** (the old Update colour). The Star Cut mark
-  identifies the delivery service as a whole (owner direction), so its two sections read as one
-  family; the section label tells them apart. The family is **not violet** even though the Star
-  Cut mark is violet: the mark's colour is the brand's, not the section's, a violet accent would
-  make delivery indistinguishable from core, and a violet section bit is invisible on a violet K.
-  This is the one deliberate exception to pairwise distinctness, and the test asserts it.
+  vanish into the violet K. Re-tuned 2026-10-03 after the owner found it too close to Config's
+  cyan: the measured optimum under every rule is still teal (hue 185–188°), now brighter in dark.
+  The wheel has no better place: yellow is the gold's, 125–145° is boxed in by chartreuse and
+  green, and the orchid–rose band is narrower still. The search moves Release-vs-Config only from
+  18.8 to 20.1 ΔE00 in dark (20.6 to 20.3 in light); a larger gap needs Config itself to move.
+- **Distribution green, Update tangerine** (owner decision 2026-10-03; until then they shared one
+  green, the old Update colour). Neither is violet even though the Star Cut mark is: the mark's
+  colour is the brand's, not the section's, and a violet section bit is invisible on a violet K.
+  Tangerine sits in the warm arc next to the warning status (ΔE00 8.9 dark, 5.5 light): accepted
+  like the green/success overlap, because a status always carries an icon and a word. Light
+  tangerine is darker than the owner's `#b04a00`, which sits ΔEOK 0.09 from the UI signed gold.
 - **Identity: rose → orchid.** Rose is reserved. Orchid (OKLCH 318–322°, HSL 287–296°) is held
   between the violet and the rose at ΔE ≥ 0.12 from each and outside the rose hue band. It is the
   tightest fit in the palette; see [decisions to confirm](#decisions-to-confirm).
 - In light, three solids (License, Release, and to a lesser degree Config) cannot be both vivid
   and 4.5:1, so `solid` (3:1, the identity colour) and `fg` (4.5:1 text) differ there. In dark
   every solid is also its own text colour.
-- **Status overlaps are accepted, not hidden**: Distribution/Update share green's neighbourhood
-  with success, and a status always carries an icon and a word. Status colours are tested against
+- **Status overlaps are accepted, not hidden**: Distribution shares green's neighbourhood with
+  success and Update tangerine shares warning's, and a status always carries an icon and a word. Status colours are tested against
   the brand rules and against the signed gold, not against section accents.
 
 ### 5.4 Using accents
@@ -520,7 +545,7 @@ recorded under [What the page omits, and why](#what-the-page-omits-and-why).
 - The Delivery lockup (`lockupSvg({ kind: "delivery", layout: "horizontal" })`, height ≥ 80 px so the
   glyph is ≥ 48 px) or the display mark at 96 px above the wordmark; ¼-glyph clear space.
 - Rubik from `fonts.css`; text `text-default`/`text-strong`; one accent at most (the delivery
-  green `--pk-service-update-fg` for links), no gold (nothing on the page is a signature), no
+  green `--pk-service-distribution-fg` for links; Update's tangerine is not used here), no gold (nothing on the page is a signature), no
   gradients, no illustration beyond the static star.
 - OG card: `social/update/social-card-dark-1200.png`.
 
@@ -693,8 +718,11 @@ so `data-service` carries the same ids this package keys its accents by.
 - **Identity orchid** is the tightest fit (ΔE 0.136 from violet and 0.128 from rose in dark).
   The alternative is to give Identity a cool hue and accept ~0.09 pairwise distinctness among
   five cool accents, or to share the warm arc with the warning status.
-- **Distribution and Update share one accent** (green). If the console needs them distinct, the
-  fallback is a second green-family step, which falls below the 0.12 distinctness bar.
+- **Release vs Config** stays at about 20 ΔE00 (§5.3): within the rules no Release value does
+  better. A clearly larger gap needs Config to move, or a rule (lightness band, chroma floor) to
+  relax.
+- **Update tangerine vs the warning status** (ΔE00 8.9 / 5.5): nearly the same orange. Accepted as a
+  status overlap, or warning moves redder in its own change.
 - **Section-bit minimum stays 48 px** (the kit's), so the console header mark is 48 px.
 - **The "Powered by" badge does not appear on Polaris Key's own surfaces.**
 
@@ -716,8 +744,16 @@ so `data-service` carries the same ids this package keys its accents by.
   Pinned K's display cut at 48 px, so every section's bit is legible in both themes (proofs:
   `packages/brand/preview/proofs/section-bit-{dark,light}.png`). 32–47 px placements use the
   display cut without a bit; below 24 px, the favicon cut.
-- **Accent palette approved as tuned** (the table above), including Config cyan, Release teal,
-  one shared green for Distribution and Update (the Star Cut delivery family) and Identity orchid.
+- **Accent palette approved as tuned** (the table above), including Config cyan, Release teal and
+  Identity orchid. (This originally included one shared green for Distribution and Update; see the
+  next entry.)
+- **Distribution and Update no longer share green (2026-10-03).** Distribution keeps `#39d075` /
+  `#05773b`; Update becomes tangerine, `#fe8001` / `#974600`, tuned from the owner's `#ff8a3d` /
+  `#b04a00` to meet every accent rule (§5).
+- **Release re-tuned by measurement (2026-10-03).** The owner found Release teal too close to
+  Config cyan; Config keeps cyan. `scripts/tune-accents.ts` picked `#01f8e5` / `#00948c` (teal,
+  the measured optimum) and CIEDE2000 floors joined the tests (§5.1). Pending owner approval of
+  the proof sheets `packages/brand/preview/proofs/accents-{dark,light}.png`.
 - **No "Powered by Polaris Key" badge on Polaris Key's own surfaces** (console, portal, docs,
   dl.plrs.im). The badge belongs to integrators' surfaces: SDK credit screens, the Godot addon's
   credits and integrator websites.

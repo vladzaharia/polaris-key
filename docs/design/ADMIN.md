@@ -78,14 +78,15 @@ fixes:**
 - **Borders:** `border.subtle | strong`, plus `focus`.
 - **Accent families** (`solid`, `fg`, `on`, `subtle`), per section:
 
-  | Section                 | Family                       |
-  | ----------------------- | ---------------------------- |
-  | core                    | violet (the kit violet)      |
-  | license                 | chartreuse                   |
-  | config                  | cyan                         |
-  | release                 | teal                         |
-  | distribution and update | green, one _delivery_ family |
-  | identity                | orchid                       |
+  | Section      | Family                  |
+  | ------------ | ----------------------- |
+  | core         | violet (the kit violet) |
+  | license      | chartreuse              |
+  | config       | cyan                    |
+  | release      | teal                    |
+  | distribution | green                   |
+  | update       | tangerine               |
+  | identity     | orchid                  |
 
   None is blue, indigo or rose, and none is confusable with gold.
 
@@ -212,15 +213,15 @@ fixes SH-10: Home and Products no longer draw a product's sections.
 
 ### 2.2 Global elements
 
-| Element               | Behavior                                                                                                                                                                                                                                                                                                                                                                                             |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Brand block**       | `SectionMark` at 28 px + "Polaris Key" (≥ 640 px). Links to Home. The terminal bit shows the current section's accent: **gold** on Home, Products, Platform and Core pages; chartreuse in License; cyan in Config; teal in Release; green in Distribution and Update; orchid in Identity. The star never changes. Gold is used on core pages because a violet bit would disappear into the violet K. |
-| **Product switcher**  | A combobox (search, recent, service dots, attention count). It keeps the current page when the target product runs that service (SH-11). Shortcut `g p`.                                                                                                                                                                                                                                             |
-| **Environment badge** | Shown in staging and dev ("Staging" in `status.warning`, "Dev" in `status.info`); hidden in production. The source is `/me.environment` (API addition **A-1**), with no hostname heuristics.                                                                                                                                                                                                         |
-| **Command palette**   | `⌘K` / `Ctrl+K`. Navigation, products, entities of the current product, and safe actions (`components.md` §1.5).                                                                                                                                                                                                                                                                                     |
-| **Docs**              | "Docs" link to `docsFor(page)`, a labelled link, not a `title`-only icon (SH-13).                                                                                                                                                                                                                                                                                                                    |
-| **Theme menu**        | System (default) / Dark / Light. Persisted per viewer. System follows `prefers-color-scheme` live, and dark is the fallback when the OS gives no answer.                                                                                                                                                                                                                                             |
-| **User menu**         | Name and email; "Session ends 18:40" (from **A-1** `sessionExpiresAt`, else omitted); Keyboard shortcuts (`?`); Docs home; Sign out.                                                                                                                                                                                                                                                                 |
+| Element               | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Brand block**       | `SectionMark` at 28 px + "Polaris Key" (≥ 640 px). Links to Home. The terminal bit shows the current section's accent: chartreuse in License; cyan in Config; teal in Release; green in Distribution; tangerine in Update; orchid in Identity; no bit at all on Home, Products, Platform and Core pages (BRAND.md §6, 2026-10-03, superseding gold there). The star never changes. Gold was used on core pages because a violet bit would disappear into the violet K. |
+| **Product switcher**  | A combobox (search, recent, service dots, attention count). It keeps the current page when the target product runs that service (SH-11). Shortcut `g p`.                                                                                                                                                                                                                                                                                                               |
+| **Environment badge** | Shown in staging and dev ("Staging" in `status.warning`, "Dev" in `status.info`); hidden in production. The source is `/me.environment` (API addition **A-1**), with no hostname heuristics.                                                                                                                                                                                                                                                                           |
+| **Command palette**   | `⌘K` / `Ctrl+K`. Navigation, products, entities of the current product, and safe actions (`components.md` §1.5).                                                                                                                                                                                                                                                                                                                                                       |
+| **Docs**              | "Docs" link to `docsFor(page)`, a labelled link, not a `title`-only icon (SH-13).                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Theme menu**        | System (default) / Dark / Light. Persisted per viewer. System follows `prefers-color-scheme` live, and dark is the fallback when the OS gives no answer.                                                                                                                                                                                                                                                                                                               |
+| **User menu**         | Name and email; "Session ends 18:40" (from **A-1** `sessionExpiresAt`, else omitted); Keyboard shortcuts (`?`); Docs home; Sign out.                                                                                                                                                                                                                                                                                                                                   |
 
 ### 2.3 Sections and pages
 
@@ -252,7 +253,7 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 |                                    | **Access**             | `distribution/access`                                                                    | T4                       | Delivery access moved from UpdateSettings, incl. **per-pack** gates (UPS-5, DLV-3)                                                                                                                                                                                |
 |                                    | Health                 | `distribution/health`                                                                    | T1-style dashboard       | Update health, with funnel charts and a window selector                                                                                                                                                                                                           |
 |                                    | **Outlet credentials** | `distribution/credentials`                                                               | T2 + drawer              | OutletCredentials, moved from Secrets; store connectors status                                                                                                                                                                                                    |
-| **Update** (green, Star Cut)       | **Feed**               | `update/feed`                                                                            | T4                       | UpdateSettings minus delivery access: metadata access, compat window, artifact policy, feed **endpoints**                                                                                                                                                         |
+| **Update** (tangerine, Star Cut)   | **Feed**               | `update/feed`                                                                            | T4                       | UpdateSettings minus delivery access: metadata access, compat window, artifact policy, feed **endpoints**                                                                                                                                                         |
 | **Identity** (orchid)              | **Portal**             | `identity/portal`                                                                        | T4                       | Portal module toggles with dependencies, branding read-out                                                                                                                                                                                                        |
 |                                    | **Sign-in**            | `identity/sign-in`                                                                       | T3 read-only             | The OIDC card, now showing the provider, issuer and client (data already returned by `config/mint` → `identity`) and the manifest pointer                                                                                                                         |
 
@@ -273,19 +274,20 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
   detail embeds the same `DeviceTable` scoped to that license.
 - **Update keeps its own section** although it has one page. The service table and glossary make
   sections equal to services. Its pages sit directly under Distribution's in the sidebar, and both
-  share the green family and the Star Cut glyph, so they read as one delivery family.
+  carry the Star Cut glyph, so they read as one delivery family; since 2026-10-03 their accents
+  differ (Distribution green, Update tangerine).
 
 ### 2.4 Accent and mark mapping
 
-| Context                                   | `data-service` | Bit color            | Section glyph                          | Primary buttons and active nav |
-| ----------------------------------------- | -------------- | -------------------- | -------------------------------------- | ------------------------------ |
-| Home, Products, Platform, every Core page | `core`         | `signed.mark` (gold) | Pinned K (sidebar group: lucide `Box`) | violet                         |
-| License                                   | `license`      | chartreuse `solid`   | lucide `KeyRound`                      | chartreuse                     |
-| Config                                    | `config`       | cyan                 | lucide `SlidersHorizontal`             | cyan                           |
-| Release                                   | `release`      | teal                 | lucide `Package`                       | teal                           |
-| Distribution                              | `distribution` | green                | **Star Cut**                           | green                          |
-| Update                                    | `update`       | green                | **Star Cut**                           | green                          |
-| Identity                                  | `identity`     | orchid               | lucide `UserRound`                     | orchid                         |
+| Context                                   | `data-service` | Bit color          | Section glyph                          | Primary buttons and active nav |
+| ----------------------------------------- | -------------- | ------------------ | -------------------------------------- | ------------------------------ |
+| Home, Products, Platform, every Core page | `core`         | none (no bit)      | Pinned K (sidebar group: lucide `Box`) | violet                         |
+| License                                   | `license`      | chartreuse `solid` | lucide `KeyRound`                      | chartreuse                     |
+| Config                                    | `config`       | cyan               | lucide `SlidersHorizontal`             | cyan                           |
+| Release                                   | `release`      | teal               | lucide `Package`                       | teal                           |
+| Distribution                              | `distribution` | green              | **Star Cut**                           | green                          |
+| Update                                    | `update`       | tangerine          | **Star Cut**                           | tangerine                      |
+| Identity                                  | `identity`     | orchid             | lucide `UserRound`                     | orchid                         |
 
 **Rules.**
 

@@ -126,7 +126,9 @@ export function landingFaviconSvg(): string {
 
 function palette(theme: "dark" | "light"): string {
   const t = THEME_TOKENS[theme];
-  const accent = SERVICE_ACCENTS[theme].update;
+  // The delivery green, now Distribution's alone (Update became tangerine on 2026-10-03,
+  // BRAND.md §5); the bytes host serves Distribution's downloads, so the page stays green.
+  const accent = SERVICE_ACCENTS[theme].distribution;
   return [
     `color-scheme:${theme}`,
     `--page:${t.surface.page}`,

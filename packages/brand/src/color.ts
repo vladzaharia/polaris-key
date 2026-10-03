@@ -210,3 +210,87 @@ export function mixOver(fg: string, alpha: number, bg: string): string {
     b: f.b * alpha + b.b * (1 - alpha),
   });
 }
+
+/** CIE L*a*b* (D65 white, the sRGB reference white). */
+export interface Lab {
+  l: number;
+  a: number;
+  b: number;
+}
+
+/** `#rrggbb` to CIE L*a*b* (D65), through linear sRGB and XYZ (IEC 61966-2-1 matrix). */
+export function hexToLab(hex: string): Lab {
+  const { r, g, b } = parseHex(hex);
+  const [lr, lg, lb] = [toLinear(r), toLinear(g), toLinear(b)];
+  const x = (0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb) / 0.95047;
+  const y = 0.2126729 * lr + 0.7151522 * lg + 0.072175 * lb;
+  const z = (0.0193339 * lr + 0.119192 * lg + 0.9503041 * lb) / 1.08883;
+  const f = (t: number) =>
+    t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116;
+  const [fx, fy, fz] = [f(x), f(y), f(z)];
+  return { l: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+}
+
+/**
+ * CIEDE2000 colour difference (kL = kC = kH = 1) between two CIE L*a*b* colours, after Sharma,
+ * Wu and Dalal (2005), whose test data test/color.test.ts reproduces. About 1 is a just-noticeable
+ * difference; 10+ reads as clearly different side by side.
+ */
+export function deltaE2000Lab(x: Lab, y: Lab): number {
+  const rad = Math.PI / 180;
+  const c1 = Math.hypot(x.a, x.b);
+  const c2 = Math.hypot(y.a, y.b);
+  const cBar7 = ((c1 + c2) / 2) ** 7;
+  const g = 0.5 * (1 - Math.sqrt(cBar7 / (cBar7 + 25 ** 7)));
+  const a1 = (1 + g) * x.a;
+  const a2 = (1 + g) * y.a;
+  const cp1 = Math.hypot(a1, x.b);
+  const cp2 = Math.hypot(a2, y.b);
+  const hue = (b: number, a: number) => {
+    if (a === 0 && b === 0) return 0;
+    const h = Math.atan2(b, a) / rad;
+    return h < 0 ? h + 360 : h;
+  };
+  const hp1 = hue(x.b, a1);
+  const hp2 = hue(y.b, a2);
+  const dL = y.l - x.l;
+  const dC = cp2 - cp1;
+  let dh = 0;
+  if (cp1 * cp2 !== 0) {
+    dh = hp2 - hp1;
+    if (dh > 180) dh -= 360;
+    else if (dh < -180) dh += 360;
+  }
+  const dH = 2 * Math.sqrt(cp1 * cp2) * Math.sin((dh / 2) * rad);
+  const lBar = (x.l + y.l) / 2;
+  const cpBar = (cp1 + cp2) / 2;
+  let hBar = hp1 + hp2;
+  if (cp1 * cp2 !== 0) {
+    if (Math.abs(hp1 - hp2) <= 180) hBar /= 2;
+    else hBar = hBar < 360 ? (hBar + 360) / 2 : (hBar - 360) / 2;
+  }
+  const t =
+    1 -
+    0.17 * Math.cos((hBar - 30) * rad) +
+    0.24 * Math.cos(2 * hBar * rad) +
+    0.32 * Math.cos((3 * hBar + 6) * rad) -
+    0.2 * Math.cos((4 * hBar - 63) * rad);
+  const dTheta = 30 * Math.exp(-(((hBar - 275) / 25) ** 2));
+  const cpBar7 = cpBar ** 7;
+  const rc = 2 * Math.sqrt(cpBar7 / (cpBar7 + 25 ** 7));
+  const sl = 1 + (0.015 * (lBar - 50) ** 2) / Math.sqrt(20 + (lBar - 50) ** 2);
+  const sc = 1 + 0.045 * cpBar;
+  const sh = 1 + 0.015 * cpBar * t;
+  const rt = -Math.sin(2 * dTheta * rad) * rc;
+  return Math.sqrt(
+    (dL / sl) ** 2 +
+      (dC / sc) ** 2 +
+      (dH / sh) ** 2 +
+      rt * (dC / sc) * (dH / sh),
+  );
+}
+
+/** CIEDE2000 (ΔE00) between two `#rrggbb` colours. */
+export function deltaE2000(a: string, b: string): number {
+  return deltaE2000Lab(hexToLab(a), hexToLab(b));
+}

@@ -57,9 +57,8 @@ export const SERVICE_IDS = [
 export type ServiceId = (typeof SERVICE_IDS)[number];
 
 /**
- * Accent families. Distribution and Update share the `delivery` family: the Star Cut mark
- * identifies the whole delivery service (Distribution, Update and the bytes host dl.plrs.im),
- * so its sections read as one family (owner direction, 2026-10-03; BRAND.md §5).
+ * Accent families, one per section. Distribution (green) and Update (tangerine) no longer share
+ * one (owner decision 2026-10-03, superseding the shared delivery green; BRAND.md §5).
  */
 export const ACCENT_FAMILIES = [
   "violet",
@@ -67,6 +66,7 @@ export const ACCENT_FAMILIES = [
   "cyan",
   "teal",
   "green",
+  "tangerine",
   "orchid",
 ] as const;
 
@@ -78,7 +78,7 @@ export const SERVICE_FAMILY: Record<ServiceId, AccentFamily> = {
   config: "cyan",
   release: "teal",
   distribution: "green",
-  update: "green",
+  update: "tangerine",
   identity: "orchid",
 };
 
@@ -162,21 +162,24 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
       on: BRAND.mono.white,
     },
   },
-  // Release. Was violet, which is now the platform's alone; teal sits between the delivery
-  // green and Config's cyan with a lightness step from each.
+  // Release. Was violet, which is now the platform's alone. Re-tuned 2026-10-03 because it read
+  // too close to Config's cyan: scripts/tune-accents.ts searches the whole admissible wheel for
+  // the value with the largest minimum CIEDE2000 distance to every other accent, violet, gold,
+  // rose and danger, and the optimum is still this teal (brighter and greener in dark), between
+  // the green and the cyan with a lightness step from each.
   teal: {
     dark: {
-      solid: oklch(0.86, 0.14, 184),
-      fg: oklch(0.86, 0.14, 184),
+      solid: oklch(0.88, 0.155, 185),
+      fg: oklch(0.88, 0.155, 185),
       on: BRAND.mono.black,
     },
     light: {
-      solid: oklch(0.6, 0.105, 186),
-      fg: oklch(0.5, 0.09, 186),
+      solid: oklch(0.6, 0.105, 188),
+      fg: oklch(0.51, 0.105, 188),
       on: BRAND.mono.black,
     },
   },
-  // Distribution + Update (the delivery family, the Star Cut's services). Update was green.
+  // Distribution (a Star Cut service). Update shared it until 2026-10-03.
   green: {
     dark: {
       solid: oklch(0.76, 0.18, 152),
@@ -186,6 +189,22 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
     light: {
       solid: oklch(0.5, 0.13, 152),
       fg: oklch(0.5, 0.13, 152),
+      on: BRAND.mono.white,
+    },
+  },
+  // Update (owner decision 2026-10-03): tangerine, from the owner's #ff8a3d / #b04a00, tuned by
+  // scripts/tune-accents.ts within ±10° hue and ±0.05 lightness of that start to the value
+  // farthest (CIEDE2000) from gold, rose, danger and the other accents. Light is darker than the
+  // start because #b04a00 sits ΔEOK 0.09 from the UI signed gold, below the 0.12 rule.
+  tangerine: {
+    dark: {
+      solid: oklch(0.73, 0.185, 53),
+      fg: oklch(0.73, 0.185, 53),
+      on: BRAND.mono.black,
+    },
+    light: {
+      solid: oklch(0.49, 0.13, 51),
+      fg: oklch(0.49, 0.13, 51),
       on: BRAND.mono.white,
     },
   },
