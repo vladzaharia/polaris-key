@@ -37,15 +37,85 @@ public protocol PackHandler: Sendable {
     var activation: String { get }
     /// Whether it can install and activate this `formatVersion`.
     func supports(_ formatVersion: Int) -> Bool
+    /// The type's own check of a newly staged payload (CONTENT §4.1 `verify`; P4-16): it runs
+    /// after the engine verified the payload (hashes, path rules, the delegated data-only rule) and
+    /// moved it into the store, before the state commit and activation. A refusal abandons the
+    /// install (`pack-type-check-failed`, its `detail` and `path`); it never runs on the `noop`
+    /// reuse path or over an embedded baseline. Parse the bytes; never evaluate them.
+    func check(_ staged: StagedPack) async throws -> PackCheckRefusal?
     /// A committed install becomes live: at commit for `hot`, at load for a boot's `restart`.
     func activate(_ install: PackInstall) async throws
+    /// `activate` with the installed payload at hand (read lazily). The engine calls this one; its
+    /// default forwards to `activate(_:)`.
+    func activate(_ install: PackInstall, payload: PackPayloadReader) async throws
     /// A live `hot` install is replaced or rolled back.
     func deactivate(_ install: PackInstall) async throws
 }
 
 extension PackHandler {
+    public func check(_ staged: StagedPack) async throws -> PackCheckRefusal? { nil }
     public func activate(_ install: PackInstall) async throws {}
+    public func activate(_ install: PackInstall, payload: PackPayloadReader) async throws {
+        try await activate(install)
+    }
     public func deactivate(_ install: PackInstall) async throws {}
+}
+
+/// A newly staged payload as a handler's `check` sees it: the verified record and selected
+/// variant, its store location and its files in index (path byte) order.
+public struct StagedPack: Sendable {
+    public let packId: String
+    public let record: PackRecordDoc
+    public let variant: PackVariant
+    public let location: String
+    /// A tree's files, or a container's indexed entries, in index (UTF-8 path byte) order.
+    public let files: [InstalledFile]
+    /// A container's whole payload (nil for a tree).
+    public let payload: (any ByteSource)?
+
+    public init(
+        packId: String, record: PackRecordDoc, variant: PackVariant, location: String,
+        files: [InstalledFile], payload: (any ByteSource)?
+    ) {
+        self.packId = packId
+        self.record = record
+        self.variant = variant
+        self.location = location
+        self.files = files
+        self.payload = payload
+    }
+
+    /// The file at exactly this index path.
+    public func file(_ path: String) -> InstalledFile? { files.first { $0.path == path } }
+}
+
+/// A handler's refusal of a staged payload: `pack-type-check-failed` with this `detail` (a
+/// `[a-z][a-z0-9-]{0,31}` token; anything else reads as `check`) and `path`.
+public struct PackCheckRefusal: Error, Sendable, Equatable {
+    public let detail: String
+    public let path: String?
+    public let message: String?
+
+    public init(_ detail: String, path: String? = nil, message: String? = nil) {
+        self.detail = detail
+        self.path = path
+        self.message = message
+    }
+}
+
+/// Reads an install's payload on demand (`PackStorage.installed`), files in index order.
+public struct PackPayloadReader: Sendable {
+    private let reader: @Sendable () throws -> InstalledPayload?
+
+    public init(_ reader: @escaping @Sendable () throws -> InstalledPayload?) { self.reader = reader }
+
+    public func read() throws -> InstalledPayload? { try reader().map(sortedPayload) }
+}
+
+/// An installed payload with its files in index (path byte) order.
+func sortedPayload(_ p: InstalledPayload) -> InstalledPayload {
+    InstalledPayload(
+        payload: p.payload, files: p.files?.sorted { compareUTF8Bytes($0.path, $1.path) < 0 })
 }
 
 /// `files.tree` (CONTENT §4.2): a directory tree, hot (versioned directory plus pointer swap),
@@ -422,7 +492,12 @@ public actor PackEngine {
 
     public init(_ opts: PackEngineOptions) {
         self.opts = opts
-        var table: [String: any PackHandler] = [FILES_TREE_HANDLER.type: FILES_TREE_HANDLER]
+        // Built in (P4-16): `data.json` and `l10n.table` with their default options; a host
+        // registers a configured instance to read what they parse.
+        var table: [String: any PackHandler] = [
+            FILES_TREE_HANDLER.type: FILES_TREE_HANDLER, "data.json": DataJsonHandler(),
+            "l10n.table": L10nTableHandler(),
+        ]
         for h in opts.handlers { table[h.type] = h }
         self.handlerTable = Locked(table)
         self.listeners = Locked([:])
@@ -1057,7 +1132,10 @@ public actor PackEngine {
     }
 
     private func activate(_ i: PackInstall) async throws {
-        if let h = handler(i.type) { try await h.activate(i) }
+        if let h = handler(i.type) {
+            let storage = opts.storage
+            try await h.activate(i, payload: PackPayloadReader { try storage.installed(i) })
+        }
         running[i.packId] = i
     }
 
@@ -1485,6 +1563,8 @@ public actor PackEngine {
                 let location = try opts.storage.commit(
                     pre.planId, packId, variant.payload.sha256, variant.files.layout,
                     result.index ?? pre.index)
+                try await typeCheck(
+                    packId, pre.record, variant, location, planId: pre.planId, delegation: pre.delegation)
                 let install = try await commit(
                     packId, pre.body, pre.recordSha256, pre.record, variant, location,
                     stagingPlan: pre.planId, reused: false, delegation: pre.delegation)
@@ -1593,6 +1673,50 @@ public actor PackEngine {
             return ApplyResult(verdict: .failed(error: ErrorCode.deltaBaseMismatch, path: nil), index: nil)
         }
         return applyDelta(variant, k, base: base, ports)
+    }
+
+    /// The handler's type check over a newly staged payload now in the store (CONTENT §4.1
+    /// `verify`; P4-16). A refusal (a throwing check is one, `check`; a payload the storage cannot
+    /// read back is one, `unreadable`) abandons the install, discards staging, collects the stored
+    /// payload (no root holds it) and raises `pack-type-check-failed`.
+    private func typeCheck(
+        _ packId: String, _ record: PackRecordDoc, _ variant: PackVariant, _ location: String,
+        planId: String, delegation: String?
+    ) async throws {
+        guard let h = handler(record.type) else { return }
+        let provisional = PackInstall(
+            packId: packId, record: "", recordSha256: "", version: record.version, seq: record.seq,
+            type: record.type, variant: variantKey(variant.variant), layout: variant.files.layout,
+            payloadSha256: variant.payload.sha256, payloadSize: variant.payload.size,
+            activation: activationOf(record, h), location: location, embedded: nil,
+            installedAt: await opts.now(), delegation: delegation)
+        var refusal: PackCheckRefusal?
+        do {
+            if let got = try opts.storage.installed(provisional) {
+                // Index (path byte) order, whatever order the storage lists them in, so every SDK
+                // names the same first refused file.
+                let p = sortedPayload(got)
+                refusal = try await h.check(
+                    StagedPack(
+                        packId: packId, record: record, variant: variant, location: location,
+                        files: p.files ?? [], payload: p.payload))
+            } else {
+                refusal = PackCheckRefusal("unreadable", message: "the stored payload cannot be read back")
+            }
+        } catch {
+            refusal = PackCheckRefusal("check", message: "\(error)")
+        }
+        guard let r = refusal else { return }
+        let detail = isPackToken(r.detail) ? r.detail : "check"
+        doc = abandonInstall(try requireLoaded(), packId: packId)
+        try persist()
+        try? opts.storage.removeStaging(planId)
+        collect()
+        let at = r.path.map { ", \($0)" } ?? ""
+        let tail = r.message.map { ": \($0)" } ?? "."
+        throw PackError(
+            ErrorCode.packTypeCheckFailed, "\(packId) failed its \(record.type) check (\(detail)\(at))\(tail)",
+            detail: detail, path: r.path, packId: packId)
     }
 
     /// Commit: the pointer swap, activation, garbage collection.

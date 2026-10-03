@@ -478,7 +478,8 @@ final class PackEngineTests: XCTestCase {
         c = await code { _ = try await e.ensure(["djdl.other"]) }
         XCTAssertEqual(c, ErrorCode.packNotPinned)
 
-        let table = treePack(packId: "djdl.table", version: "1.0.0", seq: 1, files: ["a": "1"], type: "l10n.table")
+        // P4-16 built in data.json and l10n.table; audio.bank has no Swift handler (a typed N/A).
+        let table = treePack(packId: "djdl.table", version: "1.0.0", seq: 1, files: ["a": "1"], type: "audio.bank")
         let t = packEngine(server: ByteServer(table), stamp: stampFor(table))
         _ = try await t.load()
         c = await code { _ = try await t.ensure(["djdl.table"]) }

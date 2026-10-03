@@ -1277,10 +1277,10 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.state": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.handlers": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.type.godot.zip": CapabilityRow(status: "na", service: "release", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
-    "packs.type.l10n.table": CapabilityRow(status: "planned", service: "release", na: []),
-    "packs.type.data.json": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.type.l10n.table": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.type.data.json": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.type.audio.bank": CapabilityRow(status: "na", service: "release", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
-    "packs.type.ml.model": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.type.ml.model": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.provides": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.transport.apple": CapabilityRow(status: "planned", service: "distribution", na: []),
     "packs.transport.play": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1293,4 +1293,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "656512fb91ac68bdcb1e7f6f49178ba4dfe68067cd23d76adb28fef6307923d4"
+public let CAPABILITY_DIGEST = "bb19e9124c31dd360d1ab4c5304eaeb496c7d43105eb77a274bcc57e87a3b5ff"
