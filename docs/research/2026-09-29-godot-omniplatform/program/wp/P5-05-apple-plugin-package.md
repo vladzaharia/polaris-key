@@ -192,3 +192,7 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
   `distribution/outlets/app_store.gd` and `testflight.gd` call it.
 - The Xcode patch script and the export-plugin switches for store and sideload IPAs.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-05 done`.
+
+## Plan amendments (S-09)
+
+The spike note [`notes/S-09-apple-storekit-distributor.md`](../../notes/S-09-apple-storekit-distributor.md) changes this package: its §Recommendation and §Proposed edits for this package override this brief where they differ.

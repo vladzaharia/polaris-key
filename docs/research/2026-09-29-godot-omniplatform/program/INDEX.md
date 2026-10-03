@@ -194,7 +194,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [S-06](wp/S-06-outlet-signals.md) ✋             | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | done   |
 | [S-07](wp/S-07-policy-recheck.md)                | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done   |
 | [S-08](wp/S-08-cloudflare-async-compute.md) ✋   | Cloudflare Queues, Workflows and Containers for lazy deltas                                                     | —          | spike-runner | 0.5–1    | done   |
-| [S-09](wp/S-09-apple-storekit-distributor.md) ✋ | StoreKit 2, AppTransaction, AppDistributor, Keychain and the Godot iOS binding                                  | —          | spike-runner | 0.5–1    | todo   |
+| [S-09](wp/S-09-apple-storekit-distributor.md) ✋ | StoreKit 2, AppTransaction, AppDistributor, Keychain and the Godot iOS binding                                  | —          | spike-runner | 0.5–1    | done   |
 | [S-10](wp/S-10-android-play-installer.md) ✋     | Play In-App Updates, Play Asset Delivery, PackageInstaller and the Godot Android binding                        | —          | spike-runner | 0.5–1    | todo   |
 | [S-11](wp/S-11-desktop-updaters.md) ✋           | Sparkle, Velopack, WinSparkle and StoreContext from a Godot desktop app                                         | —          | spike-runner | 0.5–1    | todo   |
 

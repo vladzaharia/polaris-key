@@ -178,3 +178,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
   the `applyStoreGrant` hook; `core/x509.ts` for P6-02.
 - `PolarisKey.commerce` in Godot, which D-05 uses for Diceroll's paid packs.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-01 done`.
+
+## Plan amendments (S-09)
+
+The spike note [`notes/S-09-apple-storekit-distributor.md`](../../notes/S-09-apple-storekit-distributor.md) changes this package: its §Recommendation and §Proposed edits for this package override this brief where they differ.
