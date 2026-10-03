@@ -227,7 +227,14 @@ won:
 - **Lead follow-up, non-public Velopack delivery:** the Worker is unchanged. Discovery does not
   expose the delivery access, so `PKeyVelopack` cannot refuse up front. A 401 or 403 download
   answers `unsupported` (`product`) naming the cause. The docs page, the SDK README and the parity
-  note say that Velopack needs public delivery for now.
+  note say that Velopack needs public delivery for now. A local check with ureq 3.4.2 (Velopack's
+  HTTP client) showed it drops `Authorization` on every redirect, even a same-origin one. So a
+  same-origin redirect would not fix this: the route must stream the bytes or redirect to a
+  signed URL.
+- **The e2e server answers each redirect with `Connection: close`.** Its HTTP/1.0 responses
+  otherwise let ureq pool the 302's connection and fail the redirected request with "Peer
+  disconnected" (the second CI run's Velopack failure). The Worker's HTTP/1.1 route is not
+  affected.
 
 Acceptance as delivered:
 

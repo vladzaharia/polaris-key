@@ -49,7 +49,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "t": round(time.time(), 3),
                 "port": self.server.server_port,
                 "method": self.command,
-                "path": self.path,
+                "path": getattr(self, "orig_path", self.path),
                 "status": code,
                 "auth": self.headers.get("Authorization"),
                 "ua": self.headers.get("User-Agent"),
@@ -60,10 +60,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(302)
         self.send_header("Location", location)
         self.send_header("Content-Length", "0")
+        # This server speaks HTTP/1.0 and closes every connection; without the header ureq (the
+        # Velopack client) pools the connection of the 302 and fails the redirected request with
+        # "Peer disconnected". The Worker's route is HTTP/1.1 and keeps the connection open.
+        self.send_header("Connection", "close")
+        self.close_connection = True
         self.end_headers()
         self._log(302)
 
     def do_GET(self):
+        self.orig_path = self.path
         path = self.path.split("?", 1)[0]
         if path.startswith("/redir/"):
             _, _, hostport, rest = self.path.split("/", 3)

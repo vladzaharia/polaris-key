@@ -165,13 +165,13 @@ Check "the Velopack feed's FileNames are bare file names" (($vfeed.Assets | Wher
 $appcast = Get-Content "$Work\serve\ws\appcast.xml" -Raw
 Check "the WinSparkle appcast carries the verified signature and the silent installer arguments" ($appcast -match "sparkle:edSignature" -and $appcast -match "/SILENT")
 
-$server = Start-Process python -ArgumentList "`"$e2e\server.py`"", $Port, "`"$Work\serve`"", "`"$Work\srv.log`"" -PassThru -WindowStyle Hidden
+$server = Start-Process python -ArgumentList "`"$e2e\server.py`"", $Port, "`"$Work\serve`"", "`"$Work\logs\srv.log`"" -PassThru -WindowStyle Hidden -RedirectStandardError "$Work\logs\server.err"
 Start-Sleep 2
 
 function RunCase([string]$name, [string]$exe, [string]$case, [string]$feed, [int]$timeout, [switch]$WaitTarget) {
   $log = "$Work\logs\case-$name.jsonl"
   @{ case = $case; feed = $feed; log = (& $fwd $log); headers = @{ Authorization = "Bearer e2e-token" }; public_key = $pub; target_version = "1.0.1"; quit_after_s = $timeout } | ConvertTo-Json | Set-Content "$Work\run\config.json"
-  $script:mark = if (Test-Path "$Work\srv.log") { (Get-Content "$Work\srv.log").Count } else { 0 }
+  $script:mark = if (Test-Path "$Work\logs\srv.log") { (Get-Content "$Work\logs\srv.log").Count } else { 0 }
   $sw = [Diagnostics.Stopwatch]::StartNew()
   $env:PKEY_SHIM_LOG = "$Work\logs\shim-$name.log"
   Start-Process $exe | Out-Null
@@ -186,7 +186,7 @@ function RunCase([string]$name, [string]$exe, [string]$case, [string]$feed, [int
   Write-Host ("── case {0}: {1:N1} s" -f $name, $sw.Elapsed.TotalSeconds)
   if (Test-Path $log) { Get-Content $log | ForEach-Object { $_.Substring(0, [Math]::Min(400, $_.Length)) } }
 }
-function HttpSince() { if (Test-Path "$Work\srv.log") { Get-Content "$Work\srv.log" | Select-Object -Skip $script:mark } else { @() } }
+function HttpSince() { if (Test-Path "$Work\logs\srv.log") { Get-Content "$Work\logs\srv.log" | Select-Object -Skip $script:mark } else { @() } }
 
 # 4a. The facades in a plain export.
 RunCase facades "$Work\out\ws-1.0.0\pkeye2e.exe" facades "" 30
