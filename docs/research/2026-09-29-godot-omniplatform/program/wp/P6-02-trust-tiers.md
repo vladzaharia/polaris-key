@@ -186,3 +186,16 @@ base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`; App Attes
   the level.
 - **CORS.** The two routes are excluded from CORS (no browser can attest), in `core/cors.ts` and the
   routeCoverage exclusion list.
+- **Native and Godot names.** Swift (`PolarisKeyPlatform/AppAttest.swift`): commands
+  `app_attest_supported`, `app_attest_attest {requestHash, keyId?}`, `app_attest_assert` behind the
+  `AppAttestClient` seam (unsupported `runtime` on macOS, the simulator and extensions). Kotlin
+  (play flavour): `play.PlayIntegrity` over `com.google.android.play:integrity` 1.6.0, Godot binding
+  ops `integrity_prepare` / `integrity_token` (the direct flavour answers unsupported `outlet`).
+  Godot: `PolarisKey.devices.attest()` returns a `PKeyResult` whose detail is
+  `{trust_level, kind, attested_at}`; the App Attest key id is kept in the Keychain store and
+  regenerated on `invalid_key`. The cloud project number comes from the challenge, else the new
+  `PKeyOptions.play_cloud_project_number`. The capability engine registers a
+  `devices.attest|outlet` detector so `supports()` agrees with `attest()`. No CI change was
+  needed: the existing `apple` and `android` jobs run the new Swift, Kotlin and Godot suites.
+  The Swift SDK client itself stays `planned` (unowned) for `devices.attest`, as do Node, Python
+  and React as runtime N/As.
