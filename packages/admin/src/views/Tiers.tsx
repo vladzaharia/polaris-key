@@ -7,7 +7,7 @@ import {
   type TierBody,
   type TierSummary,
 } from "../api.js";
-import { invalidate, useResource } from "../context.js";
+import { useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
 import { useManualChannels } from "./licenses/shared.js";
 import {
@@ -24,6 +24,8 @@ import {
   EditTierDialog,
   type ProfileOption,
 } from "./tiers/dialogs.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * Tiers view: list every tier for a product, create new tiers, edit an existing tier's label,
@@ -32,10 +34,10 @@ import {
  */
 export function Tiers({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
-  const tiersRes = useResource(`tiers:${slug}`, () => api.tiers(slug));
+  const tiersRes = useResource(qk.tiers(slug), () => api.tiers(slug));
   // Profiles are needed for the create/edit profile selectors; a soft dependency (the tier
   // editor still works if this fails — it just shows ids).
-  const profilesRes = useResource(`profiles:${slug}`, () => api.profiles(slug));
+  const profilesRes = useResource(qk.profiles(slug), () => api.profiles(slug));
   const manualChannels = useManualChannels(slug);
 
   const tiers = tiersRes.data?.tiers ?? [];
@@ -56,12 +58,12 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
   const [deleting, setDeleting] = React.useState<TierSummary | null>(null);
   const [busy, setBusy] = React.useState(false);
 
-  const refresh = (): void => invalidate(`tiers:${slug}`);
+  const refresh = (): void => tiersRes.reload();
 
   const handleCreate = async (body: TierBody): Promise<void> => {
     setBusy(true);
     try {
-      await api.createTier(slug, body);
+      await mutate("createTier", slug, body);
       toast.success("Tier created", `“${body.id}” is ready to assign.`);
       setCreateOpen(false);
       refresh();
@@ -75,7 +77,7 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
   const handleSave = async (id: string, body: TierBody): Promise<void> => {
     setBusy(true);
     try {
-      await api.patchTier(slug, id, body);
+      await mutate("patchTier", slug, id, body);
       toast.success("Tier updated", `Saved changes to “${id}”.`);
       setEditing(null);
       refresh();
@@ -90,7 +92,7 @@ export function Tiers({ slug }: { slug: string }): React.ReactElement {
     if (!deleting) return;
     setBusy(true);
     try {
-      await api.deleteTier(slug, deleting.id);
+      await mutate("deleteTier", slug, deleting.id);
       toast.success("Tier deleted", `Removed “${deleting.id}”.`);
       setDeleting(null);
       refresh();

@@ -1,6 +1,5 @@
 import * as React from "react";
-import { api, type ProductDetail } from "../../api.js";
-import { invalidate } from "../../context.js";
+import { type ProductDetail } from "../../api.js";
 import {
   Button,
   Dialog,
@@ -19,6 +18,7 @@ import {
   useToast,
 } from "../../components/ui/index.js";
 import { errorMessage, intOrUndefined, trimmedOrUndefined } from "./util.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * Edit a product's mutable registry fields (name, default policy, and the non-authorizing
@@ -69,13 +69,12 @@ export function EditProductDialog({
     setBusy(true);
     setFormError(null);
     try {
-      await api.updateProduct(product.slug, {
+      await mutate("updateProduct", product.slug, {
         name: trimmedOrUndefined(name),
         defaultMaxOfflineDays: intOrUndefined(maxOfflineDays),
         defaultDeviceLimit: intOrUndefined(deviceLimit),
         adminGroup: trimmedOrUndefined(adminGroup),
       });
-      invalidate("products");
       toast.success("Product updated", `“${product.slug}” saved.`);
       onOpenChange(false);
     } catch (err) {

@@ -7,7 +7,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAdmin } from "../context.js";
-import { hashFor } from "../route.js";
+import { r } from "../console/routes.js";
 import type { ProductRef } from "../api.js";
 import {
   Badge,
@@ -80,7 +80,7 @@ export function Dashboard(): React.ReactElement {
             Your products
           </h3>
           <Button asChild variant="link" size="sm" className="h-auto p-0">
-            <a href={hashFor({ kind: "products" })}>Manage registry</a>
+            <a href={r.products()}>Manage registry</a>
           </Button>
         </div>
 
@@ -91,7 +91,7 @@ export function Dashboard(): React.ReactElement {
             description="Link a repository or create a product to get started."
             action={
               <Button asChild size="sm">
-                <a href={hashFor({ kind: "products" })}>Open registry</a>
+                <a href={r.products()}>Open registry</a>
               </Button>
             }
           />
@@ -110,11 +110,7 @@ export function Dashboard(): React.ReactElement {
 }
 
 function ProductCard({ product }: { product: ProductRef }): React.ReactElement {
-  const href = hashFor({
-    kind: "product",
-    slug: product.slug,
-    view: "overview",
-  });
+  const href = r.overview(product.slug);
   return (
     <Card className="flex h-full flex-col transition-colors hover:border-primary/40">
       <CardHeader className="flex-1">

@@ -11,7 +11,7 @@ import {
   type ReleaseStoreResponse,
   type RolloutVerb,
 } from "../../api.js";
-import { invalidate, useResource } from "../../context.js";
+import { useResource } from "../../context.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Badge,
@@ -32,6 +32,8 @@ import {
   formatBytes,
   isSidecar,
 } from "../releases/ReleaseBuilds.js";
+import { qk } from "../../console/data/queries.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * The distribution MATRIX (P2b-06, README §6.2 item 1): the app's newest releases × the product's
@@ -112,10 +114,10 @@ export function DistributionMatrixView({
   slug: string;
 }): React.ReactElement {
   const { data, loading, error, reload } = useResource<DistributionMatrix>(
-    `distribution-matrix:${slug}`,
+    qk.matrix(slug, "app"),
     () => api.distributionMatrix(slug),
   );
-  const store = useResource<ReleaseStoreResponse>(`releases:${slug}`, () =>
+  const store = useResource<ReleaseStoreResponse>(qk.releases(slug), () =>
     api.releases(slug),
   );
   const toast = useToast();
@@ -126,7 +128,8 @@ export function DistributionMatrixView({
     if (!pending || !data) return;
     setBusy(true);
     try {
-      await api.rolloutAction(
+      await mutate(
+        "rolloutAction",
         slug,
         pending.rollout.outletId,
         pending.rollout.channel,
@@ -139,8 +142,6 @@ export function DistributionMatrixView({
       toast.success(
         `${VERB_DONE[pending.verb]} the ${pending.version} rollout on ${pending.rollout.outletId}`,
       );
-      invalidate(`distribution-matrix:${slug}`);
-      invalidate(`distribution-rollouts:${slug}`);
       setPending(null);
     } catch (err) {
       toast.error(

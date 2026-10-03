@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -80,6 +81,17 @@ export default defineConfig({
     // @polaris-key/brand is a workspace package with its own React 18 dev dependency; its marks
     // must render with THIS package's React 19, never a second copy.
     dedupe: ["react", "react-dom"],
+    alias: [
+      // Radix's scroll lock (react-remove-scroll) injects its CSS with react-style-singleton, a
+      // <style> element the Worker's `style-src 'self'` blocks. The shim keeps the API and
+      // applies the CSS through a constructable stylesheet instead (src/lib/styleSingleton.ts).
+      {
+        find: /^react-style-singleton$/,
+        replacement: fileURLToPath(
+          new URL("./src/lib/styleSingleton.ts", import.meta.url),
+        ),
+      },
+    ],
   },
   build: {
     outDir: "dist",
@@ -93,13 +105,20 @@ export default defineConfig({
         // Third-party code both SPAs share (React, Radix, lucide…) gets a stable, honest name;
         // left to Rollup, the shared chunk was named after its first module (styles-*.js).
         manualChunks(id) {
-          if (id.includes("/node_modules/")) return "vendor";
+          if (!id.includes("/node_modules/")) return undefined;
+          // Split the shared third-party code so no chunk crosses Vite's 500 kB warning: the
+          // Radix primitives and the console's data and palette libraries ship on their own.
+          if (id.includes("/@radix-ui/") || id.includes("/radix-ui/"))
+            return "vendor-radix";
+          if (id.includes("/@tanstack/")) return "vendor-query";
+          if (id.includes("/cmdk/")) return "vendor-cmdk";
+          return "vendor";
         },
         // The app code both entries import (the components/ui kit, lib/, the stylesheet's JS
         // stub) is one Rollup-made chunk; name it for what it is.
         chunkFileNames: (chunk) =>
-          chunk.name === "vendor"
-            ? "assets/vendor-[hash].js"
+          chunk.name.startsWith("vendor")
+            ? "assets/[name]-[hash].js"
             : chunk.isDynamicEntry
               ? "assets/[name]-[hash].js"
               : "assets/shared-[hash].js",

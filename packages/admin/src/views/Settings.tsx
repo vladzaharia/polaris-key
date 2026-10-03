@@ -7,8 +7,8 @@ import {
   type UpdateProductBody,
 } from "../api.js";
 import { useAdmin } from "../context.js";
-import { invalidate, useResource } from "../context.js";
-import { hashFor } from "../route.js";
+import { useResource } from "../context.js";
+import { r } from "../console/routes.js";
 import {
   Button,
   Card,
@@ -24,6 +24,8 @@ import {
   Skeleton,
   useToast,
 } from "../components/ui/index.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * PLATFORM settings — what is left of this view after spec §8 dissolved the grab-bag.
@@ -37,7 +39,7 @@ import {
  * all three, which is the test for "does this belong to the platform".
  */
 export function Settings({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.product(slug), () =>
     api.product(slug).then((r) => r.product),
   );
 
@@ -140,8 +142,7 @@ function GeneralCard({
     };
     setSaving(true);
     try {
-      await api.updateProduct(slug, body);
-      invalidate(`product:${slug}`);
+      await mutate("updateProduct", slug, body);
       toast.success("Settings saved");
     } catch (err) {
       if (err instanceof ApiError && err.fields?.length) {
@@ -242,13 +243,12 @@ function KeyCard({
   const onRotate = async (): Promise<void> => {
     setRotating(true);
     try {
-      const res = await api.rotateProductKey(slug);
+      const res = await mutate("rotateProductKey", slug);
       setRotated({
         kid: res.kid,
         publicKey: res.publicKey,
         status: res.status,
       });
-      invalidate(`product:${slug}`);
       toast.success("Signing key prepared", `New key ${res.kid} is staged.`);
       setConfirm(false);
     } catch (err) {
@@ -339,17 +339,14 @@ function DangerCard({
   const onDelete = async (): Promise<void> => {
     setDeleting(true);
     try {
-      await api.deleteProduct(slug);
-      invalidate(`product:${slug}`);
+      await mutate("deleteProduct", slug);
       toast.success(
         "Product disabled",
         `“${product.name}” was tombstoned in the registry.`,
       );
       // Leave the now-defunct product route; head to the next product or the dashboard.
       const next = me.products.find((prod) => prod.slug !== slug);
-      window.location.hash = next
-        ? hashFor({ kind: "product", slug: next.slug, view: "overview" })
-        : hashFor({ kind: "dashboard" });
+      window.location.hash = next ? r.overview(next.slug) : r.home();
     } catch (err) {
       toast.error(
         "Couldn’t disable the product",

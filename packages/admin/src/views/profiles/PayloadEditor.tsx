@@ -7,7 +7,7 @@ import {
   type ProductCatalog,
   type ProfileDetail,
 } from "../../api.js";
-import { invalidate, useResource } from "../../context.js";
+import { useResource } from "../../context.js";
 import { ManagedPayloadEditor } from "../../ManagedPayloadEditor.js";
 import {
   Button,
@@ -15,6 +15,8 @@ import {
   Skeleton,
   useToast,
 } from "../../components/ui/index.js";
+import { qk } from "../../console/data/queries.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * The managed-payload editor for one profile: load the product catalog, hand it plus the
@@ -35,7 +37,7 @@ export function PayloadEditor({
   profile: ProfileDetail;
 }): React.ReactElement {
   const toast = useToast();
-  const schemaRes = useResource<ProductCatalog>(`schema:${slug}`, () =>
+  const schemaRes = useResource<ProductCatalog>(qk.catalog(slug), () =>
     api.schema(slug),
   );
   const [saving, setSaving] = React.useState(false);
@@ -48,13 +50,11 @@ export function PayloadEditor({
     setSaving(true);
     setServerFields(undefined);
     try {
-      await api.putProfilePayload(slug, profile.id, updates);
+      await mutate("putProfilePayload", slug, profile.id, updates);
       toast.success(
         "Payload saved",
         `Updated ${updates.length} ${updates.length === 1 ? "key" : "keys"}.`,
       );
-      invalidate(`profile:${slug}:${profile.id}`);
-      invalidate(`profiles:${slug}`);
     } catch (err) {
       if (err instanceof ApiError && err.fields?.length) {
         // Row-level, not a toast: the worker already told us which keys are wrong.

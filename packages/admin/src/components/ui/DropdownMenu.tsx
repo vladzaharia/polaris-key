@@ -94,6 +94,35 @@ export function DropdownMenuCheckboxItem({
   );
 }
 
+/** A radio choice inside a `DropdownMenuRadioGroup` (the theme menu): `menuitemradio`, checked mark. */
+export function DropdownMenuRadioItem({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem> & {
+  ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.RadioItem>>;
+}) {
+  return (
+    <DropdownMenuPrimitive.RadioItem
+      ref={ref}
+      className={cn(
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden [&_svg]:size-4 [&_svg]:shrink-0",
+        "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        className,
+      )}
+      {...props}
+    >
+      <span className="absolute left-2 flex size-3.5 items-center justify-center">
+        <DropdownMenuPrimitive.ItemIndicator>
+          <Check className="size-4" />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      {children}
+    </DropdownMenuPrimitive.RadioItem>
+  );
+}
+
 export function DropdownMenuLabel({
   className,
   inset,

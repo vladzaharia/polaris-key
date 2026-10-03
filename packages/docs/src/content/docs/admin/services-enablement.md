@@ -116,7 +116,7 @@ Turning a service off doesn't hide a page — it makes the service **not exist**
 A disabled service's routes 404 exactly like an unregistered slug or a typo'd path (deliberately
 indistinguishable, so probing which services a product runs isn't free), its discovery document
 entry becomes `{"enabled": false}` with no endpoint list, its console nav section drops instead
-of greying out (see [the disabled-service screen](/docs/admin/console-tour/#when-a-service-is-disabled)),
+of greying out (see [the disabled-service page](/docs/admin/console-tour/#when-a-link-goes-nowhere)),
 and the customer portal stops offering whatever that service backed. Read
 [The service model](/docs/start/service-model/) for the four projections and the full coherence
 rule set this page's table is drawn from.

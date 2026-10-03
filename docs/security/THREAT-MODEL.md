@@ -2758,6 +2758,69 @@ it is re-verified at every load and holds nothing secret.
   `AfterFirstUnlock` (backup-restorable) and the device id to a 0600 file; that difference is
   open with the Swift SDK's owner.
 
+### Client updater plugins on the desktop (P5-07)
+
+The Godot SDK hands a binary update to the platform's own updater through optional plugins
+(`sdks/godot/native/`; facades in `addons/polaris_key/native/`). The plugins install new code,
+so what verifies that code matters more than anything else on this path. Polaris Key never
+verifies an update itself on these paths, and no plugin holds a private key: the Sparkle and
+WinSparkle EdDSA private keys are CI's (notes/E1 §C1), and the Worker never sees them.
+
+- **Trust anchors.**
+  - Sparkle verifies every download against `SUPublicEDKey` in the code-signed bundle's
+    `Info.plist`. The bridge refuses to start without that key; an attacker who replaces an
+    update cannot replace the key with it.
+  - WinSparkle verifies the EdDSA signature against `PKeyOptions.update_eddsa_public_key`, which
+    ships inside the game's pack. Whoever can replace the pack can already replace the code, so
+    the key is no weaker than the binary that carries it. Without a key WinSparkle refuses to
+    start.
+  - Velopack has **no signature**: it checks the SHA-1/SHA-256 that the feed lists, over HTTPS,
+    and Authenticode on the installer and Update.exe is the owner's (notes/S-11 §7). Its
+    integrity is therefore the feed's: TLS to the Worker, and the Worker's selection over
+    verified release records. The facades refuse a plain-http feed off loopback.
+- **Disable Library Validation (macOS).** A GDExtension in a hardened-runtime app needs
+  `com.apple.security.cs.disable-library-validation`, which lets the app load a library signed
+  by anyone.
+  - The export plugin adds it only when `polaris_key/sparkle/enabled` is on, and never on a Mac
+    App Store preset. The App Store export logs an error while the bridge is installed.
+  - `sign_and_notarize.sh` fails when the entitlements also grant
+    `com.apple.security.cs.allow-dyld-environment-variables`. The pair would let
+    `DYLD_INSERT_LIBRARIES` inject code into a notarised build.
+  - Residual: with DLV on, a library planted in the bundle loads. The bundle's seal, and
+    notarisation, are what stop that.
+- **Never unsigned.** A macOS export with `codesign/codesign` Disabled keeps the template's own
+  signature on a modified bundle, and Sparkle then rejects every update. The plugin turns
+  Disabled into the built-in ad-hoc signature. Ad hoc is a floor for local runs only: Sparkle's
+  code-signing match and Gatekeeper need a Developer ID (§7 rows 1–4 of the S-11 checklist).
+- **The bearer and redirects.** Foundation, under Sparkle, drops `Authorization` on a
+  cross-origin redirect (measured, S-11 m6). ureq, under Velopack, drops it on every redirect,
+  even a same-origin one (measured in P5-07). WinSparkle's HTTP stack across origins is
+  unmeasured, so treat it the same way. So an `entitled` or `licensed` delivery whose package
+  URL redirects to the bytes host refuses the second hop, and fails closed. Velopack is supported
+  under public delivery only. A 401 or 403 download answers `unsupported` (`product`); it never
+  retries with the bearer in the URL. The bearer is never written into a feed, a log or an
+  enclosure URL.
+- **The headless user driver** installs every update without asking. It exists for unattended
+  tests and is refused unless the process environment sets `PKEY_SPARKLE_HEADLESS=1`. Both the
+  facade and the native bridge check the flag, and nothing a game ships sets it. Anyone able to
+  set a game's environment can already run code as the user.
+- **Runtime DLL loading and the shim (Windows).**
+  - `velopack_libc.dll` and `WinSparkle.dll` are loaded by absolute path from beside the
+    executable. The load uses `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32`,
+    so their own dependencies never come from the current directory or PATH, and a relative path
+    is refused. A writable install folder is the residual: an attacker who can write there can
+    replace the game's exe too.
+  - The Rust launcher shim is the Velopack main exe. It answers the `--veloapp-*` hooks, then
+    starts `<stem>_godot.exe` beside itself with the arguments it got, as OS strings. It reads no
+    network input and, in a release build, no environment variable.
+- **WinSparkle runs installers.** After the EdDSA check passes, WinSparkle runs the downloaded
+  installer with the appcast's `sparkle:installerArguments`, which the Worker derives from the
+  build's `format`. A product that publishes a malicious installer signed with its own EdDSA key
+  is outside this model: that is the release key's compromise (AT-3).
+- **Store builds.** A Microsoft Store export ships no updater but StoreContext: the export plugin
+  removes the updater DLLs and the shim (folder or `.zip`). StoreContext only asks the Store to
+  install what the Store already holds for the package.
+
 ### The Android platform plugin: Keystore and self-update (P5-06)
 
 The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and the
@@ -3109,4 +3172,5 @@ code, or a non-tree layout becomes delegable, or the head or tail sniff is narro
 pack-type handlers (P4-16), a handler starts evaluating what it reads (a script engine, an object
 reviver, a resource loader, a plural-formula evaluator) or resolves a path from payload contents
 other than by exact index match, a type joins `MOUNTED_PACK_TYPES`, or a rule of the `godot.zip`
-reader is relaxed in the CLI or on a device.
+reader is relaxed in the CLI or on a device; or, for the client updater plugins (P5-07), a new
+updater backend, or a change to Disable Library Validation or the signing defaults.

@@ -159,3 +159,5 @@ on the server, respectively.
   enforces once a request lands.
 - [Artifacts, changelog & install](/docs/services/release/artifacts/) — the download route
   behind every enclosure Sparkle fetches.
+- [Godot desktop updaters](/docs/services/update/godot-desktop/) — the same Sparkle rules in
+  the Godot SDK's macOS bridge, and its Windows counterparts.

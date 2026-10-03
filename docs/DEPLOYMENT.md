@@ -207,6 +207,12 @@ The prod IDs are already committed — this private repo is the source of truth 
 config — so this step only applies when bootstrapping a fresh account or a new environment.
 If placeholders remain for the target env, `wrangler deploy --env <env>` cannot bind D1/KV.
 
+Each environment's `[env.<env>.vars]` also carries `PKEY_ENVIRONMENT` (`prod`, `staging` or
+`dev`). `/manage/api/me` echoes it so the console shows a "Staging" or "Dev" badge in its top bar;
+production shows none, and so does a Worker without the var (any other value reads as unset).
+A new environment needs the line beside its `BLOB_ORIGIN`; `test/admin.test.ts` checks the three
+committed ones.
+
 Apply all D1 migrations:
 
 ```sh
