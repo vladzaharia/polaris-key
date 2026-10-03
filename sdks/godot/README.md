@@ -20,7 +20,8 @@ Pick one. Each puts the addon at `res://addons/polaris_key/`.
 
 - **Release zip** (canonical). Download `polaris-key-godot-vX.Y.Z.zip` from the repository's
   GitHub Releases (tags `godot-v*`) and unzip it at your project's root; it holds only
-  `addons/polaris_key/`. In the editor, **AssetLib → Import…** takes the same zip.
+  `addons/polaris_key/`. Up to 4.6, the editor's **AssetLib → Import…** takes the same zip
+  (leave **Ignore asset root** unticked).
 - **Godot Asset Store** (Godot 4.7's in-editor store, or the website): search for
   "Polaris Key" and install the addon.
 - **Asset Library** (the legacy library, for editors up to 4.6): search for "Polaris Key". Its
