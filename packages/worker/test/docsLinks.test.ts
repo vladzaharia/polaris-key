@@ -1,8 +1,8 @@
 /**
  * Console help links ↔ docs site — the drift gate for the in-app documentation links.
  *
- * The console declares its links in exactly two tables: `NavItem.docs` / `NavSection.docs`
- * in `packages/admin/src/route.ts` (view headers — the same table the sidebar renders) and
+ * The console declares its links in exactly two tables: `NavPage.docs` / `NavSection.docs`
+ * in `packages/admin/src/console/nav.ts` (page docs — the same table the sidebar renders) and
  * `DOCS_LINKS` in `packages/admin/src/lib/docsLinks.ts` (dialogs, empty states, callouts).
  * This suite sweeps both SOURCES for `/docs/...` paths and asserts each exists in the built
  * site's slug manifest (`packages/docs/dist/docs-slugs.json`, written by the docs build) —
@@ -23,7 +23,7 @@ const adminSrc = join(here, "..", "..", "admin", "src");
 const slugManifest = join(here, "..", "..", "docs", "dist", "docs-slugs.json");
 
 const LINK_SOURCES = [
-  join(adminSrc, "route.ts"),
+  join(adminSrc, "console", "nav.ts"),
   join(adminSrc, "lib", "docsLinks.ts"),
 ];
 

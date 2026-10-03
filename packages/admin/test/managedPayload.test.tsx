@@ -323,7 +323,7 @@ describe("ManagedPayloadEditor — empty and edge states", () => {
       screen
         .getByRole("link", { name: /Go to Config → Catalog/ })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/config");
+    ).toBe("#/p/djdl/config/catalog");
   });
 });
 

@@ -14,7 +14,7 @@
  *
  * Theme: dark first, following the OS, overridden by data-theme on <html> (tokens.css; the
  * pre-paint script in index.html/manage.html and components/theme.tsx). Section: data-service on
- * <html> and the shell re-points --pk-accent* and --pk-section-bit (components/Shell.tsx).
+ * <html> and the shell re-points --pk-accent* and --pk-section-bit (console/shell/AppShell.tsx).
  */
 
 @import "tailwindcss" source("../");
@@ -89,6 +89,31 @@
   --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
     var(--pk-ease-standard);
   --animate-pk-spin: pk-spin 0.7s linear infinite;
+  /* Disclosure (sidebar sections): Radix Collapsible measures the content height. */
+  --animate-pk-collapse-down: pk-collapse-down var(--pk-duration-base)
+    var(--pk-ease-standard);
+  --animate-pk-collapse-up: pk-collapse-up var(--pk-duration-base)
+    var(--pk-ease-standard);
+  @keyframes pk-collapse-down {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+    }
+  }
+  @keyframes pk-collapse-up {
+    from {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+    }
+    to {
+      height: 0;
+      opacity: 0;
+    }
+  }
 
   @keyframes pk-in {
     from {
@@ -152,6 +177,14 @@
      colour (BRAND.md §7.4). */
   :focus-visible {
     @apply outline-hidden ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* A page heading takes focus after a navigation (ADMIN.md §5.6) so screen readers start there;
+     it is not a control, so it draws no focus ring. */
+  [data-page-title]:focus-visible,
+  main h1[tabindex="-1"]:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
 }
 

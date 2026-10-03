@@ -30,6 +30,7 @@ import {
   Skeleton,
 } from "../../components/ui/index.js";
 import { cn } from "../../lib/cn.js";
+import { qk } from "../../console/data/queries.js";
 
 /**
  * The Release section's Compatibility tab (P4-15, CONTENT §6.9 "console", README §6.2 item 4).
@@ -87,13 +88,12 @@ const LIVENESS_WINDOW = 50;
 
 export function Compatibility({ slug }: { slug: string }): React.ReactElement {
   const [offset, setOffset] = React.useState(0);
-  const compat = useResource<CompatResponse>(
-    `release-compat:${slug}:${offset}`,
-    () => api.releaseCompat(slug, { limit: PAGE, offset }),
+  const compat = useResource<CompatResponse>(qk.compat(slug, offset), () =>
+    api.releaseCompat(slug, { limit: PAGE, offset }),
   );
   // The liveness overlay: Distribution's matrix of the app, newest releases (its own maximum).
   const liveness = useResource<DistributionMatrix>(
-    `distribution-matrix:${slug}:compat`,
+    qk.matrix(slug, "compat"),
     () =>
       api.distributionMatrix(slug, {
         deliverable: "app",

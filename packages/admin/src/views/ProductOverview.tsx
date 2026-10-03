@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { api, type ProductDetail } from "../api.js";
 import { useResource } from "../context.js";
-import { hashFor } from "../route.js";
+import { r } from "../console/routes.js";
 import {
   Badge,
   Button,
@@ -31,13 +31,14 @@ import {
   setupStateOf,
   signingBundleOf,
 } from "./products/util.js";
+import { qk } from "../console/data/queries.js";
 
 export function ProductOverview({
   slug,
 }: {
   slug: string;
 }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.product(slug), () =>
     api.product(slug).then((r) => r.product),
   );
 
@@ -109,14 +110,10 @@ function Header({
       </div>
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" size="sm">
-          <a href={hashFor({ kind: "product", slug, view: "settings" })}>
-            Settings
-          </a>
+          <a href={r.settings(slug)}>Settings</a>
         </Button>
         <Button asChild size="sm">
-          <a href={hashFor({ kind: "product", slug, view: "licenses" })}>
-            Create license
-          </a>
+          <a href={r.licenses(slug)}>Create license</a>
         </Button>
       </div>
     </header>
@@ -296,7 +293,7 @@ function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
         ? "A public key is available for client pinning."
         : "Prepare or rotate a signing key before SDKs rely on signed config.",
       status: signing.publicKey ? "done" : "action",
-      href: hashFor({ kind: "product", slug: product.slug, view: "settings" }),
+      href: r.settings(product.slug),
       actionLabel: signing.publicKey ? "Review key" : "Prepare key",
     },
     {
@@ -306,9 +303,7 @@ function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
         ? `Missing: ${missing.join(", ")}`
         : "All reported setup requirements are configured.",
       status: missing.length ? "action" : "done",
-      href: missing.length
-        ? hashFor({ kind: "product", slug: product.slug, view: "secrets" })
-        : undefined,
+      href: missing.length ? r.keys(product.slug) : undefined,
       actionLabel: "Set secrets",
     },
   ];
@@ -323,11 +318,7 @@ function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
         title: "License defaults",
         description: `${product.defaultDeviceLimit} devices, ${product.defaultMaxOfflineDays} offline days by default.`,
         status: "done",
-        href: hashFor({
-          kind: "product",
-          slug: product.slug,
-          view: "settings",
-        }),
+        href: r.settings(product.slug),
         actionLabel: "Edit defaults",
       },
       {
@@ -336,11 +327,7 @@ function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
         description:
           "Create a test license to verify keys, devices, and policy before rollout.",
         status: "action",
-        href: hashFor({
-          kind: "product",
-          slug: product.slug,
-          view: "licenses",
-        }),
+        href: r.licenses(product.slug),
         actionLabel: "Create test license",
       },
     );
@@ -352,7 +339,7 @@ function setupChecklistOf(product: ProductDetail): SetupChecklistItem[] {
       title: "Review setup warning",
       description: warning,
       status: "action",
-      href: hashFor({ kind: "product", slug: product.slug, view: "overview" }),
+      href: r.overview(product.slug),
       actionLabel: "Review",
     });
   }
@@ -529,26 +516,10 @@ function SdkCard({ product }: { product: ProductDetail }): React.ReactElement {
         </pre>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
-            <a
-              href={hashFor({
-                kind: "product",
-                slug: product.slug,
-                view: "config",
-              })}
-            >
-              Review config
-            </a>
+            <a href={r.catalog(product.slug)}>Review config</a>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <a
-              href={hashFor({
-                kind: "product",
-                slug: product.slug,
-                view: "identity",
-              })}
-            >
-              Review identity
-            </a>
+            <a href={r.portal(product.slug)}>Review identity</a>
           </Button>
         </div>
       </CardContent>

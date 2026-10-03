@@ -3,7 +3,8 @@ import { AlertTriangle, Boxes, ChevronRight } from "lucide-react";
 import type { DeliverableDto } from "../../api.js";
 import { api } from "../../api.js";
 import { useResource } from "../../context.js";
-import { navigate } from "../../route.js";
+import { r } from "../../console/routes.js";
+import { navigate } from "../../console/router.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Badge,
@@ -19,6 +20,7 @@ import {
 } from "../../components/ui/index.js";
 import { absoluteTime, relativeTime } from "../format.js";
 import { ContentKeys } from "./ContentKeys.js";
+import { qk } from "../../console/data/queries.js";
 
 /**
  * The Release section's Deliverables tab (P4-09): the app and every pack the product declares,
@@ -37,13 +39,12 @@ import { ContentKeys } from "./ContentKeys.js";
  * device follows that until the next publish (plans/P4-01.md §8.2 risk 14).
  */
 export function Deliverables({ slug }: { slug: string }): React.ReactElement {
-  const list = useResource(`deliverables:${slug}`, () =>
-    api.deliverables(slug),
-  );
+  const list = useResource(qk.deliverables(slug), () => api.deliverables(slug));
   const rows = list.data?.deliverables ?? [];
   const gateKnown = list.data?.gateKnown ?? true;
-  const open = (d: DeliverableDto): void =>
-    navigate({ kind: "product", slug, view: "deliverable", id: d.id });
+  const open = (d: DeliverableDto): void => {
+    navigate(r.deliverable(slug, d.id));
+  };
 
   const columns: ColumnDef<DeliverableDto>[] = [
     {

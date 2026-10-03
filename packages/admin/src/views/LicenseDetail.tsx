@@ -2,7 +2,7 @@ import * as React from "react";
 import { ArrowLeft, PackageOpen, Pencil } from "lucide-react";
 import { api, ApiError, type OverrideUpdate } from "../api.js";
 import { invalidate, useResource } from "../context.js";
-import { hashFor } from "../route.js";
+import { r } from "../console/routes.js";
 import {
   Badge,
   Button,
@@ -32,6 +32,8 @@ import {
   OverridesEditor,
   type PayloadLayer,
 } from "./licenses/OverridesEditor.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * The license detail view. Loads the license (with embedded keys, devices, and redacted override
@@ -47,7 +49,7 @@ export function LicenseDetail({
   id: string;
 }): React.ReactElement {
   const toast = useToast();
-  const licenseKey = `license:${slug}:${id}`;
+  const licenseKey = qk.license(slug, id);
   const {
     data: license,
     loading,
@@ -55,10 +57,8 @@ export function LicenseDetail({
     reload,
   } = useResource(licenseKey, () => api.license(slug, id));
   // Tiers drive the re-licensing selector in the edit dialog.
-  const { data: tierData } = useResource(`tiers:${slug}`, () =>
-    api.tiers(slug),
-  );
-  const { data: catalog } = useResource(`schema:${slug}`, () =>
+  const { data: tierData } = useResource(qk.tiers(slug), () => api.tiers(slug));
+  const { data: catalog } = useResource(qk.catalog(slug), () =>
     api.schema(slug),
   );
 
@@ -93,7 +93,7 @@ export function LicenseDetail({
   // One resource for the whole stack: a hook per profile would make the hook count depend on
   // how many profiles a license happens to carry.
   const { data: layers } = useResource<PayloadLayer[]>(
-    `profile-stack:${slug}:${stackKey}`,
+    qk.profileStack(slug, stackKey),
     () =>
       stackKey === ""
         ? Promise.resolve([])
@@ -109,7 +109,7 @@ export function LicenseDetail({
 
   const refresh = React.useCallback(() => {
     invalidate(licenseKey);
-    invalidate(`licenses:${slug}`);
+    invalidate(qk.licenses(slug));
     reload();
   }, [licenseKey, slug, reload]);
 
@@ -118,7 +118,7 @@ export function LicenseDetail({
     const enable = license.status !== "active";
     setToggling(true);
     try {
-      await api.setLicenseEnabled(slug, id, enable);
+      await mutate("setLicenseEnabled", slug, id, enable);
       toast.success(enable ? "License enabled" : "License disabled");
       refresh();
       setConfirmEnable(false);
@@ -137,7 +137,7 @@ export function LicenseDetail({
     setSavingOverrides(true);
     setOverrideFields(undefined);
     try {
-      await api.putLicenseOverrides(slug, id, updates);
+      await mutate("putLicenseOverrides", slug, id, updates);
       toast.success(
         "Overrides saved",
         `${updates.length} change${updates.length === 1 ? "" : "s"} applied.`,
@@ -163,7 +163,7 @@ export function LicenseDetail({
     }
   };
 
-  const backHref = hashFor({ kind: "product", slug, view: "licenses" });
+  const backHref = r.licenses(slug);
 
   if (error) {
     return (
