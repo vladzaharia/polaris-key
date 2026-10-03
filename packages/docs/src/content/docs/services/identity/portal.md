@@ -151,6 +151,14 @@ the portal itself proved (a magic link it sent, or an `email_verified: true` cla
 match a license's `sub`, so subjects minted by mutually untrusted custom IdPs can never collide
 across products (the R5 audit findings, `R5-01` and `R5-02`).
 
+## Supported browsers
+
+The portal's UI is built on Tailwind CSS v4, whose generated styles rely on modern CSS
+(cascade layers, `@property`, `color-mix()`). The floor is **Safari 16.4+, Chrome 111+ (and
+Chromium-based Edge 111+), and Firefox 128+**. An older browser still reaches every route, but
+the page renders largely unstyled. Point a customer on an older browser at an update before
+debugging anything else.
+
 ## See also
 
 - [Product OIDC](/docs/services/identity/oidc/) — the platform provider `/login` shares, and how

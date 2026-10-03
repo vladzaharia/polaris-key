@@ -449,7 +449,7 @@ export function ManagedPayloadEditor({
                         [group.category]: !prev[group.category],
                       }))
                     }
-                    className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <ChevronDown
                       aria-hidden
@@ -538,7 +538,7 @@ export function ManagedPayloadEditor({
       {/* The bar only exists while there is something to save — a permanently-parked footer
           reads as chrome, and an operator stops seeing it. */}
       {updates.length > 0 ? (
-        <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-t border-border bg-background/95 px-1 py-3 backdrop-blur">
+        <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-t border-border bg-background/95 px-1 py-3 backdrop-blur-sm">
           <p
             className="mr-auto text-sm font-medium"
             role="status"

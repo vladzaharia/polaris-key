@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/App.js";
 import { resetCache } from "../src/context.js";
@@ -230,17 +236,17 @@ describe("service-grouped nav (D-15)", () => {
 });
 
 describe("per-section accents (D-17)", () => {
-  it("tags each sidebar group with its brand token — License is `key`, Identity is `id`", async () => {
+  it("tags each sidebar group with its brand token — the service slug", async () => {
     boot(ALL_ON, "#/p/djdl/overview");
     await screen.findByRole("navigation", { name: "Primary" });
     const nav = screen.getByRole("navigation", { name: "Primary" });
-    // These attribute values ARE the CSS contract (`[data-service="…"]` in styles.css); a
+    // These attribute values ARE the CSS contract (`[data-service="…"]` in the brand's tokens.css); a
     // rename on either side is a silent theming regression with no type to catch it.
     expect(
       [...nav.querySelectorAll("[data-service]")].map((el) =>
         el.getAttribute("data-service"),
       ),
-    ).toEqual(["core", "key", "config", "release", "update", "id"]);
+    ).toEqual(["core", "license", "config", "release", "update", "identity"]);
   });
 
   it("accents the content area from the ACTIVE route's section", async () => {
@@ -249,7 +255,7 @@ describe("per-section accents (D-17)", () => {
     const main = screen.getByRole("main");
     expect(
       main.querySelector("[data-service]")?.getAttribute("data-service"),
-    ).toBe("key");
+    ).toBe("license");
   });
 
   it("falls back to the core accent off a product route", async () => {
@@ -259,6 +265,57 @@ describe("per-section accents (D-17)", () => {
     expect(
       main.querySelector("[data-service]")?.getAttribute("data-service"),
     ).toBe("core");
+  });
+});
+
+describe("the header mark's section bit (BRAND.md §6)", () => {
+  it("follows the route: core (the kit gold) on platform pages, the section's accent elsewhere", async () => {
+    boot(ALL_ON, "#/p/djdl/overview");
+    const brand = await screen.findByRole("button", {
+      name: "Polaris Key dashboard",
+    });
+    // The 48 px display-cut Pinned K, with its terminal bit drawn to read --pk-section-bit.
+    const mark = brand.querySelector("svg")!;
+    expect(mark.getAttribute("width")).toBe("48");
+    const bit = (): Element | null =>
+      brand.querySelector("path.polaris-section-bit");
+    expect(bit()).not.toBeNull();
+    expect(bit()!.getAttribute("style") ?? "").toContain("--pk-section-bit");
+    // The section the bit resolves against: the nearest data-service ancestor, and <html>, which
+    // is what portalled dialogs and menus inherit.
+    const section = (): string | null | undefined =>
+      bit()?.closest("[data-service]")?.getAttribute("data-service");
+    const htmlSection = (): string | null =>
+      document.documentElement.getAttribute("data-service");
+    expect(section()).toBe("core");
+    expect(htmlSection()).toBe("core");
+
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    await userEvent.click(within(nav).getByRole("button", { name: "Tiers" }));
+    await waitFor(() => expect(section()).toBe("license"));
+    expect(htmlSection()).toBe("license");
+
+    await userEvent.click(
+      within(nav).getByRole("button", { name: "Profiles" }),
+    );
+    await waitFor(() => expect(section()).toBe("config"));
+    expect(htmlSection()).toBe("config");
+
+    await userEvent.click(
+      within(nav).getByRole("button", { name: "Dashboard" }),
+    );
+    await waitFor(() => expect(section()).toBe("core"));
+    expect(htmlSection()).toBe("core");
+  });
+
+  it("leaves <html> unsectioned once the shell is gone", async () => {
+    boot(ALL_ON, "#/p/djdl/tiers");
+    await screen.findByRole("navigation", { name: "Primary" });
+    expect(document.documentElement.getAttribute("data-service")).toBe(
+      "license",
+    );
+    cleanup();
+    expect(document.documentElement.hasAttribute("data-service")).toBe(false);
   });
 });
 

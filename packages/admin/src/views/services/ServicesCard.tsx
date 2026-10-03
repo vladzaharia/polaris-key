@@ -94,7 +94,7 @@ const SERVICE_ROWS: ServiceRow[] = SERVICE_TABLE.map((row) => {
     slug: row.slug,
     label: row.label,
     description: row.summary,
-    icon: <Icon aria-hidden className="size-4 text-primary" />,
+    icon: <Icon aria-hidden className="size-4 text-accent-fg" />,
   };
 });
 

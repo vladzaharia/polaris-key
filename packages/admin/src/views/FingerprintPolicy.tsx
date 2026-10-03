@@ -257,7 +257,7 @@ function PolicyCard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1.5">
               <CardTitle className="flex items-center gap-2">
-                <Fingerprint aria-hidden className="size-4 text-primary" />
+                <Fingerprint aria-hidden className="size-4 text-accent-fg" />
                 Fingerprint policy
               </CardTitle>
               <CardDescription>
@@ -428,7 +428,7 @@ function ProbesCard({
         <CardTitle>Probes</CardTitle>
         <CardDescription>
           Declared in the product’s{" "}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+          <code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-xs">
             .pkey/product
           </code>{" "}
           manifest and applied by a resync. Each device reports presence and an

@@ -97,7 +97,7 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
       cell: (p) => (
         <a
           href={hashFor({ kind: "product", slug, view: "profile", id: p.id })}
-          className="rounded-sm font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-sm font-medium text-foreground hover:text-accent-fg hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           {p.name || p.id}
         </a>

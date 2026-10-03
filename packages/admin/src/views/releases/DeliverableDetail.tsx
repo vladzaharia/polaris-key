@@ -203,7 +203,7 @@ function ReleasesCard({
             onClick={() => toggle(r.releaseId)}
             aria-expanded={expanded}
             aria-label={`${expanded ? "Hide" : "Show"} variants of ${r.version}`}
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             {expanded ? (
               <ChevronDown className="size-4" aria-hidden />

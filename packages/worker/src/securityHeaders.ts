@@ -9,7 +9,8 @@
  *
  * Two policies:
  *   - `appSecurityHeaders` — the SPA shells and the JSON APIs. `script-src 'self'` because
- *     the SPA loads its own bundle.
+ *     the SPA loads its own bundle, plus the SHA-256 of the shells' one inline script (the
+ *     pre-paint theme script, `adminCsp.ts`); never `'unsafe-inline'`.
  *   - `staticHtmlSecurityHeaders` — every server-rendered interstitial (sign-in errors, the
  *     device-authorization page, the "you're signed in" page, the edge-mint auth page).
  *     These pages have no scripts at all, so `default-src 'none'` is achievable: an injected
@@ -19,14 +20,19 @@
  *     `'self'`.
  */
 
-/** SPA + JSON policy: the admin/portal bundles execute their own scripts. */
+import { ADMIN_SCRIPT_HASHES } from "./adminCsp.js";
+
+/**
+ * SPA + JSON policy: the admin/portal bundles execute their own scripts, plus the shells' one
+ * inline pre-paint theme script, allowed by its hash.
+ */
 const APP_CSP = [
   "default-src 'self'",
   "base-uri 'none'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self'",
+  `script-src ${["'self'", ...ADMIN_SCRIPT_HASHES].join(" ")}`,
   "style-src 'self'",
   "img-src 'self' data:",
   "connect-src 'self'",

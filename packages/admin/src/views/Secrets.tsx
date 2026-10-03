@@ -154,7 +154,7 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
                         <div className="min-w-0">
                           <button
                             type="button"
-                            className="break-all text-left font-mono text-xs text-primary underline-offset-4 hover:underline"
+                            className="break-all text-left font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
                             onClick={() => setName(secret.name)}
                           >
                             {secret.name}

@@ -209,7 +209,7 @@ function ReleaseStoreCard({
             onClick={() => toggle(r.releaseId)}
             aria-expanded={expanded}
             aria-label={`${expanded ? "Hide" : "Show"} builds of ${r.version}`}
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             {expanded ? (
               <ChevronDown className="size-4" aria-hidden />
@@ -432,7 +432,7 @@ function ManifestNote(): React.ReactElement {
   return (
     <Card className="border-primary/30 bg-primary/5">
       <CardContent className="flex gap-3 p-4">
-        <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+        <Info className="mt-0.5 size-4 shrink-0 text-accent-fg" aria-hidden />
         <div className="space-y-1 text-sm">
           <p className="font-medium">
             Release config is managed from the repo manifest.

@@ -297,7 +297,7 @@ export function SchemaField({
   };
 
   const widget = widgetFor(entry);
-  let control: React.ReactElement;
+  let control: React.ReactElement<{ id?: string }>;
 
   if (widget === "switch") {
     control = (
@@ -589,8 +589,8 @@ export function ManagementStateControl({
                 }
               }}
               className={cn(
-                "rounded-[calc(var(--pk-radius)-6px)] px-2.5 py-1 text-xs font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "rounded-sm px-2.5 py-1 text-xs font-medium transition-colors",
+                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 selected
                   ? "bg-primary text-primary-foreground shadow-pk-sm"
