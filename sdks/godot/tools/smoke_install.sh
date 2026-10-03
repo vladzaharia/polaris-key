@@ -136,11 +136,16 @@ func _enter_tree() -> void:
 func _process(_delta: float) -> void:
 	_frames += 1
 	if _phase == 0 and _frames > 10:
-		EditorInterface.set_plugin_enabled("polaris_key", true)
+		# The editor may instantiate this helper twice (4.5 after its first scan): enable once.
+		if not EditorInterface.is_plugin_enabled("polaris_key"):
+			EditorInterface.set_plugin_enabled("polaris_key", true)
 		_phase = 1
 		_frames = 0
 	elif _phase == 1 and _frames > 30:
 		_phase = 2
+		if Engine.has_meta("pkey_smoke_done"):
+			return
+		Engine.set_meta("pkey_smoke_done", true)
 		var problems := PackedStringArray()
 		if not EditorInterface.is_plugin_enabled("polaris_key"):
 			problems.append("plugin polaris_key is not enabled")
