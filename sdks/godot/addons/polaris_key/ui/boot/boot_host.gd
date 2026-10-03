@@ -22,14 +22,18 @@ extends RefCounted
 ##   gate_status()   gate.status from PolarisKey.status()
 ##   decide()        decide.done optional when PolarisKey.update.decide() says the decision is one
 ##                   to show (or, without the signed decision, the v3 check found a newer
-##                   version), otherwise none — also when the check failed or Update is off. Never
-##                   required: no v4 decision stops play (plans/P3-01.md decision 1). The outlet
+##                   version), otherwise none — also when the check failed or Update is off.
+##                   Floors never stop play; a CI-signed revocation of a REQUIRED pack does
+##                   (plans/P4-13.md decision 4, amending P3-01 decision 1): its boot value is
+##                   required, and the machine stops at BLOCKED update-required with the
+##                   revoked-content copy. A `packs` answer is none; FETCH installs it. The outlet
 ##                   adapter acts through decide() (a sidecar pack starts staging in the
 ##                   background, never holding the boot) and through the prompt's action
 ##   fetch(packs)    fetch.done {result, installed} from PolarisKey.update.packs.boot_fetch: the
-##                   required and essential packs of the content stamp (P4-08); `fetch_with`
-##                   also sends fetch.consent and fetch.progress through PKeyBoot. A build
-##                   without a content stamp answers ok with nothing installed
+##                   required and essential packs of the content stamp (P4-08), at a `packs`
+##                   answer's exact releases when DECIDE got one (P4-24); `fetch_with` also sends
+##                   fetch.consent and fetch.progress through PKeyBoot. A build without a content
+##                   stamp answers ok with nothing installed
 ##   mount()         after the first frame has been drawn (RenderingServer.frame_post_draw; one
 ##                   process frame headless), PolarisKey.update.packs.mount(): this boot's
 ##                   `godot.pck` packs in mountOrder, one per frame (S-05 §4.1). mount.done, or
@@ -46,8 +50,11 @@ const OPTIONS_PATH := "res://polaris_key.tres"
 
 ## The PolarisKey node.
 var sdk: Node
-## The update answer DECIDE found to show, or null.
+## The update answer DECIDE found to show (or the revoked-content answer that stops the boot), or
+## null.
 var update_result: PKeyResult = null
+## A `packs` answer's install list DECIDE found (plans/P4-13.md §2.5), for FETCH; [] otherwise.
+var packs_install: Array = []
 ## Run discovery at the top of the sync stage.
 var discover := true
 
@@ -115,11 +122,17 @@ func gate_status() -> Dictionary:
 
 func decide() -> Dictionary:
 	update_result = null
+	packs_install = []
 	var core: PKeyCore = sdk.core
 	if not core.enabled("update"):
 		return _decided("none")
 	var r: PKeyUpdateCheck = await sdk.update.decide()
 	if r.ok:
+		if r.boot == PKeyDecision.BOOT_REQUIRED:
+			update_result = r
+			return _decided("required")
+		if r.decision.get("action") == "packs" and r.decision.get("install") is Array:
+			packs_install = r.decision["install"]
 		if r.boot == PKeyDecision.BOOT_OPTIONAL:
 			update_result = r
 			return _decided("optional")
@@ -157,7 +170,10 @@ func fetch_with(_required: Array, send: Callable, opts: Dictionary) -> Dictionar
 	if p == null or not p.configured():
 		return {"type": "fetch.done", "result": "ok", "installed": []}
 	var forward := send if send.is_valid() else func(_e: Dictionary) -> void: pass
-	return await p.boot_fetch(forward, opts)
+	var o := opts.duplicate()
+	if not packs_install.is_empty() and not o.has("install"):
+		o["install"] = packs_install
+	return await p.boot_fetch(forward, o)
 
 
 func mount(required: Array = []) -> Dictionary:
@@ -192,6 +208,9 @@ func background_packs() -> Array:
 	for id in wanted:
 		if not current.has(id):
 			out.append(id)
+	for t in p.background_targets:
+		if not out.has(t["pack"]):
+			out.append(t["pack"])
 	return out
 
 

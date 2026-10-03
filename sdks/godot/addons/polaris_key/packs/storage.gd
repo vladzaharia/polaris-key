@@ -7,6 +7,10 @@ extends RefCounted
 ##   <root>/content/state.json                 the install state (temp file, read back, rename)
 ##   <root>/content/state.json.torn            a torn document held aside (never overwritten)
 ##   <root>/content/state.json.torn.list       the torn hold's snapshot of the store
+##   <root>/content/revocations.json           the device's revocations (plans/P4-13.md §2.5): the
+##                                             same atomic replace, written only once the first
+##                                             entry is stored (never empty)
+##   <root>/content/revocations.json.torn      a torn revocations document held aside
 ##   <root>/staging/<planId>/objects/<sha256>  objects being fetched (appended, resumable)
 ##   <root>/staging/<planId>/out/              the payload being built (`payload.bin` or a tree)
 ##   <root>/staging/<planId>/bake.json         a trailer bake in progress (A6 §5), for repair
@@ -31,6 +35,8 @@ const EMPTY_SHA256 := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7
 var root := "user://pkey"
 ## Where the install state lives (default `<root>/content/state.json`).
 var state_path := ""
+## Where the revocations live (default `<root>/content/revocations.json`), beside the state.
+var revocations_path := ""
 ## Measured trees of embedded locations (once per process).
 var _embedded_files := {}
 ## Indexes derived from a container's own PCK directory, by location (embedded packs, which
@@ -42,6 +48,7 @@ var _derived_mutex := Mutex.new()
 func _init(p_root := "user://pkey") -> void:
 	root = p_root.trim_suffix("/")
 	state_path = root.path_join("content/state.json")
+	revocations_path = root.path_join("content/revocations.json")
 
 
 func staging_dir() -> String:
@@ -280,6 +287,42 @@ func state_write_hold_list(text: String) -> bool:
 	if st < 0:
 		return false
 	return atomic_write(path, text.to_utf8_buffer())
+
+
+# ── The revocations store (plans/P4-13.md §2.5): the same seam with a second key ──────────
+
+## The revocations document's text: {ok: true, text: String or null} (null ONLY when there is no
+## file; can't-read is never missing) or {ok: false} (it exists but cannot be read).
+func revocations_read() -> Dictionary:
+	var r := read_bytes(revocations_path)
+	if not r["ok"]:
+		return {"ok": false}
+	if r.has("missing"):
+		if DirAccess.dir_exists_absolute(revocations_path):
+			return {"ok": false}
+		return {"ok": true, "text": null}
+	return {"ok": true, "text": (r["bytes"] as PackedByteArray).get_string_from_utf8()}
+
+
+## Replace the revocations document atomically (temp file, read back, rename).
+func revocations_replace(text: String) -> bool:
+	return atomic_write(revocations_path, text.to_utf8_buffer())
+
+
+## Keep a torn revocations document aside as `revocations.json.torn` (never over an earlier one).
+func revocations_quarantine(text: String) -> bool:
+	var torn := revocations_path + ".torn"
+	var st := file_state(torn)
+	if st == 1:
+		return true
+	if st < 0:
+		return false
+	return atomic_write(torn, text.to_utf8_buffer())
+
+
+## Drop a quarantined revocations document (recover_state()).
+func revocations_clear_quarantine() -> bool:
+	return remove_tree(revocations_path + ".torn")
 
 
 # ── Staging ─────────────────────────────────────────────────────────────────────────────────

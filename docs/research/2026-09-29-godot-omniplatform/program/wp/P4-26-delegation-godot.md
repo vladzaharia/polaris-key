@@ -51,3 +51,12 @@ Port P4-19's content-key delegation to the Godot SDK, so every `delegationCases`
 - [ ] Every `delegationCases` and `dataOnlyCases` row passes in the editor and the release template.
 - [ ] Non-normalised paths and extension-disguised resources are refused (P4-08 review lesson).
 - [ ] The full green gate passes.
+
+## Hand-off from P4-24
+
+P4-24 ported the feed revocation `kind` rule into `PKeyFeed.feed_content`, but Godot's update check
+(`services/update/flow.gd`, around lines 341 and 404) skips `kind: delegation` entries both for step
+11 fetching and when deciding whether `relearn` can clear. That is harmless until Godot can hold a
+delegated install. When this package adds delegation support, restore client-core's relevance rule:
+delegation entries count as relevant for `relearn` clearing, exactly as `check.ts` does. Also remove
+the `DELEGATION_PLANNED` and `DATA_ONLY_PLANNED` lists once the sections run for real.

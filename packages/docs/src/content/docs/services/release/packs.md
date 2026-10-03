@@ -486,5 +486,7 @@ revocation has no `revocations.json` and nothing is refused.
   from `user://pkey/store/<sha256>.pck`. `--patch-from` frames are decoded by Godot's own delta
   decoder, so `zstd-patch-from` is advertised on Godot 4.6 and later only. The content stamp is
   `res://pkey_packs/pkey-content.json`, beside the embedded baselines.
-- Node, Web, Python and Swift run the content decision and keep revocations (P4-13, P4-23);
-  Godot's follows in P4-24.
+- Every SDK runs the content decision and keeps revocations (P4-13, P4-23, P4-24). In Godot,
+  `PolarisKey.update.decide()` runs it whenever the build ships a content stamp, the revocations
+  live in `user://pkey/content/revocations.json`, and `PKeyBoot` stops at BLOCKED with the
+  revoked-content copy when a required pack is revoked with no fix.

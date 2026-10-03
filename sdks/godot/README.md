@@ -18,7 +18,9 @@ acts on the decision: one adapter per outlet, the native-updater hooks, the side
 the boot guard (see "Updates by outlet"). P4-08 adds packs, `PolarisKey.update.packs`: a GDScript
 port of client-core's pack core and pipeline, the `godot.pck` and `files.tree` handlers, the delta
 bake through the engine's own decoder, the device-side directory check, and PKeyBoot's FETCH,
-MOUNT and BACKGROUND stages (see "Packs").
+MOUNT and BACKGROUND stages (see "Packs"). P4-24 adds the content decision (the feed's
+`packSets`, `packFloors` and `revocations`, CI-signed revocation records, the `packs` answer,
+`content-floor` and `revoked-content`) and the device's revocations (see "Revocations").
 
 ## Layout
 
@@ -55,7 +57,8 @@ sdks/godot/
     services/update/          flow.gd (PKeyUpdateFlow: §2.5 steps 2–18, client-core
                               `runUpdateCheck`) and the result classes
     distribution/decision.gd  PKeyDecision: rollout_bucket, effective_capabilities (the compiled
-                              outlet tables), resolve_update_outlet, decide_update, boot_decision
+                              outlet tables), resolve_update_outlet, decide_update (the content
+                              decision included), select_pack_rows, boot_decision
     distribution/outlets/     PKeyOutletAdapter and one adapter per outlet kind (direct.gd,
                               app_store.gd, steam.gd, web.gd, …; adapters.gd maps kinds to them);
                               the native-updater bridges PKeyNativeBridge, PKeySparkleBridge,
@@ -68,14 +71,17 @@ sdks/godot/
                               transport's redirect and credential rules, gzip off
     services/packs.gd         PKeyPacks (PolarisKey.update.packs, P4-08): start, ensure, estimate,
                               mount, boot_fetch, background, state, path, rollback, confirm,
-                              packSetId; the pack signals
+                              packSetId; the pack signals; P4-24: ensure_releases, revocations,
+                              content_input, record_revocations
     packs/                    the pack core, ported from client-core `packs/`: pack_claims.gd
                               (PKeyPackClaims: pack ids, object refs, content claims, the pack
                               record claims, variant keys, packSetId, the content stamp), files.gd
                               (PKeyPackFiles: the files index, path rules, treeDigest), select.gd
                               (PKeyPackSelect: selectVariant, planTarget, the planner), patch.gd,
                               apply.gd (PKeyPackApply: full, delta, file), marker.gd, state.gd
-                              (PKeyPackState), engine.gd (PKeyPackEngine: the pipeline), and the
+                              (PKeyPackState), revocations.gd (PKeyPackRevocations: the sibling
+                              revocations.json, P4-24), engine.gd (PKeyPackEngine: the pipeline,
+                              pack-revoked), and the
                               Godot ports: zstd.gd (PKeyPackZstd: decompress, the window rule,
                               GDDL prefix decodes), pck.gd (PKeyPck: the PCK reader, the header and
                               directory checks, helper packs, the trailer), storage.gd
@@ -105,9 +111,10 @@ sdks/godot/
     core/version.gd           PKeyVersion: parse_version, compare_versions (semver, semver+build,
                               4part; digit strings, no floats)
     core/feed.gd              PKeyFeed: feed_claims, verify_feed, feed_floor, reload_feeds,
-                              commit_feed (`pkey-feed+jws`)
+                              commit_feed (`pkey-feed+jws`), feed_content, with_feed_content
     core/release_record.gd    PKeyReleaseRecord: record_hash, release_record_claims,
-                              verify_release_record (`pkey-release+jws`, hash before signature)
+                              verify_release_record (`pkey-release+jws`, hash before signature),
+                              revocation_of, verify_revocation, newer_revocation
     core/store/               PKeyStore, PKeyFileStore (0600, temp + rename), PKeyMemoryStore
     core/transport.gd         PKeyTransport: redirects by hand, credentials dropped cross-origin
     core/discovery.gd, sync.gd, token.gd, headers.gd, errors.gd, result.gd, caps.gd, semver.gd, device_id.gd
@@ -144,7 +151,8 @@ sdks/godot/
     updater/                  the updater suite's groups (adapters, bridges, download, swap,
                               guard, boot, grep) and their support.gd
     packs/                    the packs suite's groups (content, plan, records, pck, bake, engine,
-                              state, http, boot, guard, uid), support.gd and fixtures.gd (pack
+                              state, http, boot, guard, uid, revocations), support.gd and
+                              fixtures.gd (pack
                               records signed with the corpus's test release key by
                               support/test_signer.gd, a fake pack transport)
     fixtures/packs/           P4-03's PCK fixtures and lint verdicts (check/) and the kaykit v1/v2
@@ -420,8 +428,25 @@ fetches the record the target for this platform pins and verifies it hash first,
   answers as `stable`; record THIS as a staged update's channel), `decision` (a Dictionary with
   `update-matrix.json`'s members), `feed` (`network` | `committed`), `record` (`network` |
   `cache` | `none`), `errors` ({code, detail}: what went wrong on the way), `boot` (`none` |
-  `optional`; no v4 answer stops play) and `undismissable` (a mandatory offer or any `blocked`:
-  a prompt the player cannot dismiss over a game that keeps running). `feed_doc` and
+  `optional` | `required`: floors never stop play; only a CI-signed revocation of a REQUIRED pack
+  gives `required`, plans/P4-13.md decision 4, which amends P3-01 decision 1) and
+  `undismissable` (a mandatory offer or any `blocked`: a prompt the player cannot dismiss over a
+  game that keeps running).
+- **The content decision** (plans/P4-13.md §2.5, §2.6; P4-24). With a content stamp, `decide()`
+  hands the flow `packs.content_input()` (the stamp and its holds, the running set with embedded
+  baselines, the variant preferences and the stored revocations) and runs steps 10–14: the
+  feed's content members (`PKeyFeed.feed_content`, parsed beside the claims: a malformed member
+  is null and never refuses the feed), the relevant revocations (targets among the active
+  releases, the stamp's pins and holds and the selected feed targets; at most 64 fetched per
+  check, verified against `pinned_release_keys` only, `PKeyReleaseRecord.verify_revocation`, the
+  newest `issuedAt` winning, `newer_revocation`), their replacements (verified as pack records
+  with a variant for this host; an unfetched one is not yet usable), and the gate buckets. Row
+  selection matches the engine exactly (`installed.engine`, "" for a build that declared none;
+  no fallback). The answer may then be `packs` (`install`, `revoke`, `set`; applied by the boot's
+  FETCH and BACKGROUND, boot `none`), a `binary` with `prestage` (the next content level's
+  required and essential packs), an offer made mandatory by a `contentBlock`, `blocked
+{content-floor}` (boot `optional`: a locked banner, the game keeps running) or `blocked
+{revoked-content}` (boot `required`). A build without a stamp decides exactly as before. `feed_doc` and
   `record_doc` are the verified documents P3-10's adapters act on.
 - **After a refusal** it decides from the committed feed (the canonical channel the Worker named,
   else the requested name, else its alias target); a stale committed feed answers
@@ -445,8 +470,9 @@ fetches the record the target for this platform pins and verifies it hash first,
   `WorkerThreadPool` task where the build has threads and in frame slices where it has none. A
   feed plus a record is about 10 ms on a desktop release template (the conformance suite logs
   the timing on every run).
-- `update_available(result)` fires for a decision worth showing (`boot == "optional"`), and for
-  the v3 `check()` when this build is behind; test `result is PKeyUpdateCheck`. `last_available`
+- `update_available(result)` fires for a decision worth showing (`boot == "optional"`, or the
+  revoked-content hard stop, `boot == "required"`), and for the v3 `check()` when this build is
+  behind; test `result is PKeyUpdateCheck`. `last_available`
   holds the answer it last carried (null once a later answer has nothing to show), which a
   `PKeyUpdatePrompt` added later replays.
 - `feed(channel)` runs steps 1–9 alone (a `PKeyUpdateFeed`) and `release_record(sha256)` one
@@ -757,6 +783,40 @@ decline stops at BLOCKED `content-declined`, never ERROR. MOUNT mounts and then 
 behind a corner pill that never takes input. Offline with the required set present reaches READY;
 an essential pack missing offline offers "Play offline".
 
+**Revocations** (plans/P4-13.md §2.3–§2.5; P4-24). A revocation is a CI-signed `kind:
+revocation` release record naming the revoked pack record by hash (and an optional
+replacement); only a pinned release key verifies it, so the Worker can withhold content but never
+condemn or substitute it. The engine keeps every verified revocation in a sibling document,
+`user://pkey/content/revocations.json` (`PKeyPackRevocations`), never inside `state.json`:
+
+- A revoked release is never installed, activated or mounted (`pack-revoked`), embedded baselines
+  and pinned packs included; a running one stops at once (a `hot` handler is deactivated, a
+  `godot.pck` not yet mounted is withdrawn from this boot; a mounted one stays loaded until
+  restart, because Godot cannot unload a resource pack, and is refused from the next boot;
+  `set_changed("restart")` fires so the host can prompt a restart), a rollback never goes back to
+  one, and FETCH treats it as missing. A revoked REQUIRED pack gives boot `required` from the next
+  boot.
+- The file is written only once the first entry is stored, with `revocationsStored: true` written
+  to `state.json` first; an absent file is the empty document. A product that never had a
+  revocation has no file, no flag and no `relearn`, so nothing here can refuse a mount.
+- Can't-read is never missing: an unreadable file writes nothing this process and, only when the
+  flag is set, refuses the embedded mount of every pack the stamp pins or the host embeds
+  (`pack-revoked`, detail `relearn`). A torn file is held aside as `revocations.json.torn` and
+  replaced by a fresh document whose `relearn` lists those packs.
+- On load every entry is re-verified against the currently pinned release keys and its stored pin;
+  a key that is no longer pinned forgets its target (the rotation lever for a stolen release key),
+  any other failure adds the pack to `relearn`. A pack in `relearn` has its embedded baseline
+  refused at every boot (online it is fetched and verified again instead) until a fresh,
+  network-verified feed with a usable `revocations` member re-teaches it, or `recover_state()`
+  clears it.
+- At most 256 targets are kept, the oldest by `issuedAt` dropped first.
+
+`revocations()` reports `{revoked, verified, relearn, issue}`; `ensure_releases([{pack,
+release}])` and `estimate_releases` install a `packs` answer's exact releases; `content_input()`
+and `record_revocations()` are what `decide()` uses. `boot_fetch` takes a `packs` answer's
+`install` (PKeyBootHost passes it): required and essential entries install before mount, the rest
+wait in `background_targets` for BACKGROUND.
+
 **Signals**: `pack_progress(id, bytes, total)`, `set_changed(activation)` (a commit or rollback
 changed the active set: `hot` now, `restart` at this boot's mount or the next boot),
 `pack_ready(id)` (usable in this process: a hot commit, or a mount), `pack_failed(id, err)`.
@@ -779,7 +839,10 @@ the running session's reads stay correct and the base comes back byte for byte);
 install, update and rollback; resume; refusals; kaykit v1→v2 by the payload delta, the files
 delta, file and full, each committing CI's v2 at `store/<sha256>.pck`, mounted by the next boot);
 state (the hardened state); http (the real transport against PKeyFakeServer); boot (the stages
-and signal order); guard (two failed boots roll the set back, with and without the binary); uid
+and signal order); guard (two failed boots roll the set back, with and without the binary);
+revocations (`revocations.json`: two loads, torn, unreadable with and without the flag, the flag
+restored, the cap, `pack-revoked` with and without `relearn`, the update check's content steps,
+and the facet's `packs` answer through FETCH and BACKGROUND); uid
 (two independently built, stripped packs resolve their own and this project's `uid://` with
 `replace_files=true`, the class list unchanged). About 6 s in the editor and 5 s on the macOS
 release template (M-series Mac, 4.7.2).
@@ -878,9 +941,13 @@ func _ready() -> void:
   unusable is `error`; `PKeySyncResult.errors` keeps each failed document's status, 0 for no
   answer); gate sends `PolarisKey.status()` and sends it again while it waits whenever the
   licence state changes; decide is `optional` when `PolarisKey.update.decide()` has something to
-  show (or, without the signed decision, the v3 check found a newer version), otherwise `none` —
-  never `required`, so no update floor stops play; fetch and mount drive packs (P4-08, see
-  "Packs"). `fail` is only for a store failure or an options file that
+  show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
+  Floors never stop play; a CI-signed revocation of a REQUIRED pack does (plans/P4-13.md
+  decision 4): decide is then `required` and the boot stops at a confirmed BLOCKED
+  `update-required` with the revoked-content copy ("Content withdrawn": "Some of this game's
+  content was withdrawn by its developer and can't be used. Update the app to keep playing."),
+  with the update button when the answer is an offer and none for `blocked`. A `packs` answer is
+  `none`; fetch and mount drive packs (P4-08, see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
   cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or
   45 s on a build without threads where a bundle verify runs in frame slices), after which the
   machine gets `sync.timeout` and a late answer is dropped.

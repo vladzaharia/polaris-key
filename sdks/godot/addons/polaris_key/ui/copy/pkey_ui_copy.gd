@@ -178,6 +178,9 @@ const DEFAULTS := {
 	"update_mandatory_body": "This version is below the minimum supported version. Please update; you can keep playing until you do.",
 	"update_blocked_title": "This version is no longer supported",
 	"update_blocked_body": "This version is below the minimum supported version, and no update is available here yet. You can keep playing.",
+	"update_content_floor_body": "Some of this game's content needs a newer version. Please update; you can keep playing until you do.",
+	"update_revoked_title": "Content withdrawn",
+	"update_revoked_body": "Some of this game's content was withdrawn by its developer and can't be used. Update the app to keep playing.",
 	# ── PKeyEntitlementBadge ────────────────────────────────────────────────────────────────
 	"badge_included": "Included with %s",
 	# ── PKeyDevMenuSection ──────────────────────────────────────────────────────────────────

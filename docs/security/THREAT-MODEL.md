@@ -1814,7 +1814,8 @@ the reserved record kind `revocation`. It adds no `typ`, no claim and no route.
   (`plans/P4-13.md` decision 4): a revoked required pack cannot be mounted, so continuing would
   end in an error and a boot-guard rollback loop; `required` stops at a confirmed `blocked`. It
   fires only for a pack the stamp marks `required`, revoked with no usable replacement, and so
-  only after a CI-signed revocation. A revoked optional pack is unmounted and play continues.
+  only after a CI-signed revocation. A revoked optional pack stops at once when it is hot or
+  not yet mounted, and play continues (a mounted Godot `godot.pck` is the exception below).
   Floors still never stop play.
 - **A feed target never downgrades a pack**; pins, holds and replacements install exactly, so a
   compromised Worker cannot roll packs back.
@@ -1826,6 +1827,10 @@ Residuals, stated rather than defended:
   yank at least stops new installs. Every SDK release note says so.
 - **SDK downgrade.** A host that downgrades its SDK below P4-13 ignores `revocations.json` and
   may mount a revoked release again.
+- **Godot: a revoked `godot.pck` already mounted in this process stays loaded until restart**,
+  because Godot cannot unload a resource pack. It is withdrawn if not yet mounted, refused from
+  the next boot, and `set_changed` fires so the host can prompt a restart. A revoked REQUIRED
+  pack gives boot `required` from the next boot.
 - **A torn `revocations.json`** is quarantined and replaced by a file whose `relearn` lists the
   stamp's pinned and embedded packs, so their embedded baselines are refused at every boot
   (online the pack is fetched instead) until a fresh feed with a usable `revocations` member

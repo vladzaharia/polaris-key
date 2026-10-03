@@ -53,6 +53,56 @@ passes there exactly as it does in client-core.
 
 ## Acceptance
 
-- [ ] Every `feedContentCases`, `revocationCases` and `contentRows` row passes.
-- [ ] P4-06-style persistence tests (torn, unreadable, two loads) pass for `revocations.json`.
-- [ ] The full green gate passes.
+- [x] Every `feedContentCases`, `revocationCases` and `contentRows` row passes.
+- [x] P4-06-style persistence tests (torn, unreadable, two loads) pass for `revocations.json`.
+- [x] The full green gate passes.
+
+## Corrections from implementation
+
+- **Line references moved.** The brief's text sites were re-located by text: `README.md:389` and
+  `:696` are now the `boot` member of PKeyUpdateCheck and the PKeyBoot "decide" paragraph;
+  `core/stages.gd:40` (the `BOOT_DECISIONS` comment) also said "no v4 update decision maps to it"
+  and was changed with them. `feedCases` was already 80 and `stampCases` 10 after P4-10; this
+  package added the `expect.holds` check (four cases), the two new pointer-set families
+  (`feedContentCases`, `revocationCases`: 553 pointer sets) and the three new sections.
+- **Godot follows client-core, not Python, on integers.** `feed_content`, `revocation_of` and
+  `holds_of` take the verified payload's `non_wire_integers` (PKeyJson's pointer set), as
+  client-core does; `verify_release_record` now also returns `non_wire_integers`, which
+  `verify_revocation` and the update check's record holds use. `verify_feed` and `reload_feeds`
+  carry `content`, and committed feeds keep it, so the decision always reads the token-rule
+  verdict through `with_feed_content`.
+- **Storage seam.** PKeyPackStorage gains `revocations_read`, `revocations_replace`,
+  `revocations_quarantine` and `revocations_clear_quarantine` over
+  `user://pkey/content/revocations.json` (the same atomic write as `state.json`); the engine has a
+  `revocations_enabled` switch instead of an optional second store. The sibling file is written
+  only after `revocationsStored` reached `state.json`. Review round 1 found that the first version
+  set the flag in memory before that write succeeded, so after a failed state write the next
+  `record_revocations` wrote the sibling file without the flag on disk. `_persist_flag` now writes a
+  flagged copy and adopts it only on success (a test records twice over a failing state store).
+  client-core, Python and Swift share the pattern; the lead files that separately.
+- **A revoked `godot.pck` cannot be unmounted.** A revoked restart pack not yet mounted is withdrawn
+  from this boot's mount (`PKeyGodotPckHandler.withdraw`); a mounted one stays until restart and is
+  refused from the next boot. `mount()` also refuses a revoked release (`pack-revoked`).
+- **Applying `packs` in Godot.** PKeyBootHost keeps a `packs` answer's `install` and passes it to
+  `boot_fetch`; entries that are neither required nor essential wait in
+  `PKeyPacks.background_targets` and BACKGROUND installs them with `ensure_releases` (client-core
+  returns them as `background` from `runBootFetch`). `record_revocations` emits
+  `set_changed("hot")` when a running release stops.
+- **Boot and UI.** PKeyBootHost answers `decide.done required` for boot `required`; PKeyBoot's
+  BLOCKED card shows the revoked-content copy (`update_revoked_title`, `update_revoked_body`) with
+  the outlet's update button for an offer and none for `blocked`, and no banner under it. The
+  prompt model gains `required`; `packs` shows nothing; a content floor uses
+  `update_content_floor_body`. `update_available` fires for boot `required` too.
+- **Review round 1.** THREAT-MODEL.md qualifies "a revoked optional pack is unmounted" to hot and
+  not-yet-mounted packs and states the Godot residual (a mounted `godot.pck` stays loaded until
+  restart; `record_revocations` now emits `set_changed("restart")` for it). `feed_content` ports
+  P4-19's `kind` rule for revocation entries (absent or `delegation`; another token drops the
+  entry; a non-token makes the member unusable), so the three `feed` delegationCases run; Godot's
+  update check skips delegation entries (fetching, `relearn`) until P4-26. The other 43
+  delegationCases and all 76 dataOnlyCases are declared planned by exact id. Engine-level
+  persistence scenarios over real files (chmod 000, a directory at the path, the cap through
+  `record_revocations`, rotated keys, torn twice, the lost flag) are in the `revocations` group,
+  which now takes about 36 s in the editor (258 signed revocations).
+- **Timings (M-series Mac).** feedContentCases 48 in 558 ms (4.7.2 editor), 343 ms (4.7.2 macOS
+  release template), 388 ms (4.4.1 editor); revocationCases 27 in 143 / 103 / 139 ms; contentRows
+  44 in 13 / 16 / 12 ms; the `revocations` packs group in 4.1 / 2.7 / 3.7 s.

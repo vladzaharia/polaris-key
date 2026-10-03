@@ -267,6 +267,20 @@ func _update_prompt(t: PKeyTestContext) -> void:
 		m = PKeyUpdatePromptController.model(PKeyVersionCheck.of("2.0.0", "", bad, true), "direct")
 		t.check("update: a v3 url %s offers no action" % bad, m["action"] == "" and m["action_url"] == "" and m["visible"])
 	t.check("update: update_url drops a non-https release_url", PKeyUpdatePromptController.update_url(null, "direct", "file:///x") == "")
+	# plans/P4-13.md §2.6: `packs` shows nothing (the boot's FETCH applies it); a content floor is a
+	# locked banner with its own body; revoked REQUIRED content is the hard stop's copy, with the
+	# offer's action for an offer and none for blocked.
+	var packs_answer = _sc.update_check({"action": "packs", "install": [], "revoke": ["djdl.levels"], "set": [], "discardStaged": false})
+	m = PKeyUpdatePromptController.model(packs_answer, "direct")
+	t.check("update: a packs answer shows nothing", not m["visible"] and not m["required"])
+	m = PKeyUpdatePromptController.model(_sc.update_check({"action": "blocked", "reason": "content-floor", "discardStaged": false}), "direct")
+	t.check("update: a content floor is a locked banner with the content-floor body", m["visible"] and m["locked"] and not m["required"] and m["body"] == "update_content_floor_body")
+	m = PKeyUpdatePromptController.model(_sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false, "contentBlock": "content-floor"}), "direct", "https://example.com/dl")
+	t.check("update: an offer made mandatory by a content floor keeps its action", m["locked"] and not m["required"] and m["body"] == "update_content_floor_body" and m["action"] != "")
+	m = PKeyUpdatePromptController.model(_sc.update_check({"action": "blocked", "reason": "revoked-content", "discardStaged": false}), "direct", "https://example.com/dl")
+	t.check("update: revoked content blocked is the hard stop's copy with no action", m["visible"] and m["required"] and m["locked"] and m["title"] == "update_revoked_title" and m["body"] == "update_revoked_body" and m["action"] == "" and m["action_url"] == "")
+	m = PKeyUpdatePromptController.model(_sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false, "contentBlock": "revoked-content"}), "direct", "https://example.com/dl")
+	t.check("update: a revoked-content offer keeps the offer's action under the hard stop's copy", m["required"] and m["title"] == "update_revoked_title" and m["action"] != "")
 
 
 # A locked update answer and grace's banner are strips, measured: a Container parent ignores a

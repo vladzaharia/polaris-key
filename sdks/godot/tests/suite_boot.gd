@@ -12,9 +12,12 @@ extends RefCounted
 #           a stage's work exactly once per entry, and boot() resolves with the first stop while
 #           the last boot_finished carries the row's outcome (no result for running or waiting).
 #   dropin  PolarisKey.boot() without a view (its own CanvasLayer): a mandatory or blocked update
-#           answer outlives the boot view at READY as a top-wide prompt with no dismiss that is
-#           not full-screen, keep_update_prompt false drops it, a dismissable one goes on
-#           dismiss, and a PKeyUpdatePrompt the game adds later replays update.last_available.
+#           answer (a content floor included: floors never stop play) outlives the boot view at
+#           READY as a top-wide prompt with no dismiss that is not full-screen,
+#           keep_update_prompt false drops it, a dismissable one goes on dismiss, and a
+#           PKeyUpdatePrompt the game adds later replays update.last_available. Revoked REQUIRED
+#           content (boot `required`, plans/P4-13.md decision 4) stops at BLOCKED update-required
+#           with the revoked-content copy, the offer's button for an offer and none for blocked.
 #   server  PKeyBootHost against PKeyFakeServer with the real SDK: each sync class (answered 200,
 #           304, 401, 403, 429 -> ok; no answer -> offline; 5xx and a document that does not
 #           verify -> error), the keyless registration (minted, no answer, refused), an offline
@@ -162,6 +165,56 @@ func _capture(sdk: Node, opts: Dictionary, out: Array) -> void:
 
 # ── Drop-in ──────────────────────────────────────────────────────────────────────────────
 
+## PolarisKey.boot({host}) without a view, stopped at DECIDE by `decide.done required`.
+func _boot_to_required(sdk: Node, answer: PKeyResult) -> PKeyBootResult:
+	var host := PKeyFakeBootHost.new()
+	host.update_result = answer
+	var first: Array = []
+	_capture(sdk, {"host": host, "sync_timeout_seconds": 1000, "release_url": "https://example.com/releases"}, first)
+	for e in [
+		{"type": "shell.done"}, {"type": "guard.done", "result": "ok"}, {"type": "sync.done", "result": "ok"},
+		{"type": "gate.status", "status": "ok"}, {"type": "decide.done", "decision": "required"},
+	]:
+		host.answer(e)
+	var tree := Engine.get_main_loop() as SceneTree
+	await tree.process_frame
+	await tree.process_frame
+	await tree.process_frame
+	return first[0] if not first.is_empty() else null
+
+
+## plans/P4-13.md decision 4: revoked REQUIRED content is the one answer that stops the boot, with
+## its own copy; PKeyBootHost maps boot `required` to `decide.done required`.
+func _revoked_content(t: PKeyTestContext, sc: Variant, rel: Dictionary) -> void:
+	var copy := PKeyUiCopy.new()
+	var cases := {
+		"blocked": {"action": "blocked", "reason": "revoked-content", "discardStaged": false},
+		"offer": {"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false, "contentBlock": "revoked-content"},
+	}
+	for kind in cases:
+		var answer: PKeyUpdateCheck = sc.update_check(cases[kind])
+		answer.boot = PKeyDecision.boot_decision(cases[kind])
+		t.check("dropin: revoked-content %s maps to boot required" % kind, answer.boot == PKeyDecision.BOOT_REQUIRED)
+		var sdk := PKeyTestFixtures.new_sdk()
+		var r := await _boot_to_required(sdk, answer)
+		t.check("dropin: revoked-content %s stops at BLOCKED update-required" % kind, r != null and r.outcome == PKeyBoot.BLOCKED and r.reason == "update-required", str(r))
+		var view = sdk.boot_view
+		if t.check("dropin: revoked-content %s keeps the boot view" % kind, view is PKeyBoot and is_instance_valid(view)):
+			t.check("dropin: revoked-content %s shows the revoked-content copy" % kind, view._title.text == copy.text("update_revoked_title") and view._body.text == copy.text("update_revoked_body"), "%s / %s" % [view._title.text, view._body.text])
+			var button_shown: bool = view._update_action.visible and view._update_action.text != ""
+			# What this build's outlet would offer for the answer (a stamped Steam template offers no
+			# link; the editor's direct build opens release_url): an offer keeps it, blocked never.
+			var offered := PKeyUpdatePromptController.update_url(answer, view.gate._outlet(), "https://example.com/releases") != ""
+			# Never vacuous: a direct build (or the editor, which has no outlet) always offers one.
+			if view.gate._outlet() == "" or view.gate._outlet() == "direct":
+				t.check("dropin: revoked-content %s on a direct build has an update link to offer" % kind, offered)
+			t.check("dropin: revoked-content %s %s" % [kind, "keeps the outlet's update button" if kind == "offer" else "offers no update button"], button_shown == (kind == "offer" and offered), "shown=%s offered=%s outlet=%s" % [button_shown, offered, view.gate._outlet()])
+		sdk.queue_free()
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	# A content floor never gives `required`.
+	t.check("dropin: a content floor's boot value is optional", PKeyDecision.boot_decision({"action": "blocked", "reason": "content-floor", "discardStaged": false}) == PKeyDecision.BOOT_OPTIONAL \
+			and PKeyDecision.boot_decision({"action": "binary", "mandatory": true, "contentBlock": "content-floor"}) == PKeyDecision.BOOT_OPTIONAL)
+
 const SC := preload("res://tests/ui/scenarios.gd")
 
 
@@ -193,6 +246,7 @@ func _dropin(t: PKeyTestContext) -> void:
 	var answers := {
 		"mandatory": sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false}),
 		"blocked": sc.update_check({"action": "blocked", "reason": "app-floor", "discardStaged": false}),
+		"content-floor": sc.update_check({"action": "blocked", "reason": "content-floor", "discardStaged": false}),
 	}
 	# The headless runner's window is tiny; measure on a game-sized screen.
 	var saved_size := tree.root.size
@@ -201,7 +255,7 @@ func _dropin(t: PKeyTestContext) -> void:
 	for kind in answers:
 		var sdk := PKeyTestFixtures.new_sdk()
 		var r := await _boot_to_ready(sdk, answers[kind])
-		t.check("dropin: a %s answer boots to READY (never stops play)" % kind, r != null and r.outcome == PKeyBoot.READY and r.update == answers[kind], str(r))
+		t.check("dropin: a %s answer boots to READY (floors never stop play)" % kind, r != null and r.outcome == PKeyBoot.READY and r.update == answers[kind], str(r))
 		var p = sdk.boot_prompt
 		var kept: bool = p is PKeyUpdatePrompt and is_instance_valid(p) and p.is_inside_tree()
 		t.check("dropin: the boot view is gone after READY", sdk.boot_view == null or not is_instance_valid(sdk.boot_view))
@@ -222,6 +276,8 @@ func _dropin(t: PKeyTestContext) -> void:
 		own.queue_free()
 		sdk.queue_free()
 		await tree.process_frame
+
+	await _revoked_content(t, sc, rel)
 
 	# keep_update_prompt false: the game shows its own prompt, nothing stays on the layer.
 	var sdk2 := PKeyTestFixtures.new_sdk()
