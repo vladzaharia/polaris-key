@@ -1051,6 +1051,10 @@ export interface CompatResponse {
   packReleases: CompatPackReleaseDto[];
   cells: CompatCellDto[];
   hidden: { appReleases: number; packReleases: number };
+  /** The page's window start; `older` is what lies past it; `capped` that the 200-row cap cut. */
+  offset: number;
+  capped: boolean;
+  older: { appReleases: number; packReleases: number };
   resolvedAt: number | null;
 }
 
@@ -1728,10 +1732,19 @@ export const api = {
       `${p(slug)}/release/deliverables/${enc(deliverable)}/releases/${enc(releaseId)}/files?variant=${enc(variant)}`,
     ),
   /** P4-15: app releases × pack releases, a state per pair, the live contentApi levels. */
-  releaseCompat: (slug: string, opts: { limit?: number } = {}) =>
-    call<CompatResponse>(
-      `${p(slug)}/release/compat${opts.limit !== undefined ? `?limit=${opts.limit}` : ""}`,
-    ),
+  releaseCompat: (
+    slug: string,
+    opts: { limit?: number; offset?: number } = {},
+  ) => {
+    const q = new URLSearchParams();
+    if (opts.limit !== undefined) q.set("limit", String(opts.limit));
+    if (opts.offset !== undefined && opts.offset > 0)
+      q.set("offset", String(opts.offset));
+    const qs = q.toString();
+    return call<CompatResponse>(
+      `${p(slug)}/release/compat${qs ? `?${qs}` : ""}`,
+    );
+  },
   /** P4-15: what a fresh device running one app release gets on one outlet (read-only). */
   simulateUpdate: (slug: string, params: SimulateParams) => {
     const q = new URLSearchParams();

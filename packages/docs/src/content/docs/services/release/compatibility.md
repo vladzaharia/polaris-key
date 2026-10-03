@@ -50,8 +50,10 @@ when outlet readiness holds the release because a pack it needs is not live on t
 ([Outlet readiness](/docs/services/distribution/availability/#outlet-readiness)). When
 Distribution is off, the overlay says so and the matrix still renders.
 
-The matrix shows every live app release plus the last 10 per channel, and every pack release that
-is a set member plus the last 10 per pack. **Show more** pages the rest in.
+The matrix is paged. A page shows every live app release plus 10 releases of each channel, and
+every pack release that is a set member plus 10 releases of each pack, newest first. **Older
+releases** and **Newer releases** move that window by 10. One page carries at most 200 app releases
+(live ones first); a page cut by that cap says so.
 
 ## What does this device get?
 
@@ -93,10 +95,10 @@ not take.
 Both routes are read-only, under `/manage/api/products/<slug>/` and behind the same platform-admin
 session as the rest of the console.
 
-| Method and path                                                                                     | Answers                                                                                                                                                                                                                                                                                                                    |
-| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET release/compat[?limit=N]`                                                                      | `channels`, `liveLevels` (per channel) and `levels`; `packs[]`; `appReleases[]` (level, `live`, `liveOn`, yank, platforms, engines, pins, holds, `unsatisfied[]`); `packReleases[]` (requirements, yank, `revoked`, `current`); `cells[]` (`state`, `current`, `yanked`, `reason`); `hidden`. `limit` is 1–100, default 10 |
-| `GET update/simulate?appRelease=&platform=[&outlet=&variant=&channel=&device=&methods=&packSetId=]` | `selector`, `feed`, `decision` (client-core's `UpdateDecision`), `boot`, `errors`, `set[]`, `packSetId`, `activePackSetId`, `reported`, `block`, `packs[]` and `notes[]`. `channel` defaults to `stable` and `methods` to `download`. 400 names the bad field; 404 an unknown app release or outlet                        |
+| Method and path                                                                                     | Answers                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET release/compat[?limit=N&offset=M]`                                                             | `channels`, `liveLevels` (per channel) and `levels`; `packs[]`; `appReleases[]` (level, `live`, `liveOn`, yank, platforms, engines, pins, holds, `unsatisfied[]`); `packReleases[]` (requirements, yank, `revoked`, `current`); `cells[]` (`state`, `current`, `yanked`, `reason`); `hidden`, `older` (releases past the window), `offset` and `capped` (more than 200 app releases qualified). `limit` is 1–100, default 10; `offset` 0–100,000, default 0 |
+| `GET update/simulate?appRelease=&platform=[&outlet=&variant=&channel=&device=&methods=&packSetId=]` | `selector`, `feed`, `decision` (client-core's `UpdateDecision`), `boot`, `errors`, `set[]`, `packSetId`, `activePackSetId`, `reported`, `block`, `packs[]` and `notes[]`. `channel` defaults to `stable` and `methods` to `download`. 400 names the bad field; 404 an unknown app release or outlet                                                                                                                                                         |
 
 Support tooling reads the simulate answer's shape: given a device's reported app release and
 `packSetId`, it reproduces that device's content.

@@ -80,19 +80,25 @@ const PLATFORMS = [
   "visionos",
 ] as const;
 
-const MATRIX_LIMIT_STEP = 10;
-const MAX_COMPAT_LIMIT = 100;
+/** Releases per channel and per pack in one page; `offset` moves the window. */
+const PAGE = 10;
+/** Distribution's matrix maximum: the overlay only knows its newest this many releases. */
+const LIVENESS_WINDOW = 50;
 
 export function Compatibility({ slug }: { slug: string }): React.ReactElement {
-  const [limit, setLimit] = React.useState(MATRIX_LIMIT_STEP);
+  const [offset, setOffset] = React.useState(0);
   const compat = useResource<CompatResponse>(
-    `release-compat:${slug}:${limit}`,
-    () => api.releaseCompat(slug, { limit }),
+    `release-compat:${slug}:${offset}`,
+    () => api.releaseCompat(slug, { limit: PAGE, offset }),
   );
   // The liveness overlay: Distribution's matrix of the app, newest releases (its own maximum).
   const liveness = useResource<DistributionMatrix>(
     `distribution-matrix:${slug}:compat`,
-    () => api.distributionMatrix(slug, { deliverable: "app", limit: 50 }),
+    () =>
+      api.distributionMatrix(slug, {
+        deliverable: "app",
+        limit: LIVENESS_WINDOW,
+      }),
   );
 
   return (
@@ -104,9 +110,8 @@ export function Compatibility({ slug }: { slug: string }): React.ReactElement {
         error={compat.error}
         liveness={liveness.data}
         livenessError={liveness.error}
-        onMore={() =>
-          setLimit((n) => Math.min(MAX_COMPAT_LIMIT, n + MATRIX_LIMIT_STEP))
-        }
+        onOlder={() => setOffset((n) => n + PAGE)}
+        onNewer={() => setOffset((n) => Math.max(0, n - PAGE))}
       />
       <SimulatorCard
         slug={slug}
@@ -125,7 +130,8 @@ function MatrixCard({
   error,
   liveness,
   livenessError,
-  onMore,
+  onOlder,
+  onNewer,
 }: {
   slug: string;
   compat: CompatResponse | null;
@@ -133,7 +139,8 @@ function MatrixCard({
   error: unknown;
   liveness: DistributionMatrix | null;
   livenessError: unknown;
-  onMore: () => void;
+  onOlder: () => void;
+  onNewer: () => void;
 }): React.ReactElement {
   return (
     <Card>
@@ -176,19 +183,29 @@ function MatrixCard({
               </p>
             ) : null}
             <CompatTable compat={compat} liveness={liveness} />
-            {compat.hidden.appReleases > 0 || compat.hidden.packReleases > 0 ? (
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span>
-                  {compat.hidden.appReleases} older app releases and{" "}
-                  {compat.hidden.packReleases} older pack releases are hidden.
-                </span>
-                {compat.limit < MAX_COMPAT_LIMIT ? (
-                  <Button size="sm" variant="outline" onClick={onMore}>
-                    Show more
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                Live releases, then releases {compat.offset + 1}–
+                {compat.offset + compat.limit} of each channel and pack, newest
+                first.
+                {compat.older.appReleases > 0 || compat.older.packReleases > 0
+                  ? ` ${compat.older.appReleases} older app releases and ${compat.older.packReleases} older pack releases are on later pages.`
+                  : ""}
+              </span>
+              {compat.capped ? (
+                <Badge variant="warning">capped at 200 app releases</Badge>
+              ) : null}
+              {compat.offset > 0 ? (
+                <Button size="sm" variant="outline" onClick={onNewer}>
+                  Newer releases
+                </Button>
+              ) : null}
+              {compat.older.appReleases > 0 || compat.older.packReleases > 0 ? (
+                <Button size="sm" variant="outline" onClick={onOlder}>
+                  Older releases
+                </Button>
+              ) : null}
+            </div>
           </>
         )}
       </CardContent>
@@ -240,8 +257,11 @@ function Legend() {
 function overlayFor(
   liveness: DistributionMatrix | null,
   releaseId: string,
-): { outletId: string; cell: MatrixCellDto }[] {
+): { outletId: string; cell: MatrixCellDto }[] | "unknown" {
   if (!liveness) return [];
+  // Distribution's matrix lists its newest releases only: anything older is unknown, not "none".
+  if (!liveness.releases.some((r) => r.releaseId === releaseId))
+    return "unknown";
   return liveness.cells
     .filter((c) => c.releaseId === releaseId)
     .filter(
@@ -418,8 +438,14 @@ function AppReleaseHeader({
 function Overlay({
   entries,
 }: {
-  entries: { outletId: string; cell: MatrixCellDto }[];
+  entries: { outletId: string; cell: MatrixCellDto }[] | "unknown";
 }) {
+  if (entries === "unknown")
+    return (
+      <span className="text-muted-foreground">
+        unknown (outside Distribution's newest {LIVENESS_WINDOW})
+      </span>
+    );
   if (entries.length === 0)
     return <span className="text-muted-foreground">none</span>;
   return (

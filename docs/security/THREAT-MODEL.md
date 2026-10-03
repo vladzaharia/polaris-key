@@ -2006,8 +2006,9 @@ P4-15 adds two read-only routes to the console's admin API: `GET …/release/com
   still runs as on a device.
 - **Records stay real.** The simulator's record fetches read `getRecordByHash`, the store the
   record route serves, and verify against the product's real release keys, so record, revocation
-  and replacement verification (P4-13, and P4-19 once it lands) runs exactly as on a device; a
-  record that fails is reported in `errors`, never trusted.
+  and replacement verification (P4-13), and the delegated-record path with its delegation
+  revocations (P4-19), run exactly as on a device; a record that fails is reported in `errors`,
+  never trusted.
 - **No cross-tenant read.** Both routes read only the session's product; a device id passed for the
   rollout buckets is hashed in memory and echoed back, never stored.
 

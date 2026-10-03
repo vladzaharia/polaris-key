@@ -30,8 +30,12 @@
  *
  * ── SIZE ────────────────────────────────────────────────────────────────────────────────────
  *
- * Live app releases plus the last `limit` (default 10) per channel; pack releases that are a set
- * member plus the last `limit` per deliverable. `hidden` counts the rest; a larger `limit` pages
+ * A PAGE: live app releases plus the window [`offset`, `offset + limit`) of each channel's
+ * releases, newest first (`limit` default 10); pack releases that are a set member plus the same
+ * window of each deliverable's releases, read with a windowed query so a pack's whole history is
+ * never loaded. App releases are capped at `COMPAT_MAX_APP_RELEASES` in all (live first, then
+ * newest; `capped` says so), which bounds the cells at that many × the pack releases shown.
+ * `hidden` counts what the page leaves out, `older` what lies past it; `offset` pages through
  * them in.
  *
  * Read-only: no write, no audit. Keyed by deliverable; the console names no pack (AGENTS rule 5).
@@ -60,6 +64,10 @@ import {
 
 export const COMPAT_DEFAULT_LIMIT = 10;
 export const COMPAT_MAX_LIMIT = 100;
+/** The most app releases (rows) one response carries, live ones first. */
+export const COMPAT_MAX_APP_RELEASES = 200;
+/** The largest `offset` accepted. */
+export const COMPAT_MAX_OFFSET = 100_000;
 
 export type CompatCellState =
   | "pinned"
@@ -153,6 +161,12 @@ export interface CompatView {
   /** Every live level on any channel, ascending. */
   levels: number[];
   limit: number;
+  offset: number;
+  /** True when more than `COMPAT_MAX_APP_RELEASES` app releases qualified for this page. */
+  capped: boolean;
+  /** Releases past this page's window (per channel / per deliverable, summed): what a larger
+   *  `offset` shows. */
+  older: { appReleases: number; packReleases: number };
   packs: CompatPack[];
   appReleases: CompatAppRelease[];
   packReleases: CompatPackRelease[];
@@ -160,6 +174,14 @@ export interface CompatView {
   hidden: { appReleases: number; packReleases: number };
   /** When the stored sets were last resolved (newest row), or null with none. */
   resolvedAt: number | null;
+}
+
+/** The `offset` query value: 0–`COMPAT_MAX_OFFSET`, default 0; null if bad. */
+export function parseCompatOffset(raw: string | null): number | null {
+  if (raw === null || raw === "") return 0;
+  if (!/^[0-9]{1,6}$/.test(raw)) return null;
+  const n = Number(raw);
+  return n <= COMPAT_MAX_OFFSET ? n : null;
 }
 
 /** The `limit` query value: 1–`COMPAT_MAX_LIMIT`, default `COMPAT_DEFAULT_LIMIT`; null if bad. */
@@ -280,11 +302,14 @@ function compatibility(
   };
 }
 
-const EMPTY = (limit: number): CompatView => ({
+const EMPTY = (limit: number, offset: number): CompatView => ({
   channels: [],
   liveLevels: {},
   levels: [],
   limit,
+  offset,
+  capped: false,
+  older: { appReleases: 0, packReleases: 0 },
   packs: [],
   appReleases: [],
   packReleases: [],
@@ -298,9 +323,12 @@ export async function compatView(
   product: string,
   cfg: ReleaseConfigRow | null,
   limit: number = COMPAT_DEFAULT_LIMIT,
+  offset = 0,
+  /** The app-release cap; a parameter only so a test can exercise it cheaply. */
+  maxAppReleases: number = COMPAT_MAX_APP_RELEASES,
 ): Promise<CompatView> {
   const state = await loadResolutionState(db, product, cfg);
-  if (!state) return EMPTY(limit);
+  if (!state) return EMPTY(limit, offset);
   const resolver = new PackResolver(state.input);
   const channels = [...state.input.channels];
 
@@ -357,14 +385,22 @@ export async function compatView(
     ]);
 
   const appAll = [...state.input.app.candidates].sort(bySeqDesc);
-  const appKeep = new Set<string>();
+  const live: string[] = [];
+  const windowed: string[] = [];
   const perChannel = new Map<string, number>();
+  let olderApps = 0;
   for (const c of appAll) {
     const key = c.channel ?? "";
     const n = perChannel.get(key) ?? 0;
-    if (liveOn.has(c.releaseId) || n < limit) appKeep.add(c.releaseId);
     perChannel.set(key, n + 1);
+    if (liveOn.has(c.releaseId)) live.push(c.releaseId);
+    else if (n >= offset && n < offset + limit) windowed.push(c.releaseId);
+    else if (n >= offset + limit) olderApps++;
   }
+  // Live first, then the window, newest first in each, up to the cap.
+  const chosen = [...live, ...windowed];
+  const capped = chosen.length > maxAppReleases;
+  const appKeep = new Set(chosen.slice(0, maxAppReleases));
   const appReleases: CompatAppRelease[] = [];
   for (const c of appAll) {
     if (!appKeep.has(c.releaseId)) continue;
@@ -429,18 +465,43 @@ export async function compatView(
           channel: string | null;
           record_sha256: string | null;
           delegation: string | null;
+          rn: number;
         }>(
-          `SELECT m.release_id, m.deliverable_id, m.version, m.seq, m.channel, r.record_sha256,
-                  d.delegation_sha256 AS delegation
-             FROM release_metadata m
+          // Each deliverable's releases ranked newest first (`bySeqDesc`'s order: seq descending,
+          // a null seq last, ties by release id); only the page's window and the set members are
+          // read back.
+          `SELECT m.release_id, m.deliverable_id, m.version, m.seq, m.channel, m.rn,
+                  r.record_sha256, d.delegation_sha256 AS delegation
+             FROM (SELECT release_id, deliverable_id, version, seq, channel, product,
+                          ROW_NUMBER() OVER (PARTITION BY deliverable_id
+                            ORDER BY seq IS NULL, seq DESC, release_id) AS rn
+                     FROM release_metadata
+                    WHERE product = ? AND deliverable_id IN (SELECT value FROM json_each(?))) m
              LEFT JOIN release_records r
                ON r.product = m.product AND r.release_id = m.release_id AND r.kind = 'pack'
              LEFT JOIN release_delegated_records d
                ON d.product = r.product AND d.record_sha256 = r.record_sha256
-            WHERE m.product = ? AND m.deliverable_id IN (SELECT value FROM json_each(?))`,
+            WHERE (m.rn > ? AND m.rn <= ?)
+               OR m.release_id IN (SELECT value FROM json_each(?))`,
           product,
           ids,
+          offset,
+          offset + limit,
+          JSON.stringify([...members]),
         );
+  const shownIds = JSON.stringify(rows.map((r) => r.release_id));
+  const totals = new Map(
+    (declared.length === 0
+      ? []
+      : await db.all<{ deliverable_id: string; n: number }>(
+          `SELECT deliverable_id, COUNT(*) AS n FROM release_metadata
+            WHERE product = ? AND deliverable_id IN (SELECT value FROM json_each(?))
+            GROUP BY deliverable_id`,
+          product,
+          ids,
+        )
+    ).map((r) => [r.deliverable_id, r.n]),
+  );
   const builds =
     declared.length === 0
       ? []
@@ -452,11 +513,10 @@ export async function compatView(
         }>(
           `SELECT b.release_id, b.variant_json, b.requires_json, b.conflicts_json
              FROM release_builds b
-             JOIN release_metadata m ON m.product = b.product AND m.release_id = b.release_id
-            WHERE b.product = ? AND m.deliverable_id IN (SELECT value FROM json_each(?))
+            WHERE b.product = ? AND b.release_id IN (SELECT value FROM json_each(?))
             ORDER BY b.release_id, b.build_id`,
           product,
-          ids,
+          shownIds,
         );
   const variantsBy = new Map<string, PackVariantFacts[]>();
   for (const b of builds)
@@ -468,19 +528,19 @@ export async function compatView(
 
   const packReleases: CompatPackRelease[] = [];
   let hiddenPacks = 0;
+  let olderPacks = 0;
   for (const d of declared) {
     const mine = rows
       .filter((r) => r.deliverable_id === d.id)
       .map((r) => ({ ...r, releaseId: r.release_id }))
       .sort(bySeqDesc);
-    let n = 0;
+    const total = totals.get(d.id) ?? 0;
+    hiddenPacks += total - mine.length;
+    // Past the window, less the set members shown from there.
+    olderPacks +=
+      Math.max(0, total - (offset + limit)) -
+      mine.filter((r) => r.rn > offset + limit).length;
     for (const r of mine) {
-      const keep = members.has(r.release_id) || n < limit;
-      n++;
-      if (!keep) {
-        hiddenPacks++;
-        continue;
-      }
       const variants = variantsBy.get(r.release_id) ?? [];
       packReleases.push({
         pack: d.id,
@@ -587,6 +647,9 @@ export async function compatView(
     liveLevels,
     levels: [...allLevels].sort((a, b) => a - b),
     limit,
+    offset,
+    capped,
+    older: { appReleases: olderApps, packReleases: olderPacks },
     packs,
     appReleases,
     packReleases,

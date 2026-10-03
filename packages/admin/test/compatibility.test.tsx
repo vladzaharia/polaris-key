@@ -27,7 +27,12 @@ import { resetCache } from "../src/context.js";
 import { sha } from "./releaseFixture.js";
 
 const releaseCompat =
-  vi.fn<(slug: string, opts?: { limit?: number }) => Promise<CompatResponse>>();
+  vi.fn<
+    (
+      slug: string,
+      opts?: { limit?: number; offset?: number },
+    ) => Promise<CompatResponse>
+  >();
 const distributionMatrix =
   vi.fn<(slug: string, opts?: unknown) => Promise<DistributionMatrix>>();
 const simulateUpdate =
@@ -36,7 +41,7 @@ const simulateUpdate =
 vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
-    releaseCompat: (slug: string, opts?: { limit?: number }) =>
+    releaseCompat: (slug: string, opts?: { limit?: number; offset?: number }) =>
       releaseCompat(slug, opts),
     distributionMatrix: (slug: string, opts?: unknown) =>
       distributionMatrix(slug, opts),
@@ -57,6 +62,9 @@ const COMPAT: CompatResponse = {
   liveLevels: { stable: [3, 4] },
   levels: [3, 4],
   limit: 10,
+  offset: 0,
+  capped: false,
+  older: { appReleases: 3, packReleases: 0 },
   packs: [
     { id: FOES, binding: "compatible", required: true, delivery: "essential" },
     { id: SKINS, binding: "pinned", required: false, delivery: "on-demand" },
@@ -273,7 +281,13 @@ const MATRIX: DistributionMatrix = {
       supported: true,
     },
   ],
-  releases: [],
+  releases: ["app@1.5.0", "app@1.4.0"].map((releaseId) => ({
+    releaseId,
+    version: releaseId.slice(4),
+    channel: "stable",
+    publishedAt: null,
+    yanked: false,
+  })),
   cells: [
     mcell("app@1.5.0", "direct", "live"),
     mcell("app@1.5.0", "play", "live"),
@@ -421,16 +435,58 @@ describe("Compatibility tab (P4-15)", () => {
     expect(within(levels).getByText("contentApi 4")).toBeTruthy();
     expect(within(row15).getByText("1 unsatisfied")).toBeTruthy();
     expect(screen.getByText(/3 older app releases/)).toBeTruthy();
-    expect(releaseCompat).toHaveBeenCalledWith(SLUG, { limit: 10 });
+    expect(releaseCompat).toHaveBeenCalledWith(SLUG, { limit: 10, offset: 0 });
   });
 
-  it("pages in older releases with Show more", async () => {
+  it("pages through older releases with an offset, and back", async () => {
+    releaseCompat.mockImplementation(async (_slug, opts) => ({
+      ...COMPAT,
+      offset: opts?.offset ?? 0,
+      older:
+        (opts?.offset ?? 0) === 0
+          ? COMPAT.older
+          : { appReleases: 0, packReleases: 0 },
+    }));
     render(<Compatibility slug={SLUG} />);
     await screen.findByTestId("compat-row-app@1.5.0");
-    await userEvent.click(screen.getByRole("button", { name: "Show more" }));
-    await waitFor(() =>
-      expect(releaseCompat).toHaveBeenLastCalledWith(SLUG, { limit: 20 }),
+    expect(screen.queryByRole("button", { name: "Newer releases" })).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Older releases" }),
     );
+    await waitFor(() =>
+      expect(releaseCompat).toHaveBeenLastCalledWith(SLUG, {
+        limit: 10,
+        offset: 10,
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Newer releases" }),
+    );
+    // Back on the first page (served from the console's cache): older pages are offered again.
+    expect(
+      await screen.findByRole("button", { name: "Older releases" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Newer releases" })).toBeNull();
+  });
+
+  it("says a release outside Distribution's newest 50 is unknown, not unserved", async () => {
+    distributionMatrix.mockReset().mockResolvedValue({
+      ...MATRIX,
+      releases: MATRIX.releases.filter((r) => r.releaseId === "app@1.5.0"),
+    });
+    render(<Compatibility slug={SLUG} />);
+    const row14 = await screen.findByTestId("compat-row-app@1.4.0");
+    await waitFor(() =>
+      expect(
+        within(row14).getByText("unknown (outside Distribution's newest 50)"),
+      ).toBeTruthy(),
+    );
+  });
+
+  it("marks a capped page", async () => {
+    releaseCompat.mockReset().mockResolvedValue({ ...COMPAT, capped: true });
+    render(<Compatibility slug={SLUG} />);
+    expect(await screen.findByText("capped at 200 app releases")).toBeTruthy();
   });
 
   it("overlays per-outlet liveness and readiness from Distribution's matrix", async () => {

@@ -206,3 +206,11 @@ package, and every decision in §8.1 that names it as owner, override this brief
   ("The compatibility matrix and the device simulator (P4-15)").
 - **Test fixture**: `packWorld` gained an `android` option and `declareContentApi(level)` (a
   resync of a changed `.pkey/release`), needed to publish 1.4 at level 3 and 1.5 at level 4.
+- **Paging and caps (review S2).** `GET …/release/compat` takes `offset` beside `limit`: live app
+  releases always, then the window [`offset`, `offset + limit`) of each channel's and each pack's
+  releases; set members always. The pack rows come from a windowed query (`ROW_NUMBER() OVER
+(PARTITION BY deliverable_id …)`) and the builds query reads only the releases shown, so a pack's
+  whole history is never loaded. App releases are capped at 200 per response (live first; `capped`
+  says so). The console pages with **Older releases** / **Newer releases**, and the liveness overlay
+  says "unknown (outside Distribution's newest 50)" for a release Distribution's matrix does not
+  list.

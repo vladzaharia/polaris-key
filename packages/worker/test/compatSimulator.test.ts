@@ -34,6 +34,9 @@ import { packRecord, sha, treeVariant } from "./packFixture.js";
 import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
 import { call } from "./releaseRoutesFixture.js";
 import { loadProduct } from "../src/core/products.js";
+import { handleAdmin } from "../src/admin/index.js";
+import { getReleaseConfig } from "../src/services/release/config.js";
+import { compatView, revokedBy } from "../src/services/release/packs/compat.js";
 import {
   ephemeralSigner,
   parseSimulateQuery,
@@ -236,6 +239,136 @@ describe("GET …/release/compat (P4-15)", () => {
     const bad = await w.admin("GET", "/release/compat?limit=0");
     expect(bad.status).toBe(400);
     expect((await w.admin("POST", "/release/compat")).status).toBe(405);
+  });
+
+  it("pages by `offset`: the window moves, set members stay, `older` counts what lies past it", async () => {
+    const { w, foes1, foes101, foes2 } = await world();
+    const foesIds = (v: Record<string, any>) =>
+      v.packReleases
+        .filter((p: any) => p.pack === FOES)
+        .map((p: any) => p.releaseId);
+    // Newest first: 2.0.0 (rn 1), 1.0.1 (rn 2), 1.0.0 (rn 3). 1.0.0 and 2.0.0 are set members.
+    const first = await compat(w, "?limit=1");
+    expect(foesIds(first)).toEqual([foes2.releaseId, foes1.releaseId]);
+    expect(first).toMatchObject({ offset: 0, capped: false });
+    expect(first.older.packReleases).toBe(1);
+    const next = await compat(w, "?limit=1&offset=1");
+    expect(foesIds(next)).toEqual([
+      foes2.releaseId,
+      foes101.releaseId,
+      foes1.releaseId,
+    ]);
+    expect(next.older.packReleases).toBe(0);
+    expect(next.hidden.packReleases).toBe(0);
+    expect((await w.admin("GET", "/release/compat?offset=-1")).status).toBe(
+      400,
+    );
+    expect((await w.admin("GET", "/release/compat/anything")).status).toBe(404);
+  });
+
+  it("caps the app releases, live first, and says so", async () => {
+    const { w, app15 } = await world();
+    const cfg = await getReleaseConfig(w.db, SLUG);
+    const v = await compatView(w.db, SLUG, cfg, 10, 0, 1);
+    expect(v.capped).toBe(true);
+    expect(v.appReleases.map((a) => a.releaseId)).toEqual([app15]);
+    // The cells follow the rows: one app release × the pack releases shown.
+    expect(v.cells).toHaveLength(v.packReleases.length);
+  });
+});
+
+describe("revokedBy (P4-15 × P4-19)", () => {
+  const base = {
+    deliverableId: "djdl.l10n",
+    targetReleaseId: "",
+    version: "1",
+    seq: 1,
+    kid: "k",
+    issuedAt: 1,
+    ingestedAt: 1,
+  };
+  const REC = "a".repeat(64);
+  const DEL = "b".repeat(64);
+  it("a record revocation wins over a revoked delegation, with its replacement", () => {
+    const replacement = {
+      releaseId: "djdl.l10n@1.2.0",
+      sha256: "c".repeat(64),
+    };
+    const r = revokedBy(
+      { releaseId: "djdl.l10n@1.1.0", sha256: REC, delegation: DEL },
+      [
+        {
+          ...base,
+          kind: "delegation",
+          targetSha256: DEL,
+          recordSha256: "d".repeat(64),
+          replacement: null,
+          reason: "Content key leaked",
+        },
+        {
+          ...base,
+          kind: "record",
+          targetReleaseId: "djdl.l10n@1.1.0",
+          targetSha256: REC,
+          recordSha256: "e".repeat(64),
+          replacement,
+          reason: "Bad table",
+        },
+      ],
+    );
+    expect(r).toEqual({
+      kind: "record",
+      recordSha256: "e".repeat(64),
+      reason: "Bad table",
+      issuedAt: 1,
+      replacement,
+    });
+  });
+  it("a revoked delegation alone revokes the release, naming the delegation and no replacement", () => {
+    const r = revokedBy({ releaseId: "x", sha256: REC, delegation: DEL }, [
+      {
+        ...base,
+        kind: "delegation",
+        targetSha256: DEL,
+        recordSha256: "d".repeat(64),
+        replacement: null,
+        reason: "Content key leaked",
+      },
+    ]);
+    expect(r).toMatchObject({ kind: "delegation", replacement: null });
+    expect(r!.reason).toContain(DEL.slice(0, 12));
+    expect(
+      revokedBy({ releaseId: "x", sha256: REC, delegation: null }, [
+        {
+          ...base,
+          kind: "delegation",
+          targetSha256: DEL,
+          recordSha256: "d".repeat(64),
+          replacement: null,
+          reason: "x",
+        },
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe("both routes need a console session", () => {
+  it("refuses /release/compat and /update/simulate without one", async () => {
+    const { w, app15 } = await world();
+    for (const path of [
+      "/release/compat",
+      `/update/simulate?appRelease=${app15}&platform=ios`,
+    ]) {
+      const full = `/api/products/${SLUG}${path}`;
+      const res = await handleAdmin(
+        new Request(`${CONSOLE}/manage${full}`),
+        w.env,
+        w.db,
+        full.split("?")[0]!,
+        { now: Math.floor(Date.now() / 1000) },
+      );
+      expect(res.status, path).toBe(401);
+    }
   });
 });
 

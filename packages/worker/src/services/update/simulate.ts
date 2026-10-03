@@ -32,8 +32,9 @@
  * its feed target after the outlet's gates (client-core's `selectPackRows`), the floor that
  * applies, P4-12's `unsatisfied` markers for the selector, and the revocations that name it.
  *
- * P4-19 (delegated content keys) slots in through `runUpdateCheck`: once a record carries a
- * delegation and client-core applies `recordRevoked`, this route inherits it unchanged.
+ * P4-19 (delegated content keys) applies through `runUpdateCheck`: a delegated record is verified
+ * with its delegation, and a delegation's revocation in the feed is applied with client-core's
+ * `recordRevoked`, with no code here.
  *
  * Read-only: one ephemeral signature in memory, no write, no audit. Update reads Distribution only through
  * Core's `delivery` hook; the one service import is `update → release`.
