@@ -1985,6 +1985,54 @@ unchanged; add `me` fields), `main.tsx` (`QueryClientProvider`), and the worker 
 - Hash `replaceState` interplay with the blocker.
 - Section-gating flicker: keep "show all while loading".
 
+**Notes (chunk 2 as built, 2026-10-03).** Where the build differs from the text above:
+
+- **Owner requirements added in this chunk.**
+  - Sidebar section headers are collapsible disclosure buttons (Radix Collapsible: `aria-expanded`,
+    `aria-controls`, Enter and Space). Collapsed sections persist per operator in `localStorage`
+    (`pk-admin-nav-collapsed:<sub>`, best-effort). The section holding the current page is always
+    open (its header is `aria-disabled`), and entering a section removes it from the collapsed
+    set. The open and close animation uses `--pk-duration-base` and `--pk-ease-standard`, with
+    `motion-reduce:animate-none`. A collapsed header keeps its accent rule.
+  - **Section headers carry no icon** (owner clarification, overriding §2.4's "section glyph" and
+    components.md §1.4's group-label glyph). Every nav item has a lucide icon, including
+    Deliverables, Compatibility, Matrix and Health (SH-4). `route.test.ts` fails if any page lacks
+    an icon; `shell.test.tsx` fails if a header renders one. The chevron is the disclosure
+    indicator, not an icon. `NavSection.glyph` stays in `nav.ts` for later badges and empty states.
+- **Brand block: 48 px in a 64 px top bar**, not 28 px in 56 px. BRAND.md §6 and the owner decision
+  settle Q1 that way. The boot screen shows the mark with no bit. **Integration pending:**
+  `fix/logo-no-core-bit` (no bit on core pages, Update's own accent) had not merged when chunk 2
+  finished. When it does, `BrandBlock` passes `section={section}` to `LogoMark` instead of
+  `bit="section"`; that is the only change needed here.
+- **The whole §2.3 page set is declared now.** Pages that a later area chunk builds carry
+  `ready: false` and a `host`, and their URLs redirect (with `replaceState`) to the page that holds
+  the capability today: Edge mint and Outlet credentials → Keys & secrets, Channels → Releases,
+  Content keys → Deliverables, Access → Update → Feed, Sign-in → Portal, Outlets & feeds →
+  Matrix, the catalog editor → Catalog, the simulator → Compatibility, New product → Products,
+  Platform → Home. Records that are not built yet (tier, release, the routed device drawer)
+  redirect to their collection. The sidebar and palette list only built pages. Each area chunk
+  flips `ready` and deletes `host`.
+- **Rollouts** mounts today's Distribution overview (chain, rollouts, hooks) until chunk 9.
+- **Writes go through `mutate(method, ...args)`** (`console/data/mutations.ts`), which runs the
+  declared invalidation after the server confirms. The table is keyed by API method, covers all 47
+  writes, and `mutations.test.ts` fails on a write with no entry, an entry that is not a write, or
+  any `api.<write>(` call in `src/` that bypasses `mutate`. The three views that refreshed after a
+  _failed_ write (an edge-mint 409, an outlet-credential delete, the license record's `refresh`)
+  keep that through the adapter's `invalidate(qk…)`.
+- **Query defaults:** `staleTime` 30 s, focus refetch on, **no automatic retries** (a failed read
+  shows its error and a Retry the operator controls).
+- **Not yet:** the 1024–1279 px "expand as an overlay" behaviour (the rail toggles inline there);
+  the unsaved-changes guard hook (the router's `blockNavigation` it builds on is here; the hook is
+  chunk 3's); `useTableUrlState` (chunk 3, on `useSearchParam` and the codecs in `routes.ts`).
+- **Small departures:** the sidebar landmark is `nav[aria-label="Console"]` (it also holds the
+  platform links); the `QueryClientProvider` is mounted in `App.tsx`; under 640 px the top bar
+  drops its Docs link (the account menu keeps "Docs home"); a `PageErrorBoundary` keeps a page that
+  throws from taking the shell down; the shortcut sheet (`?`) and the global `g` shortcuts ship
+  here because the user menu links to them (SH-14).
+- **A-1:** `environment` is `null` when `PKEY_ENVIRONMENT` is unset or unrecognised (the badge
+  stays hidden, as in production); `sessionExpiresAt` is the session's signed `exp`, in epoch
+  seconds. Admin routes are narrative-only, so no OpenAPI or transcript change.
+
 #### Chunk 3 · Component system
 
 **IDs closed.** UI-1 to UI-15 (including UI-5, the card header actions slot, and UI-8, tab variants
