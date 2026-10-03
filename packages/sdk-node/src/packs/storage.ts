@@ -33,6 +33,7 @@ import {
 } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { FilesIndexDoc } from "@polaris-key/protocol/packs";
+import { MAX_CHUNK_INDEX_BYTES } from "@polaris-key/protocol/core";
 import {
   treeDigest,
   type ByteSink,
@@ -241,7 +242,10 @@ export class DirPackStorage implements PackStorage {
   readonly chunkIndexes: ChunkIndexStore = {
     get: async (sha256) => {
       try {
-        return new Uint8Array(await readFile(this.indexPath(sha256)));
+        // A stored index larger than a client accepts is never read whole.
+        const path = this.indexPath(sha256);
+        if ((await stat(path)).size > MAX_CHUNK_INDEX_BYTES) return null;
+        return new Uint8Array(await readFile(path));
       } catch (e) {
         if (isMissing(e)) return null;
         throw e;

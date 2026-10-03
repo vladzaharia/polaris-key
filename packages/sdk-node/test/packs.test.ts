@@ -525,6 +525,23 @@ describe("the Node zstd backend (plans/P4-01.md §5; PARITY §6.3)", () => {
 });
 
 describe("DirPackStorage", () => {
+  it("never reads a stored seed index over MAX_CHUNK_INDEX_BYTES (P4-11)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pkey-idx-"));
+    try {
+      const s = new DirPackStorage({ root: dir });
+      const sha = "cd".repeat(32);
+      await s.chunkIndexes.put(sha, new Uint8Array(16));
+      expect(await s.chunkIndexes.get(sha)).toHaveLength(16);
+      await writeFile(
+        join(dir, "index", sha),
+        new Uint8Array(16 * 1024 * 1024 + 1),
+      );
+      expect(await s.chunkIndexes.get(sha)).toBeNull();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("reads an embedded single-file baseline from the file itself", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pkey-store-"));
     try {
