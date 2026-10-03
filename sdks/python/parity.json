@@ -46,6 +46,12 @@
     "devices.register": { "status": "implemented" },
     "devices.manage": { "status": "implemented" },
     "devices.report": { "status": "implemented" },
+    "devices.attest": {
+      "status": "na",
+      "runtime": "python",
+      "reason": "runtime",
+      "note": "P6-02: a CPython process has no platform attestation service; its devices stay at the basic trust level."
+    },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,

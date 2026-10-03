@@ -322,6 +322,7 @@ class Feature:
 	const DEVICES_REGISTER := "devices.register"
 	const DEVICES_MANAGE := "devices.manage"
 	const DEVICES_REPORT := "devices.report"
+	const DEVICES_ATTEST := "devices.attest"
 	const IDENTITY_OIDC := "identity.oidc"
 	const IDENTITY_DEVICECODE := "identity.devicecode"
 	const RELEASE_CHANGELOG := "release.changelog"
@@ -363,7 +364,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.revoke", "packs.delegation", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "devices.attest", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.revoke", "packs.delegation", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -940,6 +941,7 @@ static func capabilities() -> Dictionary:
 		"devices.register": {"status": "implemented", "service": "core", "na": []},
 		"devices.manage": {"status": "implemented", "service": "core", "na": []},
 		"devices.report": {"status": "implemented", "service": "core", "na": []},
+		"devices.attest": {"status": "planned", "service": "core", "na": []},
 		"identity.oidc": {"status": "planned", "service": "identity", "na": []},
 		"identity.devicecode": {"status": "implemented", "service": "identity", "na": []},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
@@ -981,4 +983,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "b5120b6567bd82ce236ff59435b1063e4c13e6fd4c070a64196aacb505536626"
+const CAPABILITY_DIGEST := "81a0247d43bc5857349a9d3ca489cd27512be915b38f9e16144d4d00ca4dfb82"

@@ -102,6 +102,12 @@
       "except": [{ "runtime": "web", "reason": "runtime" }],
       "note": "Desktop through invoke(\"devices\", \"report\"). POST /<p>/devices/report accepts only a device bearer, which a browser session does not hold; the browser adapter throws report-unsupported."
     },
+    "devices.attest": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "P6-02: neither a browser nor a desktop renderer has App Attest or Play Integrity; those devices stay at the basic trust level."
+    },
     "identity.oidc": { "status": "implemented" },
     "identity.devicecode": {
       "status": "implemented",

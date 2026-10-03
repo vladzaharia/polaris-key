@@ -105,6 +105,10 @@
       "status": "implemented",
       "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
     },
+    "devices.attest": {
+      "status": "planned",
+      "wp": "P6-02"
+    },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,

@@ -456,6 +456,7 @@ export const Feature = {
   devicesRegister: "devices.register",
   devicesManage: "devices.manage",
   devicesReport: "devices.report",
+  devicesAttest: "devices.attest",
   identityOidc: "identity.oidc",
   identityDevicecode: "identity.devicecode",
   releaseChangelog: "release.changelog",
@@ -527,6 +528,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "devices.register",
   "devices.manage",
   "devices.report",
+  "devices.attest",
   "identity.oidc",
   "identity.devicecode",
   "release.changelog",
@@ -1335,6 +1337,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "devices.register": { status: "implemented", service: "core", na: [] },
   "devices.manage": { status: "implemented", service: "core", na: [] },
   "devices.report": { status: "implemented", service: "core", na: [] },
+  "devices.attest": {
+    status: "na",
+    service: "core",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "identity.oidc": { status: "planned", service: "identity", na: [] },
   "identity.devicecode": { status: "implemented", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
@@ -1413,4 +1420,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "a2f6aa649f30b7e98eda85b47117228877d359d9b9348ef548caa8482d06c1e4";
+  "9611191d03e4a8f267b6b3c1c34403f472850bd7a51e34229ea4b953bb7c9d97";
