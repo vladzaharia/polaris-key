@@ -80,6 +80,11 @@ function corpusPayloads() {
 
 const shape = (o: object) => Object.keys(o).sort();
 
+/** The CLI's zstd runs synchronously, so a whole build blocks the event loop (about 35 s on a CI
+ *  runner). Yielding between phases lets vitest's worker-to-main RPC through; a single block near
+ *  a minute fails the run with "Timeout calling onTaskUpdate" though every test passes. */
+const yieldToLoop = () => new Promise<void>((r) => setImmediate(r));
+
 describe("the CLI against the content corpus (P4-04)", () => {
   const z = zstdCli(work);
   const { v1, v2, i1, i2 } = corpusPayloads();
@@ -95,7 +100,9 @@ describe("the CLI against the content corpus (P4-04)", () => {
       [v1, i1],
       [v2, i2],
     ] as const) {
+      await yieldToLoop();
       const b = await buildPayload(z, containerPayload(bytes, readPck(bytes)));
+      await yieldToLoop();
       await selfCheckPayload(z, b);
       built.push(b);
       expect(shape(b.index)).toEqual(shape(corpus));
