@@ -1361,14 +1361,18 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "release",
     na: [{ runtime: "node", reason: "runtime" }],
   },
-  "packs.type.l10n.table": { status: "planned", service: "release", na: [] },
-  "packs.type.data.json": { status: "planned", service: "release", na: [] },
+  "packs.type.l10n.table": {
+    status: "implemented",
+    service: "release",
+    na: [],
+  },
+  "packs.type.data.json": { status: "implemented", service: "release", na: [] },
   "packs.type.audio.bank": {
     status: "na",
     service: "release",
     na: [{ runtime: "node", reason: "runtime" }],
   },
-  "packs.type.ml.model": { status: "planned", service: "release", na: [] },
+  "packs.type.ml.model": { status: "implemented", service: "release", na: [] },
   "packs.provides": { status: "implemented", service: "release", na: [] },
   "packs.transport.apple": {
     status: "na",
@@ -1406,4 +1410,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "1518ba3b643b52035f284587510ee5ed09b27b0b624b9310534639c187728372";
+  "c5adce7ee105c391a57585c11754caafa6e8e348ee0e07624e2e49d7e245f7ce";

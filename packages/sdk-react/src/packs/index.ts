@@ -18,6 +18,22 @@ export {
 } from "./opfs.js";
 export {
   FILES_TREE_HANDLER,
+  // P4-16: the v3 pack-type handlers (data.json and l10n.table built in; ml.model registered by
+  // the host with its budget; custom.<name> through registerHandler).
+  DataJsonHandler,
+  L10nTableHandler,
+  MlModelHandler,
+  bcp47Canonical,
+  type DataJsonHandlerOptions,
+  type L10nMessage,
+  type L10nTable,
+  type L10nTableHandlerOptions,
+  type MlModel,
+  type MlModelHandlerOptions,
+  type ModelDescriptor,
+  type PackCheckRefusal,
+  type PackPayloadAccess,
+  type StagedPack,
   PackError,
   memoryPackStateStore,
   memoryPackStorage,

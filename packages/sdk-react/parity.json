@@ -181,7 +181,7 @@
     },
     "packs.handlers": {
       "status": "implemented",
-      "note": "update.packs.registerHandler; files.tree built in."
+      "note": "update.packs.registerHandler; files.tree, data.json and l10n.table built in; check(staged) refuses a staged payload with pack-type-check-failed before it commits (P4-16); custom.<name> through registerHandler."
     },
     "packs.provides": { "status": "implemented" },
     "packs.type.godot.zip": {
@@ -190,15 +190,24 @@
       "reason": "runtime",
       "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
     },
-    "packs.type.l10n.table": { "status": "planned", "wp": "P4-16" },
-    "packs.type.data.json": { "status": "planned", "wp": "P4-16" },
+    "packs.type.l10n.table": {
+      "status": "implemented",
+      "note": "P4-16: L10nTableHandler, built in: PO, CSV or JSON tables parsed by plain parsers (never evaluated), each table's BCP-47 locale matched to the variant's locale axis; hot; tables(packId) and onActivate/onDeactivate."
+    },
+    "packs.type.data.json": {
+      "status": "implemented",
+      "note": "P4-16: DataJsonHandler, built in: every file strict JSON with an object at the top, whatever its name; formatVersions the host lists (default [1]); hot; documents(packId) and onActivate/onDeactivate."
+    },
     "packs.type.audio.bank": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "P4-16: audio banks load through a game engine's middleware."
     },
-    "packs.type.ml.model": { "status": "planned", "wp": "P4-16" },
+    "packs.type.ml.model": {
+      "status": "implemented",
+      "note": "P4-16: MlModelHandler, registered by the host with its runtimes, RAM/VRAM budget, quantisations and load test: model.json checked, the staged file load-tested, then model(packId) swaps; hot."
+    },
     "packs.transport.apple": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],

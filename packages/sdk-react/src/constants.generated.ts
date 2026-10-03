@@ -1421,8 +1421,12 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "packs.type.l10n.table": { status: "planned", service: "release", na: [] },
-  "packs.type.data.json": { status: "planned", service: "release", na: [] },
+  "packs.type.l10n.table": {
+    status: "implemented",
+    service: "release",
+    na: [],
+  },
+  "packs.type.data.json": { status: "implemented", service: "release", na: [] },
   "packs.type.audio.bank": {
     status: "na",
     service: "release",
@@ -1431,7 +1435,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "packs.type.ml.model": { status: "planned", service: "release", na: [] },
+  "packs.type.ml.model": { status: "implemented", service: "release", na: [] },
   "packs.provides": { status: "implemented", service: "release", na: [] },
   "packs.transport.apple": {
     status: "na",
@@ -1480,4 +1484,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "2f02db3c746abe22a9d31d592797275b7edc955b8fe77ab7bbc07729dfc64ab3";
+  "7e7510858529d59ddc8f343bb11aa409502a4d404d888e5fadabec126a2e101c";
