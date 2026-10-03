@@ -293,7 +293,9 @@ public actor PacksClient {
             selectsVariant: { variants in
                 if case .index = selectVariant(variants, prefs) { return true }
                 return false
-            })
+            },
+            // plans/P4-19.md §2.7: the delegated releases the engine knows.
+            delegated: await engine.delegatedReleases())
     }
 
     /// Keep the revocations an update check verified (the engine's `recordRevocations`).
@@ -351,7 +353,11 @@ public actor PacksClient {
                 fetchObject: { try await PacksClient.fetchObject(core, objectTransport, $0) },
                 entitlements: { await PacksClient.entitlements(core) },
                 now: { await core.now() },
-                handlers: opts.handlers + pendingHandlers.with { $0 }))
+                handlers: opts.handlers + pendingHandlers.with { $0 },
+                // plans/P4-19.md §2.4: a hold's release never takes the delegated path. Unusable
+                // stamp holds (`stampHolds` gives nil) are treated as no holds: the record hash a
+                // decision names still binds the bytes.
+                holds: ((try? readStampBytes()) ?? nil).flatMap { stampHolds($0) } ?? []))
         let listeners = self.listeners
         engine.on { e in for l in listeners.with({ Array($0.values) }) { l(e) } }
         // A handler registered while the engine loads goes straight to it.

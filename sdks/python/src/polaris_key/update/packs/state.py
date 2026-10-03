@@ -105,6 +105,9 @@ def _as_install(v: Any, pack_id: str) -> Optional[Dict[str, Any]]:
         return None
     if v.get("activation") not in ("hot", "restart"):
         return None
+    # plans/P4-19.md §2.7: the delegation's compact JWS, verbatim, for a delegated install.
+    if "delegation" in v and not isinstance(v["delegation"], str):
+        return None
     return v
 
 
@@ -117,6 +120,8 @@ def _as_journal(v: Any, pack_id: str) -> Optional[Dict[str, Any]]:
     if not is_sha256(v.get("recordSha256")):
         return None
     if "delta" in v and not isinstance(v["delta"], str):
+        return None
+    if "delegation" in v and not isinstance(v["delegation"], str):
         return None
     if _PLAN_ID.fullmatch(v["planId"]) is None:
         return None

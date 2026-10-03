@@ -604,6 +604,16 @@ final class UpdateDecideTests: XCTestCase {
         ) { XCTAssertEqual(($0 as? PolarisError)?.code, ErrorCode.invalidOptions) }
     }
 
+    /// plans/P4-19.md §2.2: a `pkd1-` kid is a delegated content key, reached only through a
+    /// delegation, so pinning one is refused at construction. @pkey-feature packs.delegation
+    func testAPinnedDelegatedKidIsRefused() async throws {
+        let core = try await makeCore(store: InMemoryStore(productSlug: "djdl", deviceId: "dev-1"), clock: ReplayClock(t0))
+        let kid = "pkd1-" + String(repeating: "a", count: 64)
+        XCTAssertThrowsError(
+            try UpdateClient(core: core, options: options(keys: [kid: releaseKey.publicKeyB64]))
+        ) { XCTAssertEqual(($0 as? PolarisError)?.code, ErrorCode.invalidOptions) }
+    }
+
     // ── Freshness and the effective clock ───────────────────────────────────────────
 
     /// A committed feed past `expiresAt + 300` freezes: `none {stale}`, staged update kept.

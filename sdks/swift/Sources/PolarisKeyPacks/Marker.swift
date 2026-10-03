@@ -42,6 +42,9 @@ public func verifyMarker(
             expectedHash: recordSha256))
     switch v {
     case .refused(let step): return .rejected(step: step.rawValue)
+    // No delegation is passed (an embedded baseline is a release-key surface, plans/P4-19.md
+    // §2.4), so `.delegated` never occurs; it is refused like any other key.
+    case .delegated: return .rejected(step: "jws")
     case .ok(let record):
         guard record.kind == "pack", record.deliverable == packId, record.version == version,
             let pack = PackRecordDoc(json: record.json)

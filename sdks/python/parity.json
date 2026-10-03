@@ -93,7 +93,10 @@
       "status": "implemented",
       "note": "core/release_record.py verify_revocation and newer_revocation; the PackEngine keeps verified revocations in the sibling revocations.json (revocationsStored, relearn, 256 targets) and refuses revoked mounts with pack-revoked."
     },
-    "packs.delegation": { "status": "planned", "wp": "P4-25" },
+    "packs.delegation": {
+      "status": "implemented",
+      "note": "core/release_record.py verify_release_record (the delegated path, steps 13 and 16), verify_delegation, record_revoked and update/packs/dataonly.py data_only_refusal; the PackEngine fetches and caches delegations, refuses non-data-only delegated installs with pack-not-data-only, stores the install's delegation and refuses releases under a revoked delegation (pack-revoked, detail delegation); test_delegation_conformance drives every delegationCases and dataOnlyCases vector."
+    },
     "packs.plan": {
       "status": "implemented",
       "note": "update.packs plan, select_variant and plan_target; every plan-matrix.json row, variant case and target case in test_plan_matrix."

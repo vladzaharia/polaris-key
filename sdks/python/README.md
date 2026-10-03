@@ -586,6 +586,30 @@ essential entries before mount. The pure functions (`feed_content`, `revocation_
 exported for hosts that drive their own transport; `tests/test_content_decision.py` runs every
 `feedContentCases`, `revocationCases` and `contentRows` vector through them.
 
+### Delegated content (P4-19)
+
+A compatible or standalone pack release signed by a **delegated content key** installs through the
+same engine when it arrives as a feed target (`ensure_releases`, a `packs` decision's `install`):
+
+- the delegation its `pkd1-` kid names is fetched from the record route (at most 16 per call,
+  kept for the process), verified against `pinned_release_keys` only, and stored with the install
+  (`install["delegation"]`), so a reload re-verifies it offline and after its window;
+- every file must pass the data-only rule (`dataonly.py`): an extension allow-list over the files
+  index before any payload object is fetched, then a head sniff, a tail sniff and, for `json`,
+  `csv`, `tsv`, `po` and `txt`, a whole-file text rule as each file is written. A refusal is
+  `PackError` `pack-not-data-only` with the `path` and the rule as `detail` (`extension` or
+  `content`);
+- a release under a revoked delegation is `pack-revoked`, detail `delegation`, and stops running;
+- the stamp's pins, holds, a revocation's replacement and embedded baselines never take the
+  delegated path (a delegated record there is `record-rejected`, detail `jws`);
+- a `pinned_release_keys` kid matching `pkd1-<64 hex>` is refused as `invalid-options`.
+
+Parse delegated text only with a pure JSON or CSV parser, and never write delegated bytes under a
+code extension. The pure functions (`verify_release_record(..., delegation=)`,
+`verify_delegation`, `delegation_of`, `delegation_hash_of`, `covers_pack`, `record_revoked`,
+`data_only_refusal`) are exported; `tests/test_delegation_conformance.py` runs every
+`delegationCases` and `dataOnlyCases` vector through them.
+
 ## Trust, caching, and the offline gate
 
 The SDK follows wire contract v3 (`docs/security/WIRE-CONTRACT-V3.md`):

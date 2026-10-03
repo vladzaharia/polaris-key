@@ -17,10 +17,13 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from typing import Any, Collection, Dict, Mapping, Optional, Tuple
+from typing import AbstractSet, Any, Collection, Dict, Mapping, Optional, Tuple, Union
 
 from ..constants_generated import (
+    DELEGABLE_PACK_TYPE_VALUES,
     MAX_BUILD_EMBEDS,
+    MAX_DELEGATION_TTL_SECONDS,
+    MAX_DELEGATION_TYPES,
     MAX_PACK_VARIANTS,
     MAX_RECORD_JWS_BYTES,
     MAX_VARIANT_DELTAS,
@@ -62,6 +65,17 @@ __all__ = [
     "revocation_of",
     "verify_revocation",
     "newer_revocation",
+    "DELEGATED_KID_PATTERN",
+    "RecordDelegation",
+    "DelegationBody",
+    "VerifiedDelegation",
+    "VerifyDelegationResult",
+    "delegation_hash_of",
+    "delegated_kid",
+    "delegation_of",
+    "verify_delegation",
+    "covers_pack",
+    "record_revoked",
 ]
 
 #: P2-04's ``BUILD_ID_RE``: ASCII, so the uniqueness check and the decision's tie-break by
@@ -345,7 +359,7 @@ def release_record_claims(payload: Any, *, expected_aud: str) -> bool:
 
     A ``kind: pack`` record must pass the pack claims (plans/P4-01.md §2.3) and a ``kind: app``
     record's ``content`` and ``builds[].embeds`` the app ones (§2.4); the ``revocation`` kind
-    (checked further by ``verify_revocation``), the reserved ``delegation`` kind and unknown kinds
+    (checked further by ``verify_revocation``), the ``delegation`` kind (read by ``delegation_of``) and unknown kinds
     keep the common claims only. The
     cross-check refuses them where an app record is expected. Never raises.
     """
@@ -389,14 +403,39 @@ class ReleaseRecordPin:
 
 
 @dataclass(frozen=True)
+class RecordDelegation:
+    """The delegation a delegated record verified through (plans/P4-19.md §2.3): its record
+    hash (the kid's hex), its scope root, its effective types (``types ∩
+    DELEGABLE_PACK_TYPES``, in the delegation's order) and its signing window."""
+
+    sha256: str
+    deliverable: str
+    types: Tuple[str, ...]
+    issuedAt: int
+    expiresAt: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "sha256": self.sha256,
+            "deliverable": self.deliverable,
+            "types": list(self.types),
+            "issuedAt": self.issuedAt,
+            "expiresAt": self.expiresAt,
+        }
+
+
+@dataclass(frozen=True)
 class VerifyReleaseRecordResult:
     """``verify_release_record``'s answer: ``ok`` with the decoded ``record``, or the refusal
-    ``step`` (``releaseRecordCases`` ``expect.step``): ``hash``, ``jws``, ``claims`` or
-    ``cross-check``."""
+    ``step`` (``releaseRecordCases`` ``expect.step``): ``hash``, ``jws``, ``claims``,
+    ``cross-check``, and on the delegated path ``delegation`` or ``scope`` (plans/P4-19.md
+    §2.3). ``delegation`` is the delegation a content key's record verified through, ``None``
+    for a release key's."""
 
     ok: bool
     record: Optional[ReleaseRecordDoc] = None
     step: Optional[str] = None
+    delegation: Optional[RecordDelegation] = None
 
 
 def _fail(step: str) -> VerifyReleaseRecordResult:
@@ -419,12 +458,21 @@ def _header_kid(jws: str) -> Optional[str]:
     if not enc_header:
         return None
     try:
-        header = json.loads(b64url_decode(enc_header).decode("utf-8"))
+        header = json.loads(b64url_decode(enc_header).decode("utf-8", "strict"))
     except Exception:
         return None
     if not isinstance(header, dict) or not isinstance(header.get("kid"), str):
         return None
     return header["kid"]
+
+
+def _in_trust(raw: bytes, trust: TrustSet) -> bool:
+    """True when any key of ``trust`` has the raw bytes ``raw``."""
+    for k in trust.values():
+        other = _raw_key(k)
+        if other is not None and other == raw:
+            return True
+    return False
 
 
 def verify_release_record(
@@ -435,20 +483,28 @@ def verify_release_record(
     expected_aud: str,
     expected_hash: str,
     pin: Optional[ReleaseRecordPin] = None,
+    delegation: Optional[str] = None,
 ) -> VerifyReleaseRecordResult:
-    """Client steps 12–15 (plans/P3-01.md §2.5), in the contract's order:
+    """Client steps 12–16 (plans/P3-01.md §2.5, plans/P4-19.md §2.3), in the contract's order:
 
     12. a body over ``MAX_RECORD_JWS_BYTES`` (88 844) or with a byte outside ASCII is refused
         without hashing; otherwise its SHA-256 must equal ``expected_hash``, before any
         Ed25519 work;
     13. the key is selected by ``kid`` from ``release_keys`` (the PINNED release keys) only,
         refused if its raw bytes are also in ``product_trust`` (the effective product trust
-        set), then ``verify_jws`` with that one key and ``typ`` ``pkey-release+jws``;
+        set), then ``verify_jws`` with that one key and ``typ`` ``pkey-release+jws``. Otherwise,
+        with ``delegation`` (the delegation's compact JWS) supplied and a ``pkd1-`` kid: the
+        delegation is verified against the pinned release keys (:func:`verify_delegation`, its
+        hash the kid's hex), its key must equal no pinned release key and no product key (both
+        step ``delegation``), then ``verify_jws`` with the delegated key (step ``jws``);
     14. the claims (:func:`release_record_claims`);
     15. with a ``pin``: ``kind`` equals the pin's ``kind`` (``app`` by default), and ``deliverable``, ``version`` and ``seq`` equal
-        the pin's.
+        the pin's;
+    16. a delegated record only (``scope``): ``kind: pack``, ``deliverable`` the scope root or
+        under it by whole segments, ``type`` in the effective types, every variant's
+        ``files.layout`` ``tree``, and ``delegation.issuedAt ≤ issuedAt ≤ delegation.expiresAt``.
 
-    Never raises.
+    Without ``delegation`` the behaviour is the pre-P4-19 one. Never raises.
     """
     try:
         # 12. Hash before signature.
@@ -459,17 +515,38 @@ def verify_release_record(
         if hashlib.sha256(jws.encode("ascii")).hexdigest() != expected_hash:
             return _fail("hash")
 
-        # 13. The pinned release keys only, and never a product key.
+        # 13. The pinned release keys only, and never a product key; or one delegation from them.
         kid = _header_kid(jws)
-        if kid is None or kid not in release_keys:
+        if kid is None:
             return _fail("jws")
-        key = release_keys[kid]
-        raw = _raw_key(key)
-        if raw is None:
-            return _fail("jws")
-        for product_key in product_trust.values():
-            if _raw_key(product_key) == raw:
+        verified: Optional[VerifiedDelegation] = None
+        if kid in release_keys:
+            key = release_keys[kid]
+            raw = _raw_key(key)
+            if raw is None:
                 return _fail("jws")
+            if _in_trust(raw, product_trust):
+                return _fail("jws")
+        else:
+            h = delegation_hash_of(jws)
+            if not isinstance(delegation, str) or h is None:
+                return _fail("jws")
+            d = verify_delegation(
+                delegation,
+                release_keys=release_keys,
+                product_trust=product_trust,
+                expected_aud=expected_aud,
+                expected_hash=h,
+            )
+            if not d.ok or d.delegation is None:
+                return _fail("delegation")
+            raw = _raw_key(d.delegation.publicKey)
+            if raw is None:
+                return _fail("delegation")
+            if _in_trust(raw, release_keys) or _in_trust(raw, product_trust):
+                return _fail("delegation")
+            verified = d.delegation
+            key = d.delegation.publicKey
         v = verify_jws(jws, {kid: key}, typ=TYP_RELEASE, require_typ=True)
         if v is None:
             return _fail("jws")
@@ -485,9 +562,48 @@ def verify_release_record(
                 return _fail("cross-check")
             if record.version != pin.version or record.seq != pin.seq:
                 return _fail("cross-check")
-        return VerifyReleaseRecordResult(ok=True, record=record)
+
+        # 16. The delegation's scope.
+        if verified is not None and not _in_scope(v.payload, verified):
+            return _fail("scope")
+        return VerifyReleaseRecordResult(
+            ok=True,
+            record=record,
+            delegation=(
+                None
+                if verified is None
+                else RecordDelegation(
+                    sha256=verified.sha256,
+                    deliverable=verified.deliverable,
+                    types=verified.types,
+                    issuedAt=verified.issuedAt,
+                    expiresAt=verified.expiresAt,
+                )
+            ),
+        )
     except Exception:
         return _fail("jws")
+
+
+def _in_scope(record: Dict[str, Any], d: "VerifiedDelegation") -> bool:
+    """Step 16 (plans/P4-19.md §2.3) over a record whose claims passed."""
+    if record.get("kind") != "pack":
+        return False
+    if not covers_pack(d.deliverable, record["deliverable"]):
+        return False
+    t = record.get("type")
+    if not isinstance(t, str) or t not in d.types:
+        return False
+    if not all(x["files"]["layout"] == "tree" for x in record["variants"]):
+        return False
+    return d.issuedAt <= record["issuedAt"] <= d.expiresAt
+
+
+def covers_pack(root: str, pack: str) -> bool:
+    """Whether pack id ``pack`` is the scope root ``root`` or under it by whole segments
+    (plans/P4-19.md §2.3 step 16): ``djdl.events`` covers ``djdl.events.halloween``, never
+    ``djdl.eventsx``."""
+    return pack == root or pack.startswith(root + ".")
 
 
 @dataclass(frozen=True)
@@ -691,3 +807,172 @@ def newer_revocation(a: Any, b: Any) -> Any:
     if a.issuedAt != b.issuedAt:
         return a if a.issuedAt > b.issuedAt else b
     return a if a.record >= b.record else b
+
+
+# ── P4-19: content-key delegation (plans/P4-19.md §2.2–§2.6, WIRE-CONTRACT-V4 §2.5.4) ──────
+
+#: ``DELEGATED_KID_PATTERN`` (``@polaris-key/protocol/release``), restated: ``pkd1-`` and the
+#: delegation's record hash. 69 bytes, so it never collides with a declared release kid.
+DELEGATED_KID_PATTERN = re.compile(r"pkd1-[0-9a-f]{64}")
+#: 32 raw bytes in strict base64url (V4 §1): 43 characters, no padding, zero trailing bits.
+_KEY_B64URL_RE = re.compile(r"[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]")
+
+
+def delegation_hash_of(jws: Any) -> Optional[str]:
+    """The delegation hash a delegated record's header names (plans/P4-19.md §2.2): the hex of
+    a ``pkd1-<sha256>`` kid, read from the protected header only. ``None`` for any other kid.
+    Never raises."""
+    if not isinstance(jws, str):
+        return None
+    kid = _header_kid(jws)
+    if kid is None or _full_match(DELEGATED_KID_PATTERN, kid) is None:
+        return None
+    return kid[5:]
+
+
+def delegated_kid(delegation_sha256: str) -> str:
+    """The delegated kid of a delegation record hash: ``pkd1-<sha256>``."""
+    return "pkd1-" + delegation_sha256
+
+
+@dataclass(frozen=True)
+class DelegationBody:
+    """A usable delegation body, as :func:`delegation_of` reads it. ``types`` are the effective
+    types (``types ∩ DELEGABLE_PACK_TYPES``, in the record's order, never empty);
+    ``listedTypes`` the record's ``types`` as listed."""
+
+    deliverable: str
+    seq: int
+    publicKey: str
+    types: Tuple[str, ...]
+    listedTypes: Tuple[str, ...]
+    issuedAt: int
+    expiresAt: int
+
+
+@dataclass(frozen=True)
+class VerifiedDelegation(DelegationBody):
+    """A verified delegation: its body and its record hash."""
+
+    sha256: str = ""
+
+
+@dataclass(frozen=True)
+class VerifyDelegationResult:
+    """``verify_delegation``'s answer: ``ok`` with the ``delegation``, or the refusal ``step``
+    (a ``verify_release_record`` step, or ``delegation``)."""
+
+    ok: bool
+    delegation: Optional[VerifiedDelegation] = None
+    step: Optional[str] = None
+
+
+def delegation_of(doc: Any) -> Optional[DelegationBody]:
+    """The delegation body (plans/P4-19.md §2.2), read beside the claims: usable when ``kind``
+    is ``delegation``, ``deliverable`` is a pack id, ``delegate.publicKey`` is strict base64url
+    of 32 bytes, ``types`` is 1–``MAX_DELEGATION_TYPES`` unique ``PACK_TYPE_PATTERN`` strings
+    whose intersection with ``DELEGABLE_PACK_TYPES`` is non-empty, and ``expiresAt`` is an
+    integer by token (minimum 1) with ``issuedAt < expiresAt ≤ issuedAt +
+    MAX_DELEGATION_TTL_SECONDS``. ``builds``, ``content`` and unknown members are ignored.
+    ``json.loads`` gives a ``float`` for every non-plain token, so the token rule needs no
+    pointer set here. ``None`` when unusable. Never raises."""
+    try:
+        if not isinstance(doc, dict) or doc.get("kind") != "delegation":
+            return None
+        if not is_pack_id(doc.get("deliverable")):
+            return None
+        delegate = doc.get("delegate")
+        if not isinstance(delegate, dict):
+            return None
+        public_key = delegate.get("publicKey")
+        if not isinstance(public_key, str) or _full_match(_KEY_B64URL_RE, public_key) is None:
+            return None
+        types = doc.get("types")
+        if not isinstance(types, list) or len(types) < 1 or len(types) > MAX_DELEGATION_TYPES:
+            return None
+        seen = set()
+        for t in types:
+            if not isinstance(t, str) or _full_match(PACK_TYPE_PATTERN, t) is None or t in seen:
+                return None
+            seen.add(t)
+        effective = tuple(t for t in types if t in DELEGABLE_PACK_TYPE_VALUES)
+        if not effective:
+            return None
+        expires_at = _wire_int(doc.get("expiresAt"), 1)
+        issued_at = _wire_int(doc.get("issuedAt"), 0)
+        seq = _wire_int(doc.get("seq"), 1)
+        if expires_at is None or issued_at is None or seq is None:
+            return None
+        if not issued_at < expires_at:
+            return None
+        if expires_at > issued_at + MAX_DELEGATION_TTL_SECONDS:
+            return None
+        return DelegationBody(
+            deliverable=doc["deliverable"],
+            seq=seq,
+            publicKey=public_key,
+            types=effective,
+            listedTypes=tuple(types),
+            issuedAt=issued_at,
+            expiresAt=expires_at,
+        )
+    except Exception:
+        return None
+
+
+def verify_delegation(
+    jws: str,
+    *,
+    release_keys: TrustSet,
+    product_trust: TrustSet,
+    expected_aud: str,
+    expected_hash: str,
+) -> VerifyDelegationResult:
+    """Verify a delegation record (plans/P4-19.md §2.3 step 13.1): steps 12–14 against the
+    PINNED release keys only (the ASCII bound, the hash, the product-key refusal, the
+    signature, the claims), then ``kind == "delegation"`` and :func:`delegation_of`. A
+    delegation is never verified through another delegation, so a content key cannot
+    re-delegate. Never raises."""
+    r = verify_release_record(
+        jws,
+        release_keys=release_keys,
+        product_trust=product_trust,
+        expected_aud=expected_aud,
+        expected_hash=expected_hash,
+    )
+    if not r.ok or r.record is None:
+        return VerifyDelegationResult(ok=False, step=r.step)
+    if r.record.kind != "delegation":
+        return VerifyDelegationResult(ok=False, step="delegation")
+    body = delegation_of(r.record.to_dict())
+    if body is None:
+        return VerifyDelegationResult(ok=False, step="delegation")
+    return VerifyDelegationResult(
+        ok=True,
+        delegation=VerifiedDelegation(
+            deliverable=body.deliverable,
+            seq=body.seq,
+            publicKey=body.publicKey,
+            types=body.types,
+            listedTypes=body.listedTypes,
+            issuedAt=body.issuedAt,
+            expiresAt=body.expiresAt,
+            sha256=expected_hash,
+        ),
+    )
+
+
+def record_revoked(
+    record_sha256: str,
+    delegation_sha256: Optional[str],
+    revoked: Union[AbstractSet[str], Mapping[str, Any], Collection[str]],
+) -> Optional[str]:
+    """The one rule for applying revocations to a release (plans/P4-19.md §2.3): ``record``
+    when the release's own hash is revoked, else ``delegation`` when the delegation it was
+    signed under is, else ``None``. ``revoked`` holds the revoked target hashes (a set, or a
+    mapping by target). Pure."""
+    if record_sha256 in revoked:
+        return "record"
+    if delegation_sha256 is not None and delegation_sha256 in revoked:
+        return "delegation"
+    return None

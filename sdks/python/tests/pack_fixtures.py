@@ -64,6 +64,9 @@ __all__ = [
     "revocation_for",
     "sign_feed_doc",
     "sign_release_doc",
+    "content_key_pair",
+    "delegation_for",
+    "delegation_revocation_for",
 ]
 
 
@@ -97,10 +100,14 @@ def tree_pack(
     entitlement: Optional[str] = None,
     type: str = "files.tree",
     index_bytes: Optional[int] = None,
+    signer: Optional[Dict[str, str]] = None,
+    issued_at: Optional[int] = None,
+    variant_extra: Optional[Dict[str, Any]] = None,
 ) -> TreePack:
     """A ``files.tree`` pack release over ``files``, every object raw; optionally a ``files``
     delta set from ``from_pack``, whose entries are ``delta`` (the probe frame, when the base file
-    is the probe base) or raw ``blob`` entries."""
+    is the probe base) or raw ``blob`` entries. ``signer`` (``{"pem", "kid"}``) signs with a
+    delegated content key instead of the release key."""
     fs = {p: (b.encode("utf-8") if isinstance(b, str) else b) for p, b in files.items()}
     paths = sorted(fs, key=lambda p: p.encode("utf-8"))
     entries = [
@@ -204,6 +211,8 @@ def tree_pack(
     }
     if deltas:
         variant["deltas"] = deltas
+    if variant_extra:
+        variant.update(variant_extra)
     record: Dict[str, Any] = {
         "schemaVersion": 1,
         "aud": PRODUCT,
@@ -211,7 +220,7 @@ def tree_pack(
         "kind": "pack",
         "version": version,
         "seq": seq,
-        "issuedAt": 1759300000 + seq,
+        "issuedAt": issued_at if issued_at is not None else 1759300000 + seq,
         "type": type,
         "formatVersion": 1,
         "handler": {"activation": activation},
@@ -219,7 +228,10 @@ def tree_pack(
     if entitlement is not None:
         record["entitlement"] = entitlement
     record["variants"] = [variant]
-    jws = sign_jws(record, _key(RELEASE_KID)["privateKeyPkcs8Pem"], RELEASE_KID, "pkey-release+jws")
+    if signer is not None:
+        jws = sign_jws(record, signer["pem"], signer["kid"], "pkey-release+jws")
+    else:
+        jws = sign_jws(record, _key(RELEASE_KID)["privateKeyPkcs8Pem"], RELEASE_KID, "pkey-release+jws")
     return TreePack(
         pack_id=pack_id,
         version=version,
@@ -351,3 +363,77 @@ def sign_feed_doc(doc: Any) -> str:
 def sign_release_doc(doc: Any) -> str:
     """Sign a release record with the corpus's release key."""
     return sign_jws(doc, _key(RELEASE_KID)["privateKeyPkcs8Pem"], RELEASE_KID, "pkey-release+jws")
+
+
+def content_key_pair() -> Dict[str, str]:
+    """A throwaway Ed25519 content key generated at test time (never committed): ``{"pem",
+    "pub"}``, the public half as base64url of its 32 raw bytes."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from polaris_key.core.b64url import b64url_encode
+
+    k = Ed25519PrivateKey.generate()
+    pem = k.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    ).decode("ascii")
+    raw = k.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    return {"pem": pem, "pub": b64url_encode(raw)}
+
+
+def delegation_for(
+    deliverable: str,
+    public_key: str,
+    *,
+    types: Optional[List[str]] = None,
+    issued_at: int = 1759200000,
+    expires_at: Optional[int] = None,
+    seq: int = 1,
+) -> Dict[str, str]:
+    """A ``kind: delegation`` record (plans/P4-19.md §2.2) signed by the release key, its hash,
+    and the kid a record signed under it carries: ``{"jws", "sha256", "kid"}``."""
+    jws = sign_release_doc(
+        {
+            "schemaVersion": 1,
+            "aud": PRODUCT,
+            "deliverable": deliverable,
+            "kind": "delegation",
+            "version": str(seq),
+            "seq": seq,
+            "issuedAt": issued_at,
+            "expiresAt": expires_at if expires_at is not None else issued_at + 180 * 86400,
+            "delegate": {"publicKey": public_key},
+            "types": types if types is not None else ["files.tree", "data.json"],
+        }
+    )
+    return {"jws": jws, "sha256": sha(jws), "kid": f"pkd1-{sha(jws)}"}
+
+
+def delegation_revocation_for(d: Dict[str, str], deliverable: str) -> Dict[str, Any]:
+    """A revocation of a delegation (P4-13's record unchanged: ``revokes`` is its hash) and its
+    feed entry (``kind: delegation``)."""
+    jws = sign_release_doc(
+        {
+            "schemaVersion": 1,
+            "aud": PRODUCT,
+            "deliverable": deliverable,
+            "kind": "revocation",
+            "version": "1",
+            "seq": 1,
+            "issuedAt": 1759350000,
+            "revokes": d["sha256"],
+            "reason": "Content key retired in a test.",
+        }
+    )
+    return {
+        "jws": jws,
+        "record": sha(jws),
+        "entry": {
+            "record": sha(jws),
+            "pack": deliverable,
+            "target": d["sha256"],
+            "version": "1",
+            "seq": 1,
+            "kind": "delegation",
+        },
+    }
