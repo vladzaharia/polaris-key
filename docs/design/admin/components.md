@@ -114,8 +114,9 @@ in the brand CSS.
 
 - Renders `<SectionMark section={section} size={28} />` and the compact wordmark at ≥ 640 px.
 - It is a link to `#/` (Home), labelled "Polaris Key home".
-- **The section bit.** The K's terminal bit takes the section accent's `solid`; on core and platform
-  pages it uses `signed.mark` (gold).
+- **The section bit.** The K's terminal bit takes the section accent's `solid` in a service
+  section; on core and platform pages the K has no bit at all (BRAND.md §6, owner decision
+  2026-10-03, superseding the earlier gold-on-core rule).
   - The brand package draws this. ADMIN only passes `section`.
   - The bit changes color with a `duration.base` crossfade (none under reduced motion).
   - The star never changes.

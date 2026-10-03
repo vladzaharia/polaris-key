@@ -32,6 +32,7 @@ import {
   tabOf,
   visibleSections,
   type Route,
+  type ServiceAccent,
   type ServiceState,
   type Tab,
 } from "../route.js";
@@ -118,8 +119,8 @@ export function Shell({
   const accent = activeTab ? sectionOf(activeTab).accent : "core";
 
   // The section also rides <html>, so what Radix portals out of this tree (dialogs, menus,
-  // popovers) takes the section's accent too, and the header mark's section bit follows the
-  // route (BRAND.md §6: --pk-section-bit is re-pointed by the nearest data-service).
+  // popovers) takes the section's accent too. The header mark's bit follows the route through
+  // `accent`: none on core, the section's accent in a service section (BRAND.md §6).
   React.useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-service", accent);
@@ -151,6 +152,7 @@ export function Shell({
           route={route}
           activeSlug={activeSlug}
           activeTab={activeTab}
+          accent={accent}
           services={services}
           mobileOpen={mobileOpen}
           go={go}
@@ -182,6 +184,7 @@ function Sidebar({
   route,
   activeSlug,
   activeTab,
+  accent,
   services,
   mobileOpen,
   go,
@@ -190,6 +193,8 @@ function Sidebar({
   route: Route;
   activeSlug: string;
   activeTab: Tab | null;
+  /** The current section, for the header mark's bit (none on core, BRAND.md §6). */
+  accent: ServiceAccent;
   services: ServiceState;
   mobileOpen: boolean;
   go: (route: Route) => void;
@@ -210,7 +215,7 @@ function Sidebar({
           onClick={() => go({ kind: "dashboard" })}
           aria-label="Polaris Key dashboard"
         >
-          <Logo subtitle="admin" />
+          <Logo subtitle="admin" section={accent} />
         </button>
       </div>
 

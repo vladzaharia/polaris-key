@@ -256,3 +256,44 @@ describe("badge and alt facts", () => {
     expect(readme).toMatch(/Stacked: 288 × 336/);
   });
 });
+
+// The default Polaris Key logo carries no terminal bit (docs/design/BRAND.md §6, owner decision
+// 2026-10-03). The favicons, touch icon and manifest icons the console serves come verbatim from
+// kit/04-web/key, so they must already be bit-less: no gold in any SVG, and no gold pixel in any
+// PNG. If a new kit adds the bit here, generate bit-less icons instead of shipping it.
+describe("the web identity (favicons, touch and manifest icons) has no bit", () => {
+  const dir = join(KIT, "04-web", "key");
+  const files = readdirSync(dir);
+  const golds = [BRAND.gold.dark, BRAND.gold.light].map((h) => [
+    parseInt(h.slice(1, 3), 16),
+    parseInt(h.slice(3, 5), 16),
+    parseInt(h.slice(5, 7), 16),
+  ]);
+
+  it.each(files.filter((f) => f.endsWith(".svg")))("%s", (f) => {
+    const svg = readFileSync(join(dir, f), "utf8").toLowerCase();
+    for (const g of [BRAND.gold.dark, BRAND.gold.light])
+      expect(svg).not.toContain(g.toLowerCase());
+  });
+
+  it.each(files.filter((f) => f.endsWith(".png")))("%s", async (f) => {
+    const { default: sharp } = await import("sharp");
+    const { data, info } = await sharp(join(dir, f))
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let gold = 0;
+    for (let i = 0; i < data.length; i += info.channels) {
+      if (data[i + 3]! < 128) continue;
+      for (const [r, g, b] of golds)
+        if (
+          Math.abs(data[i]! - r!) +
+            Math.abs(data[i + 1]! - g!) +
+            Math.abs(data[i + 2]! - b!) <
+          60
+        )
+          gold++;
+    }
+    expect(gold).toBe(0);
+  });
+});

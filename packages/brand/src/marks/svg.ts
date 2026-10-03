@@ -26,6 +26,8 @@ import {
 import {
   badgeSize,
   bitVisible,
+  isNoBit,
+  isServiceId,
   opticalCut,
   resolveBitFill,
   type BitColor,
@@ -68,11 +70,14 @@ export interface MarkOptions {
   size?: number;
   /** Ground the mark sits on, or "mono" for one inherited ink (currentColor). Default "dark". */
   theme?: MarkTheme;
-  /** Show the kit-gold terminal bit (key, display cut, >= 48 px only). */
+  /**
+   * Show the kit-gold terminal bit (key, display cut, >= 48 px only). Off by default: the default
+   * Polaris Key mark has no bit.
+   */
   signed?: boolean;
   /**
-   * Colour the terminal bit (implies showing it, under the same size rule): "gold", a section id
-   * (the section bit; "core" is gold), "section" for the live tokens.css section, or a CSS colour.
+   * The terminal bit (see BitColor). "none" or "core" leaves it out entirely; a section id, "section"
+   * (the live tokens.css section), "gold" or a CSS colour draws it, under the same size rule.
    */
   bit?: BitColor;
   /** Accessible name. Omit (or "") when an adjacent visible label already names it. */
@@ -83,9 +88,44 @@ export interface MarkPart {
   role: "body" | "star" | "gold";
   d: string;
   fill: string;
-  /** Inline style (the live section bit uses `fill: var(--pk-section-bit)`). */
-  style?: string;
+  /**
+   * Classes from tokens.css: `polaris-section-bit` (eases the fill between sections) on every
+   * section bit, plus `polaris-live-bit` on the live "section" bit, whose fill and display come
+   * from `--pk-section-bit` and `--pk-section-bit-display`. No inline style is ever emitted, so
+   * the markup is safe under a CSP without 'unsafe-inline' styles, innerHTML included.
+   */
   className?: string;
+}
+
+/** The classes a non-mono section bit carries (see MarkPart.className). */
+export const SECTION_BIT_CLASS = "polaris-section-bit";
+export const LIVE_BIT_CLASS = "polaris-live-bit";
+
+/** Whether a mark or lockup draws its bit at all, before the size rule. */
+function wantsBit(signed: boolean | undefined, bit: BitColor | undefined) {
+  if (isNoBit(bit)) return false;
+  return bit !== undefined || signed === true;
+}
+
+/**
+ * The drawn bit's fill and classes, or null for none. Without tokens.css the live bit's
+ * fallback fill is "none", so a page that forgot the stylesheet still shows no bit (the default).
+ */
+function bitPaint(
+  bit: BitColor | undefined,
+  ground: MarkTheme,
+): { fill: string; className?: string } | null {
+  const requested: BitColor = bit ?? "gold";
+  const fill = resolveBitFill(requested, ground);
+  if (fill === null) return null;
+  if (ground === "mono") return { fill };
+  if (requested === "section")
+    return {
+      fill: "none",
+      className: `${SECTION_BIT_CLASS} ${LIVE_BIT_CLASS}`,
+    };
+  if (isServiceId(requested)) return { fill, className: SECTION_BIT_CLASS };
+  return { fill };
 }
 
 /** The resolved drawing of a mark: what both renderers emit. */
@@ -100,27 +140,18 @@ export function markParts(opts: MarkOptions = {}): {
   const grid = CUT_GRID[cut];
   const ink = theme === "mono" ? "currentColor" : BRAND.violet[theme];
   const star = theme === "mono" ? "currentColor" : BRAND.star[theme];
-  const showBit = (signed || bit !== undefined) && bitVisible(kind, size);
+  const paint =
+    wantsBit(signed, bit) && bitVisible(kind, size)
+      ? bitPaint(bit, theme)
+      : null;
   const parts: MarkPart[] = [];
   for (const [role, d] of GEOMETRY[kind][cut][1] as readonly (readonly [
     string,
     string,
   ])[]) {
     if (role === "gold") {
-      if (!showBit) continue;
-      const requested: BitColor = bit ?? "gold";
-      if (requested === "section" && theme !== "mono") {
-        const gold = BRAND.gold[theme];
-        parts.push({
-          role: "gold",
-          d,
-          fill: gold,
-          style: `fill:var(--pk-section-bit, ${gold})`,
-          className: "polaris-section-bit",
-        });
-      } else {
-        parts.push({ role: "gold", d, fill: resolveBitFill(requested, theme) });
-      }
+      // No bit: the path is left out entirely (no space, no hit-testing), never painted clear.
+      if (paint) parts.push({ role: "gold", d, ...paint });
       continue;
     }
     parts.push({
@@ -139,7 +170,7 @@ export function markSvg(opts: MarkOptions = {}): string {
   const paths = parts
     .map(
       (p) =>
-        `<path d="${p.d}" fill="${escapeHtml(p.fill)}"${p.style ? ` style="${escapeHtml(p.style)}"` : ""}${p.className ? ` class="${p.className}"` : ""}></path>`,
+        `<path d="${p.d}" fill="${escapeHtml(p.fill)}"${p.className ? ` class="${p.className}"` : ""}></path>`,
     )
     .join("");
   return `<svg xmlns="${SVG_NS}" width="${size}" height="${size}" viewBox="0 0 ${grid} ${grid}"${head.attrs}>${head.title}${paths}</svg>`;
@@ -212,8 +243,9 @@ export interface LockupOptions {
   /** Rendered height in CSS px. Default: the kit's natural size. Width follows the aspect ratio. */
   height?: number;
   /**
-   * Show the terminal bit. The kit's horizontal and stacked K lockups carry it, so this defaults
-   * to true; it still disappears whenever the glyph renders below 48 px.
+   * Show the kit-gold terminal bit. Off by default: the default Polaris Key lockup has no bit
+   * (owner decision 2026-10-03), although the kit's own horizontal and stacked files carry it
+   * (`kitLockupSvg` still reproduces those byte for byte). It never shows below a 48 px glyph.
    */
   signed?: boolean;
   /** Colour the bit (see MarkOptions.bit). */
@@ -234,7 +266,7 @@ export function lockupMetrics(opts: LockupOptions = {}) {
     kind === "key" &&
     glyph.cut === "display" &&
     glyphPx >= OPTICAL.goldMinimumGlyphSize &&
-    ((opts.signed ?? true) || opts.bit !== undefined);
+    wantsBit(opts.signed, opts.bit);
   return { template: t, width, height, glyphPx, cut: glyph.cut, bit };
 }
 
@@ -248,17 +280,10 @@ export function lockupInner(opts: LockupOptions = {}): string {
   if (!m.bit) body = body.replace(goldPath, "");
   else if (opts.bit !== undefined) {
     const ground = groundOf(theme);
-    if (opts.bit === "section" && ground !== "mono") {
-      const gold = BRAND.gold[ground];
-      body = body.replace(
-        goldPath,
-        `<path fill="${gold}" style="fill:var(--pk-section-bit, ${gold})" class="polaris-section-bit" $1/>`,
-      );
-    } else {
-      const ink =
-        ground === "mono" ? palette.gold : resolveBitFill(opts.bit, ground);
-      body = body.replace(goldPath, `<path fill="${escapeHtml(ink)}" $1/>`);
-    }
+    const paint = bitPaint(opts.bit, ground)!;
+    const ink = ground === "mono" ? palette.gold : paint.fill;
+    const cls = paint.className ? ` class="${paint.className}"` : "";
+    body = body.replace(goldPath, `<path fill="${escapeHtml(ink)}"${cls} $1/>`);
   }
   const title = opts.title ?? m.template.title;
   return `${title ? `<title>${escapeHtml(title)}</title>` : ""}${body.replace(/\{(\w+)\}/g, (_, r: KitRole) => palette[r])}`;

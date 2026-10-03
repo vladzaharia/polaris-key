@@ -17,7 +17,9 @@
  *
  * SECTION. data-service="core|license|config|release|distribution|update|identity" on (or
  * inside) the themed element re-points --pk-accent*, and --pk-section-bit, at that section.
- * With no data-service the platform (core) values apply.
+ * With no data-service the platform (core) values apply. Core has no section bit: the Pinned K
+ * carries no terminal bit on platform pages (--pk-section-bit: none, and the live bit is
+ * display: none); only service sections draw it, in their accent.
  */
 
 :root {
@@ -119,32 +121,31 @@
   --pk-service-core-fg: #9a5cff;
   --pk-service-core-on: #060912;
   --pk-service-core-subtle: #18132e;
-  --pk-service-core-bit: #ffc24d;
   --pk-service-license: #c6e940;
   --pk-service-license-fg: #c6e940;
   --pk-service-license-on: #060912;
   --pk-service-license-subtle: #1d2418;
   --pk-service-license-bit: #c6e940;
-  --pk-service-config: #12bcd5;
-  --pk-service-config-fg: #12bcd5;
+  --pk-service-config: #fac700;
+  --pk-service-config-fg: #fac700;
   --pk-service-config-on: #060912;
-  --pk-service-config-subtle: #071e29;
-  --pk-service-config-bit: #12bcd5;
-  --pk-service-release: #3eeedb;
-  --pk-service-release-fg: #3eeedb;
+  --pk-service-config-subtle: #232010;
+  --pk-service-config-bit: #fac700;
+  --pk-service-release: #00dbfd;
+  --pk-service-release-fg: #00dbfd;
   --pk-service-release-on: #060912;
-  --pk-service-release-subtle: #0d242a;
-  --pk-service-release-bit: #3eeedb;
+  --pk-service-release-subtle: #05222e;
+  --pk-service-release-bit: #00dbfd;
   --pk-service-distribution: #39d075;
   --pk-service-distribution-fg: #39d075;
   --pk-service-distribution-on: #060912;
   --pk-service-distribution-subtle: #0c211e;
   --pk-service-distribution-bit: #39d075;
-  --pk-service-update: #39d075;
-  --pk-service-update-fg: #39d075;
+  --pk-service-update: #fe8001;
+  --pk-service-update-fg: #fe8001;
   --pk-service-update-on: #060912;
-  --pk-service-update-subtle: #0c211e;
-  --pk-service-update-bit: #39d075;
+  --pk-service-update-subtle: #241710;
+  --pk-service-update-bit: #fe8001;
   --pk-service-identity: #d77df2;
   --pk-service-identity-fg: #d77df2;
   --pk-service-identity-on: #060912;
@@ -154,10 +155,10 @@
   --pk-success-on: #060912;
   --pk-success-border: #3b9555;
   --pk-success-subtle: #10211f;
-  --pk-warning: #ff8f57;
+  --pk-warning: #c38d18;
   --pk-warning-on: #060912;
-  --pk-warning-border: #c2612d;
-  --pk-warning-subtle: #24191a;
+  --pk-warning-border: #896100;
+  --pk-warning-subtle: #1d1913;
   --pk-danger: #f2513f;
   --pk-danger-on: #060912;
   --pk-danger-border: #c83b2c;
@@ -203,32 +204,31 @@
     --pk-service-core-fg: #7a2fff;
     --pk-service-core-on: #ffffff;
     --pk-service-core-subtle: #eae4ff;
-    --pk-service-core-bit: #d07a00;
     --pk-service-license: #708d00;
     --pk-service-license-fg: #556e00;
     --pk-service-license-on: #060912;
     --pk-service-license-subtle: #e9ede6;
     --pk-service-license-bit: #708d00;
-    --pk-service-config: #006270;
-    --pk-service-config-fg: #006270;
+    --pk-service-config: #8b6902;
+    --pk-service-config-fg: #866500;
     --pk-service-config-on: #ffffff;
-    --pk-service-config-subtle: #dde9f1;
-    --pk-service-config-bit: #006270;
-    --pk-service-release: #01948a;
-    --pk-service-release-fg: #00736b;
+    --pk-service-config-subtle: #ebeae6;
+    --pk-service-config-bit: #8b6902;
+    --pk-service-release: #0390a6;
+    --pk-service-release-fg: #007487;
     --pk-service-release-on: #060912;
-    --pk-service-release-subtle: #deeef3;
-    --pk-service-release-bit: #01948a;
+    --pk-service-release-subtle: #deeef6;
+    --pk-service-release-bit: #0390a6;
     --pk-service-distribution: #05773b;
     --pk-service-distribution-fg: #05773b;
     --pk-service-distribution-on: #ffffff;
     --pk-service-distribution-subtle: #deebeb;
     --pk-service-distribution-bit: #05773b;
-    --pk-service-update: #05773b;
-    --pk-service-update-fg: #05773b;
+    --pk-service-update: #b95800;
+    --pk-service-update-fg: #aa5000;
     --pk-service-update-on: #ffffff;
-    --pk-service-update-subtle: #deebeb;
-    --pk-service-update-bit: #05773b;
+    --pk-service-update-subtle: #f0e8e6;
+    --pk-service-update-bit: #b95800;
     --pk-service-identity: #9e34ae;
     --pk-service-identity-fg: #9e34ae;
     --pk-service-identity-on: #ffffff;
@@ -238,10 +238,10 @@
     --pk-success-on: #ffffff;
     --pk-success-border: #348f4f;
     --pk-success-subtle: #e0ebeb;
-    --pk-warning: #a24112;
+    --pk-warning: #814d00;
     --pk-warning-on: #ffffff;
-    --pk-warning-border: #c75d29;
-    --pk-warning-subtle: #eee6e7;
+    --pk-warning-border: #9d6726;
+    --pk-warning-subtle: #eae7e6;
     --pk-danger: #be2323;
     --pk-danger-on: #ffffff;
     --pk-danger-border: #db423c;
@@ -287,32 +287,31 @@
   --pk-service-core-fg: #7a2fff;
   --pk-service-core-on: #ffffff;
   --pk-service-core-subtle: #eae4ff;
-  --pk-service-core-bit: #d07a00;
   --pk-service-license: #708d00;
   --pk-service-license-fg: #556e00;
   --pk-service-license-on: #060912;
   --pk-service-license-subtle: #e9ede6;
   --pk-service-license-bit: #708d00;
-  --pk-service-config: #006270;
-  --pk-service-config-fg: #006270;
+  --pk-service-config: #8b6902;
+  --pk-service-config-fg: #866500;
   --pk-service-config-on: #ffffff;
-  --pk-service-config-subtle: #dde9f1;
-  --pk-service-config-bit: #006270;
-  --pk-service-release: #01948a;
-  --pk-service-release-fg: #00736b;
+  --pk-service-config-subtle: #ebeae6;
+  --pk-service-config-bit: #8b6902;
+  --pk-service-release: #0390a6;
+  --pk-service-release-fg: #007487;
   --pk-service-release-on: #060912;
-  --pk-service-release-subtle: #deeef3;
-  --pk-service-release-bit: #01948a;
+  --pk-service-release-subtle: #deeef6;
+  --pk-service-release-bit: #0390a6;
   --pk-service-distribution: #05773b;
   --pk-service-distribution-fg: #05773b;
   --pk-service-distribution-on: #ffffff;
   --pk-service-distribution-subtle: #deebeb;
   --pk-service-distribution-bit: #05773b;
-  --pk-service-update: #05773b;
-  --pk-service-update-fg: #05773b;
+  --pk-service-update: #b95800;
+  --pk-service-update-fg: #aa5000;
   --pk-service-update-on: #ffffff;
-  --pk-service-update-subtle: #deebeb;
-  --pk-service-update-bit: #05773b;
+  --pk-service-update-subtle: #f0e8e6;
+  --pk-service-update-bit: #b95800;
   --pk-service-identity: #9e34ae;
   --pk-service-identity-fg: #9e34ae;
   --pk-service-identity-on: #ffffff;
@@ -322,10 +321,10 @@
   --pk-success-on: #ffffff;
   --pk-success-border: #348f4f;
   --pk-success-subtle: #e0ebeb;
-  --pk-warning: #a24112;
+  --pk-warning: #814d00;
   --pk-warning-on: #ffffff;
-  --pk-warning-border: #c75d29;
-  --pk-warning-subtle: #eee6e7;
+  --pk-warning-border: #9d6726;
+  --pk-warning-subtle: #eae7e6;
   --pk-danger: #be2323;
   --pk-danger-on: #ffffff;
   --pk-danger-border: #db423c;
@@ -353,7 +352,8 @@
   --pk-accent-fg: var(--pk-service-core-fg);
   --pk-accent-on: var(--pk-service-core-on);
   --pk-accent-subtle: var(--pk-service-core-subtle);
-  --pk-section-bit: var(--pk-service-core-bit);
+  --pk-section-bit: none;
+  --pk-section-bit-display: none;
 }
 
 [data-service="license"] {
@@ -362,6 +362,7 @@
   --pk-accent-on: var(--pk-service-license-on);
   --pk-accent-subtle: var(--pk-service-license-subtle);
   --pk-section-bit: var(--pk-service-license-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="config"] {
@@ -370,6 +371,7 @@
   --pk-accent-on: var(--pk-service-config-on);
   --pk-accent-subtle: var(--pk-service-config-subtle);
   --pk-section-bit: var(--pk-service-config-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="release"] {
@@ -378,6 +380,7 @@
   --pk-accent-on: var(--pk-service-release-on);
   --pk-accent-subtle: var(--pk-service-release-subtle);
   --pk-section-bit: var(--pk-service-release-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="distribution"] {
@@ -386,6 +389,7 @@
   --pk-accent-on: var(--pk-service-distribution-on);
   --pk-accent-subtle: var(--pk-service-distribution-subtle);
   --pk-section-bit: var(--pk-service-distribution-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="update"] {
@@ -394,6 +398,7 @@
   --pk-accent-on: var(--pk-service-update-on);
   --pk-accent-subtle: var(--pk-service-update-subtle);
   --pk-section-bit: var(--pk-service-update-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="identity"] {
@@ -402,6 +407,7 @@
   --pk-accent-on: var(--pk-service-identity-on);
   --pk-accent-subtle: var(--pk-service-identity-subtle);
   --pk-section-bit: var(--pk-service-identity-bit);
+  --pk-section-bit-display: inline;
 }
 
 /* Reduced motion: every duration token collapses, so token-driven motion stops everywhere. */
@@ -429,6 +435,13 @@
 /* The section bit eases between section colours; the star never animates. */
 .polaris-section-bit {
   transition: fill var(--pk-duration-base) var(--pk-ease-standard);
+}
+
+/* The live section bit (bit="section"): the nearest data-service picks its colour, and core
+   (or no data-service) does not display it at all. A class rule, never an inline style. */
+.polaris-live-bit {
+  fill: var(--pk-section-bit);
+  display: var(--pk-section-bit-display);
 }
 
 @media (prefers-reduced-motion: reduce) {
