@@ -98,7 +98,7 @@ name, so every pack with an imported `.glb`/`.gltf`/`.blend`/`.fbx` is refused t
   each natively, re-checking a window with its decimal form only for a hit at an odd hex
   offset, so its GDScript work is per window, not per hit; `_without_backslashes` became a
   native string replace. `rscc-g-run` (64 MiB of `G` after a header) is admitted and checked in
-  751 ms (4.7.2 editor) and 514 ms (4.4.1), bounded at 5 s in the suite; the per-hit scan spent
+  751–839 ms (4.7.2 editor), 738 ms (4.7.2 release template) and 488–514 ms (4.4.1), bounded at 5 s in the suite; the per-hit scan spent
   about 62 ms per MiB of `G`. (2d) The CLI keeps one wasm instance per frame: zdec.c's bump
   allocator never frees and the module exports no reset, so a shared instance would grow by
   every block; instantiation is cheap (64 MiB in 16,385 blocks of 4096 decodes in 602 ms; the
