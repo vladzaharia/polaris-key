@@ -2,6 +2,7 @@ extends RefCounted
 # @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
 # @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
+# @pkey-feature commerce.receipt
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -187,6 +188,24 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				out.merge(r.to_dictionary(), true)
 			else:
 				out["code"] = String(r.code)
+		"commerceBinding":
+			var r: PKeyResult = await sdk.commerce.get_binding()
+			out["result"] = "ok" if r.ok else String(r.code)
+			if r.ok:
+				out["bindingId"] = r.detail["bindingId"]
+				out["products"] = r.detail["products"]
+			else:
+				out["reason"] = _refusal_reason(r)
+		"commerceClaim":
+			var a: Dictionary = step["args"]
+			var r: PKeyResult = await sdk.commerce.claim(String(a["store"]), a.get("payload", {}))
+			out["result"] = "ok" if r.ok else String(r.code)
+			if r.ok:
+				out["flag"] = r.detail.get("flag")
+				out["state"] = r.detail.get("state")
+				out["granted"] = r.detail.get("granted")
+			else:
+				out["reason"] = _refusal_reason(r)
 		_:
 			out["unsupported"] = step["action"]
 	var services := {}
@@ -197,6 +216,14 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 	out["licenseStatus"] = sdk.status()["status"]
 	out["tokenHeld"] = store.token != ""
 	return out
+
+
+## The refusal body's `reason` (P6-01's commerce refusals carry one beside `error`).
+static func _refusal_reason(r: PKeyResult) -> Variant:
+	if r.detail is Dictionary and r.detail.get("error") is Dictionary:
+		var reason = r.detail["error"].get("reason", "")
+		return reason if reason != "" else null
+	return null
 
 
 ## `initial.update` onto the options, a build stamp written for the run and the store's record.
