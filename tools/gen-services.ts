@@ -43,7 +43,7 @@ export interface ServiceRow {
   /** Legacy `.pkey/product` `modules:` names that enable this service. */
   legacyModules: string[];
   console: {
-    /** The `data-service` accent token (License is `key`, Identity is `id`). */
+    /** The `data-service` accent token: the service slug, which is how @polaris-key/brand keys section accents (docs/design/BRAND.md §5, §11). */
     accent: string;
     /** A lucide-react icon name for the Services card. */
     icon: string;

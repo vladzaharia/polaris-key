@@ -142,7 +142,7 @@ function ChainCard({ services }: { services: Enabled }): React.ReactElement {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Truck aria-hidden className="size-4 text-primary" />
+          <Truck aria-hidden className="size-4 text-accent-fg" />
           Enablement
         </CardTitle>
         <CardDescription>

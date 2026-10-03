@@ -360,7 +360,7 @@ function BackLink({ href }: { href: string }): React.ReactElement {
   return (
     <a
       href={href}
-      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
     >
       <ArrowLeft className="size-4" aria-hidden />
       Back to licenses

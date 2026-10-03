@@ -77,7 +77,7 @@ describe("validateTable", () => {
     [{ requires: ["nope"] }, 'unknown slug "nope"'],
     [{ requires: ["telemetry"] }, "cannot require itself"],
     [{ legacyModules: ["config"] }, "is a service slug"],
-    [{ console: { accent: "key", icon: "Boxes" } }, 'duplicate "key"'],
+    [{ console: { accent: "license", icon: "Boxes" } }, 'duplicate "license"'],
     [
       { console: { accent: "distribution", icon: "Boxes" } },
       'duplicate "distribution"',

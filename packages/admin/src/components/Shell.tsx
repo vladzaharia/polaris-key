@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Monitor,
   Moon,
   MonitorSmartphone,
   RefreshCw,
@@ -35,7 +36,7 @@ import {
   type Tab,
 } from "../route.js";
 import { Logo, LogoMark } from "./brand/Logo.js";
-import { useTheme } from "./theme.js";
+import { useTheme, type ThemePreference } from "./theme.js";
 import {
   Button,
   DropdownMenu,
@@ -116,6 +117,15 @@ export function Shell({
   // rather than keeping whichever section the operator came from (D-17).
   const accent = activeTab ? sectionOf(activeTab).accent : "core";
 
+  // The section also rides <html>, so what Radix portals out of this tree (dialogs, menus,
+  // popovers) takes the section's accent too, and the header mark's section bit follows the
+  // route (BRAND.md §6: --pk-section-bit is re-pointed by the nearest data-service).
+  React.useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-service", accent);
+    return () => root.removeAttribute("data-service");
+  }, [accent]);
+
   const go = (next: Route): void => {
     setMobileOpen(false);
     onNavigate(next);
@@ -123,12 +133,15 @@ export function Shell({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_1fr]">
+      <div
+        data-service={accent}
+        className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_1fr]"
+      >
         {/* Backdrop for the mobile sidebar. */}
         {mobileOpen ? (
           <button
             aria-label="Close navigation"
-            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-xs lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
         ) : null}
@@ -189,9 +202,11 @@ function Sidebar({
         mobileOpen ? "translate-x-0" : "-translate-x-full",
       )}
     >
-      <div className="flex h-14 items-center border-b border-sidebar-border px-4">
+      {/* The 64 px header holds the 48 px display-cut mark with 8 px of clear space above and
+          below (BRAND.md §6, §7.6). */}
+      <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-4">
         <button
-          className="flex items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex items-center rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => go({ kind: "dashboard" })}
           aria-label="Polaris Key dashboard"
         >
@@ -252,7 +267,7 @@ function Sidebar({
                 data-service={section.accent}
                 className="flex flex-col gap-0.5 pt-2 first:pt-0"
               >
-                <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-accent-fg">
                   {section.label}
                 </p>
                 {section.items.map(({ tab, label }) => (
@@ -291,13 +306,13 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         // The label stays `text-foreground` and only the icon takes the accent: the accent has
         // to clear 3:1 on `sidebar-accent` (UI chrome), which is a bar every service token
         // meets, whereas holding 4.5:1 for the label there would force all six darker than the
         // indigo the console ships with today.
         active
-          ? "bg-sidebar-accent text-foreground [&>svg]:text-primary"
+          ? "bg-sidebar-accent text-foreground [&>svg]:text-accent"
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
       )}
     >
@@ -344,7 +359,7 @@ function Topbar({
   const title = titleFor(route, activeTab);
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-sm sm:px-6">
       <Button
         variant="ghost"
         size="icon"
@@ -354,7 +369,7 @@ function Topbar({
       >
         <Menu />
       </Button>
-      <LogoMark className="size-5 lg:hidden" />
+      <LogoMark size={24} className="lg:hidden" />
       <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
       <div className="ml-auto flex items-center gap-1.5">
         <HelpLink activeTab={activeTab} />
@@ -393,16 +408,40 @@ function HelpLink({
   );
 }
 
-function ThemeToggle(): React.ReactElement {
-  const { theme, toggle } = useTheme();
+const THEME_LABEL: Record<ThemePreference, string> = {
+  system: "System",
+  dark: "Dark",
+  light: "Light",
+};
+const NEXT_THEME: Record<ThemePreference, ThemePreference> = {
+  system: "dark",
+  dark: "light",
+  light: "system",
+};
+const THEME_ICON: Record<ThemePreference, LucideIcon> = {
+  system: Monitor,
+  dark: Moon,
+  light: Sun,
+};
+
+/**
+ * Cycles the theme preference System → Dark → Light (BRAND.md §3: follow the OS by default; the
+ * override is the viewer's choice, persisted). The icon shows the current preference; the
+ * accessible name says both the current one and what a click does.
+ */
+export function ThemeToggle(): React.ReactElement {
+  const { preference, cycle } = useTheme();
+  const Icon = THEME_ICON[preference];
+  const next = NEXT_THEME[preference];
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={toggle}
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+      onClick={cycle}
+      aria-label={`Theme: ${THEME_LABEL[preference]}. Switch to ${THEME_LABEL[next]}`}
+      title={`Theme: ${THEME_LABEL[preference]}`}
     >
-      {theme === "dark" ? <Sun /> : <Moon />}
+      <Icon />
     </Button>
   );
 }

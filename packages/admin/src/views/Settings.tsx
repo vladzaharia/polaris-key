@@ -265,7 +265,7 @@ function KeyCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <KeyRound aria-hidden className="size-4 text-primary" />
+          <KeyRound aria-hidden className="size-4 text-accent-fg" />
           Signing key
         </CardTitle>
         <CardDescription>
@@ -295,7 +295,7 @@ function KeyCard({
               <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">
                 Public key
               </p>
-              <pre className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs">
+              <pre className="overflow-x-auto rounded-sm bg-muted p-2 font-mono text-xs">
                 {rotated.publicKey}
               </pre>
             </div>

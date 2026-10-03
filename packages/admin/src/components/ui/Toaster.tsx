@@ -96,7 +96,9 @@ function TimedToast({
   onDismiss: (id: number) => void;
 }): React.ReactElement {
   const { id, duration = TOAST_DURATION_MS } = message;
-  const timer = React.useRef<ReturnType<typeof setTimeout>>();
+  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const remaining = React.useRef(duration);
   const startedAt = React.useRef(0);
   const dismiss = React.useRef(() => onDismiss(id));

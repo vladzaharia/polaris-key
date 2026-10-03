@@ -1,178 +1,140 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/**
- * Polaris Key brand tokens.
+/*
+ * The console's and portal's styles: Tailwind v4, CSS-first, on @polaris-key/brand.
  *
- * A dark-first control-plane aesthetic: deep slate surfaces, a single indigo→cyan accent,
- * and an accessible neutral ramp. Colors are stored as raw HSL channels in `--pk-*` so the
- * Tailwind theme (tailwind.config.ts) can compose them with alpha and a `.light` class can
- * swap the whole palette. All foreground/background pairings are tuned to clear WCAG AA
- * (>= 4.5:1 body text, >= 3:1 large text / UI chrome).
+ * Every colour, type, radius, elevation and motion value comes from the brand package
+ * (docs/design/BRAND.md). This file defines none; it only:
+ *   1. imports Tailwind, the Rubik faces, the tokens (both themes, the per-section accents) and
+ *      the brand's Tailwind theme (bg-surface-raised, text-fg-muted, bg-accent, ring-focus…);
+ *   2. aliases the utility names the views were written against (bg-card,
+ *      text-muted-foreground, bg-primary, border-input, ring-ring, bg-destructive…) onto those
+ *      tokens, per BRAND.md §11's migration map, so every existing view renders on the brand
+ *      palette with no view edits. The aliases go away as the views are rebuilt
+ *      (docs/design/ADMIN.md §7);
+ *   3. keeps the few Tailwind v3 defaults the views relied on.
+ *
+ * Theme: dark first, following the OS, overridden by data-theme on <html> (tokens.css; the
+ * pre-paint script in index.html/manage.html and components/theme.tsx). Section: data-service on
+ * <html> and the shell re-points --pk-accent* and --pk-section-bit (components/Shell.tsx).
  */
+
+@import "tailwindcss" source("../");
+@import "@polaris-key/brand/fonts.css";
+@import "@polaris-key/brand/tokens.css";
+@import "@polaris-key/brand/theme.css";
+
+/*
+ * A neutral fill that stands off BOTH the page and a raised card in either theme: one step up
+ * (overlay) on dark, one step down (sunken) on light, where raised and overlay are both white.
+ * It backs the old hover fill, the secondary fill and the sidebar's active/hover row.
+ */
+:root,
+[data-theme="dark"] {
+  --pk-admin-fill: var(--pk-surface-overlay);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pk-admin-fill: var(--pk-surface-sunken);
+  }
+}
+[data-theme="light"] {
+  --pk-admin-fill: var(--pk-surface-sunken);
+}
+
+/* The pre-brand utility names → brand tokens (BRAND.md §11). */
+@theme inline {
+  --color-background: var(--pk-surface-page);
+  --color-foreground: var(--pk-text-default);
+  --color-card: var(--pk-surface-raised);
+  --color-card-foreground: var(--pk-text-default);
+  --color-popover: var(--pk-surface-overlay);
+  --color-popover-foreground: var(--pk-text-default);
+  /* Section-aware: the accent solid and the text that sits on it. Text in the accent colour
+     uses text-accent-fg (the 4.5:1 variant), not text-primary. */
+  --color-primary: var(--pk-accent);
+  --color-primary-foreground: var(--pk-accent-on);
+  --color-secondary: var(--pk-admin-fill);
+  --color-secondary-foreground: var(--pk-text-strong);
+  --color-muted: var(--pk-surface-sunken);
+  --color-muted-foreground: var(--pk-text-muted);
+  /* The old `accent` was a hover fill; the brand reuses the name for the section colour, so the
+     hover fill is `hover` here and `bg-accent` keeps the brand meaning. */
+  --color-hover: var(--pk-admin-fill);
+  --color-destructive: var(--pk-danger);
+  --color-destructive-foreground: var(--pk-danger-on);
+  --color-success-foreground: var(--pk-success-on);
+  --color-warning-foreground: var(--pk-warning-on);
+  /* Control boundaries need 3:1. */
+  --color-input: var(--pk-border-strong);
+  /* Always violet, in every section. */
+  --color-ring: var(--pk-focus);
+  --color-sidebar: var(--pk-surface-page);
+  --color-sidebar-foreground: var(--pk-text-muted);
+  --color-sidebar-border: var(--pk-border-subtle);
+  --color-sidebar-accent: var(--pk-admin-fill);
+
+  /* Rubik ships 400 and 700 only (font-synthesis: none): name the two weights the views ask for
+     by their old names so the browser never picks one by fallback. */
+  --font-weight-medium: var(--pk-font-weight-regular);
+  --font-weight-semibold: var(--pk-font-weight-bold);
+
+  --shadow-pk-sm: var(--pk-elevation-1);
+  --shadow-pk-md: var(--pk-elevation-2);
+  --shadow-pk-lg: var(--pk-elevation-3);
+}
+
+/* Motion through the brand's duration and easing tokens, which collapse to 0 ms under
+   prefers-reduced-motion. The spinner is a loading indicator, not decoration, and keeps turning. */
+@theme {
+  --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
+  --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
+    var(--pk-ease-standard);
+  --animate-pk-spin: pk-spin 0.7s linear infinite;
+
+  @keyframes pk-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes pk-overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pk-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
 @layer base {
-  :root,
-  .dark {
-    /* Surfaces — layered deep slate. */
-    --pk-background: 225 24% 7%; /* #0c0f17 page */
-    --pk-foreground: 220 22% 92%; /* near-white body text — ~13:1 on bg */
-    --pk-card: 224 22% 10%; /* raised panel */
-    --pk-card-foreground: 220 22% 92%;
-    --pk-popover: 224 24% 11%;
-    --pk-popover-foreground: 220 22% 92%;
-    --pk-sidebar: 226 26% 8%;
-    --pk-sidebar-foreground: 220 16% 72%;
-    --pk-sidebar-border: 225 18% 16%;
-    --pk-sidebar-accent: 226 22% 14%;
-
-    /* Brand accent — indigo with a cyan-leaning highlight. */
-    --pk-primary: 232 92% 68%; /* #5b7cfa indigo */
-    --pk-primary-foreground: 226 40% 8%; /* dark text on the accent — AA on the light accent */
-    --pk-accent: 226 22% 16%; /* subtle hover fill */
-    --pk-accent-foreground: 220 22% 92%;
-
-    /* Neutral controls. */
-    --pk-secondary: 225 18% 16%;
-    --pk-secondary-foreground: 220 18% 86%;
-    --pk-muted: 225 16% 15%;
-    --pk-muted-foreground: 220 12% 64%; /* ~4.7:1 on bg — AA */
-
-    /* State. */
-    --pk-success: 158 64% 52%;
-    --pk-success-foreground: 160 60% 8%;
-    --pk-warning: 38 92% 58%;
-    --pk-warning-foreground: 40 60% 10%;
-    --pk-destructive: 0 72% 60%;
-    --pk-destructive-foreground: 0 40% 10%;
-
-    /* Lines + focus. */
-    --pk-border: 225 16% 18%;
-    --pk-input: 225 16% 20%;
-    --pk-ring: 232 92% 70%;
-    --pk-shadow: 225 60% 2%;
-
-    --pk-radius: 0.625rem;
+  /* Tailwind v3 defaults the views were written against: a themed border colour, pointer
+     buttons and a token placeholder colour (v4 uses currentColor, the default cursor and a
+     half-opacity currentColor). */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border);
   }
 
-  .light {
-    --pk-background: 220 30% 98%;
-    --pk-foreground: 226 32% 12%;
-    --pk-card: 0 0% 100%;
-    --pk-card-foreground: 226 32% 12%;
-    --pk-popover: 0 0% 100%;
-    --pk-popover-foreground: 226 32% 12%;
-    --pk-sidebar: 220 28% 96%;
-    --pk-sidebar-foreground: 226 18% 32%;
-    --pk-sidebar-border: 220 18% 88%;
-    --pk-sidebar-accent: 220 24% 92%;
-
-    --pk-primary: 232 80% 56%; /* darker indigo — AA on white */
-    --pk-primary-foreground: 0 0% 100%;
-    --pk-accent: 220 24% 92%;
-    --pk-accent-foreground: 226 32% 12%;
-
-    --pk-secondary: 220 22% 92%;
-    --pk-secondary-foreground: 226 28% 20%;
-    --pk-muted: 220 22% 93%;
-    --pk-muted-foreground: 226 12% 40%; /* ~5:1 on light bg — AA */
-
-    --pk-success: 158 68% 34%;
-    --pk-success-foreground: 0 0% 100%;
-    --pk-warning: 32 84% 40%;
-    --pk-warning-foreground: 0 0% 100%;
-    --pk-destructive: 0 70% 46%;
-    --pk-destructive-foreground: 0 0% 100%;
-
-    --pk-border: 220 18% 86%;
-    --pk-input: 220 18% 84%;
-    --pk-ring: 232 80% 56%;
-    --pk-shadow: 226 40% 40%;
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 
-  /**
-   * Per-section service accents (D-17).
-   *
-   * A `[data-service]` subtree re-points ONLY the accent channels — everything else (surfaces,
-   * neutrals, state colors) stays global, so a section reads as the same console in a different
-   * key rather than as a different product. `core` restates the base indigo so that the platform
-   * section, the dashboard, and the product registry are visually unchanged from today.
-   *
-   * PLACEHOLDER PALETTE. The real per-service brand tokens ship with the brand-package rollout
-   * (a separate, later brand-package rollout), which restyles this structure
-   * rather than replacing it — these seven hues exist so the wiring is testable now and so the
-   * later swap is a value change, not a refactor.
-   *
-   * Contrast: every value below clears 4.5:1 against BOTH themes' page, card, and sidebar
-   * surfaces, so an accent may carry body text. Light-theme accents are much darker than their
-   * dark-theme counterparts for the same reason the base indigo is (56% vs 68%): they are read
-   * against near-white, not near-black. `--pk-primary-foreground` needs no override — the base
-   * pairing (near-black on the dark accents, white on the light ones) clears 4.5:1 on all seven,
-   * which is the constraint that fixed the lightness of each.
-   */
-  [data-service="core"] {
-    --pk-primary: 232 92% 68%;
-    --pk-ring: 232 92% 70%;
-  }
-  [data-service="key"] {
-    --pk-primary: 42 96% 60%; /* amber — License */
-    --pk-ring: 42 96% 62%;
-  }
-  [data-service="config"] {
-    --pk-primary: 184 72% 52%; /* cyan — Config */
-    --pk-ring: 184 72% 54%;
-  }
-  [data-service="release"] {
-    --pk-primary: 268 90% 76%; /* violet — Release */
-    --pk-ring: 268 90% 78%;
-  }
-  [data-service="distribution"] {
-    --pk-primary: 22 92% 62%; /* orange — Distribution */
-    --pk-ring: 22 92% 64%;
-  }
-  [data-service="update"] {
-    --pk-primary: 152 64% 52%; /* green — Update */
-    --pk-ring: 152 64% 54%;
-  }
-  [data-service="id"] {
-    --pk-primary: 340 88% 72%; /* rose — Identity */
-    --pk-ring: 340 88% 74%;
-  }
-
-  /* The light ramp. Scoped under `.light` so it outranks the dark defaults above on
-     specificity alone — the two blocks are otherwise equally specific and source order
-     would decide, which would break the moment this file is reordered. */
-  .light [data-service="core"] {
-    --pk-primary: 232 80% 56%;
-    --pk-ring: 232 80% 56%;
-  }
-  .light [data-service="key"] {
-    --pk-primary: 36 92% 30%;
-    --pk-ring: 36 92% 30%;
-  }
-  .light [data-service="config"] {
-    --pk-primary: 190 90% 26%;
-    --pk-ring: 190 90% 26%;
-  }
-  .light [data-service="release"] {
-    --pk-primary: 268 66% 50%;
-    --pk-ring: 268 66% 50%;
-  }
-  .light [data-service="distribution"] {
-    --pk-primary: 20 88% 34%;
-    --pk-ring: 20 88% 34%;
-  }
-  .light [data-service="update"] {
-    --pk-primary: 158 74% 26%;
-    --pk-ring: 158 74% 26%;
-  }
-  .light [data-service="id"] {
-    --pk-primary: 340 72% 44%;
-    --pk-ring: 340 72% 44%;
-  }
-
-  * {
-    @apply border-border;
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--pk-text-subtle);
   }
 
   html,
@@ -184,32 +146,28 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
-    font-feature-settings:
-      "rlig" 1,
-      "calt" 1;
   }
 
-  /* Visible focus everywhere keyboard users land. */
+  /* Visible focus everywhere keyboard users land: 2 px violet with a 2 px offset in the surface
+     colour (BRAND.md §7.4). */
   :focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
-  }
-
-  .pk-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--pk-border)) transparent;
+    @apply outline-hidden ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-@layer utilities {
-  .pk-sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
+@utility pk-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pk-border-subtle) transparent;
+}
+
+@utility pk-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

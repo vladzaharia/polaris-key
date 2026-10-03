@@ -155,7 +155,7 @@ function StatCard({
   return (
     <Card>
       <CardContent className="flex items-center gap-4 p-5">
-        <div className="flex size-10 items-center justify-center rounded-md bg-primary/15 text-primary [&_svg]:size-5">
+        <div className="flex size-10 items-center justify-center rounded-md bg-primary/15 text-accent-fg [&_svg]:size-5">
           {icon}
         </div>
         <div>

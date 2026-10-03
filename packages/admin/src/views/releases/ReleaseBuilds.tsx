@@ -311,7 +311,9 @@ export function locationLabels(
 export function Sha256({ value }: { value: string }): React.ReactElement {
   const [copied, setCopied] = React.useState(false);
   // The "copied" reset is cancelled on unmount so it never outlives the view.
-  const timer = React.useRef<ReturnType<typeof setTimeout>>();
+  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   React.useEffect(() => () => clearTimeout(timer.current), []);
   const copy = async (): Promise<void> => {
     try {
@@ -332,7 +334,7 @@ export function Sha256({ value }: { value: string }): React.ReactElement {
         type="button"
         onClick={() => void copy()}
         aria-label={`Copy SHA-256 ${value}`}
-        className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >
         {copied ? (
           <Check className="size-3.5" aria-hidden />
