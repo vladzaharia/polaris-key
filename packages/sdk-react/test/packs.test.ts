@@ -50,6 +50,7 @@ import {
   revocationFor,
 } from "./packFixtures.js";
 import { chunkStamp, containerPack, rangeServer } from "./chunkFixtures.js";
+import { opfsPackStore } from "../src/packs/opfs.js";
 
 const BASE = "https://k.test";
 const zstd: ZstdPort = {
@@ -512,6 +513,100 @@ describe("createBrowserPacks and chunk sync in OPFS (P4-11)", () => {
     }) as typeof fetch;
     return { impl, calls };
   }
+
+  it("the OPFS seed store never reads an index over MAX_CHUNK_INDEX_BYTES", async () => {
+    const store = await opfsPackStore({
+      product: PRODUCT,
+      sha256: hashWasmSha256,
+      root: memoryDir(),
+    });
+    const idx = store.storage.chunkIndexes!;
+    const h = "ef".repeat(32);
+    await idx.put(h, new Uint8Array(8));
+    expect(await idx.get(h)).toHaveLength(8);
+    await idx.put(h, new Uint8Array(16 * 1024 * 1024 + 1));
+    expect(await idx.get(h)).toBeNull();
+  });
+
+  it("falls back to the full payload over OPFS when the server answers 200 to a range", async () => {
+    const v1 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.0.0",
+      seq: 1,
+      chunks: ["a", "b", "c", "d", "e", "f"],
+      bundles: [["a", "b", "c", "d", "e", "f"]],
+    });
+    const v2 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.1.0",
+      seq: 2,
+      chunks: ["a", "g", "c", "h", "i", "f", "j"],
+      bundles: [
+        ["a", "b", "c", "d", "e", "f"],
+        ["g", null, "h", "i", null, "j"],
+      ],
+    });
+    const server = rangeServer(v1, v2);
+    const root = memoryDir();
+    const f = rangeFetch(server);
+    const p = createBrowserPacks({
+      baseUrl: BASE,
+      product: PRODUCT,
+      discovery: discovery as never,
+      releaseKeys: RELEASE_KEYS,
+      productTrust: PRODUCT_TRUST,
+      contentStamp: JSON.stringify({
+        format: "pkey-content/1",
+        ...chunkStamp(v1),
+      }),
+      fetchImpl: f.impl,
+      zstd,
+      storage: "opfs",
+      opfsRoot: root,
+      handlers: [BLOB],
+    });
+    await p.ensure([v1.packId]);
+    server.ignoreRange = true;
+    const [install] = await p.ensureReleases([
+      {
+        pack: v2.packId,
+        release: { sha256: v2.recordSha256, seq: 2, version: "1.1.0" },
+      },
+    ]);
+    expect(install!.payloadSha256).toBe(sha(v2.payload));
+    // One range was tried and refused; then the full payload was fetched whole.
+    expect(
+      f.calls.filter((c) => c.range !== null && /-\d+$/.test(c.range)),
+    ).toHaveLength(1);
+    expect(
+      f.calls.some((c) => c.url.endsWith(sha(v2.payload)) && c.range === null),
+    ).toBe(true);
+    // What landed in the store is exactly v2: nothing the refused chunk attempt buffered or
+    // staged leaked into the full write, and the plan's staging is gone.
+    const packsDir = await (
+      await (
+        await root.getDirectoryHandle("polaris-key")
+      ).getDirectoryHandle(PRODUCT)
+    ).getDirectoryHandle("packs");
+    const stored = await (
+      await (
+        await (
+          await (
+            await packsDir.getDirectoryHandle("store")
+          ).getDirectoryHandle(v2.packId)
+        ).getDirectoryHandle(sha(v2.payload))
+      ).getFileHandle("payload.bin")
+    ).getFile();
+    const bytes = new Uint8Array(
+      await stored.slice(0, stored.size).arrayBuffer(),
+    );
+    expect(bytes.byteLength).toBe(v2.payload.byteLength);
+    expect(sha(bytes)).toBe(sha(v2.payload));
+    const staging = await packsDir.getDirectoryHandle("staging");
+    const left: string[] = [];
+    for await (const [name] of staging.entries()) left.push(name);
+    expect(left).toEqual([]);
+  });
 
   it("installs v2 by chunk over OPFS in the planner's runs, and resumes a cut run", async () => {
     const v1 = await containerPack({

@@ -16,6 +16,7 @@
 // scratch. `requestPersistence()` asks the browser to keep it (after engagement).
 
 import type { FilesIndexDoc } from "@polaris-key/protocol/packs";
+import { MAX_CHUNK_INDEX_BYTES } from "@polaris-key/protocol/core";
 import {
   treeDigest,
   type ByteSink,
@@ -268,10 +269,14 @@ export async function opfsPackStore(opts: {
   // order) are flushed in 1 MiB `createWritable` batches, and always before a read or a commit.
   const outputs = new Map<string, { flush(): Promise<void> }>();
   const SHA256_NAME = /^[0-9a-f]{64}$/;
-  const readBytes = async (parts: string[]): Promise<Uint8Array | null> => {
+  const readBytes = async (
+    parts: string[],
+    max = Number.MAX_SAFE_INTEGER,
+  ): Promise<Uint8Array | null> => {
     const fh = await fileAt(root, parts, false);
     if (!fh) return null;
     const f = await fh.getFile();
+    if (f.size > max) return null;
     return new Uint8Array(await f.slice(0, f.size).arrayBuffer());
   };
 
@@ -402,7 +407,9 @@ export async function opfsPackStore(opts: {
 
     chunkIndexes: {
       get: async (sha256) =>
-        SHA256_NAME.test(sha256) ? readBytes(["index", sha256]) : null,
+        SHA256_NAME.test(sha256)
+          ? readBytes(["index", sha256], MAX_CHUNK_INDEX_BYTES)
+          : null,
       put: async (sha256, bytes) => {
         if (!SHA256_NAME.test(sha256)) throw new Error("not a SHA-256");
         // `createWritable` writes a swap file and replaces the target on `close()`.
