@@ -180,12 +180,12 @@ describe("Channels panel — what each channel serves", () => {
       .map((li) => li.textContent);
     // v0.4.2 has no iOS build, so iOS stays on v0.4.1 — the server's answer, rendered as is.
     expect(items).toEqual([
-      "android→0.4.2",
-      "ios→0.4.1",
-      "linux→0.4.2",
-      "macos→0.4.2",
-      "web→0.4.2",
-      "windows→0.4.2",
+      "Android→0.4.2",
+      "iOS / iPadOS→0.4.1",
+      "Linux→0.4.2",
+      "macOS→0.4.2",
+      "Web→0.4.2",
+      "Windows→0.4.2",
     ]);
     expect(releaseChannels).toHaveBeenCalledWith(SLUG);
   });

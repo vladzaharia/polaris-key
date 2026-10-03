@@ -1,9 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import type { Db, Env } from "../../core/platform.js";
-import type {
-  ManifestAppDeliverable,
-  ManifestArtifactEntry,
+import {
+  archLabel,
+  buildLabel,
+  type ManifestAppDeliverable,
+  type ManifestArtifactEntry,
 } from "@polaris-key/manifest";
 import {
   archOf,
@@ -206,8 +208,17 @@ function availableArtifactsCheck(
   };
 }
 
+/** "Apple silicon (arm64)" for `arm64` on macOS; the raw token where the names agree. */
+function archDisplay(arch: string, platform: string): string {
+  const name = archLabel(arch, platform);
+  return name === null || name.toLowerCase() === arch.toLowerCase()
+    ? arch
+    : `${name} (${arch})`;
+}
+
+/** "macos — macOS · Apple silicon (arm64) · dmg": the build id, then its platform and arch. */
 function entryLabel(entry: ManifestArtifactEntry): string {
-  return `${entry.id} (${entry.platform} ${entry.arch} ${entry.format})`;
+  return `${entry.id} — ${buildLabel(entry).long}`;
 }
 
 /**
@@ -304,6 +315,8 @@ function policyChecks(
     required: boolean;
     id: "dmg" | "cli";
     label: string;
+    /** The platform every file of this kind is for, when the kind settles it. */
+    platform: string | null;
     noun: string;
     /** Every file that counts as this kind, on any arch. */
     candidates: ReleaseAsset[];
@@ -314,6 +327,7 @@ function policyChecks(
       required: policy.requireDmg,
       id: "dmg",
       label: "macOS DMG",
+      platform: "macos",
       noun: "DMG asset",
       candidates: assets.filter((a) => artifactKind(a.name) === "dmg"),
       // What the appcast and DMG routes would select for this arch.
@@ -323,6 +337,7 @@ function policyChecks(
       required: policy.requireCli,
       id: "cli",
       label: "CLI binary",
+      platform: null,
       noun: "CLI asset",
       candidates: cliCandidates,
       // Any CLI binary of that arch (`djdl-arm64`, `djdl_aarch64`, `djdl-1.2.3-arm64`) — the same
@@ -359,15 +374,20 @@ function policyChecks(
           ? (kind.candidates[0] ?? null)
           : (kind.candidates.find((a) => nameHasToken(a.name, raw)) ?? null);
       const arch = canonical ?? raw;
+      // A DMG's arch reads in macOS terms ("Apple silicon (arm64)"); a CLI binary's platform is
+      // not settled by its kind, so its arch stays the raw token.
+      const display = kind.platform ? archDisplay(arch, kind.platform) : arch;
       out.push(
         check(
           `${kind.id}-${arch}`,
-          `${kind.label} (${arch})`,
+          kind.platform
+            ? `${kind.label} · ${display}`
+            : `${kind.label} (${arch})`,
           found ? "ok" : "missing",
           found
             ? `Found ${found.name}.`
-            : `No ${arch} ${kind.noun} was found (${why}).`,
-          found ? [] : [`${arch} ${kind.noun}`],
+            : `No ${display} ${kind.noun} was found (${why}).`,
+          found ? [] : [`${display} ${kind.noun}`],
         ),
       );
     }

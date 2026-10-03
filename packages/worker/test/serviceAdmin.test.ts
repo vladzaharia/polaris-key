@@ -375,6 +375,102 @@ describe("release admin, dispatched through the descriptor", () => {
     });
   });
 
+  it("gives a file with no platform its build's, or its name's (display only)", async () => {
+    const { db, env, auth } = await fixture();
+    await db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, metadata_access, artifacts_access, published_at,
+          created_at, modified_at)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      SLUG,
+      "v2.0.0",
+      "2.0.0",
+      "public",
+      "public",
+      NOW,
+      NOW,
+      NOW,
+    );
+    for (const [buildId, platform, arch] of [
+      ["mac", "macos", "arm64"],
+      ["content", null, "any"],
+    ] as const) {
+      await db.run(
+        `INSERT INTO release_builds
+           (product, release_id, build_id, platform, arch, format, created_at, modified_at)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        SLUG,
+        "v2.0.0",
+        buildId,
+        platform,
+        arch,
+        "zip",
+        NOW,
+        NOW,
+      );
+    }
+    const files: [string, string | null, string | null, string | null][] = [
+      // [name, platform, arch, build_id]
+      ["djdl-mac.zip", null, "arm64", "mac"],
+      ["djdl-arm64.app.zip", null, "arm64", null],
+      ["djdl-win.zip", "windows", "x86_64", null],
+      ["content-macos.pck", null, "any", "content"],
+      ["NOTES.txt", null, null, null],
+    ];
+    for (const [i, [name, platform, arch, buildId]] of files.entries()) {
+      await db.run(
+        `INSERT INTO release_artifacts
+           (product, release_id, artifact_id, name, kind, platform, arch, access,
+            created_at, build_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        SLUG,
+        "v2.0.0",
+        String(i + 1),
+        name,
+        "archive",
+        platform,
+        arch,
+        "public",
+        NOW,
+        buildId,
+      );
+    }
+    const path = `/api/products/${SLUG}/release/releases`;
+    const res = await dispatch(
+      mkReq("GET", path, { cookie: auth.cookie }),
+      env,
+      db,
+      path,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      releases: { artifacts: { name: string; platform: string | null }[] }[];
+    };
+    expect(
+      Object.fromEntries(
+        body.releases[0]!.artifacts.map((a) => [a.name, a.platform]),
+      ),
+    ).toEqual({
+      // The build's platform.
+      "djdl-mac.zip": "macos",
+      // No build: the name's (`.app.zip` is a macOS bundle), never a bare arch.
+      "djdl-arm64.app.zip": "macos",
+      // A stored platform wins.
+      "djdl-win.zip": "windows",
+      // A platform-independent build stays platform-independent, whatever the name says.
+      "content-macos.pck": null,
+      "NOTES.txt": null,
+    });
+    // The stored row is untouched: the inference is read-time only.
+    expect(
+      await db.first<{ platform: string | null }>(
+        `SELECT platform FROM release_artifacts WHERE product = ? AND name = ?`,
+        SLUG,
+        "djdl-arm64.app.zip",
+      ),
+    ).toEqual({ platform: null });
+  });
+
   it("refuses the wrong method rather than falling through to a 404", async () => {
     const { db, env, auth } = await fixture();
     const path = `/api/products/${SLUG}/release/health`;

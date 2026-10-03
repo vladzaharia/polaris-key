@@ -28,6 +28,7 @@ import {
   useToast,
   type ColumnDef,
 } from "../components/ui/index.js";
+import { artifactLabel } from "../lib/buildLabels.js";
 import {
   portalApi,
   PortalApiError,
@@ -1028,50 +1029,66 @@ function Downloads(): React.ReactElement {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {release.artifacts.map((artifact) => (
-                  <div
-                    key={artifact.artifactId}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{artifact.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {[
-                          artifact.kind,
-                          artifact.platform,
-                          artifact.arch,
-                          formatBytes(artifact.sizeBytes),
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!artifact.canDownload}
-                      title={
-                        artifact.canDownload
-                          ? undefined
-                          : artifact.access === "licensed"
-                            ? "A usable license is required for this artifact."
-                            : artifact.access === "entitled"
-                              ? "Your license does not include this release's channel or version."
-                              : "This artifact is not available for download."
-                      }
-                      onClick={() => void download(release, artifact)}
+                {release.artifacts.map((artifact) => {
+                  const label = artifactLabel(artifact);
+                  return (
+                    <div
+                      key={artifact.artifactId}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3"
                     >
-                      <Download aria-hidden />
-                      {artifact.canDownload
-                        ? "Download"
-                        : artifact.access === "licensed"
-                          ? "License required"
-                          : artifact.access === "entitled"
-                            ? "Not in your license"
-                            : "Unavailable"}
-                    </Button>
-                  </div>
-                ))}
+                      <div>
+                        <p className="flex flex-wrap items-center gap-2 font-medium">
+                          <span>{artifact.name}</span>
+                          {label ? (
+                            <Badge variant="outline" title={label.long}>
+                              {label.short}
+                            </Badge>
+                          ) : null}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {[
+                            label?.long,
+                            artifact.kind,
+                            formatBytes(artifact.sizeBytes),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        // The accessible name says which build; a disabled button keeps its
+                        // visible reason ("License required") as its name.
+                        aria-label={
+                          artifact.canDownload
+                            ? `Download ${artifact.name}${label ? ` for ${label.long}` : ""}`
+                            : undefined
+                        }
+                        disabled={!artifact.canDownload}
+                        title={
+                          artifact.canDownload
+                            ? undefined
+                            : artifact.access === "licensed"
+                              ? "A usable license is required for this artifact."
+                              : artifact.access === "entitled"
+                                ? "Your license does not include this release's channel or version."
+                                : "This artifact is not available for download."
+                        }
+                        onClick={() => void download(release, artifact)}
+                      >
+                        <Download aria-hidden />
+                        {artifact.canDownload
+                          ? "Download"
+                          : artifact.access === "licensed"
+                            ? "License required"
+                            : artifact.access === "entitled"
+                              ? "Not in your license"
+                              : "Unavailable"}
+                      </Button>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           ))}
