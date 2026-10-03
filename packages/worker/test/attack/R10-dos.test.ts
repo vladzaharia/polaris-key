@@ -1032,9 +1032,10 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
       r.tag_name = "x".repeat(len); // a perfectly legal git tag name
       return r;
     });
-    const t0 = Date.now();
+    // performance.now(): sub-millisecond, so a fast machine's short sample is not floored.
+    const t0 = performance.now();
     resolveChannel(sel, releases);
-    return Date.now() - t0;
+    return performance.now() - t0;
   }
 
   /**
@@ -1047,25 +1048,35 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
     timeMatch(len, count);
     let best = Number.POSITIVE_INFINITY;
     for (let i = 0; i < runs; i++) best = Math.min(best, timeMatch(len, count));
-    return Math.max(best, 1);
+    return Math.max(best, 0.01);
   }
+
+  // The inputs are kept short so each test takes well under a second here and a few seconds on
+  // a slow CI runner (about 25x slower than a developer Mac): the cost doubles per character, so
+  // an absolute bound on a long tag measures the machine, not the pattern. Ratios do not.
 
   it("an 8-character pattern under the cap backtracks catastrophically", () => {
     expect(EVIL.length).toBeLessThanOrEqual(80);
-    // Non-pathological matching is sub-millisecond; past 250ms is catastrophic backtracking.
-    // Cost doubles per extra character: a 40-char tag is ~4 minutes of CPU on one request.
-    expect(timeMatch(28, 1)).toBeGreaterThan(250);
+    // Six more characters multiply the cost by ~64; linear matching would add a third.
+    const short = minTime(18, 1);
+    const longer = timeMatch(24, 1);
+    expect(longer).toBeGreaterThan(short * 16);
+    // At the measured growth per character, one 40-character tag (a legal git tag, the pattern
+    // still under the cap) costs more CPU than a Worker request's 30 s limit: half an hour or
+    // more on a developer Mac.
+    const perChar = Math.pow(longer / short, 1 / 6);
+    expect(longer * Math.pow(perChar, 40 - 24)).toBeGreaterThan(30_000);
   }, 20_000);
 
   it("runtime doubles per extra input character (exponential, not linear)", () => {
-    const short = minTime(22, 1);
-    const longer = timeMatch(27, 1); // +5 chars ⇒ ~32x
+    const short = minTime(18, 1);
+    const longer = timeMatch(23, 1); // +5 chars ⇒ ~32x
     expect(longer).toBeGreaterThan(short * 8);
   }, 20_000);
 
   it("cost is multiplied by the release list length (up to 3 pages of 100 per request since P0-02)", () => {
-    const single = minTime(24, 1);
-    const batch = timeMatch(24, 10);
+    const single = minTime(20, 1);
+    const batch = timeMatch(20, 10);
     // Ten releases cost ~10x one. A 3x bar still proves the multiplication while leaving room for a
     // loaded machine that slows every `single` sample and then frees up for `batch`.
     expect(batch).toBeGreaterThan(single * 3);

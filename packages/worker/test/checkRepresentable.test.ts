@@ -61,19 +61,34 @@ const WRANGLER = join(
 
 let persistTo: string;
 
+/** wrangler's local workerd can drop its connection while it starts on a loaded machine;
+ *  that one error is retried (twice). Any other failure throws at once. */
+const TRANSIENT = /other side closed/;
+
 function wrangler(...args: string[]): string {
-  const run = spawnSync(
-    process.execPath,
-    [WRANGLER, ...args, "--env", "prod", "--local", "--persist-to", persistTo],
-    {
-      cwd: WORKER,
-      encoding: "utf8",
-      env: { ...process.env, WRANGLER_SEND_METRICS: "false", CI: "1" },
-    },
-  );
-  if (run.status !== 0)
-    throw new Error(`wrangler ${args.join(" ")}:\n${run.stderr || run.stdout}`);
-  return run.stdout;
+  for (let attempt = 0; ; attempt++) {
+    const run = spawnSync(
+      process.execPath,
+      [
+        WRANGLER,
+        ...args,
+        "--env",
+        "prod",
+        "--local",
+        "--persist-to",
+        persistTo,
+      ],
+      {
+        cwd: WORKER,
+        encoding: "utf8",
+        env: { ...process.env, WRANGLER_SEND_METRICS: "false", CI: "1" },
+      },
+    );
+    if (run.status === 0) return run.stdout;
+    const out = run.stderr || run.stdout;
+    if (attempt < 2 && TRANSIENT.test(out)) continue;
+    throw new Error(`wrangler ${args.join(" ")}:\n${out}`);
+  }
 }
 
 function sql(command: string): void {

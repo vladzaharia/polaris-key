@@ -4,7 +4,7 @@
 // `files` delta set whose one `delta` entry is the probe vector (a real `zstd --patch-from`
 // frame over a 432-byte base).
 
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,6 +83,9 @@ export async function treePack(o: {
   activation?: string;
   entitlement?: string;
   type?: string;
+  /** Sign with this key and kid instead of the release key (a delegated content key). */
+  signer?: { pem: string; kid: string };
+  issuedAt?: number;
 }): Promise<TreePack> {
   const files: Record<string, Uint8Array> = {};
   for (const [p, b] of Object.entries(o.files))
@@ -197,7 +200,7 @@ export async function treePack(o: {
     kind: "pack",
     version: o.version,
     seq: o.seq,
-    issuedAt: 1759300000 + o.seq,
+    issuedAt: o.issuedAt ?? 1759300000 + o.seq,
     type: o.type ?? "files.tree",
     formatVersion: 1,
     handler: { activation: o.activation ?? "hot" },
@@ -226,8 +229,8 @@ export async function treePack(o: {
   };
   const jws = await signJws(
     record,
-    key(RELEASE_KID).privateKeyPkcs8Pem,
-    RELEASE_KID,
+    o.signer?.pem ?? key(RELEASE_KID).privateKeyPkcs8Pem,
+    o.signer?.kid ?? RELEASE_KID,
     "pkey-release+jws",
   );
   return {
@@ -402,4 +405,44 @@ export function signReleaseDoc(doc: unknown): Promise<string> {
     RELEASE_KID,
     "pkey-release+jws",
   );
+}
+
+/** A throwaway Ed25519 content key generated at test time (never committed). */
+export function contentKeyPair(): { pem: string; pub: string } {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  return {
+    pem: privateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+    pub: (publicKey.export({ format: "jwk" }) as { x: string }).x,
+  };
+}
+
+/** A `kind: delegation` record (plans/P4-19.md §2.2) signed by the release key, and the kid a
+ *  record signed under it carries. */
+export async function delegationFor(o: {
+  deliverable: string;
+  publicKey: string;
+  types?: string[];
+  issuedAt?: number;
+  expiresAt?: number;
+  seq?: number;
+}): Promise<{ jws: string; sha256: string; kid: string }> {
+  const issuedAt = o.issuedAt ?? 1759200000;
+  const jws = await signJws(
+    {
+      schemaVersion: 1,
+      aud: PRODUCT,
+      deliverable: o.deliverable,
+      kind: "delegation",
+      version: String(o.seq ?? 1),
+      seq: o.seq ?? 1,
+      issuedAt,
+      expiresAt: o.expiresAt ?? issuedAt + 180 * 86400,
+      delegate: { publicKey: o.publicKey },
+      types: o.types ?? ["files.tree", "data.json"],
+    },
+    key(RELEASE_KID).privateKeyPkcs8Pem,
+    RELEASE_KID,
+    "pkey-release+jws",
+  );
+  return { jws, sha256: sha(jws), kid: `pkd1-${sha(jws)}` };
 }

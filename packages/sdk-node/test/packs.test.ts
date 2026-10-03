@@ -29,6 +29,8 @@ import {
   PRODUCT,
   PRODUCT_TRUST,
   RELEASE_KEYS,
+  contentKeyPair,
+  delegationFor,
   markerFor,
   revocationFor,
   signFeedDoc,
@@ -191,6 +193,7 @@ const v1Files = {
 
 let srv: FakeServer;
 let work: string;
+let stampDocs = 0;
 beforeAll(async () => {
   srv = new FakeServer();
   await srv.start();
@@ -206,17 +209,23 @@ afterEach(async () => {
 
 async function client(o: {
   stamp: TreePack[];
+  /** The stamp body to write instead of `stampFor(...stamp)` (holds, say). */
+  stampDoc?: Record<string, unknown>;
   embedded?: { path: string }[];
   token?: boolean;
+  dataDir?: string;
 }) {
   work ??= await mkdtemp(join(tmpdir(), "pkey-packs-"));
   const stampPath = join(
     work,
-    `stamp-${o.stamp.map((p) => p.version).join("-")}.json`,
+    `stamp-${o.stamp.map((p) => p.version).join("-")}${o.stampDoc ? `-${++stampDocs}` : ""}.json`,
   );
   await writeFile(
     stampPath,
-    JSON.stringify({ format: "pkey-content/1", ...stampFor(...o.stamp) }),
+    JSON.stringify({
+      format: "pkey-content/1",
+      ...(o.stampDoc ?? stampFor(...o.stamp)),
+    }),
   );
   const store = new MemStore("dev_packs");
   if (o.token !== false) store.token = "pkeyt_test";
@@ -226,7 +235,7 @@ async function client(o: {
     version: "1.0.0",
     trust: { pinnedKeys: PRODUCT_TRUST },
     store,
-    dataDir: join(work, "data"),
+    dataDir: o.dataDir ?? join(work, "data"),
     requestTimeoutMs: 0,
     expectedServices: ["release", "distribution", "update"] as never,
     update: {
@@ -740,5 +749,67 @@ describe("client.update.decide() with packs (plans/P4-13.md §2.5, §2.6)", () =
     });
     srv.feed = null;
     srv.records = new Map();
+  });
+});
+
+describe("client.update.packs and delegated releases (plans/P4-19.md §2.4)", () => {
+  it("refuses a held release signed under a delegation through the packs client; unheld, it installs", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const now = Math.floor(Date.now() / 1000);
+    const ck = contentKeyPair();
+    const d = await delegationFor({
+      deliverable: "djdl.events",
+      publicKey: ck.pub,
+      issuedAt: now - 86400,
+      expiresAt: now + 30 * 86400,
+    });
+    const held = await treePack({
+      packId: "djdl.events.halloween",
+      version: "1.0.0",
+      seq: 1,
+      files: { "a.json": "{}" },
+      issuedAt: now - 3600,
+      signer: { pem: ck.pem, kid: d.kid },
+    });
+    srv.packs = [held];
+    srv.records = new Map([[d.sha256, d.jws]]);
+    const release = {
+      sha256: held.recordSha256,
+      seq: held.seq,
+      version: held.version,
+    };
+    const expects = [
+      { pack: held.packId, required: true, delivery: "essential" },
+    ];
+    const target = { pack: held.packId, release };
+    try {
+      // The stamp holds the release: the engine never takes the delegated path for it.
+      const c = await client({
+        stamp: [],
+        dataDir: join(work, "held"),
+        stampDoc: {
+          contentApi: 1,
+          pins: [],
+          expects,
+          holds: [{ pack: held.packId, release, reason: "held in a test" }],
+        },
+      });
+      await expect(
+        c.update.packs.ensureReleases([target]),
+      ).rejects.toMatchObject({ code: "record-rejected", detail: "jws" });
+      c.close();
+
+      // Without the hold the same target installs through its delegation.
+      const free = await client({
+        stamp: [],
+        dataDir: join(work, "free"),
+        stampDoc: { contentApi: 1, pins: [], expects },
+      });
+      const [install] = await free.update.packs.ensureReleases([target]);
+      expect(install!.delegation).toBe(d.jws);
+      free.close();
+    } finally {
+      srv.records = new Map();
+    }
   });
 });

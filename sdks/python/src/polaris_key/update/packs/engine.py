@@ -768,9 +768,12 @@ class PackEngine:
                 if t not in nxt["revoked"] and t in self._rev_doc["revoked"]:
                     del self._rev_verified[t]
             self._rev_doc = nxt
-            if changed:
-                self._persist_revocations()
-            self._unmount_revoked()
+            try:
+                if changed:
+                    self._persist_revocations()
+            finally:
+                # A failed write never keeps a revoked release running.
+                self._unmount_revoked()
 
     def is_revoked(self, record_sha256: str) -> bool:
         """Whether a release is revoked (stored, or verified in this process)."""
@@ -882,9 +885,12 @@ class PackEngine:
             and self._require_loaded().get("revocationsStored") is not True
         ):
             # A torn (or replaced) `state.json` lost the flag while the sibling file kept its
-            # entries: set it again, so an unreadable `revocations.json` later still refuses.
-            self._doc = {**self._require_loaded(), "revocationsStored": True}
-            self._persist()
+            # entries: set it again, so an unreadable `revocations.json` later still refuses. A
+            # failed write leaves the flag unset in memory; the next sibling write retries it.
+            try:
+                self._persist_flag()
+            except Exception:
+                pass  # The load goes on: the sibling file is unchanged and still read.
 
     def _persist_revocations(self) -> None:
         """Persist the revocations: ``revocationsStored`` in ``state.json`` first, then the
@@ -900,12 +906,24 @@ class PackEngine:
 
     def _write_revocations(self) -> None:
         rs = self._revocations
-        doc = self._require_loaded()
-        if doc.get("revocationsStored") is not True:
-            self._doc = {**doc, "revocationsStored": True}
-            self._persist()
+        # Without the flag on disk the sibling file is not written: an unreadable file later must
+        # never be read as "no revocations" while it holds some.
+        if self._require_loaded().get("revocationsStored") is not True:
+            self._persist_flag()
         rs.replace(serialize_revocations(self._rev_doc))
         self._rev_file = True
+
+    def _persist_flag(self) -> None:
+        """Write ``revocationsStored: true`` to ``state.json``. The in-memory document takes the
+        flag only once the write succeeded, so a failed write (which raises) is retried before
+        the next sibling write instead of being believed."""
+        before = self._require_loaded()
+        self._doc = {**before, "revocationsStored": True}
+        try:
+            self._persist()
+        except BaseException:
+            self._doc = before
+            raise
 
     def _unmount_revoked(self) -> None:
         """Stop running every revoked release (a hot handler is deactivated)."""

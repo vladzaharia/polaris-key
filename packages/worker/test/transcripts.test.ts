@@ -50,7 +50,12 @@ describe("HTTP transcripts", () => {
     write
       ? "writes conformance/transcripts and the Swift and Godot mirrors"
       : "conformance/transcripts and the Swift and Godot mirrors are fresh",
-    () => {
+    async () => {
+      // A scenario whose own test did not finish (a timeout on a loaded machine) left no entry:
+      // record it here, so this check reports drift, never another test's failure.
+      for (const scenario of SCENARIOS)
+        if (!rendered.has(scenario.id))
+          rendered.set(scenario.id, await serialize(await scenario.record()));
       expect(rendered.size).toBe(SCENARIOS.length);
       const drift = reconcile(rendered, write);
       const hint = "run `pnpm gen:transcripts` and commit the result";
@@ -59,5 +64,6 @@ describe("HTTP transcripts", () => {
         hint,
       ).toEqual([]);
     },
+    120_000,
   );
 });
