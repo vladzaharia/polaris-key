@@ -24,7 +24,7 @@ extends RefCounted
 ## always means the event was ignored.
 ##
 ## Thread note: every list below is a const Array, which 4.4.1 must not index off the main thread
-## (README "Writing GDScript here"). The reducer converts each one to a packed array before
+## (CONTRIBUTING.md "Writing GDScript here"). The reducer converts each one to a packed array before
 ## reading it, so it is safe to call from a worker thread too.
 
 ## Every stage, in boot order, then the three stops.

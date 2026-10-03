@@ -26,7 +26,7 @@ extends RefCounted
 ## decision compares by value with `update-matrix.json` and the transcripts.
 ##
 ## The tables are static vars, not consts: thread-reachable code never indexes a const Array
-## (4.4.1's shared read slot; README "Writing GDScript here").
+## (4.4.1's shared read slot; CONTRIBUTING.md "Writing GDScript here").
 
 const OUTLET_UNKNOWN := "unknown"
 const ROLLOUT_BUCKETS := 10000
