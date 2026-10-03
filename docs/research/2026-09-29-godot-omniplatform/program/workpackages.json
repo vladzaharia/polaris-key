@@ -1489,7 +1489,7 @@
       "optional": false,
       "refs": ["CONTENT §6.9", "README §6.2 item 4"],
       "brief": "wp/P4-15-console-compat-matrix.md",
-      "status": "todo",
+      "status": "done",
       "milestone": "Content ships between app releases"
     },
     {
