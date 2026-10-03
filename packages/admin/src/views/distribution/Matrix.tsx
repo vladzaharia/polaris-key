@@ -1,4 +1,5 @@
 import * as React from "react";
+import { artifactLabel } from "../../lib/buildLabels.js";
 import { AlertTriangle, Grid3x3 } from "lucide-react";
 import {
   api,
@@ -372,13 +373,17 @@ function ReleaseHeader({
       </div>
       {payloads.length ? (
         <ul className="space-y-0.5 text-xs text-muted-foreground">
-          {payloads.slice(0, 3).map((a) => (
-            <li key={a.artifactId} className="flex flex-wrap gap-2">
-              <span>{a.buildId ?? a.name}</span>
-              <span>{formatBytes(a.sizeBytes)}</span>
-              {a.sha256 ? <Sha256 value={a.sha256} /> : null}
-            </li>
-          ))}
+          {payloads.slice(0, 3).map((a) => {
+            const label = artifactLabel(a);
+            return (
+              <li key={a.artifactId} className="flex flex-wrap gap-2">
+                <span title={label?.long}>{a.buildId ?? a.name}</span>
+                {label ? <span>{label.short}</span> : null}
+                <span>{formatBytes(a.sizeBytes)}</span>
+                {a.sha256 ? <Sha256 value={a.sha256} /> : null}
+              </li>
+            );
+          })}
           {payloads.length > 3 ? <li>and {payloads.length - 3} more</li> : null}
         </ul>
       ) : null}

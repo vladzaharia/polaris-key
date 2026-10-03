@@ -1,4 +1,5 @@
 import * as React from "react";
+import { platformLabel } from "@polaris-key/manifest";
 import { AlertTriangle, FlaskConical, Grid2x2Check } from "lucide-react";
 import {
   api,
@@ -423,7 +424,10 @@ function AppReleaseHeader({
           <Badge
             variant="warning"
             title={a.unsatisfied
-              .map((u) => `${u.pack} (${u.platform}): ${u.reason}, ${u.detail}`)
+              .map(
+                (u) =>
+                  `${u.pack} (${platformLabel(u.platform)}): ${u.reason}, ${u.detail}`,
+              )
               .join("\n")}
           >
             <AlertTriangle className="size-3" aria-hidden />
@@ -602,7 +606,7 @@ function SimulatorCard({
             >
               {platforms.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {platformLabel(p)}
                 </option>
               ))}
             </select>
@@ -687,7 +691,7 @@ function SimulateResult({ r }: { r: SimulateResponse }) {
       <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
         <dt className="text-muted-foreground">Device</dt>
         <dd>
-          {r.selector.version} on {r.selector.platform}
+          {r.selector.version} on {platformLabel(r.selector.platform)}
           {r.selector.outlet ? ` via ${r.selector.outlet.id}` : ""}
           {r.selector.contentApi !== null
             ? `, contentApi ${r.selector.contentApi}`

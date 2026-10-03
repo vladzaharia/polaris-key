@@ -57,16 +57,17 @@ export const SERVICE_IDS = [
 export type ServiceId = (typeof SERVICE_IDS)[number];
 
 /**
- * Accent families. Distribution and Update share the `delivery` family: the Star Cut mark
- * identifies the whole delivery service (Distribution, Update and the bytes host dl.plrs.im),
- * so its sections read as one family (owner direction, 2026-10-03; BRAND.md §5).
+ * Accent families, one per section (owner decisions 2026-10-03, BRAND.md §5): Distribution green
+ * and Update tangerine no longer share one; Config is yellow; Release, the only blue-green left,
+ * takes the cyan its measured optimum lands on.
  */
 export const ACCENT_FAMILIES = [
   "violet",
   "chartreuse",
+  "yellow",
   "cyan",
-  "teal",
   "green",
+  "tangerine",
   "orchid",
 ] as const;
 
@@ -75,10 +76,10 @@ export type AccentFamily = (typeof ACCENT_FAMILIES)[number];
 export const SERVICE_FAMILY: Record<ServiceId, AccentFamily> = {
   core: "violet",
   license: "chartreuse",
-  config: "cyan",
-  release: "teal",
+  config: "yellow",
+  release: "cyan",
   distribution: "green",
-  update: "green",
+  update: "tangerine",
   identity: "orchid",
 };
 
@@ -149,34 +150,37 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
       on: BRAND.mono.black,
     },
   },
-  // Config keeps its cyan, nudged clear of the blue band.
-  cyan: {
+  // Config (owner decision 2026-10-03): yellow, from the owner's #ffd43b / #8a6a00, tuned by
+  // scripts/tune-accents.ts (hue held at 90-100° so it stays yellow, not amber or lime) to the
+  // value farthest (CIEDE2000) from the License chartreuse and every other accent.
+  yellow: {
     dark: {
-      solid: oklch(0.73, 0.125, 212),
-      fg: oklch(0.73, 0.125, 212),
+      solid: oklch(0.85, 0.175, 90),
+      fg: oklch(0.85, 0.175, 90),
       on: BRAND.mono.black,
     },
     light: {
-      solid: oklch(0.455, 0.085, 212),
-      fg: oklch(0.455, 0.085, 212),
+      solid: oklch(0.54, 0.11, 86),
+      fg: oklch(0.525, 0.11, 86),
       on: BRAND.mono.white,
     },
   },
-  // Release. Was violet, which is now the platform's alone; teal sits between the delivery
-  // green and Config's cyan with a lightness step from each.
-  teal: {
+  // Release. Was violet (the platform's alone), then teal; with Config yellow it is the only
+  // blue-green, and scripts/tune-accents.ts's optimum over the whole teal-to-cyan arc (150-214°,
+  // up to the blue band) is this cyan, farthest from the Distribution green.
+  cyan: {
     dark: {
-      solid: oklch(0.86, 0.14, 184),
-      fg: oklch(0.86, 0.14, 184),
+      solid: oklch(0.82, 0.145, 214),
+      fg: oklch(0.82, 0.145, 214),
       on: BRAND.mono.black,
     },
     light: {
-      solid: oklch(0.6, 0.105, 186),
-      fg: oklch(0.5, 0.09, 186),
+      solid: oklch(0.6, 0.105, 214),
+      fg: oklch(0.515, 0.105, 214),
       on: BRAND.mono.black,
     },
   },
-  // Distribution + Update (the delivery family, the Star Cut's services). Update was green.
+  // Distribution (a Star Cut service). Update shared it until 2026-10-03.
   green: {
     dark: {
       solid: oklch(0.76, 0.18, 152),
@@ -186,6 +190,21 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
     light: {
       solid: oklch(0.5, 0.13, 152),
       fg: oklch(0.5, 0.13, 152),
+      on: BRAND.mono.white,
+    },
+  },
+  // Update (owner decisions 2026-10-03): tangerine. Dark is the owner's #fe8001; light is a
+  // bright orange within ±6° and ±0.03 lightness of the owner's #b04a00, tuned by
+  // scripts/tune-accents.ts to the value farthest (CIEDE2000) from danger and the other accents.
+  tangerine: {
+    dark: {
+      solid: oklch(0.73, 0.185, 53),
+      fg: oklch(0.73, 0.185, 53),
+      on: BRAND.mono.black,
+    },
+    light: {
+      solid: oklch(0.57, 0.15, 51),
+      fg: oklch(0.535, 0.15, 51),
       on: BRAND.mono.white,
     },
   },
@@ -299,18 +318,23 @@ export const STATUS: Record<StatusId, Record<Theme, StatusSpec>> = {
       border: oklch(0.58, 0.13, 150),
     },
   },
-  // Orange, deliberately redder and (in light) darker than the gold so a warning never reads as
-  // "signed" (ΔE >= 0.12 from the signed indicator in both themes).
+  // Amber (owner decision 2026-10-03), moved out of the orange so it cannot be taken for the
+  // Update tangerine or the Config yellow: scripts/tune-accents.ts picks the value between the two
+  // farthest (CIEDE2000) from both and from danger, still ΔEOK >= 0.12 from the signed indicator.
+  // Dark is a deeper amber than the kit gold; light, where 4.5:1 text leaves only dark ambers, is
+  // a brown amber.
   warning: {
     dark: {
-      fg: oklch(0.76, 0.16, 46),
+      fg: oklch(0.68, 0.135, 80),
       on: BRAND.mono.black,
-      border: oklch(0.6, 0.14, 46),
+      border: oklch(0.52, 0.135, 80),
     },
     light: {
-      fg: oklch(0.5, 0.14, 42),
+      fg: oklch(0.47, 0.105, 67),
       on: BRAND.mono.white,
-      border: oklch(0.6, 0.15, 44),
+      // The tuner's lightest 3:1 outline (L 0.62) sits next to the signed border; 0.56 keeps a
+      // clear step from it (and still clears 3:1 on the page and the callout).
+      border: oklch(0.56, 0.105, 67),
     },
   },
   // Red, held a clear ΔE from the reserved rose (darker and more orange than #ff6fa6).

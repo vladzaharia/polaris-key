@@ -1,4 +1,5 @@
 import * as React from "react";
+import { buildLabel } from "@polaris-key/manifest";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -548,9 +549,16 @@ function HealthCheckRow({
           aria-label={`${check.label} files`}
         >
           {check.files.map((file) => {
-            const facts = [file.platform, file.arch, file.format].filter(
-              Boolean,
-            );
+            const facts =
+              file.platform || file.arch
+                ? [
+                    buildLabel({
+                      platform: file.platform,
+                      arch: file.arch,
+                      format: file.format,
+                    }).long,
+                  ]
+                : [file.format].filter(Boolean);
             return (
               <li
                 key={file.name}

@@ -52,6 +52,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   APP_DELIVERABLE_ID,
+  buildLabel,
   descriptorToRecord,
   matchesArtifactGlob,
   parseManifest,
@@ -579,6 +580,10 @@ export async function publishRelease(
         .map((e) => `  ${e.file}${e.path}: ${e.message}`)
         .join("\n")}`,
     );
+  // The manifest's warnings (a build id that is a bare arch, …) are worth seeing at publish
+  // time too: they never stop a publish, but they do shape how its builds read everywhere.
+  for (const w of validation.warnings)
+    opts.stderr.write(`warning: ${w.file}${w.path}: ${w.message}\n`);
   const context = descriptorManifestOf(loaded);
   const slug = context.product?.slug;
   if (slug !== opts.product)
@@ -641,11 +646,15 @@ export async function publishRelease(
   out.write(
     `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path.relative(opts.cwd, dir) || "."}\n`,
   );
-  for (const b of hashed)
+  for (const b of hashed) {
+    // Each build by platform and arch together ("macOS · Apple silicon (arm64)"), never by its
+    // id or arch alone.
+    const label = buildLabel(b.entry).long;
     for (const f of b.files)
       out.write(
-        `- ${b.entry.id.padEnd(12)} ${f.role.padEnd(9)} ${f.name} (${f.size} bytes, sha256 ${f.sha256.slice(0, 12)}…)\n`,
+        `- ${b.entry.id.padEnd(12)} ${f.role.padEnd(9)} ${f.name} (${label}; ${f.size} bytes, sha256 ${f.sha256.slice(0, 12)}…)\n`,
       );
+  }
 
   // 3. The descriptor, validated as the Worker will validate it.
   const descriptor = buildDescriptor({

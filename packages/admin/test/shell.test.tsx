@@ -8,7 +8,10 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { SERVICE_ACCENTS } from "@polaris-key/brand";
 import { PRODUCT_PAGES, SECTIONS } from "../src/console/nav.js";
+
+type ServiceAccentKey = keyof (typeof SERVICE_ACCENTS)["dark"];
 import { PREF_KEYS } from "../src/console/storage.js";
 import {
   ALL_ON,
@@ -330,33 +333,46 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     );
   });
 
-  it("the header mark's bit follows the route, with the section's token per section", async () => {
+  it("the header mark: no bit on Home, Products and Core; each service section's own accent elsewhere", async () => {
+    // The display cut's terminal bit (the kit's "gold" path).
+    const BIT_D = "M70 85 L84 71 L90 77 L76 91 Z";
     boot("#/p/djdl", { services: ALL_ON });
     const brand = await screen.findByRole("link", { name: "Polaris Key home" });
-    const mark = brand.querySelector("svg")!;
-    expect(mark.getAttribute("width")).toBe("48");
-    const bitSection = (): string | null | undefined =>
-      brand
-        .querySelector("path.polaris-section-bit")
-        ?.closest("[data-service]")
-        ?.getAttribute("data-service");
-    expect(bitSection()).toBe("core");
+    expect(brand.querySelector("svg")!.getAttribute("width")).toBe("48");
+    const theme = (): "dark" | "light" =>
+      document.documentElement.classList.contains("light") ? "light" : "dark";
+    const bit = (): Element | null => brand.querySelector(`path[d="${BIT_D}"]`);
+
+    // Core: the bare Pinned K, with no bit element at all.
+    expect(bit()).toBeNull();
+    expect(brand.querySelector(".polaris-section-bit")).toBeNull();
 
     for (const page of PRODUCT_PAGES.filter((p) => p.ready && p.inNav)) {
       const section = SECTIONS.find((s) => s.items.includes(page))!;
       act(() => {
         window.location.hash = `#/p/djdl${page.path ? `/${page.path}` : ""}`;
       });
-      await waitFor(() => expect(bitSection(), page.page).toBe(section.accent));
-      expect(document.documentElement.getAttribute("data-service")).toBe(
-        section.accent,
+      await waitFor(() =>
+        expect(document.documentElement.getAttribute("data-service")).toBe(
+          section.accent,
+        ),
       );
+      if (section.accent === "core") {
+        expect(bit(), page.page).toBeNull();
+      } else {
+        await waitFor(() =>
+          expect(bit()?.getAttribute("fill"), page.page).toBe(
+            SERVICE_ACCENTS[theme()][section.accent as ServiceAccentKey].bit,
+          ),
+        );
+        expect(bit()!.classList.contains("polaris-section-bit")).toBe(true);
+      }
     }
 
     act(() => {
       window.location.hash = "#/products";
     });
-    await waitFor(() => expect(bitSection()).toBe("core"));
+    await waitFor(() => expect(bit()).toBeNull());
   });
 
   it("leaves <html> unsectioned once the shell is gone", async () => {

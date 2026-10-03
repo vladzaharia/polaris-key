@@ -12,7 +12,8 @@ extends RefCounted
 ##
 ## Dark is the default theme (the kit's page ground #060912). Choose the optical cut by the
 ## DISPLAYED size: below 24 px the 16 px favicon cut, 24-32 px the service cut, above that the
-## display master; gold only on the K's terminal bit at a glyph of 48 px or more.
+## display master. The default mark has no terminal bit; a service section's bit (its accent)
+## shows only at a glyph of 48 px or more, and core draws none.
 
 
 ## Kit primitives, verbatim (kit/08-developer/tokens.json).
@@ -59,10 +60,10 @@ class Dark:
 	const SUCCESS_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SUCCESS_BORDER := Color(0.231373, 0.584314, 0.333333, 1.0) # #3b9555
 	const SUCCESS_SUBTLE := Color(0.062745, 0.129412, 0.121569, 1.0) # #10211f
-	const WARNING := Color(1.0, 0.560784, 0.341176, 1.0) # #ff8f57
+	const WARNING := Color(0.764706, 0.552941, 0.094118, 1.0) # #c38d18
 	const WARNING_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
-	const WARNING_BORDER := Color(0.760784, 0.380392, 0.176471, 1.0) # #c2612d
-	const WARNING_SUBTLE := Color(0.141176, 0.098039, 0.101961, 1.0) # #24191a
+	const WARNING_BORDER := Color(0.537255, 0.380392, 0.0, 1.0) # #896100
+	const WARNING_SUBTLE := Color(0.113725, 0.098039, 0.07451, 1.0) # #1d1913
 	const DANGER := Color(0.94902, 0.317647, 0.247059, 1.0) # #f2513f
 	const DANGER_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const DANGER_BORDER := Color(0.784314, 0.231373, 0.172549, 1.0) # #c83b2c
@@ -83,32 +84,31 @@ class Dark:
 	const SERVICE_CORE_FG := Color(0.603922, 0.360784, 1.0, 1.0) # #9a5cff
 	const SERVICE_CORE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SERVICE_CORE_SUBTLE := Color(0.094118, 0.07451, 0.180392, 1.0) # #18132e
-	const SERVICE_CORE_BIT := Color(1.0, 0.760784, 0.301961, 1.0) # #ffc24d
 	const SERVICE_LICENSE := Color(0.776471, 0.913725, 0.25098, 1.0) # #c6e940
 	const SERVICE_LICENSE_FG := Color(0.776471, 0.913725, 0.25098, 1.0) # #c6e940
 	const SERVICE_LICENSE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SERVICE_LICENSE_SUBTLE := Color(0.113725, 0.141176, 0.094118, 1.0) # #1d2418
 	const SERVICE_LICENSE_BIT := Color(0.776471, 0.913725, 0.25098, 1.0) # #c6e940
-	const SERVICE_CONFIG := Color(0.070588, 0.737255, 0.835294, 1.0) # #12bcd5
-	const SERVICE_CONFIG_FG := Color(0.070588, 0.737255, 0.835294, 1.0) # #12bcd5
+	const SERVICE_CONFIG := Color(0.980392, 0.780392, 0.0, 1.0) # #fac700
+	const SERVICE_CONFIG_FG := Color(0.980392, 0.780392, 0.0, 1.0) # #fac700
 	const SERVICE_CONFIG_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
-	const SERVICE_CONFIG_SUBTLE := Color(0.027451, 0.117647, 0.160784, 1.0) # #071e29
-	const SERVICE_CONFIG_BIT := Color(0.070588, 0.737255, 0.835294, 1.0) # #12bcd5
-	const SERVICE_RELEASE := Color(0.243137, 0.933333, 0.858824, 1.0) # #3eeedb
-	const SERVICE_RELEASE_FG := Color(0.243137, 0.933333, 0.858824, 1.0) # #3eeedb
+	const SERVICE_CONFIG_SUBTLE := Color(0.137255, 0.12549, 0.062745, 1.0) # #232010
+	const SERVICE_CONFIG_BIT := Color(0.980392, 0.780392, 0.0, 1.0) # #fac700
+	const SERVICE_RELEASE := Color(0.0, 0.858824, 0.992157, 1.0) # #00dbfd
+	const SERVICE_RELEASE_FG := Color(0.0, 0.858824, 0.992157, 1.0) # #00dbfd
 	const SERVICE_RELEASE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
-	const SERVICE_RELEASE_SUBTLE := Color(0.05098, 0.141176, 0.164706, 1.0) # #0d242a
-	const SERVICE_RELEASE_BIT := Color(0.243137, 0.933333, 0.858824, 1.0) # #3eeedb
+	const SERVICE_RELEASE_SUBTLE := Color(0.019608, 0.133333, 0.180392, 1.0) # #05222e
+	const SERVICE_RELEASE_BIT := Color(0.0, 0.858824, 0.992157, 1.0) # #00dbfd
 	const SERVICE_DISTRIBUTION := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
 	const SERVICE_DISTRIBUTION_FG := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
 	const SERVICE_DISTRIBUTION_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SERVICE_DISTRIBUTION_SUBTLE := Color(0.047059, 0.129412, 0.117647, 1.0) # #0c211e
 	const SERVICE_DISTRIBUTION_BIT := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
-	const SERVICE_UPDATE := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
-	const SERVICE_UPDATE_FG := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
+	const SERVICE_UPDATE := Color(0.996078, 0.501961, 0.003922, 1.0) # #fe8001
+	const SERVICE_UPDATE_FG := Color(0.996078, 0.501961, 0.003922, 1.0) # #fe8001
 	const SERVICE_UPDATE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
-	const SERVICE_UPDATE_SUBTLE := Color(0.047059, 0.129412, 0.117647, 1.0) # #0c211e
-	const SERVICE_UPDATE_BIT := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
+	const SERVICE_UPDATE_SUBTLE := Color(0.141176, 0.090196, 0.062745, 1.0) # #241710
+	const SERVICE_UPDATE_BIT := Color(0.996078, 0.501961, 0.003922, 1.0) # #fe8001
 	const SERVICE_IDENTITY := Color(0.843137, 0.490196, 0.94902, 1.0) # #d77df2
 	const SERVICE_IDENTITY_FG := Color(0.843137, 0.490196, 0.94902, 1.0) # #d77df2
 	const SERVICE_IDENTITY_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
@@ -134,10 +134,10 @@ class Light:
 	const SUCCESS_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const SUCCESS_BORDER := Color(0.203922, 0.560784, 0.309804, 1.0) # #348f4f
 	const SUCCESS_SUBTLE := Color(0.878431, 0.921569, 0.921569, 1.0) # #e0ebeb
-	const WARNING := Color(0.635294, 0.254902, 0.070588, 1.0) # #a24112
+	const WARNING := Color(0.505882, 0.301961, 0.0, 1.0) # #814d00
 	const WARNING_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
-	const WARNING_BORDER := Color(0.780392, 0.364706, 0.160784, 1.0) # #c75d29
-	const WARNING_SUBTLE := Color(0.933333, 0.901961, 0.905882, 1.0) # #eee6e7
+	const WARNING_BORDER := Color(0.615686, 0.403922, 0.14902, 1.0) # #9d6726
+	const WARNING_SUBTLE := Color(0.917647, 0.905882, 0.901961, 1.0) # #eae7e6
 	const DANGER := Color(0.745098, 0.137255, 0.137255, 1.0) # #be2323
 	const DANGER_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const DANGER_BORDER := Color(0.858824, 0.258824, 0.235294, 1.0) # #db423c
@@ -158,32 +158,31 @@ class Light:
 	const SERVICE_CORE_FG := Color(0.478431, 0.184314, 1.0, 1.0) # #7a2fff
 	const SERVICE_CORE_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const SERVICE_CORE_SUBTLE := Color(0.917647, 0.894118, 1.0, 1.0) # #eae4ff
-	const SERVICE_CORE_BIT := Color(0.815686, 0.478431, 0.0, 1.0) # #d07a00
 	const SERVICE_LICENSE := Color(0.439216, 0.552941, 0.0, 1.0) # #708d00
 	const SERVICE_LICENSE_FG := Color(0.333333, 0.431373, 0.0, 1.0) # #556e00
 	const SERVICE_LICENSE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SERVICE_LICENSE_SUBTLE := Color(0.913725, 0.929412, 0.901961, 1.0) # #e9ede6
 	const SERVICE_LICENSE_BIT := Color(0.439216, 0.552941, 0.0, 1.0) # #708d00
-	const SERVICE_CONFIG := Color(0.0, 0.384314, 0.439216, 1.0) # #006270
-	const SERVICE_CONFIG_FG := Color(0.0, 0.384314, 0.439216, 1.0) # #006270
+	const SERVICE_CONFIG := Color(0.545098, 0.411765, 0.007843, 1.0) # #8b6902
+	const SERVICE_CONFIG_FG := Color(0.52549, 0.396078, 0.0, 1.0) # #866500
 	const SERVICE_CONFIG_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
-	const SERVICE_CONFIG_SUBTLE := Color(0.866667, 0.913725, 0.945098, 1.0) # #dde9f1
-	const SERVICE_CONFIG_BIT := Color(0.0, 0.384314, 0.439216, 1.0) # #006270
-	const SERVICE_RELEASE := Color(0.003922, 0.580392, 0.541176, 1.0) # #01948a
-	const SERVICE_RELEASE_FG := Color(0.0, 0.45098, 0.419608, 1.0) # #00736b
+	const SERVICE_CONFIG_SUBTLE := Color(0.921569, 0.917647, 0.901961, 1.0) # #ebeae6
+	const SERVICE_CONFIG_BIT := Color(0.545098, 0.411765, 0.007843, 1.0) # #8b6902
+	const SERVICE_RELEASE := Color(0.011765, 0.564706, 0.65098, 1.0) # #0390a6
+	const SERVICE_RELEASE_FG := Color(0.0, 0.454902, 0.529412, 1.0) # #007487
 	const SERVICE_RELEASE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
-	const SERVICE_RELEASE_SUBTLE := Color(0.870588, 0.933333, 0.952941, 1.0) # #deeef3
-	const SERVICE_RELEASE_BIT := Color(0.003922, 0.580392, 0.541176, 1.0) # #01948a
+	const SERVICE_RELEASE_SUBTLE := Color(0.870588, 0.933333, 0.964706, 1.0) # #deeef6
+	const SERVICE_RELEASE_BIT := Color(0.011765, 0.564706, 0.65098, 1.0) # #0390a6
 	const SERVICE_DISTRIBUTION := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
 	const SERVICE_DISTRIBUTION_FG := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
 	const SERVICE_DISTRIBUTION_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const SERVICE_DISTRIBUTION_SUBTLE := Color(0.870588, 0.921569, 0.921569, 1.0) # #deebeb
 	const SERVICE_DISTRIBUTION_BIT := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
-	const SERVICE_UPDATE := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
-	const SERVICE_UPDATE_FG := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
+	const SERVICE_UPDATE := Color(0.72549, 0.345098, 0.0, 1.0) # #b95800
+	const SERVICE_UPDATE_FG := Color(0.666667, 0.313725, 0.0, 1.0) # #aa5000
 	const SERVICE_UPDATE_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
-	const SERVICE_UPDATE_SUBTLE := Color(0.870588, 0.921569, 0.921569, 1.0) # #deebeb
-	const SERVICE_UPDATE_BIT := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
+	const SERVICE_UPDATE_SUBTLE := Color(0.941176, 0.909804, 0.901961, 1.0) # #f0e8e6
+	const SERVICE_UPDATE_BIT := Color(0.72549, 0.345098, 0.0, 1.0) # #b95800
 	const SERVICE_IDENTITY := Color(0.619608, 0.203922, 0.682353, 1.0) # #9e34ae
 	const SERVICE_IDENTITY_FG := Color(0.619608, 0.203922, 0.682353, 1.0) # #9e34ae
 	const SERVICE_IDENTITY_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
@@ -194,55 +193,53 @@ class Light:
 const _SERVICE_DARK := {
 	"core": Color(0.603922, 0.360784, 1.0, 1.0),
 	"license": Color(0.776471, 0.913725, 0.25098, 1.0),
-	"config": Color(0.070588, 0.737255, 0.835294, 1.0),
-	"release": Color(0.243137, 0.933333, 0.858824, 1.0),
+	"config": Color(0.980392, 0.780392, 0.0, 1.0),
+	"release": Color(0.0, 0.858824, 0.992157, 1.0),
 	"distribution": Color(0.223529, 0.815686, 0.458824, 1.0),
-	"update": Color(0.223529, 0.815686, 0.458824, 1.0),
+	"update": Color(0.996078, 0.501961, 0.003922, 1.0),
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 }
 const _SERVICE_LIGHT := {
 	"core": Color(0.478431, 0.184314, 1.0, 1.0),
 	"license": Color(0.439216, 0.552941, 0.0, 1.0),
-	"config": Color(0.0, 0.384314, 0.439216, 1.0),
-	"release": Color(0.003922, 0.580392, 0.541176, 1.0),
+	"config": Color(0.545098, 0.411765, 0.007843, 1.0),
+	"release": Color(0.011765, 0.564706, 0.65098, 1.0),
 	"distribution": Color(0.019608, 0.466667, 0.231373, 1.0),
-	"update": Color(0.019608, 0.466667, 0.231373, 1.0),
+	"update": Color(0.72549, 0.345098, 0.0, 1.0),
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 }
 const _SERVICE_FG_DARK := {
 	"core": Color(0.603922, 0.360784, 1.0, 1.0),
 	"license": Color(0.776471, 0.913725, 0.25098, 1.0),
-	"config": Color(0.070588, 0.737255, 0.835294, 1.0),
-	"release": Color(0.243137, 0.933333, 0.858824, 1.0),
+	"config": Color(0.980392, 0.780392, 0.0, 1.0),
+	"release": Color(0.0, 0.858824, 0.992157, 1.0),
 	"distribution": Color(0.223529, 0.815686, 0.458824, 1.0),
-	"update": Color(0.223529, 0.815686, 0.458824, 1.0),
+	"update": Color(0.996078, 0.501961, 0.003922, 1.0),
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 }
 const _SERVICE_FG_LIGHT := {
 	"core": Color(0.478431, 0.184314, 1.0, 1.0),
 	"license": Color(0.333333, 0.431373, 0.0, 1.0),
-	"config": Color(0.0, 0.384314, 0.439216, 1.0),
-	"release": Color(0.0, 0.45098, 0.419608, 1.0),
+	"config": Color(0.52549, 0.396078, 0.0, 1.0),
+	"release": Color(0.0, 0.454902, 0.529412, 1.0),
 	"distribution": Color(0.019608, 0.466667, 0.231373, 1.0),
-	"update": Color(0.019608, 0.466667, 0.231373, 1.0),
+	"update": Color(0.666667, 0.313725, 0.0, 1.0),
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 }
 const _BIT_DARK := {
-	"core": Color(1.0, 0.760784, 0.301961, 1.0),
 	"license": Color(0.776471, 0.913725, 0.25098, 1.0),
-	"config": Color(0.070588, 0.737255, 0.835294, 1.0),
-	"release": Color(0.243137, 0.933333, 0.858824, 1.0),
+	"config": Color(0.980392, 0.780392, 0.0, 1.0),
+	"release": Color(0.0, 0.858824, 0.992157, 1.0),
 	"distribution": Color(0.223529, 0.815686, 0.458824, 1.0),
-	"update": Color(0.223529, 0.815686, 0.458824, 1.0),
+	"update": Color(0.996078, 0.501961, 0.003922, 1.0),
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 }
 const _BIT_LIGHT := {
-	"core": Color(0.815686, 0.478431, 0.0, 1.0),
 	"license": Color(0.439216, 0.552941, 0.0, 1.0),
-	"config": Color(0.0, 0.384314, 0.439216, 1.0),
-	"release": Color(0.003922, 0.580392, 0.541176, 1.0),
+	"config": Color(0.545098, 0.411765, 0.007843, 1.0),
+	"release": Color(0.011765, 0.564706, 0.65098, 1.0),
 	"distribution": Color(0.019608, 0.466667, 0.231373, 1.0),
-	"update": Color(0.019608, 0.466667, 0.231373, 1.0),
+	"update": Color(0.72549, 0.345098, 0.0, 1.0),
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 }
 
@@ -259,10 +256,17 @@ static func service_fg(service: String, dark: bool = true) -> Color:
 	return table.get(service, table["core"])
 
 
-## The K's terminal-bit colour for a section: kit gold on core, the accent elsewhere.
+## Whether a section draws the K's terminal bit: every service section does; core (the platform)
+## and unknown ids do not. The default Polaris Key mark has no bit.
+static func has_section_bit(service: String) -> bool:
+	return _BIT_DARK.has(service)
+
+
+## The K's terminal-bit colour for a service section (its accent). Core and unknown ids have no
+## bit and answer transparent; check has_section_bit() and leave the bit out instead.
 static func section_bit(service: String, dark: bool = true) -> Color:
 	var table: Dictionary = _BIT_DARK if dark else _BIT_LIGHT
-	return table.get(service, table["core"])
+	return table.get(service, Color(0, 0, 0, 0))
 
 
 ## Which optical cut a mark displayed at `size` logical pixels uses.

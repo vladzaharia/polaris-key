@@ -24,6 +24,25 @@ func _init() -> void:
 	kind = "direct"
 
 
+## `binary {method: native}` on Android goes to PKeyUpdater.install_apk(check) (the verified
+## PackageInstaller update, P5-06), which needs the record; the download link is opened only when the
+## plugin answers unsupported. Everything else is the base adapter's.
+func apply(decision: Dictionary, host: Object, check: PKeyUpdateCheck = null) -> PKeyApplyResult:
+	if decision.get("action") == "binary" and decision.get("method") == "native" and host != null and host.has_method("install_apk"):
+		var ctx: Dictionary = host.context(decision) if host.has_method("context") else {}
+		var p := describe(decision, ctx)
+		if p["behaviour"] == PKeyApplyResult.HOOK and p["bridge"] == PKeyApkBridge.BRIDGE_ID:
+			if check == null:
+				return PKeyApplyResult.failed(PKeyErrors.INVALID_OPTIONS, "Installing an APK needs the PKeyUpdateCheck (its verified record).")
+			var r: PKeyApplyResult = await host.install_apk(check)
+			if r.ok or r.code != PKeyErrors.UNSUPPORTED or p["fallback_url"] == "":
+				return r
+			var link := _open(host, p["fallback_url"])
+			link.detail = {"url": p["fallback_url"], "fallback_from": p["bridge"], "hook_code": String(r.code)}
+			return link
+	return await super(decision, host, check)
+
+
 func describe(decision: Dictionary, ctx: Dictionary) -> Dictionary:
 	var build_url := String(ctx.get("build_url", ""))
 	var release_url := String(ctx.get("release_url", ""))

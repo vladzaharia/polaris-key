@@ -94,16 +94,26 @@ function pairs(): Pair[] {
         a.subtle,
         4.5,
       );
-      // The section bit sits on the console header, which is the page or raised surface.
-      add(theme, `service.${id}.bit`, a.bit, "surface.page", t.surface.page, 3);
-      add(
-        theme,
-        `service.${id}.bit`,
-        a.bit,
-        "surface.raised",
-        t.surface.raised,
-        3,
-      );
+      // The section bit sits on the console header, which is the page or raised surface. Core
+      // draws no bit (owner decision 2026-10-03), so it has nothing to test.
+      if (a.bit !== null) {
+        add(
+          theme,
+          `service.${id}.bit`,
+          a.bit,
+          "surface.page",
+          t.surface.page,
+          3,
+        );
+        add(
+          theme,
+          `service.${id}.bit`,
+          a.bit,
+          "surface.raised",
+          t.surface.raised,
+          3,
+        );
+      }
     }
     for (const st of STATUS_IDS) {
       const s = t.status[st];

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- direct flavour only: the PackageInstaller status receiver. Manifest-declared and not exported,
+     because the update kills the game and the status arrives in a new process of the new version
+     (notes/S-10 §3); the explicit PendingIntent names it. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <receiver
+            android:name="im.plrs.key.platform.direct.InstallStatusReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

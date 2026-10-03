@@ -1089,7 +1089,7 @@ describe("release health", () => {
     expect(byId(health, "cli-arm64")?.status).toBe("ok");
     expect(byId(health, "cli-x86_64")?.status).toBe("missing");
     expect(health.missing).toEqual(
-      expect.arrayContaining(["x86_64 DMG asset", "x86_64 CLI asset"]),
+      expect.arrayContaining(["Intel (x86_64) DMG asset", "x86_64 CLI asset"]),
     );
   });
 
@@ -1181,7 +1181,7 @@ describe("release health", () => {
       expect(health.checks.map((c) => c.id)).not.toContain("release-artifacts");
       const mac = byId(health, "artifact-macos");
       expect(mac?.status).toBe("ok");
-      expect(mac?.label).toBe("macos (macos universal dmg)");
+      expect(mac?.label).toBe("macos — macOS · Universal · dmg");
       expect(mac?.files).toEqual([
         {
           name: "Diceroll-1.2.3-macos.dmg",

@@ -620,14 +620,45 @@ describe("the page on the bytes host", () => {
       await onBytes(w, `/${SLUG}`, { headers: { "user-agent": UA.windows } })
     ).text();
     expect(win).toMatch(
-      /class="button" href="[^"]+windows-x86_64\.zip">Download for Windows/,
+      /class="button" href="[^"]+windows-x86_64\.zip" title="[^"]*Windows · x64 \(x86_64\)"[^>]*>Download for Windows/,
     );
     const arm = await (
       await onBytes(w, `/${SLUG}`, { headers: { "user-agent": UA.linuxArm } })
     ).text();
     expect(arm).toMatch(
-      /class="button" href="[^"]+arm64\.AppImage">Download for Linux/,
+      /class="button" href="[^"]+arm64\.AppImage" title="[^"]*Linux · ARM64"[^>]*>Download for Linux/,
     );
+  });
+
+  it("names every build by platform and arch together, never by a bare arch", async () => {
+    const w = await setup();
+    const html = await (
+      await onBytes(w, `/${SLUG}`, { headers: { "user-agent": UA.bot } })
+    ).text();
+    const table = html.slice(html.indexOf('id="files-title"'));
+    const cells = [
+      ...table.matchAll(
+        /<tr><td>[^<]*<\/td><td>([^<]*)<\/td><td>([^<]*)<\/td>/g,
+      ),
+    ].map((m) => [m[1], m[2]]);
+    expect(cells.length).toBeGreaterThan(0);
+    expect(cells).toContainEqual(["Windows", "x64 (x86_64)"]);
+    expect(cells).toContainEqual(["Linux", "ARM64"]);
+    for (const [platform] of cells) {
+      expect([
+        "iPhone and iPad",
+        "Android",
+        "macOS",
+        "Windows",
+        "Linux",
+      ]).toContain(platform);
+    }
+    // Every direct-download link carries its build's full label as tooltip and accessible name.
+    expect(html).toMatch(
+      /title="Windows · x64 \(x86_64\)" aria-label="[^"]+, Windows · x64 \(x86_64\)"/,
+    );
+    // The meta line under a link reads "macOS Universal", "Windows x64", … — never "· arm64 ·".
+    expect(html).not.toMatch(/ · (arm64|x86_64) · /);
   });
 
   it("an iPad (a Mac user agent) gets the Mac and iOS primaries, CSS picks by pointer", async () => {

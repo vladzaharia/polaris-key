@@ -1,7 +1,7 @@
 extends RefCounted
 # The generated brand tokens (packages/brand, `pnpm gen:brand`) load in the engine and agree with
-# the launch kit: the kit primitives, the optical-cut thresholds, the section-bit rule (kit gold on
-# core, the accent elsewhere, never below 48 px) and the shared delivery accent.
+# the launch kit: the kit primitives, the optical-cut thresholds, the section-bit rule (no bit on
+# core, the accent in a service section, never below 48 px) and the per-section accents.
 #
 #   godot --headless --path sdks/godot -- --pkey-test brand
 
@@ -16,10 +16,14 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("dark page is the kit ground", Brand.Dark.SURFACE_PAGE.to_html(false) == "060912")
 	t.check("light page is the kit ground", Brand.Light.SURFACE_PAGE.to_html(false) == "f6f8ff")
 	t.check("core accent is the kit violet", Brand.service_accent("core", true) == Brand.KIT_VIOLET_DARK)
-	t.check("core bit is the kit gold (dark)", Brand.section_bit("core", true) == Brand.KIT_GOLD_DARK)
-	t.check("core bit is the kit gold (light)", Brand.section_bit("core", false) == Brand.KIT_GOLD_LIGHT)
+	t.check("core has no bit", not Brand.has_section_bit("core"))
+	t.check("core bit answers transparent", Brand.section_bit("core", true).a == 0.0 and Brand.section_bit("core", false).a == 0.0)
+	t.check("unknown section has no bit", not Brand.has_section_bit("nope"))
+	t.check("every service section has a bit", Brand.has_section_bit("license") and Brand.has_section_bit("identity"))
 	t.check("a service bit is its accent", Brand.section_bit("config", true) == Brand.service_accent("config", true))
-	t.check("delivery family shares one accent", Brand.service_accent("distribution", false) == Brand.service_accent("update", false))
+	t.check("distribution and update have distinct accents", Brand.service_accent("distribution", false) != Brand.service_accent("update", false))
+	t.check("distribution keeps its green", Brand.service_accent("distribution", true).to_html(false) == "39d075")
+	t.check("update is tangerine", Brand.service_accent("update", true).to_html(false) == "fe8001")
 	t.check("unknown section falls back to core", Brand.service_accent("nope", true) == Brand.KIT_VIOLET_DARK)
 	t.check("every section has an accent", Brand.SERVICE_IDS.size() == 7)
 	t.check("16 px is the favicon cut", Brand.optical_cut(16) == "favicon")

@@ -1864,7 +1864,7 @@
       "optional": false,
       "refs": ["README §5.10", "PARITY §1", "notes/E2", "notes/E9 §7.2"],
       "brief": "wp/P5-06-kotlin-aar.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-07",

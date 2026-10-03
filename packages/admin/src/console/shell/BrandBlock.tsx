@@ -13,13 +13,10 @@ import { r } from "../routes.js";
  * 2026-10-03 settle ADMIN.md's open question Q1 that way: the bit is only drawn at ≥ 48 px, and
  * the proofs show every section's bit legible there in both themes.
  *
- * The bit: `data-service` on the link re-points `--pk-section-bit`, so the mark's bit takes the
- * current section's accent (the brand package draws it and eases between colours under the
- * reduced-motion rule). The star never changes.
- *
- * INTEGRATION PENDING: `fix/logo-no-core-bit` changes the brand API so the default mark has no
- * bit and only service sections draw one. When it merges, this block passes `section={section}`
- * to `LogoMark` instead of `bit="section"`, and nothing else here changes.
+ * The bit (BRAND.md §6, owner decision 2026-10-03): none on Home, Products and Core pages (the
+ * bare Pinned K, the bit's path absent from the DOM); in a service section, that section's accent,
+ * eased between sections under the reduced-motion rule. The brand package draws it from
+ * `section`; the star never changes.
  */
 export function BrandBlock({
   section,
@@ -39,7 +36,7 @@ export function BrandBlock({
         className,
       )}
     >
-      <LogoMark size={48} bit="section" title="" />
+      <LogoMark size={48} section={section} title="" />
       <span
         aria-hidden
         className="hidden text-base font-bold tracking-tight sm:inline"

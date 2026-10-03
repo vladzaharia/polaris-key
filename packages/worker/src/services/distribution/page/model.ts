@@ -927,11 +927,19 @@ export async function buildDownloadModel(
 
   // One `download` action per platform with builds, leading to its default build.
   const order = new Map(history.releases.map((r, i) => [r.releaseId, i]));
+  // Within a platform, builds follow the platform's arch preference (a universal build first,
+  // then the common arch), not the raw arch's spelling; an arch the table lacks sorts last.
+  const archRank = (b: PageBuild) => {
+    const i = ARCH_PREFERENCE[b.platform].indexOf(b.arch);
+    return i < 0 ? ARCH_PREFERENCE[b.platform].length : i;
+  };
   builds.sort(
     (a, b) =>
       (order.get(a.releaseId) ?? 1e9) - (order.get(b.releaseId) ?? 1e9) ||
       PAGE_PLATFORMS.indexOf(a.platform) - PAGE_PLATFORMS.indexOf(b.platform) ||
-      (a.arch < b.arch ? -1 : a.arch > b.arch ? 1 : 0),
+      archRank(a) - archRank(b) ||
+      (a.arch < b.arch ? -1 : a.arch > b.arch ? 1 : 0) ||
+      (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
   );
   for (const platform of PAGE_PLATFORMS) {
     const pick = pickBuild(

@@ -7,7 +7,8 @@
 // section's bit at 32, 40 and 48 CSS px, at 1x and 2x, on the header ground of each theme, plus an
 // 8x nearest-neighbour magnification of the 1x pixels, so the minimum can be judged on real
 // rasters. 32 px is drawn twice: the kit-correct service cut (which has no bit) and, for
-// comparison only, the display master forced down to 32 px with its bit.
+// comparison only, the display master forced down to 32 px with its bit. Core (the platform) has
+// no bit at all (owner decision 2026-10-03), so its row shows the bare K in every column.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -27,8 +28,11 @@ import {
 const PKG = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(PKG, "preview", "proofs");
 
-/** The display master at any size with a coloured bit (bypasses the size rule, for proofs only). */
-function forcedDisplay(size: number, theme: Theme, bit: string): string {
+/**
+ * The display master at any size with a coloured bit, or none for `null` (bypasses the size rule,
+ * for proofs only).
+ */
+function forcedDisplay(size: number, theme: Theme, bit: string | null): string {
   const [grid, parts] = GEOMETRY.key.display;
   const fill = (role: string) =>
     role === "gold"
@@ -37,6 +41,7 @@ function forcedDisplay(size: number, theme: Theme, bit: string): string {
         ? BRAND.star[theme]
         : BRAND.violet[theme];
   const paths = parts
+    .filter(([role]) => role !== "gold" || bit !== null)
     .map(([role, d]) => `<path d="${d}" fill="${fill(role)}"/>`)
     .join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${grid} ${grid}">${paths}</svg>`;
@@ -100,7 +105,7 @@ async function sheet(theme: Theme): Promise<Buffer> {
     const y = headerH + ri * rowH;
     texts.push(
       `<text x="10" y="${y + 40}" font-family="Rubik, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="${ink}">${SERVICE_LABEL[id]}</text>`,
-      `<text x="10" y="${y + 60}" font-family="Rubik, Helvetica, Arial, sans-serif" font-size="12" fill="${ink}">${SERVICE_ACCENTS[theme][id].bit}</text>`,
+      `<text x="10" y="${y + 60}" font-family="Rubik, Helvetica, Arial, sans-serif" font-size="12" fill="${ink}">${SERVICE_ACCENTS[theme][id].bit ?? "no bit"}</text>`,
     );
     for (const [ci, col] of COLS.entries()) {
       const x = colX[ci]!;

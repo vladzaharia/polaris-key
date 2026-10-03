@@ -83,6 +83,10 @@ export interface PortalArtifactRow {
   sha256: string | null;
   source_url: string | null;
   access: string;
+  /** The build the file belongs to, when a descriptor or artifact map tied it to one. */
+  build_id?: string | null;
+  /** That build's platform (null for a platform-independent build); listings only. */
+  build_platform?: string | null;
 }
 
 export interface PortalDownloadTokenRow {
@@ -713,12 +717,18 @@ export async function listPortalArtifacts(
   releaseId: string,
 ): Promise<PortalArtifactRow[]> {
   return db.all<PortalArtifactRow>(
-    `SELECT product, release_id, artifact_id, name, kind, platform, arch,
-            content_type, size_bytes, sha256, source_url, access
-       FROM release_artifacts
-      WHERE product = ? AND release_id = ?
-        AND kind NOT IN ('signature', 'checksum')
-      ORDER BY kind ASC, platform ASC, arch ASC, name ASC`,
+    // `build_platform` is the platform of the build the file belongs to, for the read-time
+    // label inference in `api.ts` (a file with no platform of its own takes its build's).
+    `SELECT a.product, a.release_id, a.artifact_id, a.name, a.kind, a.platform, a.arch,
+            a.content_type, a.size_bytes, a.sha256, a.source_url, a.access,
+            a.build_id, b.platform AS build_platform
+       FROM release_artifacts a
+       LEFT JOIN release_builds b
+         ON b.product = a.product AND b.release_id = a.release_id
+        AND b.build_id = a.build_id
+      WHERE a.product = ? AND a.release_id = ?
+        AND a.kind NOT IN ('signature', 'checksum')
+      ORDER BY a.kind ASC, a.platform ASC, a.arch ASC, a.name ASC`,
     product,
     releaseId,
   );
