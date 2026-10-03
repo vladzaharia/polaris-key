@@ -194,7 +194,8 @@ non-secret version of the credential, so the cache is checked first and a creden
 only when a fresh token is needed. Operators set them on the Secrets tab — see
 [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). The first connector is
 the [App Store Connect connector](/docs/services/distribution/app-store-connect/), then the
-[Google Play connector](/docs/services/distribution/google-play/); the Microsoft Store follows.
+[Google Play connector](/docs/services/distribution/google-play/) and the read-only
+[Microsoft Store connector](/docs/services/distribution/microsoft-store/).
 
 ## Vocabulary
 

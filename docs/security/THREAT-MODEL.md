@@ -1005,6 +1005,12 @@ key (`.p8`), the App Store Connect webhook secret, a Google service-account key,
 Partner Center client secret. Each is worth as much as the release channel (A3) — whoever holds
 one can ship to that store as the operator.
 
+**Reach differs by store.** A Partner Center client secret (`ms-partner-center`) is the widest:
+Microsoft's submission API needs the Entra application to hold the Manager role, which covers
+every app of the seller account and has no per-app scope. The Microsoft Store connector (P5-04)
+uses it read-only and pinned to one Store ID ("Store connectors: Microsoft Store", below), but a
+stolen secret is not limited by either.
+
 **Why not a product secret.** Edge-mint opens any product secret an operator marked `edge-mint`
 (`services/config/mint.ts`) for **any device of the product**, and under open registration anyone
 can be a device. A `.p8` stored as a product secret would be one approval away from a public App
@@ -1262,9 +1268,8 @@ only agree ("Who picks the outlet's app", above). What remains:
   team and one product per team where you can stays good advice.
 - **Other stores.** The pin is generic (`OUTLET_CREDENTIAL_PINS`). The Google Play connector
   adopted it with P5-03 (`google-service-account`, pinned by `packageName`; "Store connectors:
-  Google Play", below). A Partner Center app (P5-04) is protected only once its connector adds its
-  entry and calls `checkOutletCredentialPin` in its setup; until then that connector has this
-  section's old residual.
+  Google Play", below), and the Microsoft Store connector with P5-04 (`ms-partner-center`, pinned
+  by the Store ID `productId`; "Store connectors: Microsoft Store", below).
 
 ### Store connectors: Google Play (P5-03)
 
@@ -1367,6 +1372,87 @@ inform the feed (P3-03), the Android plugin (P5-06) and the console. A mirrored 
 edits (`rollout_mirrored`); the connector overwrites any operator rollout on the same
 (deliverable, outlet, channel) and audits that it did. A tick over unchanged Play state writes no
 audit row.
+
+### Store connectors: Microsoft Store (P5-04)
+
+**What it is.** `services/distribution/connectors/msstore/` keeps a product's Microsoft Store
+state in Distribution, READ ONLY: each release's submission on its `ms-store` outlet (status,
+`statusDetails` errors, certification report dates; `submitted_at` / `reviewed_at`), availability
+of its MSIX builds (`source = ms-store`, matched by 4-part package version =
+`release_builds.build_number`, platform `windows`), each published submission's gradual package
+rollout mirrored into `dist_rollouts` (`mirrored = 1`), and the application, its flights and the
+submissions read as connector objects. One entry point, no public route and no console control:
+the 15-minute connector cron (`CONNECTOR_POLL_CRON`). It authenticates with the
+`ms-partner-center` outlet credential (P5-01, a new credential KIND for a connector but not for
+custody: the kind, its validator and `meta_json` of tenant, client and seller ids are P5-01's)
+through `msstore/token.ts` only — an Entra ID v1 client-credentials token for the resource
+`https://manage.devcenter.microsoft.com`, cached sealed in KV with P5-01's
+`readSealedToken` / `writeSealedToken` keyed by the credential's version marker, the credential
+opened (audited `ms-store:poll`) only on a miss — and never writes a credential.
+
+**Blast radius of a stolen client secret.** Microsoft's submission API needs the Entra
+application to hold Partner Center's **Manager** role, which has no per-app scope: a thief can
+create, commit and publish submissions, change listings, and start, ramp, halt or finalise
+gradual rollouts for **every app of the seller account**, until the key is removed in Partner
+Center. They cannot touch other stores or Polaris Key. The connector itself never exercises any
+of that: its client (`msstore/client.ts`) can send only GET — there is no method parameter — and
+the suite asserts that no request other than GET ever reaches the fake Store API
+(`test/msstore.test.ts`). Mitigations are P5-01 custody (sealed, platform-admin writes only,
+every open audited, rotation drops the cached token), the operator docs' "dedicated application,
+Manager role and nothing wider" (`services/distribution/microsoft-store.md`), and Partner
+Center's own activity history as the second record.
+
+**Who picks the app.** As for Play: the Store ID is manifest-owned, the credential reaches the
+whole seller account, so a repo writer could otherwise aim it at another app and copy that app's
+submission states, certification errors and rollouts into this product's tables and feed (a
+disclosure and a polluted availability record; no store change, since the connector cannot
+write). P5-04 adds `ms-partner-center` to `OUTLET_CREDENTIAL_PINS` (field `productId`, the
+12-character Store ID rule) and `resolveMsStoreSetup` calls `checkOutletCredentialPin` on the
+credential it chose before anything is opened: a missing or different pin leaves the connector
+inert (`credential-pin-missing` / `credential-pin-mismatch`, no token, no request, no write). The
+console's credential form requires the Store ID with the secret. The P5-02f residuals apply (a
+re-pin is only as good as the admin's check; a repo writer can stop the connector).
+
+**SSRF and paths.** The token request goes only to `https://login.microsoftonline.com`; the
+tenant id becomes one path segment only if it is a GUID or a domain name, and the final URL's
+origin is re-checked, so a credential cannot make the Worker post its client secret elsewhere.
+API requests go only to `https://manage.devcenter.microsoft.com/v1.0/my/applications/<Store ID>/…`,
+the Store ID re-checked against `^[A-Za-z0-9]{12}$`, submission ids against digits and flight ids
+against `^[0-9A-Za-z-]{1,64}$`, every segment percent-encoded. A response's `resourceLocation` or
+`@nextLink` is never followed: flights are paged by `top` / `skip`, bounded at five pages.
+
+**What is never stored.** A submission resource carries `fileUploadUrl`, a writable Azure Blob SAS
+URI for its packages; the parser drops it, with listings, pricing and certification report URLs,
+before anything reaches D1 (asserted by scanning every table after a poll). Errors stored on the
+credential or shown on the connector page are status lines (`MsStoreError`), never a body.
+
+**Reads are all-or-nothing, and 409 is not an error.** The whole state (application, its pending
+and last published submissions, the flight list, the mapped flights' submissions) is read before
+anything is written; a failed read writes nothing. The API answers 409 for an app using mandatory
+app updates or Store-managed consumable add-ons; the connector records the application as
+`not-readable` and skips the tick without failing the cron. Pricing Version 2 returns an unknown
+price tier; pricing is never parsed.
+
+**The mirror is not an access control.** Gradual rollout applies to MSIX packages only and a halt
+never rolls installed users back; `dist_rollouts` rows with `source = ms-store` inform the feed
+(P3-03) and the console. A flight Partner Center lists that no outlet maps is stored, audited once
+(`distribution.connector.flight_unmapped`; the Worker has no console logging, R12) and never read
+further. A tick over unchanged Store state writes no audit row.
+
+**The fallback keeps the feed honest.** While a gradual rollout is partial (not started, in
+progress or stopped), everyone outside it gets the `fallbackSubmissionId` submission. The poller
+reads that submission too (role `fallback`, same app or flight path, the id checked like any
+other) and keeps its builds `live`, so availability — and through it `feeds/select.ts` and the
+signed feed — never shows the previous version as `removed` while the Store still serves it, nor
+shows nothing live at all after a halt. The fallback never mirrors a rollout and never writes its
+release's submission row; it stops being read once the rollout completes, and its builds then
+become `removed` like any build no read submission carries.
+
+**Bounded, redirect-free reads.** Both the token request and every API request use
+`redirect: "manual"` and treat any 3xx as a failure, so neither the client secret nor the bearer
+token is re-sent to a URL a response names; bodies are read through `core/readCapped.ts`
+(`readCappedText`, 64 KiB for a token, 4 MiB for an API response) and a submission's package list
+is capped at 64 entries.
 
 ### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
 

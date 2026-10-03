@@ -97,6 +97,75 @@ submits, publishes or changes a rollout.
 - **Credential.** `ms-partner-center` holds the client secret; `meta_json` shows tenant, client and
   seller ids. Scope the Entra app to the Manager role in Partner Center, nothing wider.
 
+## Corrections recorded during implementation (P5-04)
+
+The code is the fact; where the brief and the code disagreed, the implementation followed the
+code and the documentation, and records it here.
+
+1. **Endpoints confirmed (step 1).** Microsoft's pages were fetched on 2026-10-03 ("Get app data",
+   "Manage app submissions", "Get package flights for an app", "Manage package flight
+   submissions", "Create and manage submissions"): every endpoint, field and status in the design
+   note is as documented. Two details the note did not carry: the v1 token endpoint sends
+   `expires_in` as a **string** (`"3599"`), and `listflights` answers **404 "No package flights
+   were found"** for an app without flights (read as an empty list). Fixtures:
+   `packages/worker/test/fixtures/msstore/store.json`.
+2. **The credential needs a pin (P5-02f, which landed after this brief).** A Partner Center
+   Entra app with the Manager role reaches every app of the seller account, and the outlet's
+   `productId` is manifest-owned, so the brief's design would have let a repo writer aim the
+   operator's credential at another app. `ms-partner-center` is now in `OUTLET_CREDENTIAL_PINS`
+   (field `productId`, the 12-character Store ID rule) and the setup calls
+   `checkOutletCredentialPin` before opening anything, exactly as `core/outletCredentials.ts`
+   instructed for P5-04; the console's credential form asks for the Store ID. An unpinned or
+   mispinned credential is skipped like a missing one (`credential-pin-missing` /
+   `credential-pin-mismatch`). Outside **Scope → In** by the letter (core + admin), required by
+   the threat model's "Other stores" residual.
+3. **"Flight → channel through the manifest" needed a manifest field.** The `ms-store` outlet
+   identity had only `productId` and `packageFamilyName`, so there was no manifest map to route a
+   flight. Added `flights` (declared channel → flight friendly name or flight id), validated like
+   Play's `tracks` and Steam's `branches` (existing codes `invalid_outlet_identity` and
+   `unknown_channel_ref`, so no new validator rule; JSON schema and two mutation-table entries
+   added; rule 9 satisfied). The non-flighted submission is always the `stable` channel. Not a wire
+   change: no corpus, protocol or SDK surface reads outlet identity fields.
+4. **Read-only, so no controls.** `controls: {}`: the connector registers no console action. The
+   console's generic `GET …/distribution/connectors/ms-store` status works unchanged; no route was
+   added (rule 10 not triggered).
+5. **Status mapping decisions** (`msstore/map.ts`): the three failures up to certification
+   (`CommitFailed`, `PreProcessingFailed`, `CertificationFailed`) are `rejected`; `ReleaseFailed`
+   and `PublishFailed` happen after certification passed, so they stay `approved` with
+   `failed: true` and the errors in `detail`; `PendingPublication` is `pending-developer-release`;
+   `Canceled` is `cancelled` (availability `removed`); `None` writes nothing. A stopped package
+   rollout mirrors `halted` and makes the builds `approved` (like a halted Play release); a
+   published submission without a gradual rollout mirrors `complete` at 10,000 bp, as Play does
+   for a completed release.
+6. **MSIX formats.** Builds match on platform `windows` and a format in `msix`, `msixbundle`,
+   `msixupload`, `appx`, `appxbundle`, `appxupload` (the brief said `msix`; Store packages are
+   commonly bundles or upload files).
+7. **Time in certification.** P2b-03's `reportSubmission` sets `submitted_at` on entering
+   `submitted` and `reviewed_at` on entering `approved` / `rejected`; the connector passes the
+   newest certification report's date as the verdict time when there is one. A submission first
+   seen already in certification has no `submitted_at` (the poll did not see the commit).
+8. **"Logged" is an audit row.** The Worker has no console logging (`test/attack/R12-secrets.test.ts`
+   refuses any `console.` in `src/`), so an unmapped flight is recorded as one
+   `distribution.connector.flight_unmapped` audit row (actor `connector:ms-store`) when it first
+   appears or changes, not on every tick, and is shown as `unmapped` on the connector status.
+9. **The fallback submission is read (review fix).** While a published submission's gradual
+   rollout is partial (`PackageRolloutNotStarted`, `…InProgress` or `…Stopped`) and names a
+   `fallbackSubmissionId`, the poller also reads that submission (role `fallback`, same app or
+   flight path). Its builds stay `live` while it serves; it never mirrors a rollout and never
+   writes its release's submission row (Play's semantics: the previous completed release stays
+   live beside a staged or halted one). Once the rollout completes it is no longer read and its
+   builds become `removed`. A published submission whose rollout has not started is `approved`.
+10. **Bounded, redirect-free reads (review fix).** `msstore/client.ts` and `msstore/token.ts` send
+    `redirect: "manual"`, treat any 3xx as a failure, and read bodies through the new shared
+    `core/readCapped.ts` (`readCappedText`, factored out of `services/release/github.ts`, which
+    now delegates to it). Package lists are capped at 64 like details and reports.
+    **Follow-up (P5-02 / P5-03 owners):** the `asc` and `play` clients and their token exchanges in
+    `core/outletTokens.ts` still follow redirects and read unbounded bodies; they need the same
+    treatment. Not changed here.
+11. **What is never stored.** A submission's `fileUploadUrl` is a writable Azure Blob SAS URI; the
+    parser drops it (and listings, pricing and certification report URLs), asserted by scanning
+    every table after a poll.
+
 ## Steps
 
 1. Confirm the endpoints against Microsoft's documentation; record fixtures.
@@ -106,13 +175,13 @@ submits, publishes or changes a rollout.
 
 ## Acceptance criteria
 
-- [ ] `pnpm --filter @polaris-key/worker test -- msstore` covers: token cached and refreshed; each
+- [x] `pnpm --filter @polaris-key/worker test -- msstore` covers: token cached and refreshed; each
       submission status mapped; a failed certification recorded as rejected with its details; a
       package rollout at 25 % mirrored as 2,500 bp; a flight mapped to its channel; an unknown flight
       ignored and logged.
-- [ ] No request other than GET is ever sent to the Store API (asserted against the fake server).
-- [ ] Products without the credential, or with distribution disabled, are skipped.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] No request other than GET is ever sent to the Store API (asserted against the fake server).
+- [x] Products without the credential, or with distribution disabled, are skipped.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
