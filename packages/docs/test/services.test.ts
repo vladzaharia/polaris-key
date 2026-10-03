@@ -52,14 +52,14 @@ describe("the service table, as the docs site sees it", () => {
   it("astro.config.mjs has a Services sidebar entry per service, in table order", () => {
     const entry = (row: Row): RegExp =>
       new RegExp(
-        `\\{\\s*label:\\s*"${row.label}",\\s*autogenerate:\\s*\\{\\s*directory:\\s*"services/${row.slug}"\\s*\\}`,
+        `\\{\\s*label:\\s*"${row.label}",\\s*items:\\s*\\[\\s*\\{\\s*autogenerate:\\s*\\{\\s*directory:\\s*"services/${row.slug}"\\s*\\}\\s*\\}\\s*\\]`,
       );
     const positions: number[] = [];
     for (const row of table.services) {
       const match = entry(row).exec(astroConfig);
       expect(
         match,
-        `astro.config.mjs has no sidebar entry { label: "${row.label}", autogenerate: { directory: "services/${row.slug}" } }`,
+        `astro.config.mjs has no sidebar entry { label: "${row.label}", items: [{ autogenerate: { directory: "services/${row.slug}" } }] }`,
       ).not.toBeNull();
       positions.push(match!.index);
     }
