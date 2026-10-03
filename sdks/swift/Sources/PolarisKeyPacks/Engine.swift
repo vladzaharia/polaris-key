@@ -142,26 +142,37 @@ public struct ObjectResponse: Sendable {
     public var status: Int
     /// `Content-Range`, or nil.
     public var contentRange: String?
+    /// `ETag`, or nil when the host does not report it (P4-11: a chunk run's `206` must carry
+    /// exactly `"<bundle sha256>"` when it carries one).
+    public var etag: String?
     public var chunks: AsyncThrowingStream<[UInt8], Error>
 
-    public init(status: Int, contentRange: String?, chunks: AsyncThrowingStream<[UInt8], Error>) {
+    public init(
+        status: Int, contentRange: String?, etag: String? = nil, chunks: AsyncThrowingStream<[UInt8], Error>
+    ) {
         self.status = status
         self.contentRange = contentRange
+        self.etag = etag
         self.chunks = chunks
     }
 }
 
 /// `GET` of one stored object by its SHA-256, from `offset`; `ifRange` is the strong ETag
-/// (`"<sha256>"`) whenever `offset > 0`, so a resume never splices two versions.
+/// (`"<sha256>"`) whenever `offset > 0`, so a resume never splices two versions. With `length`
+/// (P4-11's chunk runs) the request is the single bounded range
+/// `Range: bytes=<offset>-<offset+length-1>`, sent with `Accept-Encoding: identity`, and never a
+/// multi-range.
 public struct ObjectRequest: Sendable, Equatable {
     public var sha256: String
     public var offset: Int
     public var ifRange: String?
+    public var length: Int?
 
-    public init(sha256: String, offset: Int, ifRange: String?) {
+    public init(sha256: String, offset: Int, ifRange: String?, length: Int? = nil) {
         self.sha256 = sha256
         self.offset = offset
         self.ifRange = ifRange
+        self.length = length
     }
 }
 
@@ -196,21 +207,56 @@ public struct InstalledPayload: Sendable {
     }
 }
 
-/// The plan's output area: a byte sink for a container, a tree sink for a tree.
+/// The plan's output area: a byte sink for a container, a tree sink for a tree. A container's
+/// output can be read back (`read`, at most `length` bytes, fewer past the end): the chunk
+/// strategy needs it (P4-11), and is not run without it.
 public struct PackOutput: Sendable {
     public var sink: (any ByteSink)?
     public var tree: (any TreeSink)?
+    public var read: (@Sendable (_ offset: Int, _ length: Int) throws -> [UInt8])?
 
-    public init(sink: (any ByteSink)? = nil, tree: (any TreeSink)? = nil) {
+    public init(
+        sink: (any ByteSink)? = nil, tree: (any TreeSink)? = nil,
+        read: (@Sendable (_ offset: Int, _ length: Int) throws -> [UInt8])? = nil
+    ) {
         self.sink = sink
         self.tree = tree
+        self.read = read
     }
+}
+
+/// The seed-index store (P4-11; `<packs root>/index/<sha256>`): every installed payload's chunk
+/// index, kept as fetched (its STORED bytes, possibly zstd) by `chunks.sha256`, and re-verified
+/// against its record and installed payload every time it is used.
+public protocol ChunkIndexStore: Sendable {
+    func get(_ sha256: String) throws -> [UInt8]?
+    /// Atomic (temp + rename, or the host's equivalent).
+    func put(_ sha256: String, _ bytes: [UInt8]) throws
+    func list() throws -> [String]
+    func remove(_ sha256: String) throws
+}
+
+/// The chunk strategy's run journal (P4-11): `staging/<planId>/journal.json`, removed with the
+/// plan's staging.
+public protocol RunJournalStore: Sendable {
+    func read(_ planId: String) throws -> String?
+    /// Atomic (temp + rename).
+    func write(_ planId: String, _ text: String) throws
 }
 
 /// Where a host keeps staging and the store. Locations and plan ids are opaque to the engine.
 public protocol PackStorage: Sendable {
     func stagedObject(_ planId: String, _ sha256: String) throws -> any StagedObject
     func output(_ planId: String, _ layout: String) throws -> PackOutput
+    /// `output`, except that with `resume` (P4-11's chunk strategy) a container keeps what an
+    /// earlier attempt of the same plan wrote. Default: `output(planId, layout)` (nothing kept,
+    /// so a resumed chunk plan refetches every run).
+    func output(_ planId: String, _ layout: String, resume: Bool) throws -> PackOutput
+    /// P4-11's seed-index store. Nil (the default): no payload is a seed and the chunk strategy is
+    /// never planned.
+    var chunkIndexes: (any ChunkIndexStore)? { get }
+    /// P4-11's run journal. Nil (the default): a resumed chunk plan refetches every run.
+    var runJournal: (any RunJournalStore)? { get }
     /// Move the plan's verified output into the store, keeping the decoded files index beside it
     /// (never inside the payload's own paths), and return its location.
     func commit(
@@ -228,6 +274,14 @@ public protocol PackStorage: Sendable {
     /// throws.
     func list() throws -> (locations: [String], plans: [String])
     func freeDisk() throws -> Int
+}
+
+extension PackStorage {
+    public func output(_ planId: String, _ layout: String, resume: Bool) throws -> PackOutput {
+        try output(planId, layout)
+    }
+    public var chunkIndexes: (any ChunkIndexStore)? { nil }
+    public var runJournal: (any RunJournalStore)? { nil }
 }
 
 /// An embedded baseline the host ships: its marker's bytes and its measured payload.
@@ -264,6 +318,9 @@ public struct PackProgress: Sendable, Equatable {
     }
 }
 
+/// The strategies an engine costs unless told otherwise (`chunk` from P4-11).
+public let PACK_DEFAULT_STRATEGIES = ["delta", "chunk", "file", "full"]
+
 /// The engine's options.
 public struct PackEngineOptions: Sendable {
     /// The product: every record's `aud`.
@@ -283,7 +340,8 @@ public struct PackEngineOptions: Sendable {
     public var patchMethods: [String]
     /// The memory budget for one delta frame (`memBytes`).
     public var memBudget: Int
-    /// The strategies to cost. Default `["delta", "file", "full"]` (v1 lists no `chunk`).
+    /// The strategies to cost. Default `["delta", "chunk", "file", "full"]` (`chunk` from P4-11;
+    /// it is only planned when the storage keeps seed indexes).
     public var strategies: [String]
     public var transports: [String]
     public var storage: any PackStorage
@@ -310,7 +368,7 @@ public struct PackEngineOptions: Sendable {
     public init(
         product: String, releaseKeys: TrustSet, productTrust: @escaping @Sendable () async -> TrustSet,
         stamp: AppContent?, prefs: VariantPrefs = VariantPrefs(), zstd: any ZstdPort,
-        patchMethods: [String], memBudget: Int, strategies: [String] = ["delta", "file", "full"],
+        patchMethods: [String], memBudget: Int, strategies: [String] = PACK_DEFAULT_STRATEGIES,
         transports: [String] = ["pkey-cdn"], storage: any PackStorage, state: any PackStateStore,
         revocations: (any PackStateStore)? = nil, fetchRecord: @escaping RecordFetch, fetchObject: @escaping ObjectFetch,
         entitlements: @escaping @Sendable () async -> Set<String>? = { nil },
@@ -451,6 +509,21 @@ private struct Planned {
     var plan: PlanResult
     /// The delegation's compact JWS when a content key signed the record (plans/P4-19.md §2.3).
     var delegation: String?
+    /// P4-11: the parsed target chunk index and the seeds, when the fetch rule ran.
+    var chunk: ChunkContext?
+}
+
+/// One chunk seed and where it came from (P4-11).
+private struct SeedEntry: Sendable {
+    var location: String
+    var payloadSha256: String
+    var seed: ChunkSeed
+}
+
+/// The chunk strategy's preflight context (P4-11).
+private struct ChunkContext: Sendable {
+    var index: ChunkIndexDoc
+    var seeds: [SeedEntry]
 }
 
 // ── The engine ───────────────────────────────────────────────────────────────────────────────
@@ -1401,16 +1474,51 @@ public actor PackEngine {
                     detail: DataOnlyRule.extension.rawValue, path: f.path, packId: packId)
             }
         }
-        var target = planTarget(variant, recordSha256: pin.sha256, filesIndex: index)
+        // P4-11's fetch rule (plans/P4-10.md §2.5): the target chunk index is staged and parsed
+        // before planning when the strategy is allowed, the record is not delegated (a delegated
+        // release is a tree, and chunks are container-only), the variant's `chunks` is usable and
+        // at least one seed index is stored. Anything that fails leaves it nil, never an error.
+        var chunk: ChunkContext?
+        if opts.strategies.contains("chunk"), delegated == nil, variant.files.layout == "container",
+            let chunksRef = usableChunksRef(variant), opts.storage.chunkIndexes != nil
+        {
+            let list = chunkSeeds(packId, installs, seeds)
+            if !list.isEmpty {
+                var noProgress: (done: Int, total: Int)? = nil
+                let ok = await downloadInto(planId, packId, (chunksRef.sha256, chunksRef.bytes), &noProgress)
+                if ok, let staged = try? opts.storage.stagedObject(planId, chunksRef.sha256),
+                    let bytes = try? readAll(try staged.source())
+                {
+                    let zstd = opts.zstd
+                    if case .ok(let parsed) = parseChunkIndex(
+                        bytes, ref: chunksRef, payload: variant.payload, decode: { try zstd.decode($0, size: $1) })
+                    {
+                        chunk = ChunkContext(index: parsed, seeds: list)
+                    }
+                }
+            }
+        }
+        var target = planTarget(
+            variant, recordSha256: pin.sha256, filesIndex: index, chunkIndex: chunk?.index.planIndex)
         if let budget = opts.oneShotBudget, target.full != nil, let full = variant.full,
             !(full.codec == "zstd" && opts.zstd.canStream), full.bytes + full.size > budget
         {
             target.full = nil
         }
-        let plannerInstalled = installs.map {
+        // Seeds count only when the target index parsed. This pack's installs carry their chunk
+        // ids; every other seed (another pack's payload, an embedded baseline) rides along as a
+        // synthetic entry whose payload is never a hash, so `noop` and `delta` never match it.
+        var plannerInstalled = installs.map { i in
             PlanInstalled(
-                release: $0.recordSha256, payloadSha256: $0.payloadSha256,
-                files: seeds[$0.location]?.files?.map(\.sha256))
+                release: i.recordSha256, payloadSha256: i.payloadSha256,
+                chunks: chunk?.seeds.first { $0.location == i.location }?.seed.index.records.map(\.id),
+                files: seeds[i.location]?.files?.map(\.sha256))
+        }
+        for e in chunk?.seeds ?? [] where !installs.contains(where: { $0.location == e.location }) {
+            plannerInstalled.append(
+                PlanInstalled(
+                    release: "", payloadSha256: "seed:" + e.payloadSha256,
+                    chunks: e.seed.index.records.map(\.id), files: nil))
         }
         let caps = PlanCaps(
             strategies: opts.strategies, patchMethods: opts.patchMethods, transports: opts.transports,
@@ -1423,7 +1531,145 @@ public actor PackEngine {
             Planned(
                 body: body, recordSha256: pin.sha256, record: record, variant: variant,
                 installs: installs, seeds: seeds, planId: planId, index: index, plan: p,
-                delegation: delegated))
+                delegation: delegated, chunk: chunk))
+    }
+
+    /// The chunk seeds for a pack (P4-11), deduplicated by payload, in this order: the pack's own
+    /// readable installs, every other pack's active then previous install (by pack id), then the
+    /// embedded baselines (by pack id). A seed is a container whose own record's variant carries a
+    /// usable `chunks` ref, whose stored index parses bound to the installed payload, and whose
+    /// payload opens. Stored indexes are never trusted: each is parsed again here.
+    private func chunkSeeds(
+        _ packId: String, _ own: [PackInstall], _ opened: [String: InstalledPayload]
+    ) -> [SeedEntry] {
+        guard let store = opts.storage.chunkIndexes, let doc else { return [] }
+        let others = Set(doc.active.keys).union(doc.previous.keys).filter { !sameBytes($0, packId) }
+            .sorted { compareUTF8Bytes($0, $1) < 0 }
+        var candidates = own
+        for id in others {
+            for case let i? in [doc.active[id], doc.previous[id]] { candidates.append(i) }
+        }
+        for id in embedded.keys.sorted(by: { compareUTF8Bytes($0, $1) < 0 }) where !sameBytes(id, packId) {
+            candidates.append(embedded[id]!)
+        }
+        var out: [SeedEntry] = []
+        var payloads = Set<String>()
+        var locations = Set<String>()
+        let zstd = opts.zstd
+        for i in candidates {
+            if i.layout != "container" || payloads.contains(i.payloadSha256) { continue }
+            if locations.contains(i.location) || unverifiable.contains(i.location) { continue }
+            if isRevoked(i.recordSha256) { continue }
+            guard let ref = installChunksRef(i), let stored = (try? store.get(ref.sha256)) ?? nil else { continue }
+            guard case .ok(let index) = parseChunkIndex(
+                stored, ref: ref, payload: PackPayload(size: i.payloadSize, sha256: i.payloadSha256),
+                decode: { try zstd.decode($0, size: $1) })
+            else { continue }
+            let p = opened[i.location] ?? ((try? opts.storage.installed(i)) ?? nil)
+            guard let source = p?.payload, source.size == i.payloadSize else { continue }
+            payloads.insert(i.payloadSha256)
+            locations.insert(i.location)
+            out.append(
+                SeedEntry(
+                    location: i.location, payloadSha256: i.payloadSha256,
+                    seed: ChunkSeed(index: index, payload: source)))
+        }
+        return out
+    }
+
+    /// After a pack is ensured (P4-11): keep the chunk index of every root install and embedded
+    /// baseline that has one and lacks it, fetched by hash, verified against its record and its
+    /// installed payload, and stored by `chunks.sha256`. Best effort: a failure only means no seed.
+    private func storeSeedIndexes() async {
+        guard let store = opts.storage.chunkIndexes, opts.strategies.contains("chunk"), let doc else { return }
+        var have = Set((try? store.list()) ?? [])
+        let zstd = opts.zstd
+        for i in Array(doc.active.values) + Array(doc.previous.values) + Array(embedded.values) {
+            guard i.layout == "container", let ref = installChunksRef(i), !have.contains(ref.sha256) else {
+                continue
+            }
+            guard let res = try? await opts.fetchObject(ObjectRequest(sha256: ref.sha256, offset: 0, ifRange: nil)),
+                res.status == 200
+            else { continue }
+            var stored: [UInt8] = []
+            var over = false
+            do {
+                for try await c in res.chunks {
+                    if stored.count + c.count > ref.bytes {
+                        over = true
+                        break
+                    }
+                    stored += c
+                }
+            } catch {
+                continue
+            }
+            if over || stored.count != ref.bytes { continue }
+            guard case .ok = parseChunkIndex(
+                stored, ref: ref, payload: PackPayload(size: i.payloadSize, sha256: i.payloadSha256),
+                decode: { try zstd.decode($0, size: $1) })
+            else { continue }
+            if (try? store.put(ref.sha256, stored)) != nil { have.insert(ref.sha256) }
+        }
+    }
+
+    /// The chunk strategy (P4-11; plans/P4-10.md §2.5): `applyChunk` over the staged target index,
+    /// the seeds the preflight found, single-range requests through `chunkRangeFetch` (exact
+    /// `Content-Range`, `If-Range` on the bundle hash) and the plan's container output, resumed from
+    /// the run journal (`staging/<planId>/journal.json`), with the repair pass. A delegated release
+    /// never gets here: it is a tree (plans/P4-19.md §2.3), `planTarget` maps a tree's `chunks` to
+    /// nil, and the fetch rule requires a record that is not delegated.
+    private func applyChunkPlan(
+        _ planId: String, _ packId: String, _ variant: PackVariant, _ chunk: ChunkContext, total: Int
+    ) async throws -> ChunkVerdict {
+        guard let ref = usableChunksRef(variant), variant.files.layout == "container" else {
+            return .failed(error: ErrorCode.chunksRefMismatch, chunk: nil, bundle: nil, detail: nil)
+        }
+        let storage = opts.storage
+        let out = try storage.output(planId, "container", resume: true)
+        guard let sink = out.sink, let read = out.read else {
+            return .failed(error: ErrorCode.chunksRefMismatch, chunk: nil, bundle: nil, detail: nil)
+        }
+        let seeds = chunk.seeds.map(\.seed)
+        var seeded = Set<String>()
+        for s in seeds { for r in s.index.records { seeded.insert(r.id) } }
+        let runs = chunkRuns(chunk.index.records) { seeded.contains($0) }.count
+        let journal = storage.runJournal
+        let done = Locked(readRunJournal((try? journal?.read(planId)) ?? nil, index: ref.sha256, runs: runs))
+        let base = ref.bytes
+        emit(PackProgress(packId: packId, phase: "download", done: Swift.min(base, total), total: total))
+        let r = await applyChunk(
+            variant, seeds: seeds,
+            ApplyChunkPorts(
+                objects: { sha256 in
+                    let o = try storage.stagedObject(planId, sha256)
+                    return try o.size() > 0 ? try o.source() : nil
+                },
+                zstd: opts.zstd, fetchRange: chunkRangeFetch(opts.fetchObject),
+                output: PackChunkOutput(sink: sink, reader: read)),
+            repair: true, completedRuns: done.with { $0 },
+            onRunDone: { k in
+                let text = done.with { d -> String in
+                    d.insert(k)
+                    return writeRunJournal(index: ref.sha256, runs: runs, done: d)
+                }
+                // Best effort: a journal that cannot be written only costs refetching.
+                try? journal?.write(planId, text)
+            },
+            onProgress: { [weak self] fetched in
+                self?.emit(
+                    PackProgress(packId: packId, phase: "download", done: Swift.min(total, base + fetched), total: total))
+            })
+        return r.verdict
+    }
+
+    /// Keep a chunk plan's staged target index in the seed store (best effort).
+    private func keepStagedIndex(_ planId: String, _ variant: PackVariant) {
+        guard let store = opts.storage.chunkIndexes, let ref = usableChunksRef(variant),
+            let o = try? opts.storage.stagedObject(planId, ref.sha256), (try? o.size()) == ref.bytes,
+            let bytes = try? readAll(try o.source())
+        else { return }
+        try? store.put(ref.sha256, bytes)
     }
 
     /// §2.4's delegated surface: never the stamp's pin or hold for the pack, never a stored
@@ -1462,7 +1708,9 @@ public actor PackEngine {
 
     private func ensureOne(_ packId: String, target: ReleasePin? = nil) async throws -> PackInstall {
         do {
-            return try await ensureOneInner(packId, target: target)
+            let install = try await ensureOneInner(packId, target: target)
+            await storeSeedIndexes()
+            return install
         } catch let e as PackError {
             // plans/P4-13.md §2.5: when the only copy is an embedded baseline refused for `relearn`
             // (or for `revocationsStored` with an unreadable `revocations.json`) and the fetch
@@ -1530,8 +1778,17 @@ public actor PackEngine {
         // 5–6. Each candidate in turn: journal, fetch, apply.
         var firstFailure: PackError?
         for cand in candidates {
-            guard let objects = objectsFor(cand.strategy, cand.delta, variant, pre.index, pre.seeds)
-            else { continue }
+            let listed: [(sha256: String, bytes: Int)]?
+            if cand.strategy == "chunk" {
+                // The index only (staged by the fetch rule); the runs are fetched by the applier.
+                // Never for a delegated record (its writes must all pass the data-only sink).
+                listed =
+                    pre.chunk != nil && pre.delegation == nil
+                    ? usableChunksRef(variant).map { [($0.sha256, $0.bytes)] } : nil
+            } else {
+                listed = objectsFor(cand.strategy, cand.delta, variant, pre.index, pre.seeds)
+            }
+            guard let objects = listed else { continue }
             let journal = PackJournal(
                 planId: pre.planId, packId: packId, record: pre.body, recordSha256: pre.recordSha256,
                 variant: variantKey(variant.variant), strategy: cand.strategy, delta: cand.delta,
@@ -1539,7 +1796,10 @@ public actor PackEngine {
                 startedAt: await opts.now(), delegation: pre.delegation)
             doc = beginInstall(try requireLoaded(), journal)
             try persist()
-            let total = objects.reduce(0) { $0 + $1.bytes }
+            // A chunk plan's total is the planner's (the index and every fetched run).
+            let total =
+                cand.strategy == "chunk"
+                ? Swift.max(cand.bytes, objects.first?.bytes ?? 0) : objects.reduce(0) { $0 + $1.bytes }
             var progress = (done: 0, total: total)
             emit(PackProgress(packId: packId, phase: "download", done: 0, total: total))
             for o in objects {
@@ -1551,11 +1811,34 @@ public actor PackEngine {
                         "Fetching \(packId)'s objects failed; the next ensure resumes.", packId: packId)
                 }
             }
-            emit(PackProgress(packId: packId, phase: "apply", done: total, total: total))
-            // plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
-            let (result, refusal) = try apply(
-                pre.planId, packId, cand.strategy, cand.delta, variant, pre.seeds,
-                dataOnly: pre.delegation != nil)
+            let result: ApplyResult
+            let refusal: DataOnlyRefusalSeen?
+            if cand.strategy == "chunk", let chunk = pre.chunk {
+                let v = try await applyChunkPlan(pre.planId, packId, variant, chunk, total: total)
+                emit(PackProgress(packId: packId, phase: "apply", done: total, total: total))
+                refusal = nil
+                switch v {
+                case .ok(let c):
+                    result = ApplyResult(verdict: .container(sha256: c.sha256, size: c.size, counters: nil), index: nil)
+                    // The target index becomes a seed for the next release (best effort).
+                    keepStagedIndex(pre.planId, variant)
+                case .failed(let error, _, _, let detail):
+                    if error == ErrorCode.networkError && detail == "interrupted" {
+                        // The state journal, the staged index, the output and the run journal stay
+                        // for the next `ensure`, which resumes the completed runs (re-hashed).
+                        throw PackError(
+                            ErrorCode.networkError, "Fetching \(packId)'s chunks failed; the next ensure resumes.",
+                            detail: "chunk", packId: packId)
+                    }
+                    result = ApplyResult(verdict: .failed(error: error, path: nil), index: nil)
+                }
+            } else {
+                emit(PackProgress(packId: packId, phase: "apply", done: total, total: total))
+                // plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
+                (result, refusal) = try apply(
+                    pre.planId, packId, cand.strategy, cand.delta, variant, pre.seeds,
+                    dataOnly: pre.delegation != nil)
+            }
             if let r = refusal {
                 // A refusal aborts the plan: no fallback, staging discarded.
                 doc = abandonInstall(try requireLoaded(), packId: packId)
@@ -1781,6 +2064,15 @@ public actor PackEngine {
         for plan in listed.plans where !roots.plans.contains(plan) && !(held?.plans.contains(plan) ?? false) {
             try? opts.storage.removeStaging(plan)
         }
+        // P4-11: a stored seed index no root install's record names goes too.
+        if let store = opts.storage.chunkIndexes, let stored = try? store.list() {
+            var keep = Set<String>()
+            let installs =
+                Array(doc.active.values) + Array(doc.previous.values) + Array(deferredActive.values)
+                + Array(deferredPrevious.values) + Array(embedded.values) + Array(running.values)
+            for i in installs { if let ref = installChunksRef(i) { keep.insert(ref.sha256) } }
+            for sha in stored where !keep.contains(sha) { try? store.remove(sha) }
+        }
     }
 
     /// Stage one object: resume from what is staged (its bytes re-hashed, never trusted), fetch
@@ -1924,4 +2216,60 @@ private func activationOf(_ record: PackRecordDoc, _ handler: (any PackHandler)?
 /// for a release-signed one.
 private func installDelegation(_ i: PackInstall) -> String? {
     i.delegation != nil ? delegationHashOf(i.record) : nil
+}
+
+// ── P4-11 chunk helpers ─────────────────────────────────────────────────────────────────────
+
+/// A variant's `chunks` ref when the chunk strategy could read it (plans/P4-10.md §2.5: the
+/// format, a usable codec, both sizes within `MAX_CHUNK_INDEX_BYTES`), else nil.
+func usableChunksRef(_ variant: PackVariant) -> PackObjectRef? {
+    guard let c = variant.chunks, c.format == CHUNKS_FORMAT, usableCodec(c.ref.codec),
+        c.ref.bytes >= 0, c.ref.size >= 0, c.ref.bytes <= MAX_CHUNK_INDEX_BYTES,
+        c.ref.size <= MAX_CHUNK_INDEX_BYTES
+    else { return nil }
+    return c.ref
+}
+
+/// The usable `chunks` ref of an install's own variant, read from its (verified) record.
+func installChunksRef(_ i: PackInstall) -> PackObjectRef? {
+    guard let json = verifiedPayloadOf(i.record), let rec = PackRecordDoc(json: json) else { return nil }
+    guard let v = rec.variants.first(where: { variantKey($0.variant) == i.variant }),
+        v.payload.sha256 == i.payloadSha256
+    else { return nil }
+    return usableChunksRef(v)
+}
+
+/// The run journal (P4-11): which runs of a chunk plan are complete. Ignored (empty) unless
+/// `v == 1`, `index` is this plan's chunk index, `runs` is this plan's run count and the bitmap
+/// is `ceil(runs / 8)` bytes of lowercase hex (bit k is byte[k >> 3] & (1 << (k & 7))).
+public func readRunJournal(_ text: String?, index: String, runs: Int) -> Set<Int> {
+    var done = Set<Int>()
+    guard let text, let o = parseJSON(text)?.objectValue else { return done }
+    let bytes = (runs + 7) / 8
+    guard o["v"]?.intValue == 1, o["index"]?.stringValue == index, o["runs"]?.intValue == runs,
+        let bitmap = o["bitmap"]?.stringValue, bitmap.utf8.count == bytes * 2,
+        bitmap.utf8.allSatisfy({ ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x61 && $0 <= 0x66) })
+    else { return done }
+    let bits = hexBytes(bitmap)
+    guard bits.count == bytes else { return done }
+    for k in 0..<runs where bits[k >> 3] & (1 << UInt8(k & 7)) != 0 { done.insert(k) }
+    return done
+}
+
+/// The run journal's text for `done` (see `readRunJournal`).
+public func writeRunJournal(index: String, runs: Int, done: Set<Int>) -> String {
+    var bits = [UInt8](repeating: 0, count: (runs + 7) / 8)
+    for k in done where k >= 0 && k < runs { bits[k >> 3] |= 1 << UInt8(k & 7) }
+    return canonicalJSON(
+        .object([
+            "v": .int(1), "index": .string(index), "runs": .int(runs), "bitmap": .string(hexString(bits)),
+        ]))
+}
+
+/// A container output as the chunk applier reads it.
+private struct PackChunkOutput: ChunkOutput {
+    let sink: any ByteSink
+    let reader: @Sendable (Int, Int) throws -> [UInt8]
+    func write(_ offset: Int, _ bytes: [UInt8]) throws { try sink.write(offset, bytes) }
+    func read(_ offset: Int, _ length: Int) throws -> [UInt8] { try reader(offset, length) }
 }

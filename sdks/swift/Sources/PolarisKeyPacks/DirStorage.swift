@@ -11,6 +11,10 @@
 //   <root>/staging/<planId>/objects/<sha256>  objects being fetched (appended, resumable)
 //   <root>/staging/<planId>/out/              the payload being built (a tree's files, or
 //                                             `payload.bin` for a container)
+//   <root>/staging/<planId>/journal.json      a chunk plan's run journal (P4-11)
+//   <root>/index/<sha256>                     the seed indexes (P4-11): each installed
+//                                             payload's chunk index as fetched, by
+//                                             `chunks.sha256`, written by temp + rename
 //   <root>/store/<packId>/<payloadSha256>/    a committed payload, never overwritten: a tree's
 //                                             files, or `payload.bin`; `.pkey/files.json` beside
 //                                             them holds the files index kept at install
@@ -290,6 +294,87 @@ private struct DirSink: ByteSink {
     }
 }
 
+/// Up to `length` bytes of a file at `offset` (fewer past its end); a missing file reads empty.
+private func preadFile(_ path: String, _ offset: Int, _ length: Int) throws -> [UInt8] {
+    if length <= 0 || offset < 0 { return [] }
+    let fd = open(path, O_RDONLY)
+    if fd < 0 {
+        let e = fail(path)
+        if e.isMissing { return [] }
+        throw e
+    }
+    defer { close(fd) }
+    var buf = [UInt8](repeating: 0, count: length)
+    var got = 0
+    while got < length {
+        let r = buf.withUnsafeMutableBytes { pread(fd, $0.baseAddress! + got, length - got, off_t(offset + got)) }
+        if r < 0 {
+            if errno == EINTR { continue }
+            throw fail(path)
+        }
+        if r == 0 { break }
+        got += r
+    }
+    return got == length ? buf : Array(buf[0..<got])
+}
+
+/// The 64-hex names the seed-index store accepts (never a path).
+private func isSha256Name(_ s: String) -> Bool {
+    s.utf8.count == 64 && s.utf8.allSatisfy { ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x61 && $0 <= 0x66) }
+}
+
+/// The seed indexes under `<root>/index/` (P4-11).
+public struct DirChunkIndexStore: ChunkIndexStore {
+    public let dir: String
+
+    public init(dir: String) { self.dir = dir }
+
+    private func path(_ sha256: String) throws -> String {
+        guard isSha256Name(sha256) else { throw PackFileError(errno: EINVAL, path: sha256) }
+        return dir + "/" + sha256
+    }
+
+    public func get(_ sha256: String) throws -> [UInt8]? { try readFileOrNil(try path(sha256)) }
+
+    public func put(_ sha256: String, _ bytes: [UInt8]) throws {
+        let p = try path(sha256)
+        try mkdirs(dir)
+        let tmp = "\(p).\(getpid()).tmp"
+        try writeFileSynced(tmp, bytes)
+        try renamePath(tmp, p)
+        try syncPath(dir)
+    }
+
+    public func list() throws -> [String] {
+        (try listDirectory(dir) ?? []).filter { $0.isFile && isSha256Name($0.name) }.map(\.name)
+    }
+
+    public func remove(_ sha256: String) throws { try removeTree(try path(sha256)) }
+}
+
+/// The run journals at `<root>/staging/<planId>/journal.json` (P4-11).
+public struct DirRunJournalStore: RunJournalStore {
+    public let stagingDir: String
+
+    public init(stagingDir: String) { self.stagingDir = stagingDir }
+
+    public func read(_ planId: String) throws -> String? {
+        guard let b = try readFileOrNil(try DirPackStorage.inside(stagingDir, planId, "journal.json")) else {
+            return nil
+        }
+        return String(decoding: b, as: UTF8.self)
+    }
+
+    public func write(_ planId: String, _ text: String) throws {
+        let dir = try DirPackStorage.inside(stagingDir, planId)
+        try mkdirs(dir)
+        let p = dir + "/journal.json"
+        let tmp = "\(p).\(getpid()).tmp"
+        try writeFileSynced(tmp, Array(text.utf8))
+        try renamePath(tmp, p)
+    }
+}
+
 private struct DirTree: TreeSink {
     let root: String
     func writeFile(_ path: String, _ bytes: [UInt8]) throws {
@@ -399,14 +484,30 @@ public final class DirPackStorage: PackStorage, @unchecked Sendable {
     }
 
     public func output(_ planId: String, _ layout: String) throws -> PackOutput {
-        let out = try Self.inside(stagingDir, planId, "out")
-        try removeTree(out)
-        try mkdirs(out)
-        if layout == "tree" { return PackOutput(tree: DirTree(root: out)) }
-        let file = out + "/" + CONTAINER_FILE
-        try writeFileSynced(file, [])
-        return PackOutput(sink: DirSink(path: file))
+        try output(planId, layout, resume: false)
     }
+
+    public func output(_ planId: String, _ layout: String, resume: Bool) throws -> PackOutput {
+        let out = try Self.inside(stagingDir, planId, "out")
+        let file = out + "/" + CONTAINER_FILE
+        // A resumed container keeps what the earlier attempt wrote (every byte of it is re-hashed
+        // before reuse); anything else starts empty.
+        let existing = try statOrNil(file)
+        let keep = resume && layout != "tree" && existing.map(isReg) == true
+        if !keep {
+            try removeTree(out)
+            try mkdirs(out)
+        }
+        if layout == "tree" { return PackOutput(tree: DirTree(root: out)) }
+        if !keep { try writeFileSynced(file, []) }
+        return PackOutput(sink: DirSink(path: file), read: { try preadFile(file, $0, $1) })
+    }
+
+    /// The seed indexes under `<root>/index/` (P4-11).
+    public var chunkIndexes: (any ChunkIndexStore)? { DirChunkIndexStore(dir: root + "/index") }
+
+    /// The run journals beside each plan's staging (P4-11).
+    public var runJournal: (any RunJournalStore)? { DirRunJournalStore(stagingDir: stagingDir) }
 
     public func commit(
         _ planId: String, _ packId: String, _ payloadSha256: String, _ layout: String,

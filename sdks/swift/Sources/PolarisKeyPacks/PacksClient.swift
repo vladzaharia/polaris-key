@@ -67,7 +67,8 @@ public struct URLSessionPackObjectTransport: PackObjectTransport {
         var req = URLRequest(url: url)
         if timeoutSeconds > 0 { req.timeoutInterval = timeoutSeconds }
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
-        let (bytes, response) = try await session.bytes(for: req)
+        // The delegate drops `Authorization` from a redirect to another origin.
+        let (bytes, response) = try await session.bytes(for: req, delegate: RedirectAuthGuard(origin: url))
         let http = response as? HTTPURLResponse
         let stream = AsyncThrowingStream<[UInt8], Error> { continuation in
             let task = Task {
@@ -91,7 +92,31 @@ public struct URLSessionPackObjectTransport: PackObjectTransport {
         }
         return ObjectResponse(
             status: http?.statusCode ?? 0, contentRange: http?.value(forHTTPHeaderField: "Content-Range"),
-            chunks: stream)
+            etag: http?.value(forHTTPHeaderField: "ETag"), chunks: stream)
+    }
+}
+
+/// Follows a redirect, but never carries `Authorization` to another origin (scheme, host, port):
+/// the device bearer is sent only to the control plane's own origin.
+final class RedirectAuthGuard: NSObject, URLSessionTaskDelegate, Sendable {
+    let origin: URL
+
+    init(origin: URL) { self.origin = origin }
+
+    static func sameOrigin(_ a: URL, _ b: URL) -> Bool {
+        a.scheme?.lowercased() == b.scheme?.lowercased() && a.host?.lowercased() == b.host?.lowercased()
+            && a.port == b.port
+    }
+
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? {
+        var next = request
+        if let to = request.url, !Self.sameOrigin(origin, to) {
+            next.setValue(nil, forHTTPHeaderField: "Authorization")
+        }
+        return next
     }
 }
 
@@ -497,7 +522,17 @@ public actor PacksClient {
         }
         var extra: [String: String] = [:]
         if let token = await core.token, sameOrigin(url, core) { extra["authorization"] = "Bearer \(token)" }
-        if req.offset > 0 { extra["range"] = "bytes=\(req.offset)-" }
+        if let length = req.length {
+            // P4-11's chunk runs: one bounded single range, never a multi-range, and no content
+            // coding (a gzip answer would break the byte offsets).
+            guard length > 0, req.offset >= 0 else {
+                throw PackError(ErrorCode.networkError, "A range request needs a positive length.")
+            }
+            extra["range"] = "bytes=\(req.offset)-\(req.offset + length - 1)"
+            extra["accept-encoding"] = "identity"
+        } else if req.offset > 0 {
+            extra["range"] = "bytes=\(req.offset)-"
+        }
         if let ifRange = req.ifRange { extra["if-range"] = ifRange }
         let headers = await core.headers(extra)
         return try await transport.get(url, headers: headers, timeoutSeconds: core.requestTimeoutSeconds)
