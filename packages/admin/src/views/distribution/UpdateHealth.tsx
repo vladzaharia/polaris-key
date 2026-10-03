@@ -115,7 +115,7 @@ function FunnelCard({ data }: { data: UpdateHealthResponse }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Activity aria-hidden className="size-4 text-primary" />
+          <Activity aria-hidden className="size-4 text-accent-fg" />
           Funnel
         </CardTitle>
         <CardDescription>
@@ -261,7 +261,7 @@ function AutoHaltCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <ShieldAlert aria-hidden className="size-4 text-primary" />
+          <ShieldAlert aria-hidden className="size-4 text-accent-fg" />
           Auto-halt
         </CardTitle>
         <CardDescription>

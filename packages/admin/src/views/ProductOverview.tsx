@@ -597,7 +597,7 @@ function MetricCard({
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex size-9 items-center justify-center rounded-md bg-primary/15 text-primary [&_svg]:size-4">
+        <div className="flex size-9 items-center justify-center rounded-md bg-primary/15 text-accent-fg [&_svg]:size-4">
           {icon}
         </div>
         <div className="min-w-0">

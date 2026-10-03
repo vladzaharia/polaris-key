@@ -108,7 +108,7 @@ function Boot(): React.ReactElement {
     return (
       <BootScreen>
         <div className="flex items-center gap-3 text-muted-foreground">
-          <Spinner className="size-5 text-primary" />
+          <Spinner className="size-5 text-accent-fg" />
           Loading console…
         </div>
       </BootScreen>
@@ -152,7 +152,7 @@ function BootScreen({
   return (
     <ThemeBackdrop>
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
-        <LogoMark className="size-10" />
+        <LogoMark size={48} bit="section" />
         {children}
       </div>
     </ThemeBackdrop>

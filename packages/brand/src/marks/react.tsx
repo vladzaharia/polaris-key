@@ -43,7 +43,7 @@ function parseStyle(style: string): React.CSSProperties {
 export type PolarisMarkProps = SvgProps & MarkOptions;
 
 /**
- * The Pinned K or the Star Cut Update mark. Mono inherits currentColor. The optical cut follows
+ * The Pinned K or the Star Cut (Polaris Key Delivery) mark. Mono inherits currentColor. The optical cut follows
  * the displayed `size`, never the device pixel ratio.
  */
 export function PolarisMark({

@@ -1906,6 +1906,11 @@ in parallel on disjoint files. Chunk 12 (portal) can start after chunk 3.
 - Theme: `ThemeProvider` with `system | dark | light` on `data-theme`, a pre-paint inline script in
   `manage.html` and `index.html` (SH-15), and a `matchMedia` listener.
 - The `forwardRef` removal codemod. The `font-medium`/`font-semibold` codemod to 400/700 (SH-19).
+  **Decision (lead, chunk 1 review):** no codemod. `styles.css` aliases `--font-weight-medium` to
+  400 and `--font-weight-semibold` to 700 (Rubik's only two weights, `font-synthesis: none`), so
+  every existing `font-medium`/`font-semibold` renders deterministically with no view edits. The
+  area chunks write `font-normal`/`font-bold` as they rebuild each view, and the aliases go with
+  the last old view (chunk 11).
 - `data-service` values to brand `ServiceId`s, with `tools/services.json` and `gen:services`
   (§0.3).
 - Favicons and manifest from the kit's `04-web/key`.

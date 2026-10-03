@@ -261,18 +261,18 @@ describe("SECTIONS", () => {
     });
   });
 
-  it("carries the D-17 accent tokens, with License as `key` and Identity as `id`", () => {
-    // The brand registry names License `key` and Identity `id`; the others take their slug
-    // and the always-on substrate gets the new `core` accent. These strings are the CSS contract
-    // (`[data-service="…"]` in styles.css), so a rename here is a silent theming regression.
+  it("carries the D-17 accent tokens: each service's slug, and `core` for the platform", () => {
+    // @polaris-key/brand keys the section accents by service slug, and the always-on substrate
+    // gets the `core` accent. These strings are the CSS contract (`[data-service="…"]` in the
+    // brand's tokens.css), so a rename here is a silent theming regression.
     expect(Object.fromEntries(SECTIONS.map((s) => [s.key, s.accent]))).toEqual({
       platform: "core",
-      license: "key",
+      license: "license",
       config: "config",
       release: "release",
       distribution: "distribution",
       update: "update",
-      identity: "id",
+      identity: "identity",
     });
   });
 

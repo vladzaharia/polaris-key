@@ -304,10 +304,10 @@ function Shell({
 }): React.ReactElement {
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
           <a href="#/" className="flex items-center gap-2 rounded-sm">
-            <LogoMark className="size-5" />
+            <LogoMark size={24} title="" />
             <span className="font-semibold">Polaris Key</span>
           </a>
           <nav className="flex items-center gap-1 text-sm">

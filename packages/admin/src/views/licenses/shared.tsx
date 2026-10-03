@@ -153,7 +153,7 @@ export function ChannelMultiSelect({
             <input
               id={id}
               type="checkbox"
-              className="size-4 accent-[hsl(var(--primary))]"
+              className="size-4 accent-primary"
               checked={set.has(channel)}
               disabled={disabled}
               aria-describedby={hint ? hintId : undefined}
@@ -207,7 +207,9 @@ export function CopyButton({
   className?: string;
 }): React.ReactElement {
   const [copied, setCopied] = React.useState(false);
-  const timer = React.useRef<ReturnType<typeof setTimeout>>();
+  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   React.useEffect(() => () => clearTimeout(timer.current), []);
   const onClick = (): void => {
     const done = (): void => {

@@ -62,7 +62,7 @@ const STATE_LABEL: Record<CompatCellState, string> = {
 };
 
 const STATE_CLASS: Record<CompatCellState, string> = {
-  pinned: "bg-primary/15 text-primary",
+  pinned: "bg-primary/15 text-accent-fg",
   held: "bg-warning/15 text-warning",
   compatible: "bg-success/15 text-success",
   incompatible: "bg-muted text-muted-foreground",
@@ -243,12 +243,12 @@ function Legend() {
   return (
     <ul className="flex flex-wrap gap-2 text-xs" aria-label="Cell states">
       {(Object.keys(STATE_LABEL) as CompatCellState[]).map((s) => (
-        <li key={s} className={cn("rounded px-1.5 py-0.5", STATE_CLASS[s])}>
+        <li key={s} className={cn("rounded-sm px-1.5 py-0.5", STATE_CLASS[s])}>
           {STATE_LABEL[s]}
         </li>
       ))}
-      <li className="rounded px-1.5 py-0.5 ring-2 ring-primary">current</li>
-      <li className="rounded px-1.5 py-0.5 line-through">yanked</li>
+      <li className="rounded-sm px-1.5 py-0.5 ring-2 ring-primary">current</li>
+      <li className="rounded-sm px-1.5 py-0.5 line-through">yanked</li>
     </ul>
   );
 }
@@ -488,7 +488,7 @@ function Cell({ c }: { c: CompatCellDto }) {
       data-state={c.state}
       data-current={c.current ? "true" : "false"}
       className={cn(
-        "inline-block rounded px-1.5 py-0.5",
+        "inline-block rounded-sm px-1.5 py-0.5",
         STATE_CLASS[c.state],
         c.current && "ring-2 ring-primary",
         c.yanked && "line-through",
@@ -506,7 +506,7 @@ function Cell({ c }: { c: CompatCellDto }) {
 // ── the simulator ─────────────────────────────────────────────────────────────────────────
 
 const selectClass =
-  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-pk-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-pk-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 
 function SimulatorCard({
   slug,

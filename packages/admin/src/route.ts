@@ -72,8 +72,9 @@ export type Leaf = "license" | "profile" | "deliverable";
 
 /**
  * A section's `data-service` token (D-17). Each service's token is its service-table row's
- * `console.accent` (License brands as `key` and Identity as `id` per the brand registry; the
- * others take their own slug); the platform substrate is `core`, which is not a service.
+ * `console.accent`, which is the service slug: @polaris-key/brand keys the section accents and
+ * the header mark's section bit by slug (docs/design/BRAND.md §5, §6). The platform substrate is
+ * `core`, which is not a service.
  */
 export type ServiceAccent = "core" | ServiceAccentToken;
 
@@ -138,7 +139,7 @@ export const SECTIONS: NavSection[] = [
   {
     key: "license",
     label: "License",
-    accent: "key",
+    accent: "license",
     service: "license",
     docs: "/docs/services/license/",
     items: [
@@ -239,7 +240,7 @@ export const SECTIONS: NavSection[] = [
   {
     key: "identity",
     label: "Identity",
-    accent: "id",
+    accent: "identity",
     service: "identity",
     docs: "/docs/services/identity/",
     items: [

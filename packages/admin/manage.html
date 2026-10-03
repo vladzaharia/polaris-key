@@ -3,7 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Theme before first paint (BRAND.md §3): a persisted "dark" or "light" becomes data-theme on
+         <html>; "system" (or nothing) leaves the attribute off and tokens.css follows the OS.
+         Byte-identical in index.html and manage.html; its SHA-256 is allowed by the Worker's CSP
+         (packages/worker/src/adminCsp.ts), so any edit here must update that hash. -->
+    <script>(function(){try{var t=localStorage.getItem("pk-admin-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}})();</script>
     <title>Polaris Key — Manage</title>
+    <!-- Polaris Key web identity (@polaris-key/brand/web/key, served by vite.config.ts). -->
+    <link rel="icon" type="image/svg+xml" href="/assets/branding/key/favicon.svg" />
+    <link rel="icon" type="image/x-icon" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256" href="/assets/branding/key/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/branding/key/app-icon-dark-180.png" />
+    <link rel="manifest" href="/assets/branding/key/site.webmanifest" />
+    <meta name="theme-color" content="#060912" />
   </head>
   <body>
     <div id="root"></div>

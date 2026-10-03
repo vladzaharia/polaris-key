@@ -51,12 +51,12 @@ export const SERVICE_REQUIRES: Readonly<
 /** A service section's `data-service` accent token (D-17). The platform section's `core` is
  *  not a service and is added by the nav model, not here. */
 export type ServiceAccentToken =
-  | "key"
+  | "license"
   | "config"
   | "release"
   | "distribution"
   | "update"
-  | "id";
+  | "identity";
 
 /** The lucide-react icon each service's row uses. `ServicesCard` maps every name to a
  *  component, so a new icon here is a type error until it is imported there. */
@@ -88,7 +88,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     label: "License",
     summary:
       "Licenses, keys, tiers, device seats, and the signed license document.",
-    accent: "key",
+    accent: "license",
     icon: "KeyRound",
     docs: "/docs/services/license/",
     defaultEnabled: true,
@@ -143,7 +143,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     label: "Identity",
     summary:
       "OIDC sign-in, browser sessions, and the customer portal for this product.",
-    accent: "id",
+    accent: "identity",
     icon: "UserRound",
     docs: "/docs/services/identity/",
     defaultEnabled: false,
