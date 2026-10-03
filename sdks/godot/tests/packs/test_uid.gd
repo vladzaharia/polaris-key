@@ -10,6 +10,9 @@ extends RefCounted
 
 const S := preload("res://tests/packs/support.gd")
 const MAIN_UID := "uid://s05mainbase1"
+## P4-28: each data pack's thing.tres reaches this project's resource by MAIN_UID, a UID outside
+## the pack's own uid cache, so the app lists it as attachable.
+const ATTACHABLE := ["uid://s05mainbase1"]
 
 
 ## The export without the two entries --export-pack always adds (the publish strip step), written
@@ -66,7 +69,7 @@ func run(t: PKeyTestContext) -> void:
 		var x := String(name).to_lower()
 		var raw := FileAccess.get_file_as_bytes(dir.path_join("data%s.pck" % name))
 		var prefixes := ["res://packs/%s/" % x]
-		var c := PKeyGodotPckHandler.check(PKeyByteSource.memory(raw), {"handler": {"prefixes": prefixes}}, {})
+		var c := PKeyGodotPckHandler.check(PKeyByteSource.memory(raw), {"handler": {"prefixes": prefixes}}, {}, ATTACHABLE)
 		t.check("uid: data%s as exported is refused (it still carries project.binary or the class cache)" % name, not c["ok"] and c["code"] == PKeyPck.DIRECTORY_REFUSED and (c.get("path") == PKeyPck.STRIP_PROJECT_BINARY or c.get("path") == PKeyPck.STRIP_CLASS_CACHE), S.canon(c))
 		var stripped := scratch.path_join("data%s.pck" % name)
 		t.check("uid: data%s stripped" % name, _stripped(raw, stripped))
@@ -78,7 +81,13 @@ func run(t: PKeyTestContext) -> void:
 			if not path.begins_with("res://packs/%s/" % x):
 				own_foreign.append(path)
 		foreign.append_array(own_foreign)
-		var c2 := PKeyGodotPckHandler.check(PKeyByteSource.file(stripped), {"handler": {"prefixes": prefixes}}, {})
+		var c2 := PKeyGodotPckHandler.check(PKeyByteSource.file(stripped), {"handler": {"prefixes": prefixes}}, {}, ATTACHABLE)
+		# P4-28, on this engine's own export: without the list, the reference by MAIN_UID (the
+		# exported, binary thing.tres's external table) is refused.
+		var c3 := PKeyGodotPckHandler.check(PKeyByteSource.file(stripped), {"handler": {"prefixes": prefixes}}, {})
+		var uid_line := "references %s, outside the pack's uid cache, which the app does not list as attachable." % MAIN_UID
+		if own_foreign.is_empty():
+			t.check("uid: data%s stripped, with nothing attachable, is refused at its reference to %s (P4-28)" % [name, MAIN_UID], not c3["ok"] and c3["code"] == PKeyPck.DIRECTORY_REFUSED and String(c3.get("detail", "")).contains(uid_line) and String(c3.get("path", "")).ends_with("thing.res"), S.canon(c3))
 		if own_foreign.is_empty():
 			t.check("uid: data%s stripped is admitted (in-prefix remaps, the exported files they name, uid_cache.bin)" % name, c2["ok"], S.canon(c2))
 		else:

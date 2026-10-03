@@ -38,12 +38,14 @@ func run(t: PKeyTestContext) -> void:
 		else:
 			if not t.check("pck: %s reads" % name, dir["ok"], S.canon(dir)):
 				continue
-			var lines := PKeyPck.lint_lines(src, dir, prefixes, engine)
+			# P4-28: the fixture's attachable list, on both sides.
+			var attachable: Array = want.get("attachable", [])
+			var lines := PKeyPck.lint_lines(src, dir, prefixes, engine, attachable)
 			S.check_same(t, "pck: %s refusals equal the CLI lint's" % name, Array(lines), want["errors"])
 			# The handler's verdict: the first code, with the first refused path.
 			var rec := {"handler": {"prefixes": prefixes}}
 			var variant := {"requires": {"engine": engine}}
-			var c := PKeyGodotPckHandler.check(src, rec, variant)
+			var c := PKeyGodotPckHandler.check(src, rec, variant, attachable)
 			var errors: Array = want["errors"]
 			var header_bad := not errors.is_empty() and String(errors[0]).begins_with("the PCK header")
 			var newer: bool = PKeyPck.engine_check(dir["header"], null) != ""
@@ -78,6 +80,7 @@ func run(t: PKeyTestContext) -> void:
 		t.info("pck: the nested-mount probe needs a 4.7 engine (the fixture is PCK v4)")
 
 	_review_repros(t)
+	_attach_probes(t)
 	_rscc_probes(t)
 	_script_kinds_api(t)
 
@@ -140,6 +143,63 @@ func _review_repros(t: PKeyTestContext) -> void:
 	var chk := PKeyGodotPckHandler.check(PKeyByteSource.file(out), rec, {})
 	t.check("pck repro: a .material (RSRC) with an embedded GDScript is refused by content", saved == OK and bytes.slice(0, 4).get_string_from_ascii() == "RSRC" and not chk["ok"] and chk["code"] == PKeyPck.DIRECTORY_REFUSED and chk.get("path") == "packs/a/look.material", S.canon(chk))
 	t.check("pck repro: embedded_code decides by content, whatever the extension", PKeyPck.embedded_code("packs/a/look.material", bytes) != "" and PKeyPck.embedded_code("packs/a/look.png", bytes) != "")
+	S.remove_tree(scratch)
+
+
+## P4-28 on resources this engine writes itself: a Resource with an app script attached
+## (tests/packs/attach_probe.gd, exported property `power` = 7), saved as text, binary and
+## compressed binary, each referencing the script by path and (4.4+) by its UID. With nothing
+## attachable every one is refused; with the script's path alone the UID still is; with both it is
+## admitted. Mounted, the pack's resource loads with the app script attached and the pack's value
+## set: the residual P4-08 recorded, measured.
+func _attach_probes(t: PKeyTestContext) -> void:
+	var scratch := S.scratch("pck-attach")
+	var ver := PKeyPck.helper_version()
+	var script_path := "res://tests/packs/attach_probe.gd"
+	var script := load(script_path) as Script
+	var r := Resource.new()
+	r.set_script(script)
+	r.set("power", 7)
+	var id := ResourceLoader.get_resource_uid(script_path)
+	var uid := ResourceUID.id_to_text(id) if id != ResourceUID.INVALID_ID else ""
+	var entries: Array = []
+	for f in [["probe.tres", 0], ["probe.res", 0], ["probe_c.res", ResourceSaver.FLAG_COMPRESS]]:
+		var out := scratch.path_join(f[0])
+		if not t.check("pck attach: %s saved" % f[0], ResourceSaver.save(r, out, f[1]) == OK):
+			S.remove_tree(scratch)
+			return
+		entries.append({"path": "res://packs/attach/%s" % f[0], "bytes": FileAccess.get_file_as_bytes(out)})
+	var pck := scratch.path_join("attach.pck")
+	if not t.check("pck attach: the pack is written", PKeyPck.write(pck, entries, ver) == OK):
+		S.remove_tree(scratch)
+		return
+	var src := PKeyByteSource.file(pck)
+	var dir := PKeyPck.read_directory(src)
+	var prefixes := ["res://packs/attach/"]
+	var none := PKeyPck.lint_lines(src, dir, prefixes, null, [])
+	var refused := none.size() == 3
+	for i in none.size():
+		var f: String = ["probe.tres", "probe.res", "probe_c.res"][i]
+		var by_path := "packs/attach/%s: references the app script %s, which the app does not list as attachable." % [f, script_path]
+		var by_uid := "packs/attach/%s: references %s, outside the pack's uid cache, which the app does not list as attachable." % [f, uid]
+		refused = refused and (none[i] == by_path or (uid != "" and none[i] == by_uid))
+	t.check("pck attach: text, binary and compressed references to an app script are refused with nothing attachable", refused, S.canon(Array(none)))
+	# Whether the saver wrote the script's UID into the reference depends on where it saved (the
+	# scratch is outside res://); when it did, the path alone does not admit it.
+	var path_only := PKeyPck.lint_lines(src, dir, prefixes, null, [script_path])
+	var uid_ok := path_only.is_empty()
+	for l in path_only:
+		uid_ok = uid != "" and l.contains(uid)
+	t.check("pck attach: the script's path alone admits only references without its UID", uid_ok, S.canon(Array(path_only)))
+	t.info("pck attach: %d of 3 references carry the script's UID (%s)" % [path_only.size(), uid])
+	var both: Array = [script_path] if uid == "" else [script_path, uid]
+	var listed := PKeyGodotPckHandler.check(src, {"handler": {"prefixes": prefixes}}, {}, both)
+	t.check("pck attach: listed (path and UID), the pack is admitted", listed["ok"], S.canon(listed))
+	t.check("pck attach: a directory entry admits the path too", PKeyPck.lint_lines(src, dir, prefixes, null, ["res://tests/packs/"] + ([] if uid == "" else [uid])).is_empty())
+	if PKeyPck.engine_check(dir["header"]) == "" and PKeyPck.mount(pck, true):
+		var loaded = load("res://packs/attach/probe.tres")
+		var attached: bool = loaded != null and loaded.get_script() != null and (loaded.get_script() as Script).resource_path == script_path
+		t.check("pck attach: mounted, the pack's resource loads with the app script attached and the pack's value (measured)", attached and int(loaded.get("power")) == 7, "%s" % loaded)
 	S.remove_tree(scratch)
 
 

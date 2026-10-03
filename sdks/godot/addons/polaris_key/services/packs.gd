@@ -189,6 +189,10 @@ func start() -> PKeyResult:
 	e.entitlements = func() -> Variant: return _granted(core)
 	for h in _pending_handlers:
 		e.register_handler(h)
+	# P4-28: what packs may attach (the built-in handler, unless a custom one replaced it).
+	var pck_handler = e.handlers.get("godot.pck")
+	if pck_handler is PKeyGodotPckHandler:
+		pck_handler.attachable = core.options.pack_attachable
 	e.progress.connect(_on_progress)
 	var emb := PKeyPackEmbeddedTransport.new(embedded_dir)
 	var baselines: Array = await PKeyPackJob.run(emb.embedded, "PolarisKey embedded packs")
@@ -710,7 +714,7 @@ func mount() -> Dictionary:
 			pack_failed.emit(id, PKeyConstants.ErrorCode.RECORD_REJECTED)
 			continue
 		var src := PKeyByteSource.file(String(i["location"]), int(i["payloadSize"]))
-		var chk: Dictionary = await PKeyPackJob.run(PKeyGodotPckHandler.check.bind(src, rec, variant), "PolarisKey pack check")
+		var chk: Dictionary = await PKeyPackJob.run(PKeyGodotPckHandler.check.bind(src, rec, variant, handler.attachable if handler is PKeyGodotPckHandler else PackedStringArray()), "PolarisKey pack check")
 		if not chk["ok"]:
 			out["refused"].append({"packId": id, "code": chk["code"], "detail": chk.get("detail", "")})
 			pack_failed.emit(id, String(chk["code"]))

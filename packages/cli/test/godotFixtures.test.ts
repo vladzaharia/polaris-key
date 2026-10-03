@@ -49,6 +49,8 @@ import {
 } from "../src/index.js";
 import {
   binaryResource,
+  binaryResourceStream,
+  binString,
   kaykitForbidden,
   kaykitUnstripped,
   kaykitV1,
@@ -59,6 +61,7 @@ import {
   writeTestPck,
   type PckOptions,
 } from "./packFixtures.js";
+import { uidText } from "../src/packRefs.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(
@@ -202,26 +205,47 @@ function rsccOf(body: Uint8Array, bs = 4096): Uint8Array {
 }
 
 /**
- * A binary resource body as an RSCC holds it: the RSRC file without its magic, so the header
- * words come first (big-endian 0, real64 0, version 4.7, format 6), then `binaryResource`'s
- * strings and data.
+ * A binary resource body as an RSCC holds it: the RSRC stream without its magic (the header words
+ * first: big-endian 0, real64 0, version 4.7, format 6), offsets relative to the body.
  */
 const resBody = (types: string[], props: string[], seed: number) =>
-  cat(
-    u32(0),
-    u32(0),
-    u32(4),
-    u32(7),
-    u32(6),
-    binaryResource(types, props, seed).subarray(20),
-  );
+  binaryResourceStream(types, props, seed, 0);
 
-/** `n` bytes of resource-shaped body (header words, then noise without markers). */
+/**
+ * A well-formed resource body of exactly `n` bytes: the main resource's one property is a
+ * `PACKED_BYTE_ARRAY` of marker-free bytes (`(i * 7 + 3) & 0x7f`) reaching the end, so the
+ * reference walk (P4-28) reads it whole.
+ */
 function plainBody(n: number): Uint8Array {
+  const head = resHead(n);
   const b = new Uint8Array(n);
-  b.set(resBody(["Mesh"], ["surfaces"], 11).subarray(0, n));
-  for (let i = 600; i < n; i++) b[i] = (i * 7 + 3) & 0x7f;
+  b.set(head);
+  for (let i = head.length; i < n; i++) b[i] = (i * 7 + 3) & 0x7f;
   return b;
+}
+
+/**
+ * The first bytes of a body of `total` bytes whose main resource holds one `PACKED_BYTE_ARRAY`
+ * running to the end: the header and tables, the resource's class, one property, the tag and the
+ * length. The main resource's path is padded so the payload is a multiple of 4 (no padding).
+ */
+function resHead(total: number): Uint8Array {
+  for (let pad = 0; pad < 4; pad++) {
+    const mainPath = `res://f${"x".repeat(pad)}.res`;
+    const probe = binaryResourceStream(["Mesh"], ["surfaces"], 0, 0, {
+      mainPath,
+      noNoise: true,
+      extraProps: [{ name: 0, value: cat(u32(31), u32(0)) }],
+    });
+    const len = total - probe.length;
+    if (len >= 0 && len % 4 === 0)
+      return binaryResourceStream(["Mesh"], ["surfaces"], 0, 0, {
+        mainPath,
+        noNoise: true,
+        extraProps: [{ name: 0, value: cat(u32(31), u32(len)) }],
+      });
+  }
+  throw new Error(`no resource head fits ${total} bytes`);
 }
 
 const TRI_SCN = "tri.glb-6ed0665643de460f848bf1abf5ed7ae0.scn";
@@ -567,13 +591,318 @@ function rsccFixtures(): CheckFixture[] {
   ];
 }
 
+// ── P4-28: references to app scripts and UIDs ────────────────────────────────
+
+/** A text scene whose one external resource is `attrs` (`[ext_resource …]` verbatim). */
+const extScene = (attrs: string) =>
+  enc(
+    `[gd_scene load_steps=2 format=3]\n\n[ext_resource ${attrs}]\n\n[node name="N" type="Node3D"]\nscript = ExtResource("1")\n`,
+  );
+const tres = (body: string) =>
+  enc(`[gd_resource type="Resource" format=3]\n\n${body}\n`);
+const APP_UID = uidText(4242n);
+const SHARED_UID = uidText(987654321n);
+const DIE = "res://scripts/die.gd";
+
 /**
- * A valid RSCC of `total` bytes in 1 MiB blocks: a resource header (big-endian 0, real64 0,
- * 4.7, format 6) as a raw zstd block, then `fill` as RLE blocks of at most 128 KiB.
+ * The attachable list (P4-28): an app script referenced from a text or binary resource is refused
+ * unless listed (exactly, or under a listed directory); a UID outside the pack's uid cache unless
+ * listed; anything the device could read otherwise is refused; in-pack and non-script app
+ * references pass. Each fixture runs with its `attachable` on both sides.
+ */
+function refsFixtures(): CheckFixture[] {
+  const at = "assets/kaykit/";
+  const exported = ".godot/exported/7/export-proxy.scn";
+  return [
+    {
+      name: "refs-text-unlisted",
+      files: [
+        ...kaykitV1(),
+        [`${at}die.tscn`, extScene(`type="Script" path="${DIE}" id="1"`)],
+        // A script by its declared type, whatever the extension.
+        [
+          `${at}typed.tscn`,
+          extScene(`type="Script" path="res://shared/brain.tres" id="1"`),
+        ],
+      ],
+    },
+    {
+      name: "refs-text-listed",
+      attachable: [DIE],
+      files: [
+        ...kaykitV1(),
+        [`${at}die.tscn`, extScene(`type="Script" path="${DIE}" id="1"`)],
+      ],
+    },
+    {
+      name: "refs-dir",
+      attachable: ["res://scripts/dice/"],
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}a.tscn`,
+          extScene(`type="Script" path="res://scripts/dice/roll.gd" id="1"`),
+        ],
+        [
+          `${at}b.tscn`,
+          extScene(`type="Script" path="res://scripts/dicey.gd" id="1"`),
+        ],
+        [
+          `${at}c.tscn`,
+          extScene(`type="Script" path="res://tools/debug.gd" id="1"`),
+        ],
+      ],
+    },
+    {
+      name: "refs-binary-listed",
+      attachable: [DIE],
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}extref.res`,
+          binaryResource(["Resource"], ["script"], 13, "RSRC", {
+            ext: [{ type: "Script", path: DIE }],
+          }),
+        ],
+      ],
+    },
+    {
+      // The path is listed but the UID is not: the engine prefers the UID.
+      name: "refs-uid-app-script",
+      attachable: [DIE],
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}die.tscn`,
+          extScene(`type="Script" uid="${APP_UID}" path="${DIE}" id="1"`),
+        ],
+        [
+          `${at}byuid.tres`,
+          tres(
+            `[ext_resource type="Script" path="${APP_UID}" id="1"]\n\n[resource]\nscript = ExtResource("1")`,
+          ),
+        ],
+        [
+          `${at}shared.res`,
+          binaryResource(["Resource"], ["base"], 15, "RSRC", {
+            ext: [
+              {
+                type: "Resource",
+                path: "res://shared/base.tres",
+                uid: 987654321n,
+              },
+            ],
+          }),
+        ],
+      ],
+    },
+    {
+      name: "refs-uid-listed",
+      attachable: [DIE, APP_UID, SHARED_UID],
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}die.tscn`,
+          extScene(`type="Script" uid="${APP_UID}" path="${DIE}" id="1"`),
+        ],
+        [
+          `${at}shared.res`,
+          binaryResource(["Resource"], ["base"], 15, "RSRC", {
+            ext: [
+              {
+                type: "Resource",
+                path: "res://shared/base.tres",
+                uid: 987654321n,
+              },
+            ],
+          }),
+        ],
+      ],
+    },
+    {
+      // A script behind a remap: the in-pack scene the text references is exported, and the
+      // exported binary attaches an app script; the exported file is checked like any other.
+      name: "refs-remap",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}level.tscn`,
+          extScene(
+            `type="PackedScene" path="res://assets/kaykit/proxy.tscn" id="1"`,
+          ),
+        ],
+        [`${at}proxy.tscn.remap`, enc(`[remap]\n\npath="res://${exported}"\n`)],
+        [
+          exported,
+          binaryResource(["PackedScene"], ["_bundled"], 14, "RSRC", {
+            ext: [{ type: "Script", path: "res://scripts/debug.gd" }],
+          }),
+        ],
+        // A reference naming a .remap file itself.
+        [
+          `${at}remapref.tscn`,
+          extScene(
+            `type="PackedScene" path="res://assets/kaykit/proxy.tscn.remap" id="1"`,
+          ),
+        ],
+      ],
+    },
+    {
+      // Every reference the device cannot resolve the way the engine would is refused.
+      name: "refs-ambiguous",
+      attachable: [DIE],
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}multiline.tres`,
+          tres(
+            `[ext_resource\ntype="Script" path="res://tools/debug.gd" id="1"]`,
+          ),
+        ],
+        [
+          `${at}dupkey.tres`,
+          tres(
+            `[ext_resource type="Resource" path="res://shared/ok.tres" path="res://tools/debug.gd" id="1"]`,
+          ),
+        ],
+        [
+          `${at}comment.tres`,
+          tres(
+            `[ext_resource type="Script" ; c\npath="res://tools/debug.gd" id="1"]`,
+          ),
+        ],
+        [
+          `${at}stringname.tres`,
+          tres(
+            `[ext_resource type="Script" path=&"res://tools/debug.gd" id="1"]`,
+          ),
+        ],
+        [
+          `${at}escaped.tres`,
+          tres(
+            `[ext_resource type="Script" path="res://tools/de\\qbug.gd" id="1"]`,
+          ),
+        ],
+        [
+          `${at}inline.tres`,
+          tres(`[resource]\nscript = Resource("res://tools/debug.gd")`),
+        ],
+        [
+          `${at}inline-comment.tres`,
+          tres(
+            `[resource]\nscript = Resource ; hidden\n("res://tools/debug.gd")`,
+          ),
+        ],
+        [
+          `${at}relative.tres`,
+          tres(`[ext_resource type="Script" path="debug.gd" id="1"]`),
+        ],
+        [
+          `${at}dotdot.tres`,
+          tres(
+            `[ext_resource type="Script" path="res://scripts/../tools/debug.gd" id="1"]`,
+          ),
+        ],
+        [
+          `${at}baduid.tres`,
+          tres(
+            `[ext_resource type="Script" uid="uid://zz" path="${DIE}" id="1"]`,
+          ),
+        ],
+        [
+          `${at}big-endian.res`,
+          binaryResource(["Resource"], ["data"], 16, "RSRC", { bigEndian: 1 }),
+        ],
+        [
+          `${at}format7.res`,
+          binaryResource(["Resource"], ["data"], 17, "RSRC", { format: 7 }),
+        ],
+        [
+          `${at}cached.res`,
+          binaryResource(["Resource", "Resource"], ["data"], 18, "RSRC", {
+            subPaths: ["res://tools/debug.gd"],
+          }),
+        ],
+        [
+          `${at}inline-ext.res`,
+          binaryResource(["Resource"], ["data", "script"], 19, "RSRC", {
+            extraProps: [
+              {
+                name: 1,
+                value: cat(
+                  u32(24),
+                  u32(1),
+                  binString("Script"),
+                  binString("res://tools/debug.gd"),
+                ),
+              },
+            ],
+          }),
+        ],
+        [
+          `${at}unknown-type.res`,
+          binaryResource(["Resource"], ["data", "x"], 20, "RSRC", {
+            extraProps: [{ name: 1, value: u32(99) }],
+          }),
+        ],
+        [
+          `${at}truncated.res`,
+          binaryResource(["Resource"], ["data"], 21, "RSRC", {
+            ext: [{ type: "Script", path: DIE }],
+          }).subarray(0, 120),
+        ],
+        [
+          `${at}relative.res`,
+          binaryResource(["Resource"], ["data"], 22, "RSRC", {
+            ext: [{ type: "Script", path: "debug.gd" }],
+          }),
+        ],
+      ],
+    },
+    {
+      // In-pack references (by path and by a UID the pack's cache registers) and app resources
+      // that are not scripts pass with nothing listed.
+      name: "refs-admitted",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}level.tscn`,
+          enc(
+            `[gd_scene load_steps=4 format=3]\n\n[ext_resource type="Texture2D" uid="${uidText(1111n)}" path="res://assets/kaykit/dice.png" id="1"]\n[ext_resource type="PackedScene" path="res://scenes/enemy.tscn" id="2"]\n[ext_resource type="Theme" path="res://ui/theme.tres" id="3"]\n\n[node name="Level" type="Node3D"]\n\n[node name="Enemy" parent="." instance=ExtResource("2")]\n`,
+          ),
+        ],
+        [
+          `${at}mat.res`,
+          binaryResource(
+            ["StandardMaterial3D"],
+            ["albedo_texture"],
+            23,
+            "RSRC",
+            {
+              ext: [
+                {
+                  type: "Texture2D",
+                  path: "res://assets/kaykit/dice.png",
+                  uid: 1111n,
+                },
+                { type: "FontFile", path: "res://ui/font.ttf" },
+              ],
+            },
+          ),
+        ],
+      ],
+    },
+  ];
+}
+
+/**
+ * A valid RSCC of `total` bytes in 1 MiB blocks: a well-formed resource head whose one
+ * `PACKED_BYTE_ARRAY` runs to the end (`resHead`) as a raw zstd block, then `fill` as RLE blocks
+ * of at most 128 KiB.
  */
 function rsccRun(total: number, fill: number): Uint8Array {
   const MiB = 1048576;
-  const head = cat(u32(0), u32(0), u32(4), u32(7), u32(6));
+  const head = resHead(total);
   const bc = Math.floor(total / MiB) + 1;
   const frames: Uint8Array[] = [];
   for (let i = 0; i < bc; i++) {
@@ -615,6 +944,8 @@ interface CheckFixture {
   name: string;
   files: [string, Uint8Array][];
   opts?: PckOptions;
+  /** P4-28: the app's attachable list for this fixture (both sides use it). */
+  attachable?: string[];
 }
 
 /** The directory-check fixtures: P4-03's admission-list and embedded-code probes, verbatim. */
@@ -662,18 +993,6 @@ function checkFixtures(): CheckFixture[] {
           "assets/kaykit/sneaky.tres",
           enc(
             '[gd_resource type="Resource" format=3]\n\n[resource]\nscript/source = "extends Resource"\n',
-          ),
-        ],
-      ],
-    },
-    {
-      name: "ext-script-ok",
-      files: [
-        ...kaykitV1(),
-        [
-          "assets/kaykit/die.tscn",
-          enc(
-            '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://scripts/die.gd" id="1_a"]\n\n[node name="Die" type="Node3D"]\nscript = ExtResource("1_a")\n',
           ),
         ],
       ],
@@ -900,19 +1219,17 @@ function checkFixtures(): CheckFixture[] {
         ],
       ],
     },
-    // Threat model (a): a binary reference to an app script (ext type `Script`) names no marker
-    // and is ADMITTED, the same residual as the text `[ext_resource type="Script"]`.
+    // Threat model (a), closed by P4-28: a binary reference to an app script (an external-table
+    // entry typed `Script`) names no marker; the reference check refuses it unless it is listed.
     {
       name: "audit-binary-extref",
       files: [
         ...kaykitV1(),
         [
           "assets/kaykit/extref.res",
-          binaryRaw([
-            paddedString("Resource", 0),
-            paddedString("Script", 0),
-            paddedString("res://scripts/die.gd", 0),
-          ]),
+          binaryResource(["Resource"], ["script"], 13, "RSRC", {
+            ext: [{ type: "Script", path: "res://scripts/die.gd" }],
+          }),
         ],
       ],
     },
@@ -1027,6 +1344,7 @@ function checkFixtures(): CheckFixture[] {
         ],
       ],
     },
+    ...refsFixtures(),
     ...rsccFixtures(),
     // The reader: layouts it reads, and the header and entry flags it refuses with a path.
     {
@@ -1073,8 +1391,13 @@ async function generate(): Promise<Generated> {
       const r = lintPck(readPck(bytes), bytes, {
         prefixes: [PREFIX],
         engine: ENGINE,
+        ...(f.attachable ? { attachable: f.attachable } : {}),
       });
-      v = { errors: r.errors, warnings: r.warnings };
+      v = {
+        ...(f.attachable ? { attachable: f.attachable } : {}),
+        errors: r.errors,
+        warnings: r.warnings,
+      };
     } catch (e) {
       v = { reader: (e as Error).message };
     }

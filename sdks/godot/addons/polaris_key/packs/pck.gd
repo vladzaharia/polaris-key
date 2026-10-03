@@ -13,8 +13,10 @@ extends RefCounted
 ##
 ##   read_directory(source)              {ok, header, entries} or {ok: false, error, detail, path?}
 ##   engine_check(header, requires)      "" or why the header's engine is not allowed here
-##   directory_check(source, dir, prefixes)  {ok, errors: [{path, why}], count}: the admission list
+##   directory_check(source, dir, prefixes, attachable)  {ok, errors: [{path, why}], count}: the
+##                                       admission list and the references (P4-28)
 ##   embedded_code(path, data)           why a resource carries code, or ""
+##   refs_problem(src, ctx)              why a resource's references are refused, or "" (P4-28)
 ##   rscc_body(data)                     an RSCC resource's body, bounded ({body} or {why}; P4-27)
 ##   remap_targets(text)                 the files a .remap or .import points to
 ##   write(path, entries, version)       a helper PCK (GDDL delta packs, copy hosts); Error
@@ -69,7 +71,7 @@ static func _re(pattern: String) -> RegEx:
 ## Compile every pattern and read the engine's script kinds on the main thread before a worker
 ## runs the directory check.
 static func warm() -> void:
-	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _GD_HEAD, _PATH_ANY, _PATH_LINE, _DEST_LINE, _QUOTED]:
+	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _GD_HEAD, _PATH_ANY, _PATH_LINE, _DEST_LINE, _QUOTED, _EXT_LINE, _EXT_ATTR]:
 		_re(p)
 	refresh_script_kinds()
 
@@ -284,12 +286,12 @@ static func requires_check(header: Dictionary, requires_engine: Variant) -> Stri
 
 ## `lintPck`'s error lines, in its order, for a directory `read_directory` returned: the engine
 ## rule, then `<path>: <why>` per refused entry. The packs suite compares them with the CLI's.
-static func lint_lines(source: PKeyByteSource, dir: Dictionary, prefixes: Array, requires_engine: Variant) -> PackedStringArray:
+static func lint_lines(source: PKeyByteSource, dir: Dictionary, prefixes: Array, requires_engine: Variant, attachable: Variant = null) -> PackedStringArray:
 	var out := PackedStringArray()
 	var why := requires_check(dir["header"], requires_engine)
 	if why != "":
 		out.append(why)
-	var c := directory_check(source, dir, prefixes)
+	var c := directory_check(source, dir, prefixes, attachable)
 	for e in c["errors"]:
 		out.append("%s: %s" % [e["path"], e["why"]])
 	return out
@@ -454,6 +456,13 @@ static func uid_cache_problem(data: PackedByteArray, in_pack: Dictionary) -> Str
 ## resource (a `[gd_scene`/`[gd_resource` head, or a `.tscn`/`.tres`/`.escn` name) that fails the
 ## content rule (`_text_code`); a `.scn`/`.res`/exported file that is neither. Fails closed.
 static func embedded_code(p: String, data: PackedByteArray, budget: Variant = null) -> String:
+	return inspect(p, data, budget)["code"]
+
+
+## `embedded_code`'s verdict, and — for a resource with no code — where its references are read
+## (P4-28): {code, refs?: {kind: "text", data} or {kind: "binary", data, start}}, so an `RSCC`
+## body is decompressed once.
+static func inspect(p: String, data: PackedByteArray, budget: Variant = null) -> Dictionary:
 	# By CONTENT first: Godot's binary loader takes `.material`, `.mesh`, `.anim` and every other
 	# binary resource extension, so the extension never decides whether bytes are scanned.
 	var magic := data.slice(0, 4).get_string_from_ascii() if data.size() >= 4 else ""
@@ -461,24 +470,30 @@ static func embedded_code(p: String, data: PackedByteArray, budget: Variant = nu
 		# P4-27: bounded decompression (`rscc_body`), then the RSRC rules on the body.
 		var r := rscc_body(data, budget)
 		if r.has("why"):
-			return "a compressed binary resource (RSCC) %s" % r["why"]
+			return {"code": "a compressed binary resource (RSCC) %s" % r["why"]}
 		var body: PackedByteArray = r["body"]
 		# The saver writes `RSRC` only uncompressed: the body starts at the header words after it,
 		# the big-endian and real64 flags (0 or 1 each), then three versions (rscc.ts
 		# `rsccBodyIsResource`).
 		if body.size() < 20 or body.decode_u32(0) > 1 or body.decode_u32(4) > 1:
-			return "a compressed binary resource (RSCC) whose body is not a binary resource"
+			return {"code": "a compressed binary resource (RSCC) whose body is not a binary resource"}
 		var m := _marker(body)
-		return "" if m == "" else "a compressed binary resource (RSCC) that names %s (an embedded script or its source)" % m
+		if m != "":
+			return {"code": "a compressed binary resource (RSCC) that names %s (an embedded script or its source)" % m}
+		return {"code": "", "refs": {"kind": "binary", "data": body, "start": 0}}
 	if magic == "RSRC":
-		return _binary_code(data)
-	if sniffs_text_resource(data):
-		return _text_code(data)
-	if _re(_TEXT_RES).search(p) != null:
-		return _text_code(data)
+		var code := _binary_code(data)
+		if code != "":
+			return {"code": code}
+		return {"code": "", "refs": {"kind": "binary", "data": data, "start": 4}}
+	if sniffs_text_resource(data) or _re(_TEXT_RES).search(p) != null:
+		var code := _text_code(data)
+		if code != "":
+			return {"code": code}
+		return {"code": "", "refs": {"kind": "text", "data": data}}
 	if _re(_BINARY_RES).search(p) != null or p.begins_with(".godot/exported/"):
-		return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts"
-	return ""
+		return {"code": "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts"}
+	return {"code": ""}
 
 
 ## The largest total an `RSCC` resource may declare: 64 MiB (packLint's `RSCC_MAX_TOTAL`, the
@@ -761,6 +776,456 @@ static func _text_code(data: PackedByteArray) -> String:
 	return ""
 
 
+# ── References to app scripts and UIDs (P4-28) ──────────────────────────────────────────────────
+#
+# The CLI's `packRefs.ts`, the same rules and words: a pack's resources may reference outside
+# the pack only app resources that are not scripts (by path), the app scripts the app lists as
+# attachable (`PKeyOptions.pack_attachable`: `res://` paths and `res://…/` directories), and UIDs
+# the pack's own uid cache registers or the app lists. A reference is a text resource's
+# `[ext_resource]` tag or a binary resource's external-resource table entry; the engine uses its
+# UID when that resolves and its path otherwise, so both are judged. Anything the check cannot
+# read the way the engine would is refused: an `ext_resource` line that is not one strict tag,
+# the inline `Resource("…")` constructor, a path that is not already normal, a `.remap`/`.import`
+# path, a non-canonical UID, and in a binary resource a big-endian file, a format above 6, a
+# sub-resource path that is not `local://`, the pre-4.0 inline external reference, an unknown
+# value type, or anything past the end.
+
+## `ResourceFormatSaverBinary::FORMAT_VERSION` in 4.4.1 and 4.7.2.
+const BINARY_FORMAT_MAX := 6
+const _UID_CHARS := "abcdefghijklmnopqrstuvwxy012345678"
+const _UID_MAX := 0x7FFFFFFFFFFFFFFF
+const _AMBIGUOUS := ", so the device cannot tell what it loads"
+const _EXT_LINE := "^[ \\t]*\\[ext_resource((?: [a-z_]+=\"[^\"\\\\]*\")+)\\][ \\t]*$"
+const _EXT_ATTR := " ([a-z_]+)=\"([^\"\\\\]*)\""
+
+
+## `ResourceUID::id_to_text`.
+static func uid_text(id: int) -> String:
+	if id < 0:
+		return "uid://<invalid>"
+	var out := ""
+	var v := id
+	while true:
+		out = _UID_CHARS[v % 34] + out
+		@warning_ignore("integer_division")
+		v = v / 34
+		if v == 0:
+			break
+	return "uid://" + out
+
+
+## The id of a `uid://` text in its canonical form only (`uid_text(id) == text`), or -1.
+static func canonical_uid(text: String) -> int:
+	if not text.begins_with("uid://"):
+		return -1
+	var s := text.substr(6)
+	if s.length() < 1 or s.length() > 13:
+		return -1
+	var v := 0
+	for i in s.length():
+		var d := _UID_CHARS.find(s[i])
+		if d < 0:
+			return -1
+		@warning_ignore("integer_division")
+		if v > (_UID_MAX - d) / 34:
+			return -1
+		v = v * 34 + d
+	return v if uid_text(v) == text else -1
+
+
+## Why one attachable entry is malformed, or "" (packRefs.ts `attachableEntryProblem`).
+static func attachable_problem(s: String) -> String:
+	if s.begins_with("uid://"):
+		return "not a canonical uid://" if canonical_uid(s) < 0 else ""
+	if not s.begins_with("res://"):
+		return "neither res:// nor uid://"
+	var rest := s.substr(6)
+	var path := rest.substr(0, rest.length() - 1) if rest.ends_with("/") else rest
+	return "" if path_ok(path) else "not a normal res:// path"
+
+
+## The attachable list, parsed: {paths: {res path: true}, dirs: PackedStringArray, uids: {id:
+## true}}. A malformed entry is dropped (it admits nothing; `PKeyCore` refuses one at configure).
+static func parse_attachable(list: Variant) -> Dictionary:
+	var out := {"paths": {}, "dirs": PackedStringArray(), "uids": {}}
+	if not (list is Array or list is PackedStringArray):
+		return out
+	var dirs := PackedStringArray()
+	for e in list:
+		if not (e is String or e is StringName):
+			continue
+		var s := String(e)
+		if attachable_problem(s) != "":
+			continue
+		if s.begins_with("uid://"):
+			out["uids"][canonical_uid(s)] = true
+		elif s.ends_with("/"):
+			dirs.append(s)
+		else:
+			out["paths"][s] = true
+	out["dirs"] = dirs
+	return out
+
+
+static func _uid_problem(u: int, raw: String, ctx: Dictionary) -> String:
+	if u < 0:
+		return "references %s, which is not a canonical uid://%s" % [raw, _AMBIGUOUS]
+	if (ctx["pack_uids"] as Dictionary).has(u) or (ctx["attachable"]["uids"] as Dictionary).has(u):
+		return ""
+	return "references %s, outside the pack's uid cache, which the app does not list as attachable" % uid_text(u)
+
+
+## Why one reference ({type: String or null, path, uid: null, a text String or a binary int}) is
+## refused, or "" (the UID first, then the path). `ctx`: {in_pack, pack_uids, attachable}.
+static func ref_problem(ref: Dictionary, ctx: Dictionary) -> String:
+	var uid = ref.get("uid")
+	if uid is String:
+		var why := _uid_problem(canonical_uid(uid), uid, ctx)
+		if why != "":
+			return why
+	elif uid is int and uid != -1:
+		# A binary entry without a UID stores -1 (`ResourceUID::INVALID_ID`).
+		var why := _uid_problem(uid, uid_text(uid), ctx)
+		if why != "":
+			return why
+	var p: String = ref["path"]
+	if p.begins_with("uid://"):
+		return _uid_problem(canonical_uid(p), p, ctx)
+	if not p.begins_with("res://") or not path_ok(p.substr(6)):
+		return "references %s, which is not a normal res:// path or uid://%s" % [p, _AMBIGUOUS]
+	var rest := p.substr(6)
+	if rest.ends_with(".remap") or rest.ends_with(".import"):
+		return "references %s, a .remap or .import file%s" % [p, _AMBIGUOUS]
+	var in_pack: Dictionary = ctx["in_pack"]
+	if in_pack.has(rest) or in_pack.has(rest + ".remap") or in_pack.has(rest + ".import"):
+		return ""
+	var t = ref.get("type")
+	var script := _is_script(rest)
+	if not script and t is String:
+		script = t == "Script" or (_script_kinds()["markers"] as PackedStringArray).has(t)
+	if not script:
+		return ""
+	var att: Dictionary = ctx["attachable"]
+	if (att["paths"] as Dictionary).has(p):
+		return ""
+	for d in att["dirs"]:
+		if p.begins_with(d):
+			return ""
+	return "references the app script %s, which the app does not list as attachable" % p
+
+
+## A text resource's references ({refs}) or why it is refused ({why}). `text` is valid UTF-8
+## without NUL (the embedded-code rule ran first).
+static func text_refs(text: String) -> Dictionary:
+	var t := text.replace("\r", "\n")
+	var lines := t.split("\n")
+	var refs: Array = []
+	for i in lines.size():
+		var l := lines[i]
+		if not l.contains("ext_resource"):
+			continue
+		var bad := {"why": "has an ext_resource tag on line %d the engine could read differently%s" % [i + 1, _AMBIGUOUS]}
+		var m := _re(_EXT_LINE).search(l)
+		if m == null:
+			return bad
+		var attrs := {}
+		for a in _re(_EXT_ATTR).search_all(m.get_string(1)):
+			var k := a.get_string(1)
+			if not (k == "type" or k == "uid" or k == "path" or k == "id") or attrs.has(k):
+				return bad
+			attrs[k] = a.get_string(2)
+		if not (attrs.has("type") and attrs.has("path") and attrs.has("id")):
+			return bad
+		refs.append({"type": attrs["type"], "path": attrs["path"], "uid": attrs.get("uid")})
+	# `Resource(…)`: the identifier, then whitespace (≤ 0x20) or `;` comments, then `(`.
+	var n := t.length()
+	var at := t.find("Resource")
+	while at != -1:
+		var from := maxi(0, at - 3)
+		var before := t.substr(from, at - from)
+		if before != "Ext" and before != "Sub":
+			var j := at + 8
+			while true:
+				while j < n and t.unicode_at(j) <= 0x20:
+					j += 1
+				if j < n and t[j] == ";":
+					while j < n and t[j] != "\n":
+						j += 1
+					continue
+				break
+			if j < n and t[j] == "(":
+				return {"why": "loads a resource by path inline (Resource(...))%s" % _AMBIGUOUS}
+		at = t.find("Resource", at + 1)
+	return {"refs": refs}
+
+
+## A binary resource's references ({refs}) or why it is refused ({why}): `b` is the stream the
+## loader reads (an `RSRC` file, or an `RSCC` body), `start` where its header words begin (4 after
+## `RSRC`, 0 in a body). Every field is bounded before it is read; thread-safe (ints and
+## PackedByteArrays only).
+static func binary_refs(b: PackedByteArray, start: int) -> Dictionary:
+	var r := _BinaryReader.new(b, start)
+	if r.u32() != 0:
+		return {"why": "is a big-endian binary resource%s" % _AMBIGUOUS} if r.ok else r.fail()
+	r.u32() # real64 (unused by the loader)
+	r.u32() # major
+	r.u32() # minor
+	var format := r.u32()
+	if not r.ok:
+		return r.fail()
+	if format > BINARY_FORMAT_MAX:
+		return {"why": "is a binary resource in format %d, above %d%s" % [format, BINARY_FORMAT_MAX, _AMBIGUOUS]}
+	r.read_str() # type
+	r.skip(8) # import metadata offset
+	var flags := r.u32()
+	r.skip(8) # uid
+	if flags & 8:
+		r.read_str() # script class
+	r.skip(4 * 11)
+	if not r.ok:
+		return r.fail()
+	r.part = "reference tables"
+	var nstr := r.u32()
+	var i := 0
+	while r.ok and i < nstr:
+		r.read_str()
+		i += 1
+	var refs: Array = []
+	var next := r.u32()
+	i = 0
+	while r.ok and i < next:
+		var type := r.decode_text(r.read_str())
+		var path := r.decode_text(r.read_str())
+		var uid = null
+		if flags & 2:
+			uid = r.s64()
+		refs.append({"type": type, "path": path, "uid": uid})
+		i += 1
+	var nint := r.u32()
+	var offsets := PackedInt64Array()
+	i = 0
+	while r.ok and i < nint:
+		var path := r.decode_text(r.read_str())
+		var off := r.u64()
+		if r.ok and i < nint - 1 and not path.begins_with("local://"):
+			return {"why": "has a sub-resource path that is not local:// (%s)%s" % [path, _AMBIGUOUS]}
+		offsets.append(off)
+		i += 1
+	if not r.ok:
+		return r.fail()
+	r.part = "properties"
+	var real := 8 if flags & 4 else 4
+	for off in offsets:
+		if off < 0 or off > b.size():
+			r.ok = false
+			return r.fail()
+		r.pos = off
+		r.read_str() # the class
+		var pc := r.u32()
+		var j := 0
+		while r.ok and j < pc:
+			r.read_name(nstr)
+			var pending := 1
+			while r.ok and pending > 0:
+				pending -= 1
+				var tag := r.u32()
+				if not r.ok:
+					break
+				match tag:
+					1, 42, 43: # NIL, CALLABLE, SIGNAL
+						pass
+					2, 3, 23: # BOOL, INT, RID
+						r.skip(4)
+					40, 41: # INT64, DOUBLE
+						r.skip(8)
+					4: # FLOAT
+						r.skip(real)
+					5, 44: # STRING, STRING_NAME
+						r.read_str()
+					10: # VECTOR2
+						r.skip(2 * real)
+					45: # VECTOR2I
+						r.skip(8)
+					11, 50, 13, 14: # RECT2, VECTOR4, PLANE, QUATERNION
+						r.skip(4 * real)
+					46, 51, 20: # RECT2I, VECTOR4I, COLOR (always single precision)
+						r.skip(16)
+					12: # VECTOR3
+						r.skip(3 * real)
+					47: # VECTOR3I
+						r.skip(12)
+					15, 18: # AABB, TRANSFORM2D
+						r.skip(6 * real)
+					16: # BASIS
+						r.skip(9 * real)
+					17: # TRANSFORM3D
+						r.skip(12 * real)
+					52: # PROJECTION
+						r.skip(16 * real)
+					22: # NODE_PATH: u16 names, u16 subnames (bit 15: absolute), each a string id
+						var names := r.u16()
+						var subs := r.u16() & 0x7FFF
+						if format < 3:
+							subs += 1
+						var k := 0
+						while r.ok and k < names + subs:
+							r.read_name(nstr)
+							k += 1
+					24: # OBJECT: empty, inline external (pre-4.0), internal index, external index
+						var kind := r.u32()
+						if r.ok and kind == 1:
+							return {"why": "has an inline external reference (the pre-4.0 binary form)%s" % _AMBIGUOUS}
+						if kind == 2 or kind == 3:
+							r.skip(4)
+						elif kind != 0:
+							r.ok = false
+					26: # DICTIONARY (bit 31: shared)
+						pending += 2 * (r.u32() & 0x7FFFFFFF)
+					30: # ARRAY (bit 31: shared)
+						pending += r.u32() & 0x7FFFFFFF
+					31: # PACKED_BYTE_ARRAY, padded to 4
+						var nb := r.u32()
+						r.skip(nb + (4 - nb % 4) % 4)
+					32, 33: # PACKED_INT32_ARRAY, PACKED_FLOAT32_ARRAY
+						r.skip(r.u32() * 4)
+					48, 49: # PACKED_INT64_ARRAY, PACKED_FLOAT64_ARRAY
+						r.skip(r.u32() * 8)
+					34: # PACKED_STRING_ARRAY
+						var ns := r.u32()
+						var k := 0
+						while r.ok and k < ns:
+							r.read_str()
+							k += 1
+					37: # PACKED_VECTOR2_ARRAY
+						r.skip(r.u32() * 2 * real)
+					35: # PACKED_VECTOR3_ARRAY
+						r.skip(r.u32() * 3 * real)
+					36: # PACKED_COLOR_ARRAY (always single precision)
+						r.skip(r.u32() * 16)
+					53: # PACKED_VECTOR4_ARRAY
+						r.skip(r.u32() * 4 * real)
+					_:
+						return {"why": "has a value of unknown type %d%s" % [tag, _AMBIGUOUS]}
+			j += 1
+		if not r.ok:
+			return r.fail()
+	return {"refs": refs}
+
+
+## The cursor `binary_refs` reads with: every read is bounded; the first failure sticks (`ok`).
+class _BinaryReader:
+	var b: PackedByteArray
+	var pos := 0
+	var ok := true
+	var part := "header"
+
+	func _init(p_b: PackedByteArray, p_start: int) -> void:
+		b = p_b
+		pos = p_start
+
+	func fail() -> Dictionary:
+		return {"why": "is a binary resource whose %s cannot be read, so the device cannot tell what it loads" % part}
+
+	func need(n: int) -> bool:
+		if not ok or n < 0 or pos + n > b.size():
+			ok = false
+		return ok
+
+	func u32() -> int:
+		if not need(4):
+			return 0
+		pos += 4
+		return b.decode_u32(pos - 4)
+
+	func u16() -> int:
+		if not need(2):
+			return 0
+		pos += 2
+		return b.decode_u16(pos - 2)
+
+	func s64() -> int:
+		if not need(8):
+			return 0
+		pos += 8
+		return b.decode_s64(pos - 8)
+
+	## A u64 offset; -1 above 2^53 − 1.
+	func u64() -> int:
+		if not need(8):
+			return 0
+		var lo := b.decode_u32(pos)
+		var hi := b.decode_u32(pos + 4)
+		pos += 8
+		return -1 if hi > 0x1FFFFF else hi * 4294967296 + lo
+
+	func skip(n: int) -> void:
+		if need(n):
+			pos += n
+
+	func read_str() -> PackedByteArray:
+		var n := u32()
+		if not need(n):
+			return PackedByteArray()
+		pos += n
+		return b.slice(pos - n, pos)
+
+	## A string as the loader decodes it: up to the first NUL, valid UTF-8 without a byte-order
+	## mark (the engine drops a leading one), or the read fails.
+	func decode_text(s: PackedByteArray) -> String:
+		if not ok:
+			return ""
+		var z := s.find(0)
+		var cut := s if z == -1 else s.slice(0, z)
+		if PKeyPck.has_bytes(cut, PackedByteArray([0xEF, 0xBB, 0xBF])) or not PKeyPck.utf8_valid(cut):
+			ok = false
+			return ""
+		return cut.get_string_from_utf8()
+
+	## A property or node-path name: a string-table index, or (bit 31) an inline string.
+	func read_name(nstr: int) -> void:
+		var id := u32()
+		if not ok:
+			return
+		if id & 0x80000000:
+			skip(id & 0x7FFFFFFF)
+		elif id >= nstr:
+			ok = false
+
+
+## The ids a uid cache registers, as {id: true}; {} when it is malformed.
+static func uid_cache_ids(data: PackedByteArray) -> Dictionary:
+	var out := {}
+	if data.size() < 4:
+		return out
+	var n := data.decode_u32(0)
+	var p := 4
+	for i in n:
+		if p + 12 > data.size():
+			return {}
+		var ln := data.decode_u32(p + 8)
+		if p + 12 + ln > data.size():
+			return {}
+		out[data.decode_s64(p)] = true
+		p += 12 + ln
+	return out
+
+
+## Why a resource's references are refused (`ref_problem` over `text_refs` / `binary_refs`), or "".
+static func refs_problem(src: Dictionary, ctx: Dictionary) -> String:
+	var r: Dictionary
+	if src["kind"] == "text":
+		r = text_refs((src["data"] as PackedByteArray).get_string_from_utf8())
+	else:
+		r = binary_refs(src["data"], int(src["start"]))
+	if r.has("why"):
+		return r["why"]
+	for ref in r["refs"]:
+		var why := ref_problem(ref, ctx)
+		if why != "":
+			return why
+	return ""
+
+
 ## The admission list (notes/S-05 §5 (f); P4-03's `lintPck`), over a directory `read_directory`
 ## returned and the bytes behind it. A `godot.pck` payload may contain only (1) entries under one
 ## of `prefixes` (`res://…/`), including their `.remap` and `.import` files; (2) the
@@ -768,9 +1233,10 @@ static func _text_code(data: PackedByteArray) -> String:
 ## `.godot/uid_cache.bin`. Every admitted resource must carry no code (`embedded_code`).
 ## Everything else is refused with its path — `project.binary`, the class cache, scripts (and a
 ## `.remap` that points to one), native libraries and `.gdextension` files, an out-of-prefix
-## path, an exported or imported file nothing in the pack names. Returns {ok, errors: [{path,
-## why}], count, warning}.
-static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: Array) -> Dictionary:
+## path, an exported or imported file nothing in the pack names. Every admitted resource's
+## references outside the pack must be ones `attachable` (the app's `pack_attachable`) lists
+## (P4-28, `ref_problem`). Returns {ok, errors: [{path, why}], count, warning}.
+static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: Array, attachable: Variant = null) -> Dictionary:
 	var pre := PackedStringArray()
 	for p in prefixes:
 		if p is String:
@@ -784,8 +1250,13 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 	# The pack's RSCC decompression budget, counted in directory order (P4-27).
 	var budget := {"used": 0}
 	var in_pack := {}
+	var pack_uids := {}
 	for e in entries:
 		in_pack[e["path"]] = true
+		if e["path"] == UID_CACHE:
+			pack_uids = uid_cache_ids(source.read(int(e["offset"]), int(e["size"])))
+	# P4-28: what the pack's resources may reference outside the pack.
+	var ref_ctx := {"in_pack": in_pack, "pack_uids": pack_uids, "attachable": parse_attachable(attachable)}
 	for e in entries:
 		var p: String = e["path"]
 		if p == STRIP_PROJECT_BINARY or p == STRIP_CLASS_CACHE:
@@ -818,10 +1289,15 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 			if why != "":
 				errors.append({"path": p, "why": "%s; a pack registers only its own UIDs." % why})
 			continue
-		var code := embedded_code(p, data, budget) if scanned else ""
-		if code != "":
-			errors.append({"path": p, "why": "%s; a pack carries data only." % code})
+		var res := inspect(p, data, budget) if scanned else {"code": ""}
+		if res["code"] != "":
+			errors.append({"path": p, "why": "%s; a pack carries data only." % res["code"]})
 			continue
+		if res.has("refs"):
+			var rwhy := refs_problem(res["refs"], ref_ctx)
+			if rwhy != "":
+				errors.append({"path": p, "why": "%s." % rwhy})
+				continue
 		if in_prefix:
 			if needs_bytes:
 				var problem := remap_problem(data)

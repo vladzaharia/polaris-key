@@ -26,6 +26,10 @@
  * same to every parser (`remapProblem`); a refusal names its path (a v1 pack is data-only: S-07
  * row 13, plans/P4-01.md §3 `contentPolicy`).
  *
+ * Every admitted resource's references outside the pack must be ones the app lists as attachable
+ * (P4-28, `packRefs.ts`): an app script by path, any UID the pack's own uid cache does not
+ * register; an unreadable or ambiguous reference is refused.
+ *
  * Everything else fails with its path, in particular `project.binary`,
  * `.godot/global_script_class_cache.cfg`, scripts (`.gd`, `.gdc`, `.cs`, and a `.remap` that
  * points to one, or remaps one), native libraries (`.so`, `.dll`, `.dylib`, `.wasm`, a
@@ -48,6 +52,14 @@
 import { checkPaths } from "@polaris-key/client-core/packs";
 import { PCK_STRIP_PATHS, pckPathOk, type PckDirectory } from "./pck.js";
 import { rsccBody, rsccBodyIsResource, type RsccBudget } from "./rscc.js";
+import {
+  binaryRefs,
+  parseAttachable,
+  refProblem,
+  textRefs,
+  uidCacheIds,
+  type RefContext,
+} from "./packRefs.js";
 
 /** Above this many entries the lint warns (S-05 §4.1: the mount stall grows with the count). */
 export const PCK_WARN_ENTRIES = 1000;
@@ -284,6 +296,12 @@ export interface PckLintOptions {
   scriptExtensions?: readonly string[];
   /** Script class names refused as markers beside `SCRIPT_MARKERS` (the language's types). */
   scriptTypes?: readonly string[];
+  /**
+   * P4-28: the app scripts (`res://` paths, `res://…/` directories) and UIDs a pack may reference
+   * outside itself (`deliverables.app.content.attachable`; the device's `pack_attachable`). Absent
+   * or empty, a pack attaches no app script and no UID its own uid cache does not register.
+   */
+  attachable?: readonly string[];
 }
 
 /** The admission list, the engine check and the entry-count limits over a stripped PCK. */
@@ -319,6 +337,19 @@ export function lintPck(
   const text = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
+  // P4-28: what the pack's resources may reference outside the pack.
+  const cache = dir.entries.find((e) => e.path === ".godot/uid_cache.bin");
+  const refCtx: RefContext = {
+    inPack,
+    packUids: new Set(
+      cache
+        ? uidCacheIds(bytes.subarray(cache.offset, cache.offset + cache.size))
+        : [],
+    ),
+    attachable: parseAttachable(opts.attachable),
+    isScript: (p) => isScript(p, kinds),
+    scriptTypes: kinds.markers,
+  };
   // The pack's RSCC decompression budget, counted in directory order (P4-27).
   const budget: RsccBudget = { used: 0 };
   for (const e of dir.entries) {
@@ -346,14 +377,19 @@ export function lintPck(
         errors.push(`${p}: ${why}; a pack registers only its own UIDs.`);
       continue;
     }
-    const code = embeddedCode(
+    const res = inspectResource(
       p,
       bytes.subarray(e.offset, e.offset + e.size),
       kinds.markers,
       budget,
     );
-    if (code !== null) {
-      errors.push(`${p}: ${code}; a pack carries data only.`);
+    if (res.code !== null) {
+      errors.push(`${p}: ${res.code}; a pack carries data only.`);
+      continue;
+    }
+    const why = res.refs ? resourceRefsProblem(res.refs, refCtx) : null;
+    if (why !== null) {
+      errors.push(`${p}: ${why}.`);
       continue;
     }
     if (inPrefix(p)) {
@@ -441,9 +477,9 @@ const BINARY_RESOURCE_RE = /\.(scn|res)$/i;
  *
  * Coincidental matches refuse a resource, never admit one. A reference to a script already in
  * the app (`[ext_resource type="Script" path="res://…gd"]`, or the binary external-resource table
- * typed `Script`) names no marker and passes in both formats: that is a residual, not code in the
- * pack (docs/security/THREAT-MODEL.md, "Pack bytes on the device"). Script files themselves are
- * refused by extension.
+ * typed `Script`) names no marker, so this rule passes it; the reference check that follows
+ * (P4-28, `packRefs.ts`, in `lintPck`) refuses it unless the app lists the script as attachable.
+ * Script files themselves are refused by extension.
  */
 export function embeddedCode(
   p: string,
@@ -451,28 +487,76 @@ export function embeddedCode(
   markers: readonly string[] = SCRIPT_MARKERS,
   budget: RsccBudget = { used: 0 },
 ): string | null {
+  return inspectResource(p, data, markers, budget).code;
+}
+
+/** Where a resource's references are read from: its text, or a binary stream and header start. */
+export type ResourceRefsSource =
+  | { kind: "text"; data: Uint8Array }
+  | { kind: "binary"; data: Uint8Array; start: number };
+
+/**
+ * `embeddedCode`'s verdict, and — for a resource with no code — where its references are read
+ * (P4-28), so an `RSCC` body is decompressed once.
+ */
+export function inspectResource(
+  p: string,
+  data: Uint8Array,
+  markers: readonly string[] = SCRIPT_MARKERS,
+  budget: RsccBudget = { used: 0 },
+): { code: string | null; refs?: ResourceRefsSource } {
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
   if (magic === "RSCC") {
     // P4-27: bounded decompression (rscc.ts), then the RSRC rules on the body.
     const r = rsccBody(data, undefined, budget);
-    if ("why" in r) return `a compressed binary resource (RSCC) ${r.why}`;
+    if ("why" in r)
+      return { code: `a compressed binary resource (RSCC) ${r.why}` };
     if (!rsccBodyIsResource(r.body))
-      return "a compressed binary resource (RSCC) whose body is not a binary resource";
+      return {
+        code: "a compressed binary resource (RSCC) whose body is not a binary resource",
+      };
     const m = marker(r.body, markers);
     return m === null
-      ? null
-      : `a compressed binary resource (RSCC) that names ${m} (an embedded script or its source)`;
+      ? { code: null, refs: { kind: "binary", data: r.body, start: 0 } }
+      : {
+          code: `a compressed binary resource (RSCC) that names ${m} (an embedded script or its source)`,
+        };
   }
   if (magic === "RSRC") {
     const m = marker(data, markers);
     return m === null
-      ? null
-      : `a binary resource that names ${m} (an embedded script or its source)`;
+      ? { code: null, refs: { kind: "binary", data, start: 4 } }
+      : {
+          code: `a binary resource that names ${m} (an embedded script or its source)`,
+        };
   }
-  if (sniffsTextResource(data) || TEXT_RESOURCE_RE.test(p))
-    return textResourceCode(data, markers);
+  if (sniffsTextResource(data) || TEXT_RESOURCE_RE.test(p)) {
+    const code = textResourceCode(data, markers);
+    return code === null
+      ? { code: null, refs: { kind: "text", data } }
+      : { code };
+  }
   if (BINARY_RESOURCE_RE.test(p) || p.startsWith(".godot/exported/"))
-    return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
+    return {
+      code: "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts",
+    };
+  return { code: null };
+}
+
+/** Why a resource's references are refused (P4-28, `packRefs.ts`), or null. */
+export function resourceRefsProblem(
+  src: ResourceRefsSource,
+  ctx: RefContext,
+): string | null {
+  const r =
+    src.kind === "text"
+      ? textRefs(new TextDecoder("utf-8").decode(src.data))
+      : binaryRefs(src.data, src.start);
+  if ("why" in r) return r.why;
+  for (const ref of r.refs) {
+    const why = refProblem(ref, ctx);
+    if (why !== null) return why;
+  }
   return null;
 }
 
