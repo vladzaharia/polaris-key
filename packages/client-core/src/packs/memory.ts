@@ -4,6 +4,7 @@
 // directory store, React's OPFS store). Pure: no I/O.
 
 import type { FilesIndexDoc } from "@polaris-key/protocol/packs";
+import { MAX_CHUNK_INDEX_BYTES } from "@polaris-key/protocol/core";
 import { sha256Hex, treeDigest } from "./files.js";
 import type { InstalledPayload, PackStorage, StagedObject } from "./engine.js";
 import { memorySource, sliceSource, type InstalledFile } from "./ports.js";
@@ -22,6 +23,10 @@ export interface MemoryPackStorage extends PackStorage {
   readonly store: Map<string, MemoryPayload>;
   /** The staged objects by plan id, then SHA-256. */
   readonly staging: Map<string, Map<string, Uint8Array>>;
+  /** The seed indexes by `chunks.sha256` (P4-11). */
+  readonly indexes: Map<string, Uint8Array>;
+  /** The run journals by plan id (P4-11). */
+  readonly journals: Map<string, string>;
 }
 
 function grow(buf: Uint8Array, need: number): Uint8Array {
@@ -37,6 +42,8 @@ export function memoryPackStorage(
 ): MemoryPackStorage {
   const store = new Map<string, MemoryPayload>();
   const staging = new Map<string, Map<string, Uint8Array>>();
+  const indexes = new Map<string, Uint8Array>();
+  const journals = new Map<string, string>();
   const outputs = new Map<
     string,
     { container: Uint8Array; length: number; tree: Map<string, Uint8Array> }
@@ -50,6 +57,30 @@ export function memoryPackStorage(
   const storage: MemoryPackStorage = {
     store,
     staging,
+    indexes,
+    journals,
+    chunkIndexes: {
+      get: async (sha256) => {
+        const b = indexes.get(sha256);
+        // Never more than a client accepts (plans/P4-10.md §2.3).
+        return b === undefined || b.byteLength > MAX_CHUNK_INDEX_BYTES
+          ? null
+          : b.slice();
+      },
+      put: async (sha256, bytes) => {
+        indexes.set(sha256, bytes.slice());
+      },
+      list: async () => [...indexes.keys()],
+      remove: async (sha256) => {
+        indexes.delete(sha256);
+      },
+    },
+    runJournal: {
+      read: async (planId) => journals.get(planId) ?? null,
+      write: async (planId, text) => {
+        journals.set(planId, text);
+      },
+    },
     async stagedObject(planId, sha256): Promise<StagedObject> {
       const objects = plan(planId);
       return {
@@ -68,18 +99,24 @@ export function memoryPackStorage(
         },
       };
     },
-    async output(planId) {
+    async output(planId, _layout, opts) {
+      const kept = opts?.resume === true ? outputs.get(planId) : undefined;
       const o: {
         container: Uint8Array;
         length: number;
         tree: Map<string, Uint8Array>;
-      } = {
+      } = kept ?? {
         container: new Uint8Array(),
         length: 0,
         tree: new Map(),
       };
       outputs.set(planId, o);
       return {
+        read: async (offset, length) =>
+          o.container.slice(
+            Math.min(offset, o.length),
+            Math.min(offset + length, o.length),
+          ),
         sink: {
           write: async (offset, bytes) => {
             o.container = grow(o.container, offset + bytes.byteLength);
@@ -157,6 +194,7 @@ export function memoryPackStorage(
     async removeStaging(planId) {
       staging.delete(planId);
       outputs.delete(planId);
+      journals.delete(planId);
     },
     async list() {
       return { locations: [...store.keys()], plans: [...staging.keys()] };

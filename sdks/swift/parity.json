@@ -94,7 +94,10 @@
       "status": "implemented",
       "note": "PolarisKeyPacks' parseFilesIndex, checkPaths and treeDigest; filesIndexCases in ContentConformanceTests, read from the checkout."
     },
-    "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
+    "packs.index.chunks": {
+      "status": "implemented",
+      "note": "PolarisKeyPacks' parseChunkIndex and parseChunkIndexBytes (u64 from two little-endian u32 reads composed byte by byte, saturated at 2^53); chunkIndexCases in ContentConformanceTests under both libzstd paths."
+    },
     "packs.apply.full": {
       "status": "implemented",
       "note": "applyFull, streamed through libzstd's ZSTD_decompressStream (and one-shot without it); applyCases under both paths."
@@ -103,7 +106,10 @@
       "status": "implemented",
       "note": "applyFile with the type-neutral container rebuild; applyCases under both paths."
     },
-    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.chunk": {
+      "status": "implemented",
+      "note": "applyChunk (seed map, chunkRuns, repair pass, run journal resume) over chunkRangeFetch: one bounded Range per run with If-Range and Accept-Encoding identity through URLSession, an exact Content-Range and ETag, never multi-range. PackEngine keeps seed indexes under <packs root>/index/, seeds across packs and embedded baselines, and falls back on a refused range; the chunk applyCases in ContentConformanceTests and ChunkSyncTests."
+    },
     "packs.apply.delta": {
       "status": "implemented",
       "note": "libzstd 1.5.7 (facebook/zstd SwiftPM package): ZSTD_DCtx_refPrefix with ZSTD_d_windowLogMax; the window check runs in the applier before every prefix decode, macOS and iOS alike."

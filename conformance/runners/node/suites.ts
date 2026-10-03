@@ -73,9 +73,10 @@
 //                                                                         applyFile
 //   chunkIndexCases   plans/P4-10.md §2.3's parseChunkIndex (P4-10)    → parseChunkIndex
 //
-// The eight `strategy: chunk` apply cases (plans/P4-10.md §4.3) are declared `it.todo` by exact
-// id until P4-11 lands `applyChunk` (`packs.apply.chunk`); the target cases pass `chunkIndex`
-// (plans/P4-10.md §2.5) to `planTarget`.
+// The eight `strategy: chunk` apply cases (plans/P4-10.md §4.3) run through P4-11's `applyChunk`
+// (`packs.apply.chunk`): seeds parsed unbound, a fetcher that answers each single-range request
+// with `objects[sha256]` sliced to the range and clipped at the object's end, and an in-memory
+// output; the target cases pass `chunkIndex` (plans/P4-10.md §2.5) to `planTarget`.
 //
 // and, from P4-13 (plans/P4-13.md §4, §5 order 1), the content members, revocations, holds and
 // the content decision:
@@ -190,6 +191,7 @@ import {
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
+  applyChunk,
   applyDelta,
   applyFile,
   applyFull,
@@ -199,6 +201,7 @@ import {
   packSetId,
   parseContentStamp,
   parseChunkIndex,
+  parseChunkIndexBytes,
   parseFilesIndex,
   plan,
   planTarget,
@@ -207,6 +210,7 @@ import {
   verifyMarker,
   type BlockedState,
   type BundleRefusalReason,
+  type ChunkSeed,
   type FilesIndexRef,
   type InstalledFile,
   type PackSetEntry,
@@ -1893,6 +1897,9 @@ export interface ContentCorpus {
     variant: PackVariant;
     delta?: number;
     installed?: { payload: ContentRef; files: ContentRef };
+    /** A chunk case's seeds (plans/P4-10.md §4.3): each installed payload and its raw index. */
+    seeds?: { payload: ContentRef; index: ContentRef }[];
+    repair?: boolean;
     objects: Record<string, ContentRef>;
     skipBaseCheck?: boolean;
     expect: unknown;
@@ -1966,8 +1973,8 @@ async function materialise(
   return bytes;
 }
 
-/** plans/P4-10.md §4.3: the chunk apply cases, `it.todo` until P4-11 lands `applyChunk`. */
-export const CHUNK_APPLY_TODO = [
+/** plans/P4-10.md §4.3: the chunk apply cases, every one run through `applyChunk` (P4-11). */
+export const CHUNK_APPLY_CASES = [
   "chunk-v1-to-v2",
   "chunk-no-seed",
   "chunk-tampered-zstd",
@@ -2063,21 +2070,72 @@ export function defineContentSuites({
       }
     });
 
-    // @pkey-feature packs.apply.full packs.apply.file packs.apply.delta
+    // @pkey-feature packs.apply.full packs.apply.file packs.apply.delta packs.apply.chunk
     describe(`content corpus v${content.contentCorpusVersion} — applyCases [${backend.label}] (plans/P4-01.md §2.9)`, () => {
       it("has every apply case of plans/P4-01.md §4.4 and plans/P4-10.md §4.3", () => {
         expect(content.applyCases.length).toBe(27);
-        // The chunk cases this runner declares `todo` are exactly the corpus's chunk cases.
+        // Every chunk case runs: the list is exactly the corpus's chunk cases.
         expect(
           content.applyCases
             .filter((c) => c.strategy === "chunk")
             .map((c) => c.id),
-        ).toEqual([...CHUNK_APPLY_TODO]);
+        ).toEqual([...CHUNK_APPLY_CASES]);
       });
       for (const c of content.applyCases) {
         if (c.strategy === "chunk") {
           // @pkey-feature packs.apply.chunk
-          it.todo(`apply ${c.id} (applyChunk, P4-11)`);
+          it(`apply ${c.id}`, async () => {
+            const store = new Map<string, Uint8Array>();
+            for (const [h, src] of Object.entries(c.objects))
+              store.set(h, await materialise(src, blobs, decode));
+            const seeds: ChunkSeed[] = [];
+            for (const sd of c.seeds ?? []) {
+              const p = parseChunkIndexBytes(
+                await materialise(sd.index, blobs, decode),
+                null,
+              );
+              if (p.ok)
+                seeds.push({
+                  index: p.index,
+                  payload: memorySource(
+                    await materialise(sd.payload, blobs, decode),
+                  ),
+                });
+            }
+            const out = new Uint8Array(c.variant.payload.size);
+            const { verdict } = await applyChunk(
+              c.variant,
+              seeds,
+              {
+                objects: async (h) => {
+                  const b = store.get(h);
+                  return b === undefined ? null : memorySource(b);
+                },
+                zstd: backend.zstd,
+                fetchRange: async ({ bundle, offset, length }) => {
+                  const b = store.get(bundle) ?? new Uint8Array();
+                  const part = b.subarray(
+                    Math.min(offset, b.byteLength),
+                    Math.min(offset + length, b.byteLength),
+                  );
+                  return {
+                    status: "ok",
+                    chunks: (async function* () {
+                      yield part;
+                    })(),
+                  };
+                },
+                output: {
+                  write: async (at, bytes) => {
+                    out.set(bytes, at);
+                  },
+                  read: async (at, n) => out.slice(at, at + n),
+                },
+              },
+              { repair: c.repair === true },
+            );
+            expect(verdict, c.description).toEqual(c.expect);
+          });
           continue;
         }
         if (!["full", "delta", "file"].includes(c.strategy))

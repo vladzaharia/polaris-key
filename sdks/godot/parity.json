@@ -135,15 +135,15 @@
     },
     "packs.plan": {
       "status": "implemented",
-      "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json (v2) row, variant case and target case on the editor and the release template; plan_target applies the P4-10 §2.5 chunk rule when given a chunk index (Godot parses none until P4-11)."
+      "note": "P4-08: packs/select.gd (select_variant, plan_target, plan), a port of client-core; every plan-matrix.json (v2) row, variant case and target case on the editor and the release template; plan_target applies the P4-10 §2.5 chunk rule over the chunk index the engine stages (P4-11)."
     },
     "packs.index.files": {
       "status": "implemented",
       "note": "P4-08: packs/files.gd (parse_files_index, check_paths, tree_digest) over PackedByteArray.decompress; every pathCases and filesIndexCases vector."
     },
     "packs.index.chunks": {
-      "status": "planned",
-      "wp": "P4-11"
+      "status": "implemented",
+      "note": "P4-11: packs/chunks.gd parse_chunk_index / parse_chunk_index_bytes over PackedByteArray.decode_u32/decode_u16 (a u64 is two u32 reads composed and saturated at 2^53, never decode_u64), the zstd index through PackedByteArray.decompress with its exact size; every chunkIndexCases vector on the editor and the release template (4.4.1 and 4.7.2)."
     },
     "packs.apply.full": {
       "status": "implemented",
@@ -154,8 +154,8 @@
       "note": "P4-08: packs/apply.gd apply_file with the type-neutral container rebuild from gaps and blobs; a godot.pck installed without a kept index derives its files from its own PCK directory, so the next release can come by file."
     },
     "packs.apply.chunk": {
-      "status": "planned",
-      "wp": "P4-11"
+      "status": "implemented",
+      "note": "P4-11: packs/chunks.gd apply_chunk (seed map, the planner's run rule, one single-range request per run, every fetched chunk decoded and verified, the repair pass) and chunk_range_fetch (Range bytes=o-e with If-Range on the bundle hash over HTTPClient with Accept-Encoding: identity, PKeyPackHttp.open_range pulling the body; only an exact 206 Content-Range, clipped at the object's end, and an ETag equal to the bundle hash are read, anything else falls back; no multi-range; Authorization dropped on a cross-origin redirect). PKeyPackEngine lists chunk in its strategies: seeds from this pack's installs, every other pack's active and previous installs and the embedded baselines, whose indexes are kept in <root>/index/<sha256> (backfilled after each ensure, re-verified at every use, collected with their installs); the target index staged before planning; the run bitmap in staging/<planId>/journal.json, re-hashed on resume; a refused range falls back, an interrupted one resumes at the next ensure. Delegated releases (trees) never plan chunk. Every chunk applyCases vector on the editor and the release template."
     },
     "packs.apply.delta": {
       "status": "implemented",

@@ -18,7 +18,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { packSetId } from "@polaris-key/client-core";
+import { packSetId, type PackHandler } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/index.js";
 import {
   DirPackStorage,
@@ -40,12 +40,19 @@ import {
   type TreePack,
 } from "./packFixtures.js";
 import { MemStore } from "./updateFixtures.js";
+import {
+  chunkStamp,
+  containerPack,
+  sha,
+  type ContainerPack,
+} from "./chunkFixtures.js";
 
 interface Seen {
   path: string;
   range: string | null;
   ifRange: string | null;
   auth: string | null;
+  acceptEncoding: string | null;
 }
 
 /** A local Worker stand-in: discovery, records by hash, blobs by hash (Range, If-Range) and
@@ -57,6 +64,11 @@ class FakeServer {
   seen: Seen[] = [];
   reports: unknown[] = [];
   drop: number | null = null;
+  /** P4-11: answer bounded ranges with 200 and the whole object (a server that ignores Range). */
+  ignoreRange = false;
+  /** P4-11: cut the body of the Nth bounded range request (1-based) half way. */
+  cutRange = 0;
+  private boundedRanges = 0;
   /** Extra records by hash (app records, revocations) and the signed feed `update/stable`
    *  serves (P4-13). */
   records = new Map<string, string>();
@@ -79,6 +91,8 @@ class FakeServer {
       range: req.headers.range ?? null,
       ifRange: (req.headers["if-range"] as string | undefined) ?? null,
       auth: req.headers.authorization ?? null,
+      acceptEncoding:
+        (req.headers["accept-encoding"] as string | undefined) ?? null,
     });
     if (url.pathname === `/${PRODUCT}/.well-known/polaris.json`) {
       res.writeHead(200, { "content-type": "application/json" });
@@ -112,22 +126,39 @@ class FakeServer {
       const range = req.headers.range;
       const ifRange = req.headers["if-range"];
       let start = 0;
+      let end = bytes.byteLength - 1;
       let status = 200;
-      if (range && (ifRange === undefined || ifRange === etag)) {
-        start = Number(/^bytes=(\d+)-$/.exec(range)?.[1] ?? 0);
+      const m = range ? /^bytes=(\d+)-(\d*)$/.exec(range) : null;
+      const bounded = m !== null && m[2] !== "";
+      let cut = false;
+      if (bounded) {
+        this.boundedRanges++;
+        cut = this.boundedRanges === this.cutRange;
+      }
+      if (
+        m &&
+        (ifRange === undefined || ifRange === etag) &&
+        !(bounded && this.ignoreRange)
+      ) {
+        start = Number(m[1]);
+        if (bounded) end = Math.min(end, Number(m[2]));
         status = 206;
       }
-      const body = Buffer.from(bytes.subarray(start));
+      const body = Buffer.from(bytes.subarray(start, end + 1));
       res.writeHead(status, {
         etag,
         "accept-ranges": "bytes",
         "content-length": String(body.byteLength),
         ...(status === 206
           ? {
-              "content-range": `bytes ${start}-${bytes.byteLength - 1}/${bytes.byteLength}`,
+              "content-range": `bytes ${start}-${end}/${bytes.byteLength}`,
             }
           : {}),
       });
+      if (cut) {
+        res.write(body.subarray(0, body.byteLength >> 1), () => res.destroy());
+        return;
+      }
       if (this.drop !== null) {
         const n = this.drop;
         this.drop = null;
@@ -204,6 +235,8 @@ afterAll(async () => {
 afterEach(async () => {
   srv.seen = [];
   srv.reports = [];
+  srv.ignoreRange = false;
+  srv.cutRange = 0;
   if (work) await rm(work, { recursive: true, force: true });
 });
 
@@ -214,6 +247,7 @@ async function client(o: {
   embedded?: { path: string }[];
   token?: boolean;
   dataDir?: string;
+  handlers?: PackHandler[];
 }) {
   work ??= await mkdtemp(join(tmpdir(), "pkey-packs-"));
   const stampPath = join(
@@ -244,6 +278,7 @@ async function client(o: {
       packs: {
         contentStamp: stampPath,
         ...(o.embedded ? { embedded: o.embedded } : {}),
+        ...(o.handlers ? { handlers: o.handlers } : {}),
       },
     },
   });
@@ -490,6 +525,23 @@ describe("the Node zstd backend (plans/P4-01.md §5; PARITY §6.3)", () => {
 });
 
 describe("DirPackStorage", () => {
+  it("never reads a stored seed index over MAX_CHUNK_INDEX_BYTES (P4-11)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pkey-idx-"));
+    try {
+      const s = new DirPackStorage({ root: dir });
+      const sha = "cd".repeat(32);
+      await s.chunkIndexes.put(sha, new Uint8Array(16));
+      expect(await s.chunkIndexes.get(sha)).toHaveLength(16);
+      await writeFile(
+        join(dir, "index", sha),
+        new Uint8Array(16 * 1024 * 1024 + 1),
+      );
+      expect(await s.chunkIndexes.get(sha)).toBeNull();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("reads an embedded single-file baseline from the file itself", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pkey-store-"));
     try {
@@ -843,5 +895,129 @@ describe("client.update.packs and delegated releases (plans/P4-19.md §2.4)", ()
     } finally {
       srv.records = new Map();
     }
+  });
+});
+
+// @pkey-feature packs.apply.chunk packs.index.chunks
+describe("client.update.packs and chunk sync (P4-11)", () => {
+  const BLOB: PackHandler = {
+    type: "custom.blob",
+    layout: "container",
+    activation: "restart",
+    supports: (v) => v === 1,
+  };
+  async function chain() {
+    const v1 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.0.0",
+      seq: 1,
+      chunks: ["a", "b", "c", "d", "e", "f"],
+      bundles: [["a", "b", "c", "d", "e", "f"]],
+    });
+    const v2 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.1.0",
+      seq: 2,
+      chunks: ["a", "g", "c", "h", "i", "f", "j"],
+      bundles: [
+        ["a", "b", "c", "d", "e", "f"],
+        ["g", null, "h", "i", null, "j"],
+      ],
+    });
+    srv.packs = [v1, v2] as unknown as TreePack[];
+    return { v1, v2 };
+  }
+  const target = (p: ContainerPack) => ({
+    pack: p.packId,
+    release: { sha256: p.recordSha256, seq: p.seq, version: p.version },
+  });
+  const ranged = () =>
+    srv.blobRequests().filter((s) => s.range !== null && /-\d+$/.test(s.range));
+
+  it("keeps v1's index on disk, installs v2 in single-range runs, and resumes a cut run from journal.json", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const { v1, v2 } = await chain();
+    const c = await client({
+      stamp: [],
+      stampDoc: chunkStamp(v1),
+      handlers: [BLOB],
+    });
+    await c.update.packs.ensure([v1.packId]);
+    const root = join(work, "data", PRODUCT, "packs");
+    expect(
+      Buffer.compare(
+        await readFile(join(root, "index", v1.indexSha256)),
+        Buffer.from(v1.index),
+      ),
+    ).toBe(0);
+    expect(ranged()).toHaveLength(0);
+
+    // The second run's body is cut half way: the install stops, keeping its journals.
+    srv.seen = [];
+    srv.cutRange = 2;
+    await expect(
+      c.update.packs.ensureReleases([target(v2)]),
+    ).rejects.toMatchObject({ code: "network-error", detail: "chunk" });
+    const first = ranged();
+    expect(first.map((s) => s.range)).toEqual([
+      "bytes=0-65535",
+      "bytes=131072-262143",
+    ]);
+    for (const s of first) {
+      // The Fetch standard's own `Accept-Encoding: identity` for a `Range` request.
+      expect(s.acceptEncoding).toBe("identity");
+      expect(s.ifRange).toMatch(/^"[0-9a-f]{64}"$/);
+    }
+    const planId = (await c.update.packs.state()).inflight[v2.packId]!.planId;
+    expect(
+      JSON.parse(
+        await readFile(join(root, "staging", planId, "journal.json"), "utf8"),
+      ),
+    ).toMatchObject({ v: 1, index: v2.indexSha256, runs: 3, bitmap: "01" });
+    c.close();
+
+    // A relaunch resumes: run 0 is re-hashed from staging/<plan>/out and reused.
+    srv.seen = [];
+    srv.cutRange = 0;
+    const again = await client({
+      stamp: [],
+      stampDoc: chunkStamp(v1),
+      handlers: [BLOB],
+    });
+    const [install] = await again.update.packs.ensureReleases([target(v2)]);
+    expect(install!.payloadSha256).toBe(sha(v2.payload));
+    expect(ranged().map((s) => s.range)).toEqual([
+      "bytes=131072-262143",
+      "bytes=327680-393215",
+    ]);
+    const m = await measureFile(
+      join(root, "store", v2.packId, sha(v2.payload), "payload.bin"),
+    );
+    expect(m.sha256).toBe(sha(v2.payload));
+    // The full payload was never fetched.
+    expect(
+      srv.blobRequests().some((s) => s.path.endsWith(sha(v2.payload))),
+    ).toBe(false);
+    again.close();
+  });
+
+  it("falls back to the full payload when the server ignores Range", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const { v1, v2 } = await chain();
+    const c = await client({
+      stamp: [],
+      stampDoc: chunkStamp(v1),
+      handlers: [BLOB],
+    });
+    await c.update.packs.ensure([v1.packId]);
+    srv.seen = [];
+    srv.ignoreRange = true;
+    const [install] = await c.update.packs.ensureReleases([target(v2)]);
+    expect(install!.payloadSha256).toBe(sha(v2.payload));
+    expect(ranged()).toHaveLength(1);
+    expect(
+      srv.blobRequests().some((s) => s.path.endsWith(sha(v2.payload))),
+    ).toBe(true);
+    c.close();
   });
 });

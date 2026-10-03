@@ -377,6 +377,7 @@ class PacksClient:
             revocations=storage.revocation_store(),
             fetch_record=self._fetch_record,
             fetch_object=self._fetch_object,
+            supports_range=True,
             entitlements=self._entitlements,
             now=lambda: ctx.now(),
             new_plan_id=lambda: secrets.token_hex(12),
@@ -499,23 +500,34 @@ class PacksClient:
         except Exception:
             return {"ok": False, "code": ErrorCode.NETWORK_ERROR}
 
-    def _fetch_object(self, sha256: str, offset: int, if_range: Optional[str]) -> ObjectResponse:
+    def _fetch_object(
+        self, sha256: str, offset: int, if_range: Optional[str], length: Optional[int] = None
+    ) -> ObjectResponse:
         """One object by hash. httpx's read timeout applies per read, so it is an idle timeout:
-        a large payload is never cut off for taking longer than one request may."""
+        a large payload is never cut off for taking longer than one request may. With ``length``
+        (P4-11's chunk runs) the request is the single bounded range ``bytes=<o>-<o+length-1>``
+        with ``Accept-Encoding: identity`` (a compressed answer would break the byte range), never
+        a multi-range. Redirects are never followed, so the bearer never reaches another host."""
         t = self._template("distribution", "blobs")
         if t is None:
             raise PackError(ErrorCode.SERVICE_UNAVAILABLE, "Discovery names no blob endpoint.")
         url = self._expand(t, sha256)
         headers = dict(self._auth(url))
-        if offset > 0:
+        if length is not None:
+            if not isinstance(length, int) or isinstance(length, bool) or length < 1 or offset < 0:
+                raise PackError(ErrorCode.INVALID_OPTIONS, "A ranged object fetch needs a length of at least 1.")
+            headers["range"] = f"bytes={offset}-{offset + length - 1}"
+            headers["accept-encoding"] = "identity"
+        elif offset > 0:
             headers["range"] = f"bytes={offset}-"
         if if_range is not None:
             headers["if-range"] = if_range
         client = self._ctx.http()
         req = client.build_request("GET", url, headers=self._ctx.headers(headers), timeout=self._ctx.timeout)
-        res = client.send(req, stream=True)
+        res = client.send(req, stream=True, follow_redirects=False)
         return ObjectResponse(
             status=res.status_code,
             content_range=res.headers.get("content-range"),
             chunks=_Body(res),
+            etag=res.headers.get("etag"),
         )

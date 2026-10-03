@@ -41,6 +41,7 @@ import {
   treePack,
   type TreePack,
 } from "./packFixtures.js";
+import { containerPack } from "./chunkFixtures.js";
 
 const zstd: ZstdPort = {
   pointerBits: 30,
@@ -197,6 +198,76 @@ describe("PackEngine and delegated releases (plans/P4-19.md §2.4, §2.5)", () =
     expect(dataOnlyFileRefusal("b.json", pack.files["b.json"]!)).toBe(
       "content",
     );
+  });
+
+  // @pkey-feature packs.apply.chunk
+  it("never plans the chunk strategy for a delegated release: its writes still pass the data-only rule (P4-11)", async () => {
+    // A release-signed container is installed and its index kept as a seed; the delegated tree
+    // carries a well-formed `chunks` member naming that index. Chunks are container-only
+    // (plans/P4-10.md §2.5) and delegated releases are trees (plans/P4-19.md §2.3), so the
+    // chunk index is never fetched and the tree sink still refuses the resource head.
+    const seed = await containerPack({
+      packId: "djdl.seed",
+      version: "1.0.0",
+      seq: 1,
+      chunks: ["a", "b"],
+      bundles: [["a", "b"]],
+    });
+    const ck = contentKeyPair();
+    const d = await delegationFor({
+      deliverable: "djdl.events",
+      publicKey: ck.pub,
+    });
+    const pack = await treePack({
+      packId: "djdl.events.halloween",
+      version: "1.0.0",
+      seq: 1,
+      files: { "a.json": "{}", "b.json": "RSRC\u0000\u0000\u0000\u0000" },
+      issuedAt: 1759250000,
+      signer: { pem: ck.pem, kid: d.kid },
+      variantExtra: {
+        chunks: {
+          format: "pkey-chunks/1",
+          sha256: seed.indexSha256,
+          bytes: seed.index.byteLength,
+          size: seed.index.byteLength,
+          codec: "none",
+        },
+      },
+    });
+    const server = byteServer(pack, seed as unknown as TreePack);
+    const storage = memoryPackStorage();
+    const e = engine({
+      server,
+      delegations: new Map([[d.sha256, d.jws]]),
+      storage,
+      handlers: [
+        {
+          type: "custom.blob",
+          layout: "container",
+          activation: "restart",
+          supports: (v) => v === 1,
+        },
+      ],
+    });
+    await e.load();
+    await e.ensureReleases([
+      {
+        pack: seed.packId,
+        release: { sha256: seed.recordSha256, seq: 1, version: "1.0.0" },
+      },
+    ]);
+    expect([...storage.indexes.keys()]).toEqual([seed.indexSha256]);
+    server.calls.length = 0;
+    await expect(e.ensureReleases([target(pack)])).rejects.toMatchObject({
+      code: "pack-not-data-only",
+      detail: "content",
+      path: "b.json",
+    });
+    expect(server.calls.some((c) => c.sha256 === seed.indexSha256)).toBe(false);
+    expect(
+      server.calls.some((c) => (c as { length?: number }).length !== undefined),
+    ).toBe(false);
   });
 
   it("refuses a release under a revoked delegation (pack-revoked, detail delegation) and unmounts it", async () => {

@@ -1,4 +1,4 @@
-// @pkey-feature packs.state packs.handlers packs.record packs.delegation packs.provides
+// @pkey-feature packs.state packs.handlers packs.record packs.delegation packs.provides packs.apply.chunk
 //
 // `update.packs` end to end against a fake control plane (the port of the Node SDK's
 // `test/packs.test.ts`): a `files.tree` pack installed from its pinned record into the platform
@@ -140,7 +140,8 @@ final class PacksFacetTests: XCTestCase {
     private var root: URL { work.appendingPathComponent("data/djdl/packs") }
 
     private func client(
-        stamp: PackStampSource?, embedded: [EmbeddedPack] = [], token: Bool = true
+        stamp: PackStampSource?, embedded: [EmbeddedPack] = [], token: Bool = true,
+        transport: (any PackObjectTransport)? = nil, handlers: [any PackHandler] = []
     ) async throws -> (PolarisKeyClient, UpdateClient) {
         let store = InMemoryStore(deviceId: "dev_packs")
         if token { await store.setToken("pkeyt_test") }
@@ -153,7 +154,8 @@ final class PacksFacetTests: XCTestCase {
             core: client.core,
             options: UpdateClientOptions(
                 pinnedReleaseKeys: PackFixtures.releaseKeys, outlet: .kind("direct"),
-                packs: PacksOptions(contentStamp: stamp, embedded: embedded, objectTransport: blobs)))
+                packs: PacksOptions(
+                    contentStamp: stamp, embedded: embedded, handlers: handlers, objectTransport: transport ?? blobs)))
         return (client, update)
     }
 
@@ -298,6 +300,63 @@ final class PacksFacetTests: XCTestCase {
         XCTAssertFalse(blobs.seen.contains { $0.path.hasSuffix(v2.fullSha256) })
         let prev = try await update.packs.state().previous["djdl.l10n"]
         XCTAssertEqual(prev?.version, "1.0.0")
+        await c.close()
+    }
+
+    /// P4-11 through the facet: v1 installs by full and its chunk index is kept under
+    /// `<packs root>/index/`; v2 installs by chunk with one bounded single range per run, each
+    /// with `If-Range` on the bundle hash, `Accept-Encoding: identity` and the device bearer.
+    func testChunkSyncThroughTheFacetSendsOneBoundedRangePerRun() async throws {
+        let v1 = chunkPack(
+            "djdl.music", version: "1.0.0", seq: 1, chunks: ["a", "b", "c", "d", "e", "f"],
+            bundles: [["a", "b", "c", "d", "e", "f"]])
+        let v2 = chunkPack(
+            "djdl.music", version: "1.1.0", seq: 2, chunks: ["a", "g", "c", "h", "i", "f", "j"],
+            bundles: [["a", "b", "c", "d", "e", "f"], ["g", "x", "h", "i", "y", "j"]])
+        for p in [v1, v2] { await server.reply("/djdl/release/records/\(p.recordSha256)", body: p.jws) }
+        let ranged = RangeBlobs(v1.objects.merging(v2.objects) { a, _ in a })
+        let url = work.appendingPathComponent("stamp-chunk.json")
+        try Data(stampText(AppContent(contentApi: 1, pins: [v1.pin], expects: [])).utf8).write(to: url)
+        let (c, update) = try await client(stamp: .file(url), transport: ranged, handlers: [BlobHandler()])
+        _ = try await update.packs.ensure([v1.packId])
+        XCTAssertTrue(ranged.seen.allSatisfy { $0.range == nil })
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: root.appendingPathComponent("index/\(v1.chunksSha256)").path))
+
+        ranged.seen = []
+        let i2 = try await update.packs.ensureReleases([v2.target])[0]
+        let payload = try Data(contentsOf: URL(fileURLWithPath: i2.location).appendingPathComponent("payload.bin"))
+        XCTAssertEqual(sha256Of([UInt8](payload)), v2.payloadSha256)
+        let runs = ranged.seen.filter { $0.range != nil }
+        XCTAssertEqual(runs.map(\.range), ["bytes=0-65535", "bytes=131072-262143", "bytes=327680-393215"])
+        XCTAssertTrue(runs.allSatisfy { $0.path.hasSuffix(v2.bundleShas[1]) })
+        XCTAssertTrue(runs.allSatisfy { $0.ifRange == "\"\(v2.bundleShas[1])\"" })
+        XCTAssertTrue(runs.allSatisfy { $0.acceptEncoding == "identity" })
+        XCTAssertTrue(runs.allSatisfy { $0.auth == "Bearer pkeyt_test" })
+        XCTAssertFalse(ranged.seen.contains { $0.path.hasSuffix(v2.fullSha256) })
+        await c.close()
+    }
+
+    /// P4-11: a host transport that does not declare range support never gets a range request;
+    /// v2 installs by another strategy.
+    func testATransportWithoutRangeSupportNeverPlansChunk() async throws {
+        let v1 = chunkPack(
+            "djdl.music", version: "1.0.0", seq: 1, chunks: ["a", "b", "c", "d", "e", "f"],
+            bundles: [["a", "b", "c", "d", "e", "f"]])
+        let v2 = chunkPack(
+            "djdl.music", version: "1.1.0", seq: 2, chunks: ["a", "g", "c", "h", "i", "f", "j"],
+            bundles: [["a", "b", "c", "d", "e", "f"], ["g", "x", "h", "i", "y", "j"]])
+        for p in [v1, v2] { await server.reply("/djdl/release/records/\(p.recordSha256)", body: p.jws) }
+        let plain = RangeBlobs(v1.objects.merging(v2.objects) { a, _ in a }, supportsRange: false)
+        let url = work.appendingPathComponent("stamp-norange.json")
+        try Data(stampText(AppContent(contentApi: 1, pins: [v1.pin], expects: [])).utf8).write(to: url)
+        let (c, update) = try await client(stamp: .file(url), transport: plain, handlers: [BlobHandler()])
+        _ = try await update.packs.ensure([v1.packId])
+        let i2 = try await update.packs.ensureReleases([v2.target])[0]
+        let payload = try Data(contentsOf: URL(fileURLWithPath: i2.location).appendingPathComponent("payload.bin"))
+        XCTAssertEqual(sha256Of([UInt8](payload)), v2.payloadSha256)
+        XCTAssertTrue(plain.seen.allSatisfy { $0.range == nil })
+        XCTAssertTrue(plain.seen.contains { $0.path.hasSuffix(v2.fullSha256) })
         await c.close()
     }
 
@@ -526,5 +585,66 @@ final class PacksFacetTests: XCTestCase {
         try s.clearQuarantine()
         XCTAssertFalse(try s.quarantined())
         XCTAssertNil(try s.readHoldList())
+    }
+}
+
+/// The blob route with bounded ranges (P4-11): `Range: bytes=o-e` answered `206` with the exact
+/// `Content-Range` and `ETag: "<sha256>"` when `If-Range` is absent or matches; every request's
+/// headers logged.
+final class RangeBlobs: PackObjectTransport, @unchecked Sendable {
+    struct Seen: Equatable {
+        let path: String
+        let range: String?
+        let ifRange: String?
+        let acceptEncoding: String?
+        let auth: String?
+    }
+    private let lock = NSLock()
+    private let objects: [String: [UInt8]]
+    private var _seen: [Seen] = []
+
+    let supportsRange: Bool
+
+    init(_ objects: [String: [UInt8]], supportsRange: Bool = true) {
+        self.objects = objects
+        self.supportsRange = supportsRange
+    }
+
+    var seen: [Seen] {
+        get { lock.withLock { _seen } }
+        set { lock.withLock { _seen = newValue } }
+    }
+
+    func get(_ url: URL, headers: [String: String], timeoutSeconds: Double) async throws -> ObjectResponse {
+        func h(_ k: String) -> String? { headers.first { $0.key.lowercased() == k }?.value }
+        let sha = url.lastPathComponent
+        lock.withLock {
+            _seen.append(
+                Seen(
+                    path: url.path, range: h("range"), ifRange: h("if-range"), acceptEncoding: h("accept-encoding"),
+                    auth: h("authorization")))
+        }
+        let tag = "\"\(sha)\""
+        guard let bytes = objects[sha] else {
+            return ObjectResponse(status: 404, contentRange: nil, chunks: AsyncThrowingStream { $0.finish() })
+        }
+        var lo = 0
+        var hi = bytes.count
+        var status = 200
+        if let range = h("range"), h("if-range") == nil || h("if-range") == tag,
+            let m = wholeMatches("bytes=([0-9]+)-([0-9]*)", range), let s = m[1], let start = Int(s)
+        {
+            lo = min(start, bytes.count)
+            if let e = m[2], let end = Int(e) { hi = min(end + 1, bytes.count) }
+            status = 206
+        }
+        let body = Array(bytes[lo..<max(lo, hi)])
+        return ObjectResponse(
+            status: status, contentRange: status == 206 ? "bytes \(lo)-\(max(lo, hi) - 1)/\(bytes.count)" : nil,
+            etag: tag,
+            chunks: AsyncThrowingStream { c in
+                c.yield(body)
+                c.finish()
+            })
     }
 }

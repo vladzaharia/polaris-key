@@ -32,14 +32,35 @@ func fetch_record(sha256: String) -> Dictionary:
 	return {"ok": true, "body": r["body"]}
 
 
-func fetch_object(req: Dictionary, on_response: Callable, on_chunk: Callable) -> Dictionary:
+## The blob URL for `sha256` and its headers: {url, headers}, or {} when discovery has no blob
+## route. The bearer goes only to the control plane's own origin (a CDN never sees it); the HTTP
+## helper drops it again on any cross-origin redirect. A coroutine.
+func _blob(sha256: String) -> Dictionary:
 	var t: String = await _template("distribution", "blobs")
 	if t == "":
-		return {"status": 0, "content_range": "", "error": String(PKeyErrors.SERVICE_UNAVAILABLE)}
-	var url := PKeyUpdate._expand(core, t, "sha256", String(req["sha256"]))
+		return {}
+	var url := PKeyUpdate._expand(core, t, "sha256", sha256)
 	var h := core.headers()
-	# The bearer goes only to the control plane's own origin (a CDN never sees it); the HTTP
-	# helper drops it again on any cross-origin redirect.
 	if core.tokens.has_token() and PKeyTransport.parse_url(url).get("origin", "") == PKeyTransport.parse_url(core.base_url + "/").get("origin", "-"):
 		h["Authorization"] = "Bearer %s" % core.tokens.current()
-	return await PKeyPackHttp.fetch(core.transport, url, h, int(req.get("offset", 0)), String(req.get("if_range", "")), on_response, on_chunk, object_timeout)
+	return {"url": url, "headers": h}
+
+
+func fetch_object(req: Dictionary, on_response: Callable, on_chunk: Callable) -> Dictionary:
+	var b: Dictionary = await _blob(String(req["sha256"]))
+	if b.is_empty():
+		return {"status": 0, "content_range": "", "error": String(PKeyErrors.SERVICE_UNAVAILABLE)}
+	return await PKeyPackHttp.fetch(core.transport, b["url"], b["headers"], int(req.get("offset", 0)), String(req.get("if_range", "")), on_response, on_chunk, object_timeout)
+
+
+func supports_range() -> bool:
+	return true
+
+
+## One single-range request for the chunk strategy (P4-11): `Range: bytes=o-e`, the If-Range the
+## adapter derived from the signed index, `Accept-Encoding: identity`; the body is left unread.
+func open_range(req: Dictionary) -> Dictionary:
+	var b: Dictionary = await _blob(String(req["sha256"]))
+	if b.is_empty():
+		return {"status": 0, "content_range": "", "etag": null, "error": String(PKeyErrors.SERVICE_UNAVAILABLE), "body": null}
+	return await PKeyPackHttp.open_range(core.transport, b["url"], b["headers"], int(req.get("offset", 0)), int(req.get("length", 0)), String(req.get("if_range", "")), object_timeout)

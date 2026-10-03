@@ -2,8 +2,8 @@
 
 A port of ``@polaris-key/client-core``'s ``packs/`` (the pack-id and object-ref rules, the
 ``content`` claims, the files index and its path rules, ``tree_digest``, the variant key, the
-content stamp, ``pack_set_id``, the window check, the appliers, the planner, variant selection and
-target mapping, the marker, the install-state machine and the pipeline) and of
+content stamp, ``pack_set_id``, the window check, the appliers, the chunk index and chunk sync
+(P4-11), the planner, variant selection and target mapping, the marker, the install-state machine and the pipeline) and of
 ``@polaris-key/node``'s host side (the zstd backend, the directory store and the
 ``client.update.packs`` facet). Names follow the TypeScript ones in snake_case.
 """
@@ -13,6 +13,17 @@ from __future__ import annotations
 from ...core.pack_claims import content_claims, is_pack_id, object_ref, variant_key
 from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
 from .boot import boot_pack_options, run_boot_fetch
+from .chunk_apply import (
+    ApplyChunkPorts,
+    ChunkRangeResponse,
+    ChunkRun,
+    ChunkSeed,
+    apply_chunk,
+    chunk_range_fetch,
+    chunk_runs,
+    seed_map,
+)
+from .chunks import ParseChunkIndexResult, parse_chunk_index, parse_chunk_index_bytes, read_u64
 from .dataonly import (
     DATA_ONLY_SCRIPT_MARKERS,
     DATA_ONLY_TEXT_EXTENSIONS,
@@ -111,6 +122,18 @@ __all__ = [
     "apply_full",
     "boot_pack_options",
     "run_boot_fetch",
+    "ApplyChunkPorts",
+    "ChunkRangeResponse",
+    "ChunkRun",
+    "ChunkSeed",
+    "apply_chunk",
+    "chunk_range_fetch",
+    "chunk_runs",
+    "seed_map",
+    "ParseChunkIndexResult",
+    "parse_chunk_index",
+    "parse_chunk_index_bytes",
+    "read_u64",
     "FILES_TREE_HANDLER",
     "EmbeddedBaseline",
     "InstalledPayload",

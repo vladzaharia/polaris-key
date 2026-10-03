@@ -105,7 +105,10 @@
       "status": "implemented",
       "note": "update.packs parse_files_index, check_paths and tree_digest; filesIndexCases under compression.zstd (3.14+) and zstandard."
     },
-    "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
+    "packs.index.chunks": {
+      "status": "implemented",
+      "note": "update.packs parse_chunk_index and parse_chunk_index_bytes (u64 from two u32 reads, saturated at 2^53); chunkIndexCases under compression.zstd (3.14+) and zstandard. Seed indexes are kept under <packs root>/index/<sha256> and re-verified on every use."
+    },
     "packs.apply.full": {
       "status": "implemented",
       "note": "update.packs apply_full (streamed through decode_stream); applyCases under every backend the interpreter has."
@@ -114,7 +117,10 @@
       "status": "implemented",
       "note": "update.packs apply_file with the type-neutral container rebuild; applyCases under every backend."
     },
-    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.chunk": {
+      "status": "implemented",
+      "note": "update.packs apply_chunk over seeds from every installed and embedded container (across packs), one bounded Range request per run with If-Range and Accept-Encoding: identity through chunk_range_fetch (exact Content-Range and ETag, never multi-range); a run journal resumes an interrupted install and a refused range falls back to the next strategy. applyCases under every backend the interpreter has."
+    },
     "packs.apply.delta": {
       "status": "implemented",
       "note": "compression.zstd's ZstdDict(base, is_raw=True).as_prefix on 3.14+, zstandard's DICT_TYPE_RAWCONTENT below (a hard dependency there), window_log_max always set; the window check runs in the applier whatever the decoder, and a start-up probe gates zstd-patch-from."

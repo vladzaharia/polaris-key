@@ -1551,10 +1551,10 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.delegation": CapabilityRow("implemented", "release", ()),
         "packs.plan": CapabilityRow("implemented", "release", ()),
         "packs.index.files": CapabilityRow("implemented", "release", ()),
-        "packs.index.chunks": CapabilityRow("planned", "release", ()),
+        "packs.index.chunks": CapabilityRow("implemented", "release", ()),
         "packs.apply.full": CapabilityRow("implemented", "release", ()),
         "packs.apply.file": CapabilityRow("implemented", "release", ()),
-        "packs.apply.chunk": CapabilityRow("planned", "release", ()),
+        "packs.apply.chunk": CapabilityRow("implemented", "release", ()),
         "packs.apply.delta": CapabilityRow("implemented", "release", ()),
         "packs.state": CapabilityRow("implemented", "release", ()),
         "packs.handlers": CapabilityRow("implemented", "release", ()),
@@ -1576,4 +1576,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "736c386c32646c045e1885bb5ff9467d3a6a5acd42e5d7f528239623d2ade878"
+CAPABILITY_DIGEST: Final[str] = "73594026fc40fc49cc2e5367fc6961fad8ffe12884f023de41a60f1fe8346c0a"

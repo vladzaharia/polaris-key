@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 52 | 5 | 2 | 7 |
-| React | `web`, `desktop-bridge` | 44 | 14 | 2 | 6 |
-| Python | `python` | 52 | 5 | 2 | 7 |
-| Swift | `macos`, `ios` | 53 | 5 | 2 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 55 | 1 | 7 | 3 |
+| Node | `node` | 54 | 5 | 0 | 7 |
+| React | `web`, `desktop-bridge` | 46 | 14 | 0 | 6 |
+| Python | `python` | 54 | 5 | 0 | 7 |
+| Swift | `macos`, `ios` | 55 | 5 | 0 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 57 | 1 | 5 | 3 |
 
 ## Core
 
@@ -99,10 +99,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.delegation` | Content-key delegation: delegated pack records, the data-only rule, delegation revocations | `cases.json` `delegationCases` + `content/` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `packs.index.chunks` | Chunk index parsing | `content/` | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |
+| `packs.index.chunks` | Chunk index parsing | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.apply.full` | Full apply | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.apply.file` | File apply with type-neutral container rebuild | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | planned (P4-11) | — |
+| `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.apply.delta` | Raw-prefix delta | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | any: dependency; any: version |
 | `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + `content/` `packSetIdCases` (P4-04) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.handlers` | Handler contract; registerHandler for custom types | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |

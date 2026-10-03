@@ -727,8 +727,9 @@ in the document, out of use and out of GC (active and previous alike), a fresh c
 an active over as `previous` and a rollback re-verifies it; a listing that fails never drives GC.
 
 **`godot.pck`** (`PKeyGodotPckHandler`, a container, `restart`): strategies `delta` (a whole-
-payload `--patch-from` or a `files` set of per-entry frames), `file` (gaps plus blobs; a pack
-installed without a kept index derives its files from its own PCK directory, once) and `full`.
+payload `--patch-from` or a `files` set of per-entry frames), `chunk` (from seeds, below), `file`
+(gaps plus blobs; a pack installed without a kept index derives its files from its own PCK
+directory, once) and `full`.
 Before a rebuilt pack is committed its whole-pack SHA-256 already equals the record's; then the
 header (PCK v2–v4, no encryption, no sparse bundle; the engine at most the running one and inside
 `requires.engine`: `pck-engine-mismatch`) and **the directory check** (S-05 §5 (f), the admission
@@ -801,8 +802,31 @@ of a `files` set's frames go through one mount pair. The window check (§2.7 rul
 dictionary-magic rule run before any frame reaches the decoder, which enforces no window limit of
 its own. `zstd-patch-from` is advertised only on the engines in `PKeyPackZstd.PATCH_FROM_ENGINES`
 (4.6, 4.7: `PACK_FILE_DELTA` arrived in 4.6) whose start-up probe decodes; on the 4.4 floor the
-planner never chooses a delta, and the corpus's decode cases are held to fail closed. `chunk` is
-never advertised in v1.
+planner never chooses a delta, and the corpus's decode cases are held to fail closed.
+
+**Chunk sync** (P4-11; `PKeyPackChunks`, plans/P4-10.md §2.3, §2.5): `chunk` is in the engine's
+default strategies (`delta`, `chunk`, `file`, `full`). A container variant carrying a usable
+`pkey-chunks/1` index is rebuilt from **seeds**: this pack's installs, then every other pack's
+active and previous installs (by pack id), then the embedded baselines (by pack id), each a
+container whose own record names a chunk index kept in the seed store
+(`user://pkey/index/<sha256>`, the stored bytes as fetched, re-verified against the install's
+payload at every use). The first install of a pack is `full`; after every successful ensure the
+index of each installed or embedded container that lacks one is fetched by hash, verified and kept,
+and garbage collection drops every kept index no root install names. Before planning, the target
+index is staged like any object and handed to the planner; `chunk` then copies seeded chunks,
+copies duplicates from its own output, and fetches each missing run with **one single-range
+request** (`PKeyPackHttp.open_range` on HTTPClient: `Range: bytes=<o>-<e>`, `If-Range:
+"<bundle sha256>"`, `Accept-Encoding: identity`, never a multi-range; the body is pulled record by
+record, so one chunk is held at a time). Only a `206` whose `Content-Range` is exactly the request
+(or clipped at the bundle's end) and whose `ETag`, when present, is the quoted bundle hash is read;
+anything else (a `200`, another range or tag) falls back to the next candidate, `full` last. Every
+fetched chunk is decoded (`decompress` with its exact length) and hashed before it is written; a
+failing payload hash runs the repair pass. Each completed run sets a bit in
+`staging/<planId>/journal.json`: an interrupted run fails the ensure with `network-error` (detail
+`chunk`), and the next ensure resumes the same plan, re-hashing every journalled run before reusing
+it. A u64 in the index is two `decode_u32` reads saturated at 2^53, never `decode_u64`. Delegated
+releases are trees, so they never take this path. On web, `user://` lives in memory, so seeds do
+not persist and the planner falls back to `full` by itself.
 
 **HTTP** (`PKeyPackCdnTransport`, `PKeyPackHttp`): the record from discovery's
 `release.endpoints.record`, objects from `distribution.endpoints.blobs`, on HTTPClient (never

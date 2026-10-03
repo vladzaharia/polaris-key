@@ -82,8 +82,11 @@ is decoded), then length, magic, version, record size, flags, the exact length, 
 and, given the variant's payload, the binding (`chunks-payload-mismatch`). `planTarget` maps
 `chunks` to inline records only when the index is usable and bound to the payload and no chunk
 is longer than `MAX_CHUNK_BYTES` (4 MiB). Bundles are ordinary blobs, so a chunk is fetched with
-a single-range request and hashed before use. Applying chunks (`applyChunk`, seeds and
-`chunk-bundle-truncated` / `chunk-corrupt`) is P4-11's.
+a single-range request and hashed before use. Every SDK applies chunks (`applyChunk`, P4-11):
+seeds are the installed payloads whose index the SDK keeps (any pack, and embedded baselines),
+each missing run is one `Range` request with `If-Range` on the bundle hash, only a `206` with
+exactly the requested `Content-Range` is read, and any other answer falls back to the next
+strategy. A first install stays `full` and then keeps its index as a seed.
 
 ## What the content corpus pins
 

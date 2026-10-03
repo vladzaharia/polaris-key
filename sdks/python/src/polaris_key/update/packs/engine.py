@@ -30,7 +30,14 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
-from ...constants_generated import MAX_DELEGATIONS_PER_CHECK, MAX_FILES_INDEX_BYTES, ErrorCode
+from ...constants_generated import (
+    CHUNKS_FORMAT,
+    MAX_CHUNK_INDEX_BYTES,
+    MAX_DELEGATIONS_PER_CHECK,
+    MAX_FILES_INDEX_BYTES,
+    ErrorCode,
+)
+from ...core.b64url import b64url_decode
 from ...core.errors import PolarisError
 from ...core.jws import TrustSet
 from ...core.models import ReleasePin
@@ -45,13 +52,24 @@ from ...core.release_record import (
     verify_release_record,
 )
 from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
+from .chunk_apply import (
+    INTERRUPTED,
+    ApplyChunkPorts,
+    ChunkSeed,
+    accepts_range,
+    apply_chunk,
+    chunk_range_fetch,
+    chunk_runs,
+    seed_map,
+)
+from .chunks import parse_chunk_index
 from .dataonly import (
     DataOnlyRefusalSeen,
     data_only_file_refusal,
     data_only_path_refusal,
     data_only_tree_sink,
 )
-from .files import parse_files_index
+from .files import parse_files_index, strict_parse
 from .marker import match_embedded, verify_marker
 from .plan import plan
 from .provides import PackProvider, ProvidesFacts, ProvidesMemo, entitled, memo_key
@@ -75,7 +93,7 @@ from .ports import (
     hashlib_sha256,
     read_all,
 )
-from .select import index_readable, plan_target, select_variant
+from .select import index_readable, plan_target, select_variant, usable_codec
 from .sets import pack_set_id
 from .state import (
     abandon_install,
@@ -166,17 +184,23 @@ FILES_TREE_HANDLER = PackHandler(
 
 @dataclass
 class ObjectResponse:
-    """An object download as the engine reads it: ``status``, ``content_range`` (or ``None``)
-    and the body's ``chunks`` (an iterable of ``bytes``; it may raise mid-way)."""
+    """An object download as the engine reads it: ``status``, ``content_range`` (or ``None``),
+    the body's ``chunks`` (an iterable of ``bytes``; it may raise mid-way) and ``etag`` (``None``
+    when the host does not report it; P4-11: a chunk run's ``206`` must carry exactly
+    ``"<bundle sha256>"`` when it carries one)."""
 
     status: int
     content_range: Optional[str]
     chunks: Iterable[bytes]
+    etag: Optional[str] = None
 
 
 #: ``GET`` of one stored object by its SHA-256 from ``offset``; ``if_range`` is the strong ETag
-#: (``"<sha256>"``) whenever ``offset > 0``: ``fetch_object(sha256, offset, if_range)``.
-ObjectFetch = Callable[[str, int, Optional[str]], ObjectResponse]
+#: (``"<sha256>"``) whenever ``offset > 0``: ``fetch_object(sha256, offset, if_range)``. P4-11's
+#: chunk runs add a fourth argument, ``length``: the single bounded range
+#: ``Range: bytes=<offset>-<offset+length-1>`` with ``Accept-Encoding: identity``, never a
+#: multi-range (``fetch_object(sha256, offset, if_range, length)``).
+ObjectFetch = Callable[..., ObjectResponse]
 #: ``GET`` of one release record by hash: ``{"ok": True, "body"}`` or ``{"ok": False, "code"}``.
 RecordFetch = Callable[[str], Dict[str, Any]]
 
@@ -236,17 +260,27 @@ class InstalledPayload:
 
 @dataclass
 class PackOutput:
-    """The plan's output area: a byte sink for a container, a tree sink for a tree."""
+    """The plan's output area: a byte sink for a container, a tree sink for a tree. A container's
+    output can also be read back (``read(offset, length)``): P4-11's chunk strategy needs it."""
 
     sink: Optional[ByteSink] = None
     tree: Optional[TreeSink] = None
+    read: Optional[Callable[[int, int], bytes]] = None
 
 
 class PackStorage:
     """Where a host keeps staging and the store (a protocol; locations and plan ids are opaque
-    to the engine): ``staged_object``, ``output``, ``commit``, ``installed``, ``verify``,
-    ``remove``, ``remove_staging``, ``list`` (``(locations, plans)``; raises rather than answer a
-    partial listing) and ``free_disk``."""
+    to the engine): ``staged_object``, ``output`` (``output(plan_id, layout, resume=False)``:
+    empty, except that with ``resume`` a container keeps what an earlier attempt of the same plan
+    wrote), ``commit``, ``installed``, ``verify``, ``remove``, ``remove_staging``, ``list``
+    (``(locations, plans)``; raises rather than answer a partial listing) and ``free_disk``.
+
+    P4-11 adds two optional members. ``chunk_indexes``, the seed-index store (``get(sha256)`` →
+    bytes or ``None``, ``put(sha256, data)`` atomically, ``list()``, ``remove(sha256)``): every
+    installed payload's chunk index as fetched, by ``chunks.sha256``, re-verified on every use;
+    without it no payload is a seed and the chunk strategy is never planned. ``run_journal``,
+    the chunk strategy's run bitmap (``read(plan_id)`` → text or ``None``, ``write(plan_id,
+    text)``), removed with the plan's staging."""
 
 
 @dataclass
@@ -333,6 +367,10 @@ class RevocationsSnapshot:
     issue: Optional[str]
 
 
+#: The strategies costed by default (``chunk`` from P4-11; it is only planned when the storage
+#: keeps seed indexes).
+DEFAULT_STRATEGIES = ("delta", "chunk", "file", "full")
+
 #: SHA-256 of the empty string: an empty object is legitimately zero bytes long.
 _EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 _RANGE_RE = re.compile(r"bytes (\d+)-\d+/\d+")
@@ -378,6 +416,85 @@ class _Plan:
     plan: Dict[str, Any]
     #: The delegation's compact JWS when a content key signed the record (plans/P4-19.md §2.3).
     delegation: Optional[str] = None
+    #: P4-11: the target chunk index (``index``), its ``ref`` and the ``seeds``, when the fetch
+    #: rule ran and the index parsed.
+    chunk: Optional[Dict[str, Any]] = None
+
+
+def _usable_chunks_ref(variant: Any) -> Optional[Dict[str, Any]]:
+    """A variant's ``chunks`` ref when the chunk strategy can read it: ``pkey-chunks/1``, a usable
+    codec, and ``size`` and ``bytes`` at most ``MAX_CHUNK_INDEX_BYTES``; else ``None``."""
+    if not isinstance(variant, Mapping):
+        return None
+    c = variant.get("chunks")
+    if not isinstance(c, dict) or c.get("format") != CHUNKS_FORMAT or not usable_codec(c.get("codec")):
+        return None
+    for k in ("size", "bytes"):
+        v = c.get(k)
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or v > MAX_CHUNK_INDEX_BYTES:
+            return None
+    if not isinstance(c.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", c["sha256"]):
+        return None
+    return c
+
+
+def _install_chunks_ref(i: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+    """The usable ``chunks`` ref of an install's own variant (selected by its variant key in its
+    stored record, which was verified when the install was loaded or made); ``None`` otherwise."""
+    try:
+        jws = i.get("record")
+        if not isinstance(jws, str):
+            return None
+        parts = jws.split(".")
+        if len(parts) != 3:
+            return None
+        rec = strict_parse(b64url_decode(parts[1]))
+        if not isinstance(rec, dict) or not isinstance(rec.get("variants"), list):
+            return None
+        for v in rec["variants"]:
+            if isinstance(v, dict) and isinstance(v.get("variant"), dict):
+                if variant_key(v["variant"]) == i.get("variant"):
+                    p = v.get("payload")
+                    if not isinstance(p, dict) or p.get("sha256") != i.get("payloadSha256"):
+                        return None
+                    return _usable_chunks_ref(v)
+        return None
+    except Exception:
+        return None
+
+
+def _journal_text(index_sha256: str, runs: int, done: Set[int]) -> str:
+    """The run journal (``staging/<planId>/journal.json``): bit ``k`` is ``byte[k >> 3] &
+    (1 << (k & 7))``, lowercase hex, ``ceil(runs / 8)`` bytes."""
+    bitmap = bytearray((runs + 7) // 8)
+    for k in done:
+        if 0 <= k < runs:
+            bitmap[k >> 3] |= 1 << (k & 7)
+    return json.dumps(
+        {"v": 1, "index": index_sha256, "runs": runs, "bitmap": bitmap.hex()}, separators=(",", ":")
+    )
+
+
+def _journal_runs(text: Optional[str], index_sha256: str, runs: int) -> Set[int]:
+    """The completed runs a stored journal names, or none unless ``v`` is 1, ``index`` and
+    ``runs`` match and the bitmap's hex has the right length."""
+    if not isinstance(text, str):
+        return set()
+    try:
+        d = json.loads(text)
+    except Exception:
+        return set()
+    if not isinstance(d, dict):
+        return set()
+    v, r, bm = d.get("v"), d.get("runs"), d.get("bitmap")
+    if isinstance(v, bool) or v != 1 or d.get("index") != index_sha256:
+        return set()
+    if isinstance(r, bool) or not isinstance(r, int) or r != runs:
+        return set()
+    if not isinstance(bm, str) or len(bm) != 2 * ((runs + 7) // 8) or not re.fullmatch(r"[0-9a-f]*", bm):
+        return set()
+    raw = bytes.fromhex(bm)
+    return {k for k in range(runs) if raw[k >> 3] & (1 << (k & 7))}
 
 
 # ── The engine ───────────────────────────────────────────────────────────────────────────────
@@ -412,6 +529,7 @@ class PackEngine:
         checkpoint_bytes: int = 8 << 20,
         one_shot_budget: Optional[int] = None,
         revocations: Any = None,
+        supports_range: Optional[bool] = None,
     ) -> None:
         self._product = product
         self._release_keys = dict(release_keys)
@@ -422,7 +540,7 @@ class PackEngine:
         self._sha256 = sha256
         self._patch_methods = list(patch_methods)
         self._mem_budget = mem_budget
-        self._strategies = list(strategies) if strategies is not None else ["delta", "file", "full"]
+        self._strategies = list(strategies) if strategies is not None else list(DEFAULT_STRATEGIES)
         self._transports = list(transports) if transports is not None else ["pkey-cdn"]
         self._storage = storage
         self._state = state
@@ -437,6 +555,15 @@ class PackEngine:
         self._new_plan_id = new_plan_id
         self._checkpoint_bytes = checkpoint_bytes
         self._one_shot_budget = one_shot_budget
+        #: P4-11: whether ``fetch_object`` sends a bounded single range (its fourth argument,
+        #: ``length``). ``None``: read from its signature (a three-argument transport cannot).
+        #: Without it the chunk strategy is never planned.
+        self._supports_range = (
+            accepts_range(fetch_object) if supports_range is None else bool(supports_range)
+        )
+        #: P4-11: seed-index SHA-256s the backfill already tried this process (once each,
+        #: success or failure).
+        self._seed_index_tried: Set[str] = set()
 
         from .handlers import DataJsonHandler, L10nTableHandler
 
@@ -1375,7 +1502,43 @@ class PackEngine:
                         path=f["path"],
                         detail="extension",
                     )
-        target = plan_target(variant, want, index)
+        # P4-11's fetch rule (plans/P4-10.md §2.5): the target chunk index is staged and parsed
+        # before planning when the strategy is allowed, the record is not delegated (a delegated
+        # release is a tree, and every tree write passes the data-only sink), the variant is a
+        # container with a usable `chunks` ref, the storage keeps seed indexes, and at least one
+        # seed exists. Anything that fails leaves `chunks` null, never an error.
+        chunk: Optional[Dict[str, Any]] = None
+        chunk_seeds: List[Dict[str, Any]] = []
+        chunks_ref = _usable_chunks_ref(variant)
+        if (
+            "chunk" in self._strategies
+            and self._supports_range
+            and delegated is None
+            and files["layout"] == "container"
+            and chunks_ref is not None
+            and getattr(self._storage, "chunk_indexes", None) is not None
+        ):
+            chunk_seeds = self._chunk_seeds(pack_id, installs, seeds)
+            if chunk_seeds:
+                try:
+                    ok = self._download(plan_id, pack_id, chunks_ref["sha256"], int(chunks_ref["bytes"]), None)
+                    if ok:
+                        staged_ci = self._storage.staged_object(plan_id, chunks_ref["sha256"])
+                        rc = parse_chunk_index(
+                            read_all(staged_ci.source()),
+                            chunks_ref,
+                            variant["payload"],
+                            decode=self._zstd.decode,
+                        )
+                        if rc.ok:
+                            chunk = {
+                                "index": rc.index,
+                                "ref": chunks_ref,
+                                "seeds": [e["seed"] for e in chunk_seeds],
+                            }
+                except Exception:
+                    chunk = None
+        target = plan_target(variant, want, index, chunk["index"] if chunk is not None else None)
         budget = self._one_shot_budget
         full = variant["full"]
         streams = getattr(self._zstd, "decode_stream", None) is not None
@@ -1386,8 +1549,12 @@ class PackEngine:
             and full["bytes"] + full["size"] > budget
         ):
             target["full"] = None
-        planner_installed = [
-            {
+        # Seeds count only when the target index parsed. This pack's installs carry their chunk
+        # ids; every other seed (another pack's payload, an embedded baseline) rides along as a
+        # synthetic entry whose payload is never a hash, so `noop` and `delta` never match it.
+        planner_installed: List[Dict[str, Any]] = []
+        for i in installs:
+            entry: Dict[str, Any] = {
                 "release": i["recordSha256"],
                 "payloadSha256": i["payloadSha256"],
                 "files": (
@@ -1396,8 +1563,26 @@ class PackEngine:
                     else None
                 ),
             }
-            for i in installs
-        ]
+            own = (
+                next((e for e in chunk_seeds if e["location"] == i["location"]), None)
+                if chunk is not None
+                else None
+            )
+            if own is not None:
+                entry["chunks"] = {"ids": [r[0] for r in own["seed"].index["records"]]}
+            planner_installed.append(entry)
+        if chunk is not None:
+            own_locations = {i["location"] for i in installs}
+            for e in chunk_seeds:
+                if e["location"] not in own_locations:
+                    planner_installed.append(
+                        {
+                            "release": "",
+                            "payloadSha256": "seed:" + e["payloadSha256"],
+                            "files": None,
+                            "chunks": {"ids": [r[0] for r in e["seed"].index["records"]]},
+                        }
+                    )
         try:
             free = int(self._storage.free_disk())
         except Exception:
@@ -1423,7 +1608,132 @@ class PackEngine:
             index=index,
             plan=p,
             delegation=delegated,
+            chunk=chunk,
         )
+
+    def _chunk_seeds(
+        self,
+        pack_id: str,
+        own: Sequence[Dict[str, Any]],
+        opened: Mapping[str, InstalledPayload],
+    ) -> List[Dict[str, Any]]:
+        """The chunk seeds for a pack (P4-11), deduplicated by payload, in this order: the
+        pack's own readable installs, every other pack's active then previous install (by pack
+        id), then the embedded baselines (by pack id). A seed is a container whose own record's
+        variant carries a usable ``chunks`` ref, whose stored index parses bound to the installed
+        payload, and whose payload opens. Stored indexes are never trusted: each is parsed again
+        here. Each entry is ``{"location", "payloadSha256", "packId", "seed"}``."""
+        store = getattr(self._storage, "chunk_indexes", None)
+        if store is None:
+            return []
+        doc = self._require_loaded()
+        bkey = lambda s: s.encode("utf-8", "surrogatepass")  # noqa: E731
+        others = sorted(
+            {pid for pid in list(doc["active"]) + list(doc["previous"]) if pid != pack_id}, key=bkey
+        )
+        candidates: List[Dict[str, Any]] = list(own)
+        for pid in others:
+            for i in (doc["active"].get(pid), doc["previous"].get(pid)):
+                if i is not None:
+                    candidates.append(i)
+        for pid in sorted(self._embedded, key=bkey):
+            if pid != pack_id:
+                candidates.append(self._embedded[pid])
+        out: List[Dict[str, Any]] = []
+        payloads: Set[str] = set()
+        locations: Set[str] = set()
+        for i in candidates:
+            if i.get("layout") != "container" or i["payloadSha256"] in payloads:
+                continue
+            if i["location"] in locations or i["location"] in self._unverifiable:
+                continue
+            if self.is_revoked(i["recordSha256"]):
+                continue
+            ref = _install_chunks_ref(i)
+            if ref is None:
+                continue
+            try:
+                stored = store.get(ref["sha256"])
+                if stored is None:
+                    continue
+                r = parse_chunk_index(
+                    bytes(stored),
+                    ref,
+                    {"size": i["payloadSize"], "sha256": i["payloadSha256"]},
+                    decode=self._zstd.decode,
+                )
+                if not r.ok or r.index is None:
+                    continue
+                p = opened.get(i["location"])
+                if p is None:
+                    p = self._storage.installed(i)
+                if p is None or p.payload is None or p.payload.size != i["payloadSize"]:
+                    continue
+                payloads.add(i["payloadSha256"])
+                locations.add(i["location"])
+                out.append(
+                    {
+                        "location": i["location"],
+                        "payloadSha256": i["payloadSha256"],
+                        "packId": i["packId"],
+                        "seed": ChunkSeed(index=r.index, payload=p.payload),
+                    }
+                )
+            except Exception:
+                continue  # An unreadable seed is simply not a seed.
+        return out
+
+    def _store_seed_indexes(self) -> None:
+        """After a pack is ensured (P4-11): keep the chunk index of every root install and
+        embedded baseline that has one and lacks it, fetched by hash (a plain GET capped at
+        ``chunks.bytes``), verified against its record and its installed payload, and stored by
+        ``chunks.sha256``. Best effort: a failure only means no seed."""
+        store = getattr(self._storage, "chunk_indexes", None)
+        if store is None or "chunk" not in self._strategies or self._doc is None:
+            return
+        try:
+            have = set(store.list())
+        except Exception:
+            return
+        doc = self._doc
+        for i in list(doc["active"].values()) + list(doc["previous"].values()) + list(self._embedded.values()):
+            if i.get("layout") != "container":
+                continue
+            ref = _install_chunks_ref(i)
+            if ref is None or ref["sha256"] in have or ref["sha256"] in self._seed_index_tried:
+                continue
+            self._seed_index_tried.add(ref["sha256"])
+            try:
+                limit = int(ref["bytes"])
+                res = self._fetch_object(ref["sha256"], 0, None)
+                if res.status != 200:
+                    _close(res)
+                    continue
+                parts: List[bytes] = []
+                n = 0
+                over = False
+                for c in res.chunks:
+                    n += len(c)
+                    if n > limit:
+                        over = True
+                        break
+                    parts.append(bytes(c))
+                _close(res)
+                if over or n != limit:
+                    continue
+                stored = b"".join(parts)
+                r = parse_chunk_index(
+                    stored,
+                    ref,
+                    {"size": i["payloadSize"], "sha256": i["payloadSha256"]},
+                    decode=self._zstd.decode,
+                )
+                if not r.ok:
+                    continue
+                store.put(ref["sha256"], stored)
+                have.add(ref["sha256"])
+            except Exception:
+                continue  # Best effort: the next ensure tries again.
 
     def _target_facts(self, pack_id: str, release: Mapping[str, Any]) -> Optional[ProvidesFacts]:
         """A target's facts (P4-20): from an install or embedded baseline of that release, else
@@ -1565,7 +1875,7 @@ class PackEngine:
         self, pack_id: str, target: Optional[Mapping[str, Any]] = None
     ) -> Dict[str, Any]:
         try:
-            return self._ensure_one_inner(pack_id, target)
+            out = self._ensure_one_inner(pack_id, target)
         except PackError as e:
             # plans/P4-13.md §2.5: when the only copy is an embedded baseline refused for
             # `relearn` (or for `revocationsStored` with an unreadable `revocations.json`) and the
@@ -1594,6 +1904,12 @@ class PackEngine:
                     detail="relearn",
                 ) from e
             raise
+        # P4-11: after every successful ensure, keep the seed indexes the installs lack.
+        try:
+            self._store_seed_indexes()
+        except Exception:
+            pass  # Best effort: a missing seed index only means no chunk seed.
+        return out
 
     def _ensure_one_inner(
         self, pack_id: str, target: Optional[Mapping[str, Any]] = None
@@ -1662,7 +1978,9 @@ class PackEngine:
 
         first_failure: Optional[PackError] = None
         for cand in [p] + list(p["fallbacks"]):
-            objects = self._objects_for(cand["strategy"], cand.get("delta"), variant, index, seeds)
+            objects = self._objects_for(
+                cand["strategy"], cand.get("delta"), variant, index, seeds, pre.chunk
+            )
             if objects is None:
                 continue
             journal: Dict[str, Any] = {
@@ -1681,7 +1999,12 @@ class PackEngine:
                 journal["delegation"] = delegation
             self._doc = begin_install(self._require_loaded(), journal)
             self._persist()
-            total = sum(b for _, b in objects)
+            # A chunk plan's total is the planner's (the index and every fetched run).
+            total = (
+                max(int(cand["bytes"]), objects[0][1] if objects else 0)
+                if cand["strategy"] == "chunk"
+                else sum(b for _, b in objects)
+            )
             progress = {"done": 0, "total": total}
             self._emit(PackProgress(pack_id, "download", 0, total))
             for s, b in objects:
@@ -1692,18 +2015,23 @@ class PackEngine:
                         f"Fetching {pack_id}'s objects failed; the next ensure resumes.",
                         pack_id=pack_id,
                     )
-            self._emit(PackProgress(pack_id, "apply", total, total))
+            if cand["strategy"] != "chunk":
+                self._emit(PackProgress(pack_id, "apply", total, total))
             # plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
             seen: Dict[str, Optional[DataOnlyRefusalSeen]] = {"refusal": None}
-            result = self._apply(
-                plan_id,
-                pack_id,
-                cand["strategy"],
-                cand.get("delta"),
-                variant,
-                seeds,
-                seen if delegation is not None else None,
-            )
+            if cand["strategy"] == "chunk":
+                result = self._apply_chunk(plan_id, pack_id, variant, pre.chunk, delegation, total)
+                self._emit(PackProgress(pack_id, "apply", total, total))
+            else:
+                result = self._apply(
+                    plan_id,
+                    pack_id,
+                    cand["strategy"],
+                    cand.get("delta"),
+                    variant,
+                    seeds,
+                    seen if delegation is not None else None,
+                )
             refusal = seen["refusal"]
             if refusal is not None:
                 # A refusal aborts the plan: no fallback, staging discarded.
@@ -1718,6 +2046,22 @@ class PackEngine:
                     path=refusal.path,
                     detail=refusal.rule,
                 )
+            if (
+                cand["strategy"] == "chunk"
+                and result.verdict.get("error") == ErrorCode.NETWORK_ERROR
+                and result.verdict.get("detail") == INTERRUPTED
+            ):
+                # The state journal, the staged objects, the output and the run journal stay:
+                # the next ensure resumes with the same plan id, reusing the completed runs.
+                raise PackError(
+                    ErrorCode.NETWORK_ERROR,
+                    f"Fetching {pack_id}'s chunks was interrupted; the next ensure resumes.",
+                    pack_id=pack_id,
+                    detail="chunk",
+                )
+            if result.verdict.get("ok") and cand["strategy"] == "chunk":
+                assert pre.chunk is not None
+                self._keep_seed_index(plan_id, pre.chunk["ref"])
             if result.verdict.get("ok"):
                 location = self._storage.commit(
                     plan_id,
@@ -1858,8 +2202,11 @@ class PackEngine:
         variant: Mapping[str, Any],
         index: Optional[Mapping[str, Any]],
         seeds: Mapping[str, InstalledPayload],
+        chunk: Optional[Mapping[str, Any]] = None,
     ) -> Optional[List[Tuple[str, int]]]:
-        """The objects a strategy fetches, in order; ``None`` when it cannot run here."""
+        """The objects a strategy fetches, in order; ``None`` when it cannot run here. The chunk
+        strategy stages only its index (already staged by the preflight); its runs are fetched by
+        range while it applies."""
         files = variant["files"]
         idx = (files["sha256"], files["bytes"])
         gaps = (
@@ -1894,6 +2241,10 @@ class PackEngine:
                 if f["sha256"] not in held and f["blob"]["sha256"] not in blobs:
                     blobs[f["blob"]["sha256"]] = f["blob"]["bytes"]
             return [idx] + gaps + list(blobs.items())
+        if strategy == "chunk":
+            if chunk is None:
+                return None
+            return [(chunk["ref"]["sha256"], int(chunk["ref"]["bytes"]))]
         return None
 
     @staticmethod
@@ -1956,6 +2307,100 @@ class PackEngine:
         if base is None:
             return ApplyResult(verdict={"ok": False, "error": ErrorCode.DELTA_BASE_MISMATCH})
         return apply_delta(variant, k, base, ports)
+
+    def _apply_chunk(
+        self,
+        plan_id: str,
+        pack_id: str,
+        variant: Mapping[str, Any],
+        chunk: Optional[Mapping[str, Any]],
+        delegation: Optional[str],
+        total: int,
+    ) -> ApplyResult:
+        """The chunk strategy (P4-11): the container output kept from an earlier attempt of the
+        same plan, the run journal's completed runs (each re-hashed before reuse), and
+        ``apply_chunk`` with the repair pass, one bounded range request per run through
+        ``chunk_range_fetch``. A delegated release never gets here (it is a tree, and
+        ``plan_target`` maps a tree's ``chunks`` to null); the check below keeps it that way
+        whatever the planner says. The result never carries the chunk index (the store keeps only
+        the files index)."""
+        refused = ApplyResult(verdict={"ok": False, "error": ErrorCode.CHUNKS_REF_MISMATCH})
+        if chunk is None or delegation is not None or variant["files"].get("layout") != "container":
+            return refused
+        storage = self._storage
+        ref = chunk["ref"]
+        seeds: List[ChunkSeed] = list(chunk["seeds"])
+        out = storage.output(plan_id, "container", resume=True)
+        if out.sink is None or out.read is None:
+            return refused
+        runs = len(chunk_runs(chunk["index"]["records"], seed_map(seeds)))
+        journal = getattr(storage, "run_journal", None)
+        done: Set[int] = set()
+        if journal is not None:
+            try:
+                done = _journal_runs(journal.read(plan_id), ref["sha256"], runs)
+            except Exception:
+                done = set()
+        completed = set(done)
+
+        def on_run_done(k: int) -> None:
+            done.add(k)
+            if journal is None:
+                return
+            try:
+                journal.write(plan_id, _journal_text(ref["sha256"], runs, done))
+            except Exception:
+                pass  # A journal that cannot be written only costs the resume.
+
+        base = int(ref["bytes"])
+        self._emit(PackProgress(pack_id, "download", base, total))
+
+        def on_progress(fetched: int) -> None:
+            self._emit(PackProgress(pack_id, "download", min(total, base + fetched), total))
+
+        def objects(sha256: str) -> Optional[ByteSource]:
+            o = storage.staged_object(plan_id, sha256)
+            return o.source() if o.size() > 0 else None
+
+        sink, read = out.sink, out.read
+
+        class _Out:
+            def write(self, offset: int, data: bytes) -> None:
+                sink.write(offset, data)
+
+            def read(self, offset: int, length: int) -> bytes:
+                return read(offset, length)
+
+        r = apply_chunk(
+            variant,
+            seeds,
+            ApplyChunkPorts(
+                objects=objects,
+                zstd=self._zstd,
+                fetch_range=chunk_range_fetch(self._fetch_object),
+                output=_Out(),
+                sha256=self._sha256,
+            ),
+            repair=True,
+            completed_runs=completed,
+            on_run_done=on_run_done,
+            on_progress=on_progress,
+        )
+        return ApplyResult(verdict=r.verdict, index=None)
+
+    def _keep_seed_index(self, plan_id: str, ref: Mapping[str, Any]) -> None:
+        """Before the commit of a chunk install: the staged index into the seed store (best
+        effort; the backfill after the ensure retries)."""
+        store = getattr(self._storage, "chunk_indexes", None)
+        if store is None:
+            return
+        try:
+            staged = self._storage.staged_object(plan_id, ref["sha256"])
+            if staged.size() != ref["bytes"]:
+                return
+            store.put(ref["sha256"], read_all(staged.source()))
+        except Exception:
+            pass
 
     def _commit(
         self,
@@ -2034,6 +2479,36 @@ class PackEngine:
         for pid in listed_plans:
             if pid not in plans and not (held is not None and pid in held[1]):
                 self._quiet(lambda pid=pid: self._storage.remove_staging(pid))  # type: ignore[misc]
+        self._collect_seed_indexes()
+
+    def _collect_seed_indexes(self) -> None:
+        """P4-11: remove every stored seed index whose SHA-256 is not the ``chunks.sha256`` of a
+        root install (active, previous, running, embedded; entries whose check could not run are
+        kept too)."""
+        store = getattr(self._storage, "chunk_indexes", None)
+        if store is None or self._gc_hold or self._hold_snapshot is not None:
+            return
+        doc = self._require_loaded()
+        keep: Set[str] = set()
+        roots = (
+            list(doc["active"].values())
+            + list(doc["previous"].values())
+            + list(self._running.values())
+            + list(self._embedded.values())
+            + list(self._deferred["active"].values())
+            + list(self._deferred["previous"].values())
+        )
+        for i in roots:
+            ref = _install_chunks_ref(i)
+            if ref is not None:
+                keep.add(ref["sha256"])
+        try:
+            listed = list(store.list())
+        except Exception:
+            return
+        for h in listed:
+            if h not in keep:
+                self._quiet(lambda h=h: store.remove(h))  # type: ignore[misc]
 
     def _download(
         self,

@@ -46,7 +46,7 @@ func _engine(t: PKeyTestContext) -> void:
 	t.check("caps: license.enroll off the web is supported", linux.supports(F.LICENSE_ENROLL).ok)
 	t.check("caps: devices.fingerprint on web -> runtime", _is(web.supports(F.DEVICES_FINGERPRINT), R.RUNTIME))
 	t.check("caps: supports_on asks as another runtime", _is(linux.supports_on(F.LICENSE_ENROLL, "web"), R.RUNTIME))
-	for planned in [F.CORE_STORE, F.IDENTITY_OIDC, F.PACKS_INDEX_CHUNKS]:
+	for planned in [F.CORE_STORE, F.IDENTITY_OIDC, F.COMMERCE_RECEIPT]:
 		t.check("caps: planned %s -> version" % planned, _is(linux.supports(planned), R.VERSION), str(linux.supports(planned)))
 	var unknown := linux.supports("future.feature")
 	t.check("caps: an unknown feature id -> version", _is(unknown, R.VERSION) and unknown.detail["feature"] == "future.feature", str(unknown))

@@ -111,7 +111,10 @@
       "status": "implemented",
       "note": "client-core parseFilesIndex, checkPaths and treeDigest; filesIndexCases under the WASM decoder, node:zlib and a failed probe."
     },
-    "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
+    "packs.index.chunks": {
+      "status": "implemented",
+      "note": "client-core parseChunkIndex (u64 as two u32 reads, saturated at 2^53; every chunks-* code); all 22 chunkIndexCases under the WASM decoder, node:zlib and a failed probe; the PackEngine keeps each installed payload's index under <packs>/index/<sha256> and re-verifies it on use."
+    },
     "packs.apply.full": {
       "status": "implemented",
       "note": "client-core applyFull (streamed through node:zlib when it has zstd); applyCases under every backend."
@@ -120,7 +123,10 @@
       "status": "implemented",
       "note": "client-core applyFile with the type-neutral container rebuild; applyCases under every backend."
     },
-    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.chunk": {
+      "status": "implemented",
+      "note": "client-core applyChunk (seeds across packs and embedded baselines, the planner's runs, one single-range request per run with If-Range on the bundle hash and the exact Content-Range rule, the repair pass) over DirPackStorage: staging/<planId>/journal.json run bitmap and resume, fallback when a server ignores Range; the 8 chunk applyCases under every backend; chunk is in caps.strategies."
+    },
     "packs.apply.delta": {
       "status": "implemented",
       "note": "node:zlib for --patch-from frames when its start-up probe decodes, else @polaris-key/zstd-wasm (Node 22.0-22.14 have no zstd; 22.15-22.18 ignore the dictionary); the window check runs in the applier whatever the decoder."

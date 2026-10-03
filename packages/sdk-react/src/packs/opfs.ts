@@ -5,7 +5,9 @@
 //   <root>/state.json                         the install state (replaced whole)
 //   <root>/staging/<planId>/objects/<sha256>  objects being fetched (appended, resumable)
 //   <root>/staging/<planId>/out/              the payload being built
+//   <root>/staging/<planId>/journal.json      a chunk plan's run journal (P4-11)
 //   <root>/store/<packId>/<payloadSha256>/    a committed payload; `.pkey/files.json` beside it
+//   <root>/index/<sha256>                     seed chunk indexes by `chunks.sha256` (P4-11)
 //
 // It uses only the main-thread API (`createWritable`, `getFile`), which Chromium, Firefox and
 // Safari 17+ ship. A directory cannot be renamed portably, so commit copies the staged output
@@ -14,6 +16,7 @@
 // scratch. `requestPersistence()` asks the browser to keep it (after engagement).
 
 import type { FilesIndexDoc } from "@polaris-key/protocol/packs";
+import { MAX_CHUNK_INDEX_BYTES } from "@polaris-key/protocol/core";
 import {
   treeDigest,
   type ByteSink,
@@ -262,6 +265,20 @@ export async function opfsPackStore(opts: {
   // One handle per staged object, so appends buffered by one caller are flushed before another
   // reads the object.
   const staged = new Map<string, StagedObject>();
+  // One write-behind buffer per container output: contiguous writes (every applier writes in
+  // order) are flushed in 1 MiB `createWritable` batches, and always before a read or a commit.
+  const outputs = new Map<string, { flush(): Promise<void> }>();
+  const SHA256_NAME = /^[0-9a-f]{64}$/;
+  const readBytes = async (
+    parts: string[],
+    max = Number.MAX_SAFE_INTEGER,
+  ): Promise<Uint8Array | null> => {
+    const fh = await fileAt(root, parts, false);
+    if (!fh) return null;
+    const f = await fh.getFile();
+    if (f.size > max) return null;
+    return new Uint8Array(await f.slice(0, f.size).arrayBuffer());
+  };
 
   const storage: PackStorage = {
     async stagedObject(planId, sha256): Promise<StagedObject> {
@@ -317,8 +334,24 @@ export async function opfsPackStore(opts: {
     async output(
       planId,
       layout,
-    ): Promise<{ sink?: ByteSink; tree?: TreeSink }> {
-      await remove(root, ["staging", planId, "out"]);
+      outOpts,
+    ): Promise<{
+      sink?: ByteSink;
+      tree?: TreeSink;
+      read?: (offset: number, length: number) => Promise<Uint8Array>;
+    }> {
+      await outputs.get(planId)?.flush();
+      outputs.delete(planId);
+      // A chunk plan (P4-11) resumes over what an earlier attempt wrote.
+      const keep =
+        outOpts?.resume === true &&
+        layout !== "tree" &&
+        (await fileAt(
+          root,
+          ["staging", planId, "out", CONTAINER_FILE],
+          false,
+        )) !== null;
+      if (!keep) await remove(root, ["staging", planId, "out"]);
       const out = (await dir(root, ["staging", planId, "out"], true))!;
       if (layout === "tree")
         return {
@@ -336,10 +369,83 @@ export async function opfsPackStore(opts: {
           },
         };
       const fh = await out.getFileHandle(CONTAINER_FILE, { create: true });
-      return { sink: { write: (offset, bytes) => writeAt(fh, offset, bytes) } };
+      let start = 0;
+      let parts: Uint8Array[] = [];
+      let bytes = 0;
+      const flush = async (): Promise<void> => {
+        if (bytes === 0) return;
+        const all = new Uint8Array(bytes);
+        let at = 0;
+        for (const p of parts) {
+          all.set(p, at);
+          at += p.byteLength;
+        }
+        parts = [];
+        bytes = 0;
+        await writeAt(fh, start, all);
+      };
+      outputs.set(planId, { flush });
+      return {
+        sink: {
+          write: async (offset, data) => {
+            if (bytes > 0 && offset !== start + bytes) await flush();
+            if (bytes === 0) start = offset;
+            parts.push(data.slice());
+            bytes += data.byteLength;
+            if (bytes >= FLUSH_BYTES) await flush();
+          },
+        },
+        read: async (offset, length) => {
+          await flush();
+          const f = await fh.getFile();
+          const end = Math.min(f.size, offset + length);
+          if (end <= offset) return new Uint8Array();
+          return new Uint8Array(await f.slice(offset, end).arrayBuffer());
+        },
+      };
+    },
+
+    chunkIndexes: {
+      get: async (sha256) =>
+        SHA256_NAME.test(sha256)
+          ? readBytes(["index", sha256], MAX_CHUNK_INDEX_BYTES)
+          : null,
+      put: async (sha256, bytes) => {
+        if (!SHA256_NAME.test(sha256)) throw new Error("not a SHA-256");
+        // `createWritable` writes a swap file and replaces the target on `close()`.
+        await writeWhole((await fileAt(root, ["index", sha256], true))!, bytes);
+      },
+      list: async () => {
+        const out: string[] = [];
+        const d = await dir(root, ["index"], false);
+        if (d)
+          for await (const [name, h] of d.entries())
+            if (h.kind === "file" && SHA256_NAME.test(name)) out.push(name);
+        return out;
+      },
+      remove: async (sha256) => {
+        if (SHA256_NAME.test(sha256)) await remove(root, ["index", sha256]);
+      },
+    },
+
+    runJournal: {
+      read: async (planId) => {
+        const b = await readBytes(["staging", planId, "journal.json"]);
+        return b === null ? null : new TextDecoder().decode(b);
+      },
+      write: async (planId, text) => {
+        // The journal never claims a run whose bytes are still in the write-behind buffer.
+        await outputs.get(planId)?.flush();
+        await writeWhole(
+          (await fileAt(root, ["staging", planId, "journal.json"], true))!,
+          new TextEncoder().encode(text),
+        );
+      },
     },
 
     async commit(planId, packId, payloadSha256, _layout, index) {
+      await outputs.get(planId)?.flush();
+      outputs.delete(planId);
       const location = `store/${packId}/${payloadSha256}`;
       const out = await dir(root, ["staging", planId, "out"], false);
       if (!out) throw new Error(`no output for plan ${planId}`);
@@ -447,6 +553,7 @@ export async function opfsPackStore(opts: {
     async removeStaging(planId) {
       for (const k of [...staged.keys()])
         if (k.startsWith(`${planId}/`)) staged.delete(k);
+      outputs.delete(planId);
       await remove(root, ["staging", planId]);
     },
 
