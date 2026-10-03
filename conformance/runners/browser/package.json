@@ -11,6 +11,7 @@
   "dependencies": {
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
+    "@polaris-key/manifest": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "@polaris-key/react": "workspace:*",
     "@polaris-key/zstd-wasm": "workspace:*"
