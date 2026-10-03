@@ -6,6 +6,9 @@
 //   <root>/staging/<planId>/objects/<sha256>  objects being fetched (appended, resumable)
 //   <root>/staging/<planId>/out/              the payload being built (a tree's files, or
 //                                             `payload.bin` for a container)
+//   <root>/staging/<planId>/journal.json      a chunk plan's run journal (P4-11)
+//   <root>/index/<sha256>                     seed chunk indexes, as fetched, by `chunks.sha256`
+//                                             (P4-11), re-verified against their record on use
 //   <root>/store/<packId>/<payloadSha256>/    a committed payload, never overwritten: a tree's
 //                                             files, or `payload.bin`; `.pkey/files.json` beside
 //                                             them holds the files index kept at install
@@ -33,6 +36,7 @@ import type { FilesIndexDoc } from "@polaris-key/protocol/packs";
 import {
   treeDigest,
   type ByteSink,
+  type ChunkIndexStore,
   type ByteSource,
   type InstalledFile,
   type InstalledPayload,
@@ -44,6 +48,7 @@ import {
 } from "@polaris-key/client-core";
 
 const CONTAINER_FILE = "payload.bin";
+const SHA256_NAME = /^[0-9a-f]{64}$/;
 const INDEX_FILE = join(".pkey", "files.json");
 
 /** A file on disk as a `ByteSource`. */
@@ -221,6 +226,7 @@ export class DirPackStorage implements PackStorage {
   readonly root: string;
   readonly stagingDir: string;
   readonly storeDir: string;
+  readonly indexDir: string;
   /** Measured trees of embedded locations (verified once per process). */
   private readonly embeddedFiles = new Map<string, InstalledFile[]>();
 
@@ -228,6 +234,60 @@ export class DirPackStorage implements PackStorage {
     this.root = resolve(opts.root);
     this.stagingDir = join(this.root, "staging");
     this.storeDir = join(this.root, "store");
+    this.indexDir = join(this.root, "index");
+  }
+
+  /** P4-11's seed-index store: `<root>/index/<sha256>`, written by temp + rename. */
+  readonly chunkIndexes: ChunkIndexStore = {
+    get: async (sha256) => {
+      try {
+        return new Uint8Array(await readFile(this.indexPath(sha256)));
+      } catch (e) {
+        if (isMissing(e)) return null;
+        throw e;
+      }
+    },
+    put: async (sha256, bytes) => {
+      const path = this.indexPath(sha256);
+      await mkdir(this.indexDir, { recursive: true });
+      const tmp = `${path}.${process.pid}.tmp`;
+      await writeFile(tmp, bytes);
+      await rename(tmp, path);
+    },
+    list: async () =>
+      (await readdirOrEmpty(this.indexDir))
+        .filter((e) => e.isFile() && SHA256_NAME.test(e.name))
+        .map((e) => e.name),
+    remove: async (sha256) => {
+      await rm(this.indexPath(sha256), { force: true });
+    },
+  };
+
+  /** P4-11's run journal: `staging/<planId>/journal.json`, written by temp + rename. */
+  readonly runJournal = {
+    read: async (planId: string): Promise<string | null> => {
+      try {
+        return await readFile(
+          inside(this.stagingDir, planId, "journal.json"),
+          "utf8",
+        );
+      } catch (e) {
+        if (isMissing(e)) return null;
+        throw e;
+      }
+    },
+    write: async (planId: string, text: string): Promise<void> => {
+      const path = inside(this.stagingDir, planId, "journal.json");
+      await mkdir(dirname(path), { recursive: true });
+      const tmp = `${path}.${process.pid}.tmp`;
+      await writeFile(tmp, text);
+      await rename(tmp, path);
+    },
+  };
+
+  private indexPath(sha256: string): string {
+    if (!SHA256_NAME.test(sha256)) throw new Error("not a SHA-256");
+    return join(this.indexDir, sha256);
   }
 
   /** The atomic-replace state file, with a torn document's quarantine at `state.json.torn`. */
@@ -341,10 +401,21 @@ export class DirPackStorage implements PackStorage {
   async output(
     planId: string,
     layout: string,
-  ): Promise<{ sink?: ByteSink; tree?: TreeSink }> {
+    opts?: { resume?: boolean },
+  ): Promise<{
+    sink?: ByteSink;
+    tree?: TreeSink;
+    read?: (offset: number, length: number) => Promise<Uint8Array>;
+  }> {
     const out = inside(this.stagingDir, planId, "out");
-    await rm(out, { recursive: true, force: true });
-    await mkdir(out, { recursive: true });
+    const file = join(out, CONTAINER_FILE);
+    // A chunk plan resumes over what an earlier attempt wrote (its runs are re-hashed first).
+    const keep =
+      opts?.resume === true && layout !== "tree" && (await exists(file));
+    if (!keep) {
+      await rm(out, { recursive: true, force: true });
+      await mkdir(out, { recursive: true });
+    }
     if (layout === "tree")
       return {
         tree: {
@@ -355,9 +426,18 @@ export class DirPackStorage implements PackStorage {
           },
         },
       };
-    const file = join(out, CONTAINER_FILE);
-    await writeFile(file, new Uint8Array());
+    if (!keep) await writeFile(file, new Uint8Array());
     return {
+      read: async (offset, length) => {
+        const fh = await open(file, "r");
+        try {
+          const buf = new Uint8Array(length);
+          const { bytesRead } = await fh.read(buf, 0, length, offset);
+          return buf.subarray(0, bytesRead);
+        } finally {
+          await fh.close();
+        }
+      },
       sink: {
         write: async (offset, bytes) => {
           const fh = await open(file, "r+");
