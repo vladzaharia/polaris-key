@@ -669,13 +669,15 @@ func mount() -> Dictionary:
 	var out := {"mounted": [], "refused": []}
 	if engine == null:
 		return out
-	var handler = engine.handlers.get("godot.pck")
-	if handler == null:
-		return out
+	# godot.pck and (P4-16) godot.zip packs, in one mountOrder.
 	var queue: Array = []
-	for id in handler.to_mount:
-		if not mounted.has(id):
-			queue.append(handler.to_mount[id])
+	for t in ["godot.pck", "godot.zip"]:
+		var handler = engine.handlers.get(t)
+		if handler == null or not ("to_mount" in handler):
+			continue
+		for id in handler.to_mount:
+			if not mounted.has(id):
+				queue.append(handler.to_mount[id])
 	if queue.is_empty():
 		return out
 	queue.sort_custom(func(a, b):
@@ -709,8 +711,17 @@ func mount() -> Dictionary:
 			out["refused"].append({"packId": id, "code": PKeyConstants.ErrorCode.RECORD_REJECTED, "detail": "no verified record"})
 			pack_failed.emit(id, PKeyConstants.ErrorCode.RECORD_REJECTED)
 			continue
+		# A godot.zip mounts only from a `.zip` path and a godot.pck only from a `.pck` one: the
+		# store names a container by its bytes, so a mismatch means bytes of the other kind.
+		var want_ext := ".zip" if i["type"] == "godot.zip" else ".pck"
+		if not String(i["location"]).ends_with(want_ext):
+			out["refused"].append({"packId": id, "code": PKeyPck.DIRECTORY_REFUSED, "detail": "a %s stored at %s" % [i["type"], i["location"]]})
+			pack_failed.emit(id, PKeyPck.DIRECTORY_REFUSED)
+			continue
 		var src := PKeyByteSource.file(String(i["location"]), int(i["payloadSize"]))
-		var chk: Dictionary = await PKeyPackJob.run(PKeyGodotPckHandler.check.bind(src, rec, variant), "PolarisKey pack check")
+		var handler = engine.handlers.get(i["type"])
+		var checker: Callable = PKeyGodotZipHandler.check if i["type"] == "godot.zip" else PKeyGodotPckHandler.check
+		var chk: Dictionary = await PKeyPackJob.run(checker.bind(src, rec, variant), "PolarisKey pack check")
 		if not chk["ok"]:
 			out["refused"].append({"packId": id, "code": chk["code"], "detail": chk.get("detail", "")})
 			pack_failed.emit(id, String(chk["code"]))
@@ -728,7 +739,8 @@ func mount() -> Dictionary:
 		if ms > 100.0:
 			push_warning("PolarisKey: mounting %s took %.0f ms (%d entries); a larger pack belongs under a loading screen (S-05 §4.1)." % [id, ms, int(chk.get("count", 0))])
 		mounted[id] = i
-		handler.mounted[id] = true
+		if handler != null and "mounted" in handler:
+			handler.mounted[id] = true
 		used += int(i["payloadSize"])
 		out["mounted"].append(id)
 		pack_ready.emit(id)

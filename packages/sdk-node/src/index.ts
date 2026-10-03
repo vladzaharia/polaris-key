@@ -210,3 +210,13 @@ export {
   type NodeEmbeddedPack,
   type NodePacksOptions,
 } from "./packs/index.js";
+// The v3 pack-type handlers (P4-16).
+export {
+  DataJsonHandler,
+  L10nTableHandler,
+  MlModelHandler,
+  type L10nTable,
+  type MlModel,
+  type PackCheckRefusal,
+  type StagedPack,
+} from "./packs/index.js";

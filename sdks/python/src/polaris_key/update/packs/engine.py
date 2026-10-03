@@ -92,6 +92,8 @@ from .state import (
 
 __all__ = [
     "PackHandler",
+    "PackPayload",
+    "StagedPack",
     "FILES_TREE_HANDLER",
     "ObjectResponse",
     "StagedObject",
@@ -115,8 +117,23 @@ class PackHandler:
     """A pack type's handler (CONTENT §4.1). ``files.tree`` is built in; P4-16 and games add more
     through ``register_handler``. A handler names its ``type``, the ``layout`` of the payloads it
     installs (``tree`` or ``container``), the ``activation`` when the record names none (``hot``
-    or ``restart``) and which ``formatVersion`` it ``supports``; ``activate`` and ``deactivate``
-    are optional hooks."""
+    or ``restart``) and which ``formatVersion`` it ``supports``; ``activate``, ``deactivate``
+    and ``check`` are optional hooks.
+
+    ``check(staged)`` (P4-16, CONTENT §4.1 ``verify``) runs over every newly staged payload after
+    the engine's own verification (hashes, path rules, the delegated data-only rule) and before
+    the state commit and activation, with a :class:`StagedPack`. It returns ``None`` (accepted)
+    or a refusal mapping ``{"detail", "path"?, "message"?}``, which aborts the install with
+    ``pack-type-check-failed``. It never runs on the ``noop`` reuse path (that payload already
+    passed it) nor on an embedded baseline.
+
+    ``activate(install)`` is called with the install alone, so one-argument callables keep
+    working; a handler that sets ``reads_payload = True`` is called as
+    ``activate(install, payload)`` with a lazy :class:`PackPayload` (``payload.read()`` gives the
+    installed :class:`InstalledPayload`, or ``None``)."""
+
+    #: Whether ``activate`` takes the installed payload as a second argument.
+    reads_payload = False
 
     def __init__(
         self,
@@ -124,8 +141,10 @@ class PackHandler:
         layout: str,
         activation: str,
         supports: Callable[[int], bool],
-        activate: Optional[Callable[[Dict[str, Any]], None]] = None,
+        activate: Optional[Callable[..., None]] = None,
         deactivate: Optional[Callable[[Dict[str, Any]], None]] = None,
+        check: Optional[Callable[["StagedPack"], Optional[Mapping[str, Any]]]] = None,
+        reads_payload: Optional[bool] = None,
     ) -> None:
         self.type = type
         self.layout = layout
@@ -133,6 +152,9 @@ class PackHandler:
         self.supports = supports
         self.activate = activate
         self.deactivate = deactivate
+        self.check = check
+        if reads_payload is not None:
+            self.reads_payload = reads_payload
 
 
 #: ``files.tree`` (CONTENT §4.2): a directory tree, hot (versioned directory plus pointer swap),
@@ -157,6 +179,32 @@ class ObjectResponse:
 ObjectFetch = Callable[[str, int, Optional[str]], ObjectResponse]
 #: ``GET`` of one release record by hash: ``{"ok": True, "body"}`` or ``{"ok": False, "code"}``.
 RecordFetch = Callable[[str], Dict[str, Any]]
+
+
+@dataclass
+class StagedPack:
+    """What a handler's ``check`` reads (P4-16): the pack id, the verified ``record``, the
+    selected ``variant``, the staged payload's ``files`` (path, size, sha256 and a byte reader;
+    ``None`` for a container without a kept index) and ``payload`` (a container's whole bytes),
+    and its store ``location``."""
+
+    pack_id: str
+    record: Dict[str, Any]
+    variant: Dict[str, Any]
+    location: str
+    files: Optional[List[InstalledFile]]
+    payload: Optional[ByteSource]
+
+
+class PackPayload:
+    """A lazy view of an install's bytes, passed to ``activate`` of a handler that sets
+    ``reads_payload``: ``read()`` asks the storage only when called."""
+
+    def __init__(self, read: Callable[[], Optional["InstalledPayload"]]) -> None:
+        self._read = read
+
+    def read(self) -> Optional["InstalledPayload"]:
+        return self._read()
 
 
 class StagedObject:
@@ -288,6 +336,8 @@ class RevocationsSnapshot:
 #: SHA-256 of the empty string: an empty object is legitimately zero bytes long.
 _EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 _RANGE_RE = re.compile(r"bytes (\d+)-\d+/\d+")
+#: A check refusal's ``detail`` token; anything else reads as ``check``.
+_CHECK_DETAIL_RE = re.compile(r"[a-z][a-z0-9-]{0,31}")
 
 
 def _range_starts_at(content_range: Optional[str], offset: int) -> bool:
@@ -388,7 +438,13 @@ class PackEngine:
         self._checkpoint_bytes = checkpoint_bytes
         self._one_shot_budget = one_shot_budget
 
+        from .handlers import DataJsonHandler, L10nTableHandler
+
+        # files.tree, data.json and l10n.table are built in (P4-16); ml.model needs the host's
+        # budget, so the host registers a configured MlModelHandler.
         self._handlers: Dict[str, PackHandler] = {FILES_TREE_HANDLER.type: FILES_TREE_HANDLER}
+        for builtin in (DataJsonHandler(), L10nTableHandler()):
+            self._handlers[builtin.type] = builtin
         for h in handlers:
             self._handlers[h.type] = h
         self._listeners: List[Callable[[PackProgress], None]] = []
@@ -1070,7 +1126,10 @@ class PackEngine:
     def _activate(self, i: Dict[str, Any]) -> None:
         h = self._handlers.get(i["type"])
         if h is not None and h.activate is not None:
-            h.activate(i)
+            if getattr(h, "reads_payload", False) is True:
+                h.activate(i, PackPayload(lambda: self._storage.installed(i)))
+            else:
+                h.activate(i)
         self._running[i["packId"]] = i
 
     def _verify_stored_record(
@@ -1212,7 +1271,12 @@ class PackEngine:
             raise PackError(
                 ErrorCode.PACK_TYPE_UNSUPPORTED,
                 f"{pack_id} is a {record['type']} v{record['formatVersion']} pack, which this SDK "
-                "cannot hold.",
+                "cannot hold"
+                + (
+                    " until the host registers an MlModelHandler with its budget."
+                    if handler is None and record["type"] == "ml.model"
+                    else "."
+                ),
                 pack_id=pack_id,
             )
         granted = self._entitlements() if self._entitlements is not None else None
@@ -1662,6 +1726,7 @@ class PackEngine:
                     variant["files"]["layout"],
                     result.index if result.index is not None else index,
                 )
+                self._type_check(pack_id, record, variant, location, plan_id, delegation)
                 install = self._commit(
                     pack_id,
                     pre.body,
@@ -1690,6 +1755,87 @@ class PackEngine:
         self._quiet(lambda: self._storage.remove_staging(plan_id))
         raise first_failure or PackError(
             ErrorCode.PLAN_NO_STRATEGY, f"No way to install {pack_id}.", pack_id=pack_id
+        )
+
+    def _type_check(
+        self,
+        pack_id: str,
+        record: Dict[str, Any],
+        variant: Dict[str, Any],
+        location: str,
+        plan_id: str,
+        delegation: Optional[str],
+    ) -> None:
+        """The handler's ``check`` over a newly staged payload, now in the store at ``location``
+        but not yet in the state (CONTENT §4.1 ``verify``; P4-16). A refusal abandons the
+        install, discards staging, collects the stored payload (no root holds it) and raises
+        ``pack-type-check-failed``. A check that raises refuses (``check``); a payload the
+        storage cannot read back refuses (``unreadable``)."""
+        h = self._handlers.get(record["type"])
+        if h is None:
+            return
+        # The payload is read back for every handler, with a check or not, so a store that
+        # cannot return what it just committed refuses the same way in every SDK (Swift cannot
+        # tell whether a handler implements its check).
+        check = getattr(h, "check", None)
+        provisional: Dict[str, Any] = {
+            "packId": pack_id,
+            "record": "",
+            "recordSha256": "",
+            "version": record["version"],
+            "seq": record["seq"],
+            "type": record["type"],
+            "variant": variant_key(variant["variant"]),
+            "layout": variant["files"]["layout"],
+            "payloadSha256": variant["payload"]["sha256"],
+            "payloadSize": variant["payload"]["size"],
+            "activation": _activation_of(record, h),
+            "location": location,
+            "installedAt": self._now(),
+        }
+        if delegation is not None:
+            provisional["delegation"] = delegation
+        refusal: Any
+        try:
+            got = self._storage.installed(provisional)
+            if got is None:
+                refusal = {"detail": "unreadable", "message": "the stored payload cannot be read back"}
+            elif check is None:
+                refusal = None
+            else:
+                refusal = check(
+                    StagedPack(
+                        pack_id=pack_id,
+                        record=dict(record),
+                        variant=dict(variant),
+                        location=location,
+                        # Index (path byte) order, whatever order the storage lists them in, so
+                        # every SDK names the same first refused file.
+                        files=sorted(got.files or [], key=lambda f: f.path.encode("utf-8", "surrogatepass")),
+                        payload=got.payload,
+                    )
+                )
+        except Exception as e:
+            refusal = {"detail": "check", "message": str(e)}
+        if refusal is None:
+            return
+        get = refusal.get if isinstance(refusal, Mapping) else (lambda k: getattr(refusal, k, None))
+        raw_detail, raw_path, message = get("detail"), get("path"), get("message")
+        detail = raw_detail if isinstance(raw_detail, str) and _CHECK_DETAIL_RE.fullmatch(raw_detail) else "check"
+        path = raw_path if isinstance(raw_path, str) else None
+        self._doc = abandon_install(self._require_loaded(), pack_id)
+        self._persist()
+        self._quiet(lambda: self._storage.remove_staging(plan_id))
+        self._collect()
+        raise PackError(
+            ErrorCode.PACK_TYPE_CHECK_FAILED,
+            f"{pack_id} failed its {record['type']} check ({detail}"
+            + (f", {path}" if path is not None else "")
+            + ")"
+            + (f": {message}" if isinstance(message, str) else "."),
+            pack_id=pack_id,
+            detail=detail,
+            path=path,
         )
 
     @staticmethod

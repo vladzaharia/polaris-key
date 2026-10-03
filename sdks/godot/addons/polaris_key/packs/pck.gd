@@ -51,7 +51,13 @@ const MAX_ENTRIES := 20000
 const HEADER_V3 := 104
 const HEADER_V2 := 96
 
-static var _helper_version := -1
+## The probed PCKPacker version, once known (0 = not yet; a failed probe is never cached).
+static var _helper_version := 0
+## Serialises the probe: zstd's batch decode may ask from a worker while the engine asks from
+## the main thread.
+static var _helper_mutex := Mutex.new()
+## Where the probe writes its throwaway pack (a test points it somewhere unwritable).
+static var helper_probe_dir := "user://pkey/tmp"
 static var _res: Dictionary = {}
 ## The engine's script kinds (P4-08 audit GAP 5), filled on the main thread by `warm()`:
 ## {exts: {extension: true}, markers: PackedStringArray}.
@@ -897,15 +903,24 @@ static func tree_check(dir: String) -> Dictionary:
 	return {"ok": true}
 
 
-## The PCK format version this engine reads and writes (what PCKPacker produces), probed once.
-## 0 when it cannot be determined.
+## The PCK format version this engine reads and writes (what PCKPacker produces), probed once
+## and then cached. 0 when it cannot be determined right now: a failure is not cached, so a later
+## call probes again (a transient write failure never downgrades the process). Thread-safe; the
+## pack engine probes it on the main thread at construction.
 static func helper_version() -> int:
-	if _helper_version >= 0:
-		return _helper_version
-	_helper_version = 0
-	var dir := "user://pkey/tmp"
+	_helper_mutex.lock()
+	if _helper_version <= 0:
+		_helper_version = _probe_helper_version()
+	var v := _helper_version
+	_helper_mutex.unlock()
+	return v
+
+
+static func _probe_helper_version() -> int:
+	var found := 0
+	var dir := helper_probe_dir
 	DirAccess.make_dir_recursive_absolute(dir)
-	var path := dir.path_join("pck-version-probe.pck")
+	var path := dir.path_join("pck-version-probe-%d.pck" % OS.get_thread_caller_id())
 	var packer := PCKPacker.new()
 	if packer.pck_start(path) == OK and packer.flush() == OK:
 		var f := FileAccess.open(path, FileAccess.READ)
@@ -913,9 +928,10 @@ static func helper_version() -> int:
 			var head := f.get_buffer(8)
 			f.close()
 			if head.size() == 8 and head.decode_u32(0) == MAGIC:
-				_helper_version = head.decode_u32(4)
-	DirAccess.remove_absolute(path)
-	return _helper_version
+				found = head.decode_u32(4)
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+	return found
 
 
 static func _pad16(n: int) -> int:

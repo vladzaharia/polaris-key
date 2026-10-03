@@ -89,9 +89,10 @@ package func packWireInt(
     return wireInteger(i, pointer: pointer, min: min, in: nonWire)
 }
 
-/// Compare two strings by their UTF-8 bytes (equal to code-point order).
+/// Compare two strings by their UTF-8 bytes (equal to code-point order). Never short-cut with
+/// String `==`: that is canonical equivalence, so `"\u{E9}"` and `"e\u{301}"` would compare
+/// equal here and unequal in every other SDK.
 public func compareUTF8Bytes(_ a: String, _ b: String) -> Int {
-    if a == b { return 0 }
     var x = a.utf8.makeIterator()
     var y = b.utf8.makeIterator()
     while true {

@@ -22,6 +22,7 @@ func run(t: PKeyTestContext) -> void:
 	await _resume(t)
 	await _refuse(t)
 	await _pck(t)
+	await _pck_format_versions(t)
 	await _embedded(t)
 
 
@@ -178,6 +179,12 @@ func _pck(t: PKeyTestContext) -> void:
 	var e := F.engine(root0, tr, F.stamp_for([v1]))
 	await e.load_state([])
 	var r := await e.ensure(["diceroll.core3d"])
+	var fv_ok: bool = e.handlers["godot.pck"].supports(int(v1["record"]["formatVersion"]))
+	if not fv_ok:
+		t.check("pck: a PCK format newer than this engine mounts is pack-type-unsupported before any fetch", not r.ok and String(r.code) == PKeyConstants.ErrorCode.PACK_TYPE_UNSUPPORTED and e.storage.list()["locations"].is_empty() and tr.calls.is_empty(), str(r))
+		t.info("pck: %s cannot load the kaykit packs (PCK v4, engine 4.7.2); the update strategies run on 4.7" % Engine.get_version_info().string)
+		S.remove_tree(root0)
+		return
 	if not header_ok:
 		t.check("pck: a pack built by a newer engine is refused before it commits (pck-engine-mismatch)", not r.ok and String(r.code) == PKeyPck.ENGINE_MISMATCH and e.storage.list()["locations"].is_empty(), str(r))
 		t.info("pck: %s cannot load the kaykit packs (PCK v4, engine 4.7.2); the update strategies run on 4.7" % Engine.get_version_info().string)
@@ -249,6 +256,7 @@ func _pck(t: PKeyTestContext) -> void:
 		var bytes := FileAccess.get_file_as_bytes("res://tests/fixtures/packs/check/%s.pck" % bad[0])
 		var full := {"sha256": F.sha(bytes), "bytes": bytes.size(), "size": bytes.size(), "codec": "none"}
 		var rec_pack := F.kaykit_pack("v1", 3, func(rec: Dictionary) -> void:
+			rec["formatVersion"] = bytes.decode_u32(4)
 			rec["variants"][0] = {"variant": {}, "payload": {"size": bytes.size(), "sha256": F.sha(bytes)}, "full": full,
 				"files": {"format": "pkey-files/1", "layout": "container", "sha256": "ab".repeat(32), "bytes": 10, "size": 10, "codec": "zstd", "gaps": {"sha256": "cd".repeat(32), "bytes": 1, "size": 1, "codec": "none"}},
 				"requires": {"engine": "godot-4.7"} if int(Engine.get_version_info()["minor"]) == 7 else {}})
@@ -261,6 +269,65 @@ func _pck(t: PKeyTestContext) -> void:
 		t.check("pck: %s is refused before it commits (%s%s)" % [bad[0], bad[1], (" at " + bad[2]) if bad[2] != "" else ""], not r4.ok and String(r4.code) == bad[1] and String(r4.detail.get("path", "")) == bad[2] and listed["locations"].is_empty() and listed["plans"].is_empty() and e4.doc["inflight"].is_empty() and e4.doc["active"].is_empty(), "%s %s" % [r4, S.canon(listed)])
 		S.remove_tree(root)
 	S.remove_tree(root0)
+
+
+## WIRE-CONTRACT-V4 §2.5.1 (P4-16 follow-up): a godot.pck record's formatVersion is the PCK
+## header's, as `pkey release publish` signs it. kaykit v1 as Godot 4.4 exports it (PCK v2, engine
+## 4.4.1, CI's own objects and variant from the CLI's fixture generator) installs on 4.4 and 4.7; a
+## version this engine does not mount, or v1, is pack-type-unsupported before any fetch; a header
+## that disagrees with the record is refused before commit.
+func _pck_format_versions(t: PKeyTestContext) -> void:
+	var unvaried := func(rec: Dictionary) -> void: rec["variants"][0].erase("requires")
+	var g44 := F.kaykit_pack("v1g44", 1, unvaried)
+	t.check("pck format: the CLI signs the header's version (v2 for a 4.4 export)", int(g44["record"]["formatVersion"]) == 2 and g44["payload"].decode_u32(4) == 2)
+	var root := S.scratch("engine-pck-fv")
+	var tr := F.FakeTransport.new().add(g44)
+	var e := F.engine(root, tr, F.stamp_for([g44]))
+	await e.load_state([])
+	var r := await e.ensure(["diceroll.core3d"])
+	t.check("pck format: a published v2 godot.pck installs on %s, at store/<sha256>.pck" % Engine.get_version_info().string, r.ok and String(r.detail[0]["location"]).ends_with("/store/%s.pck" % g44["payloadSha256"]) and e.handlers["godot.pck"].to_mount.has("diceroll.core3d"), str(r))
+	S.remove_tree(root)
+	var h: PKeyGodotPckHandler = e.handlers["godot.pck"]
+	var newest := PKeyGodotPckHandler.max_format_version()
+	t.check("pck format: this engine mounts v2 up to the version it writes (v%d)" % newest, h.supports(2) and h.supports(newest) and not h.supports(newest + 1) and not h.supports(1) and not h.supports(0))
+	# A failed probe is not cached: it reads as "v2 only" while it fails, and the next call probes
+	# again, so a transient write failure never downgrades the process.
+	var saved_dir := PKeyPck.helper_probe_dir
+	var saved: int = PKeyPck._helper_version
+	var blocker := S.scratch("pck-probe-blocker")
+	var bf := FileAccess.open(blocker.path_join("file"), FileAccess.WRITE)
+	bf.store_string("x")
+	bf.close()
+	PKeyPck._helper_version = 0
+	PKeyPck.helper_probe_dir = blocker.path_join("file").path_join("sub")
+	var failed := PKeyPck.helper_version()
+	var during := PKeyGodotPckHandler.max_format_version()
+	PKeyPck.helper_probe_dir = saved_dir
+	var again := PKeyPck.helper_version()
+	t.check("pck format: a failed version probe reads as v2 only and is not cached; the next call probes again", failed == 0 and during == 2 and again == newest and h.supports(newest), "%d %d %d" % [failed, during, again])
+	PKeyPck._helper_version = saved
+	S.remove_tree(blocker)
+	for fv in [1, newest + 1]:
+		var p := F.kaykit_pack("v1g44", 2, func(rec: Dictionary) -> void:
+			unvaried.call(rec)
+			rec["formatVersion"] = fv)
+		var root2 := S.scratch("engine-pck-fv-bad")
+		var tr2 := F.FakeTransport.new().add(p)
+		var e2 := F.engine(root2, tr2, F.stamp_for([p]))
+		await e2.load_state([])
+		var r2 := await e2.ensure(["diceroll.core3d"])
+		t.check("pck format: formatVersion %d is pack-type-unsupported before any fetch" % fv, not r2.ok and String(r2.code) == PKeyConstants.ErrorCode.PACK_TYPE_UNSUPPORTED and tr2.calls.is_empty(), str(r2))
+		S.remove_tree(root2)
+	if newest >= 3:
+		var lie := F.kaykit_pack("v1g44", 3, func(rec: Dictionary) -> void:
+			unvaried.call(rec)
+			rec["formatVersion"] = 3)
+		var root3 := S.scratch("engine-pck-fv-lie")
+		var e3 := F.engine(root3, F.FakeTransport.new().add(lie), F.stamp_for([lie]))
+		await e3.load_state([])
+		var r3 := await e3.ensure(["diceroll.core3d"])
+		t.check("pck format: a v2 header under a v3 record is refused before it commits", not r3.ok and String(r3.code) == PKeyPck.DIRECTORY_REFUSED and e3.storage.list()["locations"].is_empty(), str(r3))
+		S.remove_tree(root3)
 
 
 func _embedded(t: PKeyTestContext) -> void:

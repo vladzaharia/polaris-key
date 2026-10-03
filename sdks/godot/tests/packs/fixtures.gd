@@ -191,7 +191,7 @@ static func tree_pack(pack_id: String, version: String, seq: int, files: Diction
 			objects[sha(data)] = data
 			deltas.append({"method": "zstd-patch-from", "scope": "files", "from": from["treeDigest"], "memBytes": mem, "patch": {"sha256": sha(patch), "bytes": patch.size(), "size": patch.size(), "codec": "none"}, "data": {"sha256": sha(data), "bytes": data.size()}})
 	var variant := {
-		"variant": {}, "payload": {"size": full.size(), "sha256": digest},
+		"variant": opts.get("variant", {}), "payload": {"size": full.size(), "sha256": digest},
 		"full": {"sha256": sha(full), "bytes": full.size(), "size": full.size(), "codec": "none"},
 		"files": {"format": "pkey-files/1", "layout": "tree", "sha256": sha(index), "bytes": int(opts.get("indexBytes", index.size())), "size": int(opts.get("indexBytes", index.size())), "codec": "none"},
 	}
@@ -199,7 +199,7 @@ static func tree_pack(pack_id: String, version: String, seq: int, files: Diction
 		variant["deltas"] = deltas
 	var record := {
 		"schemaVersion": 1, "aud": PRODUCT, "deliverable": pack_id, "kind": "pack", "version": version, "seq": seq,
-		"issuedAt": 1759300000 + seq, "type": String(opts.get("type", "files.tree")), "formatVersion": 1,
+		"issuedAt": 1759300000 + seq, "type": String(opts.get("type", "files.tree")), "formatVersion": int(opts.get("formatVersion", 1)),
 		"handler": {"activation": String(opts.get("activation", "hot"))}, "variants": [variant],
 	}
 	if opts.get("entitlement", "") != "":
@@ -221,14 +221,15 @@ static func object(h: String) -> PackedByteArray:
 	return FileAccess.get_file_as_bytes(UPDATE.path_join("objects").path_join(h))
 
 
-## The kaykit `godot.pck` release `which` ("v1" or "v2"), as P4-03's publish would sign it.
+## The kaykit `godot.pck` release `which` ("v1", "v2", or "v1g44": v1 as Godot 4.4 exports it,
+## PCK v2), as P4-03's publish would sign it, `formatVersion` the PCK header's.
 ## `tweak(record)` may edit the record before signing.
 static func kaykit_pack(which: String, seq: int, tweak := Callable()) -> Dictionary:
 	var m := manifest()
 	var variant: Dictionary = ints(m[which]["variant"])
 	var record := {
 		"schemaVersion": 1, "aud": PRODUCT, "deliverable": "diceroll.core3d", "kind": "pack",
-		"version": "1.%d.0" % seq, "seq": seq, "issuedAt": 1759400000 + seq, "type": "godot.pck", "formatVersion": 1,
+		"version": "1.%d.0" % seq, "seq": seq, "issuedAt": 1759400000 + seq, "type": "godot.pck", "formatVersion": int(m[which]["formatVersion"]),
 		"handler": {"mountOrder": 2, "prefixes": m["prefixes"], "activation": "restart"}, "variants": [variant],
 	}
 	if tweak.is_valid():

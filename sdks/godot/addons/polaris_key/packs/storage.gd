@@ -15,6 +15,9 @@ extends RefCounted
 ##   <root>/staging/<planId>/out/              the payload being built (`payload.bin` or a tree)
 ##   <root>/staging/<planId>/bake.json         a trailer bake in progress (A6 §5), for repair
 ##   <root>/store/<sha256>.pck                 a committed container payload, never overwritten
+##   <root>/store/<sha256>.zip                 the same for a container that is a zip (godot.zip:
+##                                             Godot's ZIP pack source opens only `.zip` paths);
+##                                             named by the payload's leading bytes (`PK`)
 ##   <root>/store/<sha256>.files.json          the files index kept beside it
 ##   <root>/trees/<sha256>/                    a committed tree payload (`.pkey/files.json` inside)
 ##
@@ -455,6 +458,21 @@ func container_path(payload_sha256: String) -> String:
 	return store_dir().path_join(payload_sha256 + ".pck")
 
 
+## A zip container's store path (P4-16: a `godot.zip` mounts only from a `.zip` path).
+func zip_path(payload_sha256: String) -> String:
+	return store_dir().path_join(payload_sha256 + ".zip")
+
+
+## Whether a staged container is a zip, by its leading bytes (`PK`), never by its type or name.
+static func _is_zip(file: String) -> bool:
+	var f := FileAccess.open(file, FileAccess.READ)
+	if f == null:
+		return false
+	var head := f.get_buffer(2)
+	f.close()
+	return head.size() == 2 and head[0] == 0x50 and head[1] == 0x4B
+
+
 func tree_path(payload_sha256: String) -> String:
 	return trees_dir().path_join(payload_sha256)
 
@@ -481,7 +499,7 @@ func commit(plan_id: String, _pack_id: String, payload_sha256: String, layout: S
 			return ""
 		return dest
 	var file := out.path_join(CONTAINER_FILE)
-	var dest := container_path(payload_sha256)
+	var dest := zip_path(payload_sha256) if _is_zip(file) else container_path(payload_sha256)
 	var exists := file_state(dest)
 	if exists < 0:
 		return ""
@@ -626,9 +644,9 @@ func verify(install: Dictionary) -> int:
 ## Remove a stored location (only ever inside the store or the trees: an embedded payload lives
 ## in the app's resources). The kept index goes with a container.
 func remove(location: String) -> void:
-	if location.begins_with(store_dir() + "/") and location.ends_with(".pck"):
+	if location.begins_with(store_dir() + "/") and (location.ends_with(".pck") or location.ends_with(".zip")):
 		remove_tree(location)
-		remove_tree(location.trim_suffix(".pck") + ".files.json")
+		remove_tree(location.get_basename() + ".files.json")
 	elif location.begins_with(trees_dir() + "/"):
 		remove_tree(location)
 
@@ -648,7 +666,7 @@ func list() -> Variant:
 	if not s["ok"]:
 		return null
 	for f in s["files"]:
-		if f.ends_with(".pck"):
+		if f.ends_with(".pck") or f.ends_with(".zip"):
 			locations.append(store_dir().path_join(f))
 	var t := list_dir(trees_dir())
 	if not t["ok"]:

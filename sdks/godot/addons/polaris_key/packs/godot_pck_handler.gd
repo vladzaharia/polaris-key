@@ -1,7 +1,11 @@
 class_name PKeyGodotPckHandler
 extends PKeyPackHandler
 ## `godot.pck` (README §5.7, CONTENT §8.3; notes/A6 §4, notes/S-05 §5 (f)): a Godot resource pack,
-## a container, activated at the next boot (`restart`), format version 1.
+## a container, activated at the next boot (`restart`). Its record's `formatVersion` is the PCK
+## header's format version (WIRE-CONTRACT-V4 §2.5.1; `pkey release publish` signs it): v2 up to the
+## version this engine writes itself, which is what it mounts (measured: 4.4.1 writes and mounts v2
+## only; 4.7.2 writes v4 and mounts v2–v4). Any other version is `pack-type-unsupported` before a
+## byte is fetched, and a payload whose header disagrees with its record is refused before commit.
 ##
 ## Before a rebuilt pack is committed (its whole-pack SHA-256 already equals the record's) the
 ## handler checks the PCK header (format v2–v4, no encryption, no sparse bundle; the engine at most
@@ -26,7 +30,14 @@ func _init() -> void:
 
 
 func supports(format_version: int) -> bool:
-	return format_version == 1
+	return format_version >= 2 and format_version <= max_format_version()
+
+
+## The newest PCK format this engine mounts: the one it writes (PCKPacker, probed and cached), or
+## v2, which every Godot 4 mounts, while the probe cannot run (it is retried on the next call).
+static func max_format_version() -> int:
+	var v := PKeyPck.helper_version()
+	return v if v >= 2 else 2
 
 
 static func _variant_engine(variant: Dictionary) -> Variant:
@@ -49,6 +60,10 @@ static func check(source: PKeyByteSource, record: Dictionary, variant: Dictionar
 	var dir := PKeyPck.read_directory(source)
 	if not dir["ok"]:
 		return {"ok": false, "code": PKeyPck.DIRECTORY_REFUSED, "detail": dir.get("detail", ""), "path": dir.get("path", "")}
+	# A verified record always names its formatVersion; a bare directory check passes none.
+	var fv = record.get("formatVersion")
+	if record.has("formatVersion") and (not (fv is int or fv is float) or int(fv) != int(dir["header"]["formatVersion"])):
+		return {"ok": false, "code": PKeyPck.DIRECTORY_REFUSED, "detail": "the PCK header is format v%d; the record says v%s" % [int(dir["header"]["formatVersion"]), str(int(fv)) if (fv is int or fv is float) else str(fv)]}
 	var why := PKeyPck.engine_check(dir["header"], _variant_engine(variant))
 	if why != "":
 		return {"ok": false, "code": PKeyPck.ENGINE_MISMATCH, "detail": why}

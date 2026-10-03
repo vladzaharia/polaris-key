@@ -1810,6 +1810,53 @@ describe("deliverables and the artifact map (P2-04)", () => {
     expect(res.errors.join("\n")).toContain("keep one spelling");
   });
 
+  it("normalises the v3 pack types: formatVersion and activation defaults (P4-16)", () => {
+    const ok = parseWith({
+      deliverables: {
+        app: { kind: "app", content: { contentApi: 1 } },
+        "acme.events": { kind: "pack", type: "data.json", formatVersion: 4 },
+        "acme.strings": {
+          kind: "pack",
+          type: "l10n.table",
+          variants: { locale: ["fr", "pt-BR"] },
+        },
+        "acme.model": { kind: "pack", type: "ml.model" },
+        "acme.banks": {
+          kind: "pack",
+          type: "audio.bank",
+          handler: { activation: "restart" },
+        },
+        "acme.mods": {
+          kind: "pack",
+          type: "godot.zip",
+          handler: { prefixes: ["res://mods/"] },
+          requires: { engine: "godot-4.7" },
+        },
+        "acme.dialogue": {
+          kind: "pack",
+          type: "custom.dialogue",
+          formatVersion: 2,
+        },
+      },
+    });
+    expect(ok.ok).toBe(true);
+    if (!ok.ok) return;
+    const got = Object.fromEntries(
+      ok.manifest.release!.packDeliverables.map((p) => [
+        p.id,
+        [p.type, p.formatVersion, p.handler.activation],
+      ]),
+    );
+    expect(got).toEqual({
+      "acme.banks": ["audio.bank", 1, "restart"],
+      "acme.dialogue": ["custom.dialogue", 2, "hot"],
+      "acme.events": ["data.json", 4, "hot"],
+      "acme.model": ["ml.model", 1, "hot"],
+      "acme.mods": ["godot.zip", 1, "restart"],
+      "acme.strings": ["l10n.table", 1, "hot"],
+    });
+  });
+
   it("a pack deliverable is validated and normalised with its v1 defaults (P4-02)", () => {
     const docs = (deliverables: Record<string, unknown>) => ({
       product: { ...PRODUCT, modules: { releases: true } },
@@ -1853,6 +1900,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
         kind: "pack",
         id: "acme.l10n",
         type: "files.tree",
+        formatVersion: 1,
         binding: "pinned",
         baseline: "none",
         required: false,
@@ -1872,6 +1920,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
         kind: "pack",
         id: "acme.ui",
         type: "godot.pck",
+        formatVersion: 1,
         binding: "pinned",
         baseline: "none",
         required: false,

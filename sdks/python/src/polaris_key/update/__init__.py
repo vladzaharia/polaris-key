@@ -14,7 +14,7 @@ from .client import (
     VersionCheck,
 )
 from ..core.detection import detect_outlet, detection_stamp
-from .packs import PackError, PackHandler
+from .packs import DataJsonHandler, L10nTableHandler, MlModelHandler, PackError, PackHandler
 from .packs.client import EmbeddedPack, PacksClient, PacksOptions
 from .outlet import (
     OutletFs,
@@ -38,6 +38,9 @@ __all__ = [
     "read_outlet_signals",
     "PackError",
     "PackHandler",
+    "DataJsonHandler",
+    "L10nTableHandler",
+    "MlModelHandler",
     "EmbeddedPack",
     "PacksClient",
     "PacksOptions",

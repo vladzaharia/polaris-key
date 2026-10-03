@@ -92,6 +92,10 @@ export async function treePack(o: {
   variantExtra?: Record<string, unknown>;
   /** Record-level members (P4-20's `provides` and `removes`, say). */
   recordExtra?: Record<string, unknown>;
+  /** The record's `formatVersion` (default 1). */
+  formatVersion?: number;
+  /** The variant's axes (default `{}`). */
+  variant?: Record<string, string>;
 }): Promise<TreePack> {
   const files: Record<string, Uint8Array> = {};
   for (const [p, b] of Object.entries(o.files))
@@ -208,13 +212,13 @@ export async function treePack(o: {
     seq: o.seq,
     issuedAt: o.issuedAt ?? 1759300000 + o.seq,
     type: o.type ?? "files.tree",
-    formatVersion: 1,
+    formatVersion: o.formatVersion ?? 1,
     handler: { activation: o.activation ?? "hot" },
     ...(o.entitlement ? { entitlement: o.entitlement } : {}),
     ...(o.recordExtra ?? {}),
     variants: [
       {
-        variant: {},
+        variant: o.variant ?? {},
         payload: { size, sha256: treeDigest },
         full: {
           sha256: sha(full),

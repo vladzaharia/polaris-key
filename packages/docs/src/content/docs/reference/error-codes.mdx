@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 14 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(133 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(134 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -142,7 +142,8 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `plan-insufficient-disk` | `update` | The install planner's result: no feasible strategy fits the host's free disk (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
 | `plan-no-strategy` | `update` | The install planner's result: no strategy the host allows can reach the target (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
 | `pack-no-variant` | `update` | No variant of a pack record is eligible on this host: none is usable, matches the host's engine, or has a value in the host's preference list for every axis it declares (plans/P4-01.md §2.9). |
-| `pack-type-unsupported` | `update` | A pack record's `type` is one this SDK cannot hold (v1: `files.tree` everywhere, `godot.pck` in Godot), so the pack is unusable (plans/P4-01.md §2.2). |
+| `pack-type-unsupported` | `update` | A pack record's `type` is one this SDK holds no handler for, or its `formatVersion` is one that handler does not list (`files.tree` everywhere and `godot.pck` in Godot since v1; the v3 types per SDK since P4-16, CONTENT §13; `ml.model` and `audio.bank` only once the host registers a configured handler), so the pack is unusable (plans/P4-01.md §2.2). |
+| `pack-type-check-failed` | `update` | A pack payload failed its type's device-side check (CONTENT §4.2, P4-16) after the engine verified it and before it committed, so nothing was activated, the install was abandoned and staging discarded. `detail` names the check: `json` (a data.json file is not strict JSON), `table` (an l10n.table file is not a PO, CSV or JSON table the plain parser reads), `locale` (a table's locale is not a well-formed BCP-47 tag or not the variant's locale), `descriptor` (an ml.model's model.json or an audio.bank's bank.json is missing or malformed), `runtime`, `quantization`, `memory` (the model's RAM or VRAM need is above the host's budget), `load-test` (the host's load test refused the model), `middleware` (the bank's middleware or major.minor version is not the host's), `size` (a file is above the handler's limit), or a game handler's own token; `path` names the file. |
 | `pack-not-pinned` | `update` | `update.packs.ensure` named a pack the running build's content stamp does not pin, so there is no release to install (plans/P4-01.md §2.8: the stamp is the only source of pins in v1). |
 | `pack-not-entitled` | `update` | A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9). |
 | `pack-state-unreadable` | `update` | The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds. |

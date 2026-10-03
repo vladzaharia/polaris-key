@@ -154,8 +154,14 @@ func _init(p_storage: PKeyPackStorage = null) -> void:
 	storage = p_storage if p_storage != null else PKeyPackStorage.new()
 	PKeyPackClaims.warm()
 	PKeyPck.warm()
+	# On the main thread, before any worker asks (godot.pck's supports(), zstd's batch decode).
+	PKeyPck.helper_version()
+	PKeyL10nParse.warm()
 	register_handler(PKeyFilesTreeHandler.new())
 	register_handler(PKeyGodotPckHandler.new())
+	register_handler(PKeyGodotZipHandler.new())
+	register_handler(PKeyDataJsonHandler.new())
+	register_handler(PKeyL10nTableHandler.new())
 	now = func() -> int: return int(Time.get_unix_time_from_system())
 	new_plan_id = func() -> String: return Crypto.new().generate_random_bytes(12).hex_encode()
 
@@ -1257,7 +1263,8 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 					else "%s has no tree output the data-only rule can gate, so it is not written." % pack_id
 			return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, why, pack_id, {"path": ref["path"], "detail": ref["rule"]})
 		if result["verdict"]["ok"]:
-			# The handler's check over the verified output (godot.pck: header and directory).
+			# The handler's check over the verified output (godot.pck: header and directory). Its
+			# `detail` (a type check's token, P4-16) is the error's `detail.detail`, beside `path`.
 			var handler = handlers.get(record["type"])
 			if handler != null and variant["files"]["layout"] == "container":
 				var out_file := storage.out_dir(plan_id).path_join(PKeyPackStorage.CONTAINER_FILE)
@@ -1267,7 +1274,7 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 					doc = PKeyPackState.abandon_install(doc, pack_id)
 					_persist()
 					storage.remove_staging(plan_id)
-					return _err(chk["code"], "%s was refused before mounting: %s" % [pack_id, chk.get("detail", "")], pack_id, {"path": chk.get("path", ""), "step": cand["strategy"]})
+					return _err(chk["code"], "%s was refused before mounting: %s" % [pack_id, chk.get("detail", "")], pack_id, {"path": chk.get("path", ""), "step": cand["strategy"], "detail": String(chk.get("detail", ""))})
 				if chk.get("warning", "") != "":
 					push_warning("PolarisKey: %s: %s" % [pack_id, chk["warning"]])
 			elif handler != null and handler.has_method("check_tree"):
@@ -1276,7 +1283,7 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 					doc = PKeyPackState.abandon_install(doc, pack_id)
 					_persist()
 					storage.remove_staging(plan_id)
-					return _err(tchk["code"], "%s was refused before it committed: %s" % [pack_id, tchk.get("detail", "")], pack_id, {"path": tchk.get("path", ""), "step": cand["strategy"]})
+					return _err(tchk["code"], "%s was refused before it committed: %s" % [pack_id, tchk.get("detail", "")], pack_id, {"path": tchk.get("path", ""), "step": cand["strategy"], "detail": String(tchk.get("detail", ""))})
 			var location: String = await PKeyPackJob.run(storage.commit.bind(plan_id, pack_id, variant["payload"]["sha256"], variant["files"]["layout"], result.get("index", index)), "PolarisKey pack commit")
 			if location == "":
 				if first_failure == null:

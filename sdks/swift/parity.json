@@ -114,9 +114,33 @@
     },
     "packs.handlers": {
       "status": "implemented",
-      "note": "update.packs.registerHandler; files.tree (hot: versioned directory plus pointer swap) built in."
+      "note": "update.packs.registerHandler (PackHandler: supports, check over a newly staged payload before the state commit -> pack-type-check-failed, activate with the installed payload, deactivate); files.tree, data.json and l10n.table built in (hot: versioned directory plus pointer swap); ml.model registered by the host; custom.* through registerHandler, under the same path rules."
     },
     "packs.provides": { "status": "implemented" },
+    "packs.type.godot.zip": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
+    },
+    "packs.type.l10n.table": {
+      "status": "implemented",
+      "note": "P4-16: L10nTableHandler (built in): PO, CSV and JSON tables by plain parsers (L10n.swift, scanned as Unicode scalars), BCP-47 locale matched to the variant; tables(packId), onActivate/onDeactivate."
+    },
+    "packs.type.data.json": {
+      "status": "implemented",
+      "note": "P4-16: DataJsonHandler (built in): every file strict JSON (strictParse), formatVersions listed by the host; documents(packId)."
+    },
+    "packs.type.audio.bank": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "P4-16: audio banks load through a game engine's middleware."
+    },
+    "packs.type.ml.model": {
+      "status": "implemented",
+      "note": "P4-16: MlModelHandler (host-registered): model.json runtime, quantisation and RAM/VRAM needs against the host budget, then the host load test before model(packId) swaps."
+    },
     "packs.transport.apple": {
       "status": "planned",
       "unowned": true,

@@ -105,13 +105,44 @@ import {
   type PackStateDoc,
   type PackStateStore,
 } from "./state.js";
-import { variantKey } from "./variant.js";
+import { compareBytes, variantKey } from "./variant.js";
+import { DataJsonHandler, L10nTableHandler } from "./handlers/types.js";
 
 // ── Ports ────────────────────────────────────────────────────────────────────────────────────
 
-/** A pack type's handler (CONTENT §4.1). `files.tree` is built in; P4-16 and games add more
- *  through `registerHandler`. Bytes are the engine's: a handler decides which formats it holds,
- *  the layout it expects and what activation does. */
+/** A newly staged payload, as a handler's `check` sees it: verified (every hash, the path rules,
+ *  a delegated release's data-only rule) and moved into the store, not yet committed to the
+ *  state or activated. */
+export interface StagedPack {
+  packId: string;
+  record: PackRecordDoc;
+  variant: PackVariant;
+  /** Where the payload now lives (opaque outside the host's storage). */
+  location: string;
+  /** Its files (a tree's, or a container's indexed entries), each with a byte reader, in index
+   *  (UTF-8 path byte) order. */
+  files: InstalledFile[];
+  /** A container's whole payload, else null. */
+  payload: ByteSource | null;
+}
+
+/** A handler's refusal of a staged payload: `pack-type-check-failed` with this `detail` (a
+ *  `[a-z][a-z0-9-]{0,31}` token; anything else reads as `check`) and `path`. */
+export interface PackCheckRefusal {
+  detail: string;
+  path?: string;
+  message?: string;
+}
+
+/** Lazy access to an install's bytes, for a handler's `activate`. */
+export interface PackPayloadAccess {
+  read(): Promise<InstalledPayload | null>;
+}
+
+/** A pack type's handler (CONTENT §4.1). `files.tree`, `data.json` and `l10n.table` are built
+ *  in; hosts and games add more (`ml.model`, `custom.*`) through `registerHandler`. Bytes are the
+ *  engine's: a handler decides which formats it holds, the layout it expects, the type checks
+ *  and what activation does. A handler parses what it reads and never evaluates it. */
 export interface PackHandler {
   readonly type: string;
   /** The layout of the payloads it installs. */
@@ -120,11 +151,25 @@ export interface PackHandler {
   readonly activation: "hot" | "restart";
   /** Whether it can install and activate this `formatVersion`. */
   supports(formatVersion: number): boolean;
+  /**
+   * The type's own verification (CONTENT §4.1 `verify`, §4.2), over every newly staged payload
+   * before the state commit: null accepts; a refusal abandons the install, discards staging and
+   * raises `pack-type-check-failed`. A throw is a refusal (`check`). It never runs on a reused
+   * payload (`noop`) or an embedded baseline: those bytes were checked when first admitted.
+   */
+  check?(
+    staged: StagedPack,
+  ): PackCheckRefusal | null | Promise<PackCheckRefusal | null>;
   /** A committed install becomes live: at commit for `hot`, at load for a boot's `restart`. */
-  activate?(install: PackInstall): void | Promise<void>;
+  activate?(
+    install: PackInstall,
+    payload: PackPayloadAccess,
+  ): void | Promise<void>;
   /** A live `hot` install is replaced or rolled back. */
   deactivate?(install: PackInstall): void | Promise<void>;
 }
+
+const CHECK_DETAIL_RE = /^[a-z][a-z0-9-]{0,31}$/;
 
 /** `files.tree` (CONTENT §4.2): a directory tree, hot (versioned directory plus pointer swap),
  *  format version 1. */
@@ -410,6 +455,10 @@ export class PackEngine {
   constructor(opts: PackEngineOptions) {
     this.opts = opts;
     this.handlers.set(FILES_TREE_HANDLER.type, FILES_TREE_HANDLER);
+    // P4-16: the data types install with default options; a host registers its own instance to
+    // take the parsed documents or tables, or other format versions.
+    for (const h of [new DataJsonHandler(), new L10nTableHandler()])
+      this.handlers.set(h.type, h);
     for (const h of opts.handlers ?? []) this.handlers.set(h.type, h);
   }
 
@@ -1188,8 +1237,90 @@ export class PackEngine {
 
   private async activate(i: PackInstall): Promise<void> {
     const h = this.handlers.get(i.type);
-    if (h?.activate) await h.activate(i);
+    if (h?.activate)
+      await h.activate(i, { read: () => this.opts.storage.installed(i) });
     this.running.set(i.packId, i);
+  }
+
+  /**
+   * The handler's type check over a newly staged payload now in the store (CONTENT §4.1
+   * `verify`; P4-16). A refusal abandons the install, discards staging, collects the stored
+   * payload (no root holds it) and raises `pack-type-check-failed`.
+   */
+  private async typeCheck(
+    packId: string,
+    record: PackRecordDoc,
+    variant: PackVariant,
+    location: string,
+    planId: string,
+    delegation: string | null,
+  ): Promise<void> {
+    const h = this.handlers.get(record.type);
+    if (!h) return;
+    // The payload is read back for every handler, with a check or not, so a store that cannot
+    // return what it just committed refuses the same way in every SDK (Swift cannot tell
+    // whether a handler implements its check).
+    const check = h.check?.bind(h);
+    const provisional: PackInstall = {
+      packId,
+      record: "",
+      recordSha256: "",
+      version: record.version,
+      seq: record.seq,
+      type: record.type,
+      variant: variantKey(variant.variant),
+      layout: variant.files.layout,
+      payloadSha256: variant.payload.sha256,
+      payloadSize: variant.payload.size,
+      activation: activationOf(record, h),
+      location,
+      installedAt: this.opts.now(),
+      ...(delegation !== null ? { delegation } : {}),
+    };
+    let refusal: PackCheckRefusal | null;
+    try {
+      const got = await this.opts.storage.installed(provisional);
+      refusal =
+        got === null
+          ? {
+              detail: "unreadable",
+              message: "the stored payload cannot be read back",
+            }
+          : check === undefined
+            ? null
+            : await check({
+                packId,
+                record,
+                variant,
+                location,
+                // Index (path byte) order, whatever order the storage lists them in, so
+                // every SDK names the same first refused file.
+                files: [...(got.files ?? [])].sort((a, b) =>
+                  compareBytes(a.path, b.path),
+                ),
+                payload: got.payload,
+              });
+    } catch (e) {
+      refusal = {
+        detail: "check",
+        message: (e as Error)?.message ?? String(e),
+      };
+    }
+    if (refusal === null || refusal === undefined) return;
+    const detail =
+      typeof refusal.detail === "string" && CHECK_DETAIL_RE.test(refusal.detail)
+        ? refusal.detail
+        : "check";
+    const path = typeof refusal.path === "string" ? refusal.path : null;
+    this.doc = abandonInstall(this.requireLoaded(), packId);
+    await this.persist();
+    await this.opts.storage.removeStaging(planId).catch(() => undefined);
+    await this.collect();
+    throw new PackError(
+      "pack-type-check-failed",
+      `${packId} failed its ${record.type} check (${detail}${path !== null ? `, ${path}` : ""})${typeof refusal.message === "string" ? `: ${refusal.message}` : "."}`,
+      { packId, path, detail },
+    );
   }
 
   /** Steps 12–16 again over a stored record, with its own pack id as the pin; a delegated
@@ -1825,6 +1956,14 @@ export class PackEngine {
           variant.payload.sha256,
           variant.files.layout,
           result.index ?? index,
+        );
+        await this.typeCheck(
+          packId,
+          record,
+          variant,
+          location,
+          planId,
+          delegation,
         );
         const install = await this.commit(
           packId,
