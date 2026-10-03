@@ -361,7 +361,7 @@ jobs:
           rm -rf sdks/godot/addons/polaris_key/native/ios
           GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" PKEY_TEST_SUITES=native_apple,update sdks/godot/tools/run_tests.sh
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apple-logs
           path: |
@@ -427,7 +427,7 @@ jobs:
           GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" PKEY_TEST_SUITES=native_android,update
           sdks/godot/tools/run_tests.sh
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-logs
           path: |
@@ -503,7 +503,7 @@ jobs:
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: godot-logs-${{ matrix.godot }}-${{ matrix.os }}
           path: sdks/godot/build/logs/
