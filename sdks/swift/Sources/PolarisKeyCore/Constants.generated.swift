@@ -142,6 +142,7 @@ public enum ErrorCode {
     public static let pckEngineMismatch = "pck-engine-mismatch"
     public static let packRolledBack = "pack-rolled-back"
     public static let packRevoked = "pack-revoked"
+    public static let packNotDataOnly = "pack-not-data-only"
     public static let markerRejected = "marker-rejected"
 }
 
@@ -278,6 +279,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "pck-engine-mismatch",
     "pack-rolled-back",
     "pack-revoked",
+    "pack-not-data-only",
     "marker-rejected",
 ]
 
@@ -414,6 +416,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "pck-engine-mismatch": "client",
     "pack-rolled-back": "client",
     "pack-revoked": "client",
+    "pack-not-data-only": "client",
     "marker-rejected": "client",
 ]
 
@@ -461,6 +464,7 @@ public enum Feature {
     public static let outletDetect = "outlet.detect"
     public static let packsRecord = "packs.record"
     public static let packsRevoke = "packs.revoke"
+    public static let packsDelegation = "packs.delegation"
     public static let packsPlan = "packs.plan"
     public static let packsIndexFiles = "packs.index.files"
     public static let packsIndexChunks = "packs.index.chunks"
@@ -525,6 +529,7 @@ public let FEATURE_VALUES: [String] = [
     "outlet.detect",
     "packs.record",
     "packs.revoke",
+    "packs.delegation",
     "packs.plan",
     "packs.index.files",
     "packs.index.chunks",
@@ -941,6 +946,56 @@ public let TRANSPORT_VALUES: [String] = [
     "web",
 ]
 
+/// The pack types a delegated content key may sign (`DELEGABLE_PACK_TYPES`, plans/P4-19.md §2.5, decision 5). A delegation's `types` outside this list are ignored; `godot.pck`, `godot.zip`, `audio.bank`, `ml.model` and `custom.*` are never delegable. `delegationCases` pins them.
+public enum DelegablePackType {
+    public static let filesTree = "files.tree"
+    public static let dataJson = "data.json"
+    public static let l10nTable = "l10n.table"
+}
+
+/// Every `DelegablePackType` value, in source order.
+public let DELEGABLE_PACK_TYPE_VALUES: [String] = [
+    "files.tree",
+    "data.json",
+    "l10n.table",
+]
+
+/// The file extensions a delegated install may hold (`DATA_ONLY_EXTENSIONS`, plans/P4-19.md §2.5 rule 2): the final segment's text after its last `.`, ASCII-lowercased. An allow-list: anything else is refused (`pack-not-data-only`, rule `extension`). `dataOnlyCases` pins them.
+public enum DataOnlyExtension {
+    public static let json = "json"
+    public static let csv = "csv"
+    public static let tsv = "tsv"
+    public static let po = "po"
+    public static let txt = "txt"
+    public static let png = "png"
+    public static let jpg = "jpg"
+    public static let jpeg = "jpeg"
+    public static let webp = "webp"
+    public static let ogg = "ogg"
+    public static let wav = "wav"
+    public static let mp3 = "mp3"
+    public static let ttf = "ttf"
+    public static let otf = "otf"
+}
+
+/// Every `DataOnlyExtension` value, in source order.
+public let DATA_ONLY_EXTENSION_VALUES: [String] = [
+    "json",
+    "csv",
+    "tsv",
+    "po",
+    "txt",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "ogg",
+    "wav",
+    "mp3",
+    "ttf",
+    "otf",
+]
+
 /// The `X-PKey-*` request header names (wire contract v3 §5).
 public enum HeaderName {
     public static let arch = "X-PKey-Arch"
@@ -1004,6 +1059,21 @@ public let MAX_FEED_REVOCATIONS = 64
 
 /// Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`).
 public let REVOCATION_REASON_MAX_BYTES = 512
+
+/// Wire contract v4 limit `MAX_DELEGATION_TTL_SECONDS` (`@polaris-key/protocol/core`).
+public let MAX_DELEGATION_TTL_SECONDS = 31622400
+
+/// Wire contract v4 limit `MAX_DELEGATION_TYPES` (`@polaris-key/protocol/core`).
+public let MAX_DELEGATION_TYPES = 8
+
+/// Wire contract v4 limit `DATA_ONLY_HEAD_BYTES` (`@polaris-key/protocol/core`).
+public let DATA_ONLY_HEAD_BYTES = 64
+
+/// Wire contract v4 limit `DATA_ONLY_TAIL_BYTES` (`@polaris-key/protocol/core`).
+public let DATA_ONLY_TAIL_BYTES = 65557
+
+/// Wire contract v4 limit `MAX_DELEGATIONS_PER_CHECK` (`@polaris-key/protocol/core`).
+public let MAX_DELEGATIONS_PER_CHECK = 16
 
 /// Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).
 public let MAX_PACK_VARIANTS = 32
@@ -1183,6 +1253,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "outlet.detect": CapabilityRow(status: "implemented", service: "update", na: []),
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.revoke": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.delegation": CapabilityRow(status: "planned", service: "release", na: []),
     "packs.plan": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.files": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.chunks": CapabilityRow(status: "planned", service: "release", na: []),
@@ -1204,4 +1275,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "75605070310331aea94d56dc78267f5fb33cdea8629060489060bb83e10e21a7"
+public let CAPABILITY_DIGEST = "de1329d371179b694189d404e81c86a8803936c9ea84f9e0657a6018297b8781"

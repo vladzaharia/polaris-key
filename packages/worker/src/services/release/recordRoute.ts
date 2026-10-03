@@ -23,6 +23,8 @@
  *      per request by Distribution's blob route (P4-05). So does a `kind: revocation` record
  *      (P4-13, `release_revocations`, served by its hash like any record): (1) governs. Only the
  *      CURRENT revocation of a target is stored, so a superseded one is the plain not-found.
+ *      So does a `kind: delegation` record and a delegation's revocation (P4-19,
+ *      `release_delegations.jws` and `revocation_jws`): (1) governs.
  */
 
 import type { ServiceContext } from "../../core/registry.js";
@@ -90,7 +92,12 @@ export async function handleRecordRoute(
   // 3. Under `entitled`, the record's own release's stored version, pinned. Not for a pack
   //    record (P4-02) or a revocation (P4-13): the version window is an APP version rule, so the
   //    metadata mode's request-level check (1) governs.
-  if (mode === "entitled" && row.kind !== "pack" && row.kind !== "revocation") {
+  if (
+    mode === "entitled" &&
+    row.kind !== "pack" &&
+    row.kind !== "revocation" &&
+    row.kind !== "delegation"
+  ) {
     const release = await db.first<{ version: string }>(
       "SELECT version FROM release_metadata WHERE product = ? AND release_id = ?",
       product.slug,

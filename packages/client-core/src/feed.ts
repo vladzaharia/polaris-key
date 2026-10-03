@@ -28,6 +28,7 @@ import {
   ENGINE_PATTERN,
   VARIANT_AXIS_PATTERN,
   VARIANT_VALUE_PATTERN,
+  VOCAB_TOKEN_PATTERN,
 } from "@polaris-key/protocol/packs";
 import {
   FEED_PLATFORM_PATTERN,
@@ -686,12 +687,22 @@ function parseRevocations(
     if (!isWireInteger(r.seq, `/revocations/${i}/seq`, 1, nonWire)) no();
     if (records.has(r.record as string)) no();
     records.add(r.record as string);
+    // plans/P4-19.md §2.7: `kind` absent (a pack record target) or `delegation`; any other
+    // vocabulary token is a forward value whose entry is dropped alone; anything else makes the
+    // member unusable.
+    let kind: "delegation" | undefined;
+    if (has(r, "kind")) {
+      if (typeof r.kind !== "string" || !VOCAB_TOKEN_PATTERN.test(r.kind)) no();
+      if (r.kind !== "delegation") continue;
+      kind = "delegation";
+    }
     out.push({
       record: r.record as string,
       pack: r.pack as string,
       target: r.target as string,
       version: r.version as string,
       seq: r.seq as number,
+      ...(kind !== undefined ? { kind } : {}),
     });
   }
   return out;

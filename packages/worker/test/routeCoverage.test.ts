@@ -88,6 +88,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/publish/submit", ["post"]],
   // P4-02: a stage round of a pack's objects.
   ["/{product}/release/publish/stage", ["post"]],
+  // P4-19: the product's delegations, for `pkey release delegate`.
+  ["/{product}/release/publish/delegations", ["post"]],
   // P3-03: a CI-signed release record by its hash.
   ["/{product}/release/records/{sha256}", ["get"]],
   // P2b-04: all byte delivery is Distribution's (the installer, the download and P2-05's three
@@ -270,6 +272,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/release/publish/uploads",
   "/{product}/release/publish/submit",
   "/{product}/release/publish/stage",
+  "/{product}/release/publish/delegations",
   // P2b-04: the CI rollout routes, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/rollouts/{outlet}/{channel}",
   "/{product}/distribution/rollouts/{outlet}/{channel}/pause",

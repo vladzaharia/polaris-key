@@ -151,6 +151,18 @@ The signed update path of WIRE-CONTRACT-V4, in the contract's order (plans/P3-01
   checks a revocation record against a feed entry with the pinned release keys (steps 12–16);
   `newerRevocation` picks the winner of two revocations of one target (newest `issuedAt`, then
   the higher record hash).
+- Content-key delegation (plans/P4-19.md §2.2–§2.6, V4 §2.5.4): `verifyReleaseRecord` takes an
+  optional `delegation` (the compact JWS of the delegation a `pkd1-<sha256>` kid names) and then
+  runs the delegated path: the delegation verified against the pinned release keys only, its key
+  never a release or product key (step `delegation`), the record's signature with the delegated
+  key (`jws`), and step 16's scope (`scope`: `kind: pack`, the pack under the scope root by whole
+  segments (`coversPack`), a delegated type, tree layout only, `issuedAt` inside the window). The
+  result's `delegation` is `{sha256, deliverable, types, issuedAt, expiresAt}`, or null for a
+  release-key signer; without the option the behaviour is P4-13's. `delegationHashOf` reads the
+  hash from a record's header kid (`delegatedKid` builds one), `delegationOf` reads a
+  `kind: delegation` body (effective types = `types ∩ DELEGABLE_PACK_TYPES`), `verifyDelegation`
+  verifies one by hash, and `recordRevoked(recordSha256, delegationSha256, revoked)` answers
+  `record`, `delegation` or null. A feed `revocations` entry may carry `kind: "delegation"`.
 - `runUpdateCheck` takes the two fetches as callbacks and the cache slices, and returns the
   `UpdateCheck` plus the slices to write — the shared core of `update.decide()` in both JS SDKs.
 
@@ -190,6 +202,13 @@ same code runs in Node, in a browser and under the corpus runner. Nothing here d
   back). The torn hold's first snapshot is saved beside the quarantine (`readHoldList`,
   `writeHoldList`) and reused across restarts. The quarantine members of `PackStateStore` are required; a
   store that lacks them at run time has a torn document treated as unreadable.
+- **The data-only rule** (plans/P4-19.md §2.5, `dataOnlyCases`): `dataOnlyRefusal(path, head,
+tail)` answers `extension` (a path that is not already normalised, or an extension outside
+  `DATA_ONLY_EXTENSIONS`), `content` (a Godot, archive, native-code or script magic in the first
+  64 bytes after a BOM and whitespace, a trailing `GDPC`, or a zip end record in the last 65,557
+  bytes) or null. `dataOnlyPathRefusal` is the path half, `dataOnlyFileRefusal` takes whole
+  bytes, and `dataOnlyTreeSink` wraps an applier's tree sink so a delegated install refuses a file
+  before it is written. Delegated installs only; release-signed packs keep their own rules.
 - **`PackEngine`**: CONTENT §10's pipeline — preflight, journal, `Range`/`If-Range` fetch whose
   resume re-hashes what is staged, apply with fallbacks, commit (the pointer swap), activation,
   confirm, rollback, garbage collection and embedded baselines. `estimate` sizes a download for

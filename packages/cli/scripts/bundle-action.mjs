@@ -56,8 +56,41 @@ async function schemas() {
   return out;
 }
 
+/**
+ * `@polaris-key/zstd-wasm`'s Node entry reads `zdec.wasm` beside itself, which a one-file bundle
+ * has no copy of. The chunk lints (P4-22) decode with it, so the bundle resolves the package to
+ * this module instead: the same decoder over the same committed `zdec.wasm`, inlined as bytes
+ * (esbuild's `binary` loader).
+ */
+const zstdWasmEmbedded = {
+  name: "zstd-wasm-embedded",
+  setup(b) {
+    b.onResolve({ filter: /^@polaris-key\/zstd-wasm$/ }, () => ({
+      path: "zstd-wasm-embedded",
+      namespace: "pkey-zstd-wasm",
+    }));
+    b.onLoad({ filter: /.*/, namespace: "pkey-zstd-wasm" }, () => ({
+      resolveDir: pkgDir,
+      loader: "js",
+      contents: [
+        'import { createZstdWasm } from "@polaris-key/zstd-wasm/core";',
+        'import bytes from "@polaris-key/zstd-wasm/zdec.wasm";',
+        'export { ZstdWasmError } from "@polaris-key/zstd-wasm/core";',
+        "let decoder = null;",
+        "const get = () => (decoder ??= createZstdWasm(new WebAssembly.Module(bytes)));",
+        "export const decode = (frame, size) => get().decode(frame, size);",
+        "export const decodeWithPrefix = (frame, prefix, size, windowLogMax) =>",
+        "  get().decodeWithPrefix(frame, prefix, size, windowLogMax);",
+        "export const version = () => get().version();",
+      ].join("\n"),
+    }));
+  },
+};
+
 async function bundle() {
   const result = await build({
+    plugins: [zstdWasmEmbedded],
+    loader: { ".wasm": "binary" },
     absWorkingDir: pkgDir,
     entryPoints: ["src/bin/standalone.ts"],
     bundle: true,

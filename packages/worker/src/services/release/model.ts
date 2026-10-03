@@ -622,7 +622,8 @@ export async function yankRelease(
 }
 
 /** Lift a yank, never for a revoked release: a revocation is permanent, and its ingest yanked
- *  the target (plans/P4-13.md §6.2), so the guard keeps that yank even under a race. */
+ *  the target (plans/P4-13.md §6.2), so the guard keeps that yank even under a race. The same
+ *  holds for a release signed under a revoked delegation (P4-19). */
 export function stmtUnyankRelease(
   product: string,
   releaseId: string,
@@ -630,12 +631,20 @@ export function stmtUnyankRelease(
   return {
     sql: `DELETE FROM release_yanks WHERE product = ? AND release_id = ?
             AND NOT EXISTS (SELECT 1 FROM release_revocations
-                             WHERE product = ? AND target_release_id = ?)`,
-    params: [product, releaseId, product, releaseId],
+                             WHERE product = ? AND target_release_id = ?)
+            AND NOT EXISTS (SELECT 1 FROM release_records r
+                              JOIN release_delegated_records d
+                                ON d.product = r.product AND d.record_sha256 = r.record_sha256
+                              JOIN release_delegations g
+                                ON g.product = d.product AND g.record_sha256 = d.delegation_sha256
+                             WHERE r.product = ? AND r.release_id = ?
+                               AND g.revocation_sha256 IS NOT NULL)`,
+    params: [product, releaseId, product, releaseId, product, releaseId],
   };
 }
 
-/** True when a CI-signed revocation names this release (plans/P4-13.md §6.2). */
+/** True when a CI-signed revocation names this release (plans/P4-13.md §6.2), or the delegation
+ *  it was signed under (P4-19). */
 export async function isRevoked(
   db: Db,
   product: string,
@@ -643,7 +652,17 @@ export async function isRevoked(
 ): Promise<boolean> {
   return (
     (await db.first<{ one: number }>(
-      "SELECT 1 AS one FROM release_revocations WHERE product = ? AND target_release_id = ?",
+      `SELECT 1 AS one FROM release_revocations WHERE product = ? AND target_release_id = ?
+       UNION ALL
+       SELECT 1 FROM release_records r
+         JOIN release_delegated_records d
+           ON d.product = r.product AND d.record_sha256 = r.record_sha256
+         JOIN release_delegations g
+           ON g.product = d.product AND g.record_sha256 = d.delegation_sha256
+        WHERE r.product = ? AND r.release_id = ? AND g.revocation_sha256 IS NOT NULL
+       LIMIT 1`,
+      product,
+      releaseId,
       product,
       releaseId,
     )) !== null

@@ -99,6 +99,10 @@
       "status": "implemented",
       "note": "client-core verifyRevocation and newerRevocation; the PackEngine keeps verified revocations in the sibling revocations.json (revocationsStored, relearn, 256 targets) and refuses revoked mounts with pack-revoked."
     },
+    "packs.delegation": {
+      "status": "implemented",
+      "note": "client-core verifyReleaseRecord (the delegated path, steps 13 and 16), verifyDelegation, recordRevoked and dataOnlyRefusal; the PackEngine fetches and caches delegations, refuses non-data-only delegated installs with pack-not-data-only, stores PackInstall.delegation and refuses releases under a revoked delegation (pack-revoked, detail delegation); the Node runner drives every delegationCases and dataOnlyCases vector."
+    },
     "packs.plan": {
       "status": "implemented",
       "note": "client-core plan, selectVariant and planTarget; every plan-matrix.json row, variant case and target case in the Node runner."

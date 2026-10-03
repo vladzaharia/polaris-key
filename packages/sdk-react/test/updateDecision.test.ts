@@ -231,6 +231,21 @@ describe("BrowserAdapter.decideUpdate() — options and step 1", () => {
     ).toThrowError(expect.objectContaining({ code: "invalid-options" }));
   });
 
+  it("throws invalid-options for a pinned pkd1- kid (plans/P4-19.md §2.2)", () => {
+    // @pkey-feature packs.delegation
+    const srv = server();
+    expect(() =>
+      adapterFor(srv, null, {
+        update: {
+          pinnedReleaseKeys: {
+            [releaseKey.kid]: releaseKey.raw,
+            [`pkd1-${"a".repeat(64)}`]: releaseKey.raw,
+          },
+        },
+      }),
+    ).toThrowError(expect.objectContaining({ code: "invalid-options" }));
+  });
+
   it("throws not-configured without release keys, with an empty map, or without product pins", async () => {
     const srv = server();
     for (const over of [

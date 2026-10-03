@@ -194,6 +194,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
+      '@polaris-key/zstd-wasm':
+        specifier: workspace:*
+        version: link:../zstd-wasm
       yaml:
         specifier: ^2.6.1
         version: 2.9.0

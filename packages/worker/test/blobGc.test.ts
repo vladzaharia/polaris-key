@@ -284,9 +284,85 @@ describe("concurrent publishes (P4-14)", () => {
   });
 });
 
-describe("the P4-22 hook point and the console views (P4-14)", () => {
-  it("keeps a bundle's ref while Release has no packChunks, and shows the dry run and the bundle ratios", async () => {
-    const { w } = await world();
+describe("chunk bundles: the packChunks hook (P4-10 decision 16, P4-22) and the console views", () => {
+  /** foes 1.0.0–1.0.5 with chunk indexes (1.0.5's names 1.0.0's bundle), l10n, the app. */
+  async function chunkWorld() {
+    const w = await packWorld();
+    const foes: Published[] = [];
+    for (let i = 0; i <= 5; i++)
+      foes.push(
+        await w.publishPack(FOES, `1.0.${i}`, {
+          chunks: i === 5 ? { reuse: foes[0]!.bundle! } : {},
+        }),
+      );
+    const l10n = await w.publishPack(L10N, "1.0.0", { contentApi: null });
+    const app = await w.submitApp("1.4.0", 14, appContent());
+    expect(app.status, JSON.stringify(app.body)).toBe(200);
+    return { w, foes, l10n };
+  }
+
+  it("keeps every bundle a live index names — an older, dead release's included — and collects the rest after grace", async () => {
+    const { w, foes } = await chunkWorld();
+    const catalog = (await w.hooks(T)).releaseCatalog()!;
+    // Release reads a live variant's chunks from its stored index.
+    expect(await catalog.packChunks!(foes[5]!.releaseId, "")).toEqual([
+      { bundleKey: key(foes[5]!.bundle!.sha256), offset: 8, bytes: 48 },
+      { bundleKey: key(foes[0]!.bundle!.sha256), offset: 0, bytes: 48 },
+    ]);
+    expect(await catalog.packChunks!(foes[5]!.releaseId, "nope")).toBeNull();
+    const p = await plan(w, T);
+    expect(p.complete).toBe(true);
+    expect(p.liveReleases).toEqual(
+      expect.arrayContaining([
+        foes[3]!.releaseId,
+        foes[4]!.releaseId,
+        foes[5]!.releaseId,
+      ]),
+    );
+    expect(p.liveReleases).not.toContain(foes[0]!.releaseId);
+    const dropped = new Set(
+      p.drops
+        .filter((d) => d.refKind === "pack-upload")
+        .map((d) => d.storageKey),
+    );
+    // 1.0.0's bundle is named by live 1.0.5's index: its pack-upload ref stays.
+    expect(dropped.has(key(foes[0]!.bundle!.sha256))).toBe(false);
+    for (const f of foes.slice(3))
+      expect(dropped.has(key(f.bundle!.sha256))).toBe(false);
+    for (const f of foes.slice(1, 3))
+      expect(dropped.has(key(f.bundle!.sha256))).toBe(true);
+
+    await tick(w, T);
+    await tick(w, T + GRACE - 1);
+    for (const f of foes)
+      expect(await stored(w, key(f.bundle!.sha256))).toBe(true);
+    await tick(w, T + GRACE);
+    // Kept: every bundle a live index names. Collected: the dead releases' own bundles no live
+    // index names, and their indexes.
+    for (const f of [foes[0]!, ...foes.slice(3)])
+      expect(await stored(w, key(f.bundle!.sha256)), f.version).toBe(true);
+    for (const f of foes.slice(1, 3)) {
+      expect(await stored(w, key(f.bundle!.sha256)), f.version).toBe(false);
+      expect(await stored(w, key(f.chunkIndex!.sha256)), f.version).toBe(false);
+    }
+    expect(await stored(w, key(foes[0]!.chunkIndex!.sha256))).toBe(false);
+    for (const f of foes.slice(3))
+      expect(await stored(w, key(f.chunkIndex!.sha256)), f.version).toBe(true);
+  });
+
+  it("a live variant whose chunk index cannot be read keeps every pack-upload ref (fail closed)", async () => {
+    const { w, foes } = await chunkWorld();
+    w.r2.delete(key(foes[4]!.chunkIndex!.sha256));
+    const p = await plan(w, T);
+    expect(p.complete).toBe(false);
+    expect(p.incomplete).toMatch(
+      /chunk index of live release djdl\.foes@1\.0\.4/,
+    );
+    expect(p.drops.some((d) => d.refKind === "pack-upload")).toBe(false);
+  });
+
+  it("against a catalog without packChunks, a bundles/ key's ref is kept and a live chunk index makes the plan incomplete", async () => {
+    const { w } = await chunkWorld();
     const bundle = `bundles/sha256/${"b".repeat(64)}`;
     await w.db.run(
       `INSERT INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
@@ -304,6 +380,23 @@ describe("the P4-22 hook point and the console views (P4-14)", () => {
       FOES,
       NOW,
     );
+    const hooks = await w.hooks(T);
+    const { packChunks: _omit, ...without } = hooks.releaseCatalog()!;
+    const p = await planProductGc({
+      db: w.db,
+      product: SLUG,
+      hooks: { ...hooks, releaseCatalog: () => without },
+      now: T,
+      settings: blobGcSettings(w.env),
+      budget: { indexReads: GC_INDEX_READS_PER_TICK },
+    });
+    expect(p.complete).toBe(false);
+    expect(p.incomplete).toMatch(/Release reads no chunk indexes/);
+    expect(p.drops.some((d) => d.storageKey === bundle)).toBe(false);
+  });
+
+  it("shows the dry run and the bundles a live index names, with their live-data ratio", async () => {
+    const { w, foes } = await chunkWorld();
     vi.setSystemTime(T * 1000);
     const dry = await w.admin("GET", "/blob-gc");
     expect(dry.status).toBe(200);
@@ -317,28 +410,34 @@ describe("the P4-22 hook point and the console views (P4-14)", () => {
     expect(body.drops.packObject).toBeGreaterThan(0);
     expect(
       (body.drops.listed as { storageKey: string }[]).some(
-        (d) => d.storageKey === bundle,
+        (d) => d.storageKey === key(foes[0]!.bundle!.sha256),
       ),
     ).toBe(false);
     // A dry run writes nothing.
     expect(await w.db.first("SELECT COUNT(*) AS n FROM blob_gc_log")).toEqual({
       n: 0,
     });
-    const bundles = await w.admin("GET", "/blob-gc/bundles");
-    expect(await bundles.json()).toEqual({
-      available: false,
-      bundles: [
-        { storageKey: bundle, size: 4096, liveBytes: null, ratio: null },
-      ],
+    const bundles = (await (
+      await w.admin("GET", "/blob-gc/bundles")
+    ).json()) as {
+      available: boolean;
+      bundles: { storageKey: string; size: number; liveBytes: number }[];
+    };
+    expect(bundles.available).toBe(true);
+    const byKey = new Map(bundles.bundles.map((b) => [b.storageKey, b]));
+    // 1.0.0's bundle: only its second chunk (48 of 104 bytes) is still read, by 1.0.5.
+    expect(byKey.get(key(foes[0]!.bundle!.sha256))).toEqual({
+      storageKey: key(foes[0]!.bundle!.sha256),
+      size: 104,
+      liveBytes: 48,
+      ratio: 48 / 104,
     });
-    await tick(w, T);
-    expect(
-      await w.db.first(
-        "SELECT ref_kind FROM blob_refs WHERE product = ? AND storage_key = ?",
-        SLUG,
-        bundle,
-      ),
-    ).toEqual({ ref_kind: "pack-upload" });
+    expect(byKey.get(key(foes[4]!.bundle!.sha256))).toMatchObject({
+      size: 104,
+      liveBytes: 96,
+    });
+    // A dead release's bundle no live index names is not listed (nothing marks it a bundle).
+    expect(byKey.has(key(foes[1]!.bundle!.sha256))).toBe(false);
   });
 });
 
@@ -528,6 +627,123 @@ describe("review fixes: nothing live is ever deleted (P4-14 B1–B4)", () => {
     // Not treated as revoking foes 1.0.5, nor as keeping its "replacement" alive.
     expect(live.has(foes[5]!.releaseId)).toBe(true);
     expect(live.has(foes[0]!.releaseId)).toBe(false);
+  });
+
+  it("P4-19: a release a delegation revocation yanks is no live reference, not through pins, rollouts or outlet listings", async () => {
+    const { w, foes } = await world();
+    const hooks = await w.hooks(T);
+    const catalog = hooks.releaseCatalog()!;
+    const delivery = hooks.delivery()!;
+    const dead = foes[5]!;
+    const appId = (await catalog.releases("app"))[0]!.releaseId;
+    // Before: foes 1.0.5 is live (a current set member).
+    expect((await livePackReleases(hooks))!.live.has(dead.releaseId)).toBe(
+      true,
+    );
+    const wrapped = {
+      ...hooks,
+      releaseCatalog: () => ({
+        ...catalog,
+        revocations: async () => [
+          {
+            kind: "delegation" as const,
+            deliverableId: "djdl.events",
+            targetReleaseId: "",
+            targetSha256: "d".repeat(64),
+            recordSha256: "e".repeat(64),
+            version: "1",
+            seq: 1,
+            kid: "k",
+            replacement: null,
+            reason: "content key retired",
+            issuedAt: NOW,
+            ingestedAt: NOW,
+            delegatedReleaseIds: [dead.releaseId],
+          },
+        ],
+        // (a): the live app release pins it.
+        pins: async (app: string) => [
+          ...(await catalog.pins(app)),
+          ...(app === appId
+            ? [
+                {
+                  appReleaseId: appId,
+                  pack: FOES,
+                  packReleaseId: dead.releaseId,
+                  recordSha256: dead.sha256,
+                  required: true,
+                  delivery: "essential",
+                },
+              ]
+            : []),
+        ],
+      }),
+      delivery: () => ({
+        ...delivery,
+        // (e): a rollout names it; (f): an outlet lists it.
+        rollouts: async () => [
+          ...(await delivery.rollouts()),
+          {
+            deliverableId: FOES,
+            releaseId: dead.releaseId,
+            state: "complete",
+          } as never,
+        ],
+        reportedAvailability: async () => [
+          ...(await delivery.reportedAvailability()),
+          { releaseId: dead.releaseId, state: "available" } as never,
+        ],
+      }),
+    };
+    const live = (await livePackReleases(wrapped as never))!.live;
+    expect(live.has(dead.releaseId)).toBe(false);
+    // The other releases are untouched (the previous one stays live through the set).
+    expect(live.has(foes[4]!.releaseId)).toBe(true);
+  });
+});
+
+describe("P4-19: delegation revocations through the real catalog", () => {
+  it("reads a stored delegation revocation and its delegated records from D1 (readDelegationRevocations), so the yanked release is no live reference", async () => {
+    const { w, foes } = await world();
+    const dead = foes[5]!;
+    const before = (await livePackReleases(await w.hooks(T)))!.live;
+    expect(before.has(dead.releaseId)).toBe(true);
+    const delegation = "d".repeat(64);
+    await w.db.run(
+      `INSERT INTO release_delegations
+         (product, record_sha256, deliverable_id, seq, version, kid, jws, public_key, types_json,
+          issued_at, expires_at, ingested_at, origin, revocation_sha256, revocation_jws,
+          revocation_kid, revocation_reason, revocation_issued_at)
+       VALUES (?, ?, ?, 1, '1', 'djdl-release-test-2026', 'x.y.z', ?, '["files.tree"]',
+               ?, ?, ?, 'submit', ?, 'r.s.t', 'djdl-release-test-2026', 'retired', ?)`,
+      SLUG,
+      delegation,
+      FOES,
+      "A".repeat(43),
+      NOW - 100,
+      NOW + 86400,
+      NOW,
+      "e".repeat(64),
+      NOW,
+    );
+    await w.db.run(
+      "INSERT INTO release_delegated_records (product, record_sha256, delegation_sha256) VALUES (?, ?, ?)",
+      SLUG,
+      dead.sha256,
+      delegation,
+    );
+    const hooks = await w.hooks(T);
+    const revs = await hooks.releaseCatalog()!.revocations();
+    expect(revs).toContainEqual(
+      expect.objectContaining({
+        kind: "delegation",
+        targetSha256: delegation,
+        delegatedReleaseIds: [dead.releaseId],
+      }),
+    );
+    const live = (await livePackReleases(hooks))!.live;
+    expect(live.has(dead.releaseId)).toBe(false);
+    expect(live.has(foes[4]!.releaseId)).toBe(true);
   });
 });
 

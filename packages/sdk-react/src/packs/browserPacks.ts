@@ -459,6 +459,8 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
         axes: opts.axes ?? {},
         revoked: revs.verified,
         relearn: revs.relearn,
+        // plans/P4-19.md §2.7: the delegated releases the engine knows.
+        delegated: e.delegatedReleases(),
       };
     },
     recordRevocations: async (r) =>

@@ -268,14 +268,23 @@ What the step does, in order:
    the newest such releases get deltas. A missing cache only means bigger downloads for that
    release, never a failed publish. The step lists entries that look like re-import noise (a Godot
    cache rewritten in another order, a few changed bytes) as warnings.
-5. **Upload and submit.** Objects go up in rounds of at most 256, each object only when the
+5. **Chunk indexes.** A PCK variant of 4 MiB or more also gets a chunk index and chunk bundles
+   ([Chunk indexes and shared bundles](/docs/services/release/packs/#chunk-indexes-and-shared-bundles))
+   when `patch.strategies` lists `chunk` (the default) and Polaris Key advertises
+   `release.chunks`. `out` keeps each index (`<variant>/chunks.<sha256>`) and `bases` continues
+   its chain, so an update uploads only the bundles of the chunks that changed; a bundle Polaris
+   Key no longer holds is packed again. The step proves every new chunk decodes to its bytes with
+   the device decoder and the index parses against the payload; an index above 8 MiB is left out
+   with a warning.
+6. **Upload and submit.** Objects go up in rounds of at most 256, each object only when the
    product does not hold it yet, so an unchanged file costs nothing; then the record is submitted.
-6. **Write the marker.** The stripped PCK is written back in place, and a marker
+7. **Write the marker.** The stripped PCK is written back in place, and a marker
    (`pkey-marker/1`, the signed record) is written beside each payload: `X.pck.pkey.json` beside
    a PCK, `D/.pkey/pack.json` inside a tree. Embed both in the app export.
 
 `dry-run: true` prints the lint results, the strip, the gate, the objects (new and already
-stored), the bytes each update strategy costs, skipped deltas and the unsigned record, and
+stored), the bytes each update strategy costs, the chunks (with the new bundles and the bytes
+reused from earlier bundles), skipped deltas and the unsigned record, and
 uploads, signs and writes nothing. It submits nothing either, so there is no server verdict on
 the record: the checks it shows are the CLI's own, the preflight's (seq, gate, cached bases) and
 the tickets' `present` answers, for which it mints one upload ticket per 256 objects (rows that

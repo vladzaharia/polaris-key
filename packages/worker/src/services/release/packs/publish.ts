@@ -15,7 +15,10 @@
  * Diceroll-sized pack is about 1,900 objects, so CI uploads them in rounds of at most
  * `MAX_TICKET_OBJECTS` (256): each round verifies its ticket's objects, claims the ticket,
  * promotes each and earns one `blob_refs` row per object, `(product, key, "pack-upload",
- * <packId>)`. A round of 256 objects costs about 1,550 subrequests. The record submit then checks
+ * <packId>)`. A round skips (`present`) only the objects THIS pack already uploaded (P4-22): one
+ * another pack of the product holds is promoted again from its staged copy, through `promote`'s
+ * already-stored path, so the chunk ingest's own-ref rule never strands a renamed or twin pack.
+ * A round of 256 objects costs about 1,550 subrequests. The record submit then checks
  * every object the record and its indexes name against those refs (`ingest.ts`).
  *
  * THE GATE (decision 35). Every object of a pack is staged under the pack's delivery gate:
@@ -32,7 +35,6 @@ import { ciActor } from "../../../core/ciScope.js";
 import {
   blobKey,
   promote,
-  referencedKeys,
   stagingKey,
   verifyStaged,
 } from "../../../core/blobs.js";
@@ -48,6 +50,7 @@ import { randomId } from "../../../core/platform.js";
 import type { DbStatement } from "../../../core/platform.js";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
+import { DATA_ONLY_EXTENSIONS } from "@polaris-key/protocol/packs";
 import { bumpReleaseGeneration } from "../ghCache.js";
 import {
   artifactsAccessSnapshot,
@@ -65,18 +68,32 @@ import { checkPackPublish } from "./checks.js";
 import { resolveAndStore } from "./sets.js";
 import { handleRevocationSubmit } from "./revocations.js";
 import {
+  delegatedKidOf,
+  delegatedRecordStatement,
+  handleDelegationSubmit,
+  verifyDelegatedRecord,
+  yankDelegatedStatement,
+  type DelegationRow,
+} from "./delegations.js";
+import {
   checkPackAgainstDeclaration,
   checkPackRequires,
   checkPackScheme,
   checkPackStore,
   packReleaseId,
   packReleaseStatements,
+  packUploadedKeys,
   PACK_RELEASE_RECORD_SQL,
   type PendingObject,
 } from "./ingest.js";
 
 /** A record submit carries no descriptor: the record, a ticket and a flag. */
 export const MAX_PACK_SUBMIT_BODY_BYTES = MAX_RECORD_JWS_BYTES + 4 * 1024;
+const DATA_ONLY_LIST = DATA_ONLY_EXTENSIONS.map((e) => `.${e}`).join(", ");
+
+/** A revocation submitted with the delegation it revokes (P4-19): two records. */
+export const MAX_REVOCATION_WITH_DELEGATION_BYTES =
+  2 * MAX_RECORD_JWS_BYTES + 4 * 1024;
 
 function refusal(
   status: number,
@@ -128,13 +145,16 @@ interface RoundObject {
 }
 
 /**
- * The objects of `ticket` this round must promote (the ones the product does not already
- * reference), after checking each one's `gated` flag against the gate. Reads only.
+ * The objects of `ticket` this round must promote (the ones `deliverable` has not uploaded
+ * itself: a `pack-upload` ref of this pack, P4-22), after checking each one's `gated` flag
+ * against the gate. A key another pack of the product holds is promoted again from its staged
+ * copy, through `promote`'s already-stored path, so this pack earns its own ref. Reads only.
  */
 async function roundObjects(
   ctx: ServiceContext,
   ticket: TicketRecord,
   gate: string | null,
+  deliverable: string,
 ): Promise<{ todo: RoundObject[]; present: string[] } | Response> {
   const gated = gate !== null;
   for (const o of ticket.objects)
@@ -149,7 +169,12 @@ async function roundObjects(
         { sha256: o.sha256 },
       );
   const targets = ticket.objects.map((o) => blobKey(o.sha256, { gated }));
-  const owned = await referencedKeys(ctx.db, ctx.product.slug, targets);
+  const owned = await packUploadedKeys(
+    ctx.db,
+    ctx.product.slug,
+    deliverable,
+    targets,
+  );
   const todo: RoundObject[] = [];
   const present: string[] = [];
   for (const [i, o] of ticket.objects.entries()) {
@@ -332,7 +357,7 @@ export async function handleStageRound(
       found.reason,
       found.message,
     );
-  const round = await roundObjects(ctx, found.ticket, g.gate);
+  const round = await roundObjects(ctx, found.ticket, g.gate, deliverable);
   if (round instanceof Response) return round;
   const verified = await verifyRound(bucket, round.todo);
   if (verified instanceof Response) return verified;
@@ -367,35 +392,62 @@ export async function handlePackSubmit(
 ): Promise<Response> {
   const { db, env, product, now } = ctx;
   const bucket = env.BLOBS!;
-  if (
-    new TextEncoder().encode(JSON.stringify(body)).length >
-    MAX_PACK_SUBMIT_BODY_BYTES
-  )
+  const cap =
+    body.delegation !== undefined
+      ? MAX_REVOCATION_WITH_DELEGATION_BYTES
+      : MAX_PACK_SUBMIT_BODY_BYTES;
+  if (new TextEncoder().encode(JSON.stringify(body)).length > cap)
     return refusal(
       400,
       ErrorCode.BadRequest,
       "bad_body",
-      `a pack record submit is at most ${MAX_PACK_SUBMIT_BODY_BYTES} bytes`,
+      `a ${body.delegation !== undefined ? "revocation submitted with its delegation" : "pack record submit"} is at most ${cap} bytes`,
     );
   const dryRun = body.dryRun === true;
 
-  // 1. The checks every record shares, then the pack's own, reading only.
+  // 1. The checks every record shares, then the pack's own, reading only. A `pkd1-` kid names a
+  //    delegation (P4-19): the delegated branch's checks a–e instead of the release keys.
   const cfg = await getReleaseConfig(db, product.slug);
-  const shared = await verifyRecordJws(db, {
-    product: product.slug,
-    jws: body.record,
-    cfg,
-  });
+  const delegatedHash = delegatedKidOf(body.record);
+  let delegation: DelegationRow | null = null;
+  let shared: Awaited<ReturnType<typeof verifyRecordJws>>;
+  if (delegatedHash !== null) {
+    const d = await verifyDelegatedRecord(db, {
+      product: product.slug,
+      jws: body.record as string,
+      cfg,
+      now,
+    });
+    if (!d.ok) return recordRefusal(d.reason, d.message);
+    delegation = d.delegation;
+    shared = d;
+  } else
+    shared = await verifyRecordJws(db, {
+      product: product.slug,
+      jws: body.record,
+      cfg,
+    });
   if (!shared.ok) return recordRefusal(shared.reason, shared.message);
-  // P4-13: a revocation record is submitted alone too (no ticket, no descriptor).
+  // P4-13: a revocation record is submitted alone too (no ticket, no descriptor); P4-19 lets it
+  // carry the delegation it revokes.
   if (shared.payload.kind === "revocation")
-    return handleRevocationSubmit(ctx, holder, shared, dryRun);
+    return handleRevocationSubmit(ctx, holder, shared, dryRun, body.delegation);
+  if (body.delegation !== undefined)
+    return refusal(
+      400,
+      ErrorCode.BadRequest,
+      "bad_body",
+      "delegation is carried only by a revocation of that delegation",
+    );
+  // P4-19: a delegation record is submitted alone.
+  if (shared.payload.kind === "delegation")
+    return handleDelegationSubmit(ctx, holder, shared, dryRun);
   if (shared.payload.kind !== "pack")
     return refusal(
       400,
       ErrorCode.BadRequest,
       "bad_body",
-      "an app record is submitted with its release descriptor; only a kind: pack or kind: revocation record is submitted alone",
+      "an app record is submitted with its release descriptor; only a kind: pack, kind: revocation or kind: delegation record is submitted alone",
     );
   const record = shared.payload as unknown as PackRecordDoc;
   const recordSha256 = await sha256HexOfAscii(shared.jws);
@@ -487,7 +539,7 @@ export async function handlePackSubmit(
         found.message,
       );
     ticket = found.ticket;
-    const round = await roundObjects(ctx, ticket, g.gate);
+    const round = await roundObjects(ctx, ticket, g.gate, record.deliverable);
     if (round instanceof Response) return round;
     const verified = await verifyRound(bucket, round.todo, {
       allowMissing: dryRun,
@@ -519,8 +571,11 @@ export async function handlePackSubmit(
   const store = await checkPackStore(db, bucket, product.slug, record, {
     pending,
     unverified,
+    dataOnly: delegation !== null,
+    dryRun,
   });
   if (!store.ok) return recordRefusal(store.reason, store.message);
+  for (const k of store.unverifiedChunks) unverified.add(k);
 
   // 4. The resolution check (P4-12): the sets every live selector would resolve with it.
   const sets = await checkPackPublish(
@@ -531,6 +586,19 @@ export async function handlePackSubmit(
     cfg,
   );
   if (!sets.ok) return recordRefusal(sets.reason, sets.message);
+  // 5. P4-19: a delegated release is a compatible or standalone pack of data-only files.
+  if (delegation !== null) {
+    if (pack.binding !== "compatible" && pack.binding !== "standalone")
+      return recordRefusal(
+        "delegation-binding",
+        `${record.deliverable} is a ${pack.binding} pack; a content key publishes only compatible or standalone packs (a pinned or embedded release is the release key vouching for exact bytes).`,
+      );
+    if (store.dataOnlyRefused)
+      return recordRefusal(
+        "delegation-data-only",
+        `${store.dataOnlyRefused} is not a data-only file: a delegated release holds only ${DATA_ONLY_LIST} files (plans/P4-19.md §2.5).`,
+      );
+  }
   if (dryRun)
     return json({
       ok: true,
@@ -545,8 +613,8 @@ export async function handlePackSubmit(
 
   // 5. The rows, in one batch; a lost race writes nothing.
   const policy = cfg ? artifactPolicy(cfg) : null;
-  await db.batch(
-    packReleaseStatements({
+  await db.batch([
+    ...packReleaseStatements({
       product: product.slug,
       record,
       recordSha256,
@@ -558,7 +626,20 @@ export async function handlePackSubmit(
       ),
       now,
     }),
-  );
+    ...(delegation !== null
+      ? [
+          delegatedRecordStatement({
+            product: product.slug,
+            recordSha256,
+            delegationSha256: delegation.record_sha256,
+            guard: {
+              sql: PACK_RELEASE_RECORD_SQL,
+              params: [product.slug, releaseId, recordSha256],
+            },
+          }),
+        ]
+      : []),
+  ]);
   const mine = await db.first<{ one: number }>(
     `SELECT 1 AS one WHERE ${PACK_RELEASE_RECORD_SQL}`,
     product.slug,
@@ -573,6 +654,24 @@ export async function handlePackSubmit(
       `${record.deliverable} ${record.version} changed while this record was being checked; submit it again.`,
       { retryable: true },
     );
+  if (delegation !== null) {
+    // A revocation of the delegation that landed while this release was being checked yanked
+    // only the releases it could see: yank this one too (idempotent).
+    const now2 = await db.first<{ revocation_kid: string | null }>(
+      "SELECT revocation_kid FROM release_delegations WHERE product = ? AND record_sha256 = ?",
+      product.slug,
+      delegation.record_sha256,
+    );
+    if (now2?.revocation_kid)
+      await db.batch([
+        yankDelegatedStatement(
+          product.slug,
+          delegation.record_sha256,
+          `ci:${now2.revocation_kid}`,
+          now,
+        ),
+      ]);
+  }
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),
@@ -584,7 +683,7 @@ export async function handlePackSubmit(
     target_kind: "release",
     target_id: releaseId,
     parent_id: null,
-    summary: `Published pack release ${releaseId} through trusted publishing with release record ${recordSha256.slice(0, 12)}`,
+    summary: `Published pack release ${releaseId} through trusted publishing with release record ${recordSha256.slice(0, 12)}${delegation !== null ? ` (signed by the content key of delegation ${delegation.record_sha256.slice(0, 12)})` : ""}`,
   });
   await bumpReleaseGeneration(env, product.slug, now);
   // Store the rows the check resolved (re-resolving only if a concurrent trigger moved them).

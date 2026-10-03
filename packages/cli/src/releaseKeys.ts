@@ -37,20 +37,21 @@ export const RELEASE_KEY_ENV = "PKEY_RELEASE_KEY";
 export const KEYS_USAGE =
   "Usage: pkey release keys generate --kid <kid> --out <file> [--force]";
 
-/** The raw public key (base64url, the `TrustSet` encoding) of an Ed25519 PKCS#8 PEM. */
-export function publicKeyOfPem(pem: string): string {
+/** The raw public key (base64url, the `TrustSet` encoding) of an Ed25519 PKCS#8 PEM. `source`
+ *  names where the PEM came from in an error (the release key's variable by default). */
+export function publicKeyOfPem(pem: string, source = RELEASE_KEY_ENV): string {
   let key;
   try {
     key = createPrivateKey({ key: pem, format: "pem" });
   } catch {
     throw new Error(
-      `${RELEASE_KEY_ENV} is not a PEM private key (PKCS#8, as pkey release keys generate writes it).`,
+      `${source} is not a PEM private key (PKCS#8, as pkey release keys generate writes it).`,
     );
   }
   if (key.asymmetricKeyType !== "ed25519")
-    throw new Error(`${RELEASE_KEY_ENV} must be an Ed25519 key.`);
+    throw new Error(`${source} must be an Ed25519 key.`);
   const jwk = createPublicKey(key).export({ format: "jwk" }) as { x?: string };
-  if (!jwk.x) throw new Error(`${RELEASE_KEY_ENV}: no public key.`);
+  if (!jwk.x) throw new Error(`${source}: no public key.`);
   return jwk.x;
 }
 

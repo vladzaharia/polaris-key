@@ -362,7 +362,7 @@ deliverables:
     handler: { mountOrder: 2, prefixes: ["res://assets/kaykit/"] }
     variants: { texture: [s3tc, etc2, astc] }
     requires: { engine: godot-4.7 }
-    patch: { strategies: [delta, file], deltaBases: 1 }
+    patch: { strategies: [delta, file, chunk], deltaBases: 1 }
   diceroll.supporter.skins:
     kind: pack
     type: godot.pck
@@ -421,8 +421,11 @@ deliverables:
   `.pkey/schema` (`unknown_entitlement_ref`). It is **not** the gate: an operator gates a pack
   under Distribution → Access, and a publish whose gate differs from the assertion is refused.
   No push can gate, un-gate or re-flag a pack.
-- **`patch`**: `strategies`, a non-empty subset of `delta` and `file`; `deltaBases`, 0–8
-  (default 1) (`invalid_pack_patch`).
+- **`patch`**: `strategies`, a non-empty subset of `delta`, `file` and `chunk` (default: all
+  three; `chunk` gives every container variant of 4 MiB or more a chunk index and shared chunk
+  bundles, and an explicit list without it opts out); `deltaBases`, 0–8 (default 1)
+  (`invalid_pack_patch`). List `chunk` explicitly only once your Worker and CLI support it: an
+  older Worker's resync and an older CLI's validation refuse it.
 - **`versioning.scheme`** as for the app (default `semver`).
 - **`provides`** and **`removes`** are refused for now (`pack_field_not_supported`).
 - **`deliverables.app.content.packChannels`** maps 1–64 pack ids or `prefix.*` patterns to a
@@ -493,8 +496,10 @@ releaseKeys:
   retired (`release_key_is_product_key`), and keeps the previous `releaseKeys`.
 - Apps pin the same keys in their binaries; a record verifies only against pinned release
   keys, never against the product's trust set.
-- `contentKeys` is reserved for content-key delegation and ignored with a warning
-  (`content_keys_not_supported`).
+- `contentKeys` is not used and draws a warning (`content_keys_not_supported`). The manifest is
+  unsigned, so it can never grant trust: delegate a content key with `pkey release delegate`,
+  which signs a `kind: delegation` record with the release key. That signed delegation is the
+  only grant (P4-19).
 
 Without `releaseKeys` a publish carries no record and the signed update feed offers none of that
 product's releases.

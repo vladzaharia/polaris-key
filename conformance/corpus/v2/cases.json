@@ -12349,5 +12349,1197 @@
       "expectedAud": "djdl",
       "expect": { "verify": "fail", "step": "cross-check" }
     }
+  ],
+  "delegationCases": [
+    {
+      "id": "delegated-valid-files-tree",
+      "description": "The control: djdl.events.halloween (files.tree, tree layout) signed by the content key under a delegation of djdl.events for [files.tree, data.json], issued inside the window; the delegation is signed by the pinned 2026 release key.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.6tk2VD2GhcN1zAh76LUZMudCt9eT-nVdz1pkKfutsGxjV7hufFuj8Gn5ILXjmJpgOidKrDTOBKzvzbThWgiLDQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        }
+      }
+    },
+    {
+      "id": "delegated-valid-data-json",
+      "description": "A `data.json` pack (djdl.events.lore) under the same delegation.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5sb3JlIiwia2luZCI6InBhY2siLCJ2ZXJzaW9uIjoiMS4wLjAiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTk1MDAwLCJ0YWciOiJkamRsLmV2ZW50cy5sb3JlLXYxLjAuMCIsImNoYW5uZWwiOiJzdGFibGUiLCJ0eXBlIjoiZGF0YS5qc29uIiwiZm9ybWF0VmVyc2lvbiI6MSwidmFyaWFudHMiOlt7InZhcmlhbnQiOnt9LCJwYXlsb2FkIjp7InNpemUiOjYzMzQsInNoYTI1NiI6IjY3OTE5Yzk0NWY5ODg3M2E0MTI0ZmRmMTBkNjMyNjNjMjYyMDBiMjJlZjdhMTliYWViYjQ1MjhiOTUzZDgxZjEifSwiZnVsbCI6eyJzaGEyNTYiOiI1ZGFhNDZlMTcyNDI4YzI4MDJhNmUxMzZhNTM4Zjc4ZWM2YmZhNTZkNzYyMGZlYjY1ZDE3ZjkwZTRmNDRiMTM3IiwiYnl0ZXMiOjE5MDIsInNpemUiOjYzMzQsImNvZGVjIjoienN0ZCJ9LCJmaWxlcyI6eyJmb3JtYXQiOiJwa2V5LWZpbGVzLzEiLCJsYXlvdXQiOiJ0cmVlIiwic2hhMjU2IjoiNzU2ZGIzZjA3ZDcxZDk1ZDM1YWE0MjBmNzgzZjY4MTE5YzVhMzc4MGU4OGU3N2ZkYTQzNzIzOTZkMWE5ODBlYiIsImJ5dGVzIjoyMjA3LCJzaXplIjo2MDYyLCJjb2RlYyI6InpzdGQifX1dfQ.B15Xw8GTYlJBf9a1CSoCgeGpyXUS-vL4T6np1v3vSlhMJwZ-ZZZs4thYsebktljWbJFJiqOE4jZughJQOCTrDQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "9b125f6295641ff238b59347049dd886012c0df1a59f8094aa8f6aeb6d54eb0c",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.lore",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        }
+      }
+    },
+    {
+      "id": "delegated-valid-prefix-is-pack-id",
+      "description": "The record's pack id IS the scope root (djdl.events): whole-segment matching covers the root itself.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJwYWNrIiwidmVyc2lvbiI6IjEuMC4wIiwic2VxIjoxLCJpc3N1ZWRBdCI6MTY5OTk5NTAwMCwidGFnIjoiZGpkbC5ldmVudHMtdjEuMC4wIiwiY2hhbm5lbCI6InN0YWJsZSIsInR5cGUiOiJmaWxlcy50cmVlIiwiZm9ybWF0VmVyc2lvbiI6MSwidmFyaWFudHMiOlt7InZhcmlhbnQiOnt9LCJwYXlsb2FkIjp7InNpemUiOjYzMzQsInNoYTI1NiI6IjY3OTE5Yzk0NWY5ODg3M2E0MTI0ZmRmMTBkNjMyNjNjMjYyMDBiMjJlZjdhMTliYWViYjQ1MjhiOTUzZDgxZjEifSwiZnVsbCI6eyJzaGEyNTYiOiI1ZGFhNDZlMTcyNDI4YzI4MDJhNmUxMzZhNTM4Zjc4ZWM2YmZhNTZkNzYyMGZlYjY1ZDE3ZjkwZTRmNDRiMTM3IiwiYnl0ZXMiOjE5MDIsInNpemUiOjYzMzQsImNvZGVjIjoienN0ZCJ9LCJmaWxlcyI6eyJmb3JtYXQiOiJwa2V5LWZpbGVzLzEiLCJsYXlvdXQiOiJ0cmVlIiwic2hhMjU2IjoiNzU2ZGIzZjA3ZDcxZDk1ZDM1YWE0MjBmNzgzZjY4MTE5YzVhMzc4MGU4OGU3N2ZkYTQzNzIzOTZkMWE5ODBlYiIsImJ5dGVzIjoyMjA3LCJzaXplIjo2MDYyLCJjb2RlYyI6InpzdGQifX1dfQ.TKr2TsynpptpPcnjJNvBVbz_-uvCKPt__ymtou81yKNjMIxU4vg5dFsWWUUPfX3cibryXQCUf0sSMjO6B83-CQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "7b81734c2ca53283e04e81363d47d95290f7ee7e2b182acbec4e7b7769fcf516",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        }
+      }
+    },
+    {
+      "id": "delegated-valid-delegation-by-2027-key",
+      "description": "The delegation is signed by the second pinned release key (2027), during a rotation.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWQxYjYyM2RlZTk4MzExMGNmMzI5NjA2YTliNDQ0ZWRkNDk4ZjYzNzY4NGY2YzFlZTQ0NWYxNzk3ZTAzNzM1MjkifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.65YmFzARYUGQ_do57_5UZZXIf8IubZ6qAIEZgpRNEvM9dY_BtRyzFbCe2X_f5a6oU45qBbb7-Yz6VDvZXw-sDw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI3In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.2h2khwW0M0tOloMl2xiN0xWzsf9U2cCqp5tVz5prOhaoc_dpPKLDaNDAEhKHVeweLQfdtBP6iGJ7TOPdMF9lCw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE",
+        "djdl-release-test-2027": "TOde4jqFFVbzka-bES32oJRK6Whg1kqa16Jk7y3d2Lo"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "f2243886c121d9758443d9aead0535bd9d12c81b241ac8aa0a2a93a9b15f2670",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "d1b623dee983110cf329606a9b444edd498f637684f6c1ee445f1797e0373529",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        }
+      }
+    },
+    {
+      "id": "delegated-valid-window-start",
+      "description": "The record's `issuedAt` equals the delegation's `issuedAt` (the window is closed at both ends).",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTIwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.VtvtxyF4t1GSDpFbs0LC5h6JIoU6YfXNcxgZG5nc6ATYgB3IwQMpT3KhIJslMNZTN1cgBXkI6cniZjU_GcxxDg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "1b7e57e599986be4f6a2defbb659449de69c1df89848276bc8b8e8f8fe49fa26",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        }
+      }
+    },
+    {
+      "id": "delegated-valid-window-end",
+      "description": "The record's `issuedAt` equals the delegation's `expiresAt`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE3MTU1NDQwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.wa3qKlTBWdMzHQWBAscNq1TMbHzq3N0lt-fBdgwk99tweDhftvaMwx_sczlJtIJpiSHusgxAs0EV2mI5PYgIAg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "a51e60cf574f5ff7071ff1e370f7f45df15de9b08eb42952f29efa90d036ec93",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        }
+      }
+    },
+    {
+      "id": "delegated-valid-unknown-types-ignored",
+      "description": "The delegation lists [files.tree, godot.pck, future.type]: godot.pck is never delegable and future.type is unknown, so both are ignored and the effective types are [files.tree].",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWE1NjBjMDBmYTEyOWI5Y2FlODkzZDdhMGI1ZGM5Yjg5MWQ0Zjk3MjRiNTRhNDE5NzI5ODk4MjIwMWE5MGJiYmMifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.4iDp95L6XNnTXsJUvWoyG15yXxJq75Kuv42gz-qJ8pogv_7u9fYMCv0nsYgKJx_62VKOhf6bXYUipD78iXRODQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImdvZG90LnBjayIsImZ1dHVyZS50eXBlIl0sIm5vdGVzIjoiRXZlbnRzIHRlYW0sIGNvcnB1cyJ9.qLXw42FSoWtok1KfsTtrBPCjLACAEIZdhlG87AVTweQr1u2kLYlT5gZ5CFy1EkqOu_rk4FTyloZl2KdewxipBg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "639697aa1e89a2d7056a84419d272dbce0b1d57f13c5d1b72199c799eeee6cbf",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "a560c00fa129b9cae893d7a0b5dc9b891d4f9724b54a4197298982201a90bbbc",
+          "deliverable": "djdl.events",
+          "types": ["files.tree"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        }
+      }
+    },
+    {
+      "id": "release-kid-ignores-delegation",
+      "description": "A pack record signed by the pinned release key itself, with a delegation supplied: today's path, the delegation is ignored and the result's `delegation` is null.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.04t4CUyRrRmB-YtcBFvLnFJccC6_yYrM4GYcFWNEUWv4mFLe9qH1t5VX1OVWFi2ID3-JezCZ3yvPa9-OuQPsDw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "541467d15a73f92f48e1954d162ba5f9479b1ee95956fafd5ea1057eb47dc5a0",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "ok", "kind": "pack", "delegation": null }
+    },
+    {
+      "id": "delegation-record-verify-only",
+      "description": "The delegation record verified as a record with no pin and no delegation: `kind: delegation` verifies (steps 12–14) and is never acted on as a record.",
+      "mode": "release-only",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "delegation": null,
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+      "pin": null,
+      "expect": { "verify": "ok", "kind": "delegation", "delegation": null }
+    },
+    {
+      "id": "delegation-unpinned-signer",
+      "description": "The delegation is signed by the 2027 release key, which this app does not pin.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWQxYjYyM2RlZTk4MzExMGNmMzI5NjA2YTliNDQ0ZWRkNDk4ZjYzNzY4NGY2YzFlZTQ0NWYxNzk3ZTAzNzM1MjkifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.65YmFzARYUGQ_do57_5UZZXIf8IubZ6qAIEZgpRNEvM9dY_BtRyzFbCe2X_f5a6oU45qBbb7-Yz6VDvZXw-sDw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI3In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.2h2khwW0M0tOloMl2xiN0xWzsf9U2cCqp5tVz5prOhaoc_dpPKLDaNDAEhKHVeweLQfdtBP6iGJ7TOPdMF9lCw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "f2243886c121d9758443d9aead0535bd9d12c81b241ac8aa0a2a93a9b15f2670",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-signed-by-product-key",
+      "description": "The delegation is signed by the product key; even listed among the release keys, a key in the product trust set is refused (step 13's product-key rule).",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWI3ODZkZGNjNmI2YzQ4NTUwYzM0NmViY2IxOWIwZWY0MTVlMmFhYjljOGU5ZWNiNWRlNTE2YmZiYmUxMWQ3ZjQifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19._lA_u5-n_cvunP68A2V4OUh0jqQgYkIETiiO7piFa0AKQ-W2_5zJlRsvfYsoBzNUl6LT3QhIH-w7YEDNrq1WBA",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.0Hp8l8lQ6ochGscCwfAM25ujh0VZMtT8gb_UANKKMu_UMpWar5JrGxWJpAw5solLtBnZQYxhVb2fylFoALzaAw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE",
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "6f96a553e3b99da6c0468d1a09caa805603a35fd5cf3fb3ca32cde1d7d93d516",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-hash-mismatch",
+      "description": "The record's kid names the base delegation, but the caller supplies a different (valid) delegation: its hash is not the kid's.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.6tk2VD2GhcN1zAh76LUZMudCt9eT-nVdz1pkKfutsGxjV7hufFuj8Gn5ILXjmJpgOidKrDTOBKzvzbThWgiLDQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkFub3RoZXIgZGVsZWdhdGlvbiJ9.7NHeLesvHKWt3yIpe8nGs1v2YSI22igDNDADbolnw1aYimmRx_DnuN_CfwGOwar0YPwdvBtYo_ozl62-G7caBg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-not-a-delegation",
+      "description": "The kid names an app record signed by the release key: it verifies as a record but is not `kind: delegation`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTEyMzcwYjkyYjZiNDliZWExNzUzYmQ0NjExMDk4Yjc4ODlhMzgwYWNlOWFmNGE0NmI1NmI0ZmQyZGI1MzY2MjAifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.Zj6YDCXOLHW5QE-IX7ev_di4FL917WmyzBy04H6-ZaA4pxhasHPkKQxZP4h0awuegXRrTM1H4pDgpxMndWgaBw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJhcHAiLCJraW5kIjoiYXBwIiwidmVyc2lvbiI6IjEuNS4wIiwic2VxIjoxNSwiaXNzdWVkQXQiOjE2OTk5OTAwMDAsInRhZyI6InYxLjUuMCIsImNoYW5uZWwiOiJzdGFibGUiLCJ0aXRsZSI6IkRpY2Vyb2xsIDEuNS4wIiwiYnVpbGRzIjpbeyJpZCI6Im1hY29zLWRtZyIsInBsYXRmb3JtIjoibWFjb3MiLCJhcmNoIjoidW5pdmVyc2FsIiwiZm9ybWF0IjoiZG1nIiwiYnVpbGROdW1iZXIiOiIxNTAiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC1tYWNvcy1kbWcuZG1nIiwicm9sZSI6InBheWxvYWQiLCJzaGEyNTYiOiIyZmYzY2U5Y2FmMjM3NzU4NTg2MGMxODg0Mjk5N2I5YTcxM2RmNmU5ZWEwNWYxOGU3ODc3NjZjOWMwOTU0ZDJlIiwic2l6ZSI6MTAwMDAwMDB9XX0seyJpZCI6Indpbi1jaHVua3MiLCJwbGF0Zm9ybSI6IndpbmRvd3MiLCJhcmNoIjoieDg2XzY0IiwiZm9ybWF0IjoiemlwIiwiYnVpbGROdW1iZXIiOiIxNTEiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC13aW4tY2h1bmtzLnppcCIsInJvbGUiOiJjaHVuay1idW5kbGUiLCJzaGEyNTYiOiJlODIzYmQxZmFmMGMxM2E3NjM5NWViYjE2ZDE3MWZlZTRhYjc1MzRhMDUyNDRlYmI2MWFjZDliODZiNjJlMDE0Iiwic2l6ZSI6MTEwMDAwMDN9XX0seyJpZCI6Indpbi1leGUiLCJwbGF0Zm9ybSI6IndpbmRvd3MiLCJhcmNoIjoieDg2XzY0IiwiZm9ybWF0IjoiZXhlIiwiYnVpbGROdW1iZXIiOiIxNTIiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC13aW4tZXhlLmV4ZSIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiZjc5OTdhMzYyYjU5NDQ1NDk0ZDVjMWFmZWY3Y2M3Y2RmZWY4MDFlMGZkMDNjOGUzZjFjNTQwZWQwOTdlZWI2NSIsInNpemUiOjEyMDAwMDA2fV19LHsiaWQiOiJ3aW4tcGNrIiwicGxhdGZvcm0iOiJ3aW5kb3dzIiwiYXJjaCI6ImFueSIsImZvcm1hdCI6InBjayIsImJ1aWxkTnVtYmVyIjoiMTUzIiwicmVxdWlyZXMiOnsiZW5naW5lIjoiZ29kb3QtNC43IiwibWluQmluYXJ5IjoiMS40LjAifSwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtd2luLXBjay5wY2siLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6IjIzZDg4NjViOGVjODdhZThmNDBmZjc5MDM1OTk2YmFjYWRlNDQyZDU4ZGIxNzA5NDU1NGYxMjg0ODdlYmI3YjMiLCJzaXplIjoxMzAwMDAwOX1dfSx7ImlkIjoid2luLXppcCIsInBsYXRmb3JtIjoid2luZG93cyIsImFyY2giOiJ4ODZfNjQiLCJmb3JtYXQiOiJ6aXAiLCJidWlsZE51bWJlciI6IjE1NCIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLXdpbi16aXAuemlwIiwicm9sZSI6InBheWxvYWQiLCJzaGEyNTYiOiI4YjMyNzNmZGU0NzM5N2VhMjIxMDBlNmJlNTllNjcxMjRiMDJhMjM1MDQ1OTNjNTMxNTgzNzM5N2MyMzIwMzEyIiwic2l6ZSI6MTQwMDAwMTJ9XX0seyJpZCI6ImxpbnV4LWFybTY0IiwicGxhdGZvcm0iOiJsaW51eCIsImFyY2giOiJhcm02NCIsImZvcm1hdCI6InRhci5neiIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLWxpbnV4LWFybTY0LnRhci5neiIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiM2E2NzhkOGY1ZjRlZWY2MjYyYzM5MzhlZWUxOTIyZDI2MWVhY2UzMjJmNGYzZmFmMmE4ZmY1YzYxZjZjNjIyZSIsInNpemUiOjE1MDAwMDE1fV19LHsiaWQiOiJsaW51eC14NjQiLCJwbGF0Zm9ybSI6ImxpbnV4IiwiYXJjaCI6Ing4Nl82NCIsImZvcm1hdCI6InRhci5neiIsImJ1aWxkTnVtYmVyIjoiMTU2IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtbGludXgteDY0LnRhci5neiIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiZjhjOWIxYjY5N2FkNWI0MzVjNDlhZTFjYTZmYTlmNGJkZTQzODFiZjlmMDBjZjA0MDMzYzE5MjQ3OTZjM2EzNyIsInNpemUiOjE2MDAwMDE4fV19LHsiaWQiOiJhYWIiLCJwbGF0Zm9ybSI6ImFuZHJvaWQiLCJhcmNoIjoiYW55IiwiZm9ybWF0IjoiYWFiIiwiYnVpbGROdW1iZXIiOiIxNTciLCJhcnRpZmFjdHMiOltdfSx7ImlkIjoiYXBrIiwicGxhdGZvcm0iOiJhbmRyb2lkIiwiYXJjaCI6ImFueSIsImZvcm1hdCI6ImFwayIsImJ1aWxkTnVtYmVyIjoiMTU4IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtYXBrLmFwayIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiM2QzMTczMjIwODNlNjcxZTgwNjJlYjYwNTY5NjkyMTE2ZDVkOTg1ZjE5NTk3NmM5NjcxMmE0MDBkNjhhNGU0OSIsInNpemUiOjE4MDAwMDI0fV19LHsiaWQiOiJpcGEiLCJwbGF0Zm9ybSI6ImlvcyIsImFyY2giOiJhcm02NCIsImZvcm1hdCI6ImlwYSIsImJ1aWxkTnVtYmVyIjoiMTU5IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtaXBhLmlwYSIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiN2YzOGUzZWE3YTEwYTg5ODM5Mzk0MmFiNDQ0NzlkYTQ0NzEyYTI4OTc2ZTYxMDA3MjEzYjVlYWYzZTM4ZDg1MyIsInNpemUiOjE5MDAwMDI3fV19LHsiaWQiOiJ3ZWIiLCJwbGF0Zm9ybSI6IndlYiIsImFyY2giOiJ3YXNtMzIiLCJmb3JtYXQiOiJ6aXAiLCJidWlsZE51bWJlciI6IjE2MCIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLXdlYi56aXAiLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6IjJkZDQzY2ZkZDAyOTdjNGRiZDZjNmY2NThiMDE2ZDMwNWI4ZmJiYTRlMDlmYTZiMWIwY2E4NWNmZTA5YTc3ZDMiLCJzaXplIjoyMDAwMDAzMH1dfV19._3swhBbZBqMS61fAUrR8GDv0aRBxia9fdEIWTr0v_Yh8-VTn9hMgvamZ45YkCPVafhlQh8EqL7CFB9CuD2zpDQ",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "397865ed3e590bba5deee2092cedb8946fd8c0866c954a6c6b53e53000d28d29",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-signed-by-content-key",
+      "description": "The delegation is itself signed by a content key (under the base delegation): a delegation verifies against pinned release keys only, so a content key can never re-delegate (one level only).",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWU3YmE1MDZlNDNhYTkyZjA2ZGZmNzJhNDg3MmZiNWRkZGFiOGFhYWEyOTViMzNhNDk4YTllYjlhZTFhMTM1NWUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.bNk1QH_fa_xAsWIXSR38dCdcbg9ubYoZPWeTuvwQT-94dN0xQnzNI4CNpXTr14XnTDSV_prCL09hx8DU4mLYDg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IlJlLWRlbGVnYXRlZCJ9.GR0iZCaXpYjHEyqQljSogCnz8J2dgoHRgIpMSNlUdYAO7uqIwWRgKr-3ncYBAfbptFI70BaFlAbiyK29ze9UAw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "632251a17993ff615437ee3df2530e2593a81d59dfce9d5394178def3890172e",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-types-missing",
+      "description": "The delegation has no `types`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTVkNmJlNTFiNjJlYzg5MTkyM2ZiODJiNmJkZGZiNDQ0ZWM0YTk2Nzc4NDQ4ODY0OTNjNWUyMGMzYTUzMTE2NDAifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.MNsJMbbPT6Fjq-_OArCM3AD5It9B4PCAKAuOwome-IN7aHaTABiTwzdD8CpiYdhgsiaGvYSAh5nkEJaRbL6iAw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwibm90ZXMiOiJFdmVudHMgdGVhbSwgY29ycHVzIn0.pLSqGuzQoKZTYa6_VpEkjBY4gTWUoc_ScfJvd0Zuu4zb_Q1CYVpAqSERuUXd4MoKvBvhEhiAPRXuYAEJE2BIBw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "cf2e1d736cfbb4a8c964ad274946c78540d80a7516b91a00f6e0a67eb7fe9d38",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-types-none-effective",
+      "description": "`types` is [godot.pck]: no listed type is delegable, so there are no effective types.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTAwYWQ4NjI3NjFiMGIzYjJmYmYxMjRlNzEwNGU1NjRhOGQ5NmZmZmJkODBjNzAxNDE2ZWYwNGZmNDg1MTFlMGIifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.Y8jNjH2GN9wZQJ-hhm0q4hzkmXhFB-WWAFh30m5WbjpqS_-Ssav1u1pqK3xG3mt_-NrpFVO-0T1Q0mVhzff8AA",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZ29kb3QucGNrIl0sIm5vdGVzIjoiRXZlbnRzIHRlYW0sIGNvcnB1cyJ9.S6dmlBjmIZq5U3X5cuUgnkD-33bsmyRpnkrcfpfoDvSgZfBb_QHQjedhx-tiAgDZKRNwkEiWYHZ79XhgiqtXBw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "d5fc0ae5b46dd5159e242277579279c8bdc565df6dd3b8d9b9cf40891c688a0e",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-types-too-many",
+      "description": "`types` has 9 entries (the bound is 8).",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTNhNGY5YTVkNjJkYWIzOTRkNmQ1MTFmOWIyMjA1MjNkOTFjN2RjNTJjZmQ1ZjJkZWM1YTU2YWY5YzBhOWIwNWIifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.i_YJVVgCcSfJaRkHWku16Ohc1rbqtnRVO1dTT2uo5LNXsCjPrBy2I7x7mBHpLR4FrgT2wKdzbxnBgc95qaWPBQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiIsImwxMG4udGFibGUiLCJhLm9uZSIsImEudHdvIiwiYS50aHJlZSIsImEuZm91ciIsImEuZml2ZSIsImEuc2l4Il0sIm5vdGVzIjoiRXZlbnRzIHRlYW0sIGNvcnB1cyJ9.vonGUSpNV5npR0W96KY1H-GSmXm_3avsATpAcTaYtstLPDbubnNkLuwAfC1ZPPmG9JBj5ZqGPgM8x7Id-TFKAw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "94bc2c832e54d225e9ff5ec23f3bd530ebcb74c67ad9ba65402e06d321c7e5d1",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-types-duplicate",
+      "description": "`types` lists files.tree twice.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTI4NzJmMzcwYTE1ZTI0ZTdhYWRmZTdmM2M0MTRkNWFmNDI0M2JlNWY5N2E5YTBjNDBkNDAxMjQyMGI0YWFkOGIifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.du0_csDchn0viPqIBd8sgfK-NZGI6Q-9dn-Io1ZWsD8o5dN0YDF23kjG5fP7xCPPAlwWalK1itAOIgtYwl5LAw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImZpbGVzLnRyZWUiXSwibm90ZXMiOiJFdmVudHMgdGVhbSwgY29ycHVzIn0.g0Ye7KDzXm7wf9CUKY3pl56sAa0pz5VbyeLy7ZwBXST6beTaUc71dxh0Rv1QybQT_ljsWFAhJw_WDXOdYSK6AA",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "14da638ae8806622a02c21a6e022c7407230edbe7dabd951254ad3d7c1c00cfb",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-ttl-over-max",
+      "description": "`expiresAt − issuedAt` is 31,622,401 seconds, one over the 366-day bound.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWZmNWY0YTFiOGRiYzdkZGNiNjhhNmMwNTM2NzJlYTE5ZDMyNWY3Y2YyMzg5MmJlMTJlMWMyZmQ5ZjkzYTEyOGIifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.g1qfeBCO4TYbu_JjkAXA3aQNnmkiiNsm7Xf0n6z3NJ-0tN4x5MCr42_eDYbEciflgAuSIRZqUHfHBb7yaI2YDg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MzE2MTQ0MDEsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.VMuoZ1X7Z0P468WIF-20QcJbpqpR3jWqpFU-KkE68IRliD3VF67doy7aSbpn96_AZH43bk5qazIvnqc3Fxh1Cw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "3026b98dcc379e609f6ce30844c9a3666fe94ef0998c7ba39e190a9202655796",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-expires-before-issued",
+      "description": "`expiresAt` is one second before `issuedAt`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTI5MzA2NjIxNmQwY2RlYjM2OTViZDc5Yzk4NGQxOTM0NDczMGMwZjc3NTM5ZmZlNTM4ODhkYTdlMDIxNWViNzUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.ZqJCVuugs0AjZaEO3rySmuwU_RucVGfGP7-gqqlnOMlwWXK2UTZDNUx_-6wFx4HpHQlgT7LDknAY1volIMp6DQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE2OTk5OTE5OTksImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.iN5vjKjsUHIYeDNV6GfJE_uzWOX2cymIu7bA-0zx0QfaxRZ35GOwDTx9G0pFAvRv_SzxBge9AMVwtcpS_zScCw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "28540aaf4f3d2814117d0e91e4f5a80af689ae9e0b449cd3bbdaec10b559acb5",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-expiresat-token",
+      "description": "`expiresAt` is the token 1.8e9: an exponent is never an integer claim (V4 §3.1), so the delegation is unusable.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTA1YTUwNzMyZTMyYjFiMzhjZTA2MTRmZmQxZDJhMjNkYjUzZTZjMDI0MDZhNGMwY2VkOTM0NTlhYTQxOWFiZWIifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.bM2xnB_B2VG-4hUZR0DzL6aOV-e3oqBFmPHJDfLKfovYl-gkLqHfDWRcmQbdIr-s2cBRX8ADsw2rbvzhMhxwDA",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjEuOGU5LCJkZWxlZ2F0ZSI6eyJwdWJsaWNLZXkiOiJJTUdhTGpFVmpQejljXzJJaXNsdXpxLWRaQ2JGUWUtMXU1RFdBMHpUVlNNIn0sInR5cGVzIjpbImZpbGVzLnRyZWUiLCJkYXRhLmpzb24iXSwibm90ZXMiOiJFdmVudHMgdGVhbSwgY29ycHVzIn0.F6on5MzeLW9DrbCYm-kKCds_p3vVDS_u_LUGtsGZcYcUD3Q6-Vn7BDuG4auzM977y9-irdtWqBY5lOCa97vNAw",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "bab0a7cce6f93472999050a28d582e612c315d9bcadf8db0fc2e403f4b4a8398",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-public-key-malformed",
+      "description": "`delegate.publicKey` is base64url of 31 bytes, not 32.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU3MmViY2ZkMjcxNWViNjM4N2IzNDBmYjJkYjM1ODdhNzczYzAyYTkyOGM2OGNkZTk1ODRkNzUyN2NkNTE5ZTgifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.n2iJ9xE0_lxv5Hxd4ptvf-ec2BMxaMmiE8HRwWCxsL058iVR4CmqubT2pNGVEgsREDjM3AGaguk7EHo7fCCTBw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWUSJ9LCJ0eXBlcyI6WyJmaWxlcy50cmVlIiwiZGF0YS5qc29uIl0sIm5vdGVzIjoiRXZlbnRzIHRlYW0sIGNvcnB1cyJ9.eGlrmyicPcChx2Td546fzEPD3Ap8yARzUG2O9J8fS6PDPftfEucuXfiSmvuKA7gTuh6nnymIf40JP4nKL1aLDA",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "f198f6d4425c52c394d328fbc3f1c645d64fb2d2affc64519e795ae0f454ecaa",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-key-is-release-key",
+      "description": "The delegated key is the pinned release key itself (the record is signed by it under a pkd1- kid): refused, a delegated key is never a release key.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTY5NThkOTZjNGFhYWI5YjMyZDdmY2M4M2FiZjNhYzA4NTkwMGM4YWQ3NTQxNTU3YTg0MDk1Nzk2YTVlZjk1NDUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.cBQ59nfp3iXys4sOgeUUbkBdOk5C1e2VLt9eCyzaj4E3p1KAv-tm2WeSkrG8Y9YBqXit0iEkGLRoqNqEtBPWAA",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IlU5ZDlJeDJqd0MxLWxfR0pnckluTjV6TVBKZ2pQa2daQzhFa2c3bktsRUUifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.bWs-Rw8wtCPvDWc-0ZNwh3oW767RYonyrCYm2vkAcUOucx8sc00djsw9pFxAjrQxjg4gjApDIGOtg26t96w9AA",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "a19ec588b2a9bffde30d9310ff6e8d1dd3d921ee161ffa7cabdc839f01d62d8d",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-key-is-product-key",
+      "description": "The delegated key is a product signing key (the record is signed by it under a pkd1- kid): refused, a delegated key is never a product key.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWY1OGVkZDcwODA3MGI1ZjhhZDFjYzBiZGI4MGM0MjIzMThlMWY4ZTUyYjRlM2MxMjVhZjBlZTQxYWM1YWMwNDUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.aPwAJZd4sfo4B-BT56dLGFsKabWb32jxMsk3vl75Tb6MxVy8DkuK4RvAXBj5B1LmyJJPdph7DYaBWhALpxcwCA",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6ImtESkY2RGV1ZXhvOTFoRlo5VEFQcjJTbWpVRXVUWGRpYTY3VW9nVEVwa0kifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.RAWl1SXYpDPl2E2_Nx_4gFSDM0iE5dL17baoBSsmtzRRFJEW6Uu8VnxdhDEnhQRxoMS37IFcW12PR2v0mz73DA",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "2f91878deecd8bfd8a62a3c330818fd18722e2f4f8bb17c56e516bfd81931c05",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegation-deliverable-app",
+      "description": "The delegation's `deliverable` is `app`, not a pack id.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTEyMDk2YTU2MjZmYTM2MzExZmJmZmVhNDdmYWUxZjNjZmQ0ZWY1MjU1OGNkNjlhNDVmNjMzNjU5NTY2YmI1Y2IifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.xriZEEQnzoKnt43RCGfQsxXMM3sobipdh2hNj5dMPXSJFK3Ys0cELzZ8EXAfZAO1xv_9XOTUV0VzH_FzLwCLDQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJhcHAiLCJraW5kIjoiZGVsZWdhdGlvbiIsInZlcnNpb24iOiIxIiwic2VxIjoxLCJpc3N1ZWRBdCI6MTY5OTk5MjAwMCwiZXhwaXJlc0F0IjoxNzE1NTQ0MDAwLCJkZWxlZ2F0ZSI6eyJwdWJsaWNLZXkiOiJJTUdhTGpFVmpQejljXzJJaXNsdXpxLWRaQ2JGUWUtMXU1RFdBMHpUVlNNIn0sInR5cGVzIjpbImZpbGVzLnRyZWUiLCJkYXRhLmpzb24iXSwibm90ZXMiOiJFdmVudHMgdGVhbSwgY29ycHVzIn0.e8jyKMtMRrhRVQN-MjPybUpNDoVd24t8N9HDRw68mrAVXJTb312AyrFFeprqVOAfXzb_RkBF-PrrkNzTPYVtCA",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "6206af68c772dd264648ae97b7a5967558b3b1006cd49d6675b7195ad1ff3159",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "delegation" }
+    },
+    {
+      "id": "delegated-no-delegation-supplied",
+      "description": "A delegated record verified without its delegation (a pre-P4-19 caller, or an app path): the kid is not a pinned release key, so step 13 refuses it at `jws`.",
+      "mode": "release-only",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.6tk2VD2GhcN1zAh76LUZMudCt9eT-nVdz1pkKfutsGxjV7hufFuj8Gn5ILXjmJpgOidKrDTOBKzvzbThWgiLDQ",
+      "delegation": null,
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "jws" }
+    },
+    {
+      "id": "delegated-wrong-signer",
+      "description": "The record names the base delegation but is signed by another content key.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.J1ytY7OQECHUhQuBu5U9O0HGAU5mL2UeNtGD2gc481UZqJj3bBSrlZFcUClfoRU_qlmF49bMM1VJyLxfFtfQBw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "131f0e4221555cb245029960312f34ad15649138fea00fd7a51ac9f133a41b05",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "jws" }
+    },
+    {
+      "id": "delegated-kid-malformed",
+      "description": "The kid is `pkd1-` and 63 hex digits: not the delegated pattern, so no delegation is consulted.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOCJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.zTI5yYdGgqjhWKEUMO5jHnEENDzOWl0aifniVbgzucgJ-xxMYZK4Ax3sXu3F-quDIgSRjEw8-8NE1Sb_6mvsAg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "97769fb439cac9957e8efac87d053c4db016d717ebd54dbb512135b68b5e9163",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "jws" }
+    },
+    {
+      "id": "revocation-signed-by-content-key",
+      "description": "A revocation signed by the content key under a pkd1- kid: `verifyRevocation` never passes a delegation, so it is refused at `jws` (only release keys revoke).",
+      "mode": "revocation",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicmV2b2NhdGlvbiIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUxMDAsInJldm9rZXMiOiI0NTA5ZDMwN2JiZDIwMzc0NWJiZmE3M2ZlY2UzMDQ4NzI1MWFmYWNlZjc5M2QxYmI3NTYxZjJkYWVmMTQwM2Q4IiwicmVhc29uIjoiU2lnbmVkIGJ5IGEgY29udGVudCBrZXkuIn0.UHLYyEXJMp2rGlkE42llIBVHu4JrJlEb2L-7M-Pi6WPNp_8qMNAR_3ba5bFT5qzbs-_07xkAf1Cdv0ezeTprCA",
+      "delegation": null,
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "entry": {
+        "record": "9efba8b2df36ffc1879a209dcf0bece66458c683ff47d05932490d8f344bf819",
+        "pack": "djdl.events.halloween",
+        "target": "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "jws" }
+    },
+    {
+      "id": "app-record-by-content-key-release-only",
+      "description": "An app record signed by the content key, verified on an app path (no delegation passed): `jws`.",
+      "mode": "release-only",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJhcHAiLCJraW5kIjoiYXBwIiwidmVyc2lvbiI6IjEuNS4wIiwic2VxIjoxNSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6InYxLjUuMCIsImNoYW5uZWwiOiJzdGFibGUiLCJ0aXRsZSI6IkRpY2Vyb2xsIDEuNS4wIiwiYnVpbGRzIjpbeyJpZCI6Im1hY29zLWRtZyIsInBsYXRmb3JtIjoibWFjb3MiLCJhcmNoIjoidW5pdmVyc2FsIiwiZm9ybWF0IjoiZG1nIiwiYnVpbGROdW1iZXIiOiIxNTAiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC1tYWNvcy1kbWcuZG1nIiwicm9sZSI6InBheWxvYWQiLCJzaGEyNTYiOiIyZmYzY2U5Y2FmMjM3NzU4NTg2MGMxODg0Mjk5N2I5YTcxM2RmNmU5ZWEwNWYxOGU3ODc3NjZjOWMwOTU0ZDJlIiwic2l6ZSI6MTAwMDAwMDB9XX0seyJpZCI6Indpbi1jaHVua3MiLCJwbGF0Zm9ybSI6IndpbmRvd3MiLCJhcmNoIjoieDg2XzY0IiwiZm9ybWF0IjoiemlwIiwiYnVpbGROdW1iZXIiOiIxNTEiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC13aW4tY2h1bmtzLnppcCIsInJvbGUiOiJjaHVuay1idW5kbGUiLCJzaGEyNTYiOiJlODIzYmQxZmFmMGMxM2E3NjM5NWViYjE2ZDE3MWZlZTRhYjc1MzRhMDUyNDRlYmI2MWFjZDliODZiNjJlMDE0Iiwic2l6ZSI6MTEwMDAwMDN9XX0seyJpZCI6Indpbi1leGUiLCJwbGF0Zm9ybSI6IndpbmRvd3MiLCJhcmNoIjoieDg2XzY0IiwiZm9ybWF0IjoiZXhlIiwiYnVpbGROdW1iZXIiOiIxNTIiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC13aW4tZXhlLmV4ZSIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiZjc5OTdhMzYyYjU5NDQ1NDk0ZDVjMWFmZWY3Y2M3Y2RmZWY4MDFlMGZkMDNjOGUzZjFjNTQwZWQwOTdlZWI2NSIsInNpemUiOjEyMDAwMDA2fV19LHsiaWQiOiJ3aW4tcGNrIiwicGxhdGZvcm0iOiJ3aW5kb3dzIiwiYXJjaCI6ImFueSIsImZvcm1hdCI6InBjayIsImJ1aWxkTnVtYmVyIjoiMTUzIiwicmVxdWlyZXMiOnsiZW5naW5lIjoiZ29kb3QtNC43IiwibWluQmluYXJ5IjoiMS40LjAifSwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtd2luLXBjay5wY2siLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6IjIzZDg4NjViOGVjODdhZThmNDBmZjc5MDM1OTk2YmFjYWRlNDQyZDU4ZGIxNzA5NDU1NGYxMjg0ODdlYmI3YjMiLCJzaXplIjoxMzAwMDAwOX1dfSx7ImlkIjoid2luLXppcCIsInBsYXRmb3JtIjoid2luZG93cyIsImFyY2giOiJ4ODZfNjQiLCJmb3JtYXQiOiJ6aXAiLCJidWlsZE51bWJlciI6IjE1NCIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLXdpbi16aXAuemlwIiwicm9sZSI6InBheWxvYWQiLCJzaGEyNTYiOiI4YjMyNzNmZGU0NzM5N2VhMjIxMDBlNmJlNTllNjcxMjRiMDJhMjM1MDQ1OTNjNTMxNTgzNzM5N2MyMzIwMzEyIiwic2l6ZSI6MTQwMDAwMTJ9XX0seyJpZCI6ImxpbnV4LWFybTY0IiwicGxhdGZvcm0iOiJsaW51eCIsImFyY2giOiJhcm02NCIsImZvcm1hdCI6InRhci5neiIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLWxpbnV4LWFybTY0LnRhci5neiIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiM2E2NzhkOGY1ZjRlZWY2MjYyYzM5MzhlZWUxOTIyZDI2MWVhY2UzMjJmNGYzZmFmMmE4ZmY1YzYxZjZjNjIyZSIsInNpemUiOjE1MDAwMDE1fV19LHsiaWQiOiJsaW51eC14NjQiLCJwbGF0Zm9ybSI6ImxpbnV4IiwiYXJjaCI6Ing4Nl82NCIsImZvcm1hdCI6InRhci5neiIsImJ1aWxkTnVtYmVyIjoiMTU2IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtbGludXgteDY0LnRhci5neiIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiZjhjOWIxYjY5N2FkNWI0MzVjNDlhZTFjYTZmYTlmNGJkZTQzODFiZjlmMDBjZjA0MDMzYzE5MjQ3OTZjM2EzNyIsInNpemUiOjE2MDAwMDE4fV19LHsiaWQiOiJhYWIiLCJwbGF0Zm9ybSI6ImFuZHJvaWQiLCJhcmNoIjoiYW55IiwiZm9ybWF0IjoiYWFiIiwiYnVpbGROdW1iZXIiOiIxNTciLCJhcnRpZmFjdHMiOltdfSx7ImlkIjoiYXBrIiwicGxhdGZvcm0iOiJhbmRyb2lkIiwiYXJjaCI6ImFueSIsImZvcm1hdCI6ImFwayIsImJ1aWxkTnVtYmVyIjoiMTU4IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtYXBrLmFwayIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiM2QzMTczMjIwODNlNjcxZTgwNjJlYjYwNTY5NjkyMTE2ZDVkOTg1ZjE5NTk3NmM5NjcxMmE0MDBkNjhhNGU0OSIsInNpemUiOjE4MDAwMDI0fV19LHsiaWQiOiJpcGEiLCJwbGF0Zm9ybSI6ImlvcyIsImFyY2giOiJhcm02NCIsImZvcm1hdCI6ImlwYSIsImJ1aWxkTnVtYmVyIjoiMTU5IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtaXBhLmlwYSIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiN2YzOGUzZWE3YTEwYTg5ODM5Mzk0MmFiNDQ0NzlkYTQ0NzEyYTI4OTc2ZTYxMDA3MjEzYjVlYWYzZTM4ZDg1MyIsInNpemUiOjE5MDAwMDI3fV19LHsiaWQiOiJ3ZWIiLCJwbGF0Zm9ybSI6IndlYiIsImFyY2giOiJ3YXNtMzIiLCJmb3JtYXQiOiJ6aXAiLCJidWlsZE51bWJlciI6IjE2MCIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLXdlYi56aXAiLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6IjJkZDQzY2ZkZDAyOTdjNGRiZDZjNmY2NThiMDE2ZDMwNWI4ZmJiYTRlMDlmYTZiMWIwY2E4NWNmZTA5YTc3ZDMiLCJzaXplIjoyMDAwMDAzMH1dfV19.KyR39QlHwqzrFfhtW5EioiuO2htPMjBXrJtDtMHMtphpJ2NURkDxsg-z1-RivoxNz034qhBh3ZDJ4VK4f6wvAA",
+      "delegation": null,
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "231382aa792b8055c25686e3977f345b825869b4f331ae8c3065a46186d933c0",
+      "pin": {
+        "kind": "app",
+        "deliverable": "app",
+        "version": "1.5.0",
+        "seq": 15
+      },
+      "expect": { "verify": "fail", "step": "jws" }
+    },
+    {
+      "id": "delegated-godot-pck",
+      "description": "A `godot.pck` (container) pack under a delegation that even lists godot.pck: never an effective type, so `scope`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLWE1NjBjMDBmYTEyOWI5Y2FlODkzZDdhMGI1ZGM5Yjg5MWQ0Zjk3MjRiNTRhNDE5NzI5ODk4MjIwMWE5MGJiYmMifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImdvZG90LnBjayIsImZvcm1hdFZlcnNpb24iOjQsImhhbmRsZXIiOnsibW91bnRPcmRlciI6MiwicHJlZml4ZXMiOlsicmVzOi8vbGV2ZWxzLyJdLCJhY3RpdmF0aW9uIjoicmVzdGFydCJ9LCJ2YXJpYW50cyI6W3sidmFyaWFudCI6eyJ0ZXh0dXJlIjoiczN0YyJ9LCJwYXlsb2FkIjp7InNpemUiOjUyNTg5NjAsInNoYTI1NiI6IjA4OGJhNzUzNDdkMjU0N2ZjMTgyZjJkYzZhYjY0NmNjZmQ4NjBiYmQ1ODIzZWU3YzcwZjA0ZTIxMDUwYjViMzIifSwiZnVsbCI6eyJzaGEyNTYiOiJlZDQwOGRmOTdlZDg2MmI5ODgyZGU4NjQwMjk0YmQ3YmYyODViZjc0Y2MzNzdjODA0ZjU4YzZlYWQxODhiOWQwIiwiYnl0ZXMiOjExOTYxNTEsInNpemUiOjUyNTg5NjAsImNvZGVjIjoienN0ZCJ9LCJmaWxlcyI6eyJmb3JtYXQiOiJwa2V5LWZpbGVzLzEiLCJsYXlvdXQiOiJjb250YWluZXIiLCJzaGEyNTYiOiJjNDFjMzljZmVlMzdjOTdlNzc5NDllYmZkYjM4OTkxYmUzOWIyNDQzODUyOWQ5ZGQ2MGNlM2ZkOTk0MjE0NzRlIiwiYnl0ZXMiOjEzNDk3LCJzaXplIjo0MTg0MCwiY29kZWMiOiJ6c3RkIiwiZ2FwcyI6eyJzaGEyNTYiOiI2ZjQ5NjY3Y2RlNDViNzA3OGVhODg0YTZmZTVjOTc0ZjYzNThjNDcyZDdiMjkxM2I0ODQ2MzNmM2I2ODI3NDNkIiwiYnl0ZXMiOjQ4MjgsInNpemUiOjEzMDEwLCJjb2RlYyI6InpzdGQifX0sInJlcXVpcmVzIjp7ImVuZ2luZSI6ImdvZG90LTQuNyJ9fV19.7dxyROs77B9Q42jX_XdXwXEvKS_Qk1AR9_fEucdcZAw7uz_eHfiwUPOobil8tU9sm8DNMiobTBM06EZDOSllAQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImdvZG90LnBjayIsImZ1dHVyZS50eXBlIl0sIm5vdGVzIjoiRXZlbnRzIHRlYW0sIGNvcnB1cyJ9.qLXw42FSoWtok1KfsTtrBPCjLACAEIZdhlG87AVTweQr1u2kLYlT5gZ5CFy1EkqOu_rk4FTyloZl2KdewxipBg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "f0ec4b8b86f2f7a1138b5b778eaba72ef78683b44d905b969b04a3fcb2e4818e",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "delegated-type-not-delegated",
+      "description": "An `l10n.table` pack: a delegable type, but not one this delegation lists.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImwxMG4udGFibGUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.qxHvdxOrOesx_uvtrXKHOtmzcTLGMDKPFPJxatfwWn7HBvTGmYNhOyLpf3SnX7hIkf6Witb6y-iyaXJb5SlUBg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "63601b9d185468d08523e13c0dae2ed98876360399f642e85f700d0aa2b2ffb6",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "delegated-container-layout",
+      "description": "A `files.tree`-typed record with a second, `container`-layout variant: a container is never delegable, whatever the type.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6eyJ0ZXh0dXJlIjoiczN0YyJ9LCJwYXlsb2FkIjp7InNpemUiOjYzMzQsInNoYTI1NiI6IjY3OTE5Yzk0NWY5ODg3M2E0MTI0ZmRmMTBkNjMyNjNjMjYyMDBiMjJlZjdhMTliYWViYjQ1MjhiOTUzZDgxZjEifSwiZnVsbCI6eyJzaGEyNTYiOiI1ZGFhNDZlMTcyNDI4YzI4MDJhNmUxMzZhNTM4Zjc4ZWM2YmZhNTZkNzYyMGZlYjY1ZDE3ZjkwZTRmNDRiMTM3IiwiYnl0ZXMiOjE5MDIsInNpemUiOjYzMzQsImNvZGVjIjoienN0ZCJ9LCJmaWxlcyI6eyJmb3JtYXQiOiJwa2V5LWZpbGVzLzEiLCJsYXlvdXQiOiJ0cmVlIiwic2hhMjU2IjoiNzU2ZGIzZjA3ZDcxZDk1ZDM1YWE0MjBmNzgzZjY4MTE5YzVhMzc4MGU4OGU3N2ZkYTQzNzIzOTZkMWE5ODBlYiIsImJ5dGVzIjoyMjA3LCJzaXplIjo2MDYyLCJjb2RlYyI6InpzdGQifX0seyJ2YXJpYW50Ijp7InRleHR1cmUiOiJldGMyIn0sInBheWxvYWQiOnsic2l6ZSI6NTI1ODk2MCwic2hhMjU2IjoiMDg4YmE3NTM0N2QyNTQ3ZmMxODJmMmRjNmFiNjQ2Y2NmZDg2MGJiZDU4MjNlZTdjNzBmMDRlMjEwNTBiNWIzMiJ9LCJmdWxsIjp7InNoYTI1NiI6ImVkNDA4ZGY5N2VkODYyYjk4ODJkZTg2NDAyOTRiZDdiZjI4NWJmNzRjYzM3N2M4MDRmNThjNmVhZDE4OGI5ZDAiLCJieXRlcyI6MTE5NjE1MSwic2l6ZSI6NTI1ODk2MCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6ImNvbnRhaW5lciIsInNoYTI1NiI6ImM0MWMzOWNmZWUzN2M5N2U3Nzk0OWViZmRiMzg5OTFiZTM5YjI0NDM4NTI5ZDlkZDYwY2UzZmQ5OTQyMTQ3NGUiLCJieXRlcyI6MTM0OTcsInNpemUiOjQxODQwLCJjb2RlYyI6InpzdGQiLCJnYXBzIjp7InNoYTI1NiI6IjZmNDk2NjdjZGU0NWI3MDc4ZWE4ODRhNmZlNWM5NzRmNjM1OGM0NzJkN2IyOTEzYjQ4NDYzM2YzYjY4Mjc0M2QiLCJieXRlcyI6NDgyOCwic2l6ZSI6MTMwMTAsImNvZGVjIjoienN0ZCJ9fX1dfQ.GEDPxJqLVkafqP7WGsX5qYR1KkvQ9RRyqf90b37RORLOaOtnLO7TEMI1X3CYKZRmIhRoHIiEqObR-Qig7jw3Ag",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "eba8c89e5338f5b7e857a51eb0f15fd247044d273b009788d616709cbfed5cf4",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "delegated-outside-prefix",
+      "description": "A pack outside the scope (djdl.levels).",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmxldmVscyIsImtpbmQiOiJwYWNrIiwidmVyc2lvbiI6IjEuMC4wIiwic2VxIjoxLCJpc3N1ZWRBdCI6MTY5OTk5NTAwMCwidGFnIjoiZGpkbC5sZXZlbHMtdjEuMC4wIiwiY2hhbm5lbCI6InN0YWJsZSIsInR5cGUiOiJmaWxlcy50cmVlIiwiZm9ybWF0VmVyc2lvbiI6MSwidmFyaWFudHMiOlt7InZhcmlhbnQiOnt9LCJwYXlsb2FkIjp7InNpemUiOjYzMzQsInNoYTI1NiI6IjY3OTE5Yzk0NWY5ODg3M2E0MTI0ZmRmMTBkNjMyNjNjMjYyMDBiMjJlZjdhMTliYWViYjQ1MjhiOTUzZDgxZjEifSwiZnVsbCI6eyJzaGEyNTYiOiI1ZGFhNDZlMTcyNDI4YzI4MDJhNmUxMzZhNTM4Zjc4ZWM2YmZhNTZkNzYyMGZlYjY1ZDE3ZjkwZTRmNDRiMTM3IiwiYnl0ZXMiOjE5MDIsInNpemUiOjYzMzQsImNvZGVjIjoienN0ZCJ9LCJmaWxlcyI6eyJmb3JtYXQiOiJwa2V5LWZpbGVzLzEiLCJsYXlvdXQiOiJ0cmVlIiwic2hhMjU2IjoiNzU2ZGIzZjA3ZDcxZDk1ZDM1YWE0MjBmNzgzZjY4MTE5YzVhMzc4MGU4OGU3N2ZkYTQzNzIzOTZkMWE5ODBlYiIsImJ5dGVzIjoyMjA3LCJzaXplIjo2MDYyLCJjb2RlYyI6InpzdGQifX1dfQ.lp68FZca7e9Wde-7ORn4fDdFE2mxOVxiO9EHKKqT3yV6qW4X54_GbIGL7fUMjoNe2y28duMs87jd0tbz2gqRAQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "bd393d6a708a7ba85a81657a4574885e2a32f0d60f9c1dfaca4e052067aa92dd",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.levels",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "delegated-prefix-not-segment",
+      "description": "djdl.eventsx shares the scope root's characters but not its segment: whole-segment matching refuses it.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50c3giLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzeC12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.p6aNoSnYm1YPSVaUFU6jiEtcqcBA0K22tHvuC1PbvZOBkr4Ktl6pVHkAvte5qSeCwxIOez7l__5aT4Muz5RKBg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "42cf2edfefc1803b8f71dd9145bb27c3ddeacd0a51c8c96e7e8858142e70f42e",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.eventsx",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "delegated-after-window",
+      "description": "The record's `issuedAt` is one second after the delegation's `expiresAt` (the brief's expired delegation): devices check the record against the signing window, never their clock.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE3MTU1NDQwMDEsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.uWyt2W-BdstAh9uabnFh7wfRnevR1ROzRkTlmFEber4WROPkjvrk323-NfqARr-W-vOVhO8rvG0Qm0htmEn2Bw",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "0dc79aaedd37e439d3fd5da29a51002e3dae51d0662025054ce57415a17c3bd7",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "delegated-before-window",
+      "description": "The record's `issuedAt` is one second before the delegation's `issuedAt`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTE5OTksInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.PdHKyNemennTKSsFIy1aPjKqV6lApqEeza4E2JPi57_1SL0dAB6W8PT47t08aNm-QOG13bgimIoIFeoPJQgKDQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "94fe8adba1204e89f5b74aa29b2a2f74660b761b72dc791aabfcaa0b6ccd1483",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "app-record-by-content-key",
+      "description": "An app record signed by the content key with its delegation supplied (a runner passing one on an app path): steps 13–15 pass, step 16 refuses `kind: app`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJhcHAiLCJraW5kIjoiYXBwIiwidmVyc2lvbiI6IjEuNS4wIiwic2VxIjoxNSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6InYxLjUuMCIsImNoYW5uZWwiOiJzdGFibGUiLCJ0aXRsZSI6IkRpY2Vyb2xsIDEuNS4wIiwiYnVpbGRzIjpbeyJpZCI6Im1hY29zLWRtZyIsInBsYXRmb3JtIjoibWFjb3MiLCJhcmNoIjoidW5pdmVyc2FsIiwiZm9ybWF0IjoiZG1nIiwiYnVpbGROdW1iZXIiOiIxNTAiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC1tYWNvcy1kbWcuZG1nIiwicm9sZSI6InBheWxvYWQiLCJzaGEyNTYiOiIyZmYzY2U5Y2FmMjM3NzU4NTg2MGMxODg0Mjk5N2I5YTcxM2RmNmU5ZWEwNWYxOGU3ODc3NjZjOWMwOTU0ZDJlIiwic2l6ZSI6MTAwMDAwMDB9XX0seyJpZCI6Indpbi1jaHVua3MiLCJwbGF0Zm9ybSI6IndpbmRvd3MiLCJhcmNoIjoieDg2XzY0IiwiZm9ybWF0IjoiemlwIiwiYnVpbGROdW1iZXIiOiIxNTEiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC13aW4tY2h1bmtzLnppcCIsInJvbGUiOiJjaHVuay1idW5kbGUiLCJzaGEyNTYiOiJlODIzYmQxZmFmMGMxM2E3NjM5NWViYjE2ZDE3MWZlZTRhYjc1MzRhMDUyNDRlYmI2MWFjZDliODZiNjJlMDE0Iiwic2l6ZSI6MTEwMDAwMDN9XX0seyJpZCI6Indpbi1leGUiLCJwbGF0Zm9ybSI6IndpbmRvd3MiLCJhcmNoIjoieDg2XzY0IiwiZm9ybWF0IjoiZXhlIiwiYnVpbGROdW1iZXIiOiIxNTIiLCJhcnRpZmFjdHMiOlt7Im5hbWUiOiJkaWNlcm9sbC0xLjUuMC13aW4tZXhlLmV4ZSIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiZjc5OTdhMzYyYjU5NDQ1NDk0ZDVjMWFmZWY3Y2M3Y2RmZWY4MDFlMGZkMDNjOGUzZjFjNTQwZWQwOTdlZWI2NSIsInNpemUiOjEyMDAwMDA2fV19LHsiaWQiOiJ3aW4tcGNrIiwicGxhdGZvcm0iOiJ3aW5kb3dzIiwiYXJjaCI6ImFueSIsImZvcm1hdCI6InBjayIsImJ1aWxkTnVtYmVyIjoiMTUzIiwicmVxdWlyZXMiOnsiZW5naW5lIjoiZ29kb3QtNC43IiwibWluQmluYXJ5IjoiMS40LjAifSwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtd2luLXBjay5wY2siLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6IjIzZDg4NjViOGVjODdhZThmNDBmZjc5MDM1OTk2YmFjYWRlNDQyZDU4ZGIxNzA5NDU1NGYxMjg0ODdlYmI3YjMiLCJzaXplIjoxMzAwMDAwOX1dfSx7ImlkIjoid2luLXppcCIsInBsYXRmb3JtIjoid2luZG93cyIsImFyY2giOiJ4ODZfNjQiLCJmb3JtYXQiOiJ6aXAiLCJidWlsZE51bWJlciI6IjE1NCIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLXdpbi16aXAuemlwIiwicm9sZSI6InBheWxvYWQiLCJzaGEyNTYiOiI4YjMyNzNmZGU0NzM5N2VhMjIxMDBlNmJlNTllNjcxMjRiMDJhMjM1MDQ1OTNjNTMxNTgzNzM5N2MyMzIwMzEyIiwic2l6ZSI6MTQwMDAwMTJ9XX0seyJpZCI6ImxpbnV4LWFybTY0IiwicGxhdGZvcm0iOiJsaW51eCIsImFyY2giOiJhcm02NCIsImZvcm1hdCI6InRhci5neiIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLWxpbnV4LWFybTY0LnRhci5neiIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiM2E2NzhkOGY1ZjRlZWY2MjYyYzM5MzhlZWUxOTIyZDI2MWVhY2UzMjJmNGYzZmFmMmE4ZmY1YzYxZjZjNjIyZSIsInNpemUiOjE1MDAwMDE1fV19LHsiaWQiOiJsaW51eC14NjQiLCJwbGF0Zm9ybSI6ImxpbnV4IiwiYXJjaCI6Ing4Nl82NCIsImZvcm1hdCI6InRhci5neiIsImJ1aWxkTnVtYmVyIjoiMTU2IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtbGludXgteDY0LnRhci5neiIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiZjhjOWIxYjY5N2FkNWI0MzVjNDlhZTFjYTZmYTlmNGJkZTQzODFiZjlmMDBjZjA0MDMzYzE5MjQ3OTZjM2EzNyIsInNpemUiOjE2MDAwMDE4fV19LHsiaWQiOiJhYWIiLCJwbGF0Zm9ybSI6ImFuZHJvaWQiLCJhcmNoIjoiYW55IiwiZm9ybWF0IjoiYWFiIiwiYnVpbGROdW1iZXIiOiIxNTciLCJhcnRpZmFjdHMiOltdfSx7ImlkIjoiYXBrIiwicGxhdGZvcm0iOiJhbmRyb2lkIiwiYXJjaCI6ImFueSIsImZvcm1hdCI6ImFwayIsImJ1aWxkTnVtYmVyIjoiMTU4IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtYXBrLmFwayIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiM2QzMTczMjIwODNlNjcxZTgwNjJlYjYwNTY5NjkyMTE2ZDVkOTg1ZjE5NTk3NmM5NjcxMmE0MDBkNjhhNGU0OSIsInNpemUiOjE4MDAwMDI0fV19LHsiaWQiOiJpcGEiLCJwbGF0Zm9ybSI6ImlvcyIsImFyY2giOiJhcm02NCIsImZvcm1hdCI6ImlwYSIsImJ1aWxkTnVtYmVyIjoiMTU5IiwiYXJ0aWZhY3RzIjpbeyJuYW1lIjoiZGljZXJvbGwtMS41LjAtaXBhLmlwYSIsInJvbGUiOiJwYXlsb2FkIiwic2hhMjU2IjoiN2YzOGUzZWE3YTEwYTg5ODM5Mzk0MmFiNDQ0NzlkYTQ0NzEyYTI4OTc2ZTYxMDA3MjEzYjVlYWYzZTM4ZDg1MyIsInNpemUiOjE5MDAwMDI3fV19LHsiaWQiOiJ3ZWIiLCJwbGF0Zm9ybSI6IndlYiIsImFyY2giOiJ3YXNtMzIiLCJmb3JtYXQiOiJ6aXAiLCJidWlsZE51bWJlciI6IjE2MCIsImFydGlmYWN0cyI6W3sibmFtZSI6ImRpY2Vyb2xsLTEuNS4wLXdlYi56aXAiLCJyb2xlIjoicGF5bG9hZCIsInNoYTI1NiI6IjJkZDQzY2ZkZDAyOTdjNGRiZDZjNmY2NThiMDE2ZDMwNWI4ZmJiYTRlMDlmYTZiMWIwY2E4NWNmZTA5YTc3ZDMiLCJzaXplIjoyMDAwMDAzMH1dfV19.KyR39QlHwqzrFfhtW5EioiuO2htPMjBXrJtDtMHMtphpJ2NURkDxsg-z1-RivoxNz034qhBh3ZDJ4VK4f6wvAA",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "231382aa792b8055c25686e3977f345b825869b4f331ae8c3065a46186d933c0",
+      "pin": {
+        "kind": "app",
+        "deliverable": "app",
+        "version": "1.5.0",
+        "seq": 15
+      },
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "delegation-by-content-key-as-record",
+      "description": "A delegation signed by the content key, verified as a record with the base delegation supplied: step 16 refuses `kind: delegation`.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTk1MDAwLCJleHBpcmVzQXQiOjE3MDAwODE0MDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.v7UQjqgsBoKD-S9eRZtgWMwrJhEFfETxfFEBMoDQHUY0Aqc2NJcEb3NAm91Gk1lhOW0zhmNEUMWVZnc_O3YoAg",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "37c62e4cd9344bcc329feb997ebe3ac9accf30963b4012e59e9bb21a98b94cdf",
+      "pin": null,
+      "expect": { "verify": "fail", "step": "scope" }
+    },
+    {
+      "id": "revocation-of-delegation-valid",
+      "description": "P4-13's revocation record unchanged, naming the delegation: `deliverable`, `version` and `seq` are the delegation's and `revokes` its hash; the feed entry carries `kind: delegation`.",
+      "mode": "revocation",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJyZXZvY2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTk1NTAwLCJyZXZva2VzIjoiNTVkYWRkYTEwMWM1ZmFlOGEyYzI3ZmEyOWU3OWU5MjU1MjY4MDcyOWFhY2Q5NGJjZTI3ZTRjOTZjZTE2N2U4ZSIsInJlYXNvbiI6IkNvbnRlbnQga2V5IHJldGlyZWQuIn0.FN24FcCIjukU1q9gt_4bGjO-p5h0O0EojWQnJm9Si3I5MTCwOxtnUNTdfF63iaqnj6N4KWtaKRb3h0c9AMMiCw",
+      "delegation": null,
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "entry": {
+        "record": "b7c5033d8652c0ddceeebb78e023d4d4a7634fc03f893ac10723968fca196017",
+        "pack": "djdl.events",
+        "target": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+        "version": "1",
+        "seq": 1,
+        "kind": "delegation"
+      },
+      "expect": {
+        "verify": "ok",
+        "revocation": {
+          "pack": "djdl.events",
+          "target": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "replacement": null,
+          "reason": "Content key retired.",
+          "issuedAt": 1699995500
+        }
+      }
+    },
+    {
+      "id": "delegated-revoked-delegation",
+      "description": "The control record with the delegation's hash revoked: it verifies, and `recordRevoked` answers `delegation` (pack-revoked, detail delegation).",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.6tk2VD2GhcN1zAh76LUZMudCt9eT-nVdz1pkKfutsGxjV7hufFuj8Gn5ILXjmJpgOidKrDTOBKzvzbThWgiLDQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "revoked": [
+        "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e"
+      ],
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        },
+        "revoked": "delegation"
+      }
+    },
+    {
+      "id": "delegated-revoked-record",
+      "description": "The control record with its own hash revoked: `recordRevoked` answers `record` first.",
+      "mode": "record",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJwa2QxLTU1ZGFkZGExMDFjNWZhZThhMmMyN2ZhMjllNzllOTI1NTI2ODA3MjlhYWNkOTRiY2UyN2U0Yzk2Y2UxNjdlOGUifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cy5oYWxsb3dlZW4iLCJraW5kIjoicGFjayIsInZlcnNpb24iOiIxLjAuMCIsInNlcSI6MSwiaXNzdWVkQXQiOjE2OTk5OTUwMDAsInRhZyI6ImRqZGwuZXZlbnRzLmhhbGxvd2Vlbi12MS4wLjAiLCJjaGFubmVsIjoic3RhYmxlIiwidHlwZSI6ImZpbGVzLnRyZWUiLCJmb3JtYXRWZXJzaW9uIjoxLCJ2YXJpYW50cyI6W3sidmFyaWFudCI6e30sInBheWxvYWQiOnsic2l6ZSI6NjMzNCwic2hhMjU2IjoiNjc5MTljOTQ1Zjk4ODczYTQxMjRmZGYxMGQ2MzI2M2MyNjIwMGIyMmVmN2ExOWJhZWJiNDUyOGI5NTNkODFmMSJ9LCJmdWxsIjp7InNoYTI1NiI6IjVkYWE0NmUxNzI0MjhjMjgwMmE2ZTEzNmE1MzhmNzhlYzZiZmE1NmQ3NjIwZmViNjVkMTdmOTBlNGY0NGIxMzciLCJieXRlcyI6MTkwMiwic2l6ZSI6NjMzNCwiY29kZWMiOiJ6c3RkIn0sImZpbGVzIjp7ImZvcm1hdCI6InBrZXktZmlsZXMvMSIsImxheW91dCI6InRyZWUiLCJzaGEyNTYiOiI3NTZkYjNmMDdkNzFkOTVkMzVhYTQyMGY3ODNmNjgxMTljNWEzNzgwZTg4ZTc3ZmRhNDM3MjM5NmQxYTk4MGViIiwiYnl0ZXMiOjIyMDcsInNpemUiOjYwNjIsImNvZGVjIjoienN0ZCJ9fV19.6tk2VD2GhcN1zAh76LUZMudCt9eT-nVdz1pkKfutsGxjV7hufFuj8Gn5ILXjmJpgOidKrDTOBKzvzbThWgiLDQ",
+      "delegation": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJkZWxlZ2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTkyMDAwLCJleHBpcmVzQXQiOjE3MTU1NDQwMDAsImRlbGVnYXRlIjp7InB1YmxpY0tleSI6IklNR2FMakVWalB6OWNfMklpc2x1enEtZFpDYkZRZS0xdTVEV0EwelRWU00ifSwidHlwZXMiOlsiZmlsZXMudHJlZSIsImRhdGEuanNvbiJdLCJub3RlcyI6IkV2ZW50cyB0ZWFtLCBjb3JwdXMifQ.IN3VOalOV1_V4kNyTffeLpu-ijcy6d3_YgBNpSGp-Tx6u6LzF6ywkaceeWPkYz9f_c0Wqvbjx6irtC_i0nR6Bg",
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "expectedHash": "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+      "pin": {
+        "kind": "pack",
+        "deliverable": "djdl.events.halloween",
+        "version": "1.0.0",
+        "seq": 1
+      },
+      "revoked": [
+        "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+        "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e"
+      ],
+      "expect": {
+        "verify": "ok",
+        "kind": "pack",
+        "delegation": {
+          "sha256": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "deliverable": "djdl.events",
+          "types": ["files.tree", "data.json"],
+          "issuedAt": 1699992000,
+          "expiresAt": 1715544000
+        },
+        "revoked": "record"
+      }
+    },
+    {
+      "id": "revocation-of-delegation-replacement-ignored",
+      "description": "A delegation revocation carrying a `replacement`: `verifyRevocation` is unchanged and parses it, but ingest refuses it and a device ignores it for a delegation target (no release replaces a delegation).",
+      "mode": "revocation",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmVsZWFzZStqd3MiLCJraWQiOiJkamRsLXJlbGVhc2UtdGVzdC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiZGVsaXZlcmFibGUiOiJkamRsLmV2ZW50cyIsImtpbmQiOiJyZXZvY2F0aW9uIiwidmVyc2lvbiI6IjEiLCJzZXEiOjEsImlzc3VlZEF0IjoxNjk5OTk1NTAwLCJyZXZva2VzIjoiNTVkYWRkYTEwMWM1ZmFlOGEyYzI3ZmEyOWU3OWU5MjU1MjY4MDcyOWFhY2Q5NGJjZTI3ZTRjOTZjZTE2N2U4ZSIsInJlYXNvbiI6IkNvbnRlbnQga2V5IHJldGlyZWQuIiwicmVwbGFjZW1lbnQiOnsic2hhMjU2IjoiNDUwOWQzMDdiYmQyMDM3NDViYmZhNzNmZWNlMzA0ODcyNTFhZmFjZWY3OTNkMWJiNzU2MWYyZGFlZjE0MDNkOCIsInNlcSI6MSwidmVyc2lvbiI6IjEuMC4wIn19.2_mSEAGQfyg1PmHqtBLvh6NUieQu3HYOMppDItDNmcrvIRhz6LGF3sNkJY5e5q0rIhMwBRrGiHAvnQu2j5okCg",
+      "delegation": null,
+      "releaseKeys": {
+        "djdl-release-test-2026": "U9d9Ix2jwC1-l_GJgrInN5zMPJgjPkgZC8Ekg7nKlEE"
+      },
+      "productTrust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "entry": {
+        "record": "10224f0d7b109b6881fe30c1cacc6689322c3d66a7de395f40c52a8a1ae041ec",
+        "pack": "djdl.events",
+        "target": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+        "version": "1",
+        "seq": 1,
+        "kind": "delegation"
+      },
+      "expect": {
+        "verify": "ok",
+        "revocation": {
+          "pack": "djdl.events",
+          "target": "55dadda101c5fae8a2c27fa29e79e92552680729aacd94bce27e4c96ce167e8e",
+          "replacement": {
+            "sha256": "4509d307bbd203745bbfa73fece30487251afacef793d1bb7561f2daef1403d8",
+            "seq": 1,
+            "version": "1.0.0"
+          },
+          "reason": "Content key retired.",
+          "issuedAt": 1699995500
+        }
+      }
+    },
+    {
+      "id": "feed-revocation-kind-delegation",
+      "description": "A feed whose `revocations` hold a pack-record entry (no `kind`) and a delegation entry (`kind: delegation`, `pack` the scope root): both are kept, `kind` carried as present.",
+      "mode": "feed",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktZmVlZCtqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJjaGFubmVsIjoic3RhYmxlIiwic2VsZWN0b3IiOnt9LCJzZXEiOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDA5MDAsImFwcCI6eyJkZWxpdmVyYWJsZSI6ImFwcCIsInZlcnNpb25TY2hlbWUiOiJzZW12ZXIiLCJ0YXJnZXRzIjpbeyJwbGF0Zm9ybSI6Im1hY29zIiwicmVsZWFzZSI6eyJzaGEyNTYiOiIxMjM3MGI5MmI2YjQ5YmVhMTc1M2JkNDYxMTA5OGI3ODg5YTM4MGFjZTlhZjRhNDZiNTZiNGZkMmRiNTM2NjIwIiwic2VxIjoxNSwidmVyc2lvbiI6IjEuNS4wIn0sImZsb29yIjpudWxsLCJjcml0aWNhbCI6ZmFsc2UsIm91dGxldHMiOnsiZGlyZWN0Ijp7ImtpbmQiOiJkaXJlY3QiLCJsaXZlIjp7InZlcnNpb24iOiIxLjUuMCIsInNlcSI6MTV9LCJoYWx0ZWQiOmZhbHNlfSwiYXBwLXN0b3JlIjp7ImtpbmQiOiJhcHAtc3RvcmUiLCJsaXZlIjp7InZlcnNpb24iOiIxLjQuMCIsInNlcSI6MTR9LCJoYWx0ZWQiOmZhbHNlLCJsaXN0aW5nVXJsIjoiaHR0cHM6Ly9hcHBzLmFwcGxlLmNvbS9hcHAvaWQxMjM0NTY3ODkwIn19fSx7InBsYXRmb3JtIjoid2luZG93cyIsInJlbGVhc2UiOnsic2hhMjU2IjoiMTIzNzBiOTJiNmI0OWJlYTE3NTNiZDQ2MTEwOThiNzg4OWEzODBhY2U5YWY0YTQ2YjU2YjRmZDJkYjUzNjYyMCIsInNlcSI6MTUsInZlcnNpb24iOiIxLjUuMCJ9LCJmbG9vciI6bnVsbCwiY3JpdGljYWwiOmZhbHNlLCJvdXRsZXRzIjp7ImRpcmVjdCI6eyJraW5kIjoiZGlyZWN0IiwibGl2ZSI6eyJ2ZXJzaW9uIjoiMS41LjAiLCJzZXEiOjE1fSwiaGFsdGVkIjpmYWxzZX0sInN0ZWFtIjp7ImtpbmQiOiJzdGVhbSIsImxpdmUiOnsidmVyc2lvbiI6IjEuNS4wIiwic2VxIjoxNX0sImhhbHRlZCI6ZmFsc2V9fX1dfSwicmV2b2NhdGlvbnMiOlt7InJlY29yZCI6IjIzNzdiN2E3MWQyMjM1NGJjMzExN2QyYjgyMjA4NGNkYzZlY2M3YjMwZWYyZTg2MjUxY2NmM2Q1OTk3MmZjYzIiLCJwYWNrIjoiZGljZXJvbGwuZm9lcyIsInRhcmdldCI6IjM0YWEyMzNlNWYwOWVlOTlmNDhjZTc3MGI2YjQxMmZjYTRkZjFmNzQ2MjE3ODM2MGFjMDNkYWU5OWQ1NDQyYjMiLCJ2ZXJzaW9uIjoiMS4zLjMiLCJzZXEiOjEwfSx7InJlY29yZCI6IjMzMWNlYzg0NTg5MWFmN2U2NWYwZjU1OWUwN2I3NTU4NzRlODc4NWU2YTJmOTMxM2IwNmIyMmI4ZDhmNTZlY2MiLCJwYWNrIjoiZGljZXJvbGwuZXZlbnRzIiwidGFyZ2V0IjoiNjJiOWYxZGJjMWQ1N2M1OWJhNzJhZTEyOWMzNjMwMTMwNzEzNzQyODNkMmViMTRmOTYyMzg0Nzk5MjU1OGYzNiIsInZlcnNpb24iOiIxIiwic2VxIjoxLCJraW5kIjoiZGVsZWdhdGlvbiJ9XX0.tdQq17VLNlL9AAT63gciVQEAO5ar848djcQCRlQy897jK_isDXB4myjiaSakws3rxdNxiJ9X8K4t1VXt7a9SAQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "channel": "stable",
+      "platform": "macos",
+      "now": 1700000100,
+      "checkFreshness": true,
+      "expect": {
+        "verify": "ok",
+        "content": {
+          "packSets": null,
+          "packFloors": null,
+          "revocations": [
+            {
+              "record": "2377b7a71d22354bc3117d2b822084cdc6ecc7b30ef2e86251ccf3d59972fcc2",
+              "pack": "diceroll.foes",
+              "target": "34aa233e5f09ee99f48ce770b6b412fca4df1f7462178360ac03dae99d5442b3",
+              "version": "1.3.3",
+              "seq": 10
+            },
+            {
+              "record": "331cec845891af7e65f0f559e07b755874e8785e6a2f9313b06b22b8d8f56ecc",
+              "pack": "diceroll.events",
+              "target": "62b9f1dbc1d57c59ba72ae129c363013071374283d2eb14f9623847992558f36",
+              "version": "1",
+              "seq": 1,
+              "kind": "delegation"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "feed-revocation-kind-unknown-dropped",
+      "description": "An entry whose `kind` is a forward vocabulary token (`future`): that entry alone is dropped.",
+      "mode": "feed",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktZmVlZCtqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJjaGFubmVsIjoic3RhYmxlIiwic2VsZWN0b3IiOnt9LCJzZXEiOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDA5MDAsImFwcCI6eyJkZWxpdmVyYWJsZSI6ImFwcCIsInZlcnNpb25TY2hlbWUiOiJzZW12ZXIiLCJ0YXJnZXRzIjpbeyJwbGF0Zm9ybSI6Im1hY29zIiwicmVsZWFzZSI6eyJzaGEyNTYiOiIxMjM3MGI5MmI2YjQ5YmVhMTc1M2JkNDYxMTA5OGI3ODg5YTM4MGFjZTlhZjRhNDZiNTZiNGZkMmRiNTM2NjIwIiwic2VxIjoxNSwidmVyc2lvbiI6IjEuNS4wIn0sImZsb29yIjpudWxsLCJjcml0aWNhbCI6ZmFsc2UsIm91dGxldHMiOnsiZGlyZWN0Ijp7ImtpbmQiOiJkaXJlY3QiLCJsaXZlIjp7InZlcnNpb24iOiIxLjUuMCIsInNlcSI6MTV9LCJoYWx0ZWQiOmZhbHNlfSwiYXBwLXN0b3JlIjp7ImtpbmQiOiJhcHAtc3RvcmUiLCJsaXZlIjp7InZlcnNpb24iOiIxLjQuMCIsInNlcSI6MTR9LCJoYWx0ZWQiOmZhbHNlLCJsaXN0aW5nVXJsIjoiaHR0cHM6Ly9hcHBzLmFwcGxlLmNvbS9hcHAvaWQxMjM0NTY3ODkwIn19fSx7InBsYXRmb3JtIjoid2luZG93cyIsInJlbGVhc2UiOnsic2hhMjU2IjoiMTIzNzBiOTJiNmI0OWJlYTE3NTNiZDQ2MTEwOThiNzg4OWEzODBhY2U5YWY0YTQ2YjU2YjRmZDJkYjUzNjYyMCIsInNlcSI6MTUsInZlcnNpb24iOiIxLjUuMCJ9LCJmbG9vciI6bnVsbCwiY3JpdGljYWwiOmZhbHNlLCJvdXRsZXRzIjp7ImRpcmVjdCI6eyJraW5kIjoiZGlyZWN0IiwibGl2ZSI6eyJ2ZXJzaW9uIjoiMS41LjAiLCJzZXEiOjE1fSwiaGFsdGVkIjpmYWxzZX0sInN0ZWFtIjp7ImtpbmQiOiJzdGVhbSIsImxpdmUiOnsidmVyc2lvbiI6IjEuNS4wIiwic2VxIjoxNX0sImhhbHRlZCI6ZmFsc2V9fX1dfSwicmV2b2NhdGlvbnMiOlt7InJlY29yZCI6IjIzNzdiN2E3MWQyMjM1NGJjMzExN2QyYjgyMjA4NGNkYzZlY2M3YjMwZWYyZTg2MjUxY2NmM2Q1OTk3MmZjYzIiLCJwYWNrIjoiZGljZXJvbGwuZm9lcyIsInRhcmdldCI6IjM0YWEyMzNlNWYwOWVlOTlmNDhjZTc3MGI2YjQxMmZjYTRkZjFmNzQ2MjE3ODM2MGFjMDNkYWU5OWQ1NDQyYjMiLCJ2ZXJzaW9uIjoiMS4zLjMiLCJzZXEiOjEwfSx7InJlY29yZCI6IjMzMWNlYzg0NTg5MWFmN2U2NWYwZjU1OWUwN2I3NTU4NzRlODc4NWU2YTJmOTMxM2IwNmIyMmI4ZDhmNTZlY2MiLCJwYWNrIjoiZGljZXJvbGwuZXZlbnRzIiwidGFyZ2V0IjoiNjJiOWYxZGJjMWQ1N2M1OWJhNzJhZTEyOWMzNjMwMTMwNzEzNzQyODNkMmViMTRmOTYyMzg0Nzk5MjU1OGYzNiIsInZlcnNpb24iOiIxIiwic2VxIjoxLCJraW5kIjoiZnV0dXJlIn1dfQ.XjgZG2trG8IPSViURlrP0KFbdtXC3T7NOe2LuZ8u1-VHenho-gLP8qcTyR4fJdHIb9y2EEeXxX5x1lkRGnRmCQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "channel": "stable",
+      "platform": "macos",
+      "now": 1700000100,
+      "checkFreshness": true,
+      "expect": {
+        "verify": "ok",
+        "content": {
+          "packSets": null,
+          "packFloors": null,
+          "revocations": [
+            {
+              "record": "2377b7a71d22354bc3117d2b822084cdc6ecc7b30ef2e86251ccf3d59972fcc2",
+              "pack": "diceroll.foes",
+              "target": "34aa233e5f09ee99f48ce770b6b412fca4df1f7462178360ac03dae99d5442b3",
+              "version": "1.3.3",
+              "seq": 10
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "feed-revocation-kind-not-string",
+      "description": "An entry whose `kind` is null: the `revocations` member is unusable (null), never the feed.",
+      "mode": "feed",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktZmVlZCtqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJzY2hlbWFWZXJzaW9uIjoxLCJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJjaGFubmVsIjoic3RhYmxlIiwic2VsZWN0b3IiOnt9LCJzZXEiOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDA5MDAsImFwcCI6eyJkZWxpdmVyYWJsZSI6ImFwcCIsInZlcnNpb25TY2hlbWUiOiJzZW12ZXIiLCJ0YXJnZXRzIjpbeyJwbGF0Zm9ybSI6Im1hY29zIiwicmVsZWFzZSI6eyJzaGEyNTYiOiIxMjM3MGI5MmI2YjQ5YmVhMTc1M2JkNDYxMTA5OGI3ODg5YTM4MGFjZTlhZjRhNDZiNTZiNGZkMmRiNTM2NjIwIiwic2VxIjoxNSwidmVyc2lvbiI6IjEuNS4wIn0sImZsb29yIjpudWxsLCJjcml0aWNhbCI6ZmFsc2UsIm91dGxldHMiOnsiZGlyZWN0Ijp7ImtpbmQiOiJkaXJlY3QiLCJsaXZlIjp7InZlcnNpb24iOiIxLjUuMCIsInNlcSI6MTV9LCJoYWx0ZWQiOmZhbHNlfSwiYXBwLXN0b3JlIjp7ImtpbmQiOiJhcHAtc3RvcmUiLCJsaXZlIjp7InZlcnNpb24iOiIxLjQuMCIsInNlcSI6MTR9LCJoYWx0ZWQiOmZhbHNlLCJsaXN0aW5nVXJsIjoiaHR0cHM6Ly9hcHBzLmFwcGxlLmNvbS9hcHAvaWQxMjM0NTY3ODkwIn19fSx7InBsYXRmb3JtIjoid2luZG93cyIsInJlbGVhc2UiOnsic2hhMjU2IjoiMTIzNzBiOTJiNmI0OWJlYTE3NTNiZDQ2MTEwOThiNzg4OWEzODBhY2U5YWY0YTQ2YjU2YjRmZDJkYjUzNjYyMCIsInNlcSI6MTUsInZlcnNpb24iOiIxLjUuMCJ9LCJmbG9vciI6bnVsbCwiY3JpdGljYWwiOmZhbHNlLCJvdXRsZXRzIjp7ImRpcmVjdCI6eyJraW5kIjoiZGlyZWN0IiwibGl2ZSI6eyJ2ZXJzaW9uIjoiMS41LjAiLCJzZXEiOjE1fSwiaGFsdGVkIjpmYWxzZX0sInN0ZWFtIjp7ImtpbmQiOiJzdGVhbSIsImxpdmUiOnsidmVyc2lvbiI6IjEuNS4wIiwic2VxIjoxNX0sImhhbHRlZCI6ZmFsc2V9fX1dfSwicmV2b2NhdGlvbnMiOlt7InJlY29yZCI6IjIzNzdiN2E3MWQyMjM1NGJjMzExN2QyYjgyMjA4NGNkYzZlY2M3YjMwZWYyZTg2MjUxY2NmM2Q1OTk3MmZjYzIiLCJwYWNrIjoiZGljZXJvbGwuZm9lcyIsInRhcmdldCI6IjM0YWEyMzNlNWYwOWVlOTlmNDhjZTc3MGI2YjQxMmZjYTRkZjFmNzQ2MjE3ODM2MGFjMDNkYWU5OWQ1NDQyYjMiLCJ2ZXJzaW9uIjoiMS4zLjMiLCJzZXEiOjEwfSx7InJlY29yZCI6IjMzMWNlYzg0NTg5MWFmN2U2NWYwZjU1OWUwN2I3NTU4NzRlODc4NWU2YTJmOTMxM2IwNmIyMmI4ZDhmNTZlY2MiLCJwYWNrIjoiZGljZXJvbGwuZXZlbnRzIiwidGFyZ2V0IjoiNjJiOWYxZGJjMWQ1N2M1OWJhNzJhZTEyOWMzNjMwMTMwNzEzNzQyODNkMmViMTRmOTYyMzg0Nzk5MjU1OGYzNiIsInZlcnNpb24iOiIxIiwic2VxIjoxLCJraW5kIjpudWxsfV19.9_fYQ1y0vcmQXqGminv_Oa4f383o65QCgJK3g2MCApBI0cCzWHaVCkA0o3bxnf6O13QE2C9y0aLTjzvc2Va6Bg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "channel": "stable",
+      "platform": "macos",
+      "now": 1700000100,
+      "checkFreshness": true,
+      "expect": {
+        "verify": "ok",
+        "content": { "packSets": null, "packFloors": null, "revocations": null }
+      }
+    }
   ]
 }

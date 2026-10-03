@@ -252,8 +252,12 @@ describe("worker surfaces", () => {
       releaseKeyFingerprints: [],
       // P4-02: this Worker ingests pack records and mirrors pins.
       packs: true,
+      // P4-22: chunk indexes are ingested and their bundles kept.
+      chunks: true,
       // P4-13: revocation records are ingested and served.
       revocations: true,
+      // P4-19: delegations are ingested and served.
+      delegations: true,
     });
     expect(body.services.update).toEqual({
       enabled: true,

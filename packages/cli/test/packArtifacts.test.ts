@@ -342,6 +342,34 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
       embeddedCode(".godot/imported/t.png-1.s3tc.ctex", enc("GST2 GDScript")),
     ).toBeNull();
   });
+
+  it("judges by content, never by the extension alone (P4-22 on P4-08's sniff)", () => {
+    // A binary resource named like a texture, a text resource (with a BOM) named like data, a
+    // compressed one named like JSON: each gets the scan, or the refusal, its bytes call for.
+    expect(
+      lintWith([
+        [
+          "assets/kaykit/skin.png",
+          binaryResource(["PackedScene", "GDScript"], ["nodes"], 8),
+        ],
+        [
+          "assets/kaykit/level.bin",
+          enc(
+            '﻿[gd_resource type="Resource" format=3]\n\n[sub_resource type="GDScript" id="1"]\nscript/source = "extends Node"\n',
+          ),
+        ],
+        [
+          "assets/kaykit/data.json",
+          binaryResource(["Resource"], ["data"], 9, "RSCC"),
+        ],
+        ["assets/kaykit/plain.bin", binaryResource(["Mesh"], ["s"], 10)],
+      ]),
+    ).toEqual([
+      "assets/kaykit/skin.png: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
+      "assets/kaykit/level.bin: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
+      "assets/kaykit/data.json: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+    ]);
+  });
 });
 
 describe("another script language (P4-08 audit GAP 5)", () => {

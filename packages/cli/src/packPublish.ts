@@ -31,7 +31,18 @@
  *   8. The stripped PCK is written back in place, and a marker (`pkey-marker/1`) beside each
  *      payload (`X.pkey.json`, or `D/.pkey/pack.json` inside a tree), so the app export embeds the
  *      exact bytes the marker pins. `--out <dir>` keeps the record and the payloads at
- *      `<dir>/<packId>/<version>/` for the next publish's `--bases`.
+ *      `<dir>/<packId>/<version>/` for the next publish's `--bases`, and each variant's stored
+ *      chunk index as `<variant>/chunks.<sha256>`.
+ *
+ * CHUNK INDEXES (P4-22, plans/P4-10.md §2.4; `packChunks.ts`). A container variant of 4 MiB or
+ * more gets a `pkey-chunks/1` index and shared chunk bundles when `chunk` is in
+ * `patch.strategies` and discovery advertises `release.chunks`. Its chain (this deliverable, this
+ * variant key, this gating class) continues from the newest proven cached release carrying an
+ * index of the same gating class: the record proven by `seqs[].recordSha256`, the cached index
+ * by that record's `chunks.sha256`. A chunk that index holds keeps its location only in a bundle
+ * an upload ticket reports `present`; every other chunk is packed fresh from the payload, so a
+ * lost cache, a gate change or an absent bundle costs storage, never a publish. An index above
+ * `MAX_PUBLISHED_INDEX_BYTES` is not published: the variant omits `chunks` with a warning.
  *
  * `--dry-run` does 1–5 (with a credential; without one it stops before the network and uses
  * cached bases unproven), requests tickets only to learn which objects are already stored, and
@@ -49,6 +60,7 @@ import {
   MARKER_FORMAT,
   MAX_RECORD_JWS_BYTES,
 } from "@polaris-key/protocol/core";
+import { MAX_PUBLISHED_INDEX_BYTES } from "@polaris-key/manifest";
 import {
   MARKER_SUFFIX,
   TREE_MARKER_PATH,
@@ -57,7 +69,8 @@ import {
 } from "@polaris-key/protocol/packs";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { releaseRecordClaims } from "@polaris-key/client-core/record";
-import { variantKey } from "@polaris-key/client-core/packs";
+import { parseChunkIndex, variantKey } from "@polaris-key/client-core/packs";
+import { decode as wasmDecode } from "@polaris-key/zstd-wasm";
 import { parseVersion } from "@polaris-key/client-core/version";
 import {
   ciClient,
@@ -82,6 +95,12 @@ import {
   variantDirName,
 } from "./packManifest.js";
 import { readPck, stripPck } from "./pck.js";
+import {
+  CONTENT_KEY_ENV,
+  contentSigner,
+  localDelegatedChecks,
+  type ContentSigner,
+} from "./delegate.js";
 import { lintPck, lintTreePaths } from "./packLint.js";
 import {
   buildFilesDelta,
@@ -100,6 +119,15 @@ import {
   type PayloadFile,
   type Zstd,
 } from "./packArtifacts.js";
+import {
+  buildChunks,
+  chunkContainer,
+  CHUNK_MIN_PAYLOAD_BYTES,
+  priorLocations,
+  type BuiltChunks,
+  type Chunk,
+  type ChunkChainBase,
+} from "./packChunks.js";
 
 /** At most this many objects per upload ticket (`MAX_TICKET_OBJECTS`, P2-02). */
 export const STAGE_ROUND_OBJECTS = 256;
@@ -138,9 +166,20 @@ export interface PackPublishOptions {
   releaseKeyPem?: string;
   minSupportedSeq?: number;
   signRecord?: (record: ReleaseRecordDoc) => Promise<string>;
+  /**
+   * P4-19: sign with a delegated content key instead of the release key (`PKEY_CONTENT_KEY`, or
+   * `--content-key-file`), under the delegation `delegation` names (its record hash). Refused
+   * together with a release key.
+   */
+  contentKeyPem?: string;
+  delegation?: string;
   now?: number;
   /** The zstd binary (tests). */
   zstdBin?: string;
+  /** The smallest container payload that gets a chunk index (tests; default 4 MiB). */
+  chunkMinPayloadBytes?: number;
+  /** The largest chunk index published (tests; default `MAX_PUBLISHED_INDEX_BYTES`). */
+  maxChunkIndexBytes?: number;
 }
 
 export interface PackVariantReport {
@@ -156,6 +195,14 @@ export interface PackVariantReport {
   };
   skippedDeltas: string[];
   noise: string[];
+  /** The chunk index (P4-22): what it holds and reuses, with the chain's base version. */
+  chunks?: BuiltChunks["stats"] & {
+    sha256: string;
+    bytes: number;
+    base: string | null;
+  };
+  /** Why an eligible variant ships without a chunk index. */
+  chunksOmitted?: string;
 }
 
 export interface PackPublishResult {
@@ -390,6 +437,53 @@ async function loadBase(
   return { release, payloads };
 }
 
+/**
+ * The chain a chunked variant continues (plans/P4-10.md §2.4): the newest proven cached release
+ * whose record gives this variant a chunk index under the same gating class, with that index read
+ * from the cache (`<variant>/chunks.<sha256>`, written by `--out`) and proven by the record's
+ * `chunks` ref and payload. A record of another gating class is skipped (a gate change starts a
+ * fresh chain); a missing or mismatched cached index falls back to the next older proven release,
+ * and with none left costs reuse, never the publish.
+ */
+async function chunkChainBase(
+  proven: readonly CachedRelease[],
+  key: string,
+  gateClass: string | null,
+  warn: (w: string) => void,
+): Promise<ChunkChainBase | null> {
+  for (const c of proven) {
+    const v = c.record.variants.find((x) => variantKey(x.variant) === key);
+    if (!v?.chunks || (c.record.entitlement ?? null) !== gateClass) continue;
+    const label = `${c.record.deliverable} ${c.version} (${key || "default"})`;
+    const file = path.join(
+      c.dir,
+      key || "default",
+      `chunks.${v.chunks.sha256}`,
+    );
+    let stored: Uint8Array;
+    try {
+      stored = new Uint8Array(await readFile(file));
+    } catch {
+      warn(
+        `chunk chain ${label}: the cached index ${path.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`,
+      );
+      continue;
+    }
+    const parsed = await parseChunkIndex(stored, v.chunks, v.payload, {
+      decode: (frame, size) => wasmDecode(frame, size),
+      maxBytes: MAX_PUBLISHED_INDEX_BYTES,
+    });
+    if (!parsed.ok) {
+      warn(
+        `chunk chain ${label}: the cached index is not the record's (${parsed.error}); an older cached release is tried, else the chunks are packed fresh.`,
+      );
+      continue;
+    }
+    return { version: c.version, index: parsed.index };
+  }
+  return null;
+}
+
 // ── 6. The record and the marker ─────────────────────────────────────────────
 
 export function markerJson(
@@ -499,6 +593,40 @@ export async function publishPack(
     );
   out.write("Lint: ok\n");
 
+  // P4-19: a content-key publish. Refused beside a release key; the local checks (type, binding,
+  // the data-only rule over every file) run before anything reaches the network.
+  const contentPem =
+    opts.contentKeyPem ?? opts.env[CONTENT_KEY_ENV] ?? undefined;
+  const releasePemGiven =
+    opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? undefined;
+  const delegated = contentPem !== undefined || opts.delegation !== undefined;
+  if (delegated) {
+    if (contentPem !== undefined && releasePemGiven !== undefined)
+      throw new Error(
+        `Both a release key (${RELEASE_KEY_ENV}) and a content key (${CONTENT_KEY_ENV}) are set: a pack release is signed by one or the other. Unset one.`,
+      );
+    if (contentPem === undefined)
+      throw new Error(
+        `--delegation needs a content key: set ${CONTENT_KEY_ENV} or --content-key-file.`,
+      );
+    if (opts.delegation === undefined)
+      throw new Error(
+        "A content-key publish needs --delegation <sha256>, the delegation that names the key.",
+      );
+    localDelegatedChecks(
+      pack,
+      variants.flatMap((v) =>
+        v.payload.files.map((f) => ({
+          variant: v.key || "default",
+          path: f.path,
+          data: f.data,
+        })),
+      ),
+    );
+    out.write("Data-only: every file passes (plans/P4-19.md §2.5)\n");
+  }
+  const issuedNow = opts.now ?? Math.floor(Date.now() / 1000);
+
   const work = mkdtempSync(path.join(os.tmpdir(), "pkey-pack-"));
   try {
     const z: Zstd = zstdCli(work, opts.zstdBin);
@@ -513,11 +641,26 @@ export async function publishPack(
     out.write(
       `Self-check: every files index parses and rebuilds its payload byte for byte (zstd ${z.version})\n`,
     );
+    // The chunker runs over every eligible variant now (it needs no server); bundles and the
+    // index wait for the chain and the presence answers (plans/P4-10.md §2.4).
+    const chunked = new Map<string, Chunk[]>();
+    const chunksOmitted = new Map<string, string>();
+    if (pack.patch.strategies.includes("chunk"))
+      for (const v of variants) {
+        const b = built.get(v.key)!;
+        if (
+          v.payload.layout === "container" &&
+          b.payload.size >=
+            (opts.chunkMinPayloadBytes ?? CHUNK_MIN_PAYLOAD_BYTES)
+        )
+          chunked.set(v.key, chunkContainer(v.payload.bytes, v.payload.files));
+      }
 
     // 4. Credentials, discovery, the preflight.
     const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? undefined;
     let sign: ((record: ReleaseRecordDoc) => Promise<string>) | null = null;
-    if (!opts.dryRun) {
+    let content: ContentSigner | null = null;
+    if (!opts.dryRun && !delegated) {
       if (opts.signRecord) sign = opts.signRecord;
       else if (pem) sign = recordSigner(pem, ctx.releaseKeys);
       else
@@ -548,12 +691,46 @@ export async function publishPack(
       if (!opts.dryRun || e instanceof CiRequestError) throw e;
       out.write(`Server checks: skipped (${(e as Error).message})\n`);
     }
-    if (client) await requirePacksDiscovery(client, opts.fetchImpl);
+    if (client) {
+      const discovery = await requirePacksDiscovery(client, opts.fetchImpl);
+      if (!discovery.chunks && chunked.size > 0) {
+        for (const key of chunked.keys())
+          chunksOmitted.set(
+            key,
+            "this Polaris Key does not advertise release.chunks (it predates chunk-index ingest)",
+          );
+        warn(
+          `${client.url(".well-known/polaris.json")} does not advertise release.chunks: this release ships without chunk indexes.`,
+        );
+        chunked.clear();
+      }
+    }
+    if (delegated) {
+      if (client) {
+        content = await contentSigner({
+          client,
+          fetchImpl: opts.fetchImpl,
+          product: opts.product,
+          pack,
+          declared: ctx.releaseKeys,
+          key: { pem: contentPem!, delegation: opts.delegation! },
+          now: issuedNow,
+          warn,
+        });
+        sign = opts.signRecord ?? content.sign;
+        out.write(
+          `Delegation ${opts.delegation!.slice(0, 12)}…: ${content.delegation.deliverable} for ${content.delegation.types.join(", ")}; signing as ${content.kid.slice(0, 17)}…\n`,
+        );
+      } else
+        out.write(
+          "Delegation checks: skipped (no CI credential to fetch the delegation)\n",
+        );
+    }
 
+    const deltaWanted =
+      pack.patch.strategies.includes("delta") && pack.patch.deltaBases > 0;
     const cached =
-      opts.bases &&
-      pack.patch.strategies.includes("delta") &&
-      pack.patch.deltaBases > 0
+      opts.bases && (deltaWanted || chunked.size > 0)
         ? (
             await cachedReleases(
               path.resolve(opts.cwd, opts.bases),
@@ -630,7 +807,7 @@ export async function publishPack(
         );
     }
     const bases: Base[] = [];
-    for (const c of proven.slice(0, pack.patch.deltaBases))
+    for (const c of deltaWanted ? proven.slice(0, pack.patch.deltaBases) : [])
       bases.push(
         await loadBase(
           pack,
@@ -639,14 +816,48 @@ export async function publishPack(
           warn,
         ),
       );
-    if (cached.length > 0 && bases.length === 0)
+    if (deltaWanted && cached.length > 0 && bases.length === 0)
       warn(
         `no proven delta base for ${packId}; this release ships without deltas.`,
       );
-    else if (bases.length === 0)
+    else if (bases.length === 0 && (deltaWanted || !opts.bases))
       out.write(
         `No earlier release of ${packId} is cached${opts.bases ? "" : " (no --bases)"}; this release ships without deltas.\n`,
       );
+
+    // The chunk chains: per chunked variant, the newest proven cached index of the same gating
+    // class, then which of its bundles the product still holds (an upload ticket's `present`).
+    const gated = gate !== null && gate !== undefined;
+    const gateClass = gate === undefined ? pack.entitlement : gate;
+    const chains = new Map<string, ChunkChainBase>();
+    for (const key of chunked.keys()) {
+      const base = await chunkChainBase(proven, key, gateClass, warn);
+      if (base) chains.set(key, base);
+    }
+    const presentBundles = new Set<string>();
+    {
+      const ask = new Map<string, number>();
+      for (const c of chains.values())
+        for (const [sha, size] of c.index.bundles) ask.set(sha, size);
+      const list = [...ask].map(([sha256, size]) => ({ sha256, size }));
+      if (client)
+        for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
+          const ticket = await requestTicket(
+            client,
+            list.slice(i, i + STAGE_ROUND_OBJECTS),
+            gated,
+            opts,
+          );
+          for (const o of ticket.objects)
+            if (o.present) presentBundles.add(o.sha256);
+        }
+      else if (list.length > 0) {
+        for (const o of list) presentBundles.add(o.sha256);
+        warn(
+          "the cached chunk bundles are assumed stored: without a CI credential the dry run cannot ask Polaris Key which it holds.",
+        );
+      }
+    }
 
     // 5. Deltas, per variant, newest base first.
     const objects = new Map<string, StagedObject>();
@@ -657,6 +868,7 @@ export async function publishPack(
     };
     const reports: PackVariantReport[] = [];
     const recordVariants: PackVariant[] = [];
+    const builtChunks = new Map<string, BuiltChunks>();
     for (const v of variants) {
       const b = built.get(v.key)!;
       addObject(b.full.stored, `${v.key || "default"} full`);
@@ -747,6 +959,54 @@ export async function publishPack(
       const label = v.key || "default";
       for (const s of report.skippedDeltas) warn(`${label}: ${s}`);
       for (const n of report.noise) warn(`${label}: re-import noise ${n}`);
+
+      // The chunk index and its new bundles (plans/P4-10.md §2.4).
+      let chunksRef: PackVariant["chunks"];
+      const omittedWhy = chunksOmitted.get(v.key);
+      if (omittedWhy) report.chunksOmitted = omittedWhy;
+      const list = chunked.get(v.key);
+      if (list) {
+        const base = chains.get(v.key) ?? null;
+        const reuse = base
+          ? priorLocations(base.index, (sha) => presentBundles.has(sha))
+          : new Map();
+        if (base) {
+          const absent = base.index.bundles.filter(
+            ([sha]) => !presentBundles.has(sha),
+          ).length;
+          if (absent > 0)
+            warn(
+              `${label}: ${absent} chunk bundle${absent === 1 ? "" : "s"} of the chain from ${base.version} ${absent === 1 ? "is" : "are"} not stored; their chunks are packed fresh.`,
+            );
+        }
+        const outcome = await buildChunks(
+          z,
+          {
+            bytes: (v.payload as { bytes: Uint8Array }).bytes,
+            ...b.payload,
+          },
+          list,
+          base,
+          reuse,
+          { maxIndexBytes: opts.maxChunkIndexBytes },
+        );
+        if ("omitted" in outcome) {
+          report.chunksOmitted = outcome.omitted;
+          warn(`${label}: no chunk index: ${outcome.omitted}.`);
+        } else {
+          chunksRef = outcome.ref;
+          builtChunks.set(v.key, outcome);
+          addObject(outcome.index.stored, `${label} chunk index`);
+          for (const [sha, bytes] of outcome.bundles)
+            addObject(bytes, `${label} chunk bundle ${sha.slice(0, 12)}…`);
+          report.chunks = {
+            ...outcome.stats,
+            sha256: outcome.index.ref.sha256,
+            bytes: outcome.index.ref.bytes,
+            base: base?.version ?? null,
+          };
+        }
+      }
       reports.push(report);
       recordVariants.push({
         variant: v.variant,
@@ -754,6 +1014,7 @@ export async function publishPack(
         full: b.full.ref,
         files: filesRefOf(b),
         ...(deltas.length ? { deltas } : {}),
+        ...(chunksRef ? { chunks: chunksRef } : {}),
         // P4-12: the declaration's requirements, signed into every variant (the record is the
         // truth resolution reads: a release keeps the range it was published with).
         ...(pack.requires.engine ||
@@ -784,7 +1045,7 @@ export async function publishPack(
       kind: "pack",
       version,
       seq: seq ?? 1,
-      issuedAt: opts.now ?? Math.floor(Date.now() / 1000),
+      issuedAt: issuedNow,
       ...(opts.minSupportedSeq !== undefined
         ? { minSupportedSeq: opts.minSupportedSeq }
         : {}),
@@ -829,7 +1090,6 @@ export async function publishPack(
     };
 
     // 7. Tickets (a dry run asks only which objects are stored), rounds, the submit.
-    const gated = gate !== null && gate !== undefined;
     const list = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
@@ -860,11 +1120,15 @@ export async function publishPack(
       throw new Error(
         `The signed pack record is ${jws.length} bytes; at most ${MAX_RECORD_JWS_BYTES}.`,
       );
-    await checkSignedRecord(
-      jws,
-      record as unknown as ReleaseRecordDoc,
-      ctx.releaseKeys,
-    );
+    if (content) {
+      if (!opts.signRecord)
+        await content.check(jws, record as unknown as ReleaseRecordDoc);
+    } else
+      await checkSignedRecord(
+        jws,
+        record as unknown as ReleaseRecordDoc,
+        ctx.releaseKeys,
+      );
     result.recordJws = jws;
     const recordSha256 = sha256Hex(jws);
     out.write(
@@ -939,6 +1203,12 @@ export async function publishPack(
             filter: (src) =>
               path.relative(v.location, src).split(path.sep)[0] !== ".pkey",
           });
+        const ck = builtChunks.get(v.key);
+        if (ck)
+          await writeFile(
+            path.join(vdir, `chunks.${ck.index.ref.sha256}`),
+            ck.index.stored,
+          );
       }
       out.write(
         `Kept the record and payloads at ${path.relative(opts.cwd, dest) || dest} (for --bases)\n`,
@@ -978,7 +1248,7 @@ interface TicketAnswer {
 
 async function requestTicket(
   client: CiClient,
-  objects: readonly StagedObject[],
+  objects: readonly Pick<StagedObject, "sha256" | "size">[],
   gated: boolean,
   opts: PackPublishOptions,
 ): Promise<TicketAnswer> {
@@ -992,6 +1262,9 @@ async function requestTicket(
           size: o.size,
           gated,
         })),
+        // P4-22: `present` then means THIS pack uploaded the object (what ingest requires of a
+        // chunk index and its bundles), not merely the product. A Worker before P4-22 ignores it.
+        deliverable: opts.deliverable,
       },
     },
   );
@@ -1086,6 +1359,15 @@ function printReport(
     for (const d of r.bytes.deltas)
       out.write(`; ${d.scope} delta from ${d.version} ${d.bytes}`);
     out.write("\n");
+    if (r.chunks)
+      out.write(
+        `  chunks: ${r.chunks.chunks} (${r.chunks.uniqueChunks} distinct), index ${r.chunks.bytes} B; ` +
+          `${r.chunks.newBundles} new bundle${r.chunks.newBundles === 1 ? "" : "s"} (${r.chunks.newBytes} B); ` +
+          `reused ${r.chunks.reusedBytes} B in ${r.chunks.reusedBundles} bundle${r.chunks.reusedBundles === 1 ? "" : "s"}` +
+          `${r.chunks.base ? ` from ${r.chunks.base}` : " (a fresh chain)"}\n`,
+      );
+    else if (r.chunksOmitted)
+      out.write(`  chunks: none (${r.chunksOmitted})\n`);
     for (const s of r.skippedDeltas) out.write(`  skipped: ${s}\n`);
     for (const n of r.noise) out.write(`  re-import noise: ${n}\n`);
   }

@@ -35,6 +35,18 @@ export {
   type ParseChunkIndexResult,
 } from "./chunks.js";
 export { packSetId, type PackSetEntry } from "./set.js";
+export {
+  dataOnlyExtension,
+  dataOnlyFileRefusal,
+  dataOnlyPathRefusal,
+  dataOnlyRefusal,
+  dataOnlyTextRefusal,
+  dataOnlyTreeSink,
+  DATA_ONLY_SCRIPT_MARKERS,
+  DATA_ONLY_TEXT_EXTENSIONS,
+  type DataOnlyRefusalSeen,
+  type DataOnlyRule,
+} from "./dataonly.js";
 export { parseContentStamp, type ParseContentStampResult } from "./stamp.js";
 export { variantKey } from "./variant.js";
 export { frameWindow, windowAllowed, windowLogMax } from "./window.js";

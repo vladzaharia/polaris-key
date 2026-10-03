@@ -6,7 +6,10 @@
 // instantiated per decode, since workerd compiles no WASM bytes at request time), one files
 // index of exactly `MAX_PUBLISHED_INDEX_BYTES` read from miniflare's R2 and parsed inside the
 // isolate, the bound refused before any read one byte over it, and the batched `json_each`
-// possession check with a 20,000-pair bound value on D1.
+// possession check with a 20,000-pair bound value on D1. P4-22 adds the chunk index: the
+// largest valid one under the bound parsed in the isolate, one of exactly the bound read and
+// parsed, one a byte over refused before any read, a missing bundle, and a bundle that only
+// another pack holds a ref to.
 
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -173,8 +176,14 @@ const DECLARATION = parseManifestPackDeliverable(
   }),
 )!;
 
-/** Store each object in R2 and record it with a ref of `product` (a promoted upload). */
-async function store(db: D1Db, product: string, objects: Stored[]) {
+/** Store each object in R2 and record it with a ref of `product` (a promoted upload by
+ *  `holder`, the pack by default). */
+async function store(
+  db: D1Db,
+  product: string,
+  objects: Stored[],
+  holder = PACK,
+) {
   for (const o of objects) {
     const key = `blobs/sha256/${o.sha256}`;
     await env.BLOBS!.put(key, o.bytes);
@@ -192,10 +201,118 @@ async function store(db: D1Db, product: string, objects: Stored[]) {
        VALUES (?, ?, 'pack-upload', ?, ?) ON CONFLICT DO NOTHING`,
       product,
       key,
-      PACK,
+      holder,
       NOW,
     );
   }
+}
+
+/**
+ * A pack whose one variant carries a raw `pkey-chunks/1` index of `records` one-byte chunks over
+ * a `records`-byte payload, all in one bundle of `records` bytes. `indexBytes` pads the index
+ * past its records (a structurally wrong length, for the exact-bound case).
+ */
+async function chunkedPack(
+  records: number,
+  seed: number,
+  indexBytes?: number,
+): Promise<{
+  record: PackRecordDoc;
+  objects: Stored[];
+  index: Stored;
+  bundle: Stored;
+}> {
+  const p = await pack(null, "none", seed);
+  // Re-shape the payload to `records` bytes: a 4-byte gap, then one file.
+  const gap = fill(4, seed);
+  const file = fill(records - 4, seed + 1);
+  const payload = new Uint8Array([...gap, ...file]);
+  const payloadSha = await hex(payload);
+  const fileSha = await hex(file);
+  const indexDoc = new TextEncoder().encode(
+    JSON.stringify({
+      format: "pkey-files/1",
+      layout: "container",
+      payload: { size: payload.length, sha256: payloadSha },
+      files: [
+        {
+          path: "assets/core/a.bin",
+          offset: 4,
+          size: file.length,
+          sha256: fileSha,
+          blob: { sha256: fileSha, bytes: file.length, codec: "none" },
+        },
+      ],
+    }),
+  );
+  const bundleBytes = fill(records, seed + 7).reverse();
+  const bundle = { bytes: bundleBytes, sha256: await hex(bundleBytes) };
+  const n = records;
+  const chunk = new Uint8Array(indexBytes ?? 64 + 48 * (n + 1));
+  const dv = new DataView(chunk.buffer);
+  chunk.set(new TextEncoder().encode("PKEYCHNK"), 0);
+  dv.setUint16(8, 1, true);
+  dv.setUint16(10, 48, true);
+  dv.setUint32(12, 1, true);
+  dv.setUint32(16, n, true);
+  dv.setUint32(20, 1, true);
+  dv.setUint32(24, payload.length, true);
+  for (let i = 0; i < 32; i++)
+    chunk[32 + i] = parseInt(payloadSha.slice(i * 2, i * 2 + 2), 16);
+  for (let i = 0; i < n; i++) {
+    const o = 64 + 48 * i;
+    dv.setUint32(o + 32, 1, true);
+    dv.setUint32(o + 36, 1, true);
+    dv.setUint32(o + 40, 0, true);
+    dv.setUint32(o + 44, i, true);
+  }
+  const b = 64 + 48 * n;
+  for (let i = 0; i < 32; i++)
+    chunk[b + i] = parseInt(bundle.sha256.slice(i * 2, i * 2 + 2), 16);
+  dv.setUint32(b + 32, records, true);
+  const index = { bytes: chunk, sha256: await hex(chunk) };
+  const record = structuredClone(p.record);
+  const v = record.variants[0]!;
+  v.payload = { size: payload.length, sha256: payloadSha };
+  v.full = {
+    sha256: payloadSha,
+    bytes: payload.length,
+    size: payload.length,
+    codec: "none",
+  };
+  const filesIndex = { bytes: indexDoc, sha256: await hex(indexDoc) };
+  v.files = {
+    format: "pkey-files/1",
+    layout: "container",
+    sha256: filesIndex.sha256,
+    bytes: indexDoc.length,
+    size: indexDoc.length,
+    codec: "none",
+    gaps: {
+      sha256: await hex(gap),
+      bytes: gap.length,
+      size: gap.length,
+      codec: "none",
+    },
+  };
+  v.chunks = {
+    format: "pkey-chunks/1",
+    sha256: index.sha256,
+    bytes: chunk.length,
+    size: chunk.length,
+    codec: "none",
+  };
+  return {
+    record,
+    objects: [
+      { bytes: payload, sha256: payloadSha },
+      filesIndex,
+      { bytes: gap, sha256: await hex(gap) },
+      { bytes: file, sha256: fileSha },
+    ],
+    index,
+    bundle,
+  };
 }
 
 describe("@polaris-key/zstd-wasm in the Worker's module graph", LANE, () => {
@@ -213,7 +330,13 @@ describe("@polaris-key/zstd-wasm in the Worker's module graph", LANE, () => {
     await store(db, "packs-w", p.objects);
     expect(checkPackAgainstDeclaration(p.record, DECLARATION, null)).toBeNull();
     const res = await checkPackStore(db, env.BLOBS!, "packs-w", p.record);
-    expect(res).toEqual({ ok: true, files: 1, unreadIndexes: [] });
+    expect(res).toEqual({
+      ok: true,
+      files: 1,
+      unreadIndexes: [],
+      bundles: 0,
+      unverifiedChunks: [],
+    });
   });
 });
 
@@ -229,6 +352,8 @@ describe("the index bound (MAX_PUBLISHED_INDEX_BYTES)", LANE, () => {
       ok: true,
       files: 1,
       unreadIndexes: [],
+      bundles: 0,
+      unverifiedChunks: [],
     });
     await db.batch(
       packReleaseStatements({
@@ -262,6 +387,86 @@ describe("the index bound (MAX_PUBLISHED_INDEX_BYTES)", LANE, () => {
     });
   });
 });
+
+describe(
+  "the chunk index at ingest (P4-22, plans/P4-10.md section 6)",
+  LANE,
+  () => {
+    /** The most records an index under MAX_PUBLISHED_INDEX_BYTES holds with one bundle. */
+    const MAX_RECORDS = Math.floor((MAX_PUBLISHED_INDEX_BYTES - 64) / 48) - 1;
+
+    it("parses the largest index under the bound inside the isolate and checks its bundle", async () => {
+      const db = new D1Db(env.DB);
+      await seedProduct(env, db, "packs-c", { schemaVersion: 1, entries: [] });
+      const p = await chunkedPack(MAX_RECORDS, 11);
+      expect(p.index.bytes.length).toBe(MAX_PUBLISHED_INDEX_BYTES - 16);
+      await store(db, "packs-c", [...p.objects, p.index, p.bundle]);
+      expect(
+        checkPackAgainstDeclaration(p.record, DECLARATION, null),
+      ).toBeNull();
+      expect(await checkPackStore(db, env.BLOBS!, "packs-c", p.record)).toEqual(
+        {
+          ok: true,
+          files: 1,
+          unreadIndexes: [],
+          bundles: 1,
+          unverifiedChunks: [],
+        },
+      );
+    });
+
+    it("reads and parses an index of exactly the bound (no index of 48-byte records is that long, so it fails its length), and refuses one a byte over before any read", async () => {
+      const db = new D1Db(env.DB);
+      await seedProduct(env, db, "packs-c", { schemaVersion: 1, entries: [] });
+      const p = await chunkedPack(1000, 12, MAX_PUBLISHED_INDEX_BYTES);
+      expect(p.record.variants[0]!.chunks!.size).toBe(
+        MAX_PUBLISHED_INDEX_BYTES,
+      );
+      await store(db, "packs-c", [...p.objects, p.index, p.bundle]);
+      expect(
+        checkPackAgainstDeclaration(p.record, DECLARATION, null),
+      ).toBeNull();
+      expect(
+        await checkPackStore(db, env.BLOBS!, "packs-c", p.record),
+      ).toMatchObject({
+        ok: false,
+        reason: "pack-index",
+        message: "variants[0]'s chunk index fails chunks-bad-length.",
+      });
+      const over = structuredClone(p.record);
+      over.variants[0]!.chunks!.size = MAX_PUBLISHED_INDEX_BYTES + 1;
+      over.variants[0]!.chunks!.codec = "zstd";
+      expect(
+        checkPackAgainstDeclaration(over, DECLARATION, null),
+      ).toMatchObject({
+        ok: false,
+        reason: "pack-index",
+      });
+    });
+
+    it("refuses a missing bundle, and a bundle only another pack holds a ref to (pack-object)", async () => {
+      const db = new D1Db(env.DB);
+      await seedProduct(env, db, "packs-c", { schemaVersion: 1, entries: [] });
+      const p = await chunkedPack(64, 13);
+      await store(db, "packs-c", [...p.objects, p.index]);
+      const missing = await checkPackStore(db, env.BLOBS!, "packs-c", p.record);
+      expect(missing).toMatchObject({ ok: false, reason: "pack-object" });
+      expect((missing as { message: string }).message).toContain(
+        `blobs/sha256/${p.bundle.sha256}`,
+      );
+      // Stored, and referenced by the product — but through another pack's upload.
+      await store(db, "packs-c", [p.bundle], "djdl.other");
+      expect(
+        await checkPackStore(db, env.BLOBS!, "packs-c", p.record),
+      ).toMatchObject({ ok: false, reason: "pack-object" });
+      // This pack's own upload earns it.
+      await store(db, "packs-c", [p.bundle]);
+      expect(
+        await checkPackStore(db, env.BLOBS!, "packs-c", p.record),
+      ).toMatchObject({ ok: true, bundles: 1 });
+    });
+  },
+);
 
 describe("the json_each possession check on D1", LANE, () => {
   it("checks 20,000 [key, bytes] pairs in two bound values", async () => {

@@ -46,7 +46,10 @@ import {
   OUTLET_SUBKINDS,
   OUTLET_UNKNOWN,
 } from "@polaris-key/protocol/distribution";
-import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
+import {
+  DELEGATED_KID_PATTERN,
+  type ReleaseRecordDoc,
+} from "@polaris-key/protocol/release";
 import {
   BINARY_METHODS,
   type BinaryMethod,
@@ -271,6 +274,11 @@ function configure(
   )
     throw invalid("update.pinnedReleaseKeys must map kid to a base64url key.");
   const releaseKeys = { ...keys } as TrustSet;
+  // plans/P4-19.md §2.2: a delegated kid is never a pinned release key.
+  if (Object.keys(releaseKeys).some((kid) => DELEGATED_KID_PATTERN.test(kid)))
+    throw invalid(
+      "update.pinnedReleaseKeys names a pkd1- kid: a delegated content key is reached only through a delegation, never pinned.",
+    );
   const pins = new Set(
     Object.values(pinnedTrust)
       .map(rawKey)

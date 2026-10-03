@@ -192,6 +192,31 @@
         "flatpak-ext",
         "web"
       ]
+    },
+    {
+      "name": "delegablePackType",
+      "description": "The pack types a delegated content key may sign (`DELEGABLE_PACK_TYPES`, plans/P4-19.md §2.5, decision 5). A delegation's `types` outside this list are ignored; `godot.pck`, `godot.zip`, `audio.bank`, `ml.model` and `custom.*` are never delegable. `delegationCases` pins them.",
+      "values": ["files.tree", "data.json", "l10n.table"]
+    },
+    {
+      "name": "dataOnlyExtension",
+      "description": "The file extensions a delegated install may hold (`DATA_ONLY_EXTENSIONS`, plans/P4-19.md §2.5 rule 2): the final segment's text after its last `.`, ASCII-lowercased. An allow-list: anything else is refused (`pack-not-data-only`, rule `extension`). `dataOnlyCases` pins them.",
+      "values": [
+        "json",
+        "csv",
+        "tsv",
+        "po",
+        "txt",
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "ogg",
+        "wav",
+        "mp3",
+        "ttf",
+        "otf"
+      ]
     }
   ]
 }
