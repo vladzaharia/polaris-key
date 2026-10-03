@@ -393,6 +393,25 @@ describe("pkey release publish", () => {
     expect(out).toContain("Dry run: nothing uploaded, nothing written.");
   });
 
+  it("names each matched build by platform and arch, and warns on a build id that is a bare arch", async () => {
+    const cwd = await repo(
+      exportFiles(),
+      RELEASE_YAML.replace("{ id: windows,", "{ id: x86_64,"),
+    );
+    const { code, out, err } = await run(cwd, publishArgs(["--dry-run"]));
+    expect(code).toBe(0);
+    expect(out).toMatch(
+      /- macos +payload +Diceroll-0\.3\.0-macos\.zip \(macOS · Universal · zip; \d+ bytes/,
+    );
+    expect(out).toMatch(
+      /- x86_64 +payload +Diceroll-0\.3\.0-windows\.zip \(Windows · x64 \(x86_64\) · zip; \d+ bytes/,
+    );
+    expect(out).toMatch(/\(Android · ARM64 · apk; \d+ bytes/);
+    expect(err).toContain(
+      "warning: release/release/deliverables/app/artifacts/1/id: artifact id x86_64 names an architecture but no platform",
+    );
+  });
+
   it("--dry-run with no CI credential validates locally and calls nothing", async () => {
     const cwd = await repo();
     const server = fakeServer();

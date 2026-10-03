@@ -7,7 +7,9 @@ import type {
   ReleaseBuildDto,
   ReleaseDto,
 } from "../../api.js";
+import { buildLabel } from "@polaris-key/manifest";
 import { Badge, Button } from "../../components/ui/index.js";
+import { artifactLabel } from "../../lib/buildLabels.js";
 
 /**
  * A release's builds and the files under each (P2-07). Reused by the distribution matrix
@@ -149,12 +151,29 @@ function BuildRows({
   artifacts: ReleaseArtifactDto[];
   showEmbeds: boolean;
 }): React.ReactElement {
+  const label = buildLabel(build);
   return (
     <>
-      <tr className="border-t border-border first:border-0">
-        <td className="px-3 py-2 font-mono text-xs">{build.buildId}</td>
-        <td className="px-3 py-2">{build.platform ?? "any"}</td>
-        <td className="px-3 py-2">{build.arch}</td>
+      <tr
+        className="border-t border-border first:border-0"
+        aria-label={`Build ${build.buildId}: ${label.long}`}
+      >
+        <td className="px-3 py-2 font-mono text-xs" title={label.long}>
+          {build.buildId}
+        </td>
+        <td className="px-3 py-2">{label.platform}</td>
+        {/* The display name, then the raw value where they differ ("x64 (x86_64)"); the raw
+            value alone where the platform implies it (iOS's arm64). */}
+        <td className="px-3 py-2" title={build.arch}>
+          {label.arch ?? build.arch}
+          {label.arch &&
+          build.arch !== "any" &&
+          label.arch.toLowerCase() !== build.arch.toLowerCase() ? (
+            <span className="font-mono text-xs text-muted-foreground">
+              {` (${build.arch})`}
+            </span>
+          ) : null}
+        </td>
         <td className="px-3 py-2">{build.format ?? "—"}</td>
         <td className="px-3 py-2 font-mono text-xs">
           {build.buildNumber ?? "—"}
@@ -172,7 +191,7 @@ function BuildRows({
       {artifacts.length ? (
         <tr>
           <td colSpan={showEmbeds ? 8 : 7} className="px-3 pb-3 pt-0">
-            <ArtifactList artifacts={artifacts} />
+            <ArtifactList artifacts={artifacts} showPlatform={false} />
           </td>
         </tr>
       ) : null}
@@ -246,36 +265,49 @@ function Embeds({ embeds }: { embeds: string[] | null }): React.ReactElement {
   );
 }
 
-/** One line per file: name, role, size, hash and where the bytes live. */
+/**
+ * One line per file: name, platform and arch, role, size, hash and where the bytes live. The
+ * platform label is left out under a build row (`showPlatform={false}`), whose columns say it.
+ */
 export function ArtifactList({
   artifacts,
+  showPlatform = true,
 }: {
   artifacts: ReleaseArtifactDto[];
+  showPlatform?: boolean;
 }): React.ReactElement {
   return (
     <ul className="space-y-1">
-      {artifacts.map((a) => (
-        <li
-          key={a.artifactId}
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border/60 px-2 py-1.5 text-xs"
-        >
-          <span className="font-mono">{a.name}</span>
-          <Badge variant={a.role === "payload" ? "primary" : "outline"}>
-            {a.role ?? a.kind ?? "file"}
-          </Badge>
-          <span className="text-muted-foreground">
-            {formatBytes(a.sizeBytes)}
-          </span>
-          {a.sha256 ? <Sha256 value={a.sha256} /> : null}
-          <span className="flex flex-wrap gap-1">
-            {locationLabels(a.locations).map((l) => (
-              <Badge key={l} variant="default">
-                {l}
+      {artifacts.map((a) => {
+        const label = showPlatform ? artifactLabel(a) : null;
+        return (
+          <li
+            key={a.artifactId}
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border/60 px-2 py-1.5 text-xs"
+          >
+            <span className="font-mono">{a.name}</span>
+            {label ? (
+              <Badge variant="outline" title={label.long}>
+                {label.short}
               </Badge>
-            ))}
-          </span>
-        </li>
-      ))}
+            ) : null}
+            <Badge variant={a.role === "payload" ? "primary" : "outline"}>
+              {a.role ?? a.kind ?? "file"}
+            </Badge>
+            <span className="text-muted-foreground">
+              {formatBytes(a.sizeBytes)}
+            </span>
+            {a.sha256 ? <Sha256 value={a.sha256} /> : null}
+            <span className="flex flex-wrap gap-1">
+              {locationLabels(a.locations).map((l) => (
+                <Badge key={l} variant="default">
+                  {l}
+                </Badge>
+              ))}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

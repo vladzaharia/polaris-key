@@ -1,4 +1,5 @@
 import * as React from "react";
+import { platformLabel } from "@polaris-key/manifest";
 import { MoreHorizontal, Radio } from "lucide-react";
 import type {
   ChannelPolicyDto,
@@ -304,7 +305,7 @@ function ResolvedCell({
         return (
           <li key={p}>
             <Badge variant={id ? "outline" : "warning"}>
-              <span>{p}</span>
+              <span>{platformLabel(p)}</span>
               <span aria-hidden>→</span>
               <span className="font-mono">
                 {id ? versionOf(id) : "nothing"}

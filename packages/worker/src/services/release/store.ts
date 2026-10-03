@@ -86,6 +86,7 @@ export async function latestReleaseHasDmg(
 
 import {
   APP_DELIVERABLE_ID,
+  platformFromFileName,
   type ManifestAppDeliverable,
 } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
@@ -513,13 +514,23 @@ export function artifactKind(name: string): string {
   return "cli";
 }
 
+/**
+ * The platform a sniffed file's name declares. The original substring checks run first (their
+ * answers never change); a name they miss falls through to the shared
+ * `platformFromFileName` (`.app.zip`, `.msi`, `.AppImage`, `.apk`, `.ipa`, `-mac-`, `-win64`,
+ * …), so a file such as `djdl-arm64.app.zip` is stored as macOS rather than as a bare arch.
+ */
 export function artifactPlatform(kind: string, name: string): string | null {
   if (kind === "dmg" || kind === "pkg") return "macos";
   const lower = name.toLowerCase();
   if (lower.includes("darwin") || lower.includes("macos")) return "macos";
   if (lower.includes("linux")) return "linux";
   if (lower.includes("windows") || lower.endsWith(".exe")) return "windows";
-  return null;
+  if (kind === "signature" || kind === "checksum") {
+    const stem = name.replace(/\.(sig|sha256)$/i, "");
+    return stem === name ? null : platformFromFileName(stem);
+  }
+  return platformFromFileName(name);
 }
 
 /** The Content-Type this gateway would serve the artifact as — never the uploader's (R6-04). */
