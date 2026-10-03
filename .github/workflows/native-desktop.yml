@@ -75,7 +75,7 @@ jobs:
             sdks/godot/native/e2e/macos/run.sh --work "$RUNNER_TEMP/e2e-macos" --template "$D/macos.zip"
       - run: git diff --exit-code && test -z "$(git status --porcelain)"
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-desktop-macos-logs
           path: ${{ runner.temp }}/e2e-macos/logs
@@ -130,7 +130,7 @@ jobs:
             -Work (Join-Path $env:RUNNER_TEMP "e2e-windows")
       - run: git diff --exit-code; if ($LASTEXITCODE -ne 0 -or (git status --porcelain)) { git status --porcelain; exit 1 }
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-desktop-windows-logs
           path: ${{ runner.temp }}/e2e-windows/logs
