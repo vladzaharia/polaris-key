@@ -334,7 +334,14 @@ public struct DirChunkIndexStore: ChunkIndexStore {
         return dir + "/" + sha256
     }
 
-    public func get(_ sha256: String) throws -> [UInt8]? { try readFileOrNil(try path(sha256)) }
+    /// The stored index, or nil when absent, not a regular file, or larger than
+    /// `MAX_CHUNK_INDEX_BYTES` (sized before a byte is read: the store is never trusted).
+    public func get(_ sha256: String) throws -> [UInt8]? {
+        let p = try path(sha256)
+        guard let st = try statOrNil(p), isReg(st), Int(st.st_size) <= MAX_CHUNK_INDEX_BYTES else { return nil }
+        guard let b = try readFileOrNil(p), b.count <= MAX_CHUNK_INDEX_BYTES else { return nil }
+        return b
+    }
 
     public func put(_ sha256: String, _ bytes: [UInt8]) throws {
         let p = try path(sha256)

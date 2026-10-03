@@ -352,6 +352,9 @@ public struct PackEngineOptions: Sendable {
     public var revocations: (any PackStateStore)?
     public var fetchRecord: RecordFetch
     public var fetchObject: ObjectFetch
+    /// Whether `fetchObject` honours a bounded range (`ObjectRequest.length`) with `Content-Range`
+    /// and `ETag` (P4-11). False: the chunk strategy is never planned. Default true.
+    public var supportsRange: Bool
     /// The licence's granted flags, or nil when the product runs no License service.
     public var entitlements: @Sendable () async -> Set<String>?
     /// Epoch seconds.
@@ -371,6 +374,7 @@ public struct PackEngineOptions: Sendable {
         patchMethods: [String], memBudget: Int, strategies: [String] = PACK_DEFAULT_STRATEGIES,
         transports: [String] = ["pkey-cdn"], storage: any PackStorage, state: any PackStateStore,
         revocations: (any PackStateStore)? = nil, fetchRecord: @escaping RecordFetch, fetchObject: @escaping ObjectFetch,
+        supportsRange: Bool = true,
         entitlements: @escaping @Sendable () async -> Set<String>? = { nil },
         now: @escaping @Sendable () async -> Int = { Int(Date().timeIntervalSince1970) },
         newPlanId: @escaping @Sendable () -> String = {
@@ -395,6 +399,7 @@ public struct PackEngineOptions: Sendable {
         self.revocations = revocations
         self.fetchRecord = fetchRecord
         self.fetchObject = fetchObject
+        self.supportsRange = supportsRange
         self.entitlements = entitlements
         self.now = now
         self.newPlanId = newPlanId
@@ -567,6 +572,8 @@ public actor PackEngine {
     /// Delegated releases verified in this process: record hash → pack and delegation hash.
     private var delegatedKnown: [String: DelegatedRelease] = [:]
     private var tail: Task<Void, Never>?
+    /// Seed indexes `storeSeedIndexes` already tried to fetch in this process (P4-11).
+    private var seedIndexTried = Set<String>()
     /// Save compatibility's record facts, by record hash (`Provides.swift`).
     private var providesMemo = ProvidesMemo()
 
@@ -1479,7 +1486,7 @@ public actor PackEngine {
         // release is a tree, and chunks are container-only), the variant's `chunks` is usable and
         // at least one seed index is stored. Anything that fails leaves it nil, never an error.
         var chunk: ChunkContext?
-        if opts.strategies.contains("chunk"), delegated == nil, variant.files.layout == "container",
+        if opts.strategies.contains("chunk"), opts.supportsRange, delegated == nil, variant.files.layout == "container",
             let chunksRef = usableChunksRef(variant), opts.storage.chunkIndexes != nil
         {
             let list = chunkSeeds(packId, installs, seeds)
@@ -1521,7 +1528,8 @@ public actor PackEngine {
                     chunks: e.seed.index.records.map(\.id), files: nil))
         }
         let caps = PlanCaps(
-            strategies: opts.strategies, patchMethods: opts.patchMethods, transports: opts.transports,
+            strategies: opts.supportsRange ? opts.strategies : opts.strategies.filter { $0 != "chunk" },
+            patchMethods: opts.patchMethods, transports: opts.transports,
             memBudget: opts.memBudget, freeDisk: (try? opts.storage.freeDisk()) ?? 0)
         let p = plan(target: target, installed: plannerInstalled, caps: caps)
         if case .error(let e) = p {
@@ -1581,13 +1589,17 @@ public actor PackEngine {
     /// baseline that has one and lacks it, fetched by hash, verified against its record and its
     /// installed payload, and stored by `chunks.sha256`. Best effort: a failure only means no seed.
     private func storeSeedIndexes() async {
-        guard let store = opts.storage.chunkIndexes, opts.strategies.contains("chunk"), let doc else { return }
+        guard let store = opts.storage.chunkIndexes, opts.strategies.contains("chunk"), opts.supportsRange, let doc
+        else { return }
         var have = Set((try? store.list()) ?? [])
         let zstd = opts.zstd
         for i in Array(doc.active.values) + Array(doc.previous.values) + Array(embedded.values) {
-            guard i.layout == "container", let ref = installChunksRef(i), !have.contains(ref.sha256) else {
-                continue
-            }
+            guard i.layout == "container", let ref = installChunksRef(i), !have.contains(ref.sha256),
+                !seedIndexTried.contains(ref.sha256)
+            else { continue }
+            // Once per index per engine (process): a missing or unusable one is not refetched at
+            // every ensure.
+            seedIndexTried.insert(ref.sha256)
             guard let res = try? await opts.fetchObject(ObjectRequest(sha256: ref.sha256, offset: 0, ifRange: nil)),
                 res.status == 200
             else { continue }

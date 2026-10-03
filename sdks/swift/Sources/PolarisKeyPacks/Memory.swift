@@ -76,7 +76,10 @@ private struct MemoryTree: TreeSink {
 
 private struct MemoryChunkIndexStore: ChunkIndexStore {
     let box: MemoryBox
-    func get(_ sha256: String) throws -> [UInt8]? { box.with { $0.indexes[sha256] } }
+    /// Larger than `MAX_CHUNK_INDEX_BYTES` reads as absent, as the directory store.
+    func get(_ sha256: String) throws -> [UInt8]? {
+        box.with { b in b.indexes[sha256].flatMap { $0.count <= MAX_CHUNK_INDEX_BYTES ? $0 : nil } }
+    }
     func put(_ sha256: String, _ bytes: [UInt8]) throws { box.with { $0.indexes[sha256] = bytes } }
     func list() throws -> [String] { box.with { Array($0.indexes.keys) } }
     func remove(_ sha256: String) throws { box.with { _ = $0.indexes.removeValue(forKey: sha256) } }

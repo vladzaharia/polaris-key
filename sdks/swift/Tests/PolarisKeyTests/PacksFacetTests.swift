@@ -337,6 +337,29 @@ final class PacksFacetTests: XCTestCase {
         await c.close()
     }
 
+    /// P4-11: a host transport that does not declare range support never gets a range request;
+    /// v2 installs by another strategy.
+    func testATransportWithoutRangeSupportNeverPlansChunk() async throws {
+        let v1 = chunkPack(
+            "djdl.music", version: "1.0.0", seq: 1, chunks: ["a", "b", "c", "d", "e", "f"],
+            bundles: [["a", "b", "c", "d", "e", "f"]])
+        let v2 = chunkPack(
+            "djdl.music", version: "1.1.0", seq: 2, chunks: ["a", "g", "c", "h", "i", "f", "j"],
+            bundles: [["a", "b", "c", "d", "e", "f"], ["g", "x", "h", "i", "y", "j"]])
+        for p in [v1, v2] { await server.reply("/djdl/release/records/\(p.recordSha256)", body: p.jws) }
+        let plain = RangeBlobs(v1.objects.merging(v2.objects) { a, _ in a }, supportsRange: false)
+        let url = work.appendingPathComponent("stamp-norange.json")
+        try Data(stampText(AppContent(contentApi: 1, pins: [v1.pin], expects: [])).utf8).write(to: url)
+        let (c, update) = try await client(stamp: .file(url), transport: plain, handlers: [BlobHandler()])
+        _ = try await update.packs.ensure([v1.packId])
+        let i2 = try await update.packs.ensureReleases([v2.target])[0]
+        let payload = try Data(contentsOf: URL(fileURLWithPath: i2.location).appendingPathComponent("payload.bin"))
+        XCTAssertEqual(sha256Of([UInt8](payload)), v2.payloadSha256)
+        XCTAssertTrue(plain.seen.allSatisfy { $0.range == nil })
+        XCTAssertTrue(plain.seen.contains { $0.path.hasSuffix(v2.fullSha256) })
+        await c.close()
+    }
+
     func testUsesAnEmbeddedBaselineAsInstalledStateAndFetchesNothing() async throws {
         let v1 = treePack(packId: "djdl.l10n", version: "1.0.0", seq: 1, files: v1Files)
         await serve([v1])
@@ -580,7 +603,12 @@ final class RangeBlobs: PackObjectTransport, @unchecked Sendable {
     private let objects: [String: [UInt8]]
     private var _seen: [Seen] = []
 
-    init(_ objects: [String: [UInt8]]) { self.objects = objects }
+    let supportsRange: Bool
+
+    init(_ objects: [String: [UInt8]], supportsRange: Bool = true) {
+        self.objects = objects
+        self.supportsRange = supportsRange
+    }
 
     var seen: [Seen] {
         get { lock.withLock { _seen } }

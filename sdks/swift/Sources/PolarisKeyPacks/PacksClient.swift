@@ -24,6 +24,7 @@
 
 import Foundation
 import PolarisKeyCore
+import os
 
 #if canImport(FoundationNetworking)
 import FoundationNetworking
@@ -54,6 +55,15 @@ public struct EmbeddedPack: Sendable, Equatable {
 /// through `URLSession`; tests and hosts with their own HTTP stack inject one.
 public protocol PackObjectTransport: Sendable {
     func get(_ url: URL, headers: [String: String], timeoutSeconds: Double) async throws -> ObjectResponse
+    /// Whether it sends a bounded `Range: bytes=o-e` and reports `Content-Range` and `ETag` (P4-11).
+    /// Only then is the chunk strategy planned; a transport that cannot is never asked for a
+    /// range (a range request it is handed anyway is refused, so the install falls back).
+    /// Default false: a host transport opts in.
+    var supportsRange: Bool { get }
+}
+
+extension PackObjectTransport {
+    public var supportsRange: Bool { false }
 }
 
 /// `URLSession.bytes(for:)`, chunked. `timeoutSeconds` is URLSession's idle timeout (the time
@@ -62,6 +72,9 @@ public struct URLSessionPackObjectTransport: PackObjectTransport {
     public let session: URLSession
 
     public init(session: URLSession = .shared) { self.session = session }
+
+    /// URLSession sends the bounded `Range` as given and reports `Content-Range` and `ETag`.
+    public var supportsRange: Bool { true }
 
     public func get(_ url: URL, headers: [String: String], timeoutSeconds: Double) async throws -> ObjectResponse {
         var req = URLRequest(url: url)
@@ -96,10 +109,15 @@ public struct URLSessionPackObjectTransport: PackObjectTransport {
     }
 }
 
-/// Follows a redirect, but never carries `Authorization` to another origin (scheme, host, port):
-/// the device bearer is sent only to the control plane's own origin.
+/// One request's redirect policy (a fresh guard per request, so its state is per task):
+/// an `https` → `http` redirect is refused (the redirect is not followed, so the fetch fails, as
+/// Godot's `INSECURE_REDIRECT`), and once the chain leaves the request's origin (scheme, host,
+/// port) `Authorization` stays off for the rest of it, even back on the origin: the device bearer
+/// is sent only to the control plane's own origin.
 final class RedirectAuthGuard: NSObject, URLSessionTaskDelegate, Sendable {
     let origin: URL
+    /// Whether this chain has left the origin.
+    private let left = OSAllocatedUnfairLock(initialState: false)
 
     init(origin: URL) { self.origin = origin }
 
@@ -112,10 +130,15 @@ final class RedirectAuthGuard: NSObject, URLSessionTaskDelegate, Sendable {
         _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
         newRequest request: URLRequest
     ) async -> URLRequest? {
-        var next = request
-        if let to = request.url, !Self.sameOrigin(origin, to) {
-            next.setValue(nil, forHTTPHeaderField: "Authorization")
+        guard let to = request.url else { return nil }
+        let from = response.url ?? task.currentRequest?.url ?? origin
+        if from.scheme?.lowercased() == "https" && to.scheme?.lowercased() != "https" { return nil }
+        let stripped = left.withLock { gone -> Bool in
+            if !Self.sameOrigin(origin, to) { gone = true }
+            return gone
         }
+        var next = request
+        if stripped { next.setValue(nil, forHTTPHeaderField: "Authorization") }
         return next
     }
 }
@@ -393,6 +416,7 @@ public actor PacksClient {
                 state: storage.stateStore(), revocations: storage.revocationStore(),
                 fetchRecord: { await PacksClient.fetchRecord(core, $0) },
                 fetchObject: { try await PacksClient.fetchObject(core, objectTransport, $0) },
+                supportsRange: objectTransport.supportsRange,
                 entitlements: { await PacksClient.entitlements(core) },
                 now: { await core.now() },
                 handlers: opts.handlers + pendingHandlers.with { $0 },
@@ -523,6 +547,11 @@ public actor PacksClient {
         var extra: [String: String] = [:]
         if let token = await core.token, sameOrigin(url, core) { extra["authorization"] = "Bearer \(token)" }
         if let length = req.length {
+            // A transport that cannot send a bounded range is never handed one: refused, so the
+            // chunk strategy falls back (never `interrupted`, which would keep retrying).
+            if !transport.supportsRange {
+                return ObjectResponse(status: 0, contentRange: nil, chunks: AsyncThrowingStream { $0.finish() })
+            }
             // P4-11's chunk runs: one bounded single range, never a multi-range, and no content
             // coding (a gzip answer would break the byte offsets).
             guard length > 0, req.offset >= 0 else {

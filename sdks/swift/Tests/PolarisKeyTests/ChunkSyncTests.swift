@@ -164,6 +164,7 @@ final class ChunkServer: @unchecked Sendable {
     private var _rangeAs200 = false
     private var _cutRange: Int?
     private var _otherEtag = false
+    private var _missing = Set<String>()
     private var rangeCount = 0
 
     init(_ packs: [ChunkPack], trees: [TreePack] = []) {
@@ -193,6 +194,11 @@ final class ChunkServer: @unchecked Sendable {
         set { locked { _rangeAs200 = newValue } }
     }
     /// Answer range requests with a `206` carrying another object's `ETag`.
+    /// Objects answered 404 (present in the fixtures, absent on the server).
+    var missing: Set<String> {
+        get { locked { _missing } }
+        set { locked { _missing = newValue } }
+    }
     var otherEtag: Bool {
         get { locked { _otherEtag } }
         set { locked { _otherEtag = newValue } }
@@ -233,7 +239,7 @@ final class ChunkServer: @unchecked Sendable {
                 rangeCount += 1
                 cut = _cutRange == rangeCount
             }
-            return (objects[req.sha256], _rangeAs200, cut, _otherEtag)
+            return (_missing.contains(req.sha256) ? nil : objects[req.sha256], _rangeAs200, cut, _otherEtag)
         }
         let tag = "\"\(req.sha256)\""
         guard let b else {
@@ -570,26 +576,114 @@ final class ChunkSyncTests: XCTestCase {
         XCTAssertEqual(runJournalDone(#"{"v":2,"index":"\#(idx)","runs":10,"bitmap":"0902"}"#, idx, 10), [])
     }
 
-    // The URLSession transport never carries Authorization across a redirect to another origin.
-    func testARedirectToAnotherOriginDropsAuthorization() async throws {
-        let origin = try XCTUnwrap(URL(string: "https://key.example/djdl/distribution/blobs/sha256/x"))
+    // The URLSession transport's redirect policy, per request (one guard per task).
+    private func redirectChain(_ hops: [String]) async throws -> [URLRequest?] {
+        let origin = try XCTUnwrap(URL(string: hops[0]))
         let guardian = RedirectAuthGuard(origin: origin)
         let task = URLSession.shared.dataTask(with: origin)
         defer { task.cancel() }
-        let response = try XCTUnwrap(HTTPURLResponse(url: origin, statusCode: 302, httpVersion: nil, headerFields: nil))
-        func follow(_ to: String) async throws -> String? {
-            var req = URLRequest(url: try XCTUnwrap(URL(string: to)))
+        var out: [URLRequest?] = []
+        for k in 1..<hops.count {
+            let from = try XCTUnwrap(URL(string: hops[k - 1]))
+            let response = try XCTUnwrap(HTTPURLResponse(url: from, statusCode: 302, httpVersion: nil, headerFields: nil))
+            var req = URLRequest(url: try XCTUnwrap(URL(string: hops[k])))
             req.setValue("Bearer pkeyt_test", forHTTPHeaderField: "Authorization")
-            let next = await guardian.urlSession(
-                URLSession.shared, task: task, willPerformHTTPRedirection: response, newRequest: req)
-            return next?.value(forHTTPHeaderField: "Authorization")
+            out.append(
+                await guardian.urlSession(URLSession.shared, task: task, willPerformHTTPRedirection: response, newRequest: req))
         }
-        let same = try await follow("https://key.example/other")
-        XCTAssertEqual(same, "Bearer pkeyt_test")
-        for to in ["https://cdn.example/blob", "http://key.example/blob", "https://key.example:8443/blob"] {
-            let other = try await follow(to)
-            XCTAssertNil(other, to)
+        return out
+    }
+
+    func testARedirectToAnotherOriginDropsAuthorization() async throws {
+        let o = "https://key.example/djdl/distribution/blobs/sha256/x"
+        let same = try await redirectChain([o, "https://key.example/other"])
+        XCTAssertEqual(same[0]?.value(forHTTPHeaderField: "Authorization"), "Bearer pkeyt_test")
+        for to in ["https://cdn.example/blob", "https://key.example:8443/blob", "https://KEY.example.org/blob"] {
+            let r = try await redirectChain([o, to])
+            XCTAssertNotNil(r[0], to)
+            XCTAssertNil(r[0]?.value(forHTTPHeaderField: "Authorization"), to)
         }
+    }
+
+    func testAnHttpsToHttpRedirectIsRefused() async throws {
+        let o = "https://key.example/djdl/distribution/blobs/sha256/x"
+        for to in ["http://key.example/blob", "http://cdn.example/blob"] {
+            let r = try await redirectChain([o, to])
+            XCTAssertNil(r[0], to)
+        }
+        // Later in a chain too: https → https elsewhere → http.
+        let chain = try await redirectChain([o, "https://cdn.example/a", "http://cdn.example/b"])
+        XCTAssertNotNil(chain[0])
+        XCTAssertNil(chain[1])
+    }
+
+    func testOnceTheChainLeavesTheOriginAuthorizationStaysOff() async throws {
+        let o = "https://key.example/djdl/distribution/blobs/sha256/x"
+        let r = try await redirectChain([o, "https://cdn.example/a", "https://key.example/back"])
+        XCTAssertNil(r[0]?.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertNotNil(r[1])
+        XCTAssertNil(r[1]?.value(forHTTPHeaderField: "Authorization"))
+        // A fresh request starts with the bearer again (state is per task).
+        let fresh = try await redirectChain([o, "https://key.example/back"])
+        XCTAssertEqual(fresh[0]?.value(forHTTPHeaderField: "Authorization"), "Bearer pkeyt_test")
+    }
+
+    // Seed indexes read from the local store are capped at MAX_CHUNK_INDEX_BYTES (else absent).
+    func testOversizedStoredSeedIndexesReadAsAbsent() throws {
+        let root = tempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try XCTUnwrap(DirPackStorage(root: root).chunkIndexes)
+        let ok = String(repeating: "1", count: 64)
+        let big = String(repeating: "2", count: 64)
+        try store.put(ok, [1, 2, 3])
+        try store.put(big, [UInt8](repeating: 7, count: MAX_CHUNK_INDEX_BYTES + 1))
+        XCTAssertEqual(try store.get(ok), [1, 2, 3])
+        XCTAssertNil(try store.get(big))
+        let edge = String(repeating: "3", count: 64)
+        try store.put(edge, [UInt8](repeating: 7, count: MAX_CHUNK_INDEX_BYTES))
+        XCTAssertEqual(try store.get(edge)?.count, MAX_CHUNK_INDEX_BYTES)
+
+        let memory = memoryPackStorage()
+        memory.indexes[big] = [UInt8](repeating: 7, count: MAX_CHUNK_INDEX_BYTES + 1)
+        memory.indexes[ok] = [1]
+        XCTAssertNil(try memory.chunkIndexes?.get(big))
+        XCTAssertEqual(try memory.chunkIndexes?.get(ok), [1])
+    }
+
+    // A missing seed index is fetched at most once per index per engine.
+    func testTheSeedIndexBackfillIsTriedOncePerIndex() async throws {
+        let (v1, _) = releases()
+        let server = ChunkServer([v1])
+        server.missing = [v1.chunksSha256]
+        let storage = memoryPackStorage()
+        let e = chunkEngine(server, storage: storage, pins: [v1.pin])
+        _ = try await e.load()
+        _ = try await e.ensure([v1.packId])
+        _ = try await e.ensure([v1.packId])
+        XCTAssertEqual(server.calls.filter { $0.sha256 == v1.chunksSha256 }.count, 1)
+        XCTAssertNil(storage.indexes[v1.chunksSha256])
+    }
+
+    // An engine whose fetch cannot do bounded ranges never plans chunk.
+    func testAnEngineWithoutRangeSupportNeverPlansChunk() async throws {
+        let (v1, v2) = releases()
+        let server = ChunkServer([v1, v2])
+        let storage = memoryPackStorage()
+        let e = PackEngine(
+            PackEngineOptions(
+                product: PackFixtures.product, releaseKeys: PackFixtures.releaseKeys,
+                productTrust: { PackFixtures.productTrust },
+                stamp: AppContent(contentApi: 1, pins: [v1.pin], expects: []), zstd: LibZstd(), patchMethods: [],
+                memBudget: 1 << 30, storage: storage, state: memoryPackStateStore(), fetchRecord: server.fetchRecord,
+                fetchObject: server.fetchObject, supportsRange: false, now: { 1_759_400_000 },
+                newPlanId: { "nrplan-\(chunkPlans.with { $0 += 1; return $0 })" }, handlers: [BlobHandler()]))
+        _ = try await e.load()
+        _ = try await e.ensure([v1.packId])
+        let i2 = try await e.ensureReleases([v2.target])[0]
+        XCTAssertEqual(sha256Of(try installedBytes(storage, i2)), v2.payloadSha256)
+        XCTAssertTrue(server.rangeCalls.isEmpty)
+        XCTAssertFalse(server.calls.contains { $0.sha256 == v2.chunksSha256 })
+        XCTAssertTrue(server.calls.contains { $0.sha256 == v2.fullSha256 })
     }
 
     // chunkRangeFetch's exact Content-Range and ETag rule.
