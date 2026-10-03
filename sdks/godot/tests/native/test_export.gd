@@ -72,6 +72,13 @@ func _store(t: PKeyTestContext, dir: String) -> void:
 	_write(shared.path_join("pkey_win.dll"))
 	r = N.strip_store_export(shared.path_join("store.exe"), before)
 	t.check("store export (.exe): a direct build's files in the same folder survive", r["removed"].is_empty() and r["failed"].is_empty() and FileAccess.file_exists(shared.path_join("velopack_libc.dll")) and FileAccess.file_exists(shared.path_join("WinSparkle.dll")) and FileAccess.file_exists(shared.path_join("pkey_velopack_shim.exe")), str(r))
+	# An embedded-pack export reaches the plugin as <game>.tmp (renamed to .exe afterwards).
+	var emb := dir.path_join("embedded")
+	before = N.snapshot(emb)
+	for f in ["pkeye2e.tmp", "pkey_win.dll", "velopack_libc.dll", "WinSparkle.dll", "pkey_velopack_shim.exe"]:
+		_write(emb.path_join(f))
+	r = N.strip_store_export(emb.path_join("pkeye2e.tmp"), before)
+	t.check("store export (embedded pack, .tmp): treated as the executable export", r["kind"] == "exe" and r["removed"].size() == 3 and FileAccess.file_exists(emb.path_join("pkey_win.dll")), str(r))
 	# .zip: the archive is rewritten without the three entries.
 	var zip := dir.path_join("store.zip")
 	var packer := ZIPPacker.new()

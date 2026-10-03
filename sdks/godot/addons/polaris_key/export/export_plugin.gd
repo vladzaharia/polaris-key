@@ -175,7 +175,7 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _f
 		push_error("Polaris Key: a Mac App Store build must not ship Sparkle, but %s is installed and Godot exports it. Remove it (or export from a project without it) before submitting; the Sparkle switches are off for this preset." % N.SPARKLE_GDEXTENSION)
 	var store_values := _values(platform)
 	_export_windows_store = platform == "windows" and S.feature_tags(store_values["outlet"], "", store_values["outlet_kind"]).has("pkey_outlet_ms_store")
-	_store_before = N.snapshot(_absolute(path).get_base_dir()) if _export_windows_store and path.to_lower().ends_with(".exe") else {}
+	_store_before = N.snapshot(_absolute(path).get_base_dir()) if _export_windows_store and N.is_executable_export(path) else {}
 	if _export_macos:
 		var sp := _sparkle()
 		for problem in N.problems(sp["key"], sp["feed_url"]):

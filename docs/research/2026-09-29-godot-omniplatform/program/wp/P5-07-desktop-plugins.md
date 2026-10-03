@@ -237,7 +237,8 @@ won:
   affected.
 
 - **Review fixes (2026-10-03):**
-  - **Store export stripping by kind.** For an `.exe` export, only the updater files that export
+  - **Store export stripping by kind.** For an `.exe` export (Godot hands an embedded-pack export to the plugins as `<game>.tmp`,
+    which counts as one; CI caught this), only the updater files that export
     wrote beside the executable are removed: new or changed since the export began. Another
     build's untouched files survive. A `.zip` export is rewritten without the three entries
     (rewrite chosen over failing the export). A `.pck` export is left alone.

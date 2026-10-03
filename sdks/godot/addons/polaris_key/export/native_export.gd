@@ -43,7 +43,8 @@ extends RefCounted
 ## dependencies from the preset's features, which never include an export plugin's own tags, so
 ## the .gdextension file cannot say it.) By export kind:
 ##
-##   .exe   removes, beside the executable, only the files this export wrote (new or changed
+##   .exe   (or the .tmp an embedded-pack export is written as first) removes, beside the
+##          executable, only the files this export wrote (new or changed
 ##          since the export began); another build's untouched files in the folder survive
 ##   .zip   rewrites the archive without them
 ##   .pck   nothing (a pack carries no dependencies)
@@ -168,7 +169,7 @@ static func restore_executable_bits(app: String) -> PackedStringArray:
 static func strip_store_export(path: String, before: Dictionary) -> Dictionary:
 	var lower := path.to_lower()
 	var out := {"kind": "none", "removed": PackedStringArray(), "failed": PackedStringArray(), "error": OK}
-	if lower.ends_with(".exe"):
+	if is_executable_export(path):
 		out["kind"] = "exe"
 		var failed := PackedStringArray()
 		out["removed"] = strip_store_updaters(path.get_base_dir(), before, failed)
@@ -177,6 +178,13 @@ static func strip_store_export(path: String, before: Dictionary) -> Dictionary:
 		out["kind"] = "zip"
 		out["error"] = strip_store_zip(path)
 	return out
+
+
+## Whether `path` is a Windows executable export as an export plugin sees it: `<game>.exe`, or
+## `<game>.tmp`, the name Godot exports an embedded-pack executable under before renaming it.
+static func is_executable_export(path: String) -> bool:
+	var lower := path.to_lower()
+	return lower.ends_with(".exe") or lower.ends_with(".tmp")
 
 
 ## The updater files beside an export's executable before the export ran: {name: [mtime, size]}
