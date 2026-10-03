@@ -7,16 +7,21 @@
 //! its exit code. `pack_velopack.ps1` copies this binary in as `<Game>.exe` beside
 //! `<Game>_godot.exe`.
 //!
-//! `PKEY_SHIM_LOG=<file>` appends one line per step (the end-to-end run uses it).
+//! In a DEBUG build, `PKEY_SHIM_LOG=<file>` appends one line per step; a release build carries no
+//! logging at all.
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+#[cfg(debug_assertions)]
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 use velopack::*;
 
+/// One line to `PKEY_SHIM_LOG`. Compiled into debug builds only: a release shim writes nothing and
+/// reads no logging variable.
+#[cfg(debug_assertions)]
 fn log(t0: &Instant, what: &str) {
-    if let Ok(path) = std::env::var("PKEY_SHIM_LOG") {
+    if let Some(path) = std::env::var_os("PKEY_SHIM_LOG") {
         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
             let _ = writeln!(
                 f,
@@ -29,6 +34,9 @@ fn log(t0: &Instant, what: &str) {
     }
 }
 
+#[cfg(not(debug_assertions))]
+fn log(_t0: &Instant, _what: &str) {}
+
 /// `<dir>/<stem>_godot.exe` (Windows) or `<dir>/<stem>_godot` beside this executable.
 fn godot_path() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
@@ -39,7 +47,8 @@ fn godot_path() -> Option<PathBuf> {
 
 fn main() {
     let t0 = Instant::now();
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    // OS strings: a non-UTF-8 argument (a path on Windows) reaches Godot as given.
+    let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     log(&t0, &format!("start {args:?}"));
     let app = VelopackApp::build();
     #[cfg(windows)]

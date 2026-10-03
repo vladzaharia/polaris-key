@@ -34,6 +34,9 @@ var native: Object = null
 ## The GDExtension class this facade instantiates when `native` is null. Tests point it at a
 ## class that does not exist to simulate a missing library.
 var native_class := ""
+## Why the last check_now() or install_and_relaunch() answered FAILED (null after OK): P3-10's
+## bridge reports this typed result instead of "answered 1".
+var last_result: PKeyResult = null
 
 var _connected := false
 
@@ -79,11 +82,33 @@ func _check_library() -> PKeyResult:
 
 ## P3-10's bridge entry points. Subclasses override; the base answers FAILED.
 func check_now(_feed_url: String) -> int:
-	return FAILED
+	return failed(availability())
 
 
 func install_and_relaunch(_feed_url: String) -> int:
+	return failed(availability())
+
+
+## Record why an entry point fails and answer FAILED (`r` OK means "no reason recorded").
+func failed(r: PKeyResult) -> int:
+	last_result = r if r != null and not r.ok else PKeyResult.failure(PKeyErrors.UNSUPPORTED, "%s did not complete." % id(), {"feature": PKeyConstants.Feature.UPDATE_DRIVER, "reason": PKeyConstants.UnsupportedReason.RUNTIME})
 	return FAILED
+
+
+## Answer OK and clear last_result.
+func succeeded() -> int:
+	last_result = null
+	return OK
+
+
+## https anywhere; plain http only on loopback (127.0.0.1, localhost, [::1]), as PKeyTransport.
+static func feed_url_allowed(url: String) -> bool:
+	if url.begins_with("https://"):
+		return true
+	for p in ["http://127.0.0.1:", "http://127.0.0.1/", "http://localhost:", "http://localhost/", "http://[::1]:", "http://[::1]/"]:
+		if url.begins_with(p):
+			return true
+	return false
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────────────────────

@@ -94,6 +94,12 @@ class WinSparkle extends RefCounted:
 		calls.append(["start", url, pub, company, app, version, headers])
 		return {"ok": true}
 
+	## Headers set again before each check (kept apart from `calls`).
+	var header_sets: Array = []
+
+	func set_headers(h: Dictionary) -> void:
+		header_sets.append(h)
+
 	func check(mode: String) -> void:
 		calls.append(["check", mode])
 

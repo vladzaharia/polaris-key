@@ -15,6 +15,8 @@ extends PKeyNativeFacade
 ##                          for the Worker to emit them); WinSparkle asks the game to quit
 ##   check_silently()       a check without UI (`did_find_update` / `did_not_find_update`)
 ##
+## The headers are set again before every check (WinSparkle's clear/set calls), so a rotated
+## bearer reaches the next request; a check already running keeps the ones it started with.
 ## WinSparkle calls back on its own threads; the extension defers every callback to the main
 ## thread. `shutdown_request` quits the game (the installer needs the files); the extension calls
 ## win_sparkle_cleanup when it unloads.
@@ -51,6 +53,8 @@ func library_path() -> String:
 func _check_library() -> PKeyResult:
 	if _loaded:
 		return PKeyResult.success()
+	if not library_path().is_absolute_path():
+		return unsupported(PKeyConstants.UnsupportedReason.DEPENDENCY, "The WinSparkle library path must be absolute: %s" % library_path())
 	var r = _native().call("load", library_path())
 	var d: Dictionary = r if r is Dictionary else {}
 	if not d.get("ok", false):
@@ -72,6 +76,8 @@ func start(appcast_url: String) -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, text, {"error": "missing_public_key"})
 	if appcast_url == "":
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "No WinSparkle appcast URL (discovery names no update.endpoints.winsparkle).")
+	if not feed_url_allowed(appcast_url):
+		return PKeyResult.failure(PKeyErrors.INSECURE_BASE_URL, "WinSparkle's appcast must be https (plain http only on loopback): %s" % appcast_url)
 	var company := String(config.get("company", "PolarisKey"))
 	var app := String(config.get("app", "Game"))
 	var version := String(config.get("version", ProjectSettings.get_setting("application/config/version", "")))
@@ -86,24 +92,36 @@ func start(appcast_url: String) -> PKeyResult:
 
 
 func check_now(appcast_url: String) -> int:
-	if not start(appcast_url).ok:
-		return FAILED
-	_native().call("check", "ui")
-	return OK
+	return _check(appcast_url, "ui")
 
 
 func install_and_relaunch(appcast_url: String) -> int:
-	if not start(appcast_url).ok:
-		return FAILED
-	_native().call("check", "install")
-	return OK
+	return _check(appcast_url, "install")
 
 
 func check_silently() -> int:
 	if not _started:
 		return FAILED
+	_refresh_headers()
 	_native().call("check", "silent")
 	return OK
+
+
+func _check(appcast_url: String, mode: String) -> int:
+	var r := start(appcast_url)
+	if not r.ok:
+		return failed(r)
+	_refresh_headers()
+	_native().call("check", mode)
+	return succeeded()
+
+
+## The headers again before each check, so a rotated bearer is used. WinSparkle applies them to
+## its next request; a check already running keeps the headers it started with.
+func _refresh_headers() -> void:
+	var n := _native()
+	if n != null and n.has_method("set_headers"):
+		n.call("set_headers", headers())
 
 
 func _handle_event(name: String, _detail: Dictionary) -> void:

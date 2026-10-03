@@ -58,6 +58,8 @@ func library_path() -> String:
 
 func _check_library() -> PKeyResult:
 	if not _loaded:
+		if not library_path().is_absolute_path():
+			return unsupported(PKeyConstants.UnsupportedReason.DEPENDENCY, "The Velopack library path must be absolute: %s" % library_path())
 		var r = _native().call("load_library", library_path())
 		var d: Dictionary = r if r is Dictionary else {}
 		if not d.get("ok", false):
@@ -75,6 +77,8 @@ func open(feed_url: String) -> PKeyResult:
 		return a
 	if feed_url == "":
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "No Velopack feed URL (discovery names no update.endpoints.velopack).")
+	if not feed_url_allowed(feed_url):
+		return PKeyResult.failure(PKeyErrors.INSECURE_BASE_URL, "Velopack's feed must be https (plain http only on loopback): %s" % feed_url)
 	var r = _native().call("open", feed_url, headers())
 	var d: Dictionary = r if r is Dictionary else {}
 	if d.get("ok", false):
@@ -129,24 +133,31 @@ func apply_on_exit(restart := true) -> PKeyResult:
 
 ## Velopack has no UI of its own: a check (OK when it answered).
 func check_now(feed_url: String) -> int:
-	if _opened_url != feed_url and not open(feed_url).ok:
-		return FAILED
+	if _opened_url != feed_url:
+		var o := open(feed_url)
+		if not o.ok:
+			return failed(o)
 	var c := await check()
-	return OK if c.ok else FAILED
+	return succeeded() if c.ok else failed(c)
 
 
 ## Open, check, download, apply on exit and quit (P3-10's hook). A coroutine; FAILED when the
-## feed has no update (the adapter then opens the build's download link).
+## feed has no update (the adapter then opens the build's download link). last_result says why.
 func install_and_relaunch(feed_url: String) -> int:
-	if _opened_url != feed_url and not open(feed_url).ok:
-		return FAILED
+	if _opened_url != feed_url:
+		var o := open(feed_url)
+		if not o.ok:
+			return failed(o)
 	var c := await check()
-	if not c.ok or String(c.detail.get("status", "")) != "available":
-		return FAILED
+	if not c.ok:
+		return failed(c)
+	if String(c.detail.get("status", "")) != "available":
+		return failed(PKeyResult.failure(PKeyErrors.NOT_FOUND, "Velopack: the feed offers no update (%s)." % String(c.detail.get("status", ""))))
 	var d := await download()
 	if not d.ok:
-		return FAILED
-	return OK if apply_on_exit(true).ok else FAILED
+		return failed(d)
+	var a := apply_on_exit(true)
+	return succeeded() if a.ok else failed(a)
 
 
 ## Whether a download error is the delivery host refusing the request (401 or 403): what a

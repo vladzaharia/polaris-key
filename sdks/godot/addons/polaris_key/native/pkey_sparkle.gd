@@ -19,13 +19,18 @@ extends PKeyNativeFacade
 ## never verifies an update itself: SUPublicEDKey in the signed bundle is the only anchor.
 ##
 ## Config keys beyond the base ones: `mode`: `standard` (the default, what a game ships) or
-## `headless` (an auto-accepting user driver, for unattended tests only).
+## `headless` (an auto-accepting user driver that installs every update without asking): TEST
+## ONLY, refused unless the process environment sets PKEY_SPARKLE_HEADLESS=1, which only the
+## end-to-end runs do.
 ##
 ## When Sparkle relaunches it terminates the app through AppKit, which Godot turns into
 ## NOTIFICATION_WM_CLOSE_REQUEST; a game with `auto_accept_quit` off must quit on `will_relaunch`
 ## (the facade does so itself when the tree does not auto-accept).
 
 const NATIVE_CLASS := "PKeySparkleNative"
+## The environment flag the headless mode needs (the native side checks it too): only the
+## end-to-end runs set it.
+const HEADLESS_ENV := "PKEY_SPARKLE_HEADLESS"
 
 var _started := false
 
@@ -72,6 +77,8 @@ func start(feed_url := "") -> PKeyResult:
 			n.call("set_http_headers", headers())
 		return PKeyResult.success({"already_started": true})
 	var mode := String(config.get("mode", "standard"))
+	if mode == "headless" and OS.get_environment(HEADLESS_ENV) != "1":
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "Sparkle's headless mode installs every update without asking and exists for unattended tests only: set %s=1 to use it." % HEADLESS_ENV, {"error": "headless_not_allowed"})
 	var r = n.call("start", mode, feed_url, headers(), channels())
 	var d: Dictionary = r if r is Dictionary else {}
 	if d.get("ok", false):
@@ -90,10 +97,11 @@ func start(feed_url := "") -> PKeyResult:
 
 
 func check_now(feed_url: String) -> int:
-	if not start(feed_url).ok:
-		return FAILED
+	var r := start(feed_url)
+	if not r.ok:
+		return failed(r)
 	_native().call("check_for_updates")
-	return OK
+	return succeeded()
 
 
 ## Sparkle installs and relaunches from its own "update found" flow, so this is check_now().

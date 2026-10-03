@@ -68,8 +68,17 @@ With Sparkle on, the export plugin does four things:
 4. After an export to a `.app` it restores the executable bit on Sparkle's five Mach-O files,
    which Godot's `[dependencies]` copy drops.
 
+**Mac App Store builds must not ship Sparkle**, since App Review rejects a self-updater. On a
+macOS preset whose outlet is `app-store`, the Sparkle switches stay off. While
+`pkey_sparkle.gdextension` is installed, the export logs an error, because Godot exports every
+installed GDExtension. Remove the bridge from that build's project.
+
+The macOS bridge's **headless mode** installs every update without asking. It exists for the
+unattended end-to-end tests and is refused unless the environment sets `PKEY_SPARKLE_HEADLESS=1`.
+
 The release job then runs `sdks/godot/native/macos/sign_and_notarize.sh`. It signs inside-out
-with a Developer ID, notarises, staples and writes the zip that `sign_update` signs.
+with a Developer ID, notarises, staples and writes the zip that `sign_update` signs. It fails if the entitlements grant
+`allow-dyld-environment-variables` alongside Disable Library Validation.
 
 ## Velopack, WinSparkle and StoreContext on Windows
 
@@ -91,12 +100,20 @@ with a Developer ID, notarises, staples and writes the zip that `sign_update` si
 - **WinSparkle.** It needs the EdDSA public key in `PKeyOptions.update_eddsa_public_key`; without
   one it refuses to start. The release's build `format` must be `inno`, `nsis` or `msi`, so the
   appcast carries the installer's silent arguments. WinSparkle asks the game to quit before it
-  runs the installer.
+  runs the installer. The plugin sets the headers again before every check, so a rotated bearer
+  reaches the next request; a check already running keeps the headers it started with.
+- **Feed URLs** for Velopack and WinSparkle must be https; plain http works only on loopback.
+  Library paths must be absolute: each DLL loads from beside the executable, and its own
+  dependencies come only from its folder and System32.
 - **StoreContext.** The plugin calls IInitializeWithWindow with the game window, so the consent
   dialog belongs to the game. Every blocking call runs on an MTA thread. The Microsoft Store
   adapter uses it for a `store` answer in a Store MSIX and falls back to the listing.
 - **A Microsoft Store export** (outlet `ms-store`) ships `pkey_win.dll` alone. After the export,
-  the SDK's export plugin removes both updater DLLs and the shim.
+  the SDK's export plugin removes both updater DLLs and the shim:
+  - an `.exe` export loses the files that export wrote beside it, so give a Store export its own
+    folder;
+  - a `.zip` export is rewritten without them;
+  - a `.pck` export carries none.
 
 `sign.ps1` signs with the owner's Authenticode certificate or Azure Artifact Signing. Sign the
 DLLs, the shim and the game exe before vpk and the installer sign their own outputs.

@@ -41,15 +41,19 @@ inline godot::String hresult_hex(int32_t hr) {
   return godot::String(b);
 }
 
-// LoadLibraryW for a DLL at `path` (beside the executable, never a search-path lookup): the
-// module, or nullptr with the Win32 error in `win32`.
+// Load the DLL at the ABSOLUTE `path` (beside the executable): the module, or nullptr with the
+// Win32 error in `win32`. A relative path is refused (ERROR_BAD_PATHNAME) rather than searched
+// for. LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32 resolves the DLL's own
+// dependencies from its folder and System32 only: never the current directory or PATH.
 inline HMODULE load_beside(const godot::String &path, int64_t &win32) {
-  // LOAD_WITH_ALTERED_SEARCH_PATH needs an absolute path with backslashes: the DLL's own
-  // dependencies are then looked up beside it.
+  if (!path.is_absolute_path() || path.begins_with("res://") || path.begins_with("user://")) {
+    win32 = ERROR_BAD_PATHNAME;
+    return nullptr;
+  }
   std::wstring w = wide(path);
   for (auto &c : w)
     if (c == L'/') c = L'\\';
-  HMODULE m = LoadLibraryExW(w.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+  HMODULE m = LoadLibraryExW(w.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
   win32 = m ? 0 : (int64_t)GetLastError();
   return m;
 }

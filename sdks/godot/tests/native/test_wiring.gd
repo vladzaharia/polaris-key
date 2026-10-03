@@ -76,12 +76,30 @@ func _bridges(t: PKeyTestContext) -> void:
 	var r: PKeyApplyResult = await vb.install_and_relaunch()
 	t.check("bridges: Velopack's hook awaits check, download and apply, with the bridge's headers", r.ok and r.behaviour == "hook" and r.bridge == "velopack" and vn.calls.size() == 5 and vn.calls[0][0] == "load_library" and vn.calls[1] == ["open", "https://x/update/stable/velopack/", {"Authorization": "Bearer v"}] and vn.calls[4] == ["apply_on_exit", true], "%s %s" % [r, vn.calls])
 
+	# A 401/403 download under non-public delivery comes back through P3-10's hook as
+	# unsupported (product) with the public-delivery message, not "answered 1".
+	var vn2 := F.Velopack.new()
+	vn2.download_ok = false
+	vn2.download_message = "Network error: http status: 403 Forbidden"
+	var vb2 := PKeyVelopackBridge.new(e, "https://x/update/stable/velopack/")
+	vb2.facade().native = vn2
+	r = await vb2.install_and_relaunch()
+	t.check("bridges: a 403 Velopack download surfaces as unsupported (product) with the public-delivery message", not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "product" and r.detail.get("bridge") == "velopack" and r.message.contains("public delivery"), "%s %s" % [r, r.detail])
+	var vn3 := F.Velopack.new()
+	vn3.check_answer = {"status": "none"}
+	var vb3 := PKeyVelopackBridge.new(e, "https://x/update/stable/velopack/")
+	vb3.facade().native = vn3
+	r = await vb3.install_and_relaunch()
+	t.check("bridges: a feed with no update is a typed not_found through the bridge", not r.ok and r.code == PKeyErrors.NOT_FOUND and r.detail.get("bridge") == "velopack", str(r))
+
 	var sb := PKeySparkleBridge.new(T.env_on("macos"), "https://x/appcast.xml")
 	sb.channels = PackedStringArray(["stable"])
 	sb.options = {"mode": "headless"}
 	var sn := F.Sparkle.new()
 	sb.facade().native = sn
+	OS.set_environment(PKeySparkle.HEADLESS_ENV, "1")
 	r = await sb.install_and_relaunch()
+	OS.unset_environment(PKeySparkle.HEADLESS_ENV)
 	t.check("bridges: Sparkle's hook starts the facade with the bridge's options and channels", r.ok and sn.calls[0][1] == "headless" and sn.calls[0][2] == "https://x/appcast.xml" and sn.calls[0][4] == ["stable"] and sn.calls[1] == ["check_for_updates"], str(sn.calls))
 
 	var se := T.env_on("macos")

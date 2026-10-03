@@ -3,7 +3,8 @@
 // The GDScript facade is addons/polaris_key/native/pkey_sparkle.gd (PKeySparkle); this file is the
 // native class it instantiates. Two modes:
 //   "standard"  SPUStandardUpdaterController, Sparkle's own UI: what a game ships;
-//   "headless"  SPUUpdater with an auto-accepting SPUUserDriver: unattended end-to-end tests only.
+//   "headless"  SPUUpdater with an auto-accepting SPUUserDriver: unattended end-to-end tests only,
+//               refused unless PKEY_SPARKLE_HEADLESS=1 is in the environment.
 //
 // Rules (SparkleAnchor.swift, notes/S-11):
 //   - start() refuses off the main thread (Sparkle and AppKit need it; Godot's main thread is
@@ -30,6 +31,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
+#include <cstdlib>
 #include <cstring>
 
 // ── Conversions ─────────────────────────────────────────────────────────────────────────────
@@ -288,6 +290,10 @@ class PKeySparkleNative : public godot::RefCounted {
     NSError *err = nil;
     SPUUpdater *u = nil;
     if (mode == godot::String("headless")) {
+      // Test only: it installs every update without asking. Refused unless the environment
+      // opts in (the end-to-end runs set it; nothing a game ships does).
+      const char *flag = getenv("PKEY_SPARKLE_HEADLESS");
+      if (!flag || strcmp(flag, "1") != 0) return fail("headless_not_allowed");
       driver_ = [PKSAutoDriver new];
       driver_.owner = get_instance_id();
       u = [[SPUUpdater alloc] initWithHostBundle:NSBundle.mainBundle applicationBundle:NSBundle.mainBundle userDriver:driver_ delegate:delegate_];

@@ -107,6 +107,12 @@ func _forward(method: String) -> PKeyApplyResult:
 	var got = await n.call(method, feed_url)
 	if (got is int and got == OK) or (got is bool and got):
 		return PKeyApplyResult.of(PKeyApplyResult.HOOK, {"bridge": id(), "method": "native"})
+	# A facade says why (unsupported/product for Velopack under non-public delivery, …).
+	if n is PKeyNativeFacade and n.last_result != null and not n.last_result.ok:
+		var lr: PKeyResult = n.last_result
+		var d: Dictionary = lr.detail.duplicate() if lr.detail is Dictionary else {"detail": lr.detail}
+		d["bridge"] = id()
+		return PKeyApplyResult.failed(lr.code, lr.message, d)
 	return PKeyApplyResult.failed(PKeyErrors.UNSUPPORTED, "%s.%s answered %s." % [id(), method, str(got)], {"feature": PKeyConstants.Feature.UPDATE_DRIVER, "reason": "runtime", "bridge": id()})
 
 

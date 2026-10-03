@@ -43,13 +43,55 @@ func run(t: PKeyTestContext) -> void:
 			ok = ok and (FileAccess.get_unix_permissions(f) & 0x40) != 0
 	t.check("export: restore_executable_bits sets 0755 on all five", ok, str(failed))
 	t.check("export: a missing file is reported", N.restore_executable_bits(dir.path_join("Missing.app")).size() == 5)
-	var win := dir.path_join("win")
-	DirAccess.make_dir_recursive_absolute(win)
-	for f in ["pkeye2e.exe", "pkey_win.dll", "velopack_libc.dll", "WinSparkle.dll", "pkey_velopack_shim.exe"]:
-		var h := FileAccess.open(win.path_join(f), FileAccess.WRITE)
-		h.store_string("x")
-		h.close()
-	var removed := N.strip_store_updaters(win)
-	t.check("export: a Store export loses both updater DLLs and the shim, keeps pkey_win.dll and the game", removed.size() == 3 and FileAccess.file_exists(win.path_join("pkey_win.dll")) and FileAccess.file_exists(win.path_join("pkeye2e.exe")) and not FileAccess.file_exists(win.path_join("WinSparkle.dll")), str(removed))
-	t.check("export: stripping an already clean directory removes nothing", N.strip_store_updaters(win).is_empty())
+	_store(t, dir)
 	PKeyTestFixtures.remove_tree(dir)
+
+
+static func _write(path: String, text := "x") -> void:
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var h := FileAccess.open(path, FileAccess.WRITE)
+	h.store_string(text)
+	h.close()
+
+
+## A Microsoft Store export keeps no updater but StoreContext, by export kind.
+func _store(t: PKeyTestContext, dir: String) -> void:
+	# .exe into its own folder: everything the export wrote goes, the game and pkey_win.dll stay.
+	var own := dir.path_join("own")
+	var before := N.snapshot(own)
+	for f in ["pkeye2e.exe", "pkey_win.dll", "velopack_libc.dll", "WinSparkle.dll", "pkey_velopack_shim.exe"]:
+		_write(own.path_join(f))
+	var r: Dictionary = N.strip_store_export(own.path_join("pkeye2e.exe"), before)
+	t.check("store export (.exe): the updater DLLs and the shim this export wrote are removed; the game and pkey_win.dll stay", r["kind"] == "exe" and r["removed"].size() == 3 and FileAccess.file_exists(own.path_join("pkey_win.dll")) and FileAccess.file_exists(own.path_join("pkeye2e.exe")) and not FileAccess.file_exists(own.path_join("WinSparkle.dll")), str(r))
+	# .exe into a folder that already holds a direct build: its untouched files survive.
+	var shared := dir.path_join("shared")
+	for f in ["direct.exe", "velopack_libc.dll", "WinSparkle.dll", "pkey_velopack_shim.exe"]:
+		_write(shared.path_join(f), "direct build")
+	before = N.snapshot(shared)
+	_write(shared.path_join("store.exe"))
+	_write(shared.path_join("pkey_win.dll"))
+	r = N.strip_store_export(shared.path_join("store.exe"), before)
+	t.check("store export (.exe): a direct build's files in the same folder survive", r["removed"].is_empty() and r["failed"].is_empty() and FileAccess.file_exists(shared.path_join("velopack_libc.dll")) and FileAccess.file_exists(shared.path_join("WinSparkle.dll")) and FileAccess.file_exists(shared.path_join("pkey_velopack_shim.exe")), str(r))
+	# .zip: the archive is rewritten without the three entries.
+	var zip := dir.path_join("store.zip")
+	var packer := ZIPPacker.new()
+	packer.open(zip)
+	for f in ["pkeye2e.exe", "pkeye2e.pck", "pkey_win.dll", "velopack_libc.dll", "WinSparkle.dll", "pkey_velopack_shim.exe"]:
+		packer.start_file(f)
+		packer.write_file(f.to_utf8_buffer())
+		packer.close_file()
+	packer.close()
+	_write(dir.path_join("velopack_libc.dll"), "beside the zip")
+	r = N.strip_store_export(zip, {})
+	var reader := ZIPReader.new()
+	reader.open(zip)
+	var names := Array(reader.get_files())
+	var game: PackedByteArray = reader.read_file("pkeye2e.pck")
+	reader.close()
+	names.sort()
+	t.check("store export (.zip): the archive loses the three entries and keeps the rest intact", r["kind"] == "zip" and r["error"] == OK and names == ["pkey_win.dll", "pkeye2e.exe", "pkeye2e.pck"] and game.get_string_from_utf8() == "pkeye2e.pck", str(names))
+	t.check("store export (.zip): a same-named file beside the archive is not touched", FileAccess.file_exists(dir.path_join("velopack_libc.dll")))
+	# .pck: nothing.
+	_write(dir.path_join("WinSparkle.dll"), "beside the pck")
+	r = N.strip_store_export(dir.path_join("store.pck"), {})
+	t.check("store export (.pck): nothing is removed", r["kind"] == "none" and r["removed"].is_empty() and FileAccess.file_exists(dir.path_join("WinSparkle.dll")))

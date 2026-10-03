@@ -44,6 +44,7 @@ const N := preload("res://addons/polaris_key/export/native_export.gd")
 var _export_path := ""
 var _export_macos := false
 var _export_windows_store := false
+var _store_before := {}
 
 
 func _get_name() -> String:
@@ -132,12 +133,21 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 ## The Sparkle options of this macOS preset, environment over preset: {enabled, key, feed_url,
 ## automatic_checks}.
 func _sparkle() -> Dictionary:
+	# A Mac App Store build never ships Sparkle: the switches stay off whatever the option says.
+	var app_store := _mac_app_store()
 	return {
-		"enabled": N.truthy(_get_or_env(N.OPTION_ENABLED, N.ENV_ENABLED, false)),
+		"enabled": N.truthy(_get_or_env(N.OPTION_ENABLED, N.ENV_ENABLED, false)) and not app_store,
+		"app_store": app_store,
 		"key": N.public_key(_get_or_env(N.OPTION_PUBLIC_KEY, N.ENV_PUBLIC_KEY, "")),
 		"feed_url": str(_get_or_env(N.OPTION_FEED_URL, N.ENV_FEED_URL, "")).strip_edges(),
 		"automatic_checks": N.truthy(_get_or_env(N.OPTION_AUTOMATIC_CHECKS, "", false)),
 	}
+
+
+## Whether this macOS preset's outlet is the (Mac) App Store.
+func _mac_app_store() -> bool:
+	var v := _values("macos")
+	return _outlet_kind(v) == "app-store"
 
 
 func _get_export_options_overrides(platform: EditorExportPlatform) -> Dictionary:
@@ -161,8 +171,11 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _f
 	var platform := S.platform_for(get_export_platform().get_os_name() if get_export_platform() != null else "", features)
 	_export_path = path
 	_export_macos = platform == "macos" and _sparkle()["enabled"]
+	if platform == "macos" and _mac_app_store() and FileAccess.file_exists(N.SPARKLE_GDEXTENSION):
+		push_error("Polaris Key: a Mac App Store build must not ship Sparkle, but %s is installed and Godot exports it. Remove it (or export from a project without it) before submitting; the Sparkle switches are off for this preset." % N.SPARKLE_GDEXTENSION)
 	var store_values := _values(platform)
 	_export_windows_store = platform == "windows" and S.feature_tags(store_values["outlet"], "", store_values["outlet_kind"]).has("pkey_outlet_ms_store")
+	_store_before = N.snapshot(_absolute(path).get_base_dir()) if _export_windows_store and path.to_lower().ends_with(".exe") else {}
 	if _export_macos:
 		var sp := _sparkle()
 		for problem in N.problems(sp["key"], sp["feed_url"]):
@@ -229,11 +242,7 @@ func _preset_string(key: String) -> String:
 func _export_end() -> void:
 	if _export_windows_store:
 		_export_windows_store = false
-		var failed := PackedStringArray()
-		var dir := _export_path.get_base_dir()
-		N.strip_store_updaters(ProjectSettings.globalize_path(dir) if dir.begins_with("res://") else dir, failed)
-		if not failed.is_empty():
-			push_warning("Polaris Key: could not remove %s from the Microsoft Store export; a Store build must ship no updater but StoreContext." % ", ".join(failed))
+		_strip_store_export(_absolute(_export_path))
 	if not _export_macos:
 		return
 	_export_macos = false
@@ -244,6 +253,21 @@ func _export_end() -> void:
 	var failed := N.restore_executable_bits(ProjectSettings.globalize_path(path) if path.begins_with("res://") else path)
 	if not failed.is_empty():
 		push_warning("Polaris Key Sparkle: could not chmod 0755 %s (is Sparkle.framework listed in pkey_sparkle.gdextension's [dependencies]?)." % ", ".join(failed))
+
+
+## A Microsoft Store export keeps no updater but StoreContext (PKeyNativeExport): see the class doc.
+func _strip_store_export(path: String) -> void:
+	var r: Dictionary = N.strip_store_export(path, _store_before)
+	if not r["failed"].is_empty() or r["error"] != OK:
+		push_error("Polaris Key: could not remove the updater files from the Microsoft Store export %s (%s); a Store build must ship no updater but StoreContext. Do not ship it." % [path, ", ".join(r["failed"]) if not r["failed"].is_empty() else "error %d" % r["error"]])
+	for f in _store_before:
+		if r["removed"].has(path.get_base_dir().path_join(f)):
+			push_warning("Polaris Key: %s was already beside the Store export; the export overwrote it and it was removed. Give a Store export its own folder." % f)
+	_store_before = {}
+
+
+static func _absolute(path: String) -> String:
+	return ProjectSettings.globalize_path(path) if path.begins_with("res://") else path
 
 
 ## The effective values for this export (environment over preset), and every problem with them.

@@ -81,12 +81,14 @@ func can_silently_download() -> PKeyResult:
 
 func check_now(_feed_url: String) -> int:
 	var r := await updates()
-	return OK if r.ok else FAILED
+	return succeeded() if r.ok else failed(r)
 
 
 func install_and_relaunch(_feed_url: String) -> int:
 	var r := await download_and_install(false)
-	return OK if r.ok and String(r.detail.get("state", "")) in ["completed", "none"] else FAILED
+	if r.ok and String(r.detail.get("state", "")) in ["completed", "none"]:
+		return succeeded()
+	return failed(r if not r.ok else PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "StoreContext: the install ended %s." % String(r.detail.get("state", "")), r.detail))
 
 
 func _request(op: String, silent: bool, timeout_s: float) -> PKeyResult:

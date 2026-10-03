@@ -77,6 +77,13 @@ if [ -z "$ENTITLEMENTS" ]; then
     printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>com.apple.security.cs.disable-library-validation</key><true/></dict></plist>\n' >"$ENTITLEMENTS"
   fi
 fi
+# Disable Library Validation lets the app load a library signed by anyone; together with
+# allow-dyld-environment-variables, DYLD_INSERT_LIBRARIES would inject arbitrary code into a
+# notarised build. Never ship the pair.
+if grep -q "com.apple.security.cs.allow-dyld-environment-variables" "$ENTITLEMENTS" && grep -q "com.apple.security.cs.disable-library-validation" "$ENTITLEMENTS"; then
+  echo "sign_and_notarize.sh: $ENTITLEMENTS grants both disable-library-validation and allow-dyld-environment-variables; remove the latter" >&2
+  exit 1
+fi
 grep -q "com.apple.security.cs.disable-library-validation" "$ENTITLEMENTS" || echo "sign_and_notarize.sh: warning: $ENTITLEMENTS lacks com.apple.security.cs.disable-library-validation; the GDExtension will not load under the hardened runtime" >&2
 
 # 2. Inside out.

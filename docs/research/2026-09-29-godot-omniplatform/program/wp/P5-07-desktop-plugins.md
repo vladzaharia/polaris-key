@@ -236,20 +236,47 @@ won:
   disconnected" (the second CI run's Velopack failure). The Worker's HTTP/1.1 route is not
   affected.
 
+- **Review fixes (2026-10-03):**
+  - **Store export stripping by kind.** For an `.exe` export, only the updater files that export
+    wrote beside the executable are removed: new or changed since the export began. Another
+    build's untouched files survive. A `.zip` export is rewritten without the three entries
+    (rewrite chosen over failing the export). A `.pck` export is left alone.
+  - **Typed reasons through the bridge.** Each facade keeps `last_result`, and `_forward` reports
+    it, so a 401 or 403 Velopack download reaches P3-10's hook as `unsupported` (`product`).
+  - **Hardening:**
+    - DLLs load with `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32` from an
+      absolute path only.
+    - The shim passes `args_os()` and logs only in debug builds.
+    - The headless Sparkle driver needs `PKEY_SPARKLE_HEADLESS=1`, set only by the e2e.
+    - `sign_and_notarize.sh` refuses `allow-dyld-environment-variables` alongside DLV.
+    - Velopack and WinSparkle refuse plain-http feeds off loopback.
+    - WinSparkle's headers are set again before each check.
+  - **Mac App Store.** A macOS `app-store` preset never gets the Sparkle switches. Its export logs
+    an error while `pkey_sparkle.gdextension` is installed: Godot exports every installed
+    GDExtension, and an export plugin cannot drop another plugin's shared objects. Follow-up for
+    a game's CI (D-03): build the App Store variant from a project without the bridge.
+  - **Threat model.** A new subsection, "Client updater plugins on the desktop (P5-07)", plus a
+    review trigger.
+
 Acceptance as delivered:
 
 - [x] Headless facade tests (`native_desktop` suite, in the `ci` set): `runtime` on every other OS,
       `dependency` without the class or its library.
-- [ ] CI builds every plugin: the workflow is written, but **it has not run**. Pushing was not
-      allowed in this run. The macOS build and its end-to-end run pass locally; the Windows sources
-      pass a syntax check against a stub `windows.h` (except the C++/WinRT file), and the
-      PowerShell scripts parse.
-- [x] The Sparkle bridge refuses a fixture bundle without `SUPublicEDKey` (macOS e2e, locally).
-- [~] Local end-to-end: Sparkle delta and full updates (ad hoc, unnotarised) pass locally. Velopack
-  and WinSparkle run only in the Windows job, which has not run. Signed and notarised runs are the
-  owner's (checklist below).
+- [x] CI builds every plugin. PR #14's `native-desktop` workflow builds them: the universal
+      Sparkle bridge on macos-15; on windows-latest, `pkey_win.dll` (MSVC, C++/WinRT) and the Rust
+      shim. Green at 330ef715: native-desktop run 37147651034, CI run 37147651041.
+- [x] The Sparkle bridge refuses a fixture bundle without `SUPublicEDKey` (macOS e2e).
+- [~] End-to-end runs, unsigned, in CI and locally:
+  - Sparkle delta and full updates (ad hoc);
+  - a Velopack delta through the Worker-shaped 302 package route;
+  - a WinSparkle silent Inno install;
+  - StoreContext unpackaged, answering 0x803F6101 as "not a Store install".
+
+  Signed and notarised runs are the owner's.
+
 - [ ] StoreContext device checklist: the owner's (needs a Partner Center app).
 - [x] `parity.json` (Godot `update.driver` note).
+- [x] The green gate passes (`GATE_TEST_CONCURRENCY=1`).
 
 Owner checklist: `sdks/godot/native/README.md` §"Owner checklist" and the docs page
 `/docs/services/update/godot-desktop/`, from notes/S-11 §7 rows 1–8.

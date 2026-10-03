@@ -218,7 +218,9 @@ J
   : >"$WORK/srv.log.mark"
   SRV_MARK=$(wc -l <"$WORK/srv.log" 2>/dev/null || echo 0)
   local started=$(date +%s)
-  open -n "$WORK/install/$name/$APP_NAME.app"
+  # The headless user driver is test-only and needs the opt-in flag (Sparkle's relaunch does
+  # not carry it, which is fine: the relaunched build only reports its version).
+  open -n --env PKEY_SPARKLE_HEADLESS=1 "$WORK/install/$name/$APP_NAME.app"
   for i in $(seq 1 $((timeout * 2))); do
     sleep 0.5
     if grep -q '"event":"target_reached"\|"event":"exit_tree"' "$log" 2>/dev/null; then

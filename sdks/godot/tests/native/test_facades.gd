@@ -110,8 +110,17 @@ func _sparkle(t: PKeyTestContext) -> void:
 	var h := PKeySparkle.new(env_on("macos"), {"mode": "headless"})
 	var hn := F.Sparkle.new()
 	h.native = hn
+	var was := OS.get_environment(PKeySparkle.HEADLESS_ENV)
+	OS.unset_environment(PKeySparkle.HEADLESS_ENV)
+	var refused := h.start("")
+	t.check("sparkle: mode headless without PKEY_SPARKLE_HEADLESS=1 is refused (test only)", not refused.ok and refused.code == PKeyErrors.INVALID_OPTIONS and hn.calls.is_empty(), str(refused))
+	OS.set_environment(PKeySparkle.HEADLESS_ENV, "1")
 	h.start("")
-	t.check("sparkle: mode headless (tests only) reaches the native start", hn.calls[0][1] == "headless")
+	t.check("sparkle: mode headless with the flag reaches the native start", hn.calls.size() == 1 and hn.calls[0][1] == "headless")
+	if was == "":
+		OS.unset_environment(PKeySparkle.HEADLESS_ENV)
+	else:
+		OS.set_environment(PKeySparkle.HEADLESS_ENV, was)
 
 	var seen: Array = []
 	f.event.connect(func(e, d): seen.append([e, d]))
@@ -166,6 +175,12 @@ func _velopack(t: PKeyTestContext) -> void:
 	var c := await f.check()
 	t.check("velopack: a check error is a typed failure", not c.ok and c.code == PKeyErrors.NETWORK and c.message.contains("IO error"))
 	t.check("velopack: open without a feed URL is not-configured", f.open("").code == PKeyErrors.NOT_CONFIGURED)
+	t.check("velopack: a plain-http feed off loopback is refused; https and loopback http are not", f.open("http://example.com/velopack/").code == PKeyErrors.INSECURE_BASE_URL and PKeyNativeFacade.feed_url_allowed("https://x/") and PKeyNativeFacade.feed_url_allowed("http://127.0.0.1:8711/velopack/") and PKeyNativeFacade.feed_url_allowed("http://[::1]:1/") and not PKeyNativeFacade.feed_url_allowed("http://localhost.example.com/") and not PKeyNativeFacade.feed_url_allowed("ftp://x/"))
+	n.check_answer = {"status": "available"}
+	n.download_ok = false
+	n.download_message = "http status: 401 Unauthorized"
+	t.check("velopack: install_and_relaunch keeps the typed reason in last_result", await f.install_and_relaunch("https://x/update/beta/velopack/") == FAILED and is_unsupported(f.last_result, "product"), str(f.last_result))
+	n.download_message = "os error 123"
 	var e2 := env_on("windows", "C:/Games/Game/Game_godot.exe")
 	e2.files["C:/Games/Game/sq.version"] = true
 	var g := PKeyVelopack.new(e2)
@@ -183,6 +198,20 @@ func _winsparkle(t: PKeyTestContext) -> void:
 	f.config["public_key"] = PUB
 	t.check("winsparkle: install_and_relaunch starts with the appcast, key, identity and headers, then checks with install", f.install_and_relaunch("https://x/update/stable/winsparkle.xml") == OK and n.calls[1] == ["start", "https://x/update/stable/winsparkle.xml", PUB, "PolarisKey", "djdl", "1.0.0", {"Authorization": "Bearer w"}] and n.calls[2] == ["check", "install"], str(n.calls))
 	t.check("winsparkle: check_now is the UI check; a silent check after start", f.check_now("https://x/update/stable/winsparkle.xml") == OK and n.calls[-1] == ["check", "ui"] and f.check_silently() == OK and n.calls[-1] == ["check", "silent"] and n.calls.filter(func(c): return c[0] == "start").size() == 1)
+	var bearer := ["Bearer one"]
+	var g := PKeyWinSparkle.new(env_on("windows", "C:/Games/Game/game.exe"), {"headers": func(): return {"Authorization": bearer[0]}, "public_key": PUB})
+	var gn := F.WinSparkle.new()
+	g.native = gn
+	g.check_now("https://x/update/stable/winsparkle.xml")
+	bearer[0] = "Bearer two"
+	g.install_and_relaunch("https://x/update/stable/winsparkle.xml")
+	t.check("winsparkle: the headers are set again before every check, so a rotated bearer reaches the next request", gn.header_sets.size() == 2 and gn.header_sets[1] == {"Authorization": "Bearer two"} and gn.calls[-1] == ["check", "install"], str(gn.header_sets))
+	var insecure := PKeyWinSparkle.new(env_on("windows", "C:/Games/Game/game.exe"), {"public_key": PUB})
+	insecure.native = F.WinSparkle.new()
+	t.check("winsparkle: a plain-http appcast off loopback is refused; loopback http is allowed", insecure.start("http://example.com/winsparkle.xml").code == PKeyErrors.INSECURE_BASE_URL and insecure.install_and_relaunch("http://example.com/w.xml") == FAILED and insecure.last_result.code == PKeyErrors.INSECURE_BASE_URL and insecure.start("http://127.0.0.1:8711/ws/appcast.xml").ok)
+	var rel := PKeyWinSparkle.new(env_on("windows"), {"library": "WinSparkle.dll"})
+	rel.native = F.WinSparkle.new()
+	t.check("winsparkle: a relative library path is refused (dependency), never a search-path load", is_unsupported(rel.availability(), "dependency") and rel.native.calls.is_empty())
 	var tree := Engine.get_main_loop() as SceneTree
 	n.fire("did_find_update")
 	n.fire("shutdown_request")

@@ -14,6 +14,10 @@ extends RefCounted
 ##                                                                 bridge passes discovery's)
 ##   polaris_key/sparkle/automatic_checks                          SUEnableAutomaticChecks
 ##
+## A Mac App Store preset (outlet kind `app-store`) never gets the Sparkle switches, and its export
+## logs an error while pkey_sparkle.gdextension is installed: Godot exports every installed
+## GDExtension and App Review rejects a self-updater, so remove the bridge for that build.
+##
 ## With Sparkle enabled the plugin overrides three macOS preset options:
 ##
 ##   application/additional_plist_content  the preset's own content plus SUPublicEDKey, SUFeedURL
@@ -34,10 +38,15 @@ extends RefCounted
 ## it with sdks/godot/native/macos/sign_and_notarize.sh, which also restores the bits.
 ##
 ## A Windows export for the Microsoft Store (outlet kind `ms-store`) must ship no updater but
-## StoreContext: after export the plugin removes the Velopack and WinSparkle DLLs and the Velopack
-## shim that the Windows GDExtension's [dependencies] put beside the executable. (Godot chooses a
-## GDExtension's dependencies from the preset's features, which never include an export plugin's
-## own feature tags, so this cannot be said in the .gdextension file.)
+## StoreContext, so after export the plugin removes the Velopack and WinSparkle DLLs and the
+## Velopack shim that the Windows GDExtension's [dependencies] add. (Godot chooses a GDExtension's
+## dependencies from the preset's features, which never include an export plugin's own tags, so
+## the .gdextension file cannot say it.) By export kind:
+##
+##   .exe   removes, beside the executable, only the files this export wrote (new or changed
+##          since the export began); another build's untouched files in the folder survive
+##   .zip   rewrites the archive without them
+##   .pck   nothing (a pack carries no dependencies)
 
 const OPTION_ENABLED := "polaris_key/sparkle/enabled"
 const OPTION_PUBLIC_KEY := "polaris_key/sparkle/public_ed_key"
@@ -46,6 +55,9 @@ const OPTION_AUTOMATIC_CHECKS := "polaris_key/sparkle/automatic_checks"
 const ENV_ENABLED := "PKEY_SPARKLE"
 const ENV_PUBLIC_KEY := "PKEY_SPARKLE_PUBLIC_KEY"
 const ENV_FEED_URL := "PKEY_SPARKLE_FEED_URL"
+
+## Where a game installs the Sparkle bridge (sdks/godot/native/macos/build.sh --install).
+const SPARKLE_GDEXTENSION := "res://addons/polaris_key/native/bin/pkey_sparkle.gdextension"
 
 const PLIST := "application/additional_plist_content"
 const LIBRARY_VALIDATION := "codesign/entitlements/disable_library_validation"
@@ -150,16 +162,96 @@ static func restore_executable_bits(app: String) -> PackedStringArray:
 	return failed
 
 
-## Remove the updater files from a Windows Store export's directory: the paths removed, and the
-## ones that could not be (in `failed`).
-static func strip_store_updaters(dir: String, failed: PackedStringArray = PackedStringArray()) -> PackedStringArray:
+## Strip the updater files from a Windows Store export at `path` by its kind (see the class doc):
+## {kind: exe | zip | none, removed, failed, error}. `before` is snapshot() of the executable's
+## folder taken when the export began.
+static func strip_store_export(path: String, before: Dictionary) -> Dictionary:
+	var lower := path.to_lower()
+	var out := {"kind": "none", "removed": PackedStringArray(), "failed": PackedStringArray(), "error": OK}
+	if lower.ends_with(".exe"):
+		out["kind"] = "exe"
+		var failed := PackedStringArray()
+		out["removed"] = strip_store_updaters(path.get_base_dir(), before, failed)
+		out["failed"] = failed
+	elif lower.ends_with(".zip"):
+		out["kind"] = "zip"
+		out["error"] = strip_store_zip(path)
+	return out
+
+
+## The updater files beside an export's executable before the export ran: {name: [mtime, size]}
+## for each that exists. strip_store_updaters() compares against it, so a file this export did not
+## write survives.
+static func snapshot(dir: String) -> Dictionary:
+	var out := {}
+	for f in WINDOWS_UPDATER_FILES:
+		var p := dir.path_join(f)
+		if FileAccess.file_exists(p):
+			out[f] = [FileAccess.get_modified_time(p), _size(p)]
+	return out
+
+
+## Remove from a Windows Store export's folder the updater files THIS export wrote: a file that is
+## new since `before` (snapshot()) or changed since. The paths removed; the ones that could not be
+## go in `failed`. A file another build left there and this export did not touch survives (Godot
+## overwrites a same-named dependency, so give a Store export its own folder).
+static func strip_store_updaters(dir: String, before: Dictionary, failed: PackedStringArray = PackedStringArray()) -> PackedStringArray:
 	var removed := PackedStringArray()
 	for f in WINDOWS_UPDATER_FILES:
 		var p := dir.path_join(f)
 		if not FileAccess.file_exists(p):
+			continue
+		if before.has(f) and before[f] == [FileAccess.get_modified_time(p), _size(p)]:
 			continue
 		if DirAccess.remove_absolute(p) == OK:
 			removed.append(p)
 		else:
 			failed.append(p)
 	return removed
+
+
+## Rewrite a Windows Store export's `.zip` without the updater files (any entry whose file name is
+## one of WINDOWS_UPDATER_FILES). OK, or the error; the archive is replaced only on success. The
+## entries are read whole, so this needs memory for the largest one (the game's pack).
+static func strip_store_zip(zip_path: String) -> Error:
+	var reader := ZIPReader.new()
+	var err := reader.open(zip_path)
+	if err != OK:
+		return err
+	var names := reader.get_files()
+	var drop: Array = Array(names).filter(func(n: String) -> bool: return WINDOWS_UPDATER_FILES.has(n.get_file()))
+	if drop.is_empty():
+		reader.close()
+		return OK
+	var tmp := zip_path + ".pkey-tmp"
+	var packer := ZIPPacker.new()
+	err = packer.open(tmp)
+	if err == OK:
+		for n in names:
+			if drop.has(n):
+				continue
+			if n.ends_with("/"):
+				continue
+			err = packer.start_file(n)
+			if err != OK:
+				break
+			err = packer.write_file(reader.read_file(n))
+			if err != OK:
+				break
+			packer.close_file()
+		packer.close()
+	reader.close()
+	if err != OK:
+		DirAccess.remove_absolute(tmp)
+		return err
+	DirAccess.remove_absolute(zip_path)
+	return DirAccess.rename_absolute(tmp, zip_path)
+
+
+static func _size(path: String) -> int:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return -1
+	var n := f.get_length()
+	f.close()
+	return n

@@ -9,6 +9,7 @@
 //   start(...)        appcast URL, EdDSA public key (refused when WinSparkle rejects it),
 //                     app details, headers, automatic checks off, every callback, then
 //                     win_sparkle_init. Once per process: WinSparkle has one global updater.
+//   set_headers(h)    clear and set the custom headers again (before each check: a rotated bearer)
 //   check(mode)       "install" (check, download, verify EdDSA, run the installer with the feed's
 //                     sparkle:installerArguments), "ui" (the dialog), "silent" (no UI)
 //   cleanup()         win_sparkle_cleanup (also when the extension unloads)
@@ -40,6 +41,7 @@ struct WinSparkleApi {
   int(__cdecl *set_eddsa_public_key)(const char *) = nullptr;
   void(__cdecl *set_app_details)(const wchar_t *, const wchar_t *, const wchar_t *) = nullptr;
   void(__cdecl *set_http_header)(const char *, const char *) = nullptr;
+  void(__cdecl *clear_http_headers)() = nullptr;
   void(__cdecl *set_automatic_check_for_updates)(int) = nullptr;
   void(__cdecl *set_error_callback)(ws_void_fn) = nullptr;
   void(__cdecl *set_can_shutdown_callback)(ws_int_fn) = nullptr;
@@ -100,6 +102,7 @@ class PKeyWinSparkleNative : public RefCounted {
   static void _bind_methods() {
     ClassDB::bind_method(D_METHOD("load", "path"), &PKeyWinSparkleNative::load);
     ClassDB::bind_method(D_METHOD("start", "appcast_url", "eddsa_public_key", "company", "app", "version", "headers"), &PKeyWinSparkleNative::start);
+    ClassDB::bind_method(D_METHOD("set_headers", "headers"), &PKeyWinSparkleNative::set_headers);
     ClassDB::bind_method(D_METHOD("check", "mode"), &PKeyWinSparkleNative::check);
     ClassDB::bind_method(D_METHOD("cleanup"), &PKeyWinSparkleNative::cleanup);
     ADD_SIGNAL(MethodInfo("native_event", PropertyInfo(Variant::STRING, "event"), PropertyInfo(Variant::DICTIONARY, "detail")));
@@ -127,6 +130,7 @@ class PKeyWinSparkleNative : public RefCounted {
               resolve(m, "win_sparkle_set_eddsa_public_key", a.set_eddsa_public_key) &&
               resolve(m, "win_sparkle_set_app_details", a.set_app_details) &&
               resolve(m, "win_sparkle_set_http_header", a.set_http_header) &&
+              resolve(m, "win_sparkle_clear_http_headers", a.clear_http_headers) &&
               resolve(m, "win_sparkle_set_automatic_check_for_updates", a.set_automatic_check_for_updates) &&
               resolve(m, "win_sparkle_set_error_callback", a.set_error_callback) &&
               resolve(m, "win_sparkle_set_can_shutdown_callback", a.set_can_shutdown_callback) &&
@@ -180,6 +184,16 @@ class PKeyWinSparkleNative : public RefCounted {
     Dictionary d;
     d["ok"] = true;
     return d;
+  }
+
+  // Replace the custom headers (the facade calls this before every check, so a rotated bearer
+  // reaches the next request; a check already running keeps the ones it started with).
+  void set_headers(const Dictionary &headers) {
+    if (!g_started) return;
+    g_ws.clear_http_headers();
+    Array keys = headers.keys();
+    for (int64_t i = 0; i < keys.size(); i++)
+      g_ws.set_http_header(String(keys[i]).utf8().get_data(), String(headers[keys[i]]).utf8().get_data());
   }
 
   void check(const String &mode) {
