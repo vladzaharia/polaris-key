@@ -19,8 +19,8 @@ import {
   L10nTableHandler,
   MlModelHandler,
   createBrowserPacks,
-  type PackHandler,
 } from "../src/index.js";
+import type { PackHandler } from "../src/packs/index.js";
 import {
   PRODUCT,
   PRODUCT_TRUST,
