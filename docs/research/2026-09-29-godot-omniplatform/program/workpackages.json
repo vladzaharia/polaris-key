@@ -1596,7 +1596,7 @@
       "optional": false,
       "refs": ["CONTENT §6.2 §6.7 item 8"],
       "brief": "wp/P4-20-save-compat.md",
-      "status": "todo",
+      "status": "done",
       "milestone": "Localisation, events and supporter packs"
     },
     {
