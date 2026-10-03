@@ -14,11 +14,17 @@
  *     into `lastRate` so the poller can slow down as the remainder drops.
  *   - **429.** `RATE_LIMIT_EXCEEDED`: retried after `Retry-After` (capped), else an exponential
  *     backoff with jitter, at most `maxRetries` times; then `AscError(429)`.
+ *   - **No redirects, bounded bodies.** `redirect: "manual"`, and any 3xx (or opaque redirect)
+ *     is a failure (`AscError` with that status), so the bearer token never reaches a `Location`.
+ *     A body is read through `readCappedText` (at most `MAX_RESPONSE_BYTES`); an oversized or
+ *     non-object body is `AscError(502)`, the same "unreadable answer" as malformed JSON.
  *   - **Errors carry a status line only** (`AscError.message`), never a response body: the
  *     message may end up in `outlet_credentials.last_error` and on the console page.
  *
  * `fetchImpl` and `sleep` are injectable; the tests drive the client against a fake ASC server.
  */
+
+import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
 export type FetchImpl = (
@@ -72,6 +78,15 @@ export class AscError extends Error {
     this.name = "AscError";
   }
 }
+
+/**
+ * The most of one response body read. Apple caps a collection page at `limit=200` resources and
+ * each `include`d relationship at 50, and the poller asks for far less (`asc/poll.ts`: ten
+ * versions, a handful of builds); a full 200-resource page with its `included` set is still well
+ * under 1 MiB. 8 MiB leaves room for Apple's largest documented pages while bounding what a
+ * misbehaving endpoint could make the isolate buffer.
+ */
+export const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 
 /** A path segment: a resource type (`appStoreVersions`) or an id (UUID, digits). */
 const SEGMENT = /^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/;
@@ -175,6 +190,8 @@ export class AscClient {
     const token = await this.bearer(method, url.pathname);
     const init: RequestInit = {
       method,
+      // A redirect is a failure, never followed: the bearer token must not reach another URL.
+      redirect: "manual",
       headers: {
         authorization: `Bearer ${token}`,
         accept: "application/json",
@@ -192,17 +209,27 @@ export class AscClient {
         await this.sleep(backoffMillis(res, attempt));
         continue;
       }
-      if (!res.ok) {
-        await res.body?.cancel();
+      if (!res.ok || isRedirect(res)) {
+        await res.body?.cancel().catch(() => undefined);
         throw new AscError(res.status, method, url.pathname);
       }
-      const text = await res.text();
-      if (res.status === 204 || text.trim() === "") return null;
-      try {
-        return JSON.parse(text) as AscDocument;
-      } catch {
-        throw new AscError(502, method, url.pathname);
+      const unreadable = () => new AscError(502, method, url.pathname);
+      if (res.status === 204) {
+        await res.body?.cancel().catch(() => undefined);
+        return null;
       }
+      let parsed: unknown;
+      try {
+        const text = await readCappedText(res, MAX_RESPONSE_BYTES, unreadable);
+        if (text.trim() === "") return null;
+        parsed = JSON.parse(text);
+      } catch {
+        // Oversized, a broken stream or malformed JSON: one "unreadable answer".
+        throw unreadable();
+      }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+        throw unreadable();
+      return parsed as AscDocument;
     }
   }
 

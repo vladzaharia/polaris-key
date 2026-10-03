@@ -162,6 +162,11 @@ code and the documentation, and records it here.
     **Follow-up (P5-02 / P5-03 owners):** the `asc` and `play` clients and their token exchanges in
     `core/outletTokens.ts` still follow redirects and read unbounded bodies; they need the same
     treatment. Not changed here.
+    **Resolved by fix/connector-hardening (2026-10-03):** `asc/client.ts`, `play/client.ts` and
+    the Google JWT-bearer exchange in `core/outletTokens.ts` now send `redirect: "manual"`, refuse
+    any 3xx through the shared `isRedirect` (moved to `core/readCapped.ts`) and read through
+    `readCappedText` (ASC 8 MiB, Play 4 MiB, Google token 64 KiB); the GitHub JWKS fetch in
+    `core/publisher.ts` reads capped too. Tests: `test/connectorHardening.test.ts`.
 11. **What is never stored.** A submission's `fileUploadUrl` is a writable Azure Blob SAS URI; the
     parser drops it (and listings, pricing and certification report URLs), asserted by scanning
     every table after a poll.

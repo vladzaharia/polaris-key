@@ -1230,6 +1230,14 @@ are built from segments that must match `^[A-Za-z0-9][A-Za-z0-9-]*$` (so a paylo
 a JSON:API `links.next` is followed only when it names the same origin and `/v1/`. The bearer
 token therefore cannot be sent to a host a payload, a manifest or an operator chooses.
 
+**Bounded, redirect-free reads.** Every request sends `redirect: "manual"` and any 3xx (or opaque
+redirect) is an `AscError` with that status, so the bearer JWT is never re-sent to a `Location` a
+response names. Bodies are read through `core/readCapped.ts` (`readCappedText`, at most 8 MiB: a
+full 200-resource JSON:API page with its `included` set stays well under 1 MiB); an oversized,
+truncated or non-object body is `AscError(502)`, the same unreadable answer as malformed JSON. The
+JWT is signed locally, so there is no token exchange to redirect. This is the rule all three store
+connectors share ("Store connectors: Microsoft Store", Bounded, redirect-free reads, below).
+
 **Errors carry no bodies.** An ASC failure becomes `AscError` with the method, path and HTTP
 status only; that line is what reaches `outlet_credentials.last_error`, the cron's thrown
 aggregate and a control's `store_refused` refusal.
@@ -1373,6 +1381,14 @@ percent-encoded, `.` / `..` are refused, an edit id must match `^[A-Za-z0-9_-]{1
 custom method (`:commit`, `:query`) is appended only by the code that means it — a track named
 `x:commit` cannot become a commit. Nothing in a response is followed as a URL.
 
+**Bounded, redirect-free reads.** Every API request and the JWT-bearer token exchange in
+`core/outletTokens.ts` send `redirect: "manual"` and treat any 3xx (or opaque redirect) as a
+failure — a `PlayError` with that status, or `google token exchange failed: <status>` before any
+API call — so neither the bearer token nor the signed assertion is re-sent to a `Location`. Bodies
+are read through `core/readCapped.ts` (at most 4 MiB for an API response, 64 KiB for a token
+response); an oversized or malformed body is `PlayError(502)` or "returned no JSON", and a token
+body that is not a JSON object is "returned no token", never a crash.
+
 **Edits are fragile; reads are all-or-nothing.** One open edit per user, invalidated by a new
 edit, a Console change or another commit. The poller reads and maps the whole track list before
 writing anything, deletes its edit whatever happened, and a failed read (an invalidated edit, a
@@ -1490,7 +1506,13 @@ become `removed` like any build no read submission carries.
 `redirect: "manual"` and treat any 3xx as a failure, so neither the client secret nor the bearer
 token is re-sent to a URL a response names; bodies are read through `core/readCapped.ts`
 (`readCappedText`, 64 KiB for a token, 4 MiB for an API response) and a submission's package list
-is capped at 64 entries.
+is capped at 64 entries. **The rule is shared by all three store connectors:** the App Store
+Connect client (8 MiB) and the Google Play clients and Google token exchange (4 MiB / 64 KiB)
+follow it too (fix/connector-hardening; their sections above), with the shared `isRedirect` test
+in `core/readCapped.ts`. A refused redirect or an oversized body is always that connector's own
+failure or unreadable-answer path, carrying a status line, never a body or a token
+(`test/connectorHardening.test.ts` drives the redirect cases through the real runtime `fetch`
+against a loopback server and asserts the `Location` is never requested).
 
 ### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
 

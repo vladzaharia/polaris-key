@@ -41,3 +41,16 @@ export async function readCappedText(
   }
   return new TextDecoder().decode(buf);
 }
+
+/**
+ * A 3xx, or the opaque redirect a `redirect: "manual"` fetch answers in some runtimes. Every
+ * outbound store-API and token call sends `redirect: "manual"` and treats this as a failure, so a
+ * bearer token or a posted secret never reaches a `Location` (P5-04; fix/connector-hardening for
+ * the App Store Connect and Google Play clients and the Google token exchange).
+ */
+export function isRedirect(res: Response): boolean {
+  return (
+    (res.status >= 300 && res.status < 400) ||
+    (res.type as string) === "opaqueredirect"
+  );
+}

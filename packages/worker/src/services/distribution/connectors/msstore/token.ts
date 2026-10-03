@@ -37,8 +37,7 @@ import {
   writeSealedToken,
   type FetchImpl,
 } from "../../../../core/outletTokens.js";
-import { readCappedText } from "../../../../core/readCapped.js";
-import { isRedirect } from "./client.js";
+import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
 
 export const ENTRA_ORIGIN = "https://login.microsoftonline.com";
 /** The `resource` of every Store submission API token. */
