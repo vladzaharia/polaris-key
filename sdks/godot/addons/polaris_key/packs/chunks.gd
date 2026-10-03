@@ -511,11 +511,15 @@ static var _content_range_re: RegEx = RegEx.create_from_string("^bytes (\\d{1,16
 ## whose Content-Range is exactly `bytes o-e/<size>` for the request (`e == o + length − 1 <
 ## size`), or one clipped at the object's end (`e == size − 1 < o + length − 1`, `e ≥ o`: the
 ## records past it are then `chunk-bundle-truncated`), with an ETag, when present, exactly
-## `"<bundle sha256>"`. The bytes to read, or -1 (refused: the body is never read).
+## `"<bundle sha256>"`. `etag` is null when the response had no ETag header; an empty String is a
+## present (empty) tag and is refused, as client-core refuses any tag but the bundle's. (Godot's
+## HTTPClient header dictionary keeps an `ETag:` line with no value as "", so PKeyPackHttp can tell
+## the two apart and answers null only for an absent header.) The bytes to read, or -1 (refused:
+## the body is never read).
 static func accepted_length(status: int, content_range: Variant, etag: Variant, bundle: String, offset: int, length: int) -> int:
 	if status != 206 or not (content_range is String) or length <= 0:
 		return -1
-	if etag is String and etag != "" and etag != "\"%s\"" % bundle:
+	if etag != null and (not (etag is String) or etag != "\"%s\"" % bundle):
 		return -1
 	var m := _content_range_re.search((content_range as String).strip_edges())
 	if m == null:

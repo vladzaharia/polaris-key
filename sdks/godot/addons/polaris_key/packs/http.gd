@@ -86,11 +86,13 @@ static func fetch(transport: PKeyTransport, url: String, headers: Dictionary, of
 ## One single-range GET of `length` bytes of `url` from `offset` (the chunk strategy, P4-11):
 ## `Range: bytes=<offset>-<offset+length-1>` (never a multi-range), `If-Range: <if_range>` when
 ## given, `Accept-Encoding: identity`, redirects and the bearer exactly as `fetch`. The head is
-## answered before any body byte is read: {status, content_range, etag (String, "" when absent),
+## answered before any body byte is read: {status, content_range, etag (String; null when the
+## response has no ETag header: Godot's header dictionary keeps an `ETag:` line with an empty value
+## as "", so absent and empty stay distinct, and an empty one is refused like any other tag),
 ## error, message, body: a Body (unread, pulled by the caller; close it) or null}. A coroutine.
 static func open_range(transport: PKeyTransport, url: String, headers: Dictionary, offset: int, length: int, if_range: String, timeout: float) -> Dictionary:
 	if offset < 0 or length <= 0:
-		return {"status": 0, "content_range": "", "etag": "", "error": String(PKeyErrors.INVALID_OPTIONS), "message": "A range needs offset >= 0 and length > 0.", "body": null}
+		return {"status": 0, "content_range": "", "etag": null, "error": String(PKeyErrors.INVALID_OPTIONS), "message": "A range needs offset >= 0 and length > 0.", "body": null}
 	var extra := [["Range", "bytes=%d-%d" % [offset, offset + length - 1]]]
 	if if_range != "":
 		extra.append(["If-Range", if_range])
@@ -98,13 +100,13 @@ static func open_range(transport: PKeyTransport, url: String, headers: Dictionar
 	var head: Dictionary = await _request(transport, url, headers, extra, deadline)
 	if head.has("done"):
 		var d: Dictionary = head["done"]
-		d["etag"] = ""
+		d["etag"] = null
 		d["body"] = null
 		return d
 	var h: Dictionary = head["headers"]
 	var status: int = head["status"]
 	var out := _done(status, String(h.get("content-range", "")), "")
-	out["etag"] = String(h.get("etag", ""))
+	out["etag"] = String(h["etag"]) if h.has("etag") else null
 	out["body"] = Body.new(head["client"], head["tree"], deadline)
 	return out
 

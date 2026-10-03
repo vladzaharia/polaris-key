@@ -296,9 +296,12 @@ requests, seedChunks, selfChunks, repairedChunks}`.
 - **Hardening from review.** Seed-index reads from every local store are capped at
   `MAX_CHUNK_INDEX_BYTES` before the file is read. A missing seed index is fetched once per
   process in every SDK. Python's `Content-Range` pattern matches ASCII digits only.
-- **Godot's ETag** can come back empty: an engine API limitation of `HTTPClient`'s header access.
-  An empty ETag is treated as absent. A store failure and `chunks-ref-mismatch` give the same
-  outcome in Godot (the strategy falls back), so the two are not told apart.
+- **Godot's ETag.** The review read an empty ETag as an engine limitation, but it is not one: Godot's
+  header dictionary keeps an `ETag:` line with no value as `""`, so a missing header and an empty
+  one can be told apart. `open_range` now reports an absent header as null, and an empty `ETag`
+  is refused like any other wrong tag, as in client-core. A store failure and
+  `chunks-ref-mismatch` give the same outcome in Godot (the strategy falls back), so the two are
+  not told apart.
 - **Godot's applier runs on the main thread**, because it polls `HTTPClient`. Its hashing and
   decoding are native, and the repair pass's whole-output re-hash runs in a `PKeyPackJob`. Seed
   ids stay hex strings, the planner's existing keys (PackedByteArray keys were not measured).

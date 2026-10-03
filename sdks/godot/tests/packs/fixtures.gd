@@ -439,6 +439,12 @@ class FakeTransport extends PKeyPackTransport:
 			at += n
 		return {"status": status, "content_range": cr, "error": ""}
 
+	## Whether open_range answers (the engine plans chunk only then).
+	var ranges := true
+
+	func supports_range() -> bool:
+		return ranges
+
 	## A bounded single-range GET (P4-11): a 206 with `Content-Range: bytes o-e/size` (clipped at
 	## the object's end) and `ETag: "<sha256>"` when If-Range is the strong tag, else a 200 with the
 	## whole object (`range_ignored` forces that); the body is a PKeyPackChunks.MemoryBody.
@@ -446,7 +452,7 @@ class FakeTransport extends PKeyPackTransport:
 		range_calls.append(req.duplicate())
 		var h: String = req["sha256"]
 		if not objects.has(h) or missing.has(h):
-			return {"status": 404, "content_range": "", "etag": "", "error": "", "body": PKeyPackChunks.MemoryBody.new(PackedByteArray())}
+			return {"status": 404, "content_range": "", "etag": null, "error": "", "body": PKeyPackChunks.MemoryBody.new(PackedByteArray())}
 		var b: PackedByteArray = objects[h]
 		var tag := "\"%s\"" % h
 		if range_ignored or req.get("if_range") != tag:

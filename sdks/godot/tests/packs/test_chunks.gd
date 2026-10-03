@@ -35,6 +35,8 @@ func run(t: PKeyTestContext) -> void:
 	await _adapter(t)
 	await _seed_and_chunk(t)
 	await _refused(t)
+	await _no_range(t)
+	_seed_cap(t)
 	await _resume(t)
 	await _crosspack(t)
 	await _delegated(t)
@@ -76,7 +78,8 @@ func _adapter(t: PKeyTestContext) -> void:
 	# [status, content_range, etag, offset, length, expected bytes to read (-1 refused), why]
 	var rows := [
 		[206, "bytes 100-199/1000", tag, 100, 100, 100, "the exact range"],
-		[206, "bytes 100-199/1000", "", 100, 100, 100, "no ETag"],
+		[206, "bytes 100-199/1000", null, 100, 100, 100, "no ETag header"],
+		[206, "bytes 100-199/1000", "", 100, 100, -1, "an empty ETag"],
 		[206, " bytes 100-199/1000 ", tag, 100, 100, 100, "surrounding whitespace"],
 		[206, "bytes 900-999/1000", tag, 900, 200, 100, "clipped at the object's end"],
 		[206, "bytes 100-199/200", tag, 100, 100, 100, "ending exactly at the end"],
@@ -182,6 +185,56 @@ func _refused(t: PKeyTestContext) -> void:
 	t.check("refused: the install falls back to another strategy and succeeds", r.ok and e.doc["active"][PACK]["recordSha256"] == v2["recordSha256"] and tr.calls.map(func(q): return q["sha256"]).has(v2["fullSha256"]) and F.sha(FileAccess.get_file_as_bytes(e.storage.container_path(v2["payloadSha256"]))) == v2["payloadSha256"], "%s %s" % [r, S.canon(tr.calls)])
 	t.check("refused: nothing left in staging or in flight", e.doc["inflight"].is_empty() and (e.storage.list()["plans"] as Array).is_empty())
 	S.remove_tree(root)
+
+
+# ── no range ────────────────────────────────────────────────────────────────────────────────
+
+func _no_range(t: PKeyTestContext) -> void:
+	var v1 := _v1()
+	var v2 := _v2()
+	var tr := F.FakeTransport.new().add(v1).add(v2)
+	tr.ranges = false
+	var base := await _with_v1("chunks-norange", tr, v1)
+	var root: String = base["root"]
+	t.check("no range: the base transport refuses ranges (supports_range false, open_range a 501)", not PKeyPackTransport.new().supports_range() and int(PKeyPackTransport.new().open_range({}).get("status", 0)) == 501)
+	t.check("no range: v1 installs and its index is still kept as a seed", base["ok"] and base["engine"].storage.seed_index_get(v1["indexSha256"]) != null)
+	tr.calls.clear()
+	var e := _engine(root, tr, [v2])
+	await e.load_state([])
+	var pre: Dictionary = await e._preflight(PACK)
+	var staged: Array = tr.calls.map(func(q): return q["sha256"])
+	var r := await e.ensure([PACK])
+	t.check("no range: a transport without range support never plans chunk (its target index is not staged)", pre.get("plan", {}).get("strategy") != "chunk" and not staged.has(v2["indexSha256"]), S.canon(pre.get("plan")))
+	t.check("no range: v2 installs by another strategy, with no range request and no network-error", r.ok and tr.range_calls.is_empty() and F.sha(FileAccess.get_file_as_bytes(e.storage.container_path(v2["payloadSha256"]))) == v2["payloadSha256"], str(r))
+	S.remove_tree(root)
+
+
+# ── seed cap ────────────────────────────────────────────────────────────────────────────────
+
+func _seed_cap(t: PKeyTestContext) -> void:
+	var root := S.scratch("chunks-seedcap")
+	var st := PKeyPackStorage.new(root)
+	var small := "11".repeat(32)
+	var big := "22".repeat(32)
+	S.write_file(st.seed_index_path(small), PackedByteArray([1, 2, 3]))
+	var over := PackedByteArray()
+	over.resize(PKeyConstants.MAX_CHUNK_INDEX_BYTES + 1)
+	S.write_file(st.seed_index_path(big), over)
+	var exact := "33".repeat(32)
+	over.resize(PKeyConstants.MAX_CHUNK_INDEX_BYTES)
+	S.write_file(st.seed_index_path(exact), over)
+	t.check("seed cap: a kept index within the bound is read", st.seed_index_get(small) == PackedByteArray([1, 2, 3]))
+	var at_cap = st.seed_index_get(exact)
+	t.check("seed cap: one of exactly MAX_CHUNK_INDEX_BYTES is read", at_cap is PackedByteArray and (at_cap as PackedByteArray).size() == PKeyConstants.MAX_CHUNK_INDEX_BYTES)
+	t.check("seed cap: one above MAX_CHUNK_INDEX_BYTES is absent (null), never read", st.seed_index_get(big) == null)
+	t.check("seed cap: put refuses an index above the bound", not st.seed_index_put(big, _oversized()))
+	S.remove_tree(root)
+
+
+static func _oversized() -> PackedByteArray:
+	var b := PackedByteArray()
+	b.resize(PKeyConstants.MAX_CHUNK_INDEX_BYTES + 1)
+	return b
 
 
 # ── resume ──────────────────────────────────────────────────────────────────────────────────
@@ -291,6 +344,9 @@ class HttpTransport extends PKeyPackTransport:
 
 	func id() -> String:
 		return "pkey-cdn"
+
+	func supports_range() -> bool:
+		return true
 
 	func fetch_record(sha256: String) -> Dictionary:
 		return {"ok": true, "body": String(records[sha256]).to_utf8_buffer()} if records.has(sha256) else {"ok": false, "code": "network-error"}

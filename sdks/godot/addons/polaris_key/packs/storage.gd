@@ -747,10 +747,18 @@ func seed_index_path(sha256: String) -> String:
 	return index_dir().path_join(sha256)
 
 
-## A stored seed index's bytes (as fetched, possibly zstd), or null when there is none or it cannot
-## be read. Never trusted: the engine re-verifies it against the install's payload at every use.
+## A stored seed index's bytes (as fetched, possibly zstd), or null when there is none, it cannot
+## be read or it is longer than MAX_CHUNK_INDEX_BYTES (checked before reading). Never trusted: the engine re-verifies it against the install's payload at every use.
 func seed_index_get(sha256: String) -> Variant:
 	if not PKeyPackClaims.is_sha256(sha256):
+		return null
+	# Bounded before a byte is read: a kept index above MAX_CHUNK_INDEX_BYTES is no seed.
+	var f := FileAccess.open(seed_index_path(sha256), FileAccess.READ)
+	if f == null:
+		return null
+	var n := int(f.get_length())
+	f.close()
+	if n > PKeyConstants.MAX_CHUNK_INDEX_BYTES:
 		return null
 	var r := read_bytes(seed_index_path(sha256))
 	if not r["ok"] or r.has("missing"):

@@ -53,10 +53,14 @@ func fetch_object(req: Dictionary, on_response: Callable, on_chunk: Callable) ->
 	return await PKeyPackHttp.fetch(core.transport, b["url"], b["headers"], int(req.get("offset", 0)), String(req.get("if_range", "")), on_response, on_chunk, object_timeout)
 
 
+func supports_range() -> bool:
+	return true
+
+
 ## One single-range request for the chunk strategy (P4-11): `Range: bytes=o-e`, the If-Range the
 ## adapter derived from the signed index, `Accept-Encoding: identity`; the body is left unread.
 func open_range(req: Dictionary) -> Dictionary:
 	var b: Dictionary = await _blob(String(req["sha256"]))
 	if b.is_empty():
-		return {"status": 0, "content_range": "", "etag": "", "error": String(PKeyErrors.SERVICE_UNAVAILABLE), "body": null}
+		return {"status": 0, "content_range": "", "etag": null, "error": String(PKeyErrors.SERVICE_UNAVAILABLE), "body": null}
 	return await PKeyPackHttp.open_range(core.transport, b["url"], b["headers"], int(req.get("offset", 0)), int(req.get("length", 0)), String(req.get("if_range", "")), object_timeout)

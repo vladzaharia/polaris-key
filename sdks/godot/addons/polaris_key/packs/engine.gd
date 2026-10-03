@@ -1605,6 +1605,9 @@ func _chunk_seeds(pack_id: String, installs: Array, sources: Dictionary) -> Arra
 func _chunk_context(pack_id: String, plan_id: String, variant: Dictionary, installs: Array, sources: Dictionary) -> Variant:
 	if not strategies.has("chunk") or not _has_seed_store():
 		return null
+	# A transport without single-range requests never gets a chunk plan (it falls to file or full).
+	if transport == null or not transport.supports_range():
+		return null
 	if not PKeyPackClaims.same(variant["files"].get("layout"), "container") or not PKeyPackChunks.usable_ref(variant.get("chunks")):
 		return null
 	# A release already installed is a noop: nothing to stage.
