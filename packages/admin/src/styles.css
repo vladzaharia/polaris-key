@@ -99,7 +99,7 @@
    * section, the dashboard, and the product registry are visually unchanged from today.
    *
    * PLACEHOLDER PALETTE. The real per-service brand tokens ship with the brand-package rollout
-   * (docs/superpowers/plans/2026-06-30-polaris-brand-rollout.md), which restyles this structure
+   * (a separate, later brand-package rollout), which restyles this structure
    * rather than replacing it — these seven hues exist so the wiring is testable now and so the
    * later swap is a value change, not a refactor.
    *

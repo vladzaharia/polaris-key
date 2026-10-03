@@ -47,6 +47,7 @@
 
 import { checkPaths } from "@polaris-key/client-core/packs";
 import { PCK_STRIP_PATHS, pckPathOk, type PckDirectory } from "./pck.js";
+import { rsccBody, rsccBodyIsResource, type RsccBudget } from "./rscc.js";
 
 /** Above this many entries the lint warns (S-05 §4.1: the mount stall grows with the count). */
 export const PCK_WARN_ENTRIES = 1000;
@@ -318,6 +319,8 @@ export function lintPck(
   const text = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
+  // The pack's RSCC decompression budget, counted in directory order (P4-27).
+  const budget: RsccBudget = { used: 0 };
   for (const e of dir.entries) {
     const p = e.path;
     if (stripped.has(p)) {
@@ -347,6 +350,7 @@ export function lintPck(
       p,
       bytes.subarray(e.offset, e.offset + e.size),
       kinds.markers,
+      budget,
     );
     if (code !== null) {
       errors.push(`${p}: ${code}; a pack carries data only.`);
@@ -420,7 +424,10 @@ const BINARY_RESOURCE_RE = /\.(scn|res)$/i;
  * to every pack). Hardened by the P4-08 audit into fail-closed CONTENT rules that do not depend on
  * how Godot's parsers read a file:
  *
- *  - an `RSCC` resource (FileAccessCompressed) cannot be inspected and is refused under any name;
+ *  - an `RSCC` resource (FileAccessCompressed), whatever its name, is decompressed under the
+ *    bounds in `rscc.ts` (zstd only, a capped total, every block exactly its declared size; any
+ *    other shape refused, P4-27; `budget` is the pack's running count of declared bytes); its body is a binary resource without the `RSRC` magic (the
+ *    saver writes the magic only uncompressed) and gets the same marker rule as an `RSRC` one;
  *  - an `RSRC` resource, whatever its name (Godot's binary loader takes `.res`, `.scn` and every
  *    resource type's own extension, `.material`, `.mesh`, `.anim`…), is refused when the raw UTF-8
  *    bytes of any script marker (`SCRIPT_MARKERS`) occur anywhere in it — without the u32 length
@@ -442,10 +449,20 @@ export function embeddedCode(
   p: string,
   data: Uint8Array,
   markers: readonly string[] = SCRIPT_MARKERS,
+  budget: RsccBudget = { used: 0 },
 ): string | null {
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
-  if (magic === "RSCC")
-    return "a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed";
+  if (magic === "RSCC") {
+    // P4-27: bounded decompression (rscc.ts), then the RSRC rules on the body.
+    const r = rsccBody(data, undefined, budget);
+    if ("why" in r) return `a compressed binary resource (RSCC) ${r.why}`;
+    if (!rsccBodyIsResource(r.body))
+      return "a compressed binary resource (RSCC) whose body is not a binary resource";
+    const m = marker(r.body, markers);
+    return m === null
+      ? null
+      : `a compressed binary resource (RSCC) that names ${m} (an embedded script or its source)`;
+  }
   if (magic === "RSRC") {
     const m = marker(data, markers);
     return m === null

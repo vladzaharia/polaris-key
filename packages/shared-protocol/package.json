@@ -1,6 +1,7 @@
 {
   "name": "@polaris-key/protocol",
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -43,7 +44,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup src/index.ts src/core.ts src/license.ts src/config.ts src/release.ts src/update.ts src/trust.ts src/distribution.ts src/packs.ts --format esm --dts --clean",

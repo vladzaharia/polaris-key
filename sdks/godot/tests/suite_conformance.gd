@@ -1,6 +1,7 @@
 extends RefCounted
 # @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers
 # @pkey-feature update.feed release.record update.decide outlet.detect
+# @pkey-feature update.content packs.revoke
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
 # `pnpm gen:corpus`; never
@@ -16,17 +17,30 @@ extends RefCounted
 #   bundleCases      PKeyBundle.inspect          imports + docs, or the refusing step
 #   pointer sets     PKeyJws.verify              WIRE-CONTRACT-V4 §4.1: non_wire_integers equals
 #                                                each case's `nonWireIntegers` over the seven JWS
-#                                                families (feedCases, releaseRecordCases included)
-#                                                and the two pack families (packRecordCases, and
-#                                                markerCases, whose JWS is the marker's `release`)
+#                                                families (feedCases, releaseRecordCases included),
+#                                                the two P4-13 families (feedContentCases,
+#                                                revocationCases) and the two pack families
+#                                                (packRecordCases, and markerCases, whose JWS is the
+#                                                marker's `release`)
 #   feedCases        PKeyFeed.verify_feed        V4 §2.5 steps 3–8: ok with seq, issuedAt and the
 #                                                document, or the refusing reason
 #   releaseRecordCases PKeyReleaseRecord.verify_release_record  steps 12–15: ok with kind and the
 #                                                document, or the refusing step
+#   feedContentCases PKeyFeed.verify_feed + feed_content  plans/P4-13.md §2.2: the parsed content
+#                                                members, through verify_feed, over the decoded
+#                                                payload and through with_feed_content
+#   revocationCases  PKeyReleaseRecord.verify_revocation  §2.3 steps 12–16, the body alone
+#                    (revocation_of), superseding (newer_revocation); replacement mode through
+#                    verify_release_record
+#   delegationCases  plans/P4-19.md: the three `feed` cases (a revocation entry's `kind`) through
+#                    verify_feed + feed_content; every other case is declared planned (P4-26) by
+#                    exact id (DELEGATION_PLANNED), with parity.json's packs.delegation entry
 #   update-matrix    vocabulary (the generated enums and PKeyVersion.SCHEMES), versionCases
 #                    (PKeyVersion.compare_versions), capabilityCases (effective_capabilities),
 #                    outletCases (resolve_update_outlet), bucketVectors (rollout_bucket), rows
-#                    (decide_update, compared by value, and boot_decision)
+#                    (decide_update, compared by value, and boot_decision), contentRows
+#                    (plans/P4-13.md §2.6: decide_update with `content`, boot_decision, packSetId;
+#                    `required` exactly on the revoked-content rows)
 #   outlet-matrix    PKeyDecision's compiled tables equal kinds, platformNarrowing, subkinds and
 #                    platformData.listingUrlPrefixes; PKeyOutlet's signal table and platform data
 #                    equal signals and platformData; every row (PKeyOutlet.detect_outlet, P3-11)
@@ -54,6 +68,27 @@ const UPDATE_MATRIX := "res://tests/corpus/v2/update-matrix.json"
 const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
 const HEADERS_VERSION := 1
 const CORPUS_VERSION := 2
+## plans/P4-19.md §4: the delegationCases Godot declares planned until P4-26, by exact id (every
+## case but the three `feed` ones, which feed_content already reads).
+const DELEGATION_PLANNED := [
+	"delegated-valid-files-tree", "delegated-valid-data-json", "delegated-valid-prefix-is-pack-id",
+	"delegated-valid-delegation-by-2027-key", "delegated-valid-window-start",
+	"delegated-valid-window-end", "delegated-valid-unknown-types-ignored",
+	"release-kid-ignores-delegation", "delegation-record-verify-only", "delegation-unpinned-signer",
+	"delegation-signed-by-product-key", "delegation-hash-mismatch", "delegation-not-a-delegation",
+	"delegation-signed-by-content-key", "delegation-types-missing", "delegation-types-none-effective",
+	"delegation-types-too-many", "delegation-types-duplicate", "delegation-ttl-over-max",
+	"delegation-expires-before-issued", "delegation-expiresat-token",
+	"delegation-public-key-malformed", "delegation-key-is-release-key",
+	"delegation-key-is-product-key", "delegation-deliverable-app", "delegated-no-delegation-supplied",
+	"delegated-wrong-signer", "delegated-kid-malformed", "revocation-signed-by-content-key",
+	"app-record-by-content-key-release-only", "delegated-godot-pck", "delegated-type-not-delegated",
+	"delegated-container-layout", "delegated-outside-prefix", "delegated-prefix-not-segment",
+	"delegated-after-window", "delegated-before-window", "app-record-by-content-key",
+	"delegation-by-content-key-as-record", "revocation-of-delegation-valid",
+	"delegated-revoked-delegation", "delegated-revoked-record",
+	"revocation-of-delegation-replacement-ignored",
+]
 const FLOORS := {
 	"jwsCases": 36,
 	"licenseDocCases": 16,
@@ -61,9 +96,13 @@ const FLOORS := {
 	"trustCases": 11,
 	"clockFloorCases": 7,
 	"bundleCases": 9,
-	"pointerSets": 464,
+	"pointerSets": 539,
 	"feedCases": 80,
 	"releaseRecordCases": 49,
+	"feedContentCases": 48,
+	"revocationCases": 27,
+	"contentRows": 44,
+	"delegationCases": 46,
 	"versionCases": 25,
 	"capabilityCases": 10,
 	"outletCases": 12,
@@ -95,9 +134,13 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_pointer_sets(t, corpus)
 	await _feed_cases(t, _section(t, corpus, "feedCases"))
 	await _record_cases(t, _section(t, corpus, "releaseRecordCases"))
+	await _feed_content_cases(t, _section(t, corpus, "feedContentCases"))
+	await _revocation_cases(t, _section(t, corpus, "revocationCases"))
+	await _delegation_cases(t, _section(t, corpus, "delegationCases"))
 	var um = _load(t, UPDATE_MATRIX)
 	if um != null:
 		_update_matrix(t, um)
+		_content_rows(t, um)
 	var om = _load(t, OUTLET_MATRIX)
 	if om != null:
 		_outlet_tables(t, om)
@@ -204,6 +247,8 @@ func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
 		["bundleCases", "bundleJws", "pinned", PKeyClaims.TYP_BUNDLE, PKeyClaims.MAX_BUNDLE_BYTES],
 		["feedCases", "jws", "trust", PKeyClaims.TYP_FEED, 0],
 		["releaseRecordCases", "jws", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
+		["feedContentCases", "jws", "trust", PKeyClaims.TYP_FEED, 0],
+		["revocationCases", "jws", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
 		["packRecordCases", "jws", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
 		["markerCases", "marker", "releaseKeys", PKeyClaims.TYP_RELEASE, 0],
 	]
@@ -463,7 +508,7 @@ func _update_matrix(t: PKeyTestContext, m: Dictionary) -> void:
 		var boot := PKeyDecision.boot_decision(decision)
 		t.check("row %s boot" % row["name"], boot == row["expect"]["boot"], boot)
 		all_boot_ok = all_boot_ok and (row["expect"]["boot"] == "none" or row["expect"]["boot"] == "optional")
-	t.check("every v4 boot value is none or optional: no floor stops play", all_boot_ok)
+	t.check("every P3-01 row's boot value is none or optional: no floor stops play", all_boot_ok)
 	_coverage(t, "updateRows", evaluated, cases.size(), _ms_since(t0))
 	# The comparator is not vacuous: one changed member makes a decision unequal.
 	if cases.size() > 0 and cases[0] is Dictionary and cases[0].get("expect") is Dictionary:
@@ -473,6 +518,171 @@ func _update_matrix(t: PKeyTestContext, m: Dictionary) -> void:
 		d = (cases[0]["expect"]["decision"] as Dictionary).duplicate(true)
 		d["extra"] = null
 		t.check("rows comparator rejects an extra member", not _json_eq(d, cases[0]["expect"]["decision"]))
+
+
+# ── feedContentCases (plans/P4-13.md §2.2) ─────────────────────────────────────────────────
+
+func _feed_content_cases(t: PKeyTestContext, cases: Array) -> void:
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for i in cases.size():
+		var c = cases[i]
+		var e = c.get("expect") if c is Dictionary else null
+		var ok_shape: bool = c is Dictionary and c.get("id") is String and c.get("jws") is String \
+				and c.get("trust") is Dictionary and c.get("expectedAud") is String and c.get("channel") is String \
+				and c.get("platform") is String and c.get("now") is float and c.get("checkFreshness") is bool \
+				and e is Dictionary and e.get("verify") == "ok" and e.get("content") is Dictionary
+		if not t.check("feedContentCases %d well-formed" % i, ok_shape):
+			continue
+		var id: String = c["id"]
+		var r := await PKeyFeed.verify_feed(c["jws"], {
+			"trust": c["trust"], "expected_aud": c["expectedAud"], "channel": c["channel"],
+			"platform": c["platform"], "now": c["now"], "check_freshness": c["checkFreshness"],
+		})
+		evaluated += 1
+		if not t.check("%s verifies" % id, r["ok"], str(r.get("reason"))):
+			continue
+		var want: Dictionary = e["content"]
+		t.check("%s content" % id, _json_eq(r.get("content"), want), JSON.stringify(r.get("content")).left(400))
+		# The decision's own reading of the decoded payload agrees with the token-rule reading here
+		# only when no member failed the token rule; through the decision's copy it always does.
+		var copy := PKeyFeed.with_feed_content(r["feed"], r["content"])
+		t.check("%s content through with_feed_content" % id, _json_eq(PKeyFeed.feed_content(copy), want))
+	_coverage(t, "feedContentCases", evaluated, cases.size(), _ms_since(t0))
+
+
+# ── revocationCases (plans/P4-13.md §2.3) ──────────────────────────────────────────────────
+
+static func _revocation_opts(c: Dictionary) -> Dictionary:
+	return {"release_keys": c["releaseKeys"], "product_trust": c["productTrust"], "expected_aud": c["expectedAud"], "entry": c.get("entry")}
+
+
+func _revocation_cases(t: PKeyTestContext, cases: Array) -> void:
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	var by_id := {}
+	for c in cases:
+		if c is Dictionary and c.get("id") is String:
+			by_id[c["id"]] = c
+	for i in cases.size():
+		var c = cases[i]
+		var e = c.get("expect") if c is Dictionary else null
+		var ok_shape: bool = c is Dictionary and c.get("id") is String and c.get("jws") is String \
+				and (c.get("mode") == "revocation" or c.get("mode") == "replacement") \
+				and c.get("releaseKeys") is Dictionary and c.get("productTrust") is Dictionary and c.get("expectedAud") is String \
+				and e is Dictionary and (e.get("verify") == "ok" or (e.get("verify") == "fail" and e.get("step") is String)) \
+				and ((c.get("mode") == "revocation" and c.get("entry") is Dictionary) or (c.get("mode") == "replacement" and c.get("expectedHash") is String and c.get("pin") is Dictionary))
+		if not t.check("revocationCases %d well-formed" % i, ok_shape):
+			continue
+		var id: String = c["id"]
+		var want: String = "ok" if e["verify"] == "ok" else e["step"]
+		evaluated += 1
+		if c["mode"] == "replacement":
+			var rr := await PKeyReleaseRecord.verify_release_record(c["jws"], {
+				"release_keys": c["releaseKeys"], "product_trust": c["productTrust"], "expected_aud": c["expectedAud"],
+				"expected_hash": c["expectedHash"], "pin": c["pin"],
+			})
+			var got_r: String = "ok" if rr["ok"] else String(rr.get("step"))
+			if t.check("%s → %s" % [id, want], got_r == want, "got %s" % got_r) and rr["ok"]:
+				t.check("%s kind" % id, _json_eq(rr["record"].get("kind"), e.get("kind")))
+			continue
+		var r := await PKeyReleaseRecord.verify_revocation(c["jws"], _revocation_opts(c))
+		var got: String = "ok" if r["ok"] else String(r.get("step"))
+		if not t.check("%s → %s" % [id, want], got == want, "got %s" % got) or not r["ok"]:
+			continue
+		var rev: Dictionary = r["revocation"]
+		var body := {"pack": rev["pack"], "target": rev["target"], "replacement": rev["replacement"], "reason": rev["reason"], "issuedAt": rev["issuedAt"]}
+		t.check("%s revocation" % id, _json_eq(body, e.get("revocation")), JSON.stringify(body))
+		t.check("%s pin is the entry's" % id, _json_eq(rev["record"], c["entry"]["record"]) and _json_eq(rev["version"], c["entry"]["version"]) and _json_eq(rev["seq"], c["entry"]["seq"]))
+		# The body alone reads the same.
+		var raw = PKeyB64Url.decode_strict(String(c["jws"]).get_slice(".", 1))
+		var parsed := PKeyJson.parse_bytes(raw) if raw is PackedByteArray else {"ok": false}
+		var alone = PKeyReleaseRecord.revocation_of(parsed["value"], parsed["non_wire_integers"]) if parsed["ok"] else null
+		t.check("%s revocation_of over the payload" % id, alone is Dictionary and _json_eq(alone, e.get("revocation")))
+		if e.has("supersedes"):
+			var other = by_id.get(e["supersedes"])
+			var winner = by_id.get(e.get("winner"))
+			if not t.check("%s supersedes a case in the section" % id, other is Dictionary and winner is Dictionary):
+				continue
+			var o := await PKeyReleaseRecord.verify_revocation(other["jws"], _revocation_opts(other))
+			if not t.check("%s: the superseded case verifies" % id, o["ok"]):
+				continue
+			var win := PKeyReleaseRecord.newer_revocation(rev, o["revocation"])
+			var back := PKeyReleaseRecord.newer_revocation(o["revocation"], rev)
+			t.check("%s newer_revocation is symmetric" % id, is_same(win, back))
+			t.check("%s winner" % id, _json_eq(win["record"], winner["entry"]["record"]), String(win["record"]))
+	_coverage(t, "revocationCases", evaluated, cases.size(), _ms_since(t0))
+
+
+# ── delegationCases (plans/P4-19.md): the feed cases run; the rest are planned (P4-26) ─────
+
+func _delegation_cases(t: PKeyTestContext, cases: Array) -> void:
+	var planned: Array = []
+	var feed_cases: Array = []
+	for c in cases:
+		if c is Dictionary and c.get("mode") == "feed":
+			feed_cases.append(c)
+		elif c is Dictionary:
+			planned.append(c.get("id"))
+	t.check("delegationCases: every non-feed case is exactly the planned ids (P4-26)", _json_eq(planned, DELEGATION_PLANNED), JSON.stringify(planned))
+	var parity = PKeyPacksTestSupport.read_json("res://parity.json")
+	var f = parity.get("features", {}).get("packs.delegation") if parity is Dictionary else null
+	t.check("delegationCases: parity.json declares packs.delegation planned in P4-26", f is Dictionary and f.size() == 2 and f.get("status") == "planned" and f.get("wp") == "P4-26", JSON.stringify(f))
+	var evaluated := planned.size()
+	var t0 := Time.get_ticks_usec()
+	for c in feed_cases:
+		var e = c.get("expect")
+		var r := await PKeyFeed.verify_feed(c["jws"], {
+			"trust": c["trust"], "expected_aud": c["expectedAud"], "channel": c["channel"],
+			"platform": c["platform"], "now": c["now"], "check_freshness": c["checkFreshness"],
+		})
+		evaluated += 1
+		if t.check("%s verifies" % c["id"], r["ok"] and e is Dictionary, str(r.get("reason"))):
+			t.check("%s content" % c["id"], _json_eq(r["content"], e.get("content")), JSON.stringify(r["content"]).left(400))
+	t.info("planned: P4-26 (packs.delegation): %d delegationCases; %d feed cases run" % [planned.size(), feed_cases.size()])
+	_coverage(t, "delegationCases", evaluated, cases.size(), _ms_since(t0))
+
+
+# ── update-matrix.json contentRows (plans/P4-13.md §2.6) ───────────────────────────────────
+
+func _content_rows(t: PKeyTestContext, m: Dictionary) -> void:
+	var rows: Array = m.get("contentRows", []) if m.get("contentRows") is Array else []
+	t.check("contentRows present", m.get("contentRows") is Array)
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	var required_exact := true
+	var floors_usable := true
+	var plain_unchanged := true
+	for row in rows:
+		var name = row.get("name") if row is Dictionary else row
+		if not t.check("contentRows %s well-formed" % str(name), row is Dictionary and row.get("name") is String and row.get("input") is Dictionary \
+				and row["input"].get("content") is Dictionary and row.get("expect") is Dictionary \
+				and row["expect"].get("decision") is Dictionary and row["expect"].get("boot") is String):
+			continue
+		var want: Dictionary = row["expect"]["decision"]
+		var decision := PKeyDecision.decide_update(row["input"])
+		evaluated += 1
+		t.check("content row %s" % row["name"], _json_eq(decision, want), JSON.stringify(decision).left(600))
+		var boot := PKeyDecision.boot_decision(decision)
+		t.check("content row %s boot" % row["name"], boot == row["expect"]["boot"], boot)
+		if row["expect"].has("packSetId"):
+			var entries: Array = []
+			for x in decision.get("set", []):
+				entries.append({"packId": x["pack"], "releaseSha256": x["sha256"]})
+			t.check("content row %s packSetId" % row["name"], decision.get("action") == "packs" and PKeyPackClaims.pack_set_id(entries) == row["expect"]["packSetId"])
+		# Decision 4: a revocation of REQUIRED content is the only thing that stops play.
+		var revoked: bool = want.get("reason") == "revoked-content" or want.get("contentBlock") == "revoked-content"
+		required_exact = required_exact and ((row["expect"]["boot"] == "required") == revoked)
+		floors_usable = floors_usable and PKeyFeed.feed_content(row["input"]["feed"])["packFloors"] != null
+		# Without `content` every answer is P3-01's: the content members alone change nothing.
+		var plain: Dictionary = (row["input"] as Dictionary).duplicate()
+		plain.erase("content")
+		var d0 := PKeyDecision.decide_update(plain)
+		plain_unchanged = plain_unchanged and d0.get("action") != "packs" and not d0.has("contentBlock")
+	t.check("contentRows: required exactly on the revoked-content rows (decision 4)", required_exact)
+	t.check("contentRows: every row's feed has usable packFloors", floors_usable)
+	t.check("contentRows: without content every answer is P3-01's", plain_unchanged)
+	_coverage(t, "contentRows", evaluated, rows.size(), _ms_since(t0))
 
 
 # ── outlet-matrix.json: the compiled tables ────────────────────────────────────────────────

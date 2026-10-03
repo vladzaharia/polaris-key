@@ -24,6 +24,14 @@ extends RefCounted
 ## its id was mounted in this process (the boot's FETCH) mounts at this boot; later ones at the
 ## next. `files.tree` packs are hot: `path(id)` names the running tree.
 ##
+## Revocations (plans/P4-13.md §2.5, §2.6; P4-24): PolarisKey.update.decide() runs the content
+## decision with `content_input()` (the stamp and its holds, the running set, the variant
+## preferences and the engine's verified revocations) and stores what the check learned through
+## `record_revocations()` (the sibling `content/revocations.json`). A revoked release is never
+## installed, activated or mounted (`pack-revoked`). A `packs` answer is applied by the boot's FETCH
+## (`boot_fetch` with `install`: required and essential entries before mount, at exactly the named
+## release) and BACKGROUND (`background()`: the rest, through `ensure_releases`).
+##
 ## Signals: `pack_progress(id, bytes, total)` while a pack downloads, `set_changed(activation)`
 ## when a commit or rollback changes the active set (`hot`: now; `restart`: at the next boot or
 ## this boot's mount), `pack_ready(id)` when a pack is usable in this process (a hot commit, or a
@@ -74,6 +82,8 @@ var refused_embedded: Array = []
 var mounted := {}
 ## The content stamp's `content` ({contentApi, pins, expects}), or null.
 var content: Variant = null
+## The `packs` decision's install entries the boot's FETCH left for BACKGROUND ({pack, release}).
+var background_targets: Array = []
 
 var _core_ref: WeakRef = null
 var _starting := false
@@ -281,6 +291,84 @@ func _announce(before: Dictionary) -> void:
 			pack_ready.emit(id)
 
 
+## Install exact releases (a `packs` decision's `install`, plans/P4-13.md §2.6): [{pack, release:
+## {sha256, seq, version}}]. A coroutine with ensure()'s answers, plus `pack-revoked` for a release
+## a verified revocation names.
+func ensure_releases(targets: Array) -> PKeyResult:
+	var core := _core()
+	if core == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	var off = core.require_service("release", PKeyConstants.Feature.PACKS_STATE)
+	if off != null:
+		return off
+	var ready := await _ready_engine()
+	if not ready.ok:
+		return ready
+	var before := engine.state()
+	var r := await engine.ensure_releases(targets)
+	_announce(before)
+	if not r.ok:
+		var id: String = r.detail.get("packId", "") if r.detail is Dictionary else ""
+		pack_failed.emit(id, String(r.code))
+		_report_failure(id, String(r.code))
+	return r
+
+
+## The stored and this process's verified revocations and `relearn` (PKeyPackEngine.revocations());
+## {} before start.
+func revocations() -> Dictionary:
+	return engine.revocations() if engine != null else {}
+
+
+## The update check's content input (plans/P4-13.md §2.5, §2.6; PKeyUpdateFlow `content`): the
+## stamp and its holds, the running releases (embedded baselines included), the host's engine and
+## variant axes, and the engine's verified revocations and `relearn`. null when the build ships no
+## content stamp or packs cannot start (the decision then runs without content, as before P4-13).
+## A coroutine.
+func content_input() -> Variant:
+	if not configured() or _core() == null:
+		return null
+	var r := await start()
+	if not r.ok or engine == null or not (content is Dictionary):
+		return null
+	var stamp_bytes := PKeyPackStorage.read_bytes(stamp_path)
+	var holds = null
+	if stamp_bytes["ok"] and not stamp_bytes.has("missing"):
+		holds = PKeyPackClaims.stamp_holds(stamp_bytes["bytes"])
+	var active := {}
+	for id in engine.running:
+		var i: Dictionary = engine.running[id]
+		active[id] = {"sha256": i["recordSha256"], "seq": i["seq"], "version": i["version"]}
+	var p := prefs()
+	var revs := engine.revocations()
+	return {
+		"stamp": content, "holds": holds, "active": active, "engine": p["engine"], "axes": p["axes"],
+		"revoked": revs["verified"], "relearn": revs["relearn"],
+	}
+
+
+## Keep the revocations an update check verified (PKeyPackEngine.record_revocations):
+## `revocations` is PKeyUpdateFlow's {learned, relearnCleared}. A revoked running release stops:
+## set_changed("hot") when only hot packs stopped, set_changed("restart") when a `godot.pck` did
+## (one already mounted stays loaded until restart, since Godot cannot unload a resource pack; the
+## host may prompt a restart). A coroutine.
+func record_revocations(revocations: Dictionary) -> PKeyResult:
+	if engine == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Packs have not started.")
+	var before: Dictionary = engine.running.duplicate()
+	var r := await engine.record_revocations(revocations.get("learned", []), revocations.get("relearnCleared", []))
+	var changed := ""
+	for id in before:
+		if not engine.running.has(id):
+			if before[id]["activation"] == "restart":
+				changed = "restart"
+			elif changed == "":
+				changed = "hot"
+	if changed != "":
+		set_changed.emit(changed)
+	return r
+
+
 ## Preflight without downloading: {bytes, packs, refused} (the consent dialog's size).
 func estimate(pack_ids: Array) -> Dictionary:
 	var ready := await _ready_engine()
@@ -421,13 +509,15 @@ func prefetch_packs() -> Array:
 	return out
 
 
-func _installed_now(wanted: Array) -> Array:
+func _installed_now(wanted: Array, targets: Dictionary = {}) -> Array:
 	var out: Array = []
 	if engine == null or not (content is Dictionary):
 		return out
 	var pins := {}
 	for p in content["pins"]:
 		pins[p["pack"]] = p["release"]["sha256"]
+	for id in targets:
+		pins[id] = targets[id]["release"]["sha256"]
 	for id in wanted:
 		var i = engine.running.get(id)
 		# A release the boot guard rolled back counts as present through the install it restored.
@@ -440,23 +530,45 @@ func _installed_now(wanted: Array) -> Array:
 ## that are not current, ask when the policy says so (`fetch.consent {bytes, metered}` through
 ## `send`, then `answer(bytes, metered)`), download them with `fetch.progress {done, total}`, and
 ## return `fetch.done {result, installed}` (the caller sends it). `opts`: consent (`always`,
-## `metered` (default) or `never`), metered (bool), answer (Callable -> bool, may await). A
-## coroutine.
+## `metered` (default) or `never`), metered (bool), answer (Callable -> bool, may await), install
+## (a `packs` decision's install list, plans/P4-13.md §2.5 "Applying a packs answer": its
+## `required` and `essential` entries are installed here, before mount, at exactly the named
+## release; the others wait in `background_targets` for BACKGROUND). A coroutine.
 func boot_fetch(send: Callable, opts: Dictionary = {}) -> Dictionary:
 	var bo := boot_options()
 	var wanted: Array = []
 	for id in bo["requiredPacks"] + bo["essentialPacks"]:
 		if not wanted.has(id):
 			wanted.append(id)
+	var targets := {}
+	background_targets = []
+	if opts.get("install") is Array:
+		for t in opts["install"]:
+			if not (t is Dictionary) or not (t.get("pack") is String) or not (t.get("release") is Dictionary):
+				continue
+			if wanted.has(t["pack"]):
+				targets[t["pack"]] = t
+			else:
+				background_targets.append(t)
 	var done := func(result: String) -> Dictionary:
-		return {"type": "fetch.done", "result": result, "installed": _installed_now(wanted)}
+		return {"type": "fetch.done", "result": result, "installed": _installed_now(wanted, targets)}
 	if wanted.is_empty():
 		return done.call("ok")
 	var ready := await _ready_engine()
 	if not ready.ok:
 		return done.call("offline" if ready.code == PKeyErrors.NETWORK else "failed")
 	var metered: bool = opts.get("metered", false) == true
-	var est := await engine.estimate(wanted)
+	# The decision's targets install at exactly their release; the other wanted packs at the pin.
+	var pinned: Array = []
+	for id in wanted:
+		if not targets.has(id):
+			pinned.append(id)
+	var est := await engine.estimate(pinned)
+	if not targets.is_empty():
+		var te := await engine.estimate_releases(targets.values())
+		est["bytes"] += int(te["bytes"])
+		est["packs"].append_array(te["packs"])
+		est["refused"].append_array(te["refused"])
 	var policy := String(opts.get("consent", "metered"))
 	var ask: bool = int(est["bytes"]) > 0 and (policy == "always" or (policy == "metered" and metered))
 	if ask:
@@ -480,7 +592,11 @@ func boot_fetch(send: Callable, opts: Dictionary = {}) -> Dictionary:
 	engine.progress.connect(listener)
 	var result := "ok"
 	for id in est["packs"]:
-		var r := await ensure([id])
+		var r: PKeyResult
+		if targets.has(id):
+			r = await ensure_releases([targets[id]])
+		else:
+			r = await ensure([id])
 		if not r.ok:
 			result = "offline" if r.code == PKeyErrors.NETWORK else "failed"
 		track["base"] = track["last"]
@@ -549,6 +665,11 @@ func mount() -> Dictionary:
 	var tree := Engine.get_main_loop() as SceneTree
 	for i in queue:
 		var id: String = i["packId"]
+		# plans/P4-13.md §2.5: a revoked release is never mounted.
+		if engine.is_revoked(i["recordSha256"]):
+			out["refused"].append({"packId": id, "code": PKeyConstants.ErrorCode.PACK_REVOKED, "detail": "revoked by its developer"})
+			pack_failed.emit(id, PKeyConstants.ErrorCode.PACK_REVOKED)
+			continue
 		var rec = engine.records.get(i["recordSha256"])
 		var variant = _variant_of(rec, i)
 		if rec == null or variant == null:
@@ -599,13 +720,24 @@ static func _variant_of(rec: Variant, install: Dictionary) -> Variant:
 	return null
 
 
-## BACKGROUND's work: install the prefetch packs not yet current, one by one. A coroutine
+## BACKGROUND's work: install the prefetch packs not yet current, one by one, and a `packs`
+## decision's entries FETCH left (`background_targets`, at exactly their release). A coroutine
 ## returning {installed: [ids], failed: [{packId, code}]}.
 func background(pack_ids: Array = []) -> Dictionary:
 	var ids := pack_ids if not pack_ids.is_empty() else prefetch_packs()
+	var targets := {}
+	for t in background_targets:
+		targets[t["pack"]] = t
+		if not ids.has(t["pack"]):
+			ids = ids + [t["pack"]]
+	background_targets = []
 	var out := {"installed": [], "failed": []}
 	for id in ids:
-		var r := await ensure([id])
+		var r: PKeyResult
+		if targets.has(id):
+			r = await ensure_releases([targets[id]])
+		else:
+			r = await ensure([id])
 		if r.ok:
 			out["installed"].append(id)
 		else:

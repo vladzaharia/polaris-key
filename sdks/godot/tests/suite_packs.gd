@@ -1,14 +1,16 @@
 extends RefCounted
-# @pkey-feature packs.record packs.plan packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.handlers
+# @pkey-feature packs.record packs.plan packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.handlers packs.revoke
 # The packs suite (P4-08): the content corpus and plan-matrix.json through the addon's pack core
 # (content, plan, records), the device-side PCK checks over P4-03's fixture PCKs (pck), the
 # engine's GDDL decoder and the trailer bake over a mounted base (bake), the install state and
 # its storage (state), the pipeline against PKeyFakeServer (engine), PKeyBoot's pack stages
-# (boot), the shared boot guard's pack rollback (guard) and the f_uid mount case (uid). Each group
+# (boot), the shared boot guard's pack rollback (guard), the f_uid mount case (uid) and P4-24's
+# revocations: the sibling revocations.json, pack-revoked and the update check's content steps
+# (revocations). Each group
 # is a file under res://tests/packs/ with `func run(t: PKeyTestContext) -> void` (it may await);
 # the suite ends with a coverage check that every group ran.
 
-const GROUPS := ["content", "plan", "records", "pck", "bake", "engine", "state", "http", "boot", "guard", "uid"]
+const GROUPS := ["content", "plan", "records", "pck", "bake", "engine", "state", "http", "boot", "guard", "uid", "revocations"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

@@ -197,6 +197,9 @@ public struct PackEngineOptions: Sendable {
     public var productTrust: @Sendable () async -> TrustSet
     /// The running build's content stamp, or nil: no packs.
     public var stamp: AppContent?
+    /// The stamp's holds (`stampHolds`), when the host reads them: a hold for a pack is a
+    /// release-key surface, so its release never takes the delegated path (plans/P4-19.md §2.4).
+    public var holds: [ContentHold]
     public var prefs: VariantPrefs
     public var zstd: any ZstdPort
     /// `zstd-patch-from` when the decoder passed its start-up probe; empty otherwise.
@@ -238,8 +241,10 @@ public struct PackEngineOptions: Sendable {
         newPlanId: @escaping @Sendable () -> String = {
             UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         },
-        handlers: [any PackHandler] = [], checkpointBytes: Int = 8 << 20, oneShotBudget: Int? = nil
+        handlers: [any PackHandler] = [], checkpointBytes: Int = 8 << 20, oneShotBudget: Int? = nil,
+        holds: [ContentHold] = []
     ) {
+        self.holds = holds
         self.product = product
         self.releaseKeys = releaseKeys
         self.productTrust = productTrust
@@ -367,6 +372,8 @@ private struct Planned {
     var planId: String
     var index: FilesIndexDoc?
     var plan: PlanResult
+    /// The delegation's compact JWS when a content key signed the record (plans/P4-19.md §2.3).
+    var delegation: String?
 }
 
 // ── The engine ───────────────────────────────────────────────────────────────────────────────
@@ -402,6 +409,13 @@ public actor PackEngine {
     private var revFile = false
     /// Plan ids `estimate` staged an index under, reused by the next `ensure`.
     private var preflightPlans: [String: (planId: String, recordSha256: String)] = [:]
+    /// Delegation records fetched in this process, by hash (plans/P4-19.md §2.3). Each is bound to
+    /// its hash and re-verified at every use against the current trust inputs.
+    private var delegationBodies: [String: String] = [:]
+    /// Distinct delegations this call may still fetch (`MAX_DELEGATIONS_PER_CHECK`).
+    private var delegationBudget = MAX_DELEGATIONS_PER_CHECK
+    /// Delegated releases verified in this process: record hash → pack and delegation hash.
+    private var delegatedKnown: [String: DelegatedRelease] = [:]
     private var tail: Task<Void, Never>?
     /// Save compatibility's record facts, by record hash (`Provides.swift`).
     private var providesMemo = ProvidesMemo()
@@ -500,7 +514,8 @@ public actor PackEngine {
             parsed,
             PackStateVerifier(
                 install: { i in
-                    guard await self.verifyStoredRecord(i.record, i.recordSha256, i.packId, i) else {
+                    guard await self.verifyStoredRecord(i.record, i.recordSha256, i.packId, i, i.delegation)
+                    else {
                         return false
                     }
                     do {
@@ -513,7 +528,9 @@ public actor PackEngine {
                         return false
                     }
                 },
-                journal: { j in await self.verifyStoredRecord(j.record, j.recordSha256, j.packId, nil) }))
+                journal: { j in
+                    await self.verifyStoredRecord(j.record, j.recordSha256, j.packId, nil, j.delegation)
+                }))
         unverifiable.formUnion(unverifiableNow.with { $0 })
         let deferredSet = deferred.with { $0 }
         for (id, i) in parsed.active where deferredSet.contains(i) { deferredActive[id] = i }
@@ -523,7 +540,7 @@ public actor PackEngine {
         try await loadRevocations(stateUnreadable: unreadable)
         // This boot's set: every active install (restart packs mount now), else the embedded
         // baseline. A revoked release never activates or mounts (`pack-revoked`).
-        for id in reloaded.active.keys.sorted() where !isRevoked(reloaded.active[id]!.recordSha256) {
+        for id in reloaded.active.keys.sorted() where !installRevoked(reloaded.active[id]!) {
             try await activate(reloaded.active[id]!)
         }
         for (id, e) in embedded where running[id] == nil && !embeddedRefused(e) { running[id] = e }
@@ -585,6 +602,7 @@ public actor PackEngine {
 
     private func packForNow(_ contentId: String, _ targets: [PackTarget]?) async throws -> PackProvider? {
         _ = try requireLoaded()
+        resetDelegationBudget()
         let list = targets ?? (opts.stamp?.pins ?? []).map {
             PackTarget(pack: $0.pack, release: ReleasePin(sha256: $0.sha256, seq: $0.seq, version: $0.version))
         }
@@ -610,7 +628,7 @@ public actor PackEngine {
         where i.recordSha256 == sha && i.packId == t.pack {
             return providesMemo.facts(key, i.record)
         }
-        guard let (body, _) = try? await fetchVerified(t.pack, t.release) else { return nil }
+        guard let (body, _, _) = try? await fetchVerified(t.pack, t.release) else { return nil }
         return providesMemo.facts(key, body)
     }
 
@@ -637,10 +655,10 @@ public actor PackEngine {
         let doc = try requireLoaded()
         let before = doc.active[packId]
         // plans/P4-13.md §2.5: never back to a revoked release.
-        if let prev = doc.previous[packId], isRevoked(prev.recordSha256) { return false }
+        if let prev = doc.previous[packId], installRevoked(prev) { return false }
         if let prev = doc.previous[packId], unverifiedPrevious.contains(packId) {
             // Carried over from an entry whose check could not run: verify it now.
-            var ok = await verifyStoredRecord(prev.record, prev.recordSha256, packId, prev)
+            var ok = await verifyStoredRecord(prev.record, prev.recordSha256, packId, prev, prev.delegation)
             if ok { ok = (try? opts.storage.verify(prev)) ?? false }
             if !ok { return false }
             unverifiedPrevious.remove(packId)
@@ -662,6 +680,7 @@ public actor PackEngine {
     public func ensure(_ packIds: [String]) async throws -> [PackInstall] {
         try await serialised {
             try await self.refuseUnreadable()
+            await self.resetDelegationBudget()
             var out: [PackInstall] = []
             for id in packIds { out.append(try await self.ensureOne(id)) }
             return out
@@ -674,6 +693,7 @@ public actor PackEngine {
     public func ensureReleases(_ targets: [PackTarget]) async throws -> [PackInstall] {
         try await serialised {
             try await self.refuseUnreadable()
+            await self.resetDelegationBudget()
             var out: [PackInstall] = []
             for t in targets { out.append(try await self.ensureOne(t.pack, target: t.release)) }
             return out
@@ -695,6 +715,7 @@ public actor PackEngine {
     private func estimateAll(_ items: [(String, ReleasePin?)]) async throws -> PackEstimate {
         try await serialised {
             try await self.refuseUnreadable()
+            await self.resetDelegationBudget()
             var out = PackEstimate()
             for (id, release) in items {
                 do {
@@ -812,6 +833,35 @@ public actor PackEngine {
         revDoc.revoked[recordSha256] != nil || revVerified[recordSha256] != nil
     }
 
+    /// Why a release is revoked (plans/P4-19.md §2.3 `recordRevoked`): `record` when its own hash
+    /// is a target, `delegation` when the delegation it was signed under is, else nil.
+    public func revokedBy(_ recordSha256: String, _ delegationSha256: String?) -> RecordRevokedBy? {
+        let targets = Set(revDoc.revoked.keys).union(revVerified.keys)
+        return recordRevoked(recordSha256, delegationSha256, targets)
+    }
+
+    /// Whether an install is revoked: its record, or the delegation it was signed under.
+    private func installRevoked(_ i: PackInstall) -> Bool {
+        revokedBy(i.recordSha256, installDelegation(i)) != nil
+    }
+
+    /// The delegated releases this engine knows (plans/P4-19.md §2.7): every stored or running
+    /// install signed by a content key, and every delegated feed target verified in this process,
+    /// as record hash → its pack and delegation hash. The update check adds a decision revocation
+    /// for each one whose delegation is revoked, and treats a delegation entry naming one of these
+    /// delegations as relevant (step 11).
+    public func delegatedReleases() -> [String: DelegatedRelease] {
+        var out = delegatedKnown
+        let stored = doc.map { Array($0.active.values) + Array($0.previous.values) } ?? []
+        let installs = stored + Array(running.values)
+        for i in installs {
+            if let h = installDelegation(i) { out[i.recordSha256] = DelegatedRelease(pack: i.packId, delegation: h) }
+        }
+        return out
+    }
+
+    private func resetDelegationBudget() { delegationBudget = MAX_DELEGATIONS_PER_CHECK }
+
     /// The embedded-baseline refusals (plans/P4-13.md §2.5): a revoked release; a pack in
     /// `relearn`; with an unreadable `revocations.json` and `revocationsStored` set, every pack the
     /// stamp pins or the host embeds. These apply at every boot and every mount, online or
@@ -899,7 +949,7 @@ public actor PackEngine {
 
     /// Stop running every revoked release (a hot handler is deactivated).
     private func unmountRevoked() async {
-        for (id, i) in running where isRevoked(i.recordSha256) {
+        for (id, i) in running where installRevoked(i) {
             if i.activation == "hot", let h = handler(i.type) {
                 // A handler failure never keeps a revoked release running.
                 try? await h.deactivate(i)
@@ -992,15 +1042,18 @@ public actor PackEngine {
         running[i.packId] = i
     }
 
-    /// Steps 12–15 again over a stored record, with its own pack id as the pin.
+    /// Steps 12–16 again over a stored record, with its own pack id as the pin; a delegated record
+    /// through its stored delegation (plans/P4-19.md §2.4: an installed release stays valid after
+    /// its window).
     private func verifyStoredRecord(
-        _ jws: String, _ sha256: String, _ packId: String, _ install: PackInstall?
+        _ jws: String, _ sha256: String, _ packId: String, _ install: PackInstall?,
+        _ delegation: String? = nil
     ) async -> Bool {
         let r = verifyReleaseRecord(
             jws,
             options: VerifyReleaseRecordOptions(
                 releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
-                expectedAud: opts.product, expectedHash: sha256))
+                expectedAud: opts.product, expectedHash: sha256, delegation: delegation))
         guard let rec = r.record, rec.kind == "pack", rec.deliverable == packId,
             let pack = PackRecordDoc(json: rec.json)
         else { return false }
@@ -1055,19 +1108,43 @@ public actor PackEngine {
     /// seeds, the index and the plan.
     /// Step 2 for one release: the record fetched by hash and verified against the pinned release
     /// keys with `pin: {kind: "pack", deliverable, version, seq}`. Throws a `PackError`.
-    private func fetchVerified(_ packId: String, _ release: ReleasePin) async throws -> (String, PackRecordDoc) {
+    /// Step 2 for one pin: the record fetched by hash and verified against the pinned release
+    /// keys, a delegated one through its delegation (plans/P4-19.md §2.3). Returns the body, the
+    /// record and the delegation's compact JWS (or nil). `preflight` and `packFor` (P4-20) share
+    /// it, as client-core's `fetchVerified`.
+    private func fetchVerified(
+        _ packId: String, _ release: ReleasePin
+    ) async throws -> (String, PackRecordDoc, String?) {
         let body: String
         switch await opts.fetchRecord(release.sha256) {
         case .ok(let b): body = b
         case .failed(let code):
             throw PackError(code, "Fetching \(packId)'s record failed (\(code)).", packId: packId)
         }
+        // plans/P4-19.md §2.3, §2.4: a `pkd1-` kid names its delegation, fetched by hash, only on
+        // the delegated surface (a feed target that is neither the stamp's pin or hold for this pack
+        // nor a stored revocation's replacement). Elsewhere step 13 refuses it at `jws`.
+        var delegation: String?
+        if let h = delegationHashOf(body), delegatedAllowed(packId, release.sha256) {
+            delegation = try await fetchDelegation(packId, h)
+        }
         let v = verifyReleaseRecord(
             body,
             options: VerifyReleaseRecordOptions(
                 releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
                 expectedAud: opts.product, expectedHash: release.sha256,
-                pin: ReleaseRecordPin(kind: "pack", deliverable: packId, version: release.version, seq: release.seq)))
+                pin: ReleaseRecordPin(kind: "pack", deliverable: packId, version: release.version, seq: release.seq),
+                delegation: delegation))
+        if let d = v.delegation {
+            delegatedKnown[release.sha256] = DelegatedRelease(pack: packId, delegation: d.sha256)
+            if revokedBy(release.sha256, d.sha256) != nil {
+                throw PackError(
+                    ErrorCode.packRevoked,
+                    "\(packId)@\(release.version) was signed under a delegation its developer revoked.",
+                    detail: "delegation", packId: packId)
+            }
+        }
+        let delegated = v.delegation != nil ? delegation : nil
         let record: PackRecordDoc
         switch v {
         case .refused(.crossCheck):
@@ -1077,7 +1154,7 @@ public actor PackEngine {
             throw PackError(
                 ErrorCode.recordRejected, "\(packId)'s record was refused at \(step.rawValue).",
                 detail: step.rawValue, packId: packId)
-        case .ok(let rec):
+        case .ok(let rec), .delegated(let rec, _):
             guard let p = PackRecordDoc(json: rec.json) else {
                 throw PackError(
                     ErrorCode.recordRejected, "\(packId)'s record was refused at claims.",
@@ -1085,7 +1162,7 @@ public actor PackEngine {
             }
             record = p
         }
-        return (body, record)
+        return (body, record, delegated)
     }
 
     private func preflight(_ packId: String, want: ReleasePin? = nil) async throws -> Preflight {
@@ -1112,13 +1189,22 @@ public actor PackEngine {
 
         // Already current: the active install, or the embedded copy, is the pinned release.
         let current = doc.active[packId]
-        if let current, current.recordSha256 == pin.sha256 { return .current(current) }
+        if let current, current.recordSha256 == pin.sha256 {
+            // plans/P4-19.md §2.6: a release under a revoked delegation is refused like a revoked one.
+            if installRevoked(current) {
+                throw PackError(
+                    ErrorCode.packRevoked,
+                    "\(packId)@\(pin.version) was signed under a delegation its developer revoked.",
+                    detail: "delegation", packId: packId)
+            }
+            return .current(current)
+        }
         if let emb = embedded[packId], emb.recordSha256 == pin.sha256, current == nil, !embeddedRefused(emb) {
             return .current(emb)
         }
 
         // 2. The pinned record, by hash, against the pinned release keys.
-        let (body, record) = try await fetchVerified(
+        let (body, record, delegated) = try await fetchVerified(
             packId, ReleasePin(sha256: pin.sha256, seq: pin.seq, version: pin.version))
 
         // 3. Type, entitlement, variant.
@@ -1198,6 +1284,21 @@ public actor PackEngine {
                     ErrorCode.networkError, "Fetching \(packId)'s files index failed.", packId: packId)
             }
         }
+        // plans/P4-19.md §2.5: a delegated release's extension rule over the files index, before
+        // any payload object is fetched.
+        if delegated != nil {
+            guard let index else {
+                throw PackError(
+                    ErrorCode.filesIndexInvalid,
+                    "\(packId)'s files index is required for a delegated release.", packId: packId)
+            }
+            for f in index.files where dataOnlyPathRefusal(f.path) != nil {
+                throw PackError(
+                    ErrorCode.packNotDataOnly,
+                    "\(packId) holds \(f.path), which a delegated content key may not ship.",
+                    detail: DataOnlyRule.extension.rawValue, path: f.path, packId: packId)
+            }
+        }
         var target = planTarget(variant, recordSha256: pin.sha256, filesIndex: index)
         if let budget = opts.oneShotBudget, target.full != nil, let full = variant.full,
             !(full.codec == "zstd" && opts.zstd.canStream), full.bytes + full.size > budget
@@ -1219,7 +1320,42 @@ public actor PackEngine {
         return .plan(
             Planned(
                 body: body, recordSha256: pin.sha256, record: record, variant: variant,
-                installs: installs, seeds: seeds, planId: planId, index: index, plan: p))
+                installs: installs, seeds: seeds, planId: planId, index: index, plan: p,
+                delegation: delegated))
+    }
+
+    /// §2.4's delegated surface: never the stamp's pin or hold for the pack, never a stored
+    /// revocation's replacement (release-key surfaces vouch for exact bytes).
+    private func delegatedAllowed(_ packId: String, _ sha256: String) -> Bool {
+        if opts.stamp?.pins.contains(where: { $0.pack == packId && $0.sha256 == sha256 }) == true {
+            return false
+        }
+        if opts.holds.contains(where: { $0.pack == packId && $0.release.sha256 == sha256 }) { return false }
+        for r in revVerified.values where r.replacement?.sha256 == sha256 { return false }
+        return true
+    }
+
+    /// A delegation record by hash: this process's copy, else fetched (at most
+    /// `MAX_DELEGATIONS_PER_CHECK` distinct ones per call; a target beyond that waits).
+    private func fetchDelegation(_ packId: String, _ hash: String) async throws -> String {
+        if let have = delegationBodies[hash] { return have }
+        if delegationBudget <= 0 {
+            throw PackError(
+                ErrorCode.networkError,
+                "\(packId)'s delegation was not fetched: this call reached its delegation bound; the next one retries.",
+                detail: "delegation", packId: packId)
+        }
+        delegationBudget -= 1
+        switch await opts.fetchRecord(hash) {
+        case .failed(let code):
+            throw PackError(
+                code, "Fetching \(packId)'s delegation failed (\(code)).", detail: "delegation",
+                packId: packId)
+        case .ok(let body):
+            // Kept only when it is the record the hash names; `verifyReleaseRecord` checks it again.
+            if recordHash(body) == hash { delegationBodies[hash] = body }
+            return body
+        }
     }
 
     private func ensureOne(_ packId: String, target: ReleasePin? = nil) async throws -> PackInstall {
@@ -1259,9 +1395,28 @@ public actor PackEngine {
         case .chosen(let c, _, let fallbacks):
             if c.strategy == "noop" {
                 let same = pre.installs.first { $0.payloadSha256 == variant.payload.sha256 }!
+                // plans/P4-19.md Amendment A1: a delegated release that reuses an install holding
+                // the same payload re-sniffs that install's files, so the data-only rule holds
+                // whatever admitted the bytes first.
+                if pre.delegation != nil {
+                    guard let files = pre.seeds[same.location]?.files else {
+                        throw PackError(
+                            ErrorCode.packNotDataOnly,
+                            "\(packId)'s reused install cannot be re-checked by the data-only rule.",
+                            detail: DataOnlyRule.content.rawValue, packId: packId)
+                    }
+                    for f in files {
+                        if let rule = dataOnlyFileRefusal(f.path, try readAll(f.source)) {
+                            throw PackError(
+                                ErrorCode.packNotDataOnly,
+                                "\(packId) holds \(f.path), which a delegated content key may not ship (\(rule.rawValue)).",
+                                detail: rule.rawValue, path: f.path, packId: packId)
+                        }
+                    }
+                }
                 return try await commit(
                     packId, pre.body, pre.recordSha256, pre.record, variant, same.location,
-                    stagingPlan: pre.planId, reused: true)
+                    stagingPlan: pre.planId, reused: true, delegation: pre.delegation)
             }
             candidates = [c] + fallbacks
         case .platform:
@@ -1279,7 +1434,7 @@ public actor PackEngine {
                 planId: pre.planId, packId: packId, record: pre.body, recordSha256: pre.recordSha256,
                 variant: variantKey(variant.variant), strategy: cand.strategy, delta: cand.delta,
                 objects: objects.map { JournalObject(sha256: $0.sha256, bytes: $0.bytes, done: 0) },
-                startedAt: await opts.now())
+                startedAt: await opts.now(), delegation: pre.delegation)
             doc = beginInstall(try requireLoaded(), journal)
             try persist()
             let total = objects.reduce(0) { $0 + $1.bytes }
@@ -1295,14 +1450,27 @@ public actor PackEngine {
                 }
             }
             emit(PackProgress(packId: packId, phase: "apply", done: total, total: total))
-            let result = try apply(pre.planId, packId, cand.strategy, cand.delta, variant, pre.seeds)
+            // plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
+            let (result, refusal) = try apply(
+                pre.planId, packId, cand.strategy, cand.delta, variant, pre.seeds,
+                dataOnly: pre.delegation != nil)
+            if let r = refusal {
+                // A refusal aborts the plan: no fallback, staging discarded.
+                doc = abandonInstall(try requireLoaded(), packId: packId)
+                try persist()
+                try? opts.storage.removeStaging(pre.planId)
+                throw PackError(
+                    ErrorCode.packNotDataOnly,
+                    "\(packId) holds \(r.path), which a delegated content key may not ship (\(r.rule.rawValue)).",
+                    detail: r.rule.rawValue, path: r.path, packId: packId)
+            }
             if result.verdict.ok {
                 let location = try opts.storage.commit(
                     pre.planId, packId, variant.payload.sha256, variant.files.layout,
                     result.index ?? pre.index)
                 let install = try await commit(
                     packId, pre.body, pre.recordSha256, pre.record, variant, location,
-                    stagingPlan: pre.planId, reused: false)
+                    stagingPlan: pre.planId, reused: false, delegation: pre.delegation)
                 emit(PackProgress(packId: packId, phase: "done", done: total, total: total))
                 return install
             }
@@ -1361,14 +1529,33 @@ public actor PackEngine {
 
     private func apply(
         _ planId: String, _ packId: String, _ strategy: String, _ delta: String?,
-        _ variant: PackVariant, _ seeds: [String: InstalledPayload]
+        _ variant: PackVariant, _ seeds: [String: InstalledPayload], dataOnly: Bool
+    ) throws -> (ApplyResult, DataOnlyRefusalSeen?) {
+        let out = try storage(planId, variant.files.layout)
+        var tree = out.tree
+        var guarded: DataOnlyTreeSink?
+        if dataOnly, let inner = tree {
+            guarded = DataOnlyTreeSink(inner)
+            tree = guarded
+        }
+        let result = try applyWith(
+            planId, packId, strategy, delta, variant, seeds, PackOutput(sink: out.sink, tree: tree))
+        return (result, guarded?.seen.with { $0 })
+    }
+
+    private func storage(_ planId: String, _ layout: String) throws -> PackOutput {
+        try opts.storage.output(planId, layout)
+    }
+
+    private func applyWith(
+        _ planId: String, _ packId: String, _ strategy: String, _ delta: String?,
+        _ variant: PackVariant, _ seeds: [String: InstalledPayload], _ out: PackOutput
     ) throws -> ApplyResult {
         let storage = opts.storage
         let objects: ObjectPort = { sha256 in
             let o = try storage.stagedObject(planId, sha256)
             return try o.size() > 0 || sha256 == EMPTY_SHA256 ? try o.source() : nil
         }
-        let out = try storage.output(planId, variant.files.layout)
         let ports = ApplyPorts(objects: objects, zstd: opts.zstd, sink: out.sink, tree: out.tree)
         if strategy == "full" { return applyFull(variant, ports) }
         var installed: [InstalledFile] = []
@@ -1394,7 +1581,8 @@ public actor PackEngine {
     /// Commit: the pointer swap, activation, garbage collection.
     private func commit(
         _ packId: String, _ recordJws: String, _ recordSha256: String, _ record: PackRecordDoc,
-        _ variant: PackVariant, _ location: String, stagingPlan: String, reused: Bool
+        _ variant: PackVariant, _ location: String, stagingPlan: String, reused: Bool,
+        delegation: String? = nil
     ) async throws -> PackInstall {
         let install = PackInstall(
             packId: packId, record: recordJws, recordSha256: recordSha256, version: record.version,
@@ -1402,7 +1590,7 @@ public actor PackEngine {
             layout: variant.files.layout, payloadSha256: variant.payload.sha256,
             payloadSize: variant.payload.size, activation: activationOf(record, handler(record.type)),
             location: location, embedded: embedded[packId]?.location == location ? true : nil,
-            installedAt: await opts.now())
+            installedAt: await opts.now(), delegation: delegation)
         // A fresh commit supersedes this pack's entries whose check could not run; an active one
         // becomes `previous`, re-verified before a rollback uses it.
         let carried = deferredActive[packId]
@@ -1582,4 +1770,10 @@ private func rangeStartsAt(_ contentRange: String?, _ offset: Int) -> Bool {
 private func activationOf(_ record: PackRecordDoc, _ handler: (any PackHandler)?) -> String {
     if let a = record.activation, a == "hot" || a == "restart" { return a }
     return handler?.activation ?? "restart"
+}
+
+/// The delegation hash of a delegated install (its stored delegation and the record's kid), or nil
+/// for a release-signed one.
+private func installDelegation(_ i: PackInstall) -> String? {
+    i.delegation != nil ? delegationHashOf(i.record) : nil
 }

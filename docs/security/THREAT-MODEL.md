@@ -1540,16 +1540,13 @@ deliberately no product-wide bucket: one attacker could exhaust it and lock ever
 product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
 `clientIp`, and sharding the rate-limit Durable Object (R10-04a).
 
-**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** Whoever starts a flow can
-confirm it themselves, with no browser: `/device/start` with their own device id, GET the page
-for their own user code, read the CSRF token, POST it with no `Origin` (it passes, as above), and
-read the IdP authorize URL — `state`, `nonce` and PKCE challenge — out of the `303`. They then
-forward that URL to a victim, or redirect the victim to it from any page. The victim signs in at
-the IdP — or, with silent SSO, does nothing at all — and never sees the Polaris confirmation
-page. The callback binds the victim's license to the flow, whose device id is the attacker's,
-and the attacker's own `/device/poll`, with their own device code, returns a device token on the
-victim's license (PoC: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own
-flow…`, which asserts the gap).
+**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** The flow's starter can
+complete the confirmation step without a browser and forward the resulting IdP sign-in to a
+victim. If the victim signs in (or silent SSO signs them in), the callback binds the victim's
+license to the starter's flow, and the starter's own poll then receives a device token on the
+victim's license. The confirmation page is never shown to the victim. The regression test
+`R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own flow…` asserts the gap;
+binding the callback to the confirming browser (below) is the fix.
 
 **What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled
@@ -1817,7 +1814,8 @@ the reserved record kind `revocation`. It adds no `typ`, no claim and no route.
   (`plans/P4-13.md` decision 4): a revoked required pack cannot be mounted, so continuing would
   end in an error and a boot-guard rollback loop; `required` stops at a confirmed `blocked`. It
   fires only for a pack the stamp marks `required`, revoked with no usable replacement, and so
-  only after a CI-signed revocation. A revoked optional pack is unmounted and play continues.
+  only after a CI-signed revocation. A revoked optional pack stops at once when it is hot or
+  not yet mounted, and play continues (a mounted Godot `godot.pck` is the exception below).
   Floors still never stop play.
 - **A feed target never downgrades a pack**; pins, holds and replacements install exactly, so a
   compromised Worker cannot roll packs back.
@@ -1829,6 +1827,10 @@ Residuals, stated rather than defended:
   yank at least stops new installs. Every SDK release note says so.
 - **SDK downgrade.** A host that downgrades its SDK below P4-13 ignores `revocations.json` and
   may mount a revoked release again.
+- **Godot: a revoked `godot.pck` already mounted in this process stays loaded until restart**,
+  because Godot cannot unload a resource pack. It is withdrawn if not yet mounted, refused from
+  the next boot, and `set_changed` fires so the host can prompt a restart. A revoked REQUIRED
+  pack gives boot `required` from the next boot.
 - **A torn `revocations.json`** is quarantined and replaced by a file whose `relearn` lists the
   stamp's pinned and embedded packs, so their embedded baselines are refused at every boot
   (online the pack is fetched instead) until a fresh feed with a usable `revocations` member
@@ -1983,6 +1985,34 @@ Residuals, stated rather than defended:
   `bundles/` key is kept, and bundle storage only grows.
 - **`blob_gc_log` names keys, not tenants, for deletions.** An object's deletion is attributed to
   no product; the `ref-dropped` rows say which product dropped the last ref.
+
+### The compatibility matrix and the device simulator (P4-15)
+
+P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
+`GET …/update/simulate`. Both sit behind the platform-admin session, CSRF and rate-limit gates of
+`admin/api.ts`, write nothing and audit nothing, and add no wire member.
+
+- **No product-key use.** To run client-core's own update check (no second implementation),
+  `simulate` must hand the device a signed feed. It signs the document `documentFor` composes with
+  an **ephemeral** Ed25519 key generated per request (WebCrypto), and the simulated device trusts
+  that ephemeral public key for the feed. The module never reads the product's signing key: the
+  admin handler passes it only the product's slug and no `env`, so nothing on this path can unseal
+  a key, and a test asserts no other product field is read. The console therefore cannot be used as
+  a product-key signing oracle, and the product key is not exercised on every console click. The
+  ephemeral key is dropped with the request; the JWS is never stored, returned or served, and the
+  channel's `seq` does not move.
+- **The feed signature is not under test here.** Because the device trusts the ephemeral key, the
+  simulator says nothing about the product key's signature over the real feed; the conformance
+  corpus and the feed route's own tests cover that. The product's PUBLIC keys (public columns
+  only) stay in the simulated trust set, so the refusal of a release key equal to a product key
+  still runs as on a device.
+- **Records stay real.** The simulator's record fetches read `getRecordByHash`, the store the
+  record route serves, and verify against the product's real release keys, so record, revocation
+  and replacement verification (P4-13), and the delegated-record path with its delegation
+  revocations (P4-19), run exactly as on a device; a record that fails is reported in `errors`,
+  never trusted.
+- **No cross-tenant read.** Both routes read only the session's product; a device id passed for the
+  rollout buckets is hashed in memory and echoed back, never stored.
 
 ### Packs on the wire (packs v1, P4-21)
 
@@ -2178,7 +2208,8 @@ a text resource (`.tscn`, `.tres`, `.escn`) whose section headers name `GDScript
 `CSharpScript` or that sets `script/source`, and a binary resource (`.scn`, `.res`, anything under
 `.godot/exported/`) containing `GDScript`, `CSharpScript` or `script/source` as a Godot
 length-prefixed string, or that is compressed (`RSCC`) or otherwise not inspectable. (P4-08's
-audit replaced both scans with the fail-closed content rules below.) The CLI lint is a
+audit replaced both scans with the fail-closed content rules below, and P4-27 replaced the `RSCC`
+refusal with bounded decompression.) The CLI lint is a
 publisher-side guard, not a trust boundary: a repo writer with the release key can sign
 any record, so P4-08's device-side directory check must apply the same rule (the same fixtures,
 `packages/cli/test/packFixtures.ts`) before a pack is mounted.
@@ -2217,8 +2248,45 @@ committed or mounted:
   whatever it is called. The text scan runs on the text-resource extensions (`.tres`, `.tscn`,
   and `.escn`, which is an import format rather than a runtime text-loader extension in 4.x and is
   scanned because stricter is free) and, as a defensive extra, on any entry with a sniffed
-  `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) cannot be scanned and is
-  refused under any name.
+  `[gd_scene` / `[gd_resource` head. A compressed resource (`RSCC`) is decompressed, bounded, and
+  its body scanned, under any name (next point).
+- **Compressed resources are decompressed under fixed bounds (P4-27).** Godot's scene importer
+  writes every imported model's `.scn` as `RSCC` (FileAccessCompressed: zstd blocks of 4096), so
+  refusing it refused every pack with a model. Both validators now decompress it, which means
+  running a decoder over attacker-chosen bytes, so the header is untrusted and bounded before any
+  allocation or decode: compression mode 2 (zstd) only; block size 4 KiB–1 MiB; the declared
+  total at most 64 MiB per entry (`RSCC_MAX_TOTAL`); the declared totals of one pack's `RSCC`
+  entries at most 512 MiB together (`RSCC_PACK_BUDGET`, counted in directory order from each
+  header before that entry's blocks are read, so the entry that crosses it is refused without
+  being decompressed); the block table and every block inside the entry; the closing magic
+  exactly at its end. Both are one constant on both sides. The cap is measured, not guessed:
+  4.7.2's importer turns a script-written skinned character (90,601 vertices, 60 joints, 20
+  animations of 10 s at 30 fps) into an 18.2 MB body and a 980,000-triangle mesh into 58.7 MB;
+  64 MiB is about 4× the character and still admits the mesh. The per-pack budget matters
+  because single-segment RLE blocks regenerate 128 KiB from 4 bytes: a 12 kB entry can declare a
+  whole cap, so without it a 10 MB pack could demand hundreds of GiB of decoding. Every block
+  must be exactly one single-segment zstd frame (no skippable frame, no dictionary id, no second
+  frame: libzstd's one-shot decode, the engine's, would take those, the CLI's single-frame wasm
+  decoder would not; and no window descriptor, which every Godot frame lacks and on which the
+  32-bit wasm decoder and a 64-bit device disagree at 2^31) whose header declares the block's
+  size and whose zstd blocks each declare at most 128 KiB and at most that size (libzstd
+  versions differ on enforcing the limit for raw and RLE blocks), checked by a frame walk on
+  both sides before anything is allocated; each decode then gets that size as its output capacity
+  (`PackedByteArray.decompress(size, COMPRESSION_ZSTD)` on the device, `@polaris-key/zstd-wasm`
+  in the CLI) and must return exactly it, so a block that lies about its size (a bomb) stops at
+  its declared size and is refused, and the work is bounded by the cap whatever the ratio. The
+  last block is the remainder (an empty frame when the total is a multiple of the block size,
+  which is only walked, never decoded). The body must open like a binary resource (the saver
+  omits the `RSRC` magic when compressing: the big-endian and real64 flags must be 0 or 1) and
+  then gets the same marker rule as an `RSRC` entry. Any other shape is refused, with identical
+  lines from both validators (`rscc-*` fixtures in `verdicts.json`, real 4.7.2 and 4.4.1 imports
+  admitted, run on both engines). The device's marker scan is linear whatever the bytes are: it
+  hex-encodes 1 MiB windows (overlapping by the longest marker) and searches them natively,
+  re-checking a window exactly only when a hit falls between bytes, instead of comparing at
+  every occurrence of a marker's first byte (`rscc-g-run`, 64 MiB of `G`, is checked in under a
+  second, with a time bound in the suite). Residual: a hostile pack can make a device decompress
+  and scan up to 512 MiB during the check (off the main thread, at most 64 MiB held at once),
+  which costs time and memory but cannot write past a declared size or reach the mount.
 - **The scans are fail-closed content rules, not parsers (P4-08 validator audit).** As
   recalled from the engine source rather than measured here, Godot's VariantParser reads newlines
   as whitespace and fields as Variants (StringName `&"…"`, `\u` escapes, an inline

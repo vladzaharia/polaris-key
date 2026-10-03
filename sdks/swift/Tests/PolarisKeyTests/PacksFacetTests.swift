@@ -1,4 +1,4 @@
-// @pkey-feature packs.state packs.handlers packs.record packs.provides
+// @pkey-feature packs.state packs.handlers packs.record packs.delegation packs.provides
 //
 // `update.packs` end to end against a fake control plane (the port of the Node SDK's
 // `test/packs.test.ts`): a `files.tree` pack installed from its pinned record into the platform
@@ -185,6 +185,50 @@ final class PacksFacetTests: XCTestCase {
         } catch {
             return ("other: \(error)", nil)
         }
+    }
+
+    /// plans/P4-19.md §2.4: the packs client hands the stamp's holds to the engine, so a release
+    /// the stamp holds never takes the delegated path, even when a decision targets it and its
+    /// delegation is valid (`record-rejected`, detail `jws`). Without the hold it installs.
+    func testAHeldReleaseSignedUnderADelegationIsRefusedThroughThePacksClient() async throws {
+        let ck = contentKeyPair()
+        let d = delegationFor(deliverable: "djdl.events", publicKey: ck.pub)
+        let held = treePack(
+            packId: "djdl.events.halloween", version: "1.0.0", seq: 1, files: ["a.json": "{}"],
+            signer: (ck.key, d.kid), issuedAt: 1_759_250_000)
+        await serve([held])
+        await server.reply("/djdl/release/records/\(d.sha256)", body: d.jws)
+        let release = ReleasePin(sha256: held.recordSha256, seq: held.seq, version: held.version)
+        let target = PackTarget(pack: held.packId, release: release)
+        func stamp(_ name: String, holds: Bool) throws -> PackStampSource {
+            var o: [String: JSONValue] = [
+                "format": .string("pkey-content/1"), "contentApi": .int(1), "pins": .array([]),
+                "expects": .array([
+                    .object([
+                        "pack": .string(held.packId), "required": .bool(true), "delivery": .string("essential"),
+                    ])
+                ]),
+            ]
+            if holds {
+                o["holds"] = .array([
+                    ContentHold(pack: held.packId, release: release, reason: "held in a test").json
+                ])
+            }
+            let url = work.appendingPathComponent(name)
+            try Data(canonicalJSON(.object(o)).utf8).write(to: url)
+            return .file(url)
+        }
+
+        let (c, update) = try await client(stamp: try stamp("stamp-held.json", holds: true))
+        let (code, detail) = await code { _ = try await update.packs.ensureReleases([target]) }
+        XCTAssertEqual(code, ErrorCode.recordRejected)
+        XCTAssertEqual(detail, "jws")
+        await c.close()
+
+        let (c2, update2) = try await client(stamp: try stamp("stamp-free.json", holds: false))
+        let installs = try await update2.packs.ensureReleases([target])
+        XCTAssertEqual(installs.first?.delegation, d.jws)
+        await c2.close()
     }
 
     func testInstallsAFilesTreePackFromTheFakeByteServerAndReportsPackSetId() async throws {

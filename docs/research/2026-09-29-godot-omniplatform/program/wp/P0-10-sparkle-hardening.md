@@ -36,7 +36,7 @@ of an isolate out-of-memory crash, and an unverifiable asset fails closed with a
 
 ## Read first
 
-- `AGENTS.md` (the workerd smoke job) and `docs/security/findings/R6-release.md` (R6-03).
+- `AGENTS.md` (the workerd smoke job) and the R6 audit findings (R6-03).
 - `packages/worker/src/services/release/sparkle.ts`, `github.ts:311-429` (`fetchAsset`,
   `readCapped`, `fetchAssetBytes`), `services/update/feed.ts:170-200` (the caller).
 - `packages/worker/test/release.test.ts:568-677` (real-keypair signature fixtures, fail-closed cases).

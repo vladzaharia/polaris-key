@@ -1639,7 +1639,7 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
   }
 
   // djdl as it really runs: Identity on, the platform IdP, and a group map that licenses
-  // `family` and `friends`. The backfill records that sign-in trust, so a later push that
+  // `members`. The backfill records that sign-in trust, so a later push that
   // aims sign-in elsewhere — or maps another group — makes the migrated approval inert.
   const DJDL_SERVICES = JSON.stringify(
     Object.fromEntries(

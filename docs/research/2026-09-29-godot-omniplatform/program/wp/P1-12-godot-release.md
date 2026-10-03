@@ -105,7 +105,7 @@ repo's own docs say there are four SDKs, which is wrong once Godot passes the co
     mints a new free licence;
   - iOS and Android: unlocking paid content with an externally bought key conflicts with store
     rules; sign-in is fine;
-  - the client gate is UX, not DRM (`docs/security/arch/anti-piracy-realism.md`).
+  - the client gate is UX, not DRM (the anti-piracy-realism review).
 - **Docs conventions:** quoted frontmatter values; internal links absolute with a trailing slash;
   no bare `{` or `}` in MDX prose. The SDK page imports the README, so there is one copy.
 - **Language count:** after this package, `AGENTS.md` says six languages and rule 2's "all five

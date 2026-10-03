@@ -94,7 +94,8 @@ struct TreePack: Sendable {
 func treePack(
     packId: String, version: String, seq: Int, files rawFiles: [String: Any], from: TreePack? = nil,
     activation: String = "hot", entitlement: String? = nil, type: String = "files.tree",
-    indexBytes: Int? = nil, recordExtra: [String: JSONValue] = [:]
+    indexBytes: Int? = nil, signer: (key: Curve25519.Signing.PrivateKey, kid: String)? = nil,
+    issuedAt: Int? = nil, variantExtra: [String: JSONValue] = [:], recordExtra: [String: JSONValue] = [:]
 ) -> TreePack {
     var files: [String: [UInt8]] = [:]
     for (p, b) in rawFiles { files[p] = (b as? [UInt8]) ?? Array((b as! String).utf8) }
@@ -182,16 +183,17 @@ func treePack(
         ]),
     ]
     if !deltas.isEmpty { variant["deltas"] = .array(deltas) }
+    for (k, v) in variantExtra { variant[k] = v }
     var record: [String: JSONValue] = [
         "schemaVersion": .int(1), "aud": .string(PackFixtures.product), "deliverable": .string(packId),
-        "kind": .string("pack"), "version": .string(version), "seq": .int(seq), "issuedAt": .int(1_759_300_000 + seq),
+        "kind": .string("pack"), "version": .string(version), "seq": .int(seq), "issuedAt": .int(issuedAt ?? 1_759_300_000 + seq),
         "type": .string(type), "formatVersion": .int(1), "handler": .object(["activation": .string(activation)]),
         "variants": .array([.object(variant)]),
     ]
     if let entitlement { record["entitlement"] = .string(entitlement) }
     // Record-level members beyond the claims (P4-20's reserved `provides`).
     for (k, v) in recordExtra { record[k] = v }
-    let jws = PackFixtures.sign(.object(record))
+    let jws = signer.map { signWith(.object(record), key: $0.key, kid: $0.kid) } ?? PackFixtures.sign(.object(record))
     return TreePack(
         packId: packId, version: version, seq: seq, jws: jws, recordSha256: recordHash(jws), treeDigest: digest,
         size: size, objects: objects, files: files, indexSha256: sha(index), fullSha256: sha(full))
@@ -370,4 +372,54 @@ func verifiedRevocation(_ r: (jws: String, record: String, entry: FeedRevocation
                 releaseKeys: PackFixtures.releaseKeys, productTrust: PackFixtures.productTrust,
                 expectedAud: PackFixtures.product, entry: r.entry)
         ).revocation, "the fixture revocation verifies")
+}
+
+/// Sign a release record with an arbitrary Ed25519 key and kid (a delegated content key).
+func signWith(_ payload: JSONValue, key: Curve25519.Signing.PrivateKey, kid: String) -> String {
+    let header = #"{"alg":"EdDSA","typ":"pkey-release+jws","kid":"\#(kid)"}"#
+    let input = Base64URL.encode(string: header) + "." + Base64URL.encode(string: canonicalJSON(payload))
+    let sig = try! key.signature(for: Data(input.utf8))
+    return input + "." + Base64URL.encode(sig)
+}
+
+/// A throwaway Ed25519 content key generated at test time (never committed), and its public half
+/// as base64url of its 32 raw bytes.
+func contentKeyPair() -> (key: Curve25519.Signing.PrivateKey, pub: String) {
+    let k = Curve25519.Signing.PrivateKey()
+    return (k, Base64URL.encode(k.publicKey.rawRepresentation))
+}
+
+/// A `kind: delegation` record (plans/P4-19.md §2.2) signed by the release key, its hash and the
+/// kid a record signed under it carries.
+func delegationFor(
+    deliverable: String, publicKey: String, types: [String] = ["files.tree", "data.json"],
+    issuedAt: Int = 1_759_200_000, expiresAt: Int? = nil, seq: Int = 1
+) -> (jws: String, sha256: String, kid: String) {
+    let jws = PackFixtures.sign(
+        .object([
+            "schemaVersion": .int(1), "aud": .string(PackFixtures.product), "deliverable": .string(deliverable),
+            "kind": .string("delegation"), "version": .string(String(seq)), "seq": .int(seq),
+            "issuedAt": .int(issuedAt), "expiresAt": .int(expiresAt ?? issuedAt + 180 * 86400),
+            "delegate": .object(["publicKey": .string(publicKey)]), "types": .array(types.map { .string($0) }),
+        ]))
+    let h = PackFixtures.sha(jws)
+    return (jws, h, "pkd1-\(h)")
+}
+
+/// A revocation of a delegation (P4-13's record unchanged: `revokes` is its hash) and its feed
+/// entry (`kind: delegation`).
+func delegationRevocationFor(
+    _ d: (jws: String, sha256: String, kid: String), deliverable: String
+) -> (jws: String, record: String, entry: FeedRevocation) {
+    let jws = PackFixtures.sign(
+        .object([
+            "schemaVersion": .int(1), "aud": .string(PackFixtures.product), "deliverable": .string(deliverable),
+            "kind": .string("revocation"), "version": .string("1"), "seq": .int(1), "issuedAt": .int(1_759_350_000),
+            "revokes": .string(d.sha256), "reason": .string("Content key retired in a test."),
+        ]))
+    let record = PackFixtures.sha(jws)
+    return (
+        jws, record,
+        FeedRevocation(record: record, pack: deliverable, target: d.sha256, version: "1", seq: 1, kind: "delegation")
+    )
 }

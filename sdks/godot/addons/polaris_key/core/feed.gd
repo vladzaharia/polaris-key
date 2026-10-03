@@ -10,6 +10,10 @@ extends RefCounted
 ##   reload_feeds(cached, opts)       the reload path (a coroutine): {feeds, floors}
 ##   commit_feed(feeds, requested, claim, jws)   step 9's write over the `feeds` slice
 ##   bound_channels(requested)        the requested name and, for an alias, its target
+##   feed_content(doc, nw)            the content members (plans/P4-13.md §2.2): {packSets,
+##                                    packFloors, revocations}, each parsed or null, beside the
+##                                    claims (a malformed member never refuses the feed)
+##   with_feed_content(feed, content) the feed as the decision reads it
 ##
 ## The `channel` claim is the CANONICAL channel: once step 5 has bound it to the request (the
 ## requested name, or CHANNEL_ALIASES[requested]), it keys `feeds` and the floors, and step 8 reads
@@ -251,8 +255,10 @@ static func feed_claims(payload: Variant, opts: Dictionary) -> Variant:
 ## and the `seq` floor of the canonical channel. `opts`: {trust, expected_aud, channel (the
 ## REQUESTED name), platform, now (the effective clock), check_freshness (default true), floors?
 ## (canonical channel -> {seq, issuedAt}), offload? (run Ed25519 off the calling thread)}.
-## Returns {ok: true, feed} or {ok: false, reason, channel?}; `channel` (the canonical channel) is
-## present only for a refusal after step 5, the first key of §2.5's fallback order.
+## Returns {ok: true, feed, content} or {ok: false, reason, channel?}; `content` is feed_content over
+## the payload with its own `non_wire_integers` (plans/P4-13.md §2.5 step 10); `channel` (the
+## canonical channel) is present only for a refusal after step 5, the first key of §2.5's fallback
+## order.
 static func verify_feed(jws: Variant, opts: Dictionary) -> Dictionary:
 	if not (jws is String) or not (opts.get("trust") is Dictionary):
 		return {"ok": false, "reason": "jws"}
@@ -292,7 +298,7 @@ static func check_verified(v: Dictionary, opts: Dictionary) -> Dictionary:
 			return {"ok": false, "reason": "rollback", "channel": channel}
 		if seq == floor_seq and float(feed["issuedAt"]) <= float(floor_at.get("issuedAt", 0)):
 			return {"ok": false, "reason": "not-newer", "channel": channel}
-	return {"ok": true, "feed": feed}
+	return {"ok": true, "feed": feed, "content": feed_content(feed, v["non_wire_integers"])}
 
 
 ## The floor a committed feed sets for its canonical channel.
@@ -304,7 +310,8 @@ static func feed_floor(feed: Dictionary) -> Dictionary:
 ## with `k` as the requested name, no freshness and no floor, and its claim must equal `k`. Each
 ## survivor gives `floors[k]`; anything that fails is absent, so a committed feed whose key left
 ## the effective trust set is dropped with its floor. `opts`: {trust, expected_aud, platform}.
-## Returns {feeds: {k: {jws, feed}}, floors: {k: {seq, issuedAt}}}. Floors are never persisted.
+## Returns {feeds: {k: {jws, feed, content}}, floors: {k: {seq, issuedAt}}}. Floors are never
+## persisted.
 static func reload_feeds(cached: Variant, opts: Dictionary) -> Dictionary:
 	var out := {"feeds": {}, "floors": {}}
 	if not (cached is Dictionary):
@@ -322,7 +329,7 @@ static func reload_feeds(cached: Variant, opts: Dictionary) -> Dictionary:
 		})
 		if not r["ok"] or r["feed"]["channel"] != k:
 			continue
-		out["feeds"][k] = {"jws": cached[k], "feed": r["feed"]}
+		out["feeds"][k] = {"jws": cached[k], "feed": r["feed"], "content": r["content"]}
 		out["floors"][k] = feed_floor(r["feed"])
 	return out
 
@@ -345,3 +352,262 @@ static func bound_channels(requested: String) -> PackedStringArray:
 	if alias is String and alias != requested:
 		return PackedStringArray([requested, alias])
 	return PackedStringArray([requested])
+
+
+# ── P4-13: the feed's content members (plans/P4-13.md §2.2, WIRE-CONTRACT-V4 §2.4.1) ─────────
+#
+# Parsed BESIDE the claims, never as a claim: an unusable member is null and never refuses the
+# feed, so a malformed content member cannot stop app updates. Each member is independent.
+# Unknown members are ignored at every level, and the parsed value carries the known ones only.
+# Each parser returns null for "unusable" (GDScript has no exceptions), and every value read from
+# the payload is type-checked before any comparison (a String against a number is a runtime
+# error). Thread-safe: no const Array is indexed or iterated.
+
+## RFC 6901 escaping of one reference token.
+static func _token(key: String) -> String:
+	return key.replace("~", "~0").replace("/", "~1")
+
+
+static func _record_version(v: Variant) -> bool:
+	return PKeyPackClaims.matches(PKeyPackClaims.VERSION_PATTERN, v)
+
+
+static func _parse_variant(v: Variant) -> Variant:
+	if not (v is Dictionary) or (v as Dictionary).size() > 4:
+		return null
+	var out := {}
+	for name in v:
+		var value = v[name]
+		if not PKeyPackClaims.matches(PKeyPackClaims.VARIANT_AXIS_PATTERN, name):
+			return null
+		if not PKeyPackClaims.matches(PKeyPackClaims.VARIANT_VALUE_PATTERN, value):
+			return null
+		out[name] = value
+	return out
+
+
+static func _parse_pack_sets(v: Variant, selector: Variant, nw: PKeyJson.PointerSet) -> Variant:
+	if not (v is Dictionary):
+		return null
+	var ps: Dictionary = v
+	if not ps.has("releases") or not ps.has("sets") or not ps.has("rows"):
+		return null
+
+	if not (ps["releases"] is Dictionary):
+		return null
+	var releases := {}
+	for h in ps["releases"]:
+		var rel = ps["releases"][h]
+		if not PKeyClaims.matches_whole_re(_sha256_re, h) or not (rel is Dictionary):
+			return null
+		if not PKeyPackClaims.is_pack_id(rel.get("pack")):
+			return null
+		if not _record_version(rel.get("version")):
+			return null
+		if not PKeyClaims.is_wire_integer(rel.get("seq"), "/packSets/releases/%s/seq" % h, 1, nw):
+			return null
+		releases[h] = {"pack": rel["pack"], "version": rel["version"], "seq": rel["seq"]}
+
+	if not (ps["sets"] is Dictionary):
+		return null
+	var sets := {}
+	for id in ps["sets"]:
+		var members = ps["sets"][id]
+		if not PKeyClaims.matches_whole_re(_sha256_re, id) or not (members is Array):
+			return null
+		var packs := {}
+		var list: Array = []
+		for m in members:
+			if not (m is String) or not releases.has(m):
+				return null
+			var pack: String = releases[m]["pack"]
+			if packs.has(pack):
+				return null
+			packs[pack] = true
+			list.append(m)
+		sets[id] = list
+
+	if not (ps["rows"] is Array):
+		return null
+	var has_platform: bool = selector is Dictionary and (selector as Dictionary).has("platform")
+	var platform = selector["platform"] if has_platform else null
+	var rows: Array = []
+	var keys := {}
+	var rows_in: Array = ps["rows"]
+	for i in rows_in.size():
+		var row = rows_in[i]
+		if not (row is Dictionary):
+			return null
+		if not PKeyClaims.is_wire_integer(row.get("contentApi"), "/packSets/rows/%d/contentApi" % i, 1, nw):
+			return null
+		if not PKeyClaims.matches_whole_re(_platform_re, row.get("platform")):
+			return null
+		if has_platform and not PKeyPackClaims.same(row["platform"], platform):
+			return null
+		var engine = row.get("engine")
+		if not (engine is String) or (engine != "" and not PKeyPackClaims.matches(PKeyPackClaims.ENGINE_PATTERN, engine)):
+			return null
+		var variant = _parse_variant(row.get("variant"))
+		if variant == null:
+			return null
+		if not (row.get("set") is String) or not sets.has(row["set"]):
+			return null
+		var key := JSON.stringify([float(row["contentApi"]), row["platform"], engine, PKeyPackClaims.variant_key(variant)])
+		if keys.has(key):
+			return null
+		keys[key] = true
+		rows.append({"contentApi": row["contentApi"], "platform": row["platform"], "engine": engine, "variant": variant, "set": row["set"]})
+
+	var out := {"releases": releases, "sets": sets, "rows": rows}
+	if ps.has("outlets"):
+		if not (ps["outlets"] is Dictionary):
+			return null
+		var outlets := {}
+		for id in ps["outlets"]:
+			var entry = ps["outlets"][id]
+			if not PKeyClaims.matches_whole_re(_outlet_re, id) or not (entry is Dictionary):
+				return null
+			var parsed := {}
+			if entry.has("pinned"):
+				if not (entry["pinned"] is Array):
+					return null
+				var seen := {}
+				for p in entry["pinned"]:
+					if not PKeyPackClaims.is_pack_id(p) or seen.has(p):
+						return null
+					seen[p] = true
+				parsed["pinned"] = (entry["pinned"] as Array).duplicate()
+			if entry.has("gates"):
+				if not (entry["gates"] is Dictionary):
+					return null
+				var gates := {}
+				for h in entry["gates"]:
+					var gate = entry["gates"][h]
+					if not (h is String) or not releases.has(h) or not (gate is Dictionary):
+						return null
+					if not (gate.get("halted") is bool):
+						return null
+					var at := "/packSets/outlets/%s/gates/%s" % [_token(String(id)), h]
+					var pg := {"halted": gate["halted"], "fallback": null}
+					if gate.has("rollout"):
+						var ro = gate["rollout"]
+						if not (ro is Dictionary):
+							return null
+						if not PKeyClaims.is_wire_integer(ro.get("bp"), at + "/rollout/bp", 0, nw):
+							return null
+						if float(ro["bp"]) > ROLLOUT_BUCKETS:
+							return null
+						if not PKeyClaims.matches_whole_re(_salt_re, ro.get("salt")):
+							return null
+						pg["rollout"] = {"bp": ro["bp"], "salt": ro["salt"]}
+					if not gate.has("fallback"):
+						return null
+					if gate["fallback"] != null:
+						if not (gate["fallback"] is String) or not releases.has(gate["fallback"]):
+							return null
+						pg["fallback"] = gate["fallback"]
+					gates[h] = pg
+				parsed["gates"] = gates
+			outlets[id] = parsed
+		out["outlets"] = outlets
+	return out
+
+
+static func _parse_pack_floors(v: Variant, nw: PKeyJson.PointerSet) -> Variant:
+	if not (v is Array):
+		return null
+	var out: Array = []
+	var keys := {}
+	var floors: Array = v
+	for i in floors.size():
+		var f = floors[i]
+		if not (f is Dictionary):
+			return null
+		if not PKeyPackClaims.is_pack_id(f.get("pack")):
+			return null
+		if not PKeyClaims.is_wire_integer(f.get("contentApi"), "/packFloors/%d/contentApi" % i, 1, nw):
+			return null
+		if not _record_version(f.get("minVersion")):
+			return null
+		if not (f.get("versionScheme") is String):
+			return null
+		var key := JSON.stringify([f["pack"], float(f["contentApi"])])
+		if keys.has(key):
+			return null
+		keys[key] = true
+		# A forward scheme makes that entry alone ignored.
+		if not PKeyVersion.SCHEMES.has(f["versionScheme"]):
+			continue
+		out.append({"pack": f["pack"], "contentApi": f["contentApi"], "minVersion": f["minVersion"], "versionScheme": f["versionScheme"]})
+	return out
+
+
+static func _parse_revocations(v: Variant, nw: PKeyJson.PointerSet) -> Variant:
+	if not (v is Array):
+		return null
+	var out: Array = []
+	var records := {}
+	var entries: Array = v
+	for i in entries.size():
+		var r = entries[i]
+		if not (r is Dictionary):
+			return null
+		if not PKeyClaims.matches_whole_re(_sha256_re, r.get("record")):
+			return null
+		if not PKeyPackClaims.is_pack_id(r.get("pack")):
+			return null
+		if not PKeyClaims.matches_whole_re(_sha256_re, r.get("target")):
+			return null
+		if not _record_version(r.get("version")):
+			return null
+		if not PKeyClaims.is_wire_integer(r.get("seq"), "/revocations/%d/seq" % i, 1, nw):
+			return null
+		if records.has(r["record"]):
+			return null
+		records[r["record"]] = true
+		# plans/P4-19.md §2.7: `kind` absent (a pack record target) or `delegation`; any other
+		# vocabulary token is a forward value whose entry is dropped alone; anything else makes the
+		# member unusable. (Godot acts on delegation entries from P4-26; until then step 11 skips
+		# them.)
+		var entry := {"record": r["record"], "pack": r["pack"], "target": r["target"], "version": r["version"], "seq": r["seq"]}
+		if r.has("kind"):
+			if not PKeyPackClaims.matches(PKeyPackClaims.VOCAB_TOKEN_PATTERN, r["kind"]):
+				return null
+			if r["kind"] != "delegation":
+				continue
+			entry["kind"] = "delegation"
+		out.append(entry)
+	return out
+
+
+## The feed's content members (plans/P4-13.md §2.2): `packSets`, `packFloors` and `revocations`,
+## each parsed, or null when absent or unusable. Integer members follow V4 §3.1's token rule at
+## their RFC 6901 pointers (pass the verified payload's `non_wire_integers`; null when checking an
+## object you built). An unusable member never refuses the feed and never affects the other two.
+## A `packFloors` entry whose `versionScheme` is not a known scheme is dropped alone. Returns
+## {packSets, packFloors, revocations}; nothing here fails by error.
+static func feed_content(doc: Variant, nw: PKeyJson.PointerSet = null) -> Dictionary:
+	_ready_res()
+	var out := {"packSets": null, "packFloors": null, "revocations": null}
+	if not (doc is Dictionary):
+		return out
+	if doc.has("packSets"):
+		out["packSets"] = _parse_pack_sets(doc["packSets"], doc.get("selector"), nw)
+	if doc.has("packFloors"):
+		out["packFloors"] = _parse_pack_floors(doc["packFloors"], nw)
+	if doc.has("revocations"):
+		out["revocations"] = _parse_revocations(doc["revocations"], nw)
+	return out
+
+
+## The feed as the decision reads it: `feed` with each content member replaced by `content`'s
+## parsed value, or removed when that is null. PKeyDecision re-reads the members without the
+## token rule, so a caller holding a verified payload hands it this copy. Returns a new
+## Dictionary.
+static func with_feed_content(feed: Dictionary, content: Dictionary) -> Dictionary:
+	var out := feed.duplicate()
+	for key in PackedStringArray(["packSets", "packFloors", "revocations"]):
+		out.erase(key)
+		if content.get(key) != null:
+			out[key] = content[key]
+	return out

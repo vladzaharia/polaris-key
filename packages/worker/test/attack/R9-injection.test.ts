@@ -2,7 +2,7 @@
  * RED TEAM R9 — injection, SSRF, open redirects, untrusted-input sinks.
  *
  * Every `it()` here is an attacker PoC or an explicit refutation of a hypothesis.
- * Naming convention: `R9-NN` matches docs/security/findings/R9-injection.md.
+ * Naming convention: `R9-NN` matches the R9 audit findings.
  *
  * NOTE: these tests assert the CURRENT (vulnerable) behaviour so they fail loudly when a
  * fix lands. Read them as "this is what an attacker can do today".
@@ -131,7 +131,7 @@ async function seedCustomOidc(
             `https://key.plrs.im/${SLUG}/identity/auth/callback`,
           ],
         ),
-    JSON.stringify({ family: { role: "user" } }),
+    JSON.stringify({ members: { role: "user" } }),
   );
 }
 
@@ -579,7 +579,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     const linked = await linkRepo(
       env,
       db,
-      "vladzaharia/djdl",
+      "example-org/djdl",
       NOW,
       stub.fetchImpl,
     );

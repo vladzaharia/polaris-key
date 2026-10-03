@@ -66,7 +66,7 @@ the public key is exposed in the onboarding bundle and at `/<product>/.well-know
 
 ## djdl
 
-`djdl/` is the first product and the migration fixture. Its catalog is the verbatim port of
-the engine's former `src/core/configSchema.ts` (28 entries: 17 config, 6 secret, 5 flag),
-with the Remnawave provisioning hooks and the Apple MusicKit edge-mint recipe carried over
-as data.
+`djdl/` is the first product and the migration fixture. Its catalog has 28 entries (17
+config, 6 secret, 5 flag), and its manifest carries a provisioning hook and an edge-mint
+recipe as data. The in-tree copy uses placeholder values; the live product is registered from
+its own repository.

@@ -91,7 +91,7 @@ export async function openManagedValue(
  *
  * This is the reader half of R12-02 and belongs immediately before a payload is minted into a
  * signed config doc or rendered to an owner. NOT yet wired into `resolveEffective`
- * (`licenseCore.ts`) — see the Remediation section of R11-data.md for the exact call-site
+ * (`licenseCore.ts`) — see the Remediation section of the R11 audit findings for the exact call-site
  * change handed to the licensing lane.
  */
 export async function openManagedPayload(

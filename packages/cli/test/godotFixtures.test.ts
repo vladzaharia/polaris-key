@@ -44,6 +44,7 @@ import {
   filesRefOf,
   lintPck,
   readPck,
+  RSCC_MAX_TOTAL,
   zstdCli,
 } from "../src/index.js";
 import {
@@ -112,11 +113,502 @@ function binaryRaw(strings: Uint8Array[]): Uint8Array {
   );
 }
 
-/** A file the real Godot 4.7.2 editor wrote (test/fixtures/godot-real-imports/), verbatim. */
-function realImport(name: string): Uint8Array {
-  return new Uint8Array(
-    readFileSync(path.join(here, "fixtures", "godot-real-imports", name)),
+/**
+ * A file the real Godot editor wrote, verbatim: 4.7.2's in test/fixtures/godot-real-imports/,
+ * 4.4.1's in godot-real-imports-4.4.1/.
+ */
+function realImport(name: string, engine = ""): Uint8Array {
+  const dir =
+    engine === "" ? "godot-real-imports" : `godot-real-imports-${engine}`;
+  return new Uint8Array(readFileSync(path.join(here, "fixtures", dir, name)));
+}
+
+// ── P4-27: compressed binary resources (RSCC) ────────────────────────────────
+
+const u32 = (n: number) => {
+  const b = new Uint8Array(4);
+  new DataView(b.buffer).setUint32(0, n, true);
+  return b;
+};
+const cat = (...parts: Uint8Array[]) => new Uint8Array(Buffer.concat(parts));
+
+/** A zstd block header: last flag, type (0 raw, 1 RLE, 2 compressed), size. */
+const zblock = (last: boolean, type: number, size: number) => {
+  const h = (last ? 1 : 0) | (type << 1) | (size << 3);
+  return new Uint8Array([h & 0xff, (h >> 8) & 0xff, (h >> 16) & 0xff]);
+};
+
+/**
+ * One zstd frame written by hand (deterministic, unlike any encoder's output, so the PCKs can be
+ * byte-compared): single segment, content size `fcs` (default: the content's length), the
+ * content as raw blocks of at most 128 KiB, `extra` bytes added to the last block's payload.
+ */
+function zframe(
+  content: Uint8Array,
+  o: { fcs?: number; extra?: number; checksum?: boolean } = {},
+): Uint8Array {
+  const fcs = o.fcs ?? content.length;
+  const ck = o.checksum ? 0x04 : 0;
+  let head: Uint8Array;
+  if (fcs < 256) head = new Uint8Array([0x20 | ck, fcs]);
+  else if (fcs < 65536 + 256) {
+    head = new Uint8Array([0x60 | ck, 0, 0]);
+    new DataView(head.buffer).setUint16(1, fcs - 256, true);
+  } else head = cat(new Uint8Array([0xa0 | ck]), u32(fcs));
+  const body = cat(content, new Uint8Array(o.extra ?? 0).fill(0x41));
+  const parts: Uint8Array[] = [u32(0xfd2fb528), head];
+  const MAX = 131072;
+  if (body.length === 0) parts.push(zblock(true, 0, 0));
+  for (let at = 0; at < body.length; at += MAX) {
+    const piece = body.subarray(at, at + MAX);
+    parts.push(zblock(at + MAX >= body.length, 0, piece.length), piece);
+  }
+  if (o.checksum) parts.push(u32(0));
+  return cat(...parts);
+}
+
+/** Godot's frame for an empty last block (measured: `ZSTD_compressCCtx` of 0 bytes). */
+const EMPTY_FRAME = new Uint8Array([
+  0x28, 0xb5, 0x2f, 0xfd, 0x20, 0x00, 0x01, 0x00, 0x00,
+]);
+
+/** An RSCC file: header, block table, the frames, the closing magic. */
+function rscc(
+  frames: Uint8Array[],
+  total: number,
+  o: { mode?: number; bs?: number; sizes?: number[] } = {},
+): Uint8Array {
+  const sizes = o.sizes ?? frames.map((f) => f.length);
+  return cat(
+    enc("RSCC"),
+    u32(o.mode ?? 2),
+    u32(o.bs ?? 4096),
+    u32(total),
+    ...sizes.map(u32),
+    ...frames,
+    enc("RSCC"),
   );
+}
+
+/** An RSCC of `body`, cut into `bs` blocks the way FileAccessCompressed does, raw frames. */
+function rsccOf(body: Uint8Array, bs = 4096): Uint8Array {
+  const bc = Math.floor(body.length / bs) + 1;
+  const frames: Uint8Array[] = [];
+  for (let i = 0; i < bc; i++) {
+    const piece = body.subarray(i * bs, Math.min(body.length, (i + 1) * bs));
+    frames.push(piece.length === 0 ? EMPTY_FRAME : zframe(piece));
+  }
+  return rscc(frames, body.length, { bs });
+}
+
+/**
+ * A binary resource body as an RSCC holds it: the RSRC file without its magic, so the header
+ * words come first (big-endian 0, real64 0, version 4.7, format 6), then `binaryResource`'s
+ * strings and data.
+ */
+const resBody = (types: string[], props: string[], seed: number) =>
+  cat(
+    u32(0),
+    u32(0),
+    u32(4),
+    u32(7),
+    u32(6),
+    binaryResource(types, props, seed).subarray(20),
+  );
+
+/** `n` bytes of resource-shaped body (header words, then noise without markers). */
+function plainBody(n: number): Uint8Array {
+  const b = new Uint8Array(n);
+  b.set(resBody(["Mesh"], ["surfaces"], 11).subarray(0, n));
+  for (let i = 600; i < n; i++) b[i] = (i * 7 + 3) & 0x7f;
+  return b;
+}
+
+const TRI_SCN = "tri.glb-6ed0665643de460f848bf1abf5ed7ae0.scn";
+const GRID_SCN = "grid.glb-9b02adf25d7711b0ef870695e4d4a20b.scn";
+
+/**
+ * P4-27: real engine-written RSCC imports (admitted) and every hostile shape (refused with the
+ * same line on both sides). The hostile `.scn`s sit under the prefix: the scan judges content,
+ * not location. `tri` is the 4.7.2 editor's single-triangle import (2 blocks); `grid` a 20×20
+ * grid mesh `.glb` written by a script, imported by 4.7.2 and by 4.4.1 (same RSCC framing, other
+ * bodies; 5 blocks each, files verbatim under fixtures/godot-real-imports{,-4.4.1}/).
+ */
+function rsccFixtures(): CheckFixture[] {
+  const tri = realImport(TRI_SCN);
+  const at = "assets/kaykit/";
+  const set = (bytes: Uint8Array, off: number, v: number) => {
+    const c = bytes.slice();
+    new DataView(c.buffer).setUint32(off, v, true);
+    return c;
+  };
+  // A body that names GDScript: an RSRC with an embedded script's type, without the magic.
+  const scriptBody = resBody(
+    ["PackedScene", "GDScript"],
+    ["nodes", "script"],
+    12,
+  );
+  // …and one whose marker straddles a block boundary (the body is scanned whole).
+  const straddle = plainBody(8192 + 100);
+  straddle.set(enc("GDScript"), 4096 - 3);
+  const block = plainBody(4096);
+  return [
+    {
+      name: "rscc-real-import-grid",
+      files: [
+        ...kaykitV1(),
+        [`${at}grid.glb.import`, realImport("grid.glb.import")],
+        [`.godot/imported/${GRID_SCN}`, realImport(GRID_SCN)],
+      ],
+    },
+    {
+      name: "rscc-real-import-grid-4.4.1",
+      files: [
+        ...kaykitV1(),
+        [`${at}grid.glb.import`, realImport("grid.glb.import", "4.4.1")],
+        [`.godot/imported/${GRID_SCN}`, realImport(GRID_SCN, "4.4.1")],
+      ],
+    },
+    {
+      // A total that is a multiple of the block size: Godot writes an empty last frame.
+      name: "rscc-empty-tail",
+      files: [...kaykitV1(), [`${at}tail.scn`, rsccOf(plainBody(8192))]],
+    },
+    {
+      name: "rscc-script",
+      files: [
+        ...kaykitV1(),
+        [`${at}script.scn`, rsccOf(scriptBody)],
+        [`${at}straddle.res`, rsccOf(straddle)],
+        [`${at}model.png`, rsccOf(scriptBody)],
+      ],
+    },
+    {
+      name: "rscc-mode",
+      files: [
+        ...kaykitV1(),
+        [`${at}deflate.scn`, set(tri, 4, 1)],
+        [`${at}fastlz.scn`, set(tri, 4, 0)],
+        [`${at}gzip.scn`, set(tri, 4, 3)],
+      ],
+    },
+    {
+      name: "rscc-over-cap",
+      files: [
+        ...kaykitV1(),
+        // Only the header: nothing past it is read.
+        [
+          `${at}big.scn`,
+          cat(enc("RSCC"), u32(2), u32(1048576), u32(268435457)),
+        ],
+        [`${at}max.scn`, set(set(tri, 8, 1048576), 12, 0xffffffff)],
+      ],
+    },
+    {
+      name: "rscc-header",
+      files: [
+        ...kaykitV1(),
+        [`${at}short.scn`, enc("RSCC\x02\0\0\0")],
+        [`${at}tiny-blocks.scn`, set(tri, 8, 16)],
+        [`${at}huge-blocks.scn`, set(tri, 8, 1048577)],
+        [`${at}zero-blocks.scn`, set(tri, 8, 0)],
+        // A total under the cap whose block table (1001 sizes) needs more bytes than the file has.
+        [`${at}table.scn`, set(tri, 12, 4096 * 1000)],
+      ],
+    },
+    {
+      name: "rscc-truncated",
+      files: [
+        ...kaykitV1(),
+        [`${at}cut.scn`, tri.subarray(0, tri.length - 100)],
+        [`${at}no-magic.scn`, tri.subarray(0, tri.length - 4)],
+      ],
+    },
+    {
+      name: "rscc-decodes-long-short",
+      files: [
+        ...kaykitV1(),
+        // The frame says 4000 for a 4096 block: refused before decoding.
+        [
+          `${at}says-short.scn`,
+          rscc([zframe(block.subarray(0, 4000)), EMPTY_FRAME], 4096),
+        ],
+        // The frame says 4096 but its blocks hold 4000 / 4196 bytes: the decoder refuses.
+        [
+          `${at}is-short.scn`,
+          rscc(
+            [zframe(block.subarray(0, 4000), { fcs: 4096 }), EMPTY_FRAME],
+            4096,
+          ),
+        ],
+        [
+          `${at}is-long.scn`,
+          rscc([zframe(block, { extra: 100 }), EMPTY_FRAME], 4096),
+        ],
+        // The last block is a remainder (100 bytes), and must be exactly that.
+        [
+          `${at}tail-long.scn`,
+          rscc([zframe(block), zframe(block.subarray(0, 101))], 4196),
+        ],
+        // An empty last block may only be empty raw blocks with no checksum.
+        [
+          `${at}tail-nonempty.scn`,
+          rscc(
+            [zframe(block), zframe(new Uint8Array(0), { extra: 1, fcs: 0 })],
+            4096,
+          ),
+        ],
+        [
+          `${at}tail-checksum.scn`,
+          rscc(
+            [zframe(block), zframe(new Uint8Array(0), { checksum: true })],
+            4096,
+          ),
+        ],
+      ],
+    },
+    {
+      name: "rscc-frames",
+      files: [
+        ...kaykitV1(),
+        // Two frames in one block: libzstd's one-shot decode (the engine's) would take both.
+        [
+          `${at}two-frames.scn`,
+          rscc(
+            [
+              cat(
+                zframe(block.subarray(0, 2048)),
+                zframe(block.subarray(2048)),
+              ),
+              EMPTY_FRAME,
+            ],
+            4096,
+          ),
+        ],
+        // A skippable frame before the block's frame.
+        [
+          `${at}skippable.scn`,
+          rscc(
+            [cat(u32(0x184d2a50), u32(4), u32(0), zframe(block)), EMPTY_FRAME],
+            4096,
+          ),
+        ],
+        // No content size in the frame header.
+        [
+          `${at}no-size.scn`,
+          rscc(
+            [
+              cat(
+                u32(0xfd2fb528),
+                new Uint8Array([0x00, 0x58]),
+                zblock(true, 0, 4096),
+                block,
+              ),
+              EMPTY_FRAME,
+            ],
+            4096,
+          ),
+        ],
+        // A dictionary id.
+        [
+          `${at}dict.scn`,
+          rscc(
+            [
+              cat(
+                u32(0xfd2fb528),
+                new Uint8Array([0x61, 0x07]),
+                u32(0).subarray(0, 2),
+                zblock(true, 0, 4096),
+                block,
+              ),
+              EMPTY_FRAME,
+            ],
+            4096,
+          ),
+        ],
+        // A reserved block type.
+        [
+          `${at}reserved.scn`,
+          rscc(
+            [
+              cat(
+                u32(0xfd2fb528),
+                new Uint8Array([0x60, 0x00, 0x0f]),
+                zblock(true, 3, 4096),
+                block,
+              ),
+              EMPTY_FRAME,
+            ],
+            4096,
+          ),
+        ],
+        // Not zstd at all.
+        [`${at}not-zstd.scn`, rscc([block.subarray(0, 64), EMPTY_FRAME], 4096)],
+      ],
+    },
+    {
+      name: "rscc-count",
+      files: [
+        ...kaykitV1(),
+        // The table's sizes sum short of the blocks: the closing magic is not where it says.
+        [
+          `${at}sum-short.scn`,
+          rscc([zframe(block), EMPTY_FRAME], 4096, { sizes: [4000, 9] }),
+        ],
+        // …or past them.
+        [
+          `${at}sum-long.scn`,
+          rscc([zframe(block), EMPTY_FRAME], 4096, { sizes: [4200, 9] }),
+        ],
+        // A total that needs three blocks over a file that holds two.
+        [`${at}count.scn`, rscc([zframe(block), EMPTY_FRAME], 8192)],
+        // The block sizes are right but a frame belongs to the next block.
+        [`${at}swapped.scn`, rscc([EMPTY_FRAME, zframe(block)], 4096)],
+      ],
+    },
+    {
+      // A decompression bomb inside the cap's arithmetic: 4 MiB declared in 1 MiB blocks, each
+      // frame declaring 1 MiB but holding 512 RLE blocks of 128 KiB (64 MiB). The decoders get
+      // 1 MiB of room and stop there.
+      name: "rscc-bomb",
+      files: [...kaykitV1(), [`${at}bomb.scn`, rsccBomb()]],
+    },
+    {
+      name: "rscc-trailing",
+      files: [
+        ...kaykitV1(),
+        [`${at}after.scn`, cat(tri, enc("x"))],
+        [`${at}twice.scn`, cat(tri, enc("RSCC"))],
+      ],
+    },
+    {
+      // P4-27 audit GAP 1a: a window descriptor (not single segment, window byte 0xA8: 2^31,
+      // which the 32-bit wasm decoder refuses and a 64-bit device accepts) → refused on both.
+      name: "rscc-window-31",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}window.scn`,
+          rscc(
+            [
+              cat(
+                u32(0xfd2fb528),
+                new Uint8Array([0x80, 0xa8]),
+                u32(4096),
+                zblock(true, 0, 4096),
+                block,
+              ),
+              EMPTY_FRAME,
+            ],
+            4096,
+          ),
+        ],
+      ],
+    },
+    {
+      // GAP 1b: one raw zstd block of 200 KiB (above ZSTD_BLOCKSIZE_MAX) → refused on both.
+      name: "rscc-raw-block-200k",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}raw200k.scn`,
+          rscc(
+            [
+              cat(
+                u32(0xfd2fb528),
+                new Uint8Array([0xa0]),
+                u32(204800),
+                zblock(true, 0, 204800),
+                plainBody(204800),
+              ),
+            ],
+            204800,
+            { bs: 262144 },
+          ),
+        ],
+      ],
+    },
+    {
+      // GAP 2 (b): nine valid entries of zeros, each declaring 64 MiB − 4 KiB: the first eight
+      // fit the 512 MiB pack budget, the ninth crosses it and is refused without decoding.
+      name: "rscc-over-pack-budget",
+      files: [
+        ...kaykitV1(),
+        ...Array.from(
+          { length: 9 },
+          (_, i) =>
+            [`${at}zeros${i}.scn`, rsccRun(RSCC_MAX_TOTAL - 4096, 0x00)] as [
+              string,
+              Uint8Array,
+            ],
+        ),
+      ],
+    },
+    {
+      // GAP 2 (c): a resource header, then a run of 0x47 ('G', the first byte of GDScript) to
+      // the cap: admitted, and the device suite bounds its scan time.
+      name: "rscc-g-run",
+      files: [...kaykitV1(), [`${at}g.scn`, rsccRun(RSCC_MAX_TOTAL, 0x47)]],
+    },
+    {
+      name: "rscc-body",
+      files: [
+        ...kaykitV1(),
+        // A body that is not a binary resource: a nested RSCC, a text resource, too short.
+        [`${at}nested.scn`, rsccOf(cat(tri, new Uint8Array(32)))],
+        [
+          `${at}text.scn`,
+          rsccOf(enc('[gd_resource type="Resource" format=3]\n\n[resource]\n')),
+        ],
+        [`${at}short-body.scn`, rsccOf(new Uint8Array(19))],
+        [`${at}empty.scn`, rsccOf(new Uint8Array(0))],
+      ],
+    },
+  ];
+}
+
+/**
+ * A valid RSCC of `total` bytes in 1 MiB blocks: a resource header (big-endian 0, real64 0,
+ * 4.7, format 6) as a raw zstd block, then `fill` as RLE blocks of at most 128 KiB.
+ */
+function rsccRun(total: number, fill: number): Uint8Array {
+  const MiB = 1048576;
+  const head = cat(u32(0), u32(0), u32(4), u32(7), u32(6));
+  const bc = Math.floor(total / MiB) + 1;
+  const frames: Uint8Array[] = [];
+  for (let i = 0; i < bc; i++) {
+    const size = i === bc - 1 ? total - (bc - 1) * MiB : MiB;
+    if (size === 0) {
+      frames.push(EMPTY_FRAME);
+      continue;
+    }
+    const parts: Uint8Array[] = [];
+    let left = size;
+    if (i === 0) {
+      parts.push(zblock(false, 0, head.length), head);
+      left -= head.length;
+    }
+    while (left > 0) {
+      const n = Math.min(131072, left);
+      left -= n;
+      parts.push(zblock(left === 0, 1, n), new Uint8Array([fill]));
+    }
+    frames.push(
+      cat(u32(0xfd2fb528), new Uint8Array([0xa0]), u32(size), ...parts),
+    );
+  }
+  return rscc(frames, total, { bs: MiB });
+}
+
+function rsccBomb(): Uint8Array {
+  const MiB = 1048576;
+  const rle = cat(
+    ...Array.from({ length: 512 }, (_, i) =>
+      cat(zblock(i === 511, 1, 131072), new Uint8Array([0x41])),
+    ),
+  );
+  const frame = cat(u32(0xfd2fb528), new Uint8Array([0xa0]), u32(MiB), rle);
+  return rscc([frame, frame, frame, frame, EMPTY_FRAME], 4 * MiB, { bs: MiB });
 }
 
 interface CheckFixture {
@@ -510,10 +1002,9 @@ function checkFixtures(): CheckFixture[] {
     // GAP C: a texture and a model imported by the real 4.7.2 editor (`--headless --import` in a
     // scratch project with the assets under res://assets/kaykit/), verbatim: the .import files
     // with their [params] (`import_script/path=""`, `materials/extract_path=""`, …) and the
-    // files they name. The texture pack is ADMITTED on both sides. In the model pack the
-    // .glb.import itself passes (GAP C), but the scene importer writes its .scn COMPRESSED (RSCC,
-    // FileAccessCompressed with zstd blocks), which the scan refuses under any name: pinned here
-    // until a decision on inspecting RSCC (decompressing and scanning it).
+    // files they name. Both are ADMITTED on both sides: the scene importer writes its .scn
+    // COMPRESSED (RSCC, FileAccessCompressed with zstd blocks of 4096), which P4-27 decompresses,
+    // bounded, and scans (the `rscc-*` fixtures below).
     {
       name: "audit-real-import-texture",
       files: [
@@ -536,6 +1027,7 @@ function checkFixtures(): CheckFixture[] {
         ],
       ],
     },
+    ...rsccFixtures(),
     // The reader: layouts it reads, and the header and entry flags it refuses with a path.
     {
       name: "reader-v2-res",

@@ -217,6 +217,8 @@ class PacksClient:
             axes={k: list(v) for k, v in self._opts.axes.items()},
             revoked=revs.verified,
             relearn=revs.relearn,
+            # plans/P4-19.md §2.7: the delegated releases the engine knows.
+            delegated=engine.delegated_releases(),
         )
 
     def record_revocations(self, revocations: Any) -> None:
@@ -357,11 +359,15 @@ class PacksClient:
         storage.free_disk()  # creates the root
         if self._opts.exclude_from_backup:
             _exclude_once(storage.root)
+        # plans/P4-19.md §2.4: the engine sees the stamp's holds, so a hold's release never takes
+        # the delegated path. Unusable stamp holds (`stamp_holds` gives None) are treated as no
+        # holds: the record hash a decision names still binds the bytes.
+        holds = stamp_holds(self._stamp_bytes()) if stamp is not None else None
         engine = PackEngine(
             product=ctx.product,
             release_keys=self._release_keys(),
             product_trust=lambda: self._trust.effective if self._trust is not None else ctx.pinned_trust,
-            stamp=stamp,
+            stamp={**stamp, "holds": holds} if stamp is not None and holds else stamp,
             prefs={"engine": self._opts.engine, "axes": dict(self._opts.axes)},
             zstd=zstd,
             patch_methods=info.patch_methods,

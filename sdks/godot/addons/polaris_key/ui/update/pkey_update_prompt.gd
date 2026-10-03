@@ -7,7 +7,10 @@ extends PKeyUiView
 ## Two modes: `banner` (default), a strip in the game's own layout that never steals focus from
 ## play, and `modal`, a full-rect card for a dismissable answer the game wants to put front and
 ## centre. A mandatory or blocked answer is LOCKED: always the banner, with no dismiss control,
-## whatever `modal` says — it never covers a game that keeps running (no v4 answer stops play).
+## whatever `modal` says — it never covers a game that keeps running (floors never stop play). The
+## one answer that stops play is revoked REQUIRED content (boot `required`, plans/P4-13.md
+## decision 4): it shows the revoked-content copy, locked, while PKeyBoot holds the boot at
+## BLOCKED; a `packs` answer shows nothing (the boot's FETCH applies it).
 ##
 ## The action is the outlet's (README §6.3, PKeyOutletAdapter): a store opens its listing or
 ## source page, Steam, itch and the other platforms stay silent with their own message, a web

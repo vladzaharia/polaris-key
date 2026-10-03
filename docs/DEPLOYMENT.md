@@ -7,21 +7,21 @@ checks target prod.
 
 Target account and fixed values:
 
-| Item                 | Value                                          |
-| -------------------- | ---------------------------------------------- |
-| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8` |
-| Production origin    | `https://key.plrs.im`                          |
-| Cloudflare zone      | `plrs.im`                                      |
-| Worker env           | `prod`                                         |
-| D1 database          | `polaris_key_prod`                             |
-| KV namespace         | `POLARIS_HOT_prod`                             |
-| R2 blob bucket       | `polaris-key-blobs-prod` (bound as `BLOBS`)    |
-| Bytes host           | `https://dl.plrs.im` (`BLOB_ORIGIN`)           |
-| PocketID issuer      | `https://id.plrs.im`                           |
-| Platform admin group | `admins`                                       |
-| GitHub App           | `polaris-key`                                  |
-| First product        | `djdl` from `vladzaharia/djdl`                 |
-| Portal email sender  | `Polaris Key <noreply@plrs.im>`                |
+| Item                 | Value                                           |
+| -------------------- | ----------------------------------------------- |
+| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8`  |
+| Production origin    | `https://key.plrs.im`                           |
+| Cloudflare zone      | `plrs.im`                                       |
+| Worker env           | `prod`                                          |
+| D1 database          | `polaris_key_prod`                              |
+| KV namespace         | `POLARIS_HOT_prod`                              |
+| R2 blob bucket       | `polaris-key-blobs-prod` (bound as `BLOBS`)     |
+| Bytes host           | `https://dl.plrs.im` (`BLOB_ORIGIN`)            |
+| PocketID issuer      | `https://id.plrs.im`                            |
+| Platform admin group | `admins`                                        |
+| GitHub App           | `polaris-key`                                   |
+| First product        | `djdl` (linked from its own product repository) |
+| Portal email sender  | `Polaris Key <noreply@plrs.im>`                 |
 
 Do not change the production hostname as a deployment-time tweak. The SDK defaults,
 signed-config issuer, tests, docs, and product examples assume `key.plrs.im`; using a
@@ -119,8 +119,7 @@ mapping):
     "provider": "platform",
     "redirectUris": ["https://key.plrs.im/djdl/identity/auth/callback"],
     "groupRoleMap": {
-      "family": { "role": "user", "tier": "standard" },
-      "friends": { "role": "user", "tier": "standard" },
+      "members": { "role": "user", "tier": "standard" },
       "admins": { "role": "admin" }
     }
   }
@@ -143,7 +142,7 @@ Required settings:
 | Webhook content type | `application/json`                    |
 | Permissions          | Contents: read, Actions: read         |
 | Events               | Push, Release                         |
-| Installation         | `vladzaharia/djdl`                    |
+| Installation         | the first product's repository        |
 
 Generate and download a private key (`.pem`). Record:
 
@@ -526,15 +525,15 @@ Link the repo:
 
 1. Open `https://key.plrs.im/manage`.
 2. Choose the product repo-link flow.
-3. Enter `vladzaharia/djdl`.
+3. Enter the product repository (`<owner>/<repo>`).
 4. Confirm Polaris Key validates the `.pkey/` manifest.
 5. Save the returned `kid -> publicKey` trust set for DJDL SDK/app pinning.
 
 Set the required DJDL product secrets in the admin UI/API:
 
-| Secret name                   | Value                               |
-| ----------------------------- | ----------------------------------- |
-| `EDGE_MINT__DJDL__APPLEMUSIC` | Apple MusicKit private key material |
+| Secret name                 | Value                                                   |
+| --------------------------- | ------------------------------------------------------- |
+| `EDGE_MINT__DJDL__<RECIPE>` | Signing key material for each edge-mint recipe declared |
 
 These are product secrets sealed into D1. They are not Worker secrets and are never echoed
 back after being set.
@@ -571,7 +570,7 @@ Validate product auth:
 
 Validate release/webhook sync:
 
-1. Change a `.pkey/` file in `vladzaharia/djdl` on the default branch.
+1. Change a `.pkey/` file in the product repository on the default branch.
 2. Confirm GitHub sends a signed `push` webhook to
    `https://key.plrs.im/webhooks/github`.
 3. Confirm the admin Releases view shows changed paths, sync status, and any validation
@@ -632,7 +631,7 @@ Validate portal email:
 
 GitHub repo-link says the app is not installed.
 
-- Install GitHub App `polaris-key` on `vladzaharia/djdl`, then retry.
+- Install GitHub App `polaris-key` on the product repository, then retry.
 
 Portal says email sign-in is disabled.
 

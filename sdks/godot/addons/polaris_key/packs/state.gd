@@ -15,6 +15,11 @@ extends RefCounted
 ##                     back (P3-10's `skipVersion` for packs). It is never installed again while
 ##                     the stamp still pins it; the restored `previous` stands in for it, and
 ##                     `count` says how often that release was rolled back
+##   revocationsStored `true`, set by the engine in the same atomic write sequence (written first)
+##                     when it first stores a revocation in the sibling `revocations.json`
+##                     (plans/P4-13.md §2.5); never cleared. Absent for a product that has never had
+##                     a revocation. With an unreadable `revocations.json` it is what makes the
+##                     engine refuse the stamp's embedded baselines
 ##
 ## The document is NEVER trusted from storage: each install and journal carries its pack record's
 ## compact JWS verbatim, re-verified at every load through the caller's verifier before anything
@@ -120,6 +125,8 @@ static func parse(text: Variant) -> Dictionary:
 		for id in doc["confirmed"]:
 			if PKeyPackClaims.is_pack_id(id) and PKeyPackClaims.is_sha256(doc["confirmed"][id]):
 				out["confirmed"][String(id)] = doc["confirmed"][id]
+	if PKeyClaims.is_true(doc.get("revocationsStored")):
+		out["revocationsStored"] = true
 	if doc.get("held") is Dictionary:
 		for id in doc["held"]:
 			var h = doc["held"][id]
@@ -142,6 +149,8 @@ static func reload(state: Dictionary, verifier: Object) -> Dictionary:
 	out["bootSeq"] = int(state["bootSeq"]) + 1
 	out["confirmed"] = state.get("confirmed", {})
 	out["held"] = state.get("held", {})
+	if PKeyClaims.is_true(state.get("revocationsStored")):
+		out["revocationsStored"] = true
 	for id in state["active"]:
 		if await verifier.install(state["active"][id]) == true:
 			out["active"][id] = state["active"][id]

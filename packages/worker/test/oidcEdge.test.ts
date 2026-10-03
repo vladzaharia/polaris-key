@@ -54,8 +54,8 @@ const identity = (over: Partial<OidcIdentity> = {}): OidcIdentity => ({
   sub: "user-123",
   email: "ada@example.com",
   name: "Ada Lovelace",
-  groups: ["family"],
-  claims: { sub: "user-123", remnawaveSub: "abc123" },
+  groups: ["members"],
+  claims: { sub: "user-123", vpnSub: "abc123" },
   ...over,
 });
 
@@ -69,7 +69,7 @@ async function seedOidc(db: SqliteDb): Promise<void> {
     null,
     JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
     JSON.stringify({
-      family: { role: "user", tier: "pro" },
+      members: { role: "user", tier: "pro" },
       admin: { role: "admin" },
     }),
   );
@@ -87,12 +87,12 @@ async function seedOidc(db: SqliteDb): Promise<void> {
   await db.run(
     "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?,?,?,?,?,?,?)",
     "djdl",
-    "remnawaveSub",
+    "vpnSub",
     "polarisVpn",
     JSON.stringify(true),
     "proxy.subscriptionUrl",
-    "https://vpn.polaris.rest/{claim}",
-    JSON.stringify(["vpn.polaris.rest"]),
+    "https://vpn.example.com/{claim}",
+    JSON.stringify(["vpn.example.com"]),
   );
 }
 
@@ -166,7 +166,7 @@ describe("activateFromIdentity", () => {
     const ov = JSON.parse(lic!.overrides_json!) as ManagedPayload;
     expect(ov.entitlements.polarisVpn?.value).toBe(true);
     expect(ov.secrets["proxy.subscriptionUrl"]?.value).toBe(
-      "https://vpn.polaris.rest/abc123",
+      "https://vpn.example.com/abc123",
     );
   });
 });
@@ -187,7 +187,7 @@ describe("applyProvisioning", () => {
       identity({ claims: { sub: "x" } }),
       p,
       NOW,
-    ); // no remnawaveSub
+    ); // no vpnSub
     expect(p.entitlements.polarisVpn).toBeUndefined();
     expect(p.secrets["proxy.subscriptionUrl"]).toBeUndefined();
   });
@@ -197,7 +197,7 @@ describe("applyProvisioning", () => {
     await applyProvisioning(
       db,
       "djdl",
-      identity({ claims: { sub: "x", remnawaveSub: false } }),
+      identity({ claims: { sub: "x", vpnSub: false } }),
       p,
       NOW,
     );
@@ -207,7 +207,7 @@ describe("applyProvisioning", () => {
   it("drops a templated secret whose host is NOT in the allowlist", async () => {
     // Point the template host off the allowlist.
     await db.run(
-      "UPDATE provisioning_config SET secret_url_template = ? WHERE product = 'djdl' AND claim = 'remnawaveSub'",
+      "UPDATE provisioning_config SET secret_url_template = ? WHERE product = 'djdl' AND claim = 'vpnSub'",
       "https://evil.example/{claim}",
     );
     const p = emptyPayload();
@@ -222,12 +222,12 @@ describe("applyProvisioning", () => {
     await applyProvisioning(
       db,
       "djdl",
-      identity({ claims: { sub: "x", remnawaveSub: "a/b c" } }),
+      identity({ claims: { sub: "x", vpnSub: "a/b c" } }),
       p,
       NOW,
     );
     expect(p.secrets["proxy.subscriptionUrl"]?.value).toBe(
-      "https://vpn.polaris.rest/a%2Fb%20c",
+      "https://vpn.example.com/a%2Fb%20c",
     );
     expect(p.secrets["proxy.subscriptionUrl"]?.state).toBe("hidden");
   });
@@ -1189,7 +1189,7 @@ describe("handleAuthStart platform OIDC provider", () => {
       null,
       null,
       JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
-      JSON.stringify({ family: { role: "user", tier: "pro" } }),
+      JSON.stringify({ members: { role: "user", tier: "pro" } }),
     );
     product = (await loadProduct(env, db, "djdl"))!;
   });
@@ -1338,7 +1338,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   it("rejects an ID token with NO nonce claim (D9)", async () => {
     await seedFlow("n1", "the-nonce");
     installFetchMock(
-      await signIdToken({ sub: "user-123", groups: ["family"] }),
+      await signIdToken({ sub: "user-123", groups: ["members"] }),
     ); // no nonce
     const res = await callback("n1");
     expect(res.status).toBe(401);
@@ -1356,7 +1356,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     installFetchMock(
       await signIdToken({
         sub: "user-123",
-        groups: ["family"],
+        groups: ["members"],
         nonce: "WRONG",
       }),
     );
@@ -1369,7 +1369,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     installFetchMock(
       await signIdToken({
         sub: "user-123",
-        groups: ["family"],
+        groups: ["members"],
         nonce: "the-nonce",
       }),
     );
@@ -1393,7 +1393,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     installFetchMock(
       await signIdToken({
         sub: "platform-user",
-        groups: ["family"],
+        groups: ["members"],
         nonce: "the-nonce",
       }),
     );
@@ -1453,7 +1453,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
           tokenExchangeCalled = true;
           const idToken = await signIdToken({
             sub: "user-123",
-            groups: ["family"],
+            groups: ["members"],
             nonce: "the-nonce",
           });
           return new Response(JSON.stringify({ id_token: idToken }), {
@@ -1503,7 +1503,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
           sentClientSecret = params.get("client_secret");
           const idToken = await signIdToken({
             sub: "user-123",
-            groups: ["family"],
+            groups: ["members"],
             nonce: "the-nonce",
           });
           return new Response(JSON.stringify({ id_token: idToken }), {

@@ -6,7 +6,7 @@
  * that were investigated and REFUTED are kept here too (marked `REFUTED`) so the guard that
  * stops them is pinned by a test.
  *
- * See docs/security/findings/R1-control-plane.md for the write-up.
+ * See the R1 audit findings for the write-up.
  */
 
 import { describe, expect, it } from "vitest";
@@ -692,7 +692,7 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
       "client-djdl",
       null,
       JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
-      JSON.stringify({ family: { role: "user", tier: "pro" } }),
+      JSON.stringify({ members: { role: "user", tier: "pro" } }),
     );
     const product = (await loadProduct(env, db, "djdl"))!;
 

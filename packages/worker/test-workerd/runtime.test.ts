@@ -2,8 +2,8 @@
 // ── The workerd smoke lane ───────────────────────────────────────────────────────────────
 //
 // Every assertion here exists because it would pass in Node and could fail in workerd. The
-// lane is small on purpose: R10-01 (`docs/security/findings/R10-dos.md`, verified in
-// `docs/security/findings/VERIFY-R10-01.md`) was a 100%-down release blocker that hundreds of
+// lane is small on purpose: R10-01 (the R10 audit findings, verified in
+// the VERIFY-R10-01 audit note) was a 100%-down release blocker that hundreds of
 // Node tests could not see, because `environment: "node"` permits the runtime code generation
 // workerd forbids. Broad coverage lives in the Node lane; what lives here is runtime truth.
 

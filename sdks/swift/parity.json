@@ -82,7 +82,10 @@
       "status": "implemented",
       "note": "PolarisKeyCore's revocationOf, verifyRevocation and newerRevocation (every revocationCases vector); PackEngine keeps the sibling revocations.json (revocationsStored in state.json first, never created empty, re-verified per entry on load, relearn, the 256-target cap, torn and unreadable rules, recoverState clears relearn) and refuses revoked releases with pack-revoked (detail relearn for a refused baseline it cannot fetch)."
     },
-    "packs.delegation": { "status": "planned", "wp": "P4-25" },
+    "packs.delegation": {
+      "status": "implemented",
+      "note": "PolarisKeyCore verifyReleaseRecord (the delegated path, steps 13 and 16), verifyDelegation, recordRevoked and PolarisKeyPacks dataOnlyRefusal; the PackEngine fetches and caches delegations, refuses non-data-only delegated installs with pack-not-data-only, stores PackInstall.delegation and refuses releases under a revoked delegation (pack-revoked, detail delegation); DelegationConformanceTests drives every delegationCases and dataOnlyCases vector."
+    },
     "packs.plan": {
       "status": "implemented",
       "note": "PolarisKeyPacks' plan, selectVariant and planTarget; every plan-matrix.json row, variant case and target case in PlanMatrixTests."

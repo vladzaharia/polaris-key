@@ -176,6 +176,12 @@ private func invalidOptions(_ message: String) -> PolarisError {
 
 /// Validate `UpdateClientOptions` against the trust pins (plans/P3-01.md §2.6, §2.8).
 private func configure(_ opts: UpdateClientOptions, pinnedTrust: TrustSet) throws -> ConfiguredUpdate {
+    // plans/P4-19.md §2.2: a delegated kid is never a pinned release key.
+    if opts.pinnedReleaseKeys.keys.contains(where: { packMatch(DELEGATED_KID_PATTERN, $0) }) {
+        throw invalidOptions(
+            "pinnedReleaseKeys names a pkd1- kid: a delegated content key is reached only through a delegation, never pinned."
+        )
+    }
     let pins = Set(pinnedTrust.values.compactMap { Base64URL.decode($0) }.filter { $0.count == 32 })
     for key in opts.pinnedReleaseKeys.values {
         if let raw = Base64URL.decode(key), raw.count == 32, pins.contains(raw) {
@@ -672,6 +678,10 @@ extension UpdateClient {
                 throw raise(UpdateCheckError(code: ErrorCode.recordMismatch))
             case .refused(let step):
                 throw raise(UpdateCheckError(code: ErrorCode.recordRejected, detail: step.rawValue))
+            case .delegated:
+                // An app record never takes the delegated path (plans/P4-19.md §2.4): no
+                // delegation is passed here, so this does not occur.
+                throw raise(UpdateCheckError(code: ErrorCode.recordRejected, detail: "jws"))
             case .ok(let record):
                 if pin != nil {
                     var records = slices.releaseRecords

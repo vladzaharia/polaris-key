@@ -81,7 +81,7 @@ delegates to a host bridge ([PARITY §5.4](../../PARITY.md#54-devices-and-identi
   security review). Since P1-06, the sign-in callback never claims, migrates or disables the
   licence the polling device is already on. A device-code flow is confirmed with the public user
   code, so merging at the callback let a user-code holder take the device's anonymous enrolled
-  licence over (`docs/security/findings/R8-oidc.md`, R8-02 "The callback merges nothing"). The
+  licence over (the R8 audit findings, R8-02 "The callback merges nothing"). The
   merge now becomes an explicit opt-in that only the device-code holder can make, at
   `/identity/auth/device/poll`. First the device shows the signed-in identity (for example the
   e-mail or name returned with `ready`, or a prior `pending`-with-identity status) and the player

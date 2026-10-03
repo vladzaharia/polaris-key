@@ -1,10 +1,12 @@
 // The release record — WIRE-CONTRACT-V4 §2.4 and client steps 12–16 (plans/P3-01.md §2.4, §2.5).
 //
-// `releaseRecordClaims` is step 14; `verifyReleaseRecord` runs steps 12–15 in the contract's
+// `releaseRecordClaims` is step 14; `verifyReleaseRecord` runs steps 12–16 in the contract's
 // order: HASH BEFORE SIGNATURE (a body over `MAX_RECORD_JWS_BYTES`, or with a byte outside ASCII,
 // is refused without hashing), the key selected from the PINNED release keys only and refused
-// when it is also a product key, the signature, the claims, then the cross-check against the
-// feed's pin. Nothing here does I/O or throws. client-core's `record.ts` is the reference.
+// when it is also a product key (or, on the delegated path of plans/P4-19.md §2.3, one
+// delegation verified against those keys), the signature, the claims, the cross-check against
+// the feed's pin, then a delegated record's scope. Nothing here does I/O or throws.
+// client-core's `record.ts` is the reference.
 
 import CryptoKit
 import Foundation
@@ -280,9 +282,9 @@ private func recordClaimsHold(
 /// Client step 14 over a verified record payload: true when every claim of §2.4 holds. A caller
 /// holding a verified JWS passes its `nonWireIntegers`; a caller checking a value it built
 /// passes none. A `kind: pack` record must pass the pack claims (plans/P4-01.md §2.3) and a
-/// `kind: app` record's `content` and `builds[].embeds` the app ones (§2.4); reserved and unknown
-/// kinds keep the common claims only, and the cross-check refuses them where an app record is
-/// expected.
+/// `kind: app` record's `content` and `builds[].embeds` the app ones (§2.4); the `revocation` and
+/// `delegation` kinds (read further by `revocationOf` and `delegationOf`) and unknown kinds keep
+/// the common claims only, and the cross-check refuses them where an app record is expected.
 public func releaseRecordClaims(
     _ payload: JSONValue, expectedAud: String, nonWire: NonWireIntegers = []
 ) -> Bool {
@@ -328,31 +330,79 @@ public struct VerifyReleaseRecordOptions: Sendable {
     public var expectedHash: String
     /// The pin to cross-check against (step 15). Nil verifies only (a reserved kind).
     public var pin: ReleaseRecordPin?
+    /// The compact JWS of the delegation a `pkd1-` kid names (plans/P4-19.md §2.3), fetched by the
+    /// caller from the record route by `delegationHashOf(jws)`. Only the surfaces of §2.4 pass it
+    /// (a compatible or standalone pack's feed target, and the reload of a stored delegated
+    /// install). Nil: the behaviour is the pre-P4-19 one.
+    public var delegation: String?
 
     public init(
         releaseKeys: TrustSet, productTrust: TrustSet, expectedAud: String, expectedHash: String,
-        pin: ReleaseRecordPin? = nil
+        pin: ReleaseRecordPin? = nil, delegation: String? = nil
     ) {
         self.releaseKeys = releaseKeys
         self.productTrust = productTrust
         self.expectedAud = expectedAud
         self.expectedHash = expectedHash
         self.pin = pin
+        self.delegation = delegation
     }
 }
 
 /// Why `verifyReleaseRecord` refused, by client step (`releaseRecordCases` `expect.step`).
+/// `delegation` and `scope` are the delegated path's (plans/P4-19.md §2.3).
 public enum ReleaseRecordStep: String, Sendable, Equatable, CaseIterable {
     case hash, jws, claims
     case crossCheck = "cross-check"
+    case delegation, scope
 }
 
+/// The delegation a delegated record verified through (plans/P4-19.md §2.3).
+public struct RecordDelegation: Sendable, Equatable {
+    /// The delegation's record hash (the kid's hex).
+    public let sha256: String
+    /// The scope root, a pack id.
+    public let deliverable: String
+    /// The effective types (`types ∩ DELEGABLE_PACK_TYPES`), in the delegation's order.
+    public let types: [String]
+    public let issuedAt: Int
+    public let expiresAt: Int
+
+    public init(sha256: String, deliverable: String, types: [String], issuedAt: Int, expiresAt: Int) {
+        self.sha256 = sha256
+        self.deliverable = deliverable
+        self.types = types
+        self.issuedAt = issuedAt
+        self.expiresAt = expiresAt
+    }
+
+    /// `{sha256, deliverable, types, issuedAt, expiresAt}` (`delegationCases`' `expect.delegation`).
+    public var json: JSONValue {
+        .object([
+            "sha256": .string(sha256), "deliverable": .string(deliverable),
+            "types": .array(types.map { .string($0) }), "issuedAt": .int(issuedAt),
+            "expiresAt": .int(expiresAt),
+        ])
+    }
+}
+
+/// `verifyReleaseRecord`'s answer. `.delegated` is a record a delegated content key signed,
+/// with the delegation it verified through; it is returned only when `delegation` was passed.
 public enum VerifyReleaseRecordResult: Sendable, Equatable {
     case ok(ReleaseRecordDoc)
+    case delegated(ReleaseRecordDoc, RecordDelegation)
     case refused(ReleaseRecordStep)
 
     public var record: ReleaseRecordDoc? {
-        if case .ok(let record) = self { return record }
+        switch self {
+        case .ok(let record), .delegated(let record, _): return record
+        case .refused: return nil
+        }
+    }
+
+    /// The delegation a content key's record verified through; nil for a release key's.
+    public var delegation: RecordDelegation? {
+        if case .delegated(_, let d) = self { return d }
         return nil
     }
 
@@ -372,15 +422,30 @@ private func headerKid(_ jws: String) -> String? {
     return header.objectValue?["kid"]?.stringValue
 }
 
-/// Client steps 12–15 (plans/P3-01.md §2.5), in the contract's order:
+/// True when any key of `set` has the raw bytes `raw`.
+private func inTrust(_ raw: Data, _ set: TrustSet) -> Bool {
+    for k in set.values {
+        if let other = Base64URL.decode(k), other == raw { return true }
+    }
+    return false
+}
+
+/// Client steps 12–16 (plans/P3-01.md §2.5, plans/P4-19.md §2.3), in the contract's order:
 ///
 ///  12. a body over `MAX_RECORD_JWS_BYTES` (88 844) or with a byte outside ASCII is refused
 ///      without hashing; otherwise its SHA-256 must equal `expectedHash`, before any Ed25519 work;
 ///  13. the key is selected by `kid` from `releaseKeys` only, refused if its raw bytes are also
-///      in `productTrust`, then `verify` with that one key and `typ` `pkey-release+jws`;
+///      in `productTrust`, then `verify` with that one key and `typ` `pkey-release+jws`.
+///      Otherwise, with `delegation` supplied and a `pkd1-` kid: the delegation is verified
+///      against the pinned release keys (`verifyDelegation`, its hash the kid's hex), its key must
+///      equal no pinned release key and no product key (both step `delegation`), then `verify`
+///      with the delegated key (step `jws`);
 ///  14. the claims (`releaseRecordClaims`);
 ///  15. with a `pin`: `kind` equals the pin's `kind` (`app` unless it names another), and
-///      `deliverable`, `version` and `seq` equal the pin's (plans/P4-01.md §2.6).
+///      `deliverable`, `version` and `seq` equal the pin's (plans/P4-01.md §2.6);
+///  16. a delegated record only (`scope`): `kind: pack`, `deliverable` the scope root or under it
+///      by whole segments, `type` in the effective types, every variant's `files.layout` `tree`,
+///      and `delegation.issuedAt ≤ issuedAt ≤ delegation.expiresAt`.
 ///
 /// Never throws.
 public func verifyReleaseRecord(
@@ -393,12 +458,31 @@ public func verifyReleaseRecord(
     }
     guard recordHash(jws) == opts.expectedHash else { return .refused(.hash) }
 
-    // 13. The pinned release keys only, and never a product key.
-    guard let kid = headerKid(jws), let key = opts.releaseKeys[kid],
-        let raw = Base64URL.decode(key), raw.count == 32
-    else { return .refused(.jws) }
-    for productKey in opts.productTrust.values {
-        if let other = Base64URL.decode(productKey), other == raw { return .refused(.jws) }
+    // 13. The pinned release keys only, and never a product key; or one delegation from them.
+    guard let kid = headerKid(jws) else { return .refused(.jws) }
+    let key: String
+    var verified: VerifiedDelegation?
+    if let releaseKey = opts.releaseKeys[kid] {
+        guard let raw = Base64URL.decode(releaseKey), raw.count == 32 else { return .refused(.jws) }
+        if inTrust(raw, opts.productTrust) { return .refused(.jws) }
+        key = releaseKey
+    } else {
+        guard let delegation = opts.delegation, let hash = delegationHashOf(jws) else {
+            return .refused(.jws)
+        }
+        guard
+            case .ok(let d) = verifyDelegation(
+                delegation,
+                options: VerifyDelegationOptions(
+                    releaseKeys: opts.releaseKeys, productTrust: opts.productTrust,
+                    expectedAud: opts.expectedAud, expectedHash: hash))
+        else { return .refused(.delegation) }
+        guard let raw = Base64URL.decode(d.publicKey) else { return .refused(.delegation) }
+        if inTrust(raw, opts.releaseKeys) || inTrust(raw, opts.productTrust) {
+            return .refused(.delegation)
+        }
+        verified = d
+        key = d.publicKey
     }
     guard let v = JWSVerifier.verify(jws, trust: [kid: key], typ: .release, requireTyp: true)
     else { return .refused(.jws) }
@@ -415,7 +499,36 @@ public func verifyReleaseRecord(
             record.version == pin.version, record.seq == pin.seq
         else { return .refused(.crossCheck) }
     }
-    return .ok(record)
+
+    // 16. The delegation's scope.
+    guard let d = verified else { return .ok(record) }
+    guard inScope(record, d) else { return .refused(.scope) }
+    return .delegated(
+        record,
+        RecordDelegation(
+            sha256: d.sha256, deliverable: d.deliverable, types: d.types, issuedAt: d.issuedAt,
+            expiresAt: d.expiresAt))
+}
+
+/// Step 16 (plans/P4-19.md §2.3) over a record whose claims passed.
+private func inScope(_ record: ReleaseRecordDoc, _ d: VerifiedDelegation) -> Bool {
+    guard let o = record.json.objectValue, record.kind == "pack" else { return false }
+    guard coversPack(d.deliverable, record.deliverable) else { return false }
+    guard let type = o["type"]?.stringValue, d.types.contains(type) else { return false }
+    guard let variants = o["variants"]?.arrayValue else { return false }
+    for v in variants {
+        guard v.objectValue?["files"]?.objectValue?["layout"]?.stringValue == "tree" else {
+            return false
+        }
+    }
+    return d.issuedAt <= record.issuedAt && record.issuedAt <= d.expiresAt
+}
+
+/// Whether pack id `pack` is the scope root `root` or under it by whole segments
+/// (plans/P4-19.md §2.3 step 16): `djdl.events` covers `djdl.events.halloween`, never
+/// `djdl.eventsx`.
+public func coversPack(_ root: String, _ pack: String) -> Bool {
+    pack == root || pack.hasPrefix(root + ".")
 }
 
 /// One record that survived the reload path.
@@ -441,4 +554,171 @@ public func reloadReleaseRecords(
         if let record = r.record { out[h] = CommittedRecord(jws: jws, record: record) }
     }
     return out
+}
+
+// ── P4-19: content-key delegation (plans/P4-19.md §2.2–§2.6, WIRE-CONTRACT-V4 §2.5.4) ──────
+
+/// `DELEGATED_KID_PATTERN` (`@polaris-key/protocol/release`), restated: `pkd1-` and the
+/// delegation's record hash. 69 bytes, so it never collides with a declared release kid.
+public let DELEGATED_KID_PATTERN = "pkd1-[0-9a-f]{64}"
+/// 32 raw bytes in strict base64url (V4 §1): 43 characters, no padding, zero trailing bits.
+private let KEY_B64URL_PATTERN = "[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]"
+
+/// The delegation hash a delegated record's header names (plans/P4-19.md §2.2): the hex of a
+/// `pkd1-<sha256>` kid, read from the protected header only. Nil for any other kid.
+public func delegationHashOf(_ jws: String) -> String? {
+    guard let kid = headerKid(jws), packMatch(DELEGATED_KID_PATTERN, kid) else { return nil }
+    return String(kid.dropFirst(5))
+}
+
+/// The delegated kid of a delegation record hash: `pkd1-<sha256>`.
+public func delegatedKid(_ delegationSha256: String) -> String { "pkd1-" + delegationSha256 }
+
+/// A usable delegation body, as `delegationOf` reads it.
+public struct DelegationBody: Sendable, Equatable {
+    /// The scope root, a pack id.
+    public let deliverable: String
+    public let seq: Int
+    /// The content key: base64url of its 32 raw Ed25519 bytes.
+    public let publicKey: String
+    /// The effective types: `types ∩ DELEGABLE_PACK_TYPES`, in the record's order (never empty).
+    public let types: [String]
+    /// The record's `types` as listed (unknown and non-delegable entries included).
+    public let listedTypes: [String]
+    public let issuedAt: Int
+    public let expiresAt: Int
+
+    public init(
+        deliverable: String, seq: Int, publicKey: String, types: [String], listedTypes: [String],
+        issuedAt: Int, expiresAt: Int
+    ) {
+        self.deliverable = deliverable
+        self.seq = seq
+        self.publicKey = publicKey
+        self.types = types
+        self.listedTypes = listedTypes
+        self.issuedAt = issuedAt
+        self.expiresAt = expiresAt
+    }
+}
+
+/// The delegation body (plans/P4-19.md §2.2), read beside the claims: usable when `kind` is
+/// `delegation`, `deliverable` is a pack id, `delegate.publicKey` is strict base64url of 32 bytes,
+/// `types` is 1–`MAX_DELEGATION_TYPES` unique `PACK_TYPE_PATTERN` strings whose intersection with
+/// `DELEGABLE_PACK_TYPES` is non-empty, and `expiresAt` is an integer by token (minimum 1) with
+/// `issuedAt < expiresAt ≤ issuedAt + MAX_DELEGATION_TTL_SECONDS`. `builds`, `content` and unknown
+/// members are ignored. Nil when unusable.
+public func delegationOf(_ doc: JSONValue, nonWire: NonWireIntegers = []) -> DelegationBody? {
+    guard let o = doc.objectValue, o["kind"]?.stringValue == "delegation",
+        let deliverable = o["deliverable"]?.stringValue, isPackId(deliverable),
+        let delegate = o["delegate"]?.objectValue,
+        let publicKey = delegate["publicKey"]?.stringValue, packMatch(KEY_B64URL_PATTERN, publicKey),
+        let types = o["types"]?.arrayValue, types.count >= 1, types.count <= MAX_DELEGATION_TYPES
+    else { return nil }
+    var listed: [String] = []
+    var seen = Set<String>()
+    for t in types {
+        guard let s = t.stringValue, packMatch(PackPatterns.packType, s), seen.insert(s).inserted
+        else { return nil }
+        listed.append(s)
+    }
+    let effective = listed.filter { DELEGABLE_PACK_TYPE_VALUES.contains($0) }
+    if effective.isEmpty { return nil }
+    let expiresAt = o["expiresAt"]?.exactInt
+    let issuedAt = o["issuedAt"]?.exactInt
+    let seq = o["seq"]?.exactInt
+    guard wireInteger(expiresAt, pointer: "/expiresAt", min: 1, in: nonWire),
+        wireInteger(issuedAt, pointer: "/issuedAt", min: 0, in: nonWire),
+        wireInteger(seq, pointer: "/seq", min: 1, in: nonWire),
+        let expiresAt, let issuedAt, let seq
+    else { return nil }
+    guard issuedAt < expiresAt, expiresAt <= issuedAt + MAX_DELEGATION_TTL_SECONDS else { return nil }
+    return DelegationBody(
+        deliverable: deliverable, seq: seq, publicKey: publicKey, types: effective,
+        listedTypes: listed, issuedAt: issuedAt, expiresAt: expiresAt)
+}
+
+/// A verified delegation: its body and its record hash.
+public struct VerifiedDelegation: Sendable, Equatable {
+    public let body: DelegationBody
+    /// The delegation record's hash.
+    public let sha256: String
+
+    public init(body: DelegationBody, sha256: String) {
+        self.body = body
+        self.sha256 = sha256
+    }
+
+    public var deliverable: String { body.deliverable }
+    public var seq: Int { body.seq }
+    public var publicKey: String { body.publicKey }
+    public var types: [String] { body.types }
+    public var issuedAt: Int { body.issuedAt }
+    public var expiresAt: Int { body.expiresAt }
+}
+
+public struct VerifyDelegationOptions: Sendable {
+    /// The PINNED release keys only: never the Worker's trust set, never a delegated key.
+    public var releaseKeys: TrustSet
+    /// The effective product trust set: a release key whose bytes are in it is refused.
+    public var productTrust: TrustSet
+    public var expectedAud: String
+    /// The delegation's hash: the delegated record's kid hex, or a feed entry's target.
+    public var expectedHash: String
+
+    public init(releaseKeys: TrustSet, productTrust: TrustSet, expectedAud: String, expectedHash: String) {
+        self.releaseKeys = releaseKeys
+        self.productTrust = productTrust
+        self.expectedAud = expectedAud
+        self.expectedHash = expectedHash
+    }
+}
+
+public enum VerifyDelegationResult: Sendable, Equatable {
+    case ok(VerifiedDelegation)
+    /// A `verifyReleaseRecord` step, or `delegation`.
+    case refused(ReleaseRecordStep)
+}
+
+/// Verify a delegation record (plans/P4-19.md §2.3 step 13.1): steps 12–14 against the pinned
+/// release keys only (the ASCII bound, the hash, the product-key refusal, the signature, the
+/// claims), then `kind == "delegation"` and `delegationOf`. A delegation is never verified
+/// through another delegation, so a content key cannot re-delegate.
+public func verifyDelegation(_ jws: String, options opts: VerifyDelegationOptions) -> VerifyDelegationResult {
+    let r = verifyReleaseRecord(
+        jws,
+        options: VerifyReleaseRecordOptions(
+            releaseKeys: opts.releaseKeys, productTrust: opts.productTrust,
+            expectedAud: opts.expectedAud, expectedHash: opts.expectedHash))
+    guard let record = r.record else { return .refused(r.step ?? .jws) }
+    guard record.kind == "delegation", let body = delegationOf(record.json, nonWire: record.nonWireIntegers)
+    else { return .refused(.delegation) }
+    return .ok(VerifiedDelegation(body: body, sha256: opts.expectedHash))
+}
+
+/// The one rule for applying revocations to a release (plans/P4-19.md §2.3): `record` when the
+/// release's own hash is revoked, else `delegation` when the delegation it was signed under is,
+/// else nil. `revoked` holds the revoked target hashes. Pure.
+public enum RecordRevokedBy: String, Sendable, Equatable {
+    case record, delegation
+}
+
+public func recordRevoked(
+    _ recordSha256: String, _ delegationSha256: String?, _ revoked: Set<String>
+) -> RecordRevokedBy? {
+    if revoked.contains(recordSha256) { return .record }
+    if let d = delegationSha256, revoked.contains(d) { return .delegation }
+    return nil
+}
+
+/// A delegated release the engine knows (plans/P4-19.md §2.7): its pack and the hash of the
+/// delegation it was signed under.
+public struct DelegatedRelease: Sendable, Equatable {
+    public let pack: String
+    public let delegation: String
+
+    public init(pack: String, delegation: String) {
+        self.pack = pack
+        self.delegation = delegation
+    }
 }

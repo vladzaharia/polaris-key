@@ -35,7 +35,7 @@ latent) and [notes/A3 §7.3](../../notes/A3-admin-dx.md#73-store-api-credentials
   (`mint.ts:214-219`). Under `open` registration anyone can get a device token.
 
 So a repo writer, or a mistaken recipe, can mint tokens from any PEM-shaped product secret. Today
-that is Apple MusicKit for djdl; once store credentials exist it would be a public App Store
+that is djdl's edge-mint recipe; once store credentials exist it would be a public App Store
 Connect or Play token mint. The report treats this as a hard design constraint for outlet
 credentials (P5-01), and Godot will be the first SDK to call edge-mint for leaderboard and
 cloud-save keys ([§5.3](../../README.md#53-transport-persistence-device-identity) "Secrets").

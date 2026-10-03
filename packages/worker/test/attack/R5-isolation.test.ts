@@ -1169,7 +1169,7 @@ describe("R5-03 GitHub installation tokens are down-scoped to one repo", () => {
   });
 
   it("FIXED: the cache key ignores the caller's scope argument entirely", async () => {
-    // The caller disagreement documented in R5-isolation.md is still present in the two
+    // The caller disagreement documented in the R5 audit findings is still present in the two
     // off-limits call sites, so the key derivation has to be correct WITHOUT their help.
     // A bare string (repo name at linkRepo/resync, product slug at health) can never produce
     // the same slot as the structured, owner-qualified form.
@@ -1199,7 +1199,7 @@ describe("R5-03 GitHub installation tokens are down-scoped to one repo", () => {
     // GitHub 422s a `repositories` entry that is not in the installation — which is what
     // `release/health.ts` produces, because it passes a PRODUCT SLUG. Falling back keeps the
     // health check working; the fallback token is still permission-minimised, and it is
-    // reported in R10-dos.md as the one caller this lane could not fully scope.
+    // reported in the R10 audit findings as the one caller this lane could not fully scope.
     const kv = new KvMock();
     const env = await ghAppEnv(kv);
     const attempts: MintCall["body"][] = [];

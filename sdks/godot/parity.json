@@ -104,7 +104,10 @@
     "update.check": { "status": "implemented" },
     "update.feed": { "status": "implemented" },
     "update.decide": { "status": "implemented" },
-    "update.content": { "status": "planned", "wp": "P4-24" },
+    "update.content": {
+      "status": "implemented",
+      "note": "P4-24: core/feed.gd feed_content (packSets, packFloors, revocations parsed beside the claims with the token rule), distribution/decision.gd's content decision (select_pack_rows, composition, prestage, content-floor, revoked-content, packs; boot required only for revoked required content), services/update/flow.gd content steps 10-14; every feedContentCases and contentRows vector, stamp holds, on the editor and the release template."
+    },
     "update.driver": {
       "status": "implemented",
       "except": [{ "runtime": "ios", "reason": "outlet" }],
@@ -122,7 +125,10 @@
       "status": "implemented",
       "note": "P4-08: core/release_record.gd applies the pack claims and pin.kind (PKeyPackClaims), packs/marker.gd verifies embedded-pack markers; the packs suite drives every packRecordCases and markerCases vector, the content stamps and packSetIdCases."
     },
-    "packs.revoke": { "status": "planned", "wp": "P4-24" },
+    "packs.revoke": {
+      "status": "implemented",
+      "note": "P4-24: core/release_record.gd revocation_of / verify_revocation / newer_revocation (every revocationCases vector), packs/revocations.gd (the sibling content/revocations.json: written only with a first entry and revocationsStored first, re-verified on load, torn quarantined with relearn, unreadable writes nothing, the 256 cap, recover_state clears relearn) and the engine's pack-revoked."
+    },
     "packs.delegation": { "status": "planned", "wp": "P4-26" },
     "packs.plan": {
       "status": "implemented",
@@ -158,7 +164,7 @@
     },
     "packs.handlers": {
       "status": "implemented",
-      "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount: normal paths only, resources judged by content (RSRC/text head, RSCC refused), remap/import targets and uid_cache.bin entries inside the pack; files.tree outputs content-scanned too; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
+      "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount: normal paths only, resources judged by content (RSRC/text head; RSCC decompressed, bounded, then scanned, P4-27), remap/import targets and uid_cache.bin entries inside the pack; files.tree outputs content-scanned too; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
     },
     "packs.provides": {
       "status": "implemented",

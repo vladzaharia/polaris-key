@@ -107,8 +107,8 @@ Production bootstrap: `docs/DEPLOYMENT.md`.
 ~2,990 tests across the stack, all green: worker 1044, python 472, sdk-node 299, admin 259,
 sdk-react 247, swift 195, conformance 132, shared-catalog 110, client-core 81,
 shared-manifest 62, shared-jws 46, cli 33, plus protocol/tools. The worker count includes the
-per-lane attack suites (`packages/worker/test/attack/`), which turn the findings in
-`docs/security/2026-08-26-security-audit.md` into regression tests: a fix that quietly comes
+per-lane attack suites (`packages/worker/test/attack/`), which turn the findings of a
+point-in-time security audit into regression tests: a fix that quietly comes
 undone is a red build rather than a rediscovery.
 
 ## Documentation

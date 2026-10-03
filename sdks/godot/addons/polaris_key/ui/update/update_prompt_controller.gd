@@ -6,13 +6,18 @@ extends RefCounted
 ##
 ## Two sources, both delivered by PolarisKey.update.update_available(result):
 ##   PKeyUpdateCheck   wire v4's signed decision: code-ready, binary, store, platform, blocked
-##                     (none shows nothing, or "up to date" when asked)
+##                     (none shows nothing, or "up to date" when asked; packs shows nothing: the
+##                     boot's FETCH applies it)
 ##   PKeyVersionCheck  the v3 version check: a newer version exists
 ##
 ## A mandatory binary, store or platform answer and every blocked answer is LOCKED: a persistent
-## banner with no dismiss control, whatever the requested mode, and never a full-screen cover —
-## no v4 answer stops play (plans/P3-01.md §2.8, decision 1). Only a dismissable answer may use
-## the modal mode.
+## banner with no dismiss control, whatever the requested mode, and never a full-screen cover.
+## Floors never stop play, so a content floor (`blocked {content-floor}`, or an offer made
+## mandatory by `contentBlock: "content-floor"`) is such a banner too. A CI revocation of REQUIRED
+## content can stop play (plans/P4-13.md §2.6, decision 4, amending P3-01 decision 1): boot
+## `required` gives `required: true` and the revoked-content copy ("Content withdrawn"), with the
+## offer's action when the answer is an offer and none for `blocked`; PKeyBoot stops at BLOCKED
+## with the same copy. Only a dismissable answer may use the modal mode.
 ##
 ## For a v4 answer the action is the outlet adapter's plan (PKeyOutletAdapter.describe, P3-10;
 ## README §6.3): a store opens its listing or the compiled source page, TestFlight and AltStore
@@ -29,7 +34,7 @@ const DOWNLOAD_OUTLETS := ["", "direct"]
 
 
 ## The prompt's model for `result` (or null): {visible, state, title, body, body_arg, action,
-## action_url, behaviour, locked, version}. `state` is the action (code-ready, binary, store,
+## action_url, behaviour, locked, version, required}. `state` is the action (code-ready, binary, store,
 ## platform, blocked), `version` for the v3 check, `current` for an up-to-date answer shown on
 ## request, or "" when nothing shows. `outlet` is the build's outlet kind ("" in the editor, read
 ## as direct). `plan` is the adapter's plan for a v4 answer (PolarisKey.update.plan(result));
@@ -54,7 +59,7 @@ static func _is_https(url: String) -> bool:
 
 
 static func _model(result: Variant, outlet: String, release_url: String, show_when_current: bool, plan: Dictionary) -> Dictionary:
-	var out := {"visible": false, "state": "", "title": "", "body": "", "body_arg": null, "action": "", "action_url": "", "behaviour": "", "locked": false, "version": ""}
+	var out := {"visible": false, "state": "", "title": "", "body": "", "body_arg": null, "action": "", "action_url": "", "behaviour": "", "locked": false, "version": "", "required": false}
 	if result is PKeyVersionCheck:
 		var v: PKeyVersionCheck = result
 		if not v.ok:
@@ -79,6 +84,10 @@ static func _model(result: Variant, outlet: String, release_url: String, show_wh
 		if show_when_current and d.get("reason") == "up-to-date":
 			out.merge({"visible": true, "state": "current", "body": "update_up_to_date"}, true)
 		return out
+	# `packs` is applied silently by the boot's FETCH.
+	if action == "packs":
+		return out
+	var content_floor: bool = d.get("reason") == "content-floor" or d.get("contentBlock") == "content-floor"
 	var version := ""
 	if action != "blocked" and d.get("release") is Dictionary and d["release"].get("version") is String:
 		version = d["release"]["version"]
@@ -96,7 +105,7 @@ static func _model(result: Variant, outlet: String, release_url: String, show_wh
 			out["body_arg"] = null
 		"blocked":
 			out["title"] = "update_blocked_title"
-			out["body"] = "update_blocked_body"
+			out["body"] = "update_content_floor_body" if content_floor else "update_blocked_body"
 			out["body_arg"] = null
 	var p := plan
 	if p.is_empty():
@@ -108,8 +117,20 @@ static func _model(result: Variant, outlet: String, release_url: String, show_wh
 		out["body"] = p["body"]
 		out["body_arg"] = null
 	if mandatory:
-		out["body"] = "update_mandatory_body"
+		out["body"] = "update_content_floor_body" if content_floor else "update_mandatory_body"
 		out["body_arg"] = null
+	# Revoked required content stops the boot (boot `required`): its own copy, locked, the offer's
+	# action when there is an offer and none for `blocked`.
+	if PKeyDecision.boot_decision(d) == PKeyDecision.BOOT_REQUIRED:
+		out["required"] = true
+		out["locked"] = true
+		out["title"] = "update_revoked_title"
+		out["body"] = "update_revoked_body"
+		out["body_arg"] = null
+		if action == "blocked":
+			out["action"] = ""
+			out["action_url"] = ""
+			out["behaviour"] = PKeyApplyResult.SILENT
 	return out
 
 

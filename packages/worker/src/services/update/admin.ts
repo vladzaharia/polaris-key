@@ -1,7 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Update's admin surface — `GET|PATCH /manage/api/products/<slug>/update/settings` (§R1).
+ * Update's admin surface — `GET|PATCH /manage/api/products/<slug>/update/settings` (§R1), and
+ * the read-only "what does this device get?" simulator, `GET …/update/simulate` (P4-15,
+ * `simulate.ts`).
  *
  * Five settings, and they are here because they are all answers to ONE question — which builds
  * this product offers, and to whom:
@@ -72,6 +74,12 @@ import {
   setOperatorPolicy,
   setReleaseAccess,
 } from "../release/config.js";
+import {
+  parseSimulateQuery,
+  simulate,
+  SimulateInputError,
+  SimulateNotFound,
+} from "./simulate.js";
 
 /** A semver bound the window may name. Same shape the manifest validator accepts. */
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-.]+)?$/;
@@ -126,10 +134,44 @@ export async function handleUpdateAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
   const { rest } = ctx;
+  if (rest.length === 1 && rest[0] === "simulate") return handleSimulate(ctx);
   if (rest[0] !== "settings") return null;
   if (rest.length === 1) return handleSettings(ctx);
   if (rest.length === 2 && rest[1] === "revert") return handleRevert(ctx);
   return null;
+}
+
+/**
+ * `GET …/update/simulate?appRelease=&platform=&outlet=&variant=&channel=&device=&methods=&packSetId=`
+ * (P4-15, `simulate.ts`): what a fresh device running that app release gets. Read-only.
+ */
+async function handleSimulate(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response> {
+  if (ctx.req.method !== "GET")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  try {
+    const q = parseSimulateQuery(new URL(ctx.req.url).searchParams);
+    // Only the slug crosses: the simulator never sees the product's signing key (it signs with an
+    // ephemeral key of its own) and gets no `env`, so no binding that could unseal one.
+    return adminJson(
+      await simulate(
+        {
+          db: ctx.db,
+          hooks: ctx.hooks,
+          now: ctx.now,
+          product: { slug: ctx.product.slug },
+        },
+        q,
+      ),
+    );
+  } catch (e) {
+    if (e instanceof SimulateInputError)
+      return err(400, ErrorCode.BadRequest, e.message, { field: e.field });
+    if (e instanceof SimulateNotFound)
+      return err(404, ErrorCode.NotFound, e.message);
+    throw e;
+  }
 }
 
 async function handleSettings(

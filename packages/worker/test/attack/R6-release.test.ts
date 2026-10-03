@@ -3,7 +3,7 @@
  *
  * Every test here is an ATTACK. They were written to assert the *vulnerable* behaviour;
  * post-remediation each one asserts that the same attack now FAILS. Test names are
- * unchanged so the mapping back to docs/security/findings/R6-release.md survives.
+ * unchanged so the mapping back to the R6 audit findings survives.
  *
  * Still-green attacks (R6-08 redirect handling, R6-09 CDATA, R6-11 portal, and the
  * request-Host origin) document findings that were deliberately NOT remediated in this pass —

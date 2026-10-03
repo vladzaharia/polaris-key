@@ -155,10 +155,9 @@ func _granted() -> Variant:
 	return engine.entitlements.call() if engine.entitlements.is_valid() else null
 
 
-## A revocation seam: the engine answers through `is_revoked(sha256)` once it holds revocations
-## (P4-24); until then no release is revoked.
+## Whether a verified revocation names the release (the engine's revocations, P4-24).
 func _revoked(sha256: String) -> bool:
-	return engine.has_method("is_revoked") and engine.call("is_revoked", sha256) == true
+	return engine.is_revoked(sha256) == true
 
 
 static func _target_ok(t: Variant) -> bool:

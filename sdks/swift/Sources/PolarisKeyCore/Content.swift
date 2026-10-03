@@ -159,20 +159,26 @@ public struct FeedRevocation: Sendable, Equatable {
     /// The target's version and `seq`.
     public let version: String
     public let seq: Int
+    /// `delegation` when the target is a delegation (plans/P4-19.md §2.7; `pack` is then its
+    /// scope root); nil for a pack record target.
+    public let kind: String?
 
-    public init(record: String, pack: String, target: String, version: String, seq: Int) {
+    public init(record: String, pack: String, target: String, version: String, seq: Int, kind: String? = nil) {
         self.record = record
         self.pack = pack
         self.target = target
         self.version = version
         self.seq = seq
+        self.kind = kind
     }
 
     public var json: JSONValue {
-        .object([
+        var o: [String: JSONValue] = [
             "record": .string(record), "pack": .string(pack), "target": .string(target),
             "version": .string(version), "seq": .int(seq),
-        ])
+        ]
+        if let kind { o["kind"] = .string(kind) }
+        return .object(o)
     }
 }
 
@@ -376,7 +382,16 @@ private func parseRevocations(_ v: JSONValue, nonWire: NonWireIntegers) throws -
         let version = try string(r["version"], PackPatterns.version)
         let seq = try int(r["seq"], "/revocations/\(i)/seq", 1, nonWire)
         try need(records.insert(record).inserted)
-        out.append(FeedRevocation(record: record, pack: pack, target: target, version: version, seq: seq))
+        // plans/P4-19.md §2.7: `kind` absent (a pack record target) or `delegation`; any other
+        // vocabulary token is a forward value whose entry is dropped alone; anything else makes the
+        // member unusable.
+        var kind: String?
+        if let k = r["kind"] {
+            let token = try string(k, PackPatterns.vocabToken)
+            if token != "delegation" { continue }
+            kind = token
+        }
+        out.append(FeedRevocation(record: record, pack: pack, target: target, version: version, seq: seq, kind: kind))
     }
     return out
 }
@@ -634,8 +649,8 @@ public func verifyRevocation(_ jws: String, options opts: VerifyRevocationOption
             pin: ReleaseRecordPin(kind: "revocation", deliverable: entry.pack, version: entry.version, seq: entry.seq)))
     let record: ReleaseRecordDoc
     switch r {
-    case .refused(let step): return .refused(RevocationStep(rawValue: step.rawValue)!)
-    case .ok(let rec): record = rec
+    case .refused(let step): return .refused(RevocationStep(rawValue: step.rawValue) ?? .jws)
+    case .ok(let rec), .delegated(let rec, _): record = rec
     }
     guard let body = revocationOf(record.json, nonWire: record.nonWireIntegers), body.target == entry.target
     else { return .refused(.revocation) }

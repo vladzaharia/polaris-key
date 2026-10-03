@@ -303,6 +303,19 @@ export function levelInRange(
   return cmp !== null && contentApiInRange(cmp, level);
 }
 
+/**
+ * Does a pack variant run on a selector's engine? Yes when the selector's engine is `""` (builds
+ * that declare none constrain nothing: the server cannot know their engine), when the variant
+ * declares no `requires.engine`, or when the two are equal. The `engine` stage's rule, exported so
+ * the console's compatibility matrix (P4-15) applies the same one.
+ */
+export function variantRunsOn(
+  v: Pick<PackVariantFacts, "engine">,
+  engine: string,
+): boolean {
+  return engine === "" || v.engine === null || v.engine === engine;
+}
+
 /** Is `version` at or above `floor` under `scheme`? An unparseable version or floor is not. */
 function atOrAbove(
   scheme: VersionScheme,
@@ -716,11 +729,7 @@ export class PackResolver {
         };
     }
     const withEngine = cands.filter(
-      (c) =>
-        c.v.variantKey !== vk ||
-        engine === "" ||
-        c.v.engine === null ||
-        c.v.engine === engine,
+      (c) => c.v.variantKey !== vk || variantRunsOn(c.v, engine),
     );
     if (withEngine.length === 0)
       return {

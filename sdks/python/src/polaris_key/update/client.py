@@ -74,7 +74,9 @@ from ..core.models import (
     UpdateOutlet,
 )
 from ..core.outlets import OUTLET_KINDS, OUTLET_SUBKINDS, OUTLET_UNKNOWN
+from ..core.patterns import _full_match
 from ..core.release_record import (
+    DELEGATED_KID_PATTERN,
     ReleaseRecordPin,
     reload_release_records,
     verify_release_record,
@@ -251,6 +253,12 @@ def _configure(raw: Any, pinned_trust: Mapping[str, str]) -> _Configured:
     ):
         raise _invalid("update.pinned_release_keys must map kid to a base64url key.")
     release_keys = dict(keys)
+    # plans/P4-19.md §2.2: a delegated kid is never a pinned release key.
+    if any(_full_match(DELEGATED_KID_PATTERN, kid) is not None for kid in release_keys):
+        raise _invalid(
+            "update.pinned_release_keys names a pkd1- kid: a delegated content key is reached "
+            "only through a delegation, never pinned."
+        )
     pins = {raw for raw in (_raw_key(k) for k in pinned_trust.values()) if raw is not None}
     for k in release_keys.values():
         raw_key = _raw_key(k)

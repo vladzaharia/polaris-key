@@ -32,6 +32,7 @@ export const DOCS_LINKS = {
   updateSettingsRevert: "/docs/services/update/eligibility/",
   releaseChannels: "/docs/services/release/channels/",
   packDeliverables: "/docs/services/release/packs/",
+  compatSimulator: "/docs/services/release/compatibility/",
   rolloutControl: "/docs/admin/distribution-matrix/",
   // Inline explainer callouts
   manifestNote: "/docs/build/manifest/",

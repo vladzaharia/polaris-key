@@ -34,7 +34,7 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
   but the upsert's conflict target is `(product, release_id)` (`store.ts:212`). `v1.2.0` and
   `1.2.0`, or a tag deleted and re-created with a different prefix, raise `UNIQUE constraint failed`
   and roll back the whole resync batch (`resync.ts:402-426`) after its un-batched writes landed.
-- R6-10 (`test/attack/R6-release.test.ts:1332-1385`, finding `docs/security/findings/R6-release.md:474-500`):
+- R6-10 (`test/attack/R6-release.test.ts:1332-1385`, finding the R6 audit findings):
   nothing records a floor, so deleting v2.0.0 makes v1.0.0 `latest` with a public cache header.
 
 ## Read first
@@ -132,8 +132,8 @@ Report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) 
 4. Pinned lookup fallback to the unprefixed tag.
 5. Floors: raise in `releaseStoreStatements`, enforce in `resolveSelector` and in the truth-store
    channel rows, health check, admin endpoint.
-6. Flip `R6-10` to a "FIXED" regression test; update `docs/security/findings/R6-release.md` and
-   the R6-10 row in `docs/security/2026-08-26-security-audit.md:372`.
+6. Flip `R6-10` to a "FIXED" regression test; update the R6 audit findings and
+   the R6-10 row in the 2026-08-26 security audit.
 7. Regenerate docs pages; update `services/release/*` pages on channels and resolution.
 
 ## Acceptance criteria

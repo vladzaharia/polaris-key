@@ -7,7 +7,7 @@
 // Verified on real workerd: every `catalog.validateKeyValue(...)` threw
 // `EvalError: Code generation from strings disallowed for this context`, turning
 // `GET /<product>/config` into a 500 for every device on every poll
-// (docs/security/findings/VERIFY-R10-01.md). Caching the compiled validator does not help;
+// (the VERIFY-R10-01 audit note). Caching the compiled validator does not help;
 // it only moves the throw from per-request to per-isolate.
 //
 // This module walks the schema instead of compiling it, so nothing is ever evaluated. It has

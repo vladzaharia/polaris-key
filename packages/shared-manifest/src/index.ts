@@ -4668,7 +4668,7 @@ const IPV6_GROUP_RE = /^[0-9a-fA-F]{1,4}$/;
  *
  * Note the residual: this bounds *address literals*, not DNS. A hostname whose A record points
  * at 169.254.169.254 still resolves at fetch time (classic DNS rebinding), which is why the
- * follow-up in `docs/security/findings/R9-injection.md` recommends an operator allowlist.
+ * follow-up in the R9 audit findings recommends an operator allowlist.
  */
 export function issuerUrlProblem(value: unknown): string | null {
   if (typeof value !== "string" || value.length === 0) {

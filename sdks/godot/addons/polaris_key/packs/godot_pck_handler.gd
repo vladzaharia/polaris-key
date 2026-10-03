@@ -70,6 +70,14 @@ func activate(install: Dictionary) -> void:
 	to_mount[install["packId"]] = install
 
 
+## A revoked install (plans/P4-13.md §2.5) not yet mounted leaves this boot's mount. A mounted
+## pack cannot be unmounted; it is refused from the next boot on.
+func withdraw(install: Dictionary) -> void:
+	var cur = to_mount.get(install["packId"])
+	if cur is Dictionary and cur["recordSha256"] == install["recordSha256"] and not mounted.has(install["packId"]):
+		to_mount.erase(install["packId"])
+
+
 ## A restart install may join this boot while its id has not been mounted in this process.
 func can_activate_now(install: Dictionary) -> bool:
 	return not mounted.has(install["packId"])

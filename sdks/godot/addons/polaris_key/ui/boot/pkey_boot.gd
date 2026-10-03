@@ -394,7 +394,9 @@ func _enter(stage: String, _previous: String) -> void:
 				var u = host.get("update_result")
 				update_result = u if u is PKeyResult else null
 				if update_result != null:
-					prompt.show_result(update_result)
+					# The revoked-content hard stop is BLOCKED's own card, not a banner over it.
+					if not _revoked_content():
+						prompt.show_result(update_result)
 					gate.update_result = update_result
 		"fetch":
 			if host.has_method("fetch_with"):
@@ -584,6 +586,13 @@ func _render() -> void:
 			if _block_reason == "content-declined":
 				title = t.text("boot_declined_title")
 				body = t.text("boot_declined_body")
+			elif _block_reason == "update-required" and _revoked_content():
+				# plans/P4-13.md §2.6 "Host copy": revoked REQUIRED content, with the offer's button
+				# when the answer is an offer and none for `blocked`.
+				title = t.text("update_revoked_title")
+				body = t.text("update_revoked_body")
+				if (update_result as PKeyUpdateCheck).decision.get("action") != "blocked":
+					url = PKeyUpdatePromptController.update_url(update_result, gate._outlet(), String(_opts.get("release_url", "")))
 			elif _block_reason == "update-required":
 				title = t.text("boot_blocked_update_title")
 				body = t.text("boot_blocked_update_body")
@@ -614,6 +623,13 @@ func _render() -> void:
 			st = {"status": _wait_status}
 		gate.show_state(st)
 	prompt.visible = show_default_view and prompt.model.get("visible", false) and not prompt.is_dismissed
+
+
+## Whether DECIDE's answer is the revoked-content hard stop (boot `required`, plans/P4-13.md
+## decision 4).
+func _revoked_content() -> bool:
+	return update_result is PKeyUpdateCheck and (update_result as PKeyUpdateCheck).ok \
+			and PKeyDecision.boot_decision((update_result as PKeyUpdateCheck).decision) == PKeyDecision.BOOT_REQUIRED
 
 
 func _focus_chain() -> Array:

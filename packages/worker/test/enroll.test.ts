@@ -357,7 +357,7 @@ describe("merge on sign-in", () => {
     sub: "user-1",
     email: "ada@example.com",
     name: "Ada Lovelace",
-    groups: ["family"],
+    groups: ["members"],
     claims: {},
   };
 
@@ -373,7 +373,7 @@ describe("merge on sign-in", () => {
       "djdl",
       "https://id.example",
       "client",
-      JSON.stringify({ family: { role: "user", tier: "standard" } }),
+      JSON.stringify({ members: { role: "user", tier: "standard" } }),
     );
     await db.run(
       "UPDATE products SET auto_issue_json = ? WHERE slug = ?",
@@ -507,7 +507,7 @@ describe("OIDC default tier", () => {
       "djdl",
       "https://id.example",
       "client",
-      JSON.stringify({ family: { role: "user", tier: "standard" } }),
+      JSON.stringify({ members: { role: "user", tier: "standard" } }),
     );
   });
 

@@ -36,7 +36,7 @@ func asciiLower(_ s: String) -> String {
 }
 
 /// Path rules 1–3 (A7 §3.3) and the `.pkey` addition (plans/P4-01.md §2.7).
-private func pathSafe(_ path: String) -> Bool {
+func pathSafe(_ path: String) -> Bool {
     let n = path.utf8.count
     if n < 1 || n > MAX_PACK_PATH_BYTES { return false }
     for c in path.utf8 where c < 0x20 || c > 0x7e || BAD_CHARS.contains(c) { return false }

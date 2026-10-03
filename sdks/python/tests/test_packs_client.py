@@ -1,4 +1,4 @@
-# @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.provides
+# @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.delegation packs.provides
 """``client.update.packs`` end to end against a fake byte server (P4-07 acceptance; a port of
 ``@polaris-key/node``'s ``test/packs.test.ts``): a ``files.tree`` pack installed from its pinned
 record into the platform data directory, updated by the file strategy, resumed after a dropped
@@ -23,6 +23,8 @@ import pytest
 from helpers import BASE_URL, TOKEN, make_client
 from pack_fixtures import (
     PRODUCT,
+    content_key_pair,
+    delegation_for,
     PRODUCT_TRUST,
     RELEASE_KEYS,
     TreePack,
@@ -164,9 +166,11 @@ def client(
     *,
     embedded: Optional[List[Any]] = None,
     token: bool = True,
+    stamp_doc: Optional[Dict[str, Any]] = None,
 ) -> Any:
     stamp_path = work / f"stamp-{'-'.join(p.version for p in stamp)}.json"
-    stamp_path.write_text(json.dumps({"format": "pkey-content/1", **stamp_for(*stamp)}))
+    body = stamp_doc if stamp_doc is not None else stamp_for(*stamp)
+    stamp_path.write_text(json.dumps({"format": "pkey-content/1", **body}))
     store = InMemoryStore(PRODUCT)
     if token:
         store.set_token(TOKEN)
@@ -567,3 +571,52 @@ def test_is_available_and_pack_for_through_the_client(srv: FakeServer, tmp_path:
     assert bare.update.packs.is_available("l10n.fr") is False
     assert bare.update.packs.pack_for("l10n.fr") is None
     bare.close()
+
+
+def test_a_held_release_signed_under_a_delegation_is_refused_through_the_packs_client(
+    srv: FakeServer, tmp_path: Any
+) -> None:
+    """plans/P4-19.md §2.4: the packs client hands the stamp's holds to the engine, so a release
+    the stamp holds never takes the delegated path, even when a decision targets it and its
+    delegation is valid (``record-rejected``, detail ``jws``). Without the hold it installs."""
+    ck = content_key_pair()
+    d = delegation_for("djdl.events", ck["pub"])
+    held = tree_pack(
+        "djdl.events.halloween",
+        "1.0.0",
+        1,
+        {"a.json": "{}"},
+        issued_at=1759250000,
+        signer={"pem": ck["pem"], "kid": d["kid"]},
+    )
+    srv.packs = [held]
+    srv.records = {d["sha256"]: d["jws"]}
+    release = {"sha256": held.record_sha256, "seq": held.seq, "version": held.version}
+    expects = [{"pack": held.pack_id, "required": True, "delivery": "essential"}]
+    target = {"pack": held.pack_id, "release": release}
+
+    work = tmp_path / "held"
+    work.mkdir()
+    c = client(
+        srv,
+        work,
+        [held],
+        stamp_doc={
+            "contentApi": 1,
+            "pins": [],
+            "expects": expects,
+            "holds": [{"pack": held.pack_id, "release": release, "reason": "held in a test"}],
+        },
+    )
+    with pytest.raises(PackError) as ex:
+        c.update.packs.ensure_releases([target])
+    assert ex.value.code == "record-rejected"
+    assert ex.value.detail == "jws"
+    c.close()
+
+    free = tmp_path / "free"
+    free.mkdir()
+    c = client(srv, free, [held], stamp_doc={"contentApi": 1, "pins": [], "expects": expects})
+    (install,) = c.update.packs.ensure_releases([target])
+    assert install["delegation"] == d["jws"]
+    c.close()

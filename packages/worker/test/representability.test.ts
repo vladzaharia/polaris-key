@@ -742,7 +742,7 @@ describe("OIDC sign-in stores an unsignable name or email as null", () => {
       AUD,
       null,
       JSON.stringify([REDIRECT]),
-      JSON.stringify({ family: { role: "user" } }),
+      JSON.stringify({ members: { role: "user" } }),
     );
     const pair = await generateKeyPair("ES256", { extractable: true });
     const pub = await importJWK(
@@ -752,7 +752,7 @@ describe("OIDC sign-in stores an unsignable name or email as null", () => {
     idpKey.getKey = async () => pub;
     const idToken = await new SignJWT({
       nonce: "n",
-      groups: ["family"],
+      groups: ["members"],
       ...claims,
     })
       .setProtectedHeader({ alg: "ES256", kid: "idp" })

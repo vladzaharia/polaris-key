@@ -29,7 +29,7 @@ page where a user types a code (`packages/worker/src/services/identity/oidc.ts:3
 `:762-786`; report [§9.1](../../README.md#91-polaris-key-worth-fixing-regardless-of-godot) #18;
 notes/A2 §6). A game on a Steam Deck in game mode, a TV or a console cannot show a clickable
 link; the player must type or scan. The audit left this as a documented residual of R8-02
-because it changes the public device-flow contract (`docs/security/findings/R8-oidc.md:610-614`).
+because it changes the public device-flow contract (the R8 audit findings).
 Godot's sign-in (P1-07) and the Node, Python and Swift ports (P1b-08) build on the finished
 page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-identity)).
 
@@ -48,7 +48,7 @@ page (`identity.devicecode` in [PARITY §5.4](../../PARITY.md#54-devices-and-ide
   `/verify`; `packages/worker/test/routeCoverage.test.ts:63-88` (`SERVICE_PATHS`).
 - `packages/worker/test/oidcEdge.test.ts:340-420` and
   `packages/worker/test/attack/R8-oidc.test.ts:480-640` (the residual PoCs to flip).
-- `docs/security/findings/R8-oidc.md` (R8-02) and `docs/security/findings/R12-secrets.md`
+- the R8 audit findings (R8-02) and the R12 audit findings
   (R12-04: never use a credential as a KV key name).
 - `packages/docs/src/content/docs/services/identity/device-flow.md`.
 

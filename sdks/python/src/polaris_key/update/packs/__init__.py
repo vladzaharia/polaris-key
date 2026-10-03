@@ -13,6 +13,15 @@ from __future__ import annotations
 from ...core.pack_claims import content_claims, is_pack_id, object_ref, variant_key
 from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
 from .boot import boot_pack_options, run_boot_fetch
+from .dataonly import (
+    DATA_ONLY_SCRIPT_MARKERS,
+    DATA_ONLY_TEXT_EXTENSIONS,
+    data_only_extension,
+    data_only_file_refusal,
+    data_only_path_refusal,
+    data_only_refusal,
+    data_only_text_refusal,
+)
 from .engine import (
     FILES_TREE_HANDLER,
     EmbeddedBaseline,
@@ -73,6 +82,13 @@ from .state import (
 from .window import frame_window, window_allowed, window_log_max
 
 __all__ = [
+    "DATA_ONLY_SCRIPT_MARKERS",
+    "DATA_ONLY_TEXT_EXTENSIONS",
+    "data_only_extension",
+    "data_only_file_refusal",
+    "data_only_path_refusal",
+    "data_only_refusal",
+    "data_only_text_refusal",
     "content_claims",
     "is_pack_id",
     "object_ref",

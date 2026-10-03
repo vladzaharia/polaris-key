@@ -43,6 +43,7 @@ from .pack_claims import (
     VARIANT_AXIS_PATTERN,
     VARIANT_VALUE_PATTERN,
     VERSION_PATTERN,
+    VOCAB_TOKEN_PATTERN,
     is_pack_id,
     variant_key,
 )
@@ -656,15 +657,26 @@ def _parse_revocations(v: Any) -> List[Dict[str, Any]]:
         if e["record"] in records:
             _no()
         records.add(e["record"])
-        out.append(
-            {
-                "record": e["record"],
-                "pack": e["pack"],
-                "target": e["target"],
-                "version": e["version"],
-                "seq": seq,
-            }
-        )
+        # plans/P4-19.md §2.7: `kind` absent (a pack record target) or `delegation`; any other
+        # vocabulary token is a forward value whose entry is dropped alone; anything else makes
+        # the member unusable.
+        kind: Optional[str] = None
+        if "kind" in e:
+            if _full_match(VOCAB_TOKEN_PATTERN, e["kind"]) is None:
+                _no()
+            if e["kind"] != "delegation":
+                continue
+            kind = "delegation"
+        entry: Dict[str, Any] = {
+            "record": e["record"],
+            "pack": e["pack"],
+            "target": e["target"],
+            "version": e["version"],
+            "seq": seq,
+        }
+        if kind is not None:
+            entry["kind"] = kind
+        out.append(entry)
     return out
 
 

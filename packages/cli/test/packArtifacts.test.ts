@@ -314,7 +314,7 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
     ).toEqual([
       "assets/kaykit/a.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
       "assets/kaykit/b.res: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
-      "assets/kaykit/c.res: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+      "assets/kaykit/c.res: a compressed binary resource (RSCC) in compression mode 0; only zstd (mode 2) is inspected; a pack carries data only.",
       "assets/kaykit/d.scn: not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts; a pack carries data only.",
     ]);
   });
@@ -367,7 +367,7 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
     ).toEqual([
       "assets/kaykit/skin.png: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
       "assets/kaykit/level.bin: a text resource that names GDScript (an embedded script or its source); a pack carries data only.",
-      "assets/kaykit/data.json: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+      "assets/kaykit/data.json: a compressed binary resource (RSCC) in compression mode 0; only zstd (mode 2) is inspected; a pack carries data only.",
     ]);
   });
 });

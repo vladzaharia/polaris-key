@@ -47,7 +47,7 @@
       "errors": [
         "assets/kaykit/a.scn: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
         "assets/kaykit/b.res: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
-        "assets/kaykit/c.res: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+        "assets/kaykit/c.res: a compressed binary resource (RSCC) in compression mode 0; only zstd (mode 2) is inspected; a pack carries data only.",
         "assets/kaykit/d.scn: not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts; a pack carries data only."
       ],
       "warnings": []
@@ -72,7 +72,7 @@
         "assets/kaykit/look.material: a binary resource that names GDScript (an embedded script or its source); a pack carries data only.",
         "assets/kaykit/walk.anim: a binary resource that names script/source (an embedded script or its source); a pack carries data only.",
         "assets/kaykit/m.mesh: a binary resource that names CSharpScript (an embedded script or its source); a pack carries data only.",
-        "assets/kaykit/z.material: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only.",
+        "assets/kaykit/z.material: a compressed binary resource (RSCC) in compression mode 0; only zstd (mode 2) is inspected; a pack carries data only.",
         "assets/kaykit/level.cfg: a text resource that names GDScript (an embedded script or its source); a pack carries data only."
       ],
       "warnings": []
@@ -157,8 +157,133 @@
       "warnings": []
     },
     "audit-real-import-model": {
+      "errors": [],
+      "warnings": []
+    },
+    "rscc-real-import-grid": {
+      "errors": [],
+      "warnings": []
+    },
+    "rscc-real-import-grid-4.4.1": {
+      "errors": [],
+      "warnings": []
+    },
+    "rscc-empty-tail": {
+      "errors": [],
+      "warnings": []
+    },
+    "rscc-script": {
       "errors": [
-        ".godot/imported/tri.glb-6ed0665643de460f848bf1abf5ed7ae0.scn: a compressed binary resource (RSCC), which cannot be inspected for embedded scripts; export it uncompressed; a pack carries data only."
+        "assets/kaykit/script.scn: a compressed binary resource (RSCC) that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/straddle.res: a compressed binary resource (RSCC) that names GDScript (an embedded script or its source); a pack carries data only.",
+        "assets/kaykit/model.png: a compressed binary resource (RSCC) that names GDScript (an embedded script or its source); a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-mode": {
+      "errors": [
+        "assets/kaykit/deflate.scn: a compressed binary resource (RSCC) in compression mode 1; only zstd (mode 2) is inspected; a pack carries data only.",
+        "assets/kaykit/fastlz.scn: a compressed binary resource (RSCC) in compression mode 0; only zstd (mode 2) is inspected; a pack carries data only.",
+        "assets/kaykit/gzip.scn: a compressed binary resource (RSCC) in compression mode 3; only zstd (mode 2) is inspected; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-over-cap": {
+      "errors": [
+        "assets/kaykit/big.scn: a compressed binary resource (RSCC) that declares 268435457 bytes, above the 67108864-byte cap; a pack carries data only.",
+        "assets/kaykit/max.scn: a compressed binary resource (RSCC) that declares 4294967295 bytes, above the 67108864-byte cap; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-header": {
+      "errors": [
+        "assets/kaykit/short.scn: a compressed binary resource (RSCC) whose header is truncated; a pack carries data only.",
+        "assets/kaykit/tiny-blocks.scn: a compressed binary resource (RSCC) with block size 16, outside 4096..1048576; a pack carries data only.",
+        "assets/kaykit/huge-blocks.scn: a compressed binary resource (RSCC) with block size 1048577, outside 4096..1048576; a pack carries data only.",
+        "assets/kaykit/zero-blocks.scn: a compressed binary resource (RSCC) with block size 0, outside 4096..1048576; a pack carries data only.",
+        "assets/kaykit/table.scn: a compressed binary resource (RSCC) whose block table runs past the end; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-truncated": {
+      "errors": [
+        "assets/kaykit/cut.scn: a compressed binary resource (RSCC) whose block 1 runs past the end; a pack carries data only.",
+        "assets/kaykit/no-magic.scn: a compressed binary resource (RSCC) without its closing RSCC magic; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-decodes-long-short": {
+      "errors": [
+        "assets/kaykit/says-short.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
+        "assets/kaykit/is-short.scn: a compressed binary resource (RSCC) whose block 0 does not decode to 4096 bytes; a pack carries data only.",
+        "assets/kaykit/is-long.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
+        "assets/kaykit/tail-long.scn: a compressed binary resource (RSCC) whose block 1 is not one zstd frame of 100 bytes; a pack carries data only.",
+        "assets/kaykit/tail-nonempty.scn: a compressed binary resource (RSCC) whose block 1 is not one zstd frame of 0 bytes; a pack carries data only.",
+        "assets/kaykit/tail-checksum.scn: a compressed binary resource (RSCC) whose block 1 is not one zstd frame of 0 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-frames": {
+      "errors": [
+        "assets/kaykit/two-frames.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
+        "assets/kaykit/skippable.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
+        "assets/kaykit/no-size.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
+        "assets/kaykit/dict.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
+        "assets/kaykit/reserved.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
+        "assets/kaykit/not-zstd.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-count": {
+      "errors": [
+        "assets/kaykit/sum-short.scn: a compressed binary resource (RSCC) without its closing RSCC magic; a pack carries data only.",
+        "assets/kaykit/sum-long.scn: a compressed binary resource (RSCC) whose block 0 runs past the end; a pack carries data only.",
+        "assets/kaykit/count.scn: a compressed binary resource (RSCC) whose block 2 runs past the end; a pack carries data only.",
+        "assets/kaykit/swapped.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-bomb": {
+      "errors": [
+        "assets/kaykit/bomb.scn: a compressed binary resource (RSCC) whose block 0 does not decode to 1048576 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-trailing": {
+      "errors": [
+        "assets/kaykit/after.scn: a compressed binary resource (RSCC) with bytes after its closing RSCC magic; a pack carries data only.",
+        "assets/kaykit/twice.scn: a compressed binary resource (RSCC) with bytes after its closing RSCC magic; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-window-31": {
+      "errors": [
+        "assets/kaykit/window.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-raw-block-200k": {
+      "errors": [
+        "assets/kaykit/raw200k.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 204800 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-over-pack-budget": {
+      "errors": [
+        "assets/kaykit/zeros8.scn: a compressed binary resource (RSCC) that takes the pack's declared RSCC bytes to 603942912, past the 536870912-byte budget; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-g-run": {
+      "errors": [],
+      "warnings": []
+    },
+    "rscc-body": {
+      "errors": [
+        "assets/kaykit/nested.scn: a compressed binary resource (RSCC) whose body is not a binary resource; a pack carries data only.",
+        "assets/kaykit/text.scn: a compressed binary resource (RSCC) whose body is not a binary resource; a pack carries data only.",
+        "assets/kaykit/short-body.scn: a compressed binary resource (RSCC) whose body is not a binary resource; a pack carries data only.",
+        "assets/kaykit/empty.scn: a compressed binary resource (RSCC) whose body is not a binary resource; a pack carries data only."
       ],
       "warnings": []
     },
