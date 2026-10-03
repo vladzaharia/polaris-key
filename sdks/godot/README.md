@@ -1048,6 +1048,41 @@ r = await android.apk_install(path, sha256, version_code)    # direct: verified,
   tests (`sdks/kotlin`, the `android` CI job); `native/android/export_check.sh` exports the probe
   through the Gradle build and, with `DEVICE=`, runs it on an emulator.
 
+## Device attestation (`PolarisKey.devices.attest()`, P6-02)
+
+A store install proves it is genuine and the Worker records the device at trust level
+`attested`; every other device stays `basic`, which is expected, not suspicious. The device token
+and the signed documents do not change.
+
+```gdscript
+var r := await PolarisKey.devices.attest()
+# ok: r.detail == {trust_level: "attested", kind: "app-attest" | "play-integrity", attested_at}
+# r.code == &"unsupported": r.detail.reason is runtime (desktop, web, the iOS simulator) or outlet
+```
+
+It posts `devices/attest/challenge` (bearer), then `devices/attest` with either an App Attest
+attestation (`PKeyApple.app_attest(request_hash, key_id)`: PolarisKeyPlatform's
+`app_attest_attest` over DCAppAttestService, `clientDataHash = SHA-256(UTF-8(requestHash))`) or a
+standard Play Integrity token (`PKeyAndroid.integrity_token(cloud_project_number, request_hash)`:
+the play AAR's `integrity_token`, the `requestHash` verbatim, the cloud project number from the
+challenge's `play.cloudProjectNumber`, else `PKeyOptions.play_cloud_project_number`).
+
+- **Unsupported.** `runtime` on linux, macos, windows and web, and where App Attest does not run.
+  `outlet` on an iOS install that is not App Store or TestFlight (AppDistributor's signal, or an
+  embedded provisioning profile when it has none), an Android install Google Play did not make or
+  the direct plugin build, and a mobile build without the native plugin. None of them touches the
+  network. `PolarisKey.supports("devices.attest")` answers the same through the outlet detector
+  `PKeyDevices.attest_outlet_detail`.
+- **Keys.** iOS keeps the App Attest key id in the Keychain (account `app_attest_key`) and reuses
+  it. A key the system no longer knows (reinstall, device migration, restore) answers
+  `invalid_key`; `attest()` drops it and attests a fresh key in the same call. On
+  `server_unavailable` the generated key is kept for the retry, as Apple advises.
+- **Errors.** The Worker's codes come back verbatim (`unauthorized`, `rate_limited` — a few per
+  hour per device —, `attestation_unavailable`, `attestation_rejected`); a plugin failure is
+  `platform-error` with the plugin's reply as `detail` (Play's `errorCode`, App Attest's `error`).
+- **Tests.** `tests/devices/test_attest.gd` (the `devices` suite) over the fake Worker and the two
+  fake plugins; `suite_native_apple` and `suite_native_android` cover the facade calls.
+
 ## Config (`PolarisKey.config`)
 
 ```gdscript

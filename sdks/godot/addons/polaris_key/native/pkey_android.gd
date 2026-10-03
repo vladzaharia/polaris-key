@@ -22,6 +22,7 @@ extends Node
 ##   r = await android.pack_fetch("foes")          # pack_progress until status 4, then:
 ##   r = android.pack_location("foes")             # detail.location.pck: mount it this launch
 ##   r = await android.apk_install(path, sha256, version_code)   # direct: verified, then commit
+##   r = await android.integrity_token(cloud_project, request_hash) # play, P6-02; via devices.attest()
 ##
 ## Pack paths contain the versionCode: re-read them every launch and never persist them. A
 ## self-update kills the game and nothing relaunches it: the next launch reads the outcome
@@ -193,6 +194,21 @@ func packs_availability() -> PKeyResult:
 	return PKeyResult.success()
 
 
+## Play Integrity here (P6-02): success, or unsupported (`runtime`, `dependency`, or `outlet` on a
+## direct build or an install Play did not make: only a Play install gets a PLAY_RECOGNIZED verdict).
+func integrity_availability() -> PKeyResult:
+	var gate := availability(PKeyConstants.Feature.DEVICES_ATTEST)
+	if not gate.ok:
+		return gate
+	if _cap("playIntegrity") != true:
+		return PKeyResult.unsupported(PKeyConstants.Feature.DEVICES_ATTEST, PKeyConstants.UnsupportedReason.OUTLET, "This is the direct build of the Android plugin: no Play Integrity.")
+	var src := install_source()
+	var installer = src.detail.get("installer") if src.ok and src.detail is Dictionary else null
+	if installer != PLAY_STORE:
+		return PKeyResult.unsupported(PKeyConstants.Feature.DEVICES_ATTEST, PKeyConstants.UnsupportedReason.OUTLET, "Play Integrity needs an install made by Google Play (installer %s)." % str(installer))
+	return PKeyResult.success()
+
+
 ## The PackageInstaller self-update here: success, or unsupported (`outlet` on a play build).
 func installer_availability() -> PKeyResult:
 	var gate := availability(PKeyConstants.Feature.UPDATE_DRIVER)
@@ -312,7 +328,7 @@ func _process(_delta: float) -> void:
 # ── Typed calls (each a PKeyResult; the native reply is `detail`) ─────────────────────────────
 
 ## The plugin's view of this process: {protocol, flavor, sdk, package, keystore, inAppUpdates,
-## assetPacks, packageInstaller}.
+## assetPacks, packageInstaller, playIntegrity}.
 func capabilities() -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.OUTLET_DETECT, call_sync({"op": "capabilities"}))
 
@@ -491,6 +507,25 @@ func apk_constraints() -> PKeyResult:
 	if not gate.ok:
 		return gate
 	return _wrap(PKeyConstants.Feature.UPDATE_DRIVER, await call_async({"op": "pi_constraints"}))
+
+
+## Warm the standard Play Integrity token provider up for `cloud_project_number` (seconds; once a
+## session is enough): detail.prepared (false when it was ready).
+func integrity_prepare(cloud_project_number: String) -> PKeyResult:
+	var gate := integrity_availability()
+	if not gate.ok:
+		return gate
+	return _wrap(PKeyConstants.Feature.DEVICES_ATTEST, await call_async({"op": "integrity_prepare", "cloudProjectNumber": cloud_project_number}, 60.0))
+
+
+## A standard Play Integrity token bound to `request_hash` (the Worker's challenge `requestHash`,
+## verbatim): detail {token, prepared, reprepared}. A failure is `platform-error` with detail
+## {error: "integrity", errorCode (StandardIntegrityErrorCode or null), exception, message}.
+func integrity_token(cloud_project_number: String, request_hash: String) -> PKeyResult:
+	var gate := integrity_availability()
+	if not gate.ok:
+		return gate
+	return _wrap(PKeyConstants.Feature.DEVICES_ATTEST, await call_async({"op": "integrity_token", "cloudProjectNumber": cloud_project_number, "requestHash": request_hash}, 60.0))
 
 
 static func _apk_query(op: String, path: String, sha256: String, version_code: int) -> Dictionary:
