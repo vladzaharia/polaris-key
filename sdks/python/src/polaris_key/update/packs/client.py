@@ -340,11 +340,14 @@ class PacksClient:
         storage.free_disk()  # creates the root
         if self._opts.exclude_from_backup:
             _exclude_once(storage.root)
+        # plans/P4-19.md §2.4: the engine sees the stamp's holds, so a hold's release never takes
+        # the delegated path.
+        holds = stamp_holds(self._stamp_bytes()) if stamp is not None else None
         engine = PackEngine(
             product=ctx.product,
             release_keys=self._release_keys(),
             product_trust=lambda: self._trust.effective if self._trust is not None else ctx.pinned_trust,
-            stamp=stamp,
+            stamp={**stamp, "holds": holds} if stamp is not None and holds else stamp,
             prefs={"engine": self._opts.engine, "axes": dict(self._opts.axes)},
             zstd=zstd,
             patch_methods=info.patch_methods,
