@@ -136,6 +136,8 @@ database_id = "4bcb24b2-80af-4180-abcc-0e5e99564ed8"
 binding = "BLOBS"
 bucket_name = "polaris-key-blobs-prod"
 [env.prod.vars]
+# ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
+PKEY_ENVIRONMENT = "prod"
 BLOB_ORIGIN = "https://dl.plrs.im"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key.plrs.im"
@@ -170,6 +172,8 @@ database_id = "REPLACE_ME_STAGING_D1_ID"
 binding = "BLOBS"
 bucket_name = "polaris-key-blobs-staging"
 [env.staging.vars]
+# ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
+PKEY_ENVIRONMENT = "staging"
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-staging.plrs.im"
@@ -201,6 +205,8 @@ database_id = "REPLACE_ME_DEV_D1_ID"
 binding = "BLOBS"
 bucket_name = "polaris-key-blobs-dev"
 [env.dev.vars]
+# ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
+PKEY_ENVIRONMENT = "dev"
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-dev.plrs.im"
