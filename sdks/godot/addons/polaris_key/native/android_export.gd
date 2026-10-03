@@ -32,6 +32,9 @@ const DIRECT_PERMISSIONS := ["android.permission.REQUEST_INSTALL_PACKAGES", "and
 ## The outlet kinds each flavour suits (a mismatch only warns: the stamp is the product's call).
 const PLAY_KINDS := ["play", "play-testing"]
 const NO_PLAY_CORE_KINDS := ["fdroid-repo"]
+## The Maven coordinate a refused export depends on: it cannot resolve, so the Gradle build (and the
+## export) fails, and the coordinate names why.
+const REFUSAL_DEPENDENCY := "polaris-key.export-refused:direct-flavour-on-a-play-outlet:0"
 
 
 ## A flavour value as given (case and spaces forgiven), or "" when it is not one.
@@ -87,11 +90,20 @@ static func warnings(flavor_raw: Variant, outlet_kind: String, gradle_build: boo
 		out.append("the Polaris Key Android plugin needs the Gradle build (gradle_build/use_gradle_build); this export carries no plugin, so PKeyAndroid answers dependency.")
 	if not missing.is_empty():
 		out.append("the %s AARs are missing (%s); run sdks/godot/native/android/build.sh. This export carries no plugin." % [flavor, ", ".join(missing)])
-	if flavor == "direct" and PLAY_KINDS.has(outlet_kind):
-		out.append("the outlet is %s but the flavour is direct: a Play build must not contain self-update or REQUEST_INSTALL_PACKAGES. Use the play flavour." % outlet_kind)
 	if flavor == "play" and NO_PLAY_CORE_KINDS.has(outlet_kind):
 		out.append("the outlet is %s but the flavour is play: F-Droid builds must not contain Play Core (proprietary). Use direct or none." % outlet_kind)
 	return out
+
+
+## The export ERROR for this choice, or "": the direct flavour on a Play or Play testing outlet. A
+## Play build must never contain self-update or REQUEST_INSTALL_PACKAGES (Play policy), so the export
+## plugin refuses it: no AAR and no permission are added, and the Gradle build is made to fail
+## through REFUSAL_DEPENDENCY (Godot gives an export plugin no other way to stop an export: option
+## warnings are only shown).
+static func error(flavor_raw: Variant, outlet_kind: String) -> String:
+	if canonical(flavor_raw) == "direct" and PLAY_KINDS.has(outlet_kind):
+		return "the outlet is %s but %s is direct: a Play build must not contain self-update or REQUEST_INSTALL_PACKAGES. Use the play flavour. The export is refused." % [outlet_kind, OPTION]
+	return ""
 
 
 ## Whether this export carries the plugin at all.

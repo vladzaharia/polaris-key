@@ -253,6 +253,18 @@ disagree; S-10's §Recommendation and §Proposed edits were followed except wher
   (`native_android,update`). No emulator job: `sdks/godot/native/android/export_check.sh` is the
   local device check (below).
 
+- **Review fixes.** A leftover `update.apk` (a silent commit can kill the game before the copy is
+  deleted) is removed at every launch by `PKeyUpdater.attach` (`PKeyApkUpdate.cleanup`; a `.part`
+  is kept for resume). An `apk_install` that times out is `timeout` with reason `outcome-unknown`
+  and keeps the copy (the worker may still be streaming; the journal has the outcome next launch).
+  The direct flavour on a `play` or `play-testing` outlet is an export ERROR: Godot gives an export
+  plugin no way to stop an export (option warnings are only shown, `can_export` keeps the preset
+  valid), so the plugin adds no AAR and no permission, logs the error, and makes the Gradle build
+  fail through an unresolvable coordinate that names the reason
+  (`polaris-key.export-refused:direct-flavour-on-a-play-outlet:0`); `export_check.sh` proves the
+  export fails. `SecureStore` maps a `ProviderException` to reason `keystore-provider`. The
+  `android` CI job validates the Gradle wrapper (`gradle/actions/wrapper-validation`, SHA-pinned).
+
 ### What was run (2026-10-03, M5 Pro, JDK 17.0.20, Godot 4.7.2)
 
 - Gradle unit tests: `:platform` play 41, direct 49; `:godot` play 18, direct 15; all pass.

@@ -30,7 +30,11 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 	if option != A.OPTION:
 		return ""
 	var flavor := _flavor_raw()
-	return "\n".join(A.warnings(flavor, _outlet_kind(), _gradle_build(), A.missing_libraries(A.canonical(flavor))))
+	var lines := A.warnings(flavor, _outlet_kind(), _gradle_build(), A.missing_libraries(A.canonical(flavor)))
+	var err := A.error(flavor, _outlet_kind())
+	if err != "":
+		lines.insert(0, "ERROR: " + err)
+	return "\n".join(lines)
 
 
 func _flavor_raw() -> Variant:
@@ -47,7 +51,7 @@ func _flavor() -> String:
 	var raw = _flavor_raw()
 	var flavor := A.canonical(raw)
 	var missing := A.missing_libraries(flavor)
-	if not A.carries_plugin(raw, _gradle_build(), missing):
+	if A.error(raw, _outlet_kind()) != "" or not A.carries_plugin(raw, _gradle_build(), missing):
 		return ""
 	return flavor
 
@@ -78,6 +82,9 @@ func _export_begin(_features: PackedStringArray, _is_debug: bool, _path: String,
 	var raw = _flavor_raw()
 	for w in A.warnings(raw, _outlet_kind(), _gradle_build(), A.missing_libraries(A.canonical(raw))):
 		push_warning("Polaris Key Android plugin: %s" % w)
+	var err := A.error(raw, _outlet_kind())
+	if err != "":
+		push_error("Polaris Key Android plugin: %s" % err)
 	print("Polaris Key Android plugin: flavour %s" % (_flavor() if _flavor() != "" else "none"))
 
 
@@ -86,6 +93,9 @@ func _get_android_libraries(_platform: EditorExportPlatform, _debug: bool) -> Pa
 
 
 func _get_android_dependencies(_platform: EditorExportPlatform, _debug: bool) -> PackedStringArray:
+	if A.error(_flavor_raw(), _outlet_kind()) != "":
+		push_error("Polaris Key Android plugin: %s" % A.error(_flavor_raw(), _outlet_kind()))
+		return PackedStringArray([A.REFUSAL_DEPENDENCY])
 	return A.dependencies(_flavor())
 
 

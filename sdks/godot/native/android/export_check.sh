@@ -100,9 +100,10 @@ EOT
 "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$OUT/keys/probe.keystore" -alias probe -storepass probetest \
   -keypass probetest -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=P5-06 throwaway" >/dev/null 2>&1
 
-# project <dir> <flavor> <versionCode> <format 0 apk | 1 aab> <package>
+# project <dir> <flavor> <versionCode> <format 0 apk | 1 aab> <package> [outlet]
 project() {
-  local B="$1" flavor="$2" vc="$3" format="$4" pkg="$5"
+  local B="$1" flavor="$2" vc="$3" format="$4" pkg="$5" outlet="${6:-}"
+  [ -n "$outlet" ] || outlet="$([ "$flavor" = play ] && echo play || echo direct)"
   rm -rf "$B" && mkdir -p "$B/addons"
   cp -R "$HERE/e2e/game/." "$B/"
   rsync -a --exclude 'native/ios/' "$SDKG/addons/polaris_key" "$B/addons/"
@@ -151,14 +152,14 @@ package/name="PKey probe"
 package/signed=true
 permissions/internet=true
 polaris_key/android_flavor="$flavor"
-polaris_key/outlet="$([ "$flavor" = play ] && echo play || echo direct)"
+polaris_key/outlet="$outlet"
 EOT
 }
 
-# export_one <tag> <flavor> <versionCode> <format> <package>
+# export_one <tag> <flavor> <versionCode> <format> <package> [outlet]
 export_one() {
   local tag="$1" B="$OUT/proj/$1" ext
-  project "$B" "$2" "$3" "$4" "$5"
+  project "$B" "$2" "$3" "$4" "$5" "${6:-}"
   ext=$([ "$4" = 1 ] && echo aab || echo apk)
   "$GODOT" --headless --path "$B" --import >"$LOGS/import_$tag.log" 2>&1 || true
   local t0
@@ -209,6 +210,17 @@ check_apk() { # check_apk <apk> <flavor>
 export_one direct-v1 direct 1 0 im.plrs.key.probe.direct
 export_one direct-v2 direct 2 0 im.plrs.key.probe.direct
 export_one play-v1 play 1 1 im.plrs.key.probe.play
+# The direct flavour on a Play outlet is an export ERROR (Play forbids self-update).
+B="$OUT/proj/direct-on-play"
+project "$B" direct 1 0 im.plrs.key.probe.refused play
+"$GODOT" --headless --path "$B" --import >"$LOGS/import_direct-on-play.log" 2>&1 || true
+if "$GODOT" --headless --path "$B" --export-release Android "$OUT/direct-on-play.apk" >"$LOGS/export_direct-on-play.log" 2>&1 && [ -f "$OUT/direct-on-play.apk" ]; then
+  fail "a direct flavour on a Play outlet exported"
+elif grep -q "The export is refused" "$LOGS/export_direct-on-play.log"; then
+  ok "a direct flavour on a Play outlet is refused (export failed, the error names why)"
+else
+  fail "the direct-on-play export failed without the plugin's error"
+fi
 echo "── checks"
 check_apk "$OUT/direct-v1.apk" direct
 if [ -n "${BUNDLETOOL:-}" ] && [ -f "$OUT/play-v1.aab" ]; then

@@ -24,11 +24,26 @@ extends RefCounted
 ## space_ok?: Callable(dir, need) -> bool, silent? (default true)}. Answers:
 ##   - unsupported (the plugin is missing, or this is a play build): the caller opens the link;
 ##   - hook {bridge: "apk", method: "native", version, session} when the session was committed;
+##   - `timeout` with `detail.reason` `outcome-unknown` when the plugin did not answer in time: the
+##     worker may still be streaming the APK into a session that may still commit, so the copy is
+##     left alone and the outcome is read from the journal at the next launch;
 ##   - a failure otherwise: the download's code, `payload-mismatch` (size or hash), or
 ##     `swap-refused` with the plugin's refusals in `detail.refused`.
+##
+## A successful silent commit can kill the game before the copy is deleted, so every launch removes
+## a leftover `update.apk` (cleanup(), from PKeyUpdater.attach); a `.part` is kept for resume.
 
 const BRIDGE := "apk"
 const FILE := "update.apk"
+
+
+## Remove a verified APK a previous launch left in `dir` (true when one was removed). Called at
+## launch, never while an install of this session may be running.
+static func cleanup(dir: String) -> bool:
+	var f := dir.path_join(FILE)
+	if not FileAccess.file_exists(f):
+		return false
+	return DirAccess.remove_absolute(f) == OK
 
 
 static func run(android: PKeyAndroid, request: Dictionary) -> PKeyApplyResult:
@@ -63,6 +78,8 @@ static func run(android: PKeyAndroid, request: Dictionary) -> PKeyApplyResult:
 	if DirAccess.rename_absolute(part, dest) != OK:
 		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "The verified APK could not be moved into place.")
 	var installed := await android.apk_install(ProjectSettings.globalize_path(dest), sha, -1, {"silent": bool(request.get("silent", true)), "prompt": true})
+	if not installed.ok and installed.code == PKeyErrors.TIMEOUT:
+		return PKeyApplyResult.failed(PKeyErrors.TIMEOUT, "The Android plugin did not answer in time; the install's outcome is unknown and is reported from the journal at the next launch.", {"reason": "outcome-unknown", "bridge": BRIDGE})
 	if not installed.ok:
 		DirAccess.remove_absolute(dest)
 		return PKeyApplyResult.failed(installed.code, installed.message, installed.detail)

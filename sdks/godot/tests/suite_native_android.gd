@@ -338,7 +338,9 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("export: flavours are forgiving about case and spaces", E.canonical(" Direct ") == "direct" and E.canonical("beta") == "" and E.canonical(null) == "")
 	t.check("export: a missing AAR is listed", E.missing_libraries("play", "res://no_such_addons_dir").size() == 2)
 	t.check("export: the plugin rides only with the Gradle build and its AARs", E.carries_plugin("play", true, PackedStringArray()) and not E.carries_plugin("play", false, PackedStringArray()) and not E.carries_plugin("play", true, PackedStringArray(["x.aar"])) and not E.carries_plugin("none", true, PackedStringArray()))
-	t.check("export: a Play outlet with the direct flavour warns", "\n".join(E.warnings("direct", "play", true, PackedStringArray())).contains("must not contain self-update"))
+	t.check("export: a Play outlet with the direct flavour is an export error", E.error("direct", "play").contains("refused") and E.error("direct", "play-testing") != "")
+	t.check("export: …and only that combination", E.error("play", "play") == "" and E.error("direct", "direct") == "" and E.error("none", "play") == "" and E.error("direct", "obtainium") == "")
+	t.check("export: a refused export depends on an unresolvable coordinate that names why", E.REFUSAL_DEPENDENCY.contains("direct-flavour-on-a-play-outlet") and E.REFUSAL_DEPENDENCY.count(":") == 2)
 	t.check("export: an F-Droid outlet with the play flavour warns", "\n".join(E.warnings("play", "fdroid-repo", true, PackedStringArray())).contains("Play Core"))
 	t.check("export: no Gradle build warns", "\n".join(E.warnings("play", "play", false, PackedStringArray())).contains("Gradle build"))
 	t.check("export: an unknown flavour warns", "\n".join(E.warnings("beta", "", true, PackedStringArray())).contains("expected one of"))
@@ -438,6 +440,26 @@ func _direct(t: PKeyTestContext) -> void:
 	r = await PKeyApkUpdate.run(a, req.call({"sha256": sha, "size": apk.size()}))
 	t.check("direct: the plugin's refusal is swap-refused with its reasons", not r.ok and r.code == PKeyErrors.SWAP_REFUSED and r.detail.get("refused") == ["signer_mismatch"])
 	d.refuse = []
+
+	# The plugin does not answer in time: outcome unknown, the copy kept for the launch cleanup.
+	d.never = PackedStringArray(["pi_install"])
+	a.install_timeout_s = 0.2
+	r = await PKeyApkUpdate.run(a, req.call({"sha256": sha, "size": apk.size()}))
+	t.check("direct: an install that does not answer in time is outcome-unknown, not a refusal", not r.ok and r.code == PKeyErrors.TIMEOUT and r.detail.get("reason") == "outcome-unknown")
+	t.check("direct: …and its copy is not deleted while the worker may still stream it", FileAccess.file_exists(dir.path_join("update.apk")))
+	t.check("direct: the launch cleanup removes a leftover copy", PKeyApkUpdate.cleanup(dir) and not FileAccess.file_exists(dir.path_join("update.apk")))
+	t.check("direct: …and is a no-op without one", not PKeyApkUpdate.cleanup(dir))
+	var sup := PKeyUpdaterTestSupport.new()
+	var inst := PKeyUpdaterTestSupport.install("p506_apk_cleanup", PackedByteArray([1, 2, 3]), "android")
+	var stale: String = String(inst["user"]).path_join(PKeyUpdaterTestSupport.PRODUCT).path_join("updates/apk")
+	DirAccess.make_dir_recursive_absolute(stale)
+	PKeyUpdaterTestSupport.write(stale.path_join("update.apk"), apk)
+	PKeyUpdaterTestSupport.write(stale.path_join("update.apk.part"), PackedByteArray([9]))
+	var sdk: Node = await sup.launch(inst, "1.0.0")
+	t.check("direct: configuring the SDK (PKeyUpdater.attach) removes a leftover update.apk", not FileAccess.file_exists(stale.path_join("update.apk")))
+	t.check("direct: …and keeps a .part for resume", FileAccess.file_exists(stale.path_join("update.apk.part")))
+	sdk.queue_free()
+	d.never = PackedStringArray()
 
 	var hits := server.requests.size()
 	r = await PKeyApkUpdate.run(_android("android", _fake("play")), req.call({"sha256": sha, "size": apk.size()}))

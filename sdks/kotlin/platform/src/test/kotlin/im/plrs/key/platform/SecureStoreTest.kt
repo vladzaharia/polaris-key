@@ -16,6 +16,7 @@ import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.security.AlgorithmParameters
 import java.security.Key
+import java.security.ProviderException
 import java.security.SecureRandom
 import java.security.spec.AlgorithmParameterSpec
 import javax.crypto.Cipher
@@ -201,6 +202,38 @@ class SecureStoreTest {
         } catch (e: SecureStoreException) {
             assertEquals("corrupt", e.reason)
         }
+    }
+
+    @Test
+    fun providerFailuresHaveTheirOwnReason() {
+        val keys = FakeKeyProvider()
+        val s = store(keys)
+        s.put("token", "pkeyt_abc")
+        // The keymaster / StrongBox failure Android surfaces as a ProviderException, on every path.
+        s.newCipher = { throw ProviderException("Keystore operation failed") }
+        for ((what, op) in listOf<Pair<String, () -> Unit>>("get" to { s.get("token") }, "put" to { s.put("token", "x") })) {
+            try {
+                op()
+                fail("$what must throw")
+            } catch (e: SecureStoreException) {
+                assertEquals("$what: reason", "keystore-provider", e.reason)
+            }
+        }
+        val broken = object : KeyProvider by keys {
+            override fun get(alias: String): SecretKey? = throw ProviderException("no keymaster")
+            override fun describe(alias: String): JSONObject = throw ProviderException("no keymaster")
+        }
+        val s2 = SecureStore(tmp.root, "diceroll", broken)
+        for (op in listOf<() -> Unit>({ s2.get("token") }, { s2.put("token", "x") }, { s2.info() })) {
+            try {
+                op()
+                fail("a provider failure must throw")
+            } catch (e: SecureStoreException) {
+                assertEquals("keystore-provider", e.reason)
+            }
+        }
+        // Nothing was dropped: the blob is still there for when the provider recovers.
+        assertTrue(File(tmp.root, "token.kv").exists())
     }
 
     @Test

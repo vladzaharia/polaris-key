@@ -13,6 +13,7 @@ import java.io.File
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
+import java.security.ProviderException
 import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -98,7 +99,11 @@ public class AndroidKeyStoreProvider(
     }
 }
 
-/** A [SecureStore] operation failed. [reason]: `invalid-name`, `keystore`, `corrupt` or `io`. */
+/**
+ * A [SecureStore] operation failed. [reason]: `invalid-name`, `keystore`, `keystore-provider` (the
+ * AndroidKeyStore provider itself failed: a `ProviderException`, e.g. a keymaster or StrongBox
+ * error), `corrupt` or `io`.
+ */
 public class SecureStoreException(public val reason: String, message: String, cause: Throwable? = null) :
     Exception(message, cause)
 
@@ -152,6 +157,8 @@ public class SecureStore(
         }
         val key = try {
             keys.get(alias)
+        } catch (e: ProviderException) {
+            throw providerFailure("load $alias", e)
         } catch (e: GeneralSecurityException) {
             throw SecureStoreException("keystore", "cannot load $alias: ${e.message}", e)
         } catch (e: IOException) {
@@ -171,6 +178,8 @@ public class SecureStore(
             Read(null, RESET_INVALIDATED)
         } catch (e: AEADBadTagException) {
             throw SecureStoreException("corrupt", "${file.name} failed its authentication tag", e)
+        } catch (e: ProviderException) {
+            throw providerFailure("decrypt ${file.name}", e)
         } catch (e: GeneralSecurityException) {
             throw SecureStoreException("keystore", "cannot decrypt ${file.name}: ${e.message}", e)
         }
@@ -180,6 +189,8 @@ public class SecureStore(
         val file = fileFor(account)
         val blob = try {
             encrypt(account, value.toByteArray(Charsets.UTF_8), retry = true)
+        } catch (e: ProviderException) {
+            throw providerFailure("encrypt for $account", e)
         } catch (e: GeneralSecurityException) {
             throw SecureStoreException("keystore", "cannot encrypt for $account: ${e.message}", e)
         } catch (e: IOException) {
@@ -199,6 +210,8 @@ public class SecureStore(
     /** {alias, backend, exists, securityLevel?, insideSecureHardware?, strongBox?, keySize?}. */
     public fun info(): JSONObject = try {
         keys.describe(alias).put("alias", alias)
+    } catch (e: ProviderException) {
+        throw providerFailure("describe $alias", e)
     } catch (e: GeneralSecurityException) {
         throw SecureStoreException("keystore", "cannot describe $alias: ${e.message}", e)
     } catch (e: IOException) {
@@ -257,6 +270,9 @@ public class SecureStore(
             throw SecureStoreException("io", "cannot replace ${file.name}")
         }
     }
+
+    private fun providerFailure(what: String, e: ProviderException) =
+        SecureStoreException("keystore-provider", "AndroidKeyStore could not $what: ${e.message}", e)
 
     private fun fileFor(account: String): File = File(dir, checkName(account) + SUFFIX)
 

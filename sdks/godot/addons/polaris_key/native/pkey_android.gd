@@ -61,6 +61,8 @@ var native: Object = null
 var singleton_name := SINGLETON
 ## How long an awaited call waits for its result.
 var timeout_s := 30.0
+## How long apk_install waits for the verify-and-commit result (a large APK streams into the session).
+var install_timeout_s := 600.0
 
 var _dropped := 0
 var _caps: Variant = null
@@ -463,7 +465,7 @@ func apk_install(path: String, sha256: String, version_code := -1, options := {}
 	q["prompt"] = bool(options.get("prompt", true))
 	if options.has("timeout_ms"):
 		q["timeoutMs"] = int(options["timeout_ms"])
-	return _wrap(PKeyConstants.Feature.UPDATE_DRIVER, await call_async(q, 600.0))
+	return _wrap(PKeyConstants.Feature.UPDATE_DRIVER, await call_async(q, install_timeout_s))
 
 
 ## The last journaled install status (detail.last, null when none); `clear` removes it.

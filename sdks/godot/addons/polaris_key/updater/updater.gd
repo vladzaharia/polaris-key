@@ -71,6 +71,8 @@ func attach(core: PKeyCore) -> void:
 	_core_ref = weakref(core)
 	slots = PKeySlots.new(root_for(core))
 	bridges = {}
+	# A silent APK update can kill the game before its copy is deleted (P5-06): drop it now.
+	PKeyApkUpdate.cleanup(slots.dir("apk"))
 	core.update_events = self
 
 
