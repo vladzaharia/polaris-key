@@ -131,6 +131,7 @@ class Commands(val host: Host, flavorFactory: ((Commands) -> FlavorCommands)? = 
             .put("inAppUpdates", false)
             .put("assetPacks", false)
             .put("packageInstaller", false)
+            .put("playIntegrity", false)
         flavor.capabilities(out)
         return out
     }
@@ -197,7 +198,10 @@ class Commands(val host: Host, flavorFactory: ((Commands) -> FlavorCommands)? = 
     }
 
     companion object {
-        val PLAY_OPS = setOf("iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm")
+        val PLAY_OPS = setOf(
+            "iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm",
+            "integrity_prepare", "integrity_token",
+        )
         val DIRECT_OPS = setOf("pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints")
 
         fun fail(error: String, message: String?): JSONObject =
