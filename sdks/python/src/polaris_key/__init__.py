@@ -231,7 +231,7 @@ from .update.client import (
     UpdateError,
     VersionCheck,
 )
-from .update.packs import PackError, PackHandler
+from .update.packs import DataJsonHandler, L10nTableHandler, MlModelHandler, PackError, PackHandler
 from .update.packs.client import EmbeddedPack, PacksClient, PacksOptions
 
 __all__ = [
@@ -341,6 +341,9 @@ __all__ = [
     "UpdateClientOptions",
     "PackError",
     "PackHandler",
+    "DataJsonHandler",
+    "L10nTableHandler",
+    "MlModelHandler",
     "EmbeddedPack",
     "PacksClient",
     "PacksOptions",

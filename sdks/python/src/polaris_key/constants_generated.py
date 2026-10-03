@@ -1559,10 +1559,10 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.state": CapabilityRow("implemented", "release", ()),
         "packs.handlers": CapabilityRow("implemented", "release", ()),
         "packs.type.godot.zip": CapabilityRow("na", "release", (CapabilityNa("python", "runtime"),)),
-        "packs.type.l10n.table": CapabilityRow("planned", "release", ()),
-        "packs.type.data.json": CapabilityRow("planned", "release", ()),
+        "packs.type.l10n.table": CapabilityRow("implemented", "release", ()),
+        "packs.type.data.json": CapabilityRow("implemented", "release", ()),
         "packs.type.audio.bank": CapabilityRow("na", "release", (CapabilityNa("python", "runtime"),)),
-        "packs.type.ml.model": CapabilityRow("planned", "release", ()),
+        "packs.type.ml.model": CapabilityRow("implemented", "release", ()),
         "packs.provides": CapabilityRow("implemented", "release", ()),
         "packs.transport.apple": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
         "packs.transport.play": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
@@ -1576,4 +1576,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "c81194cc4829b2e7c55ca162003a340a59fd86070d6b4e7a7775644512d5a50b"
+CAPABILITY_DIGEST: Final[str] = "736c386c32646c045e1885bb5ff9467d3a6a5acd42e5d7f528239623d2ade878"
