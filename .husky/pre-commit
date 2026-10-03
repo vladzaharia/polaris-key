@@ -1,7 +1,7 @@
 # Polaris Key pre-commit gate (husky v9).
 # Kept deliberately lightweight: only the fast-failing, cheap guards that catch the
 # most common "broke the contract" mistakes locally before a commit lands. The full
-# five-language matrix (Python/Swift suites, admin build, format) runs in CI, not here.
+# six-language matrix (Python/Swift/Godot suites, admin build, format) runs in CI, not here.
 #
 #   1. conformance drift — the signed corpus must regenerate in place (no wire drift).
 #   2. service drift     — every language's service constants match tools/services.json.

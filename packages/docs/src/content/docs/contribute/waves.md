@@ -1,6 +1,6 @@
 ---
 title: "The contract-first wave model"
-description: "Contract before catalog before corpus before SDKs, a five-language walkthrough for a wire-visible field, and the full drift-gate inventory."
+description: "Contract before catalog before corpus before SDKs, a six-language walkthrough for a wire-visible field, and the full drift-gate inventory."
 sidebar:
   order: 4
   label: "Waves"
@@ -26,7 +26,8 @@ always the same: **contract → catalog → corpus → SDKs.**
 3. **Corpus regen** (`pnpm gen:corpus`). Re-sign the golden vectors so every runner has
    something new to verify against — see [The conformance corpus](/docs/contribute/corpus/).
 4. **SDKs verify against the corpus.** Implement the change in each SDK and prove parity by
-   running its conformance runner. A feature is not "done" until all five languages pass.
+   running its conformance runner. A feature is not "done" until all six implementations pass (client-core,
+   Node, React, Python, Swift and Godot).
 
 Because behavior is centralized — each SDK's CLI has a single **core** command that the
 argparse/click/typer or commander/yargs front end wraps — a behavior change happens in one
@@ -52,7 +53,7 @@ a response header a client reads or a response body fails the Worker suite until
 `pnpm gen:transcripts` re-records them in the same change; each SDK's replayer then shows which
 SDKs must follow.
 
-## Adding a wire-visible field, in five languages
+## Adding a wire-visible field, in six languages
 
 Concretely, to add a config key or any wire-visible capability:
 
@@ -66,9 +67,9 @@ Concretely, to add a config key or any wire-visible capability:
 3. **Regenerate the corpus** — `pnpm gen:corpus` re-signs the vectors. For products that want
    typed config mirrors, also run
    `pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (TS/Python/Swift
-   mirrors generated from the catalog).
+   mirrors generated from the catalog; add `--lang gdscript` for the Godot mirror).
 4. **Implement in each SDK** — Node (`packages/sdk-node`), Python (`sdks/python`), Swift
-   (`sdks/swift`), React (`packages/sdk-react`), and the Worker. Mirror the existing surface and
+   (`sdks/swift`), React (`packages/sdk-react`), Godot (`sdks/godot`), and the Worker. Mirror the existing surface and
    the layered-config precedence: `enforced|hidden` beats `local`, which beats `env`, which
    beats `remote-default`, which beats `fallback`.
 5. **Verify parity** — run every conformance runner plus the SDK test suites, i.e. the

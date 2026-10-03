@@ -74,7 +74,7 @@ def raw_os_device_id(
 
 def device_id_from_raw(product_slug: str, raw: str) -> str:
     """The device-id formula itself, split out from the hardware read so it can be pinned by
-    ``conformance/corpus/v2/fingerprint.json``. Node, Python, and Swift must agree exactly."""
+    ``conformance/corpus/v2/fingerprint.json``. Node, Python, Swift and Godot must agree exactly."""
     digest = hashlib.sha256(f"pkey-device:{product_slug}:{raw}".encode("utf-8")).digest()
     return b64url_encode(digest)[:32]
 

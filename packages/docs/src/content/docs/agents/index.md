@@ -55,8 +55,8 @@ correct outcome, not a gap to paper over.
 
 ## The one-paragraph orientation
 
-Polaris Key is a contract-first, five-language monorepo: one Cloudflare Worker plus SDKs for
-Node, Python, Swift and React, all agreeing on a single frozen wire format. The wire contract is
+Polaris Key is a contract-first, six-language monorepo: one Cloudflare Worker plus SDKs for
+Node, React, Python, Swift and Godot, all agreeing on a single frozen wire format. The wire contract is
 the source of truth and every language must verify it identically — which is why a wire change is
 an all-languages event (contract → catalog → corpus → SDKs), why the conformance corpus is
 generated rather than written, and why so much of this repo is drift gates. Start at

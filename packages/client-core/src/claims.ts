@@ -1,6 +1,6 @@
 // Shared claim-validation constants — wire contract v3 §2. These values are normative and
-// MUST be identical in all five implementations (this TS client core, Node, React, Python,
-// Swift, and the Worker signer), so they live in one place rather than being re-declared per
+// MUST be identical in all six implementations (this TS client core, Node, React, Python,
+// Swift, Godot) and the Worker signer, so they live in one place rather than being re-declared per
 // call site.
 
 import type { NonWireIntegers } from "@polaris-key/jws";

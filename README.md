@@ -1,8 +1,8 @@
 # Polaris Key
 
 A reusable, multi-product **licensing + remotely-managed-config + release-delivery**
-platform — a single Cloudflare Worker at `key.plrs.im` plus SDKs for **Node, Python, Swift,
-and React**. An always-on **Core** substrate (product registry, the device principal, trust
+platform — a single Cloudflare Worker at `key.plrs.im` plus SDKs for **Node, React, Python,
+Swift and Godot**. An always-on **Core** substrate (product registry, the device principal, trust
 and signing, discovery, rate limiting, audit) carries six services a product opts into one
 at a time: **License** (activation, tiers, entitlements), **Config** (signed config/secret
 delivery, edge token minting), **Release** (GitHub-connected release truth, artifacts,
@@ -30,6 +30,7 @@ packages/
 sdks/
   python/            polaris-key (PyPI)        — full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      — native CryptoKit + SwiftUI login
+  godot/             Godot addon               — pure-GDScript client, PKeyBoot + UI kit, packs
 conformance/         corpus/v2 (one signer's golden vectors) + the Node and browser runners
 tools/               sign-corpus.ts · gen-mirrors.ts · gen-services.ts + services.json (the service table)
 products/            per-product data (catalog.json + product.json) + gen-seed
@@ -60,7 +61,7 @@ product key — and verified only against the release keys the app pins, so the 
 never ship bytes no release key signed. Every verifier is equally strict about Ed25519
 encodings, JSON, numbers and depth, and decides every integer claim from its token. The
 encoding is pinned byte-for-byte by `conformance/corpus/v2/cases.json`, which **every SDK and
-the worker verify identically** — that is how five languages agree on the wire.
+the worker verify identically** — that is how six languages agree on the wire.
 `docs/security/WIRE-CONTRACT-V4.md` is the normative spec.
 
 ## Architecture at a glance
@@ -93,6 +94,7 @@ pnpm test:browser       # the corpus in Chromium (needs `playwright install chro
 pnpm gen:corpus -- --check   # conformance drift gate (CI)
 ( cd sdks/python && .venv/bin/python -m pytest )   # Python SDK
 ( cd sdks/swift && swift test )                    # Swift SDK
+sdks/godot/tools/run_tests.sh                      # Godot SDK (GODOT_BIN, optional GODOT_TEMPLATE)
 ```
 
 Run the JS suites on **Node 22** (`mise exec node@22 -- pnpm test`), the version CI pins. The
