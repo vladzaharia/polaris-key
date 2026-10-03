@@ -42,6 +42,18 @@ private final class Events: Sendable {
 final class StoreKitHostTests: XCTestCase {
     private var session: SKTestSession?
 
+    /// `Transaction.unfinished`'s count, polled for up to 5 s until it equals `want`.
+    private func unfinishedCount(becomes want: Int) async -> Int {
+        var count = -1
+        for _ in 0..<50 {
+            count = 0
+            for await _ in Transaction.unfinished { count += 1 }
+            if count == want { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return count
+    }
+
     override func setUpWithError() throws {
         let url = try XCTUnwrap(Bundle(for: StoreKitHostTests.self).url(forResource: "Products", withExtension: "storekit"))
         let s = try SKTestSession(contentsOf: url)
@@ -86,15 +98,14 @@ final class StoreKitHostTests: XCTestCase {
         XCTAssertEqual(t["appAccountToken"], .string(token.uuidString.lowercased()))
         XCTAssertEqual(t["jws"]?.stringValue?.split(separator: ".").count, 3)
 
-        // Not finished until the host says the server has recorded it.
-        var unfinished = 0
-        for await _ in Transaction.unfinished { unfinished += 1 }
-        XCTAssertEqual(unfinished, 1)
+        // Not finished until the host says the server has recorded it. `Transaction.unfinished`
+        // lags a purchase by about a second (S-09 §Results 1c), so it is polled.
+        let before = await unfinishedCount(becomes: 1)
+        XCTAssertEqual(before, 1)
         let finished = await store.finish(transactionID: id)
         XCTAssertEqual(finished["finished"], true)
-        unfinished = 0
-        for await _ in Transaction.unfinished { unfinished += 1 }
-        XCTAssertEqual(unfinished, 0)
+        let after = await unfinishedCount(becomes: 0)
+        XCTAssertEqual(after, 0)
 
         // A refund: Transaction.updates re-delivers the purchase, then the revoked copy. Only
         // the revoked copy is reported.

@@ -48,6 +48,16 @@ if rts:
   xcrun simctl erase "$udid"
 fi
 echo "run.sh: simulator $udid"
+# Boot it here, with a bound: when xcodebuild has to boot a simulator that does not come up, it
+# falls into `simctl diagnose` and can sit there indefinitely without a useful message.
+xcrun simctl boot "$udid" >/dev/null 2>&1 || true
+booted=0
+for _ in $(seq 1 180); do
+  if xcrun simctl list devices | grep -F "$udid" | grep -q "(Booted)"; then booted=1; break; fi
+  sleep 1
+done
+[ "$booted" = 1 ] || { echo "run.sh: simulator $udid did not boot within 180 s" >&2; exit 3; }
+xcrun simctl bootstatus "$udid" -b >/dev/null
 
 (cd "$HERE" && "$XCODEGEN" generate --spec project.yml --quiet)
 
