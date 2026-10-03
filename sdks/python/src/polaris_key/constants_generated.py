@@ -210,6 +210,7 @@ class ErrorCode:
     HTTP_ERROR: Final = "http-error"
     INVALID_RESPONSE: Final = "invalid-response"
     STORE_FAILED: Final = "store-failed"
+    PLATFORM_ERROR: Final = "platform-error"
     NO_TOKEN: Final = "no-token"
     MINT_UNAVAILABLE: Final = "mint-unavailable"
     FEED_REJECTED: Final = "feed-rejected"
@@ -348,6 +349,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "http-error",
     "invalid-response",
     "store-failed",
+    "platform-error",
     "no-token",
     "mint-unavailable",
     "feed-rejected",
@@ -488,6 +490,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "http-error": "client",
         "invalid-response": "client",
         "store-failed": "client",
+        "platform-error": "client",
         "no-token": "client",
         "mint-unavailable": "client",
         "feed-rejected": "client",

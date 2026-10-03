@@ -144,7 +144,7 @@
     "packs.transport.apple": {
       "status": "planned",
       "unowned": true,
-      "note": "P5-05 builds the Apple plugin package and P5-08 wires the transport for Godot only; no package adopts it in the Swift SDK."
+      "note": "P5-05's PolarisKeyPlatform target carries the AssetPackManager client (iOS / macOS 26.4, behind #if compiler(>=6.3)) behind its C surface; P5-08 wires the transport for Godot only, and no package adopts it as a Swift SDK pack transport."
     },
     "packs.transport.play": {
       "status": "na",
@@ -176,7 +176,7 @@
     "commerce.receipt": {
       "status": "planned",
       "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "note": "P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
     }
   }
 }
