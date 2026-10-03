@@ -10,7 +10,8 @@ extends RefCounted
 #   sparkle      SUPublicEDKey missing: `invalid-options`, never a started updater; the mode, the
 #                discovery feed URL, the headers (read at call time) and the channels reach the
 #                native start(); will_relaunch quits only when the tree does not auto-accept
-#   velopack     outside a Velopack install: `runtime`; open() passes the headers; check and
+#   velopack     outside a Velopack install: `runtime`; a 401/403 download is `product` (public
+#                delivery only); open() passes the headers; check and
 #                download wait for the deferred native events; install_and_relaunch() applies on
 #                exit and quits; no update or a failed download hands back FAILED
 #   winsparkle   no public key: `invalid-options`; start() gets the appcast, key, identity and
@@ -155,6 +156,12 @@ func _velopack(t: PKeyTestContext) -> void:
 	n.download_ok = false
 	n.calls.clear()
 	t.check("velopack: a failed download applies nothing", await f.install_and_relaunch("https://x/update/stable/velopack/") == FAILED and not n.calls.has(["apply_on_exit", true]) and quits[0] == 1)
+	n.check_answer = {"status": "available"}
+	n.download_message = "Network error: http status: 403 Forbidden"
+	var refused := await f.download()
+	t.check("velopack: a 403 on the download (non-public delivery, the redirect dropped Authorization) is unsupported (product)", is_unsupported(refused, "product") and refused.message.contains("public delivery"), str(refused))
+	n.download_message = "os error 123"
+	t.check("velopack: refused_by_delivery reads only 401/403", PKeyVelopack.refused_by_delivery("status 401") and PKeyVelopack.refused_by_delivery("Unauthorized") and not PKeyVelopack.refused_by_delivery("os error 123") and not PKeyVelopack.refused_by_delivery("size 4031 bytes"))
 	n.check_answer = {"status": "error", "message": "IO error"}
 	var c := await f.check()
 	t.check("velopack: a check error is a typed failure", not c.ok and c.code == PKeyErrors.NETWORK and c.message.contains("IO error"))

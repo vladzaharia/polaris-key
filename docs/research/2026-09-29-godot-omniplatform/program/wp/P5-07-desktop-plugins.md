@@ -218,9 +218,14 @@ won:
 - **CI runners.** The jobs run on `macos-15` (the repository's current macOS image, not
   `macos-26`) and `windows-latest`, in a separate path-filtered workflow,
   `.github/workflows/native-desktop.yml`.
-- **The Velopack feed fix** (bare `FileName` plus the 302 package route) was not on `main` while
-  this package was built. The e2e feeds use bare file names, and `e2e/server.py` emulates the
-  route.
+- **The Velopack feed fix** (bare `FileName` plus the 302 package route) merged into this branch
+  from `main`. `e2e/gen_feeds.mts` builds the Velopack feed with the Worker's own code:
+  `velopackCandidatesFrom` and `velopackAssets`, exported from `updaterFeeds.ts` by a refactor with
+  no behaviour change. `e2e/server.py` 302s only the files that feed lists, as the route does.
+- **Lead follow-up, non-public Velopack delivery:** the Worker is unchanged. Discovery does not
+  expose the delivery access, so `PKeyVelopack` cannot refuse up front. A 401 or 403 download
+  answers `unsupported` (`product`) naming the cause. The docs page, the SDK README and the parity
+  note say that Velopack needs public delivery for now.
 
 Acceptance as delivered:
 

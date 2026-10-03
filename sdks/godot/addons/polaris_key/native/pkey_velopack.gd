@@ -23,6 +23,13 @@ extends PKeyNativeFacade
 ##                         the facade quits the game at once
 ##   install_and_relaunch(feed_url)  all of the above (P3-10's hook)
 ##
+## **Public delivery only, for now.** The Worker answers each package with a cross-origin 302 to its
+## delivery URL on the bytes host, and Velopack (like the other measured updaters) drops
+## `Authorization` on a cross-origin redirect (notes/S-11 §5.2). Under `licensed` or `entitled`
+## delivery that second hop is refused. Discovery does not say which delivery a product uses, so
+## the facade cannot refuse up front: when a download fails with 401 or 403 it answers
+## `unsupported` (`product`) saying so, instead of a bare network error.
+##
 ## Config keys beyond the base ones: `library` (the DLL path; default `velopack_libc.dll` beside
 ## the executable), `timeout_s` (the check's limit, default 60).
 
@@ -102,7 +109,10 @@ func download() -> PKeyResult:
 	var got := await wait_event(["downloaded", "download_failed"], request)
 	var d: Dictionary = got["detail"]
 	if got["event"] != "downloaded":
-		return PKeyResult.failure(PKeyErrors.NETWORK, "Velopack: %s" % String(d.get("message", "download failed")), d)
+		var message := String(d.get("message", "download failed"))
+		if refused_by_delivery(message):
+			return unsupported(PKeyConstants.UnsupportedReason.PRODUCT, "Velopack updates need public delivery for now: the package route's cross-origin redirect drops Authorization, so a licensed or entitled delivery refuses the download (%s)." % message)
+		return PKeyResult.failure(PKeyErrors.NETWORK, "Velopack: %s" % message, d)
 	return PKeyResult.success(d)
 
 
@@ -137,3 +147,9 @@ func install_and_relaunch(feed_url: String) -> int:
 	if not d.ok:
 		return FAILED
 	return OK if apply_on_exit(true).ok else FAILED
+
+
+## Whether a download error is the delivery host refusing the request (401 or 403): what a
+## non-public delivery answers once the redirect has dropped Authorization.
+static func refused_by_delivery(message: String) -> bool:
+	return RegEx.create_from_string("(?i)\\b(401|403)\\b|unauthori[sz]ed|forbidden").search(message) != null

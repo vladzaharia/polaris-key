@@ -16,9 +16,10 @@
 //                 "minOs"?, "notes"?, "deltas"?: [ { "file", "sig"?, "deltaFrom"? } ] } ]
 // }
 //
-// Velopack `FileName`s are bare file names, as `vpk` writes them and as the Worker emits them
-// since the delivery fix (notes/S-11 §5.1): the client resolves each against the feed URL, and
-// e2e/server.py answers that path with a 302 to the bytes, as the Worker's package route does.
+// The Velopack feed is built by the Worker's own updaterFeeds.ts (velopackCandidatesFrom,
+// velopackAssets): bare `FileName`s, as `vpk` writes them (notes/S-11 §5.1). The client resolves
+// each against the feed URL; e2e/server.py answers that path with a 302 to the package's delivery
+// URL for a listed file only (redirects.json), as the Worker's package route does.
 import { createHash } from "node:crypto";
 import {
   createReadStream,
@@ -60,6 +61,8 @@ interface Spec {
   productName: string;
   kind: "sparkle" | "winsparkle" | "velopack";
   releases: Release[];
+  /** Velopack only: where the packages' "delivery URLs" live (default <origin>/bytes/velopack). */
+  bytesUrl?: string;
 }
 
 const specPath = process.argv[2];
@@ -175,26 +178,61 @@ if (spec.kind === "sparkle") {
     sources,
   });
 } else {
-  // As updaterFeeds.ts: the newest release's -full.nupkg, then every listed release's deltas.
-  const assets = [];
-  for (const [i, r] of spec.releases.entries()) {
+  // The Worker's own Velopack code (updaterFeeds.ts): velopackCandidatesFrom over a selection of
+  // these releases, then velopackAssets with each SHA-1 read from the local bytes. Every package
+  // gets an immutable "delivery URL" under `bytesUrl`; redirects.json maps each LISTED FileName to
+  // it, which e2e/server.py answers with a 302, as the Worker's package route does.
+  const F = await import(worker("services/update/updaterFeeds.ts"));
+  const bytesUrl =
+    spec.bytesUrl ?? `${new URL(spec.baseUrl).origin}/bytes/velopack`;
+  const files = new Map<string, string>();
+  const artifact = (file: string, buildId: string, role: string) => {
+    files.set(basename(file), file);
+    return {
+      releaseId: "",
+      artifactId: basename(file),
+      name: basename(file),
+      buildId,
+      role,
+      platform: "windows",
+      arch: "x86_64",
+      contentType: "application/octet-stream",
+      sizeBytes: statSync(file).size,
+      sha256: digest(file, "sha256"),
+      metadata: null,
+      locations: [],
+      url: `${bytesUrl}/${basename(file)}`,
+    };
+  };
+  const entries = spec.releases.map((r, i) => {
     const e = entry(r, i);
-    const packageId = R.velopackPackageId(e.name, e.version);
-    if (!packageId) throw new Error(`${e.name} carries no -${e.version}`);
-    const notes = R.velopackNotes(e.notes);
-    const asset = (file: string, type: "Full" | "Delta") => ({
-      PackageId: packageId,
-      Version: e.version,
-      Type: type,
-      FileName: basename(file),
-      SHA1: digest(file, "sha1").toUpperCase(),
-      SHA256: digest(file, "sha256").toUpperCase(),
-      Size: statSync(file).size,
-      ...notes,
-    });
-    if (i === 0) assets.push(asset(r.file, "Full"));
-    for (const d of r.deltas ?? []) assets.push(asset(d.file, "Delta"));
-  }
+    const payload = artifact(r.file, e.buildId, "payload");
+    return {
+      ...e,
+      url: payload.url,
+      payload,
+      artifacts: (r.deltas ?? []).map((d) => ({
+        ...artifact(d.file, e.buildId, "delta"),
+        releaseId: e.releaseId,
+      })),
+    };
+  });
+  const candidates = F.velopackCandidatesFrom(entries);
+  const assets = await F.velopackAssets(
+    candidates,
+    async (a: { name: string }) => {
+      const file = files.get(a.name);
+      return file ? digest(file, "sha1") : null;
+    },
+  );
+  const listed = new Set(assets.map((x: { FileName: string }) => x.FileName));
+  const redirects: Record<string, string> = {};
+  for (const c of candidates)
+    if (listed.has(c.asset.FileName)) redirects[c.asset.FileName] = c.url;
+  writeFileSync(
+    join(spec.outDir, "redirects.json"),
+    `${JSON.stringify(redirects, null, 2)}\n`,
+  );
   body = R.renderVelopackFeed(assets);
 }
 

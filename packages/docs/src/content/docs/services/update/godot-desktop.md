@@ -79,6 +79,14 @@ with a Developer ID, notarises, staples and writes the zip that `sign_update` si
   passes the bearer through `vpkc_new_source_http_url_with_options`. It checks and downloads on
   a worker thread, then applies on exit with a restart. The feed's `FileName`s are bare names,
   which the Worker redirects to the package bytes.
+- **Velopack needs public delivery, for now.** Velopack resolves each package's bare `FileName`
+  against the feed URL. The Worker answers that path with a cross-origin 302 to the package's
+  delivery URL on the bytes host, and Velopack drops `Authorization` on that redirect (notes/S-11
+  §5.2). Under `licensed` or `entitled` delivery the second hop is therefore refused. Discovery
+  does not say which delivery a product uses, so the facade cannot refuse up front. A download
+  that fails with 401 or 403 answers `unsupported` (`product`), and the prompt opens the build's
+  download link. Use WinSparkle for a non-public Windows product until the package route streams
+  same-origin or redirects to a signed URL.
 - **WinSparkle.** It needs the EdDSA public key in `PKeyOptions.update_eddsa_public_key`; without
   one it refuses to start. The release's build `format` must be `inno`, `nsis` or `msi`, so the
   appcast carries the installer's silent arguments. WinSparkle asks the game to quit before it

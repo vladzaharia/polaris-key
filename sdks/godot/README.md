@@ -675,6 +675,9 @@ answering `unsupported` (`runtime` on the wrong OS or in an install the updater 
 - `PKeyVelopack` (Windows): an UpdateManager over the feed directory with the headers; check and
   download on a worker thread (`progress` events), then apply on exit with a restart, and quit.
   Outside a Velopack install (no `Update.exe` above, no `sq.version` beside) it answers `runtime`.
+  Public delivery only for now: the Worker's package route is a cross-origin 302, which drops
+  `Authorization` (S-11 §5.2), so under `licensed` or `entitled` delivery a 401 or 403 download
+  answers `unsupported` (`product`).
 - `PKeyWinSparkle` (Windows): the appcast, `PKeyOptions.update_eddsa_public_key` (refused when
   empty), the `PolarisKey`/`<product>` registry identity and the headers; `shutdown_request` quits.
 - `PKeyStoreContext` (Windows): package identity first; then the Store calls on an MTA thread after

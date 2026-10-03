@@ -49,6 +49,7 @@ class Velopack extends RefCounted:
 	var open_answer := {"ok": true, "current_version": "1.0.0", "app_id": "Game"}
 	var check_answer := {"status": "available", "target": {"version": "1.0.1", "file": "Game-1.0.1-full.nupkg"}, "deltas": [{"file": "Game-1.0.1-delta.nupkg"}]}
 	var download_ok := true
+	var download_message := "os error 123"
 	var apply_answer := {"ok": true}
 	var _next := 0
 
@@ -72,7 +73,7 @@ class Velopack extends RefCounted:
 		_next += 1
 		calls.append(["download_async"])
 		call_deferred("emit_signal", "native_event", "progress", {"request": _next, "percent": 50})
-		call_deferred("emit_signal", "native_event", "downloaded" if download_ok else "download_failed", {"request": _next, "ok": download_ok, "message": "" if download_ok else "os error 123"})
+		call_deferred("emit_signal", "native_event", "downloaded" if download_ok else "download_failed", {"request": _next, "ok": download_ok, "message": "" if download_ok else download_message})
 		return _next
 
 	func apply_on_exit(restart: bool) -> Dictionary:
