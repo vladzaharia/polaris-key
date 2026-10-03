@@ -127,26 +127,69 @@ function sheet(theme: Theme): string {
     );
   });
 
-  // The CIEDE2000 matrix.
-  const refs: [string, string][] = [
-    ["gold", BRAND.gold[theme]],
-    ["signed", t.signed.solid],
-    ["rose", BRAND.rose[theme]],
-    ["danger", t.status.danger.fg],
+  // The status row: warning, danger and success as a callout (subtle ground, border, icon and
+  // fg text) and a solid chip (on on fg), with their hex values.
+  const sy = top + SERVICE_IDS.length * rowH + 4;
+  text(24, sy + 18, "Status", { size: 15, bold: true });
+  (["warning", "danger", "success"] as const).forEach((st, k) => {
+    const s = t.status[st];
+    const x = 24 + k * 400;
+    const y = sy + 30;
+    out.push(
+      `<rect x="${x}" y="${y}" width="380" height="64" rx="10" fill="${s.subtle}" stroke="${s.border}" stroke-width="1.5"/>`,
+      `<circle cx="${x + 24}" cy="${y + 22}" r="8" fill="none" stroke="${s.fg}" stroke-width="2"/>`,
+      `<rect x="${x + 23}" y="${y + 17}" width="2" height="6" fill="${s.fg}"/>`,
+      `<rect x="${x + 23}" y="${y + 25}" width="2" height="2" fill="${s.fg}"/>`,
+    );
+    text(x + 42, y + 27, st[0]!.toUpperCase() + st.slice(1), {
+      fill: s.fg,
+      bold: true,
+    });
+    text(x + 42, y + 49, `fg ${s.fg}  border ${s.border}`, {
+      size: 12,
+      fill: muted,
+    });
+    out.push(
+      `<rect x="${x + 290}" y="${y + 16}" width="76" height="28" rx="14" fill="${s.fg}"/>`,
+    );
+    text(x + 328, y + 35, st, { fill: s.on, anchor: "middle", size: 12 });
+  });
+  const w = t.status.warning.fg;
+  text(
+    24,
+    sy + 118,
+    `warning ΔE00: Config ${deltaE2000(w, A.config.solid).toFixed(1)} · Update ${deltaE2000(w, A.update.solid).toFixed(1)} · Update fg ${deltaE2000(w, A.update.fg).toFixed(1)} · danger ${deltaE2000(w, t.status.danger.fg).toFixed(1)} · signed ${deltaE2000(w, t.signed.solid).toFixed(1)}`,
+    { size: 12, fill: muted },
+  );
+
+  // The CIEDE2000 matrix. Gold and signed are shown for information only: since 2026-10-03 the
+  // section accents are not held away from them, so they do not count toward the row minimum.
+  const refs: [string, string, boolean][] = [
+    ["rose", BRAND.rose[theme], true],
+    ["danger", t.status.danger.fg, true],
+    ["warning", t.status.warning.fg, true],
+    ["gold (info)", BRAND.gold[theme], false],
+    ["signed (info)", t.signed.solid, false],
   ];
-  const cols: [string, string][] = [
+  const cols: [string, string, boolean][] = [
     ...SERVICE_IDS.map(
-      (id) => [SERVICE_LABEL[id], A[id].solid] as [string, string],
+      (id) =>
+        [SERVICE_LABEL[id], A[id].solid, true] as [string, string, boolean],
     ),
     ...refs,
   ];
-  const my = top + SERVICE_IDS.length * rowH + 30;
-  text(24, my, "CIEDE2000 between solids (row minimum in bold)", {
-    size: 15,
-    bold: true,
-  });
+  const my = sy + 160;
+  text(
+    24,
+    my,
+    "CIEDE2000 between solids (row minimum in bold; gold and signed for information)",
+    {
+      size: 15,
+      bold: true,
+    },
+  );
   const cx0 = 150;
-  const cw = 88;
+  const cw = 84;
   cols.forEach(([name, hex], j) => {
     out.push(
       `<rect x="${cx0 + j * cw + 8}" y="${my + 14}" width="14" height="14" rx="3" fill="${hex}"/>`,
@@ -159,7 +202,9 @@ function sheet(theme: Theme): string {
     const ds = cols.map(([, hex], j) =>
       j === i ? null : deltaE2000(A[id].solid, hex),
     );
-    const min = Math.min(...(ds.filter((d) => d !== null) as number[]));
+    const min = Math.min(
+      ...(ds.filter((d, j) => d !== null && cols[j]![2]) as number[]),
+    );
     ds.forEach((d, j) => {
       if (d === null) return text(cx0 + j * cw + 26, y, "·", { fill: muted });
       text(cx0 + j * cw + 26, y, d.toFixed(1), {

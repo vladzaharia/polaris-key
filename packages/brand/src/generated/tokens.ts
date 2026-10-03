@@ -39,17 +39,17 @@ export const THEME_TOKENS = {
         on: "#060912",
         subtle: "#1d2418",
       },
-      cyan: {
-        solid: "#12bcd5",
-        fg: "#12bcd5",
+      yellow: {
+        solid: "#fac700",
+        fg: "#fac700",
         on: "#060912",
-        subtle: "#071e29",
+        subtle: "#232010",
       },
-      teal: {
-        solid: "#01f8e5",
-        fg: "#01f8e5",
+      cyan: {
+        solid: "#00dbfd",
+        fg: "#00dbfd",
         on: "#060912",
-        subtle: "#05262b",
+        subtle: "#05222e",
       },
       green: {
         solid: "#39d075",
@@ -78,10 +78,10 @@ export const THEME_TOKENS = {
         subtle: "#10211f",
       },
       warning: {
-        fg: "#ff8f57",
+        fg: "#c38d18",
         on: "#060912",
-        border: "#c2612d",
-        subtle: "#24191a",
+        border: "#896100",
+        subtle: "#1d1913",
       },
       danger: {
         fg: "#f2513f",
@@ -133,17 +133,17 @@ export const THEME_TOKENS = {
         on: "#060912",
         subtle: "#e9ede6",
       },
-      cyan: {
-        solid: "#006270",
-        fg: "#006270",
+      yellow: {
+        solid: "#8b6902",
+        fg: "#866500",
         on: "#ffffff",
-        subtle: "#dde9f1",
+        subtle: "#ebeae6",
       },
-      teal: {
-        solid: "#00948c",
-        fg: "#00766f",
+      cyan: {
+        solid: "#0390a6",
+        fg: "#007487",
         on: "#060912",
-        subtle: "#ddeef4",
+        subtle: "#deeef6",
       },
       green: {
         solid: "#05773b",
@@ -152,10 +152,10 @@ export const THEME_TOKENS = {
         subtle: "#deebeb",
       },
       tangerine: {
-        solid: "#974600",
-        fg: "#974600",
+        solid: "#b95800",
+        fg: "#aa5000",
         on: "#ffffff",
-        subtle: "#ede6e6",
+        subtle: "#f0e8e6",
       },
       orchid: {
         solid: "#9e34ae",
@@ -172,10 +172,10 @@ export const THEME_TOKENS = {
         subtle: "#e0ebeb",
       },
       warning: {
-        fg: "#a24112",
+        fg: "#814d00",
         on: "#ffffff",
-        border: "#c75d29",
-        subtle: "#eee6e7",
+        border: "#9d6726",
+        subtle: "#eae7e6",
       },
       danger: {
         fg: "#be2323",
@@ -221,18 +221,18 @@ export const SERVICE_ACCENTS = {
       bit: "#c6e940",
     },
     config: {
-      solid: "#12bcd5",
-      fg: "#12bcd5",
+      solid: "#fac700",
+      fg: "#fac700",
       on: "#060912",
-      subtle: "#071e29",
-      bit: "#12bcd5",
+      subtle: "#232010",
+      bit: "#fac700",
     },
     release: {
-      solid: "#01f8e5",
-      fg: "#01f8e5",
+      solid: "#00dbfd",
+      fg: "#00dbfd",
       on: "#060912",
-      subtle: "#05262b",
-      bit: "#01f8e5",
+      subtle: "#05222e",
+      bit: "#00dbfd",
     },
     distribution: {
       solid: "#39d075",
@@ -272,18 +272,18 @@ export const SERVICE_ACCENTS = {
       bit: "#708d00",
     },
     config: {
-      solid: "#006270",
-      fg: "#006270",
+      solid: "#8b6902",
+      fg: "#866500",
       on: "#ffffff",
-      subtle: "#dde9f1",
-      bit: "#006270",
+      subtle: "#ebeae6",
+      bit: "#8b6902",
     },
     release: {
-      solid: "#00948c",
-      fg: "#00766f",
+      solid: "#0390a6",
+      fg: "#007487",
       on: "#060912",
-      subtle: "#ddeef4",
-      bit: "#00948c",
+      subtle: "#deeef6",
+      bit: "#0390a6",
     },
     distribution: {
       solid: "#05773b",
@@ -293,11 +293,11 @@ export const SERVICE_ACCENTS = {
       bit: "#05773b",
     },
     update: {
-      solid: "#974600",
-      fg: "#974600",
+      solid: "#b95800",
+      fg: "#aa5000",
       on: "#ffffff",
-      subtle: "#ede6e6",
-      bit: "#974600",
+      subtle: "#f0e8e6",
+      bit: "#b95800",
     },
     identity: {
       solid: "#9e34ae",

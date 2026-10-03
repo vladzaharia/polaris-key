@@ -226,12 +226,12 @@ Each status has `fg` (text and icons; ≥ 4.5:1 on every surface and on its own 
 callout background, `fg` flattened over the page). CSS: `--pk-success`, `--pk-success-on`,
 `--pk-success-border`, `--pk-success-subtle`; likewise `warning`, `danger`, `info`.
 
-| Status  | Dark fg   | Light fg  | Hue and reasoning                                                                              |
-| ------- | --------- | --------- | ---------------------------------------------------------------------------------------------- |
-| success | `#56d57b` | `#167337` | green                                                                                          |
-| warning | `#ff8f57` | `#a24112` | **orange, not amber**: amber is the gold signing bit's territory. ΔE 0.125 / 0.140 from signed |
-| danger  | `#f2513f` | `#be2323` | red, held ΔE ≥ 0.12 from the reserved rose                                                     |
-| info    | `#b688fe` | `#7a2fff` | **violet, never blue**                                                                         |
+| Status  | Dark fg   | Light fg  | Hue and reasoning                                                                                 |
+| ------- | --------- | --------- | ------------------------------------------------------------------------------------------------- |
+| success | `#56d57b` | `#167337` | green                                                                                             |
+| warning | `#c38d18` | `#814d00` | **amber** (2026-10-03), between the Update tangerine and the Config yellow; ΔEOK 0.17 from signed |
+| danger  | `#f2513f` | `#be2323` | red, held ΔE ≥ 0.12 from the reserved rose                                                        |
+| info    | `#b688fe` | `#7a2fff` | **violet, never blue**                                                                            |
 
 A status is never communicated by colour alone: always an icon and a word.
 
@@ -285,15 +285,24 @@ and strong text all clear 4.5:1 on it).
   models, so neither one's quirks let a blue through; the kit violet sits just outside both
   (OKLCH 290–297°, HSL 262–263°).
 - **No rose or pink**: OKLCH hue outside [335°, 25°) and ΔEOK ≥ 0.12 from the kit rose.
-- **Not confusable with gold**: ΔEOK ≥ 0.12 from both the kit gold and the UI `signed` colour.
-- **Distinct**: pairwise ΔEOK ≥ 0.12 between families in each theme (achieved minimum: 0.136 dark,
-  violet/orchid; 0.121 light, cyan/green). ΔEOK 0.02 is about a just-noticeable difference.
-- **Distinct in CIEDE2000** (added 2026-10-03): service vs service ΔE00 ≥ 19.5 (measured minimum
-  19.8, light License/Distribution); the platform violet vs any service ≥ 13 (measured 13.2, light
-  Identity); any service vs the kit gold, the UI signed colour, the kit rose and danger ≥ 16.5
-  (measured 16.7, light Update vs danger). Each floor sits just under the approved palette's
-  minimum, so a regression fails. A flat 20 would fail on owner-approved pairs that no Release or
-  Update choice can move. Full matrix: `packages/brand/preview/proofs/accents-{dark,light}.png`.
+- **Gold is for signed artwork only** (owner decision 2026-10-03). The core K carries no gold bit
+  any more, so the ΔEOK ≥ 0.12 gold distance applies to the kit's signed artwork, the kit
+  lockups, the UI `signed` indicator and the status colours, **not to section accents**: Config's
+  yellow sits next to the gold on purpose (ΔE00 6.6 in dark). `colorViolations(hex, theme,
+{ gold: false })` is the accent check.
+- **Distinct** (ΔEOK, the second metric): pairwise ΔEOK ≥ 0.085 between families in each theme
+  (0.12 until 2026-10-03; measured minimum 0.090, light Config/Update). ΔEOK 0.02 is about a
+  just-noticeable difference.
+- **Distinct in CIEDE2000** (the governing metric, re-derived 2026-10-03): service vs service
+  ΔE00 ≥ 17.5 (measured minimum 18.0, light Config/Update; dark 20.4, Config/License); the
+  platform violet vs any service ≥ 13 (measured 13.2, light Identity); any service vs the kit rose
+  and danger ≥ 17.5 (measured 17.9, light Identity vs rose). Each floor sits just under the approved
+  palette's minimum, so a regression fails. A flat 20 would fail on owner-approved pairs.
+- **Warning is its own amber** (2026-10-03): ΔE00 ≥ 16 (dark) / ≥ 10 (light) from Config and Update,
+  solid and fg (measured 16.6 / 10.5), and ≥ 20 from danger (31.7 / 24.2). Light is lower because
+  every warm text colour at 4.5:1 on the light grounds is a dark amber-to-brown; a status always
+  carries an icon and a word.
+- Full matrices, status row included: `packages/brand/preview/proofs/accents-{dark,light}.png`.
 - **WCAG AA** as above, both themes.
 
 `colorViolations(hex, theme)` (exported) runs the hue and gold checks on any candidate colour.
@@ -304,70 +313,80 @@ and strong text all clear 4.5:1 on it).
 | ---------------- | -------- | ---------- | ------------------------------ | ----------------- | --------------- | ------------- |
 | **Core**         | Pinned K | violet     | `#9a5cff` (4.6)                | `#7a2fff` (4.9)   | `#7a2fff` (4.9) | indigo        |
 | **License**      | Pinned K | chartreuse | `#c6e940` (12.9)               | `#708d00` (3.3)   | `#556e00` (5.0) | amber         |
-| **Config**       | Pinned K | cyan       | `#12bcd5` (7.8)                | `#006270` (6.1)   | `#006270` (6.1) | cyan          |
-| **Release**      | Pinned K | teal       | `#01f8e5` (13.3)               | `#00948c` (3.2)   | `#00766f` (4.7) | violet        |
+| **Config**       | Pinned K | yellow     | `#fac700` (11.3)               | `#8b6902` (4.4)   | `#866500` (4.7) | cyan          |
+| **Release**      | Pinned K | cyan       | `#00dbfd` (10.7)               | `#0390a6` (3.3)   | `#007487` (4.7) | violet        |
 | **Distribution** | Star Cut | green      | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | orange        |
-| **Update**       | Star Cut | tangerine  | `#fe8001` (7.1)                | `#974600` (5.7)   | `#974600` (5.7) | green         |
+| **Update**       | Star Cut | tangerine  | `#fe8001` (7.1)                | `#b95800` (4.1)   | `#aa5000` (4.7) | green         |
 | **Identity**     | Pinned K | orchid     | `#d77df2` (6.9)                | `#9e34ae` (5.1)   | `#9e34ae` (5.1) | rose          |
 
-`on` is `#060912` on every dark solid (5.1–14.7:1) and on the light chartreuse and teal solids
-(5.2–5.3:1); `#ffffff` on the other light solids (5.7–7.0:1). The full set (subtle values, bit colours) is in
+`on` is `#060912` on every dark solid (5.1–14.3:1) and on the light chartreuse and cyan solids
+(5.2–5.3:1); `#ffffff` on the other light solids (4.7–5.9:1). The full set (subtle values, bit colours) is in
 `tokens.json` and the preview.
 
 OKLCH design values (dark solid / light solid): violet = the kit's; chartreuse `0.88 0.19 121` /
-`0.60 0.15 123`; cyan `0.73 0.125 212` / `0.455 0.085 212`; teal `0.88 0.155 185` /
-`0.60 0.105 188` (fg `0.51`); green `0.76 0.18 152` / `0.50 0.13 152`; tangerine
-`0.73 0.185 53` / `0.49 0.13 51`; orchid `0.73 0.185 318` / `0.53 0.20 322`.
+`0.60 0.15 123`; yellow `0.85 0.175 90` / `0.54 0.11 86` (fg `0.525`); cyan
+`0.82 0.145 214` / `0.60 0.105 214` (fg `0.515`); green `0.76 0.18 152` / `0.50 0.13 152`;
+tangerine `0.73 0.185 53` / `0.57 0.15 51` (fg `0.535`); orchid `0.73 0.185 318` /
+`0.53 0.20 322`. Warning: `0.68 0.135 80` (border `0.52`) / `0.47 0.105 67` (border `0.56`).
 
-Release and Update were chosen by `packages/brand/scripts/tune-accents.ts`, a reproducible grid
-search: among values that pass every rule above, inside the palette's lightness band and at least
-as vivid as Config's cyan, it takes the one with the largest minimum ΔE00 to every other accent,
-the violet, gold, signed, rose and danger. Before (2026-10-03 morning) and after:
+Config, Update (light), Release and the warning status were chosen by
+`packages/brand/scripts/tune-accents.ts`, a reproducible grid search: among values that pass every
+rule above, inside a window around the owner's starting colour (Config `#ffd43b` / `#8a6a00`, hue
+held at 90–100° so it stays yellow, and in light never darker than the start; Update light near
+`#b04a00`; Release over the whole 150–214° arc in the palette's lightness band), it takes the one
+with the largest minimum ΔE00 to every other accent, the violet, rose and danger; warning then
+takes the amber between Update and Config farthest from both and from danger. Before (2026-10-03
+morning, the original palette) and after:
 
-| Pair (ΔE00)             | Before dark | After dark | Before light | After light |
+| ΔE00                    | Before dark | After dark | Before light | After light |
 | ----------------------- | ----------- | ---------- | ------------ | ----------- |
-| Release vs Config       | 18.8        | 20.1       | 20.6         | 20.3        |
-| Release vs Distribution | 19.3        | 20.6       | 19.9         | 20.5        |
-| Distribution vs Update  | 0.0         | 56.6       | 0.0          | 47.4        |
-| Update vs gold          | 38.5        | 20.0       | 46.7         | 21.1        |
-| Update vs danger        | 72.3        | 20.3       | 64.3         | 16.7        |
-| Update vs warning       | 57.1        | 8.9        | 52.3         | 5.5         |
-| Lowest service pair     | 0.0         | 20.1       | 0.0          | 19.8        |
+| Release vs Config       | 18.8        | 50.1       | 20.6         | 42.4        |
+| Config vs License       | 45.9        | 20.4       | 40.7         | 20.7        |
+| Config vs Update        | 33.9        | 25.5       | 27.7         | 18.0        |
+| Distribution vs Update  | 0.0         | 56.6       | 0.0          | 49.5        |
+| Release vs Distribution | 19.3        | 36.7       | 19.9         | 31.9        |
+| Warning vs Config       | 48.5        | 16.9       | 43.0         | 11.8        |
+| Warning vs Update       | 57.1        | 16.6       | 52.3         | 13.5        |
+| Warning vs danger       | 15.8        | 31.7       | 11.1         | 24.2        |
+| Lowest service pair     | 0.0         | 20.4       | 0.0          | 18.0        |
 
 ### 5.3 Reasoning
 
-The usable hue wheel is small: blue/indigo (215–285°) is out, rose (335–25°) is reserved, the
-gold bit owns amber (≈ 60–100°), violet (≈ 290–300°) is the platform's, and the warm arc that is
-left (25–60°) holds the warning and danger statuses. What remains is chartreuse-through-cyan
-(≈ 115–214°) plus a narrow orchid band between violet and rose.
+The usable hue wheel is small: blue/indigo (215–285°) is out, rose (335–25°) is reserved and
+violet (≈ 290–300°) is the platform's. Until 2026-10-03 the gold bit also owned amber-to-yellow
+(≈ 60–100°); with no gold bit on the core K that arc opened to section accents (Config yellow) and
+the warning status (amber), and the danger status keeps the red end of the warm arc.
 
 - **Core keeps the kit violet, exactly**, in both themes: the platform is the brand. The dark-theme
   surfaces were set so that `#9a5cff` itself clears 4.5:1 on the overlay surface.
 - **License: amber → chartreuse.** Amber sits on top of the gold signing bit; a License accent
   that reads as gold would make every License screen look "signed". Chartreuse is the nearest hue
   that clears the gold by ΔE ≥ 0.12.
-- **Config keeps cyan**, nudged to OKLCH 212° so it stays out of the HSL blue band.
-- **Release: violet → teal.** Violet is the platform's alone, and a violet section bit would
-  vanish into the violet K. Re-tuned 2026-10-03 after the owner found it too close to Config's
-  cyan: the measured optimum under every rule is still teal (hue 185–188°), now brighter in dark.
-  The wheel has no better place: yellow is the gold's, 125–145° is boxed in by chartreuse and
-  green, and the orchid–rose band is narrower still. The search moves Release-vs-Config only from
-  18.8 to 20.1 ΔE00 in dark (20.6 to 20.3 in light); a larger gap needs Config itself to move.
-- **Distribution green, Update tangerine** (owner decision 2026-10-03; until then they shared one
+- **Config: cyan → yellow** (owner decision 2026-10-03), because cyan and the Release teal read
+  as one colour. The pair to watch is yellow vs the License chartreuse: the hue is held at 90–100°
+  (lime starts near 105°) and the tuner keeps it 20.4 / 20.7 ΔE00 from chartreuse. Dark is a pure
+  yellow next to the kit gold, which the gold rule no longer forbids; light is the owner's ochre
+  `#8a6a00` (a yellow at 3:1 on a light ground is necessarily ochre).
+- **Release: violet → teal → cyan.** Violet is the platform's alone, and a violet section bit would
+  vanish into the violet K. With Config yellow, Release is the only blue-green; over the whole
+  150–214° arc the measured optimum is the cyan end (214°, the old Config hue), farthest from the
+  Distribution green. A greener teal at 200° would score 29.1 / 25.5 ΔE00 instead of 36.7 / 31.9.
+- **Distribution green, Update tangerine** (owner decisions 2026-10-03; until then they shared one
   green, the old Update colour). Neither is violet even though the Star Cut mark is: the mark's
   colour is the brand's, not the section's, and a violet section bit is invisible on a violet K.
-  Tangerine sits in the warm arc next to the warning status (ΔE00 8.9 dark, 5.5 light): accepted
-  like the green/success overlap, because a status always carries an icon and a word. Light
-  tangerine is darker than the owner's `#b04a00`, which sits ΔEOK 0.09 from the UI signed gold.
+  Update light is a bright orange near the owner's `#b04a00` (the gold rule that pushed it darker
+  is gone).
 - **Identity: rose → orchid.** Rose is reserved. Orchid (OKLCH 318–322°, HSL 287–296°) is held
   between the violet and the rose at ΔE ≥ 0.12 from each and outside the rose hue band. It is the
   tightest fit in the palette; see [decisions to confirm](#decisions-to-confirm).
 - In light, three solids (License, Release, and to a lesser degree Config) cannot be both vivid
   and 4.5:1, so `solid` (3:1, the identity colour) and `fg` (4.5:1 text) differ there. In dark
   every solid is also its own text colour.
+- **Warning: orange → amber** (owner decision 2026-10-03), between the Update tangerine and the
+  Config yellow so it is mistaken for neither, and away from danger (floors in §5.1).
 - **Status overlaps are accepted, not hidden**: Distribution shares green's neighbourhood with
-  success and Update tangerine shares warning's, and a status always carries an icon and a word. Status colours are tested against
-  the brand rules and against the signed gold, not against section accents.
+  success, and a status always carries an icon and a word. Status colours are tested against the
+  brand rules and the signed gold; warning is also held away from Config, Update and danger.
 
 ### 5.4 Using accents
 
@@ -386,7 +405,7 @@ left (25–60°) holds the warning and danger statuses. What remains is chartreu
 bit", corrected the same day.** The default "Polaris Key" mark (the Pinned K) has **no terminal
 bit at all** on core/platform pages: no gold rectangle and nothing in its place. The bit appears
 only in a service section (License, Config, Release, Distribution, Update, Identity), filled with
-**that section's accent**: License → chartreuse, Config → cyan, and so on. The star never
+**that section's accent**: License → chartreuse, Config → yellow, and so on. The star never
 changes. (The earlier version of this rule kept the kit gold on core pages; it is superseded.)
 
 Rules:
@@ -665,7 +684,7 @@ map it follows.
 | `--pk-muted`                                                   | `--pk-surface-sunken`                                              |                                                          |
 | `--pk-muted-foreground`                                        | `--pk-text-muted`                                                  |                                                          |
 | `--pk-success`, `-foreground`                                  | `--pk-success`, `--pk-success-on`                                  | plus `-border`, `-subtle`                                |
-| `--pk-warning`, `-foreground`                                  | `--pk-warning`, `--pk-warning-on`                                  | now orange; amber/gold means signed                      |
+| `--pk-warning`, `-foreground`                                  | `--pk-warning`, `--pk-warning-on`                                  | amber since 2026-10-03 (was orange)                      |
 | `--pk-destructive`, `-foreground`                              | `--pk-danger`, `--pk-danger-on`                                    |                                                          |
 | (none)                                                         | `--pk-info`, `--pk-signed`, `--pk-signed-*`                        | new                                                      |
 | `--pk-border`                                                  | `--pk-border-subtle`                                               |                                                          |
@@ -718,11 +737,10 @@ so `data-service` carries the same ids this package keys its accents by.
 - **Identity orchid** is the tightest fit (ΔE 0.136 from violet and 0.128 from rose in dark).
   The alternative is to give Identity a cool hue and accept ~0.09 pairwise distinctness among
   five cool accents, or to share the warm arc with the warning status.
-- **Release vs Config** stays at about 20 ΔE00 (§5.3): within the rules no Release value does
-  better. A clearly larger gap needs Config to move, or a rule (lightness band, chroma floor) to
-  relax.
-- **Update tangerine vs the warning status** (ΔE00 8.9 / 5.5): nearly the same orange. Accepted as a
-  status overlap, or warning moves redder in its own change.
+- **Light warning vs Config and Update** is the tightest status fit (ΔE00 11.8 / 10.5, floor 10):
+  light amber text at 4.5:1 is necessarily brown. The icon and word carry the distinction.
+- **Dark Config yellow vs the kit gold** (ΔE00 6.6): allowed since the gold rule left the
+  accents; the section bit in Config is yellow next to where gold used to be.
 - **Section-bit minimum stays 48 px** (the kit's), so the console header mark is 48 px.
 - **The "Powered by" badge does not appear on Polaris Key's own surfaces.**
 
@@ -744,16 +762,19 @@ so `data-service` carries the same ids this package keys its accents by.
   Pinned K's display cut at 48 px, so every section's bit is legible in both themes (proofs:
   `packages/brand/preview/proofs/section-bit-{dark,light}.png`). 32–47 px placements use the
   display cut without a bit; below 24 px, the favicon cut.
-- **Accent palette approved as tuned** (the table above), including Config cyan, Release teal and
-  Identity orchid. (This originally included one shared green for Distribution and Update; see the
-  next entry.)
+- **Accent palette approved as tuned** (the table above), including Identity orchid. (This
+  originally also had Config cyan, Release teal and one shared green for Distribution and Update;
+  see the next entries.)
 - **Distribution and Update no longer share green (2026-10-03).** Distribution keeps `#39d075` /
-  `#05773b`; Update becomes tangerine, `#fe8001` / `#974600`, tuned from the owner's `#ff8a3d` /
-  `#b04a00` to meet every accent rule (§5).
-- **Release re-tuned by measurement (2026-10-03).** The owner found Release teal too close to
-  Config cyan; Config keeps cyan. `scripts/tune-accents.ts` picked `#01f8e5` / `#00948c` (teal,
-  the measured optimum) and CIEDE2000 floors joined the tests (§5.1). Pending owner approval of
-  the proof sheets `packages/brand/preview/proofs/accents-{dark,light}.png`.
+  `#05773b`; Update becomes tangerine.
+- **After the accent proofs (2026-10-03):** Config becomes yellow (`#fac700` / `#8b6902`, from the
+  owner's `#ffd43b` / `#8a6a00`); Release, the only blue-green left, is re-tuned to the measured
+  optimum (`#00dbfd` / `#0390a6`); Update dark stays `#fe8001` and Update light returns to a bright
+  orange (`#b95800`, near the owner's `#b04a00`); License stays chartreuse. The gold distance no
+  longer applies to section accents (only to the kit's signed artwork, the kit lockups, the signed
+  indicator and statuses). The warning status moves to amber (`#c38d18` / `#814d00`) between
+  Update and Config. CIEDE2000 floors are re-derived and tested (§5.1); the proofs are
+  `packages/brand/preview/proofs/accents-{dark,light}.png`.
 - **No "Powered by Polaris Key" badge on Polaris Key's own surfaces** (console, portal, docs,
   dl.plrs.im). The badge belongs to integrators' surfaces: SDK credit screens, the Godot addon's
   credits and integrator websites.

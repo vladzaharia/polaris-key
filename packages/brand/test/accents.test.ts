@@ -22,14 +22,13 @@ const cases = THEMES.flatMap((theme) =>
 );
 
 describe("section accents obey the colour rules", () => {
-  it.each(cases)(
-    "%s %s.%s: not blue/indigo, not rose, clear of gold",
-    (theme, id, part) => {
-      const hex = SERVICE_ACCENTS[theme][id][part];
-      const signedSolid = THEME_TOKENS[theme].signed.solid;
-      expect(colorViolations(hex, theme, { signedSolid })).toEqual([]);
-    },
-  );
+  it.each(cases)("%s %s.%s: not blue/indigo, not rose", (theme, id, part) => {
+    // Section accents are exempt from the gold distance since 2026-10-03: the core K carries no
+    // gold bit, so gold is only the kit's signed artwork, the kit lockups and the signed UI
+    // indicator (docs/design/BRAND.md §5.1). Config's yellow sits next to the gold on purpose.
+    const hex = SERVICE_ACCENTS[theme][id][part];
+    expect(colorViolations(hex, theme, { gold: false })).toEqual([]);
+  });
 
   it("the forbidden bands catch what they should", () => {
     // The old console indigo (#5b7cfa), a plain blue, the kit rose and the kit gold all fail.
@@ -73,6 +72,8 @@ describe("pairwise distinctness", () => {
       ACCENT_FAMILIES.slice(i + 1).map((b) => [theme, a, b] as const),
     ),
   );
+  // ΔEOK stays as a second metric; CIEDE2000 (below) governs. Re-derived 2026-10-03 (see
+  // COLOR_RULES.accentMinDeltaE): measured minimum 0.090, light Config vs Update.
   it.each(pairs)(
     `%s: %s vs %s, ΔEOK >= ${COLOR_RULES.accentMinDeltaE}`,
     (theme, a, b) => {
@@ -89,6 +90,8 @@ describe("pairwise distinctness", () => {
     expect(new Set(families).size).toBe(SERVICE_IDS.length);
     expect([...families].sort()).toEqual([...ACCENT_FAMILIES].sort());
     expect(SERVICE_FAMILY.update).toBe("tangerine");
+    expect(SERVICE_FAMILY.config).toBe("yellow");
+    expect(SERVICE_FAMILY.license).toBe("chartreuse");
     expect(SERVICE_ACCENTS.dark.distribution.solid).toBe("#39d075");
     expect(SERVICE_ACCENTS.light.distribution.solid).toBe("#05773b");
   });
@@ -102,19 +105,19 @@ describe("pairwise distinctness", () => {
   });
 });
 
-// CIEDE2000 floors (owner request 2026-10-03, after Release read too close to Config). Each floor
-// sits just under the minimum the approved palette measures (scripts/tune-accents.ts and
-// docs/design/BRAND.md §5.1 carry the full table), so any change that brings two accents closer
-// fails here:
-//   * service vs service: 19.5. Measured minimum 19.8 (light License/Distribution, chartreuse vs
-//     green, approved 2026-10-03). ΔE00 ≈ 20 reads as a different colour at a glance.
-//   * the platform violet vs any service: 13. Measured minimum 13.2 (light Identity orchid),
-//     the documented tightest fit between the violet and the reserved rose (§5.3).
-//   * any service vs the kit gold, the UI signed colour, the kit rose and the danger tokens: 16.5.
-//     Measured minimum 16.7 (light Update tangerine vs danger).
-// A flat 20 (the first proposal) would fail on owner-approved pairs that no Release or Update
-// choice can move.
-export const DE00_FLOORS = { services: 19.5, platform: 13, references: 16.5 };
+// CIEDE2000 floors (owner requests 2026-10-03), re-derived after Config became yellow, Update
+// light a bright orange and Release the cyan optimum. Each floor sits just under the minimum the
+// approved palette measures (scripts/tune-accents.ts; the matrices are on
+// preview/proofs/accents-{dark,light}.png and in docs/design/BRAND.md §5.1), so any change that
+// brings two colours closer fails here:
+//   * service vs service: 17.5. Measured minimum 18.0 (light Config yellow vs Update orange; the
+//     dark minimum is 20.4, Config vs License). ΔE00 ≈ 20 reads as a different colour at a glance.
+//   * the platform violet vs any service: 13. Measured 13.2 (light Identity orchid), the
+//     documented tightest fit between the violet and the reserved rose (§5.3).
+//   * any service vs the kit rose and the danger tokens: 17.5. Measured 17.9 (light Identity vs
+//     rose) and 18.2 (light Update vs the danger border). The kit gold and the signed colour left
+//     this set with the gold rule.
+export const DE00_FLOORS = { services: 17.5, platform: 13, references: 17.5 };
 
 describe("CIEDE2000 distinctness", () => {
   const services = SERVICE_IDS.filter((s) => s !== "core");
@@ -147,12 +150,10 @@ describe("CIEDE2000 distinctness", () => {
   );
 
   it.each(THEMES)(
-    `%s: every service vs gold, signed, rose and danger, ΔE00 >= ${DE00_FLOORS.references}`,
+    `%s: every service vs rose and danger, ΔE00 >= ${DE00_FLOORS.references}`,
     (theme) => {
       const t = THEME_TOKENS[theme];
       const refs = {
-        gold: BRAND.gold[theme],
-        signed: t.signed.solid,
         rose: BRAND.rose[theme],
         danger: t.status.danger.fg,
         dangerBorder: t.status.danger.border,
@@ -165,6 +166,36 @@ describe("CIEDE2000 distinctness", () => {
           ).toBeGreaterThanOrEqual(DE00_FLOORS.references);
     },
   );
+});
+
+// The warning status moved to amber (2026-10-03) so it cannot be taken for the Config yellow or
+// the Update tangerine. A status always sits next to an icon and a word, so its floor is lower
+// than the accents' and is set per theme from the data (scripts/tune-accents.ts):
+//   * dark: >= 16 from Config and Update (solid and fg). Measured 16.6 (Update solid).
+//   * light: >= 10. Measured 10.5 (Update fg). At 4.5:1 on the light grounds every warm text
+//     colour is a dark amber-to-brown, so light has far less room; 10.5 is the best the window
+//     allows with a vivid amber (chroma >= 0.10, lightness 0.47-0.58). The suggested 12 is not
+//     reachable in light without a muddy brown (the unconstrained optimum, #713d29 at chroma 0.08).
+//   * danger: >= 20 in both themes (measured 31.7 dark, 24.2 light).
+export const WARNING_FLOORS = {
+  accents: { dark: 16, light: 10 },
+  danger: 20,
+} as const;
+
+describe("the warning status is its own amber", () => {
+  it.each(THEMES)("%s: clear of Config and Update, and of danger", (theme) => {
+    const t = THEME_TOKENS[theme];
+    const w = t.status.warning.fg;
+    for (const id of ["config", "update"] as const)
+      for (const part of ["solid", "fg"] as const)
+        expect(
+          deltaE2000(w, SERVICE_ACCENTS[theme][id][part]),
+          `${id}.${part}`,
+        ).toBeGreaterThanOrEqual(WARNING_FLOORS.accents[theme]);
+    expect(deltaE2000(w, t.status.danger.fg)).toBeGreaterThanOrEqual(
+      WARNING_FLOORS.danger,
+    );
+  });
 });
 
 describe("status colours stay clear of the brand rules", () => {
