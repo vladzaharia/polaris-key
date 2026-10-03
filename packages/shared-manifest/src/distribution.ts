@@ -128,6 +128,11 @@ export interface ManifestOutletIdentity {
   tracks?: Record<string, string>;
   /** `ms-store`: the Store product id. */
   productId?: string;
+  /**
+   * `ms-store`: declared channel → package flight, named by its Partner Center friendly name or
+   * its flight id (P5-04). The non-flighted submission is always the `stable` channel.
+   */
+  flights?: Record<string, string>;
   /** `ms-store` / `app-installer`: the MSIX package family name (`<Name>_<PublisherId>`). */
   packageFamilyName?: string;
   /**
@@ -202,7 +207,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
   "play-testing": ["packageName", "tracks"],
   obtainium: ["artifact", "packageName"],
   "fdroid-repo": ["artifact", "packageName"],
-  "ms-store": ["productId", "packageFamilyName"],
+  "ms-store": ["productId", "packageFamilyName", "flights"],
   "app-installer": ["packageFamilyName", "publisher", "updateSettings"],
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
@@ -223,6 +228,8 @@ const ANDROID_PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 const MAX_PACKAGE_NAME_LENGTH = 255;
 const PLAY_TRACK_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:-]{0,99}$/;
 const MS_PRODUCT_ID_RE = /^[A-Za-z0-9]{12}$/;
+/** A Microsoft Store package flight: its friendly name or its flight id (a GUID). */
+const MS_FLIGHT_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:()-]{0,99}$/;
 /** An MSIX `Publisher`: a certificate subject DN starting `CN=`, printable ASCII, at most 1024. */
 export const MSIX_PUBLISHER_PATTERN = /^CN=[\x20-\x7e]{1,1021}$/;
 /** `<Name>_<PublisherId>`: a 3–50 character package name and the 13-character publisher id. */
@@ -332,6 +339,8 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
       return channelMap(PLAY_TRACK_RE, "Play track");
     case "productId":
       return pattern(MS_PRODUCT_ID_RE, "a 12-character Microsoft Store id");
+    case "flights":
+      return channelMap(MS_FLIGHT_RE, "Microsoft Store package flight");
     case "packageFamilyName":
       return pattern(
         PACKAGE_FAMILY_NAME_PATTERN,
@@ -744,7 +753,7 @@ function validateOutlet(
         `outlets.${id}.artifact must name an id in .pkey/release deliverables.app.artifacts.`,
       );
     }
-    if (field === "tracks" || field === "branches") {
+    if (field === "tracks" || field === "branches" || field === "flights") {
       for (const channel of Object.keys(value as Record<string, unknown>)) {
         if (!ctx.channels.has(channel)) {
           add(
