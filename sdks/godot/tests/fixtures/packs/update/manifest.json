@@ -6,6 +6,7 @@
   "engine": "godot-4.7",
   "v1": {
     "pck": "kaykit-v1.pck",
+    "formatVersion": 4,
     "variant": {
       "variant": {},
       "payload": {
@@ -39,6 +40,7 @@
   },
   "v2": {
     "pck": "kaykit-v2.pck",
+    "formatVersion": 4,
     "variant": {
       "variant": {},
       "payload": {
@@ -98,6 +100,40 @@
       ]
     }
   },
+  "v1g44": {
+    "pck": "kaykit-v1-g44.pck",
+    "formatVersion": 2,
+    "variant": {
+      "variant": {},
+      "payload": {
+        "size": 46928,
+        "sha256": "3ef23974614c7626599f4c357cb30ee049ecc88e4298b915698a81dfe54301c6"
+      },
+      "full": {
+        "sha256": "df3e31a4ec5b2ada232a7d48b0aff5fede1a6ae95590581c2851711c5f3c23f1",
+        "bytes": 14363,
+        "size": 46928,
+        "codec": "zstd"
+      },
+      "files": {
+        "format": "pkey-files/1",
+        "layout": "container",
+        "sha256": "d317156a0c9106a03eeb138622bc455f9db2546c42d9d44af7f2a6b63c0807f8",
+        "bytes": 1539,
+        "size": 4064,
+        "codec": "zstd",
+        "gaps": {
+          "sha256": "e641d3e271b830a46f992409a8a2dbae3794d8deed0fc4dbfd275bb51baead02",
+          "bytes": 588,
+          "size": 1338,
+          "codec": "zstd"
+        }
+      },
+      "requires": {
+        "engine": "godot-4.4"
+      }
+    }
+  },
   "objects": [
     "108a8e4dccc28b2c332d027b71b4ec5451cba355c179e6493a0b40b055af9a2a",
     "1c62cdad031b6536e8eec44fa7a577a28a4be388b242081c81f6a2d2539e1bdc",
@@ -122,8 +158,11 @@
     "b698d2117512af3bfabff5df07828ed4787e14bbb16891f5ba3092bb64838a8d",
     "d004eee009e1221283c3faeea8e11514ee0396d84cbf75521fecb8fc4cf3515d",
     "d1a2b5bb73756bb9efa591b9355db103c91058e583ee80c76f5343c58cba6e91",
+    "d317156a0c9106a03eeb138622bc455f9db2546c42d9d44af7f2a6b63c0807f8",
     "dc8ad5166611df86f50b368bace40eaa3e63e1495d77d028e03f3f96e819ed2b",
+    "df3e31a4ec5b2ada232a7d48b0aff5fede1a6ae95590581c2851711c5f3c23f1",
     "e4562ac019080065b82fbe32bb2182638a4d5b2975d198135d6f8f41a8910e16",
+    "e641d3e271b830a46f992409a8a2dbae3794d8deed0fc4dbfd275bb51baead02",
     "ea4c008c576cc25013c873c18b398f8a9f66a955469bbea5e458df0c450bc000",
     "ed51890de27508a626619852c282edae04b510de50891be0bbb0ec4ddf1eaa61",
     "ff8d33a0866fc03948a4b700b1a132066a6425f23ffc880e941c32d19be5a415"

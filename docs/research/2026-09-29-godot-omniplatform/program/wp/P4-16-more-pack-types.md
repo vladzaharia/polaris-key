@@ -255,12 +255,17 @@ The code is the fact; where this brief and the code differ, the code (and this s
 
 **Follow-ups found, not fixed here:**
 
-1. The Godot `godot.pck` handler's `supports()` accepts only `formatVersion == 1`. The CLI signs
-   the PCK header's format version (2–4), as WIRE-CONTRACT-V4 §2.5.1 says. P4-08/P4-03 should
-   reconcile them.
-2. The Godot engine puts a type check's `detail` token only in the error message (the `path` is
-   in `detail.path`). Fixing it is one line in `engine.gd`'s check block, deferred because P4-26
-   is editing that file.
+1. (Fixed after review.) The Godot `godot.pck` handler accepted only `formatVersion == 1`, while
+   the CLI signs the PCK header's format version, as WIRE-CONTRACT-V4 §2.5.1 says. It now accepts
+   v2 up to the version the running engine writes (`PCKPacker`, probed once), which is what it
+   mounts: measured, 4.4.1 writes and mounts v2 only, and 4.7.2 writes v4 and mounts v2–v4.
+   Anything else is `pack-type-unsupported` before a byte is fetched, and a header that disagrees
+   with its record is `pck-directory-refused` before commit. The CLI's fixture generator now
+   records each published pack's `formatVersion` and adds kaykit v1 as Godot 4.4 exports it (PCK
+   v2, engine 4.4.1), which installs on 4.4.1 and 4.7.2. client-core, Python and Swift ship no
+   `godot.pck` handler, so nothing else assumed v1.
+2. (Fixed after review.) The Godot engine puts a check's `detail` (a type check's token) in the
+   error's `detail.detail`, beside `path`, as P4-26 does for `pack-not-data-only`.
 3. Swift `data.json` documents still decode into `JSONValue`, which keeps one of two canonically
    equivalent member names. The check's verdict is unchanged, because duplicates are judged by
    scalars, but `documents(packId)` loses a member.

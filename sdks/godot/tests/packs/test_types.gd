@@ -210,7 +210,7 @@ func _data(t: PKeyTestContext) -> void:
 	var e6 := _engine("types-data-bad", [bad], bad)
 	await e6.load_state([])
 	r = await e6.ensure(["djdl.balance"])
-	t.check("data: a file that is not strict JSON is pack-type-check-failed (json, its path) and nothing commits", _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.detail.get("path") == "b.json" and r.message.ends_with(": json") and e6.doc["active"].is_empty() and not DirAccess.dir_exists_absolute(e6.storage.tree_path(bad["treeDigest"])), str(r))
+	t.check("data: a file that is not strict JSON is pack-type-check-failed (json, its path) and nothing commits", _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.detail.get("path") == "b.json" and r.detail.get("detail") == "json" and e6.doc["active"].is_empty() and not DirAccess.dir_exists_absolute(e6.storage.tree_path(bad["treeDigest"])), str(r))
 	S.remove_tree(e6.storage.root)
 
 
@@ -255,7 +255,7 @@ func _l10n(t: PKeyTestContext) -> void:
 	var e5 := _engine("types-l10n-wrong", [wrong], wrong, axes)
 	await e5.load_state([])
 	r = await e5.ensure(["djdl.l10n.fr"])
-	t.check("l10n: a table whose locale is not the variant's is pack-type-check-failed (locale)", _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.detail.get("path") == "de.json" and r.message.ends_with(": locale") and e5.doc["active"].is_empty(), str(r))
+	t.check("l10n: a table whose locale is not the variant's is pack-type-check-failed (locale)", _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.detail.get("path") == "de.json" and r.detail.get("detail") == "locale" and e5.doc["active"].is_empty(), str(r))
 	S.remove_tree(e5.storage.root)
 	var too_new := F.tree_pack("djdl.l10n.fr", "1.0.0", 1, {"fr.csv": "keys,fr\na,b\n"}, null, {"type": "l10n.table", "variant": {"locale": "fr"}, "formatVersion": 9})
 	var e6 := _engine("types-l10n-fv", [too_new], too_new, axes)
@@ -312,7 +312,7 @@ func _audio(t: PKeyTestContext) -> void:
 	e3.register_handler(h)
 	await e3.load_state([])
 	r = await e3.ensure(["djdl.sfx"])
-	t.check("audio: a bank for another middleware is pack-type-check-failed (middleware)", _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.detail.get("path") == "bank.json" and r.message.ends_with(": middleware") and e3.doc["active"].is_empty(), str(r))
+	t.check("audio: a bank for another middleware is pack-type-check-failed (middleware)", _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.detail.get("path") == "bank.json" and r.detail.get("detail") == "middleware" and e3.doc["active"].is_empty(), str(r))
 	S.remove_tree(e3.storage.root)
 
 
@@ -378,7 +378,7 @@ func _custom(t: PKeyTestContext) -> void:
 		e4.register_handler(h)
 		await e4.load_state([])
 		r = await e4.ensure(["djdl.dialogue"])
-		t.check("custom: a game check's refusal %s is pack-type-check-failed (%s)" % [c[0], c[1]], _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.message.ends_with(": " + c[1]) and r.detail.get("path") == "lines.txt", str(r))
+		t.check("custom: a game check's refusal %s is pack-type-check-failed (%s)" % [c[0], c[1]], _code(r) == PKeyConstants.ErrorCode.PACK_TYPE_CHECK_FAILED and r.detail.get("detail") == c[1] and r.detail.get("path") == "lines.txt", str(r))
 		S.remove_tree(e4.storage.root)
 	h.refuse = ""
 

@@ -221,14 +221,15 @@ static func object(h: String) -> PackedByteArray:
 	return FileAccess.get_file_as_bytes(UPDATE.path_join("objects").path_join(h))
 
 
-## The kaykit `godot.pck` release `which` ("v1" or "v2"), as P4-03's publish would sign it.
+## The kaykit `godot.pck` release `which` ("v1", "v2", or "v1g44": v1 as Godot 4.4 exports it,
+## PCK v2), as P4-03's publish would sign it, `formatVersion` the PCK header's.
 ## `tweak(record)` may edit the record before signing.
 static func kaykit_pack(which: String, seq: int, tweak := Callable()) -> Dictionary:
 	var m := manifest()
 	var variant: Dictionary = ints(m[which]["variant"])
 	var record := {
 		"schemaVersion": 1, "aud": PRODUCT, "deliverable": "diceroll.core3d", "kind": "pack",
-		"version": "1.%d.0" % seq, "seq": seq, "issuedAt": 1759400000 + seq, "type": "godot.pck", "formatVersion": 1,
+		"version": "1.%d.0" % seq, "seq": seq, "issuedAt": 1759400000 + seq, "type": "godot.pck", "formatVersion": int(m[which]["formatVersion"]),
 		"handler": {"mountOrder": 2, "prefixes": m["prefixes"], "activation": "restart"}, "variants": [variant],
 	}
 	if tweak.is_valid():
