@@ -65,10 +65,10 @@ static func check_files(files: Array, axes: Variant, max_bytes := 16777216) -> D
 
 
 func check_payload(dir: String, _record: Dictionary, variant: Dictionary) -> Dictionary:
-	var files = PKeyDataJsonHandler.read_tree(dir, max_file_bytes)
-	if files == null:
-		return type_refusal("table", "")
-	var r := check_files(files, variant.get("variant"), max_file_bytes)
+	var files := PKeyDataJsonHandler.read_tree(dir, max_file_bytes)
+	if not files["ok"]:
+		return files
+	var r := check_files(files["files"], variant.get("variant"), max_file_bytes)
 	if not r["ok"]:
 		return r
 	return {"ok": true}
@@ -108,8 +108,8 @@ func _remove(id: String) -> Dictionary:
 
 func activate(install: Dictionary) -> void:
 	var id: String = install["packId"]
-	var files = PKeyDataJsonHandler.read_tree(String(install["location"]), max_file_bytes)
-	var r := check_files(files, null, max_file_bytes) if files != null else {"ok": false}
+	var files := PKeyDataJsonHandler.read_tree(String(install["location"]), max_file_bytes)
+	var r := check_files(files["files"], null, max_file_bytes) if files["ok"] else files
 	if not r["ok"]:
 		push_warning("PolarisKey: %s's l10n.table could not be read at activation." % id)
 		return

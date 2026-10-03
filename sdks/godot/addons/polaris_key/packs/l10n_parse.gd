@@ -66,9 +66,16 @@ static func parse_file(path: String, bytes: PackedByteArray) -> Dictionary:
 	var b := bytes
 	if b.size() >= 3 and b[0] == 0xEF and b[1] == 0xBB and b[2] == 0xBF:
 		b = b.slice(3)
-	var body := b.get_string_from_utf8()
-	if body.to_utf8_buffer() != b:
+	# Godot's decoder drops a leading BOM, so further leading BOMs are counted and kept as U+FEFF
+	# (as every other SDK keeps them), and only the rest goes through the round-trip check.
+	var boms := 0
+	while b.size() >= 3 * (boms + 1) and b[3 * boms] == 0xEF and b[3 * boms + 1] == 0xBB and b[3 * boms + 2] == 0xBF:
+		boms += 1
+	var rest := b.slice(3 * boms)
+	var decoded := rest.get_string_from_utf8()
+	if decoded.to_utf8_buffer() != rest:
 		return {"ok": false, "detail": "table"}
+	var body := "\ufeff".repeat(boms) + decoded
 	var at := 0
 	while at < body.length() and " \t\n\r".contains(body[at]):
 		at += 1

@@ -32,6 +32,8 @@ const MAX_ENTRIES := 20000
 const _EOCD := 0x06054b50
 const _CDH := 0x02014b50
 const _LFH := 0x04034b50
+const _ZIP64_LOCATOR := 0x07064b50
+const _SCAN_CHUNK := 1 << 20
 
 ## The packs this boot runs, by id (mounted by PolarisKey.update.packs.mount()).
 var to_mount := {}
@@ -65,6 +67,12 @@ static func read_directory(source: PKeyByteSource) -> Dictionary:
 		return _refuse("the zip's end record does not close the file (an archive comment or trailing bytes)")
 	if eocd.decode_u16(20) != 0:
 		return _refuse("the zip has an archive comment")
+	# minizip looks for a ZIP64 locator in the 20 bytes before the end record first, and would
+	# read a hidden ZIP64 directory instead of the one judged here.
+	if n >= 42:
+		var loc := source.read(n - 42, 4)
+		if loc.size() == 4 and loc.decode_u32(0) == _ZIP64_LOCATOR:
+			return _refuse("a ZIP64 end-of-central-directory locator")
 	var disk := eocd.decode_u16(4)
 	var cd_disk := eocd.decode_u16(6)
 	var here := eocd.decode_u16(8)
@@ -79,10 +87,17 @@ static func read_directory(source: PKeyByteSource) -> Dictionary:
 		return _refuse("%d entries; a pack is at most %d (the mount stall grows with the entry count, S-05 §4.1)" % [count, MAX_ENTRIES])
 	if cd_at + cd_size != n - 22:
 		return _refuse("the central directory does not end at the end record")
-	if count > 0:
-		var head := source.read(0, 4)
-		if head.size() != 4 or head.decode_u32(0) != _LFH:
-			return _refuse("the zip does not start with a local header")
+	if count == 0:
+		return _refuse("an empty zip")
+	var head := source.read(0, 4)
+	if head.size() != 4 or head.decode_u32(0) != _LFH:
+		return _refuse("the zip does not start with a local header")
+	# Godot tries its PCK source before the ZIP source whatever the extension, and that source
+	# looks for `GDPC` at the start, at the end and (in a self-contained export) at the embedded
+	# PCK offset of the file it opens: no `GDPC` may appear anywhere in a godot.zip.
+	var gdpc := _gdpc_at(source)
+	if gdpc >= 0:
+		return _refuse("the bytes `GDPC` (a Godot PCK magic) at offset %d; Godot's PCK source could mount it as a PCK" % gdpc)
 	var cd := source.read(cd_at, cd_size)
 	if cd.size() != cd_size:
 		return _refuse("the central directory cannot be read")
@@ -103,6 +118,8 @@ static func read_directory(source: PKeyByteSource) -> Dictionary:
 		var local := cd.decode_u32(p + 42)
 		if p + 46 + nlen + xlen + clen > cd.size():
 			return _refuse("the central directory runs past its end")
+		if clen != 0:
+			return _refuse("an entry comment", cd.slice(p + 46, p + 46 + nlen).get_string_from_utf8())
 		var name_bytes := cd.slice(p + 46, p + 46 + nlen)
 		p += 46 + nlen + xlen + clen
 		var name := name_bytes.get_string_from_utf8()
@@ -154,6 +171,27 @@ static func read_directory(source: PKeyByteSource) -> Dictionary:
 	if not pc["ok"]:
 		return _refuse("a path the zip names twice (%s)" % pc["error"], String(pc["path"]))
 	return {"ok": true, "header": {}, "entries": entries}
+
+
+## The first offset of `GDPC` in `source`, or -1: read in 1 MiB windows overlapping by 3
+## bytes, each hex-encoded once and searched natively (a hit at an odd hex offset straddles two
+## bytes and is skipped), so the work stays linear whatever the bytes are.
+static func _gdpc_at(source: PKeyByteSource) -> int:
+	var at := 0
+	while at < source.size:
+		var chunk := source.read(at, mini(_SCAN_CHUNK, source.size - at))
+		if chunk.is_empty():
+			return -1
+		var hex := chunk.hex_encode()
+		var i := hex.find("47445043")
+		while i >= 0 and i % 2 == 1:
+			i = hex.find("47445043", i + 1)
+		if i >= 0:
+			return at + i / 2
+		if at + chunk.size() >= source.size:
+			return -1
+		at += chunk.size() - 3
+	return -1
 
 
 static func _prefixes(record: Dictionary) -> Array:

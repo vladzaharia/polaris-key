@@ -678,6 +678,13 @@ func mount() -> Dictionary:
 			out["refused"].append({"packId": id, "code": PKeyConstants.ErrorCode.RECORD_REJECTED, "detail": "no verified record"})
 			pack_failed.emit(id, PKeyConstants.ErrorCode.RECORD_REJECTED)
 			continue
+		# A godot.zip mounts only from a `.zip` path and a godot.pck only from a `.pck` one: the
+		# store names a container by its bytes, so a mismatch means bytes of the other kind.
+		var want_ext := ".zip" if i["type"] == "godot.zip" else ".pck"
+		if not String(i["location"]).ends_with(want_ext):
+			out["refused"].append({"packId": id, "code": PKeyPck.DIRECTORY_REFUSED, "detail": "a %s stored at %s" % [i["type"], i["location"]]})
+			pack_failed.emit(id, PKeyPck.DIRECTORY_REFUSED)
+			continue
 		var src := PKeyByteSource.file(String(i["location"]), int(i["payloadSize"]))
 		var handler = engine.handlers.get(i["type"])
 		var checker: Callable = PKeyGodotZipHandler.check if i["type"] == "godot.zip" else PKeyGodotPckHandler.check

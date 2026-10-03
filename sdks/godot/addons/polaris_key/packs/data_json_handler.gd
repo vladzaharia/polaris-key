@@ -60,34 +60,33 @@ static func check_files(files: Array, max_bytes := 16777216) -> Dictionary:
 	return {"ok": true, "documents": documents}
 
 
-## The files under `dir`, read for a check (a file above `max_bytes` is not read); null when the
-## tree cannot be listed or read.
-static func read_tree(dir: String, max_bytes: int) -> Variant:
+## The files under `dir`, read for a check (a file above `max_bytes` is not read): {ok: true,
+## files} or, when the tree cannot be listed or a file read, the `unreadable` refusal (its path).
+static func read_tree(dir: String, max_bytes: int) -> Dictionary:
 	var paths = tree_files(dir)
 	if paths == null:
-		return null
+		return type_refusal("unreadable", "")
 	var out: Array = []
 	for p in paths:
-		var full := dir.path_join(p)
-		var f := FileAccess.open(full, FileAccess.READ)
+		var f := FileAccess.open(dir.path_join(p), FileAccess.READ)
 		if f == null:
-			return null
+			return type_refusal("unreadable", p)
 		var size := int(f.get_length())
 		var bytes := PackedByteArray()
 		if size <= max_bytes:
 			bytes = f.get_buffer(size)
 			if bytes.size() != size:
-				return null
+				return type_refusal("unreadable", p)
 		f.close()
 		out.append({"path": p, "size": size, "bytes": bytes})
-	return out
+	return {"ok": true, "files": out}
 
 
 func check_payload(dir: String, _record: Dictionary, _variant: Dictionary) -> Dictionary:
-	var files = read_tree(dir, max_file_bytes)
-	if files == null:
-		return type_refusal("json", "")
-	var r := check_files(files, max_file_bytes)
+	var files := read_tree(dir, max_file_bytes)
+	if not files["ok"]:
+		return files
+	var r := check_files(files["files"], max_file_bytes)
 	if not r["ok"]:
 		return r
 	return {"ok": true}
@@ -95,8 +94,8 @@ func check_payload(dir: String, _record: Dictionary, _variant: Dictionary) -> Di
 
 func activate(install: Dictionary) -> void:
 	var id: String = install["packId"]
-	var files = read_tree(String(install["location"]), max_file_bytes)
-	var r := check_files(files, max_file_bytes) if files != null else {"ok": false}
+	var files := read_tree(String(install["location"]), max_file_bytes)
+	var r := check_files(files["files"], max_file_bytes) if files["ok"] else files
 	if not r["ok"]:
 		push_warning("PolarisKey: %s's data.json documents could not be read at activation." % id)
 		return

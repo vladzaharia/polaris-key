@@ -184,6 +184,18 @@ func _data(t: PKeyTestContext) -> void:
 	t.check("data: uninstall: a release no longer active or previous is collected", r.ok and not DirAccess.dir_exists_absolute(loc1) and h.documents("djdl.events") == {"winter.json": {"snow": 2.0}}, loc1)
 	S.remove_tree(e.storage.root)
 
+	var dir := S.scratch("types-data-unreadable")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var fa := FileAccess.open(dir.path_join("a.json"), FileAccess.WRITE)
+	fa.store_string("{}")
+	fa.close()
+	if OS.get_name() in ["macOS", "Linux"] and OS.execute("chmod", ["000", ProjectSettings.globalize_path(dir.path_join("a.json"))]) == 0 and FileAccess.open(dir.path_join("a.json"), FileAccess.READ) == null:
+		var und := PKeyDataJsonHandler.new().check_payload(dir, {}, {})
+		t.check("data: a staged file that cannot be read is unreadable (its path)", not und["ok"] and und["detail"] == "unreadable" and und["path"] == "a.json", S.canon(und))
+		var un := PKeyL10nTableHandler.new().check_payload(dir, {}, {"variant": {}})
+		t.check("l10n: a staged file that cannot be read is unreadable (its path)", not un["ok"] and un["detail"] == "unreadable" and un["path"] == "a.json", S.canon(un))
+		OS.execute("chmod", ["644", ProjectSettings.globalize_path(dir.path_join("a.json"))])
+	S.remove_tree(dir)
 	var too_new := F.tree_pack("djdl.balance", "1.0.0", 1, {"a.json": "{}"}, null, {"type": "data.json", "formatVersion": 2})
 	var e5 := _engine("types-data-fv", [too_new], too_new)
 	await e5.load_state([])
@@ -267,6 +279,9 @@ func _audio(t: PKeyTestContext) -> void:
 		"reload": func(paths): calls.append(["reload", Array(paths).map(func(p): return String(p).get_file())]),
 		"unload": func(paths): calls.append(["unload", Array(paths).map(func(p): return String(p).get_file())]),
 	})
+	var probe := _engine("types-audio-cfg", [], F.tree_pack("djdl.x", "1.0.0", 1, {"a": "b"}))
+	t.check("audio: a handler configured with an invalid middleware or version is not registered", not probe.register_handler(PKeyAudioBankHandler.new({"middleware": "FMOD", "version": "2.02"})) and not probe.register_handler(PKeyAudioBankHandler.new({"middleware": "fmod", "version": "2"})) and not probe.handlers.has("audio.bank"))
+	S.remove_tree(probe.storage.root)
 	t.check("audio: hot when the game can reload banks", h.activation == "hot" and PKeyAudioBankHandler.new({"middleware": "fmod", "version": "2.02"}).activation == "restart")
 	var o := {"type": "audio.bank"}
 	var desc := "{\"middleware\": \"fmod\", \"version\": \"2.02.10\", \"banks\": [\"Master.strings.bank\", \"Master.bank\"]}"
@@ -414,9 +429,16 @@ static func _make_zip(files: Dictionary, opts := {}) -> PackedByteArray:
 		var at := out.size()
 		for part in [_u32(0x04034b50), _u16(20), _u16(flags), _u16(method), _u16(0), _u16(0x21), _u32(crc), _u32(data.size()), _u32(data.size()), _u16(nb.size()), _u16(0), nb, data]:
 			out.append_array(part)
-		for part in [_u32(0x02014b50), _u16(20), _u16(20), _u16(flags), _u16(method), _u16(0), _u16(0x21), _u32(crc), _u32(data.size()), _u32(data.size()), _u16(nb.size()), _u16(0), _u16(0), _u16(0), _u16(0), _u32(0), _u32(at), nb]:
+		var ec := String(opts.get("entry_comment", "")).to_utf8_buffer()
+		for part in [_u32(0x02014b50), _u16(20), _u16(20), _u16(flags), _u16(method), _u16(0), _u16(0x21), _u32(crc), _u32(data.size()), _u32(data.size()), _u16(nb.size()), _u16(0), _u16(ec.size()), _u16(0), _u16(0), _u32(0), _u32(at), nb, ec]:
 			cd.append_array(part)
 	var cd_at := out.size()
+	if opts.get("zip64_locator", false):
+		# A locator just before the end record (cd_at then points past it, as the record says).
+		var locator := PackedByteArray()
+		for part in [_u32(0x07064b50), _u32(0), _u32(0), _u32(0), _u32(1)]:
+			locator.append_array(part)
+		cd.append_array(locator)
 	out.append_array(cd)
 	var comment := String(opts.get("comment", "")).to_utf8_buffer()
 	for part in [_u32(0x06054b50), _u16(0), _u16(0), _u16(files.size()), _u16(files.size()), _u32(cd.size()), _u32(cd_at), _u16(comment.size()), comment]:
@@ -461,6 +483,18 @@ func _zip(t: PKeyTestContext) -> void:
 	var e2 := _next(e, [p], p, [])
 	await e2.load_state([])
 	t.check("zip: the next load re-verifies the stored zip and runs it", e2.running.has("djdl.zipdlc") and e2.storage.list()["locations"].has(loc))
+	# mount() refuses a godot.zip install whose location is not a `.zip` (bytes of the other kind).
+	var h2: PKeyGodotZipHandler = e2.handlers["godot.zip"]
+	var as_pck := loc.get_basename() + ".pck"
+	DirAccess.copy_absolute(loc, as_pck)
+	var moved: Dictionary = h2.to_mount["djdl.zipdlc"].duplicate()
+	moved["location"] = as_pck
+	h2.to_mount["djdl.zipdlc"] = moved
+	var f2 := PKeyPacks.new()
+	f2.engine = e2
+	f2.content = F.stamp_for([p])
+	var m2: Dictionary = await f2.mount()
+	t.check("zip: mount() refuses a godot.zip stored under a .pck name", m2["mounted"].is_empty() and m2["refused"].size() == 1 and m2["refused"][0]["code"] == PKeyPck.DIRECTORY_REFUSED, S.canon(m2))
 	S.remove_tree(e.storage.root)
 
 	var cases := [
@@ -472,10 +506,23 @@ func _zip(t: PKeyTestContext) -> void:
 		["an encrypted entry", _make_zip({"pkey_zip_test/a.txt": "x"}, {"flags": 1}), "pkey_zip_test/a.txt"],
 		["an unsafe path", _make_zip({"pkey_zip_test/../x.txt": "x"}), "pkey_zip_test/../x.txt"],
 		["a duplicate path", _make_zip({"pkey_zip_test/a.txt": "x", "pkey_zip_test/A.txt": "y"}), "pkey_zip_test/A.txt"],
+		["a ZIP64 locator before the end record", _make_zip({"pkey_zip_test/a.txt": "x"}, {"zip64_locator": true}), ""],
+		["an entry comment", _make_zip({"pkey_zip_test/a.txt": "x"}, {"entry_comment": "hi"}), "pkey_zip_test/a.txt"],
+		["an empty zip", _make_zip({}), ""],
+		["the bytes GDPC inside an entry (a PCK Godot's offset search could find)", _make_zip({"pkey_zip_test/a.bin": "xxGDPCyy"}), ""],
 	]
 	for c in cases:
 		var rc := PKeyGodotZipHandler.check(PKeyByteSource.memory(c[1]), {"handler": {"prefixes": prefixes}}, {})
 		t.check("zip: %s is refused (pck-directory-refused, its path)" % c[0], not rc["ok"] and rc["code"] == PKeyPck.DIRECTORY_REFUSED and String(rc.get("path", "")) == c[2], S.canon(rc))
+	# "GDPC" + a PCK + an empty end record: once accepted as a zip with no entries, stored as .pck
+	# and mounted by the PCK source.
+	var pckish := "GDPC".to_ascii_buffer()
+	pckish.resize(64)
+	pckish.append_array(_make_zip({}))
+	var rp := PKeyGodotZipHandler.check(PKeyByteSource.memory(pckish), {"handler": {"prefixes": prefixes}}, {})
+	t.check("zip: GDPC + an empty end record is refused", not rp["ok"] and rp["code"] == PKeyPck.DIRECTORY_REFUSED, S.canon(rp))
+	var gd := PKeyGodotZipHandler.check(PKeyByteSource.memory(cases[11][1]), {"handler": {"prefixes": prefixes}}, {})
+	t.check("zip: the GDPC refusal names its offset", String(gd.get("detail", "")).contains("GDPC") and String(gd.get("detail", "")).contains("offset"), S.canon(gd))
 	var tail := good.duplicate()
 	tail.append_array("GDPC".to_ascii_buffer())
 	t.check("zip: trailing bytes after the end record are refused", not PKeyGodotZipHandler.check(PKeyByteSource.memory(tail), {"handler": {"prefixes": prefixes}}, {})["ok"])

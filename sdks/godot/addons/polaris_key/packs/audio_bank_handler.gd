@@ -43,6 +43,11 @@ func _init(opts: Dictionary = {}) -> void:
 	if opts.get("unload") is Callable:
 		unload = opts["unload"]
 	activation = "hot" if reload.is_valid() else "restart"
+	# An invalid host configuration would refuse every pack; instead the handler is not valid,
+	# so register_handler() returns false (and the type stays pack-type-unsupported).
+	if RegEx.create_from_string(_TOKEN).search(middleware) == null or _major_minor(version).is_empty():
+		push_error("PolarisKey: PKeyAudioBankHandler needs a middleware token and a major.minor[.patch] version (got %s %s); it was not registered." % [middleware, version])
+		type = ""
 
 
 func supports(format_version: int) -> bool:
@@ -95,12 +100,12 @@ static func check_descriptor(paths: Array, descriptor: Variant, host_middleware:
 func check_dir(dir: String) -> Dictionary:
 	var paths = tree_files(dir)
 	if paths == null:
-		return type_refusal("descriptor", DESCRIPTOR)
+		return type_refusal("unreadable", "")
 	var desc = null
 	if paths.has(DESCRIPTOR):
 		var f := FileAccess.open(dir.path_join(DESCRIPTOR), FileAccess.READ)
 		if f == null:
-			return type_refusal("descriptor", DESCRIPTOR)
+			return type_refusal("unreadable", DESCRIPTOR)
 		var n := int(f.get_length())
 		desc = f.get_buffer(mini(n, MAX_DESCRIPTOR_BYTES + 1))
 		f.close()
