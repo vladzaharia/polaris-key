@@ -148,16 +148,16 @@ keys, devices). _Optional_ work packages are off the required path.
 
 8 work packages, 13–17.5 weeks.
 
-| Id                                               | Title                                                                                                            | Depends on                                      | Role        | Weeks | Status    |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------- | ----- | --------- |
-| [P5-01](wp/P5-01-outlet-credentials.md)          | Outlet-credential custody and shared JWT signing (ES256, RS256)                                                  | P2b-01                                          | implementer | 1–1.5 | done      |
-| [P5-02](wp/P5-02-asc-connector.md) ✋            | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states                      | P5-01, P2b-03, P2b-04, S-07                     | implementer | 2     | done      |
-| [P5-03](wp/P5-03-play-connector.md) ✋           | Google Play connector: tracks, staged rollout, halt, update priority, Reporting API                              | P5-01, P2b-03, P2b-04, S-07                     | implementer | 1.5–2 | done      |
-| [P5-04](wp/P5-04-msstore-connector.md) ✋        | Microsoft Store status connector                                                                                 | P5-01, P2b-03, S-07                             | implementer | 0.5–1 | done      |
-| [P5-05](wp/P5-05-apple-plugin-package.md) ✋     | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01, S-09                               | implementer | 2–3   | done      |
-| [P5-06](wp/P5-06-kotlin-aar.md) ✋               | Kotlin AAR: install source, In-App Updates, PAD, PackageInstaller, Keystore; Godot Android binding               | P3-10, S-05, S-10                               | implementer | 2–3   | done      |
-| [P5-07](wp/P5-07-desktop-plugins.md) ✋          | Desktop plugins: macOS Sparkle bridge; Windows Velopack, WinSparkle and StoreContext                             | P3-10, S-05, S-11                               | implementer | 2–3   | in-review |
-| [P5-08](wp/P5-08-platform-pack-transports.md) ✋ | Platform pack transports: Background Assets, Play Asset Delivery, Steam depots, with CI steps                    | P5-02, P5-05, P5-06, P4-14, P4-08, P4-03, P5-03 | implementer | 2     | todo      |
+| Id                                               | Title                                                                                                            | Depends on                                      | Role        | Weeks | Status |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------- | ----- | ------ |
+| [P5-01](wp/P5-01-outlet-credentials.md)          | Outlet-credential custody and shared JWT signing (ES256, RS256)                                                  | P2b-01                                          | implementer | 1–1.5 | done   |
+| [P5-02](wp/P5-02-asc-connector.md) ✋            | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states                      | P5-01, P2b-03, P2b-04, S-07                     | implementer | 2     | done   |
+| [P5-03](wp/P5-03-play-connector.md) ✋           | Google Play connector: tracks, staged rollout, halt, update priority, Reporting API                              | P5-01, P2b-03, P2b-04, S-07                     | implementer | 1.5–2 | done   |
+| [P5-04](wp/P5-04-msstore-connector.md) ✋        | Microsoft Store status connector                                                                                 | P5-01, P2b-03, S-07                             | implementer | 0.5–1 | done   |
+| [P5-05](wp/P5-05-apple-plugin-package.md) ✋     | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01, S-09                               | implementer | 2–3   | done   |
+| [P5-06](wp/P5-06-kotlin-aar.md) ✋               | Kotlin AAR: install source, In-App Updates, PAD, PackageInstaller, Keystore; Godot Android binding               | P3-10, S-05, S-10                               | implementer | 2–3   | done   |
+| [P5-07](wp/P5-07-desktop-plugins.md) ✋          | Desktop plugins: macOS Sparkle bridge; Windows Velopack, WinSparkle and StoreContext                             | P3-10, S-05, S-11                               | implementer | 2–3   | done   |
+| [P5-08](wp/P5-08-platform-pack-transports.md) ✋ | Platform pack transports: Background Assets, Play Asset Delivery, Steam depots, with CI steps                    | P5-02, P5-05, P5-06, P4-14, P4-08, P4-03, P5-03 | implementer | 2     | todo   |
 
 ## P6: Commerce, ops, web
 
