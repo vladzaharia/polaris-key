@@ -1,6 +1,7 @@
 {
   "name": "@polaris-key/cli",
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "pkey": "./dist/bin/pkey.js"
@@ -14,7 +15,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
