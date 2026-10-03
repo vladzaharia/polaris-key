@@ -1112,9 +1112,23 @@ describe("updater feeds: the Velopack package route", () => {
       "RELEASES",
       "releases.amiga.json",
     ]) {
-      const res = await get(w, `update/stable/velopack/${file}`);
+      const rec = recordingDb(w.db);
+      const res = await call(
+        w.env,
+        rec.db,
+        noFetch,
+        `${CONSOLE}/${SLUG}/update/stable/velopack/${file}`,
+        {},
+      );
       expect(res.status, file).toBe(404);
       expect(res.headers.get("location"), file).toBeNull();
+      // Before any read of the update service's own: not even the recorded-releases ids (only
+      // the dispatcher's product reads, which every route makes, may run).
+      if (!file.startsWith("releases."))
+        expect(
+          rec.reads.filter((q) => /release_records/.test(q)),
+          file,
+        ).toEqual([]);
     }
     // A nested path is no route either.
     expect(

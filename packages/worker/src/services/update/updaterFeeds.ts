@@ -733,6 +733,8 @@ function serveVelopackPackage(
   file: string,
   recorded: string[],
 ): Promise<Response | null> {
+  // `handleUpdaterFeedRoutes` already refused a bad name before its D1 read; kept here so no
+  // other caller can skip it.
   if (!isVelopackFileName(file)) return Promise.resolve(null);
   return serveFeed(
     ctx,
@@ -1028,14 +1030,16 @@ export async function handleUpdaterFeedRoutes(
   }
   if (tail.length === 2 && name === "velopack") {
     const file = tail[1] ?? "";
-    return /^releases\./.test(file)
-      ? serveVelopack(ctx, channel, file, await recordedAppReleases(ctx))
-      : serveVelopackPackage(
-          ctx,
-          channel,
-          file,
-          await recordedAppReleases(ctx),
-        );
+    if (/^releases\./.test(file))
+      return serveVelopack(ctx, channel, file, await recordedAppReleases(ctx));
+    // The package name is checked before ANY read, the recorded-releases D1 read included.
+    if (!isVelopackFileName(file)) return null;
+    return serveVelopackPackage(
+      ctx,
+      channel,
+      file,
+      await recordedAppReleases(ctx),
+    );
   }
   return null;
 }

@@ -4956,7 +4956,7 @@ paths:
                         Type: { type: string, enum: [Full, Delta] }
                         FileName:
                           type: string
-                          pattern: "^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\\.nupkg$"
+                          pattern: "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\\.nupkg$"
                           description: >
                             The bare package file name, never a URL or a path; fetched from
                             `…/velopack/{FileName}`.
@@ -5008,7 +5008,7 @@ paths:
             or `-delta.nupkg`. A name starting `releases.` is the feed, not a package.
           schema:
             type: string
-            pattern: "^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\\.nupkg$"
+            pattern: "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\\.nupkg$"
         - name: outlet
           in: query
           required: false

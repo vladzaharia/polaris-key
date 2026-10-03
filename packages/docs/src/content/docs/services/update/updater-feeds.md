@@ -135,7 +135,8 @@ URL. Velopack's Rust core (`velopack_libc` for C and C++, and the Rust crate) do
 there is not a valid Windows file name, so the download succeeds and the update then fails with
 `os error 123`. The client resolves the bare name against the feed URL, which lands on
 `…/update/<polaris channel>/velopack/<FileName>`. That route answers a `302` to the package's
-immutable delivery URL.
+immutable delivery URL. The feed omits any package whose file name fails the package route's rule
+(one plain `.nupkg` file name, below), so every `FileName` it lists is one that route can answer.
 
 The package route answers only for a file the feed lists, for any of the Velopack targets (`win`,
 `osx` or `linux`, each with x64 or arm64). Anything else is a `404`, as is a name that is not one

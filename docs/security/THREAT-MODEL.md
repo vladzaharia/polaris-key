@@ -978,8 +978,11 @@ gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Up
   absolute URL fails that write. The client resolves the name against the feed URL, so
   `GET /<p>/update/<channel>/velopack/<FileName>` answers a `302` to the package's immutable
   delivery URL. It is not a new way in. The name must be one plain `.nupkg` file name (a fixed
-  alphabet, no separator, no `..`, no leading dot, no escape: the router does not percent-decode,
-  so `%2F` and `%2e` are refused as `%`) before any read. The route runs the feed's own pipeline:
+  alphabet, no separator, no `..`, no leading dot, no escape) before any read, the D1 read of
+  the recorded releases included. The router does not percent-decode, so `%2F`, and a `%2e`
+  inside a name, are refused for their `%`. A segment that is wholly `%2e` or `%2e%2e` (any case,
+  or mixed with `.`) never reaches the route as a name: the URL parser normalises it to a dot
+  segment and resolves it before routing, so the path the router sees has no such segment. The route runs the feed's own pipeline:
   the same `updateFeed` limit, the same access decision (`kind: velopack`), and the same cache rule.
   It redirects only to a package the feed lists for one of the six Velopack targets: the same
   selection (`velopackCandidates`) and the same SHA-1 check over the stored bytes. So a yank or
