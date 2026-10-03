@@ -278,8 +278,9 @@ Rules for the bucket, each one load-bearing:
   no HTML/SVG/XML/script types, no cookies read or set on the host, host-only console
   cookies). The two HTML answers, the public download page (P2b-06) and the host's landing
   page at exactly `/` (static, BRAND §8), are script-free and leave under their own sandboxed
-  policies, which the dispatcher checks. The landing page links `CONSOLE_ORIGIN` (falling back
-  to `https://key.plrs.im` when it is unset or unusable) and, on `dl-staging` and `dl-dev`, names
+  policies, which the dispatcher checks. The landing page ("Polaris Key Delivery") links `CONSOLE_ORIGIN` (falling back
+  to `https://key.plrs.im` when it is unset or unusable; an `http:` origin is used only when
+  `BLOB_ORIGIN` is itself `http:`, for local development) and, on `dl-staging` and `dl-dev`, names
   the environment under its title and asks not to be indexed. Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
   anywhere on the platform.
 

@@ -12,8 +12,8 @@
  *   - ONE exact path. Only `/`, only GET and HEAD, only on the bytes host (`dispatchBytesHost`
  *     calls this before any byte route; the console host never reaches it). Every other path,
  *     method and host answers exactly as before, `/favicon.ico` included.
- *   - A STATIC document. No request input reaches the body: the markup is built once per
- *     deployment from the brand package's marks and tokens and two deployment variables
+ *   - A STATIC document. No request input reaches the body: the markup is built from the brand
+ *     package's marks and tokens (the lockups once, on the first request) and two deployment variables
  *     (`CONSOLE_ORIGIN`, `BLOB_ORIGIN`), both validated, the one dynamic word escaped. No
  *     product, release, file, token or key is read; no D1, KV or R2 call is made.
  *   - NO SCRIPT, NO REQUESTS. The policy is the inert-document policy `bytesHost.ts` already
@@ -27,11 +27,14 @@
  *
  * ── DESIGN CHOICES ──────────────────────────────────────────────────────────────────────────
  *
- * The Star Cut Update horizontal lockup at 80 px tall, so its glyph is the display cut at 48 px
- * (BRAND §1.3-1.4), and the compact lockup below 400 px of width, where the full one would
- * shrink its glyph under 48 px. The lockup is the kit's own geometry (`lockupMetrics`), with
- * its colour roles turned into classes so one inline SVG follows the system theme: dark first,
- * light under `prefers-color-scheme: light`, no toggle (BRAND §8, a one-screen page).
+ * The "Polaris Key Delivery" horizontal lockup (the Star Cut service mark, BRAND §1.1) at 80 px
+ * tall, so its glyph is the display cut at 48 px (BRAND §1.3-1.4), and the compact lockup below
+ * 400 px of width, where the full one would shrink its glyph under 48 px. The lockup is the
+ * brand package's geometry (`lockupMetrics`: the kit's Star Cut and a Rubik Bold wordmark
+ * outlined from the bundled font), with its colour roles turned into classes so one inline SVG
+ * follows the system theme: dark first, light under `prefers-color-scheme: light`, no toggle
+ * (BRAND §8, a one-screen page). The lockups are built on the first request to `/` and kept,
+ * so a template the page cannot theme fails that request, never the Worker's module load.
  *
  * TYPE: the system stack behind Rubik (`FONT.sans`), with no `@font-face`. The wordmark is
  * outlined in the lockup, so the brand's own type is exact where it identifies the service;
@@ -75,17 +78,17 @@ function escapeHtml(s: string): string {
 const ROLE_CLASS = { body: "mb", star: "ms", text: "mt" } as const;
 
 /**
- * A Star Cut Update lockup as inline SVG whose colours come from the page's stylesheet. The
- * geometry is the kit template's, untouched; only `fill="{role}"` becomes a class. A template
- * with any other placeholder (a gold bit, a plate) is a brand change this page must not follow
- * silently, so it throws at load and the tests fail.
+ * A Polaris Key Delivery lockup as inline SVG whose colours come from the page's stylesheet.
+ * The geometry is the brand template's, untouched; only `fill="{role}"` becomes a class. A
+ * template with any other placeholder (a gold bit, a plate) is a brand change this page must
+ * not follow silently, so it throws (on the first request; the tests fail).
  */
 function themedLockup(
   layout: "horizontal" | "compact",
   height: number,
   className: string,
 ): string {
-  const m = lockupMetrics({ kind: "update", layout, height });
+  const m = lockupMetrics({ kind: "delivery", layout, height });
   const body = m.template.body.replace(
     /fill="\{(\w+)\}"/g,
     (_, role: string) => {
@@ -195,14 +198,31 @@ export function landingCsp(): Promise<string> {
 
 // ── The document ─────────────────────────────────────────────────────────────────────────────
 
-/** The validated console origin to link: `CONSOLE_ORIGIN` when usable, else the platform's. */
+/** Is the bytes host itself served over plain http (local development)? */
+function bytesHostIsHttp(env: Env): boolean {
+  try {
+    return (
+      typeof env.BLOB_ORIGIN === "string" &&
+      new URL(env.BLOB_ORIGIN).protocol === "http:"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The validated console origin to link: `CONSOLE_ORIGIN` when usable, else the platform's.
+ * `https:` always; `http:` only when the bytes host is itself `http:` (local development), so a
+ * deployed page never links the console over plain http.
+ */
 export function landingConsoleOrigin(env: Env): string {
   const raw = env.CONSOLE_ORIGIN;
   if (typeof raw === "string" && raw.trim() !== "") {
     try {
       const u = new URL(raw);
       if (
-        (u.protocol === "https:" || u.protocol === "http:") &&
+        (u.protocol === "https:" ||
+          (u.protocol === "http:" && bytesHostIsHttp(env))) &&
         normalizeHostname(u.hostname) !== bytesHostname(env)
       )
         return u.origin;
@@ -227,17 +247,36 @@ export function landingEnvironment(env: Env): string | null {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
-const LOCKUP_FULL = themedLockup("horizontal", 80, "lockup-full");
-const LOCKUP_COMPACT = themedLockup("compact", 64, "lockup-compact");
-const FAVICON_HREF = `data:image/svg+xml,${encodeURIComponent(landingFaviconSvg())}`;
+interface LandingArt {
+  lockups: string;
+  faviconHref: string;
+}
+
+let art: LandingArt | null = null;
+
+/**
+ * The page's artwork, built on first use and kept for the isolate's life. Lazy so that a brand
+ * template this page cannot theme fails the first request to `/`, not the Worker's module load
+ * (which would take every route on both hosts down with it).
+ */
+function landingArt(): LandingArt {
+  art ??= {
+    lockups:
+      themedLockup("horizontal", 80, "lockup-full") +
+      themedLockup("compact", 64, "lockup-compact"),
+    faviconHref: `data:image/svg+xml,${encodeURIComponent(landingFaviconSvg())}`,
+  };
+  return art;
+}
 
 /** The landing page's HTML for this deployment. */
 export function renderLandingPage(env: Env): string {
+  const { lockups, faviconHref } = landingArt();
   const consoleOrigin = landingConsoleOrigin(env);
   const environment = landingEnvironment(env);
   const title = environment
-    ? `Polaris Key Update (${environment})`
-    : "Polaris Key Update";
+    ? `Polaris Key Delivery (${environment})`
+    : "Polaris Key Delivery";
   const description =
     "The download host for games and apps built on Polaris Key.";
   return [
@@ -252,12 +291,12 @@ export function renderLandingPage(env: Env): string {
     `<meta name="theme-color" content="${THEME_TOKENS.dark.surface.page}" media="(prefers-color-scheme: dark)">`,
     `<meta name="theme-color" content="${THEME_TOKENS.light.surface.page}" media="(prefers-color-scheme: light)">`,
     environment ? `<meta name="robots" content="noindex, nofollow">` : "",
-    `<link rel="icon" type="image/svg+xml" href="${escapeHtml(FAVICON_HREF)}">`,
+    `<link rel="icon" type="image/svg+xml" href="${escapeHtml(faviconHref)}">`,
     `<style>${LANDING_CSS}</style>`,
     `</head>`,
     `<body>`,
     `<main>`,
-    `<h1>${LOCKUP_FULL}${LOCKUP_COMPACT}</h1>`,
+    `<h1>${lockups}</h1>`,
     environment
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
       : "",

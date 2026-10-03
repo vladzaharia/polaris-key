@@ -384,9 +384,10 @@ describe("bytes host: the landing page at /", () => {
         .match(/https?:\/\/[^"\s)<]+/g)!
         .filter((u) => u !== "http://www.w3.org/2000/svg"),
     ).toEqual([`${CONSOLE}/`, `${CONSOLE}/docs/`]);
-    // The Star Cut Update identity, the one-line explanation, no environment label in prod.
-    expect(html).toContain('role="img" aria-label="Polaris Key Update"');
-    expect(html).toContain("<title>Polaris Key Update</title>");
+    // The Polaris Key Delivery identity, the one-line explanation, no environment label in prod.
+    expect(html).toContain('role="img" aria-label="Polaris Key Delivery"');
+    expect(html).toContain("<title>Polaris Key Delivery</title>");
+    expect(html).not.toContain("Polaris Key Update");
     expect(html).toContain(
       "The download host for games and apps built on Polaris Key.",
     );
@@ -511,7 +512,7 @@ describe("bytes host: the landing page at /", () => {
       const html = await res.text();
       expect(html, blob).toContain(`<p class="env">${label} environment</p>`);
       expect(html, blob).toContain(
-        `<title>Polaris Key Update (${label})</title>`,
+        `<title>Polaris Key Delivery (${label})</title>`,
       );
       expect(html, blob).toContain(`href="${consoleOrigin}/"`);
       expect(html, blob).toContain(`href="${consoleOrigin}/docs/"`);
@@ -541,6 +542,9 @@ describe("bytes host: the landing page at /", () => {
       "not a url",
       "javascript:alert(1)",
       "https://dl.plrs.im",
+      // plain http only when the bytes host is itself http (local development)
+      "http://key.plrs.im",
+      "http://localhost:8787",
     ]) {
       const res = await worker.fetch(
         new Request("https://dl.plrs.im/"),
@@ -556,6 +560,16 @@ describe("bytes host: the landing page at /", () => {
       expect(html).not.toContain("javascript:");
       expect(html).not.toContain("environment</p>");
     }
+  });
+
+  it("an http console origin is linked only when the bytes host is http too (local dev)", async () => {
+    const res = await worker.fetch(
+      new Request("http://dl.localhost:8787/"),
+      landingEnv("http://dl.localhost:8787", "http://localhost:8787"),
+    );
+    const html = await res.text();
+    expect(html).toContain('href="http://localhost:8787/"');
+    expect(html).toContain('href="http://localhost:8787/docs/"');
   });
 
   it("with BLOB_ORIGIN unset there is no bytes host, so no landing page anywhere", async () => {

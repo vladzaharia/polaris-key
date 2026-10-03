@@ -342,7 +342,7 @@ describe("the bytes host's landing page on workerd", () => {
       expect(res.headers.get("x-content-type-options"), host).toBe("nosniff");
       expect(res.headers.get("set-cookie"), host).toBeNull();
       const html = await res.text();
-      expect(html, host).toContain('aria-label="Polaris Key Update"');
+      expect(html, host).toContain('aria-label="Polaris Key Delivery"');
       expect(html, host).not.toMatch(/<script/i);
     }
     const post = await SELF.fetch("https://dl.workerd.test/", {

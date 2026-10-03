@@ -258,7 +258,7 @@ and could try to toss `Domain=plrs.im` cookies at it. The compensations, each te
   origin) with `default-src 'none'` and nothing but hashed styles;
   the host's landing page is the second and last HTML answer: `GET /` (and `HEAD /`), exactly
   that path, on the bytes host only (`core/bytesLanding.ts`, BRAND §8). It is a static document:
-  the Star Cut Update lockup as inline SVG, one sentence on what the host is, and links to the
+  the Polaris Key Delivery lockup (the Star Cut service mark) as inline SVG, one sentence on what the host is, and links to the
   console and the docs. It is built from the brand package and two validated deployment variables
   (`CONSOLE_ORIGIN`, `BLOB_ORIGIN`), so no request input, product, release, file, token or key
   reaches it, and it reads no D1, KV or R2. The dispatcher admits it through the same check as a

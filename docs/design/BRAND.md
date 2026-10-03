@@ -32,15 +32,21 @@ only owner-approved extension is [the section bit](#6-the-section-bit).
 
 ### 1.1 Two marks
 
-| Mark                | Identifies                                                                                                | Alt text             |
-| ------------------- | --------------------------------------------------------------------------------------------------------- | -------------------- |
-| **Pinned K**        | The platform, "Polaris Key". Gold is the signing bit.                                                     | `Polaris Key`        |
-| **Star Cut Update** | The delivery service as a whole: Distribution, Update and the bytes host. Stationary star, open geometry. | `Polaris Key Update` |
+| Mark         | Identifies                                                                                                                                        | Alt text               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| **Pinned K** | The platform, "Polaris Key". Gold is the signing bit.                                                                                             | `Polaris Key`          |
+| **Star Cut** | The service mark **Polaris Key Delivery**: the delivery family as a whole (the bytes host, Distribution, Update). Stationary star, open geometry. | `Polaris Key Delivery` |
 
 Source: `kit/Brand-Guide.pdf` p.1; `kit/README.md` ("General use"). The Star Cut covering the whole
-delivery family (not only the `update` slug) is an owner direction of 2026-10-03.
+delivery family (not only the `update` slug) is an owner direction of 2026-10-03, and so is its
+name (see [Owner decisions](#owner-decisions-2026-10-03)): the kit labels it "Star Cut Update" /
+"Polaris Key Update", and on our surfaces it is **Polaris Key Delivery**. The kit's Update files
+stay untouched in `kit/` as kit originals (their file names keep `update`, as does the `update`
+glyph key in the package); the package generates the Delivery lockups
+(`@polaris-key/brand/lockups/delivery/…`, `lockupSvg({ kind: "delivery" })`) from the kit's Star Cut
+glyph and the bundled Rubik Bold, by the kit's own construction (`packages/brand/README.md`).
 
-The Update mark identifies the service. It is **not** a live update-status indicator: never use it
+The Star Cut identifies the service. It is **not** a live update-status indicator: never use it
 as a spinner, a badge count, or an "update available" icon (kit README).
 
 ### 1.2 Colour (kit primitives)
@@ -89,6 +95,8 @@ without gold; `opticalCut()` and `<PolarisMark>` do the same.
   (Brand-Guide p.2).
 - Preserve proportions and internal gaps. Do not stretch, rotate the stationary star, replace it
   with a sparkle emoji, add a shield or padlock, or attach an unapproved service name (kit README).
+  "Delivery" is the owner-approved service name for the Star Cut (2026-10-03); use the generated
+  Delivery lockups rather than setting the name yourself.
 
 ### 1.5 "Powered by Polaris Key"
 
@@ -112,7 +120,8 @@ the web fonts are for UI text only.
 
 ### 1.7 Alt text
 
-`alt="Polaris Key"`, `alt="Polaris Key Update"`, `alt="Powered by Polaris Key"`. Use **empty alt**
+`alt="Polaris Key"`, `alt="Polaris Key Delivery"` (the Star Cut on our surfaces; the kit's own
+Update files carry `Polaris Key Update`), `alt="Powered by Polaris Key"`. Use **empty alt**
 when an adjacent visible label already names it. An icon alone never labels an interactive control
 (kit README).
 
@@ -133,7 +142,7 @@ when an adjacent visible label already names it. An icon alone never labels an i
 Asset paths through the exports map: `@polaris-key/brand/web/{key,update}/…` (favicons, PWA icons,
 manifest templates, head snippets), `/games/{key,update}/{dark,light,mono-*}/…-16.svg` (Godot
 editor glyphs) and `/games/powered-by-credit-{dark,light}*`, `/social/{key,update}/…` (OG cards,
-banners, avatars), `/marks/…`, `/lockups/…`, `/powered-by/…`, `/app-icons/…`, `/sprite.svg`,
+banners, avatars), `/marks/…`, `/lockups/…` (and the generated `/lockups/delivery/…`), `/powered-by/…`, `/app-icons/…`, `/sprite.svg`,
 and the whole kit under `/kit/…`.
 
 Emails: mail clients do not render SVG reliably. Use the kit PNGs (for example
@@ -474,20 +483,19 @@ The ring is violet in every section and both themes (≥ 3:1 everywhere).
 
 The bytes host (`https://dl.plrs.im`, with `dl-staging` and `dl-dev`) serves release artifacts and
 packs. Its root (`GET /`) answers a static landing page built to this contract
-(`packages/worker/src/core/bytesLanding.ts`). Two choices it records: the favicon is the
-`web/update/favicon.svg` drawing inlined as a `data:` URI, so the host gains no icon routes; and
-body text uses the system stack behind Rubik with no `@font-face`, because the wordmark is outlined
-in the lockup and a font file would widen the host's inert-document policy (`font-src`).
+(`packages/worker/src/core/bytesLanding.ts`). Where the page departs from the contract below is
+recorded under [What the page omits, and why](#what-the-page-omits-and-why).
 
 **Identity**
 
-- The **Star Cut Update** mark (the delivery service), never the Pinned K as the primary mark.
+- The **Star Cut**, as the **Polaris Key Delivery** service mark, never the Pinned K as the
+  primary mark. The page title is "Polaris Key Delivery".
 - Favicon and PWA: `@polaris-key/brand/web/update/` (favicon.svg adapts to the OS theme;
   favicon.ico; `app-icon-dark-180.png` touch icon). No manifest install prompt is needed; include
   the manifest only if the page is meant to be installable.
 - Page ground `--pk-surface-page` (`#060912` dark, `#f6f8ff` light), following the system theme;
   no toggle needed on a one-screen page.
-- The Update lockup (`lockupSvg({ kind: "update", layout: "horizontal" })`, height ≥ 80 px so the
+- The Delivery lockup (`lockupSvg({ kind: "delivery", layout: "horizontal" })`, height ≥ 80 px so the
   glyph is ≥ 48 px) or the display mark at 96 px above the wordmark; ¼-glyph clear space.
 - Rubik from `fonts.css`; text `text-default`/`text-strong`; one accent at most (the delivery
   green `--pk-service-update-fg` for links), no gold (nothing on the page is a signature), no
@@ -496,7 +504,7 @@ in the lockup and a font file would widen the host's inert-document policy (`fon
 
 **Content**
 
-- What it is, in one line: "Polaris Key Update: the download host for apps built on Polaris
+- What it is, in one line: "Polaris Key Delivery: the download host for apps built on Polaris
   Key." One short paragraph: files here are signed release artifacts and packs, fetched by apps
   and updaters; there is nothing to browse.
 - Links: the Polaris Key console (`https://key.plrs.im/`) and the docs
@@ -509,9 +517,31 @@ in the lockup and a font file would widen the host's inert-document policy (`fon
   serve tokens.css as a static asset).
 
 **What the package provides for it**: `web/update/` (favicons, touch and PWA icons, manifest
-template, head snippet), `markSvg({ kind: "update", size: 96, title: "Polaris Key Update" })` and
-`lockupSvg({ kind: "update" })` as strings (no React), `tokens.css`, `fonts.css` + the WOFF2
+template, head snippet), `markSvg({ kind: "update", size: 96, title: "Polaris Key Delivery" })` and
+`lockupSvg({ kind: "delivery" })` as strings (no React), `tokens.css`, `fonts.css` + the WOFF2
 files, and the update social card.
+
+### What the page omits, and why
+
+The shipped page follows this section except where the bytes host's own guarantees win
+(`core/bytesHost.ts`, THREAT-MODEL §3: nothing on this host may run as script, and it serves no
+route that is not a byte route):
+
+- **Type: the system font stack, not Rubik.** Body text uses `FONT.sans` (Rubik first, then the
+  system stack) with no `@font-face`. The page is an inert document (`sandbox`,
+  `default-src 'none'`, one hashed stylesheet, images only as `data:`). Serving Rubik would need a
+  font route and a font type on the host's allowlist, or a `font-src` plus about 100 KB of
+  inline WOFF2 in that policy; either widens the one check that keeps HTML on this host inert.
+  The wordmark is outlined in the lockup, so the brand's type is exact where it names the
+  service; a visitor with Rubik installed sees it in the body too.
+- **No OG card, no `favicon.ico`, no touch icon.** Each would be a non-byte route (or an
+  absolute URL to one) on a host that serves only byte routes and this one page. The favicon is
+  the kit's adaptive `web/update/favicon.svg` drawing, inlined as a `data:` URI, so the host gains
+  no icon route; `/favicon.ico` keeps its plain not-found. The page sets no `og:image`.
+- **The lede.** The visible lede is "The download host for games and apps built on Polaris Key."
+  The lockup above it already says "Polaris Key Delivery", so the line drops the name and names
+  games, the platform's first audience. The page `<title>` is "Polaris Key Delivery" (with the
+  environment in parentheses on staging and dev).
 
 ---
 
@@ -553,7 +583,7 @@ files, and the update social card.
 - Don't rotate, animate or recolour the star; don't replace it with a sparkle emoji.
 - Don't show the bit below 48 px or on the service/favicon cut; don't add gold anywhere else.
 - Don't use gradients, blue or indigo in brand artwork; don't use rose as a UI accent.
-- Don't use the Update mark as an update-status or progress indicator.
+- Don't use the Star Cut as an update-status or progress indicator.
 - Don't crop the "Powered by" badge or use it below its minimum; don't paraphrase the phrase.
 - Don't add a shield, padlock or unapproved service name to a lockup.
 - Don't install both identities' manifests on one origin.
@@ -646,6 +676,13 @@ favour of the slug once the console migrates.
 - **The "Powered by" badge does not appear on Polaris Key's own surfaces.**
 
 ## Owner decisions (2026-10-03)
+
+- **The Star Cut is the "Polaris Key Delivery" service mark.** It names the whole delivery family:
+  the CDN / bytes host (dl.plrs.im), Distribution and Update. It supersedes the kit's "Update"
+  label ("Star Cut Update", "Polaris Key Update") on all our surfaces; alt text is
+  `Polaris Key Delivery`. The kit's Update files stay as kit originals; the Delivery lockups are
+  generated in `@polaris-key/brand` from the kit glyph and Rubik Bold (§1.1). The Update
+  _service_ keeps its name (the `update` section, its accent and its console section).
 
 - **Console header mark: 48 px with the section bit.** The header is tall enough (about 64 px) for the
   Pinned K's display cut at 48 px, so every section's bit is legible in both themes (proofs:
