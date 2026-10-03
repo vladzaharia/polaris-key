@@ -218,3 +218,69 @@ Set the status in the PR that completes the work:
 
 The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded 2026-10-03. The code is the fact; where this brief and the code differ, the code and these
+notes win.
+
+- **Names and shape.** client-core's applier is `applyChunk(variant, seeds, ports, opts)` in
+  `packages/client-core/src/packs/chunkApply.ts`, with `chunkRuns` (the planner's run rule),
+  `seedMap` and `chunkRangeFetch` (the exact `Content-Range` adapter). Python
+  (`update/packs/chunks.py`, `chunk_apply.py`), Swift (`PolarisKeyPacks/Chunks.swift`,
+  `ChunkApply.swift`) and Godot (`packs/chunks.gd`, `PKeyPackChunks`) use the same names up to
+  casing. The verdict is exactly the corpus's `{ok, sha256, size, fetchedChunks, fetchedBytes,
+requests, seedChunks, selfChunks, repairedChunks}`.
+- **Transport failures need no new code.** A refused range (a `200`, another `Content-Range`,
+  another `ETag`) is `network-error` with detail `range-refused` and falls back to the next plan
+  entry. An interrupted transfer is `network-error` with detail `interrupted`, and the engine raises
+  it as `network-error` (detail `chunk`), keeping the journals for a resume. `errors.json` is
+  unchanged.
+- **Runs go out one at a time, not through a pool of 6.** A run's body is read record by record,
+  so a device holds one chunk, never a run or a bundle. Each verdict stays the first failure in
+  record order whatever the network does. A pool would need a buffered run per slot. It is left as
+  a measured optimisation.
+- **A chunk over `MAX_CHUNK_BYTES` inside `applyChunk`** is `chunk-corrupt {chunk}` before
+  anything is fetched. `planTarget` already makes such an index unusable, so this is defence in
+  depth and no corpus case reaches it.
+- **Seeds.** A seed is any container install (this pack's own, then other packs' active and
+  previous installs by pack id, then embedded baselines) whose own record's variant carries a usable
+  `chunks` ref. Its stored index must parse bound to the installed payload. Seeds outside this pack
+  reach the planner as synthetic `installed` entries (`payloadSha256: "seed:<hex>"`, never a hash),
+  so `noop` and `delta` cannot match them, and the planner's and applier's `requests` stay equal.
+- **Seed-index store.** Indexes are stored as fetched, under `<packs root>/index/<chunks.sha256>`
+  (OPFS: `index/<sha256>`), and re-verified on every use. They are written after a chunk install
+  from the staged target index, and otherwise fetched after every successful `ensure`, best
+  effort; Godot tries once per index per process. Garbage collection drops an index that no root
+  install's record names.
+- **The run journal** is `staging/<planId>/journal.json`:
+  `{"v":1,"index":"<chunks sha256>","runs":N,"bitmap":"<hex>"}`, where bit k is
+  `byte[k >> 3] & (1 << (k & 7))`. It is ignored unless everything matches. Before a completed
+  run is reused, each of its records is read back from the output and re-hashed. `requests`
+  counts only the requests that attempt sent.
+- **Storage ports.** `PackStorage` gains the optional `chunkIndexes` and `runJournal`, and
+  `output(planId, layout, {resume})` with a container `read`. Godot uses `resume_output(plan_id)`
+  so that existing storage subclasses keep their `output` signature. Godot also adds a transport
+  method `open_range(req)`, which returns a pull body.
+- **Accept-Encoding.** Node does not set `Accept-Encoding: identity` itself: the Fetch standard,
+  and so undici, appends it to every request with `Range`, and setting it again sends it twice.
+  Browsers forbid the header. Python, Swift and Godot send it on bounded ranges.
+- **React** keeps P4-06's main-thread OPFS API. The container output is a write-behind buffer
+  (contiguous writes flushed in 1 MiB `createWritable` batches, and always before a read, a journal
+  write or a commit). The dedicated-worker sync access handle the design notes mention is not
+  built. P4-18 can add it behind the same storage port.
+- **Delegated releases** never take the chunk strategy. They are trees (plans/P4-19.md §2.3), and
+  `planTarget` maps a tree's `chunks` to null. The engine's fetch rule also requires a
+  non-delegated record, and `applyChunkPlan` refuses one. Each SDK tests a delegated tree that
+  carries `chunks`: its index is never fetched, no range is sent, and the data-only sink still
+  refuses the file (`pack-not-data-only`). Godot never routes delegated bytes through
+  `load_resource_pack`.
+- **Swift** also drops `Authorization` on a cross-origin redirect (a `URLSession` task delegate),
+  as the Godot transport already did.
+- **No HTTP transcript was added.** A chunk-bundle Range transcript needs a `transcript` proof on
+  `packs.apply.chunk` in the feature registry, and a replayer in every SDK. That is a registry
+  change, left for a planned package. Each SDK's fake-server tests cover the `Range`, `If-Range`,
+  `ETag` and `Content-Range` exchange instead.
+- **Godot's applier runs on the main thread**, because it polls `HTTPClient`. Its hashing and
+  decoding are native, and the repair pass's whole-output re-hash runs in a `PKeyPackJob`. Seed
+  ids stay hex strings, the planner's existing keys (PackedByteArray keys were not measured).
