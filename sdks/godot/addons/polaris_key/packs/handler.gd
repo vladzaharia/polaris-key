@@ -5,6 +5,11 @@ extends RefCounted
 ## `files.tree` (PKeyFilesTreeHandler) and `godot.pck` (PKeyGodotPckHandler) are built in; P4-16
 ## and games add more through PolarisKey.update.packs.register_handler().
 ##
+## Replacing the built-in `files.tree` handler (register_handler with type `files.tree`) drops its
+## `check_tree`, and with it the `simplify_path()` identity assertion and the resource scan over
+## staged trees (plans/P4-19.md §2.5 rule 1). A replacement is host code and trusted as such; the
+## engine's data-only rule for delegated installs still runs, since it gates the tree sink itself.
+##
 ##   type, layout ("tree" | "container"), activation ("hot" | "restart")
 ##   supports(format_version) -> bool
 ##   check_output(source, record, variant) -> {ok} or {ok: false, code, detail, path?}: a check of

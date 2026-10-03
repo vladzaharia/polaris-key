@@ -21,6 +21,10 @@ extends RefCounted
 ##                     a revocation. With an unreadable `revocations.json` it is what makes the
 ##                     engine refuse the stamp's embedded baselines
 ##
+## An install or journal of a release a delegated content key signed carries `delegation`, the
+## delegation's compact JWS verbatim (plans/P4-19.md §2.7), and reloads through it; the member is
+## optional, so the version stays 1.
+##
 ## The document is NEVER trusted from storage: each install and journal carries its pack record's
 ## compact JWS verbatim, re-verified at every load through the caller's verifier before anything
 ## uses it; what fails is dropped, never repaired. Pure functions: each returns a new document.
@@ -54,6 +58,9 @@ static func _install(v: Variant, pack_id: String) -> Variant:
 		return null
 	if not PKeyPackClaims.same(v.get("activation"), "hot") and not PKeyPackClaims.same(v.get("activation"), "restart"):
 		return null
+	# plans/P4-19.md §2.7: a delegated install's delegation, its compact JWS verbatim.
+	if v.has("delegation") and not (v["delegation"] is String):
+		return null
 	return v
 
 
@@ -66,6 +73,8 @@ static func _journal(v: Variant, pack_id: String) -> Variant:
 	if not PKeyPackClaims.is_sha256(v.get("recordSha256")):
 		return null
 	if v.has("delta") and not (v["delta"] is String):
+		return null
+	if v.has("delegation") and not (v["delegation"] is String):
 		return null
 	if _plan_id_re == null:
 		_plan_id_re = PKeyClaims.whole("[A-Za-z0-9_-]{1,64}")

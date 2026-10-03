@@ -16,6 +16,21 @@ extends RefCounted
 ##   verify_revocation(jws, opts)        steps 12–16 against a feed entry (a coroutine):
 ##                                       {ok: true, revocation} or {ok: false, step}
 ##   newer_revocation(a, b)              the winner of two verified revocations of one target
+##   delegation_hash_of(jws)             the delegation hash a `pkd1-` kid names (plans/P4-19.md
+##                                       §2.2), or null
+##   delegation_of(doc, nw)              a usable delegation body, read beside the claims, or null
+##   verify_delegation(jws, opts)        a delegation against the PINNED release keys only (a
+##                                       coroutine): {ok: true, delegation} or {ok: false, step}
+##   covers_pack(root, pack)             whole-segment scope: `a.b` covers `a.b` and `a.b.c`
+##   record_revoked(record, delegation, revoked)  "record", "delegation" or null (§2.3)
+##
+## P4-19 (plans/P4-19.md §2.3): `verify_release_record` takes an optional `delegation` (the compact
+## JWS a `pkd1-<sha256>` kid names). A kid that is a pinned release key takes today's path and the
+## delegation is ignored; otherwise the delegation is verified against the pinned release keys
+## only (one level: never through another delegation), its key must be no pinned release key and
+## no product key (step `delegation`), the record verifies with the delegated key (step `jws`),
+## and step 16 (`scope`) holds the record to the delegation's scope root, effective types, tree
+## layout and signing window. Without `delegation` the behaviour is byte-for-byte P4-13's.
 ##
 ## Hash before signature: a body over MAX_RECORD_JWS_BYTES (88 844) or with a byte outside ASCII
 ## is refused at step `hash` without hashing, and otherwise its SHA-256 must equal the feed's pin
@@ -40,6 +55,8 @@ const STEP_HASH := "hash"
 const STEP_JWS := "jws"
 const STEP_CLAIMS := "claims"
 const STEP_CROSS_CHECK := "cross-check"
+const STEP_DELEGATION := "delegation"
+const STEP_SCOPE := "scope"
 
 static var _deliverable_re: RegEx
 static var _version_re: RegEx
@@ -207,8 +224,16 @@ static func _fail(step: String) -> Dictionary:
 ##   15. with a `pin` ({kind?, deliverable, version, seq}): `kind` equals the pin's (`app` when
 ##       the pin names none; `pack` for a content stamp's pin, plans/P4-01.md §2.6), and
 ##       `deliverable`, `version` and `seq` equal the pin's.
+##   13'. otherwise, with `delegation` supplied (a String or PackedByteArray) and a `pkd1-` kid:
+##       verify_delegation against the pinned release keys (its hash the kid's hex), the delegated
+##       key equal to no pinned release key and no product key (both step `delegation`), then
+##       PKeyJws with the delegated key (step `jws`);
+##   16. a delegated record only (`scope`): `kind: pack`, `deliverable` the scope root or under it
+##       by whole segments, `type` in the effective types, every variant's `files.layout` `tree`,
+##       and `delegation.issuedAt ≤ issuedAt ≤ delegation.expiresAt`.
 ## `body`: a PackedByteArray (the HTTP body) or a String. `opts`: {release_keys, product_trust,
-## expected_aud, expected_hash, pin?, offload?}. Returns {ok: true, record, non_wire_integers} or
+## expected_aud, expected_hash, pin?, delegation?, offload?}. Returns {ok: true, record,
+## non_wire_integers, delegation: {sha256, deliverable, types, issuedAt, expiresAt} or null} or
 ## {ok: false, step}.
 static func verify_release_record(body: Variant, opts: Dictionary) -> Dictionary:
 	# 12. Hash before signature.
@@ -224,23 +249,39 @@ static func verify_release_record(body: Variant, opts: Dictionary) -> Dictionary
 		return _fail(STEP_HASH)
 	var jws := bytes.get_string_from_ascii()
 
-	# 13. The pinned release keys only, and never a product key.
+	# 13. The pinned release keys only, and never a product key; or one delegation from them.
 	var release_keys = opts.get("release_keys")
-	var kid = _header_kid(jws)
-	if kid == null or not (release_keys is Dictionary) or not release_keys.has(kid) or not (release_keys[kid] is String):
-		return _fail(STEP_JWS)
-	var key: String = release_keys[kid]
-	var raw = PKeyB64Url.decode_lenient(key)
-	if raw == null:
-		return _fail(STEP_JWS)
 	var product_trust = opts.get("product_trust", {})
-	if product_trust is Dictionary:
-		for pk in product_trust:
-			var value = product_trust[pk]
-			if value is String:
-				var other = PKeyB64Url.decode_lenient(value)
-				if other != null and other == raw:
-					return _fail(STEP_JWS)
+	var kid = _header_kid(jws)
+	if kid == null:
+		return _fail(STEP_JWS)
+	var delegated = null
+	var key := ""
+	if release_keys is Dictionary and release_keys.has(kid):
+		if not (release_keys[kid] is String):
+			return _fail(STEP_JWS)
+		key = release_keys[kid]
+		var raw = PKeyB64Url.decode_lenient(key)
+		if raw == null:
+			return _fail(STEP_JWS)
+		if _in_trust(raw, product_trust):
+			return _fail(STEP_JWS)
+	else:
+		var h = delegation_hash_of(jws)
+		var dj = opts.get("delegation")
+		if h == null or not (dj is String or dj is PackedByteArray):
+			return _fail(STEP_JWS)
+		var d := await verify_delegation(dj, {
+			"release_keys": release_keys, "product_trust": product_trust, "expected_aud": opts.get("expected_aud", ""),
+			"expected_hash": h, "offload": opts.get("offload", false),
+		})
+		if not d["ok"]:
+			return _fail(STEP_DELEGATION)
+		var raw = PKeyB64Url.decode_lenient(d["delegation"]["publicKey"])
+		if raw == null or _in_trust(raw, release_keys) or _in_trust(raw, product_trust):
+			return _fail(STEP_DELEGATION)
+		delegated = d["delegation"]
+		key = d["delegation"]["publicKey"]
 	var v = await PKeyJws.verify_async(jws, {kid: key}, PKeyClaims.TYP_RELEASE, 0, PKeyClaims.is_true(opts.get("offload", false)))
 	if v == null:
 		return _fail(STEP_JWS)
@@ -260,7 +301,51 @@ static func verify_release_record(body: Variant, opts: Dictionary) -> Dictionary
 			return _fail(STEP_CROSS_CHECK)
 		if not PKeyClaims.is_number(pin.get("seq")) or float(record["seq"]) != float(pin["seq"]):
 			return _fail(STEP_CROSS_CHECK)
-	return {"ok": true, "record": record, "non_wire_integers": v["non_wire_integers"]}
+
+	# 16. The delegation's scope.
+	if delegated != null and not _in_scope(record, delegated):
+		return _fail(STEP_SCOPE)
+	var out_delegation = null
+	if delegated != null:
+		out_delegation = {
+			"sha256": delegated["sha256"], "deliverable": delegated["deliverable"], "types": (delegated["types"] as Array).duplicate(),
+			"issuedAt": delegated["issuedAt"], "expiresAt": delegated["expiresAt"],
+		}
+	return {"ok": true, "record": record, "non_wire_integers": v["non_wire_integers"], "delegation": out_delegation}
+
+
+## True when any key of `set` (a trust set) has the raw bytes `raw`.
+static func _in_trust(raw: PackedByteArray, set: Variant) -> bool:
+	if not (set is Dictionary):
+		return false
+	for k in set:
+		var value = set[k]
+		if value is String:
+			var other = PKeyB64Url.decode_lenient(value)
+			if other != null and other == raw:
+				return true
+	return false
+
+
+## Step 16 (plans/P4-19.md §2.3) over a record whose claims passed.
+static func _in_scope(record: Dictionary, d: Dictionary) -> bool:
+	if not PKeyPackClaims.same(record.get("kind"), "pack"):
+		return false
+	if not covers_pack(d["deliverable"], String(record["deliverable"])):
+		return false
+	var t = record.get("type")
+	if not (t is String) or not (d["types"] as Array).has(t):
+		return false
+	for x in record["variants"]:
+		if not PKeyPackClaims.same(x["files"].get("layout"), "tree"):
+			return false
+	return float(d["issuedAt"]) <= float(record["issuedAt"]) and float(record["issuedAt"]) <= float(d["expiresAt"])
+
+
+## Whether pack id `pack` is the scope root `root` or under it by whole segments (plans/P4-19.md
+## §2.3 step 16): `djdl.events` covers `djdl.events.halloween`, never `djdl.eventsx`.
+static func covers_pack(root: String, pack: String) -> bool:
+	return pack == root or pack.begins_with(root + ".")
 
 
 ## The reload path for `releaseRecords` (a coroutine): each `cached[h]` goes through steps 12–14
@@ -370,3 +455,182 @@ static func newer_revocation(a: Dictionary, b: Dictionary) -> Dictionary:
 	if float(a["issuedAt"]) != float(b["issuedAt"]):
 		return a if float(a["issuedAt"]) > float(b["issuedAt"]) else b
 	return a if PKeyPackClaims.compare_bytes(String(a["record"]), String(b["record"])) >= 0 else b
+
+
+# ── P4-19: content-key delegation (plans/P4-19.md §2.2–§2.6, WIRE-CONTRACT-V4 §2.5.4) ──────
+
+## `DELEGATED_KID_PATTERN`: `pkd1-` and the delegation's record hash. 69 bytes, longer than any
+## release kid may be, so it never collides with a declared one.
+const DELEGATED_KID_PATTERN := "pkd1-[0-9a-f]{64}"
+## 32 raw bytes in strict base64url (V4 §1): 43 characters, no padding, zero trailing bits.
+const KEY_B64URL_PATTERN := "[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]"
+## The most verified delegations the process cache keeps before it starts over.
+const MAX_DELEGATION_CACHE := 64
+
+static var _delegated_kid_re: RegEx
+static var _key_b64url_re: RegEx
+## Verified delegations by hash plus the trust inputs (plans/P4-19.md §2.3): the cache key is
+## `<hash>|<aud>|<digest of the pinned release keys>|<digest of the product trust set>`, so a
+## trust rotation misses it and verifies again. Main thread only (verify_release_record runs
+## there; only its Ed25519 work is offloaded).
+static var _delegation_cache := {}
+
+
+static func _delegation_res() -> void:
+	if _delegated_kid_re == null:
+		_delegated_kid_re = PKeyClaims.whole(DELEGATED_KID_PATTERN)
+		_key_b64url_re = PKeyClaims.whole(KEY_B64URL_PATTERN)
+
+
+## The pack types a content key may sign (`DELEGABLE_PACK_TYPES`), built per call.
+static func delegable_types() -> PackedStringArray:
+	return PackedStringArray(["files.tree", "data.json", "l10n.table"])
+
+
+## Whether `kid` is a delegated kid (`pkd1-<sha256>`); a host may never pin one.
+static func is_delegated_kid(kid: Variant) -> bool:
+	_delegation_res()
+	return PKeyClaims.matches_whole_re(_delegated_kid_re, kid)
+
+
+## The delegation hash a delegated record's header names (plans/P4-19.md §2.2): the hex of a
+## `pkd1-<sha256>` kid, read from the protected header only (strict JSON). null for any other
+## kid. `jws`: a String or PackedByteArray.
+static func delegation_hash_of(jws: Variant) -> Variant:
+	var text := ""
+	if jws is String:
+		text = jws
+	elif jws is PackedByteArray:
+		text = (jws as PackedByteArray).get_string_from_ascii()
+	else:
+		return null
+	var kid = _header_kid(text)
+	if not is_delegated_kid(kid):
+		return null
+	return (kid as String).substr(5)
+
+
+## The delegated kid of a delegation record hash: `pkd1-<sha256>`.
+static func delegated_kid(delegation_sha256: String) -> String:
+	return "pkd1-" + delegation_sha256
+
+
+## The delegation body (plans/P4-19.md §2.2), read beside the claims: usable when `kind` is
+## `delegation`, `deliverable` is a pack id, `delegate.publicKey` is strict base64url of 32 bytes,
+## `types` is 1–MAX_DELEGATION_TYPES unique PACK_TYPE_PATTERN strings whose intersection with
+## DELEGABLE_PACK_TYPES is non-empty, and `expiresAt` is an integer by token (minimum 1) with
+## `issuedAt < expiresAt ≤ issuedAt + MAX_DELEGATION_TTL_SECONDS`. `builds`, `content` and unknown
+## members are ignored. Returns {deliverable, seq, publicKey, types (the effective ones, in the
+## record's order), listedTypes, issuedAt, expiresAt}, or null when unusable.
+static func delegation_of(doc: Variant, nw: PKeyJson.PointerSet = null) -> Variant:
+	_delegation_res()
+	if not (doc is Dictionary) or not PKeyPackClaims.same(doc.get("kind"), "delegation"):
+		return null
+	if not PKeyPackClaims.is_pack_id(doc.get("deliverable")):
+		return null
+	var delegate = doc.get("delegate")
+	if not (delegate is Dictionary):
+		return null
+	var public_key = delegate.get("publicKey")
+	if not PKeyClaims.matches_whole_re(_key_b64url_re, public_key):
+		return null
+	var types = doc.get("types")
+	if not (types is Array) or types.size() < 1 or types.size() > PKeyConstants.MAX_DELEGATION_TYPES:
+		return null
+	var seen := {}
+	var listed: Array = []
+	var effective: Array = []
+	var delegable := delegable_types()
+	for t in types:
+		if not (t is String) or not PKeyPackClaims.matches(PKeyPackClaims.PACK_TYPE_PATTERN, t) or seen.has(t):
+			return null
+		seen[t] = true
+		listed.append(t)
+		if delegable.has(t):
+			effective.append(t)
+	if effective.is_empty():
+		return null
+	if not PKeyClaims.is_wire_integer(doc.get("expiresAt"), "/expiresAt", 1, nw):
+		return null
+	if not PKeyClaims.is_wire_integer(doc.get("issuedAt"), "/issuedAt", 0, nw):
+		return null
+	if not PKeyClaims.is_wire_integer(doc.get("seq"), "/seq", 1, nw):
+		return null
+	var issued := float(doc["issuedAt"])
+	var expires := float(doc["expiresAt"])
+	if not (issued < expires):
+		return null
+	if expires > issued + float(PKeyConstants.MAX_DELEGATION_TTL_SECONDS):
+		return null
+	return {
+		"deliverable": doc["deliverable"], "seq": doc["seq"], "publicKey": public_key, "types": effective,
+		"listedTypes": listed, "issuedAt": doc["issuedAt"], "expiresAt": doc["expiresAt"],
+	}
+
+
+## A trust set's digest for the delegation cache key: SHA-256 over its sorted `kid=key` lines.
+static func _trust_digest(set: Variant) -> String:
+	if not (set is Dictionary):
+		return "-"
+	var lines := PackedStringArray()
+	for k in set:
+		lines.append("%s=%s" % [str(k), str(set[k])])
+	lines.sort()
+	return sha256_hex("\n".join(lines).to_utf8_buffer())
+
+
+## Verify a delegation record (plans/P4-19.md §2.3 step 13.1), a coroutine: steps 12–14 against
+## the pinned release keys only (the ASCII bound, the hash, the product-key refusal, the signature,
+## the claims; no `delegation` is passed, so a content key can never re-delegate), then `kind ==
+## "delegation"` and delegation_of. `opts`: {release_keys (PINNED only), product_trust,
+## expected_aud, expected_hash, offload?}. Returns {ok: true, delegation: delegation_of's body plus
+## `sha256`} or {ok: false, step}. A verified delegation is cached in the process under its hash
+## and the trust inputs.
+static func verify_delegation(jws: Variant, opts: Dictionary) -> Dictionary:
+	var h := String(opts.get("expected_hash", ""))
+	var aud := String(opts.get("expected_aud", ""))
+	var key := "%s|%s|%s|%s" % [h, aud, _trust_digest(opts.get("release_keys")), _trust_digest(opts.get("product_trust"))]
+	if _delegation_cache.has(key):
+		var bytes: PackedByteArray = jws if jws is PackedByteArray else String(jws).to_utf8_buffer()
+		# The cache binds the hash; the bytes must still be the ones it names.
+		if bytes.size() <= MAX_RECORD_JWS_BYTES and sha256_hex(bytes) == h:
+			return {"ok": true, "delegation": (_delegation_cache[key] as Dictionary).duplicate(true)}
+	var r := await verify_release_record(jws, {
+		"release_keys": opts.get("release_keys", {}), "product_trust": opts.get("product_trust", {}),
+		"expected_aud": aud, "expected_hash": h, "offload": opts.get("offload", false),
+	})
+	if not r["ok"]:
+		return r
+	if not PKeyPackClaims.same(r["record"].get("kind"), "delegation"):
+		return _fail(STEP_DELEGATION)
+	var body = delegation_of(r["record"], r["non_wire_integers"])
+	if body == null:
+		return _fail(STEP_DELEGATION)
+	var d: Dictionary = body
+	d["sha256"] = h
+	if _delegation_cache.size() >= MAX_DELEGATION_CACHE:
+		_delegation_cache.clear()
+	_delegation_cache[key] = d.duplicate(true)
+	return {"ok": true, "delegation": d}
+
+
+## The one rule for applying revocations to a release (plans/P4-19.md §2.3): "record" when the
+## release's own hash is revoked, else "delegation" when the delegation it was signed under is,
+## else null. `revoked` holds revoked target hashes: a Dictionary used as a set, an Array or a
+## PackedStringArray. Pure.
+static func record_revoked(record_sha256: String, delegation_sha256: Variant, revoked: Variant) -> Variant:
+	if _has_target(revoked, record_sha256):
+		return "record"
+	if delegation_sha256 is String and _has_target(revoked, delegation_sha256):
+		return "delegation"
+	return null
+
+
+static func _has_target(revoked: Variant, h: String) -> bool:
+	if revoked is Dictionary:
+		return (revoked as Dictionary).has(h)
+	if revoked is Array:
+		return (revoked as Array).has(h)
+	if revoked is PackedStringArray:
+		return (revoked as PackedStringArray).has(h)
+	return false
