@@ -41,6 +41,8 @@ import {
   PROBE_TARGET,
   RELEASE_KEYS,
   byteServer,
+  contentKeyPair,
+  delegationFor,
   sha,
   stampFor,
   treePack,
@@ -628,5 +630,69 @@ describe("createBrowserPacks and revocations (plans/P4-13.md §2.5)", () => {
     expect(Object.keys((await p.contentInput())!.revoked)).toEqual([
       v1.recordSha256,
     ]);
+  });
+});
+
+describe("createBrowserPacks and delegated releases (plans/P4-19.md §2.4)", () => {
+  it("refuses a held release signed under a delegation through the packs facet; unheld, it installs", async () => {
+    const ck = contentKeyPair();
+    const d = await delegationFor({
+      deliverable: "djdl.events",
+      publicKey: ck.pub,
+    });
+    const held = await treePack({
+      packId: "djdl.events.halloween",
+      version: "1.0.0",
+      seq: 1,
+      files: { "a.json": "{}" },
+      issuedAt: 1759250000,
+      signer: { pem: ck.pem, kid: d.kid },
+    });
+    const server = byteServer(held);
+    const records = server.fetchRecord;
+    server.fetchRecord = async (h: string) =>
+      h === d.sha256 ? ({ ok: true, body: d.jws } as const) : records(h);
+    const release = {
+      sha256: held.recordSha256,
+      seq: held.seq,
+      version: held.version,
+    };
+    const expects = [
+      { pack: held.packId, required: true, delivery: "essential" },
+    ];
+    const target = { pack: held.packId, release };
+    const now = () => 1759400000;
+
+    // A byte or string stamp: its holds reach the engine, which refuses the delegated path.
+    const heldStamp = JSON.stringify({
+      format: "pkey-content/1",
+      contentApi: 1,
+      pins: [],
+      expects,
+      holds: [{ pack: held.packId, release, reason: "held in a test" }],
+    });
+    for (const contentStamp of [
+      heldStamp,
+      new TextEncoder().encode(heldStamp),
+    ]) {
+      const { p } = packs(server, [], { contentStamp, now });
+      await expect(p.ensureReleases([target])).rejects.toMatchObject({
+        code: "record-rejected",
+        detail: "jws",
+      });
+    }
+
+    // Without the hold the same target installs through its delegation.
+    const { p } = packs(server, [], {
+      contentStamp: JSON.stringify({
+        format: "pkey-content/1",
+        contentApi: 1,
+        pins: [],
+        expects,
+      }),
+      now,
+    });
+    const [install] = await p.ensureReleases([target]);
+    expect(install!.delegation).toBe(d.jws);
   });
 });

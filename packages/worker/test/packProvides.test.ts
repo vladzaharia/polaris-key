@@ -352,6 +352,19 @@ describe("provides and removes at publish (P4-20)", () => {
     });
   });
 
+  it("warns, never refuses, when a graduating stable release outranks beta's beta-only ids", async () => {
+    await publishPack(FOES, "1.1.0-beta.1", {
+      channel: "beta",
+      provides: ["foe.dragon", "foe.goblin", "foe.orc", "foe.troll"],
+    });
+    const r = await publishPack(FOES, "1.1.0", {
+      provides: ["foe.goblin", "foe.orc", "foe.troll"],
+    });
+    expect(r.body.warnings).toEqual([
+      `beta currently serves foe.dragon (${FOES}@1.1.0-beta.1), which ${FOES}@1.1.0 does not provide; beta players will lose it when this release outranks beta's.`,
+    ]);
+  });
+
   it("a beta removes never lets stable drop the id", async () => {
     await publishPack(FOES, "1.1.0", {
       channel: "beta",

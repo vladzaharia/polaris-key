@@ -438,6 +438,74 @@ describe("PackEngine and revocations (plans/P4-13.md §2.5)", () => {
     expect((err as PackError).packId).toBe("djdl.l10n");
   });
 
+  it("a failed flag write is never believed: no revocations.json without the flag on disk", async () => {
+    const { v1, v2 } = await l10n();
+    const v3 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.2.0",
+      seq: 3,
+      files: { "fr.json": '{"a":"d"}' },
+    });
+    const state = memoryPackStateStore();
+    const revs = memoryPackStateStore();
+    const order: string[] = [];
+    let stateFails = false;
+    const failing = {
+      ...state,
+      replace: async (t: string) => {
+        // The state write fails (the store refuses it), as a full disk would.
+        if (stateFails) throw new Error("disk full");
+        order.push("state");
+        await state.replace(t);
+      },
+    };
+    const watchedRevs = {
+      ...revs,
+      replace: async (t: string) => {
+        order.push("revocations");
+        await revs.replace(t);
+      },
+    };
+    const e = engine({
+      server: byteServer(v1),
+      state: failing,
+      revocations: watchedRevs,
+      stamp: stampFor(v1),
+    });
+    await e.load();
+    await e.ensure(["djdl.l10n"]);
+    const flagInMemory = () =>
+      (e as unknown as { doc: { revocationsStored?: boolean } }).doc
+        .revocationsStored;
+    stateFails = true;
+    order.length = 0;
+    for (const p of [v1, v2]) {
+      const r = await revocationFor(p);
+      await expect(
+        e.recordRevocations([{ revocation: await verified(r), jws: r.jws }]),
+      ).rejects.toThrow("disk full");
+    }
+    expect(order).toEqual([]);
+    expect(revs.text).toBeNull();
+    expect(JSON.parse(state.text!).revocationsStored).toBeUndefined();
+    expect(flagInMemory()).toBeUndefined();
+    // The revocations still apply for the process; the revoked release stopped running.
+    expect(e.isRevoked(v1.recordSha256)).toBe(true);
+    expect(e.isRevoked(v2.recordSha256)).toBe(true);
+    expect(e.state().running["djdl.l10n"]).toBeUndefined();
+
+    // Once the state is writable, the flag is written first, then the file.
+    stateFails = false;
+    const r3 = await revocationFor(v3);
+    await e.recordRevocations([
+      { revocation: await verified(r3), jws: r3.jws },
+    ]);
+    expect(order).toEqual(["state", "revocations"]);
+    expect(JSON.parse(state.text!).revocationsStored).toBe(true);
+    expect(flagInMemory()).toBe(true);
+    expect(Object.keys(JSON.parse(revs.text!).revoked)).toHaveLength(3);
+  });
+
   it("restores revocationsStored when state.json lost it but revocations.json has entries", async () => {
     const { v1 } = await l10n();
     const r = await revocationFor(v1);

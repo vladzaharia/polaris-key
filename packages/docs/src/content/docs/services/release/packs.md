@@ -330,6 +330,15 @@ range (`pinned`, `standalone`) are always on one line. A `removes` id the previo
 provided, or one this release still provides, comes back in the answer's `warnings`. The check
 runs on the dry run too, before anything is promoted.
 
+The comparison is per channel: a release is compared only with its own channel's previous
+release (`stable` when it names none), so a beta release never moves stable's baseline. Beta
+players also receive stable releases through `includes`, so when a stable release outranks beta's
+newest (1.1.0 graduating past 1.1.0-beta.1), ids only beta provided are **not** protected. That is
+intentional: a prerelease channel carries no save-compatibility promise, and comparing across
+channels would force false `removes`. Polaris Key answers a warning instead (`beta currently
+serves foe.dragon …, which djdl.foes@1.1.0 does not provide; beta players will lose it when this
+release outranks beta's`), and `pkey release publish` prints it.
+
 **2. `isAvailable` and `packFor` on the device.** Every SDK answers from the verified records'
 `provides`, so a game can show "Continue (downloading 12 MB…)":
 

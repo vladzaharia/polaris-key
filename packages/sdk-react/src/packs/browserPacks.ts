@@ -260,8 +260,11 @@ function stampOf(
         ErrorCode.contentStampInvalid,
         "The content stamp is not a valid pkey-content/1 document.",
       );
-    return r.content;
+    // plans/P4-19.md §2.4: the engine refuses the delegated path for a release the stamp holds,
+    // and `parseContentStamp` carries no holds, so they ride along from the original input.
+    return { ...r.content, holds: stampHolds(input) ?? [] };
   }
+  // A parsed object keeps the holds the host gave it.
   return input;
 }
 

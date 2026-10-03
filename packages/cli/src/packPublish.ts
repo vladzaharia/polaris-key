@@ -1197,6 +1197,9 @@ export async function publishPack(
     out.write(
       `Published ${String(server.releaseId ?? releaseId)} (${String(server.outcome)})\n`,
     );
+    // P4-20: the server's warnings (save compatibility), never a failure.
+    if (Array.isArray(server.warnings))
+      for (const w of server.warnings) if (typeof w === "string") warn(w);
 
     // 8. Markers beside the payloads, then the cache for the next publish's --bases.
     const marker = markerJson(packId, version, jws);

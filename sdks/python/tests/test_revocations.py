@@ -454,6 +454,55 @@ def test_online_a_baseline_refused_for_relearn_is_fetched_instead(l10n: Dict[str
     assert e.state().active["djdl.l10n"]["recordSha256"] == v1.record_sha256
 
 
+class FailingState(Watched):
+    """A watched state store whose ``replace`` raises while ``fails`` is set (a full disk)."""
+
+    fails = False
+
+    def replace(self, text: str) -> None:
+        if self.fails:
+            raise OSError("disk full")
+        super().replace(text)
+
+
+def test_a_failed_flag_write_is_never_believed(l10n: Dict[str, TreePack]) -> None:
+    """No ``revocations.json`` exists without the flag on disk: a failed state write leaves the
+    flag unset in memory, so the next record retries it before the sibling file."""
+    v1, v2 = l10n["v1"], l10n["v2"]
+    v3 = tree_pack("djdl.l10n", "1.2.0", 3, {"fr.json": '{"a":"d"}'})
+    state, revs = memory_pack_state_store(), memory_pack_state_store()
+    order: List[str] = []
+    failing = FailingState(state, "state", order)
+    e = engine(
+        ByteServer.of(v1),
+        state=failing,
+        revocations=Watched(revs, "revocations", order),
+        stamp=stamp_for(v1),
+    )
+    e.load()
+    e.ensure(["djdl.l10n"])
+    failing.fails = True
+    order.clear()
+    for p in (v1, v2):
+        with pytest.raises(OSError):
+            e.record_revocations([learned(revocation_for(p))])
+    assert order == []
+    assert revs.text is None
+    assert "revocationsStored" not in json.loads(state.text or "{}")
+    assert e._doc is not None and "revocationsStored" not in e._doc
+    # The revocations still apply for the process; the revoked release stopped running.
+    assert e.is_revoked(v1.record_sha256) and e.is_revoked(v2.record_sha256)
+    assert "djdl.l10n" not in e.state().running
+
+    # Once the state is writable, the flag is written first, then the file.
+    failing.fails = False
+    e.record_revocations([learned(revocation_for(v3))])
+    assert order == ["state", "revocations"]
+    assert json.loads(state.text or "{}")["revocationsStored"] is True
+    assert e._doc["revocationsStored"] is True
+    assert len(json.loads(revs.text or "{}")["revoked"]) == 3
+
+
 def test_restores_revocations_stored_when_state_lost_it(l10n: Dict[str, TreePack]) -> None:
     v1 = l10n["v1"]
     r = revocation_for(v1)

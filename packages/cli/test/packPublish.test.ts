@@ -575,6 +575,29 @@ ${policy}`;
     ).rejects.toThrow(/nope\.json does not exist/);
   });
 
+  it("prints the server's save-compatibility warnings, and the publish still succeeds", async () => {
+    const { cwd, server } = await setup();
+    const real = server.fetchImpl;
+    const w =
+      "beta currently serves foe.dragon (diceroll.core3d@1.1.0-beta.1), which diceroll.core3d@1.0.0 does not provide; beta players will lose it when this release outranks beta's.";
+    const fetchImpl = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const res = await real(input, init);
+      if (!String(input).endsWith("/release/publish/submit")) return res;
+      const body = (await res.json()) as Record<string, unknown>;
+      return new Response(JSON.stringify({ ...body, warnings: [w] }), {
+        status: res.status,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const { io, o } = opts(cwd, server, { fetchImpl });
+    const res = await publishPack(o);
+    expect(io.err()).toContain(`warning: ${w}`);
+    expect(res.warnings).toContain(w);
+  });
+
   it("the CLI passes --provides and --removes, and refuses the app's flags on a pack", async () => {
     const { cwd, server } = await setup({ extraPacks: foes() }, files);
     await writeFiles(cwd, { "ids.json": enc(["foe.goblin"]) });

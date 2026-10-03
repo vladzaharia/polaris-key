@@ -42,7 +42,7 @@ import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import type { Db } from "../../../core/platform.js";
 import type { ReleaseConfigRow } from "../config.js";
 import type { PackRefusal } from "./ingest.js";
-import { channelClosure } from "../resolve.js";
+import { channelClosure, compareVersions } from "../resolve.js";
 import { levelInRange, PackResolver } from "./resolve.js";
 import { loadResolutionState } from "./sets.js";
 
@@ -147,6 +147,56 @@ async function liveLevels(
   return [...out].sort((a, b) => a - b);
 }
 
+/**
+ * Warnings for the channels that INCLUDE this release's channel (beta includes stable): when the
+ * release outranks what such a channel serves now and does not provide an id that release did,
+ * that channel's players lose the id when this release reaches them. Never a refusal: a
+ * prerelease channel carries no save-compatibility promise, and comparing across channels would
+ * force false `removes` (the predecessor check is per channel, B1).
+ */
+async function includingChannelWarnings(
+  db: Db,
+  product: string,
+  cfg: ReleaseConfigRow | null,
+  record: PackRecordDoc,
+  channel: string,
+  provides: ReadonlySet<string>,
+): Promise<string[]> {
+  const state = await loadResolutionState(db, product, cfg);
+  const pack = state?.input.packs.find((p) => p.id === record.deliverable);
+  if (!state || !pack) return [];
+  const resolver = new PackResolver(state.input);
+  const out: string[] = [];
+  for (const other of [...state.input.channels].sort()) {
+    if (other === channel || !channelClosure(other, pack.policies).has(channel))
+      continue;
+    const current = resolver.packChannelReleases(pack, other)[0];
+    if (!current || (current.channel ?? "stable") === channel) continue;
+    if (compareVersions(pack.scheme, record.version, current.version) <= 0)
+      continue;
+    const sha = pack.releases.get(current.releaseId)?.recordSha256;
+    if (!sha) continue;
+    const row = await db.first<{ jws: string }>(
+      "SELECT jws FROM release_records WHERE product = ? AND record_sha256 = ?",
+      product,
+      sha,
+    );
+    const theirs = row ? payloadOf(row.jws) : null;
+    if (!theirs || listOf(theirs, "provides") === undefined) continue;
+    const lost = [...setOf(listOf(theirs, "provides"))]
+      .filter((id) => !provides.has(id))
+      .sort();
+    if (lost.length === 0) continue;
+    const named = lost.slice(0, NAMED_IDS).join(", ");
+    const more =
+      lost.length > NAMED_IDS ? ` and ${lost.length - NAMED_IDS} more` : "";
+    out.push(
+      `${other} currently serves ${named}${more} (${current.releaseId}), which ${record.deliverable}@${record.version} does not provide; ${other} players will lose ${lost.length === 1 ? "it" : "them"} when this release outranks ${other}'s.`,
+    );
+  }
+  return out;
+}
+
 export type ProvidesCheck =
   | { ok: true; warnings: string[] }
   | { ok: false; reason: "provides-dropped"; message: string };
@@ -195,6 +245,16 @@ export async function checkProvidesKept(
         `removes lists ${id}, but ${row.release_id} declares no provides.`,
       );
   }
+  warnings.push(
+    ...(await includingChannelWarnings(
+      db,
+      product,
+      cfg,
+      record,
+      channel,
+      provides,
+    )),
+  );
   if (before === null) return { ok: true, warnings };
   const dropped = [...before]
     .filter((id) => !provides.has(id) && !removes.has(id))

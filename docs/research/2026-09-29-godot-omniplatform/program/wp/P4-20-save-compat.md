@@ -166,9 +166,13 @@ Set the status in the PR that completes the work:
   new release's channel serves: each app channel's routed pack channel (`packChannels`, else the
   app channel), with its `includes` (beta includes stable). A release with no
   `requires.contentApi` range supports every level; two unranged releases are always compared. A
-  record without `provides` after one that had it drops every id. Not done: comparing also with
-  the latest record of every other channel the new release will be served on (a stable release
-  reaches beta players through `includes`).
+  record without `provides` after one that had it drops every id. Known limitation (intentional): a stable release is compared only with stable's previous
+  release. Beta players also receive stable through `includes`, so when a stable release outranks
+  beta's newest (1.1.0 graduating past 1.1.0-beta.1), beta-only content ids are not protected: a
+  prerelease channel carries no save-compatibility promise, and comparing across channels would
+  force false `removes`. Instead the submit answers a warning (never a refusal) for each channel
+  that includes this release's channel and currently serves ids this release does not provide,
+  when this release outranks that channel's release; the CLI prints it.
 - **Refusal reasons.** `pack-provides` (malformed list, or missing under `provides.required`) and
   `provides-dropped`; warnings are a new optional `warnings` member of the pack submit answer.
   The check runs before the ticket round is promoted.

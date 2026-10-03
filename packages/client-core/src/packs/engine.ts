@@ -996,8 +996,12 @@ export class PackEngine {
         )
           this.revVerified.delete(t);
       this.revDoc = next;
-      if (changed) await this.persistRevocations();
-      await this.unmountRevoked();
+      try {
+        if (changed) await this.persistRevocations();
+      } finally {
+        // A failed write never keeps a revoked release running.
+        await this.unmountRevoked();
+      }
     });
   }
 
@@ -1120,9 +1124,13 @@ export class PackEngine {
       this.doc?.revocationsStored !== true
     ) {
       // A torn (or replaced) `state.json` lost the flag while the sibling file kept its
-      // entries: set it again, so an unreadable `revocations.json` later still refuses.
-      this.doc = { ...this.requireLoaded(), revocationsStored: true };
-      await this.persist();
+      // entries: set it again, so an unreadable `revocations.json` later still refuses. A failed
+      // write leaves the flag unset in memory; the next sibling write retries it first.
+      try {
+        await this.persistFlag();
+      } catch {
+        // The load goes on: the sibling file is unchanged and still read.
+      }
     }
   }
 
@@ -1138,13 +1146,25 @@ export class PackEngine {
 
   private async writeRevocations(): Promise<void> {
     const rs = this.opts.revocations!;
-    const doc = this.requireLoaded();
-    if (!doc.revocationsStored) {
-      this.doc = { ...doc, revocationsStored: true };
-      await this.persist();
-    }
+    // Without the flag on disk the sibling file is not written: an unreadable file later must
+    // never be read as "no revocations" while it holds some.
+    if (!this.requireLoaded().revocationsStored) await this.persistFlag();
     await rs.replace(serializeRevocations(this.revDoc));
     this.revFile = true;
+  }
+
+  /** Write `revocationsStored: true` to `state.json`. The in-memory document takes the flag only
+   *  once the write succeeded, so a failed write (which throws) is retried before the next
+   *  sibling write instead of being believed. */
+  private async persistFlag(): Promise<void> {
+    const before = this.requireLoaded();
+    this.doc = { ...before, revocationsStored: true };
+    try {
+      await this.persist();
+    } catch (e) {
+      this.doc = before;
+      throw e;
+    }
   }
 
   /** Stop running every revoked release (a hot handler is deactivated). */

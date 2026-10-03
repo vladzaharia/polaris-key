@@ -2,6 +2,8 @@
 # The one entry point for the Godot SDK's tests, locally and in CI (the `godot` job).
 #
 #   GODOT_BIN         the editor binary (default: `godot` on PATH; missing => exit 2, never a skip)
+#                     (point it at the real binary or .app: a wrapper script gets a per-run TMPDIR
+#                     and HOME but no self-contained editor copy)
 #   GODOT_TEMPLATE    optional: an export-template binary. When set, the project is exported as a
 #                     pack with the "Conformance (Linux)" preset (stamped PKEY_BUILD_OUTLET=steam,
 #                     PKEY_BUILD_CHANNEL=beta, PKEY_BUILD_NUMBER=42), the template is copied beside
@@ -25,6 +27,13 @@
 # code (`--import` exits 0, and on macOS 4.7 a main loop that fails to load hangs on a modal
 # alert), so the log is the authority. Generic `ERROR:` lines are NOT fatal: a slim container
 # prints `ERROR: Unable to load fontconfig` on every run.
+#
+# Every run is isolated from other Godot processes on the machine (other worktrees, other engine
+# versions): its own TMPDIR, its own HOME (so `user://`, editor settings and caches are per run)
+# and a self-contained copy of the editor (a `._sc_` marker beside it), because the exporter
+# writes its `packtmp` file into the editor temp directory, which outside self-contained mode is
+# the OS temp directory shared by every process of the user (macOS ignores TMPDIR for it). All of
+# it lives in one `mktemp -d` directory removed on exit.
 #
 # Written for bash 3.2 (macOS /bin/bash) and without GNU `timeout`.
 
@@ -51,6 +60,51 @@ if [ -n "${GODOT_TEMPLATE:-}" ] && [ ! -f "$GODOT_TEMPLATE" ]; then
   exit 2
 fi
 
+# The run's own scratch: TMPDIR, HOME and the self-contained editor copy (see the header).
+RUN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/pkey-godot-run.XXXXXX")" || exit 2
+# The physical path: macOS's TMPDIR is under /var, a symlink to /private/var, and Godot's
+# DirAccess maps `user://` back from the resolved current directory, so a symlinked HOME breaks
+# relative renames inside `user://`.
+RUN_DIR="$(cd "$RUN_DIR" && pwd -P)" || exit 2
+DIST_DIR=""
+cleanup() {
+  [ -n "$DIST_DIR" ] && rm -rf "$DIST_DIR"
+  rm -rf "$RUN_DIR"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+mkdir -p "$RUN_DIR/tmp" "$RUN_DIR/home" "$RUN_DIR/editor"
+export TMPDIR="$RUN_DIR/tmp"
+RUN_HOME="$RUN_DIR/home"
+
+# Resolve symlinks (Homebrew's `godot` links into the .app) without GNU readlink -f.
+resolve() {
+  local p="$1" l
+  while [ -L "$p" ]; do
+    l="$(readlink "$p")"
+    case "$l" in
+      /*) p="$l" ;;
+      *) p="$(dirname "$p")/$l" ;;
+    esac
+  done
+  echo "$(cd "$(dirname "$p")" && pwd)/$(basename "$p")"
+}
+GODOT_REAL="$(resolve "$(command -v "$GODOT")")"
+case "$GODOT_REAL" in
+  */Contents/MacOS/*)
+    # A macOS bundle: clone the whole .app (an APFS clone when possible); the marker goes beside
+    # the bundle, where the editor looks for it.
+    APP="${GODOT_REAL%/Contents/MacOS/*}"
+    cp -cR "$APP" "$RUN_DIR/editor/" 2>/dev/null || cp -R "$APP" "$RUN_DIR/editor/" || exit 2
+    GODOT="$RUN_DIR/editor/$(basename "$APP")/Contents/MacOS/$(basename "$GODOT_REAL")"
+    ;;
+  *)
+    cp "$GODOT_REAL" "$RUN_DIR/editor/" || exit 2
+    GODOT="$RUN_DIR/editor/$(basename "$GODOT_REAL")"
+    ;;
+esac
+: >"$RUN_DIR/editor/._sc_"
+
 rm -rf "$BUILD"
 mkdir -p "$LOGS"
 : >"$BUILD/.gdignore"
@@ -71,7 +125,7 @@ step() {
   local log="$LOGS/$name.log" elapsed=0 started reason=""
   started=$(date +%s)
   echo "── $name: $*"
-  "$@" >"$log" 2>&1 &
+  HOME="$RUN_HOME" "$@" >"$log" 2>&1 &
   local pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     if grep -Eq "$FATAL" "$log"; then
@@ -152,7 +206,7 @@ step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "
 STAMP_ENV="PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42"
 STAMPS="$BUILD/stamps"
 if [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; then
-  DIST_DIR="$PROJECT/.pkey"
+  DIST="$PROJECT/.pkey"
   mkdir -p "$STAMPS"
   # export_stamp <name> [VAR=value…]: one ZIP export with the stamp env plus the extra variables.
   export_stamp() {
@@ -165,16 +219,17 @@ if [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; then
   }
   export_stamp steam || exit 1
   # The plugin never reads .pkey/distribution: a YAML one beside the project changes nothing.
-  if [ -e "$DIST_DIR" ]; then
-    echo "run_tests: $DIST_DIR exists; refusing to overwrite it" >&2
+  if [ -e "$DIST" ]; then
+    echo "run_tests: $DIST exists; refusing to overwrite it" >&2
     exit 1
   fi
-  trap 'rm -rf "$DIST_DIR"' EXIT
+  # Removed on exit from here until the export below removes it.
+  DIST_DIR="$DIST"
   mkdir -p "$DIST_DIR"
   printf 'apiVersion: pkey.dev/v1\noutlets:\n  steam:\n    identity:\n      appId: "999999"\n' >"$DIST_DIR/distribution.yaml"
   export_stamp steam2 || exit 1
   rm -rf "$DIST_DIR"
-  trap - EXIT
+  DIST_DIR=""
   export_stamp env 'PKEY_OUTLET_IDS={"itchGameId":"2002","steamAppId":"999"}' || exit 1
   export_stamp bad 'PKEY_OUTLET_IDS={"itchGameId":1001}' || exit 1
   # The v4 fields (P3-11): a custom outlet id with its kind, subkind and format; and one with no

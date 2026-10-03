@@ -65,6 +65,22 @@ private final class WatchedStore: PackStateStore, @unchecked Sendable {
     func clearQuarantine() throws { try base.clearQuarantine() }
 }
 
+/// A watched store whose `replace` throws while `fails` is set (a full disk).
+private final class FailingStore: PackStateStore, @unchecked Sendable {
+    struct DiskFull: Error {}
+    let inner: WatchedStore
+    let fails = Locked2(false)
+    init(_ inner: WatchedStore) { self.inner = inner }
+    func read() throws -> String? { try inner.read() }
+    func replace(_ text: String) throws {
+        if fails.with({ $0 }) { throw DiskFull() }
+        try inner.replace(text)
+    }
+    func quarantine(_ text: String) throws { try inner.quarantine(text) }
+    func quarantined() throws -> Bool { try inner.quarantined() }
+    func clearQuarantine() throws { try inner.clearQuarantine() }
+}
+
 private func field(_ text: String?, _ key: String) -> JSONValue? {
     text.flatMap { parseJSON($0)?.objectValue?[key] }
 }
@@ -306,6 +322,49 @@ final class RevocationEngineTests: XCTestCase {
             XCTAssertEqual(err.detail, "relearn")
             XCTAssertEqual(err.packId, "djdl.l10n")
         }
+    }
+
+    func testAFailedFlagWriteIsNeverBelievedNoRevocationsJsonWithoutTheFlagOnDisk() async throws {
+        let (v1, v2) = l10n()
+        let v3 = treePack(packId: "djdl.l10n", version: "1.2.0", seq: 3, files: ["fr.json": #"{"a":"d"}"#])
+        let log = Locked2<[String]>([])
+        let stateBase = memoryPackStateStore()
+        let revsBase = memoryPackStateStore()
+        let failing = FailingStore(WatchedStore(stateBase, "state", log))
+        let e = engine(
+            server: ByteServer(v1), state: failing, revocations: WatchedStore(revsBase, "revocations", log),
+            stamp: stampFor(v1))
+        _ = try await e.load()
+        _ = try await e.ensure(["djdl.l10n"])
+        failing.fails.with { $0 = true }
+        log.with { $0 = [] }
+        for p in [v1, v2] {
+            let r = revocationFor(p)
+            do {
+                try await e.recordRevocations([LearnedRevocation(revocation: try verifiedRevocation(r), jws: r.jws)])
+                XCTFail("a failed state write was not reported")
+            } catch is FailingStore.DiskFull {}
+        }
+        // Neither the flag nor the sibling file reached the disk: the flag was not believed.
+        XCTAssertEqual(log.with { $0 }, [])
+        XCTAssertNil(revsBase.text)
+        XCTAssertNil(field(stateBase.text, "revocationsStored"))
+        // The revocations still apply for the process; the revoked release stopped running.
+        let r1 = await e.isRevoked(v1.recordSha256)
+        let r2 = await e.isRevoked(v2.recordSha256)
+        XCTAssertTrue(r1 && r2)
+        do {
+            let got = try await e.state().running["djdl.l10n"]
+            XCTAssertNil(got)
+        }
+
+        // Once the state is writable, the flag is written first, then the file.
+        failing.fails.with { $0 = false }
+        let r3 = revocationFor(v3)
+        try await e.recordRevocations([LearnedRevocation(revocation: try verifiedRevocation(r3), jws: r3.jws)])
+        XCTAssertEqual(log.with { $0 }, ["state", "revocations"])
+        XCTAssertEqual(field(stateBase.text, "revocationsStored"), .bool(true))
+        XCTAssertEqual(field(revsBase.text, "revoked")?.objectValue?.count, 3)
     }
 
     func testRestoresRevocationsStoredWhenStateJsonLostItButRevocationsJsonHasEntries() async throws {
