@@ -1830,7 +1830,7 @@
       "optional": false,
       "refs": ["README §3.8", "notes/E3"],
       "brief": "wp/P5-04-msstore-connector.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-05",
