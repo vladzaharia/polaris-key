@@ -199,3 +199,5 @@ base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`; App Attes
   needed: the existing `apple` and `android` jobs run the new Swift, Kotlin and Godot suites.
   The Swift SDK client itself stays `planned` (unowned) for `devices.attest`, as do Node, Python
   and React as runtime N/As.
+- **Migration number.** The migrations are `0053_a`–`0053_e` (lead decision: P4-17 keeps 0051,
+  P6-01 takes 0052).

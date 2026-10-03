@@ -4,7 +4,7 @@
 // The Node lane (test/attest.test.ts, test/appAttest.test.ts) proves the routes and the checks.
 // This proves what only workerd can: the hand-written DER/X.509/CBOR code and WebCrypto ECDSA
 // (P-384 issuers signing P-256 leaves with SHA-256, P-384 with SHA-384) verify in the runtime
-// that ships, with no runtime code generation, and the 0051 migrations apply to real D1.
+// that ships, with no runtime code generation, and the 0053 migrations apply to real D1.
 
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -86,7 +86,7 @@ describe("attestation on workerd", () => {
     ).toMatchObject({ ok: true });
   });
 
-  it("D1 has the trust columns from the 0051 migrations", async () => {
+  it("D1 has the trust columns from the 0053 migrations", async () => {
     const db = env.DB;
     await db
       .prepare(

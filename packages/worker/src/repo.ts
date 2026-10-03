@@ -37,7 +37,7 @@ export interface ProductRow {
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
   // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
   web_origins_json?: string | null;
-  // The device-trust policy (migrations/0051_d/e, P6-02): operator-owned, never written by an
+  // The device-trust policy (migrations/0053_d/e, P6-02): operator-owned, never written by an
   // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
   trust_policy_json?: string | null;
   trust_policy_source?: string;
@@ -139,7 +139,7 @@ export interface DeviceRow {
   /** R11-02 — the seat ordinal this device holds. NULL = holds no seat. Written only by
    *  `claimDeviceSeat`/`releaseDeviceSeat`; `upsertDevice` deliberately preserves it. */
   seat_no?: number | null;
-  /** P6-02 — `basic` or `attested` (migrations/0051_a). Written only by `setDeviceTrust` and
+  /** P6-02 — `basic` or `attested` (migrations/0053_a). Written only by `setDeviceTrust` and
    *  `resetDeviceTrust`; `upsertDevice` deliberately preserves it, like `seat_no`. */
   trust_level?: string;
   attested_at?: number | null;
