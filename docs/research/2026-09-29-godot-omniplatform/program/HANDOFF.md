@@ -24,21 +24,9 @@ resource, and record the date and the person.
   not every parser edge. Before shipping packs to players, get a human security review or an audit
   against a Godot source checkout.
 - **Firefox browser runner.** P4-19's browser conformance passed on Chromium and WebKit; Firefox
-  would not launch locally. Run `--browser=firefox` on CI once billing is fixed.
+  would not launch locally. Run `--browser=firefox` on CI.
 - **Known refusals:** packs carrying imported models (RSCC `.scn`) are refused until P4-27; packs
   may still attach and configure scripts the app ships until P4-28.
-
-## BLOCKED: GitHub Actions billing (2026-10-02)
-
-- [ ] **GitHub refuses to start any Actions job** ("recent account payments have failed or your
-      spending limit needs to be increased"). Fix it in GitHub → Settings → Billing & plans. Until
-      then nothing deploys and CI cannot run. v0.7.1's deploy stopped at a CI-runner test timeout
-      (fixed in `1ebd47f6`). v0.7.2 (same contents plus that fix) was refused before starting.
-      Production is still v0.7.0. After billing is fixed, re-run the v0.7.2 Deploy workflow
-      (`gh run rerun 36962716112`) and CI on main, or ask the lead to.
-- Consider the cost: P1b-05 added macOS jobs (WebKit on macos-15, Python 3.12 on macos-14), on top
-  of the Swift and Godot macOS legs. macOS minutes bill at 10× Linux. If the spending limit is
-  tight, the lead can move the WebKit leg to run only on a schedule or on tags.
 
 ## Production check:representable (P3-12): done 2026-10-01
 
@@ -77,29 +65,18 @@ resource, and record the date and the person.
       against Play Console (the app's dashboard shows the package name) before saving, and again
       before any re-pin.
 
-## Update health and Sentry (P6-03, after it deploys)
+## Update health (P6-03, after it deploys)
 
 - [ ] **The deploy creates the `UpdateHealthDO` class** (wrangler migration tag `v2`, the
       `UPDATE_HEALTH` binding in prod, staging and dev). No D1 migration. Until it is deployed,
       reports still store `updates` and nothing is counted (the funnel says so).
-- [ ] **Sentry (optional): store a real client secret.** In the Sentry organisation, create an
-      internal integration with webhooks and the alert-rule action, webhook URL
-      `https://key.plrs.im/<product>/distribution/hooks/sentry`. Store its client secret on the
-      product as an outlet credential of kind `sentry-integration` (Secrets tab, or a `PUT` on
-      `…/outlet-credentials/<id>` with kind `sentry-integration` and value `clientSecret`). Never
-      commit it; the tests use a placeholder. Then add the integration to an issue alert rule,
-      trigger it on a release tagged `release = app@<version>`, `environment = <channel>` and
-      `pkey.outlet = <outlet>`, and confirm one halt candidate appears on Distribution → Update
-      health. Also confirm that `Sentry-Hook-Resource` really is `event_alert` for an issue alert
-      rule action: the hook was written from Sentry's documented webhook shape, not a live
-      delivery.
 - [ ] **Auto-halt stays off** until an operator turns it on per product on the Update health tab.
       Before turning it on for a real product, check the funnel shows sensible numbers for a
       release (the Godot updater, P3-10, is the only emitter today).
 
 ## Before djdl's next `.pkey` push (from v0.5.0)
 
-- [ ] **Add `"distribution": { "enabled": true }` to `modules` in `vladzaharia/djdl`'s
+- [ ] **Add `"distribution": { "enabled": true }` to `modules` in djdl's
       `.pkey/product.json`.** P2b-01's new coherence rule (`update_requires_distribution`) rejects
       djdl's current manifest (`update` on, no `distribution`). Migration `0033` already gave the
       stored row `distribution`, so djdl keeps serving; only its next manifest push would be refused
@@ -126,7 +103,7 @@ Exercised only against the in-memory test D1. Apply to staging, then production,
 - [x] `0027_a`…`0027_i` (P2-03 release model v2: deliverables, builds, `seq`, `deliverable_id`,
       artifact roles and locations, backfill). Apply in file order. From now on every deploy
       re-runs `0027_i_index_assertion.sql` (the newest assertion) instead of `0018`, so a database
-      missing `idx_release_metadata_seq` fails the deploy: watch the first tagged deploy after this. — applied to production 2026-10-01 by v0.5.1 (deploy run 36835975944, success), with `0033_distribution_backfill`.
+      missing `idx_release_metadata_seq` fails the deploy: watch the first tagged deploy after this. — applied to production 2026-10-01 by v0.5.1, with `0033_distribution_backfill`.
 - [ ] P2-03, real GitHub: a repository with more than 1,000 releases whose stable floor release is
       beyond page 10 still gets a healthy store row (tested only with stubbed responses).
 
@@ -209,33 +186,18 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 ### P0-02 (release resolution)
 
 - [ ] PR body: the new `stableTagPattern` field widens the R10-09 regex-DoS finding (recorded in
-      R10-dos.md and THREAT-MODEL).
+      the R10 audit findings and THREAT-MODEL).
 
 ## Inputs that do not exist yet
 
 - [ ] **P6-04 (optional):** a new, separate registrable domain (not `plrs.im`) for hosted web
       builds, with DNS and a Worker route. P2-01 did not create one and `dl.plrs.im` must not be
       used for it.
-- [ ] **P2-02:** R2 parent API token and `R2_ACCOUNT_ID`, `R2_PARENT_ACCESS_KEY_ID`,
-      `R2_PARENT_SECRET_ACCESS_KEY` Worker secrets; against real R2, confirm what the binding
-      exposes as `checksums.sha256` for multipart uploads (the AWS CLI goes multipart above 8 MB;
-      a composite hash-of-parts would make valid uploads fail closed) and that minted credentials
-      cannot read or copy outside `staging/<product>/<ticketId>/`.
 - [ ] **P2-05 / P2b-04:** on the first deploy that registers `BYTE_ROUTES`, repeat the
       `dl.plrs.im` isolation checks above with a route that throws (expect a hardened JSON 500).
 
 ## Release infrastructure (found 2026-09-30)
 
-- [ ] **Changesets cannot update the Version Packages PR.** `release.yml` runs `changesets/action`
-      with `GITHUB_TOKEN`, which force-pushes `main`'s history to `changeset-release/main`. Since
-      P0-09, P1b-03 and P1-01 changed `.github/workflows/ci.yml`, GitHub rejects that push
-      ("refusing to allow a GitHub App to create or update workflow … without `workflows`
-      permission"; run 36807091247). `GITHUB_TOKEN` cannot be granted `workflows`, so give the
-      action a fine-grained PAT or GitHub App token with Contents + Pull requests + Workflows on
-      this repository (secret, then `with: { token: … }` / `GITHUB_TOKEN: …` in `release.yml`).
-- [ ] **PR #1 (Version Packages) CI is `action_required`.** Bot-opened PR runs wait for a
-      maintainer's approval in the Actions tab; approve them (or the token above, being a user or
-      App token, avoids the hold).
 - [ ] **Required checks:** add the two new Godot CI legs ("Godot SDK (4.7.2 editor + release
       template)", "Godot SDK (4.4.1 editor, floor)") to `main`'s required status checks. Both
       passed on GitHub on 2026-09-30.
@@ -248,7 +210,7 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 
 ## v0.5.1 (2026-10-01): deployed and checked
 
-- [x] Deploy run 36835975944 succeeded (migrations `0027_a`–`0027_i` and `0033` applied, smoke check
+- [x] Deploy succeeded (migrations `0027_a`–`0027_i` and `0033` applied, smoke check
       green). The tag pushes were delayed ~25 min by GitHub, not lost; `v0.5.2` is the same commit.
 - [x] Discovery lists all six services; djdl's `distribution` reads enabled (backfill), and
       `services.identity.endpoints.authDeviceEntry` is advertised (P1-06).
@@ -263,7 +225,7 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 
 ## v0.5.3 (2026-10-01): deployed and checked
 
-- [x] Deploy run 36859366875 succeeded (P2-05, P5-01 with migration `0034`, P1-05).
+- [x] Deploy succeeded (P2-05, P5-01 with migration `0034`, P1-05).
 - [x] `dl.plrs.im/djdl/release/blobs/sha256/<64 zeros>` → 404 JSON `not_found`, sandbox CSP, nosniff.
 - [x] `dl.plrs.im/djdl/release/files/v0.3.8/SHA256SUMS` → 200 `application/octet-stream`,
       `Content-Disposition: attachment`, sandbox CSP, `immutable, no-transform`, no `Set-Cookie`;
@@ -275,7 +237,7 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 
 ## v0.7.0 (2026-10-01): deployed and checked (wire v4)
 
-- [x] Deploy run 36957908932 succeeded, smoke check included (P3-02..P3-12, P2b-05, P2-07, P1-10,
+- [x] Deploy succeeded, smoke check included (P3-02..P3-12, P2b-05, P2-07, P1-10,
       P4-21; migrations `0043`, `0044`). Production `check:representable` was clean beforehand.
 - [x] Discovery reports `protocolVersion: 4`; `update.endpoints` gains `feed`
       (`/djdl/update/{channel}/feed.jws`), `winsparkle`, `velopack`, `appInstaller`, `zsync`;
@@ -289,7 +251,7 @@ Tested only against stubbed fetches, not a real GitHub App installation.
 
 ## v0.6.0 (2026-10-01): deployed and checked
 
-- [x] Deploy run 36886345061 succeeded (P2-02, P2-06, P2b-02, P2b-04, P1-04; migrations `0035_a/b`,
+- [x] Deploy succeeded (P2-02, P2-06, P2b-02, P2b-04, P1-04; migrations `0035_a/b`,
       `0036`, `0038`). `0038` backfilled `dist_access` `app` rows from `release_config`, so no
       product flipped to `entitled`.
 - [x] Discovery: `services.distribution` is `configured: true` with `download`, `install`, `builds`,
@@ -302,5 +264,5 @@ Tested only against stubbed fetches, not a real GitHub App installation.
       signatures are required and djdl has no `sparkle_ed25519_pub`. Configure the key (or the
       operator policy) to serve it.
 - [ ] Grant `distribution:rollout` to a product's CI publisher before its CI calls the rollout routes
-      (not in the default grant). Trusted publishing stays off (404) until the R2 parent-token
-      secrets exist (see P2-02 above).
+      (not in the default grant). Trusted publishing stays off (404) until its operator
+      configuration is in place.

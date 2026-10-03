@@ -3,7 +3,7 @@
 **Date:** 2026-08-26
 **Status:** Approved (design); implementation plan pending.
 **Supersedes:** the "Polaris Core suite re-org" brainstorm (interrupted 2026-08-26, worktree `lethal-walrus`); its 12 answered decisions are incorporated below.
-**Relates to:** `docs/security/WIRE-CONTRACT-V2.md` (superseded by v3 defined here), `docs/superpowers/specs/2026-06-30-polaris-brand-rollout-design.md` (sequenced after this work; D4 amended by D-17 below).
+**Relates to:** `docs/security/WIRE-CONTRACT-V2.md` (superseded by v3 defined here), the brand-package rollout (a separate plan, sequenced after this work; its D4 is amended by D-17 below).
 
 Polaris Key becomes **Polaris**: a suite of per-product opt-in services — **License, Config, Release, Update, Identity** — over an always-on **Core** substrate. Applications integrate one or more services without entangling the rest, including fully offline/local-only operation. Pre-launch posture applies throughout: wire breaks are sanctioned via a `PROTOCOL_VERSION` bump, corpus regeneration, D1 reshaping, and djdl re-seeding. Nothing has ever been released (no git tags, all packages 0.0.0).
 
@@ -232,7 +232,7 @@ Per-app integration mode with **no network code paths active**: Swift by not lin
 | CLI bin            | `pkey` → `plrs` (manifest authoring); SDK-embedded CLIs unchanged in shape                                          | —                                                                                                                                                      |
 | Manifest dir       | `.pkey/` → `.polaris/` (webhook, resync, CLI, docs, djdl repo)                                                      | djdl repo updated at re-seed                                                                                                                           |
 | Wire identifiers   | `plrs_`/`plrst_`/`X-Polaris-*`/`iss plrs.im`                                                                        | corpus v2                                                                                                                                              |
-| Brand registry     | add `config`/`release`/`update`/`core` service entries                                                              | **External:** `polaris-brand` repo edit                                                                                                                |
+| Brand registry     | add `config`/`release`/`update`/`core` service entries                                                              | **External:** brand-package repo edit                                                                                                                |
 | Host / repo name   | `key.plrs.im` stays; repo rename deferred                                                                           | D-23                                                                                                                                                   |
 
 ## 10. Phasing, orchestration, risks
