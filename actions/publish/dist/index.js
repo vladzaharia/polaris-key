@@ -22278,6 +22278,11 @@ function bankDescriptorProblem(files) {
   return null;
 }
 var LFH = 67324752;
+function indexOfGdpc(b) {
+  for (let i = b.indexOf(71); i >= 0 && i + 3 < b.length; i = b.indexOf(71, i + 1))
+    if (b[i + 1] === 68 && b[i + 2] === 80 && b[i + 3] === 67) return i;
+  return -1;
+}
 var CDH = 33639248;
 var EOCD = 101010256;
 var ZIP64_LOCATOR = 117853008;
@@ -22289,6 +22294,11 @@ function readGodotZip(b, name = "the zip") {
   const u16 = (at) => dv.getUint16(at, true);
   const u32 = (at) => dv.getUint32(at, true);
   if (b.byteLength < 22 + 30) fail4("too short to be a zip with an entry.");
+  const gdpc = indexOfGdpc(b);
+  if (gdpc >= 0)
+    fail4(
+      `holds the bytes GDPC at offset ${gdpc}; Godot could read it as a PCK rather than a zip.`
+    );
   if (u32(0) !== LFH)
     fail4(
       "does not start with a local file header: a godot.zip holds nothing before its first entry."
@@ -22319,7 +22329,7 @@ function readGodotZip(b, name = "the zip") {
   const entries = [];
   const seen = /* @__PURE__ */ new Set();
   const ranges = [];
-  const text = new TextDecoder("utf-8", { fatal: true });
+  const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
     if (p + 46 > e || u32(p) !== CDH)
@@ -22349,6 +22359,7 @@ function readGodotZip(b, name = "the zip") {
     if (csize === 4294967295 || size === 4294967295 || local === 4294967295)
       fail4(`${label}: ZIP64 fields.`);
     if (startDisk !== 0) fail4(`${label}: on another disk.`);
+    if (commentLen !== 0) fail4(`${label}: carries an entry comment.`);
     if (local + 30 > cdOffset || u32(local) !== LFH)
       fail4(`${label}: its local header is missing.`);
     const lNameLen = u16(local + 26);
@@ -22363,6 +22374,10 @@ function readGodotZip(b, name = "the zip") {
     if (entryName.endsWith("/")) {
       if (size !== 0 || csize !== 0 || method !== 0)
         fail4(`${label}: a directory entry with data.`);
+      if (!pckPathOk(entryName.slice(0, -1)))
+        fail4(
+          `${label}: not a normal path (no leading /, no ., .. or empty segment); the engine would mount it elsewhere.`
+        );
       continue;
     }
     if (method !== 0 || csize !== size)

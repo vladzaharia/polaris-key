@@ -133,6 +133,17 @@ export function bankDescriptorProblem(
 // ── godot.zip ────────────────────────────────────────────────────────────────────────────
 
 const LFH = 0x04034b50;
+
+/** The first offset of `GDPC` (47 44 50 43) in `b`, or -1. */
+export function indexOfGdpc(b: Uint8Array): number {
+  for (
+    let i = b.indexOf(0x47);
+    i >= 0 && i + 3 < b.length;
+    i = b.indexOf(0x47, i + 1)
+  )
+    if (b[i + 1] === 0x44 && b[i + 2] === 0x50 && b[i + 3] === 0x43) return i;
+  return -1;
+}
 const CDH = 0x02014b50;
 const EOCD = 0x06054b50;
 const ZIP64_LOCATOR = 0x07064b50;
@@ -145,7 +156,10 @@ const ZIP64_LOCATOR = 0x07064b50;
  *     end-of-central-directory record (no comment), with the central directory right before it.
  *     Godot tries its PCK reader on every pack whatever the extension, and that reader accepts
  *     a `GDPC` magic at the start or the end: neither can occur in such a zip;
- *   - no ZIP64, no encryption, no data descriptor, no multi-disk archive;
+ *   - no `GDPC` anywhere in the bytes: Godot's PCK reader also searches the embedded-PCK offset
+ *     of a self-contained export inside whatever file it opens;
+ *   - no ZIP64 (nor a locator), no entry comment, no encryption, no data descriptor, no
+ *     multi-disk archive;
  *   - every file entry STORED (method 0, compressed size = size, CRC-32 matching), its local
  *     header agreeing with its central entry, the data of no two entries overlapping;
  *   - directory entries (a name ending `/`, size 0) are skipped; every other name is a normal
@@ -162,6 +176,15 @@ export function readGodotZip(b: Uint8Array, name = "the zip"): PckDirectory {
   const u16 = (at: number) => dv.getUint16(at, true);
   const u32 = (at: number) => dv.getUint32(at, true);
   if (b.byteLength < 22 + 30) fail("too short to be a zip with an entry.");
+  // Godot tries its PCK reader on every pack, and that reader also looks for `GDPC` at the
+  // embedded-PCK offset of a self-contained export, inside whatever file it opens: a zip whose
+  // bytes hold `GDPC` anywhere could mount as a PCK. Refused outright (a coincidence costs a
+  // re-encode, at about size × 2^-32).
+  const gdpc = indexOfGdpc(b);
+  if (gdpc >= 0)
+    fail(
+      `holds the bytes GDPC at offset ${gdpc}; Godot could read it as a PCK rather than a zip.`,
+    );
   if (u32(0) !== LFH)
     fail(
       "does not start with a local file header: a godot.zip holds nothing before its first entry.",
@@ -192,7 +215,7 @@ export function readGodotZip(b: Uint8Array, name = "the zip"): PckDirectory {
   const entries: PckDirectory["entries"] = [];
   const seen = new Set<string>();
   const ranges: [number, number][] = [];
-  const text = new TextDecoder("utf-8", { fatal: true });
+  const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
     if (p + 46 > e || u32(p) !== CDH)
@@ -222,6 +245,9 @@ export function readGodotZip(b: Uint8Array, name = "the zip"): PckDirectory {
     if (csize === 0xffffffff || size === 0xffffffff || local === 0xffffffff)
       fail(`${label}: ZIP64 fields.`);
     if (startDisk !== 0) fail(`${label}: on another disk.`);
+    // An entry comment could hide a ZIP64 locator that minizip, which Godot mounts with, finds
+    // before the end record and follows to another directory.
+    if (commentLen !== 0) fail(`${label}: carries an entry comment.`);
     // The local header agrees with the central entry.
     if (local + 30 > cdOffset || u32(local) !== LFH)
       fail(`${label}: its local header is missing.`);
@@ -247,6 +273,10 @@ export function readGodotZip(b: Uint8Array, name = "the zip"): PckDirectory {
     if (entryName.endsWith("/")) {
       if (size !== 0 || csize !== 0 || method !== 0)
         fail(`${label}: a directory entry with data.`);
+      if (!pckPathOk(entryName.slice(0, -1)))
+        fail(
+          `${label}: not a normal path (no leading /, no ., .. or empty segment); the engine would mount it elsewhere.`,
+        );
       continue;
     }
     if (method !== 0 || csize !== size)

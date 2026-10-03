@@ -178,11 +178,11 @@ describe("readGodotZip", () => {
       new Uint8Array(zipStore([{ name, data }]));
     const cases: [Uint8Array, RegExp][] = [];
     // Bytes before the first entry (a PCK with a zip after it, say).
-    const pre = new Uint8Array([...enc("GDPC"), ...one("a.json")]);
+    const pre = new Uint8Array([...enc("XXXX"), ...one("a.json")]);
     cases.push([pre, /does not start with a local file header/]);
     // A comment (it could end in GDPC).
     const c = one("a.json");
-    const withComment = new Uint8Array([...c, ...enc("GDPC")]);
+    const withComment = new Uint8Array([...c, ...enc("abcd")]);
     new DataView(withComment.buffer).setUint16(c.byteLength - 2, 4, true);
     cases.push([withComment, /does not end with an end-of-central-directory/]);
     // Method 8 in both headers.
@@ -209,6 +209,31 @@ describe("readGodotZip", () => {
       ]),
     );
     cases.push([dup, /listed twice/]);
+    // GDPC anywhere (a PCK inside an entry's data, at a self-contained export's embedded offset).
+    cases.push([
+      one("a.bin", enc("xxGDPCyy")),
+      /holds the bytes GDPC at offset/,
+    ]);
+    // An entry comment (it could hide a ZIP64 locator).
+    const withEntryComment = (() => {
+      const z = one("a.json");
+      const v = new DataView(z.buffer);
+      const cdAt = v.getUint32(z.byteLength - 6, true);
+      const cdLen = v.getUint32(z.byteLength - 10, true);
+      const out = new Uint8Array(z.byteLength + 2);
+      out.set(z.subarray(0, cdAt + cdLen));
+      out.set(enc("hi"), cdAt + cdLen);
+      out.set(z.subarray(cdAt + cdLen), cdAt + cdLen + 2);
+      const o = new DataView(out.buffer);
+      o.setUint16(cdAt + 32, 2, true);
+      o.setUint32(out.byteLength - 10, cdLen + 2, true);
+      return out;
+    })();
+    cases.push([withEntryComment, /entry comment/]);
+    cases.push([
+      new Uint8Array(zipStore([{ name: "../x/", data: new Uint8Array() }])),
+      /not a normal path/,
+    ]);
     for (const [b, why] of cases) expect(() => readGodotZip(b)).toThrow(why);
   });
 });
