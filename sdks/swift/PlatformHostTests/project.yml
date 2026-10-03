@@ -1,0 +1,76 @@
+# The hosted XCTest project for PolarisKeyPlatform's StoreKit, AppTransaction and Keychain paths
+# (P5-05; notes/S-09 §Results 1). Generated with XcodeGen by run.sh into build/ (never committed).
+#
+# Why a hosted project: under `swift test`, and under `xcodebuild test` of the bare SwiftPM test
+# target, `SKTestSession` succeeds but loads ZERO products (storekitd: "is not installed for
+# development"), AppTransaction fails and the Keychain answers -34018. StoreKit Testing works
+# only in a unit-test bundle hosted by an app that carries `get-task-allow`, which
+# App/Host.entitlements adds. Every StoreKit test asserts the product count, so an unloaded
+# configuration fails instead of passing while testing nothing.
+#
+# StoreKitTest is linked by the TEST bundle only; the host app never links it, and nothing here
+# ships. No Apple developer account, team or certificate is used: simulator builds are ad hoc
+# (CODE_SIGN_IDENTITY "-").
+name: PKPlatformHost
+options:
+  bundleIdPrefix: dev.polariskey.platformhost
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  PolarisKey:
+    path: ..
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+targets:
+  PKPlatformHost:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: PolarisKey
+        product: PolarisKeyPlatform
+    info:
+      path: build/generated/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleShortVersionString: "1.4"
+        CFBundleVersion: "14"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.platformhost
+        CODE_SIGN_ENTITLEMENTS: App/Host.entitlements
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+  PKPlatformHostTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [HostTests]
+    dependencies:
+      - target: PKPlatformHost
+      - package: PolarisKey
+        product: PolarisKeyPlatform
+      - sdk: StoreKitTest.framework
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PKPlatformHost.app/PKPlatformHost"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        # Not -warnings-as-errors here: StoreKitTest's own headers use APIs deprecated in iOS 18,
+        # and the flag reaches the clang importer's precompiled module for them.
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.platformhost.tests
+schemes:
+  PKPlatformHost:
+    build:
+      targets:
+        PKPlatformHost: all
+        PKPlatformHostTests: [test]
+    run:
+      config: Debug
+      storeKitConfiguration: HostTests/Products.storekit
+    test:
+      config: Debug
+      targets: [PKPlatformHostTests]

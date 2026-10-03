@@ -274,6 +274,10 @@ func _enter_tree() -> void:
 	# One listener: the autoload, or the first SDK node when there is no autoload (tests).
 	if name == "PolarisKey" or not PKeyJws.progress_listener.is_valid():
 		PKeyJws.progress_listener = _on_verify_progress
+	# iOS: this launch's AppDistributor read starts now (P5-05), so outlet detection usually has
+	# it; it is raced against 2 s and never cached across launches.
+	if name == "PolarisKey" and PKeyHeaders.platform() == PKeyConstants.Platform.IOS:
+		PKeyApple.start_launch_reads()
 
 
 func _exit_tree() -> void:

@@ -1847,7 +1847,7 @@
       "optional": false,
       "refs": ["README §5.10", "PARITY §1", "notes/E1", "notes/E9 §7.1"],
       "brief": "wp/P5-05-apple-plugin-package.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P5-06",

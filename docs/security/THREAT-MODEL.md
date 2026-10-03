@@ -2517,6 +2517,34 @@ rules and, for a delegated release, the data-only rule) and its activation. A re
   What the game's handler then does with the bytes is the game's: a `custom.*` type is never
   delegable because such a handler may execute what it loads.
 
+### The client token store on Apple platforms (P5-05)
+
+The device id and the `pkeyt_` device token are the client's two secrets at rest (§2). On iOS
+the Godot SDK keeps both in the Keychain through the Apple platform plugin (`PKeyKeychainStore`
+over `PolarisKeyPlatform`'s `SecureStore`); the verified cache stays in the file store, because
+it is re-verified at every load and holds nothing secret.
+
+- **Class.** Generic-password items under service `pkey:<product>`, in the data-protection
+  keychain, never synchronizable, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`: readable
+  after the first unlock (a background launch can refresh), and never restored onto another
+  device from a backup, so a copied backup carries no usable token or device identity.
+- **No access group.** No `kSecAttrAccessGroup` and no `keychain-access-groups` entitlement: the
+  items sit in the app's private default group. The App Group the Background Assets patch adds
+  is used for asset packs only, never as a Keychain access group.
+- **The Background Assets extension has no access.** It is a separate process with its own
+  default group; it never reads the token or the device id and carries no credential (notes/E9
+  §7.1). A compromised or malicious extension therefore cannot act as the device.
+- **Migration from the file store.** A token or device id found only in the 0600 files (an
+  install from before the plugin) is moved into the Keychain on first read, and the token file
+  is deleted. A failed delete is surfaced (`failed`, `store_error`) and retried on every later
+  read, so no plaintext copy is left behind silently. A failed Keychain write is surfaced too
+  (`degraded: keyring-error`) and the token is never written to a file instead; only the device
+  id falls back to its file, so a Keychain fault does not mint a new device per launch.
+- **Residual.** On the simulator Keychain items survive app deletion; on a device that is
+  undocumented (S-09 hand-off). The Swift SDK's own `KeychainStore` still writes the token
+  `AfterFirstUnlock` (backup-restorable) and the device id to a 0600 file; that difference is
+  open with the Swift SDK's owner.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
