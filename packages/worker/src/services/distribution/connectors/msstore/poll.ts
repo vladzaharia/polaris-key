@@ -4,6 +4,7 @@
  *
  *     application → its pending and last published submissions
  *     listflights → for every flight the manifest maps: its pending and last published submissions
+ *     the fallback submission of a published one whose gradual rollout is partial
  *
  * Everything is read and parsed in memory first; the writes start only once the whole state is
  * in hand, so a failed read (a 5xx, a 429 after the retries) writes NOTHING and the next tick
@@ -62,6 +63,7 @@ import {
   parseFlights,
   parseSubmission,
   rolloutOfSubmission,
+  servesFallback,
   statusRow,
   submissionDetail,
   type StoreApplication,
@@ -159,7 +161,9 @@ export function errorLine(e: unknown): string {
 
 export interface ReadSubmission {
   submission: StoreSubmission;
-  role: "pending" | "published";
+  /** `fallback`: the submission a partial gradual rollout's other customers still get
+   *  (`packageRollout.fallbackSubmissionId`); read only while that rollout is partial. */
+  role: "pending" | "published" | "fallback";
   /** `null` = the non-flighted submission. */
   flight: StoreFlight | null;
   routes: MsStoreRoute[];
@@ -204,12 +208,15 @@ export async function readMsStoreState(run: MsStoreRun): Promise<MsStoreState> {
         )
       )
         continue;
-      submissions.push({
-        submission: await readOne(run, flight, ref.id),
-        role,
-        flight,
-        routes,
-      });
+      const submission = await readOne(run, flight, ref.id);
+      submissions.push({ submission, role, flight, routes });
+      // A partial gradual rollout: the rest of the customers still get the fallback submission.
+      if (role === "published" && servesFallback(submission))
+        await add(
+          flight,
+          [["fallback", { id: submission.rollout!.fallbackSubmissionId! }]],
+          routes,
+        );
     }
   };
   await add(
@@ -428,7 +435,8 @@ export async function applyMsStoreState(
   const desired = new Map<string, DesiredAvailability>();
   for (const r of state.submissions) {
     const s = r.submission;
-    const st = availabilityOf(s);
+    // The fallback is what everyone outside the rollout gets: live while it is read.
+    const st = r.role === "fallback" ? "live" : availabilityOf(s);
     if (!st) continue;
     for (const route of r.routes)
       for (const p of s.packages) {
@@ -510,6 +518,8 @@ export async function applyMsStoreState(
     { r: ReadSubmission; release: CatalogRelease; outlet: string }
   >();
   for (const r of state.submissions) {
+    // The fallback never speaks for its release's submission row.
+    if (r.role === "fallback") continue;
     const release = releaseOf(r.submission, resolved);
     if (!release || !statusRow(r.submission.status).submission) continue;
     for (const outlet of new Set(r.routes.map((x) => x.outletId))) {
@@ -562,6 +572,8 @@ export async function applyMsStoreState(
     compareSubmissionIds(a.submission.id, b.submission.id),
   );
   for (const r of byAge) {
+    // The fallback never mirrors a rollout: the published submission's row is the rollout.
+    if (r.role === "fallback") continue;
     const rollout = rolloutOfSubmission(r.submission);
     const release = releaseOf(r.submission, resolved);
     if (!rollout || !release) continue;

@@ -573,6 +573,7 @@ describe("Microsoft Store connector on workerd (P5-04)", () => {
       "submission",
       "submission",
       "submission",
+      "submission",
     ]);
   });
 });

@@ -36,8 +36,22 @@
  * `round(percentage × 100)` bp (25 % → 2,500), `PackageRolloutStopped` → `halted` (new customers
  * get the fallback submission; installed users keep the new package — notes/E3 §A1.2, so the
  * availability reads `approved` like a halted Play release), `PackageRolloutComplete` or no
- * gradual rollout → `complete` at 10,000. `PackageRolloutNotStarted` writes no rollout. The
- * mirror is informative, never an access control.
+ * gradual rollout → `complete` at 10,000. `PackageRolloutNotStarted` writes no rollout and its
+ * builds read `approved` (published, served to no one yet). The mirror is informative, never an
+ * access control.
+ *
+ *     Published submission's rollout   its builds   rollout row          fallback's builds
+ *     none, or Complete                live         complete, 10000 bp   (not read)
+ *     InProgress at p %                live         active, p × 100 bp   live
+ *     Stopped                          approved     halted               live
+ *     NotStarted                       approved     —                    live
+ *
+ * **The fallback submission.** While a gradual rollout is partial, everyone it does not reach
+ * gets `fallbackSubmissionId` — the previously published submission. The poller reads it too
+ * (role `fallback`), and its builds stay `live`, as Play keeps the previous completed release
+ * live beside a staged or halted one. It never mirrors a rollout and never speaks for its release's
+ * submission row. Once the rollout completes, the fallback is no longer read, and its builds
+ * become `removed` unless the new submission carries them.
  *
  * Pricing is never parsed: an app on Pricing Version 2 answers an unknown price tier, and status,
  * rollout and flights still read normally.
@@ -217,6 +231,9 @@ export interface StoreSubmission {
 }
 
 const MAX_DETAILS = 20;
+/** The most packages of one submission kept (one per architecture and version; a real one has a
+ *  handful). */
+const MAX_PACKAGES = 64;
 const MAX_DETAIL_TEXT = 500;
 
 const obj = (v: unknown): Record<string, unknown> | null =>
@@ -295,7 +312,7 @@ export const MSIX_VERSION = /^(0|[1-9][0-9]{0,4})(\.(0|[1-9][0-9]{0,4})){3}$/;
 function packagesOf(v: unknown): StorePackage[] {
   if (!Array.isArray(v)) return [];
   const out: StorePackage[] = [];
-  for (const p of v) {
+  for (const p of v.slice(0, MAX_PACKAGES)) {
     const o = obj(p);
     if (!o || typeof o.version !== "string" || !MSIX_VERSION.test(o.version))
       continue;
@@ -394,14 +411,30 @@ export function rolloutOfSubmission(
   }
 }
 
+/** Whether a Published submission's gradual rollout is still partial (not started, in progress
+ *  or stopped), i.e. its fallback submission is still served to the rest. */
+export function servesFallback(s: StoreSubmission): boolean {
+  return (
+    s.status === "Published" &&
+    s.rollout !== null &&
+    s.rollout.isPackageRollout &&
+    s.rollout.fallbackSubmissionId !== null &&
+    s.rollout.fallbackSubmissionId !== s.id &&
+    (s.rollout.status === "PackageRolloutNotStarted" ||
+      s.rollout.status === "PackageRolloutInProgress" ||
+      s.rollout.status === "PackageRolloutStopped")
+  );
+}
+
 /** The availability a submission gives its builds: the status row's, except that a Published
- *  submission whose gradual rollout is stopped serves no one new (`approved`). */
+ *  submission whose gradual rollout is stopped or not started serves no one new (`approved`). */
 export function availabilityOf(s: StoreSubmission): AvailabilityState | null {
   const row = statusRow(s.status);
   if (
     s.status === "Published" &&
     s.rollout?.isPackageRollout &&
-    s.rollout.status === "PackageRolloutStopped"
+    (s.rollout.status === "PackageRolloutStopped" ||
+      s.rollout.status === "PackageRolloutNotStarted")
   )
     return "approved";
   return row.availability;

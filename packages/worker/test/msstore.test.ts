@@ -32,6 +32,7 @@ import { upsertBuild } from "../src/services/release/model.js";
 import { connectorOf } from "../src/services/distribution/connectors/index.js";
 import { pollConnectors } from "../src/services/distribution/connectors/index.js";
 import {
+  MAX_RESPONSE_BYTES,
   MsStoreClient,
   STORE_API_ORIGIN,
 } from "../src/services/distribution/connectors/msstore/client.js";
@@ -70,6 +71,7 @@ const FIXTURES = JSON.parse(
 
 const PUBLISHED = "1152921504621086517";
 const PENDING = "1152921504621243487";
+const FALLBACK = "1152921504621000001";
 const BETA_FLIGHT = "7bfc11d5-f710-47c5-8a98-e04bb5aad310";
 const BETA_SUB = "1152921504621086600";
 const INSIDERS_FLIGHT = "cd2e368a-0da5-4026-9f34-0e7934bc6f23";
@@ -247,6 +249,8 @@ describe("the poll", () => {
       "GET ",
       `GET submissions/${PENDING}`,
       `GET submissions/${PUBLISHED}`,
+      // The 25 % rollout's fallback: the previously published submission.
+      `GET submissions/${FALLBACK}`,
       "GET listflights",
       `GET flights/${BETA_FLIGHT}/submissions/${BETA_SUB}`,
     ]);
@@ -364,6 +368,118 @@ describe("the poll", () => {
     stable = (await rollouts(w.db)).find((r) => r.channel === "stable")!;
     expect([stable.state, stable.rollout_bp]).toEqual(["complete", 10000]);
     expect((await avail(w.db))["v1.0.0/windows-x64"]).toBe("live");
+  });
+
+  it("keeps the fallback submission live while a gradual rollout is partial, then retires it when the rollout completes", async () => {
+    const w = await world({ flights: null });
+    const B = "1152921504621300000";
+    // Tick 1: A (v1.0.0) is published to everyone; nothing pending.
+    w.fake.setRollout(PUBLISHED, {
+      isPackageRollout: false,
+      packageRolloutPercentage: 0.0,
+      packageRolloutStatus: "PackageRolloutNotStarted",
+      fallbackSubmissionId: "0",
+    });
+    w.fake.application.pendingApplicationSubmission = undefined;
+    await poll(w);
+    expect(await avail(w.db)).toEqual({ "v1.0.0/windows-x64": "live" });
+
+    // Tick 2: B (v1.1.0) is published at a 25 % gradual rollout with fallback A.
+    const b = structuredClone(w.fake.submissions.get(PENDING)!);
+    Object.assign(b, { id: B, status: "Published" });
+    w.fake.submissions.set(B, b);
+    w.fake.setRollout(B, {
+      isPackageRollout: true,
+      packageRolloutPercentage: 25.0,
+      packageRolloutStatus: "PackageRolloutInProgress",
+      fallbackSubmissionId: PUBLISHED,
+    });
+    w.fake.application.lastPublishedApplicationSubmission = { id: B };
+    const before = w.fake.requests.length;
+    await poll(w, NOW + 900);
+    expect(
+      w.fake.requests.slice(before).map((r) => `${r.method} ${r.path}`),
+    ).toEqual([
+      "GET ",
+      `GET submissions/${B}`,
+      `GET submissions/${PUBLISHED}`,
+      "GET listflights",
+    ]);
+    expect(await avail(w.db)).toEqual({
+      "v1.0.0/windows-x64": "live",
+      "v1.1.0/windows-x64": "live",
+      "v1.1.0/windows-arm64": "live",
+    });
+    const stable = async () =>
+      (await rollouts(w.db))
+        .filter((r) => r.channel === "stable")
+        .map((r) => [r.release_id, r.state, r.rollout_bp]);
+    // The fallback never mirrors a rollout: the row is B's.
+    expect(await stable()).toEqual([["v1.1.0", "active", 2500]]);
+    // ...and never speaks for its release's submission row.
+    expect(
+      (await submissions(w.db)).map((x) => [x.release_id, x.state]),
+    ).toEqual([
+      ["v1.0.0", "released"],
+      ["v1.1.0", "released"],
+    ]);
+
+    // Tick 3: B's rollout is stopped. B serves no one new; A still serves everyone else.
+    w.fake.setRollout(B, {
+      isPackageRollout: true,
+      packageRolloutPercentage: 25.0,
+      packageRolloutStatus: "PackageRolloutStopped",
+      fallbackSubmissionId: PUBLISHED,
+    });
+    await poll(w, NOW + 1800);
+    expect(await avail(w.db)).toEqual({
+      "v1.0.0/windows-x64": "live",
+      "v1.1.0/windows-x64": "approved",
+      "v1.1.0/windows-arm64": "approved",
+    });
+    expect(await stable()).toEqual([["v1.1.0", "halted", 2500]]);
+
+    // Tick 4: B completes. A is no longer read, and its build is removed.
+    w.fake.setRollout(B, {
+      isPackageRollout: true,
+      packageRolloutPercentage: 100.0,
+      packageRolloutStatus: "PackageRolloutComplete",
+      fallbackSubmissionId: PUBLISHED,
+    });
+    const mark = w.fake.requests.length;
+    await poll(w, NOW + 2700);
+    expect(
+      w.fake.requests.slice(mark).some((r) => r.path.endsWith(PUBLISHED)),
+    ).toBe(false);
+    expect(await avail(w.db)).toEqual({
+      "v1.0.0/windows-x64": "removed",
+      "v1.1.0/windows-x64": "live",
+      "v1.1.0/windows-arm64": "live",
+    });
+    expect(await stable()).toEqual([["v1.1.0", "complete", 10000]]);
+  });
+
+  it("a published submission whose gradual rollout has not started is approved; its fallback stays live", async () => {
+    const w = await world({ flights: null });
+    w.fake.setRollout(PUBLISHED, {
+      isPackageRollout: true,
+      packageRolloutPercentage: 0.0,
+      packageRolloutStatus: "PackageRolloutNotStarted",
+      fallbackSubmissionId: FALLBACK,
+    });
+    // The fallback carries the v1.1.0 package here, so its liveness is visible.
+    w.fake.submissions.get(FALLBACK)!.applicationPackages = structuredClone(
+      w.fake.submissions.get(PENDING)!.applicationPackages,
+    );
+    w.fake.application.pendingApplicationSubmission = undefined;
+    await poll(w);
+    expect(await avail(w.db)).toEqual({
+      "v1.0.0/windows-x64": "approved",
+      "v1.1.0/windows-x64": "live",
+      "v1.1.0/windows-arm64": "live",
+    });
+    // Not started: no rollout row is mirrored.
+    expect(await rollouts(w.db)).toEqual([]);
   });
 
   it("maps every submission status", async () => {
@@ -551,7 +667,7 @@ describe("the poll", () => {
     w2.fake.flightSubmissions.get(BETA_FLIGHT)!.delete(BETA_SUB);
     const late = await withFetch(w2, () => pollDirect(w2));
     expect(late.error).toBe("Microsoft Store GET flight submission: HTTP 404");
-    expect(late.calls).toBe(5);
+    expect(late.calls).toBe(6);
     expect(await avail(w2.db)).toEqual({});
     expect(await submissions(w2.db)).toEqual([]);
     expect(await objects(w2.db)).toEqual([]);
@@ -850,6 +966,64 @@ describe("the client", () => {
       () =>
         new MsStoreClient({ applicationId: "../x", token: async () => "t" }),
     ).toThrow();
+  });
+
+  it("never follows a redirect and refuses an oversized body", async () => {
+    const seen: RequestInit[] = [];
+    const client = (res: () => Response) =>
+      new MsStoreClient({
+        applicationId: STORE_ID,
+        token: async () => "t",
+        fetchImpl: async (_u, init) => {
+          seen.push(init!);
+          return res();
+        },
+      });
+    await expect(
+      client(
+        () =>
+          new Response(null, {
+            status: 302,
+            headers: { location: "https://evil.example/" },
+          }),
+      ).application(),
+    ).rejects.toThrow("Microsoft Store GET application: HTTP 302");
+    expect(seen.every((i) => i.redirect === "manual")).toBe(true);
+    const big = JSON.stringify({
+      id: STORE_ID,
+      pad: "x".repeat(MAX_RESPONSE_BYTES),
+    });
+    await expect(
+      client(() => new Response(big, { status: 200 })).application(),
+    ).rejects.toThrow("Microsoft Store GET application: HTTP 502");
+    await expect(
+      client(
+        () =>
+          new Response("{}", {
+            status: 200,
+            headers: { "content-length": String(MAX_RESPONSE_BYTES + 1) },
+          }),
+      ).application(),
+    ).rejects.toThrow("HTTP 502");
+  });
+
+  it("the token exchange never follows a redirect", async () => {
+    const w = await world();
+    const inits: RequestInit[] = [];
+    w.fetchImpl = async (input, init) => {
+      if (new URL(input).hostname === "login.microsoftonline.com") {
+        inits.push(init!);
+        return new Response(null, {
+          status: 307,
+          headers: { location: "https://evil.example/token" },
+        });
+      }
+      return w.fake.fetchImpl(input, init);
+    };
+    const outcome = await withFetch(w, () => pollDirect(w));
+    expect(outcome.error).toBe("entra token exchange failed: 307");
+    expect(inits.map((i) => i.redirect)).toEqual(["manual"]);
+    expect(w.fake.requests).toEqual([]);
   });
 
   it("no msstore connector file opens a sealed value or names the credential table", () => {

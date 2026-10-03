@@ -18,11 +18,14 @@
  *     app updates or Store-managed consumable add-ons (`MsStoreError.notReadable`).
  *   - **429.** Retried after `Retry-After` (capped), else an exponential backoff, at most
  *     `maxRetries` times; then `MsStoreError(429)`.
+ *   - **No redirects, bounded bodies.** `redirect: "manual"`, and any 3xx is a failure; a body is
+ *     read through `readCappedText` (at most `MAX_RESPONSE_BYTES`).
  *   - **Errors carry a status line only**, never a response body: the message may reach
  *     `outlet_credentials.last_error` and the connector page.
  */
 
 import type { FetchImpl } from "../../../../core/outletTokens.js";
+import { readCappedText } from "../../../../core/readCapped.js";
 import { STORE_ID } from "./setup.js";
 
 export type { FetchImpl };
@@ -51,6 +54,10 @@ export class MsStoreError extends Error {
 }
 
 const MAX_BACKOFF_MS = 10_000;
+
+/** The most of one response body read. A submission with many listings is tens of KiB; this only
+ *  bounds what a misbehaving endpoint could make the isolate hold. */
+export const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 export function backoffMillis(res: Response, attempt: number): number {
   const retryAfter = res.headers.get("Retry-After");
@@ -130,6 +137,8 @@ export class MsStoreClient {
     if (!token) throw new MsStoreError(401, label);
     const init: RequestInit = {
       method: "GET",
+      // A redirect is a failure, never followed: the bearer token must not reach another URL.
+      redirect: "manual",
       headers: {
         authorization: `Bearer ${token}`,
         accept: "application/json",
@@ -143,13 +152,19 @@ export class MsStoreClient {
         await this.sleep(backoffMillis(res, attempt));
         continue;
       }
-      if (!res.ok) {
+      if (!res.ok || isRedirect(res)) {
         await res.body?.cancel();
         throw new MsStoreError(res.status, label);
       }
       let parsed: unknown;
       try {
-        parsed = JSON.parse(await res.text());
+        parsed = JSON.parse(
+          await readCappedText(
+            res,
+            MAX_RESPONSE_BYTES,
+            () => new MsStoreError(502, label),
+          ),
+        );
       } catch {
         throw new MsStoreError(502, label);
       }
@@ -201,6 +216,13 @@ export class MsStoreClient {
       "flight submission",
     );
   }
+}
+
+/** A 3xx, or the opaque redirect a `redirect: "manual"` fetch answers in some runtimes. */
+export function isRedirect(res: Response): boolean {
+  return (
+    (res.status >= 300 && res.status < 400) || (res.type as string) === "opaqueredirect"
+  );
 }
 
 function checkId(id: string): string {

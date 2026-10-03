@@ -1,5 +1,5 @@
 {
-  "$comment": "Recorded from Microsoft's documentation, not a live account (P5-04): the token response of https://login.microsoftonline.com/<tenant_id>/oauth2/token (v1 client-credentials, expires_in as a string), and the resources of 'Get app data', 'Manage app submissions', 'Get package flights for an app' and 'Manage package flight submissions' (learn.microsoft.com/windows/uwp/monetize/, fetched 2026-10-03; S-07 row 18). Ids, versions, statuses and rollout values are the fixture's; field names and shapes are the documentation's. fileUploadUrl is a SAS URI the connector must never store.",
+  "$comment": "Recorded from Microsoft's documentation, not a live account (P5-04): the token response of https://login.microsoftonline.com/<tenant_id>/oauth2/token (v1 client-credentials, expires_in as a string), and the resources of 'Get app data', 'Manage app submissions', 'Get package flights for an app' and 'Manage package flight submissions' (learn.microsoft.com/windows/uwp/monetize/, fetched 2026-10-03; S-07 row 18). Ids, versions, statuses and rollout values are the fixture's; field names and shapes are the documentation's. Submission 1152921504621000001 is the published submission's fallbackSubmissionId (the previously published one, still served outside the 25 % rollout). fileUploadUrl is a SAS URI the connector must never store.",
   "token": {
     "token_type": "Bearer",
     "expires_in": "3599",
@@ -182,6 +182,60 @@
         "mandatoryUpdateEffectiveDate": "1601-01-01T00:00:00.0000000Z"
       },
       "friendlyName": "Submission 5",
+      "trailers": []
+    },
+    "1152921504621000001": {
+      "id": "1152921504621000001",
+      "applicationCategory": "Games_Simulation",
+      "pricing": {
+        "trialPeriod": "NoFreeTrial",
+        "marketSpecificPricings": {},
+        "sales": [],
+        "priceId": "Free",
+        "isAdvancedPricingModel": true
+      },
+      "visibility": "Public",
+      "targetPublishMode": "Immediate",
+      "targetPublishDate": "1601-01-01T00:00:00Z",
+      "listings": {},
+      "notesForCertification": "",
+      "status": "Published",
+      "statusDetails": {
+        "errors": [],
+        "warnings": [],
+        "certificationReports": [
+          {
+            "date": "2023-10-01T09:00:00Z",
+            "reportUrl": "https://partner.microsoft.com/dashboard/products/9NBLGGH4R315/submissions/1152921504621000001/CertificationReport"
+          }
+        ]
+      },
+      "fileUploadUrl": "https://productingestionbin1.blob.core.windows.net/ingestion/0d1e2f3a-a412-43a9-8fb3-a38d03eb4800?sv=2014-02-14&sr=b&sig=FIXTUREsasSIGNATUREfallback%3D&se=2026-10-03T18:32:26Z&sp=rwl",
+      "applicationPackages": [
+        {
+          "fileName": "djdl_0.9.0.0_x64.msix",
+          "fileStatus": "Uploaded",
+          "id": "1152921504620138500",
+          "version": "0.9.0.0",
+          "architecture": "x64",
+          "languages": ["en-US"],
+          "capabilities": ["runFullTrust"],
+          "minimumDirectXVersion": "None",
+          "minimumSystemRam": "None",
+          "targetDeviceFamilies": ["Windows.Desktop min version 10.0.17763.0"]
+        }
+      ],
+      "packageDeliveryOptions": {
+        "packageRollout": {
+          "isPackageRollout": false,
+          "packageRolloutPercentage": 0.0,
+          "packageRolloutStatus": "PackageRolloutNotStarted",
+          "fallbackSubmissionId": "0"
+        },
+        "isMandatoryUpdate": false,
+        "mandatoryUpdateEffectiveDate": "1601-01-01T00:00:00.0000000Z"
+      },
+      "friendlyName": "Submission 3",
       "trailers": []
     }
   },

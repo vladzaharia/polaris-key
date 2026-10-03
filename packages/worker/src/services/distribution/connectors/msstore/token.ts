@@ -16,6 +16,9 @@
  * under `use`). The cached token is sealed under the outlet-credential AAD kind; a KV dump yields
  * ciphertext. It stops being served 300 s before Entra says it expires.
  *
+ * **No redirects, bounded body.** `redirect: "manual"` and any 3xx is a failure, so the client
+ * secret is never re-posted elsewhere; the response is read through `readCappedText`.
+ *
  * **Fixed host.** The token request goes only to `login.microsoftonline.com`; the tenant id from
  * the credential becomes one percent-encoded path segment after a format check (a GUID or a
  * domain name), and the final URL is re-checked, so a credential cannot make the Worker post its
@@ -34,12 +37,16 @@ import {
   writeSealedToken,
   type FetchImpl,
 } from "../../../../core/outletTokens.js";
+import { readCappedText } from "../../../../core/readCapped.js";
+import { isRedirect } from "./client.js";
 
 export const ENTRA_ORIGIN = "https://login.microsoftonline.com";
 /** The `resource` of every Store submission API token. */
 export const STORE_API_RESOURCE = "https://manage.devcenter.microsoft.com";
 /** The cache stops serving a token this long before Entra says it expires. */
 export const ENTRA_CACHE_MARGIN = 300;
+/** The most of a token response read (one is ~1.5 KiB). */
+export const MAX_TOKEN_RESPONSE_BYTES = 64 * 1024;
 
 /** A tenant id: a GUID, or a verified domain such as `contoso.onmicrosoft.com`. */
 const TENANT =
@@ -113,6 +120,8 @@ export async function msStoreToken(
     throw new Error("entra token: the credential's tenantId is invalid");
   const res = await fetchImpl(url, {
     method: "POST",
+    // Never follow a redirect with the client secret in the body.
+    redirect: "manual",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "client_credentials",
@@ -121,16 +130,23 @@ export async function msStoreToken(
       resource: STORE_API_RESOURCE,
     }).toString(),
   });
-  if (!res.ok) {
+  if (!res.ok || isRedirect(res)) {
     await res.body?.cancel();
     throw new Error(`entra token exchange failed: ${res.status}`);
   }
   let body: { access_token?: unknown; expires_in?: unknown };
   try {
-    body = (await res.json()) as typeof body;
+    body = JSON.parse(
+      await readCappedText(
+        res,
+        MAX_TOKEN_RESPONSE_BYTES,
+        () => new Error("too large"),
+      ),
+    ) as typeof body;
   } catch {
     throw new Error("entra token exchange returned no JSON");
   }
+  if (!body || typeof body !== "object") body = {};
   const expiresIn = seconds(body.expires_in);
   if (
     typeof body.access_token !== "string" ||
