@@ -29,10 +29,14 @@ class Native extends RefCounted:
 
 func run(t: PKeyTestContext) -> void:
 	var env := PKeyFakeUpdaterEnv.new()
-	for b in [PKeySparkleBridge.new(env, "https://x/appcast.xml"), PKeyVelopackBridge.new(env, "https://x/velopack/"), PKeyWinSparkleBridge.new(env, "https://x/winsparkle.xml"), PKeyAppImageBridge.new(env)]:
+	# Each on its own OS (P5-07's facades answer `runtime` anywhere else; tests/native covers that).
+	for pair in [["macos", PKeySparkleBridge.new(env, "https://x/appcast.xml")], ["windows", PKeyVelopackBridge.new(env, "https://x/velopack/")], ["windows", PKeyWinSparkleBridge.new(env, "https://x/winsparkle.xml")], ["linux", PKeyAppImageBridge.new(env)]]:
+		var b: PKeyNativeBridge = pair[1]
+		env.os = pair[0]
 		var r: PKeyApplyResult = await b.install_and_relaunch()
 		var c: PKeyApplyResult = await b.check_now()
 		t.check("bridges: %s with no plugin is unavailable and answers unsupported (dependency)" % b.id(), not b.is_available() and not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "dependency" and r.detail.get("feature") == "update.driver" and not c.ok and c.detail.get("reason") == "dependency", str(r))
+	env.os = "linux"
 
 	var native := Native.new()
 	env.singletons["PolarisKeySparkle"] = native

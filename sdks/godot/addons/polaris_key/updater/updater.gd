@@ -41,7 +41,7 @@ var slots: PKeySlots = null
 var download_timeout := PKeyDownload.DEFAULT_TIMEOUT
 ## Seconds the outcome must stay `ready` before the launch is confirmed (tests shorten it).
 var boot_ok_seconds := float(PKeyStages.BOOT_OK_SECONDS)
-## Native bridges by name (sparkle, velopack, winsparkle, appimage); built on first use, or
+## Native bridges by name (sparkle, velopack, winsparkle, storecontext, appimage); built on first use, or
 ## injected by a test or a plugin.
 var bridges := {}
 ## Replaces DirAccess.rename_absolute for the swap (tests simulate a locked file).
@@ -270,14 +270,35 @@ func bridge(name: String) -> PKeyNativeBridge:
 			b = PKeyVelopackBridge.new(env, feed_url(name))
 		"winsparkle":
 			b = PKeyWinSparkleBridge.new(env, feed_url(name))
+		"storecontext":
+			b = PKeyStoreContextBridge.new(env, "")
 		"appimage":
 			b = PKeyAppImageBridge.new(env, "")
 		"apk":
 			b = PKeyApkBridge.new(env, "")
 		_:
 			return null
+	_configure_bridge(b)
 	bridges[name] = b
 	return b
+
+
+## What P5-07's facades need from this session: the headers (read when the updater runs, so the
+## current bearer), the build's channel as the appcast channel, and WinSparkle's EdDSA public key
+## and registry identity.
+func _configure_bridge(b: PKeyNativeBridge) -> void:
+	b.headers_source = download_headers
+	var c := core()
+	if c == null:
+		return
+	if c.channel != "":
+		b.channels = PackedStringArray([c.channel])
+	b.options = {
+		"public_key": c.options.update_eddsa_public_key,
+		"company": "PolarisKey",
+		"app": c.product,
+		"version": running_version(),
+	}
 
 
 ## The feed a native updater reads, from this session's discovery (P3-09's routes) for this
@@ -333,6 +354,8 @@ func context(decision: Dictionary) -> Dictionary:
 		"build_url": build,
 		"native_bridge": native,
 		"native_available": native != "" and active() and bridge(native).is_available(),
+		# A Store MSIX updates through StoreContext (PKeyMsStoreAdapter), only on Windows.
+		"store_bridge_available": env.platform() == "windows" and active() and bridge("storecontext").is_available(),
 	}
 
 

@@ -152,7 +152,16 @@ static func check_update_options(opts: PKeyOptions) -> String:
 	for u in [opts.update_release_url, opts.update_page_url]:
 		if u != "" and not PKeyOutletAdapter.is_https(u):
 			return "update_release_url and update_page_url must be https URLs; got '%s'." % u
+	if opts.update_eddsa_public_key != "" and not is_eddsa_public_key(opts.update_eddsa_public_key):
+		return "update_eddsa_public_key must be a raw Ed25519 public key in standard base64 (32 bytes, as Sparkle's generate_keys prints it)."
 	return ""
+
+
+## A Sparkle/WinSparkle EdDSA public key: standard base64 of exactly 32 bytes.
+static func is_eddsa_public_key(text: String) -> bool:
+	if not RegEx.create_from_string("\\A[A-Za-z0-9+/]{43}=\\z").search(text):
+		return false
+	return Marshalls.base64_to_raw(text).size() == 32
 
 
 ## Offline load: device id, token, and the verified cache. No network. A coroutine.
