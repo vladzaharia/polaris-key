@@ -50,6 +50,34 @@ Port P4-19's content-key delegation to Python and Swift, so every `delegationCas
 
 ## Acceptance
 
-- [ ] Every `delegationCases` and `dataOnlyCases` row passes in pytest and `swift test`.
-- [ ] Non-normalised paths and extension-disguised resources are refused (P4-08 review lesson).
-- [ ] The full green gate passes.
+- [x] Every `delegationCases` and `dataOnlyCases` row passes in pytest and `swift test`.
+- [x] Non-normalised paths and extension-disguised resources are refused (P4-08 review lesson).
+- [x] The full green gate passes.
+
+## Corrections from implementation
+
+- **File names.** Python's record module is `core/release_record.py` and its data-only module is
+  `update/packs/dataonly.py`. Swift's `DataOnly.swift` lives in **PolarisKeyPacks**, not
+  PolarisKeyCore: it needs the files index's path rules (`pathSafe`, now module-internal), and
+  client-core keeps `dataonly.ts` under `packs/` too.
+- **Swift's `RESERVED_RECORD_KINDS`** was already removed by P4-23; nothing was left to correct.
+- **Swift result shape.** `VerifyReleaseRecordResult` gains `.delegated(ReleaseRecordDoc,
+RecordDelegation)`, returned only when `delegation` is passed, instead of a `delegation` member
+  on `.ok`; `record` covers both and `delegation` reads the new case. `ReleaseRecordStep` gains
+  `.delegation` and `.scope`; `FeedRevocation` gains `kind`; `PackInstall` and `PackJournal` gain
+  `delegation`; `DelegatedRelease` lives in PolarisKeyCore so `UpdateCheckContent.delegated` can
+  name it. The README lists these source changes.
+- **Strict UTF-8.** Python decodes with the strict `utf-8` codec. Swift validates the bytes
+  itself (WHATWG ranges: no overlong form, surrogate or value above U+10FFFF) and runs the marker,
+  NUL and escape checks over the bytes, because `String(validating:)` needs macOS 15 and iOS 18.
+  Over valid UTF-8 a byte search gives the same verdict as client-core's string search.
+- **Holds.** client-core's engine refuses the delegated path for a hold only when the host's
+  stamp object carries `holds`, which the Node packs client never sets. Swift gains
+  `PackEngineOptions.holds` and Python reads `stamp["holds"]`, and both packs clients now pass
+  the stamp's holds (`stampHolds`). This is stricter than Node in practice, and it matches the
+  plan's §2.4 table.
+- **Pinned `pkd1-` kids.** Both SDKs refuse such a kid in `pinned_release_keys` /
+  `pinnedReleaseKeys` with `invalid-options`, as sdk-node does (§2.2).
+- **The noop re-sniff** reads the reused install's files from the seeds the preflight opened,
+  as client-core does. The chunk-index engine test runs on the default strategies, because
+  neither SDK implements the `chunk` strategy yet.
