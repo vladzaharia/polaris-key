@@ -1003,6 +1003,33 @@ export function isCanonicalChannelName(value: unknown): value is string {
 
 /** An artifact-map entry id, which is also the id of the build it declares. */
 export const ARTIFACT_ENTRY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+/**
+ * Build ids that are an architecture and nothing else (`bare_arch_artifact_id`): the declared
+ * arches, their common spellings and the Android ABIs. A warning, not an error: the id is
+ * valid, it just names no platform wherever it is shown.
+ */
+export const BARE_ARCH_BUILD_IDS: ReadonlySet<string> = new Set([
+  "arm64",
+  "x86_64",
+  "universal",
+  "armv7",
+  "wasm32",
+  "any",
+  "x64",
+  "amd64",
+  "aarch64",
+  "x86",
+  "i386",
+  "i686",
+  "ia32",
+  "arm",
+  "armhf",
+  "armv7l",
+  "arm64-v8a",
+  "armeabi-v7a",
+  "wasm",
+]);
 /** A build format: the file type (`dmg`, `zip`, `tar.gz`, `apk`, `ipa`, `exe`, `msix`, …). */
 export const ARTIFACT_FORMAT_PATTERN = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
 export const MAX_ARTIFACT_MATCH_LENGTH = 128;
@@ -1931,7 +1958,12 @@ function validateDocuments(
           }
         }
       }
-      validateDeliverables(errors, relRoot, catalogFlagKeys(manifest.schema));
+      validateDeliverables(
+        errors,
+        warnings,
+        relRoot,
+        catalogFlagKeys(manifest.schema),
+      );
       validatePublishing(errors, relRoot);
       validateReleaseKeys(errors, warnings, relRoot);
       if (relRoot.access !== undefined && !isRecord(relRoot.access)) {
@@ -2731,6 +2763,7 @@ function knownChannelNames(
  */
 function validateDeliverables(
   errors: ValidationMessage[],
+  warnings: ValidationMessage[],
   relRoot: Record<string, unknown>,
   flagKeys: ReadonlySet<string>,
 ): void {
@@ -2814,7 +2847,7 @@ function validateDeliverables(
   }
   const app = raw[APP_DELIVERABLE_ID];
   if (isRecord(app) && app.kind === "app")
-    validateAppDeliverable(errors, relRoot, app, packIds, raw);
+    validateAppDeliverable(errors, warnings, relRoot, app, packIds, raw);
   else if (packIds.size > 0) {
     add(
       errors,
@@ -3404,6 +3437,7 @@ function isAttachableList(value: unknown): value is string[] {
 
 function validateAppDeliverable(
   errors: ValidationMessage[],
+  warnings: ValidationMessage[],
   relRoot: Record<string, unknown>,
   def: Record<string, unknown>,
   packIds: ReadonlySet<string>,
@@ -3710,7 +3744,20 @@ function validateAppDeliverable(
         "duplicate_artifact_id",
         `artifact id ${entry.id} is declared twice; each entry declares one build.`,
       );
-    } else seen.add(entry.id);
+    } else {
+      seen.add(entry.id);
+      // A build named by its arch alone ("arm64") reads as a bare arch wherever its id is shown
+      // (the CLI, release health, the console); name it by platform and arch instead.
+      if (BARE_ARCH_BUILD_IDS.has(entry.id.toLowerCase())) {
+        add(
+          warnings,
+          "release",
+          `/release/deliverables/app/artifacts/${i}/id`,
+          "bare_arch_artifact_id",
+          `artifact id ${entry.id} names an architecture but no platform; name the build by platform and arch (macos-${entry.id}, windows-${entry.id}, …), and its files likewise (app-macos-${entry.id}.zip).`,
+        );
+      }
+    }
     if (!isOneOf(entry.platform, RELEASE_PLATFORMS)) {
       add(
         errors,
