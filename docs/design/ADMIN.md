@@ -740,28 +740,28 @@ assignment.
 
 Declared in `mutations.ts`. A unit test enumerates every mutation and fails if one lacks an entry.
 
-| Mutation                                              | Invalidates                                                                                                                                             |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| product create / delete                               | `me`, `products`                                                                                                                                        |
-| product update                                        | `products`, `product(slug)`                                                                                                                             |
-| services update / revert                              | `product(slug)`, `services(slug)`, plus every query of a section whose enablement changed                                                               |
-| resync from repo                                      | everything under `product(slug)`: catalog, profiles, tiers, services, release._, update._, distribution.access, identity                                |
-| channel policy (promote/pin/…/floor), yank, unyank    | `release.releases`, `release.channels`, `release.health`, `release.deliverables`, `release.compat.*`, `release.packReleases.*`, `distribution.matrix.*` |
-| rollout start / set / verb                            | `distribution.matrix.*`, `distribution.rollouts`, `distribution.health`, `release.compat.*` (liveness overlay)                                          |
-| readiness refresh / override / clear                  | `distribution.readiness`, `distribution.matrix.*`, `release.compat.*`                                                                                   |
-| Sentry confirm / dismiss, auto-halt settings          | `distribution.health`, and on confirm also `distribution.rollouts` and `distribution.matrix.*`                                                          |
-| delivery access save / revert                         | `distribution.access`, `release.deliverables`                                                                                                           |
-| catalog publish                                       | `config.catalog`, `config.profiles.*`, every `license(id)` (overrides re-validate)                                                                      |
-| profile payload / create / delete                     | `config.profiles`, `config.profile(id)`, `license.licenses` (on delete)                                                                                 |
-| tier create / patch / delete                          | `license.tiers`, `license.licenses`                                                                                                                     |
-| license create / patch / enable / disable / overrides | `license.licenses`, `license(id)`, `core.devices.summary`                                                                                               |
-| key mint / revoke                                     | `license(id)`                                                                                                                                           |
-| device deauthorize / reset                            | `core.devices.*`, `core.device(id)`, `license(id)` for its license                                                                                      |
-| secret set                                            | `product(slug)` (setup), `secrets(slug)` (A-5)                                                                                                          |
-| signing prepare / activate / retire / revoke          | `product(slug)`, `keys(slug)` (A-4)                                                                                                                     |
-| edge-mint approve / revoke                            | `config.mint`, `product(slug)`                                                                                                                          |
-| outlet credential put / delete                        | `distribution.credentials`, `distribution.health` (Sentry configured)                                                                                   |
-| portal settings                                       | `identity.portal`                                                                                                                                       |
+| Mutation                                              | Invalidates                                                                                                                                                                    |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| product create / delete                               | `me`, `products`                                                                                                                                                               |
+| product update                                        | `products`, `product(slug)`                                                                                                                                                    |
+| services update / revert                              | `product(slug)`, `services(slug)`, plus every query of a section whose enablement changed                                                                                      |
+| resync from repo                                      | everything under `product(slug)`: catalog, profiles, tiers, services, release._, update._, distribution.access, identity                                                       |
+| channel policy (promote/pin/…/floor), yank, unyank    | `release.releases`, `release.channels`, `release.health`, `release.deliverables`, `release.compat.*`, `release.packReleases.*`, `distribution.matrix.*`                        |
+| rollout start / set / verb                            | `distribution.matrix.*`, `distribution.rollouts`, `distribution.health`, `release.compat.*` (liveness overlay)                                                                 |
+| readiness refresh / override / clear                  | `distribution.readiness`, `distribution.matrix.*`, `release.compat.*`                                                                                                          |
+| Sentry confirm / dismiss, auto-halt settings          | `distribution.health`, and on confirm also `distribution.rollouts` and `distribution.matrix.*`                                                                                 |
+| delivery access save / revert                         | `distribution.access`, `release.deliverables`                                                                                                                                  |
+| catalog publish                                       | `config.catalog`, `config.profiles.*`, every `license(id)` (overrides re-validate)                                                                                             |
+| profile payload / create / delete                     | `config.profiles`, `config.profile(id)`, `license.licenses` (on delete)                                                                                                        |
+| tier create / patch / delete                          | `license.tiers`, `license.licenses`                                                                                                                                            |
+| license create / patch / enable / disable / overrides | `license.licenses`, `license(id)`, `core.devices.summary`                                                                                                                      |
+| key mint / revoke                                     | `license(id)`, `license.licenses` (the list shows key counts)                                                                                                                  |
+| device deauthorize / reset                            | `core.devices.*`, `core.device(id)`, `license(id)` and `license.licenses` (device counts); from the product Devices page, which does not know the license, every `license(id)` |
+| secret set                                            | `product(slug)` (setup), `secrets(slug)` (A-5)                                                                                                                                 |
+| signing prepare / activate / retire / revoke          | `product(slug)`, `keys(slug)` (A-4)                                                                                                                                            |
+| edge-mint approve / revoke                            | `config.mint`, `product(slug)`                                                                                                                                                 |
+| outlet credential put / delete                        | `distribution.credentials`, `distribution.health` (Sentry configured)                                                                                                          |
+| portal settings                                       | `identity.portal`                                                                                                                                                              |
 
 ### 5.5 Keyboard
 
@@ -2032,6 +2032,24 @@ unchanged; add `me` fields), `main.tsx` (`QueryClientProvider`), and the worker 
   drops its Docs link (the account menu keeps "Docs home"); a `PageErrorBoundary` keeps a page that
   throws from taking the shell down; the shortcut sheet (`?`) and the global `g` shortcuts ship
   here because the user menu links to them (SH-14).
+- **CSP-safe scroll lock.** Radix's overlays lock background scroll with `react-remove-scroll`,
+  whose `react-style-singleton` injects an inline `<style>` that the Worker's `style-src 'self'`
+  blocks (every dialog, menu, popover and drawer logged a violation and the page behind still
+  scrolled). `vite.config.ts` aliases `react-style-singleton` to `src/lib/styleSingleton.ts`: the
+  same API and reference counting, the CSS applied through a constructable stylesheet
+  (`adoptedStyleSheets`), falling back to `insertRule` on an existing same-origin sheet, never a
+  `<style>` element. `test/styleSingleton.test.tsx` covers the shim; `e2e/csp.e2e.test.ts`
+  (`pnpm --filter @polaris-key/admin test:e2e`, run in CI's browser job) opens the palette, the
+  account and theme menus, the shortcut sheet, a dialog, the switcher and the mobile drawer in
+  Chromium under the Worker's exact policy and requires zero violations and a real scroll lock.
+- **The mobile drawer closes** when the window grows past 1024 px (a `matchMedia` listener), so
+  its modal layer cannot stay mounted, invisible, over the desktop layout.
+- **Page headings stay `<h2>` elements.** `LegacyPage` promotes each legacy view's first `<h2>`
+  with `aria-level="1"` (so assistive technology and `getByRole("heading", { level: 1 })` see one
+  level-1 heading) rather than rendering an `<h1>`, which would mean editing every view; the area
+  chunks replace it with `PageHeader`'s real `<h1>`.
+- **Bundle:** third-party code is split into `vendor`, `vendor-radix`, `vendor-query` and
+  `vendor-cmdk`, each under Vite's 500 kB warning.
 - **A-1:** `environment` is `null` when `PKEY_ENVIRONMENT` is unset or unrecognised (the badge
   stays hidden, as in production); `sessionExpiresAt` is the session's signed `exp`, in epoch
   seconds. Admin routes are narrative-only, so no OpenAPI or transcript change.

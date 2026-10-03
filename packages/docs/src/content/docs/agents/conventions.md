@@ -159,6 +159,15 @@ Also skips cleanly when the slug manifest is absent.
 
 The worker half skips cleanly when the admin `dist` is absent; the admin half always runs.
 
+**No inline styles at runtime either.** The SPA CSP is `style-src 'self'`, so a library that
+injects a `<style>` element is blocked in production. Radix's scroll lock does exactly that
+through `react-style-singleton`; `packages/admin/vite.config.ts` aliases that package to
+`packages/admin/src/lib/styleSingleton.ts`, which keeps its API and applies the CSS through a
+constructable stylesheet (`adoptedStyleSheets`), never a `<style>` element. A new dependency that
+injects styles needs the same treatment. `pnpm --filter @polaris-key/admin build && pnpm --filter
+@polaris-key/admin test:e2e` opens every console overlay in Chromium under the Worker's real
+policy and fails on any violation or a missing scroll lock; CI runs it in the browser job.
+
 ## Two structural gates that are not about drift
 
 Worth knowing because they fail for reasons that look mysterious:

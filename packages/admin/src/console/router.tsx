@@ -200,7 +200,13 @@ export function Link({
         if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
           return;
         if (rest.target && rest.target !== "_self") return;
-        if (!allowed(to)) e.preventDefault();
+        if (!allowed(to)) {
+          e.preventDefault();
+          return;
+        }
+        // The guards have answered for this navigation; the hashchange it causes must not ask
+        // them again (a guard would prompt twice).
+        committedHash = to;
       }}
       {...rest}
     />

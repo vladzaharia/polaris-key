@@ -119,12 +119,23 @@ const license = (slug: string): Target[] => [
   prefix(qk.devicesSummary(slug)),
 ];
 
-/** §5.4 "device deauthorize / reset". */
-const device = (slug: string, licenseId?: string): Target[] => [
-  prefix(qk.devices(slug)),
+/**
+ * §5.4 "device deauthorize / reset". The license list shows per-license device counts, so it is
+ * stale too; a product-level action does not know the device's license, so every license record.
+ */
+const device = (slug: string, licenseId?: string): Target[] =>
   licenseId === undefined
-    ? prefix(qk.licenses(slug))
-    : prefix(qk.license(slug, licenseId)),
+    ? [prefix(qk.devices(slug)), prefix(qk.licenses(slug))]
+    : [
+        prefix(qk.devices(slug)),
+        exact(qk.licenses(slug)),
+        prefix(qk.license(slug, licenseId)),
+      ];
+
+/** §5.4 "key mint / revoke": the record, and the list's key counts. */
+const licenseKey = (slug: string, id: string): Target[] => [
+  exact(qk.licenses(slug)),
+  prefix(qk.license(slug, id)),
 ];
 
 export const MUTATIONS: MutationTable = {
@@ -299,11 +310,11 @@ export const MUTATIONS: MutationTable = {
   },
   mintKey: {
     label: "license key mint",
-    invalidates: (slug, id) => [prefix(qk.license(slug, id))],
+    invalidates: (slug, id) => licenseKey(slug, id),
   },
   revokeKey: {
     label: "license key revoke",
-    invalidates: (slug, id) => [prefix(qk.license(slug, id))],
+    invalidates: (slug, id) => licenseKey(slug, id),
   },
   deauthorizeDevice: {
     label: "device deauthorize (license)",

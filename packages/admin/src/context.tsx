@@ -4,9 +4,6 @@ import type { Me } from "./api.js";
 import { queryClient } from "./console/data/queryClient.js";
 import { useProduct } from "./console/data/hooks.js";
 import type { ServiceState } from "./console/nav.js";
-// Installs the mutation → invalidation table on the API client (ADMIN.md §5.4). Imported here
-// because every legacy view imports this module, including in tests that render a view alone.
-import "./console/data/mutations.js";
 
 /**
  * TEMPORARY ADAPTER (docs/design/ADMIN.md §7.2 chunk 2; deleted in chunk 11).

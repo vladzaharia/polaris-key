@@ -210,9 +210,55 @@ describe("every old URL redirects (ADMIN.md §2.5)", () => {
     expect(parseLocation(to).redirect).toBeUndefined();
   });
 
-  it("covers every legacy tab the old router knew", () => {
-    const covered = new Set(TABLE.map(([from]) => from.split("/")[3]));
-    expect([...covered].sort()).toEqual(Object.keys(LEGACY_REDIRECTS).sort());
+  it("covers every one of the 19 tabs the old router knew", () => {
+    // The pre-redesign `Tab` union (route.ts at 17b90a32), written out so a change to the redirect
+    // table cannot quietly shrink what this test checks.
+    const OLD_TABS = [
+      "overview",
+      "services",
+      "devices",
+      "secrets",
+      "activity",
+      "settings",
+      "licenses",
+      "tiers",
+      "fingerprints",
+      "config",
+      "profiles",
+      "releases",
+      "deliverables",
+      "compatibility",
+      "distribution",
+      "distribution-matrix",
+      "distribution-health",
+      "updates",
+      "identity",
+    ];
+    expect(OLD_TABS).toHaveLength(19);
+    // Unchanged paths (Core's services, devices, activity, settings) still resolve directly.
+    const UNCHANGED = ["services", "devices", "activity", "settings"];
+    expect([...Object.keys(LEGACY_REDIRECTS), ...UNCHANGED].sort()).toEqual(
+      [...OLD_TABS].sort(),
+    );
+    for (const tab of OLD_TABS) {
+      const { route, redirect } = parseLocation(`#/p/djdl/${tab}`);
+      expect(route.kind, tab).toBe("product");
+      if (UNCHANGED.includes(tab)) expect(redirect, tab).toBeUndefined();
+      else expect(redirect, tab).toBeDefined();
+    }
+    // The three detail leaves keep their ids.
+    for (const [leaf, page] of [
+      ["licenses", "licenses"],
+      ["profiles", "profiles"],
+      ["deliverables", "deliverables"],
+    ] as const) {
+      expect(bare(parseLocation(`#/p/djdl/${leaf}/x1`).route)).toEqual({
+        kind: "product",
+        slug: "djdl",
+        page,
+        id: "x1",
+      });
+    }
   });
 
   it("keeps the query across a redirect", () => {

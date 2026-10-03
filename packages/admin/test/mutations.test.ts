@@ -1,4 +1,11 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import ts from "typescript";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -115,20 +122,126 @@ describe("no view writes around mutate()", () => {
     });
   }
 
+  const ADMIN_API = join(src, "api.ts");
+  const EXEMPT = [ADMIN_API, join(src, "console", "data", "mutations.ts")];
+  const WRITES = new Set<string>(Object.keys(MUTATIONS));
+
+  /**
+   * Every way a file can reach a write without `mutate`, found on the AST (so line breaks,
+   * aliases and destructuring cannot hide one): `api.write(...)` however it is split across
+   * lines, `api["write"]` or `api[x]`, `const a = api` / `const { write } = api`, and the same
+   * through `import { api as a }` or `import * as m` (`m.api.write`).
+   */
+  function offences(file: string): string[] {
+    const text = readFileSync(file, "utf8");
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    const apiNames = new Set<string>();
+    const namespaces = new Set<string>();
+    for (const stmt of sf.statements) {
+      if (!ts.isImportDeclaration(stmt) || !stmt.importClause) continue;
+      const spec = (stmt.moduleSpecifier as ts.StringLiteral).text;
+      const target = join(dirname(file), spec).replace(/\.js$/, ".ts");
+      if (target !== ADMIN_API) continue;
+      const bindings = stmt.importClause.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const el of bindings.elements) {
+          if ((el.propertyName ?? el.name).text === "api")
+            apiNames.add(el.name.text);
+        }
+      } else if (bindings && ts.isNamespaceImport(bindings)) {
+        namespaces.add(bindings.name.text);
+      }
+    }
+    if (apiNames.size === 0 && namespaces.size === 0) return [];
+    const isApi = (node: ts.Node): boolean =>
+      (ts.isIdentifier(node) && apiNames.has(node.text)) ||
+      (ts.isPropertyAccessExpression(node) &&
+        node.name.text === "api" &&
+        ts.isIdentifier(node.expression) &&
+        namespaces.has(node.expression.text));
+    const found: string[] = [];
+    const at = (node: ts.Node, what: string): void => {
+      const { line } = sf.getLineAndCharacterOfPosition(node.getStart());
+      found.push(`${relative(src, file)}:${line + 1} ${what}`);
+    };
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isPropertyAccessExpression(node) &&
+        isApi(node.expression) &&
+        WRITES.has(node.name.text)
+      ) {
+        at(node, `api.${node.name.text}`);
+      } else if (ts.isElementAccessExpression(node) && isApi(node.expression)) {
+        at(node, "api[...]");
+      } else if (
+        ts.isVariableDeclaration(node) &&
+        node.initializer &&
+        isApi(node.initializer)
+      ) {
+        at(node, "aliases or destructures api");
+      } else if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        isApi(node.right)
+      ) {
+        at(node, "assigns api");
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+    return found;
+  }
+
   it("every write in src/ goes through mutate()", () => {
-    const writes = Object.keys(MUTATIONS) as WriteMethod[];
-    const direct = new RegExp(`\\bapi\\.(${writes.join("|")})\\(`);
     const offenders = sources(src)
-      .filter((f) => !f.endsWith(join("src", "api.ts")))
-      .filter((f) => !f.includes(join("src", "portal")))
-      .flatMap((f) =>
-        readFileSync(f, "utf8")
-          .split("\n")
-          .map((line, i) => ({ line, i }))
-          .filter(({ line }) => direct.test(line))
-          .map(({ i }) => `${relative(src, f)}:${i + 1}`),
-      );
+      .filter((f) => !EXEMPT.includes(f))
+      .flatMap(offences);
     expect(offenders, "call mutate(...) instead").toEqual([]);
+  });
+
+  it("the check catches the shapes a regex would miss", () => {
+    const probe = join(src, "views", "__probe__.ts");
+    const cases: [string, string][] = [
+      [
+        'import { api } from "../api.js";\napi\n  .createTier("s", {} as never);',
+        "api.createTier",
+      ],
+      [
+        'import { api as a } from "../api.js";\na.deleteTier("s", "t");',
+        "api.deleteTier",
+      ],
+      [
+        'import { api } from "../api.js";\nconst { createTier } = api;',
+        "destructures",
+      ],
+      ['import { api } from "../api.js";\nconst x = api;', "aliases"],
+      [
+        'import { api } from "../api.js";\napi["createTier"]("s", {} as never);',
+        "api[...]",
+      ],
+      [
+        'import * as m from "../api.js";\nm.api.patchTier("s", "t", {} as never);',
+        "api.patchTier",
+      ],
+    ];
+    for (const [code, expected] of cases) {
+      writeFileSync(probe, code);
+      try {
+        expect(offences(probe).join("\n"), code).toContain(expected);
+      } finally {
+        rmSync(probe, { force: true });
+      }
+    }
+    // Reads are fine.
+    writeFileSync(
+      probe,
+      'import { api } from "../api.js";\nvoid api.licenses("s");',
+    );
+    try {
+      expect(offences(probe)).toEqual([]);
+    } finally {
+      rmSync(probe, { force: true });
+    }
   });
 });
 
@@ -266,14 +379,23 @@ describe("the stale-cache bugs stay fixed", () => {
     ).toEqual(["catalog", "license", "profile", "profiles"]);
   });
 
-  it("a license-scoped device action refreshes that license, not every license", () => {
+  it("a license-scoped device or key action refreshes that license and the list's counts, not other licenses", () => {
+    const keys = {
+      devices: qk.devicesSummary("djdl"),
+      list: qk.licenses("djdl"),
+      mine: qk.license("djdl", "lic_1"),
+      other: qk.license("djdl", "lic_2"),
+    };
     expect(
-      staleAfter("deauthorizeDevice", ["djdl", "lic_1", "dev_1"], {
-        devices: qk.devicesSummary("djdl"),
-        mine: qk.license("djdl", "lic_1"),
-        other: qk.license("djdl", "lic_2"),
-      }),
-    ).toEqual(["devices", "mine"]);
+      staleAfter("deauthorizeDevice", ["djdl", "lic_1", "dev_1"], keys),
+    ).toEqual(["devices", "list", "mine"]);
+    for (const method of ["mintKey", "revokeKey"] as WriteMethod[]) {
+      queryClient.clear();
+      expect(staleAfter(method, ["djdl", "lic_1", "k"], keys), method).toEqual([
+        "list",
+        "mine",
+      ]);
+    }
   });
 });
 

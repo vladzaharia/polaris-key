@@ -6,7 +6,6 @@ import { queryClient } from "./console/data/queryClient.js";
 import { useMe } from "./console/data/hooks.js";
 import { AppShell } from "./console/shell/AppShell.js";
 import { BootScreen } from "./console/shell/StatePages.js";
-import "./console/data/mutations.js";
 
 /**
  * The operator console (docs/design/ADMIN.md §2). Loads the session (`/me`, a query like any

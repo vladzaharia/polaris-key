@@ -472,6 +472,36 @@ describe("the mobile drawer (SH-2)", () => {
     await waitFor(() => expect(document.activeElement).toBe(menu));
   });
 
+  it("closes when the window grows to the desktop layout, releasing the page", async () => {
+    // A controllable matchMedia: the desktop query starts false (a phone), then flips.
+    const listeners = new Set<() => void>();
+    let desktop = false;
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      get matches() {
+        return query === "(min-width: 1024px)" ? desktop : false;
+      },
+      media: query,
+      addEventListener: (_: string, fn: () => void) => {
+        if (query === "(min-width: 1024px)") listeners.add(fn);
+      },
+      removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+    }));
+    boot("#/p/djdl", { services: ALL_ON });
+    await ready();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open navigation" }),
+    );
+    await screen.findByRole("dialog", { name: "Navigation" });
+    act(() => {
+      desktop = true;
+      for (const fn of listeners) fn();
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Navigation" })).toBeNull(),
+    );
+    expect(screen.getByRole("main").closest("[aria-hidden='true']")).toBeNull();
+  });
+
   it("closes when a link is followed", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();

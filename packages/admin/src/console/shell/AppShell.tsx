@@ -48,6 +48,9 @@ import {
 import { TopBar } from "./TopBar.js";
 import { mutate } from "../../console/data/mutations.js";
 
+/** Where the sidebar is part of the layout and the mobile drawer has no place. */
+export const DESKTOP_QUERY = "(min-width: 1024px)";
+
 /** The top bar's menu button, which the mobile drawer returns focus to. */
 export const NAV_BUTTON_ID = "console-nav-button";
 
@@ -203,6 +206,18 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   React.useEffect(() => {
     setNavOpen(false);
   }, [key]);
+  // The drawer exists only under 1024 px. If the window grows past that with it open, its modal
+  // layer (inert page, pointer lock, scroll lock) would stay mounted over the desktop layout with
+  // nothing visible to close it, so close it.
+  React.useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const desktop = window.matchMedia(DESKTOP_QUERY);
+    const onChange = (): void => {
+      if (desktop.matches) setNavOpen(false);
+    };
+    desktop.addEventListener("change", onChange);
+    return () => desktop.removeEventListener("change", onChange);
+  }, []);
   const announcement = useRouteFocus(key, pageTitle(route));
 
   useGlobalShortcuts({
