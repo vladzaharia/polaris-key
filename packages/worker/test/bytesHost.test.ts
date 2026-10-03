@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,9 +8,15 @@ import { BYTE_ROUTES } from "../src/mount.js";
 import {
   bytesHostname,
   dispatchBytesHost,
+  inertDocumentPolicy,
   isBytesHost,
   type ByteRoute,
 } from "../src/core/bytesHost.js";
+import {
+  LANDING_CSS,
+  landingCsp,
+  landingFaviconSvg,
+} from "../src/core/bytesLanding.js";
 import { BLOB_CSP } from "../src/core/blobs.js";
 import { ADMIN_COOKIE } from "../src/admin/session.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
@@ -233,10 +240,15 @@ describe("bytes host: configuration", () => {
   });
 });
 
+/** `GET /` is the one path the bytes host answers outside its routes: the landing page. */
+const isLanding = (path: string, method = "GET") =>
+  path === "/" && (method === "GET" || method === "HEAD");
+
 describe("bytes host: isolation", () => {
   it("every console, portal, docs and product path answers the plain not-found there", async () => {
     for (const path of CONSOLE_PATHS) {
       for (const method of ["GET", "POST"]) {
+        if (isLanding(path, method)) continue; // the landing page: its own suite below
         const res = await worker.fetch(
           new Request(BYTES + path, { method }),
           env(BYTES),
@@ -262,6 +274,7 @@ describe("bytes host: isolation", () => {
     // hostname comparison would hand it the whole console.
     for (const base of [BYTES + ".", "https://DL.example.test.:443"]) {
       for (const path of CONSOLE_PATHS) {
+        if (isLanding(path)) continue; // the landing page: its own suite below
         const res = await worker.fetch(new Request(base + path), env(BYTES));
         expect(res.status, base + path).toBe(404);
         expect(await res.json(), base + path).toEqual({ error: "not_found" });
@@ -300,6 +313,288 @@ describe("bytes host: isolation", () => {
       const withIt = await outcome(new Request(CONSOLE + path), env(BYTES));
       expect(withIt, path).toEqual(without);
     }
+  });
+});
+
+// ── The landing page (BRAND §8, `core/bytesLanding.ts`) ──────────────────────────────────────
+
+function landingEnv(blobOrigin: string, consoleOrigin?: string): Env {
+  const e = env(blobOrigin);
+  if (consoleOrigin !== undefined) e.CONSOLE_ORIGIN = consoleOrigin;
+  return e;
+}
+
+function sha256B64(text: string): string {
+  return createHash("sha256").update(text).digest("base64");
+}
+
+describe("bytes host: the landing page at /", () => {
+  it("GET / answers the static page under its own inert policy, with every host header", async () => {
+    const res = await worker.fetch(
+      new Request(`${BYTES}/`, { headers: { cookie: "a=b" } }),
+      landingEnv(BYTES, CONSOLE),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toBe(await landingCsp());
+    expect(csp).not.toBe(BLOB_CSP);
+    // The policy the dispatcher checks for any HTML on this host, and what it says.
+    expect(inertDocumentPolicy(csp)).toBe(true);
+    const directives = csp.split(";").map((d) => d.trim());
+    expect(directives).toContain("sandbox");
+    expect(directives).toContain("default-src 'none'");
+    expect(directives).toContain("img-src data:");
+    expect(directives).toContain("frame-ancestors 'none'");
+    expect(directives).toContain("base-uri 'none'");
+    expect(directives).toContain("form-action 'none'");
+    expect(csp).not.toMatch(
+      /script|connect-src|font-src|allow-|'self'|'unsafe/,
+    );
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("x-frame-options")).toBe("DENY");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(res.headers.get("content-disposition")).toBeNull();
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("strict-transport-security")).toContain("max-age=");
+
+    const html = await res.text();
+    // The one stylesheet is exactly the hashed one.
+    const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(
+      (m) => m[1]!,
+    );
+    expect(styles).toEqual([LANDING_CSS]);
+    expect(csp).toContain(`'sha256-${sha256B64(LANDING_CSS)}'`);
+    // No script, no handler, no style attribute, no form, no frame, no external fetch.
+    expect(html).not.toMatch(
+      /<script|\son[a-z]+=|\sstyle=|<form|<iframe|<object|<embed|<link rel="stylesheet"|@import|@font-face|url\(/i,
+    );
+    // The only URLs are the console's two links, the SVG namespace and the data: favicon.
+    const urls = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map(
+      (m) => m[1]!,
+    );
+    expect(urls.filter((u) => !u.startsWith("data:image/svg+xml,"))).toEqual([
+      `${CONSOLE}/`,
+      `${CONSOLE}/docs/`,
+    ]);
+    expect(
+      html
+        .match(/https?:\/\/[^"\s)<]+/g)!
+        .filter((u) => u !== "http://www.w3.org/2000/svg"),
+    ).toEqual([`${CONSOLE}/`, `${CONSOLE}/docs/`]);
+    // The Star Cut Update identity, the one-line explanation, no environment label in prod.
+    expect(html).toContain('role="img" aria-label="Polaris Key Update"');
+    expect(html).toContain("<title>Polaris Key Update</title>");
+    expect(html).toContain(
+      "The download host for games and apps built on Polaris Key.",
+    );
+    expect(html).not.toContain("environment</p>");
+    expect(html).not.toContain("noindex");
+  });
+
+  it("HEAD / answers the same headers with no body", async () => {
+    const e = landingEnv(BYTES, CONSOLE);
+    const get = await worker.fetch(new Request(`${BYTES}/`), e);
+    const head = await worker.fetch(
+      new Request(`${BYTES}/`, { method: "HEAD" }),
+      e,
+    );
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+    for (const h of [
+      "content-type",
+      "content-security-policy",
+      "x-content-type-options",
+      "cache-control",
+    ])
+      expect(head.headers.get(h), h).toBe(get.headers.get(h));
+  });
+
+  it("the page is static: no product, query or header changes a byte of it", async () => {
+    const e = landingEnv(BYTES, CONSOLE);
+    const bare = await (await worker.fetch(new Request(`${BYTES}/`), e)).text();
+    const db = makeTestDb();
+    await seedProduct(db, "djdl");
+    for (const req of [
+      new Request(`${BYTES}/?product=djdl&x=<script>`),
+      new Request(`${BYTES}/`, {
+        headers: { "user-agent": "<script>", "accept-language": "fr" },
+      }),
+    ]) {
+      const res = await dispatchBytesHost(req, e, db, BYTE_ROUTES);
+      expect(await res.text()).toBe(bare);
+    }
+    expect(bare).not.toContain("djdl");
+  });
+
+  it("any other method on / keeps the plain not-found", async () => {
+    for (const method of ["POST", "PUT", "DELETE", "PATCH", "OPTIONS"]) {
+      const res = await worker.fetch(
+        new Request(`${BYTES}/`, { method }),
+        landingEnv(BYTES, CONSOLE),
+      );
+      expect(res.status, method).toBe(404);
+      expect(await res.json(), method).toEqual({ error: "not_found" });
+      expect(res.headers.get("content-security-policy"), method).toBe(BLOB_CSP);
+    }
+  });
+
+  it("every other path is unchanged: the plain not-found, never HTML", async () => {
+    for (const path of [
+      "//",
+      "/index.html",
+      "/favicon.ico",
+      "/favicon.svg",
+      "/site.webmanifest",
+      "/apple-touch-icon.png",
+      "/robots.txt",
+      "/%2F",
+      "/.",
+      "/?",
+    ]) {
+      const res = await worker.fetch(
+        new Request(BYTES + path),
+        landingEnv(BYTES, CONSOLE),
+      );
+      const isRoot = new URL(BYTES + path).pathname === "/";
+      if (isRoot) {
+        // `/.` and `/?` are `/` once the URL is parsed: the page itself.
+        expect(res.status, path).toBe(200);
+        continue;
+      }
+      expect(res.status, path).toBe(404);
+      expect(res.headers.get("content-type") ?? "", path).not.toMatch(/html/);
+      expect(res.headers.get("content-security-policy"), path).toBe(BLOB_CSP);
+    }
+  });
+
+  it("the fully-qualified, upper-case or ported bytes host gets the page too", async () => {
+    for (const base of [`${BYTES}.`, "https://DL.EXAMPLE.TEST:443"]) {
+      const res = await worker.fetch(
+        new Request(`${base}/`),
+        landingEnv(BYTES, CONSOLE),
+      );
+      expect(res.status, base).toBe(200);
+      expect(res.headers.get("content-security-policy"), base).toBe(
+        await landingCsp(),
+      );
+    }
+  });
+
+  it("the console host's / is untouched by it", async () => {
+    const without = await outcome(new Request(`${CONSOLE}/`), env());
+    const withIt = await outcome(
+      new Request(`${CONSOLE}/`),
+      landingEnv(BYTES, CONSOLE),
+    );
+    expect(withIt).toEqual(without);
+    expect(JSON.stringify(withIt)).not.toContain(
+      "The download host for games and apps",
+    );
+  });
+
+  it("staging and dev hosts serve the same page, naming their environment and console", async () => {
+    for (const [blob, consoleOrigin, label] of [
+      ["https://dl-staging.plrs.im", "https://key-staging.plrs.im", "Staging"],
+      ["https://dl-dev.plrs.im", "https://key-dev.plrs.im", "Development"],
+    ] as const) {
+      const res = await worker.fetch(
+        new Request(`${blob}/`),
+        landingEnv(blob, consoleOrigin),
+      );
+      expect(res.status, blob).toBe(200);
+      expect(res.headers.get("content-security-policy"), blob).toBe(
+        await landingCsp(),
+      );
+      const html = await res.text();
+      expect(html, blob).toContain(`<p class="env">${label} environment</p>`);
+      expect(html, blob).toContain(
+        `<title>Polaris Key Update (${label})</title>`,
+      );
+      expect(html, blob).toContain(`href="${consoleOrigin}/"`);
+      expect(html, blob).toContain(`href="${consoleOrigin}/docs/"`);
+      expect(html, blob).toContain(
+        '<meta name="robots" content="noindex, nofollow">',
+      );
+      // Their other paths and their console hosts are as before.
+      const other = await worker.fetch(
+        new Request(`${blob}/manage`),
+        landingEnv(blob, consoleOrigin),
+      );
+      expect(other.status, blob).toBe(404);
+      expect(
+        await outcome(
+          new Request(`${consoleOrigin}/`),
+          landingEnv(blob, consoleOrigin),
+        ),
+      ).toEqual(await outcome(new Request(`${consoleOrigin}/`), env()));
+    }
+  });
+
+  it("production links key.plrs.im, and an unusable CONSOLE_ORIGIN falls back to it", async () => {
+    for (const consoleOrigin of [
+      "https://key.plrs.im",
+      undefined,
+      "",
+      "not a url",
+      "javascript:alert(1)",
+      "https://dl.plrs.im",
+    ]) {
+      const res = await worker.fetch(
+        new Request("https://dl.plrs.im/"),
+        landingEnv("https://dl.plrs.im", consoleOrigin),
+      );
+      const html = await res.text();
+      expect(html, String(consoleOrigin)).toContain(
+        'href="https://key.plrs.im/"',
+      );
+      expect(html, String(consoleOrigin)).toContain(
+        'href="https://key.plrs.im/docs/"',
+      );
+      expect(html).not.toContain("javascript:");
+      expect(html).not.toContain("environment</p>");
+    }
+  });
+
+  it("with BLOB_ORIGIN unset there is no bytes host, so no landing page anywhere", async () => {
+    const without = await outcome(new Request(`${BYTES}/`), env());
+    expect(JSON.stringify(without)).not.toContain(
+      "The download host for games and apps",
+    );
+  });
+
+  it("the favicon is the kit's adaptive Star Cut favicon, inlined", () => {
+    const kit = readFileSync(
+      join(
+        HERE,
+        "..",
+        "node_modules",
+        "@polaris-key",
+        "brand",
+        "kit",
+        "04-web",
+        "update",
+        "favicon.svg",
+      ),
+      "utf8",
+    );
+    const ours = landingFaviconSvg();
+    const paths = (svg: string) =>
+      [...svg.matchAll(/<path class="(\w+)" d="([^"]+)"/g)].map((m) => [
+        m[1],
+        m[2],
+      ]);
+    // The same inks, with three-digit hex spelled out (the kit writes `#fff`).
+    const style = (svg: string) =>
+      /<style>([^<]+)<\/style>/
+        .exec(svg)?.[1]
+        ?.replace(/#([0-9a-f])([0-9a-f])([0-9a-f])\b/gi, "#$1$1$2$2$3$3");
+    expect(paths(ours)).toEqual(paths(kit));
+    expect(paths(ours).length).toBeGreaterThan(0);
+    expect(style(ours)).toBe(style(kit));
+    expect(ours).not.toMatch(/<script|href=|on[a-z]+=/i);
   });
 });
 

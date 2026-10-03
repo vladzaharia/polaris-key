@@ -473,8 +473,11 @@ The ring is violet in every section and both themes (≥ 3:1 everywhere).
 ## 8. The bytes host, dl.plrs.im
 
 The bytes host (`https://dl.plrs.im`, with `dl-staging` and `dl-dev`) serves release artifacts and
-packs. Its root currently answers 404. A later work package builds a simple landing page; this is
-its identity and content contract.
+packs. Its root (`GET /`) answers a static landing page built to this contract
+(`packages/worker/src/core/bytesLanding.ts`). Two choices it records: the favicon is the
+`web/update/favicon.svg` drawing inlined as a `data:` URI, so the host gains no icon routes; and
+body text uses the system stack behind Rubik with no `@font-face`, because the wordmark is outlined
+in the lockup and a font file would widen the host's inert-document policy (`font-src`).
 
 **Identity**
 

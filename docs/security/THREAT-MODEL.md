@@ -256,6 +256,20 @@ and could try to toss `Domain=plrs.im` cookies at it. The compensations, each te
   dispatcher checks (`inertDocumentPolicy`) and refuses unless it is itself a `sandbox` without
   `allow-scripts` or `allow-same-origin` (so the page still runs no script and has an opaque
   origin) with `default-src 'none'` and nothing but hashed styles;
+  the host's landing page is the second and last HTML answer: `GET /` (and `HEAD /`), exactly
+  that path, on the bytes host only (`core/bytesLanding.ts`, BRAND §8). It is a static document:
+  the Star Cut Update lockup as inline SVG, one sentence on what the host is, and links to the
+  console and the docs. It is built from the brand package and two validated deployment variables
+  (`CONSOLE_ORIGIN`, `BLOB_ORIGIN`), so no request input, product, release, file, token or key
+  reaches it, and it reads no D1, KV or R2. The dispatcher admits it through the same check as a
+  `document` route (`documentPolicy` → `inertDocumentPolicy`). Its policy is `sandbox` with no
+  tokens, `default-src 'none'`, its one stylesheet by SHA-256, `img-src data:` for the inline
+  favicon, and `frame-ancestors`, `base-uri` and `form-action` all `'none'`. It has no script,
+  no font file and no external request, and the host's `nosniff`, `no-referrer` and cookie
+  stripping apply to it as to every answer. Any other method on `/` and every other path
+  (`/favicon.ico`, `/index.html` included) keeps the plain not-found, and the byte routes' type
+  rule is unchanged, so no blob path can answer `text/html` (`test/bytesHost.test.ts`, and the
+  workerd lane for `/`);
 - no cookie is read or set on the host: `Cookie` is stripped before a byte route sees the
   request and `Set-Cookie` from every response;
 - the console's session cookies are host-only: `__Host-pkey_admin` and `__Host-pkey_portal`

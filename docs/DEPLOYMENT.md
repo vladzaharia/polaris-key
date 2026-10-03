@@ -276,8 +276,11 @@ Rules for the bucket, each one load-bearing:
 - **Same-site with the console.** `dl.plrs.im` is a `plrs.im` sibling, so it is same-site with
   `key.plrs.im`. That is an owner decision; the Worker compensates (`sandbox` CSP, `nosniff`,
   no HTML/SVG/XML/script types, no cookies read or set on the host, host-only console
-  cookies). The one HTML answer, the public download page (P2b-06), is script-free and leaves
-  under its own sandboxed policy, which the dispatcher checks. Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
+  cookies). The two HTML answers, the public download page (P2b-06) and the host's landing
+  page at exactly `/` (static, BRAND §8), are script-free and leave under their own sandboxed
+  policies, which the dispatcher checks. The landing page links `CONSOLE_ORIGIN` (falling back
+  to `https://key.plrs.im` when it is unset or unusable) and, on `dl-staging` and `dl-dev`, names
+  the environment under its title and asks not to be indexed. Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
   anywhere on the platform.
 
 After the next deploy, check the isolation from outside:
@@ -288,6 +291,11 @@ curl -sI https://dl.plrs.im/manage | grep -iE '^(HTTP|content-security-policy|x-
 # The fully-qualified form (trailing dot) must answer the same, not the console:
 curl -sI https://dl.plrs.im./manage | grep -iE '^(HTTP|content-security-policy|x-content-type-options)'
 # HTTP/2 404, content-security-policy: sandbox; ..., x-content-type-options: nosniff
+# The root is the static landing page, under its own inert policy, with no cookie:
+curl -sI https://dl.plrs.im/ | grep -iE '^(HTTP|content-type|content-security-policy|set-cookie)'
+# HTTP/2 200, content-type: text/html; charset=utf-8,
+# content-security-policy: sandbox; default-src 'none'; style-src 'sha256-…'; img-src data:; …
+# and no set-cookie line. Every other path (/favicon.ico included) is still the 404 above.
 ```
 
 Since P2-05 the host serves Release's three byte routes (`/<p>/release/builds/…`,

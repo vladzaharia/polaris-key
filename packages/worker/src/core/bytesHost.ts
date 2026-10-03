@@ -33,6 +33,11 @@
  *     none is set (`Set-Cookie` is stripped from every response);
  *   - the console's session cookies are host-only (`__Host-` prefix, no `Domain`), so the
  *     browser never sends them to `dl.plrs.im` in the first place.
+ *
+ * ONE HTML ANSWER OUTSIDE THE ROUTES: `GET /` (and `HEAD /`) is the host's static landing page
+ * (`bytesLanding.ts`, BRAND §8). It is admitted through the same inert-document check as a
+ * `document` route (`documentPolicy`), so it carries a `sandbox` policy with no script source,
+ * and every header rule above applies to it unchanged.
  */
 
 import type { Env } from "../env.js";
@@ -42,6 +47,7 @@ import { errorResponse, notFound } from "./errors.js";
 import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "./cors.js";
 import { loadProductPublic, type ProductPublic } from "./products.js";
+import { isLandingPath, landingResponse } from "./bytesLanding.js";
 import {
   buildHooks,
   type DescriptorHooks,
@@ -342,6 +348,17 @@ async function answer(
 ): Promise<Answer> {
   const plain = (res: Response): Answer => ({ res, documentCsp: null });
   const pathname = new URL(req.url).pathname;
+  // The host's landing page (BRAND §8, `bytesLanding.ts`): exactly `/`, GET or HEAD. A static
+  // document admitted only under the same inert-document check as a `document` route; any other
+  // method on `/` keeps the plain not-found, and no other path can reach it.
+  if (isLandingPath(pathname)) {
+    if (req.method !== "GET" && req.method !== "HEAD") return plain(notFound());
+    const res = await landingResponse(req, env);
+    const csp = documentPolicy(res);
+    if (csp !== null) return { res, documentCsp: csp };
+    await res.body?.cancel().catch(() => undefined);
+    return plain(notFound());
+  }
   for (const route of routes) {
     const matched = route.match(pathname);
     if (!matched) continue;
