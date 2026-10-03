@@ -1,0 +1,11 @@
+[configuration]
+entry_symbol = "pkey_win_init"
+compatibility_minimum = "4.5"
+
+[libraries]
+windows.debug.x86_64 = "res://addons/pkey_native/bin/pkey_win.dll"
+windows.release.x86_64 = "res://addons/pkey_native/bin/pkey_win.dll"
+
+[dependencies]
+windows.debug.x86_64 = { "res://addons/pkey_native/bin/velopack_libc.dll": "", "res://addons/pkey_native/bin/WinSparkle.dll": "" }
+windows.release.x86_64 = { "res://addons/pkey_native/bin/velopack_libc.dll": "", "res://addons/pkey_native/bin/WinSparkle.dll": "" }
