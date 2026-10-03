@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v3)                                                                                                                                   |
 | Size        | 1 engineer-weeks                                                                                                                                 |
 | Depends on  | [P4-11](P4-11-chunk-sync-sdks.md), [P4-05](P4-05-pack-transports-cdn.md), [P1b-05](P1b-05-runners.md)                                            |
-| Unblocks    | none                                                                                                                                             |
+| Unblocks    | [P4-29](P4-29-feed-delta-menu.md)                                                                                                                |
 | Role        | `pkey-implementer`                                                                                                                               |
 | Plan mode   | no: the stored artifact and the descriptor do not change; `dcz` framing is added at the edge                                                     |
 | Gates       | none in the graph; in practice rule 10 (the payload URL is a new route: OpenAPI, `routeCoverage`, `routes.mdx`) and the Chromium runner (P1b-05) |

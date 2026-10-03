@@ -1,16 +1,16 @@
 # P4-29 The feed's delta menu: offer lazy deltas in the signed feed, read them in every SDK's planner
 
-| Field       | Value                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v3)                                                                                                                            |
-| Size        | 1–1.5 engineer-weeks                                                                                                                      |
-| Depends on  | [P4-17](P4-17-lazy-deltas.md), [P4-13](P4-13-revocation-floors-decision.md), [P4-18](P4-18-web-dcz.md)                                    |
-| Unblocks    | none                                                                                                                                      |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                     |
-| Plan mode   | yes: `program/plans/P4-29.md` is written and approved before any code                                                                     |
+| Field       | Value                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P4: Packs (v3)                                                                                                                                   |
+| Size        | 1–1.5 engineer-weeks                                                                                                                             |
+| Depends on  | [P4-17](P4-17-lazy-deltas.md), [P4-13](P4-13-revocation-floors-decision.md), [P4-18](P4-18-web-dcz.md)                                           |
+| Unblocks    | none                                                                                                                                             |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                            |
+| Plan mode   | yes: `program/plans/P4-29.md` is written and approved before any code                                                                            |
 | Gates       | plan mode; corpus (`feedContentCases`, a new `plan-matrix.json` section, mirrors); drift gates; every SDK; threat model; generated docs; workerd |
-| Human input | approval of the plan (merging the plan PR); nothing else (the corpus uses test keys and the committed content blobs)                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                 |
+| Human input | approval of the plan (merging the plan PR); nothing else (the corpus uses test keys and the committed content blobs)                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                        |
 
 ## Goal
 
