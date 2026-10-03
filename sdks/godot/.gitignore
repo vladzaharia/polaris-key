@@ -8,3 +8,5 @@ native/macos/dist/
 native/windows/dist/
 native/windows/bin/
 native/windows/velopack/shim/target/
+# MSVC object files SCons writes beside the Windows sources.
+native/windows/**/*.obj
