@@ -340,7 +340,13 @@ export class PacksClient {
 
   private async boot(): Promise<PackEngine> {
     const { ctx } = this.w;
-    const stamp = await this.readStamp();
+    // plans/P4-19.md §2.4: the engine refuses the delegated path for a release the stamp holds,
+    // and `parseContentStamp` carries no holds, so they ride along from the stamp's own bytes.
+    const parsed = await this.readStamp();
+    const stamp: AppContent | null = parsed && {
+      ...parsed,
+      holds: stampHolds(await this.stampBytes()) ?? [],
+    };
     const z = await selectNodeZstd({ mode: this.opts.zstd ?? "auto" });
     this.zstdInfo = z.info;
     const root = this.opts.dir ?? join(ctx.dirs.data, "packs");
