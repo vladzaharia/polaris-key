@@ -342,6 +342,116 @@ describe("publishing a godot.pck pack", () => {
     expect(server.calls).toEqual([]);
   });
 
+  it("P4-28: refuses an unlisted app script reference, and admits it listed in content.attachable", async () => {
+    const scene = new TextEncoder().encode(
+      '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://scripts/die.gd" id="1"]\n\n[node name="Die" type="Node3D"]\nscript = ExtResource("1")\n',
+    );
+    const files = {
+      "default/diceroll.core3d.pck": pck([
+        ...kaykitV2(),
+        ["assets/kaykit/die.tscn", scene],
+      ]),
+      ...l10nTrees(),
+    };
+    const refused = await setup({}, files);
+    await expect(
+      publishPack(opts(refused.cwd, refused.server).o),
+    ).rejects.toThrow(
+      /diceroll\.core3d\.pck: assets\/kaykit\/die\.tscn: references the app script res:\/\/scripts\/die\.gd, which the app does not list as attachable\./,
+    );
+    expect(refused.server.calls).toEqual([]);
+    const listed = await setup(
+      { attachable: '["res://scripts/die.gd"]' },
+      files,
+    );
+    const { io, o } = opts(listed.cwd, listed.server, { dryRun: true });
+    await publishPack(o);
+    expect(io.err()).not.toContain("Lint failed");
+  });
+
+  it("P4-28: --script-extensions and the Action's script-extensions input refuse a .lua file", async () => {
+    const files = {
+      "default/diceroll.core3d.pck": pck([
+        ...kaykitV2(),
+        ["assets/kaykit/brain.lua", new TextEncoder().encode("print(1)\n")],
+      ]),
+      ...l10nTrees(),
+    };
+    const { cwd, server } = await setup({}, files);
+    // Without the setting a .lua file is data.
+    await publishPack({ ...opts(cwd, server).o, dryRun: true });
+    const lua =
+      /diceroll\.core3d\.pck: assets\/kaykit\/brain\.lua: a script; a pack carries data only/;
+    await expect(
+      publishPack({ ...opts(cwd, server).o, scriptExtensions: ["lua"] }),
+    ).rejects.toThrow(lua);
+    const io = capture();
+    const code = await runPkey(
+      [
+        "release",
+        "publish",
+        "--product",
+        SLUG,
+        "--dir",
+        "dist",
+        "--version",
+        "1.0.0",
+        "--deliverable",
+        "diceroll.core3d",
+        "--script-extensions",
+        "wren,lua",
+        "--script-types",
+        "LuaScript",
+        "--dry-run",
+      ],
+      {
+        cwd,
+        stdout: io.stdout,
+        stderr: io.stderr,
+        env: actionsEnv(),
+        fetchImpl: server.fetchImpl,
+        sleep: instant,
+      },
+    );
+    expect(code).toBe(1);
+    expect(io.err()).toMatch(lua);
+    const aio = capture();
+    const acode = await runAction({
+      env: {
+        ...actionsEnv(),
+        INPUT_PRODUCT: SLUG,
+        INPUT_DELIVERABLE: "diceroll.core3d",
+        INPUT_VERSION: "1.0.0",
+        INPUT_DIR: "dist",
+        "INPUT_BASE-URL": BASE,
+        "INPUT_RELEASE-KEY": key.pem,
+        "INPUT_SCRIPT-EXTENSIONS": "lua",
+        "INPUT_DRY-RUN": "true",
+      },
+      cwd,
+      stdout: aio.stdout,
+      stderr: aio.stderr,
+      fetchImpl: server.fetchImpl,
+      sleep: instant,
+      exec: () => "v1.5.7",
+    });
+    expect(acode).toBe(1);
+    expect(aio.err()).toMatch(lua);
+    // A tree pack takes neither setting; a malformed extension is refused.
+    await expect(
+      publishPack({
+        ...opts(cwd, server).o,
+        deliverable: "diceroll.l10n",
+        scriptExtensions: ["lua"],
+      }),
+    ).rejects.toThrow(
+      /apply to a godot\.pck pack's lint; diceroll\.l10n is a files\.tree pack/,
+    );
+    await expect(
+      publishPack({ ...opts(cwd, server).o, scriptExtensions: [".lua"] }),
+    ).rejects.toThrow(/bare extensions/);
+  });
+
   it("retries a failed stage round once with a new ticket", async () => {
     const { cwd, server } = await setup();
     server.failStage = 1;

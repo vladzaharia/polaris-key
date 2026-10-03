@@ -185,6 +185,22 @@ export interface PackPublishOptions {
   providesFile?: string;
   /** P4-20 `--removes`: content ids this release stops providing, acknowledged. */
   removes?: string[];
+  /**
+   * P4-28 `--script-extensions` / the Action's `script-extensions`: extensions the lint refuses as
+   * scripts beside `.gd`, `.gdc` and `.cs` (an app's GDExtension script language; the device asks
+   * its engine). `godot.pck` only.
+   */
+  scriptExtensions?: string[];
+  /** P4-28 `--script-types`: that language's script class names (markers and reference types). */
+  scriptTypes?: string[];
+}
+
+/** The lint settings beyond the pack's own declaration (P4-28). */
+export interface PackLintSettings {
+  /** `deliverables.app.content.attachable`. */
+  attachable?: readonly string[];
+  scriptExtensions?: readonly string[];
+  scriptTypes?: readonly string[];
 }
 
 export interface PackVariantReport {
@@ -231,6 +247,33 @@ export interface PackPublishResult {
 
 // ── 1. The declaration and the payloads ──────────────────────────────────────
 
+/**
+ * P4-28: `--script-extensions` are bare extensions (`lua`, no dot) and `--script-types` class
+ * names; both apply to a `godot.pck` pack's lint only, so they are refused for any other type
+ * rather than silently ignored.
+ */
+export function checkScriptKinds(
+  pack: Pick<ManifestPackDeliverable, "id" | "type">,
+  opts: Pick<PackPublishOptions, "scriptExtensions" | "scriptTypes">,
+): void {
+  const exts = opts.scriptExtensions ?? [];
+  const types = opts.scriptTypes ?? [];
+  if ((exts.length || types.length) && pack.type !== "godot.pck")
+    throw new Error(
+      `--script-extensions and --script-types apply to a godot.pck pack's lint; ${pack.id} is a ${pack.type} pack.`,
+    );
+  const badExt = exts.find((x) => !/^[A-Za-z0-9_]{1,32}$/.test(x));
+  if (badExt !== undefined)
+    throw new Error(
+      `--script-extensions takes bare extensions (lua, wren; letters, digits and _), not ${JSON.stringify(badExt)}.`,
+    );
+  const badType = types.find((x) => !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(x));
+  if (badType !== undefined)
+    throw new Error(
+      `--script-types takes script class names (LuaScript), not ${JSON.stringify(badType)}.`,
+    );
+}
+
 /** The one `*.pck` file directly in `dir` (markers excluded). */
 async function findPck(dir: string): Promise<string> {
   let names: string[];
@@ -270,6 +313,7 @@ export async function loadVariant(
   pack: ManifestPackDeliverable,
   variant: Record<string, string>,
   root: string,
+  settings: PackLintSettings = {},
 ): Promise<LoadedVariant> {
   const key = variantKey(variant);
   const dir = path.join(root, variantDirName(variant));
@@ -281,6 +325,11 @@ export async function loadVariant(
     const lint = lintPck(strip.directory, strip.bytes, {
       prefixes: pack.handler.prefixes ?? [],
       ...(pack.requires.engine ? { engine: pack.requires.engine } : {}),
+      ...(settings.attachable ? { attachable: settings.attachable } : {}),
+      ...(settings.scriptExtensions
+        ? { scriptExtensions: settings.scriptExtensions }
+        : {}),
+      ...(settings.scriptTypes ? { scriptTypes: settings.scriptTypes } : {}),
     });
     const payload = containerPayload(strip.bytes, strip.directory);
     const paths = lintTreePaths(payload.files.map((f) => f.path));
@@ -568,6 +617,7 @@ export async function publishPack(
     throw new Error(
       `--version ${version} does not parse under ${packId}'s ${pack.versioning.scheme} scheme.`,
     );
+  checkScriptKinds(pack, opts);
   const releaseId = `${packId}@${version}`;
   // P4-20: the content ids this release provides and the drops it acknowledges (`saveCompat.ts`).
   const saveCompat = await collectProvides({
@@ -590,7 +640,17 @@ export async function publishPack(
   const root = path.resolve(opts.cwd, opts.dir);
   const variants: LoadedVariant[] = [];
   for (const v of declaredVariants(pack))
-    variants.push(await loadVariant(pack, v, root));
+    variants.push(
+      await loadVariant(pack, v, root, {
+        ...(ctx.app?.content?.attachable
+          ? { attachable: ctx.app.content.attachable }
+          : {}),
+        ...(opts.scriptExtensions
+          ? { scriptExtensions: opts.scriptExtensions }
+          : {}),
+        ...(opts.scriptTypes ? { scriptTypes: opts.scriptTypes } : {}),
+      }),
+    );
   const errors = variants.flatMap((v) => v.lintErrors);
   for (const v of variants) for (const w of v.lintWarnings) warn(w);
   const formats = new Set(variants.map((v) => v.formatVersion));

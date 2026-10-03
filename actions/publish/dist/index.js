@@ -2762,6 +2762,18 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
                 }
               }
             },
+            "attachable": {
+              "description": "P4-28: the app scripts (res:// paths, res://…/ directories) and UIDs (uid://, canonical) a godot.pck pack may reference outside itself; the publish lint refuses any other reference to an app script or out-of-pack UID, as the device does with PKeyOptions.pack_attachable. Absent: nothing is attachable. Paths must already be normal (the validator also refuses Windows device names and segments ending in a dot or a space).",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 256,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "maxLength": 1024,
+                "pattern": "^(uid://[a-y0-8]{1,13}|res://(?!.*\\\\.\\\\.)(?!.*\\\\./)(?!\\\\.pkey(/|$))([ !#-)+-.0-9;=@-\\\\[\\\\]-{}~]+/)*[ !#-)+-.0-9;=@-\\\\[\\\\]-{}~]+/?)$"
+              }
+            },
             "holds": false
           },
           "required": ["contentApi"]
@@ -8640,7 +8652,7 @@ var require_cst = __commonJS({
     var cstScalar = require_cst_scalar();
     var cstStringify = require_cst_stringify();
     var cstVisit = require_cst_visit();
-    var BOM2 = "\uFEFF";
+    var BOM3 = "\uFEFF";
     var DOCUMENT = "";
     var FLOW_END = "";
     var SCALAR = "";
@@ -8648,7 +8660,7 @@ var require_cst = __commonJS({
     var isScalar = (token) => !!token && (token.type === "scalar" || token.type === "single-quoted-scalar" || token.type === "double-quoted-scalar" || token.type === "block-scalar");
     function prettyToken(token) {
       switch (token) {
-        case BOM2:
+        case BOM3:
           return "<BOM>";
         case DOCUMENT:
           return "<DOC>";
@@ -8662,7 +8674,7 @@ var require_cst = __commonJS({
     }
     function tokenType(source) {
       switch (source) {
-        case BOM2:
+        case BOM3:
           return "byte-order-mark";
         case DOCUMENT:
           return "doc-mode";
@@ -8724,7 +8736,7 @@ var require_cst = __commonJS({
     exports.setScalarValue = cstScalar.setScalarValue;
     exports.stringify = cstStringify.stringify;
     exports.visit = cstVisit.visit;
-    exports.BOM = BOM2;
+    exports.BOM = BOM3;
     exports.DOCUMENT = DOCUMENT;
     exports.FLOW_END = FLOW_END;
     exports.SCALAR = SCALAR;
@@ -12982,6 +12994,8 @@ var MAX_PACK_PREFIXES = 32;
 var MAX_PACK_PREFIX_BYTES = 256;
 var MAX_PACK_DELTA_BASES = 8;
 var MAX_CONTENT_API = 9007199254740991;
+var MAX_ATTACHABLE_ENTRIES = 256;
+var MAX_ATTACHABLE_ENTRY_BYTES = 1024;
 var APP_DELIVERABLE_ID = "app";
 var DELIVERABLE_ID_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 var MAX_DELIVERABLE_ID_LENGTH = 64;
@@ -14782,6 +14796,58 @@ function isPackPrefixList(value) {
     (v) => typeof v === "string" && new TextEncoder().encode(v).length <= MAX_PACK_PREFIX_BYTES && HANDLER_PREFIX_PATTERN.test(v)
   );
 }
+var ATTACHABLE_BAD_CHARS = /* @__PURE__ */ new Set(["\\", ":", "*", "?", '"', "<", ">", "|"]);
+var ATTACHABLE_DEVICES = /* @__PURE__ */ new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`),
+  ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`)
+]);
+var UID_ALPHABET = "abcdefghijklmnopqrstuvwxy012345678";
+function isAttachableEntry(s) {
+  if (typeof s !== "string") return false;
+  if (new TextEncoder().encode(s).length > MAX_ATTACHABLE_ENTRY_BYTES)
+    return false;
+  if (s.startsWith("uid://")) {
+    const t = s.slice(6);
+    if (t.length < 1 || t.length > 13) return false;
+    let v = 0n;
+    for (const ch of t) {
+      const d = UID_ALPHABET.indexOf(ch);
+      if (d < 0 || ch.length !== 1) return false;
+      v = v * 34n + BigInt(d);
+    }
+    if (v > 0x7fffffffffffffffn) return false;
+    let back = "";
+    do {
+      back = UID_ALPHABET[Number(v % 34n)] + back;
+      v /= 34n;
+    } while (v > 0n);
+    return back === t;
+  }
+  if (!s.startsWith("res://")) return false;
+  const rest = s.slice(6);
+  const path13 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  if (path13 === "" || path13.includes("..") || path13.includes("./")) return false;
+  for (let i = 0; i < path13.length; i++) {
+    const c = path13.charCodeAt(i);
+    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path13[i]))
+      return false;
+  }
+  const segments = path13.split("/");
+  if (segments[0].toLowerCase() === ".pkey") return false;
+  for (const seg of segments) {
+    if (seg === "" || seg === "." || seg === "..") return false;
+    if (seg.endsWith(" ") || seg.endsWith(".")) return false;
+    if (ATTACHABLE_DEVICES.has(seg.split(".")[0].toLowerCase())) return false;
+  }
+  return true;
+}
+function isAttachableList(value) {
+  return Array.isArray(value) && value.length >= 1 && value.length <= MAX_ATTACHABLE_ENTRIES && new Set(value).size === value.length && value.every(isAttachableEntry);
+}
 function validateAppDeliverable(errors, relRoot, def, packIds, deliverables) {
   const content = def.content;
   if (content !== void 0) {
@@ -14791,7 +14857,7 @@ function validateAppDeliverable(errors, relRoot, def, packIds, deliverables) {
         "release",
         "/release/deliverables/app/content",
         "invalid_app_content",
-        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels? }; holds are chosen per app release at publish (the content stamp), never declared here.`
+        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels?, attachable? }; holds are chosen per app release at publish (the content stamp), never declared here.`
       );
     const map = isRecord3(content) ? content.packChannels : void 0;
     if (map !== void 0) {
@@ -14827,6 +14893,15 @@ function validateAppDeliverable(errors, relRoot, def, packIds, deliverables) {
             );
         }
     }
+    const attachable = isRecord3(content) ? content.attachable : void 0;
+    if (attachable !== void 0 && !isAttachableList(attachable))
+      add2(
+        errors,
+        "release",
+        "/release/deliverables/app/content/attachable",
+        "invalid_app_attachable",
+        `content.attachable is 1 to ${MAX_ATTACHABLE_ENTRIES} distinct entries, each a res:// script path, a res://…/ directory of scripts (already normal: no ., .. or empty segment, printable ASCII without \\ : * ? " < > |) or a canonical uid:// (as Godot writes it), at most ${MAX_ATTACHABLE_ENTRY_BYTES} bytes.`
+      );
   } else if (packIds.size > 0) {
     add2(
       errors,
@@ -15393,6 +15468,8 @@ function normalizeAppDeliverable(raw) {
           ([a], [b]) => a < b ? -1 : a > b ? 1 : 0
         )
       );
+    const attachable = asRecord(def.content).attachable;
+    if (isAttachableList(attachable)) app.content.attachable = [...attachable];
   }
   return app;
 }
@@ -22143,6 +22220,406 @@ function rsccBodyIsResource(body) {
   return dv.getUint32(0, true) <= 1 && dv.getUint32(4, true) <= 1;
 }
 
+// src/packRefs.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var UID_CHARS = "abcdefghijklmnopqrstuvwxy012345678";
+var UID_MAX = 0x7fffffffffffffffn;
+function uidText(id) {
+  if (id < 0n) return "uid://<invalid>";
+  let out = "";
+  let v = id;
+  do {
+    out = UID_CHARS[Number(v % 34n)] + out;
+    v /= 34n;
+  } while (v > 0n);
+  return `uid://${out}`;
+}
+function canonicalUid(text) {
+  if (!text.startsWith("uid://")) return null;
+  const s = text.slice(6);
+  if (s.length < 1 || s.length > 13) return null;
+  let v = 0n;
+  for (const ch of s) {
+    const d = UID_CHARS.indexOf(ch);
+    if (d < 0 || ch.length !== 1) return null;
+    if (v > (UID_MAX - BigInt(d)) / 34n) return null;
+    v = v * 34n + BigInt(d);
+  }
+  return uidText(v) === text ? v : null;
+}
+function attachableEntryProblem(s) {
+  if (s.startsWith("uid://"))
+    return canonicalUid(s) === null ? "not a canonical uid://" : null;
+  if (!s.startsWith("res://")) return "neither res:// nor uid://";
+  const rest = s.slice(6);
+  const path13 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  return pckPathOk(path13) ? null : "not a normal res:// path";
+}
+function parseAttachable(list = []) {
+  const paths = /* @__PURE__ */ new Set();
+  const dirs = [];
+  const uids = /* @__PURE__ */ new Set();
+  for (const s of list) {
+    const why = attachableEntryProblem(s);
+    if (why !== null)
+      throw new Error(
+        `attachable entry ${JSON.stringify(s)} is ${why}: an entry is a res:// script path, a res://…/ directory or a canonical uid://.`
+      );
+    if (s.startsWith("uid://")) uids.add(canonicalUid(s));
+    else if (s.endsWith("/")) dirs.push(s);
+    else paths.add(s);
+  }
+  return { paths, dirs, uids };
+}
+var AMBIGUOUS = ", so the device cannot tell what it loads";
+function uidProblem(u, raw, ctx) {
+  if (u === null || u < 0n)
+    return `references ${raw}, which is not a canonical uid://${AMBIGUOUS}`;
+  if (ctx.packUids.has(u) || ctx.attachable.uids.has(u)) return null;
+  return `references ${uidText(u)}, outside the pack's uid cache, which the app does not list as attachable`;
+}
+function refProblem(ref, ctx) {
+  if (typeof ref.uid === "string") {
+    const why = uidProblem(canonicalUid(ref.uid), ref.uid, ctx);
+    if (why !== null) return why;
+  } else if (ref.uid !== null && ref.uid !== -1n) {
+    const why = uidProblem(ref.uid, uidText(ref.uid), ctx);
+    if (why !== null) return why;
+  }
+  const p = ref.path;
+  if (p.startsWith("uid://")) return uidProblem(canonicalUid(p), p, ctx);
+  if (!p.startsWith("res://") || !pckPathOk(p.slice(6)))
+    return `references ${p}, which is not a normal res:// path or uid://${AMBIGUOUS}`;
+  const rest = p.slice(6);
+  if (rest.endsWith(".remap") || rest.endsWith(".import"))
+    return `references ${p}, a .remap or .import file${AMBIGUOUS}`;
+  if (ctx.inPack.has(rest) || ctx.inPack.has(`${rest}.remap`) || ctx.inPack.has(`${rest}.import`))
+    return null;
+  const script = ctx.isScript(rest) || ref.type !== null && (ref.type === "Script" || ctx.scriptTypes.includes(ref.type));
+  if (!script) return null;
+  if (ctx.attachable.paths.has(p) || ctx.attachable.dirs.some((d) => p.startsWith(d)))
+    return null;
+  return `references the app script ${p}, which the app does not list as attachable`;
+}
+var EXT_LINE_RE = /^[ \t]*\[ext_resource((?: [a-z_]+="[^"\\]*")+)\][ \t]*$/;
+var EXT_ATTR_RE = / ([a-z_]+)="([^"\\]*)"/g;
+var EXT_KEYS = ["type", "uid", "path", "id"];
+function textRefs(text) {
+  const t = text.replace(/\r/g, "\n");
+  const lines2 = t.split("\n");
+  const refs = [];
+  for (let i = 0; i < lines2.length; i++) {
+    const l = lines2[i];
+    if (!l.includes("ext_resource")) continue;
+    const bad = {
+      why: `has an ext_resource tag on line ${i + 1} the engine could read differently${AMBIGUOUS}`
+    };
+    const m = EXT_LINE_RE.exec(l);
+    if (!m) return bad;
+    const attrs = /* @__PURE__ */ new Map();
+    for (const a of m[1].matchAll(EXT_ATTR_RE)) {
+      if (!EXT_KEYS.includes(a[1]) || attrs.has(a[1])) return bad;
+      attrs.set(a[1], a[2]);
+    }
+    if (!attrs.has("type") || !attrs.has("path") || !attrs.has("id"))
+      return bad;
+    refs.push({
+      type: attrs.get("type"),
+      path: attrs.get("path"),
+      uid: attrs.get("uid") ?? null
+    });
+  }
+  let at = t.indexOf("Resource");
+  while (at !== -1) {
+    const before = t.slice(Math.max(0, at - 3), at);
+    if (before !== "Ext" && before !== "Sub") {
+      let j = at + 8;
+      for (; ; ) {
+        while (j < t.length && t.charCodeAt(j) <= 32) j++;
+        if (t[j] === ";") {
+          while (j < t.length && t[j] !== "\n") j++;
+          continue;
+        }
+        break;
+      }
+      if (t[j] === "(")
+        return {
+          why: `loads a resource by path inline (Resource(...))${AMBIGUOUS}`
+        };
+    }
+    at = t.indexOf("Resource", at + 1);
+  }
+  return { refs };
+}
+var BINARY_FORMAT_MAX = 6;
+var FLAG_UIDS = 2;
+var FLAG_REAL64 = 4;
+var FLAG_SCRIPT_CLASS = 8;
+var RESERVED_FIELDS = 11;
+var BOM = Buffer.from([239, 187, 191]);
+var Stop = class {
+  constructor(why) {
+    this.why = why;
+  }
+  why;
+};
+function binaryRefs(b, start) {
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  const dec2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  let pos = start;
+  let part = "header";
+  const fail3 = () => new Stop(`is a binary resource whose ${part} cannot be read${AMBIGUOUS}`);
+  const need = (n) => {
+    if (n < 0 || pos + n > b.byteLength) throw fail3();
+  };
+  const u32 = () => {
+    need(4);
+    const v = dv.getUint32(pos, true);
+    pos += 4;
+    return v;
+  };
+  const skip = (n) => {
+    need(n);
+    pos += n;
+  };
+  const str = () => {
+    const n = u32();
+    need(n);
+    const s = b.subarray(pos, pos + n);
+    pos += n;
+    return s;
+  };
+  const text = (s) => {
+    const z = s.indexOf(0);
+    const cut = z === -1 ? s : s.subarray(0, z);
+    if (Buffer.from(cut).indexOf(BOM) !== -1) throw fail3();
+    try {
+      return dec2.decode(cut);
+    } catch {
+      throw fail3();
+    }
+  };
+  try {
+    if (u32() !== 0)
+      return { why: `is a big-endian binary resource${AMBIGUOUS}` };
+    u32();
+    u32();
+    u32();
+    const format = u32();
+    if (format > BINARY_FORMAT_MAX)
+      return {
+        why: `is a binary resource in format ${format}, above ${BINARY_FORMAT_MAX}${AMBIGUOUS}`
+      };
+    str();
+    skip(8);
+    const flags = u32();
+    skip(8);
+    if (flags & FLAG_SCRIPT_CLASS) str();
+    skip(4 * RESERVED_FIELDS);
+    part = "reference tables";
+    const nstr = u32();
+    for (let i = 0; i < nstr; i++) str();
+    const refs = [];
+    const next = u32();
+    for (let i = 0; i < next; i++) {
+      const type = text(str());
+      const path13 = text(str());
+      let uid = null;
+      if (flags & FLAG_UIDS) {
+        need(8);
+        uid = dv.getBigInt64(pos, true);
+        pos += 8;
+      }
+      refs.push({ type, path: path13, uid });
+    }
+    const nint = u32();
+    const offsets = [];
+    for (let i = 0; i < nint; i++) {
+      const path13 = text(str());
+      need(8);
+      const lo = dv.getUint32(pos, true);
+      const hi = dv.getUint32(pos + 4, true);
+      pos += 8;
+      if (i < nint - 1 && !path13.startsWith("local://"))
+        return {
+          why: `has a sub-resource path that is not local:// (${path13})${AMBIGUOUS}`
+        };
+      offsets.push(hi > 2097151 ? -1 : hi * 4294967296 + lo);
+    }
+    part = "properties";
+    const real = flags & FLAG_REAL64 ? 8 : 4;
+    const name = () => {
+      const id = u32();
+      if (id & 2147483648) skip(id & 2147483647);
+      else if (id >= nstr) throw fail3();
+    };
+    for (const off of offsets) {
+      if (off < 0 || off > b.byteLength) throw fail3();
+      pos = off;
+      str();
+      const pc = u32();
+      for (let j = 0; j < pc; j++) {
+        name();
+        let pending = 1;
+        while (pending > 0) {
+          pending--;
+          const tag = u32();
+          switch (tag) {
+            case 1:
+            // NIL
+            case 42:
+            // CALLABLE
+            case 43:
+              break;
+            case 2:
+            // BOOL
+            case 3:
+            // INT
+            case 23:
+              skip(4);
+              break;
+            case 40:
+            // INT64
+            case 41:
+              skip(8);
+              break;
+            case 4:
+              skip(real);
+              break;
+            case 5:
+            // STRING
+            case 44:
+              str();
+              break;
+            case 10:
+              skip(2 * real);
+              break;
+            case 45:
+              skip(8);
+              break;
+            case 11:
+            // RECT2
+            case 50:
+            // VECTOR4
+            case 13:
+            // PLANE
+            case 14:
+              skip(4 * real);
+              break;
+            case 46:
+            // RECT2I
+            case 51:
+            // VECTOR4I
+            case 20:
+              skip(16);
+              break;
+            case 12:
+              skip(3 * real);
+              break;
+            case 47:
+              skip(12);
+              break;
+            case 15:
+            // AABB
+            case 18:
+              skip(6 * real);
+              break;
+            case 16:
+              skip(9 * real);
+              break;
+            case 17:
+              skip(12 * real);
+              break;
+            case 52:
+              skip(16 * real);
+              break;
+            case 22: {
+              need(4);
+              const names = dv.getUint16(pos, true);
+              let subs = dv.getUint16(pos + 2, true) & 32767;
+              pos += 4;
+              if (format < 3) subs += 1;
+              for (let k = 0; k < names + subs; k++) name();
+              break;
+            }
+            case 24: {
+              const kind = u32();
+              if (kind === 1)
+                return {
+                  why: `has an inline external reference (the pre-4.0 binary form)${AMBIGUOUS}`
+                };
+              if (kind === 2 || kind === 3) skip(4);
+              else if (kind !== 0) throw fail3();
+              break;
+            }
+            case 26:
+              pending += 2 * (u32() & 2147483647);
+              break;
+            case 30:
+              pending += u32() & 2147483647;
+              break;
+            case 31: {
+              const n = u32();
+              skip(n + (4 - n % 4) % 4);
+              break;
+            }
+            case 32:
+            // PACKED_INT32_ARRAY
+            case 33:
+              skip(u32() * 4);
+              break;
+            case 48:
+            // PACKED_INT64_ARRAY
+            case 49:
+              skip(u32() * 8);
+              break;
+            case 34: {
+              const n = u32();
+              for (let k = 0; k < n; k++) str();
+              break;
+            }
+            case 37:
+              skip(u32() * 2 * real);
+              break;
+            case 35:
+              skip(u32() * 3 * real);
+              break;
+            case 36:
+              skip(u32() * 16);
+              break;
+            case 53:
+              skip(u32() * 4 * real);
+              break;
+            default:
+              return {
+                why: `has a value of unknown type ${tag}${AMBIGUOUS}`
+              };
+          }
+        }
+      }
+    }
+    return { refs };
+  } catch (e) {
+    if (e instanceof Stop) return { why: e.why };
+    throw e;
+  }
+}
+function uidCacheIds(data) {
+  if (data.byteLength < 4) return [];
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const n = dv.getUint32(0, true);
+  const out = [];
+  let p = 4;
+  for (let i = 0; i < n; i++) {
+    if (p + 12 > data.byteLength) return [];
+    const ln = dv.getUint32(p + 8, true);
+    if (p + 12 + ln > data.byteLength) return [];
+    out.push(dv.getBigInt64(p, true));
+    p += 12 + ln;
+  }
+  return out;
+}
+
 // src/packLint.ts
 var PCK_WARN_ENTRIES = 1e3;
 var PCK_MAX_ENTRIES = 2e4;
@@ -22212,7 +22689,7 @@ function remapProblem(data) {
       return "a .remap or .import with a control byte";
   if (data.includes(92)) return "a .remap or .import with a backslash";
   if (!utf8Valid(data)) return "a .remap or .import that is not valid UTF-8";
-  if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM) !== -1)
+  if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM2) !== -1)
     return "a .remap or .import with a byte-order mark";
   const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
   for (const l of lines(text))
@@ -22220,7 +22697,7 @@ function remapProblem(data) {
       return `a path line the engine could read differently (${l})`;
   return null;
 }
-var BOM = Buffer.from([239, 187, 191]);
+var BOM2 = Buffer.from([239, 187, 191]);
 function utf8Valid(b) {
   let i = 0;
   const n = b.length;
@@ -22306,6 +22783,16 @@ function lintPck(dir, bytes, opts) {
   const text = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
+  const cache = dir.entries.find((e) => e.path === ".godot/uid_cache.bin");
+  const refCtx = {
+    inPack,
+    packUids: new Set(
+      cache ? uidCacheIds(bytes.subarray(cache.offset, cache.offset + cache.size)) : []
+    ),
+    attachable: parseAttachable(opts.attachable),
+    isScript: (p) => isScript(p, kinds),
+    scriptTypes: kinds.markers
+  };
   const budget = { used: 0 };
   for (const e of dir.entries) {
     const p = e.path;
@@ -22324,22 +22811,27 @@ function lintPck(dir, bytes, opts) {
       continue;
     }
     if (p === ".godot/uid_cache.bin") {
-      const why = uidCacheProblem(
+      const why2 = uidCacheProblem(
         bytes.subarray(e.offset, e.offset + e.size),
         inPack
       );
-      if (why !== null)
-        errors.push(`${p}: ${why}; a pack registers only its own UIDs.`);
+      if (why2 !== null)
+        errors.push(`${p}: ${why2}; a pack registers only its own UIDs.`);
       continue;
     }
-    const code = embeddedCode(
+    const res = inspectResource(
       p,
       bytes.subarray(e.offset, e.offset + e.size),
       kinds.markers,
       budget
     );
-    if (code !== null) {
-      errors.push(`${p}: ${code}; a pack carries data only.`);
+    if (res.code !== null) {
+      errors.push(`${p}: ${res.code}; a pack carries data only.`);
+      continue;
+    }
+    const why = res.refs ? resourceRefsProblem(res.refs, refCtx) : null;
+    if (why !== null) {
+      errors.push(`${p}: ${why}.`);
       continue;
     }
     if (inPrefix(p)) {
@@ -22396,24 +22888,44 @@ function lintPck(dir, bytes, opts) {
 }
 var TEXT_RESOURCE_RE = /\.(tscn|tres|escn)$/i;
 var BINARY_RESOURCE_RE = /\.(scn|res)$/i;
-function embeddedCode(p, data, markers = SCRIPT_MARKERS, budget = { used: 0 }) {
+function inspectResource(p, data, markers = SCRIPT_MARKERS, budget = { used: 0 }) {
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
   if (magic === "RSCC") {
     const r = rsccBody(data, void 0, budget);
-    if ("why" in r) return `a compressed binary resource (RSCC) ${r.why}`;
+    if ("why" in r)
+      return { code: `a compressed binary resource (RSCC) ${r.why}` };
     if (!rsccBodyIsResource(r.body))
-      return "a compressed binary resource (RSCC) whose body is not a binary resource";
+      return {
+        code: "a compressed binary resource (RSCC) whose body is not a binary resource"
+      };
     const m = marker(r.body, markers);
-    return m === null ? null : `a compressed binary resource (RSCC) that names ${m} (an embedded script or its source)`;
+    return m === null ? { code: null, refs: { kind: "binary", data: r.body, start: 0 } } : {
+      code: `a compressed binary resource (RSCC) that names ${m} (an embedded script or its source)`
+    };
   }
   if (magic === "RSRC") {
     const m = marker(data, markers);
-    return m === null ? null : `a binary resource that names ${m} (an embedded script or its source)`;
+    return m === null ? { code: null, refs: { kind: "binary", data, start: 4 } } : {
+      code: `a binary resource that names ${m} (an embedded script or its source)`
+    };
   }
-  if (sniffsTextResource(data) || TEXT_RESOURCE_RE.test(p))
-    return textResourceCode(data, markers);
+  if (sniffsTextResource(data) || TEXT_RESOURCE_RE.test(p)) {
+    const code = textResourceCode(data, markers);
+    return code === null ? { code: null, refs: { kind: "text", data } } : { code };
+  }
   if (BINARY_RESOURCE_RE.test(p) || p.startsWith(".godot/exported/"))
-    return "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts";
+    return {
+      code: "not a Godot resource (no RSRC header), so it cannot be inspected for embedded scripts"
+    };
+  return { code: null };
+}
+function resourceRefsProblem(src, ctx) {
+  const r = src.kind === "text" ? textRefs(new TextDecoder("utf-8").decode(src.data)) : binaryRefs(src.data, src.start);
+  if ("why" in r) return r.why;
+  for (const ref of r.refs) {
+    const why = refProblem(ref, ctx);
+    if (why !== null) return why;
+  }
   return null;
 }
 function sniffsTextResource(data) {
@@ -22850,6 +23362,24 @@ async function buildChunks(z, payload, chunks, base, reuse, opts = {}) {
 var STAGE_ROUND_OBJECTS = 256;
 var MAX_RECORD_PAYLOAD_BYTES = 65536;
 var MAX_PREFLIGHT_RELEASES = 16;
+function checkScriptKinds(pack, opts) {
+  const exts = opts.scriptExtensions ?? [];
+  const types = opts.scriptTypes ?? [];
+  if ((exts.length || types.length) && pack.type !== "godot.pck")
+    throw new Error(
+      `--script-extensions and --script-types apply to a godot.pck pack's lint; ${pack.id} is a ${pack.type} pack.`
+    );
+  const badExt = exts.find((x) => !/^[A-Za-z0-9_]{1,32}$/.test(x));
+  if (badExt !== void 0)
+    throw new Error(
+      `--script-extensions takes bare extensions (lua, wren; letters, digits and _), not ${JSON.stringify(badExt)}.`
+    );
+  const badType = types.find((x) => !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(x));
+  if (badType !== void 0)
+    throw new Error(
+      `--script-types takes script class names (LuaScript), not ${JSON.stringify(badType)}.`
+    );
+}
 async function findPck(dir) {
   let names;
   try {
@@ -22865,7 +23395,7 @@ async function findPck(dir) {
     );
   return path8.join(dir, names[0]);
 }
-async function loadVariant(pack, variant, root) {
+async function loadVariant(pack, variant, root, settings = {}) {
   const key = variantKey(variant);
   const dir = path8.join(root, variantDirName(variant));
   if (pack.type === "godot.pck") {
@@ -22875,7 +23405,10 @@ async function loadVariant(pack, variant, root) {
     const strip = stripPck(src, name);
     const lint = lintPck(strip.directory, strip.bytes, {
       prefixes: pack.handler.prefixes ?? [],
-      ...pack.requires.engine ? { engine: pack.requires.engine } : {}
+      ...pack.requires.engine ? { engine: pack.requires.engine } : {},
+      ...settings.attachable ? { attachable: settings.attachable } : {},
+      ...settings.scriptExtensions ? { scriptExtensions: settings.scriptExtensions } : {},
+      ...settings.scriptTypes ? { scriptTypes: settings.scriptTypes } : {}
     });
     const payload = containerPayload(strip.bytes, strip.directory);
     const paths2 = lintTreePaths(payload.files.map((f) => f.path));
@@ -23080,6 +23613,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new Error(
       `--version ${version} does not parse under ${packId}'s ${pack.versioning.scheme} scheme.`
     );
+  checkScriptKinds(pack, opts);
   const releaseId = `${packId}@${version}`;
   const saveCompat = await collectProvides({
     cwd: opts.cwd,
@@ -23099,7 +23633,13 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   const root = path8.resolve(opts.cwd, opts.dir);
   const variants = [];
   for (const v of declaredVariants(pack))
-    variants.push(await loadVariant(pack, v, root));
+    variants.push(
+      await loadVariant(pack, v, root, {
+        ...ctx.app?.content?.attachable ? { attachable: ctx.app.content.attachable } : {},
+        ...opts.scriptExtensions ? { scriptExtensions: opts.scriptExtensions } : {},
+        ...opts.scriptTypes ? { scriptTypes: opts.scriptTypes } : {}
+      })
+    );
   const errors = variants.flatMap((v) => v.lintErrors);
   for (const v of variants) for (const w of v.lintWarnings) warn(w);
   const formats = new Set(variants.map((v) => v.formatVersion));
@@ -25251,6 +25791,14 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           throw new Error(
             "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...]."
           );
+        if (parsed.bare.has("script-extensions") || parsed.bare.has("script-types"))
+          throw new Error(
+            "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...]."
+          );
+        const scriptExtensions = parseRemoves(
+          parsed.multi["script-extensions"] ?? []
+        );
+        const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
         await publishPack({
           ...common,
           cwd,
@@ -25268,7 +25816,10 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           ...delegation !== void 0 ? { delegation } : {},
           ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
           ...flagString(parsed, "provides") !== void 0 ? { providesFile: flagString(parsed, "provides") } : {},
-          removes: parseRemoves(parsed.multi["removes"] ?? [])
+          removes: parseRemoves(parsed.multi["removes"] ?? []),
+          // P4-28: another script language's extensions and types, for the PCK lint.
+          ...scriptExtensions.length ? { scriptExtensions } : {},
+          ...scriptTypes.length ? { scriptTypes } : {}
         });
         return 0;
       }
@@ -25276,6 +25827,11 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         parsed,
         ["provides", "removes"],
         "they list a pack release's content ids; the app's code interface is --content-interface"
+      );
+      refuseFlags(
+        parsed,
+        ["script-extensions", "script-types"],
+        "they configure a godot.pck pack's lint"
       );
       refuseFlags(
         parsed,
@@ -25529,6 +26085,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
               [--content-key-file pem --delegation sha256]
               [--provides ids.json] [--removes id[,id...] ...]
+              [--script-extensions ext[,ext...]] [--script-types Type[,Type...]]
   pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
               [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
   pkey release revoke packId@version --reason text --product slug [--replacement version]
@@ -25574,6 +26131,11 @@ for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundle
 the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record,
 uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the
 record, payloads and chunk indexes for the next publish's --bases.
+A godot.pck lint (P4-28) refuses a resource that references an app script or a UID outside the
+pack's uid cache unless .pkey/release lists it in deliverables.app.content.attachable (the
+device's PKeyOptions.pack_attachable), and refuses as scripts .gd, .gdc, .cs plus
+--script-extensions (bare extensions of a GDExtension script language) and the class names
+--script-types gives (the device asks its engine for both).
 Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or
 the pack's declared provides.from (default .pkey/provides.json; provides.required fails a
 publish without it); Polaris Key refuses a release that stops providing an id its predecessor
@@ -25654,6 +26216,9 @@ function actionInput(env, name) {
 function isActionInvocation(argv2, env) {
   return argv2.length === 0 && env.GITHUB_ACTIONS === "true" && env.INPUT_PRODUCT !== void 0;
 }
+function listInput(value) {
+  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
+}
 function pinsInput(value) {
   return value ? value.split(/[\s,]+/).filter(Boolean) : [];
 }
@@ -25726,6 +26291,8 @@ async function runAction(io) {
     const given = (names) => names.filter((n) => input(n) !== void 0);
     if (deliverable && deliverable !== "app") {
       const wrong2 = given(["content-stamp", "embedded", "pins"]);
+      const scriptExtensions = listInput(input("script-extensions"));
+      const scriptTypes = listInput(input("script-types"));
       if (wrong2.length)
         throw new Error(
           `${wrong2.join(", ")} ${wrong2.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`
@@ -25746,6 +26313,9 @@ async function runAction(io) {
         ...contentKeyPem ? { contentKeyPem } : {},
         ...delegation ? { delegation } : {},
         ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
+        // P4-28: another script language for the PCK lint.
+        ...scriptExtensions.length ? { scriptExtensions } : {},
+        ...scriptTypes.length ? { scriptTypes } : {},
         dryRun: dryRun === "true",
         env: io.env,
         stdout: io.stdout,
@@ -25756,10 +26326,10 @@ async function runAction(io) {
       await writeOutputs(io, result2.releaseId, result2.server);
       return 0;
     }
-    const wrong = given(["out", "bases"]);
+    const wrong = given(["out", "bases", "script-extensions", "script-types"]);
     if (wrong.length)
       throw new Error(
-        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases.`
+        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases or configure a pack's lint.`
       );
     const result = await publishRelease({
       cwd: io.cwd,

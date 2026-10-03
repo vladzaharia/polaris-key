@@ -453,6 +453,8 @@ export interface PackRepoOptions {
   strategies?: string;
   /** The app artifact map's web entry `embeds:` line value (default unset). */
   webEmbeds?: string;
+  /** P4-28: `content.attachable`, a YAML flow list (default unset). */
+  attachable?: string;
 }
 
 export function releaseYaml(
@@ -478,7 +480,7 @@ release:
       versioning:
         scheme: semver
       content:
-        contentApi: 4
+        contentApi: 4${o.attachable !== undefined ? `\n        attachable: ${o.attachable}` : ""}
       artifacts:
         - { id: macos, platform: macos, arch: universal, format: zip, match: "Diceroll-*-macos.zip" }
         - { id: web, platform: web, arch: wasm32, format: zip, match: "Diceroll-*-web.zip"${o.webEmbeds !== undefined ? `, embeds: ${o.webEmbeds}` : ""} }
