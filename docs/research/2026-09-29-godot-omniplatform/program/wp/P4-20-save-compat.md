@@ -116,16 +116,16 @@ saves and support). `provides` also backs Diceroll's `Content.available()` and `
 
 ## Acceptance criteria
 
-- [ ] Worker tests: dropping a provided id on a shared level fails the publish and names the id;
+- [x] Worker tests: dropping a provided id on a shared level fails the publish and names the id;
       the same drop listed in `removes` passes; a release that supports only a new level passes;
       the dry run reports the same result without writing.
-- [ ] `schema-parity.test.ts` passes with a mutation entry for each new validator code.
-- [ ] Every SDK has tests for `isAvailable` (installed and active; provided only by the target
+- [x] `schema-parity.test.ts` passes with a mutation entry for each new validator code.
+- [x] Every SDK has tests for `isAvailable` (installed and active; provided only by the target
       set; provided by an embedded baseline; not provided) and for `packFor`.
-- [ ] `pnpm --filter @polaris-key/cli test` covers `provides` collection, the policy failure and
+- [x] `pnpm --filter @polaris-key/cli test` covers `provides` collection, the policy failure and
       the fingerprint warning (and failure with `--strict`).
-- [ ] The green gate passes (`AGENTS.md`), including pytest, `swift test` and the Godot runner.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] The green gate passes (`AGENTS.md`), including pytest, `swift test` and the Godot runner.
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
 ## Verify
 
@@ -147,3 +147,56 @@ mise exec node@22 -- pnpm test
 
 Set the status in the PR that completes the work:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-20 done`.
+
+## Corrections from implementation
+
+- **Plan mode confirmed "no".** `plans/P4-01.md` §2.3 and WIRE-CONTRACT-V4 §2.5.1 reserve
+  record-level `provides` and `removes` ("ignored by v1"). They stay non-claims: no corpus
+  section, wire member, `PROTOCOL_VERSION` or claim changed. Every SDK reads them with one
+  tolerant reader beside the claims (`providesOf`: absent or unusable provides nothing).
+- **Size.** Diceroll's registry, overcounted to ~1,215 namespaced ids, is 22,435 bytes of
+  payload, inside the 65,536-byte cap. `MAX_PROVIDES` is 4,096 ids of at most 128 characters
+  (printable ASCII without the space).
+- **Predecessor (corrected on review, B1).** P is the stored pack record of the deliverable on
+  the SAME channel (`COALESCE(release_metadata.channel, 'stable')` equal to the new record's
+  channel, `stable` when it names none) with the highest `seq`; a record's `seq` always rises,
+  and provides is record-level, so variants do not matter. Comparing across channels broke the
+  check both ways: a beta addition forced a false `removes` on stable, and a beta `removes` let a
+  stable release drop the id silently. The live levels are those of the app releases that the
+  new release's channel serves: each app channel's routed pack channel (`packChannels`, else the
+  app channel), with its `includes` (beta includes stable). A release with no
+  `requires.contentApi` range supports every level; two unranged releases are always compared. A
+  record without `provides` after one that had it drops every id. Known limitation (intentional): a stable release is compared only with stable's previous
+  release. Beta players also receive stable through `includes`, so when a stable release outranks
+  beta's newest (1.1.0 graduating past 1.1.0-beta.1), beta-only content ids are not protected: a
+  prerelease channel carries no save-compatibility promise, and comparing across channels would
+  force false `removes`. Instead the submit answers a warning (never a refusal) for each channel
+  that includes this release's channel and currently serves ids this release does not provide,
+  when this release outranks that channel's release; the CLI prints it.
+- **Refusal reasons.** `pack-provides` (malformed list, or missing under `provides.required`) and
+  `provides-dropped`; warnings are a new optional `warnings` member of the pack submit answer.
+  The check runs before the ticket round is promoted.
+- **`removes` is never declared.** It belongs to one release (`--removes`); the manifest keeps
+  `pack_field_not_supported` for it. `provides` is the policy `{required?, from?}` with the new
+  code `invalid_pack_provides`.
+- **Fingerprint storage.** `release_metadata.content_interface` (migration 0050); the submit takes
+  an unsigned `contentInterface` beside the descriptor and answers the channel's current app
+  release's fingerprint and contentApi. The CLI runs a dry-run submit first so `--strict` fails
+  before any upload. Canonical JSON is object keys sorted by UTF-16 code unit, no whitespace.
+- **SDK gaps found.** Python, Swift and Godot have no P4-19 delegation support, so their
+  fetch-and-verify helper has no delegation branch; Godot has no revocation store yet (P4-24),
+  so `pack_for` calls a duck-typed `is_revoked` when the engine has one. The memo is keyed by
+  pack id and record hash in every SDK (a hash alone let a target naming another pack's record
+  answer for it).
+- **Not done here.** A CLI-side local `provides-dropped` pre-check against `--bases` was not
+  added: the Worker's check runs on every submit, dry run included.
+- **Merge with P4-25.** P4-25's preflight delegation block now lives in the Python and Swift
+  fetch-and-verify helpers (as client-core's `fetchVerified`), so `pack_for`/`packFor` resolve a
+  delegated feed target's `provides` through its delegation; both reset the delegation budget
+  like `ensure`. Godot's `pack_for` calls P4-24's `is_revoked` directly.
+- **Review fixes.** `packFor` checks `revokedBy(sha, the delegation it was signed under)`, so a
+  memoised delegated target stops answering once its delegation is revoked in-process (client-core,
+  Python, Swift, with tests); a misspelt `provides` member is refused (`additionalProperties:
+false`, a validator check and a mutation entry).
+- **`supports()` examples.** The Node and Swift capability tests used `packs.provides` as their
+  example of a planned feature; they now use `packs.apply.chunk`.

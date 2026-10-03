@@ -400,6 +400,36 @@ func pack_set_id() -> Variant:
 	return engine.pack_set_id()
 
 
+## Save compatibility (P4-20, CONTENT §6.7 item 8; PKeyPackProvides): whether a pack in the
+## running set (mounted or active in this process, embedded baselines included) provides
+## `content_id` in its record's `provides`. False before packs start (PKeyBoot starts them) and
+## without a content stamp.
+func is_available(content_id: String) -> bool:
+	return _provides().is_available(content_id) if engine != null and content != null else false
+
+
+## The pack whose target release provides `content_id` (the stamp's pins, or `targets`: a packs
+## decision's install list [{pack, release: {sha256, seq, version}}]), to `estimate` and `ensure`
+## before a save that needs it. Reads only records. A coroutine: {packId, release: {sha256, seq,
+## version}} or null.
+func pack_for(content_id: String, targets: Variant = null) -> Variant:
+	if not configured():
+		return null
+	var ready := await _ready_engine()
+	if not ready.ok:
+		return null
+	return await _provides().pack_for(content_id, targets)
+
+
+var _provides_reader: PKeyPackProvides = null
+
+
+func _provides() -> PKeyPackProvides:
+	if _provides_reader == null or _provides_reader.engine != engine:
+		_provides_reader = PKeyPackProvides.new(engine)
+	return _provides_reader
+
+
 ## Mark this boot healthy: the running set becomes the confirmed one (the shared boot guard).
 func confirm() -> PKeyResult:
 	if engine == null:

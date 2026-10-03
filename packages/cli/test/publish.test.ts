@@ -837,3 +837,154 @@ describe("pkey release promote|pin|unpin|yank", () => {
 });
 
 // The signRecord seam and the release record: test/releaseRecord.test.ts (P3-03).
+
+// ── The content-interface fingerprint (P4-20) ─────────────────────────────────────────────────
+
+describe("pkey release publish --content-interface (P4-20)", () => {
+  const registry = {
+    prefixes: ["res://foes/"],
+    ids: ["foe.orc", "foe.goblin"],
+  };
+  const OLD = "0".repeat(64);
+  const answer = (b: unknown, previous: unknown) => {
+    const body = b as { dryRun?: boolean; contentInterface: string };
+    return json({
+      ok: true,
+      dryRun: body.dryRun === true,
+      releaseId: "v0.3.0",
+      outcome: "created",
+      descriptorSha256: "f".repeat(64),
+      contentInterface: { sha256: body.contentInterface, previous },
+    });
+  };
+  const prev = (sha256: string | null, contentApi: number | null = null) => ({
+    releaseId: "v0.2.0",
+    version: "0.2.0",
+    contentApi,
+    sha256,
+  });
+
+  async function setup(previous: unknown) {
+    const cwd = await repo();
+    await writeFile(
+      path.join(cwd, "registry.json"),
+      JSON.stringify(registry, null, 2),
+    );
+    const server = fakeServer();
+    // Answer every submit from its own body.
+    const real = server.fetchImpl;
+    server.fetchImpl = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const res = await real(input, init);
+      if (!String(input).endsWith("/release/publish/submit")) return res;
+      return answer(JSON.parse(String(init!.body)), previous);
+    }) as typeof fetch;
+    return { cwd, server };
+  }
+
+  it("hashes the registry's canonical JSON, stores it with the submit and notes an unchanged one", async () => {
+    const fingerprint = createHash("sha256")
+      .update('{"ids":["foe.orc","foe.goblin"],"prefixes":["res://foes/"]}')
+      .digest("hex");
+    const { cwd, server } = await setup(prev(fingerprint));
+    const r = await run(
+      cwd,
+      publishArgs(["--content-interface", "registry.json"]),
+      server,
+    );
+    expect(r.code, r.err).toBe(0);
+    expect(r.out).toContain(`Content interface: ${fingerprint}`);
+    expect(r.out).toContain("Content interface: unchanged since v0.2.0");
+    const submits = server.to("/publish/submit");
+    // A dry-run comparison before the uploads, then the submit; both carry it.
+    expect(submits.map((s) => (s.body as { dryRun?: boolean }).dryRun)).toEqual(
+      [true, undefined],
+    );
+    for (const s of submits)
+      expect((s.body as { contentInterface: string }).contentInterface).toBe(
+        fingerprint,
+      );
+    expect(r.err).not.toContain("warning");
+  });
+
+  it("warns when it changed and contentApi did not", async () => {
+    const { cwd, server } = await setup(prev(OLD));
+    const r = await run(
+      cwd,
+      publishArgs(["--content-interface", "registry.json"]),
+      server,
+    );
+    expect(r.code, r.err).toBe(0);
+    expect(r.err).toContain(
+      "warning: the content interface changed since v0.2.0 (000000000000… →",
+    );
+    expect(r.err).toContain("or pass --strict to fail on this");
+    expect(
+      server.calls.filter((c) => c.method === "PUT").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("--strict fails before anything is uploaded", async () => {
+    const { cwd, server } = await setup(prev(OLD));
+    const r = await run(
+      cwd,
+      publishArgs(["--content-interface", "registry.json", "--strict"]),
+      server,
+    );
+    expect(r.code).toBe(1);
+    expect(r.err).toContain(
+      "--strict: the content interface changed since v0.2.0",
+    );
+    expect(server.calls.filter((c) => c.method === "PUT")).toEqual([]);
+    expect(server.to("/publish/submit")).toHaveLength(1);
+  });
+
+  it("says nothing when contentApi moved, or there is nothing to compare", async () => {
+    for (const [previous, note] of [
+      [prev(OLD, 3), "with contentApi 3 → null"],
+      [prev(null), "was published without a fingerprint"],
+      [null, "the channel serves no app release yet"],
+    ] as const) {
+      const { cwd, server } = await setup(previous);
+      const r = await run(
+        cwd,
+        publishArgs([
+          "--content-interface",
+          "registry.json",
+          "--dry-run",
+          "--strict",
+        ]),
+        server,
+      );
+      expect(r.code, r.err).toBe(0);
+      expect(r.out).toContain(note);
+      expect(server.to("/publish/submit")).toHaveLength(1);
+    }
+  });
+
+  it("refuses --strict without a registry, and a registry that is not JSON", async () => {
+    const cwd = await repo();
+    expect((await run(cwd, publishArgs(["--strict"]))).err).toContain(
+      "--strict needs --content-interface <file>.",
+    );
+    await writeFile(path.join(cwd, "bad.json"), "{nope");
+    const bad = await run(
+      cwd,
+      publishArgs(["--content-interface", "bad.json"]),
+    );
+    expect(bad.code).toBe(1);
+    expect(bad.err).toContain("The content-interface registry");
+    expect(bad.server.calls).toEqual([]);
+  });
+});
+
+describe("canonicalJson (P4-20)", () => {
+  it("sorts object keys at every depth and drops whitespace", async () => {
+    const { canonicalJson } = await import("../src/saveCompat.js");
+    expect(canonicalJson({ b: [2, { d: 1, c: null }], a: "x" })).toBe(
+      '{"a":"x","b":[2,{"c":null,"d":1}]}',
+    );
+  });
+});

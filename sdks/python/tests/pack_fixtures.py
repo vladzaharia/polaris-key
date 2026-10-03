@@ -103,11 +103,13 @@ def tree_pack(
     signer: Optional[Dict[str, str]] = None,
     issued_at: Optional[int] = None,
     variant_extra: Optional[Dict[str, Any]] = None,
+    record_extra: Optional[Dict[str, Any]] = None,
 ) -> TreePack:
     """A ``files.tree`` pack release over ``files``, every object raw; optionally a ``files``
     delta set from ``from_pack``, whose entries are ``delta`` (the probe frame, when the base file
     is the probe base) or raw ``blob`` entries. ``signer`` (``{"pem", "kid"}``) signs with a
-    delegated content key instead of the release key."""
+    delegated content key instead of the release key. ``record_extra`` adds record-level members
+    (a reserved ``provides``, say) after the variants."""
     fs = {p: (b.encode("utf-8") if isinstance(b, str) else b) for p, b in files.items()}
     paths = sorted(fs, key=lambda p: p.encode("utf-8"))
     entries = [
@@ -228,6 +230,8 @@ def tree_pack(
     if entitlement is not None:
         record["entitlement"] = entitlement
     record["variants"] = [variant]
+    if record_extra:
+        record.update(record_extra)
     if signer is not None:
         jws = sign_jws(record, signer["pem"], signer["kid"], "pkey-release+jws")
     else:

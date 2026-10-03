@@ -43,6 +43,7 @@ import {
   PACK_BINDINGS,
   PACK_FIELDS_NOT_SUPPORTED,
   PACK_PATCH_STRATEGIES,
+  PROVIDES_FILE_PATTERN,
   type DescriptorManifest,
   type ParsedManifest,
 } from "../src/index.js";
@@ -291,6 +292,8 @@ function base(): Docs {
             requires: { engine: "godot-4.7" },
             patch: { strategies: ["delta", "file", "chunk"], deltaBases: 1 },
             versioning: { scheme: "semver" },
+            // P4-20: a publish without the content-id list fails.
+            provides: { required: true, from: ".pkey/provides.json" },
           },
           "acme.l10n": {
             kind: "pack",
@@ -1334,11 +1337,39 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) => (l10n(d).removes = ["res://x/"]),
   },
+  // ── provides (P4-20) ──
   {
-    code: "pack_field_not_supported",
+    // A policy object, not the list itself.
+    code: "invalid_pack_provides",
     file: "release",
     schema: "rejects",
-    mutate: (d) => (l10n(d).provides = ["res://x/"]),
+    mutate: (d) => (l10n(d).provides = ["foe.goblin"]),
+  },
+  {
+    code: "invalid_pack_provides",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).provides.required = "yes"),
+  },
+  {
+    // A misspelt member is refused, never ignored.
+    code: "invalid_pack_provides",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).provides.requried = true),
+  },
+  {
+    // Repo-relative, never escaping the repository.
+    code: "invalid_pack_provides",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).provides.from = "../content/ids.json"),
+  },
+  {
+    code: "invalid_pack_provides",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (core3d(d).provides.from = "/etc/ids.json"),
   },
   {
     // The pack path of the existing code.
@@ -2329,6 +2360,9 @@ describe("the pack schema's vocabularies are the validator's constants (P4-02)",
     );
     for (const field of PACK_FIELDS_NOT_SUPPORTED)
       expect(pack[field]).toBe(false);
+    expect(pack.provides.properties.from.pattern).toBe(
+      PROVIDES_FILE_PATTERN.source.replaceAll("\\/", "/"),
+    );
   });
 });
 

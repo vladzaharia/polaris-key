@@ -70,6 +70,10 @@ import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { MAX_SINGLE_PUT_BYTES, putFile } from "./s3.js";
 import { buildMetadataFor } from "./buildMetadata.js";
 import {
+  contentInterfaceFingerprint,
+  judgeContentInterface,
+} from "./saveCompat.js";
+import {
   checkSignedRecord,
   recordSigner,
   RELEASE_KEY_ENV,
@@ -156,6 +160,13 @@ export interface PublishOptions {
   embedded?: string;
   /** `--pin <packId>@<version>`: pins for packs this build does not embed. */
   pins?: string[];
+  /**
+   * P4-20 `--content-interface`: the JSON registry of what the code references, hashed into the
+   * release's content-interface fingerprint (`saveCompat.ts`), stored as unsigned metadata.
+   */
+  contentInterface?: string;
+  /** P4-20 `--strict`: fail, not warn, when the fingerprint changed and contentApi did not. */
+  strict?: boolean;
 }
 
 export interface PublishResult {
@@ -174,6 +185,8 @@ export interface PublishResult {
   warnings: string[];
   /** The descriptor's `content` (P4-03), when the product declares packs. */
   content?: AppContent;
+  /** P4-20: the content-interface fingerprint, when `--content-interface` was given. */
+  contentInterface?: string;
 }
 
 // ── 1. Matching ──────────────────────────────────────────────────────────────────────────────
@@ -548,6 +561,14 @@ export async function publishRelease(
     throw new Error(`--version (or --tag) is required.\n${PUBLISH_USAGE}`);
   if (!opts.dir?.trim())
     throw new Error(`--dir is required.\n${PUBLISH_USAGE}`);
+  if (opts.strict && opts.contentInterface === undefined)
+    throw new Error("--strict needs --content-interface <file>.");
+  // P4-20: hashed first, so a bad registry costs no upload.
+  const fingerprint =
+    opts.contentInterface !== undefined
+      ? await contentInterfaceFingerprint(opts.cwd, opts.contentInterface)
+      : null;
+  if (fingerprint !== null) out.write(`Content interface: ${fingerprint}\n`);
 
   // 1. The manifest and the match.
   const loaded = await loadManifest(opts.cwd);
@@ -733,6 +754,21 @@ export async function publishRelease(
     skipped: [],
     warnings: match.warnings,
     ...(descriptor.content ? { content: descriptor.content } : {}),
+    ...(fingerprint !== null ? { contentInterface: fingerprint } : {}),
+  };
+  const judge = (answer: unknown): void => {
+    if (fingerprint === null) return;
+    const verdict = judgeContentInterface(
+      answer,
+      fingerprint,
+      descriptor.content?.contentApi ?? null,
+      opts.strict === true,
+    );
+    out.write(`Content interface: ${verdict.note}\n`);
+    if (verdict.warning) {
+      result.warnings.push(verdict.warning);
+      opts.stderr.write(`warning: ${verdict.warning}\n`);
+    }
   };
   if (opts.dryRun) {
     out.write(
@@ -871,6 +907,24 @@ export async function publishRelease(
     }
   }
 
+  // P4-20: before anything is uploaded, ask the server (a dry run) for the channel's current
+  // fingerprint, so --strict fails with nothing published. A dry run judges its own answer.
+  if (fingerprint !== null && !opts.dryRun)
+    judge(
+      (
+        await client.postJson("release/publish/submit", {
+          what: "Comparing the content interface (dry run)",
+          body: {
+            ticket: ticket.ticket,
+            descriptor,
+            ...(recordJws !== undefined ? { record: recordJws } : {}),
+            contentInterface: fingerprint,
+            dryRun: true,
+          },
+        })
+      ).contentInterface,
+    );
+
   if (source === "r2") {
     for (const o of ticket.objects) {
       if (o.present) {
@@ -909,10 +963,12 @@ export async function publishRelease(
       ticket: ticket.ticket,
       descriptor,
       ...(recordJws !== undefined ? { record: recordJws } : {}),
+      ...(fingerprint !== null ? { contentInterface: fingerprint } : {}),
       ...(opts.dryRun ? { dryRun: true } : {}),
     },
   });
   result.server = server;
+  if (opts.dryRun) judge(server.contentInterface);
   if (opts.dryRun) {
     const unverified = Array.isArray(server.unverified)
       ? server.unverified.length

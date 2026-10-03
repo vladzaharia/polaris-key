@@ -1,4 +1,4 @@
-# @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.delegation
+# @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.delegation packs.provides
 """``client.update.packs`` end to end against a fake byte server (P4-07 acceptance; a port of
 ``@polaris-key/node``'s ``test/packs.test.ts``): a ``files.tree`` pack installed from its pinned
 record into the platform data directory, updated by the file strategy, resumed after a dropped
@@ -539,6 +539,38 @@ def test_decide_without_revocations_writes_nothing(srv: FakeServer, tmp_path: An
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
         assert "revocationsStored" not in json.load(f)
     c.close()
+
+
+def test_is_available_and_pack_for_through_the_client(srv: FakeServer, tmp_path: Any) -> None:
+    # P4-20 save compatibility: the facade answers from the running set and the stamp's pins.
+    l10n = tree_pack("djdl.l10n", "1.0.0", 1, V1_FILES, record_extra={"provides": ["l10n.fr"]})
+    foes = tree_pack("djdl.foes", "1.0.0", 1, {"f.txt": "f"}, record_extra={"provides": ["foe.goblin"]})
+    srv.packs = [l10n, foes]
+    c = client(srv, tmp_path, [l10n, foes])
+    c.update.packs.ensure(["djdl.l10n"])
+    assert c.update.packs.is_available("l10n.fr") is True
+    assert c.update.packs.is_available("foe.goblin") is False
+    blobs = len(srv.blob_requests())
+    got = c.update.packs.pack_for("foe.goblin")
+    assert got is not None and got.to_dict() == {
+        "packId": "djdl.foes",
+        "release": {"sha256": foes.record_sha256, "seq": 1, "version": "1.0.0"},
+    }
+    assert len(srv.blob_requests()) == blobs
+    assert c.update.packs.pack_for("foe.dragon") is None
+    c.close()
+
+    # Without a content stamp: no packs, so nothing is available and nothing provides.
+    bare = make_client(
+        srv,
+        trust=PRODUCT_TRUST,
+        data_dir=str(tmp_path / "bare"),
+        expected_services=["release", "distribution", "update"],
+        update=UpdateClientOptions(pinned_release_keys=RELEASE_KEYS, outlet="direct"),
+    )
+    assert bare.update.packs.is_available("l10n.fr") is False
+    assert bare.update.packs.pack_for("l10n.fr") is None
+    bare.close()
 
 
 def test_a_held_release_signed_under_a_delegation_is_refused_through_the_packs_client(

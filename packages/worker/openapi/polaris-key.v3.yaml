@@ -4335,6 +4335,21 @@ paths:
         (`revocation-target`); a replacement on a delegation target, or a replacement signed
         under a delegation, is `revocation-replacement`. Ingest yanks every release signed under
         the delegation (reason `delegation-revoked`).
+        P4-20 (save compatibility): a pack record's record-level `provides` and `removes` (each
+        an array of at most 4,096 distinct content ids, printable ASCII without spaces, 1 to 128
+        characters) are checked before anything is promoted, dry run included: refused as
+        `pack-provides` (a malformed list, or no `provides` while the pack declares
+        `provides.required`) or `provides-dropped` (an id the deliverable's previous record
+        provided is neither provided nor listed in `removes`, at a live contentApi level both
+        releases support; two releases without a contentApi range always share a line; the
+        message names the ids and the levels). The answer carries `warnings` for a `removes` id
+        the previous record never provided or this one still provides. An APP descriptor submit
+        may carry `contentInterface`, the SHA-256 of its content-interface registry, stored as
+        unsigned release metadata (never a record member; `bad_body` when malformed or on a
+        pack); the answer, dry run or not, then carries `contentInterface` with the channel's
+        current app release's `releaseId`, `version`, `contentApi` and fingerprint (`previous`,
+        null when the channel serves none), which `pkey release publish --content-interface`
+        compares.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -4362,6 +4377,10 @@ paths:
                   type: string
                   maxLength: 88844
                   description: "P4-19, a revocation of a delegation the Worker never stored: that delegation's compact JWS."
+                contentInterface:
+                  type: string
+                  pattern: "^[0-9a-f]{64}$"
+                  description: "P4-20, an app descriptor submit: the SHA-256 of the app's content-interface registry, stored as unsigned release metadata."
                 dryRun: { type: boolean }
       responses:
         "200":
@@ -4434,6 +4453,25 @@ paths:
                     type: array
                     items: { type: string }
                     description: "`dryRun` only: storage keys of ticket objects not yet uploaded, judged as if they were."
+                  warnings:
+                    type: array
+                    items: { type: string }
+                    description: "P4-20, a pack release: `removes` ids the previous record never provided or this one still provides."
+                  contentInterface:
+                    type: object
+                    description: "P4-20, an app submit that carried `contentInterface`: it, and the channel's current app release (`previous`, null when none)."
+                    required: [sha256, previous]
+                    properties:
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      previous:
+                        type: [object, "null"]
+                        required: [releaseId, version, contentApi, sha256]
+                        properties:
+                          releaseId: { type: string }
+                          version: { type: string }
+                          contentApi: { type: [integer, "null"] }
+                          sha256:
+                            { type: [string, "null"], pattern: "^[0-9a-f]{64}$" }
                   record:
                     type: object
                     description: >

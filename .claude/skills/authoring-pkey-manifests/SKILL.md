@@ -100,7 +100,9 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       (`strategies` ⊆ `delta`, `file`, `chunk`, default all three; `deltaBases` 0–8), `versioning.scheme`, and
       `entitlement`, which must name a `flag` of `.pkey/schema` and only ASSERTS the gate an
       operator sets under Distribution → Access (a publish whose gate differs is refused).
-      `provides` and `removes` are refused (`pack_field_not_supported`).
+      `provides: {required?, from?}` is the save-compatibility policy (`invalid_pack_provides`;
+      `from` a repo-relative JSON list of content ids, default `.pkey/provides.json`); `removes`
+      is never declared (`pack_field_not_supported`), it is `pkey release publish --removes`.
       `deliverables.app.content: { contentApi: <int>, packChannels? }` is then required
       (`invalid_app_content`); `packChannels` maps a pack id or `prefix.*` to a channel the
       matched packs publish to (`invalid_pack_channels`, `unknown_pack_channels_target`). Holds

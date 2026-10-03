@@ -5,7 +5,7 @@
 // `runUpdateCheck`'s step 11 relevance and decision-input expansion. The corpus pins every
 // verdict across SDKs (`delegationCases`, `dataOnlyCases`); these pin the I/O around them.
 //
-// @pkey-feature packs.delegation
+// @pkey-feature packs.delegation packs.provides
 
 import { describe, expect, it } from "vitest";
 import {
@@ -606,5 +606,64 @@ describe("runUpdateCheck and delegation revocations (plans/P4-19.md §2.7)", () 
     const r = await runUpdateCheck(opts);
     expect(r.ok).toBe(true);
     expect(fetched).not.toContain(rev.record);
+  });
+});
+
+describe("packFor over delegated feed targets (P4-20 x P4-19)", () => {
+  async function provided() {
+    const ck = contentKeyPair();
+    const d = await delegationFor({
+      deliverable: "djdl.events",
+      publicKey: ck.pub,
+    });
+    const pack = await treePack({
+      packId: "djdl.events.halloween",
+      version: "1.0.0",
+      seq: 1,
+      files: { "a.json": "{}" },
+      issuedAt: 1759250000,
+      signer: { pem: ck.pem, kid: d.kid },
+      recordExtra: { provides: ["event.halloween"] },
+    });
+    return { d, pack, server: byteServer(pack) };
+  }
+  const provider = (p: TreePack) => ({
+    packId: p.packId,
+    release: target(p).release,
+  });
+
+  it("resolves a delegated feed target's provides through its delegation", async () => {
+    const { d, pack, server } = await provided();
+    const e = engine({ server, delegations: new Map([[d.sha256, d.jws]]) });
+    await e.load();
+    expect(await e.packFor("event.halloween", [target(pack)])).toEqual(
+      provider(pack),
+    );
+    expect(e.delegatedReleases()).toEqual({
+      [pack.recordSha256]: { pack: pack.packId, delegation: d.sha256 },
+    });
+    // Without the delegation the target cannot verify, so it never answers.
+    const bare = engine({ server, delegations: new Map() });
+    await bare.load();
+    expect(await bare.packFor("event.halloween", [target(pack)])).toBeNull();
+  });
+
+  it("stops naming a memoised delegated target once its delegation is revoked", async () => {
+    const { d, pack, server } = await provided();
+    const e = engine({ server, delegations: new Map([[d.sha256, d.jws]]) });
+    await e.load();
+    expect(await e.packFor("event.halloween", [target(pack)])).toEqual(
+      provider(pack),
+    );
+    const rev = await delegationRevocationFor(d, "djdl.events");
+    const v = await verifyRevocation(rev.jws, {
+      releaseKeys: RELEASE_KEYS,
+      productTrust: PRODUCT_TRUST,
+      expectedAud: PRODUCT,
+      entry: rev.entry,
+    });
+    if (!v.ok) throw new Error(v.step);
+    await e.recordRevocations([{ revocation: v.revocation, jws: rev.jws }]);
+    expect(await e.packFor("event.halloween", [target(pack)])).toBeNull();
   });
 });

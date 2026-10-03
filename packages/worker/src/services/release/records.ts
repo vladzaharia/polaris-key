@@ -106,7 +106,10 @@ export type RecordRefusalReason =
   | "delegation-binding"
   | "delegation-data-only"
   | "pin-delegated"
-  | "hold-delegated";
+  | "hold-delegated"
+  // P4-20: save compatibility (`packs/provides.ts`).
+  | "pack-provides"
+  | "provides-dropped";
 
 export type RecordCheck =
   | {

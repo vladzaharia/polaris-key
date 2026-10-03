@@ -86,6 +86,8 @@ export async function treePack(o: {
   /** Sign with this key and kid instead of the release key (a delegated content key). */
   signer?: { pem: string; kid: string };
   issuedAt?: number;
+  /** Record-level members (P4-20's `provides`, say). */
+  recordExtra?: Record<string, unknown>;
 }): Promise<TreePack> {
   const files: Record<string, Uint8Array> = {};
   for (const [p, b] of Object.entries(o.files))
@@ -205,6 +207,7 @@ export async function treePack(o: {
     formatVersion: 1,
     handler: { activation: o.activation ?? "hot" },
     ...(o.entitlement ? { entitlement: o.entitlement } : {}),
+    ...(o.recordExtra ?? {}),
     variants: [
       {
         variant: {},

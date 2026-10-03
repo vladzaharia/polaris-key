@@ -427,7 +427,13 @@ deliverables:
   (`invalid_pack_patch`). List `chunk` explicitly only once your Worker and CLI support it: an
   older Worker's resync and an older CLI's validation refuse it.
 - **`versioning.scheme`** as for the app (default `semver`).
-- **`provides`** and **`removes`** are refused for now (`pack_field_not_supported`).
+- **`provides`** is the pack's save-compatibility policy: `{required?: boolean, from?: path}`
+  and nothing else, so a misspelt member is refused (`invalid_pack_provides`). `from` is a repo-relative path to the JSON array of content ids each
+  release provides (default `.pkey/provides.json`; no `.` or `..` segment, at most 256
+  characters); `required: true` fails a publish without that file. See
+  [Save compatibility](/docs/services/release/packs/#save-compatibility).
+- **`removes`** is never declared (`pack_field_not_supported`): it belongs to one release, so
+  pass it to `pkey release publish --removes`.
 - **`deliverables.app.content.packChannels`** maps 1–64 pack ids or `prefix.*` patterns to a
   channel (`invalid_pack_channels`); each key must match a declared pack that publishes to that
   channel (`unknown_pack_channels_target`). `content.holds` is never declared: an app release

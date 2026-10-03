@@ -1,4 +1,4 @@
-# @pkey-feature packs.delegation
+# @pkey-feature packs.delegation packs.provides
 """Unit proofs for P4-19's client side in Python (plans/P4-19.md §2.3–§2.7), a port of
 client-core's ``test/delegation.test.ts``: the pack engine's delegated surface (a feed target
 installs through its delegation; a stamp pin, a hold or a replacement never does), the data-only
@@ -513,3 +513,51 @@ def test_does_not_consider_an_entry_without_kind_whose_target_is_a_delegation() 
     r = run_update_check(**s["opts"])
     assert r.ok
     assert s["rev"]["record"] not in s["fetched"]
+
+
+def test_pack_for_resolves_a_delegated_feed_targets_provides() -> None:
+    # P4-20 x P4-19: pack_for verifies a delegated feed target through its delegation, as ensure
+    # does (one `_fetch_verified`), instead of refusing it at `jws`.
+    ck = content_key_pair()
+    d = delegation_for("djdl.events", ck["pub"])
+    pack = tree_pack(
+        "djdl.events.halloween",
+        "1.0.0",
+        1,
+        {"a.json": "{}"},
+        issued_at=1759250000,
+        signer={"pem": ck["pem"], "kid": d["kid"]},
+        record_extra={"provides": ["event.halloween"]},
+    )
+    server = ByteServer.of(pack)
+    e = engine(server, {d["sha256"]: d["jws"]})
+    e.load()
+    got = e.pack_for("event.halloween", [target(pack)])
+    assert got is not None and got.to_dict() == {"packId": pack.pack_id, **{"release": target(pack)["release"]}}
+    assert e.delegated_releases() == {
+        pack.record_sha256: {"pack": pack.pack_id, "delegation": d["sha256"]}
+    }
+    # Without the delegation the target cannot verify, so it never answers.
+    bare = engine(server, {})
+    bare.load()
+    assert bare.pack_for("event.halloween", [target(pack)]) is None
+
+
+def test_pack_for_stops_naming_a_memoised_delegated_target_once_its_delegation_is_revoked() -> None:
+    ck = content_key_pair()
+    d = delegation_for("djdl.events", ck["pub"])
+    pack = tree_pack(
+        "djdl.events.halloween",
+        "1.0.0",
+        1,
+        {"a.json": "{}"},
+        issued_at=1759250000,
+        signer={"pem": ck["pem"], "kid": d["kid"]},
+        record_extra={"provides": ["event.halloween"]},
+    )
+    e = engine(ByteServer.of(pack), {d["sha256"]: d["jws"]})
+    e.load()
+    assert e.pack_for("event.halloween", [target(pack)]) is not None
+    rev = delegation_revocation_for(d, "djdl.events")
+    e.record_revocations([{"revocation": verified(rev), "jws": rev["jws"]}])
+    assert e.pack_for("event.halloween", [target(pack)]) is None

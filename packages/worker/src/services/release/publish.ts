@@ -84,7 +84,10 @@ import {
 } from "../../core/publisher.js";
 import { appendAudit } from "../../core/data.js";
 import { randomId } from "../../core/platform.js";
-import { MAX_DESCRIPTOR_BYTES } from "@polaris-key/manifest";
+import {
+  APP_DELIVERABLE_ID,
+  MAX_DESCRIPTOR_BYTES,
+} from "@polaris-key/manifest";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import {
   ingestReleaseDescriptor,
@@ -101,6 +104,7 @@ import {
   handleStageRound,
 } from "./packs/publish.js";
 import { getReleaseConfig } from "./config.js";
+import { resolveChannelReleases } from "./resolve.js";
 import { handleDelegationsRead } from "./packs/delegations.js";
 import {
   checkReleaseRecord,
@@ -617,6 +621,21 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       "record must be the compact JWS of the release record (pkey-release+jws)",
     );
   const dryRun = body.dryRun === true;
+  // P4-20: the app's content-interface fingerprint, unsigned release metadata (never a record
+  // member): stored with the release and compared by the CLI with the channel's current one.
+  if (
+    body.contentInterface !== undefined &&
+    (typeof body.contentInterface !== "string" ||
+      !/^[0-9a-f]{64}$/.test(body.contentInterface))
+  )
+    return refusal(
+      400,
+      ErrorCode.BadRequest,
+      "bad_body",
+      "contentInterface must be the 64-hex SHA-256 of the app's content-interface registry",
+    );
+  const contentInterface =
+    typeof body.contentInterface === "string" ? body.contentInterface : null;
 
   // 1. The ticket.
   const found = await findUploadTicket(env, db, {
@@ -744,6 +763,27 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     if (!checked.ok) return recordRefusal(checked);
     record = checked;
   }
+  // P4-20: the fingerprint belongs to an app release; the answer names the channel's current one.
+  let interfaceAnswer: Record<string, unknown> = {};
+  if (contentInterface !== null) {
+    if (plan.descriptor.deliverable !== APP_DELIVERABLE_ID)
+      return refusal(
+        400,
+        ErrorCode.BadRequest,
+        "bad_body",
+        "contentInterface is an app release's; a pack release carries none",
+      );
+    interfaceAnswer = {
+      contentInterface: {
+        sha256: contentInterface,
+        previous: await currentContentInterface(
+          ctx,
+          plan.descriptor.channel ?? "stable",
+          plan.releaseId,
+        ),
+      },
+    };
+  }
   if (dryRun)
     return json({
       ok: true,
@@ -755,6 +795,7 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       unverified,
       ...(record ? { record: { sha256: record.sha256, kid: record.kid } } : {}),
       ...(plan.packSets ? { packSets: plan.packSets } : {}),
+      ...interfaceAnswer,
     });
 
   // 4. Claim, promote, ingest.
@@ -806,17 +847,29 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
       now,
       promoted: needed.keys(),
       packCache,
-      ...(checkedRecord
+      ...(checkedRecord || contentInterface !== null
         ? {
             extraStatements: (p) => [
-              stmtInsertReleaseRecord({
-                product: product.slug,
-                releaseId: p.releaseId,
-                deliverableId: p.deliverableId,
-                descriptorSha256: p.descriptorSha256,
-                check: checkedRecord,
-                now,
-              }),
+              ...(checkedRecord
+                ? [
+                    stmtInsertReleaseRecord({
+                      product: product.slug,
+                      releaseId: p.releaseId,
+                      deliverableId: p.deliverableId,
+                      descriptorSha256: p.descriptorSha256,
+                      check: checkedRecord,
+                      now,
+                    }),
+                  ]
+                : []),
+              ...(contentInterface !== null
+                ? [
+                    {
+                      sql: "UPDATE release_metadata SET content_interface = ? WHERE product = ? AND release_id = ?",
+                      params: [contentInterface, product.slug, p.releaseId],
+                    },
+                  ]
+                : []),
             ],
           }
         : {}),
@@ -898,7 +951,39 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     descriptorSha256: result.descriptorSha256,
     ...(storedRecord ? { record: storedRecord } : {}),
     ...(result.packSets ? { packSets: result.packSets } : {}),
+    ...interfaceAnswer,
   });
+}
+
+/**
+ * P4-20: the channel's current app release other than `releaseId` (the newest one the channel
+ * serves), with its contentApi and stored content-interface fingerprint, or null when the channel
+ * serves none.
+ */
+async function currentContentInterface(
+  ctx: ServiceContext,
+  channel: string,
+  releaseId: string,
+): Promise<{
+  releaseId: string;
+  version: string;
+  contentApi: number | null;
+  sha256: string | null;
+} | null> {
+  const resolved = await resolveChannelReleases(
+    ctx.db,
+    ctx.product.slug,
+    APP_DELIVERABLE_ID,
+    channel,
+  );
+  const row = resolved?.releases.find((r) => r.release_id !== releaseId);
+  if (!row) return null;
+  return {
+    releaseId: row.release_id,
+    version: row.version,
+    contentApi: row.content_api ?? null,
+    sha256: row.content_interface ?? null,
+  };
 }
 
 /** `release_record_rejected` with its reason (`records.ts`); `seq` is an ordering conflict. */

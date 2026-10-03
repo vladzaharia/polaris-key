@@ -166,6 +166,9 @@ export interface ReleaseMetadataRow {
   /** An app release's `content.contentApi` (0045_a); NULL for a pack release or an app release
    *  published before its product declared packs. Optional: rows built in code omit it. */
   content_api?: number | null;
+  /** An app release's content-interface fingerprint (0050, P4-20): unsigned metadata the CLI
+   *  compares across releases. NULL when its publish carried none. */
+  content_interface?: string | null;
 }
 
 export interface ReleaseArtifactRow {

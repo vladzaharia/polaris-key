@@ -41,6 +41,7 @@ import {
   type PackHandler,
   type PackInstall,
   type PackProgress,
+  type PackProvider,
   type PacksSnapshot,
   type Sha256Port,
 } from "@polaris-key/client-core";
@@ -270,6 +271,29 @@ export class PacksClient {
   async ensureReleases(targets: readonly PackTarget[]): Promise<PackInstall[]> {
     this.w.ctx.requireService("release", Feature.packsState);
     return (await this.start()).ensureReleases(targets);
+  }
+
+  /**
+   * Save compatibility (P4-20, CONTENT §6.7 item 8): whether a pack in the active set (mounted or
+   * active in this process, embedded baselines included) provides `contentId` in its record's
+   * `provides`. False without a content stamp.
+   */
+  async isAvailable(contentId: string): Promise<boolean> {
+    if (!this.configured) return false;
+    return (await this.start()).isAvailable(contentId);
+  }
+
+  /**
+   * The pack whose target release provides `contentId` (the stamp's pins, or `targets`: a
+   * `packs` decision's install list), to `estimate` and `ensure` before a save that needs it.
+   * Reads only records (fetched by hash and verified); null when no target provides it.
+   */
+  async packFor(
+    contentId: string,
+    targets?: readonly PackTarget[],
+  ): Promise<PackProvider | null> {
+    if (!this.configured) return null;
+    return (await this.start()).packFor(contentId, targets);
   }
 
   /** The stored and this process's verified revocations, and `relearn` (plans/P4-13.md §2.5). */

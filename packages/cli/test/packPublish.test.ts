@@ -479,6 +479,174 @@ describe("a compatible pack (P4-12)", () => {
   });
 });
 
+describe("save compatibility (P4-20)", () => {
+  const enc = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
+  const foes = (policy = "") => `    diceroll.foes:
+      kind: pack
+      type: files.tree
+      binding: compatible
+      requires:
+        contentApi: { app: ">=4" }
+${policy}`;
+  const files = {
+    "default/foes.json": new TextEncoder().encode('{"foes":1}'),
+    ...l10nTrees(),
+    "default/diceroll.core3d.pck": pck(kaykitUnstripped()),
+  };
+
+  it("signs --provides sorted and --removes into the record", async () => {
+    const { cwd, server } = await setup({ extraPacks: foes() }, files);
+    await writeFiles(cwd, {
+      "content/foes.json": enc(["foe.orc", "foe.goblin"]),
+    });
+    const { io, o } = opts(cwd, server, {
+      deliverable: "diceroll.foes",
+      dryRun: true,
+      providesFile: "content/foes.json",
+      removes: ["foe.troll"],
+    });
+    const res = await publishPack(o);
+    const record = res.record as PackRecordDoc & {
+      provides?: string[];
+      removes?: string[];
+    };
+    expect(record.provides).toEqual(["foe.goblin", "foe.orc"]);
+    expect(record.removes).toEqual(["foe.troll"]);
+    expect(releaseRecordClaims(record, { expectedAud: SLUG })).toBe(true);
+    expect(io.out()).toContain("Provides: 2 content ids; removes foe.troll");
+  });
+
+  it("reads the declared provides.from, and fails under provides.required without it", async () => {
+    const policy = `      provides: { required: true, from: content/ids.json }\n`;
+    const { cwd, server } = await setup({ extraPacks: foes(policy) }, files);
+    const missing = opts(cwd, server, {
+      deliverable: "diceroll.foes",
+      dryRun: true,
+    });
+    await expect(publishPack(missing.o)).rejects.toThrow(
+      /declares provides\.required, and content\/ids\.json does not exist/,
+    );
+    // Refused before any request.
+    expect(server.calls).toEqual([]);
+    await writeFiles(cwd, { "content/ids.json": enc(["foe.goblin"]) });
+    const { o } = opts(cwd, server, {
+      deliverable: "diceroll.foes",
+      dryRun: true,
+    });
+    const res = await publishPack(o);
+    expect((res.record as { provides?: string[] }).provides).toEqual([
+      "foe.goblin",
+    ]);
+  });
+
+  it("warns when an optional policy's file is missing, and refuses a malformed list", async () => {
+    const { cwd, server } = await setup(
+      { extraPacks: foes(`      provides: {}\n`) },
+      files,
+    );
+    const { io, o } = opts(cwd, server, {
+      deliverable: "diceroll.foes",
+      dryRun: true,
+    });
+    const res = await publishPack(o);
+    expect((res.record as { provides?: unknown }).provides).toBeUndefined();
+    expect(io.err()).toContain(
+      "diceroll.foes declares provides, and .pkey/provides.json does not exist",
+    );
+    await writeFiles(cwd, {
+      ".pkey/provides.json": enc(["foe.goblin", "foe.goblin"]),
+    });
+    await expect(
+      publishPack(
+        opts(cwd, server, { deliverable: "diceroll.foes", dryRun: true }).o,
+      ),
+    ).rejects.toThrow(
+      /provides file \.pkey\/provides\.json lists foe\.goblin twice/,
+    );
+    await expect(
+      publishPack(
+        opts(cwd, server, {
+          deliverable: "diceroll.foes",
+          dryRun: true,
+          providesFile: "nope.json",
+          removes: ["bad id"],
+        }).o,
+      ),
+    ).rejects.toThrow(/nope\.json does not exist/);
+  });
+
+  it("prints the server's save-compatibility warnings, and the publish still succeeds", async () => {
+    const { cwd, server } = await setup();
+    const real = server.fetchImpl;
+    const w =
+      "beta currently serves foe.dragon (diceroll.core3d@1.1.0-beta.1), which diceroll.core3d@1.0.0 does not provide; beta players will lose it when this release outranks beta's.";
+    const fetchImpl = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const res = await real(input, init);
+      if (!String(input).endsWith("/release/publish/submit")) return res;
+      const body = (await res.json()) as Record<string, unknown>;
+      return new Response(JSON.stringify({ ...body, warnings: [w] }), {
+        status: res.status,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const { io, o } = opts(cwd, server, { fetchImpl });
+    const res = await publishPack(o);
+    expect(io.err()).toContain(`warning: ${w}`);
+    expect(res.warnings).toContain(w);
+  });
+
+  it("the CLI passes --provides and --removes, and refuses the app's flags on a pack", async () => {
+    const { cwd, server } = await setup({ extraPacks: foes() }, files);
+    await writeFiles(cwd, { "ids.json": enc(["foe.goblin"]) });
+    const run = async (args: string[]) => {
+      const io = capture();
+      const code = await runPkey(
+        [
+          "release",
+          "publish",
+          "--product",
+          SLUG,
+          "--dir",
+          "dist",
+          "--version",
+          "1.0.0",
+          "--deliverable",
+          "diceroll.foes",
+          ...args,
+        ],
+        {
+          cwd,
+          stdout: io.stdout,
+          stderr: io.stderr,
+          env: {},
+          fetchImpl: server.fetchImpl,
+          sleep: instant,
+        },
+      );
+      return { code, out: io.out(), err: io.err() };
+    };
+    const ok = await run([
+      "--provides",
+      "ids.json",
+      "--removes",
+      "foe.orc,foe.troll",
+      "--removes",
+      "foe.ogre",
+      "--dry-run",
+    ]);
+    expect(ok.out).toContain(
+      "Provides: 1 content id; removes foe.ogre, foe.orc, foe.troll",
+    );
+    expect(
+      (await run(["--content-interface", "r.json", "--dry-run"])).err,
+    ).toContain("--content-interface does not apply here");
+    expect((await run(["--removes"])).err).toContain("--removes a content id");
+  });
+});
+
 describe("a Diceroll-sized pack", () => {
   it("625 entries in three variants with deltas: the signed record stays under the cap and every zstd ref carries size", async () => {
     const variants = "      variants:\n        texture: [s3tc, etc2, astc]\n";
@@ -705,5 +873,16 @@ describe("the CLI", () => {
       "release-id=diceroll.core3d@1.0.0\noutcome=created\n",
     );
     expect(io.out()).not.toContain(key.pem.split("\n")[1]!);
+  });
+});
+
+describe("the content-id rule is one rule (P4-20)", () => {
+  it("@polaris-key/manifest's publish rule and client-core's reader agree", async () => {
+    const manifest = await import("@polaris-key/manifest");
+    const core = await import("@polaris-key/client-core/packs");
+    expect(manifest.CONTENT_ID_PATTERN.source).toBe(
+      core.CONTENT_ID_PATTERN.source,
+    );
+    expect(manifest.MAX_PROVIDES).toBe(core.MAX_PROVIDES);
   });
 });

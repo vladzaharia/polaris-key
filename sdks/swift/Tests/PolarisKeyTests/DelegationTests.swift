@@ -1,4 +1,4 @@
-// @pkey-feature packs.delegation
+// @pkey-feature packs.delegation packs.provides
 //
 // Unit proofs for P4-19's client side in Swift (plans/P4-19.md §2.3–§2.7; P4-25), ported from
 // client-core's `test/delegation.test.ts` scenario for scenario: the pack engine's delegated
@@ -120,6 +120,29 @@ final class DelegatedEngineTests: XCTestCase {
         XCTAssertNotNil(st.running[f.pack.packId])
     }
 
+    /// P4-20 x P4-19: `packFor` verifies a delegated feed target through its delegation, as
+    /// `ensure` does (one `fetchVerified`), instead of refusing it at `jws`.
+    func testPackForResolvesADelegatedFeedTargetsProvides() async throws {
+        let ck = contentKeyPair()
+        let d = delegationFor(deliverable: "djdl.events", publicKey: ck.pub)
+        let pack = treePack(
+            packId: "djdl.events.halloween", version: "1.0.0", seq: 1, files: ["a.json": "{}"],
+            signer: (ck.key, d.kid), issuedAt: 1_759_250_000,
+            recordExtra: ["provides": .array([.string("event.halloween")])])
+        let server = ByteServer(pack)
+        let e = engine(server: server, delegations: [d.sha256: d.jws])
+        _ = try await e.load()
+        let got = try await e.packFor("event.halloween", targets: [target(pack)])
+        XCTAssertEqual(got, PackProvider(packId: pack.packId, release: target(pack).release))
+        let known = await e.delegatedReleases()
+        XCTAssertEqual(known, [pack.recordSha256: DelegatedRelease(pack: pack.packId, delegation: d.sha256)])
+        // Without the delegation the target cannot verify, so it never answers.
+        let bare = engine(server: server, delegations: [:])
+        _ = try await bare.load()
+        let none = try await bare.packFor("event.halloween", targets: [target(pack)])
+        XCTAssertNil(none)
+    }
+
     func testNeverTakesTheDelegatedPathForTheStampsPin() async throws {
         let f = fixture()
         let e = engine(server: f.server, delegations: f.delegations, stamp: stampFor(f.pack))
@@ -169,6 +192,23 @@ final class DelegatedEngineTests: XCTestCase {
         await expectPackError(ErrorCode.packRevoked, detail: "delegation") {
             _ = try await e.ensureReleases([target(f.pack)])
         }
+    }
+
+    func testPackForStopsNamingAMemoisedDelegatedTargetOnceItsDelegationIsRevoked() async throws {
+        let ck = contentKeyPair()
+        let d = delegationFor(deliverable: "djdl.events", publicKey: ck.pub)
+        let pack = treePack(
+            packId: "djdl.events.halloween", version: "1.0.0", seq: 1, files: ["a.json": "{}"],
+            signer: (ck.key, d.kid), issuedAt: 1_759_250_000,
+            recordExtra: ["provides": .array([.string("event.halloween")])])
+        let e = engine(server: ByteServer(pack), delegations: [d.sha256: d.jws])
+        _ = try await e.load()
+        let first = try await e.packFor("event.halloween", targets: [target(pack)])
+        XCTAssertNotNil(first)
+        let rev = delegationRevocationFor((jws: d.jws, sha256: d.sha256, kid: d.kid), deliverable: "djdl.events")
+        try await e.recordRevocations([try verified(rev)])
+        let after = try await e.packFor("event.halloween", targets: [target(pack)])
+        XCTAssertNil(after)
     }
 
     func testReSniffsAReusedInstallOnANoopPlan() async throws {

@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 48 | 3 | 3 | 7 |
-| React | `web`, `desktop-bridge` | 40 | 12 | 3 | 6 |
-| Python | `python` | 48 | 3 | 3 | 7 |
-| Swift | `macos`, `ios` | 49 | 3 | 3 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 49 | 0 | 9 | 3 |
+| Node | `node` | 49 | 3 | 2 | 7 |
+| React | `web`, `desktop-bridge` | 41 | 12 | 2 | 6 |
+| Python | `python` | 49 | 3 | 2 | 7 |
+| Swift | `macos`, `ios` | 50 | 3 | 2 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 50 | 0 | 8 | 3 |
 
 ## Core
 
@@ -106,7 +106,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.apply.delta` | Raw-prefix delta | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | any: dependency; any: version |
 | `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + `content/` `packSetIdCases` (P4-04) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.handlers` | Handler contract; registerHandler for custom types | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `packs.provides` | isAvailable(contentId) from provides | unit | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | planned (P4-20) | — |
+| `packs.provides` | isAvailable(contentId) from provides | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | planned (P5-08); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
 | `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (P5-08); N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
 | `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | planned (P5-08); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, ios, android: runtime |

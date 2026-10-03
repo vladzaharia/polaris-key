@@ -417,6 +417,8 @@ public actor PackEngine {
     /// Delegated releases verified in this process: record hash → pack and delegation hash.
     private var delegatedKnown: [String: DelegatedRelease] = [:]
     private var tail: Task<Void, Never>?
+    /// Save compatibility's record facts, by record hash (`Provides.swift`).
+    private var providesMemo = ProvidesMemo()
 
     public init(_ opts: PackEngineOptions) {
         self.opts = opts
@@ -571,6 +573,64 @@ public actor PackEngine {
     public func packSetId() -> String? {
         PolarisKeyPacks.packSetId(
             running.values.map { PackSetEntry(packId: $0.packId, releaseSha256: $0.recordSha256) })
+    }
+
+    /// Save compatibility (P4-20, CONTENT §6.7 item 8): whether a pack release in the ACTIVE set
+    /// provides `contentId` (its record's `provides`, `Provides.swift`). The active set is the
+    /// running set: restart packs mounted at this boot, hot packs active, embedded baselines
+    /// included; a revoked release is never in it. A pack whose `entitlement` the licence lacks
+    /// never answers.
+    public func isAvailable(_ contentId: String) async throws -> Bool {
+        _ = try requireLoaded()
+        let granted = await opts.entitlements()
+        for i in running.values where providesMemo.facts(ProvidesMemo.key(i.packId, i.recordSha256), i.record).answers(contentId, granted) {
+            return true
+        }
+        return false
+    }
+
+    /// The pack whose TARGET release provides `contentId`, so a game can `estimate` and `ensure`
+    /// it. The target set is `targets` (a `packs` decision's install list) or, by default, the
+    /// content stamp's pins; each target's record is the verified record of an install or embedded
+    /// baseline with its hash, else fetched by hash and verified as `ensure` verifies it. The first
+    /// target, in list order, that provides the id answers. A target that cannot be fetched or
+    /// verified, a revoked one and an unentitled one (CONTENT §6.7 item 9) never answer. Nil when
+    /// no target provides it.
+    public func packFor(_ contentId: String, targets: [PackTarget]? = nil) async throws -> PackProvider? {
+        try await serialised { try await self.packForNow(contentId, targets) }
+    }
+
+    private func packForNow(_ contentId: String, _ targets: [PackTarget]?) async throws -> PackProvider? {
+        _ = try requireLoaded()
+        resetDelegationBudget()
+        let list = targets ?? (opts.stamp?.pins ?? []).map {
+            PackTarget(pack: $0.pack, release: ReleasePin(sha256: $0.sha256, seq: $0.seq, version: $0.version))
+        }
+        let granted = await opts.entitlements()
+        // A revoked record, or one signed under a revoked delegation (checked here too, because a
+        // memo hit skips `fetchVerified`'s own check).
+        let delegated = delegatedReleases()
+        for t in list where revokedBy(t.release.sha256, delegated[t.release.sha256]?.delegation) == nil {
+            if let f = await targetFacts(t), f.answers(contentId, granted) {
+                return PackProvider(packId: t.pack, release: t.release)
+            }
+        }
+        return nil
+    }
+
+    /// A target's facts: from an install or embedded baseline of that release, else its record
+    /// fetched and verified (`fetchVerified`); nil when that fails.
+    private func targetFacts(_ t: PackTarget) async -> ProvidesFacts? {
+        let sha = t.release.sha256
+        let key = ProvidesMemo.key(t.pack, sha)
+        if let hit = providesMemo.get(key) { return hit }
+        guard let doc else { return nil }
+        for case let i? in [doc.active[t.pack], doc.previous[t.pack], running[t.pack], embedded[t.pack]]
+        where i.recordSha256 == sha && i.packId == t.pack {
+            return providesMemo.facts(key, i.record)
+        }
+        guard let (body, _, _) = try? await fetchVerified(t.pack, t.release) else { return nil }
+        return providesMemo.facts(key, body)
     }
 
     /// Mark this boot healthy (CONTENT §10 step 7).
@@ -1063,6 +1123,63 @@ public actor PackEngine {
         return out
     }
 
+    /// Step 2 for one pin: the record fetched by hash and verified against the pinned release
+    /// keys, a delegated one through its delegation (plans/P4-19.md §2.3). Returns the body, the
+    /// record and the delegation's compact JWS (or nil). `preflight` and `packFor` (P4-20) share
+    /// it, as client-core's `fetchVerified`.
+    private func fetchVerified(
+        _ packId: String, _ release: ReleasePin
+    ) async throws -> (String, PackRecordDoc, String?) {
+        let body: String
+        switch await opts.fetchRecord(release.sha256) {
+        case .ok(let b): body = b
+        case .failed(let code):
+            throw PackError(code, "Fetching \(packId)'s record failed (\(code)).", packId: packId)
+        }
+        // plans/P4-19.md §2.3, §2.4: a `pkd1-` kid names its delegation, fetched by hash, only on
+        // the delegated surface (a feed target that is neither the stamp's pin or hold for this pack
+        // nor a stored revocation's replacement). Elsewhere step 13 refuses it at `jws`.
+        var delegation: String?
+        if let h = delegationHashOf(body), delegatedAllowed(packId, release.sha256) {
+            delegation = try await fetchDelegation(packId, h)
+        }
+        let v = verifyReleaseRecord(
+            body,
+            options: VerifyReleaseRecordOptions(
+                releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
+                expectedAud: opts.product, expectedHash: release.sha256,
+                pin: ReleaseRecordPin(kind: "pack", deliverable: packId, version: release.version, seq: release.seq),
+                delegation: delegation))
+        if let d = v.delegation {
+            delegatedKnown[release.sha256] = DelegatedRelease(pack: packId, delegation: d.sha256)
+            if revokedBy(release.sha256, d.sha256) != nil {
+                throw PackError(
+                    ErrorCode.packRevoked,
+                    "\(packId)@\(release.version) was signed under a delegation its developer revoked.",
+                    detail: "delegation", packId: packId)
+            }
+        }
+        let delegated = v.delegation != nil ? delegation : nil
+        let record: PackRecordDoc
+        switch v {
+        case .refused(.crossCheck):
+            throw PackError(
+                ErrorCode.recordMismatch, "\(packId)'s record is not the pinned release.", packId: packId)
+        case .refused(let step):
+            throw PackError(
+                ErrorCode.recordRejected, "\(packId)'s record was refused at \(step.rawValue).",
+                detail: step.rawValue, packId: packId)
+        case .ok(let rec), .delegated(let rec, _):
+            guard let p = PackRecordDoc(json: rec.json) else {
+                throw PackError(
+                    ErrorCode.recordRejected, "\(packId)'s record was refused at claims.",
+                    detail: "claims", packId: packId)
+            }
+            record = p
+        }
+        return (body, record, delegated)
+    }
+
     /// Steps 1–4 for one pack: what is already current, or the verified record, the variant, the
     /// seeds, the index and the plan.
     private func preflight(_ packId: String, want: ReleasePin? = nil) async throws -> Preflight {
@@ -1104,53 +1221,8 @@ public actor PackEngine {
         }
 
         // 2. The pinned record, by hash, against the pinned release keys.
-        let body: String
-        switch await opts.fetchRecord(pin.sha256) {
-        case .ok(let b): body = b
-        case .failed(let code):
-            throw PackError(code, "Fetching \(packId)'s record failed (\(code)).", packId: packId)
-        }
-        // plans/P4-19.md §2.3, §2.4: a `pkd1-` kid names its delegation, fetched by hash, only on
-        // the delegated surface (a feed target that is neither the stamp's pin or hold for this pack
-        // nor a stored revocation's replacement). Elsewhere step 13 refuses it at `jws`.
-        var delegation: String?
-        if let h = delegationHashOf(body), delegatedAllowed(packId, pin.sha256) {
-            delegation = try await fetchDelegation(packId, h)
-        }
-        let v = verifyReleaseRecord(
-            body,
-            options: VerifyReleaseRecordOptions(
-                releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
-                expectedAud: opts.product, expectedHash: pin.sha256,
-                pin: ReleaseRecordPin(kind: "pack", deliverable: packId, version: pin.version, seq: pin.seq),
-                delegation: delegation))
-        if let d = v.delegation {
-            delegatedKnown[pin.sha256] = DelegatedRelease(pack: packId, delegation: d.sha256)
-            if revokedBy(pin.sha256, d.sha256) != nil {
-                throw PackError(
-                    ErrorCode.packRevoked,
-                    "\(packId)@\(pin.version) was signed under a delegation its developer revoked.",
-                    detail: "delegation", packId: packId)
-            }
-        }
-        let delegated = v.delegation != nil ? delegation : nil
-        let record: PackRecordDoc
-        switch v {
-        case .refused(.crossCheck):
-            throw PackError(
-                ErrorCode.recordMismatch, "\(packId)'s record is not the pinned release.", packId: packId)
-        case .refused(let step):
-            throw PackError(
-                ErrorCode.recordRejected, "\(packId)'s record was refused at \(step.rawValue).",
-                detail: step.rawValue, packId: packId)
-        case .ok(let rec), .delegated(let rec, _):
-            guard let p = PackRecordDoc(json: rec.json) else {
-                throw PackError(
-                    ErrorCode.recordRejected, "\(packId)'s record was refused at claims.",
-                    detail: "claims", packId: packId)
-            }
-            record = p
-        }
+        let (body, record, delegated) = try await fetchVerified(
+            packId, ReleasePin(sha256: pin.sha256, seq: pin.seq, version: pin.version))
 
         // 3. Type, entitlement, variant.
         guard let h = handler(record.type), h.supports(record.formatVersion),

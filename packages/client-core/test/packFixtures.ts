@@ -90,6 +90,8 @@ export async function treePack(o: {
   issuedAt?: number;
   /** Extra members of the variant (a `chunks` index ref, say). */
   variantExtra?: Record<string, unknown>;
+  /** Record-level members (P4-20's `provides` and `removes`, say). */
+  recordExtra?: Record<string, unknown>;
 }): Promise<TreePack> {
   const files: Record<string, Uint8Array> = {};
   for (const [p, b] of Object.entries(o.files))
@@ -209,6 +211,7 @@ export async function treePack(o: {
     formatVersion: 1,
     handler: { activation: o.activation ?? "hot" },
     ...(o.entitlement ? { entitlement: o.entitlement } : {}),
+    ...(o.recordExtra ?? {}),
     variants: [
       {
         variant: {},

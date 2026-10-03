@@ -55,6 +55,7 @@ from .ports import (
     sha256_of,
     slice_source,
 )
+from .provides import CONTENT_ID_PATTERN, MAX_PROVIDES, PackProvider, ProvidesFacts, provides_of
 from .select import (
     index_readable,
     index_rebuildable,
@@ -156,4 +157,9 @@ __all__ = [
     "frame_window",
     "window_allowed",
     "window_log_max",
+    "CONTENT_ID_PATTERN",
+    "MAX_PROVIDES",
+    "PackProvider",
+    "ProvidesFacts",
+    "provides_of",
 ]

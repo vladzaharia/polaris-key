@@ -30,6 +30,9 @@ import {
   validateIngestDocuments,
   validateManifestDocuments,
   webOriginProblem,
+  CONTENT_ID_PATTERN,
+  MAX_PROVIDES,
+  providesListProblem,
 } from "./index.js";
 
 const PRODUCT = { slug: "acme", name: "Acme" };
@@ -1832,6 +1835,8 @@ describe("deliverables and the artifact map (P2-04)", () => {
           type: "godot.pck",
           handler: { prefixes: ["res://ui/"] },
           requires: { engine: "godot-4.7" },
+          // P4-20: a policy without `from` reads the default file.
+          provides: { required: true },
         },
         "acme.l10n": {
           kind: "pack",
@@ -1861,6 +1866,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
         entitlement: null,
         patch: { strategies: ["delta", "file", "chunk"], deltaBases: 2 },
         versioning: { scheme: "semver" },
+        provides: null,
       },
       {
         kind: "pack",
@@ -1879,6 +1885,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
         entitlement: null,
         patch: { strategies: ["delta", "file", "chunk"], deltaBases: 1 },
         versioning: { scheme: "semver" },
+        provides: { required: true, from: ".pkey/provides.json" },
       },
     ]);
     // The persisted def_json reads back to the same declaration.
@@ -2044,5 +2051,27 @@ describe("publishing.trustedPublisher (P2-02)", () => {
       workflow: ".github/workflows/release.yml",
       environment: "release",
     });
+  });
+});
+
+describe("providesListProblem (P4-20)", () => {
+  it("accepts a list of distinct content ids and names what is wrong otherwise", () => {
+    expect(providesListProblem([])).toBeNull();
+    expect(providesListProblem(["foe.goblin", "res://a/b.tres"])).toBeNull();
+    expect(
+      providesListProblem(
+        Array.from({ length: MAX_PROVIDES }, (_, i) => `id.${i}`),
+      ),
+    ).toBeNull();
+    expect(providesListProblem({ ids: [] })).toMatch(/not an array/);
+    expect(
+      providesListProblem(
+        Array.from({ length: MAX_PROVIDES + 1 }, (_, i) => `id.${i}`),
+      ),
+    ).toMatch(/at most 4096/);
+    expect(providesListProblem(["a", "a"])).toMatch(/lists a twice/);
+    for (const bad of ["", "foe goblin", "x".repeat(129), "é", 7])
+      expect(providesListProblem([bad])).toMatch(/not a content id/);
+    expect(CONTENT_ID_PATTERN.test("x".repeat(128))).toBe(true);
   });
 });

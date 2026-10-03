@@ -65,6 +65,7 @@ import {
 } from "../records.js";
 import { readPackDeliverable, readPackDeliverables } from "./deliverables.js";
 import { checkPackPublish } from "./checks.js";
+import { checkProvidesKept, checkProvidesShape } from "./provides.js";
 import { resolveAndStore } from "./sets.js";
 import { handleRevocationSubmit } from "./revocations.js";
 import {
@@ -518,6 +519,13 @@ export async function handlePackSubmit(
     new Map(all.packs.map((p) => [p.id, p.binding])),
   );
   if (required) return recordRefusal(required.reason, required.message);
+  // P4-20: save compatibility, before anything is promoted: the lists' shape and the declared
+  // policy, then the predecessor's content ids at the levels both releases support.
+  const listed = checkProvidesShape(record, pack);
+  if (listed) return recordRefusal(listed.reason, listed.message);
+  const kept = await checkProvidesKept(db, product.slug, record, cfg);
+  if (!kept.ok) return recordRefusal(kept.reason, kept.message);
+  const warnings = kept.warnings.length > 0 ? { warnings: kept.warnings } : {};
 
   // 2. The optional ticket: a round of its own (a dry run only verifies what is staged).
   let ticket: TicketRecord | null = null;
@@ -609,6 +617,7 @@ export async function handlePackSubmit(
       files: store.files,
       unverified: [...unverified].sort(),
       ...(sets.report ? { packSets: sets.report } : {}),
+      ...warnings,
     });
 
   // 5. The rows, in one batch; a lost race writes nothing.
@@ -697,5 +706,6 @@ export async function handlePackSubmit(
     record: { sha256: recordSha256, stored: true },
     staged,
     ...(sets.report ? { packSets: sets.report } : {}),
+    ...warnings,
   });
 }

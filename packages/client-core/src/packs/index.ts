@@ -36,6 +36,15 @@ export {
 } from "./chunks.js";
 export { packSetId, type PackSetEntry } from "./set.js";
 export {
+  CONTENT_ID_PATTERN,
+  MAX_PROVIDES,
+  providesFacts,
+  providesOf,
+  verifiedPayloadOf,
+  type PackProvider,
+  type ProvidesFacts,
+} from "./provides.js";
+export {
   dataOnlyExtension,
   dataOnlyFileRefusal,
   dataOnlyPathRefusal,
