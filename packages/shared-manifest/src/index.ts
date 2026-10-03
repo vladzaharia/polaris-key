@@ -5093,3 +5093,5 @@ export * from "./descriptor.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
 export * from "./releaseKeys.js";
+// Human-readable build and artifact labels: platform and architecture, together.
+export * from "./labels.js";
