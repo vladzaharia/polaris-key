@@ -70,3 +70,7 @@ packages/zstd-wasm/wasm/zstd-1.5.7/
 # The content corpus's generator INPUTS (plans/P4-01.md §4.2): blobs and refs.json, hash-checked by
 # `pnpm gen:corpus` and never rewritten by a normal or `--check` run, so prettier must not either.
 conformance/corpus/v2/content/blobs/
+
+# @polaris-key/brand's copy of the launch kit: verbatim vendor files, checksum-tested against the
+# kit's SHA256SUMS.txt (packages/brand/test/kit-fidelity.test.ts), so prettier must never rewrite them.
+packages/brand/kit/

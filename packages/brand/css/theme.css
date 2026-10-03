@@ -1,0 +1,161 @@
+/*
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
+ * packages/brand/src/tokens/ and the launch kit copy in packages/brand/kit/.
+ * `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+ * its source and regenerate.
+ */
+
+/*
+ * Tailwind v4 theme for Polaris Key. Import after Tailwind and after tokens.css:
+ *
+ *   @import "tailwindcss";
+ *   @import "@polaris-key/brand/tokens.css";
+ *   @import "@polaris-key/brand/theme.css";
+ *
+ * `@theme inline` makes every utility read the live --pk-* variable, so data-theme and
+ * data-service switch the utilities too (bg-surface-raised, text-fg-muted, border-border,
+ * bg-accent, text-service-config-fg, bg-signed, ring-focus, rounded-lg, shadow-elevation-2…).
+ * Tailwind's default palette is left alone; reach for these names instead.
+ */
+
+@theme inline {
+  --color-surface-page: var(--pk-surface-page);
+  --color-surface-raised: var(--pk-surface-raised);
+  --color-surface-overlay: var(--pk-surface-overlay);
+  --color-surface-sunken: var(--pk-surface-sunken);
+  --color-fg-strong: var(--pk-text-strong);
+  --color-fg: var(--pk-text-default);
+  --color-fg-muted: var(--pk-text-muted);
+  --color-fg-subtle: var(--pk-text-subtle);
+  --color-fg-on-accent: var(--pk-text-on-accent);
+  --color-border: var(--pk-border-subtle);
+  --color-border-strong: var(--pk-border-strong);
+  --color-focus: var(--pk-focus);
+  --color-accent: var(--pk-accent);
+  --color-accent-fg: var(--pk-accent-fg);
+  --color-accent-on: var(--pk-accent-on);
+  --color-accent-subtle: var(--pk-accent-subtle);
+  --color-section-bit: var(--pk-section-bit);
+  --color-service-core: var(--pk-service-core);
+  --color-service-core-fg: var(--pk-service-core-fg);
+  --color-service-core-on: var(--pk-service-core-on);
+  --color-service-core-subtle: var(--pk-service-core-subtle);
+  --color-service-license: var(--pk-service-license);
+  --color-service-license-fg: var(--pk-service-license-fg);
+  --color-service-license-on: var(--pk-service-license-on);
+  --color-service-license-subtle: var(--pk-service-license-subtle);
+  --color-service-config: var(--pk-service-config);
+  --color-service-config-fg: var(--pk-service-config-fg);
+  --color-service-config-on: var(--pk-service-config-on);
+  --color-service-config-subtle: var(--pk-service-config-subtle);
+  --color-service-release: var(--pk-service-release);
+  --color-service-release-fg: var(--pk-service-release-fg);
+  --color-service-release-on: var(--pk-service-release-on);
+  --color-service-release-subtle: var(--pk-service-release-subtle);
+  --color-service-distribution: var(--pk-service-distribution);
+  --color-service-distribution-fg: var(--pk-service-distribution-fg);
+  --color-service-distribution-on: var(--pk-service-distribution-on);
+  --color-service-distribution-subtle: var(--pk-service-distribution-subtle);
+  --color-service-update: var(--pk-service-update);
+  --color-service-update-fg: var(--pk-service-update-fg);
+  --color-service-update-on: var(--pk-service-update-on);
+  --color-service-update-subtle: var(--pk-service-update-subtle);
+  --color-service-identity: var(--pk-service-identity);
+  --color-service-identity-fg: var(--pk-service-identity-fg);
+  --color-service-identity-on: var(--pk-service-identity-on);
+  --color-service-identity-subtle: var(--pk-service-identity-subtle);
+  --color-success: var(--pk-success);
+  --color-success-on: var(--pk-success-on);
+  --color-success-border: var(--pk-success-border);
+  --color-success-subtle: var(--pk-success-subtle);
+  --color-warning: var(--pk-warning);
+  --color-warning-on: var(--pk-warning-on);
+  --color-warning-border: var(--pk-warning-border);
+  --color-warning-subtle: var(--pk-warning-subtle);
+  --color-danger: var(--pk-danger);
+  --color-danger-on: var(--pk-danger-on);
+  --color-danger-border: var(--pk-danger-border);
+  --color-danger-subtle: var(--pk-danger-subtle);
+  --color-info: var(--pk-info);
+  --color-info-on: var(--pk-info-on);
+  --color-info-border: var(--pk-info-border);
+  --color-info-subtle: var(--pk-info-subtle);
+  --color-signed: var(--pk-signed);
+  --color-signed-on: var(--pk-signed-on);
+  --color-signed-border: var(--pk-signed-border);
+  --color-signed-subtle: var(--pk-signed-subtle);
+  --color-signed-mark: var(--pk-signed-mark);
+  --color-brand-violet: var(--pk-brand-violet);
+  --color-brand-gold: var(--pk-brand-gold);
+  --color-brand-star: var(--pk-brand-star);
+  --color-brand-page: var(--pk-brand-page);
+  --color-brand-text: var(--pk-brand-text);
+  --color-brand-muted: var(--pk-brand-muted);
+  --color-brand-rose: var(--pk-brand-rose);
+
+  --font-sans: var(--pk-font-sans);
+  --font-mono: var(--pk-font-mono);
+  --font-weight-normal: var(--pk-font-weight-regular);
+  --font-weight-bold: var(--pk-font-weight-bold);
+  --text-xs: var(--pk-font-size-xs);
+  --text-xs--line-height: var(--pk-line-height-xs);
+  --text-sm: var(--pk-font-size-sm);
+  --text-sm--line-height: var(--pk-line-height-sm);
+  --text-base: var(--pk-font-size-base);
+  --text-base--line-height: var(--pk-line-height-base);
+  --text-lg: var(--pk-font-size-lg);
+  --text-lg--line-height: var(--pk-line-height-lg);
+  --text-xl: var(--pk-font-size-xl);
+  --text-xl--line-height: var(--pk-line-height-xl);
+  --text-2xl: var(--pk-font-size-2xl);
+  --text-2xl--line-height: var(--pk-line-height-2xl);
+  --text-3xl: var(--pk-font-size-3xl);
+  --text-3xl--line-height: var(--pk-line-height-3xl);
+  --text-4xl: var(--pk-font-size-4xl);
+  --text-4xl--line-height: var(--pk-line-height-4xl);
+  --text-5xl: var(--pk-font-size-5xl);
+  --text-5xl--line-height: var(--pk-line-height-5xl);
+
+  --spacing: 0.25rem;
+  --radius-none: var(--pk-radius-none);
+  --radius-xs: var(--pk-radius-xs);
+  --radius-sm: var(--pk-radius-sm);
+  --radius-md: var(--pk-radius-md);
+  --radius-lg: var(--pk-radius-lg);
+  --radius-xl: var(--pk-radius-xl);
+  --radius-full: var(--pk-radius-full);
+  --shadow-elevation-1: var(--pk-elevation-1);
+  --shadow-elevation-2: var(--pk-elevation-2);
+  --shadow-elevation-3: var(--pk-elevation-3);
+  --ease-standard: var(--pk-ease-standard);
+  --ease-enter: var(--pk-ease-enter);
+  --ease-exit: var(--pk-ease-exit);
+}
+
+/*
+ * dark: and light: follow the same mechanics as tokens.css: data-theme wins, otherwise the OS
+ * preference, otherwise dark.
+ */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media not (prefers-color-scheme: light) {
+    &:where(:not([data-theme="light"], [data-theme="light"] *)) {
+      @slot;
+    }
+  }
+}
+
+@custom-variant light {
+  &:where([data-theme="light"], [data-theme="light"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: light) {
+    &:where(:not([data-theme="dark"], [data-theme="dark"] *)) {
+      @slot;
+    }
+  }
+}
