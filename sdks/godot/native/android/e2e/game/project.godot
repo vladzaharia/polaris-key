@@ -1,0 +1,24 @@
+; The P5-06 device probe (sdks/godot/native/android/export_check.sh copies the Polaris Key addon
+; beside it and exports it per flavour). Not part of the SDK project.
+config_version=5
+
+[application]
+
+config/name="pkey_android_probe"
+config/version="1.0.0"
+run/main_scene="res://main.tscn"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/polaris_key/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

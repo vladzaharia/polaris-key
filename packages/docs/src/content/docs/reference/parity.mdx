@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 46 | 14 | 0 | 6 |
 | Python | `python` | 54 | 5 | 0 | 7 |
 | Swift | `macos`, `ios` | 55 | 5 | 0 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 57 | 1 | 5 | 3 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 57 | 1 | 4 | 4 |
 
 ## Core
 
@@ -38,7 +38,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.headers` | Canonical platform, arch and SDK header values | `headers.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.caps` | supports() and capability telemetry | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | N/A (web, desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (P5-05) | web, desktop-bridge: runtime; node, python: dependency |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | N/A (web, desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (unowned) | web, desktop-bridge: runtime; node, python: dependency |
 
 ## License
 
@@ -158,6 +158,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Swift | `packs.transport.steam` | P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner. |
 | Swift | `ui.kit` | PolarisLoginView only; no work package builds the rest of the Swift kit. |
 | Swift | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
+| Godot | `core.store` | P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). Android: P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: the device id and token wrapped by one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, migrated from the file store, failures surfaced as keyring-error, a lost key surfaced and re-enrolled), which PKeyCore picks by default on Android when the plugin is present. iOS: P5-05's Keychain store. No work package owns a desktop keyring, so the desktop runtimes keep the file store. |
 | Godot | `identity.oidc` | Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead. |
 | Godot | `packs.transport.msix` | No work package owns an MSIX transport for Godot (program README §9). |
 | Godot | `packs.transport.flatpak` | No work package owns a Flatpak transport for Godot (program README §9). |

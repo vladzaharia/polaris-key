@@ -1,6 +1,7 @@
 class_name PKeyPlayTestingAdapter
-extends PKeyStoreAdapter
-## Play testing tracks: the testing opt-in page or the listing.
+extends PKeyPlayAdapter
+## Play testing tracks: Play installs these builds too, so In-App Updates work as on `play`
+## (PKeyPlayAdapter); otherwise the testing opt-in page or the listing.
 
 
 func _init() -> void:

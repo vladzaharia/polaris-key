@@ -32,6 +32,14 @@ __pycache__/
 .build/
 *.xcodeproj
 
+# P5-06: the Kotlin build (sdks/kotlin, and its :godot module in sdks/godot/native/android) and the
+# Godot Android binding's installed AARs (sdks/godot/native/android/build.sh); source only is
+# committed. The Gradle wrapper jar IS committed (a global *.jar ignore would otherwise drop it).
+.gradle/
+sdks/kotlin/local.properties
+sdks/godot/addons/polaris_key/native/android/
+!sdks/kotlin/gradle/wrapper/gradle-wrapper.jar
+
 # OS / editor
 .DS_Store
 *.log

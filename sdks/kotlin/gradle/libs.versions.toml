@@ -1,0 +1,25 @@
+# Versions pinned to Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
+# compile/target SDK 36, min SDK 24, Java 17 bytecode; notes/S-10 §Environment), so the AARs drop
+# into a Godot Gradle export unchanged. Play Core versions: the latest on 2026-10-03.
+[versions]
+agp = "8.6.1"
+kotlin = "2.1.21"
+godot = "4.7.2.stable"
+playAppUpdate = "2.1.0"
+playAssetDelivery = "2.3.0"
+junit = "4.13.2"
+robolectric = "4.14.1"
+androidxTestCore = "1.6.1"
+
+[libraries]
+godot = { module = "org.godotengine:godot", version.ref = "godot" }
+play-app-update = { module = "com.google.android.play:app-update", version.ref = "playAppUpdate" }
+play-asset-delivery = { module = "com.google.android.play:asset-delivery", version.ref = "playAssetDelivery" }
+junit = { module = "junit:junit", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
