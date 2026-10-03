@@ -116,10 +116,11 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 
 ## The wire v4 update options (plans/P3-01.md §2.6, §2.8): "" when they are valid, else why
 ## `configure` refuses them (`invalid-options`). pinned_release_keys maps kid strings to keys,
-## and no release key is also a trust pin (compared as raw bytes, so two spellings of one key
-## are one key); the host outlet is a kind, an outlet id and a subkind from their vocabularies;
-## every update method is one of `native`, `download`, `sidecar-pck`. An EMPTY
-## pinned_release_keys is valid here: decide() answers `not-configured`.
+## no release key is also a trust pin (compared as raw bytes, so two spellings of one key are one
+## key), and no kid is a delegated `pkd1-` kid (plans/P4-19.md §2.2); the host outlet is a kind,
+## an outlet id and a subkind from their vocabularies; every update method is one of `native`,
+## `download`, `sidecar-pck`. An EMPTY pinned_release_keys is valid here: decide() answers
+## `not-configured`.
 static func check_update_options(opts: PKeyOptions) -> String:
 	var trust_raw := {}
 	for k in opts.pinned_trust_keys:
@@ -129,6 +130,9 @@ static func check_update_options(opts: PKeyOptions) -> String:
 		var key = opts.pinned_release_keys[k]
 		if not (k is String and key is String):
 			return "pinned_release_keys must map kid strings to base64url key strings."
+		# plans/P4-19.md §2.2: a delegated kid is never a pinned release key.
+		if PKeyReleaseRecord.is_delegated_kid(k):
+			return "pinned_release_keys names the pkd1- kid '%s': a delegated content key is reached only through a delegation, never pinned." % k
 		var raw = PKeyB64Url.decode_lenient(key)
 		if trust_raw.has(raw.hex_encode() if raw != null else "text:" + key):
 			return "pinned_release_keys['%s'] is also a trust pin: a release key is never a product key (WIRE-CONTRACT-V4 §2.6)." % k

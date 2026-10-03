@@ -15,8 +15,8 @@
     "@polaris-key/zstd-wasm": "workspace:*"
   },
   "devDependencies": {
-    "@vitest/browser": "3.2.7",
+    "@vitest/browser-playwright": "4.1.11",
     "playwright": "1.63.0",
-    "vitest": "3.2.7"
+    "vitest": "4.1.11"
   }
 }

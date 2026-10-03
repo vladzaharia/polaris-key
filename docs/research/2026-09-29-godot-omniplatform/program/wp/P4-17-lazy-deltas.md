@@ -4,7 +4,7 @@
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P4: Packs (v3)                                                                                                                                            |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                      |
-| Depends on  | [P4-22](P4-22-ci-chunk-indexes.md), [P3-03](P3-03-feed-composition.md)                                                                                    |
+| Depends on  | [P4-22](P4-22-ci-chunk-indexes.md), [P3-03](P3-03-feed-composition.md), [S-08](S-08-cloudflare-async-compute.md)                                          |
 | Unblocks    | none                                                                                                                                                      |
 | Role        | `pkey-implementer`                                                                                                                                        |
 | Plan mode   | no: lazy deltas use the existing `pkey-patch/1` descriptor and the feed's delta menu                                                                      |
@@ -180,3 +180,7 @@ Set the status in the PR that completes the work:
 
 The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Plan amendments (S-08)
+
+The spike note [`notes/S-08-cloudflare-async-compute.md`](../../notes/S-08-cloudflare-async-compute.md) changes this package: its §6 recommendation (Queues plus a WASM zstd encoder in a separate consumer Worker; level 9, levels above 15 refused; a 32 MiB per-side cap; no Workflows or Containers, which move to a later P4-17b) and its §8 owner steps override this brief where they differ. Human inputs shrink to Workers Paid with Queues enabled and an R2 event-notification rule.

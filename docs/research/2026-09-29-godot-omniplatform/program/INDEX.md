@@ -131,7 +131,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-14](wp/P4-14-readiness-gc-rollouts.md)           | Distribution: outlet readiness holds, per-outlet pack rollouts and halts, server GC                                                                     | P4-12, P2b-04, P4-13                     | implementer    | 1–1.5     | done   |
 | [P4-15](wp/P4-15-console-compat-matrix.md)           | Console: compatibility matrix and the "what does this device get?" simulator                                                                            | P4-12, P4-13, P4-14                      | implementer    | 1         | done   |
 | [P4-16](wp/P4-16-more-pack-types.md)                 | More pack types in every SDK: `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`                                                           | P4-06, P4-07, P4-08                      | sdk-porter     | 1–1.5     | todo   |
-| [P4-17](wp/P4-17-lazy-deltas.md) ✋                  | Lazy hot-pair delta generation from install telemetry                                                                                                   | P4-22, P3-03                             | implementer    | 1–1.5     | todo   |
+| [P4-17](wp/P4-17-lazy-deltas.md) ✋                  | Lazy hot-pair delta generation from install telemetry                                                                                                   | P4-22, P3-03, S-08                       | implementer    | 1–1.5     | todo   |
 | [P4-18](wp/P4-18-web-dcz.md)                         | Web deltas via Compression Dictionary Transport, with the WASM decoder fallback                                                                         | P4-11, P4-05, P1b-05                     | implementer    | 1         | todo   |
 | [P4-19](wp/P4-19-content-key-delegation.md) ⚑        | Content-key delegation for data-only packs                                                                                                              | P4-13                                    | implementer    | 1.5–2     | done   |
 | [P4-20](wp/P4-20-save-compat.md)                     | Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint                                                           | P4-12, P4-08, P4-06, P4-07               | implementer    | 1         | done   |
@@ -140,7 +140,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-23](wp/P4-23-content-decision-python-swift.md) ⚑ | Content decision, feed pack members and revocations in Python and Swift                                                                                 | P4-13, P4-07                             | sdk-porter     | 1–1.5     | done   |
 | [P4-24](wp/P4-24-content-decision-godot.md) ⚑        | Content decision, feed pack members and revocations in Godot                                                                                            | P4-13, P4-08                             | godot-engineer | 1–1.25    | done   |
 | [P4-25](wp/P4-25-delegation-python-swift.md) ⚑       | Content-key delegation in Python and Swift                                                                                                              | P4-19, P4-23                             | sdk-porter     | 0.75–1    | done   |
-| [P4-26](wp/P4-26-delegation-godot.md) ⚑              | Content-key delegation in Godot                                                                                                                         | P4-19, P4-24                             | godot-engineer | 0.5–0.75  | todo   |
+| [P4-26](wp/P4-26-delegation-godot.md) ⚑              | Content-key delegation in Godot                                                                                                                         | P4-19, P4-24                             | godot-engineer | 0.5–0.75  | done   |
 | [P4-27](wp/P4-27-rscc-scan.md)                       | Scan compressed (RSCC) resources in packs so imported models are admitted                                                                               | P4-08, P4-22                             | godot-engineer | 0.5–0.75  | done   |
 | [P4-28](wp/P4-28-script-attach-allowlist.md)         | Script attachment allow-list and publish script-kind settings                                                                                           | P4-08                                    | godot-engineer | 0.5–1     | todo   |
 
@@ -154,9 +154,9 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P5-02](wp/P5-02-asc-connector.md) ✋            | App Store Connect connector: webhooks, TestFlight, phased release, Background Assets states                      | P5-01, P2b-03, P2b-04, S-07                     | implementer | 2     | done   |
 | [P5-03](wp/P5-03-play-connector.md) ✋           | Google Play connector: tracks, staged rollout, halt, update priority, Reporting API                              | P5-01, P2b-03, P2b-04, S-07                     | implementer | 1.5–2 | done   |
 | [P5-04](wp/P5-04-msstore-connector.md) ✋        | Microsoft Store status connector                                                                                 | P5-01, P2b-03, S-07                             | implementer | 0.5–1 | todo   |
-| [P5-05](wp/P5-05-apple-plugin-package.md) ✋     | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01                                     | implementer | 2–3   | todo   |
-| [P5-06](wp/P5-06-kotlin-aar.md) ✋               | Kotlin AAR: install source, In-App Updates, PAD, PackageInstaller, Keystore; Godot Android binding               | P3-10, S-05                                     | implementer | 2–3   | todo   |
-| [P5-07](wp/P5-07-desktop-plugins.md) ✋          | Desktop plugins: macOS Sparkle bridge; Windows Velopack, WinSparkle and StoreContext                             | P3-10, S-05                                     | implementer | 2–3   | todo   |
+| [P5-05](wp/P5-05-apple-plugin-package.md) ✋     | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01, S-09                               | implementer | 2–3   | todo   |
+| [P5-06](wp/P5-06-kotlin-aar.md) ✋               | Kotlin AAR: install source, In-App Updates, PAD, PackageInstaller, Keystore; Godot Android binding               | P3-10, S-05, S-10                               | implementer | 2–3   | todo   |
+| [P5-07](wp/P5-07-desktop-plugins.md) ✋          | Desktop plugins: macOS Sparkle bridge; Windows Velopack, WinSparkle and StoreContext                             | P3-10, S-05, S-11                               | implementer | 2–3   | todo   |
 | [P5-08](wp/P5-08-platform-pack-transports.md) ✋ | Platform pack transports: Background Assets, Play Asset Delivery, Steam depots, with CI steps                    | P5-02, P5-05, P5-06, P4-14, P4-08, P4-03, P5-03 | implementer | 2     | todo   |
 
 ## P6: Commerce, ops, web
@@ -182,17 +182,21 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## S: Spikes
 
-7 work packages, 5.25–7.25 weeks.
+11 work packages, 7.25–11.25 weeks.
 
-| Id                                             | Title                                                                                                           | Depends on | Role         | Weeks    | Status |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | -------- | ------ |
-| [S-01](wp/S-01-apple-background-assets.md) ✋  | Spike: Apple-hosted Background Assets from a Godot iOS export                                                   | —          | spike-runner | 1–1.5    | done   |
-| [S-02](wp/S-02-r2-range.md) ✋                 | Spike: Range, If-Range and cold-miss behaviour of R2 behind a custom domain                                     | —          | spike-runner | 0.5      | done   |
-| [S-03](wp/S-03-chunk-size-real-history.md) ✋  | Spike: chunk size and reuse on real Diceroll PCK history                                                        | —          | spike-runner | 0.5–0.75 | done   |
-| [S-04](wp/S-04-low-end-performance.md) ✋      | Spike: crypto, hashing and zstd on low-end Android, iOS and mobile/WebKit browsers                              | —          | spike-runner | 1        | done   |
-| [S-05](wp/S-05-godot-platform-mechanics.md) ✋ | Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks) | —          | spike-runner | 1.5–2    | done   |
-| [S-06](wp/S-06-outlet-signals.md) ✋           | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | done   |
-| [S-07](wp/S-07-policy-recheck.md)              | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done   |
+| Id                                               | Title                                                                                                           | Depends on | Role         | Weeks    | Status |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | -------- | ------ |
+| [S-01](wp/S-01-apple-background-assets.md) ✋    | Spike: Apple-hosted Background Assets from a Godot iOS export                                                   | —          | spike-runner | 1–1.5    | done   |
+| [S-02](wp/S-02-r2-range.md) ✋                   | Spike: Range, If-Range and cold-miss behaviour of R2 behind a custom domain                                     | —          | spike-runner | 0.5      | done   |
+| [S-03](wp/S-03-chunk-size-real-history.md) ✋    | Spike: chunk size and reuse on real Diceroll PCK history                                                        | —          | spike-runner | 0.5–0.75 | done   |
+| [S-04](wp/S-04-low-end-performance.md) ✋        | Spike: crypto, hashing and zstd on low-end Android, iOS and mobile/WebKit browsers                              | —          | spike-runner | 1        | done   |
+| [S-05](wp/S-05-godot-platform-mechanics.md) ✋   | Spike: Godot platform mechanics (Android pack stall, PAD paths, web multi-pack, MSIX `user://`, Velopack hooks) | —          | spike-runner | 1.5–2    | done   |
+| [S-06](wp/S-06-outlet-signals.md) ✋             | Spike: outlet-detection signals the research could not verify                                                   | —          | spike-runner | 0.5–1    | done   |
+| [S-07](wp/S-07-policy-recheck.md)                | Spike: re-check dated platform policies before connector work                                                   | —          | spike-runner | 0.25–0.5 | done   |
+| [S-08](wp/S-08-cloudflare-async-compute.md) ✋   | Cloudflare Queues, Workflows and Containers for lazy deltas                                                     | —          | spike-runner | 0.5–1    | done   |
+| [S-09](wp/S-09-apple-storekit-distributor.md) ✋ | StoreKit 2, AppTransaction, AppDistributor, Keychain and the Godot iOS binding                                  | —          | spike-runner | 0.5–1    | todo   |
+| [S-10](wp/S-10-android-play-installer.md) ✋     | Play In-App Updates, Play Asset Delivery, PackageInstaller and the Godot Android binding                        | —          | spike-runner | 0.5–1    | todo   |
+| [S-11](wp/S-11-desktop-updaters.md) ✋           | Sparkle, Velopack, WinSparkle and StoreContext from a Godot desktop app                                         | —          | spike-runner | 0.5–1    | todo   |
 
 ## D: Diceroll adoption (vladzaharia/diceroll)
 
@@ -272,6 +276,10 @@ What a person must supply, per work package. Ask early: several sit on the criti
 | [S-04](wp/S-04-low-end-performance.md)        | low-end Android and iOS devices                                                                                                                                                          |
 | [S-05](wp/S-05-godot-platform-mechanics.md)   | an Android phone; a Windows 10/11 machine; Safari on macOS and iOS                                                                                                                       |
 | [S-06](wp/S-06-outlet-signals.md)             | devices and store accounts for the platforms it checks                                                                                                                                   |
+| [S-08](wp/S-08-cloudflare-async-compute.md)   | Workers Paid with Queues, Workflows and Containers enabled (live parts only)                                                                                                             |
+| [S-09](wp/S-09-apple-storekit-distributor.md) | Apple developer account and a device (device-only parts)                                                                                                                                 |
+| [S-10](wp/S-10-android-play-installer.md)     | Play Console test track and a device (Play-install parts)                                                                                                                                |
+| [S-11](wp/S-11-desktop-updaters.md)           | code-signing certificates and a Partner Center app (signed parts)                                                                                                                        |
 | [D-01](wp/D-01-diceroll-now.md)               | Android developer verification registration; the App Store Apple ID; the release keystore in CI; machines for the desktop exports                                                        |
 | [D-02](wp/D-02-diceroll-after-p1.md)          | a platform admin registers the product and links the repository                                                                                                                          |
 | [D-03](wp/D-03-diceroll-after-p3.md)          | a `release` GitHub Environment holding the Ed25519 release key; trusted-publisher setup; the F-Droid repo key; go-ahead to retire the `channels` release                                 |

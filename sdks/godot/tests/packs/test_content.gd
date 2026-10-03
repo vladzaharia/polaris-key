@@ -1,13 +1,15 @@
 extends RefCounted
-# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record packs.index.chunks packs.apply.chunk
+# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record packs.index.chunks packs.apply.chunk packs.delegation
 # The content corpus (conformance/corpus/v2/content/cases.json, read from the checkout through
 # PKEY_CONTENT_CORPUS; plans/P4-01.md §4.4), mirroring conformance/runners/node/suites.ts
 # `defineContentSuites` vector for vector: the blobs table, pathCases, filesIndexCases,
 # applyCases (full, delta and file through the addon's appliers, the engine's own zstd and GDDL
 # decoders), packSetIdCases, stampCases and frameWindowCases.
 #
-# P4-19's dataOnlyCases are declared planned (P4-26) by exact id, with parity.json's
-# packs.delegation entry.
+# P4-19's dataOnlyCases (plans/P4-19.md §4.3 with Amendment A1) run through
+# PKeyDataOnly.data_only_refusal: the file is `content` (standard base64) when the case carries it,
+# else `head` + `tail` (or `tailFill`: `length` copies of `byte`), and the rule sees its first
+# DATA_ONLY_HEAD_BYTES, its last DATA_ONLY_TAIL_BYTES and the whole file, as the Node runner does.
 #
 # Content corpus v2 (plans/P4-10.md §4.3) adds chunkIndexCases and eight `strategy: chunk` apply
 # cases. Godot's chunk parser and applier are P4-11's: both are declared planned by exact id (and
@@ -35,31 +37,6 @@ const CHUNK_INDEX_PLANNED := [
 	"chunks-bad-length-wrap", "chunks-size-high-word", "chunks-ref-tampered", "chunks-ref-over-max",
 	"chunks-payload-mismatch", "chunks-bundle-size-saturated",
 ]
-## plans/P4-19.md §2.5: the data-only rule's cases, declared planned until P4-26, by exact id.
-const DATA_ONLY_PLANNED := [
-	"ext-json-accepted", "ext-csv-accepted", "ext-tsv-accepted", "ext-po-accepted",
-	"ext-txt-accepted", "ext-png-accepted", "ext-jpg-accepted", "ext-jpeg-accepted",
-	"ext-webp-accepted", "ext-ogg-accepted", "ext-wav-accepted", "ext-mp3-accepted",
-	"ext-ttf-accepted", "ext-otf-accepted", "ext-uppercase-accepted", "ext-none-refused",
-	"ext-tres-refused", "ext-material-refused", "ext-theme-refused", "ext-translation-refused",
-	"ext-res-refused", "ext-gd-refused", "ext-remap-refused", "ext-import-refused", "ext-pck-refused",
-	"ext-zip-refused", "ext-so-refused", "ext-double-gd-refused", "ext-double-json-accepted",
-	"head-rsrc-refused", "head-rscc-refused", "head-gdpc-refused", "head-gdec-refused",
-	"head-gcpf-refused", "head-gdsc-refused", "head-gd-bracket-refused", "head-zip-local-refused",
-	"head-elf-refused", "head-mz-refused", "head-macho-32-be-refused", "head-macho-64-be-refused",
-	"head-macho-32-le-refused", "head-macho-64-le-refused", "head-macho-fat-refused",
-	"head-wasm-refused", "head-shebang-refused", "head-extends-refused", "head-class-name-refused",
-	"head-tool-refused", "tail-gdpc-footer", "tail-zip-eocd", "tail-bound-eocd-outside-accepted",
-	"head-bom-whitespace-gd-scene-refused", "head-bound-whitespace-refused",
-	"head-bound-all-whitespace-refused", "head-bound-short-whitespace-accepted",
-	"head-word-straddle-refused", "empty-file-accepted", "path-dotdot-refused",
-	"path-dot-leading-refused", "path-dot-segment-refused", "path-empty-segment-refused",
-	"path-trailing-slash-refused", "path-trailing-dot-segment-refused", "path-leading-slash-refused",
-	"path-backslash-refused", "path-scheme-refused", "text-object-script-refused",
-	"text-escaped-marker-refused", "text-u-escape-refused", "text-u-escape-nonascii-accepted",
-	"text-u-escape-malformed-refused", "text-big-u-escape-nonascii-accepted",
-	"text-big-u-escape-ascii-refused", "text-marker-png-ignored", "text-invalid-utf8-refused",
-]
 const CHUNK_APPLY_PLANNED := [
 	"chunk-v1-to-v2", "chunk-no-seed", "chunk-tampered-zstd", "chunk-tampered-raw",
 	"chunk-bundle-truncated", "chunk-seed-tampered", "chunk-seed-tampered-repair",
@@ -82,7 +59,7 @@ func run(t: PKeyTestContext) -> void:
 	_paths(t, doc.get("pathCases", []))
 	_files_index(t, doc.get("filesIndexCases", []))
 	_chunks_planned(t, doc)
-	_data_only_planned(t, doc)
+	_data_only(t, doc.get("dataOnlyCases", []))
 	_apply(t, (doc.get("applyCases", []) as Array).filter(func(c): return c["strategy"] != "chunk"))
 	_pack_sets(t, doc.get("packSetIdCases", []))
 	_stamps(t, doc.get("stampCases", []))
@@ -213,15 +190,40 @@ func _chunks_planned(t: PKeyTestContext, doc: Dictionary) -> void:
 	t.info("planned: P4-11 (packs.index.chunks, packs.apply.chunk): %d chunk index and %d chunk apply cases" % [idx_ids.size(), apply_ids.size()])
 
 
-func _data_only_planned(t: PKeyTestContext, doc: Dictionary) -> void:
-	var ids := []
-	for c in doc.get("dataOnlyCases", []):
-		ids.append(c["id"])
-	t.check("content: dataOnlyCases are exactly the planned ids (P4-26)", ids == DATA_ONLY_PLANNED, S.canon(ids))
-	var parity = S.read_json("res://parity.json")
-	var f = parity.get("features", {}).get("packs.delegation") if parity is Dictionary else null
-	t.check("content: parity.json declares packs.delegation planned in P4-26", f is Dictionary and f.size() == 2 and f.get("status") == "planned" and f.get("wp") == "P4-26", S.canon(f))
-	t.info("planned: P4-26 (packs.delegation): %d dataOnlyCases" % ids.size())
+## The data-only cases' file bytes: `content` (the whole file), else `head` + `tail` or `tailFill`.
+static func data_only_file(c: Dictionary) -> PackedByteArray:
+	if c.has("content"):
+		return Marshalls.base64_to_raw(c["content"])
+	var f := Marshalls.base64_to_raw(c["head"])
+	var fill = c.get("tailFill")
+	if fill is Dictionary:
+		var tail := PackedByteArray()
+		tail.resize(int(fill["length"]))
+		tail.fill(int(fill["byte"]))
+		f.append_array(tail)
+	else:
+		f.append_array(Marshalls.base64_to_raw(c["tail"]))
+	return f
+
+
+func _data_only(t: PKeyTestContext, cases: Array) -> void:
+	var n := 0
+	var started := Time.get_ticks_usec()
+	for c in cases:
+		var f := data_only_file(c)
+		var rule := PKeyDataOnly.data_only_refusal(
+			c["path"],
+			f.slice(0, PKeyConstants.DATA_ONLY_HEAD_BYTES),
+			f.slice(maxi(0, f.size() - PKeyConstants.DATA_ONLY_TAIL_BYTES)),
+			f,
+		)
+		var got := {"ok": true} if rule == "" else {"ok": false, "rule": rule}
+		S.check_same(t, "data-only %s" % c["id"], got, c["expect"])
+		# The whole-file form gives the same verdict.
+		t.check("data-only %s (whole file)" % c["id"], PKeyDataOnly.data_only_file_refusal(c["path"], f) == rule)
+		n += 1
+	t.info("dataOnlyCases: %d in %.1f ms" % [n, (Time.get_ticks_usec() - started) / 1000.0])
+	t.check("content: dataOnlyCases coverage", n == cases.size() and n >= FLOORS["dataOnlyCases"], "%d/%d" % [n, cases.size()])
 
 
 func _pack_sets(t: PKeyTestContext, cases: Array) -> void:

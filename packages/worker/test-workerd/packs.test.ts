@@ -30,6 +30,19 @@ import {
 import { NOW, seedProduct } from "./seed.js";
 
 const LANE = { timeout: 60_000 };
+
+/** Storage is isolated per test FILE (vitest-pool-workers 0.13+), not per test, so a product
+ *  several tests here share is seeded once and reused. Each test's packs use their own seeds,
+ *  so no two tests write the same bytes, rows or release ids. */
+const seeded = new Map<string, Promise<void>>();
+function seedOnce(db: D1Db, slug: string): Promise<void> {
+  let done = seeded.get(slug);
+  if (!done) {
+    done = seedProduct(env, db, slug, { schemaVersion: 1, entries: [] });
+    seeded.set(slug, done);
+  }
+  return done;
+}
 const PACK = "djdl.core3d";
 
 async function hex(bytes: Uint8Array): Promise<string> {
@@ -325,7 +338,7 @@ describe("@polaris-key/zstd-wasm in the Worker's module graph", LANE, () => {
 
   it("ingests a pack whose index is a zstd frame (decoded by the WASM decoder at ingest)", async () => {
     const db = new D1Db(env.DB);
-    await seedProduct(env, db, "packs-w", { schemaVersion: 1, entries: [] });
+    await seedOnce(db, "packs-w");
     const p = await pack(null, "zstd", 1);
     await store(db, "packs-w", p.objects);
     expect(checkPackAgainstDeclaration(p.record, DECLARATION, null)).toBeNull();
@@ -343,7 +356,7 @@ describe("@polaris-key/zstd-wasm in the Worker's module graph", LANE, () => {
 describe("the index bound (MAX_PUBLISHED_INDEX_BYTES)", LANE, () => {
   it("ingests a record whose index is exactly the bound, and writes its rows", async () => {
     const db = new D1Db(env.DB);
-    await seedProduct(env, db, "packs-w", { schemaVersion: 1, entries: [] });
+    await seedOnce(db, "packs-w");
     const p = await pack(MAX_PUBLISHED_INDEX_BYTES, "none", 2);
     expect(p.record.variants[0]!.files.size).toBe(MAX_PUBLISHED_INDEX_BYTES);
     await store(db, "packs-w", p.objects);
@@ -397,7 +410,7 @@ describe(
 
     it("parses the largest index under the bound inside the isolate and checks its bundle", async () => {
       const db = new D1Db(env.DB);
-      await seedProduct(env, db, "packs-c", { schemaVersion: 1, entries: [] });
+      await seedOnce(db, "packs-c");
       const p = await chunkedPack(MAX_RECORDS, 11);
       expect(p.index.bytes.length).toBe(MAX_PUBLISHED_INDEX_BYTES - 16);
       await store(db, "packs-c", [...p.objects, p.index, p.bundle]);
@@ -417,7 +430,7 @@ describe(
 
     it("reads and parses an index of exactly the bound (no index of 48-byte records is that long, so it fails its length), and refuses one a byte over before any read", async () => {
       const db = new D1Db(env.DB);
-      await seedProduct(env, db, "packs-c", { schemaVersion: 1, entries: [] });
+      await seedOnce(db, "packs-c");
       const p = await chunkedPack(1000, 12, MAX_PUBLISHED_INDEX_BYTES);
       expect(p.record.variants[0]!.chunks!.size).toBe(
         MAX_PUBLISHED_INDEX_BYTES,
@@ -446,7 +459,7 @@ describe(
 
     it("refuses a missing bundle, and a bundle only another pack holds a ref to (pack-object)", async () => {
       const db = new D1Db(env.DB);
-      await seedProduct(env, db, "packs-c", { schemaVersion: 1, entries: [] });
+      await seedOnce(db, "packs-c");
       const p = await chunkedPack(64, 13);
       await store(db, "packs-c", [...p.objects, p.index]);
       const missing = await checkPackStore(db, env.BLOBS!, "packs-c", p.record);
@@ -471,7 +484,7 @@ describe(
 describe("the json_each possession check on D1", LANE, () => {
   it("checks 20,000 [key, bytes] pairs in two bound values", async () => {
     const db = new D1Db(env.DB);
-    await seedProduct(env, db, "packs-j", { schemaVersion: 1, entries: [] });
+    await seedOnce(db, "packs-j");
     const blob = fill(10, 9);
     const sha = await hex(blob);
     const key = `blobs/sha256/${sha}`;

@@ -18,7 +18,7 @@ import updateMatrix from "../../corpus/v2/update-matrix.json";
 import outletMatrix from "../../corpus/v2/outlet-matrix.json";
 import planMatrix from "../../corpus/v2/plan-matrix.json";
 import content from "../../corpus/v2/content/cases.json";
-import { commands } from "@vitest/browser/context";
+import { commands } from "vitest/browser";
 import { loadZstdWasm } from "@polaris-key/zstd-wasm/browser";
 import {
   defineContentSuites,

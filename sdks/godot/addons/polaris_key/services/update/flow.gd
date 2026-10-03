@@ -26,8 +26,9 @@ extends RefCounted
 ##                   expects}, holds (stamp_holds; null when unusable), active: {pack: {sha256,
 ##                   seq, version}} (the running set, embedded baselines included), engine (the
 ##                   host's `godot-<maj>.<min>`), axes, revoked: {target: verified revocation} (the
-##                   pack engine's), relearn: [packId]}. Omitted: no content decision, every answer
-##                   is P3-01's
+##                   pack engine's), relearn: [packId], delegated: {record sha256: {pack,
+##                   delegation}} (the pack engine's delegated_releases(), plans/P4-19.md §2.7)}.
+##                   Omitted: no content decision, every answer is P3-01's
 ##
 ## Returns {ok: true, check: {channel, decision, feed, record, errors}, boot, feed_doc,
 ## record_doc, committed: {k: {jws, feed, content}}, records: {h: {jws, record}}, cache: {feeds,
@@ -304,6 +305,8 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 	var axes: Dictionary = c.get("axes", {}) if c.get("axes") is Dictionary else {}
 	var holds = c.get("holds")
 	var pins: Array = stamp.get("pins", []) if stamp.get("pins") is Array else []
+	var expects: Array = stamp.get("expects", []) if stamp.get("expects") is Array else []
+	var delegated: Dictionary = c.get("delegated", {}) if c.get("delegated") is Dictionary else {}
 
 	# H: the active pack records, the stamp's pins and holds, and the feed targets §2.6 selects
 	# (gate fallbacks included).
@@ -315,11 +318,30 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 	if holds is Array:
 		for h in holds:
 			H[h["release"]["sha256"]] = true
+	# plans/P4-19.md §2.7: H's pack set (the stamp's expects, pins and holds, the active installs
+	# and the feed targets), for the relevance of delegation entries; the delegations of the
+	# delegated releases the pack engine knows.
+	var packs_h := {}
+	for p in active:
+		packs_h[p] = true
+	for p in pins:
+		packs_h[p["pack"]] = true
+	for e in expects:
+		if e is Dictionary and e.get("pack") is String:
+			packs_h[e["pack"]] = true
+	if holds is Array:
+		for h in holds:
+			packs_h[h["pack"]] = true
+	var delegations := {}
+	for r in delegated:
+		if delegated[r] is Dictionary and delegated[r].get("delegation") is String:
+			delegations[delegated[r]["delegation"]] = true
 	var ps = fc.get("packSets")
 	var outlets: Dictionary = ps.get("outlets", {}) if ps is Dictionary else {}
 	if ps is Dictionary:
 		var targets := PKeyDecision.select_pack_rows(ps, {"contentApi": stamp.get("contentApi"), "platform": platform, "engine": engine, "axes": axes})
 		for pack in targets:
+			packs_h[pack] = true
 			var h: String = targets[pack]
 			H[h] = true
 			for o in outlets:
@@ -337,8 +359,7 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 	var feed_revocations = fc.get("revocations")
 	if feed_revocations is Array:
 		for entry in feed_revocations:
-			# A delegation entry (plans/P4-19.md §2.7) is P4-26's in Godot: never fetched here.
-			if entry.get("kind") == "delegation" or not H.has(entry["target"]):
+			if not _relevant(entry, H, packs_h, delegations):
 				continue
 			var have = stored.get(entry["target"])
 			if have is Dictionary and have["record"] == entry["record"]:
@@ -368,7 +389,8 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 	for target in stored:
 		var rev: Dictionary = stored[target]
 		var usable := false
-		var rep = rev.get("replacement")
+		# A delegation target has no replacement (plans/P4-19.md §2.6): one is ignored.
+		var rep = null if delegations.has(target) else rev.get("replacement")
 		if rep is Dictionary and H.has(target) and not stored.has(rep["sha256"]):
 			var got := await _fetch(fetch_record, rep["sha256"], String(PKeyErrors.NETWORK))
 			if got["ok"]:
@@ -382,6 +404,12 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 					var sel := PKeyPackSelect.select_variant(variants if variants is Array else [], {"engine": c.get("engine"), "axes": axes})
 					usable = not sel.has("error")
 		rev_input.append({"target": target, "pack": rev["pack"], "replacement": rep, "replacementUsable": usable})
+	# plans/P4-19.md §2.7: each known delegated release whose delegation is revoked is revoked for
+	# the decision, with no replacement.
+	for r in delegated:
+		var d = delegated[r]
+		if d is Dictionary and d.get("delegation") is String and PKeyReleaseRecord.record_revoked(String(r), d["delegation"], stored) == "delegation":
+			rev_input.append({"target": r, "pack": d["pack"], "replacement": null, "replacementUsable": false})
 
 	# Step 13: the bucket of every gate salt.
 	var buckets := {}
@@ -395,13 +423,14 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 
 	# `relearn` clears only on a fresh, network-verified feed with a usable `revocations` member,
 	# once step 11 has fetched, verified and stored every revocation it considers for that pack
-	# (the entries whose target is in H). Entries for releases outside H never keep a pack there.
+	# (the entries step 11 finds relevant: a target in H, or a delegation entry by §2.7's rule).
+	# Entries for releases outside H never keep a pack there.
 	var relearn_cleared: Array = []
 	if feed_source == "network" and feed_revocations is Array and c.get("relearn") is Array:
 		for p in c["relearn"]:
 			var all := true
 			for e in feed_revocations:
-				if e.get("kind") != "delegation" and e["pack"] == p and H.has(e["target"]) and not known.has(e["record"]):
+				if e["pack"] == p and _relevant(e, H, packs_h, delegations) and not known.has(e["record"]):
 					all = false
 					break
 			if all:
@@ -417,6 +446,20 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 		},
 		"revocations": {"learned": learned, "relearnCleared": relearn_cleared},
 	}
+
+
+## Step 11's relevance (plans/P4-13.md §2.5, plans/P4-19.md §2.7): a pack-record entry when its
+## target is in H; a delegation entry when its target is the delegation of a delegated release the
+## pack engine knows, or its scope root covers, by whole segments, a pack in H's pack set.
+static func _relevant(entry: Dictionary, H: Dictionary, packs_h: Dictionary, delegations: Dictionary) -> bool:
+	if entry.get("kind") == "delegation":
+		if delegations.has(entry["target"]):
+			return true
+		for p in packs_h:
+			if PKeyReleaseRecord.covers_pack(String(entry["pack"]), String(p)):
+				return true
+		return false
+	return H.has(entry["target"])
 
 
 static func _ascii(body: Variant) -> String:

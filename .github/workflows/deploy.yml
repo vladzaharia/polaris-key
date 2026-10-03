@@ -62,6 +62,16 @@ jobs:
           # router, D1, product load AND opening the signing key under PLATFORM_KEK, so a
           # missing or wrong KEK fails the deploy instead of silently 404ing every route.
           echo "smoke=https://key.plrs.im/djdl/.well-known/jwks.json" >> "$GITHUB_OUTPUT"
+      # RUNBOOK "Representability check": a value stored before the signer's checks existed can
+      # turn a product's documents into 500 document_not_representable. Run it here, with this
+      # environment's token, before anything changes, so a flagged value fails the deploy instead
+      # of depending on someone remembering to run it from a laptop.
+      - name: Representability check
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          cd packages/worker
+          pnpm check:representable
       - name: Apply D1 migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
