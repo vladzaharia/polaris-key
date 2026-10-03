@@ -139,7 +139,7 @@ describe("bytes host: configuration", () => {
     }
   });
 
-  it("registers exactly the three byte routes and the download page, each owned by the distribution service (P2b-04, P2b-06)", () => {
+  it("registers exactly the four byte routes and the download page, each owned by the distribution service (P2b-04, P2b-06, P4-18)", () => {
     // P2-05 registered them for Release; P2b-04 moved all byte delivery to Distribution. Each
     // route matches its canonical `/distribution/…` path AND its `/release/…` alias, so the URLs
     // discovery advertised on the bytes host keep answering. P2b-06 added the one DOCUMENT
@@ -151,6 +151,8 @@ describe("bytes host: configuration", () => {
       ["distribution.build", "distribution", false],
       ["distribution.file", "distribution", false],
       ["distribution.blob", "distribution", false],
+      // P4-18: the payload URL (`test/distributionPayload.test.ts` pins its matching).
+      ["distribution.payload", "distribution", false],
       ["distribution.page", "distribution", true],
     ]);
     const hex = "a".repeat(64);

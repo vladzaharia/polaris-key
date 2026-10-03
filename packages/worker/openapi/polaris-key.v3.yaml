@@ -2327,6 +2327,135 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/distribution/packs/{pack}/{variant}/payload/{sha256}:
+    get:
+      operationId: downloadPackPayload
+      tags: [distribution]
+      summary: Download a pack's decoded container payload (Compression Dictionary Transport)
+      description: >
+        P4-18. The payload of one `container` variant of a pack release, by its `payload.sha256`
+        (the DECODED payload; the newest of the pack's last 200 releases naming it), for a
+        browser: the stored `full` frame streamed unchanged with `Content-Encoding: zstd` (the
+        browser decodes it natively), or raw for `codec: none`. A zstd `full` needs `zstd` in
+        `Accept-Encoding` (`406` otherwise: the SDK takes the blob route and its WASM decoder).
+        When `Available-Dictionary` (RFC 9842) is the SHA-256 of the `from` of a published
+        `zstd-patch-from` payload delta to this payload and `dcz` is accepted, the answer is
+        `Content-Encoding: dcz`: `5E 2A 4D 18 20 00 00 00`, the 32-byte `from`, then the stored
+        delta artifact, unchanged (its bytes are the artifact's plus 40). Another dictionary, or
+        none, gets the full payload; with `?via=dcz` (the SDK's guard against a silent full
+        download) those are `409` with no body. Authorised exactly as `downloadBlob` authorises
+        the `full` object (and, for dcz, the artifact): by the holders of its keys, the pack's
+        delivery access and, under the gated prefix, its CURRENT gate. Every answer carries
+        `Vary: Accept-Encoding, Available-Dictionary`. A `200` for an ungated payload of at most
+        100 MiB carries `Use-As-Dictionary: match="/{product}/distribution/packs/{pack}/{variant}/payload/*",
+        match-dest=("")`, so the browser keeps it as the dictionary for that (pack, variant)
+        only; a gated payload is `private, no-store, no-transform` and never a dictionary. An
+        ungated payload is cached `public, max-age=31536000, immutable, no-transform`, or
+        `private, max-age=31536000, immutable, no-transform` when the pack needs a licence.
+        Full-body only (`Accept-Ranges: none`; a `Range` is ignored); the blob route is
+        unchanged. A tree variant, an unknown hash or variant, and a pack the product does not
+        declare are the plain not-found. Served on the console host and on the bytes host.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: pack
+          in: path
+          required: true
+          description: The pack id.
+          schema: { type: string, pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$", maxLength: 64 }
+        - name: variant
+          in: path
+          required: true
+          description: "The variant key (`texture=s3tc;locale=fr`, axes sorted), or `default` for an unvaried pack."
+          schema: { type: string }
+        - name: sha256
+          in: path
+          required: true
+          description: The variant's `payload.sha256`.
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+        - name: via
+          in: query
+          required: false
+          description: "`dcz`: answer `409` instead of the full payload when dcz is not possible."
+          schema: { type: string, enum: [dcz] }
+        - name: Available-Dictionary
+          in: header
+          required: false
+          description: "RFC 9842: the SHA-256 of the dictionary the browser holds, as an sf-binary (`:<base64>:`)."
+          schema: { type: string }
+      responses:
+        "200":
+          description: >
+            The payload, `Content-Encoding: zstd` (or raw for `codec: none`), or `Content-Encoding:
+            dcz` (the 40-byte header and the delta artifact).
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401":
+          description: The delivery access refused the caller (see `downloadBlob`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "403":
+          description: A grant refused the caller (see `downloadBlob`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "405":
+          description: "Any method other than `GET` and `HEAD` (`Allow: GET, HEAD`)."
+        "406":
+          description: "A zstd `full` and no `zstd` in `Accept-Encoding`; no body."
+        "409":
+          description: "`?via=dcz` and no dcz answer was possible; no body, `no-store`."
+        "429":
+          description: The artifact rate-limit lane — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    head:
+      operationId: headPackPayload
+      tags: [distribution]
+      summary: The headers of a pack payload answer
+      description: >
+        `downloadPackPayload` without a body: the same authorisation, the same choice of
+        encoding and the same headers (`Content-Encoding`, `Content-Length`, `Vary`,
+        `Use-As-Dictionary`, `Cache-Control`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: pack, in: path, required: true, schema: { type: string } }
+        - { name: variant, in: path, required: true, schema: { type: string } }
+        - { name: sha256, in: path, required: true, schema: { type: string, pattern: "^[0-9a-f]{64}$" } }
+      responses:
+        "200":
+          description: The answer's headers, no body.
+        "401":
+          description: The delivery access refused the caller (see `downloadBlob`).
+        "403":
+          description: A grant refused the caller (see `downloadBlob`).
+        "404":
+          description: Not found, no body.
+        "406":
+          description: "A zstd `full` and no `zstd` in `Accept-Encoding`."
+        "409":
+          description: "`?via=dcz` and no dcz answer was possible."
+        "429":
+          description: The artifact rate-limit lane.
+    options:
+      operationId: preflightDownloadPackPayload
+      tags: [distribution]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: pack, in: path, required: true, schema: { type: string } }
+        - { name: variant, in: path, required: true, schema: { type: string } }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
   /{product}/distribution/rollouts/{outlet}/{channel}:
     post:
       operationId: ciSetRollout

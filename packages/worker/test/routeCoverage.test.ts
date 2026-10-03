@@ -99,6 +99,11 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/builds/{selector}/{buildId}", ["get"]],
   ["/{product}/distribution/files/{releaseId}/{name}", ["get"]],
   ["/{product}/distribution/blobs/sha256/{sha256}", ["get", "head"]],
+  // P4-18: a pack's decoded container payload, with Compression Dictionary Transport.
+  [
+    "/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}",
+    ["get", "head"],
+  ],
   ["/{product}/distribution/rollouts/{outlet}/{channel}", ["post"]],
   ["/{product}/distribution/rollouts/{outlet}/{channel}/pause", ["post"]],
   ["/{product}/distribution/rollouts/{outlet}/{channel}/resume", ["post"]],
@@ -327,6 +332,8 @@ function concrete(template: string): string {
     path: "entry.jar",
     velopackChannel: "win-x64",
     fileName: "Acme-1.2.3-full.nupkg",
+    pack: "acme.core",
+    variant: "default",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];
