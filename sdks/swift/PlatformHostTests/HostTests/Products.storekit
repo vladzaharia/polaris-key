@@ -1,0 +1,49 @@
+{
+  "identifier": "5C1D2E3F",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "4.99",
+      "familyShareable": false,
+      "internalID": "6740000001",
+      "localizations": [
+        {
+          "description": "Foes content pack",
+          "displayName": "Foes pack",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "dev.polariskey.platformhost.pack.foes",
+      "referenceName": "Foes pack",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "0.99",
+      "familyShareable": false,
+      "internalID": "6740000002",
+      "localizations": [
+        {
+          "description": "100 gems",
+          "displayName": "Gems",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "dev.polariskey.platformhost.gems100",
+      "referenceName": "Gems 100",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_applicationInternalID": "6740000000",
+    "_developerTeamID": "TEAMID0000",
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}

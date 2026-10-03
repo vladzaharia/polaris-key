@@ -41,6 +41,10 @@ sdks/kotlin/*/build/
 sdks/godot/native/android/build/
 sdks/godot/addons/polaris_key/native/android/
 !sdks/kotlin/gradle/wrapper/gradle-wrapper.jar
+# P5-05: the Godot iOS binding's build products (sdks/godot/native/ios/build.sh installs the
+# xcframework and its .gdextension here); source only is committed.
+sdks/godot/addons/polaris_key/native/ios/
+*.xcframework/
 
 # OS / editor
 .DS_Store

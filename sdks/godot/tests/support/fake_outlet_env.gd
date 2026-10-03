@@ -12,6 +12,8 @@ var links := {}
 var features := PackedStringArray()
 var android = null
 var app_distributor = null
+## {provisioned, altBundleIdentifier, bundleIdentifier} or null (ios_bundle_evidence()).
+var bundle_evidence = null
 var windows = null
 var display := ""
 
@@ -86,6 +88,10 @@ func android_install_source() -> Variant:
 
 func ios_app_distributor() -> Variant:
 	return app_distributor
+
+
+func ios_bundle_evidence() -> Variant:
+	return bundle_evidence
 
 
 func windows_package() -> Variant:

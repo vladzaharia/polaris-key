@@ -26,6 +26,7 @@ a product with no license service does not carry the gate.
 | `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, and the `update.packs` facet (macOS **and** iOS)                                           | Core, libzstd 1.5.7                       |
 | `PolarisKeyUpdate`   | wire v4's `UpdateClient` and its `packs` facet (macOS **and** iOS), and the Sparkle wiring (**macOS only**)                                          | Core, Packs, Sparkle ≥ 2.9.6 (macOS only) |
 | `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                                                                                   | Core, License, Config                     |
+| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05)                         | — (standalone)                            |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -634,6 +635,55 @@ the raw grants: `staging` is not rewritten to `beta`.
 exhaustive `switch` over `Channel` in your code needs a `.beta` case. Pass
 `CoreOptions.channel: "staging"` only as a stopgap against a Worker older than this change.
 
+## Apple platform edges (`PolarisKeyPlatform`, P5-05)
+
+A standalone target (it depends on no other target). A native host binds it through three C
+functions in the separate `PolarisKeyPlatformC` target, which only native hosts link, so a Swift
+consumer of `PolarisKeyPlatform` exports no `pkp_*` symbols; the Godot GDExtension in `sdks/godot/native/ios/` links its sources, and Unity, MAUI
+and Tauri can bind the same functions:
+
+```c
+char *pkp_call(const char *json);                       // JSON in, JSON out; free with pkp_free
+void  pkp_free(char *p);
+void  pkp_set_event_callback(void (*cb)(const char *json));  // any thread; NULL unregisters
+```
+
+A synchronous op answers its result; an asynchronous one answers `{"ok":true,"req":N}` and later
+emits `{"ev":"<op>","req":N,…}` through the callback. Failures are `{"ok":false,"error":…}`; an
+API this OS or build lacks is `{"ok":false,"unsupported":true,"reason":…,"detail":…}`.
+
+| Op                                                                                                                             | Kind  | Result                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ping`, `capabilities`                                                                                                         | sync  | `{protocol, platform, appDistributor, appDistributorWeb, managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID}`                                                                                                                             |
+| `distributor {deadline?}`                                                                                                      | async | `{signal, reason?, ms, provisioned, altBundleIdentifier, bundleIdentifier}`: `AppDistributor.current` (iOS 17.4, `web` from 17.5) raced against 2 s at every call, never cached; `unavailable` = no evidence; the bundle evidence can veto a store outlet, never select one |
+| `app_transaction {refresh?}`                                                                                                   | async | `{jws, verified, environment, originalAppVersion, appVersion, bundleID, appTransactionID, …}`, for commerce only                                                                                                                                                            |
+| `products {ids}`                                                                                                               | async | `{products: [{id, type, displayName, displayPrice, price}]}`                                                                                                                                                                                                                |
+| `purchase {product, appAccountToken?}`                                                                                         | async | `{result: success\|pending\|userCancelled, confirmIn, transaction?}`; main-actor isolated, `purchase(confirmIn:)` with the foreground scene                                                                                                                                 |
+| `entitlements {product?}`, `finish {id}`                                                                                       | async | `finish` only after the server recorded the purchase                                                                                                                                                                                                                        |
+| `listen`                                                                                                                       | async | starts the `Transaction.updates` listener; each new transaction state is emitted once as `transaction_updated`                                                                                                                                                              |
+| `kc_get` / `kc_set` / `kc_delete {product, account, value?}`                                                                   | sync  | service `pkey:<product>`, data-protection keychain, `AfterFirstUnlockThisDeviceOnly`, no access group                                                                                                                                                                       |
+| `packs_status`, `packs_ensure {packs:[{id,path}], latest?}`, `packs_check_updates`, `packs_remove`, `packs_url`, `packs_watch` | async | `AssetPackManager`, iOS / macOS 26.4 (`version` below), and only where the `BA*` Info.plist keys exist (`outlet` otherwise); events `pack_progress`, `pack_ready`, `pack_failed`                                                                                            |
+
+Transaction ids are strings, and every transaction carries its signed JWS. Under StoreKit Testing
+the JWS is signed by a per-session self-signed certificate (`kid Apple_Xcode_Key`), fit for
+testing P6-01's parsing, not its chain validation.
+
+**Xcode 16.4.** The macos-15 job compiles this target with Xcode 16.4 (Swift 6.1). Code that
+needs the Xcode 26 SDK (`AssetPackManager` and its 26.4 methods) is behind `#if compiler(>=6.3)`,
+the iOS 27 manifest API behind `#if compiler(>=6.4)`; `canImport(BackgroundAssets)` does not
+separate them. No Swift 6.2+ language feature is used. `tools/typecheck-platform-old-swift.sh`
+type-checks the target and its tests on the Swift 6.0, 6.1 and 6.2 Linux images.
+
+**Keychain classes.** This target writes the device id and the token
+`AfterFirstUnlockThisDeviceOnly`; `KeychainStore` (PolarisKeyCore) still writes the token
+`AfterFirstUnlock` and keeps the device id in a 0600 file. The difference is deliberate here
+(S-09) and left for the Swift SDK's owner to decide for `KeychainStore`.
+
+**Tests.** `swift test` drives every module through fakes (`Tests/PolarisKeyPlatformTests`):
+StoreKit Testing loads no products there and the Keychain answers -34018. The real StoreKit,
+Keychain and AppDistributor run in the hosted XCTest project, `PlatformHostTests/run.sh`
+(XcodeGen; a host app with `get-task-allow`; every StoreKit test asserts the product count).
+
 ## The frozen wire contract
 
 Compact JWS, **EdDSA / Ed25519**:
@@ -671,6 +721,8 @@ verified against `pinnedReleaseKeys` only, after its SHA-256 matches the feed's 
 ```sh
 swift build
 swift test    # includes the cross-language conformance corpus (v2)
+PlatformHostTests/run.sh                 # PolarisKeyPlatform against StoreKit Testing (iOS simulator)
+tools/typecheck-platform-old-swift.sh    # PolarisKeyPlatform on Swift 6.0 / 6.1 / 6.2 (Docker)
 swift test --filter UpdateMatrixTests   # wire v4's update-matrix.json, row for row
 swift test --filter "ContentConformanceTests|PlanMatrixTests|PackRecordConformanceTests"  # packs
 

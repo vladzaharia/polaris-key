@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fetch_godot.sh <version> <dir> [--template]
+# fetch_godot.sh <version> <dir> [--template | --ios-template]
 #
 # Puts the official Godot <version> editor for this host at <dir>/godot and, with --template
 # (Linux only), the official linux_release.x86_64 export template at
@@ -10,6 +10,10 @@
 # Hosts: Linux x86_64 (the binary itself), macOS (Godot.app, with <dir>/godot a wrapper that
 # execs it) and Windows under Git Bash (the console build, with <dir>/godot a wrapper that execs
 # it, so stdout reaches the log).
+#
+# With --ios-template (macOS only; P5-05's iOS export check) it extracts templates/ios.zip and
+# templates/version.txt from the same pinned .tpz into <dir>/templates/, for the caller to copy
+# into Godot's export_templates/<version>.stable directory.
 #
 # The template comes from the full .tpz (1.28 GB): only templates/linux_release.x86_64 is
 # extracted and the archive is deleted, so the cache holds one 73 MB binary. A Range fetch of the
@@ -29,11 +33,15 @@ BASE="https://github.com/godotengine/godot/releases/download/${VERSION}-stable"
 
 need_editor=1
 need_template=0
+need_ios=0
 [ -x "$DIR/godot" ] && need_editor=0
 if [ "$TEMPLATE" = "--template" ] && [ ! -x "$DIR/linux_release.x86_64" ]; then
   need_template=1
 fi
-if [ "$need_editor" = 0 ] && [ "$need_template" = 0 ]; then
+if [ "$TEMPLATE" = "--ios-template" ] && [ ! -f "$DIR/templates/ios.zip" ]; then
+  need_ios=1
+fi
+if [ "$need_editor" = 0 ] && [ "$need_template" = 0 ] && [ "$need_ios" = 0 ]; then
   echo "fetch_godot: $DIR already holds Godot $VERSION"
   exit 0
 fi
@@ -119,6 +127,14 @@ if [ "$need_template" = 1 ]; then
   rm -f "$WORK/$tpz"
   mv "$WORK/linux_release.x86_64" "$DIR/linux_release.x86_64"
   chmod +x "$DIR/linux_release.x86_64"
+fi
+
+if [ "$need_ios" = 1 ]; then
+  tpz="Godot_v${VERSION}-stable_export_templates.tpz"
+  fetch "$tpz"
+  mkdir -p "$DIR/templates"
+  unzip -q -o -j "$WORK/$tpz" "templates/ios.zip" "templates/version.txt" -d "$DIR/templates"
+  rm -f "$WORK/$tpz"
 fi
 
 echo "fetch_godot: Godot $VERSION ready in $DIR"

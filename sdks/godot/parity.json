@@ -34,7 +34,7 @@
     "core.store": {
       "status": "planned",
       "unowned": true,
-      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). Android: P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: the device id and token wrapped by one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, migrated from the file store, failures surfaced as keyring-error, a lost key surfaced and re-enrolled), which PKeyCore picks by default on Android when the plugin is present. iOS: P5-05's Keychain store. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
+      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
     },
     "license.gate": {
       "status": "implemented"
@@ -152,7 +152,7 @@
     },
     "outlet.detect": {
       "status": "implemented",
-      "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper (PKeyAndroid.install_source() reads the same facts, plus the initiator's full signer set, through the P5-06 plugin), web display mode); the iOS AppDistributor and Windows package readers are hooks that answer unavailable until P5-05 and a Windows native reader. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
+      "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper (PKeyAndroid.install_source() reads the same facts, plus the initiator's full signer set, through the P5-06 plugin), web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
     },
     "packs.record": {
       "status": "implemented",
@@ -231,7 +231,7 @@
     "packs.transport.apple": {
       "status": "planned",
       "wp": "P5-08",
-      "note": "iOS goes through P5-05's plugin; no work package owns a macOS binding (program README §9).",
+      "note": "iOS goes through P5-05's plugin: PKeyApple (native/pkey_apple.gd) exposes AssetPackManager (ensure, status, checkForUpdates, remove, url(for:), pack_progress / pack_ready / pack_failed), Unsupported below iOS 26.4 (version) and in builds without the extension (outlet); P5-08 wires it as the apple-ba transport. No work package owns a macOS binding (program README §9).",
       "except": [
         {
           "runtime": "linux",
@@ -360,7 +360,8 @@
     },
     "commerce.receipt": {
       "status": "planned",
-      "wp": "P6-01"
+      "wp": "P6-01",
+      "note": "P5-05's PKeyApple carries the StoreKit 2 client (products, purchase with appAccountToken, entitlements, the deduplicated Transaction.updates listener, finish after the server records the purchase; every result carries the signed JWS); P6-01 builds the server-side bridge."
     }
   }
 }

@@ -144,7 +144,9 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `homebrewCask`, `testflight.publicLink`, `direct.scoop {bin, shortcuts}`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
       `deliverables.<id>.<outlet>`); and `listing`. Maps to `dist_outlets` and `dist_transports`.
       Absent = one implicit `direct` outlet by `pkey-cdn`. An `artifact` must name an id in the
-      release artifact map; `tracks`/`branches` keys must be declared channels.
+      release artifact map; `tracks`/`branches`/`flights` keys must be declared channels
+      (`ms-store.flights` maps a channel to a Microsoft Store package flight by friendly name or
+      flight id; the non-flighted submission is always `stable`).
 - [ ] **Never** put `capabilities` in `.pkey/distribution` — anywhere in it is an error
       (`capabilities_not_manifest_writable`). Outlet capabilities default per kind and only an
       operator narrows them, in the console.

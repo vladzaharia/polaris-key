@@ -531,7 +531,7 @@
       }
     },
     "outlet_ms-store": {
-      "description": "The identity fields a ms-store outlet reads: productId, packageFamilyName. Other keys are ignored.",
+      "description": "The identity fields a ms-store outlet reads: productId, packageFamilyName, flights. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -542,6 +542,9 @@
         },
         "packageFamilyName": {
           "$ref": "#/$defs/packageFamilyName"
+        },
+        "flights": {
+          "$ref": "#/$defs/flights"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -721,6 +724,15 @@
     "productId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9]{12}$"
+    },
+    "flights": {
+      "description": "Declared channel → Microsoft Store package flight (its friendly name or flight id). Keys must be declared channels (validator-checked).",
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:()-]{0,99}$"
+      }
     },
     "packageFamilyName": {
       "description": "The MSIX package family name, <Name>_<PublisherId>.",

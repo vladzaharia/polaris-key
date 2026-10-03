@@ -36,6 +36,22 @@ import { syncPlay } from "../src/services/distribution/connectors/play/poll.js";
 import { PlayFake } from "../test/playFake.js";
 import playPublisher from "../test/fixtures/play/publisher.json";
 import playReporting from "../test/fixtures/play/reporting.json";
+import { resolveMsStoreSetup } from "../src/services/distribution/connectors/msstore/setup.js";
+import {
+  applyMsStoreState,
+  msStoreRun,
+  readMsStoreState,
+} from "../src/services/distribution/connectors/msstore/poll.js";
+import {
+  CLIENT_ID,
+  CLIENT_SECRET,
+  MsStoreFake,
+  SELLER_ID,
+  STORE_ID,
+  TENANT_ID,
+  type StoreFixtures,
+} from "../test/msstoreFake.js";
+import msStoreFixtures from "../test/fixtures/msstore/store.json";
 import {
   NOW,
   TEST_KID,
@@ -485,6 +501,79 @@ describe("Google Play connector on workerd (P5-03)", () => {
       { object_id: "beta", outlet_id: null },
       { object_id: "production", outlet_id: "play" },
       { object_id: "qa", outlet_id: null },
+    ]);
+  });
+});
+
+describe("Microsoft Store connector on workerd (P5-04)", () => {
+  it("mints an Entra token into the sealed KV cache and reads the app's submissions into D1, GETs only", async () => {
+    const workerEnv = env as unknown as WorkerEnv;
+    const db = new D1Db(env.DB);
+    await seedProduct(env, db, "djdl7", djdlCatalog);
+    await db.run(
+      `INSERT INTO dist_outlets (product, outlet_id, kind, identity_json, created_at, modified_at)
+       VALUES ('djdl7', 'ms-store', 'ms-store', ?, 1, 1)`,
+      JSON.stringify({
+        productId: STORE_ID,
+        flights: { beta: "Beta testers" },
+      }),
+    );
+    const put = await putOutletCredential(workerEnv, db, {
+      product: "djdl7",
+      credentialId: "partner-center",
+      kind: "ms-partner-center",
+      outletId: null,
+      value: {
+        tenantId: TENANT_ID,
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        sellerId: SELLER_ID,
+      },
+      pin: STORE_ID,
+      expiresAt: null,
+      actor: "admin-1",
+      now: NOW,
+    });
+    expect(put.ok).toBe(true);
+    const { setup } = await resolveMsStoreSetup(db, "djdl7");
+    expect(setup?.productId).toBe(STORE_ID);
+    const fake = new MsStoreFake(msStoreFixtures as unknown as StoreFixtures);
+    const hooks: ServiceHooks = {
+      releaseCatalog: () => null,
+      delivery: () => null,
+      outletCapabilities: async () => null,
+    };
+    const run = () =>
+      msStoreRun({
+        env: workerEnv,
+        db,
+        product: "djdl7",
+        hooks,
+        now: NOW,
+        setup: setup!,
+        use: "ms-store:poll",
+        fetchImpl: fake.fetchImpl,
+      });
+    const first = run();
+    await applyMsStoreState(first, await readMsStoreState(first));
+    // A second run is served from the sealed KV cache: still one token exchange.
+    const second = run();
+    await readMsStoreState(second);
+    expect(fake.tokenRequests).toHaveLength(1);
+    expect(new Set(fake.requests.map((r) => r.method))).toEqual(
+      new Set(["GET"]),
+    );
+    const objects = await db.all<{ object_type: string; object_id: string }>(
+      "SELECT object_type, object_id FROM dist_connector_objects WHERE product = 'djdl7' ORDER BY object_type, object_id",
+    );
+    expect(objects.map((o) => o.object_type)).toEqual([
+      "application",
+      "flight",
+      "flight",
+      "submission",
+      "submission",
+      "submission",
+      "submission",
     ]);
   });
 });

@@ -12,6 +12,7 @@
 
 import type { FetchImpl } from "./githubApp.js";
 import { isAllowedStorageHost } from "../../core/platform.js";
+import { readCappedText } from "../../core/readCapped.js";
 import { MAX_MANIFEST_BYTES } from "./manifest.js";
 
 /**
@@ -580,40 +581,16 @@ export const MAX_TEXT_ASSET_BYTES = 4096;
  * Shared by the sidecar-asset reads (R10-15) and the `.pkey/` manifest reads (R7-02); `what`
  * only names the thing in the error text.
  */
-async function readCapped(
+function readCapped(
   res: Response,
   maxBytes: number,
   what = "asset",
 ): Promise<string> {
-  const declared = Number(res.headers.get("Content-Length") ?? "");
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new NotFoundError(`${what} too large: ${declared} bytes`);
-  }
-  const body = res.body;
-  if (!body) return "";
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        throw new NotFoundError(`${what} too large: >${maxBytes} bytes`);
-      }
-      chunks.push(value);
-    }
-  } finally {
-    await reader.cancel().catch(() => undefined);
-  }
-  const buf = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) {
-    buf.set(c, off);
-    off += c.byteLength;
-  }
-  return new TextDecoder().decode(buf);
+  return readCappedText(
+    res,
+    maxBytes,
+    (detail) => new NotFoundError(`${what} too large: ${detail}`),
+  );
 }
 
 /**

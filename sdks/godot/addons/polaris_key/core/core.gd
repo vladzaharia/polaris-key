@@ -104,8 +104,9 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	core.sdk_version = p_sdk_version
 	core.local_only = opts.local_only
 	core.trust_refresh = opts.trust_refresh
-	# The file store, or on Android with the plugin the Keystore store (P5-06).
-	core.store = opts.store if opts.store != null else PKeyKeystoreStore.preferred(opts.product, opts.store_root)
+	# The platform store when its plugin is present (Keychain on iOS, P5-05; Keystore on Android,
+	# P5-06), else the file store.
+	core.store = opts.store if opts.store != null else PKeyKeychainStore.preferred(opts.product, opts.store_root)
 	core.store.failed.connect(core._on_store_failed)
 	core.transport = PKeyTransport.new(host)
 	core.transport.timeout = opts.request_timeout_seconds

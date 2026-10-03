@@ -13,7 +13,9 @@ of the signing keys a download is checked against.
 CI reports what each store says with `pkey distribution report`, and a store connector writes
 it directly — the App Store and TestFlight through the
 [App Store Connect connector](/docs/services/distribution/app-store-connect/), Google Play
-tracks through the [Google Play connector](/docs/services/distribution/google-play/). Self-hosted outlets need no report: their availability follows from
+tracks through the [Google Play connector](/docs/services/distribution/google-play/), and
+Microsoft Store submissions through the
+[Microsoft Store connector](/docs/services/distribution/microsoft-store/). Self-hosted outlets need no report: their availability follows from
 what Release already knows.
 
 ## Availability

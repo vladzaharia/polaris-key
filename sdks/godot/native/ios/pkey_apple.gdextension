@@ -1,0 +1,22 @@
+; The Godot iOS binding of PolarisKeyPlatform (P5-05): class PolarisKeyApple with one static
+; cmd(json) -> String, used only through the GDScript facade addons/polaris_key/native/pkey_apple.gd
+; (PKeyApple).
+;
+; build.sh installs this file beside the xcframework it builds, at
+; addons/polaris_key/native/ios/; neither is committed there. A project without them exports and
+; runs everywhere, and PKeyApple answers Unsupported (runtime off iOS, dependency on iOS). It is
+; kept out of the committed addon because a desktop editor reports a .gdextension that has no
+; library for its own OS ("No GDExtension library found for current OS") on every scan.
+;
+; Only ios.* entries. The glue registers with classdb_register_extension_class6, 5 or 4,
+; whichever the engine has, so 4.4 is the minimum.
+
+[configuration]
+
+entry_symbol = "pkey_apple_library_init"
+compatibility_minimum = "4.4"
+
+[libraries]
+
+ios.debug = "res://addons/polaris_key/native/ios/pkey_apple.xcframework"
+ios.release = "res://addons/polaris_key/native/ios/pkey_apple.xcframework"
