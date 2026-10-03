@@ -19254,13 +19254,21 @@ function reconcile(path: string, content: string, check: boolean): boolean {
 async function main(): Promise<void> {
   const check = process.argv.includes("--check");
   // plans/P4-01.md §4.2: the explicit blob rebuild, never in the gate. It writes only
-  // `content/blobs/` (refs.json included); run `pnpm gen:corpus` afterwards.
+  // `content/blobs/` (refs.json included); run `pnpm gen:corpus` afterwards. `--blobs <dir>`
+  // points it at another blob directory (gen-content-corpus.test.ts passes a temporary copy).
   if (process.argv.includes("--rebuild-content-blobs")) {
-    const at = process.argv.indexOf("--payloads");
-    rebuildContentBlobs(
-      REF_JSON,
-      at >= 0 ? { payloadsDir: process.argv[at + 1] } : {},
-    );
+    const flag = (name: string): string | undefined => {
+      const at = process.argv.indexOf(name);
+      if (at < 0) return undefined;
+      const value = process.argv[at + 1];
+      if (value === undefined || value.startsWith("--"))
+        throw new Error(`${name} needs a directory`);
+      return value;
+    };
+    rebuildContentBlobs(REF_JSON, {
+      payloadsDir: flag("--payloads"),
+      blobsDir: flag("--blobs"),
+    });
     return;
   }
 
