@@ -20,13 +20,19 @@
 // since the delivery fix (notes/S-11 §5.1): the client resolves each against the feed URL, and
 // e2e/server.py answers that path with a 302 to the bytes, as the Worker's package route does.
 import { createHash } from "node:crypto";
-import { createReadStream, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  createReadStream,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../../..");
-const worker = (p: string): string => pathToFileURL(join(repo, "packages/worker/src", p)).href;
+const worker = (p: string): string =>
+  pathToFileURL(join(repo, "packages/worker/src", p)).href;
 const R = await import(worker("services/update/updaterRender.ts"));
 const S = await import(worker("services/release/sparkle.ts"));
 
@@ -84,7 +90,10 @@ function stream(file: string): ReadableStream<Uint8Array> {
 }
 
 const report: Array<{ file: string; size: number; verified: boolean }> = [];
-async function verified(file: string, sig?: string): Promise<string | undefined> {
+async function verified(
+  file: string,
+  sig?: string,
+): Promise<string | undefined> {
   if (!sig) return undefined;
   const signature = readFileSync(sig, "utf8").trim();
   const size = statSync(file).size;
@@ -139,7 +148,11 @@ if (spec.kind === "sparkle") {
       });
     }
     const sig = await verified(r.file, r.sig);
-    sources.push({ entry: entry(r, i), ...(sig ? { edSignature: sig } : {}), deltas });
+    sources.push({
+      entry: entry(r, i),
+      ...(sig ? { edSignature: sig } : {}),
+      deltas,
+    });
   }
   body = R.renderSparkleAppcast({
     channelTitle: `${spec.productName} stable`,
@@ -187,4 +200,6 @@ if (spec.kind === "sparkle") {
 
 const out = join(spec.outDir, spec.feedName);
 writeFileSync(out, body);
-console.log(JSON.stringify({ feed: out, bytes: body.length, signatures: report }));
+console.log(
+  JSON.stringify({ feed: out, bytes: body.length, signatures: report }),
+);

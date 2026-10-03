@@ -173,3 +173,60 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
   P3-10's desktop hooks.
 - The signing scripts and export-plugin switches that Diceroll's CI adopts (D-03).
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-07 done`.
+
+## Corrections from implementation
+
+Recorded by the implementing agent (2026-10-03). Where this brief and the code disagreed, the code
+won:
+
+- **P3-10's hook shape.** P3-10 documented the native side as Engine singletons
+  (`PolarisKeySparkle`, …). The facades are plain GDScript objects instead: `PKeyNativeBridge`
+  calls an injected `native`, else a singleton, else its facade (`make_facade()`), and awaits it,
+  because Velopack downloads before it applies. A bridge now reports the facade's own reason
+  (`runtime` on the wrong OS) instead of always `dependency`. A new `PKeyStoreContextBridge` lets
+  `PKeyMsStoreAdapter` hook StoreContext for a `store` answer in a Store MSIX, with the listing as
+  the fallback.
+- **One Windows DLL.** Velopack, WinSparkle and StoreContext share `pkey_win.dll` (S-11 §4.5);
+  the brief's three directories hold its three translation units. Both updater DLLs load at run
+  time, so the facade matrix holds per backend.
+- **The public key for WinSparkle** comes from a new `PKeyOptions.update_eddsa_public_key`
+  (validated: 32 bytes of standard base64). The export plugin reuses it as the default
+  `SUPublicEDKey`.
+- **API level 4.4, not 4.7.** godot-cpp 10.0.0 is built against the 4.4 API, the SDK's floor, so the
+  plugins load in 4.4+ (S-11 used 4.7). The macOS dylib targets macOS 12, Sparkle 2.10's own floor.
+- **Export option warnings do not stop an export** (Godot lists them but exports anyway). A
+  Sparkle build without a key therefore exports with a warning, and the bridge refuses to start in
+  it. The plugin does guarantee "never unsigned": `codesign/codesign` 0 becomes 1 (built-in ad
+  hoc). The S-11 note's "codesign=1 (Xcode codesign)" is the built-in ad-hoc signer in Godot
+  4.7's enum (0 Disabled, 1 built-in, 2 rcodesign, 3 Xcode).
+- **chmod after export works only for a `.app` export.** For `.zip`/`.dmg` the plugin warns, and
+  `sign_and_notarize.sh` restores the bits before it packages the archive.
+- **A Microsoft Store export ships no updater.** The Windows `.gdextension` has empty
+  `[dependencies]` for the `pkey_outlet_ms_store` feature tag. Godot takes the first matching key,
+  so no export-plugin code is needed.
+- **The shim** starts `<own stem>_godot.exe`. `pack_velopack.ps1` renames the shipped
+  `pkey_velopack_shim.exe` to `<PackId>.exe`.
+- **CI runners.** The jobs run on `macos-15` (the repository's current macOS image, not
+  `macos-26`) and `windows-latest`, in a separate path-filtered workflow,
+  `.github/workflows/native-desktop.yml`.
+- **The Velopack feed fix** (bare `FileName` plus the 302 package route) was not on `main` while
+  this package was built. The e2e feeds use bare file names, and `e2e/server.py` emulates the
+  route.
+
+Acceptance as delivered:
+
+- [x] Headless facade tests (`native_desktop` suite, in the `ci` set): `runtime` on every other OS,
+      `dependency` without the class or its library.
+- [ ] CI builds every plugin: the workflow is written, but **it has not run**. Pushing was not
+      allowed in this run. The macOS build and its end-to-end run pass locally; the Windows sources
+      pass a syntax check against a stub `windows.h` (except the C++/WinRT file), and the
+      PowerShell scripts parse.
+- [x] The Sparkle bridge refuses a fixture bundle without `SUPublicEDKey` (macOS e2e, locally).
+- [~] Local end-to-end: Sparkle delta and full updates (ad hoc, unnotarised) pass locally. Velopack
+  and WinSparkle run only in the Windows job, which has not run. Signed and notarised runs are the
+  owner's (checklist below).
+- [ ] StoreContext device checklist: the owner's (needs a Partner Center app).
+- [x] `parity.json` (Godot `update.driver` note).
+
+Owner checklist: `sdks/godot/native/README.md` §"Owner checklist" and the docs page
+`/docs/services/update/godot-desktop/`, from notes/S-11 §7 rows 1–8.

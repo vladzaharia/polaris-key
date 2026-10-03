@@ -34,6 +34,8 @@ sdks/godot/
   polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product
                               pkey-harness, editor channel dev)
   parity.json                 the Godot parity manifest (conformance/parity/)
+  native/                     P5-07's GDExtension sources, build and signing scripts and the
+                              end-to-end runs (native/README.md); .gdignore'd, never in a release
   addons/polaris_key/         the addon (the only directory a release ships)
     plugin.cfg, plugin.gd     editor shell: the autoload, the export plugin, the setup dock
     export/export_plugin.gd   PKeyExportPlugin: the build stamp and the pkey_* feature tags
@@ -64,7 +66,13 @@ sdks/godot/
     distribution/outlets/     PKeyOutletAdapter and one adapter per outlet kind (direct.gd,
                               app_store.gd, steam.gd, web.gd, …; adapters.gd maps kinds to them);
                               the native-updater bridges PKeyNativeBridge, PKeySparkleBridge,
-                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyAppImageBridge
+                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyStoreContextBridge,
+                              PKeyAppImageBridge
+    native/                   P5-07's facades over the optional desktop GDExtensions:
+                              PKeyNativeFacade, PKeySparkle, PKeyVelopack, PKeyWinSparkle,
+                              PKeyStoreContext; native/bin/ is where a game installs the binaries
+                              (git-ignored here)
+    export/native_export.gd   PKeyNativeExport: the macOS export's Sparkle switches
     updater/                  PKeyUpdater (PolarisKey.update.updater: the adapters' context,
                               methods, boot confirmation), PKeySlots (staged/current/previous),
                               PKeyBootGuard, PKeySidecarSwap, PKeyUpdaterEnv (every side effect),
@@ -560,14 +568,15 @@ is never talked into self-updating code.
   `is_available()`, `check_now()`, `install_and_relaunch()`, with the feed URL from discovery):
   Sparkle on macOS (the appcast), Velopack on a Velopack install or with its plugin, else
   WinSparkle, on Windows (`update.endpoints.velopack` up to `releases.`, `…/winsparkle.xml`), and
-  AppImageUpdate in an AppImage, else Velopack, on Linux. The plugins are P5-07's: Engine
-  singletons `PolarisKeySparkle`, `PolarisKeyVelopack`, `PolarisKeyWinSparkle` with
-  `check_now(feed_url)` and `install_and_relaunch(feed_url)`. With no plugin every call is the
-  typed unsupported result (`unsupported`, `detail.reason` `dependency`), `native` is not offered
-  to the decision, and an adapter given `native` anyway opens the download link: a missing plugin
-  never breaks boot. AppImage needs no plugin: with `APPIMAGE` set and `appimageupdatetool` on PATH
-  it runs `appimageupdatetool -O $APPIMAGE` on a worker thread and relaunches `$APPIMAGE` (not the
-  mounted executable).
+  AppImageUpdate in an AppImage, else Velopack, on Linux. Each bridge calls, in order, a `native`
+  object a test injects, an Engine singleton (`PolarisKeySparkle`, `PolarisKeyVelopack`,
+  `PolarisKeyWinSparkle`, `PolarisKeyStoreContext`) a game registers itself, or P5-07's facade
+  (see "Native desktop plugins" below). With no plugin every call is the typed unsupported result
+  (`unsupported`, `detail.reason` `dependency`, or `runtime` on the wrong OS), `native` is not
+  offered to the decision, and an adapter given `native` anyway opens the download link: a missing
+  plugin never breaks boot. AppImage needs no plugin: with `APPIMAGE` set and `appimageupdatetool`
+  on PATH it runs `appimageupdatetool -O $APPIMAGE` on a worker thread and relaunches `$APPIMAGE`
+  (not the mounted executable).
 - **`download`**: the build's URL from discovery's `distribution.endpoints.builds` (else
   `release.endpoints.builds`; never the R2-only `blobs`), `{selector}` = the record's version and
   `{buildId}` = the decision's build, percent-encoded; else `PKeyOptions.update_release_url`.
@@ -652,6 +661,37 @@ recordHash, sha256, size, engine, scheme}. PKeyBoot's GUARD runs `PKeyBootGuard.
   hooks in milliseconds without starting the engine. Godot as the main executable also survives
   the hooks (1.0–1.7 s each when an autoload quits from `_init`) but opens its renderer and window
   for every hook: a documented fallback only (S-05 §4.5).
+
+**Native desktop plugins** (P5-07; `addons/polaris_key/native/`, sources in `native/`, docs page
+`/docs/services/update/godot-desktop/`). Four GDScript facades over optional GDExtensions, each
+answering `unsupported` (`runtime` on the wrong OS or in an install the updater cannot serve,
+`dependency` without the GDExtension or the library it loads):
+
+- `PKeySparkle` (macOS): `PKeySparkleNative` drives `SPUStandardUpdaterController` on the main
+  thread with discovery's appcast, the bearer in `httpHeaders` and the build's channel. It refuses
+  to start without `SUPublicEDKey` in the bundle (`invalid-options`), off the main thread, and
+  without `Sparkle.framework` (weak-linked). It never verifies an update itself. With a tree that
+  does not auto-accept quitting, it quits on `will_relaunch`.
+- `PKeyVelopack` (Windows): an UpdateManager over the feed directory with the headers; check and
+  download on a worker thread (`progress` events), then apply on exit with a restart, and quit.
+  Outside a Velopack install (no `Update.exe` above, no `sq.version` beside) it answers `runtime`.
+- `PKeyWinSparkle` (Windows): the appcast, `PKeyOptions.update_eddsa_public_key` (refused when
+  empty), the `PolarisKey`/`<product>` registry identity and the headers; `shutdown_request` quits.
+- `PKeyStoreContext` (Windows): package identity first; then the Store calls on an MTA thread after
+  IInitializeWithWindow with the game window. No identity, or `0x803F6101`, `0x803F6107`,
+  `0x80070002`, is `runtime` ("not a Store install"). `PKeyMsStoreAdapter` hooks it for a `store`
+  answer in a Store MSIX (`ctx.store_bridge_available`) and falls back to the listing.
+
+The updater configures every bridge with `download_headers` (read when the updater runs), the
+build's channel, and WinSparkle's key and identity. The export plugin's macOS options
+`polaris_key/sparkle/{enabled, public_ed_key, feed_url, automatic_checks}` (env `PKEY_SPARKLE`,
+`PKEY_SPARKLE_PUBLIC_KEY`, `PKEY_SPARKLE_FEED_URL`) write `SUPublicEDKey`, `SUFeedURL` and
+`SUEnableAutomaticChecks` into `Info.plist`, turn on Disable Library Validation, turn a Disabled
+`codesign/codesign` into the built-in ad-hoc signature, and restore the executable bit on Sparkle's
+helpers after a `.app` export. The Windows `.gdextension` ships `velopack_libc.dll`,
+`WinSparkle.dll` and the Velopack shim beside the executable, except in a `pkey_outlet_ms_store`
+export. The `native_desktop` suite covers the facades over stand-in natives and the wiring; the
+`native-desktop` CI workflow runs the real updates end to end (`native/e2e/`).
 
 **Inert** in the editor, in headless runs (the test runner, a dedicated server) and in debug
 builds, as Diceroll's updater is: nothing is downloaded, swapped, restarted or counted, and the

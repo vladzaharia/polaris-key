@@ -1884,7 +1884,7 @@
       "optional": false,
       "refs": ["README §5.10", "notes/E3"],
       "brief": "wp/P5-07-desktop-plugins.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P5-08",
