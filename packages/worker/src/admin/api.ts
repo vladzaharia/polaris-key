@@ -68,6 +68,7 @@ import {
 import { handleActivity } from "./handlers/activity.js";
 import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
+import { handleTrustPolicy } from "./handlers/trustPolicy.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { handleBlobGcAdmin } from "../core/blobGc.js";
@@ -201,6 +202,12 @@ async function handleProductScoped(
     return handleCiPublisher(req, env, db, session, slug, id, now);
   if (resource === "ci-tokens")
     return handleCiTokens(req, env, db, session, slug, id, now);
+
+  // The device-trust policy (P6-02): which operations require an attested device, enforced or
+  // log-only, and the App Attest / Play Integrity settings. CORE, like the device trust level.
+  //   GET|PUT|DELETE /products/<slug>/trust-policy
+  if (resource === "trust-policy")
+    return handleTrustPolicy(req, env, db, session, slug, id, now);
 
   // Which Polaris Key services this product runs (plan §R4). A CORE resource, not a per-service
   // one: a service cannot own its own off switch, because it would have to be running to be

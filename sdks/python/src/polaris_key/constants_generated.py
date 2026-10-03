@@ -133,6 +133,9 @@ class ErrorCode:
     NOT_FOUND: Final = "not_found"
     BAD_REQUEST: Final = "bad_request"
     FORBIDDEN: Final = "forbidden"
+    ATTESTATION_REQUIRED: Final = "attestation_required"
+    ATTESTATION_REJECTED: Final = "attestation_rejected"
+    ATTESTATION_UNAVAILABLE: Final = "attestation_unavailable"
     RATE_LIMITED: Final = "rate_limited"
     BODY_TOO_LARGE: Final = "body_too_large"
     METHOD_NOT_ALLOWED: Final = "method_not_allowed"
@@ -272,6 +275,9 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "not_found",
     "bad_request",
     "forbidden",
+    "attestation_required",
+    "attestation_rejected",
+    "attestation_unavailable",
     "rate_limited",
     "body_too_large",
     "method_not_allowed",
@@ -413,6 +419,9 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "not_found": "wire",
         "bad_request": "wire",
         "forbidden": "wire",
+        "attestation_required": "wire",
+        "attestation_rejected": "wire",
+        "attestation_unavailable": "wire",
         "rate_limited": "wire",
         "body_too_large": "wire",
         "method_not_allowed": "wire",

@@ -27,6 +27,7 @@ import {
   type ServicesMap,
 } from "./services.js";
 import { parseWebOrigins } from "./cors.js";
+import { parseTrustPolicy, type TrustPolicy } from "./deviceTrust.js";
 
 export interface Product {
   slug: string;
@@ -51,6 +52,9 @@ export interface Product {
   /** The exact browser origins this product answers CORS for (P0-05, `web.origins`). Empty
    *  when undeclared or unreadable, which means no `Access-Control-*` header is ever sent. */
   webOrigins: readonly string[];
+  /** The operator's device-trust policy (P6-02, `core/deviceTrust.ts`). Optional so a hand-built
+   *  product reads as the default policy; the loader always sets it. */
+  trustPolicy?: TrustPolicy;
 }
 
 export interface PublicSigningKey {
@@ -137,6 +141,7 @@ function productFields(
       parsedServices.registration,
     ),
     webOrigins: parseWebOrigins(row.web_origins_json),
+    trustPolicy: parseTrustPolicy(row.trust_policy_json),
   };
 }
 

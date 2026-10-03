@@ -15,6 +15,9 @@ public enum ErrorCode {
     public static let notFound = "not_found"
     public static let badRequest = "bad_request"
     public static let forbidden = "forbidden"
+    public static let attestationRequired = "attestation_required"
+    public static let attestationRejected = "attestation_rejected"
+    public static let attestationUnavailable = "attestation_unavailable"
     public static let rateLimited = "rate_limited"
     public static let bodyTooLarge = "body_too_large"
     public static let methodNotAllowed = "method_not_allowed"
@@ -154,6 +157,9 @@ public let ERROR_CODE_VALUES: [String] = [
     "not_found",
     "bad_request",
     "forbidden",
+    "attestation_required",
+    "attestation_rejected",
+    "attestation_unavailable",
     "rate_limited",
     "body_too_large",
     "method_not_allowed",
@@ -293,6 +299,9 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "not_found": "wire",
     "bad_request": "wire",
     "forbidden": "wire",
+    "attestation_required": "wire",
+    "attestation_rejected": "wire",
+    "attestation_unavailable": "wire",
     "rate_limited": "wire",
     "body_too_large": "wire",
     "method_not_allowed": "wire",
