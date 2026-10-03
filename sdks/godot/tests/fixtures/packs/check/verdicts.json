@@ -241,6 +241,26 @@
       ],
       "warnings": []
     },
+    "refs-resource-path-text": {
+      "errors": [
+        "assets/kaykit/poison.tres: sets resource_path, which can put it in the resource cache under an app path.",
+        "assets/kaykit/escaped.tres: sets resource_path, which can put it in the resource cache under an app path."
+      ],
+      "warnings": []
+    },
+    "refs-resource-path-binary": {
+      "errors": [
+        "assets/kaykit/poison.res: sets resource_path, which can put it in the resource cache under an app path.",
+        "assets/kaykit/inline.res: sets resource_path, which can put it in the resource cache under an app path."
+      ],
+      "warnings": []
+    },
+    "refs-overlap-offsets": {
+      "errors": [
+        "assets/kaykit/overlap.res: is a binary resource whose properties cannot be read, so the device cannot tell what it loads."
+      ],
+      "warnings": []
+    },
     "refs-admitted": {
       "errors": [],
       "warnings": []

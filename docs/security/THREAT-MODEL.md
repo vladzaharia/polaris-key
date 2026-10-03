@@ -2350,6 +2350,35 @@ committed or mounted:
   path and the UID of a script reference, so both), and the lint names every refused reference
   so the list is easy to complete. Non-script app resources referenced by path (a shared
   material, an app scene to instance) stay admitted without listing.
+- **The device judges what a reference really loads (P4-28 audit).** A reference's `type` is a
+  hint the pack writes; the engine picks a loader by extension, so an app GDScript saved as
+  `.tres` and referenced as `Resource` attaches a script. For an out-of-pack reference without a
+  script extension the device reads the resource's real type the way the loaders do (through a
+  `.remap` on an export; an imported file's `.import` type; a binary header's type; a text
+  resource's head) and treats a `Script` subclass, or a resource that exists but whose type it
+  cannot read, as a script that must be listed. A UID outside the pack's cache that the app
+  registers (`ResourceUID`) is judged by the path it names: an app texture or scene passes, an
+  app script needs listing; one the app does not register needs listing. These lookups are
+  device-only. The CLI cannot see the app's files or UIDs, so it judges the hint and refuses every
+  unlisted UID: **CI is stricter than the device for app UIDs** (Godot 4.4+ writes `uid="…"` on
+  every reference, so a pack scene referencing an app texture by UID is admitted on the device
+  but needs the UID in `content.attachable` to publish), and the device is stricter for a
+  script hidden under a resource extension. The shared fixtures resolve nothing on the device,
+  so their verdicts are identical.
+- **A pack resource never sets `resource_path` (P4-28 audit GAP A).** `Resource.set_path`
+  registers a resource in the resource cache under the path it is given when nothing is cached
+  there, and the loader re-paths only a file's main resource. Measured on 4.7.2 and 4.4.1: a
+  mounted pack's sub-resource that sets `resource_path` to an app path not yet loaded takes that
+  path, and the app's next `load()` of it returns the pack's object (`_cache_probe`). Both
+  validators refuse a text resource naming `resource_path` anywhere (as written or behind
+  escapes) and a binary resource whose property uses that name (a string-table entry or an
+  inline name), with one line (`refs-resource-path-*`). The engine never stores the property.
+- **The binary walk is linear (P4-28 audit GAP B).** Internal-resource offsets must follow the
+  tables in strictly ascending order and each walk must end by the next offset, as the saver
+  writes them (the real 4.7.2 and 4.4.1 imports do), so no byte is walked twice; the walked
+  total is also capped at the stream length. Overlapping offsets, which would let a few million
+  table entries re-walk one large blob on the device's worker, are refused
+  (`refs-overlap-offsets`).
 - **A pack's uid cache may name only the pack's own files.** A 4.4/4.5 exporter writes the whole
   project's `uid_cache.bin` into a pack, excluded files included; mounted with
   `replace_files=true`, a foreign entry re-points one of the app's own UIDs at the pack's file
@@ -2375,11 +2404,18 @@ Residuals not closed by P4-08 (P4-28 closed two: attaching app scripts, and anot
   itself, but an app resource a pack references by path (an app scene it instances, a resource
   that is or embeds a script saved under a resource extension, a node's
   `instance_placeholder` path the app later loads) runs whatever the app composed into it, and
-  signal connections in a pack scene call methods on the nodes it builds. That is the app's
-  own content, not downloaded code; the app must still treat pack data as untrusted input, and
+  signal connections in a pack scene call methods on the nodes it builds. Built-in engine nodes
+  are tools too, with no script at all: an `HTTPRequest` started through a `[connection]`'s
+  `binds` can fetch a URL the pack chose, and an `AnimationPlayer` method-call track calls any
+  method of the nodes it animates. That is engine and app behaviour, not downloaded code; the
+  app must still treat pack data as untrusted input, and
   integrity rests on the release-key signature over the record. A `files.tree` pack's resources
   are not reference-checked (a tree is never mounted into `res://`); an app that loads a
   resource from a tree file takes the same care as with any `user://` file.
+- **App UIDs are judged when the check runs.** The device resolves an out-of-pack UID through
+  the app's `ResourceUID` when it checks a pack (before commit, and again before each mount).
+  An app update that re-points a UID at a script is caught at the next mount's check; a UID the
+  app registers at run time through its own code is the app's choice.
 - **Data replacement under a pack-chosen name.** An in-pack `.godot/imported/…` or
   `.godot/exported/…` file whose name equals the base game's replaces it under
   `replace_files=true`. That changes data, not code, and the record is release-key signed.

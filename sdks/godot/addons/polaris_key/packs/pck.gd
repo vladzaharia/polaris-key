@@ -71,7 +71,7 @@ static func _re(pattern: String) -> RegEx:
 ## Compile every pattern and read the engine's script kinds on the main thread before a worker
 ## runs the directory check.
 static func warm() -> void:
-	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _GD_HEAD, _PATH_ANY, _PATH_LINE, _DEST_LINE, _QUOTED, _EXT_LINE, _EXT_ATTR]:
+	for p in [_SCRIPT, _NATIVE, _NATIVE_DIR, _TEXT_RES, _BINARY_RES, _GD_HEAD, _PATH_ANY, _PATH_LINE, _DEST_LINE, _QUOTED, _EXT_LINE, _EXT_ATTR, _TYPE_KEY, _TEXT_TYPE]:
 		_re(p)
 	refresh_script_kinds()
 
@@ -797,6 +797,13 @@ const _UID_MAX := 0x7FFFFFFFFFFFFFFF
 const _AMBIGUOUS := ", so the device cannot tell what it loads"
 const _EXT_LINE := "^[ \\t]*\\[ext_resource((?: [a-z_]+=\"[^\"\\\\]*\")+)\\][ \\t]*$"
 const _EXT_ATTR := " ([a-z_]+)=\"([^\"\\\\]*)\""
+## P4-28 audit GAP A (packRefs.ts `RESOURCE_PATH_WHY`, the same words): `Resource.set_path`
+## registers a sub-resource in the resource cache under that path when nothing is cached there
+## (the loader re-paths only the main resource), so a later load() of an app path would return
+## the pack's object. The engine never stores the property.
+const _TYPE_KEY := "(?m)^[ \\t]*type[ \\t]*=[ \\t]*\"([^\"]*)\""
+const _TEXT_TYPE := "^[ \\t\\n\\r]*\\[gd_resource[^\\]\\n]*[ \\t]type=\"([^\"]*)\""
+const RESOURCE_PATH_WHY := "sets resource_path, which can put it in the resource cache under an app path"
 
 
 ## `ResourceUID::id_to_text`.
@@ -872,11 +879,78 @@ static func _uid_problem(u: int, raw: String, ctx: Dictionary) -> String:
 		return "references %s, which is not a canonical uid://%s" % [raw, _AMBIGUOUS]
 	if (ctx["pack_uids"] as Dictionary).has(u) or (ctx["attachable"]["uids"] as Dictionary).has(u):
 		return ""
+	# Device only (the CLI cannot resolve an app UID, so it refuses every unlisted one): a UID this
+	# app registers is judged by the path it names, so an app texture or scene a pack reaches by
+	# UID passes and an app script still needs listing.
+	if ctx.get("resolve", false) and ResourceUID.has_id(u):
+		var path := ResourceUID.get_id_path(u)
+		if path != "":
+			return _path_problem(path, null, ctx)
 	return "references %s, outside the pack's uid cache, which the app does not list as attachable" % uid_text(u)
 
 
+## Device only (P4-28 audit GAP C): whether the app resource at `p` is a script by its real type,
+## whatever the reference's `type` hint says (the engine picks a loader by extension, so a GDScript
+## saved as `.tres` loads as a script). A `.remap` (an exported text resource) is followed first.
+## A resource that exists but whose type the engine cannot tell counts as a script (fails closed).
+static func _app_script_type(p: String) -> bool:
+	var t := _remapped_type(p)
+	if t == "":
+		return ResourceLoader.exists(p)
+	return t == "Script" or ClassDB.is_parent_class(t, "Script")
+
+
+## The type of the app resource at `p`, read the way the loaders do (GDScript cannot call
+## `ResourceLoader.get_resource_type`, and loading would run a script's static initialisers): a
+## `.remap` (an exported resource) is followed first; an imported file's type is its `.import`'s
+## `type="…"`; a binary resource's (`RSRC`, or a bounded `RSCC` body) is its header's; a text
+## resource's is its `[gd_resource type="…"]` head (`[gd_scene` is a PackedScene). "" when there is
+## no such file or its type cannot be read.
+static func _remapped_type(p: String) -> String:
+	var target := p
+	if FileAccess.file_exists(p + ".remap"):
+		for v in remap_values(FileAccess.get_file_as_bytes(p + ".remap").get_string_from_utf8()):
+			if v.begins_with("res://"):
+				target = v
+				break
+	if FileAccess.file_exists(target + ".import"):
+		var m := _re(_TYPE_KEY).search(FileAccess.get_file_as_bytes(target + ".import").get_string_from_utf8())
+		return m.get_string(1) if m != null else ""
+	if not FileAccess.file_exists(target):
+		return ""
+	var f := FileAccess.open(target, FileAccess.READ)
+	if f == null:
+		return ""
+	var head := f.get_buffer(4)
+	var body := PackedByteArray()
+	if head.get_string_from_ascii() == "RSRC":
+		body = f.get_buffer(mini(f.get_length() - 4, 65536))
+	elif head.get_string_from_ascii() == "RSCC":
+		var whole := head + f.get_buffer(f.get_length() - 4)
+		var r := rscc_body(whole)
+		if r.has("why"):
+			return ""
+		body = r["body"]
+	else:
+		var text := (head + f.get_buffer(mini(f.get_length() - 4, 4096))).get_string_from_utf8()
+		if text.strip_edges(true, false).begins_with("[gd_scene"):
+			return "PackedScene"
+		var m := _re(_TEXT_TYPE).search(text)
+		return m.get_string(1) if m != null else ""
+	# The header words (big-endian, real64, major, minor, format), then the type string.
+	if body.size() < 24:
+		return ""
+	var n := body.decode_u32(20)
+	if 24 + n > body.size():
+		return ""
+	var raw := body.slice(24, 24 + n)
+	var z := raw.find(0)
+	return (raw if z == -1 else raw.slice(0, z)).get_string_from_utf8()
+
+
 ## Why one reference ({type: String or null, path, uid: null, a text String or a binary int}) is
-## refused, or "" (the UID first, then the path). `ctx`: {in_pack, pack_uids, attachable}.
+## refused, or "" (the UID first, then the path). `ctx`: {in_pack, pack_uids, attachable, resolve}
+## (`resolve`: the device's own lookups, P4-28 audit GAP C and the UID rule above).
 static func ref_problem(ref: Dictionary, ctx: Dictionary) -> String:
 	var uid = ref.get("uid")
 	if uid is String:
@@ -891,6 +965,10 @@ static func ref_problem(ref: Dictionary, ctx: Dictionary) -> String:
 	var p: String = ref["path"]
 	if p.begins_with("uid://"):
 		return _uid_problem(canonical_uid(p), p, ctx)
+	return _path_problem(p, ref.get("type"), ctx)
+
+
+static func _path_problem(p: String, t: Variant, ctx: Dictionary) -> String:
 	if not p.begins_with("res://") or not path_ok(p.substr(6)):
 		return "references %s, which is not a normal res:// path or uid://%s" % [p, _AMBIGUOUS]
 	var rest := p.substr(6)
@@ -899,10 +977,11 @@ static func ref_problem(ref: Dictionary, ctx: Dictionary) -> String:
 	var in_pack: Dictionary = ctx["in_pack"]
 	if in_pack.has(rest) or in_pack.has(rest + ".remap") or in_pack.has(rest + ".import"):
 		return ""
-	var t = ref.get("type")
 	var script := _is_script(rest)
 	if not script and t is String:
 		script = t == "Script" or (_script_kinds()["markers"] as PackedStringArray).has(t)
+	if not script and ctx.get("resolve", false):
+		script = _app_script_type(p)
 	if not script:
 		return ""
 	var att: Dictionary = ctx["attachable"]
@@ -918,6 +997,9 @@ static func ref_problem(ref: Dictionary, ctx: Dictionary) -> String:
 ## without NUL (the embedded-code rule ran first).
 static func text_refs(text: String) -> Dictionary:
 	var t := text.replace("\r", "\n")
+	# GAP A: the property name anywhere, as written or behind escapes (fails closed).
+	if t.contains("resource_path") or t.replace("\\", "").contains("resource_path"):
+		return {"why": RESOURCE_PATH_WHY}
 	var lines := t.split("\n")
 	var refs: Array = []
 	for i in lines.size():
@@ -987,8 +1069,10 @@ static func binary_refs(b: PackedByteArray, start: int) -> Dictionary:
 	r.part = "reference tables"
 	var nstr := r.u32()
 	var i := 0
+	# GAP A: the string-table entries that name `resource_path` (a property may use one).
 	while r.ok and i < nstr:
-		r.read_str()
+		if is_resource_path(r.read_str()):
+			r.rp_names[i] = true
 		i += 1
 	var refs: Array = []
 	var next := r.u32()
@@ -1013,18 +1097,28 @@ static func binary_refs(b: PackedByteArray, start: int) -> Dictionary:
 		i += 1
 	if not r.ok:
 		return r.fail()
+	var table_end := r.pos
 	r.part = "properties"
 	var real := 8 if flags & 4 else 4
-	for off in offsets:
-		if off < 0 or off > b.size():
+	# GAP B: the saver writes the internal resources in order after the tables, so each offset
+	# must follow the tables and its predecessor, and each walk end by its successor's offset: no
+	# byte is walked twice. The walked total is held to the stream length as a backstop.
+	var walked := 0
+	for k in offsets.size():
+		var off := offsets[k]
+		var prev := table_end - 1 if k == 0 else offsets[k - 1]
+		if off < 0 or off <= prev or off > b.size():
 			r.ok = false
 			return r.fail()
+		r.limit = maxi(off, mini(offsets[k + 1], b.size())) if k + 1 < offsets.size() else b.size()
 		r.pos = off
 		r.read_str() # the class
 		var pc := r.u32()
 		var j := 0
 		while r.ok and j < pc:
-			r.read_name(nstr)
+			r.read_name(nstr, true)
+			if r.rp_hit:
+				return {"why": RESOURCE_PATH_WHY}
 			var pending := 1
 			while r.ok and pending > 0:
 				pending -= 1
@@ -1067,10 +1161,10 @@ static func binary_refs(b: PackedByteArray, start: int) -> Dictionary:
 						var subs := r.u16() & 0x7FFF
 						if format < 3:
 							subs += 1
-						var k := 0
-						while r.ok and k < names + subs:
-							r.read_name(nstr)
-							k += 1
+						var kk := 0
+						while r.ok and kk < names + subs:
+							r.read_name(nstr, false)
+							kk += 1
 					24: # OBJECT: empty, inline external (pre-4.0), internal index, external index
 						var kind := r.u32()
 						if r.ok and kind == 1:
@@ -1092,10 +1186,10 @@ static func binary_refs(b: PackedByteArray, start: int) -> Dictionary:
 						r.skip(r.u32() * 8)
 					34: # PACKED_STRING_ARRAY
 						var ns := r.u32()
-						var k := 0
-						while r.ok and k < ns:
+						var kk := 0
+						while r.ok and kk < ns:
 							r.read_str()
-							k += 1
+							kk += 1
 					37: # PACKED_VECTOR2_ARRAY
 						r.skip(r.u32() * 2 * real)
 					35: # PACKED_VECTOR3_ARRAY
@@ -1109,6 +1203,10 @@ static func binary_refs(b: PackedByteArray, start: int) -> Dictionary:
 			j += 1
 		if not r.ok:
 			return r.fail()
+		walked += r.pos - off
+		if walked > b.size():
+			r.ok = false
+			return r.fail()
 	return {"refs": refs}
 
 
@@ -1118,16 +1216,22 @@ class _BinaryReader:
 	var pos := 0
 	var ok := true
 	var part := "header"
+	## Reads stop here: the stream's end, then (GAP B) each internal resource's successor.
+	var limit := 0
+	## GAP A: string-table indices naming `resource_path`, and whether a property used one.
+	var rp_names := {}
+	var rp_hit := false
 
 	func _init(p_b: PackedByteArray, p_start: int) -> void:
 		b = p_b
 		pos = p_start
+		limit = b.size()
 
 	func fail() -> Dictionary:
 		return {"why": "is a binary resource whose %s cannot be read, so the device cannot tell what it loads" % part}
 
 	func need(n: int) -> bool:
-		if not ok or n < 0 or pos + n > b.size():
+		if not ok or n < 0 or pos + n > limit:
 			ok = false
 		return ok
 
@@ -1181,15 +1285,35 @@ class _BinaryReader:
 			return ""
 		return cut.get_string_from_utf8()
 
-	## A property or node-path name: a string-table index, or (bit 31) an inline string.
-	func read_name(nstr: int) -> void:
+	## A string id: a table index, or (bit 31) an inline string; `prop`: a property's name, which
+	## may not be `resource_path` (GAP A; `rp_hit` stops the walk).
+	func read_name(nstr: int, prop: bool) -> void:
 		var id := u32()
 		if not ok:
 			return
 		if id & 0x80000000:
-			skip(id & 0x7FFFFFFF)
+			var n := id & 0x7FFFFFFF
+			if not need(n):
+				return
+			pos += n
+			if prop and PKeyPck.is_resource_path(b.slice(pos - n, pos)):
+				rp_hit = true
+				ok = false
 		elif id >= nstr:
 			ok = false
+		elif prop and rp_names.has(id):
+			rp_hit = true
+			ok = false
+
+
+## Whether string bytes decode to `resource_path` as the loader reads them: up to the first NUL,
+## a leading byte-order mark dropped (packRefs.ts `isResourcePath`).
+static func is_resource_path(s: PackedByteArray) -> bool:
+	var z := s.find(0)
+	var cut := s if z == -1 else s.slice(0, z)
+	if cut.size() >= 3 and cut[0] == 0xEF and cut[1] == 0xBB and cut[2] == 0xBF:
+		cut = cut.slice(3)
+	return cut == "resource_path".to_ascii_buffer()
 
 
 ## The ids a uid cache registers, as {id: true}; {} when it is malformed.
@@ -1256,7 +1380,7 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 		if e["path"] == UID_CACHE:
 			pack_uids = uid_cache_ids(source.read(int(e["offset"]), int(e["size"])))
 	# P4-28: what the pack's resources may reference outside the pack.
-	var ref_ctx := {"in_pack": in_pack, "pack_uids": pack_uids, "attachable": parse_attachable(attachable)}
+	var ref_ctx := {"in_pack": in_pack, "pack_uids": pack_uids, "attachable": parse_attachable(attachable), "resolve": true}
 	for e in entries:
 		var p: String = e["path"]
 		if p == STRIP_PROJECT_BINARY or p == STRIP_CLASS_CACHE:

@@ -201,6 +201,8 @@ export interface BinaryResourceOptions {
   format?: number;
   /** Skip the generated noise property (the caller supplies every value). */
   noNoise?: boolean;
+  /** Point every internal resource at the first one's offset (P4-28 audit GAP B). */
+  sameOffsets?: boolean;
 }
 
 const u32le = (n: number) => {
@@ -298,7 +300,7 @@ export function binaryResourceStream(
   const offs: number[] = [];
   let at = base + head.length + tableLen;
   for (const b of blocks) {
-    offs.push(at);
+    offs.push(opts.sameOffsets && offs.length ? offs[0]! : at);
     at += b.length;
   }
   return catBytes([head, table(offs), ...blocks]);

@@ -444,8 +444,10 @@ deliverables:
   and UIDs (`uid://…`, in Godot's canonical form, for any app resource a pack reaches by UID).
   1–256 distinct entries, paths already normal (`invalid_app_attachable`). Absent, a pack
   attaches no app script and reaches no UID outside its own uid cache: the publish lint refuses
-  such a pack, and so does the device. A script reference Godot 4.4+ writes carries the path and
-  the UID (the one in the script's `.uid` file), so list both. Keep the list equal to the Godot
+  such a pack, and so does the device. A reference Godot 4.4+ writes carries the path and the
+  UID (a script's is in its `.uid` file), so list both for a script, and list the UID of any app
+  resource a pack reaches by UID: the device resolves app UIDs itself and admits non-script
+  ones, but the publish lint cannot and refuses every unlisted UID. Keep the list equal to the Godot
   SDK's `PKeyOptions.pack_attachable`; it is never stamped into a release.
 
 Resync writes the declaration to `release_deliverables.def_json` (and each channel's

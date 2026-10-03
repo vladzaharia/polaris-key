@@ -101,12 +101,14 @@ const CONFIG_ENV_NEVER := 2
 @export_group("Packs")
 ## P4-28: what a `godot.pck` pack's resources may reference outside the pack. Each entry is an
 ## app script (`res://scripts/die.gd`), a directory of scripts (`res://scripts/dice/`) or a UID
-## (`uid://c3x…`, for any app resource a pack reaches by UID). Empty (the default): a pack
-## attaches no app script and reaches no UID its own uid cache does not register; such a pack is
-## refused before it is committed and again before it is mounted (`pck-directory-refused`). A
-## script reference Godot 4.4+ writes carries both the path and the UID, so list both. The same
-## list goes in `.pkey/release` as `deliverables.app.content.attachable`, so CI refuses the same
-## packs. A malformed entry makes `configure` refuse (`invalid-options`).
+## (`uid://c3x…`). Empty (the default): a pack attaches no app script; such a pack is refused
+## before it is committed and again before it is mounted (`pck-directory-refused`). A UID outside
+## the pack's own uid cache that this app registers is judged by the path it names (an app
+## resource passes, an app script needs listing); one it does not register needs listing. The CLI
+## lint cannot resolve app UIDs and refuses every unlisted one, so `.pkey/release`'s
+## `deliverables.app.content.attachable` lists the UIDs packs use as well as the scripts (Godot
+## 4.4+ writes the path and the UID of every reference). A malformed entry makes `configure`
+## refuse (`invalid-options`).
 @export var pack_attachable := PackedStringArray()
 @export_group("")
 

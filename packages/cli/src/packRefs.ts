@@ -39,8 +39,16 @@
  *    that path), the pre-4.0 inline external reference (`OBJECT_EXTERNAL_RESOURCE`, a path the
  *    loader loads directly) and an unknown value type are refused.
  *
+ * Also refused (P4-28 audit): a resource that sets `resource_path` (a text resource naming it
+ * anywhere, a binary property named so), which would enter the resource cache under an app path;
+ * and binary internal-resource offsets that are not strictly ascending after the tables with each
+ * walk ending by the next one (no byte walked twice).
+ *
  * The Godot SDK's `PKeyPck` (`sdks/godot/addons/polaris_key/packs/pck.gd`) applies the same rules
- * with the same words; `godotFixtures.test.ts` pins both to one set of verdicts.
+ * with the same words; `godotFixtures.test.ts` pins both to one set of verdicts. The device adds
+ * two lookups the CLI cannot make: an app resource's real type (a GDScript saved as `.tres` is a
+ * script whatever the reference's `type` hint) and an app UID's path (`ResourceUID`), so the
+ * device admits a non-script app resource reached by UID that this lint refuses unlisted.
  */
 
 import { pckPathOk } from "./pck.js";
@@ -146,6 +154,16 @@ export interface RefContext {
 
 const AMBIGUOUS = ", so the device cannot tell what it loads";
 
+/**
+ * Why a resource that sets `resource_path` is refused (P4-28 audit GAP A): `Resource.set_path`
+ * registers a sub-resource in the resource cache under that path when nothing is cached there yet
+ * (the loader re-paths only the main resource), so a later `load()` of an app path returns the
+ * pack's object. The engine never stores the property (editor usage only).
+ */
+export const RESOURCE_PATH_WHY =
+  "sets resource_path, which can put it in the resource cache under an app path";
+const RESOURCE_PATH = Buffer.from("resource_path");
+
 function uidProblem(u: bigint | null, raw: string, ctx: RefContext) {
   if (u === null || u < 0n)
     return `references ${raw}, which is not a canonical uid://${AMBIGUOUS}`;
@@ -203,6 +221,12 @@ export function textRefs(
   text: string,
 ): { refs: ResourceRef[] } | { why: string } {
   const t = text.replace(/\r/g, "\n");
+  // GAP A: the property name anywhere, as written or behind escapes (fails closed).
+  if (
+    t.includes("resource_path") ||
+    t.replace(/\\/g, "").includes("resource_path")
+  )
+    return { why: RESOURCE_PATH_WHY };
   const lines = t.split("\n");
   const refs: ResourceRef[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -278,10 +302,12 @@ export function binaryRefs(
   const dec = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let pos = start;
   let part = "header";
+  // Reads stop here: the stream's end, then (GAP B) each internal resource's successor.
+  let limit = b.byteLength;
   const fail = () =>
     new Stop(`is a binary resource whose ${part} cannot be read${AMBIGUOUS}`);
   const need = (n: number) => {
-    if (n < 0 || pos + n > b.byteLength) throw fail();
+    if (n < 0 || pos + n > limit) throw fail();
   };
   const u32 = () => {
     need(4);
@@ -331,7 +357,9 @@ export function binaryRefs(
     skip(4 * RESERVED_FIELDS);
     part = "reference tables";
     const nstr = u32();
-    for (let i = 0; i < nstr; i++) str();
+    // GAP A: the string-table entries that name `resource_path` (a property may use one).
+    const rpNames = new Set<number>();
+    for (let i = 0; i < nstr; i++) if (isResourcePath(str())) rpNames.add(i);
     const refs: ResourceRef[] = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
@@ -347,6 +375,7 @@ export function binaryRefs(
     }
     const nint = u32();
     const offsets: number[] = [];
+    let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
       const path = text(str());
       need(8);
@@ -359,20 +388,38 @@ export function binaryRefs(
         };
       offsets.push(hi > 0x1fffff ? -1 : hi * 4294967296 + lo);
     }
+    tableEnd = pos;
     part = "properties";
     const real = flags & FLAG_REAL64 ? 8 : 4;
-    const name = () => {
+    /** A string id: a table index, or (bit 31) an inline string; `prop`: a property's name. */
+    const name = (prop: boolean) => {
       const id = u32();
-      if (id & 0x80000000) skip(id & 0x7fffffff);
-      else if (id >= nstr) throw fail();
+      if (id & 0x80000000) {
+        const n = id & 0x7fffffff;
+        need(n);
+        const inline = b.subarray(pos, pos + n);
+        pos += n;
+        if (prop && isResourcePath(inline)) throw new Stop(RESOURCE_PATH_WHY);
+      } else if (id >= nstr) throw fail();
+      else if (prop && rpNames.has(id)) throw new Stop(RESOURCE_PATH_WHY);
     };
-    for (const off of offsets) {
-      if (off < 0 || off > b.byteLength) throw fail();
+    // GAP B: the saver writes the internal resources in order after the tables, so each offset
+    // must follow the tables and its predecessor, and each walk end by its successor's offset:
+    // no byte is walked twice. The walked total is held to the stream length as a backstop.
+    let walked = 0;
+    for (let i = 0; i < offsets.length; i++) {
+      const off = offsets[i]!;
+      const prev = i === 0 ? tableEnd - 1 : offsets[i - 1]!;
+      if (off < 0 || off <= prev || off > b.byteLength) throw fail();
+      limit =
+        i + 1 < offsets.length
+          ? Math.max(off, Math.min(offsets[i + 1]!, b.byteLength))
+          : b.byteLength;
       pos = off;
       str(); // the class
       const pc = u32();
       for (let j = 0; j < pc; j++) {
-        name();
+        name(true);
         let pending = 1;
         while (pending > 0) {
           pending--;
@@ -441,7 +488,7 @@ export function binaryRefs(
               let subs = dv.getUint16(pos + 2, true) & 0x7fff;
               pos += 4;
               if (format < 3) subs += 1;
-              for (let k = 0; k < names + subs; k++) name();
+              for (let k = 0; k < names + subs; k++) name(false);
               break;
             }
             case 24: {
@@ -500,12 +547,26 @@ export function binaryRefs(
           }
         }
       }
+      walked += pos - off;
+      if (walked > b.byteLength) throw fail();
     }
     return { refs };
   } catch (e) {
     if (e instanceof Stop) return { why: e.why };
     throw e;
   }
+}
+
+/**
+ * Whether string bytes decode to `resource_path` as the loader reads them: up to the first NUL,
+ * a leading byte-order mark dropped.
+ */
+function isResourcePath(s: Uint8Array): boolean {
+  const z = s.indexOf(0);
+  let cut = z === -1 ? s : s.subarray(0, z);
+  if (cut.length >= 3 && cut[0] === 0xef && cut[1] === 0xbb && cut[2] === 0xbf)
+    cut = cut.subarray(3);
+  return Buffer.from(cut).equals(RESOURCE_PATH);
 }
 
 /** The ids a uid cache registers (u32 count; per entry i64 id, u32 length, path); [] if malformed. */

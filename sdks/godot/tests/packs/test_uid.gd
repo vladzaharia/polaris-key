@@ -11,7 +11,8 @@ extends RefCounted
 const S := preload("res://tests/packs/support.gd")
 const MAIN_UID := "uid://s05mainbase1"
 ## P4-28: each data pack's thing.tres reaches this project's resource by MAIN_UID, a UID outside
-## the pack's own uid cache, so the app lists it as attachable.
+## the pack's own uid cache. The device resolves it (a resource, not a script) and admits it; the
+## CLI lint cannot, so a publish lists it. The checks below pass the list as the CLI would need.
 const ATTACHABLE := ["uid://s05mainbase1"]
 
 
@@ -83,11 +84,12 @@ func run(t: PKeyTestContext) -> void:
 		foreign.append_array(own_foreign)
 		var c2 := PKeyGodotPckHandler.check(PKeyByteSource.file(stripped), {"handler": {"prefixes": prefixes}}, {}, ATTACHABLE)
 		# P4-28, on this engine's own export: without the list, the reference by MAIN_UID (the
-		# exported, binary thing.tres's external table) is refused.
+		# exported, binary thing.tres's external table) is admitted on the device, which resolves
+		# the UID this project registers to a resource that is not a script. The CLI cannot resolve
+		# it, so publishing such a pack lists the UID in content.attachable.
 		var c3 := PKeyGodotPckHandler.check(PKeyByteSource.file(stripped), {"handler": {"prefixes": prefixes}}, {})
-		var uid_line := "references %s, outside the pack's uid cache, which the app does not list as attachable." % MAIN_UID
 		if own_foreign.is_empty():
-			t.check("uid: data%s stripped, with nothing attachable, is refused at its reference to %s (P4-28)" % [name, MAIN_UID], not c3["ok"] and c3["code"] == PKeyPck.DIRECTORY_REFUSED and String(c3.get("detail", "")).contains(uid_line) and String(c3.get("path", "")).ends_with("thing.res"), S.canon(c3))
+			t.check("uid: data%s stripped, with nothing attachable, is admitted: %s resolves to this project's resource (device UID rule)" % [name, MAIN_UID], c3["ok"], S.canon(c3))
 		if own_foreign.is_empty():
 			t.check("uid: data%s stripped is admitted (in-prefix remaps, the exported files they name, uid_cache.bin)" % name, c2["ok"], S.canon(c2))
 		else:

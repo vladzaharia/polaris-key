@@ -91,3 +91,21 @@ scripts packs may attach, and let CI know about extra script languages.
 - **Out of scope.** `files.tree` resources get no reference check (a tree is never mounted into
   `res://`), and an app resource referenced by path runs whatever the app composed into it;
   both are recorded as residuals.
+- **Audit follow-up (GAP A–C, UIDs).** (A) A sub-resource setting `resource_path` enters the
+  resource cache under that path; measured on 4.7.2 and 4.4.1 (`_cache_probe`: the app's next
+  `load()` of the path returns the pack's object). Both validators refuse a text resource naming
+  `resource_path` anywhere (raw or behind escapes) and a binary property named so (string table
+  or inline), one line (`refs-resource-path-text`, `refs-resource-path-binary`). (B) Internal
+  offsets must follow the tables, strictly ascending, each walk ending by the next offset (the
+  saver writes them in sequence; every real import passes), with the walked total capped at the
+  stream length (`refs-overlap-offsets`). (C) Device only: an out-of-pack reference without a
+  script extension is judged by the resource's real type, read from its file the way the loaders
+  do (GDScript cannot call `ResourceLoader.get_resource_type`, and loading would run static
+  initialisers): a `.remap` followed, an imported file's `.import` type, a binary or text head;
+  unreadable but existing counts as a script. (UIDs) Device only: a UID outside the pack's cache
+  that the app registers is judged by the path `ResourceUID` maps it to, so an app texture by UID
+  passes and an app script needs listing; the CLI stays strict, so CI needs such UIDs listed (the
+  device is the laxer side only for app-registered non-script UIDs, and the stricter side for
+  scripts saved under resource extensions; documented in the threat model, ci.md and
+  authoring.md). The f_uid exports are now admitted on the device without a list. The shared
+  fixtures resolve nothing on the device, so their verdicts stay identical.

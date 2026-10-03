@@ -860,6 +860,71 @@ function refsFixtures(): CheckFixture[] {
       ],
     },
     {
+      // Audit GAP A: a sub-resource that sets resource_path could enter the resource cache
+      // under an app path; refused as written, behind an escape, and in a binary resource by a
+      // string-table or an inline property name.
+      name: "refs-resource-path-text",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}poison.tres`,
+          tres(
+            `[sub_resource type="Resource" id="1"]\nresource_path = "res://app/config.tres"\n\n[resource]\nmetadata/sub = SubResource("1")`,
+          ),
+        ],
+        [
+          `${at}escaped.tres`,
+          tres(
+            `[sub_resource type="Resource" id="1"]\n"resource\\_path" = "res://app/config.tres"\n\n[resource]\nmetadata/sub = SubResource("1")`,
+          ),
+        ],
+      ],
+    },
+    {
+      name: "refs-resource-path-binary",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}poison.res`,
+          binaryResource(["Resource"], ["resource_path"], 24),
+        ],
+        [
+          `${at}inline.res`,
+          binaryResource(["Resource"], ["data"], 25, "RSRC", {
+            extraProps: [
+              {
+                name: 0x80000000 | 13,
+                value: cat(
+                  enc("resource_path"),
+                  u32(5),
+                  binString("res://app/config.tres"),
+                ),
+              },
+            ],
+          }),
+        ],
+      ],
+    },
+    {
+      // Audit GAP B: internal resources sharing one offset would re-walk the same bytes.
+      name: "refs-overlap-offsets",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}overlap.res`,
+          binaryResource(
+            ["Resource", "Resource", "Resource"],
+            ["data"],
+            26,
+            "RSRC",
+            {
+              sameOffsets: true,
+            },
+          ),
+        ],
+      ],
+    },
+    {
       // In-pack references (by path and by a UID the pack's cache registers) and app resources
       // that are not scripts pass with nothing listed.
       name: "refs-admitted",

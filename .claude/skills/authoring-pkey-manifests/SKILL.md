@@ -109,9 +109,10 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       are never declared: an app release holds a compatible pack at publish. `attachable`
       (P4-28, `invalid_app_attachable`) lists the app scripts (`res://…` paths, `res://…/`
       directories) and canonical `uid://` UIDs a `godot.pck` pack may reference outside itself;
-      absent, the publish lint and the device refuse any such reference. List a script's path
-      and its UID (Godot 4.4+ writes both), and mirror the list in the Godot SDK's
-      `PKeyOptions.pack_attachable`.
+      absent, the publish lint refuses any such reference (the device too, except app UIDs it
+      resolves to non-script resources). List a script's path and its UID (Godot 4.4+ writes
+      both) and the UID of any app resource packs reach by UID, and mirror the list in the Godot
+      SDK's `PKeyOptions.pack_attachable`.
       Codes: `invalid_pack_type`, `invalid_pack_binding`, `invalid_pack_policy`,
       `invalid_pack_handler`, `invalid_pack_variants`, `invalid_pack_requires`,
       `missing_content_api_range`, `standalone_with_content_api`, `unknown_content_api_app`,

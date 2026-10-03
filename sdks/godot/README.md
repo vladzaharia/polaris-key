@@ -760,7 +760,12 @@ script language. Every admitted resource's references outside the pack are check
 `PKeyPck.refs_problem`): a text `[ext_resource]` or binary external entry naming an app script (a
 script extension, or the type `Script` or a script class) is refused unless
 `PKeyOptions.pack_attachable` lists it (a `res://` path, or under a listed `res://…/`
-directory), and a `uid://` the pack's own uid cache does not register is refused unless listed;
+directory; an app resource without a script extension is judged by its real type, read from its
+file, whatever the reference's `type` hint says), and a `uid://` the pack's own uid cache does not
+register is judged by the path the app's `ResourceUID` maps it to, or refused unless listed when
+the app does not register it (the CLI cannot resolve app UIDs, so it refuses every unlisted one);
+a sub-resource setting `resource_path` (which would enter the resource cache under an app path)
+and overlapping internal-resource offsets are refused;
 a reference the check cannot read the way the engine would (an `ext_resource` line that is not
 one strict tag, an inline `Resource("…")`, a relative or non-normal path, a `.remap`/`.import`
 path, a non-canonical UID, a big-endian or format-7+ binary, a non-`local://` sub-resource path,

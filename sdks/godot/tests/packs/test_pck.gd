@@ -81,6 +81,8 @@ func run(t: PKeyTestContext) -> void:
 
 	_review_repros(t)
 	_attach_probes(t)
+	_type_probes(t)
+	_cache_probe(t)
 	_rscc_probes(t)
 	_script_kinds_api(t)
 
@@ -200,6 +202,68 @@ func _attach_probes(t: PKeyTestContext) -> void:
 		var loaded = load("res://packs/attach/probe.tres")
 		var attached: bool = loaded != null and loaded.get_script() != null and (loaded.get_script() as Script).resource_path == script_path
 		t.check("pck attach: mounted, the pack's resource loads with the app script attached and the pack's value (measured)", attached and int(loaded.get("power")) == 7, "%s" % loaded)
+	S.remove_tree(scratch)
+
+
+## P4-28 audit GAP C and the device's UID rule: the `type` of a reference is the pack's hint, and
+## the engine picks the loader by extension, so an app GDScript saved as `.tres`
+## (tests/packs/script_as_res.tres) referenced as `Resource` attaches a script. The device reads
+## the real type (`ResourceLoader.get_resource_type`, through a `.remap` on an export) and refuses
+## it unlisted. A UID the app registers is judged by the path it names: an app resource passes,
+## an app script needs listing. The CLI cannot do either (it refuses every unlisted UID).
+func _type_probes(t: PKeyTestContext) -> void:
+	var scratch := S.scratch("pck-type")
+	var ver := PKeyPck.helper_version()
+	var target := "res://tests/packs/script_as_res.tres"
+	t.check("pck type: the app ships a GDScript saved as .tres", ClassDB.is_parent_class(PKeyPck._remapped_type(target), "Script"), PKeyPck._remapped_type(target))
+	var hint := "[gd_resource type=\"Resource\" load_steps=2 format=3]\n\n[ext_resource type=\"Resource\" path=\"%s\" id=\"1\"]\n\n[resource]\nscript = ExtResource(\"1\")\n" % target
+	var main_uid := "[gd_resource type=\"Resource\" load_steps=2 format=3]\n\n[ext_resource type=\"Resource\" uid=\"uid://s05mainbase1\" path=\"res://tests/packs/uid_main_base.tres\" id=\"1\"]\n\n[resource]\nmetadata/base = ExtResource(\"1\")\n"
+	var script_uid := "[gd_resource type=\"Resource\" load_steps=2 format=3]\n\n[ext_resource type=\"Resource\" uid=\"uid://bp428scrres\" path=\"res://packs/type/missing.tres\" id=\"1\"]\n\n[resource]\nscript = ExtResource(\"1\")\n"
+	var cases := [
+		["a reference typed Resource to an app GDScript .tres", hint, [], "packs/type/x.tres: references the app script %s, which the app does not list as attachable." % target],
+		["…listed", hint, [target], ""],
+		["a UID the app registers for a resource (uid://s05mainbase1)", main_uid, [], ""],
+		["a UID the app registers for a script, unlisted", script_uid, [], "packs/type/x.tres: references the app script %s, which the app does not list as attachable." % target],
+		["…its path listed", script_uid, [target], ""],
+	]
+	var n := 0
+	for c in cases:
+		var out := scratch.path_join("type%d.pck" % n)
+		n += 1
+		PKeyPck.write(out, [{"path": "res://packs/type/x.tres", "bytes": String(c[1]).to_utf8_buffer()}], ver)
+		var src := PKeyByteSource.file(out)
+		var lines := PKeyPck.lint_lines(src, PKeyPck.read_directory(src), ["res://packs/type/"], null, c[2])
+		S.check_same(t, "pck type: %s" % c[0], Array(lines), [] if c[3] == "" else [c[3]])
+	S.remove_tree(scratch)
+
+
+## P4-28 audit GAP A, measured: a pack sub-resource that sets `resource_path` to an app path not
+## yet cached. The check refuses it; mounted anyway, loading it and then the app path shows which
+## object the app gets.
+func _cache_probe(t: PKeyTestContext) -> void:
+	var scratch := S.scratch("pck-cache")
+	var target := "res://tests/packs/cache_target.tres"
+	var poison := "[gd_resource type=\"Resource\" load_steps=2 format=3]\n\n[sub_resource type=\"Resource\" id=\"Resource_p\"]\nresource_path = \"%s\"\nmetadata/tag = \"pack\"\n\n[resource]\nmetadata/sub = SubResource(\"Resource_p\")\n" % target
+	var out := scratch.path_join("poison.pck")
+	PKeyPck.write(out, [{"path": "res://packs/cachepoison/poison.tres", "bytes": poison.to_utf8_buffer()}], PKeyPck.helper_version())
+	var src := PKeyByteSource.file(out)
+	var dir := PKeyPck.read_directory(src)
+	S.check_same(t, "pck cache: a sub-resource setting resource_path is refused", Array(PKeyPck.lint_lines(src, dir, ["res://packs/cachepoison/"], null, [])), ["packs/cachepoison/poison.tres: %s." % PKeyPck.RESOURCE_PATH_WHY])
+	if PKeyPck.engine_check(dir["header"]) != "" or ResourceLoader.has_cached(target):
+		t.info("pck cache: probe skipped (engine or %s already cached)" % target)
+		S.remove_tree(scratch)
+		return
+	if not PKeyPck.mount(out, true):
+		t.check("pck cache: the probe pack mounts", false)
+		S.remove_tree(scratch)
+		return
+	var held = load("res://packs/cachepoison/poison.tres")
+	var sub = held.get_meta("sub", null) if held != null else null
+	var cached := ResourceLoader.has_cached(target)
+	var app = load(target)
+	var tag := String(app.get_meta("tag", "")) if app != null else "<null>"
+	t.info("pck cache (%s): after loading the pack resource, %s cached=%s; load() returns tag %s" % [Engine.get_version_info()["string"], target, cached, tag])
+	t.check("pck cache: mounted anyway, load() of the app path returns the pack's sub-resource (measured: why resource_path is refused)", held != null and cached and app == sub and tag == "pack", "tag %s" % tag)
 	S.remove_tree(scratch)
 
 

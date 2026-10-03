@@ -261,8 +261,13 @@ What the step does, in order:
    listed `res://…/` directory), and so does a `uid://` reference the pack's own uid cache does
    not register unless the UID is listed. A reference the check cannot read the way the engine
    would (an `ext_resource` tag that is not one plain line, an inline `Resource("…")`, a relative
-   or non-normal path, a non-canonical UID) fails. The device runs the same check with its
-   `PKeyOptions.pack_attachable`, so keep the two lists equal. The lint knows `.gd`, `.gdc` and
+   or non-normal path, a non-canonical UID) fails, and so does a resource that sets
+   `resource_path`. The device runs the same check with its `PKeyOptions.pack_attachable`, so
+   keep the two lists equal. The device can also resolve an app UID and read an app resource's
+   real type; the lint cannot, so it refuses every UID outside the pack's cache that is not
+   listed. Godot 4.4+ writes a UID on every reference, so list the UIDs of the app resources
+   your packs reference (a shared texture or scene) as well as the scripts; the device admits
+   those UIDs without the list. The lint knows `.gd`, `.gdc` and
    `.cs` and the built-in script types; for another script language (a GDExtension) pass
    `script-extensions` and `script-types` (CLI: `--script-extensions`, `--script-types`) so CI
    refuses what the device, which asks its engine, refuses. The header's engine must be `requires.engine`; more than
