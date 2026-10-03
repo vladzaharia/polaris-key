@@ -7,21 +7,21 @@ checks target prod.
 
 Target account and fixed values:
 
-| Item                 | Value                                          |
-| -------------------- | ---------------------------------------------- |
-| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8` |
-| Production origin    | `https://key.plrs.im`                          |
-| Cloudflare zone      | `plrs.im`                                      |
-| Worker env           | `prod`                                         |
-| D1 database          | `polaris_key_prod`                             |
-| KV namespace         | `POLARIS_HOT_prod`                             |
-| R2 blob bucket       | `polaris-key-blobs-prod` (bound as `BLOBS`)    |
-| Bytes host           | `https://dl.plrs.im` (`BLOB_ORIGIN`)           |
-| PocketID issuer      | `https://id.plrs.im`                           |
-| Platform admin group | `admins`                                       |
-| GitHub App           | `polaris-key`                                  |
+| Item                 | Value                                           |
+| -------------------- | ----------------------------------------------- |
+| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8`  |
+| Production origin    | `https://key.plrs.im`                           |
+| Cloudflare zone      | `plrs.im`                                       |
+| Worker env           | `prod`                                          |
+| D1 database          | `polaris_key_prod`                              |
+| KV namespace         | `POLARIS_HOT_prod`                              |
+| R2 blob bucket       | `polaris-key-blobs-prod` (bound as `BLOBS`)     |
+| Bytes host           | `https://dl.plrs.im` (`BLOB_ORIGIN`)            |
+| PocketID issuer      | `https://id.plrs.im`                            |
+| Platform admin group | `admins`                                        |
+| GitHub App           | `polaris-key`                                   |
 | First product        | `djdl` (linked from its own product repository) |
-| Portal email sender  | `Polaris Key <noreply@plrs.im>`                |
+| Portal email sender  | `Polaris Key <noreply@plrs.im>`                 |
 
 Do not change the production hostname as a deployment-time tweak. The SDK defaults,
 signed-config issuer, tests, docs, and product examples assume `key.plrs.im`; using a
@@ -531,8 +531,8 @@ Link the repo:
 
 Set the required DJDL product secrets in the admin UI/API:
 
-| Secret name                | Value                                                   |
-| -------------------------- | ------------------------------------------------------- |
+| Secret name                 | Value                                                   |
+| --------------------------- | ------------------------------------------------------- |
 | `EDGE_MINT__DJDL__<RECIPE>` | Signing key material for each edge-mint recipe declared |
 
 These are product secrets sealed into D1. They are not Worker secrets and are never echoed
