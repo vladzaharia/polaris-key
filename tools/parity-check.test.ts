@@ -745,9 +745,10 @@ describe("parseTags", () => {
 // ── The committed repository ───────────────────────────────────────────────────────────────
 
 describe("the committed registry and manifests", () => {
+  // It reads every manifest and test file in the checkout: seconds on a slow CI runner.
   it("pass the gate", () => {
     expect(checkParity({ root: repo }).violations).toEqual([]);
-  });
+  }, 60_000);
 });
 
 // ── Rule 7 ─────────────────────────────────────────────────────────────────────────────────
