@@ -167,7 +167,7 @@ code and the documentation, and records it here.
       ignored and logged.
 - [x] No request other than GET is ever sent to the Store API (asserted against the fake server).
 - [x] Products without the credential, or with distribution disabled, are skipped.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
