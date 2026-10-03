@@ -1,5 +1,6 @@
-// The browser adapter: a cookie-session `PolarisAdapter` that talks to the control plane over
-// `fetch(..., { credentials: "include" })`. There is NO token/keyring/loopback here — the
+// The browser adapter: a cookie-session `PolarisAdapter` that talks to the control plane's
+// first-party identity routes over `fetch(..., { credentials: "include" })` (the bearer-only,
+// CORS-covered reads use `credentials: "omit"`). There is NO token/keyring/loopback here — the
 // browser is online-only and the session lives in a first-party HttpOnly cookie the Worker
 // sets. OIDC sign-in is a full-page navigation (`window.location.assign`), so the page unloads
 // and `signInWithOidc` never resolves by design.
@@ -847,7 +848,10 @@ export class BrowserAdapter implements PolarisAdapter {
       if (opts.channel) url.searchParams.set("channel", opts.channel);
       const res = await this.fetchImpl(url.toString(), {
         method: "GET",
-        credentials: "include",
+        // `update/version` is bearer-only and CORS-covered: no ambient credential. (The
+        // identity session routes keep `include`: they are first-party, cookie-bearing and never
+        // CORS-covered.)
+        credentials: "omit",
         headers: { accept: "application/json", ...this.metadataHeaders() },
       });
       if (!res.ok) {

@@ -12,13 +12,14 @@ access**: one answer that the downloads, the Sparkle appcast and the customer po
 
 ## The byte routes
 
-| Canonical route                                                  | Methods  | Bytes host |
-| ---------------------------------------------------------------- | -------- | ---------- |
-| `GET /<product>/distribution/install.sh`                         | any      | no         |
-| `GET /<product>/distribution/dl/<version>/<binary>-<arch>[.dmg]` | any      | no         |
-| `GET /<product>/distribution/builds/<selector>/<buildId>`        | GET/HEAD | yes        |
-| `GET /<product>/distribution/files/<releaseId>/<name>`           | GET/HEAD | yes        |
-| `GET /<product>/distribution/blobs/sha256/<hash>`                | GET/HEAD | yes        |
+| Canonical route                                                       | Methods  | Bytes host |
+| --------------------------------------------------------------------- | -------- | ---------- |
+| `GET /<product>/distribution/install.sh`                              | any      | no         |
+| `GET /<product>/distribution/dl/<version>/<binary>-<arch>[.dmg]`      | any      | no         |
+| `GET /<product>/distribution/builds/<selector>/<buildId>`             | GET/HEAD | yes        |
+| `GET /<product>/distribution/files/<releaseId>/<name>`                | GET/HEAD | yes        |
+| `GET /<product>/distribution/blobs/sha256/<hash>`                     | GET/HEAD | yes        |
+| `GET /<product>/distribution/packs/<pack>/<variant>/payload/<sha256>` | GET/HEAD | yes        |
 
 What each one does — selector resolution, the location order (R2, then GitHub, then an
 external URL), `?checksum=sha256`, `?redirect=1`, `Range`, cache headers — is unchanged from
@@ -27,7 +28,8 @@ when Release served them, and is described on
 still fetched by Release, with its own installation token and its SSRF guard, through the
 `releaseCatalog` hook: Distribution holds no GitHub token. R2-held bytes come from the core
 blob store. `builds` and `files` serve the **app** deliverable only and never a `gated/`
-object; a pack's bytes are served by the blob route alone ([Pack bytes](#pack-bytes)).
+object; a pack's bytes are served by the blob route ([Pack bytes](#pack-bytes)) and, decoded
+for a browser, by the payload URL ([Web deltas](#web-deltas-the-payload-url)).
 
 ### Permanent aliases
 
@@ -164,7 +166,8 @@ download page and the updater feeds link through it.
 
 Every object a pack release names — each variant's `full` payload, its files index and gaps,
 its deltas — and every file blob its index names is served by the **blob route**, by the
-SHA-256 of its stored bytes, and by nothing else: `files/<packRelease>/…` and
+SHA-256 of its stored bytes (and, for a browser, a container's payload and deltas also by the
+[payload URL](#web-deltas-the-payload-url), under the same decision): `files/<packRelease>/…` and
 `builds/…?deliverable=<pack>` answer not-found. A device takes the hash from the verified
 record or index, so it can check `ETag` and `Repr-Digest` before it decodes anything.
 
@@ -198,6 +201,37 @@ objects on the public path under its mode (their earlier responses were cacheabl
 recalled; a gate protects the bytes published after it); a pack un-gated later serves its
 `gated/` objects under its mode, still `private, no-store`. Dedupe is per prefix, so a gated and
 a free pack never share stored bytes by accident.
+
+## Web deltas: the payload URL
+
+`GET /<product>/distribution/packs/<pack>/<variant>/payload/<sha256>` serves one **container**
+variant's payload (`<sha256>` is its `payload.sha256`, `<variant>` the variant key such as
+`texture=s3tc`, or `default`) to a browser, using Compression Dictionary Transport (RFC 9842).
+The blob route keeps every object opaque (no `Content-Encoding`, so `Range` and the stored hash
+stay intact); a browser, though, keeps a response as a dictionary after decoding it, and a
+`--patch-from` delta's base is the decoded payload. So this second URL:
+
+- streams the stored `full` frame with **`Content-Encoding: zstd`** (only when the request
+  accepts `zstd`; `406` otherwise, and the SDK takes the blob route), or raw for `codec: none`;
+- adds **`Use-As-Dictionary`** with a match pattern covering exactly that pack and variant's
+  payload URLs, for an ungated payload of at most 100 MiB (Chromium's limit);
+- answers **`Content-Encoding: dcz`** when `Available-Dictionary` is the `from` of a published
+  `zstd-patch-from` delta to the requested payload: an 8-byte magic, the 32-byte `from`, then the
+  stored artifact, unchanged (no base byte is read, and the stored artifact stays the portable
+  bare frame). Another dictionary, or none, gets the full payload, and with **`?via=dcz`** (what
+  the SDK sends) `409` with no body, so a miss never becomes a silent full download;
+- sends `Vary: Accept-Encoding, Available-Dictionary` on every answer, full-body only
+  (`Accept-Ranges: none`).
+
+Who may fetch is the blob route's decision for the `full` object and, for `dcz`, for the delta
+artifact. Caching follows it, with one difference: an ungated payload that is not public (the
+pack needs a licence) is `private, max-age=31536000, immutable`, so the authorised browser may
+keep it as a dictionary and no shared cache may. A **gated** payload is `private, no-store` and
+never a dictionary: gated packs always take the WASM path. The payload is found among the pack's
+200 newest releases; an older one, a tree variant or an unknown hash is the plain not-found.
+Cloudflare passes the dictionary headers through and varies its cache on them; it never computes
+a delta itself. What each browser ends up doing is in the
+[React SDK](/docs/build/sdks/react/#what-the-web-gets-payload-urls-and-compression-dictionary-transport).
 
 ## Pack transports
 

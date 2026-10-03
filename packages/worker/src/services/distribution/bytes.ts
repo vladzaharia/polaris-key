@@ -11,6 +11,9 @@
  *     GET|HEAD /<p>/distribution/files/<releaseId>/<name>    one exact file of one release
  *              [?redirect=1]
  *     GET|HEAD /<p>/distribution/blobs/sha256/<hash>         a content-addressed object
+ *     GET|HEAD /<p>/distribution/packs/<pack>/<variant>/payload/<sha256>
+ *              [?via=dcz]                                     a pack's decoded container payload
+ *                                                             (P4-18, `payload.ts`)
  *
  * Every old spelling is a PERMANENT alias the core router rewrites to these segments before
  * dispatch (`router.ts`): `/<p>/release/{install.sh,dl,builds,files,blobs}/…` and
@@ -54,7 +57,9 @@
  * ── PACKS: THE BLOB ROUTE ONLY ──────────────────────────────────────────────────────────────
  *
  * Every pack object (a variant's `full`, its files index and gaps, deltas, file blobs) is reached
- * by its stored SHA-256 on the blob route and nowhere else (plans/P4-01.md §6). `files` and
+ * by its stored SHA-256 on the blob route (plans/P4-01.md §6). The one other door is P4-18's
+ * payload URL (`payload.ts`), which serves a container variant's `full` and payload deltas
+ * content-encoded for a browser, under the blob route's own access decision for each object. `files` and
  * `builds` serve the `app` deliverable only: a pack release's file or build answers the plain
  * not-found there, so no pack byte is ever authorised by the app's version window or served
  * outside its pack's gate (closing P4-02's hand-off, under which `files/<packRelease>/<name>`
@@ -93,6 +98,13 @@ import {
 } from "../../core/entitledAccess.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { decideBlob, type BlobDecision } from "./blobAccess.js";
+import {
+  decidePayload,
+  servePayload,
+  type PayloadDecision,
+  type PayloadTarget,
+} from "./payload.js";
+import { isPackSegment, isVariantSegment } from "./dictionary.js";
 
 // ── Targets ──────────────────────────────────────────────────────────────────────────────────
 
@@ -107,7 +119,8 @@ export type ByteTarget =
     }
   | { kind: "build"; selector: string; buildId: string }
   | { kind: "file"; releaseId: string; name: string }
-  | { kind: "blob"; sha256: string };
+  | { kind: "blob"; sha256: string }
+  | PayloadTarget;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const PRODUCT_SLUG = /^[a-z0-9-]{1,64}$/;
@@ -129,6 +142,7 @@ function decode(segment: string): string | null {
  */
 export function byteTargetOf(rest: readonly string[]): ByteTarget | null {
   if (rest.length === 1 && rest[0] === "install.sh") return { kind: "install" };
+  if (rest.length === 5) return payloadTargetOf(rest);
   if (rest.length !== 3) return null;
   const [area, a, b] = rest as [string, string, string];
   if (area === "dl") {
@@ -149,6 +163,24 @@ export function byteTargetOf(rest: readonly string[]): ByteTarget | null {
     return { kind: "build", selector: first, buildId: second };
   if (area === "files") return { kind: "file", releaseId: first, name: second };
   return null;
+}
+
+/** `packs/<pack>/<variant>/payload/<sha256>` (P4-18), or null. The variant segment may arrive
+ *  percent-encoded (`=` and `;`); it is matched decoded. */
+function payloadTargetOf(rest: readonly string[]): PayloadTarget | null {
+  const [area, pack, variant, leaf, hash] = rest as [
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  if (area !== "packs" || leaf !== "payload" || !SHA256_HEX.test(hash))
+    return null;
+  const buildId = decode(variant);
+  if (!buildId || !isPackSegment(pack) || !isVariantSegment(buildId))
+    return null;
+  return { kind: "payload", packId: pack, buildId, sha256: hash };
 }
 
 // ── Headers ──────────────────────────────────────────────────────────────────────────────────
@@ -216,6 +248,8 @@ interface Cleared {
   file?: Awaited<ReturnType<typeof resolveFile>>;
   /** For `blob`: which key to serve, decided from its holders (`blobAccess.ts`). */
   blob?: Exclude<BlobDecision, { kind: "refused" }>;
+  /** For `payload`: the payload and its `full` object's decision (`payload.ts`). */
+  payload?: Extract<PayloadDecision, { kind: "serve" }>;
 }
 
 async function resolveFile(
@@ -243,7 +277,8 @@ export async function serveDistributionBytes(
   if (
     (target.kind === "build" ||
       target.kind === "file" ||
-      target.kind === "blob") &&
+      target.kind === "blob" ||
+      target.kind === "payload") &&
     req.method !== "GET" &&
     req.method !== "HEAD"
   )
@@ -331,6 +366,16 @@ export async function serveDistributionBytes(
       }
       break;
     }
+    case "payload": {
+      // The blob route's decision for the payload's `full` object (`payload.ts`).
+      const p = await decidePayload(ctx, catalog, target);
+      if (p.kind === "refused") decided = p.response;
+      else {
+        cleared.payload = p;
+        decided = null;
+      }
+      break;
+    }
   }
   cleared.mode = mode;
 
@@ -368,6 +413,10 @@ function compute(
       return computeFile(ctx, cleared);
     case "blob":
       return computeBlob(ctx, cleared, target);
+    case "payload":
+      return cleared.payload
+        ? servePayload(ctx, cleared.catalog, cleared.payload, target)
+        : Promise.resolve(notFound());
   }
 }
 
@@ -598,7 +647,7 @@ async function computeBlob(
 const BYTE_PATH =
   /^\/([a-z0-9-]{1,64})\/(distribution|release)\/(builds|files|blobs)\/([^/]+)\/([^/]+)$/;
 
-type HostArea = "build" | "file" | "blob";
+type HostArea = "build" | "file" | "blob" | "payload";
 
 function matchArea(
   area: HostArea,
@@ -619,8 +668,37 @@ function matchArea(
   };
 }
 
+/** The payload URL on the bytes host: canonical spelling only (it has no `/release/…` alias). */
+const PAYLOAD_PATH =
+  /^\/([a-z0-9-]{1,64})\/distribution\/(packs)\/([^/]+)\/([^/]+)\/(payload)\/([^/]+)$/;
+
+function matchPayload(pathname: string): ByteRouteMatch | null {
+  const m = PAYLOAD_PATH.exec(pathname);
+  if (!m || !PRODUCT_SLUG.test(m[1] as string)) return null;
+  const target = byteTargetOf(m.slice(2) as string[]);
+  if (target?.kind !== "payload") return null;
+  return {
+    product: m[1] as string,
+    params: {
+      kind: "payload",
+      packId: target.packId,
+      buildId: target.buildId,
+      sha256: target.sha256,
+    },
+  };
+}
+
 function targetFromParams(params: Record<string, string>): ByteTarget | null {
   switch (params.kind) {
+    case "payload":
+      return params.packId && params.buildId && params.sha256
+        ? {
+            kind: "payload",
+            packId: params.packId,
+            buildId: params.buildId,
+            sha256: params.sha256,
+          }
+        : null;
     case "build":
       return params.selector && params.buildId
         ? { kind: "build", selector: params.selector, buildId: params.buildId }
@@ -640,7 +718,7 @@ function byteRoute(area: HostArea): ByteRoute {
   return {
     name: `distribution.${area}`,
     service: "distribution",
-    match: matchArea(area),
+    match: area === "payload" ? matchPayload : matchArea(area),
     handle: async (req, ctx) => {
       const target = targetFromParams(ctx.params);
       if (!target) return notFound();
@@ -669,4 +747,5 @@ export const DISTRIBUTION_BYTE_ROUTES: readonly ByteRoute[] = [
   byteRoute("build"),
   byteRoute("file"),
   byteRoute("blob"),
+  byteRoute("payload"),
 ];
