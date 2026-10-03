@@ -1706,7 +1706,7 @@
       "optional": false,
       "refs": ["plans/P4-19.md §2 §5"],
       "brief": "wp/P4-25-delegation-python-swift.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "P4-19"
     },
     {
