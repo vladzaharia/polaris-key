@@ -13,17 +13,17 @@ and MAUI build on it later. Pure Kotlin, no NDK. Proposed Maven coordinates:
 
 Versions follow Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
 compile and target SDK 36, min SDK 24, Java 17 bytecode), so the AARs drop into a Godot Gradle
-export unchanged. Play Core: `app-update` 2.1.0, `asset-delivery` 2.3.0.
+export unchanged. Play Core: `app-update` 2.1.0, `asset-delivery` 2.3.0, `integrity` 1.6.0.
 
 ## The flavours are a policy boundary
 
 Play forbids self-update and `REQUEST_INSTALL_PACKAGES` in Play builds, so a build is one or the
 other, fixed at build time (`PolarisKeyPlatform.flavor`):
 
-| Flavour  | Has                                                                              | Never has                                          |
-| -------- | -------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `play`   | install source, Keystore, Play In-App Updates, Play Asset Delivery               | PackageInstaller session code, install permissions |
-| `direct` | install source, Keystore, verified PackageInstaller self-update, status receiver | any `com.google.android.play` class                |
+| Flavour  | Has                                                                                | Never has                                          |
+| -------- | ---------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `play`   | install source, Keystore, Play In-App Updates, Play Asset Delivery, Play Integrity | PackageInstaller session code, install permissions |
+| `direct` | install source, Keystore, verified PackageInstaller self-update, status receiver   | any `com.google.android.play` class                |
 
 Neither AAR declares a permission: a direct app adds `REQUEST_INSTALL_PACKAGES` and
 `UPDATE_PACKAGES_WITHOUT_USER_ACTION` itself (the Godot export plugin does it for direct presets).
@@ -53,6 +53,13 @@ permissions into play builds (notes/S-10 §2).
   names checked first, state from the listener, `PackLocation.pckPath` for a completed
   `STORAGE_FILES` pack (re-read every launch: the path holds the versionCode), `installTime` for the
   install-time pack.
+- **`play.PlayIntegrity(backend)`** (P6-02) over the fakeable `IntegrityBackend`
+  (`PlayIntegrityBackend` adapts Play's `StandardIntegrityManager`; Play ships no fake): the
+  STANDARD API, `prepare(cloudProjectNumber)` once and `request(cloudProjectNumber, requestHash)` per
+  verdict, the provider cached per cloud project number, dropped and prepared again once on
+  `INTEGRITY_TOKEN_PROVIDER_INVALID` (-19). The request hash is the Worker's `requestHash` from
+  `POST /<product>/devices/attest/challenge`, verbatim (1–500 characters). Failures are
+  `IntegrityError(errorCode)` with the `StandardIntegrityErrorCode`, or none without Play services.
 - **`direct.ApkInstaller(context)`**: `verify` and `install(file, sha256, versionCode, options)`.
   Refusals before any session: `missing_file`, `path_not_private`, `hash_required`,
   `hash_mismatch`, `unparseable`, `package_mismatch`, `signer_mismatch`, `version_not_higher`,

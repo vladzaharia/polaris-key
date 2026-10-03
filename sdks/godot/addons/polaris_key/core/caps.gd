@@ -24,7 +24,7 @@ var runtime := ""
 ## slug -> {"enabled": bool}, the client's current capability map.
 var services_provider: Callable
 ## "feature|reason" -> Callable() -> String: the detail when unsupported, "" when supported.
-## Godot declares no conditional N/A today, so this is empty.
+## PKeyCore registers devices.attest's `outlet` detector (PKeyDevices.attest_outlet_detail).
 var detectors: Dictionary = {}
 ## The SDK version named in a `version` detail.
 var sdk_version := ""

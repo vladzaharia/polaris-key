@@ -191,6 +191,7 @@ func services() -> Dictionary:
 func capability_engine() -> PKeyCaps:
 	if _caps == null:
 		_caps = PKeyCaps.new(services, sdk_version)
+		_caps.detectors["%s|%s" % [PKeyConstants.Feature.DEVICES_ATTEST, PKeyConstants.UnsupportedReason.OUTLET]] = PKeyDevices.attest_outlet_detail
 		for problem in _caps.validate():
 			push_error("PolarisKey capability table: " + problem)
 	return _caps

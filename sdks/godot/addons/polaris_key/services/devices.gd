@@ -19,6 +19,9 @@ extends RefCounted
 ##   report()             `POST /devices/report`, built from RE-VERIFIED documents (R4-05); also
 ##                        sent automatically after every sync (Core's post-sync hook), and skipped
 ##                        after a hard 401 with nothing applied
+##   attest()             raise this device to trust level `attested` (P6-02): App Attest on an
+##                        App Store or TestFlight install, Play Integrity on a Google Play install,
+##                        through the native plugins; Unsupported elsewhere (see attest())
 ##
 ## register()'s detail keeps the three outcomes PKeyBoot must tell apart (P1-09 plan §2.2):
 ## {kind, status, answered} where `kind` is `ok`, `no-answer` (status 0: DNS, connect, TLS,
@@ -45,11 +48,20 @@ const DEVICE_FIELDS := {
 	"sdkVersion": "sdk_version",
 }
 const MAX_LABEL := 120
+## The Keychain account (service `pkey:<product>`) holding this device's App Attest key id.
+const APP_ATTEST_ACCOUNT := "app_attest_key"
+## Distributor signals that are an App Store or TestFlight install (PolarisKeyPlatform's raw signals).
+const STORE_SIGNALS := ["appStore", "testFlight"]
 
 ## A fingerprint host to read instead of this machine (tests). Null: this machine.
 var fingerprint_host: PKeyHostIo = null
 ## Called after deauthorize() wiped the local state (the autoload re-emits its state).
 var on_wiped: Callable
+## The platform attest() answers for ("" means PKeyHeaders.platform()). Tests set it.
+var attest_platform := ""
+## The native facades attest() uses (null: PKeyApple.shared() / PKeyAndroid.shared()). Tests set them.
+var apple: PKeyApple = null
+var android: PKeyAndroid = null
 
 var _core_ref: WeakRef
 
@@ -312,3 +324,181 @@ func report() -> bool:
 	if r.ok and body.get("updates") is Array and core.update_events != null:
 		core.update_events.mark_reported(body["updates"].map(func(e): return e["eventId"]))
 	return r.ok
+
+
+# ── Attestation (P6-02) ──────────────────────────────────────────────────────────────────
+
+## Prove this is a genuine store install and raise the device to trust level `attested`
+## (`POST /devices/attest/challenge`, then `POST /devices/attest`). The device token and the signed
+## documents do not change; the Worker records the level. A coroutine.
+##
+## ok with detail {trust_level: "attested", kind: "app-attest" | "play-integrity", attested_at}.
+## Unsupported (PARITY §2.2; the device simply stays `basic`, which is expected, not suspicious):
+##   `runtime`  linux, macos, windows and web: no attestation service the Worker verifies; also an
+##              iOS device where App Attest does not run (the simulator)
+##   `outlet`   an iOS install that is not from the App Store or TestFlight (AppDistributor, or an
+##              embedded provisioning profile), an Android install Google Play did not make or the
+##              direct build of the plugin, and a mobile build without the native plugin
+## Otherwise a failure carries the server's code verbatim (`unauthorized`, `rate_limited` — a few
+## per hour per device —, `attestation_unavailable` when the product is not set up for this kind,
+## `attestation_rejected` when verification failed), or `platform-error` / `timeout` from the
+## plugin with its reply as detail, `no-token`/`device-management-unsupported` before
+## registration, `local-only`, `invalid-response`.
+##
+## iOS keeps the App Attest key id in the Keychain (account `app_attest_key`) and reuses it; a key
+## the system no longer knows (reinstall, device migration, restore from a backup) is dropped and a
+## fresh one attested in the same call. Android requests a standard Play Integrity token for the
+## cloud project number in the challenge (`play.cloudProjectNumber`), else
+## PKeyOptions.play_cloud_project_number.
+func attest() -> PKeyResult:
+	var feature := PKeyConstants.Feature.DEVICES_ATTEST
+	var platform := attest_platform if attest_platform != "" else PKeyHeaders.platform()
+	if platform != PKeyConstants.Platform.IOS and platform != PKeyConstants.Platform.ANDROID:
+		return PKeyResult.unsupported(feature, PKeyConstants.UnsupportedReason.RUNTIME, "Device attestation needs an iOS or Android store install; a %s build stays at the basic trust level." % (platform if platform != "" else "desktop"))
+	var gate: PKeyResult
+	if platform == PKeyConstants.Platform.IOS:
+		gate = await _apple_gate()
+	else:
+		gate = _android_gate()
+	if not gate.ok:
+		return gate
+	var core := _core()
+	var pre = _require_token(core)
+	if pre != null:
+		return pre
+	if core.local_only:
+		return PKeyResult.failure(PKeyErrors.LOCAL_ONLY, "This client is local-only; attestation is refused.")
+
+	var ch := await core.request("POST", "devices/attest/challenge", null, true)
+	if not ch.ok:
+		return ch
+	var parsed := PKeyJson.parse_bytes(ch.detail["body"])
+	var v = parsed["value"] if parsed["ok"] else null
+	if not (v is Dictionary and v.get("challenge") is String and v.get("requestHash") is String and v["challenge"] != "" and v["requestHash"] != ""):
+		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "The attestation challenge has no challenge or requestHash.", {"status": _status(ch)})
+	var challenge: String = v["challenge"]
+	var request_hash: String = v["requestHash"]
+
+	var body := {}
+	if platform == PKeyConstants.Platform.IOS:
+		var a := await _app_attest(core, request_hash)
+		if not a.ok:
+			return a
+		body = {"kind": "app-attest", "keyId": a.detail["keyId"], "attestation": a.detail["attestation"], "challenge": challenge}
+	else:
+		var project := core.options.play_cloud_project_number
+		if project == "" and v.get("play") is Dictionary and v["play"].get("cloudProjectNumber") is String:
+			project = v["play"]["cloudProjectNumber"]
+		if not project.is_valid_int() or project.begins_with("-") or project.begins_with("+") or int(project) <= 0:
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "No Play Integrity cloud project number: the operator has not configured one on the Worker and PKeyOptions.play_cloud_project_number is %s." % ("empty" if project == "" else "not digits"))
+		var t := await _android().integrity_token(project, request_hash)
+		if not t.ok:
+			return t
+		if not (t.detail.get("token") is String) or t.detail["token"] == "":
+			return PKeyResult.failure(PKeyErrors.PLATFORM_ERROR, "The Android platform plugin answered no Play Integrity token.", t.detail)
+		body = {"kind": "play-integrity", "token": t.detail["token"], "challenge": challenge}
+
+	var r := await core.request("POST", "devices/attest", body, true)
+	if not r.ok:
+		return r
+	parsed = PKeyJson.parse_bytes(r.detail["body"])
+	var out = parsed["value"] if parsed["ok"] else null
+	if not (out is Dictionary and out.get("trustLevel") is String):
+		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "The attestation answer has no trustLevel.", {"status": _status(r)})
+	return PKeyResult.success({
+		"trust_level": out["trustLevel"],
+		"kind": out["kind"] if out.get("kind") is String else body["kind"],
+		"attested_at": int(out["attestedAt"]) if (out.get("attestedAt") is float or out.get("attestedAt") is int) else 0,
+	})
+
+
+func _apple() -> PKeyApple:
+	return apple if apple != null else PKeyApple.shared()
+
+
+func _android() -> PKeyAndroid:
+	return android if android != null else PKeyAndroid.shared()
+
+
+## iOS: the plugin is present, the install is from the App Store or TestFlight, and App Attest runs.
+func _apple_gate() -> PKeyResult:
+	var feature := PKeyConstants.Feature.DEVICES_ATTEST
+	var a := _apple()
+	if a.unsupported_reason() != "":
+		return PKeyResult.unsupported(feature, PKeyConstants.UnsupportedReason.OUTLET, "The Apple platform plugin is not in this build, so it cannot attest; it stays at the basic trust level.")
+	# This launch's AppDistributor read when it has arrived, else one now (raced against 2 s).
+	var d = PKeyApple.launch_distributor()
+	if not (d is Dictionary):
+		var r := await a.distributor()
+		if not r.ok:
+			return r
+		d = r.detail
+	var why := _not_store_install(d)
+	if why != "":
+		return PKeyResult.unsupported(feature, PKeyConstants.UnsupportedReason.OUTLET, why)
+	return a.app_attest_supported()
+
+
+## "" when a distributor answer is an App Store or TestFlight install, else why not. `unavailable`
+## is no evidence (below iOS 17.4, or AppDistributor did not answer): without an embedded
+## provisioning profile the build is an App Store or TestFlight one (Distributor.swift).
+static func _not_store_install(d: Dictionary) -> String:
+	var sig := str(d.get("signal", ""))
+	var provisioned: bool = d.get("provisioned") == true
+	if (sig in STORE_SIGNALS or sig == "unavailable") and not provisioned:
+		return ""
+	return "Only an App Store or TestFlight install can attest (distributor %s%s); it stays at the basic trust level." % [sig, ", provisioned" if provisioned else ""]
+
+
+## The capability engine's detector for devices.attest's `outlet` N/A (PolarisKey.supports and the
+## report's `caps`): "" when this install may attest, else why not. Synchronous and offline: the
+## plugin's presence, this launch's distributor read on iOS (none yet: no evidence against), and
+## the plugin flavour and installer on Android.
+static func attest_outlet_detail() -> String:
+	match PKeyHeaders.platform():
+		PKeyConstants.Platform.IOS:
+			var a := PKeyApple.shared()
+			if a.unsupported_reason() != "":
+				return "The Apple platform plugin is not in this build, so it cannot attest."
+			var d = PKeyApple.launch_distributor()
+			return _not_store_install(d) if d is Dictionary else ""
+		PKeyConstants.Platform.ANDROID:
+			var a := PKeyAndroid.shared()
+			if a.unsupported_reason() != "":
+				return "The Android platform plugin is not in this build, so it cannot attest."
+			var r := a.integrity_availability()
+			return "" if r.ok else r.message
+	return ""
+
+
+## Android: the plugin is present, it is the play build, and Google Play installed the app.
+func _android_gate() -> PKeyResult:
+	var a := _android()
+	if a.unsupported_reason() != "":
+		return PKeyResult.unsupported(PKeyConstants.Feature.DEVICES_ATTEST, PKeyConstants.UnsupportedReason.OUTLET, "The Android platform plugin is not in this build, so it cannot attest; it stays at the basic trust level.")
+	return a.integrity_availability()
+
+
+## App Attest with the stored key id, re-attesting with a fresh key when the stored one is gone.
+func _app_attest(core: PKeyCore, request_hash: String) -> PKeyResult:
+	var a := _apple()
+	var stored := ""
+	var kr := a.keychain_get(core.product, APP_ATTEST_ACCOUNT)
+	if kr.ok and kr.detail.get("value") is String:
+		stored = kr.detail["value"]
+	var r := await a.app_attest(request_hash, stored)
+	if not r.ok and stored != "" and r.detail is Dictionary and r.detail.get("error") == "invalid_key":
+		# The key died with a reinstall, a device migration or a restore: expected, not fraud.
+		a.keychain_delete(core.product, APP_ATTEST_ACCOUNT)
+		stored = ""
+		r = await a.app_attest(request_hash, "")
+	# Keep a key that exists now: the attested one, or a generated one whose attestation Apple's
+	# service could not serve yet (retried later with the same key, as Apple advises).
+	var key = r.detail.get("keyId") if r.detail is Dictionary else null
+	var keep: bool = r.ok or (r.detail is Dictionary and r.detail.get("error") == "server_unavailable")
+	if keep and key is String and key != "" and key != stored:
+		a.keychain_set(core.product, APP_ATTEST_ACCOUNT, key)
+	if r.ok and not (r.detail.get("keyId") is String and r.detail.get("attestation") is String):
+		return PKeyResult.failure(PKeyErrors.PLATFORM_ERROR, "The Apple platform plugin answered no key id or attestation.", r.detail)
+	return r
+
