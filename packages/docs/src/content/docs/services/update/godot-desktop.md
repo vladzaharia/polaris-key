@@ -94,8 +94,8 @@ with a Developer ID, notarises, staples and writes the zip that `sign_update` si
 - **StoreContext.** The plugin calls IInitializeWithWindow with the game window, so the consent
   dialog belongs to the game. Every blocking call runs on an MTA thread. The Microsoft Store
   adapter uses it for a `store` answer in a Store MSIX and falls back to the listing.
-- **A Microsoft Store export** (outlet `ms-store`) ships `pkey_win.dll` alone. The extension's
-  `[dependencies]` leave out both updater DLLs and the shim.
+- **A Microsoft Store export** (outlet `ms-store`) ships `pkey_win.dll` alone. After the export,
+  the SDK's export plugin removes both updater DLLs and the shim.
 
 `sign.ps1` signs with the owner's Authenticode certificate or Azure Artifact Signing. Sign the
 DLLs, the shim and the game exe before vpk and the installer sign their own outputs.

@@ -43,4 +43,13 @@ func run(t: PKeyTestContext) -> void:
 			ok = ok and (FileAccess.get_unix_permissions(f) & 0x40) != 0
 	t.check("export: restore_executable_bits sets 0755 on all five", ok, str(failed))
 	t.check("export: a missing file is reported", N.restore_executable_bits(dir.path_join("Missing.app")).size() == 5)
+	var win := dir.path_join("win")
+	DirAccess.make_dir_recursive_absolute(win)
+	for f in ["pkeye2e.exe", "pkey_win.dll", "velopack_libc.dll", "WinSparkle.dll", "pkey_velopack_shim.exe"]:
+		var h := FileAccess.open(win.path_join(f), FileAccess.WRITE)
+		h.store_string("x")
+		h.close()
+	var removed := N.strip_store_updaters(win)
+	t.check("export: a Store export loses both updater DLLs and the shim, keeps pkey_win.dll and the game", removed.size() == 3 and FileAccess.file_exists(win.path_join("pkey_win.dll")) and FileAccess.file_exists(win.path_join("pkeye2e.exe")) and not FileAccess.file_exists(win.path_join("WinSparkle.dll")), str(removed))
+	t.check("export: stripping an already clean directory removes nothing", N.strip_store_updaters(win).is_empty())
 	PKeyTestFixtures.remove_tree(dir)

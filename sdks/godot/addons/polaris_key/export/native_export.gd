@@ -32,6 +32,12 @@ extends RefCounted
 ## drops on Sparkle's five Mach-O files (`chmod 0755`; the mode is not sealed, so the signature
 ## stays valid). A `.zip` or `.dmg` export cannot be fixed afterwards: export the `.app` and package
 ## it with sdks/godot/native/macos/sign_and_notarize.sh, which also restores the bits.
+##
+## A Windows export for the Microsoft Store (outlet kind `ms-store`) must ship no updater but
+## StoreContext: after export the plugin removes the Velopack and WinSparkle DLLs and the Velopack
+## shim that the Windows GDExtension's [dependencies] put beside the executable. (Godot chooses a
+## GDExtension's dependencies from the preset's features, which never include an export plugin's
+## own feature tags, so this cannot be said in the .gdextension file.)
 
 const OPTION_ENABLED := "polaris_key/sparkle/enabled"
 const OPTION_PUBLIC_KEY := "polaris_key/sparkle/public_ed_key"
@@ -49,6 +55,9 @@ const CODESIGN_DISABLED := 0
 const CODESIGN_BUILT_IN := 1
 
 ## Sparkle's Mach-O files inside Contents/Frameworks/Sparkle.framework/Versions/B.
+## What the Windows GDExtension puts beside the executable that a Store build must not ship.
+const WINDOWS_UPDATER_FILES := ["velopack_libc.dll", "WinSparkle.dll", "pkey_velopack_shim.exe"]
+
 const HELPERS := [
 	"Sparkle",
 	"Autoupdate",
@@ -139,3 +148,18 @@ static func restore_executable_bits(app: String) -> PackedStringArray:
 		if not FileAccess.file_exists(p) or FileAccess.set_unix_permissions(p, 0x1ED) != OK:
 			failed.append(p)
 	return failed
+
+
+## Remove the updater files from a Windows Store export's directory: the paths removed, and the
+## ones that could not be (in `failed`).
+static func strip_store_updaters(dir: String, failed: PackedStringArray = PackedStringArray()) -> PackedStringArray:
+	var removed := PackedStringArray()
+	for f in WINDOWS_UPDATER_FILES:
+		var p := dir.path_join(f)
+		if not FileAccess.file_exists(p):
+			continue
+		if DirAccess.remove_absolute(p) == OK:
+			removed.append(p)
+		else:
+			failed.append(p)
+	return removed

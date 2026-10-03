@@ -210,9 +210,11 @@ won:
   4.7's enum (0 Disabled, 1 built-in, 2 rcodesign, 3 Xcode).
 - **chmod after export works only for a `.app` export.** For `.zip`/`.dmg` the plugin warns, and
   `sign_and_notarize.sh` restores the bits before it packages the archive.
-- **A Microsoft Store export ships no updater.** The Windows `.gdextension` has empty
-  `[dependencies]` for the `pkey_outlet_ms_store` feature tag. Godot takes the first matching key,
-  so no export-plugin code is needed.
+- **A Microsoft Store export ships no updater.** After a Windows export whose outlet kind is
+  `ms-store`, the export plugin removes `velopack_libc.dll`, `WinSparkle.dll` and the shim.
+  Godot chooses a GDExtension's `[dependencies]` from the preset's features, which never include
+  an export plugin's own tags, so a `.gdextension` key cannot express this. The first CI run
+  showed the feature-tag approach failing.
 - **The shim** starts `<own stem>_godot.exe`. `pack_velopack.ps1` renames the shipped
   `pkey_velopack_shim.exe` to `<PackId>.exe`.
 - **CI runners.** The jobs run on `macos-15` (the repository's current macOS image, not

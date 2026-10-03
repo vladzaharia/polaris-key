@@ -3,9 +3,9 @@
 ; pkey_velopack_shim.exe into res://addons/polaris_key/native/bin/.
 ;
 ; [dependencies] puts the two updater DLLs and the Velopack launcher shim beside the exported
-; executable. The FIRST matching key wins, so a Microsoft Store build (the export plugin's
-; pkey_outlet_ms_store feature tag) matches the empty entries and ships neither updater nor shim:
-; StoreContext is the only updater a Store MSIX may run.
+; executable. For a Microsoft Store export (outlet kind ms-store) the SDK's export plugin removes
+; them again after export: StoreContext is the only updater a Store MSIX may run. (Godot picks
+; dependencies from the preset's features, which an export plugin's feature tags never reach.)
 [configuration]
 entry_symbol = "pkey_win_init"
 compatibility_minimum = "4.4"
@@ -16,7 +16,5 @@ windows.debug.x86_64 = "res://addons/polaris_key/native/bin/pkey_win.dll"
 windows.release.x86_64 = "res://addons/polaris_key/native/bin/pkey_win.dll"
 
 [dependencies]
-windows.debug.x86_64.pkey_outlet_ms_store = {}
-windows.release.x86_64.pkey_outlet_ms_store = {}
 windows.debug.x86_64 = { "res://addons/polaris_key/native/bin/velopack_libc.dll": "", "res://addons/polaris_key/native/bin/WinSparkle.dll": "", "res://addons/polaris_key/native/bin/pkey_velopack_shim.exe": "" }
 windows.release.x86_64 = { "res://addons/polaris_key/native/bin/velopack_libc.dll": "", "res://addons/polaris_key/native/bin/WinSparkle.dll": "", "res://addons/polaris_key/native/bin/pkey_velopack_shim.exe": "" }

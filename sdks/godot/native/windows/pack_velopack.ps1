@@ -39,7 +39,7 @@ $vpkArgs = @("pack", "--runtime", "win-x64", "--packId", $PackId, "--packVersion
 if ($Channel) { $vpkArgs += @("--channel", $Channel) }
 if ($SignParams) { $vpkArgs += @("--signParams", $SignParams) }
 if ($AzureTrustedSignFile) { $vpkArgs += @("--azureTrustedSignFile", $AzureTrustedSignFile) }
-& vpk @args
+& vpk @vpkArgs
 if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
 $setup = Join-Path $OutputDir "$PackId-win-Setup.exe"
 if ($Channel) { $setup = Join-Path $OutputDir "$PackId-$Channel-Setup.exe" }

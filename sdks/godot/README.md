@@ -692,8 +692,8 @@ build's channel, and WinSparkle's key and identity. The export plugin's macOS op
 `SUEnableAutomaticChecks` into `Info.plist`, turn on Disable Library Validation, turn a Disabled
 `codesign/codesign` into the built-in ad-hoc signature, and restore the executable bit on Sparkle's
 helpers after a `.app` export. The Windows `.gdextension` ships `velopack_libc.dll`,
-`WinSparkle.dll` and the Velopack shim beside the executable, except in a `pkey_outlet_ms_store`
-export. The `native_desktop` suite covers the facades over stand-in natives and the wiring; the
+`WinSparkle.dll` and the Velopack shim beside the executable; the export plugin removes them
+again from a Microsoft Store export (outlet kind `ms-store`). The `native_desktop` suite covers the facades over stand-in natives and the wiring; the
 `native-desktop` CI workflow runs the real updates end to end (`native/e2e/`).
 
 **Inert** in the editor, in headless runs (the test runner, a dedicated server) and in debug

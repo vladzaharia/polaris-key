@@ -29,14 +29,15 @@ extends EditorExportPlugin
 ## macOS presets also get P5-07's Sparkle options (`polaris_key/sparkle/*`, PKeyNativeExport): the
 ## Info.plist keys, the Disable Library Validation entitlement, never an unsigned export, and the
 ## executable bits Sparkle's helpers lose in Godot's copy. Windows exports take the plugins' DLLs and
-## the Velopack shim from the Windows GDExtension's [dependencies], which a Microsoft Store build
-## (`pkey_outlet_ms_store`) leaves out (sdks/godot/native/windows/pkey_win.gdextension).
+## the Velopack shim from the Windows GDExtension's [dependencies]; the plugin removes them again
+## from a Microsoft Store export (outlet kind ms-store), whose only updater is StoreContext.
 
 const S := preload("res://addons/polaris_key/core/build_stamp.gd")
 const N := preload("res://addons/polaris_key/export/native_export.gd")
 
 var _export_path := ""
 var _export_macos := false
+var _export_windows_store := false
 
 
 func _get_name() -> String:
@@ -149,6 +150,8 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _f
 	var platform := S.platform_for(get_export_platform().get_os_name() if get_export_platform() != null else "", features)
 	_export_path = path
 	_export_macos = platform == "macos" and _sparkle()["enabled"]
+	var store_values := _values(platform)
+	_export_windows_store = platform == "windows" and S.feature_tags(store_values["outlet"], "", store_values["outlet_kind"]).has("pkey_outlet_ms_store")
 	if _export_macos:
 		var sp := _sparkle()
 		for problem in N.problems(sp["key"], sp["feed_url"]):
@@ -178,6 +181,13 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _f
 
 
 func _export_end() -> void:
+	if _export_windows_store:
+		_export_windows_store = false
+		var failed := PackedStringArray()
+		var dir := _export_path.get_base_dir()
+		N.strip_store_updaters(ProjectSettings.globalize_path(dir) if dir.begins_with("res://") else dir, failed)
+		if not failed.is_empty():
+			push_warning("Polaris Key: could not remove %s from the Microsoft Store export; a Store build must ship no updater but StoreContext." % ", ".join(failed))
 	if not _export_macos:
 		return
 	_export_macos = false
