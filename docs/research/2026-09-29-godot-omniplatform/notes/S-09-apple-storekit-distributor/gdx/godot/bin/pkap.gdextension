@@ -1,0 +1,9 @@
+[configuration]
+
+entry_symbol = "pkap_library_init"
+compatibility_minimum = "4.5"
+
+[libraries]
+
+ios.debug = "res://bin/pkap.xcframework"
+ios.release = "res://bin/pkap.xcframework"
