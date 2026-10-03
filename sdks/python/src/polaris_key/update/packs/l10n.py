@@ -73,6 +73,11 @@ _BCP47 = re.compile(
 )
 
 
+def _ascii_lower(s: str) -> str:
+    """Lowercase ASCII letters only (never Unicode case folding)."""
+    return "".join(chr(ord(c) + 32) if "A" <= c <= "Z" else c for c in s)
+
+
 def bcp47_canonical(tag: Any) -> Optional[str]:
     """The canonical form of a locale tag (``_`` → ``-``, case kept) when it is a well-formed
     BCP-47 tag (2–35 ASCII letters, digits and hyphens, matching the grammar), else ``None``."""
@@ -382,7 +387,9 @@ def _csv_table(path: str, text: str) -> L10nParseResult:
         raise _NotStrict("no locale column")
     seen_locales = set()
     for loc in header[1:]:
-        k = loc.replace("_", "-").lower()
+        # ASCII-only lowercasing, as every other SDK: str.lower() would fold U+212A KELVIN SIGN
+        # to "k" and call two different columns the same locale.
+        k = _ascii_lower(loc.replace("_", "-"))
         if k in seen_locales:
             raise _NotStrict("duplicate locale column")
         seen_locales.add(k)
