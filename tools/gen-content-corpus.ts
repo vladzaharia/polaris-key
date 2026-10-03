@@ -14,12 +14,13 @@
 //                         `node:crypto`, and rebuild `content/cases.json` (its `blobs` table
 //                         included) and `plan-matrix.json`. A missing blob, a blob the set does not
 //                         name, or a stray file under `content/` throws.
-//   `--rebuild-content-blobs [--payloads <dir>]`
+//   `--rebuild-content-blobs [--payloads <dir>] [--blobs <dir>]`
 //                         the only writer of the blobs and of `refs.json`: rebuilds every blob from
 //                         the decoded payloads (v1 from its full blob, v2 by the `file` strategy, or
 //                         `v1.pck` and `v2.pck` from `--payloads` when seeding) with the zstd CLI,
-//                         and refuses unless `zstd -V` reports exactly 1.5.7. Never in the gate: a
-//                         rebuild changes hashes, so it is a deliberate PR of its own.
+//                         and refuses unless `zstd -V` reports exactly 1.5.7. `--blobs` compares
+//                         against and adds to another directory than `content/blobs/`. Never in
+//                         the gate: a rebuild changes hashes, so it is a deliberate PR of its own.
 //
 // Nothing here imports an SDK or `@polaris-key/client-core` (P3-02's rule): the files-index
 // parser, the path rules, `treeDigest`, the appliers, the planner, `selectVariant`, `planTarget`,

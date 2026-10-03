@@ -2,7 +2,7 @@
 // entries. The guard (`additionsOnly`) is pure and always tested; the full rebuild runs where the
 // pinned zstd CLI (1.5.7) is on PATH, because only that build reproduces the committed frames.
 
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import {
   cpSync,
   mkdtempSync,
@@ -13,14 +13,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  CONTENT_BLOBS_DIR,
-  additionsOnly,
-  rebuildContentBlobs,
-  type RefJson,
-} from "./gen-content-corpus.js";
+import { CONTENT_BLOBS_DIR, additionsOnly } from "./gen-content-corpus.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -140,41 +137,66 @@ function zstd157(): boolean {
   }
 }
 
-// Strict JSON is not needed by the rebuild (it reads payloads, never parses an index as JSON
-// strictly); a plain parser stands in for sign-corpus.ts's reference.
-const REF: RefJson = {
-  parseStrict: (text) => {
-    try {
-      return { ok: true, value: JSON.parse(text) as unknown };
-    } catch {
-      return { ok: false };
-    }
-  },
-  nonWire: () => [],
-  stampContentClaims: () => true,
-  stampHolds: () => [],
-};
+// The rebuild is synchronous (one `zstd` invocation after another, about 90 s on a CI runner), so
+// it runs in a child process: in-process it would block this worker's event loop long enough for
+// vitest's worker-to-main RPC to time out ("Timeout calling onTaskUpdate") and fail the run even
+// though every test passes. The child is the real command, `sign-corpus.ts` with `--blobs`.
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const run = promisify(execFile);
+
+async function rebuildIn(
+  blobsDir: string,
+): Promise<{ code: number; stdout: string; stderr: string }> {
+  try {
+    const { stdout, stderr } = await run(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "tools/sign-corpus.ts",
+        "--rebuild-content-blobs",
+        "--blobs",
+        blobsDir,
+      ],
+      { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    );
+    return { code: 0, stdout, stderr };
+  } catch (e) {
+    const err = e as { code?: unknown; stdout?: string; stderr?: string };
+    if (typeof err.code !== "number") throw e;
+    return {
+      code: err.code,
+      stdout: err.stdout ?? "",
+      stderr: err.stderr ?? "",
+    };
+  }
+}
 
 describe.skipIf(!zstd157())(
   "--rebuild-content-blobs over a temporary copy (zstd 1.5.7)",
   () => {
-    it("reproduces every committed blob and adds nothing", () => {
+    it("reproduces every committed blob and adds nothing", async () => {
       const d = copyBlobs();
       const before = snapshot(d);
-      rebuildContentBlobs(REF, { blobsDir: d });
+      const r = await rebuildIn(d);
+      expect(r.code, r.stderr).toBe(0);
+      expect(r.stdout).toMatch(
+        /^rebuilt \d+ content blobs \(\d+ B\) with zstd 1\.5\.7; added 0$/m,
+      );
       expect(snapshot(d)).toEqual(before);
-    }, 120_000);
+    }, 300_000);
 
-    it("throws, writing nothing, when one existing blob was altered", () => {
+    it("fails, writing nothing, when one existing blob was altered", async () => {
       const d = copyBlobs();
       flip(d, "patch/v1-v2.tree.data");
       rmSync(join(d, "chunks", "dup.pkc"));
       const before = snapshot(d);
-      expect(() => rebuildContentBlobs(REF, { blobsDir: d })).toThrow(
-        /patch\/v1-v2\.tree\.data would change/,
-      );
+      const r = await rebuildIn(d);
+      expect(r.code, r.stdout).not.toBe(0);
+      expect(r.stderr).toMatch(/patch\/v1-v2\.tree\.data would change/);
+      expect(r.stdout).not.toMatch(/^rebuilt /m);
       // The missing chunks/dup.pkc is an addition the guard would allow, but nothing is written.
       expect(snapshot(d)).toEqual(before);
-    }, 120_000);
+    }, 300_000);
   },
 );

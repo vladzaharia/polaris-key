@@ -16,12 +16,13 @@
  * the operator's step in docs/RUNBOOK.md.
  */
 
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // @ts-expect-error — a plain ESM script with no type declarations.
 import * as check from "../scripts/check-representable.mjs";
@@ -62,37 +63,49 @@ const WRANGLER = join(
 let persistTo: string;
 
 /** wrangler's local workerd can drop its connection while it starts on a loaded machine;
- *  that one error is retried (twice). Any other failure throws at once. */
+ *  that one error is retried (twice). Any other failure throws at once.
+ *
+ *  Asynchronous on purpose: `d1 migrations apply` alone takes several seconds idle and far longer
+ *  on a CI runner, and a synchronous spawn blocks this worker's event loop for all of it, long
+ *  enough for vitest's worker-to-main RPC to time out ("Timeout calling onTaskUpdate"). */
 const TRANSIENT = /other side closed/;
+const execFileAsync = promisify(execFile);
 
-function wrangler(...args: string[]): string {
+async function wrangler(...args: string[]): Promise<string> {
   for (let attempt = 0; ; attempt++) {
-    const run = spawnSync(
-      process.execPath,
-      [
-        WRANGLER,
-        ...args,
-        "--env",
-        "prod",
-        "--local",
-        "--persist-to",
-        persistTo,
-      ],
-      {
-        cwd: WORKER,
-        encoding: "utf8",
-        env: { ...process.env, WRANGLER_SEND_METRICS: "false", CI: "1" },
-      },
-    );
-    if (run.status === 0) return run.stdout;
-    const out = run.stderr || run.stdout;
+    let out: string;
+    try {
+      const run = await execFileAsync(
+        process.execPath,
+        [
+          WRANGLER,
+          ...args,
+          "--env",
+          "prod",
+          "--local",
+          "--persist-to",
+          persistTo,
+        ],
+        {
+          cwd: WORKER,
+          encoding: "utf8",
+          maxBuffer: 64 * 1024 * 1024,
+          env: { ...process.env, WRANGLER_SEND_METRICS: "false", CI: "1" },
+        },
+      );
+      return run.stdout;
+    } catch (e) {
+      const err = e as { stdout?: string; stderr?: string };
+      if (err.stdout === undefined && err.stderr === undefined) throw e;
+      out = err.stderr || err.stdout || "";
+    }
     if (attempt < 2 && TRANSIENT.test(out)) continue;
     throw new Error(`wrangler ${args.join(" ")}:\n${out}`);
   }
 }
 
-function sql(command: string): void {
-  wrangler("d1", "execute", "polaris_key_prod", "--command", command);
+async function sql(command: string): Promise<void> {
+  await wrangler("d1", "execute", "polaris_key_prod", "--command", command);
 }
 
 const local = () =>
@@ -137,11 +150,11 @@ const CLEAN_CATALOG = JSON.stringify({
   ],
 });
 
-beforeAll(() => {
+beforeAll(async () => {
   persistTo = mkdtempSync(join(tmpdir(), "pkey-check-representable-"));
-  wrangler("d1", "migrations", "apply", "polaris_key_prod");
+  await wrangler("d1", "migrations", "apply", "polaris_key_prod");
   // A clean product: every checked column holds an ordinary value.
-  sql(
+  await sql(
     [
       `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
          default_max_offline_days, default_device_limit, created_at, modified_at)
@@ -237,9 +250,9 @@ describe("check:representable on a local D1", () => {
     expect(run.out).toEqual({ issues: [], warnings: [] });
   }, 60_000);
 
-  it("flags a seeded bad value in each of the 21 columns and warns on both day counts", () => {
+  it("flags a seeded bad value in each of the 21 columns and warns on both day counts", async () => {
     const tierId = wtf8("p");
-    sql(
+    await sql(
       [
         `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
            default_max_offline_days, default_device_limit, created_at, modified_at)
@@ -297,7 +310,7 @@ describe("check:representable on a local D1", () => {
     expect(run.out.warnings).toHaveLength(2);
   }, 60_000);
 
-  it("flags a catalog whose entry keys could not be member names, though every value is clean", () => {
+  it("flags a catalog whose entry keys could not be member names, though every value is clean", async () => {
     // A catalog key is a string VALUE in catalog_json but a MEMBER NAME in `config.<key>`, so a
     // walk of the catalog as a value would pass both of these rows.
     const product = (slug: string) =>
@@ -309,7 +322,7 @@ describe("check:representable on a local D1", () => {
        VALUES ('${slug}', 1, '{"schemaVersion":1,"entries":[${keys
          .map((k, i) => `{"key":"${k}","kind":"config","default":${i}}`)
          .join(",")}]}', 1, 1)`;
-    sql(
+    await sql(
       [
         product("nfcpair"),
         schema("nfcpair", ["\\u00e9", "e\\u0301"]),
@@ -338,8 +351,8 @@ describe("check:representable on a local D1", () => {
       { product: "nulkey", rule: "nul-in-member-name", path: "/entries/1/key" },
     ]);
   }, 60_000);
-  it("flags a day count whose graceUntil the signer would refuse, and still only warns on a fractional one", () => {
-    sql(
+  it("flags a day count whose graceUntil the signer would refuse, and still only warns on a fractional one", async () => {
+    await sql(
       [
         `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
            default_max_offline_days, default_device_limit, created_at, modified_at)
