@@ -90,6 +90,10 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	for s in opts.expected_services:
 		if not PKeyServices.SLUGS.has(s):
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "expected_services names an unknown service '%s'." % s)
+	for a in opts.pack_attachable:
+		var why := PKeyPck.attachable_problem(a)
+		if why != "":
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "pack_attachable entry '%s' is %s: an entry is a res:// script path, a res://…/ directory or a canonical uid://." % [a, why])
 	var core := PKeyCore.new()
 	core.options = opts
 	core.product = opts.product

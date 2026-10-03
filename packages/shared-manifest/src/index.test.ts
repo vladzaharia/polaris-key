@@ -1876,7 +1876,13 @@ describe("deliverables and the artifact map (P2-04)", () => {
     expect(bare.warnings).toEqual([]);
     const ok = parseWith({
       deliverables: {
-        app: { kind: "app", content: { contentApi: 1 } },
+        app: {
+          kind: "app",
+          content: {
+            contentApi: 1,
+            attachable: ["res://scripts/die.gd", "uid://dw1"],
+          },
+        },
         "acme.ui": {
           kind: "pack",
           type: "godot.pck",
@@ -1895,6 +1901,11 @@ describe("deliverables and the artifact map (P2-04)", () => {
     });
     expect(ok.ok).toBe(true);
     if (!ok.ok) return;
+    // P4-28: the attachable list survives normalisation (the publish lint reads it).
+    expect(ok.manifest.release?.app?.content).toEqual({
+      contentApi: 1,
+      attachable: ["res://scripts/die.gd", "uid://dw1"],
+    });
     expect(ok.manifest.release?.packDeliverables).toEqual([
       {
         kind: "pack",

@@ -98,6 +98,20 @@ const CONFIG_ENV_NEVER := 2
 ## gdscript`): its defaults back `PolarisKey.config.get_value` when nothing else resolves.
 @export var config_catalog: Script = null
 
+@export_group("Packs")
+## P4-28: what a `godot.pck` pack's resources may reference outside the pack. Each entry is an
+## app script (`res://scripts/die.gd`), a directory of scripts (`res://scripts/dice/`) or a UID
+## (`uid://c3x…`). Empty (the default): a pack attaches no app script; such a pack is refused
+## before it is committed and again before it is mounted (`pck-directory-refused`). A UID outside
+## the pack's own uid cache that this app registers is judged by the path it names (an app
+## resource passes, an app script needs listing); one it does not register needs listing. The CLI
+## lint cannot resolve app UIDs and refuses every unlisted one, so `.pkey/release`'s
+## `deliverables.app.content.attachable` lists the UIDs packs use as well as the scripts (Godot
+## 4.4+ writes the path and the UID of every reference). A malformed entry makes `configure`
+## refuse (`invalid-options`).
+@export var pack_attachable := PackedStringArray()
+@export_group("")
+
 ## A PKeyStore to use instead of the file store (tests, a platform secure store). Not exported.
 var store: PKeyStore = null
 ## A Callable returning epoch seconds, replacing the system clock (tests and replays).

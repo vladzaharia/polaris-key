@@ -281,11 +281,23 @@ describe("code embedded in a resource (the data-only rule, P4-03 review)", () =>
     ]);
   });
 
-  it('passes a text scene that only references an app script (ext_resource type="Script")', () => {
+  it('refuses a text scene referencing an app script (ext_resource type="Script") unless it is attachable (P4-28)', () => {
     const scene = enc(
       '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://scripts/die.gd" id="1_a"]\n\n[node name="Die" type="Node3D"]\nscript = ExtResource("1_a")\n',
     );
-    expect(lintWith([["assets/kaykit/die.tscn", scene]])).toEqual([]);
+    expect(lintWith([["assets/kaykit/die.tscn", scene]])).toEqual([
+      "assets/kaykit/die.tscn: references the app script res://scripts/die.gd, which the app does not list as attachable.",
+    ]);
+    const bytes = writeTestPck([
+      ...kaykitV1(),
+      ["assets/kaykit/die.tscn", scene],
+    ]);
+    expect(
+      lintPck(readPck(bytes), bytes, {
+        ...lintOpts,
+        attachable: ["res://scripts/die.gd"],
+      }).errors,
+    ).toEqual([]);
   });
 
   it("refuses a binary resource naming a GDScript or script/source anywhere, and one it cannot inspect", () => {

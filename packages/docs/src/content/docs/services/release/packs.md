@@ -595,7 +595,9 @@ revocation has no `revocations.json` and nothing is refused.
   1.5.7) — see the [Swift SDK](/docs/build/sdks/swift/).
 - Godot: `PolarisKey.update.packs` — see the [Godot SDK](/docs/build/sdks/godot/). A pure-GDScript
   port over the same conformance vectors, with the `godot.pck` handler: a rebuilt pack is checked
-  against the same admission list as the publish lint before it commits, and mounted at a boot
+  against the same admission list as the publish lint before it commits (including the
+  reference check: an app script or UID a pack attaches must be listed in
+  `PKeyOptions.pack_attachable`, as in `deliverables.app.content.attachable`), and mounted at a boot
   from `user://pkey/store/<sha256>.pck`. `--patch-from` frames are decoded by Godot's own delta
   decoder, so `zstd-patch-from` is advertised on Godot 4.6 and later only. The content stamp is
   `res://pkey_packs/pkey-content.json`, beside the embedded baselines.

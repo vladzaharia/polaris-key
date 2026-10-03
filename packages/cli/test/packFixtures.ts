@@ -172,7 +172,7 @@ const importFile = (ctex: string) =>
     `[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\nuid="uid://b1"\npath.s3tc="res://${ctex}"\nmetadata={\n"imported_formats": ["s3tc_bptc"],\n"vram_texture": true\n}\n\n[deps]\n\nsource_file="res://assets/kaykit/dice.png"\ndest_files=["res://${ctex}"]\n`,
   );
 /** A Godot binary resource's length-prefixed string (`ResourceFormatSaverBinary`). */
-function binString(s: string): Uint8Array {
+export function binString(s: string): Uint8Array {
   const b = utf8(`${s}\0`);
   const out = new Uint8Array(4 + b.length);
   new DataView(out.buffer).setUint32(0, b.length, true);
@@ -180,30 +180,148 @@ function binString(s: string): Uint8Array {
   return out;
 }
 
+/** One external-resource table entry of a binary resource (`uid` -1n: none). */
+export interface BinaryExt {
+  type: string;
+  path: string;
+  uid?: bigint;
+}
+
+export interface BinaryResourceOptions {
+  /** The external-resource table (P4-28's reference check reads it). */
+  ext?: readonly BinaryExt[];
+  /** Raw property values for the main resource, appended after the generated ones. */
+  extraProps?: readonly { name: number; value: Uint8Array }[];
+  /** The main resource's path in the internal table (any string; the loader ignores it). */
+  mainPath?: string;
+  /** The sub-resources' internal paths (default `local://<type>_<i>`). */
+  subPaths?: readonly string[];
+  /** Header overrides: big-endian word, format version. */
+  bigEndian?: number;
+  format?: number;
+  /** Skip the generated noise property (the caller supplies every value). */
+  noNoise?: boolean;
+  /** Point every internal resource at the first one's offset (P4-28 audit GAP B). */
+  sameOffsets?: boolean;
+}
+
+const u32le = (n: number) => {
+  const b = new Uint8Array(4);
+  new DataView(b.buffer).setUint32(0, n >>> 0, true);
+  return b;
+};
+const i64le = (n: bigint) => {
+  const b = new Uint8Array(8);
+  new DataView(b.buffer).setBigInt64(0, n, true);
+  return b;
+};
+const catBytes = (parts: readonly Uint8Array[]) =>
+  new Uint8Array(Buffer.concat(parts));
+
+/** A binary `PACKED_BYTE_ARRAY` value (tag 31, length, bytes, padding to 4). */
+export function packedBytesValue(data: Uint8Array): Uint8Array {
+  return catBytes([
+    u32le(31),
+    u32le(data.length),
+    data,
+    new Uint8Array(padTo(data.length, 4)),
+  ]);
+}
+
 /**
- * A minimal uncompressed binary resource: `RSRC`, the header words, the property-name string
- * table and each internal resource's type, as length-prefixed strings, then opaque data. Enough
- * for the lint's embedded-script scan; with `magic` `RSCC` its mode word reads 0, a compression
- * mode the lint refuses (P4-27 inspects zstd only).
+ * A Godot binary resource stream as `ResourceFormatSaverBinary` lays it out (format 6, 4.7,
+ * little-endian, `FORMAT_FLAG_NAMED_SCENE_IDS | FORMAT_FLAG_UIDS`): the header words, the main
+ * type, the import-metadata offset, flags, uid and 11 reserved words; the string table (`props`);
+ * the external-resource table (`opts.ext`); the internal-resource table (one per `types` entry:
+ * `types[1..]` as `local://` sub-resources, then `types[0]` as the main resource, last); then
+ * each internal resource: its class, its property count and properties (the main resource's: a
+ * `PACKED_BYTE_ARRAY` of 512 noise bytes under `props[0]`, an INT under each further name).
+ * `base` is where the stream starts in the file (4 after an `RSRC` magic, 0 in an `RSCC` body),
+ * so the offsets are stream positions as the loader seeks them.
+ */
+export function binaryResourceStream(
+  types: readonly string[],
+  props: readonly string[],
+  seed: number,
+  base: number,
+  opts: BinaryResourceOptions = {},
+): Uint8Array {
+  const mainType = types[0] ?? "Resource";
+  const subs = types.slice(1);
+  const head = catBytes([
+    u32le(opts.bigEndian ?? 0),
+    u32le(0),
+    u32le(4),
+    u32le(7),
+    u32le(opts.format ?? 6),
+    binString(mainType),
+    new Uint8Array(8),
+    u32le(3),
+    i64le(-1n),
+    new Uint8Array(44),
+    u32le(props.length),
+    ...props.map(binString),
+    u32le(opts.ext?.length ?? 0),
+    ...(opts.ext ?? []).flatMap((e) => [
+      binString(e.type),
+      binString(e.path),
+      i64le(e.uid ?? -1n),
+    ]),
+  ]);
+  const order = [...subs, mainType];
+  const paths = [
+    ...subs.map((t, i) => opts.subPaths?.[i] ?? `local://${t}_${i}`),
+    opts.mainPath ?? "res://main.res",
+  ];
+  const blocks = order.map((t, i) => {
+    const main = i === order.length - 1;
+    const values: Uint8Array[] = [];
+    if (main) {
+      props.forEach((_, k) => {
+        if (k === 0 && opts.noNoise) return;
+        values.push(
+          u32le(k),
+          k === 0
+            ? packedBytesValue(noiseBytes(512, seed))
+            : catBytes([u32le(3), u32le(k)]),
+        );
+      });
+      for (const x of opts.extraProps ?? [])
+        values.push(u32le(x.name), x.value);
+    }
+    return catBytes([binString(t), u32le(values.length / 2), ...values]);
+  });
+  const table = (offs: number[]) =>
+    catBytes([
+      u32le(order.length),
+      ...paths.flatMap((p, i) => [binString(p), i64le(BigInt(offs[i]!))]),
+    ]);
+  const tableLen = table(order.map(() => 0)).length;
+  const offs: number[] = [];
+  let at = base + head.length + tableLen;
+  for (const b of blocks) {
+    offs.push(opts.sameOffsets && offs.length ? offs[0]! : at);
+    at += b.length;
+  }
+  return catBytes([head, table(offs), ...blocks]);
+}
+
+/**
+ * A well-formed uncompressed binary resource: `magic` (`RSRC`), then `binaryResourceStream` at
+ * base 4. With `magic` `RSCC` the stream's first word (big-endian 0) reads as compression mode 0,
+ * a mode the lint refuses (P4-27 inspects zstd only).
  */
 export function binaryResource(
   types: readonly string[],
   props: readonly string[],
   seed: number,
   magic = "RSRC",
+  opts: BinaryResourceOptions = {},
 ): Uint8Array {
-  const head = new Uint8Array(20);
-  head.set(utf8(magic));
-  new DataView(head.buffer).setUint32(8, 4, true); // ver_major
-  return new Uint8Array(
-    Buffer.concat([
-      head,
-      binString(types[0] ?? "Resource"),
-      ...props.map(binString),
-      ...types.map(binString),
-      noiseBytes(512, seed),
-    ]),
-  );
+  return catBytes([
+    utf8(magic),
+    binaryResourceStream(types, props, seed, 4, opts),
+  ]);
 }
 
 const remapFile = (target: string) =>
@@ -337,6 +455,8 @@ export interface PackRepoOptions {
   strategies?: string;
   /** The app artifact map's web entry `embeds:` line value (default unset). */
   webEmbeds?: string;
+  /** P4-28: `content.attachable`, a YAML flow list (default unset). */
+  attachable?: string;
 }
 
 export function releaseYaml(
@@ -362,7 +482,7 @@ release:
       versioning:
         scheme: semver
       content:
-        contentApi: 4
+        contentApi: 4${o.attachable !== undefined ? `\n        attachable: ${o.attachable}` : ""}
       artifacts:
         - { id: macos, platform: macos, arch: universal, format: zip, match: "Diceroll-*-macos.zip" }
         - { id: web, platform: web, arch: wasm32, format: zip, match: "Diceroll-*-web.zip"${o.webEmbeds !== undefined ? `, embeds: ${o.webEmbeds}` : ""} }

@@ -21,7 +21,7 @@ extends PKeyPackHandler
 ##
 ## then the godot.pck admission list (PKeyPck.directory_check over `handler.prefixes`): no
 ## script, native library, project.binary, class cache, out-of-prefix entry or resource that
-## embeds code. A zip has no engine header: `requires.engine` is the record's claim only.
+## embeds code, and (P4-28) no reference to an app script or UID `attachable` does not list. A zip has no engine header: `requires.engine` is the record's claim only.
 ##
 ## A committed zip is stored as `store/<sha256>.zip` (Godot's ZIP source opens only `.zip` and
 ## `.pcz` paths; PKeyPackStorage names a container by its leading bytes) and mounted by
@@ -39,6 +39,9 @@ const _SCAN_CHUNK := 1 << 20
 var to_mount := {}
 ## Pack ids mounted in this process.
 var mounted := {}
+## P4-28: the app scripts and UIDs a pack may reference outside itself (`PKeyOptions.pack_attachable`,
+## set by PolarisKey.update.packs at start). Empty: none.
+var attachable := PackedStringArray()
 
 
 func _init() -> void:
@@ -203,11 +206,11 @@ static func _prefixes(record: Dictionary) -> Array:
 
 ## The zip and admission checks over a pack's bytes: {ok, count, warning} or {ok: false, code,
 ## detail, path}. Thread-safe (call PKeyPck.warm() on the main thread first).
-static func check(source: PKeyByteSource, record: Dictionary, _variant: Dictionary) -> Dictionary:
+static func check(source: PKeyByteSource, record: Dictionary, _variant: Dictionary, p_attachable: Variant = null) -> Dictionary:
 	var dir := read_directory(source)
 	if not dir["ok"]:
 		return dir
-	var c := PKeyPck.directory_check(source, dir, _prefixes(record))
+	var c := PKeyPck.directory_check(source, dir, _prefixes(record), p_attachable)
 	if not c["ok"]:
 		var first: Dictionary = c["errors"][0]
 		var lines := PackedStringArray()
@@ -218,7 +221,7 @@ static func check(source: PKeyByteSource, record: Dictionary, _variant: Dictiona
 
 
 func check_output(source: PKeyByteSource, record: Dictionary, variant: Dictionary) -> Dictionary:
-	return check(source, record, variant)
+	return check(source, record, variant, attachable)
 
 
 func activate(install: Dictionary) -> void:

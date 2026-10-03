@@ -325,6 +325,14 @@ export interface ManifestAppDeliverable {
      * release's `content`; absent when undeclared.
      */
     packChannels?: Record<string, string>;
+    /**
+     * `content.attachable` (P4-28): the app scripts (`res://` paths, `res://…/` directories) and
+     * UIDs a `godot.pck` pack may reference outside itself; the CLI lint refuses any other
+     * reference to an app script or out-of-pack UID, as the device does with its
+     * `pack_attachable`. Absent when undeclared (nothing is attachable). Never stamped into a
+     * release: it configures the publish lint only.
+     */
+    attachable?: string[];
   };
 }
 
@@ -923,6 +931,9 @@ const MAX_PACK_PREFIX_BYTES = 256;
 const MAX_PACK_DELTA_BASES = 8;
 /** The largest integer a `contentApi` may be (2^53 − 1, the wire integer rule's bound). */
 const MAX_CONTENT_API = 9007199254740991;
+/** `content.attachable` (P4-28): at most this many entries, each at most this many bytes. */
+export const MAX_ATTACHABLE_ENTRIES = 256;
+export const MAX_ATTACHABLE_ENTRY_BYTES = 1024;
 
 /** The id of the product's own application deliverable (README §3.12 `deliverables.app`). */
 export const APP_DELIVERABLE_ID = "app";
@@ -3325,6 +3336,72 @@ function isPackPrefixList(value: unknown): value is string[] {
   );
 }
 
+const ATTACHABLE_BAD_CHARS = new Set(["\\", ":", "*", "?", '"', "<", ">", "|"]);
+const ATTACHABLE_DEVICES = new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`),
+  ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`),
+]);
+const UID_ALPHABET = "abcdefghijklmnopqrstuvwxy012345678";
+
+/**
+ * One `content.attachable` entry (P4-28): `res://` + a path the PCK path rules hold already normal
+ * (the CLI's `pckPathOk`, client-core's `pathSafe`), optionally ending in `/` for a directory; or
+ * a `uid://` in Godot's canonical text form (`ResourceUID::id_to_text` of its own id).
+ */
+export function isAttachableEntry(s: unknown): s is string {
+  if (typeof s !== "string") return false;
+  if (new TextEncoder().encode(s).length > MAX_ATTACHABLE_ENTRY_BYTES)
+    return false;
+  if (s.startsWith("uid://")) {
+    const t = s.slice(6);
+    if (t.length < 1 || t.length > 13) return false;
+    let v = 0n;
+    for (const ch of t) {
+      const d = UID_ALPHABET.indexOf(ch);
+      if (d < 0 || ch.length !== 1) return false;
+      v = v * 34n + BigInt(d);
+    }
+    if (v > 0x7fffffffffffffffn) return false;
+    let back = "";
+    do {
+      back = UID_ALPHABET[Number(v % 34n)]! + back;
+      v /= 34n;
+    } while (v > 0n);
+    return back === t;
+  }
+  if (!s.startsWith("res://")) return false;
+  const rest = s.slice(6);
+  const path = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  if (path === "" || path.includes("..") || path.includes("./")) return false;
+  for (let i = 0; i < path.length; i++) {
+    const c = path.charCodeAt(i);
+    if (c < 0x20 || c > 0x7e || ATTACHABLE_BAD_CHARS.has(path[i]!))
+      return false;
+  }
+  const segments = path.split("/");
+  if (segments[0]!.toLowerCase() === ".pkey") return false;
+  for (const seg of segments) {
+    if (seg === "" || seg === "." || seg === "..") return false;
+    if (seg.endsWith(" ") || seg.endsWith(".")) return false;
+    if (ATTACHABLE_DEVICES.has(seg.split(".")[0]!.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function isAttachableList(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= MAX_ATTACHABLE_ENTRIES &&
+    new Set(value).size === value.length &&
+    value.every(isAttachableEntry)
+  );
+}
+
 function validateAppDeliverable(
   errors: ValidationMessage[],
   relRoot: Record<string, unknown>,
@@ -3349,7 +3426,7 @@ function validateAppDeliverable(
         "release",
         "/release/deliverables/app/content",
         "invalid_app_content",
-        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels? }; holds are chosen per app release at publish (the content stamp), never declared here.`,
+        `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels?, attachable? }; holds are chosen per app release at publish (the content stamp), never declared here.`,
       );
     const map = isRecord(content) ? content.packChannels : undefined;
     if (map !== undefined) {
@@ -3396,6 +3473,15 @@ function validateAppDeliverable(
             );
         }
     }
+    const attachable = isRecord(content) ? content.attachable : undefined;
+    if (attachable !== undefined && !isAttachableList(attachable))
+      add(
+        errors,
+        "release",
+        "/release/deliverables/app/content/attachable",
+        "invalid_app_attachable",
+        `content.attachable is 1 to ${MAX_ATTACHABLE_ENTRIES} distinct entries, each a res:// script path, a res://…/ directory of scripts (already normal: no ., .. or empty segment, printable ASCII without \\ : * ? " < > |) or a canonical uid:// (as Godot writes it), at most ${MAX_ATTACHABLE_ENTRY_BYTES} bytes.`,
+      );
   } else if (packIds.size > 0) {
     add(
       errors,
@@ -4197,6 +4283,8 @@ function normalizeAppDeliverable(raw: unknown): ManifestAppDeliverable | null {
           a < b ? -1 : a > b ? 1 : 0,
         ),
       );
+    const attachable = asRecord(def.content).attachable;
+    if (isAttachableList(attachable)) app.content.attachable = [...attachable];
   }
   return app;
 }

@@ -37,6 +37,8 @@ export const ACTION_INPUTS = [
   "pins",
   "out",
   "bases",
+  "script-extensions",
+  "script-types",
   "dry-run",
 ] as const;
 
@@ -69,6 +71,11 @@ export interface ActionIo {
   exec?: (cmd: string, args: string[]) => string;
   /** The platform seam (tests); `process.platform` otherwise. */
   platform?: NodeJS.Platform;
+}
+
+/** A list input (`script-extensions`, `script-types`): entries separated by whitespace or commas. */
+export function listInput(value: string | undefined): string[] {
+  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
 }
 
 /** The `pins` input: `<packId>@<version>` entries separated by whitespace or commas. */
@@ -169,6 +176,8 @@ export async function runAction(io: ActionIo): Promise<number> {
     if (deliverable && deliverable !== "app") {
       // P4-03: a pack release. Inputs that only stamp an app release are refused, not ignored.
       const wrong = given(["content-stamp", "embedded", "pins"]);
+      const scriptExtensions = listInput(input("script-extensions"));
+      const scriptTypes = listInput(input("script-types"));
       if (wrong.length)
         throw new Error(
           `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`,
@@ -189,6 +198,9 @@ export async function runAction(io: ActionIo): Promise<number> {
         ...(contentKeyPem ? { contentKeyPem } : {}),
         ...(delegation ? { delegation } : {}),
         ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
+        // P4-28: another script language for the PCK lint.
+        ...(scriptExtensions.length ? { scriptExtensions } : {}),
+        ...(scriptTypes.length ? { scriptTypes } : {}),
         dryRun: dryRun === "true",
         env: io.env,
         stdout: io.stdout,
@@ -199,10 +211,10 @@ export async function runAction(io: ActionIo): Promise<number> {
       await writeOutputs(io, result.releaseId, result.server);
       return 0;
     }
-    const wrong = given(["out", "bases"]);
+    const wrong = given(["out", "bases", "script-extensions", "script-types"]);
     if (wrong.length)
       throw new Error(
-        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases.`,
+        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases or configure a pack's lint.`,
       );
     const result = await publishRelease({
       cwd: io.cwd,

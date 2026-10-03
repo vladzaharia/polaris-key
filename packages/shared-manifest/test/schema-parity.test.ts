@@ -238,7 +238,15 @@ function base(): Docs {
             kind: "app",
             versioning: { scheme: "semver", buildNumber: "descriptor" },
             // P4-02: the content shape the app's code expects (required once a pack exists).
-            content: { contentApi: 3 },
+            // P4-28: what packs may attach.
+            content: {
+              contentApi: 3,
+              attachable: [
+                "res://scripts/die.gd",
+                "res://scripts/dice/",
+                "uid://dw1",
+              ],
+            },
             channels: { beta: { includes: ["stable"] }, nightly: {} },
             artifacts: [
               {
@@ -1370,6 +1378,45 @@ const MUTATIONS: Mutation[] = [
         contentApi: 3,
         packChannels: { "other.*": "events" },
       }),
+  },
+  {
+    // P4-28: an attachable entry is a res:// path or directory, or a canonical uid://.
+    code: "invalid_app_attachable",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (app(d).content = { contentApi: 3, attachable: ["scripts/die.gd"] }),
+  },
+  {
+    code: "invalid_app_attachable",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) =>
+      (app(d).content = {
+        contentApi: 3,
+        attachable: ["res://scripts/../tools/debug.gd"],
+      }),
+  },
+  {
+    code: "invalid_app_attachable",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (app(d).content = { contentApi: 3, attachable: [] }),
+  },
+  {
+    // A Windows device name and a non-canonical UID: validator-only.
+    code: "invalid_app_attachable",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      (app(d).content = { contentApi: 3, attachable: ["res://con/die.gd"] }),
+  },
+  {
+    code: "invalid_app_attachable",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      (app(d).content = { contentApi: 3, attachable: ["uid://adw1"] }),
   },
   {
     code: "invalid_pack_requires",

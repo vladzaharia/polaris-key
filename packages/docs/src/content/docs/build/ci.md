@@ -95,6 +95,8 @@ step.
 | `pins`              |                       | App only: `<packId>@<version>` pins for packs the build does not embed, separated by spaces, commas or newlines.          |
 | `out`               |                       | Pack only: keep the signed record and payloads at `<out>/<packId>/<version>/` for the next publish's `bases`.             |
 | `bases`             |                       | Pack only: the earlier releases `out` kept; the newest ones Polaris Key confirms get deltas.                              |
+| `script-extensions` |                       | Pack only (`godot.pck`): extensions the lint refuses as scripts beside `.gd`, `.gdc`, `.cs` (a GDExtension language).     |
+| `script-types`      |                       | Pack only (`godot.pck`): that language's script class names (`LuaScript`), refused as markers and as reference types.     |
 | `dry-run`           | `false`               | `true` uploads, signs and writes no release ([Dry runs](#dry-runs)); it still requests upload tickets.                    |
 
 The step sets two outputs: `release-id` and `outcome` (`created`, `enriched`, or `unchanged`). A
@@ -252,10 +254,23 @@ What the step does, in order:
    resources, blocks of 4 KiB to 1 MiB, each block one zstd frame (as Godot writes them) that
    decodes to exactly its declared size, and nothing after the closing magic. A model that needs
    more than 64 MiB uncompressed (a 980,000-triangle mesh imports to about 59 MB) fails, and so
-   does the compressed resource that takes a pack past 512 MiB; split the model or the pack. A reference to a script the game
-   already ships (`[ext_resource type="Script" …]`) names none of these and passes. The lint knows
-   the built-in script set only; for another script language (a GDExtension) the device check,
-   which asks its engine what a script is, is the one that refuses it. The header's engine must be `requires.engine`; more than
+   does the compressed resource that takes a pack past 512 MiB; split the model or the pack.
+   Every resource's references outside the pack are checked too: a reference to a script the game
+   already ships (`[ext_resource type="Script" …]`, or a binary resource's external entry) fails
+   unless `.pkey/release` lists it in `deliverables.app.content.attachable` (exactly, or under a
+   listed `res://…/` directory), and so does a `uid://` reference the pack's own uid cache does
+   not register unless the UID is listed. A reference the check cannot read the way the engine
+   would (an `ext_resource` tag that is not one plain line, an inline `Resource("…")`, a relative
+   or non-normal path, a non-canonical UID) fails, and so does a resource that sets
+   `resource_path`. The device runs the same check with its `PKeyOptions.pack_attachable`, so
+   keep the two lists equal. The device can also resolve an app UID and read an app resource's
+   real type; the lint cannot, so it refuses every UID outside the pack's cache that is not
+   listed. Godot 4.4+ writes a UID on every reference, so list the UIDs of the app resources
+   your packs reference (a shared texture or scene) as well as the scripts; the device admits
+   those UIDs without the list. The lint knows `.gd`, `.gdc` and
+   `.cs` and the built-in script types; for another script language (a GDExtension) pass
+   `script-extensions` and `script-types` (CLI: `--script-extensions`, `--script-types`) so CI
+   refuses what the device, which asks its engine, refuses. The header's engine must be `requires.engine`; more than
    1,000 entries warns and more than 20,000 fails, because mounting stalls longer with the entry
    count. A `files.tree` must keep the [path rules](/docs/build/wire/packs/#path-rules) and hold no symbolic links.
 2. **Build the objects.** A `full` object (the whole payload, one zstd frame), the `pkey-files/1`
