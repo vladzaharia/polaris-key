@@ -1,0 +1,16 @@
+# S-08 spike scripts
+
+The throwaway harness behind [S-08](../S-08-cloudflare-async-compute.md), kept so the numbers can be
+re-run. Nothing here is product code. It needs the private Diceroll inputs that S-03 downloads
+(`prototype/chunk-history/data/`), so it commits no payload bytes, and it writes all its output
+outside the repo.
+
+| Path                           | What it is                                                                                                                                                                                                                                                                                          |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wasm/zenc.c`, `wasm/build.sh` | libzstd 1.5.7 **encoder plus decoder** for wasm32 with no libc. It uses the same toolchain, libc stubs (`packages/zstd-wasm/wasm/stub/`) and bump allocator as `@polaris-key/zstd-wasm`. The `--patch-from` parameters copy `programs/fileio.c`. `ZSTD_SRC` points at an extracted zstd-1.5.7 tree. |
+| `wasm/zenc.mjs`                | The JS driver shared by Node and workerd: it streams the prefix into linear memory and the target through `ZSTD_compressStream2`.                                                                                                                                                                   |
+| `wasm/node-run.mjs`            | Encodes one pair in Node; used for the byte-identity checks against the CLI.                                                                                                                                                                                                                        |
+| `wasm/node-encverify.mjs`      | Encodes and then verifies in one instance (the heap is reset, the prefix stays resident) and reports peak linear memory.                                                                                                                                                                            |
+| `native.sh`                    | Runs the zstd CLI encode and decode under `/usr/bin/time -l` (macOS) and prints one JSON line.                                                                                                                                                                                                      |
+| `worker/`                      | The spike Worker for `wrangler dev`: local R2, a Queue with a DLQ, a Workflow, an `/encode` route, and probes for memory, CPU and duplicate ids. Copy `zenc.wasm` and `zenc.mjs` into `worker/src/` first. `run-encode.sh` times one encode from outside.                                           |
+| `container/`                   | A Go HTTP entrypoint around the zstd CLI on `alpine:3.22`, and `run.sh`, which starts the image under `docker run --cpus/--memory` caps that mirror Cloudflare's instance types.                                                                                                                    |

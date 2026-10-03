@@ -1,0 +1,32 @@
+name = "s08-delta-spike"
+main = "src/index.js"
+compatibility_date = "2026-07-30"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "BLOBS"
+bucket_name = "s08-local-blobs"
+
+[[queues.producers]]
+binding = "DELTA_QUEUE"
+queue = "s08-delta"
+
+[[queues.consumers]]
+queue = "s08-delta"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 2
+dead_letter_queue = "s08-delta-dlq"
+
+[[queues.consumers]]
+queue = "s08-delta-dlq"
+max_batch_size = 10
+max_batch_timeout = 1
+
+[[workflows]]
+name = "s08-delta-workflow"
+binding = "DELTA_WORKFLOW"
+class_name = "DeltaWorkflow"
+
+[limits]
+cpu_ms = 300000
