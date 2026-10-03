@@ -490,6 +490,11 @@ describe("the admin API", () => {
         field: "packageName",
         label: "Google Play package name",
       },
+      // P5-04 adopted it for the Partner Center app (`msstore.test.ts`).
+      "ms-partner-center": {
+        field: "productId",
+        label: "Microsoft Store product id (Store ID)",
+      },
     });
     expect(body.credentials.find((c) => c.id === "asc")!.meta.appleId).toBe(
       APPLE_ID,
