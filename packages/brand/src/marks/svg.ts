@@ -19,6 +19,7 @@ import {
   CUT_GRID,
   OPTICAL,
   type BadgeLayout,
+  type LockupKind,
   type MarkKind,
   type OpticalCut,
 } from "../tokens/primitives.js";
@@ -61,7 +62,7 @@ const fmt = (n: number) => String(Math.round(n * 100) / 100);
 // ── The mark ────────────────────────────────────────────────────────────────────────────────
 
 export interface MarkOptions {
-  /** Pinned K (the platform) or Star Cut Update (the delivery service). Default "key". */
+  /** Pinned K (the platform) or the Star Cut (the Polaris Key Delivery service). Default "key". */
   kind?: MarkKind;
   /** Displayed size in CSS px; selects the optical cut. Default 24. */
   size?: number;
@@ -200,7 +201,11 @@ function kitLayout(t: KitTemplate, palette: KitPalette): string {
 }
 
 export interface LockupOptions {
-  kind?: MarkKind;
+  /**
+   * "key" (Polaris Key), "delivery" (Polaris Key Delivery, the Star Cut lockup for our surfaces)
+   * or "update" (the kit's original "Polaris Key Update" lockup). Default "key".
+   */
+  kind?: LockupKind;
   layout?: LockupLayout;
   /** dark / light grounds, "mono" for currentColor, or the kit's mono-black / mono-white ink. */
   theme?: LayoutTheme;
@@ -274,6 +279,17 @@ export function kitLockupSvg(
   variant: KitVariant,
 ): string {
   return kitLayout(LOCKUP_TEMPLATES[kind][layout], KIT_PALETTES[variant]);
+}
+
+/**
+ * One of the generated "Polaris Key Delivery" lockup files (lockups/delivery), byte for byte:
+ * the kit's colour variants applied to the Delivery template.
+ */
+export function deliveryLockupSvg(
+  layout: LockupLayout,
+  variant: KitVariant,
+): string {
+  return kitLayout(LOCKUP_TEMPLATES.delivery[layout], KIT_PALETTES[variant]);
 }
 
 // ── "Powered by Polaris Key" ────────────────────────────────────────────────────────────────

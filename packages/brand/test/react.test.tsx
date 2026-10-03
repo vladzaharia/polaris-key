@@ -26,7 +26,7 @@ describe(`React ${React.version}`, () => {
     { size: 48, bit: "release" as const },
     { size: 48, bit: "section" as const, theme: "light" as const },
     { size: 40, bit: "identity" as const },
-    { kind: "update" as const, size: 24, title: "Polaris Key Update" },
+    { kind: "update" as const, size: 24, title: "Polaris Key Delivery" },
   ];
   it.each(markCases.map((c) => [JSON.stringify(c), c] as const))(
     "PolarisMark %s renders markSvg's markup",
