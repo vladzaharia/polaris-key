@@ -1,0 +1,87 @@
+{
+  "name": "@polaris-key/brand",
+  "version": "0.0.0",
+  "description": "The Polaris Key design system: brand tokens (CSS, Tailwind v4, TS, JSON, GDScript, Swift), Rubik web fonts, the Pinned K and Star Cut Update marks, lockups and \"Powered by\" badges, and the launch-kit assets.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    },
+    "./svg": {
+      "types": "./dist/svg.d.ts",
+      "default": "./dist/svg.js"
+    },
+    "./color": {
+      "types": "./dist/color.d.ts",
+      "default": "./dist/color.js"
+    },
+    "./tokens.css": "./css/tokens.css",
+    "./theme.css": "./css/theme.css",
+    "./fonts.css": "./fonts/fonts.css",
+    "./fonts/*": "./fonts/*",
+    "./tokens.json": "./tokens.json",
+    "./sprite.svg": "./kit/08-developer/polaris-sprite.svg",
+    "./marks/*": "./kit/01-marks/*",
+    "./lockups/*": "./kit/02-lockups/*",
+    "./powered-by/*": "./kit/03-powered-by/*",
+    "./web/*": "./kit/04-web/*",
+    "./app-icons/*": "./kit/05-app-icons/*",
+    "./games/*": "./kit/06-games/*",
+    "./social/*": "./kit/07-social/*",
+    "./kit/*": "./kit/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!dist/preview",
+    "css",
+    "fonts",
+    "kit",
+    "tokens.json",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && tsx scripts/build-preview.ts",
+    "gen": "tsx scripts/gen.ts",
+    "proofs": "tsx scripts/render-proofs.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "prettier --check \"src/**/*.{ts,tsx}\" \"test/**/*.{ts,tsx}\" \"scripts/**/*.ts\" \"css/**/*.css\" \"fonts/**/*.css\"",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "prettier": "^3.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sharp": "^0.35.4",
+    "tailwindcss": "^4.1.4",
+    "tsx": "^4.19.0"
+  }
+}

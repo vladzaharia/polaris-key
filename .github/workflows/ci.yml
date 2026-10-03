@@ -47,6 +47,10 @@ jobs:
       # enums, feature ids, versions) must match its sources, and conformance/parity/errors.json
       # must list every wire code the Worker's source emits (tools/gen-sdk-constants.ts).
       - run: pnpm gen:constants -- --check
+      # Brand-token drift: @polaris-key/brand's generated outputs (tokens.css, the Tailwind v4 theme,
+      # tokens.json, the TS constants and kit templates, the Godot and Swift token files) must match
+      # packages/brand/src/tokens/ and the launch-kit copy (packages/brand/scripts/gen.ts).
+      - run: pnpm gen:brand -- --check
       # Action-bundle drift (P2-06): actions/publish/dist/index.js is the committed esbuild bundle
       # of @polaris-key/cli that the polaris-key/publish Action runs (and the standalone pkey.mjs
       # attached to releases). Rebuilt in memory from the built workspace; exit 1 on any difference.

@@ -1,0 +1,438 @@
+/*
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
+ * packages/brand/src/tokens/ and the launch kit copy in packages/brand/kit/.
+ * `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+ * its source and regenerate.
+ */
+
+/*
+ * Polaris Key design tokens.
+ *
+ * THEME. Dark first: with no attribute the dark theme applies, and the light theme applies when
+ * the OS asks for light (prefers-color-scheme). A persisted choice is written as
+ * data-theme="dark" | "light" on <html> and overrides the system either way. data-theme on any
+ * other element re-themes that subtree.
+ *
+ * SECTION. data-service="core|license|config|release|distribution|update|identity" on (or
+ * inside) the themed element re-points --pk-accent*, and --pk-section-bit, at that section.
+ * With no data-service the platform (core) values apply.
+ */
+
+:root {
+  /* The kit's own primitives, verbatim (kit/08-developer/tokens.css). */
+  --polaris-key-violet-dark: #9a5cff;
+  --polaris-key-violet-light: #7a2fff;
+  --polaris-key-gold-dark: #ffc24d;
+  --polaris-key-gold-light: #d07a00;
+  --polaris-key-page-dark: #060912;
+  --polaris-key-page-light: #f6f8ff;
+  --polaris-key-star: #fff;
+  --polaris-key-star-soft: #dbe4ff;
+  --polaris-key-rose-dark: #ff6fa6;
+  --polaris-key-rose-light: #e0348a;
+
+  /* Scales. */
+  --pk-space-0: 0;
+  --pk-space-1: 0.25rem;
+  --pk-space-2: 0.5rem;
+  --pk-space-3: 0.75rem;
+  --pk-space-4: 1rem;
+  --pk-space-5: 1.25rem;
+  --pk-space-6: 1.5rem;
+  --pk-space-8: 2rem;
+  --pk-space-10: 2.5rem;
+  --pk-space-12: 3rem;
+  --pk-space-16: 4rem;
+  --pk-space-20: 5rem;
+  --pk-space-24: 6rem;
+  --pk-space-0_5: 0.125rem;
+  --pk-space-1_5: 0.375rem;
+  --pk-radius-none: 0;
+  --pk-radius-xs: 0.125rem;
+  --pk-radius-sm: 0.25rem;
+  --pk-radius-md: 0.375rem;
+  --pk-radius-lg: 0.625rem;
+  --pk-radius-xl: 1.125rem;
+  --pk-radius-full: 9999px;
+  --pk-font-sans:
+    "Rubik", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --pk-font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  --pk-font-weight-regular: 400;
+  --pk-font-weight-bold: 700;
+  --pk-font-size-xs: 0.75rem;
+  --pk-line-height-xs: 1rem;
+  --pk-font-size-sm: 0.875rem;
+  --pk-line-height-sm: 1.25rem;
+  --pk-font-size-base: 1rem;
+  --pk-line-height-base: 1.5rem;
+  --pk-font-size-lg: 1.125rem;
+  --pk-line-height-lg: 1.75rem;
+  --pk-font-size-xl: 1.25rem;
+  --pk-line-height-xl: 1.75rem;
+  --pk-font-size-2xl: 1.5rem;
+  --pk-line-height-2xl: 2rem;
+  --pk-font-size-3xl: 1.875rem;
+  --pk-line-height-3xl: 2.25rem;
+  --pk-font-size-4xl: 2.25rem;
+  --pk-line-height-4xl: 2.5rem;
+  --pk-font-size-5xl: 3rem;
+  --pk-line-height-5xl: 1.1;
+  --pk-tracking-tight: -0.015em;
+  --pk-tracking-normal: 0;
+  --pk-duration-instant: 0ms;
+  --pk-duration-fast: 120ms;
+  --pk-duration-base: 200ms;
+  --pk-duration-slow: 320ms;
+  --pk-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --pk-ease-enter: cubic-bezier(0, 0, 0, 1);
+  --pk-ease-exit: cubic-bezier(0.3, 0, 1, 1);
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --pk-surface-page: #060912;
+  --pk-surface-raised: #0d111b;
+  --pk-surface-overlay: #121722;
+  --pk-surface-sunken: #020408;
+  --pk-text-strong: #ffffff;
+  --pk-text-default: #dbe4ff;
+  --pk-text-muted: #b5bed3;
+  --pk-text-subtle: #969eb2;
+  --pk-text-on-accent: #060912;
+  --pk-border-subtle: #212633;
+  --pk-border-strong: #61697b;
+  --pk-focus: #9a5cff;
+  --pk-brand-violet: #9a5cff;
+  --pk-brand-gold: #ffc24d;
+  --pk-brand-star: #ffffff;
+  --pk-brand-page: #060912;
+  --pk-brand-text: #ffffff;
+  --pk-brand-muted: #dbe4ff;
+  --pk-brand-rose: #ff6fa6;
+  --pk-service-core: #9a5cff;
+  --pk-service-core-fg: #9a5cff;
+  --pk-service-core-on: #060912;
+  --pk-service-core-subtle: #18132e;
+  --pk-service-core-bit: #ffc24d;
+  --pk-service-license: #c6e940;
+  --pk-service-license-fg: #c6e940;
+  --pk-service-license-on: #060912;
+  --pk-service-license-subtle: #1d2418;
+  --pk-service-license-bit: #c6e940;
+  --pk-service-config: #12bcd5;
+  --pk-service-config-fg: #12bcd5;
+  --pk-service-config-on: #060912;
+  --pk-service-config-subtle: #071e29;
+  --pk-service-config-bit: #12bcd5;
+  --pk-service-release: #3eeedb;
+  --pk-service-release-fg: #3eeedb;
+  --pk-service-release-on: #060912;
+  --pk-service-release-subtle: #0d242a;
+  --pk-service-release-bit: #3eeedb;
+  --pk-service-distribution: #39d075;
+  --pk-service-distribution-fg: #39d075;
+  --pk-service-distribution-on: #060912;
+  --pk-service-distribution-subtle: #0c211e;
+  --pk-service-distribution-bit: #39d075;
+  --pk-service-update: #39d075;
+  --pk-service-update-fg: #39d075;
+  --pk-service-update-on: #060912;
+  --pk-service-update-subtle: #0c211e;
+  --pk-service-update-bit: #39d075;
+  --pk-service-identity: #d77df2;
+  --pk-service-identity-fg: #d77df2;
+  --pk-service-identity-on: #060912;
+  --pk-service-identity-subtle: #1f172d;
+  --pk-service-identity-bit: #d77df2;
+  --pk-success: #56d57b;
+  --pk-success-on: #060912;
+  --pk-success-border: #3b9555;
+  --pk-success-subtle: #10211f;
+  --pk-warning: #ff8f57;
+  --pk-warning-on: #060912;
+  --pk-warning-border: #c2612d;
+  --pk-warning-subtle: #24191a;
+  --pk-danger: #f2513f;
+  --pk-danger-on: #060912;
+  --pk-danger-border: #c83b2c;
+  --pk-danger-subtle: #221217;
+  --pk-info: #b688fe;
+  --pk-info-on: #060912;
+  --pk-info-border: #8f54dc;
+  --pk-info-subtle: #1b182e;
+  --pk-signed: #ffc24d;
+  --pk-signed-on: #060912;
+  --pk-signed-border: #ba882e;
+  --pk-signed-subtle: #241f19;
+  --pk-signed-mark: #ffc24d;
+  --pk-elevation-0: none;
+  --pk-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --pk-elevation-2: 0 4px 12px -2px rgb(0 0 0 / 0.5);
+  --pk-elevation-3: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --pk-surface-page: #f6f8ff;
+    --pk-surface-raised: #ffffff;
+    --pk-surface-overlay: #ffffff;
+    --pk-surface-sunken: #ebeef8;
+    --pk-text-strong: #060912;
+    --pk-text-default: #262d40;
+    --pk-text-muted: #48536b;
+    --pk-text-subtle: #5d667b;
+    --pk-text-on-accent: #ffffff;
+    --pk-border-subtle: #dadee9;
+    --pk-border-strong: #7e8699;
+    --pk-focus: #7a2fff;
+    --pk-brand-violet: #7a2fff;
+    --pk-brand-gold: #d07a00;
+    --pk-brand-star: #7a2fff;
+    --pk-brand-page: #f6f8ff;
+    --pk-brand-text: #060912;
+    --pk-brand-muted: #48536b;
+    --pk-brand-rose: #e0348a;
+    --pk-service-core: #7a2fff;
+    --pk-service-core-fg: #7a2fff;
+    --pk-service-core-on: #ffffff;
+    --pk-service-core-subtle: #eae4ff;
+    --pk-service-core-bit: #d07a00;
+    --pk-service-license: #708d00;
+    --pk-service-license-fg: #556e00;
+    --pk-service-license-on: #060912;
+    --pk-service-license-subtle: #e9ede6;
+    --pk-service-license-bit: #708d00;
+    --pk-service-config: #006270;
+    --pk-service-config-fg: #006270;
+    --pk-service-config-on: #ffffff;
+    --pk-service-config-subtle: #dde9f1;
+    --pk-service-config-bit: #006270;
+    --pk-service-release: #01948a;
+    --pk-service-release-fg: #00736b;
+    --pk-service-release-on: #060912;
+    --pk-service-release-subtle: #deeef3;
+    --pk-service-release-bit: #01948a;
+    --pk-service-distribution: #05773b;
+    --pk-service-distribution-fg: #05773b;
+    --pk-service-distribution-on: #ffffff;
+    --pk-service-distribution-subtle: #deebeb;
+    --pk-service-distribution-bit: #05773b;
+    --pk-service-update: #05773b;
+    --pk-service-update-fg: #05773b;
+    --pk-service-update-on: #ffffff;
+    --pk-service-update-subtle: #deebeb;
+    --pk-service-update-bit: #05773b;
+    --pk-service-identity: #9e34ae;
+    --pk-service-identity-fg: #9e34ae;
+    --pk-service-identity-on: #ffffff;
+    --pk-service-identity-subtle: #ede4f7;
+    --pk-service-identity-bit: #9e34ae;
+    --pk-success: #167337;
+    --pk-success-on: #ffffff;
+    --pk-success-border: #348f4f;
+    --pk-success-subtle: #e0ebeb;
+    --pk-warning: #a24112;
+    --pk-warning-on: #ffffff;
+    --pk-warning-border: #c75d29;
+    --pk-warning-subtle: #eee6e7;
+    --pk-danger: #be2323;
+    --pk-danger-on: #ffffff;
+    --pk-danger-border: #db423c;
+    --pk-danger-subtle: #f0e3e9;
+    --pk-info: #7a2fff;
+    --pk-info-on: #ffffff;
+    --pk-info-border: #8e66f1;
+    --pk-info-subtle: #eae4ff;
+    --pk-signed: #c47300;
+    --pk-signed-on: #060912;
+    --pk-signed-border: #bf7101;
+    --pk-signed-subtle: #f1ebe6;
+    --pk-signed-mark: #d07a00;
+    --pk-elevation-0: none;
+    --pk-elevation-1: 0 1px 2px 0 rgb(6 9 18 / 0.06);
+    --pk-elevation-2: 0 4px 12px -2px rgb(6 9 18 / 0.1);
+    --pk-elevation-3: 0 16px 40px -8px rgb(6 9 18 / 0.16);
+  }
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --pk-surface-page: #f6f8ff;
+  --pk-surface-raised: #ffffff;
+  --pk-surface-overlay: #ffffff;
+  --pk-surface-sunken: #ebeef8;
+  --pk-text-strong: #060912;
+  --pk-text-default: #262d40;
+  --pk-text-muted: #48536b;
+  --pk-text-subtle: #5d667b;
+  --pk-text-on-accent: #ffffff;
+  --pk-border-subtle: #dadee9;
+  --pk-border-strong: #7e8699;
+  --pk-focus: #7a2fff;
+  --pk-brand-violet: #7a2fff;
+  --pk-brand-gold: #d07a00;
+  --pk-brand-star: #7a2fff;
+  --pk-brand-page: #f6f8ff;
+  --pk-brand-text: #060912;
+  --pk-brand-muted: #48536b;
+  --pk-brand-rose: #e0348a;
+  --pk-service-core: #7a2fff;
+  --pk-service-core-fg: #7a2fff;
+  --pk-service-core-on: #ffffff;
+  --pk-service-core-subtle: #eae4ff;
+  --pk-service-core-bit: #d07a00;
+  --pk-service-license: #708d00;
+  --pk-service-license-fg: #556e00;
+  --pk-service-license-on: #060912;
+  --pk-service-license-subtle: #e9ede6;
+  --pk-service-license-bit: #708d00;
+  --pk-service-config: #006270;
+  --pk-service-config-fg: #006270;
+  --pk-service-config-on: #ffffff;
+  --pk-service-config-subtle: #dde9f1;
+  --pk-service-config-bit: #006270;
+  --pk-service-release: #01948a;
+  --pk-service-release-fg: #00736b;
+  --pk-service-release-on: #060912;
+  --pk-service-release-subtle: #deeef3;
+  --pk-service-release-bit: #01948a;
+  --pk-service-distribution: #05773b;
+  --pk-service-distribution-fg: #05773b;
+  --pk-service-distribution-on: #ffffff;
+  --pk-service-distribution-subtle: #deebeb;
+  --pk-service-distribution-bit: #05773b;
+  --pk-service-update: #05773b;
+  --pk-service-update-fg: #05773b;
+  --pk-service-update-on: #ffffff;
+  --pk-service-update-subtle: #deebeb;
+  --pk-service-update-bit: #05773b;
+  --pk-service-identity: #9e34ae;
+  --pk-service-identity-fg: #9e34ae;
+  --pk-service-identity-on: #ffffff;
+  --pk-service-identity-subtle: #ede4f7;
+  --pk-service-identity-bit: #9e34ae;
+  --pk-success: #167337;
+  --pk-success-on: #ffffff;
+  --pk-success-border: #348f4f;
+  --pk-success-subtle: #e0ebeb;
+  --pk-warning: #a24112;
+  --pk-warning-on: #ffffff;
+  --pk-warning-border: #c75d29;
+  --pk-warning-subtle: #eee6e7;
+  --pk-danger: #be2323;
+  --pk-danger-on: #ffffff;
+  --pk-danger-border: #db423c;
+  --pk-danger-subtle: #f0e3e9;
+  --pk-info: #7a2fff;
+  --pk-info-on: #ffffff;
+  --pk-info-border: #8e66f1;
+  --pk-info-subtle: #eae4ff;
+  --pk-signed: #c47300;
+  --pk-signed-on: #060912;
+  --pk-signed-border: #bf7101;
+  --pk-signed-subtle: #f1ebe6;
+  --pk-signed-mark: #d07a00;
+  --pk-elevation-0: none;
+  --pk-elevation-1: 0 1px 2px 0 rgb(6 9 18 / 0.06);
+  --pk-elevation-2: 0 4px 12px -2px rgb(6 9 18 / 0.1);
+  --pk-elevation-3: 0 16px 40px -8px rgb(6 9 18 / 0.16);
+}
+
+/* The current section. Core (the platform) is the default. */
+:root,
+[data-theme],
+[data-service="core"] {
+  --pk-accent: var(--pk-service-core);
+  --pk-accent-fg: var(--pk-service-core-fg);
+  --pk-accent-on: var(--pk-service-core-on);
+  --pk-accent-subtle: var(--pk-service-core-subtle);
+  --pk-section-bit: var(--pk-service-core-bit);
+}
+
+[data-service="license"] {
+  --pk-accent: var(--pk-service-license);
+  --pk-accent-fg: var(--pk-service-license-fg);
+  --pk-accent-on: var(--pk-service-license-on);
+  --pk-accent-subtle: var(--pk-service-license-subtle);
+  --pk-section-bit: var(--pk-service-license-bit);
+}
+
+[data-service="config"] {
+  --pk-accent: var(--pk-service-config);
+  --pk-accent-fg: var(--pk-service-config-fg);
+  --pk-accent-on: var(--pk-service-config-on);
+  --pk-accent-subtle: var(--pk-service-config-subtle);
+  --pk-section-bit: var(--pk-service-config-bit);
+}
+
+[data-service="release"] {
+  --pk-accent: var(--pk-service-release);
+  --pk-accent-fg: var(--pk-service-release-fg);
+  --pk-accent-on: var(--pk-service-release-on);
+  --pk-accent-subtle: var(--pk-service-release-subtle);
+  --pk-section-bit: var(--pk-service-release-bit);
+}
+
+[data-service="distribution"] {
+  --pk-accent: var(--pk-service-distribution);
+  --pk-accent-fg: var(--pk-service-distribution-fg);
+  --pk-accent-on: var(--pk-service-distribution-on);
+  --pk-accent-subtle: var(--pk-service-distribution-subtle);
+  --pk-section-bit: var(--pk-service-distribution-bit);
+}
+
+[data-service="update"] {
+  --pk-accent: var(--pk-service-update);
+  --pk-accent-fg: var(--pk-service-update-fg);
+  --pk-accent-on: var(--pk-service-update-on);
+  --pk-accent-subtle: var(--pk-service-update-subtle);
+  --pk-section-bit: var(--pk-service-update-bit);
+}
+
+[data-service="identity"] {
+  --pk-accent: var(--pk-service-identity);
+  --pk-accent-fg: var(--pk-service-identity-fg);
+  --pk-accent-on: var(--pk-service-identity-on);
+  --pk-accent-subtle: var(--pk-service-identity-subtle);
+  --pk-section-bit: var(--pk-service-identity-bit);
+}
+
+/* Reduced motion: every duration token collapses, so token-driven motion stops everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --pk-duration-instant: 0ms;
+    --pk-duration-fast: 0ms;
+    --pk-duration-base: 0ms;
+    --pk-duration-slow: 0ms;
+  }
+}
+
+/* Rubik ships two weights; never let the browser fake a third. */
+:root {
+  font-synthesis: none;
+}
+
+/* The kit's mark class (kit/08-developer/tokens.css). */
+.polaris-mark {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+
+/* The section bit eases between section colours; the star never animates. */
+.polaris-section-bit {
+  transition: fill var(--pk-duration-base) var(--pk-ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .polaris-section-bit {
+    transition: none;
+  }
+}
