@@ -419,6 +419,9 @@ importers:
       '@noble/curves':
         specifier: 2.4.0
         version: 2.4.0
+      '@polaris-key/brand':
+        specifier: workspace:*
+        version: link:../brand
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog

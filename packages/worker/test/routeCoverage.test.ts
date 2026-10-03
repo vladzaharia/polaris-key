@@ -131,6 +131,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
     "/{product}/update/{channel}/velopack/releases.{velopackChannel}.json",
     ["get"],
   ],
+  // S-11 §5.1: the package a bare Velopack `FileName` resolves to (a 302 to its delivery URL).
+  ["/{product}/update/{channel}/velopack/{fileName}", ["get"]],
   ["/{product}/update/{channel}/app.appinstaller", ["get"]],
   ["/{product}/update/{channel}/{buildId}.AppImage.zsync", ["get"]],
   ["/{product}/update/version", ["get"]],
@@ -295,6 +297,7 @@ const CORS_EXCLUDED = new Set([
   // the only CORS is P0-05's allowlist, on the routes it already covers).
   "/{product}/update/{channel}/winsparkle.xml",
   "/{product}/update/{channel}/velopack/releases.{velopackChannel}.json",
+  "/{product}/update/{channel}/velopack/{fileName}",
   "/{product}/update/{channel}/app.appinstaller",
   "/{product}/update/{channel}/{buildId}.AppImage.zsync",
 ]);
@@ -323,6 +326,7 @@ function concrete(template: string): string {
     outlet: "direct",
     path: "entry.jar",
     velopackChannel: "win-x64",
+    fileName: "Acme-1.2.3-full.nupkg",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

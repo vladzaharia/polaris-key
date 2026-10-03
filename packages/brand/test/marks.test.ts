@@ -184,6 +184,9 @@ describe("accessibility", () => {
     expect(lockupSvg({ kind: "update" })).toContain(
       'aria-label="Polaris Key Update"',
     );
+    expect(lockupSvg({ kind: "delivery" })).toContain(
+      'aria-label="Polaris Key Delivery"',
+    );
     expect(poweredBySvg({})).toContain('aria-label="Powered by Polaris Key"');
     expect(lockupSvg({ title: "" })).toContain('aria-hidden="true"');
   });

@@ -134,6 +134,15 @@ missing, so boot never fails for want of a native library.
   - S-11 §7 lists what only certificates or a Partner Center app can verify.
 - **Size risk.** Four native components in 1–1.5 weeks is tight; if it grows past half again,
   split StoreContext into its own package and say so in the PR.
+- **Lead follow-up (2026-10-03, branch `fix/delivery-surface`): non-public Velopack delivery.**
+  The Velopack feed now names each package by its bare `FileName`, and the client fetches
+  `…/update/<channel>/velopack/<FileName>`, which answers a cross-origin `302` to the package's
+  delivery URL on the bytes host. Under licensed or entitled delivery the measured updaters drop
+  `Authorization` on that cross-origin redirect (S-11 §5.2), so the second hop is refused (fail
+  closed). Public delivery works today. Before P5-07 relies on Velopack for a non-public delivery,
+  it must make the package route either stream the bytes same-origin (no redirect) or redirect to
+  a signed, short-lived `Location` that needs no `Authorization`; until then, gate Velopack on
+  public delivery and say so in the facade's error.
 
 ## Steps
 

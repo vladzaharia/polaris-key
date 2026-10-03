@@ -5,6 +5,8 @@
  *
  *     GET /<channel>/winsparkle.xml                     WinSparkle appcast (Windows installers)
  *     GET /<channel>/velopack/releases.<vch>.json       Velopack feed (`<vch>` = win|osx|linux[-x64|-arm64][-…])
+ *     GET /<channel>/velopack/<FileName>                302 to the delivery URL of a package the
+ *                                                       Velopack feed lists (`FileName` is bare)
  *     GET /<channel>/app.appinstaller[?arch=|?outlet=]  MSIX App Installer file (2021 schema)
  *     GET /<channel>/<buildId>.AppImage.zsync           AppImageUpdate control file
  *     GET /appcast.xml, /<channel>/appcast.xml          the Sparkle appcast, EXTENDED for a product
@@ -164,6 +166,11 @@ interface FeedPlan {
   publicCache: string;
   /** `null` = not found. */
   render: (r: RenderContext) => Promise<string | Uint8Array | null>;
+  /**
+   * The rendered string is a URL to answer with a 302 rather than a body (the Velopack package
+   * route). Everything before the answer — rate limit, access, cache — is the feed's own.
+   */
+  redirect?: boolean;
 }
 
 /** What a feed renderer is handed once access is decided. */
@@ -277,12 +284,27 @@ async function serveFeed(
     body = await plan.render(rctx);
   }
   if (body === null) return harden(notFound());
+  const cacheControl = mode === "public" ? plan.publicCache : PRIVATE_CACHE;
+  if (plan.redirect) {
+    const location =
+      typeof body === "string" ? body : new TextDecoder().decode(body);
+    return harden(
+      new Response(null, {
+        status: 302,
+        headers: {
+          location,
+          "cache-control": cacheControl,
+          "x-content-type-options": "nosniff",
+        },
+      }),
+    );
+  }
   const bytes =
     typeof body === "string" ? new TextEncoder().encode(body) : body;
   const etag = `"${await sha256Hex(bytes)}"`;
   const headers = {
     "content-type": plan.contentType,
-    "cache-control": mode === "public" ? plan.publicCache : PRIVATE_CACHE,
+    "cache-control": cacheControl,
     etag,
     "x-content-type-options": "nosniff",
   };
@@ -529,6 +551,96 @@ function velopackTarget(
   return { platform, arch };
 }
 
+/**
+ * One package the Velopack feed for a target lists, before its SHA-1 is read: what the asset
+ * says, the artifact whose bytes give the SHA-1, and the immutable delivery URL the package
+ * route redirects to.
+ */
+interface VelopackCandidate {
+  asset: Omit<VelopackAsset, "SHA1">;
+  artifact: CatalogSourceArtifact;
+  url: string;
+  /**
+   * The full package this one is listed only with: the newest release's deltas go with its full
+   * package, so a full package whose bytes give no SHA-1 takes its deltas out of the feed too.
+   */
+  full?: VelopackCandidate;
+}
+
+/**
+ * The packages the Velopack feed for `target` lists, in feed order: the newest release's full
+ * package, then each listed release's descriptor-named deltas. ONE selection serves the feed and
+ * the package route, so the route can redirect to nothing the feed would not list.
+ */
+async function velopackCandidates(
+  r: RenderContext,
+  channel: string,
+  target: { platform: string; arch: string },
+): Promise<VelopackCandidate[] | null> {
+  const sel = await select(r, {
+    channel,
+    kinds: ["direct"],
+    outletId: r.outletParam,
+    platform: target.platform,
+    arches: [target.arch, "universal", "any"],
+    payloadSuffixes: ["-full.nupkg"],
+    liveness: "availability",
+    limit: VELOPACK_RELEASES,
+    withArtifacts: true,
+  });
+  if (!sel) return null;
+  const out: VelopackCandidate[] = [];
+  for (const [i, e] of sel.entries.entries()) {
+    const packageId = velopackPackageId(e.name, e.version);
+    if (!packageId || !e.sha256 || e.size === null) continue;
+    const notes = velopackNotes(e.notes);
+    let full: VelopackCandidate | undefined;
+    if (i === 0) {
+      if (!isVelopackFileName(e.name)) continue;
+      full = {
+        asset: {
+          PackageId: packageId,
+          Version: e.version,
+          Type: "Full",
+          FileName: e.name,
+          SHA256: e.sha256.toUpperCase(),
+          Size: e.size,
+          ...notes,
+        },
+        artifact: e.payload,
+        url: e.url,
+      };
+      out.push(full);
+    }
+    for (const a of e.artifacts) {
+      if (
+        !isBuildFile(a, e.buildId, "delta") ||
+        !a.url ||
+        !a.sha256 ||
+        a.sizeBytes === null ||
+        !a.name.toLowerCase().endsWith("-delta.nupkg") ||
+        !isVelopackFileName(a.name)
+      )
+        continue;
+      out.push({
+        asset: {
+          PackageId: packageId,
+          Version: e.version,
+          Type: "Delta",
+          FileName: a.name,
+          SHA256: a.sha256.toUpperCase(),
+          Size: a.sizeBytes,
+          ...notes,
+        },
+        artifact: a,
+        url: a.url,
+        ...(full ? { full } : {}),
+      });
+    }
+  }
+  return out;
+}
+
 function serveVelopack(
   ctx: ServiceContext,
   channel: string,
@@ -551,61 +663,105 @@ function serveVelopack(
       contentType: CONTENT_TYPES.json,
       publicCache: PUBLIC_FEED_CACHE,
       render: async (r) => {
-        const sel = await select(r, {
-          channel,
-          kinds: ["direct"],
-          outletId: r.outletParam,
-          platform: target.platform,
-          arches: [target.arch, "universal", "any"],
-          payloadSuffixes: ["-full.nupkg"],
-          liveness: "availability",
-          limit: VELOPACK_RELEASES,
-          withArtifacts: true,
-        });
-        if (!sel) return null;
+        const candidates = await velopackCandidates(r, channel, target);
+        if (!candidates) return null;
         const assets: VelopackAsset[] = [];
-        for (const [i, e] of sel.entries.entries()) {
-          const packageId = velopackPackageId(e.name, e.version);
-          if (!packageId || !e.sha256 || e.size === null) continue;
-          const notes = velopackNotes(e.notes);
-          if (i === 0) {
-            const sha1 = await artifactSha1(r.artifacts, e.payload);
-            if (!sha1) continue;
-            assets.push({
-              PackageId: packageId,
-              Version: e.version,
-              Type: "Full",
-              FileName: e.url,
-              SHA1: sha1.toUpperCase(),
-              SHA256: e.sha256.toUpperCase(),
-              Size: e.size,
-              ...notes,
-            });
+        const unlisted = new Set<VelopackCandidate>();
+        for (const c of candidates) {
+          const sha1 =
+            c.full && unlisted.has(c.full)
+              ? null
+              : await artifactSha1(r.artifacts, c.artifact);
+          if (!sha1) {
+            unlisted.add(c);
+            continue;
           }
-          for (const a of e.artifacts) {
-            if (
-              !isBuildFile(a, e.buildId, "delta") ||
-              !a.url ||
-              !a.sha256 ||
-              a.sizeBytes === null ||
-              !a.name.toLowerCase().endsWith("-delta.nupkg")
-            )
-              continue;
-            const dsha1 = await artifactSha1(r.artifacts, a);
-            if (!dsha1) continue;
-            assets.push({
-              PackageId: packageId,
-              Version: e.version,
-              Type: "Delta",
-              FileName: a.url,
-              SHA1: dsha1.toUpperCase(),
-              SHA256: a.sha256.toUpperCase(),
-              Size: a.sizeBytes,
-              ...notes,
-            });
-          }
+          const a = c.asset;
+          assets.push({
+            PackageId: a.PackageId,
+            Version: a.Version,
+            Type: a.Type,
+            FileName: a.FileName,
+            SHA1: sha1.toUpperCase(),
+            SHA256: a.SHA256,
+            Size: a.Size,
+            NotesMarkdown: a.NotesMarkdown,
+            NotesHTML: a.NotesHTML,
+          });
         }
         return renderVelopackFeed(assets);
+      },
+    },
+    recorded,
+  );
+}
+
+/**
+ * What a Velopack `FileName` may be: one plain file-name segment ending in `.nupkg`, as `vpk pack`
+ * writes them. Velopack's Rust core saves a package to `packages_dir.join(FileName)` (notes/S-11
+ * §4.2), so the feed names a package by its bare file name; the package route refuses anything
+ * else before any read: no separator, no `..`, no leading dot, nothing outside this alphabet.
+ */
+const VELOPACK_FILE_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\.nupkg$/;
+
+function isVelopackFileName(name: string): boolean {
+  return VELOPACK_FILE_RE.test(name) && !name.includes("..");
+}
+
+/** Every target a Velopack feed renders for (`velopackTarget`'s range), in a fixed order. */
+const VELOPACK_TARGETS: ReadonlyArray<{ platform: string; arch: string }> =
+  Object.values(VELOPACK_OS).flatMap((platform) =>
+    [...new Set(Object.values(VELOPACK_ARCH))].map((arch) => ({
+      platform,
+      arch,
+    })),
+  );
+
+/**
+ * `GET /<channel>/velopack/<FileName>`: a 302 to the immutable delivery URL of the package the
+ * channel's Velopack feed lists under that `FileName`. Velopack resolves a bare `FileName`
+ * against the feed URL, so this is where it asks. The answer is the feed's own: the same rate
+ * limit, the same access decision (`kind: velopack`, `enforceReleaseAccess` for a non-public
+ * delivery), the same cache, and the same selection (`velopackCandidates`) over every target a
+ * feed can name, including the feed's rule that a package whose stored bytes do not give a SHA-1
+ * is not listed. So it widens nothing: it redirects only to a URL the caller could read in the
+ * feed, and that URL enforces the delivery access again on its own. `null` = not a package name.
+ */
+function serveVelopackPackage(
+  ctx: ServiceContext,
+  channel: string,
+  file: string,
+  recorded: string[],
+): Promise<Response | null> {
+  // `handleUpdaterFeedRoutes` already refused a bad name before its D1 read; kept here so no
+  // other caller can skip it.
+  if (!isVelopackFileName(file)) return Promise.resolve(null);
+  return serveFeed(
+    ctx,
+    {
+      kind: "velopack",
+      params: { channel },
+      // The path names the file. Velopack resolves `FileName` against the feed URL, which drops
+      // the feed's query, so only `?outlet=` (read by `serveFeed`, and in the key) can arrive.
+      cacheInputs: [],
+      contentType: CONTENT_TYPES.json,
+      publicCache: PUBLIC_FEED_CACHE,
+      redirect: true,
+      render: async (r) => {
+        for (const target of VELOPACK_TARGETS) {
+          const hit = (await velopackCandidates(r, channel, target))?.find(
+            (c) => c.asset.FileName === file,
+          );
+          if (!hit) continue;
+          // Listed only when the feed would list it: its bytes, and its full package's, give a
+          // SHA-1 (both memoised by the feed's own reads).
+          const listed =
+            (!hit.full ||
+              (await artifactSha1(r.artifacts, hit.full.artifact))) &&
+            (await artifactSha1(r.artifacts, hit.artifact));
+          return listed ? hit.url : null;
+        }
+        return null;
       },
     },
     recorded,
@@ -853,7 +1009,7 @@ const ZSYNC_SUFFIX = ".AppImage.zsync";
 const BUILD_ID_RE = new RegExp(BUILD_ID_PATTERN.source);
 
 /**
- * The four new feed routes, over `rest = [channel, …]` (the channel already checked against the
+ * The four new feed routes (and the Velopack package route), over `rest = [channel, …]` (the channel already checked against the
  * route alphabet). `null` = not one of them.
  */
 export async function handleUpdaterFeedRoutes(
@@ -872,12 +1028,18 @@ export async function handleUpdaterFeedRoutes(
     if (!BUILD_ID_RE.test(buildId)) return null;
     return serveZsync(ctx, channel, buildId, await recordedAppReleases(ctx));
   }
-  if (tail.length === 2 && name === "velopack")
-    return serveVelopack(
+  if (tail.length === 2 && name === "velopack") {
+    const file = tail[1] ?? "";
+    if (/^releases\./.test(file))
+      return serveVelopack(ctx, channel, file, await recordedAppReleases(ctx));
+    // The package name is checked before ANY read, the recorded-releases D1 read included.
+    if (!isVelopackFileName(file)) return null;
+    return serveVelopackPackage(
       ctx,
       channel,
-      tail[1] ?? "",
+      file,
       await recordedAppReleases(ctx),
     );
+  }
   return null;
 }
