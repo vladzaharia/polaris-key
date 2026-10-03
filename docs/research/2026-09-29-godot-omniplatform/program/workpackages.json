@@ -1508,7 +1508,7 @@
       "optional": false,
       "refs": ["CONTENT §4.2 §13"],
       "brief": "wp/P4-16-more-pack-types.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-17",
