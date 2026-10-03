@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Godot Android plugin v2: the engine instantiates the class named here at start-up and registers
+     it as the Engine singleton PolarisKeyAndroid. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <meta-data
+            android:name="org.godotengine.plugin.v2.PolarisKeyAndroid"
+            android:value="im.plrs.key.godot.PolarisKeyAndroidPlugin" />
+    </application>
+</manifest>

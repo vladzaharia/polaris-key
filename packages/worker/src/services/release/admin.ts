@@ -36,6 +36,7 @@
  * is reached — see `core/adminApi.ts` for why they stay there.
  */
 
+import { platformFromFileName } from "@polaris-key/manifest";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
@@ -160,6 +161,10 @@ export async function handleReleaseAdmin(
       releases: await Promise.all(
         releases.map(async (row) => {
           const yanked = yanks.get(row.release_id);
+          const builds = await listBuilds(db, slug, row.release_id);
+          const buildPlatform = new Map(
+            builds.map((b) => [b.build_id, b.platform]),
+          );
           return {
             releaseId: row.release_id,
             deliverable: row.deliverable_id,
@@ -176,7 +181,7 @@ export async function handleReleaseAdmin(
             contentApi: row.content_api ?? null,
             pins: pins.get(row.release_id) ?? [],
             // P2-05: the builds a descriptor declared (P2-04); empty for a legacy release.
-            builds: (await listBuilds(db, slug, row.release_id)).map((b) => ({
+            builds: builds.map((b) => ({
               buildId: b.build_id,
               platform: b.platform,
               arch: b.arch,
@@ -192,7 +197,14 @@ export async function handleReleaseAdmin(
               artifactId: a.artifact_id,
               name: a.name,
               kind: a.kind,
-              platform: a.platform,
+              // Read-time inference, display only: a file with no platform of its own takes
+              // its build's (null for a platform-independent pack build); a file tied to no
+              // build takes the one its name declares (`djdl-arm64.app.zip` is macOS).
+              platform:
+                a.platform ??
+                (a.build_id !== null && buildPlatform.has(a.build_id)
+                  ? (buildPlatform.get(a.build_id) ?? null)
+                  : platformFromFileName(a.name)),
               arch: a.arch,
               sizeBytes: a.size_bytes,
               access: a.access,

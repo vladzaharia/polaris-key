@@ -2754,6 +2754,49 @@ WinSparkle EdDSA private keys are CI's (notes/E1 §C1), and the Worker never see
   removes the updater DLLs and the shim (folder or `.zip`). StoreContext only asks the Store to
   install what the Store already holds for the package.
 
+### The Android platform plugin: Keystore and self-update (P5-06)
+
+The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and the
+`PolarisKeyAndroid` plugin. Two of its parts hold or act on secrets and code.
+
+- **Token store.** The device id and the `pkeyt_` token are wrapped by one AndroidKeyStore
+  AES-256-GCM key per product (alias `pkey:<product>:device`; non-exportable, StrongBox where the
+  device has it, else the TEE; no user authentication, so a boot can read it). Each value is a
+  versioned blob `0x01 ‖ iv ‖ ciphertext ‖ tag` in `noBackupFilesDir`, never backed up, with the
+  AAD `pkey/v1/<product>/<account>`, so a blob moved to another slot or product fails its tag.
+  Product and account names are slugs and cannot leave the directory. A lost or permanently
+  invalidated key drops its blobs and is surfaced (`store_error`); the device activates again.
+  The migration from the file store and the no-silent-downgrade rule are the Apple store's
+  (above): a failed Keystore write is `degraded: keyring-error` and the token is never written to a
+  file instead. On the emulator the key is software-backed (`securityLevel` 0); the hardware level
+  on a device is on the owner's checklist.
+- **The flavour is a policy boundary.** A `play` build carries no PackageInstaller session code, no
+  install-status receiver and no install permission; a `direct` build carries no Play Core. This is
+  checked on release outputs (`sdks/kotlin/tools/check_flavours.sh` in CI, and the headless Godot
+  export check), not trusted to the source layout.
+- **Self-update verification (direct builds).** Before any session is opened, the APK must sit in
+  the app's private storage (canonical path, so a symlink out of it is refused), hash to the
+  caller's SHA-256 (required), carry the app's own package name, carry exactly the installed
+  signing-certificate set, and have a higher versionCode (and the expected one when given). The
+  bytes are hashed again while they stream into the session and a change aborts it, so a writer
+  racing the verification cannot swap the file. Android itself refuses a different signer as an
+  update; the plugin's check makes that refusal explicit and earlier. Key rotation (a signing
+  lineage) is refused by the equality rule, which is deliberate until a product needs rotation.
+- **What decides the hash.** The direct adapter's Android path (`PKeyApkUpdate`, run only from the
+  player's update action) takes the expected SHA-256 and size from the build's `payload` artifact
+  in the VERIFIED signed release record, never from the feed or the download response; the bytes
+  are checked against it before the plugin sees them, and the plugin hashes them twice more. The
+  record has no Android versionCode, so none is expected: the plugin's "higher than installed",
+  package and signer rules still apply. The download URL only says where to fetch.
+- **Silent installs.** `USER_ACTION_NOT_REQUIRED` is honoured only when the user allowed installs
+  from the game and no other installer owns its updates; an install owned by Play, F-Droid or
+  Obtainium prompts and names the owner (notes/S-10 §3). Ownership is never requested.
+- **The status receiver** is manifest-declared, not exported, and reached through an explicit,
+  package-scoped PendingIntent. It journals the status (no secret) for the next launch.
+- **Residual.** The install source is declared by the installer and forgeable through `adb`
+  (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
+  then refuses) and never authorises anything on the server.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

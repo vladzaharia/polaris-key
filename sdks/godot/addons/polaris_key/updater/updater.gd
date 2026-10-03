@@ -71,6 +71,8 @@ func attach(core: PKeyCore) -> void:
 	_core_ref = weakref(core)
 	slots = PKeySlots.new(root_for(core))
 	bridges = {}
+	# A silent APK update can kill the game before its copy is deleted (P5-06): drop it now.
+	PKeyApkUpdate.cleanup(slots.dir("apk"))
 	core.update_events = self
 
 
@@ -251,6 +253,9 @@ func native_bridge_name() -> String:
 			return "winsparkle"
 		"linux":
 			return "appimage" if env.env("APPIMAGE") != "" else "velopack"
+		"android":
+			# PackageInstaller through the Android plugin (P5-06); available on direct builds only.
+			return "apk"
 	return ""
 
 
@@ -269,6 +274,8 @@ func bridge(name: String) -> PKeyNativeBridge:
 			b = PKeyStoreContextBridge.new(env, "")
 		"appimage":
 			b = PKeyAppImageBridge.new(env, "")
+		"apk":
+			b = PKeyApkBridge.new(env, "")
 		_:
 			return null
 	_configure_bridge(b)
@@ -374,6 +381,38 @@ func stage_sidecar(check: PKeyUpdateCheck) -> PKeyApplyResult:
 		PKeySlots.add_event(st, event(PKeyConstants.UpdateEvent.UPDATE_DOWNLOADED, slots.meta("staged"), slots.meta("current")))
 		slots.save_state(st)
 		update_staged.emit(r.version)
+	return r
+
+
+## binary {method: native} on an Android direct build (P5-06): download the record's APK into
+## `<store_root>/<product>/updates/apk/`, verify it against the VERIFIED record, and install it
+## through PKeyAndroid (PKeyApkUpdate). Answers unsupported without the plugin or on a play build
+## (the direct adapter then opens the download link). A coroutine.
+func install_apk(check: PKeyUpdateCheck) -> PKeyApplyResult:
+	if not active():
+		return PKeyApplyResult.refused("inert")
+	var b := bridge("apk") as PKeyApkBridge
+	var android: PKeyAndroid = b._android() if b != null else PKeyAndroid.shared()
+	var d: Dictionary = check.decision
+	var version: String = d["release"]["version"] if d.get("release") is Dictionary else ""
+	var build_id := String(d.get("build", ""))
+	var r := await PKeyApkUpdate.run(android, {
+		"transport": transport(),
+		"url": build_url(version, build_id),
+		"headers": download_headers(),
+		"dir": slots.dir("apk"),
+		"artifact": PKeySidecarSwap.payload_of(check.record_doc, build_id),
+		"version": version,
+		"build": build_id,
+		"timeout": download_timeout,
+		"space_ok": space_ok,
+		"progress": func(got: int, total: int) -> void: download_progress.emit(got, total),
+	})
+	if r.ok:
+		var st := slots.load_state()
+		var meta := {"version": version, "channel": check.channel, "build": build_id, "recordHash": d["release"].get("sha256") if d.get("release") is Dictionary else null, "tag": check.record_doc.get("tag") if check.record_doc is Dictionary and check.record_doc.get("tag") is String else null}
+		PKeySlots.add_event(st, event(PKeyConstants.UpdateEvent.UPDATE_DOWNLOADED, meta, null))
+		slots.save_state(st)
 	return r
 
 

@@ -467,9 +467,11 @@ describe("a Diceroll-shaped release is classified by the declared map", () => {
         null,
         null,
       ],
+      // The sniffed platform also reads a platform-only extension or name token
+      // (`platformFromFileName`), so no file is labelled by a bare arch.
       "Diceroll-1.2.3-android.apk": [
         "other",
-        null,
+        "android",
         null,
         "payload",
         null,
@@ -477,13 +479,13 @@ describe("a Diceroll-shaped release is classified by the declared map", () => {
       ],
       "Diceroll-1.2.3-ios-sideload.ipa": [
         "other",
-        null,
+        "ios",
         null,
         "payload",
         null,
         null,
       ],
-      "Diceroll-1.2.3-web.zip": ["archive", null, null, "payload", null, null],
+      "Diceroll-1.2.3-web.zip": ["archive", "web", null, "payload", null, null],
     });
     // No map ⇒ the deliverable row carries no declaration.
     expect((await getDeliverable(db, SLUG, "app"))!.def_json).toBeNull();

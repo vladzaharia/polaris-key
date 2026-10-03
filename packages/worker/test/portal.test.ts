@@ -382,6 +382,90 @@ describe("customer portal", () => {
     expect(reused.status).toBe(404);
   });
 
+  it("lists each file with its build's platform, or its name's, when it has none", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    await seedLicenseWithKey(db, "djdl");
+    const session = await portalSession(env, db);
+    await enableReleaseService(db, "djdl");
+    await seedDeliveryAccess(db, "djdl", "licensed");
+    await db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, metadata_access, artifacts_access, published_at,
+          created_at, modified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      "djdl",
+      "rel_1",
+      "1.2.3",
+      "authenticated",
+      "licensed",
+      NOW,
+      NOW,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO release_builds
+         (product, release_id, build_id, platform, arch, format, created_at, modified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      "djdl",
+      "rel_1",
+      "mac",
+      "macos",
+      "arm64",
+      "zip",
+      NOW,
+      NOW,
+    );
+    const files: [string, string, string | null, string | null][] = [
+      // [artifact id, name, platform, build id]
+      ["a1", "djdl-mac.zip", null, "mac"],
+      ["a2", "djdl-arm64.app.zip", null, null],
+      ["a3", "djdl-arm64", null, null],
+    ];
+    for (const [id, name, platform, buildId] of files) {
+      await db.run(
+        `INSERT INTO release_artifacts
+           (product, release_id, artifact_id, name, kind, platform, arch, access,
+            created_at, build_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        "djdl",
+        "rel_1",
+        id,
+        name,
+        "archive",
+        platform,
+        "arm64",
+        "licensed",
+        NOW,
+        buildId,
+      );
+    }
+    const res = await handlePortalApi(
+      req("GET", "/api/releases", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/releases",
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      releases: {
+        artifacts: { name: string; platform: string | null; arch: string }[];
+      }[];
+    };
+    expect(
+      body.releases[0]!.artifacts.map((a) => [a.name, a.platform, a.arch]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["djdl-mac.zip", "macos", "arm64"],
+        ["djdl-arm64.app.zip", "macos", "arm64"],
+        // Nothing determines a platform: the console labels it "Unknown platform · ARM64".
+        ["djdl-arm64", null, "arm64"],
+      ]),
+    );
+  });
+
   it("requires a linked product before minting release download tokens", async () => {
     const db = makeTestDb();
     const env = portalEnv();

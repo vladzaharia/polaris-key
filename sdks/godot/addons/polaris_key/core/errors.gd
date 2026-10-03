@@ -37,8 +37,9 @@ const INSECURE_REDIRECT := &"insecure-redirect"
 const HTTP_ERROR := &"http-error"
 const INVALID_RESPONSE := &"invalid-response"
 const STORE_FAILED := &"store-failed"
-## The Apple platform plugin (PKeyApple over the PolarisKeyApple GDExtension, P5-05) answered an
-## error or an unreadable reply; `detail` carries its fields.
+## A native platform plugin (PKeyApple over the PolarisKeyApple GDExtension, P5-05; PKeyAndroid
+## over the PolarisKeyAndroid plugin, P5-06) answered an error or an unreadable reply; `detail`
+## carries its fields.
 const PLATFORM_ERROR := &"platform-error"
 const NO_TOKEN := &"no-token"
 ## Edge-mint: discovery says the product has no approved recipe, so nothing was sent.

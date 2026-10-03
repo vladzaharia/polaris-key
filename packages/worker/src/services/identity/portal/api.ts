@@ -1,5 +1,6 @@
 import { Catalog } from "@polaris-key/catalog";
 import type { ConfigEntry } from "@polaris-key/catalog";
+import { platformFromFileName } from "@polaris-key/manifest";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
@@ -770,7 +771,13 @@ async function handleReleases(
           artifactId: artifact.artifact_id,
           name: artifact.name,
           kind: artifact.kind,
-          platform: artifact.platform,
+          // Read-time inference, display only: a file with no platform of its own takes its
+          // build's, and a file tied to no build the one its name declares.
+          platform:
+            artifact.platform ??
+            (artifact.build_id
+              ? (artifact.build_platform ?? null)
+              : platformFromFileName(artifact.name)),
           arch: artifact.arch,
           sizeBytes: artifact.size_bytes,
           sha256: artifact.sha256,

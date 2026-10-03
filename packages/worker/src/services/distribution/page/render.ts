@@ -21,6 +21,7 @@
  * `maxTouchPoints > 1`. With no detected platform, every platform's primary is offered.
  */
 
+import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
 import type { DetectedPlatform, PagePlatform } from "./detect.js";
 import {
   pickBuild,
@@ -150,11 +151,19 @@ function minOsText(b: PageBuild): string | null {
   return b.minOs ? `${OS_NAMES[b.platform]} ${b.minOs}` : null;
 }
 
+/** A build's platform and arch, in the page's wording ("macOS Apple silicon"). */
+function labelOf(b: PageBuild): BuildLabel {
+  return buildLabel(
+    { platform: b.platform, arch: b.arch },
+    { audience: "consumer" },
+  );
+}
+
 function buildMeta(b: PageBuild): string {
   const min = minOsText(b);
   const parts = [
     `Version ${b.version}`,
-    b.arch === "universal" || b.arch === "any" ? null : b.arch,
+    labelOf(b).short,
     b.format ? b.format.toUpperCase() : null,
     formatSize(b.size),
     min ? `requires ${min}` : null,
@@ -162,10 +171,30 @@ function buildMeta(b: PageBuild): string {
   return esc(parts.join(" · "));
 }
 
-function link(url: string | null, text: string, cls = ""): string {
+/**
+ * The "Arch" cell, beside the "Platform" cell: the display name with the raw value when they
+ * differ ("Intel (x86_64)"), or the raw value where the platform implies it (iOS's `arm64`).
+ */
+function archCell(b: PageBuild): string {
+  const arch = labelOf(b).arch;
+  if (arch === null) return b.arch;
+  return arch.toLowerCase() === b.arch.toLowerCase() || b.arch === "any"
+    ? arch
+    : `${arch} (${b.arch})`;
+}
+
+/**
+ * A link to a Worker-validated URL. `detail` (a build's platform and arch) becomes the tooltip
+ * and is appended to the accessible name, which still starts with the visible text.
+ */
+function link(url: string | null, text: string, cls = "", detail = ""): string {
   const href = safeHref(url);
   if (!href) return "";
-  return `<a${cls ? ` class="${cls}"` : ""} href="${href}">${esc(text)}</a>`;
+  return `<a${cls ? ` class="${cls}"` : ""} href="${href}"${
+    detail
+      ? ` title="${esc(detail)}" aria-label="${esc(`${text}, ${detail}`)}"`
+      : ""
+  }>${esc(text)}</a>`;
 }
 
 /** The big button (and its line of detail) for one action. */
@@ -180,7 +209,12 @@ function primaryBody(
         ? pickBuild(group.builds, group.platform, detected.arch)
         : null) ?? a.build;
     if (!build) return "";
-    const button = link(build.url, `Download for ${group.label}`, "button");
+    const button = link(
+      build.url,
+      `Download for ${group.label}`,
+      "button",
+      `${build.name}, ${labelOf(build).long}`,
+    );
     return `${button}<p class="meta">${buildMeta(build)}</p>`;
   }
   const target = a.deepLink ?? a.url;
@@ -230,7 +264,8 @@ function way(a: PageAction, group: PagePlatformGroup): string {
       (x) => x.releaseId === a.build?.releaseId,
     ))
       links.push(
-        link(b.url, `${b.name}`) + ` <span class="meta">${buildMeta(b)}</span>`,
+        link(b.url, b.name, "", labelOf(b).long) +
+          ` <span class="meta">${buildMeta(b)}</span>`,
       );
   } else {
     if (a.deepLink) links.push(link(a.deepLink, "Open in the app"));
@@ -338,9 +373,11 @@ export function renderDownloadPage(
     .flatMap((g) => g.builds)
     .map(
       (b) =>
-        `<tr><td>${esc(b.version)}</td><td>${esc(b.platform)}</td><td>${esc(b.arch)}</td><td>${link(
+        `<tr><td>${esc(b.version)}</td><td>${esc(labelOf(b).platform)}</td><td>${esc(archCell(b))}</td><td>${link(
           b.url,
           b.name,
+          "",
+          labelOf(b).long,
         )}</td><td>${esc(formatSize(b.size) ?? "")}</td><td>${esc(minOsText(b) ?? "")}</td><td class="sha"><code>${esc(b.sha256 ?? "")}</code></td></tr>`,
     );
   const files = rows.length

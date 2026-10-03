@@ -12878,6 +12878,82 @@ function validateReleaseDescriptor(descriptor, manifest) {
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, descriptor: desc, releaseId: descriptorReleaseId(desc) };
 }
+var PLATFORM_NAMES = {
+  macos: "macOS",
+  ios: "iOS / iPadOS",
+  ipados: "iPadOS",
+  android: "Android",
+  windows: "Windows",
+  linux: "Linux",
+  web: "Web",
+  tvos: "tvOS",
+  visionos: "visionOS",
+  watchos: "watchOS",
+  steamos: "SteamOS",
+  xbox: "Xbox",
+  playstation: "PlayStation",
+  ps4: "PlayStation 4",
+  ps5: "PlayStation 5",
+  switch: "Nintendo Switch"
+};
+var CONSUMER_PLATFORM_NAMES = {
+  ios: "iPhone and iPad"
+};
+var ALL_PLATFORMS_LABEL = "All platforms";
+var UNKNOWN_PLATFORM_LABEL = "Unknown platform";
+var ARCH_NAMES = {
+  macos: {
+    arm64: "Apple silicon",
+    x86_64: "Intel",
+    universal: "Universal"
+  },
+  windows: { x86_64: "x64", arm64: "Arm64", x86: "x86" }
+};
+var CONVENTIONAL_ARCH_NAMES = {
+  arm64: "ARM64",
+  x86_64: "x86_64",
+  armv7: "armv7",
+  x86: "x86",
+  wasm32: "WebAssembly",
+  universal: "Universal"
+};
+var IMPLIED_ARCHES = {
+  ios: ["arm64", "universal", "any"],
+  web: ["wasm32", "universal", "any"]
+};
+function present(v) {
+  return typeof v === "string" && v.trim() !== "";
+}
+function isAnyPlatform(platform) {
+  return !present(platform) || platform === "any";
+}
+function platformLabel(platform, opts = {}) {
+  if (isAnyPlatform(platform)) return ALL_PLATFORMS_LABEL;
+  const p = platform;
+  if (opts.audience === "consumer" && CONSUMER_PLATFORM_NAMES[p])
+    return CONSUMER_PLATFORM_NAMES[p];
+  return PLATFORM_NAMES[p] ?? p;
+}
+function archLabel(arch, platform) {
+  if (!present(arch)) return null;
+  if (isAnyPlatform(platform)) {
+    if (arch === "any" || arch === "universal") return null;
+    return CONVENTIONAL_ARCH_NAMES[arch] ?? arch;
+  }
+  const p = platform;
+  if (IMPLIED_ARCHES[p]?.includes(arch)) return null;
+  const a = arch === "any" ? "universal" : arch;
+  return ARCH_NAMES[p]?.[a] ?? CONVENTIONAL_ARCH_NAMES[a] ?? arch;
+}
+function buildLabel(input, opts = {}) {
+  const arch = archLabel(input.arch, input.platform);
+  const platform = isAnyPlatform(input.platform) && arch !== null ? UNKNOWN_PLATFORM_LABEL : platformLabel(input.platform, opts);
+  const raw = present(input.arch) ? input.arch : null;
+  const archLong = arch === null ? null : raw !== null && raw !== "any" && arch.toLowerCase() !== raw.toLowerCase() ? `${arch} (${raw})` : arch;
+  const short = arch === null ? platform : `${platform} ${arch}`;
+  const long = [platform, archLong, present(input.format) ? input.format : null].filter((p) => p !== null).join(" · ");
+  return { platform, arch, short, long };
+}
 var REGISTRATION_POLICIES = [
   "open",
   "requires-identity",
@@ -13076,6 +13152,27 @@ function isCanonicalChannelName(value) {
   return typeof value === "string" && CANONICAL_CHANNEL_PATTERN.test(value) && !CHANNEL_ALIAS_NAMES.includes(value);
 }
 var ARTIFACT_ENTRY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+var BARE_ARCH_BUILD_IDS = /* @__PURE__ */ new Set([
+  "arm64",
+  "x86_64",
+  "universal",
+  "armv7",
+  "wasm32",
+  "any",
+  "x64",
+  "amd64",
+  "aarch64",
+  "x86",
+  "i386",
+  "i686",
+  "ia32",
+  "arm",
+  "armhf",
+  "armv7l",
+  "arm64-v8a",
+  "armeabi-v7a",
+  "wasm"
+]);
 var ARTIFACT_FORMAT_PATTERN = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
 var MAX_ARTIFACT_MATCH_LENGTH = 128;
 var MAX_ARTIFACT_ENTRIES = 64;
@@ -13819,7 +13916,12 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
           }
         }
       }
-      validateDeliverables(errors, relRoot, catalogFlagKeys(manifest.schema));
+      validateDeliverables(
+        errors,
+        warnings,
+        relRoot,
+        catalogFlagKeys(manifest.schema)
+      );
       validatePublishing(errors, relRoot);
       validateReleaseKeys(errors, warnings, relRoot);
       if (relRoot.access !== void 0 && !isRecord3(relRoot.access)) {
@@ -14430,7 +14532,7 @@ function knownChannelNames(relRoot, declared) {
   for (const name of declared) known.add(name);
   return known;
 }
-function validateDeliverables(errors, relRoot, flagKeys) {
+function validateDeliverables(errors, warnings, relRoot, flagKeys) {
   const raw = relRoot.deliverables;
   if (raw === void 0) return;
   if (!isRecord3(raw)) {
@@ -14502,7 +14604,7 @@ function validateDeliverables(errors, relRoot, flagKeys) {
   }
   const app = raw[APP_DELIVERABLE_ID];
   if (isRecord3(app) && app.kind === "app")
-    validateAppDeliverable(errors, relRoot, app, packIds, raw);
+    validateAppDeliverable(errors, warnings, relRoot, app, packIds, raw);
   else if (packIds.size > 0) {
     add2(
       errors,
@@ -14942,7 +15044,7 @@ function isAttachableEntry(s) {
 function isAttachableList(value) {
   return Array.isArray(value) && value.length >= 1 && value.length <= MAX_ATTACHABLE_ENTRIES && new Set(value).size === value.length && value.every(isAttachableEntry);
 }
-function validateAppDeliverable(errors, relRoot, def, packIds, deliverables) {
+function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliverables) {
   const content = def.content;
   if (content !== void 0) {
     if (!isRecord3(content) || !(Number.isSafeInteger(content.contentApi) && content.contentApi >= 1 && content.contentApi <= MAX_CONTENT_API) || content.holds !== void 0)
@@ -15195,7 +15297,18 @@ function validateAppDeliverable(errors, relRoot, def, packIds, deliverables) {
         "duplicate_artifact_id",
         `artifact id ${entry.id} is declared twice; each entry declares one build.`
       );
-    } else seen.add(entry.id);
+    } else {
+      seen.add(entry.id);
+      if (BARE_ARCH_BUILD_IDS.has(entry.id.toLowerCase())) {
+        add2(
+          warnings,
+          "release",
+          `/release/deliverables/app/artifacts/${i}/id`,
+          "bare_arch_artifact_id",
+          `artifact id ${entry.id} names an architecture but no platform; name the build by platform and arch (macos-${entry.id}, windows-${entry.id}, …), and its files likewise (app-macos-${entry.id}.zip).`
+        );
+      }
+    }
     if (!isOneOf(entry.platform, RELEASE_PLATFORMS)) {
       add2(
         errors,
@@ -21549,6 +21662,9 @@ ${PUBLISH_USAGE}`);
       `.pkey/ is invalid; run pkey validate:
 ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
     );
+  for (const w of validation.warnings)
+    opts.stderr.write(`warning: ${w.file}${w.path}: ${w.message}
+`);
   const context = descriptorManifestOf(loaded);
   const slug = context.product?.slug;
   if (slug !== opts.product)
@@ -21605,12 +21721,14 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path6.relative(opts.cwd, dir) || "."}
 `
   );
-  for (const b of hashed)
+  for (const b of hashed) {
+    const label = buildLabel(b.entry).long;
     for (const f of b.files)
       out.write(
-        `- ${b.entry.id.padEnd(12)} ${f.role.padEnd(9)} ${f.name} (${f.size} bytes, sha256 ${f.sha256.slice(0, 12)}…)
+        `- ${b.entry.id.padEnd(12)} ${f.role.padEnd(9)} ${f.name} (${label}; ${f.size} bytes, sha256 ${f.sha256.slice(0, 12)}…)
 `
       );
+  }
   const descriptor = buildDescriptor({
     product: opts.product,
     deliverable,
@@ -23948,12 +24066,12 @@ function chunkContainer(bytes, files) {
     CHUNK_PARAMS.avgSize
   );
 }
-function priorLocations(prior, present) {
+function priorLocations(prior, present2) {
   const out = /* @__PURE__ */ new Map();
   for (const [id, , clen, bi, offset] of prior.records) {
     if (out.has(id)) continue;
     const [bundle, bundleSize] = prior.bundles[bi];
-    if (present(bundle)) out.set(id, { bundle, bundleSize, offset, clen });
+    if (present2(bundle)) out.set(id, { bundle, bundleSize, offset, clen });
   }
   return out;
 }
@@ -25005,7 +25123,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     const list = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
-        let present = 0;
+        let present2 = 0;
         for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
             client,
@@ -25013,10 +25131,10 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             gated,
             opts
           );
-          present += ticket.objects.filter((o) => o.present).length;
+          present2 += ticket.objects.filter((o) => o.present).length;
         }
         out.write(
-          `Objects: ${list.length - present} new, ${present} already stored (deduplicated)
+          `Objects: ${list.length - present2} new, ${present2} already stored (deduplicated)
 `
         );
       }

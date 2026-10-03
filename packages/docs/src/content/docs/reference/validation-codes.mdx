@@ -8,13 +8,14 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 193 distinct emit sites.
+codes with their JSON-pointer paths. 194 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
 
 | Code | Severity | Document | Path | Message |
 | --- | --- | --- | --- | --- |
+| `bare_arch_artifact_id` | warning | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} names an architecture but no platform; name the build by platform and arch (macos-$\{entry.id\}, windows-$\{entry.id\}, …), and its files likewise (app-macos-$\{entry.id\}.zip). |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
 | `conflicting_versioning` | error | release | `/release/deliverables/app/versioning` | stableTagPattern and ignoreTags are declared both at the release root and under deliverables.app.versioning; keep one spelling. |
 | `content_keys_not_supported` | warning | release | `/release/contentKeys` | release.contentKeys is not used: delegate a content key with `pkey release delegate`; the signed delegation is the only grant (P4-19). |

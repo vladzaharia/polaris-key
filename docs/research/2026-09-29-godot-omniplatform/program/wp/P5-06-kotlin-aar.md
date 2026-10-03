@@ -170,3 +170,139 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
 ## Plan amendments (S-10)
 
 The spike note [`notes/S-10-android-play-installer.md`](../../notes/S-10-android-play-installer.md) changes this package: its §Recommendation and §Proposed edits for P5-06 override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-03. The code is the fact where this brief and the code
+disagree; S-10's §Recommendation and §Proposed edits were followed except where noted.
+
+- **Layout.** One Gradle build at `sdks/kotlin` (Gradle 8.11.1 with a pinned
+  `distributionSha256Sum`, AGP 8.6.1, Kotlin 2.1.21, compile SDK 36, min SDK 24, Java 17, version
+  catalog `gradle/libs.versions.toml`): `:platform` (the AAR, `explicitApi`), `:godot` (the plugin,
+  its project directory is `sdks/godot/native/android`, so there is no second wrapper there: the
+  brief's `( cd sdks/godot/native/android && ./gradlew assembleRelease )` is
+  `( cd sdks/kotlin && ./gradlew :godot:assembleRelease )`), and `:boundary`, an empty app per
+  flavour whose release APK carries both AARs with their dependencies. Coordinates stay
+  **proposed** (`im.plrs.key:polaris-key-platform`; the Godot binding's AAR is
+  `polaris-key-godot`); nothing is published.
+- **Flavour boundary as checked.** `tools/check_flavours.sh` reads the release AARs and the
+  `:boundary` APKs: play has no `REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION`,
+  `INSTALL_PACKAGES` or `ENFORCE_UPDATE_OWNERSHIP`, no `PackageInstaller.createSession`,
+  `openSession`, `commitSessionAfterInstallConstraintsAreMet` or `Session.commit`, no
+  `im.plrs.key.platform.direct` class and no install-status receiver; direct has no
+  `com.google.android.play` reference and no play class; no AAR declares a permission or carries a
+  `.so`. Play Core is `api` (not `implementation`) in the play flavour, because `InAppUpdates`
+  takes an `AppUpdateManager`.
+- **Plugin surface: one `cmd(json)` method and a polled queue**, not S-10's three plugin signals.
+  S-10 measured that `emitSignal` from any thread reaches GDScript on the main thread, so signals
+  would work; the poll mirrors P5-05 (one code path, a GDScript fake with the same shapes, results
+  matched by `req`, no JNI signal registration). PKeyAndroid emits `update_progress`,
+  `update_result`, `pack_progress`, `install_status` and `resumed` itself. The plugin uses only
+  `GodotPlugin` members present since 4.2 (`getActivity`, the `onMain*` callbacks); UI work goes
+  through a main-looper `Handler` (`runOnUiThread` is deprecated in 4.7). Only the 4.7.2 engine
+  was run.
+- **Keystore.** `SecureStore` keeps the blobs itself (`noBackupFilesDir/pkey/<product>/keystore/`)
+  rather than in `user://`, adds an AAD binding each blob to its product and account, and handles
+  a missing or invalidated key by dropping the blobs and answering `reset` (S-10 rec. 7). The
+  Godot `core.store` work moved here from P5-05: `PKeyKeystoreStore`, picked by default on Android
+  with the plugin, mirrors P5-05's `PKeyKeychainStore` (migration, `keyring-error`, no token
+  file). `core.store` stays **planned, unowned** in the Godot manifest: Android and iOS have
+  platform stores, but no work package owns a desktop keyring and the registry allows no desktop
+  N/A, so it cannot be `implemented`; leaving it planned on P5-06 would break `parity:check` rule 4
+  once P5-06 is done.
+- **PackageInstaller verification is stricter than S-10's probe:** the expected SHA-256 is
+  required (`hash_required`), the file must be in the app's private storage (`path_not_private`,
+  canonical path), an expected versionCode may be given (`version_mismatch`), and the bytes are
+  hashed again while streaming into the session (`hash_changed` aborts it). No
+  `setRequestUpdateOwnership`, no `setPackageSource` (S-10 §3). Gentle constraints are an option
+  (`when_backgrounded`, API 34+); `checkInstallConstraints` is wrapped and answers null.
+  Robolectric's `SessionInfo` does not echo the session params, so the unit test records them
+  through `applied`; the emulator run is the proof that the silent path works.
+- **Update driver.** P3-10 is done, so the In-App Updates path landed here, in
+  `distribution/outlets/play.gd` (S-10's table; `play-testing` now extends the play adapter). The
+  "no update in the decision, priority ≥ 4" column of S-10's table is not wired (an adapter only
+  acts on a decision that has an action).
+- **Direct path (lead decision, after the first review).** On Android `native_bridge_name()` is
+  `apk` (`distribution/outlets/apk.gd`, `PKeyApkBridge`), available only on a direct-flavour build
+  with the plugin, so `binary {method: native}` is offered there when the game lists `native` in
+  `update_methods`. `PKeyDirectAdapter.apply` routes it to `PKeyUpdater.install_apk(check)`
+  (`updater/apk_update.gd`, `PKeyApkUpdate`): download through `PKeyDownload` (discovery's
+  builds URL, Range resume) into `user://pkey/<product>/updates/apk/` (the app's files directory),
+  check the size and SHA-256 of the build's one `payload` artifact in the verified record, call
+  `apk_install` (no extra Android prompt is requested: the player chose to update; Android still
+  prompts when it requires it), queue `update_downloaded`, delete the copy once the session holds
+  it. The link is opened only when the plugin answers unsupported; a download, hash or plugin
+  refusal is reported as a failure. **Gap:** the signed record carries no Android versionCode
+  (`builds[].buildNumber` is a free string, not defined as one), so no expected versionCode is
+  passed; the plugin still refuses a versionCode that is not above the installed one. No wire
+  change was made. The emulator run now installs v2 through the adapter (below).
+- **Launch work** runs when `PKeyAndroid.shared()` enters the tree (PKeyCore creates it through the
+  store selection on Android), not from `polaris_key.gd`: read and clear the last journaled
+  install status, abandon stale sessions.
+- **Export plugin.** A second `EditorExportPlugin` (`native/android_export_plugin.gd`, registered
+  by `plugin.gd`) rather than more code in the build-stamp plugin. Option
+  `polaris_key/android_flavor` = `play` (default) / `direct` / `none`, env `PKEY_ANDROID_FLAVOR`.
+  It carries nothing (and warns) without the Gradle build or the AARs, and warns on a Play outlet
+  with `direct` or an F-Droid outlet with `play`. Direct presets get exactly two manifest entries
+  (no `ENFORCE_UPDATE_OWNERSHIP`, S-10).
+- **Errors.** `platform-error` (client, core) is added here too; P5-05 adds the same code. The
+  description names both plugins, so the two entries differ only in wording and merge to one.
+- **CI.** The `android` job runs JDK 17 (`actions/setup-java`), `sdkmanager` for
+  `platforms;android-36` and `build-tools;36.1.0`, both flavours' unit tests for both modules,
+  lint, `assembleRelease`, the boundary check and the facade's headless suites
+  (`native_android,update`). No emulator job: `sdks/godot/native/android/export_check.sh` is the
+  local device check (below).
+
+- **Review fixes.** A leftover `update.apk` (a silent commit can kill the game before the copy is
+  deleted) is removed at every launch by `PKeyUpdater.attach` (`PKeyApkUpdate.cleanup`; a `.part`
+  is kept for resume). An `apk_install` that times out is `timeout` with reason `outcome-unknown`
+  and keeps the copy (the worker may still be streaming; the journal has the outcome next launch).
+  The direct flavour on a `play` or `play-testing` outlet is an export ERROR: Godot gives an export
+  plugin no way to stop an export (option warnings are only shown, `can_export` keeps the preset
+  valid), so the plugin adds no AAR and no permission, logs the error, and makes the Gradle build
+  fail through an unresolvable coordinate that names the reason
+  (`polaris-key.export-refused:direct-flavour-on-a-play-outlet:0`); `export_check.sh` proves the
+  export fails. `SecureStore` maps a `ProviderException` to reason `keystore-provider`. The
+  `android` CI job validates the Gradle wrapper (`gradle/actions/wrapper-validation`, SHA-pinned).
+
+### What was run (2026-10-03, M5 Pro, JDK 17.0.20, Godot 4.7.2)
+
+- Gradle unit tests: `:platform` play 41, direct 49; `:godot` play 18, direct 15; all pass.
+  Lint clean for both modules and flavours.
+- `export_check.sh`: three headless Gradle exports (9–16 s each), every preset check green.
+- Emulator (arm64 `google_apis` API 34, no Play Store): the direct sequence (Keystore round trip
+  9 ms, software `securityLevel` 0; public-path and wrong-hash refusals; a real silent v1 → v2
+  self-update, `apk_install` 471 ms; the next launch reads `success` and `selfUpdated`, installer =
+  initiator = the game, `packageSource` 0) and the play sequence (Keystore; In-App Updates
+  `outlet` for a non-Play install; an on-demand pack under `--local-testing` fetched, located and
+  mounted in 1.8 ms). Android 15/16 images were not run for this package (S-10 ran 14 and 16).
+- After the direct-path wiring, the same emulator run installs v2 THROUGH THE UPDATE DRIVER:
+  `PKeyDirectAdapter.apply` on a `binary {method: native}` decision with a record listing v2's
+  payload (size, SHA-256) → `PKeyApkUpdate`: download of the 75 MB APK from a loopback server (adb
+  reverse) into `user://`, verified, `apk_install`, committed with no prompt, 1.2 s in all; the
+  next launch reads `success` and `selfUpdated`. The probe host stands in for `PKeyUpdater`
+  (`install_apk`'s body with the probe's URL and record), because a configured PKeyCore needs a
+  server. The probe preset needs `permissions/internet=true` (Godot's Android default is off).
+
+### Owner checklist (needs a Play Console app and devices; nothing here was run)
+
+S-10 §Hand-off rows 1–11 replace step 7. Build the probe (`export_check.sh`, or a game with the
+plugin) signed with the upload key; two internal-track uploads (vN, and vN+1 with
+`inAppUpdatePriority` set through P5-03) carrying a fast-follow and an on-demand pack (P5-08's
+module generation, or `export_check.sh`'s `probeod` method).
+
+| #   | Run                                                              | Record                                                                                                                          |
+| --- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Install vN from the internal track; publish vN+1 with priority 4 | `update_check()`: availability, allowed types, priority, stalenessDays; how long until Play offers it                           |
+| 2   | Flexible flow to the end                                         | `update_progress` statuses and bytes, `update_result`, whether `update_complete()` restarts the game                            |
+| 3   | Immediate flow; background the app mid-download, return          | resume behaviour (the play adapter re-starts the immediate flow), result codes                                                  |
+| 4   | Same from internal app sharing                                   | availability and errors (`-10`?)                                                                                                |
+| 5   | Fresh internal-track install with a fast-follow pack             | status at first launch, storage method, path, mount                                                                             |
+| 6   | On-demand pack over 200 MB on mobile data                        | `WAITING_FOR_WIFI` / `REQUIRES_USER_CONFIRMATION`, `pack_confirm()` result                                                      |
+| 7   | Update the app with changed packs                                | pack states and paths after the update                                                                                          |
+| 8   | Internal-track install: `install_source()`                       | installer and initiator `com.android.vending`, **initiatorCertSha256** (for outlet-matrix.json), `packageSource`, `updateOwner` |
+| 9   | Direct APK from a browser on Android 14+, then `apk_install`     | prompt or silent; installer afterwards                                                                                          |
+| 10  | Direct APK on Android 12 or 13 and on 15                         | the same, and the target-SDK floor for silent updates                                                                           |
+| 11  | `keystore_info()` on the device                                  | `securityLevel` (TEE 1 / StrongBox 2), StrongBox; the Console's foreground-service (`dataSync`) declaration                     |
+
+The person who runs it records the results in the PR (acceptance criterion 5).

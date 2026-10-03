@@ -275,7 +275,9 @@ health**) runs a live checklist, in order, stopping early once a prerequisite is
 6. **The release's artifacts** — what the latest release carries, judged against what the
    product _declares_ rather than against an assumed macOS/CLI shape:
    - With a declared artifact map (`deliverables.app.artifacts` in `.pkey/release`), one
-     `artifact-<buildId>` check per entry, labelled with its platform, arch and format. It is
+     `artifact-<buildId>` check per entry, labelled with its platform, arch and format
+     (`macos — macOS · Universal · dmg`; see
+     [How builds are labelled](/docs/build/manifest/authoring/#how-builds-are-labelled)). It is
      _ok_ when exactly one file matches the entry, _missing_ when none does, and also _missing_
      when more than one does — the map classifies none of an ambiguous entry's files, so
      nothing serves that build — with the candidates listed. A missing entry whose glob matches
