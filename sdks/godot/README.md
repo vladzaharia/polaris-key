@@ -68,7 +68,7 @@ sdks/godot/
                               transport's redirect and credential rules, gzip off
     services/packs.gd         PKeyPacks (PolarisKey.update.packs, P4-08): start, ensure, estimate,
                               mount, boot_fetch, background, state, path, rollback, confirm,
-                              packSetId; the pack signals
+                              packSetId, is_available, pack_for; the pack signals
     packs/                    the pack core, ported from client-core `packs/`: pack_claims.gd
                               (PKeyPackClaims: pack ids, object refs, content claims, the pack
                               record claims, variant keys, packSetId, the content stamp), files.gd
@@ -642,7 +642,20 @@ PolarisKey.update.packs.pack_ready.connect(func(id): print(id, " is usable"))
 var r := await PolarisKey.update.packs.ensure(["diceroll.core3d"])   # outside PKeyBoot
 await PolarisKey.update.packs.mount()          # this boot's godot.pck packs (PKeyBoot does it)
 var dir := PolarisKey.update.packs.path("diceroll.l10n")             # a running files.tree
+if not PolarisKey.update.packs.is_available("foe.goblin"):           # save compatibility (P4-20)
+	var p = await PolarisKey.update.packs.pack_for("foe.goblin")     # {packId, release} or null
 ```
+
+**Save compatibility** (P4-20, `packs/provides.gd`, PKeyPackProvides): a pack record may carry
+`provides`, a list of opaque content ids (printable ASCII without the space, 1–128 characters, at
+most 4096, unique; an unusable list provides nothing and never fails the record).
+`is_available(content_id)` is true when a pack in the running set (mounted or active in this
+process, embedded baselines included) provides the id and the licence holds its `entitlement` (no
+License service hides nothing); false before packs start. `pack_for(content_id, targets = null)`
+is a coroutine naming the first target, in order, that provides the id: `targets` is a packs
+decision's install list (`[{pack, release: {sha256, seq, version}}]`), else the stamp's pins. It
+reads only records: an install's verified record, else the record fetched by hash and verified as
+`ensure` verifies it; a target that cannot be fetched or verified is skipped.
 
 `PKeyPacks` is client-core's PackEngine (`packs/engine.gd`, PKeyPackEngine) with the Godot ports.
 Every verdict of the pack core is client-core's: the packs suite runs every content case

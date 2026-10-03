@@ -161,8 +161,8 @@
       "note": "P4-08: PolarisKey.update.packs.register_handler; files.tree (hot, versioned directory plus pointer swap) and godot.pck (restart; the header and directory checks before commit and mount: normal paths only, resources judged by content (RSRC/text head, RSCC refused), remap/import targets and uid_cache.bin entries inside the pack; files.tree outputs content-scanned too; mounted in mountOrder, one per frame after the first frame, replace_files=true, from content-addressed paths) built in."
     },
     "packs.provides": {
-      "status": "planned",
-      "wp": "P4-20"
+      "status": "implemented",
+      "note": "P4-20: packs/provides.gd (PKeyPackProvides): provides_of reads a verified record's reserved record-level provides (absent or unusable provides nothing); PolarisKey.update.packs.is_available(content_id) answers from the running set (embedded baselines included) and pack_for(content_id, targets) (a coroutine) from the stamp's pins or a packs decision's targets, reading only records (an install's verified record, else fetched by hash and verified as preflight does); an unentitled pack never answers."
     },
     "packs.transport.apple": {
       "status": "planned",

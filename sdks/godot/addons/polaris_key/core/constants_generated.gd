@@ -955,7 +955,7 @@ static func capabilities() -> Dictionary:
 		"packs.apply.delta": {"status": "implemented", "service": "release", "na": []},
 		"packs.state": {"status": "implemented", "service": "release", "na": []},
 		"packs.handlers": {"status": "implemented", "service": "release", "na": []},
-		"packs.provides": {"status": "planned", "service": "release", "na": []},
+		"packs.provides": {"status": "implemented", "service": "release", "na": []},
 		"packs.transport.apple": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.transport.play": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.transport.steam": {"status": "planned", "service": "distribution", "na": [{"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -967,4 +967,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "c109882199b0ef5b0a7d07f99b5c96212c14d40f3d97f4221a252e0339114647"
+const CAPABILITY_DIGEST := "2e70644c3a1cff9c1746199261a1ae70756cf21a5f3f1559834b57107c7986ef"
