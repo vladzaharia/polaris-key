@@ -953,6 +953,96 @@
         "detail": "size",
         "path": "t.csv"
       }
+    },
+    {
+      "name": "csv-double-bom",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "\ufeff\ufeffkey,fr\nhello,bonjour\n"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "t.csv",
+            "locale": "fr",
+            "messages": [
+              {
+                "context": null,
+                "id": "hello",
+                "plural": null,
+                "strings": ["bonjour"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "json-table-canonically-equivalent-ids",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.json",
+          "text": "{\"locale\": \"fr\", \"messages\": {\"\u00e9\": \"a\", \"e\u0301\": \"b\"}}"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "tables": [
+          {
+            "path": "t.json",
+            "locale": "fr",
+            "messages": [
+              {
+                "context": null,
+                "id": "e\u0301",
+                "plural": null,
+                "strings": ["b"]
+              },
+              {
+                "context": null,
+                "id": "\u00e9",
+                "plural": null,
+                "strings": ["a"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "json-table-canonically-equivalent-ids-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.json",
+          "text": "{\"locale\": \"fr\", \"messages\": {\"\u00e9\": \"a\", \"e\u0301\": 1}}"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "table",
+        "path": "t.json"
+      }
+    },
+    {
+      "name": "csv-non-ascii-locale-column-refused",
+      "variant": {},
+      "files": [
+        {
+          "path": "t.csv",
+          "text": "key,sk,s\u212a\nk,a,b\n"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "detail": "locale",
+        "path": "t.csv"
+      }
     }
   ],
   "mlModel": [
@@ -1284,6 +1374,29 @@
         },
         {
           "path": "net.onnx",
+          "text": "ONNX"
+        }
+      ],
+      "loadTest": null,
+      "expect": {
+        "ok": false,
+        "detail": "descriptor",
+        "path": "model.json"
+      }
+    },
+    {
+      "name": "descriptor-file-canonically-equivalent-refused",
+      "options": {
+        "runtimes": ["onnx"],
+        "ramBytes": 1000
+      },
+      "files": [
+        {
+          "path": "model.json",
+          "text": "{\"runtime\": \"onnx\", \"file\": \"mod\u00e9l.onnx\", \"memBytes\": 1}"
+        },
+        {
+          "path": "mode\u0301l.onnx",
           "text": "ONNX"
         }
       ],
