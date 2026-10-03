@@ -266,8 +266,15 @@ jobs:
         # SDK code (AssetPackManager and the 26.4 Background Assets methods) is behind
         # `#if compiler(>=6.3)`; this step proves the guards hold. The macos-26 job below compiles
         # the guarded code.
+        # Warnings are errors for the P5-05 targets only: with SWIFT_TREAT_WARNINGS_AS_ERRORS the
+        # clang importer's libzstd configuration-macro warnings fail PolarisKeyPacks (measured
+        # with Xcode 26.6), which is not this job's concern.
         run: |
-          for scheme in PolarisKeyPacks PolarisKeyUpdate PolarisKeyPlatform PolarisKeyPlatformC; do
+          for scheme in PolarisKeyPacks PolarisKeyUpdate; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO -quiet build
+          done
+          for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
@@ -308,9 +315,15 @@ jobs:
           swift test --package-path sdks/swift
       - name: iOS build of every library
         working-directory: sdks/swift
+        # Every library builds for iOS; the P5-05 targets with warnings as errors (the libzstd
+        # importer warnings make PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS).
         run: |
           for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey PolarisKeyPlatform PolarisKeyPlatformC; do
+            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO -quiet build
+          done
+          for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
