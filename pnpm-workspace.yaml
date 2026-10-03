@@ -7,10 +7,12 @@ packages:
 overrides:
   "@types/node": ^22.14.0
   jiti: ^2.7.0
-  # Security floors for transitive dependencies (Dependabot). Each selector stays inside the
-  # major its parents ask for, so these only lift a lockfile pin to the patched release. None of
-  # these packages ships in the Worker bundle, a published package or the Action bundle; they are
-  # build/test tooling (wrangler/miniflare, vitest, astro, vite, babel, changesets, ajv).
+  # Security floors for transitive dependencies (Dependabot). Most selectors stay inside the
+  # major their parents ask for and only lift a lockfile pin to the patched release. Two cross a
+  # 0.x minor on purpose: esbuild 0.28.1 (tsup asks ^0.27; wrangler 4.72 and vitest-pool-workers
+  # pin 0.27.3) and sharp 0.35 (miniflare asks ^0.34). All of these are build/test tooling; the
+  # published packages' dist/ output and the Worker bundle were verified unchanged (bar the docs
+  # CSP hashes) when these were added.
   "undici@^7": ^7.29.1
   "undici@^8": ^8.10.2
   "ws@^8": ^8.21.0
