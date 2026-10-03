@@ -60,9 +60,15 @@ importers:
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../../../packages/shared-jws
+      '@polaris-key/manifest':
+        specifier: workspace:*
+        version: link:../../../packages/shared-manifest
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../../../packages/shared-protocol
+      '@polaris-key/react':
+        specifier: workspace:*
+        version: link:../../../packages/sdk-react
       '@polaris-key/zstd-wasm':
         specifier: workspace:*
         version: link:../../../packages/zstd-wasm

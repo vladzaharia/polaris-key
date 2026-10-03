@@ -41,7 +41,8 @@
  * delivery URLs to `Delivery`; P2b-02 implements `outletCapabilities`; P2b-03 added availability,
  * submissions and the key inventory; P4-02 added the pack functions to `ReleaseCatalog` and the
  * delivery gate (`entitlement`) to `Delivery`; P4-14 added `rollouts` and `reportedAvailability` to
- * `Delivery` and the optional `packChunks` hook point to `ReleaseCatalog` (P4-22 implements it).
+ * `Delivery` and the optional `packChunks` hook point to `ReleaseCatalog` (P4-22 implements it);
+ * P4-18 added the optional `packPayload` (Distribution's payload URL).
  * P2b-05, P2b-06, P3-03, P4-02 (Release's publish routes read `delivery.entitlement`), P4-05,
  * P4-09, P4-14 (Core's blob collector reads both hooks) and P6-03 consume.
  */
@@ -571,6 +572,36 @@ export interface ReleaseCatalog {
     releaseId: string,
     variantKey: string,
   ): Promise<CatalogPackChunk[] | null>;
+
+  // ── The payload URL (P4-18) ──
+  /**
+   * The newest pack release of `deliverableId` whose variant `buildId` is a `container` payload
+   * with SHA-256 `payloadSha256` (the DECODED payload), with its `full` object and the
+   * `zstd-patch-from` payload deltas TO it, by base. Null when no such release is among the
+   * pack's newest `MAX_PAYLOAD_SCAN` releases, or the payload is a tree (a tree's
+   * `payload.sha256` is its `treeDigest`, never the hash of a response body).
+   *
+   * Distribution's payload URL (`/<p>/distribution/packs/<pack>/<variant>/payload/<sha256>`)
+   * reads it. Optional so a catalog without it answers the payload URL's plain not-found, and
+   * the SDK takes the blob route.
+   */
+  packPayload?(
+    deliverableId: string,
+    buildId: string,
+    payloadSha256: string,
+  ): Promise<CatalogPackPayload | null>;
+}
+
+/** One container payload of a pack release, by its decoded SHA-256 (`packPayload`, P4-18). */
+export interface CatalogPackPayload {
+  releaseId: string;
+  /** The record's `entitlement` is set: its objects are under `gated/`. */
+  gated: boolean;
+  payload: { size: number; sha256: string };
+  /** The `full` object ref: one zstd frame (`codec: zstd`) or the payload raw (`none`). */
+  full: { sha256: string; bytes: number; size: number; codec: string };
+  /** The variant's `scope: payload` deltas whose method is `zstd-patch-from`, in record order. */
+  deltas: { from: string; artifact: { sha256: string; bytes: number } }[];
 }
 
 /** One chunk a pack variant reads from a chunk bundle (`ReleaseCatalog.packChunks`, P4-22). */

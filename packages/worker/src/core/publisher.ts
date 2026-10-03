@@ -56,6 +56,7 @@ import type { Db, DbStatement } from "../db/types.js";
 import { hashKey, mintOpaqueToken, randomId } from "../crypto.js";
 import { appendAudit } from "../repo.js";
 import { signJwtHs256 } from "./jwt.js";
+import { readCappedText } from "./readCapped.js";
 import {
   CI_SCOPES,
   CI_TOKEN_PREFIX,
@@ -368,8 +369,12 @@ export const defaultJwksFetcher: JwksFetcher = async () => {
     headers: { accept: "application/json" },
   });
   if (!res.ok) throw new Error(`jwks fetch failed: ${res.status}`);
-  const text = await res.text();
-  if (text.length > MAX_JWKS_BYTES) throw new Error("jwks too large");
+  // Bounded while streaming: `res.text()` would buffer the whole body before the size check.
+  const text = await readCappedText(
+    res,
+    MAX_JWKS_BYTES,
+    () => new Error("jwks too large"),
+  );
   return JSON.parse(text) as JSONWebKeySet;
 };
 

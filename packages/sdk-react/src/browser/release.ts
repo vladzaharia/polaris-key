@@ -61,7 +61,8 @@ export async function fetchChangelog(
       productUrl(opts.baseUrl, opts.product, "release/changelog"),
       {
         method: "GET",
-        credentials: "include",
+        // Bearer-only, CORS-covered route: no ambient credential (`core/cors.ts`).
+        credentials: "omit",
         headers: { accept: "application/json", ...(opts.headers ?? {}) },
       },
     );

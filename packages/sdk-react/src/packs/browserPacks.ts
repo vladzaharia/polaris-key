@@ -3,9 +3,15 @@
 // browser's ports:
 //
 //   transport  the pinned pack record from discovery's `release.endpoints.record`, objects from
-//              `distribution.endpoints.blobs` with `Range`/`If-Range`, credentialed `fetch`;
-//   storage    OPFS by default (`opfsPackStore`), or the in-memory store a host passes explicitly
-//              (tests, a page that must not persist); never a silent fallback;
+//              `distribution.endpoints.blobs` with `Range`/`If-Range`, `fetch` with no ambient
+//              credential (`credentials: "omit"`: the Worker never sends
+//              `Access-Control-Allow-Credentials`, so a credentialed cross-origin fetch fails);
+//              P4-18: a container's `full` and payload delta first through the payload URL
+//              (`nativePayload.ts`: the browser's own zstd, and Compression Dictionary Transport
+//              in Chromium), then the same candidate through the blob route and WASM;
+//   storage    OPFS by default (`opfsPackStore`; its staging bytes through a dedicated worker's
+//              sync access handles when one starts, P4-18), or the in-memory store a host passes
+//              explicitly (tests, a page that must not persist); never a silent fallback;
 //   zstd       `@polaris-key/zstd-wasm`'s browser entry, wasm32, so P = 30 and `memBudget` is at
 //              most 2^30 (plans/P4-01.md §2.7 rule 3);
 //   SHA-256    `hash-wasm` (MIT), streaming: WebCrypto's digest does not stream.
@@ -53,7 +59,13 @@ import {
 import { loadZstdWasm } from "@polaris-key/zstd-wasm/browser";
 import { ErrorCode } from "../constants.generated.js";
 import type { DiscoveryDocument } from "../browser/discovery.js";
-import { opfsPackStore, type DirHandle } from "./opfs.js";
+import { opfsPackStore, type DirHandle, type OpfsPackStore } from "./opfs.js";
+import { startOpfsWorker, type WorkerLike } from "./opfsIo.js";
+import {
+  browserNativePayload,
+  payloadUrlTemplate,
+  type NativePayloadEvent,
+} from "./nativePayload.js";
 
 /** At most `limit` bytes of a body as UTF-8; the rest is never read. */
 async function readCapped(res: Response, limit: number): Promise<string> {
@@ -176,8 +188,25 @@ export interface BrowserPacksOptions {
         state: PackStateStore;
         revocations?: PackStateStore;
       };
-  /** An OPFS root other than `navigator.storage.getDirectory()` (tests). */
+  /** An OPFS root other than `navigator.storage.getDirectory()` (tests). It keeps staging on the
+   *  main thread: the worker opens the real root itself. */
   opfsRoot?: DirHandle;
+  /**
+   * P4-18: the OPFS store's staging worker. Default: start `opfsWorker.js` (a module worker
+   * beside this file, which bundlers emit from `new Worker(new URL(…, import.meta.url))`) when the
+   * browser has workers and sync access handles, else the main thread. `false` keeps the main
+   * thread; a function spawns the host's own copy of the worker.
+   */
+  opfsWorker?: false | (() => WorkerLike);
+  /**
+   * P4-18: run a container's `full` and its `zstd-patch-from` payload deltas through the payload
+   * URL first (the browser's zstd; dcz in Chromium). Default true; `false` always uses the blob
+   * route and the WASM decoder.
+   */
+  nativePayload?: boolean;
+  /** P4-18: each payload-URL attempt (`used`, `declined` with the status, `failed`), for a host's
+   *  diagnostics; the engine's own `fallback` progress reports what it then does. */
+  onNativePayload?: (e: NativePayloadEvent) => void;
   /** The licence's granted flags, or null when the page cannot know them (the server gates). */
   entitlements?: () => ReadonlySet<string> | null;
   handlers?: PackHandler[];
@@ -311,6 +340,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   const start = (): Promise<PackEngine> => {
     if (engine) return Promise.resolve(engine);
     starting ??= (async () => {
+      let opfs: OpfsPackStore | null = null;
       const store: {
         storage: PackStorage;
         state: PackStateStore;
@@ -324,16 +354,31 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
             }
           : typeof opts.storage === "object"
             ? opts.storage
-            : await opfsPackStore({
-                product: opts.product,
-                sha256,
-                ...(opts.opfsRoot ? { root: opts.opfsRoot } : {}),
-              }).catch((e: unknown) => {
+            : (opfs = await (async () => {
+                // The worker opens the real root itself, so a host-supplied root stays on the
+                // main thread; a worker that cannot start leaves the main thread too.
+                const io =
+                  opts.opfsRoot || opts.opfsWorker === false
+                    ? null
+                    : await startOpfsWorker(
+                        ["polaris-key", opts.product, "packs"],
+                        typeof opts.opfsWorker === "function"
+                          ? opts.opfsWorker
+                          : undefined,
+                      );
+                return opfsPackStore({
+                  product: opts.product,
+                  sha256,
+                  ...(opts.opfsRoot ? { root: opts.opfsRoot } : {}),
+                  ...(io ? { io } : {}),
+                });
+              })().catch((e: unknown) => {
                 throw new PackError(
                   ErrorCode.notConfigured,
                   `Packs need OPFS here, or storage: "memory" chosen explicitly (${(e as Error).message}).`,
                 );
-              });
+              }));
+      const worker = opfs !== null && opfs.io === "worker" ? opfs : null;
       const e = new PackEngine({
         product: opts.product,
         releaseKeys: opts.releaseKeys,
@@ -356,7 +401,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
             return { ok: false, code: ErrorCode.serviceUnavailable };
           try {
             const res = await fetchImpl(expand(t, sha), {
-              credentials: "include",
+              credentials: "omit",
               headers: { accept: "application/jose", ...(opts.headers ?? {}) },
             });
             if (!res.ok) return { ok: false, code: ErrorCode.networkError };
@@ -385,7 +430,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
           else if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
           if (req.ifRange !== null) headers["if-range"] = req.ifRange;
           const res = await fetchImpl(expand(t, req.sha256), {
-            credentials: "include",
+            credentials: "omit",
             headers,
           });
           const body = res.body;
@@ -404,6 +449,35 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
             })(),
           };
         },
+        ...(opts.nativePayload === false
+          ? {}
+          : {
+              nativePayload: browserNativePayload({
+                template: () =>
+                  payloadUrlTemplate(template("distribution", "blobs")),
+                baseUrl: opts.baseUrl,
+                fetchImpl,
+                ...(opts.headers ? { headers: opts.headers } : {}),
+                sha256,
+                // The worker fetches with the page's own `fetch`; a host `fetchImpl` (which may
+                // add its own behaviour) keeps the transfer on the main thread.
+                ...(worker && !opts.fetchImpl
+                  ? {
+                      fetchIntoOutput: (planId, url, init, limit, onBytes) =>
+                        worker.fetchIntoOutput(
+                          planId,
+                          url,
+                          init,
+                          limit,
+                          onBytes,
+                        ),
+                    }
+                  : {}),
+                ...(opts.onNativePayload
+                  ? { onEvent: opts.onNativePayload }
+                  : {}),
+              }),
+            }),
         ...(opts.entitlements ? { entitlements: opts.entitlements } : {}),
         now: opts.now ?? (() => Math.floor(Date.now() / 1000)),
         newPlanId: randomId,

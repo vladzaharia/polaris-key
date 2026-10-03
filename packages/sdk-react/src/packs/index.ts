@@ -11,6 +11,15 @@ export {
   type BrowserPacksOptions,
 } from "./browserPacks.js";
 export {
+  MAX_DICTIONARY_BYTES,
+  browserNativePayload,
+  payloadUrlTemplate,
+  variantSegment,
+  type BrowserNativePayloadOptions,
+  type NativePayloadEvent,
+} from "./nativePayload.js";
+export type { OpfsIo, WorkerLike } from "./opfsIo.js";
+export {
   opfsPackStore,
   type DirHandle,
   type FileHandle,

@@ -211,7 +211,8 @@ export async function streamSha256(
   };
 }
 
-function checksumHex(obj: R2Object): string | null {
+/** The SHA-256 R2 stored for `obj` (`putVerified` writes it), as hex, or null without one. */
+export function checksumHex(obj: R2Object): string | null {
   const c = obj.checksums?.sha256;
   return c ? hexOf(c) : null;
 }

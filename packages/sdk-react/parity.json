@@ -167,7 +167,7 @@
     },
     "packs.apply.full": {
       "status": "implemented",
-      "note": "client-core applyFull; applyCases in Chromium under the WASM decoder."
+      "note": "client-core applyFull; applyCases in Chromium under the WASM decoder. P4-18: a container's full goes first through the payload URL (Content-Encoding: zstd, decoded by the browser, kept as a dictionary), written by the OPFS worker, size and SHA-256 checked against the record; then the blob route and WASM."
     },
     "packs.apply.file": {
       "status": "implemented",
@@ -179,7 +179,7 @@
     },
     "packs.apply.delta": {
       "status": "implemented",
-      "note": "@polaris-key/zstd-wasm's browser entry (wasm32, P = 30, memBudget at most 2^30); the window check runs in the applier. dcz in Chromium is P4-18."
+      "note": "@polaris-key/zstd-wasm's browser entry (wasm32, P = 30, memBudget at most 2^30); the window check runs in the applier. P4-18: a planned payload delta runs first as Compression Dictionary Transport (the target's payload URL with ?via=dcz; Content-Encoding: dcz, the artifact plus 40 bytes, applied by Chromium), output SHA-256 checked against the record; a 409 (no dictionary: evicted, chunk-assembled base, Firefox, Safari) or a failure falls back to the WASM delta, then the plan's remaining candidates. Never for a gated pack or a base over 100 MiB."
     },
     "packs.state": {
       "status": "implemented",

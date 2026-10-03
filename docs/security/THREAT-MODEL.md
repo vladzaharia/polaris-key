@@ -676,6 +676,44 @@ not_entitled` rather than `404`, which confirms the product holds that gated con
   pack release plus a fixed set of bulk queries, inside D1's per-invocation cap); `embedded` is derived from the signed pins and the builds' `embeds`. A
   transport v1 does not act on is stored and reported unsupported, never silently served by CDN.
 
+**The payload URL (P4-18).** The one other route that serves a pack's objects is
+`/<p>/distribution/packs/<pack>/<variant>/payload/<sha256>` (`services/distribution/payload.ts`;
+Compression Dictionary Transport, RFC 9842). It adds no authorisation of its own:
+
+- **The blob route's decision, per object.** The variant's `full` object is decided by
+  `decideBlob` exactly as the blob route decides it (its holders, the pack's mode, the current
+  gate under `gated/`), and a `dcz` answer also needs the delta artifact decided servable and
+  stored with its recorded checksum; otherwise the answer falls back to the full payload (or `409`
+  under the SDK's `?via=dcz` guard). It counts against the same artifact rate-limit lane, before
+  the decision. Finding the payload reads at most the pack's 200 newest records (pages of 20,
+  newest first), so a lookup is bounded per request.
+- **Nothing is decoded or composed at the edge.** The stored frame is sent as it is with
+  `Content-Encoding: zstd`; a `dcz` body is a 40-byte header derived from the delta's `from` (a
+  hash the signed record publishes) followed by the stored artifact. No base byte is read, and
+  the stored artifact stays the portable bare frame. `Available-Dictionary` is only compared
+  with the `from` of a published delta to the requested payload, so it reveals nothing beyond the
+  record. The device verifies the decoded payload's size and SHA-256 against the record (the
+  dictionary lives in the evictable HTTP cache), exactly as for every other strategy.
+- **Gated bytes are never a dictionary.** A payload served from a `gated/` key (or of a gated
+  record) is `private, no-store, no-transform` and carries no `Use-As-Dictionary`. An ungated
+  payload is `public, max-age=31536000, immutable, no-transform` when every holder is `public`,
+  else `private, max-age=31536000, immutable, no-transform`: the browser of a caller who was
+  authorised may keep it (and use it as a dictionary), and no shared cache may. That is the one
+  caching difference from the blob route, which answers such a non-public object
+  `private, no-store`; the bytes are content-addressed and immutable, and the browser keeping
+  them is the same device that keeps them in OPFS. It also covers a pack moved to `entitled`
+  later whose earlier releases' objects stay under `blobs/` (objects never move prefix): the
+  payload URL serves them, to a caller the gate admits, `private, max-age=31536000, immutable`
+  where the blob route says `private, no-store`, so a browser admitted once keeps that copy (and
+  its dictionary) after its grant lapses; no one else's cache holds it, and the gate still
+  decides every new request.
+- **The dictionary's scope is one (pack, variant).** `Use-As-Dictionary`'s match pattern is the
+  (pack, variant)'s payload-URL prefix, so a browser never offers one pack's payload for
+  another's request, and none is advertised above Chromium's 100 MiB limit.
+- **CORS as for the blob route** (`core/cors.ts`'s covered paths, the product's `web.origins`);
+  full-body only (`Accept-Ranges: none`); the body is sent with `encodeBody: "manual"` at the edge
+  (`index.ts` `preEncoded`), so the runtime never re-encodes it.
+
 **Edge caching stays off.** The byte routes are not cached (no Workers Caching entrypoint, no
 `caches.default`), so S-02's open question — whether a public response to a request carrying
 `Authorization` is stored or bypassed (Cloudflare's configuration and examples pages disagree;
@@ -1192,6 +1230,14 @@ are built from segments that must match `^[A-Za-z0-9][A-Za-z0-9-]*$` (so a paylo
 a JSON:API `links.next` is followed only when it names the same origin and `/v1/`. The bearer
 token therefore cannot be sent to a host a payload, a manifest or an operator chooses.
 
+**Bounded, redirect-free reads.** Every request sends `redirect: "manual"` and any 3xx (or opaque
+redirect) is an `AscError` with that status, so the bearer JWT is never re-sent to a `Location` a
+response names. Bodies are read through `core/readCapped.ts` (`readCappedText`, at most 8 MiB: a
+full 200-resource JSON:API page with its `included` set stays well under 1 MiB); an oversized,
+truncated or non-object body is `AscError(502)`, the same unreadable answer as malformed JSON. The
+JWT is signed locally, so there is no token exchange to redirect. This is the rule all three store
+connectors share ("Store connectors: Microsoft Store", Bounded, redirect-free reads, below).
+
 **Errors carry no bodies.** An ASC failure becomes `AscError` with the method, path and HTTP
 status only; that line is what reaches `outlet_credentials.last_error`, the cron's thrown
 aggregate and a control's `store_refused` refusal.
@@ -1335,6 +1381,14 @@ percent-encoded, `.` / `..` are refused, an edit id must match `^[A-Za-z0-9_-]{1
 custom method (`:commit`, `:query`) is appended only by the code that means it — a track named
 `x:commit` cannot become a commit. Nothing in a response is followed as a URL.
 
+**Bounded, redirect-free reads.** Every API request and the JWT-bearer token exchange in
+`core/outletTokens.ts` send `redirect: "manual"` and treat any 3xx (or opaque redirect) as a
+failure — a `PlayError` with that status, or `google token exchange failed: <status>` before any
+API call — so neither the bearer token nor the signed assertion is re-sent to a `Location`. Bodies
+are read through `core/readCapped.ts` (at most 4 MiB for an API response, 64 KiB for a token
+response); an oversized or malformed body is `PlayError(502)` or "returned no JSON", and a token
+body that is not a JSON object is "returned no token", never a crash.
+
 **Edits are fragile; reads are all-or-nothing.** One open edit per user, invalidated by a new
 edit, a Console change or another commit. The poller reads and maps the whole track list before
 writing anything, deletes its edit whatever happened, and a failed read (an invalidated edit, a
@@ -1452,7 +1506,13 @@ become `removed` like any build no read submission carries.
 `redirect: "manual"` and treat any 3xx as a failure, so neither the client secret nor the bearer
 token is re-sent to a URL a response names; bodies are read through `core/readCapped.ts`
 (`readCappedText`, 64 KiB for a token, 4 MiB for an API response) and a submission's package list
-is capped at 64 entries.
+is capped at 64 entries. **The rule is shared by all three store connectors:** the App Store
+Connect client (8 MiB) and the Google Play clients and Google token exchange (4 MiB / 64 KiB)
+follow it too (fix/connector-hardening; their sections above), with the shared `isRedirect` test
+in `core/readCapped.ts`. A refused redirect or an oversized body is always that connector's own
+failure or unreadable-answer path, carrying a status line, never a body or a token
+(`test/connectorHardening.test.ts` drives the redirect cases through the real runtime `fetch`
+against a loopback server and asserts the `Location` is never requested).
 
 ### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
 
@@ -2958,8 +3018,10 @@ way to earn a blob ref is added (P4-02's stage round is the second), or the Work
 (`MAX_PUBLISHED_INDEX_BYTES`) is raised; pack-set resolution reads a new input, an input moves
 between signed, operator-owned and manifest-owned, a resolution failure is allowed to refuse an
 operator action or to leave stored sets in place, or its bounds (`MAX_SELECTORS`,
-`MAX_RESOLUTION_WORK`) are raised (P4-12); a route other than the blob route serves a pack's object
-or reads a `gated/` key, a ref kind other than `pack-upload` or `pack-object` authorises a
+`MAX_RESOLUTION_WORK`) are raised (P4-12); a route other than the blob route and P4-18's payload
+URL serves a pack's object or reads a `gated/` key, the payload URL decides an object by anything
+but `decideBlob`, offers a gated payload as a dictionary, or composes bytes beyond the 40-byte dcz
+header and the stored artifact (P4-18), a ref kind other than `pack-upload` or `pack-object` authorises a
 `gated/` key, or a gated object is authorised by anything but the pack's current
 `dist_access.entitlement` (P4-05); the blob collector drops a ref kind other than `pack-object` or
 `pack-upload`, deletes an object that has a ref, deletes before the bucket lock's age, restores a
