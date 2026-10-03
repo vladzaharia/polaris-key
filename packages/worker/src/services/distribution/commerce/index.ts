@@ -348,6 +348,19 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
   const raw = await readBody(ctx.req, MAX_CLAIM_BODY);
   if (raw === null)
     return errorResponse(413, "body_too_large", "claim body too large");
+  // Authenticate before anything about the product's store setup is consulted, so only a device
+  // of this product learns which stores are configured.
+  const who = await callerLicence(ctx);
+  if (who instanceof Response) return who;
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "commerceClaim", id: who.licenseId, ...CLAIM_RATE },
+      now,
+    ))
+  )
+    return errorResponse(429, "rate_limited", "too many claims");
   const body = jsonObject(raw);
   if (!body || !isStore(body.store))
     return bad(
@@ -364,18 +377,6 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
         ? await playContext(ctx, settings)
         : await steamContext(ctx, settings);
   if (!storeCtx) return null;
-
-  const who = await callerLicence(ctx);
-  if (who instanceof Response) return who;
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { bucket: "commerceClaim", id: who.licenseId, ...CLAIM_RATE },
-      now,
-    ))
-  )
-    return errorResponse(429, "rate_limited", "too many claims");
   const binding = await bindingFor(db, product.slug, who.licenseId, now);
   const record: RecordContext = {
     db,
