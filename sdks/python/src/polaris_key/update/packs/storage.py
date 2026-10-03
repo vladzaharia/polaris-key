@@ -8,6 +8,9 @@ staging, the content-addressed store and the install-state file under one direct
   <root>/staging/<planId>/objects/<sha256>  objects being fetched (appended, resumable)
   <root>/staging/<planId>/out/              the payload being built (a tree's files, or
                                             ``payload.bin`` for a container)
+  <root>/staging/<planId>/journal.json      the chunk strategy's run bitmap (P4-11)
+  <root>/index/<sha256>                     a seed's chunk index as fetched, by ``chunks.sha256``
+                                            (P4-11; written by temp + rename, re-verified on use)
   <root>/store/<packId>/<payloadSha256>/    a committed payload, never overwritten; its
                                             ``.pkey/files.json`` holds the files index
 
@@ -24,6 +27,7 @@ import errno
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 from typing import Any, Dict, List, Optional, Tuple
@@ -33,6 +37,8 @@ from .files import tree_digest
 from .ports import READ_CHUNK, InstalledFile
 
 __all__ = [
+    "DirChunkIndexStore",
+    "DirRunJournal",
     "DirPackStorage",
     "DirPackStateStore",
     "FileSource",
@@ -43,6 +49,8 @@ __all__ = [
 ]
 
 _CONTAINER_FILE = "payload.bin"
+_JOURNAL_FILE = "journal.json"
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _INDEX_FILE = os.path.join(".pkey", "files.json")
 #: What a file system answers when it cannot sync a directory at all.
 _DIR_SYNC_UNSUPPORTED = {errno.EISDIR, errno.EPERM, errno.EBADF, errno.EINVAL}
@@ -337,6 +345,78 @@ class _ContainerOut:
             f.seek(offset)
             f.write(data)
 
+    def read(self, offset: int, length: int) -> bytes:
+        """What was written at ``offset`` (fewer bytes past the end)."""
+        if length <= 0:
+            return b""
+        with open(self._path, "rb") as f:
+            f.seek(offset)
+            return f.read(length)
+
+
+class DirChunkIndexStore:
+    """P4-11's seed-index store, ``<root>/index/<sha256>``: each seed's chunk index object as
+    fetched (possibly zstd), by ``chunks.sha256``. Written by temp + rename; the engine re-verifies
+    every index against its record each time it uses one, so nothing here is trusted."""
+
+    def __init__(self, root: str) -> None:
+        self.dir = os.path.join(root, "index")
+
+    def _path(self, sha256: str) -> str:
+        if not isinstance(sha256, str) or _SHA256_RE.fullmatch(sha256) is None:
+            raise ValueError("a seed index is named by a lowercase SHA-256")
+        return os.path.join(self.dir, sha256)
+
+    def get(self, sha256: str) -> Optional[bytes]:
+        try:
+            with open(self._path(sha256), "rb") as f:
+                return f.read()
+        except (FileNotFoundError, NotADirectoryError):
+            return None
+
+    def put(self, sha256: str, data: bytes) -> None:
+        target = self._path(sha256)
+        os.makedirs(self.dir, mode=0o700, exist_ok=True)
+        tmp = f"{target}.{os.getpid()}.tmp"
+        _write_durable(tmp, bytes(data), os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+        os.replace(tmp, target)
+        _sync_dir(self.dir)
+
+    def list(self) -> List[str]:
+        return sorted(
+            e.name
+            for e in _scandir_or_empty(self.dir)
+            if e.is_file(follow_symlinks=False) and _SHA256_RE.fullmatch(e.name) is not None
+        )
+
+    def remove(self, sha256: str) -> None:
+        _rm(self._path(sha256))
+
+
+class DirRunJournal:
+    """P4-11's run journal, ``staging/<planId>/journal.json`` (temp + rename), removed with the
+    plan's staging."""
+
+    def __init__(self, storage: "DirPackStorage") -> None:
+        self._storage = storage
+
+    def _path(self, plan_id: str) -> str:
+        return self._storage._inside(self._storage.staging_dir, plan_id, _JOURNAL_FILE)
+
+    def read(self, plan_id: str) -> Optional[str]:
+        try:
+            with open(self._path(plan_id), "rb") as f:
+                return f.read().decode("utf-8", errors="replace")
+        except (FileNotFoundError, NotADirectoryError):
+            return None
+
+    def write(self, plan_id: str, text: str) -> None:
+        target = self._path(plan_id)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        tmp = f"{target}.{os.getpid()}.tmp"
+        _write_durable(tmp, text.encode("utf-8"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+        os.replace(tmp, target)
+
 
 class DirPackStorage:
     """The ``PackStorage`` over a directory (and its :meth:`state_store`)."""
@@ -347,6 +427,9 @@ class DirPackStorage:
         self.store_dir = os.path.join(self.root, "store")
         #: Measured trees of embedded locations (verified once per process).
         self._embedded_files: Dict[str, List[InstalledFile]] = {}
+        #: P4-11: the seed-index store and the chunk strategy's run journal.
+        self.chunk_indexes = DirChunkIndexStore(self.root)
+        self.run_journal = DirRunJournal(self)
 
     def state_store(self) -> DirPackStateStore:
         return DirPackStateStore(self.root)
@@ -368,16 +451,22 @@ class DirPackStorage:
     def staged_object(self, plan_id: str, sha256: str) -> _StagedFile:
         return _StagedFile(self._inside(self.staging_dir, plan_id, "objects", sha256))
 
-    def output(self, plan_id: str, layout: str) -> PackOutput:
+    def output(self, plan_id: str, layout: str, resume: bool = False) -> PackOutput:
+        """The plan's output area, emptied, except that with ``resume`` (P4-11's chunk strategy)
+        a container keeps the ``payload.bin`` an earlier attempt of the same plan wrote."""
         out = self._inside(self.staging_dir, plan_id, "out")
+        target = os.path.join(out, _CONTAINER_FILE)
+        if resume and layout != "tree" and _exists(target):
+            c = _ContainerOut(target)
+            return PackOutput(sink=c, read=c.read)
         _rm(out)
         os.makedirs(out, exist_ok=True)
         if layout == "tree":
             return PackOutput(tree=_TreeOut(out, self._inside))
-        target = os.path.join(out, _CONTAINER_FILE)
         with open(target, "wb"):
             pass
-        return PackOutput(sink=_ContainerOut(target))
+        c = _ContainerOut(target)
+        return PackOutput(sink=c, read=c.read)
 
     def commit(
         self,

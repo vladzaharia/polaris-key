@@ -13,16 +13,16 @@ checkout.
                                                                             ``holds_of``
 ``frameWindowCases``   §2.7 rule 3's header window                          ``frame_window``
 ``applyCases``         §2.9's appliers, verdicts and counters               ``apply_*``
-``chunkIndexCases``    plans/P4-10.md §2.3 (planned: P4-11)                 materialised only
+``chunkIndexCases``    plans/P4-10.md §2.3's ``parseChunkIndex``            ``parse_chunk_index``
 =====================  ===================================================  =====================
 
 Content corpus v2 (plans/P4-10.md §4.3) adds ``chunkIndexCases`` and eight ``strategy: chunk``
-apply cases. Python's parser and applier are P4-11's: both are declared planned by exact id (and
-in ``parity.json``), never skipped silently; their ``<ref>`` inputs (the ``put*`` mutations
-included) are materialised and checked against their refs here.
+apply cases, run through P4-11's ``parse_chunk_index`` and ``apply_chunk``: the seeds' indexes
+are parsed unbound (``parse_chunk_index_bytes``), each single-range request is answered from the
+stored bundle clipped at its end, and the output is an in-memory buffer.
 
-``filesIndexCases`` and ``applyCases`` run once per zstd backend this interpreter has
-(``compression.zstd`` on 3.14+, ``zstandard`` where installed).
+``filesIndexCases``, ``chunkIndexCases`` and ``applyCases`` run once per zstd backend this
+interpreter has (``compression.zstd`` on 3.14+, ``zstandard`` where installed).
 """
 
 from __future__ import annotations
@@ -51,6 +51,13 @@ from polaris_key.update.packs import (
     parse_files_index,
     slice_source,
 )
+from polaris_key.update.packs.chunk_apply import (
+    ApplyChunkPorts,
+    ChunkRangeResponse,
+    ChunkSeed,
+    apply_chunk,
+)
+from polaris_key.update.packs.chunks import parse_chunk_index, parse_chunk_index_bytes
 from polaris_key.update.packs.zstd import PythonZstd, _backends
 
 _CONTENT_DIR = Path(__file__).resolve().parents[3] / "conformance" / "corpus" / "v2" / "content"
@@ -103,32 +110,8 @@ def _materialise(ref: Dict[str, Any]) -> bytes:
     return data
 
 
-#: plans/P4-10.md §4.3: the sections Python declares planned until P4-11, by exact id.
-_CHUNK_INDEX_PLANNED = [
-    "chunks-v1-valid",
-    "chunks-v2-valid",
-    "chunks-short-header",
-    "chunks-bad-magic",
-    "chunks-bad-version",
-    "chunks-bad-record-size",
-    "chunks-bad-flags",
-    "chunks-bad-length",
-    "chunks-bad-length-count",
-    "chunks-zero-length",
-    "chunks-bad-clen",
-    "chunks-bad-bundle-ref",
-    "chunks-bad-bundle-range",
-    "chunks-reserved-nonzero",
-    "chunks-size-mismatch",
-    "chunks-zero-clen",
-    "chunks-bad-length-wrap",
-    "chunks-size-high-word",
-    "chunks-ref-tampered",
-    "chunks-ref-over-max",
-    "chunks-payload-mismatch",
-    "chunks-bundle-size-saturated",
-]
-_CHUNK_APPLY_PLANNED = [
+#: plans/P4-10.md §4.3: the eight chunk apply cases, every one run through ``apply_chunk`` (P4-11).
+_CHUNK_APPLY_CASES = [
     "chunk-v1-to-v2",
     "chunk-no-seed",
     "chunk-tampered-zstd",
@@ -138,7 +121,6 @@ _CHUNK_APPLY_PLANNED = [
     "chunk-seed-tampered-repair",
     "chunk-index-for-other-payload",
 ]
-_PLANNED = "planned: P4-11 (packs.index.chunks, packs.apply.chunk)"
 
 
 def test_content_corpus_has_every_section() -> None:
@@ -153,14 +135,13 @@ def test_content_corpus_has_every_section() -> None:
     assert _BACKENDS, "no zstd backend"
 
 
-def test_chunk_sections_are_declared_planned_by_exact_id() -> None:
-    """No silent skip: the planned lists are exactly the corpus's chunk cases, and
-    ``parity.json`` declares both features planned in P4-11."""
-    assert [c["id"] for c in _CONTENT["chunkIndexCases"]] == _CHUNK_INDEX_PLANNED
-    assert [c["id"] for c in _CONTENT["applyCases"] if c["strategy"] == "chunk"] == _CHUNK_APPLY_PLANNED
+def test_every_chunk_apply_case_runs() -> None:
+    """No silent skip: the chunk apply cases are exactly the corpus's, and ``parity.json``
+    declares both chunk features implemented (P4-11)."""
+    assert [c["id"] for c in _CONTENT["applyCases"] if c["strategy"] == "chunk"] == _CHUNK_APPLY_CASES
     parity = json.loads((Path(__file__).resolve().parents[1] / "parity.json").read_text(encoding="utf-8"))
     for fid in ("packs.index.chunks", "packs.apply.chunk"):
-        assert parity["features"][fid] == {"status": "planned", "wp": "P4-11"}, fid
+        assert parity["features"][fid]["status"] == "implemented", fid
 
 
 @pytest.mark.parametrize(
@@ -175,16 +156,68 @@ def test_chunk_index_case_inputs(case: Dict[str, Any]) -> None:
     assert matches == (case["id"] != "chunks-ref-tampered"), case["id"]
 
 
-@pytest.mark.skip(reason=_PLANNED)
-@pytest.mark.parametrize("case_id", _CHUNK_INDEX_PLANNED)
-def test_chunk_index_case(case_id: str) -> None:  # pragma: no cover - P4-11
-    raise AssertionError(case_id)
+_CI = [(b, c) for b in _BACKENDS for c in _CONTENT["chunkIndexCases"]]
 
 
-@pytest.mark.skip(reason=_PLANNED)
-@pytest.mark.parametrize("case_id", _CHUNK_APPLY_PLANNED)
-def test_chunk_apply_case(case_id: str) -> None:  # pragma: no cover - P4-11
-    raise AssertionError(case_id)
+# @pkey-feature packs.index.chunks
+@pytest.mark.parametrize("backend,case", _CI, ids=[f"{b[0]}:{c['id']}" for b, c in _CI])
+def test_chunk_index_case(backend: Any, case: Dict[str, Any]) -> None:
+    """plans/P4-10.md §2.3: ``parse_chunk_index`` over every chunkIndexCases vector."""
+    zstd = backend[1]
+    stored = _materialise(case["stored"])
+    r = parse_chunk_index(stored, case["chunks"], case["payload"], decode=zstd.decode)
+    assert _canonical(r.verdict()) == _canonical(case["expect"]), case["description"]
+
+
+class _BufferOutput:
+    """The chunk applier's output over one in-memory buffer of ``payload.size``."""
+
+    def __init__(self, size: int) -> None:
+        self.buf = bytearray(size)
+
+    def write(self, offset: int, data: bytes) -> None:
+        self.buf[offset : offset + len(data)] = data
+
+    def read(self, offset: int, length: int) -> bytes:
+        return bytes(self.buf[offset : offset + length])
+
+
+_CA = [(b, c) for b in _BACKENDS for c in _CONTENT["applyCases"] if c["strategy"] == "chunk"]
+
+
+# @pkey-feature packs.apply.chunk
+@pytest.mark.parametrize("backend,case", _CA, ids=[f"{b[0]}:{c['id']}" for b, c in _CA])
+def test_chunk_apply_case(backend: Any, case: Dict[str, Any]) -> None:
+    """plans/P4-10.md §2.5: ``apply_chunk`` with the case's seeds (each index parsed unbound),
+    a fetcher that answers each single-range request from the stored bundle (clipped at its end)
+    and an in-memory output. The verdict, counters included, is compared whole."""
+    zstd = backend[1]
+    store = {h: _materialise(src) for h, src in case["objects"].items()}
+    seeds: List[ChunkSeed] = []
+    for sd in case.get("seeds") or []:
+        p = parse_chunk_index_bytes(_materialise(sd["index"]), None)
+        if p.ok:
+            seeds.append(ChunkSeed(index=p.index, payload=memory_source(_materialise(sd["payload"]))))
+
+    def objects(h: str) -> Any:
+        b = store.get(h)
+        return None if b is None else memory_source(b)
+
+    def fetch_range(bundle: str, offset: int, length: int) -> ChunkRangeResponse:
+        b = store.get(bundle, b"")
+        part = b[min(offset, len(b)) : min(offset + length, len(b))]
+        return ChunkRangeResponse(status="ok", chunks=iter([part]))
+
+    out = _BufferOutput(case["variant"]["payload"]["size"])
+    r = apply_chunk(
+        case["variant"],
+        seeds,
+        ApplyChunkPorts(objects=objects, zstd=zstd, fetch_range=fetch_range, output=out),
+        repair=case.get("repair") is True,
+    )
+    assert _canonical(r.verdict) == _canonical(case["expect"]), case["description"]
+    if r.verdict["ok"]:
+        assert hashlib.sha256(bytes(out.buf)).hexdigest() == case["variant"]["payload"]["sha256"]
 
 
 def test_blobs_match_the_table_and_nothing_else_is_there() -> None:
