@@ -1,5 +1,10 @@
 # P6-04 Optional: Polaris-hosted, channel-pinned web builds
 
+> **Owner decision (2026-10-03): deferred — no hosted web builds for now.** Status set to
+> `blocked`. Hosting third-party HTML/JS on `dl.plrs.im` is ruled out (same-site with the console;
+> one origin shared by every product), so this package needs a separate registrable domain with
+> per-product subdomains before it can start. Revisit only when the owner provides that domain.
+
 | Field       | Value                                                                                                                                                                                                                                                                                                 |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P6: Commerce, ops, web (optional)                                                                                                                                                                                                                                                                     |

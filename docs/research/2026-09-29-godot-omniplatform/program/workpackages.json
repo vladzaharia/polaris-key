@@ -1996,7 +1996,7 @@
       "optional": true,
       "refs": ["README §3.11", "README §11 decision 9"],
       "brief": "wp/P6-04-hosted-web.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "P6-05",
