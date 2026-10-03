@@ -7,7 +7,7 @@
 // code generation from strings only during the startup window. Catalogs are read
 // asynchronously from D1, i.e. only ever mid-request, so an Ajv validator for a catalog can
 // never be compiled legally — `GET /<product>/config` 500'd on every poll
-// (docs/security/findings/R10-dos.md §R10-01, verified on real workerd in VERIFY-R10-01.md).
+// (the R10 audit findings §R10-01, verified on real workerd in the VERIFY-R10-01 audit note).
 // Caching a `Catalog` per product+schemaVersion, which an older version of this header
 // recommended, does not fix that; it only turns a per-request throw into a per-isolate one.
 //

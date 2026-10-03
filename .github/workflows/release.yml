@@ -21,7 +21,7 @@ jobs:
       # No `version:` here — the action reads `packageManager` from package.json.
       # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
       # which is why every CI run in this repo failed at step 2 until 2026-08-26.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -33,7 +33,7 @@ jobs:
       - run: pnpm test
       - run: pnpm lint
       - run: pnpm --filter @polaris-key/cli bundle:action -- --check
-      - uses: changesets/action@v1
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         id: changesets
         with:
           publish: pnpm changeset publish

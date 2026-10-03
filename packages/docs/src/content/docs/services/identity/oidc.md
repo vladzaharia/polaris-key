@@ -213,9 +213,9 @@ which service receives the request.
   minted license into.
 - [Customer portal](/docs/services/identity/portal/) — the platform-level OIDC login that shares
   the platform provider with a `platform`-issuer product.
-- `docs/security/findings/R8-oidc.md` — `R8-04` (single-use state), `R8-05` (claim trust: empty
+- the R8 audit findings — `R8-04` (single-use state), `R8-05` (claim trust: empty
   `sub`, unverified email, truthiness-only provisioning, token freshness), `R8-06` (fail-closed
   JSON parsing), `R8-10` (rate limiting on every handler here).
-- `docs/security/findings/R9-injection.md` — `R9-01`/`R9-02`, the issuer allowlist and its
+- the R9 audit findings — `R9-01`/`R9-02`, the issuer allowlist and its
   companion open-redirect fix.
 - [Public route table](/docs/reference/routes/) — every route with its owning service.

@@ -212,7 +212,7 @@ async function getOidcConfig(
  * ships this code, with no operator action and no warning. The follow-up that makes it fail
  * closed *for new configs only* has to live at the ingest paths (`release/linkRepo.ts`,
  * `release/resync.ts`), which can tell a first write from a re-sync; see
- * `docs/security/findings/R9-injection.md`. The platform issuer is exempt: it is a Worker
+ * the R9 audit findings. The platform issuer is exempt: it is a Worker
  * secret, not a repo-supplied value.
  */
 function issuerHostAllowed(env: Env, issuer: string): boolean {

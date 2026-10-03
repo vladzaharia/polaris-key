@@ -21,8 +21,8 @@ is. The security audit's R12-04 row is then true for every flow it names.
 ## Why
 
 Security finding R12-04 ("OIDC `state` / device code used verbatim as KV key names") is listed as
-**Fixed** in `docs/security/2026-08-26-security-audit.md` (the §3 table, and the note under it that
-the R12 lanes did not update `R12-secrets.md`). The fix landed for admin sign-in only:
+**Fixed** in the 2026-08-26 security audit (the §3 table, and the note under it that
+the R12 lanes did not update the R12 audit findings). The fix landed for admin sign-in only:
 
 - `packages/worker/src/admin/auth.ts:33-45` hashes the admin `state` under `KEY_HASH_PEPPER` and
   explains why: anyone who can list the HOT namespace would otherwise read live `state` values and

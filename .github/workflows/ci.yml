@@ -19,7 +19,7 @@ jobs:
       # No `version:` here — the action reads `packageManager` from package.json.
       # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
       # which is why every CI run in this repo failed at step 2 until 2026-08-26.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -71,8 +71,8 @@ jobs:
   # code generation workerd forbids, so it is structurally incapable of catching the class of
   # defect that produced this repo's worst release blocker: Ajv's `compile()` ran inside the
   # request handler, and `GET /<product>/config` would have 500'd for every device on every
-  # poll while hundreds of green Node tests said nothing (docs/security/findings/R10-dos.md
-  # §R10-01, reproduced on real workerd in VERIFY-R10-01.md).
+  # poll while hundreds of green Node tests said nothing (the R10 audit findings
+  # §R10-01, reproduced on real workerd in the VERIFY-R10-01 audit note).
   #
   # This job boots the genuine workerd binary. It is its own job, not a step in `js`, so that
   # "the code does not work in the runtime it ships to" is legible at a glance instead of
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -124,7 +124,7 @@ jobs:
             echo "::error::engines.node must be '>=X.Y.Z', got '$floors'"; exit 1
           fi
           echo "version=${floors#>=}" >> "$GITHUB_OUTPUT"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ steps.floor.outputs.version }}
@@ -150,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -173,7 +173,7 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -198,7 +198,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -3,7 +3,7 @@
 // These began life as ATTACK proofs asserting the CURRENT (vulnerable) behaviour. They have
 // now been INVERTED: each one asserts that the attack FAILS, so it is the regression test for
 // the fix named in its `// FIXED (…)` comment. Each documents a finding in
-// docs/security/findings/R4-client.md.
+// the R4 audit findings.
 //
 // Threat model: the attacker is an ordinary local user with write access to the SDK's own
 // config directory (`~/.config/<product>/`) but WITHOUT the ability to patch the shipped

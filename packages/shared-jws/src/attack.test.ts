@@ -87,7 +87,7 @@ describe("R2-04 · the protected header is size-capped (regression)", () => {
 });
 
 // MEASURED cross-language ground truth for duplicate JSON object members (probed directly
-// against each runtime, see docs/security/findings/R2-crypto.md):
+// against each runtime, see the R2 audit findings):
 //   TS      JSON.parse                 -> LAST member wins
 //   Python  json.loads                 -> LAST member wins
 //   Swift   JSONSerialization          -> FIRST member wins   <-- diverges

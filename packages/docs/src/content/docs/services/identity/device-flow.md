@@ -130,7 +130,7 @@ This page used to be a single `GET` that accepted `?confirm=1` and completed the
 there — which meant an `<img src>` or a link preview could confirm a sign-in with no user
 interaction at all, and the redirect it produced disclosed `state` and `nonce` directly to
 whoever triggered it. Making `GET` pure rendering and requiring an explicit, origin-checked,
-CSRF-bearing `POST` for the mutation is the fix (`docs/security/findings/R8-oidc.md`, finding
+CSRF-bearing `POST` for the mutation is the fix (the R8 audit findings, finding
 `R8-02`).
 :::
 
@@ -285,7 +285,7 @@ pin the conversation every SDK replays.
 :::note[Changed: the user code is independent]
 `userCode` used to be the first eight characters of `deviceCode`, case-folded, and
 `verificationUri` embedded the whole device code, so there was no page a human could type a code
-into. Both were documented residuals of `R8-02` in `docs/security/findings/R8-oidc.md`; the
+into. Both were documented residuals of `R8-02` in the R8 audit findings; the
 user-code page closes them. The `XXXX-XXXX` shape is unchanged.
 :::
 
@@ -295,6 +295,6 @@ user-code page closes them. The `XXXX-XXXX` shape is unchanged.
   license minting this flow shares.
 - [Browser sessions](/docs/services/identity/sessions/) — the cookie-issuing counterpart, for a
   client that _can_ hold a session.
-- `docs/security/findings/R8-oidc.md` — `R8-01` (device-id binding on the poll surfaces) and
+- the R8 audit findings — `R8-01` (device-id binding on the poll surfaces) and
   `R8-02` (the confirmation hardening and the independent user code) in full.
 - [Public route table](/docs/reference/routes/) — every route with its owning service.

@@ -2,7 +2,7 @@
  * RED TEAM R8 — OIDC / OAuth / identity-bootstrap attacks. **REMEDIATED — INVERTED.**
  *
  * Every `it()` here was originally the attacker's claim, and a passing test meant the attack
- * WORKED. The titles are unchanged so the mapping to docs/security/findings/R8-oidc.md
+ * WORKED. The titles are unchanged so the mapping to the R8 audit findings
  * survives, but each body now asserts the attack FAILS: this file is the regression suite for
  * the R8 fixes in src/oidc.ts. Each block names the finding id it locks down.
  *
@@ -115,7 +115,7 @@ async function seedOidc(db: SqliteDb): Promise<void> {
     AUD,
     null,
     JSON.stringify([REDIRECT]),
-    JSON.stringify({ family: { role: "user", tier: "pro" } }),
+    JSON.stringify({ members: { role: "user", tier: "pro" } }),
   );
   await db.run(
     `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days,
@@ -290,7 +290,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
         sub: "victim-sub",
         email: "victim@corp.com",
         email_verified: true,
-        groups: ["family"],
+        groups: ["members"],
         nonce,
       }),
     );
@@ -376,7 +376,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     const r = await activateFromIdentity(
       ctx.db,
       ctx.product,
-      { sub: "victim", groups: ["family"], claims: { sub: "victim" } },
+      { sub: "victim", groups: ["members"], claims: { sub: "victim" } },
       NOW,
     );
     if (!("licenseId" in r)) throw new Error("expected license");
@@ -752,7 +752,7 @@ describe("R8-02 device-code flow weaknesses", () => {
         sub: "victim-sub",
         email: "victim@corp.com",
         email_verified: true,
-        groups: ["family"],
+        groups: ["members"],
         nonce: authorize.searchParams.get("nonce")!,
       }),
     );
@@ -834,7 +834,7 @@ describe("R8-02 device-code flow weaknesses", () => {
         sub: "victim-sub",
         email: "victim@corp.com",
         email_verified: true,
-        groups: ["family"],
+        groups: ["members"],
         nonce: authorize.searchParams.get("nonce")!,
       }),
     );
@@ -962,7 +962,7 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     sub: "attacker-sub",
     email: "attacker@evil.example",
     name: "Attacker",
-    groups: ["family"],
+    groups: ["members"],
     claims: {} as Record<string, unknown>,
   };
 
@@ -1263,7 +1263,7 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     sub: "player-sub",
     email: "player@example.com",
     name: "Player",
-    groups: ["family"],
+    groups: ["members"],
     claims: {} as Record<string, unknown>,
   };
 
@@ -1557,7 +1557,7 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     sub: "victim-sub",
     email: "victim@corp.com",
     name: "Victim",
-    groups: ["family"],
+    groups: ["members"],
     claims: {} as Record<string, unknown>,
   };
 
@@ -1758,7 +1758,7 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     await ctx.db.run(
       "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
       JSON.stringify({
-        family: { role: "user", tier: "pro" },
+        members: { role: "user", tier: "pro" },
         vip: { role: "user", tier: "gold" },
       }),
     );
@@ -1930,7 +1930,7 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     );
     await ctx.db.run(
       "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
-      JSON.stringify({ family: { role: "user", tier: "solo" } }),
+      JSON.stringify({ members: { role: "user", tier: "solo" } }),
     );
     const {
       victimLicense: starterLicence,
@@ -2028,7 +2028,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       await signIdToken(ctx, {
         sub: "attacker-sub",
         email: "attacker@evil.test",
-        groups: ["family"],
+        groups: ["members"],
         nonce,
       }),
     );
@@ -2186,7 +2186,7 @@ describe("R8-04 non-single-use state / flow injection", () => {
     installFetchMock(
       await signIdToken(ctx, {
         sub: "victim-sub",
-        groups: ["family"],
+        groups: ["members"],
         nonce,
       }),
     );
@@ -2199,7 +2199,7 @@ describe("R8-04 non-single-use state / flow injection", () => {
     installFetchMock(
       await signIdToken(ctx, {
         sub: "attacker-sub",
-        groups: ["family"],
+        groups: ["members"],
         nonce,
       }),
     );
@@ -2258,7 +2258,7 @@ describe("R8-05 claim trust", () => {
       );
       vi.restoreAllMocks();
       installFetchMock(
-        await signIdToken(ctx, { email, groups: ["family"], nonce: "N" }), // no `sub`
+        await signIdToken(ctx, { email, groups: ["members"], nonce: "N" }), // no `sub`
       );
       // FIXED: the product flow now matches admin (admin/auth.ts:216) and portal
       // (portal/auth.ts:280) — a generic 401, indistinguishable from any other bad token.
@@ -2281,7 +2281,7 @@ describe("R8-05 claim trust", () => {
     );
     vi.restoreAllMocks();
     installFetchMock(
-      await signIdToken(ctx, { sub: 123, groups: ["family"], nonce: "N" }),
+      await signIdToken(ctx, { sub: 123, groups: ["members"], nonce: "N" }),
     );
     expect((await callback(ctx, "s-typed")).status).toBe(401);
   });
@@ -2297,7 +2297,7 @@ describe("R8-05 claim trust", () => {
         sub: "mallory",
         email: "ceo@victim-corp.com",
         email_verified: false,
-        groups: ["family"],
+        groups: ["members"],
         nonce: "N",
       }),
     );
@@ -2360,7 +2360,7 @@ describe("R8-05 claim trust", () => {
         sub: "honest",
         email: "ada@corp.com",
         email_verified: true,
-        groups: ["family"],
+        groups: ["members"],
         nonce: "N",
       }),
     );
@@ -2437,7 +2437,7 @@ describe("R8-05 claim trust", () => {
     );
     const stale = await new SignJWT({
       sub: "stale-user",
-      groups: ["family"],
+      groups: ["members"],
       nonce: "N",
       azp: "some-other-client",
       hd: "attacker.test",
@@ -2465,7 +2465,7 @@ describe("R8-05 claim trust", () => {
     installFetchMock(
       await signIdToken(ctx, {
         sub: "fresh-user",
-        groups: ["family"],
+        groups: ["members"],
         nonce: "N",
         azp: "some-other-client",
         hd: "attacker.test",
@@ -2505,7 +2505,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
     installFetchMock(
       await signIdToken(ctx, {
         sub: "u",
-        groups: ["family"],
+        groups: ["members"],
         nonce: "N",
       }),
     );
@@ -2531,14 +2531,14 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
       await activateFromIdentity(
         ctx.db,
         ctx.product,
-        { sub: "u", groups: ["family"], claims: {} },
+        { sub: "u", groups: ["members"], claims: {} },
         NOW,
       ),
     ).toEqual({ error: "not-entitled" });
 
     await ctx.db.run(
       "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
-      JSON.stringify({ family: { role: "user" } }),
+      JSON.stringify({ members: { role: "user" } }),
     );
     await ctx.db.run(
       `INSERT INTO provisioning_config (product, claim, entitlement_key,
@@ -2556,7 +2556,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
     const r = await activateFromIdentity(
       ctx.db,
       ctx.product,
-      { sub: "u", groups: ["family"], claims: { sub: "u" } },
+      { sub: "u", groups: ["members"], claims: { sub: "u" } },
       NOW,
     );
     if (!("licenseId" in r)) throw new Error("expected license");
@@ -2765,7 +2765,7 @@ describe("R8 refuted", () => {
       await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
-    installFetchMock(await signIdToken(ctx, { sub: "u", groups: ["family"] }));
+    installFetchMock(await signIdToken(ctx, { sub: "u", groups: ["members"] }));
     expect((await callback(ctx, "S")).status).toBe(401);
   });
 
@@ -2774,7 +2774,7 @@ describe("R8 refuted", () => {
       await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
     );
-    const hs = await new SignJWT({ sub: "u", groups: ["family"], nonce: "N" })
+    const hs = await new SignJWT({ sub: "u", groups: ["members"], nonce: "N" })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuer(ISSUER)
       .setAudience(AUD)
@@ -2816,7 +2816,7 @@ describe("R8 refuted", () => {
     const r = await activateFromIdentity(
       ctx.db,
       ctx.product,
-      { sub: "u", groups: ["family"], claims: {} },
+      { sub: "u", groups: ["members"], claims: {} },
       NOW,
     );
     if (!("licenseId" in r)) throw new Error("expected license");
@@ -2869,13 +2869,13 @@ describe("R8 refuted", () => {
       AUD,
       null,
       JSON.stringify([`${ORIGIN}/other/identity/auth/callback`]),
-      JSON.stringify({ family: { role: "user" } }),
+      JSON.stringify({ members: { role: "user" } }),
     );
     const other = (await loadProduct(ctx.env, ctx.db, "other"))!;
     const r = await activateFromIdentity(
       ctx.db,
       ctx.product,
-      { sub: "u", groups: ["family"], claims: {} },
+      { sub: "u", groups: ["members"], claims: {} },
       NOW,
     );
     if (!("licenseId" in r)) throw new Error("expected license");

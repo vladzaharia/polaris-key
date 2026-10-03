@@ -32,7 +32,7 @@ import PackageDescription
 // ── THE SPARKLE CONDITIONING (D-24) ─────────────────────────────────────────────────────────
 //
 // Sparkle ≥ 2.9.6 is the security floor and this package's only external dependency. 2.6.4
-// fixed CVE-2025-0509 (docs/security/arch/anti-piracy-realism.md); 2.9.5 and 2.9.6 fixed a
+// fixed CVE-2025-0509 (the anti-piracy-realism review); 2.9.5 and 2.9.6 fixed a
 // symlink attack in delta patching, a root privilege escalation, and package installs that
 // proceeded after signature validation failed. It is macOS-only, and iOS must never try to link
 // it, so the conditioning is applied in BOTH places it can be:

@@ -57,7 +57,7 @@ compatibility bridge for a browser holding a stale bundle, and only when the req
 genuine same-origin top-level navigation — not a cross-site `<img>` or link. The unconditional
 `GET` this replaced was a logout-CSRF: the cookie is `SameSite=Lax`, which is a defense against a
 class of cross-site request, not a substitute for a real token
-(`docs/security/findings/R1-control-plane.md`, `R1-03`).
+(the R1 audit findings, `R1-03`).
 
 ## The session cookie
 
@@ -100,7 +100,7 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   single tombstone audit entry naming only the opaque `acct_…` id — nothing that still identifies
   the person. Rate-limited to 5 attempts on the account's own budget; the notice email is sent
   **before** the delete, because afterward there is no address left to send it to
-  (`docs/security/findings/R11-data.md`, `R11-09`). Licenses themselves are **not** deleted — they
+  (the R11 audit findings, `R11-09`). Licenses themselves are **not** deleted — they
   are the product's records, and the portal account is only a view onto them.
 - **`GET /api/licenses`** / **`GET /api/licenses/<product>/<licenseId>`** — every license linked
   to the account, across every product, with visible entitlements folded in; detail adds keys and
@@ -127,8 +127,8 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   enabled, account active, license still linked, licensed access still held — and the token is
   spent with a single conditional `UPDATE … WHERE used_at IS NULL`, so two concurrent redemptions
   of the same token cannot both win; exactly one sees the row change. See
-  `docs/security/findings/R6-release.md`'s `R6-12` for the redirect allowlist, and
-  `R9-injection.md`'s `R9-05b` (the redemption used to be read-then-write, not
+  the R6 audit findings' `R6-12` for the redirect allowlist, and
+  the R9 audit findings' `R9-05b` (the redemption used to be read-then-write, not
   compare-and-swap) for the atomic single-use fix.
 
 ## Per-product portal settings
@@ -149,7 +149,7 @@ license into the account requesting it — verified in two senses at once: only 
 the portal itself proved (a magic link it sent, or an `email_verified: true` claim from the
 **platform** issuer specifically) can drive a link at all, and only a platform-issuer subject may
 match a license's `sub`, so subjects minted by mutually untrusted custom IdPs can never collide
-across products (`docs/security/findings/R5-isolation.md`, `R5-01` and `R5-02`).
+across products (the R5 audit findings, `R5-01` and `R5-02`).
 
 ## See also
 
@@ -157,13 +157,13 @@ across products (`docs/security/findings/R5-isolation.md`, `R5-01` and `R5-02`).
   a `custom` per-product provider sits outside auto-linking entirely.
 - [Browser sessions](/docs/services/identity/sessions/) — the product-scoped session cookie this
   page's cookie is deliberately not the same as.
-- `docs/security/findings/R5-isolation.md` — the full cross-tenant linking analysis this page's
+- the R5 audit findings — the full cross-tenant linking analysis this page's
   auto-link section summarizes, plus `R5-05`/`R5-06` (rate-limit and capability scoping).
-- `docs/security/findings/R1-control-plane.md` — `R1-02`/`R1-03`/`R1-08`, the session-cookie and
+- the R1 audit findings — `R1-02`/`R1-03`/`R1-08`, the session-cookie and
   logout hardening.
-- `docs/security/findings/R9-injection.md` and `R6-release.md` — `R9-05b` and `R6-12`, the
+- the R9 audit findings and the R6 audit findings — `R9-05b` and `R6-12`, the
   download-token redemption and redirect allowlist.
-- `docs/security/findings/R11-data.md` — `R11-09` (account erasure) and `R11-05` (download-token
+- the R11 audit findings — `R11-09` (account erasure) and `R11-05` (download-token
   retention).
 - [Public route table](/docs/reference/routes/) — every _product-scoped_ wire route. The
   portal's root-level paths on this page are not part of that table; they are platform routes,

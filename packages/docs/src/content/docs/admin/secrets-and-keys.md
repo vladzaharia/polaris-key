@@ -19,7 +19,7 @@ is right, rotate it rather than trying to recover it.
 
 Typical secret names are an OIDC client secret (custom OIDC providers only — the platform
 provider needs none) and an edge-mint signing key, one per recipe the product's manifest
-declares (`EDGE_MINT__DJDL__APPLEMUSIC` is the production example — see [Operating: the KEK
+declares (for example `EDGE_MINT__DJDL__<RECIPE>` — see [Operating: the KEK
 keyring](/docs/admin/kek/) → _Product operations_).
 
 ### Secret usage
@@ -76,8 +76,8 @@ paths. See [Config entry reference](/docs/reference/config-entry/) for the catal
 
 The same form shows a **Required secrets** list above the input — the product's setup-health
 projection filtered to just the secret names it names, each with a **Configured**/**Missing**
-badge and, where relevant, which part of the manifest asked for it (for example "Edge mint
-applemusic"). Clicking a name fills it into the form. This is the same computation the Overview
+badge and, where relevant, which part of the manifest asked for it (for example "Edge mint"
+and the recipe id). Clicking a name fills it into the form. This is the same computation the Overview
 tab's "needs attention" strip draws from — see [Products](/docs/admin/products/#setup-health)
 for exactly which manifest fields feed it.
 

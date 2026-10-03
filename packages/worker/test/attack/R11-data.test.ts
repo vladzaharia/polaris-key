@@ -391,7 +391,7 @@ describe("R11-03 seat-count race", () => {
   // unique index that arbitrates concurrent seat claims — the same pattern
   // idx_licenses_enroll_hwid already uses for enrolment. `claimDeviceSeat()` in repo.ts is the
   // atomic primitive built on it; wiring it into licenseCore.authorizeDevice belongs to the
-  // licensing lane and is written up in R11-data.md § Remediation.
+  // licensing lane and is written up in the R11 audit findings § Remediation.
   it("a partial unique index now constrains authorized seats per license", async () => {
     const db = makeTestDb();
     const idx = await db.all<{ name: string; sql: string | null }>(

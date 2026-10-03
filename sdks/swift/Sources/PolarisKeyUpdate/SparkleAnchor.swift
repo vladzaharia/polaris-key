@@ -5,7 +5,7 @@
 // Sparkle's update signature is verified against `SUPublicEDKey` in the HOST APPLICATION's
 // code-signed `Info.plist`. That key is the terminal anchor for update integrity, and it is
 // deliberately outside this SDK's reach: an anchor an ordinary file could add to is worse than
-// every comparator in the field (docs/security/arch/anti-piracy-realism.md §5.3), and Sparkle
+// every comparator in the field (the anti-piracy-realism review §5.3), and Sparkle
 // gets this right precisely because the key ships inside the signed bundle where an attacker
 // replacing an update cannot also replace the thing that checks it.
 //

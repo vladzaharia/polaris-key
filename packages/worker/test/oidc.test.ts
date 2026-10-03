@@ -32,7 +32,7 @@ async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
     null,
     JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
     JSON.stringify({
-      family: { role: "user", tier: "pro" },
+      members: { role: "user", tier: "pro" },
       admin: { role: "admin" },
     }),
   );
@@ -50,12 +50,12 @@ async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
   await db.run(
     "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?,?,?,?,?,?,?)",
     "djdl",
-    "remnawaveSub",
+    "vpnSub",
     "polarisVpn",
     JSON.stringify(true),
     "proxy.subscriptionUrl",
-    "https://vpn.polaris.rest/{claim}",
-    JSON.stringify(["vpn.polaris.rest"]),
+    "https://vpn.example.com/{claim}",
+    JSON.stringify(["vpn.example.com"]),
   );
 }
 
@@ -63,8 +63,8 @@ const identity = (over: Partial<OidcIdentity> = {}): OidcIdentity => ({
   sub: "user-123",
   email: "ada@example.com",
   name: "Ada Lovelace",
-  groups: ["family"],
-  claims: { sub: "user-123", remnawaveSub: "abc123" },
+  groups: ["members"],
+  claims: { sub: "user-123", vpnSub: "abc123" },
   ...over,
 });
 
@@ -97,7 +97,7 @@ describe("OIDC activation", () => {
       identity({
         name: "Ada Changed",
         email: "ada.changed@example.com",
-        claims: { sub: "user-123", remnawaveSub: "next-sub" },
+        claims: { sub: "user-123", vpnSub: "next-sub" },
       }),
       NOW + 60,
     );
@@ -120,7 +120,7 @@ describe("OIDC activation", () => {
       secrets: Record<string, { value: string }>;
     };
     expect(overrides.secrets["proxy.subscriptionUrl"]?.value).toBe(
-      "https://vpn.polaris.rest/next-sub",
+      "https://vpn.example.com/next-sub",
     );
   });
 
@@ -225,7 +225,7 @@ describe("OIDC activation", () => {
     expect(cfgRes.status).toBe(200);
     const cfg = await verifyJws<ConfigDoc>(await cfgRes.text(), trust);
     expect(cfg!.payload.secrets["proxy.subscriptionUrl"]?.value).toBe(
-      "https://vpn.polaris.rest/abc123",
+      "https://vpn.example.com/abc123",
     );
     expect(cfg!.payload.secrets["proxy.subscriptionUrl"]?.state).toBe("hidden");
   });

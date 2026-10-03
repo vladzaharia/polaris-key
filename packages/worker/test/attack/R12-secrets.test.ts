@@ -599,7 +599,7 @@ class RecordingKv extends KvMock {
 const signInReq = (url: string, init?: RequestInit): Request =>
   new Request(url, init) as unknown as Request;
 
-/** A product with a custom OIDC provider whose `family` group grants the `pro` tier, plus a
+/** A product with a custom OIDC provider whose `members` group grants the `pro` tier, plus a
  *  test IdP signing key installed behind the jose shim. */
 async function signInFixture(
   env: Env,
@@ -617,7 +617,7 @@ async function signInFixture(
     JSON.stringify([
       `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback`,
     ]),
-    JSON.stringify({ family: { role: "user", tier: "pro" } }),
+    JSON.stringify({ members: { role: "user", tier: "pro" } }),
   );
   await db.run(
     `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days,
@@ -645,7 +645,7 @@ function signInIdToken(
   priv: KeyLike,
   claims: Record<string, unknown>,
 ): Promise<string> {
-  return new SignJWT({ groups: ["family"], ...claims })
+  return new SignJWT({ groups: ["members"], ...claims })
     .setProtectedHeader({ alg: "ES256", kid: "r12-idp" })
     .setIssuer(SIGN_IN_ISSUER)
     .setAudience(SIGN_IN_AUD)

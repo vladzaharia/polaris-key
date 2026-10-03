@@ -3,7 +3,7 @@
 // Every test in this file is an ATTACK proof, not a contract test: each `expect` documents
 // what a network-only adversary can obtain today. Assertions are written against the CURRENT
 // (vulnerable) behaviour so the file passes on an unpatched tree; each block names the
-// finding id it belongs to in docs/security/findings/R3-licensing.md.
+// finding id it belongs to in the R3 audit findings.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

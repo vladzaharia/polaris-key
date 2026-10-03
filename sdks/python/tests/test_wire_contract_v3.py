@@ -4,8 +4,8 @@
 This is the direct heir of ``test_wire_contract_v2.py``. Each test asserts that an attack
 the red team **proved working** against the v1 client still fails, and each is named for
 the finding it closes so a regression points straight back at
-``docs/security/WIRE-CONTRACT-V3.md``, ``docs/security/findings/R2-crypto.md`` and
-``R4-client.md``.
+``docs/security/WIRE-CONTRACT-V3.md``, the R2 audit findings and
+the R4 audit findings.
 
 WHAT THE v2→v3 RE-BASELINE CHANGED, case by case:
 

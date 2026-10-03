@@ -392,7 +392,7 @@ async function seedOidcConfig(db: SqliteDb, slug: string): Promise<void> {
     "client-oidcprod",
     null,
     JSON.stringify([`https://key.plrs.im/${slug}/identity/auth/callback`]),
-    JSON.stringify({ family: { role: "user" } }),
+    JSON.stringify({ members: { role: "user" } }),
   );
 }
 

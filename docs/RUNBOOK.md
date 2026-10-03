@@ -311,7 +311,7 @@ For DJDL, confirm:
 - Redirect URI is `https://key.plrs.im/djdl/identity/auth/callback`.
 - Admin group is `admins`.
 - Required product secrets are configured:
-  - `EDGE_MINT__DJDL__APPLEMUSIC`
+  - one `EDGE_MINT__DJDL__<RECIPE>` signing key per declared edge-mint recipe
 
 Product validation:
 

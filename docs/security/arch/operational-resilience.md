@@ -995,7 +995,7 @@ npx wrangler d1 export polaris_key_prod --env prod --remote \
 
 Two hard requirements on the artefact, both from this repo's own findings:
 
-- **Encrypt it.** Per `docs/security/findings/R12-secrets.md` (R12-02), managed secret values are
+- **Encrypt it.** Per the R12 audit findings (R12-02), managed secret values are
   stored **plaintext** in `profiles.payload_json` and `licenses.overrides_json`. A D1 export is
   therefore a cleartext dump of every product-delivered secret, plus customer names, emails, and
   OIDC subjects. Age or GPG it to a key held outside the Cloudflare account before it lands in

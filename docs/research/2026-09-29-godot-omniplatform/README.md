@@ -2036,7 +2036,7 @@ on real hardware; the WebCrypto and native accelerators are the fallback.
 CI builds. Several connectors mean operational load for a solo maintainer, so prioritise: ASC and
 Play first, then the Microsoft Store, then Steam and itch.
 
-**Anti-piracy realism.** GDScript and PCKs decompile trivially (`docs/security/arch/anti-piracy-realism.md`).
+**Anti-piracy realism.** GDScript and PCKs decompile trivially (the anti-piracy-realism review).
 Entitlements protect _delivery_ (gated blobs, edge-mint, server-side features), not the client.
 
 ---

@@ -1,6 +1,10 @@
 @tool
 # Ed25519 signature VERIFY in pure GDScript — optimized variant.
 #
+# ALTERED SOURCE: a GDScript port of orlp/ed25519 (zlib licence, Copyright (c) 2015 Orson
+# Peters), itself carrying SUPERCOP "ref10" (public domain). Not the original software; the
+# zlib notice and a description of the changes are in THIRD_PARTY_NOTICES beside this file.
+#
 # Port of the SUPERCOP "ref10" structure (via orlp/ed25519, public domain / zlib):
 #   * field elements: 10 limbs in radix 2^25.5 (PackedInt64Array(10)); fe_mul / fe_sq are the
 #     fully-unrolled ref10 schoolbook routines translated mechanically (ref/translate_fe.py),

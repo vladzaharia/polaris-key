@@ -83,7 +83,7 @@ would have to send `staging` to pass ([notes/A2 §1.9](../../notes/A2-sdk-port.m
 - Godot's gate and header values (→ [P1-03](P1-03-godot-license.md), which consumes this plan).
 - Channel pointers, `includes: [stable]`, floors per channel (→ P2-03, P2-05).
 - Generated SDK constants for channel names (→ P1b-02).
-- Editing djdl's own repository (`vladzaharia/djdl`); record it as a follow-up for its owner.
+- Editing djdl's own repository; record it as a follow-up for its owner.
 
 ## Design notes
 
