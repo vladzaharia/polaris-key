@@ -311,7 +311,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
-        "docs/security/2026-08-26-security-audit.md R12-04",
+        "the 2026-08-26 security audit R12-04",
         "packages/worker/src/admin/auth.ts:33-45",
         "packages/worker/src/services/identity/oidc.ts:295-301"
       ],

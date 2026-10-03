@@ -240,8 +240,8 @@ rest once the SDK ships.
 | `tools/gen-mirrors.ts:248-258` (`gdscript` target)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | P1-04             |
 | `packages/admin/src/views/ProductOverview.tsx` quick-start snippet (optional Godot tab)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | unowned, optional |
 
-Historical documents (`docs/security/2026-08-26-security-audit.md`, `findings/*`,
-`arch/business-model-fit.md`, `docs/superpowers/`, `.changeset/*`) stay as written.
+Historical documents (the 2026-08-26 security audit, the audit findings,
+the business-model-fit review, `docs/superpowers/`, `.changeset/*`) stay as written.
 
 ## Steps
 

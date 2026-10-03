@@ -1540,16 +1540,13 @@ deliberately no product-wide bucket: one attacker could exhaust it and lock ever
 product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
 `clientIp`, and sharding the rate-limit Durable Object (R10-04a).
 
-**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** Whoever starts a flow can
-confirm it themselves, with no browser: `/device/start` with their own device id, GET the page
-for their own user code, read the CSRF token, POST it with no `Origin` (it passes, as above), and
-read the IdP authorize URL — `state`, `nonce` and PKCE challenge — out of the `303`. They then
-forward that URL to a victim, or redirect the victim to it from any page. The victim signs in at
-the IdP — or, with silent SSO, does nothing at all — and never sees the Polaris confirmation
-page. The callback binds the victim's license to the flow, whose device id is the attacker's,
-and the attacker's own `/device/poll`, with their own device code, returns a device token on the
-victim's license (PoC: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own
-flow…`, which asserts the gap).
+**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** The flow's starter can
+complete the confirmation step without a browser and forward the resulting IdP sign-in to a
+victim. If the victim signs in (or silent SSO signs them in), the callback binds the victim's
+license to the starter's flow, and the starter's own poll then receives a device token on the
+victim's license. The confirmation page is never shown to the victim. The regression test
+`R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own flow…` asserts the gap;
+binding the callback to the confirming browser (below) is the fix.
 
 **What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled

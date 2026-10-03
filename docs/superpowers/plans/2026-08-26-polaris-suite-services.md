@@ -529,7 +529,7 @@ export function dispatchService(
 
 ### Task 8.2: Exit gates
 
-- [ ] Full green gate; `gen:corpus -- --check`; grep-gates: zero `@polaris-key/`, zero `X-PKey-`, zero `pkeyt_`, zero `key.plrs.im` as ISSUER (host references in wrangler/docs stay), zero imports of deleted legacy modules; risk-register closeout appended to the spec; memory + `docs/security/2026-08-26-security-audit.md` residual-risk note updated (clock-floor text was already stale — correct it).
+- [ ] Full green gate; `gen:corpus -- --check`; grep-gates: zero `@polaris-key/`, zero `X-PKey-`, zero `pkeyt_`, zero `key.plrs.im` as ISSUER (host references in wrangler/docs stay), zero imports of deleted legacy modules; risk-register closeout appended to the spec; memory + the 2026-08-26 security audit residual-risk note updated (clock-floor text was already stale — correct it).
 - [ ] Final commit: `Complete the Polaris suite re-organization`.
 
 ---

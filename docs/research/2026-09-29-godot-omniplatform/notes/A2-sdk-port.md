@@ -1171,7 +1171,7 @@ These assume a dice game with settings in `user://settings.cfg`; see the note at
 | **Devices / facts**                | Crash/perf triage by renderer/GPU/engine version (needs the `engine` report key, §8). Seat management UI.                                                                                                                                                                                                                                                                                                                                             |
 
 **Realism.** GDScript and PCKs are trivially decompiled and patched (e.g. gdsdecomp). The client
-gate is UX, not DRM. That matches the repo's own `docs/security/arch/anti-piracy-realism.md`:
+gate is UX, not DRM. That matches the repo's own anti-piracy-realism review:
 the "client-side half is built as if it were also enforcement, and it isn't". Protect value
 server-side: entitled downloads, edge-mint, server-authoritative online features.
 

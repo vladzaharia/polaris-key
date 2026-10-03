@@ -2,7 +2,7 @@
  * R10 — Denial of service / resource exhaustion / availability.
  *
  * Every test here is an ATTACK proof, not a regression test. They are expected to FAIL
- * once the corresponding finding in docs/security/findings/R10-dos.md is fixed; each
+ * once the corresponding finding in the R10 audit findings is fixed; each
  * assertion documents the vulnerable behaviour it pins.
  *
  * NOTE ON WORKERD: vitest runs in Node, where the dynamic Function constructor works.
@@ -158,7 +158,7 @@ async function activate(
 // them, so nothing on this path constructs a function from a string. These five assertions
 // are the originals INVERTED — each now pins the fixed behaviour it used to disprove. The
 // `withoutCodegen` harness is retained deliberately: it is what makes these Node tests
-// meaningful about workerd. See the workerd re-verification in R10-dos.md §Remediation.
+// meaningful about workerd. See the workerd re-verification in the R10 audit findings §Remediation.
 describe("R10-01 catalog validation no longer generates code at request time", () => {
   it("GET /<product>/config/document performs ZERO dynamic codegen", async () => {
     const { db, env, product } = await seedRealCatalogProduct();

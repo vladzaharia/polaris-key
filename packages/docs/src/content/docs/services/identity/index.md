@@ -148,8 +148,9 @@ Prose is not the contract. These are:
 - The design spec, `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md` — §2.1
   (taxonomy), §4.1/§4.3 (routes and discovery), §5.1/§5.2 (layout and table ownership), and
   decision **D-14** (the carve boundary this whole section describes).
-- The red-team findings that shaped the current code: `docs/security/findings/R8-oidc.md` (the
-  three OIDC flows), `R9-injection.md` (the issuer allowlist), `R5-isolation.md` (the portal's
-  cross-tenant linking), `R6-release.md` (the download redirect), `R1-control-plane.md` (the
-  portal session cookie), and `R11-data.md`/`R12-secrets.md` (retention and erasure). Each detail
+- The red-team findings that shaped the current code (a point-in-time audit; the write-ups are
+  not published, the IDs are stable labels): the R8 audit findings (the
+  three OIDC flows), the R9 audit findings (the issuer allowlist), the R5 audit findings (the portal's
+  cross-tenant linking), the R6 audit findings (the download redirect), the R1 audit findings (the
+  portal session cookie), and the R11 and R12 audit findings (retention and erasure). Each detail
   page in this section cites the specific finding that holds its claims up.

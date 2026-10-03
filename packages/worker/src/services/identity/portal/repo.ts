@@ -851,7 +851,7 @@ export async function markPortalDownloadUsed(
  * none against it, and the worker exports no `scheduled()` handler, so no cron could exist.
  * Every portal download-URL mint added a row with a 300-second TTL and infinite retention, and
  * `idx_release_download_tokens_expiry` existed with no consumer. Until a `scheduled()` handler
- * lands (see the Remediation section of R11-data.md), this is called opportunistically from the
+ * lands (see the Remediation section of the R11 audit findings), this is called opportunistically from the
  * download path itself — bounded work, on the one route that reads the table.
  */
 export async function purgeExpiredDownloadTokens(

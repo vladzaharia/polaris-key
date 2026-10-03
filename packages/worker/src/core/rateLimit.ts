@@ -47,7 +47,7 @@ type FailMode = "open" | "closed";
  *   between an attacker and unbounded guessing. Note this reads *availability-hostile* but
  *   barely is: the DO error is transient and per-request, the caller surfaces a 429, and a 429
  *   is precisely the signal that makes a client back off and retry — unlike the 500 it replaces.
- *   (`R10-dos.md`'s fix direction proposed fail-open for licensing on availability grounds;
+ *   (the R10 audit findings' fix direction proposed fail-open for licensing on availability grounds;
  *   this lane deliberately took the other side for credential paths. Revisit with metrics if a
  *   DO incident ever measurably locks out paying customers.)
  *
