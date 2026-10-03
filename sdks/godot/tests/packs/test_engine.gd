@@ -290,6 +290,23 @@ func _pck_format_versions(t: PKeyTestContext) -> void:
 	var h: PKeyGodotPckHandler = e.handlers["godot.pck"]
 	var newest := PKeyGodotPckHandler.max_format_version()
 	t.check("pck format: this engine mounts v2 up to the version it writes (v%d)" % newest, h.supports(2) and h.supports(newest) and not h.supports(newest + 1) and not h.supports(1) and not h.supports(0))
+	# A failed probe is not cached: it reads as "v2 only" while it fails, and the next call probes
+	# again, so a transient write failure never downgrades the process.
+	var saved_dir := PKeyPck.helper_probe_dir
+	var saved: int = PKeyPck._helper_version
+	var blocker := S.scratch("pck-probe-blocker")
+	var bf := FileAccess.open(blocker.path_join("file"), FileAccess.WRITE)
+	bf.store_string("x")
+	bf.close()
+	PKeyPck._helper_version = 0
+	PKeyPck.helper_probe_dir = blocker.path_join("file").path_join("sub")
+	var failed := PKeyPck.helper_version()
+	var during := PKeyGodotPckHandler.max_format_version()
+	PKeyPck.helper_probe_dir = saved_dir
+	var again := PKeyPck.helper_version()
+	t.check("pck format: a failed version probe reads as v2 only and is not cached; the next call probes again", failed == 0 and during == 2 and again == newest and h.supports(newest), "%d %d %d" % [failed, during, again])
+	PKeyPck._helper_version = saved
+	S.remove_tree(blocker)
 	for fv in [1, newest + 1]:
 		var p := F.kaykit_pack("v1g44", 2, func(rec: Dictionary) -> void:
 			unvaried.call(rec)

@@ -154,6 +154,9 @@ func _init(p_storage: PKeyPackStorage = null) -> void:
 	storage = p_storage if p_storage != null else PKeyPackStorage.new()
 	PKeyPackClaims.warm()
 	PKeyPck.warm()
+	# On the main thread, before any worker asks (godot.pck's supports(), zstd's batch decode).
+	PKeyPck.helper_version()
+	PKeyL10nParse.warm()
 	register_handler(PKeyFilesTreeHandler.new())
 	register_handler(PKeyGodotPckHandler.new())
 	register_handler(PKeyGodotZipHandler.new())

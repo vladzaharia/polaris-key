@@ -23,6 +23,11 @@ extends RefCounted
 ##       types refuse with `pack-type-check-failed` and a detail token (CONTENT §4.2). A handler
 ##       PARSES untrusted bytes and never evaluates them (no str_to_var, ConfigFile,
 ##       JSON.to_native with objects, ResourceLoader or load_resource_pack on a tree)
+##   THREADS: check_output, check_tree and check_payload run on a WorkerThreadPool thread (the
+##       engine's PKeyPackJob), never the main thread. A game's `custom.*` check_payload may read
+##       files and parse bytes, but must not touch nodes, the SceneTree, resources being loaded or
+##       any other main-thread-only API, and must not compile RegEx lazily into shared state
+##       (compile in _init or a static initialiser, on the main thread)
 ##   activate(install)       a committed install becomes live (hot: at commit; restart: at load)
 ##   deactivate(install)     a live hot install is replaced or rolled back
 
@@ -62,12 +67,11 @@ func check_tree(dir: String, record: Dictionary, variant: Dictionary) -> Diction
 	return out
 
 
-static var _token: RegEx
+## Compiled eagerly when the class loads (on the main thread, before any check runs on a worker).
+static var _token: RegEx = RegEx.create_from_string("\\A[a-z][a-z0-9-]{0,31}\\z")
 
 
 static func _token_re() -> RegEx:
-	if _token == null:
-		_token = RegEx.create_from_string("\\A[a-z][a-z0-9-]{0,31}\\z")
 	return _token
 
 

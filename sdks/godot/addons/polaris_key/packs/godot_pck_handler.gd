@@ -33,8 +33,8 @@ func supports(format_version: int) -> bool:
 	return format_version >= 2 and format_version <= max_format_version()
 
 
-## The newest PCK format this engine mounts: the one it writes (PCKPacker, probed once), or v2,
-## which every Godot 4 mounts, when the probe cannot run.
+## The newest PCK format this engine mounts: the one it writes (PCKPacker, probed and cached), or
+## v2, which every Godot 4 mounts, while the probe cannot run (it is retried on the next call).
 static func max_format_version() -> int:
 	var v := PKeyPck.helper_version()
 	return v if v >= 2 else 2

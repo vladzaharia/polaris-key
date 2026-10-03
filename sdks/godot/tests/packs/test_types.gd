@@ -446,6 +446,30 @@ static func _make_zip(files: Dictionary, opts := {}) -> PackedByteArray:
 	return out
 
 
+## Two stored entries whose data overlap: the second entry's local header and data sit inside the
+## first entry's data, so both headers agree with their central records.
+static func _overlapping_zip() -> PackedByteArray:
+	var name2 := "pkey_zip_test/inner.txt".to_utf8_buffer()
+	var data2 := "inner".to_utf8_buffer()
+	var inner := PackedByteArray()
+	for part in [_u32(0x04034b50), _u16(20), _u16(0), _u16(0), _u16(0), _u16(0x21), _u32(_crc32(data2)), _u32(data2.size()), _u32(data2.size()), _u16(name2.size()), _u16(0), name2, data2]:
+		inner.append_array(part)
+	var name1 := "pkey_zip_test/outer.bin".to_utf8_buffer()
+	var out := PackedByteArray()
+	for part in [_u32(0x04034b50), _u16(20), _u16(0), _u16(0), _u16(0), _u16(0x21), _u32(_crc32(inner)), _u32(inner.size()), _u32(inner.size()), _u16(name1.size()), _u16(0), name1, inner]:
+		out.append_array(part)
+	var at2 := 30 + name1.size()
+	var cd := PackedByteArray()
+	for e in [[name1, inner, 0], [name2, data2, at2]]:
+		for part in [_u32(0x02014b50), _u16(20), _u16(20), _u16(0), _u16(0), _u16(0), _u16(0x21), _u32(_crc32(e[1])), _u32(e[1].size()), _u32(e[1].size()), _u16(e[0].size()), _u16(0), _u16(0), _u16(0), _u16(0), _u32(0), _u32(e[2]), e[0]]:
+			cd.append_array(part)
+	var cd_at := out.size()
+	out.append_array(cd)
+	for part in [_u32(0x06054b50), _u16(0), _u16(0), _u16(2), _u16(2), _u32(cd.size()), _u32(cd_at), _u16(0)]:
+		out.append_array(part)
+	return out
+
+
 ## A signed godot.zip release over `bytes` (full strategy only).
 static func _zip_pack(pack_id: String, seq: int, bytes: PackedByteArray, prefixes: Array) -> Dictionary:
 	var full := {"sha256": F.sha(bytes), "bytes": bytes.size(), "size": bytes.size(), "codec": "none"}
@@ -511,6 +535,18 @@ func _zip(t: PKeyTestContext) -> void:
 		["an empty zip", _make_zip({}), ""],
 		["the bytes GDPC inside an entry (a PCK Godot's offset search could find)", _make_zip({"pkey_zip_test/a.bin": "xxGDPCyy"}), ""],
 	]
+	var zh := PKeyGodotZipHandler.new()
+	zh.activate({"packId": "djdl.zipdlc", "recordSha256": "0".repeat(64), "delegation": "d".repeat(64)})
+	t.check("zip: a delegated install never joins the mounts (defence in depth)", not zh.to_mount.has("djdl.zipdlc"))
+	# Code-bearing entries and overlapping data, under an admitted prefix: refused like a godot.pck.
+	var code_cases := [
+		["a .tres that embeds a GDScript", _make_zip({"pkey_zip_test/evil.tres": "[gd_resource type=\"Resource\" load_steps=2 format=3]\n\n[sub_resource type=\"GDScript\" id=\"1\"]\nscript/source = \"extends Node\"\n\n[resource]\nscript = SubResource(\"1\")\n"})],
+		["a .remap to a script", _make_zip({"pkey_zip_test/level.tscn.remap": "[remap]\n\npath=\"res://pkey_zip_test/evil.gd\"\n"})],
+		["overlapping entries (a local header inside another entry's data)", _overlapping_zip()],
+	]
+	for c in code_cases:
+		var rc := PKeyGodotZipHandler.check(PKeyByteSource.memory(c[1]), {"handler": {"prefixes": prefixes}}, {})
+		t.check("zip: %s is refused (pck-directory-refused)" % c[0], not rc["ok"] and rc["code"] == PKeyPck.DIRECTORY_REFUSED, S.canon(rc))
 	for c in cases:
 		var rc := PKeyGodotZipHandler.check(PKeyByteSource.memory(c[1]), {"handler": {"prefixes": prefixes}}, {})
 		t.check("zip: %s is refused (pck-directory-refused, its path)" % c[0], not rc["ok"] and rc["code"] == PKeyPck.DIRECTORY_REFUSED and String(rc.get("path", "")) == c[2], S.canon(rc))

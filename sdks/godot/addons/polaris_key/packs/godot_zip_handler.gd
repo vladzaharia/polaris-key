@@ -222,6 +222,11 @@ func check_output(source: PKeyByteSource, record: Dictionary, variant: Dictionar
 
 
 func activate(install: Dictionary) -> void:
+	# Defence in depth (plans/P4-19.md §2.4): a content key can never sign a godot.zip, and a
+	# delegated release is never mounted.
+	if install.has("delegation"):
+		push_warning("PolarisKey: %s carries a delegation; a delegated release is never mounted." % install.get("packId", ""))
+		return
 	to_mount[install["packId"]] = install
 
 
