@@ -134,17 +134,17 @@ func _confirm(t: PKeyTestContext) -> void:
 	var u: PKeyUpdater = l1.update.updater
 	l1.update.note_boot_outcome("running")
 	t.check("guard: running never confirms", float(u.slots.load_state()["failedBoots"]) == 1.0 and not u.is_confirmed())
-	# A reference timer for half of BOOT_OK_SECONDS, created in the same frame as the guard's
-	# (same flags, so both count the same frame deltas) and before it: it always fires first, even
-	# in the frame the guard's fires under load. Wall-clock bounds are not asserted (a loaded
+	# A reference timer for the full BOOT_OK_SECONDS, created in the same frame as the guard's
+	# (same flags, so both count the same frame deltas) and before it: it always fires first (an
+	# earlier frame, or earlier in the same frame's timer list), even under load. Wall-clock bounds are not asserted (a loaded
 	# machine credits a timer with its creation frame's time); the order is.
 	var tree := Engine.get_main_loop() as SceneTree
-	var half := tree.create_timer(u.boot_ok_seconds * 0.5, true, false, true)
+	var full := tree.create_timer(u.boot_ok_seconds, true, false, true)
 	var started := Time.get_ticks_msec()
 	l1.update.note_boot_outcome("ready")
 	t.check("guard: ready does not confirm at once", float(u.slots.load_state()["failedBoots"]) == 1.0 and not u.is_confirmed())
-	await half.timeout
-	t.check("guard: ready has not confirmed halfway through BOOT_OK_SECONDS", float(u.slots.load_state()["failedBoots"]) == 1.0 and not u.is_confirmed())
+	await full.timeout
+	t.check("guard: ready has not confirmed before BOOT_OK_SECONDS", float(u.slots.load_state()["failedBoots"]) == 1.0 and not u.is_confirmed())
 	await u.boot_confirmed
 	var st := u.slots.load_state()
 	t.check("guard: ready confirms after BOOT_OK_SECONDS (shortened to %.1f s here) and resets the counter" % u.boot_ok_seconds, float(st["failedBoots"]) == 0.0 and u.is_confirmed() and Time.get_ticks_msec() - started < 60000, str(st))

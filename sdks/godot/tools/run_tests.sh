@@ -2,6 +2,8 @@
 # The one entry point for the Godot SDK's tests, locally and in CI (the `godot` job).
 #
 #   GODOT_BIN         the editor binary (default: `godot` on PATH; missing => exit 2, never a skip)
+#                     (point it at the real binary or .app: a wrapper script gets a per-run TMPDIR
+#                     and HOME but no self-contained editor copy)
 #   GODOT_TEMPLATE    optional: an export-template binary. When set, the project is exported as a
 #                     pack with the "Conformance (Linux)" preset (stamped PKEY_BUILD_OUTLET=steam,
 #                     PKEY_BUILD_CHANNEL=beta, PKEY_BUILD_NUMBER=42), the template is copied beside
