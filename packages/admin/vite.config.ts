@@ -89,6 +89,21 @@ export default defineConfig({
         portal: "index.html",
         manage: "manage.html",
       },
+      output: {
+        // Third-party code both SPAs share (React, Radix, lucide…) gets a stable, honest name;
+        // left to Rollup, the shared chunk was named after its first module (styles-*.js).
+        manualChunks(id) {
+          if (id.includes("/node_modules/")) return "vendor";
+        },
+        // The app code both entries import (the components/ui kit, lib/, the stylesheet's JS
+        // stub) is one Rollup-made chunk; name it for what it is.
+        chunkFileNames: (chunk) =>
+          chunk.name === "vendor"
+            ? "assets/vendor-[hash].js"
+            : chunk.isDynamicEntry
+              ? "assets/[name]-[hash].js"
+              : "assets/shared-[hash].js",
+      },
     },
   },
   server: {
