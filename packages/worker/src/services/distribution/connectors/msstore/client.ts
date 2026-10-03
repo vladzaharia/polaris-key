@@ -221,7 +221,8 @@ export class MsStoreClient {
 /** A 3xx, or the opaque redirect a `redirect: "manual"` fetch answers in some runtimes. */
 export function isRedirect(res: Response): boolean {
   return (
-    (res.status >= 300 && res.status < 400) || (res.type as string) === "opaqueredirect"
+    (res.status >= 300 && res.status < 400) ||
+    (res.type as string) === "opaqueredirect"
   );
 }
 
