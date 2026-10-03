@@ -34,8 +34,9 @@ sdks/godot/
   polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product
                               pkey-harness, editor channel dev)
   parity.json                 the Godot parity manifest (conformance/parity/)
-  native/                     P5-07's GDExtension sources, build and signing scripts and the
-                              end-to-end runs (native/README.md); .gdignore'd, never in a release
+  native/                     the native plugins' sources: ios/ (P5-05), and P5-07's macos/,
+                              windows/, build and signing scripts and e2e/ runs
+                              (native/README.md); .gdignore'd, never in a release
   addons/polaris_key/         the addon (the only directory a release ships)
     plugin.cfg, plugin.gd     editor shell: the autoload, the export plugin, the setup dock
     export/export_plugin.gd   PKeyExportPlugin: the build stamp and the pkey_* feature tags
