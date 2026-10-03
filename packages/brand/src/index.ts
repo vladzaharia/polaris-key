@@ -35,6 +35,7 @@ export {
   badgeSize,
   bitVisible,
   clearSpace,
+  isNoBit,
   isServiceId,
   opticalCut,
   resolveBitFill,

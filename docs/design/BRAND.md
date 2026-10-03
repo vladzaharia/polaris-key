@@ -34,7 +34,7 @@ only owner-approved extension is [the section bit](#6-the-section-bit).
 
 | Mark         | Identifies                                                                                                                                        | Alt text               |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| **Pinned K** | The platform, "Polaris Key". Gold is the signing bit.                                                                                             | `Polaris Key`          |
+| **Pinned K** | The platform, "Polaris Key". The default mark has no terminal bit (§6); the kit's gold bit marks signed artwork only.                             | `Polaris Key`          |
 | **Star Cut** | The service mark **Polaris Key Delivery**: the delivery family as a whole (the bytes host, Distribution, Update). Stationary star, open geometry. | `Polaris Key Delivery` |
 
 Source: `kit/Brand-Guide.pdf` p.1; `kit/README.md` ("General use"). The Star Cut covering the whole
@@ -358,12 +358,20 @@ left (25–60°) holds the warning and danger statuses. What remains is chartreu
 ## 6. The section bit
 
 **Owner-approved extension (2026-10-03) of the kit rule "gold lives only on the K's terminal
-bit".** In the console header, the Pinned K's terminal bit takes **the current section's accent**:
-License → chartreuse, Config → cyan, and so on; on the platform (core) pages it stays the kit
-gold. The bit is still the only coloured terminal; it changes hue by section, nothing else
-changes.
+bit", corrected the same day.** The default "Polaris Key" mark (the Pinned K) has **no terminal
+bit at all** on core/platform pages: no gold rectangle and nothing in its place. The bit appears
+only in a service section (License, Config, Release, Distribution, Update, Identity), filled with
+**that section's accent**: License → chartreuse, Config → cyan, and so on. The star never
+changes. (The earlier version of this rule kept the kit gold on core pages; it is superseded.)
 
 Rules:
+
+0. **No bit on core.** Dashboard, products, platform pages, the portal, the boot screen, sign-in
+   and every other non-service surface show the Pinned K without its bit. The path is left out of
+   the markup entirely (no space, no hit-testing), never painted transparent; the glyph's geometry
+   and clear space are otherwise identical. Favicons, the touch icon and the manifest icons are the
+   default logo, so they carry no bit either (the kit's `web/key/` files already have none, and
+   `test/kit-fidelity.test.ts` asserts it).
 
 1. **Display cut, ≥ 48 px, only.** The ≥ 48 px rule still governs whether the bit shows at all.
    No bit is ever drawn on the service or favicon cut (they have no bit geometry, and the kit is
@@ -378,25 +386,39 @@ Rules:
    Under `prefers-reduced-motion: reduce` the transition is removed and every duration token is
    0 ms, so the change is instant.
 6. **Mono stays mono**: under a one-ink theme the bit is the same ink as everything else.
+7. **CSP-safe markup.** No renderer emits an inline `style`; the live bit is coloured by the
+   `polaris-live-bit` class in tokens.css, so lockup `innerHTML` is safe under a `style-src`
+   without `'unsafe-inline'`.
 
 API:
 
 ```tsx
-// Follows the nearest data-service ancestor through --pk-section-bit (recommended):
+<PolarisMark size={48} title="Polaris Key" />             // the default: no bit
+<PolarisMark size={48} bit="none" />                      // the same, said explicitly
+<PolarisMark size={48} bit="core" />                      // core has no bit: the same again
+<PolarisMark size={48} bit="config" />                    // the Config accent
+// Follows the nearest data-service ancestor: the accent in a service section, and not
+// displayed at all under data-service="core" or none (--pk-section-bit-display: none):
 <PolarisMark size={48} bit="section" title="Polaris Key" />
-// Or explicitly:
-<PolarisMark size={48} bit="config" />        // the Config accent
-<PolarisMark size={48} bit="core" />          // the kit gold
-<PolarisMark size={48} bit="#123456" />       // any CSS colour (hex, var(), rgb/hsl/oklch)
-<PolarisLockup layout="horizontal" height={80} bit="section" />  // glyph 48 px at height 80
+<PolarisMark size={48} bit="#123456" />                   // any CSS colour (hex, var(), rgb/hsl/oklch)
+<PolarisLockup layout="horizontal" height={80} bit="license" />  // glyph 48 px at height 80
 ```
 
-`sectionBit(id, theme)` returns the colour; `PKeyBrand.section_bit()` and
-`PolarisBrand.accent(for:).bit` are the native equivalents.
+The console resolves the section from the route and passes `bit="none"` on core and the section
+id elsewhere, so the DOM never holds a bit on a platform page. The default `PolarisLockup` has no
+bit either (`signed` defaults to false; `kitLockupSvg` still reproduces the kit's signed files).
+
+tokens.css: core (and no `data-service`) sets `--pk-section-bit: none` and
+`--pk-section-bit-display: none`; a service section sets its accent and `inline`. There is no
+`--pk-service-core-bit`.
+
+`sectionBit(id, theme)` returns the colour, or `null` for core; `SERVICE_ACCENTS[theme].core.bit`
+is `null`. Natively, `PKeyBrand.has_section_bit()` is false for core and `section_bit()` answers
+transparent there; `PolarisBrand.accent(for:).bit` is `nil` for core.
 
 **Proofs** (`packages/brand/preview/proofs/section-bit-{dark,light}.png`, re-render with
 `pnpm --filter @polaris-key/brand proofs`): every section's bit at 32, 40 and 48 px, 1× and 2×, on
-both header grounds, with 8× nearest-neighbour magnification. At 48 px the bit is about 10 × 4 px
+both header grounds, with 8× nearest-neighbour magnification; the Core row shows the bare K. At 48 px the bit is about 10 × 4 px
 and every hue reads, light theme included. At 40 px (about 8 × 3.5 px) it still reads on dark but
 the darker light-theme hues (Config, Distribution/Update) start to merge with the violet K at 1×.
 At 32 px the kit's service cut has no bit, and forcing the display master to 32 px both breaks the
@@ -414,7 +436,7 @@ consistent with the ¼-glyph rule for the outward edges).
 | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------- |
 | Admin console, customer portal, docs site, Worker pages on key.plrs.im, emails                                                                  | Pinned K                                                   | `web/key/`                        |
 | Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states | Star Cut                                                   | `web/update/` (on the bytes host) |
-| Console header (every section, including Distribution/Update)                                                                                   | Pinned K with the section bit                              | `web/key/`                        |
+| Console header (service sections, including Distribution/Update; core pages show no bit)                                                        | Pinned K with the section bit                              | `web/key/`                        |
 | SDK UI (gate, activation, sign-in)                                                                                                              | Pinned K                                                   | n/a                               |
 | SDK updater UI (update available, downloading)                                                                                                  | Star Cut as identity only, never as the progress indicator | n/a                               |
 
@@ -685,7 +707,12 @@ so `data-service` carries the same ids this package keys its accents by.
   generated in `@polaris-key/brand` from the kit glyph and Rubik Bold (§1.1). The Update
   _service_ keeps its name (the `update` section, its accent and its console section).
 
-- **Console header mark: 48 px with the section bit.** The header is tall enough (about 64 px) for the
+- **No terminal bit on core (2026-10-03, corrects the section-bit decision below).** The default
+  Polaris Key mark (the Pinned K) has no terminal bit at all on core/platform pages: no gold
+  rectangle and nothing in its place. The bit appears only in service sections, in that section's
+  accent. The star never changes. Core no longer defines a gold section bit anywhere (tokens.css,
+  tokens.json, TypeScript, GDScript, Swift); favicons and app icons stay bit-less.
+- **Console header mark: 48 px with the section bit** (in service sections; none on core). The header is tall enough (about 64 px) for the
   Pinned K's display cut at 48 px, so every section's bit is legible in both themes (proofs:
   `packages/brand/preview/proofs/section-bit-{dark,light}.png`). 32–47 px placements use the
   display cut without a bit; below 24 px, the favicon cut.

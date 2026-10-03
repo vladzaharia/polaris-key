@@ -17,7 +17,9 @@
  *
  * SECTION. data-service="core|license|config|release|distribution|update|identity" on (or
  * inside) the themed element re-points --pk-accent*, and --pk-section-bit, at that section.
- * With no data-service the platform (core) values apply.
+ * With no data-service the platform (core) values apply. Core has no section bit: the Pinned K
+ * carries no terminal bit on platform pages (--pk-section-bit: none, and the live bit is
+ * display: none); only service sections draw it, in their accent.
  */
 
 :root {
@@ -119,7 +121,6 @@
   --pk-service-core-fg: #9a5cff;
   --pk-service-core-on: #060912;
   --pk-service-core-subtle: #18132e;
-  --pk-service-core-bit: #ffc24d;
   --pk-service-license: #c6e940;
   --pk-service-license-fg: #c6e940;
   --pk-service-license-on: #060912;
@@ -203,7 +204,6 @@
     --pk-service-core-fg: #7a2fff;
     --pk-service-core-on: #ffffff;
     --pk-service-core-subtle: #eae4ff;
-    --pk-service-core-bit: #d07a00;
     --pk-service-license: #708d00;
     --pk-service-license-fg: #556e00;
     --pk-service-license-on: #060912;
@@ -287,7 +287,6 @@
   --pk-service-core-fg: #7a2fff;
   --pk-service-core-on: #ffffff;
   --pk-service-core-subtle: #eae4ff;
-  --pk-service-core-bit: #d07a00;
   --pk-service-license: #708d00;
   --pk-service-license-fg: #556e00;
   --pk-service-license-on: #060912;
@@ -353,7 +352,8 @@
   --pk-accent-fg: var(--pk-service-core-fg);
   --pk-accent-on: var(--pk-service-core-on);
   --pk-accent-subtle: var(--pk-service-core-subtle);
-  --pk-section-bit: var(--pk-service-core-bit);
+  --pk-section-bit: none;
+  --pk-section-bit-display: none;
 }
 
 [data-service="license"] {
@@ -362,6 +362,7 @@
   --pk-accent-on: var(--pk-service-license-on);
   --pk-accent-subtle: var(--pk-service-license-subtle);
   --pk-section-bit: var(--pk-service-license-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="config"] {
@@ -370,6 +371,7 @@
   --pk-accent-on: var(--pk-service-config-on);
   --pk-accent-subtle: var(--pk-service-config-subtle);
   --pk-section-bit: var(--pk-service-config-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="release"] {
@@ -378,6 +380,7 @@
   --pk-accent-on: var(--pk-service-release-on);
   --pk-accent-subtle: var(--pk-service-release-subtle);
   --pk-section-bit: var(--pk-service-release-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="distribution"] {
@@ -386,6 +389,7 @@
   --pk-accent-on: var(--pk-service-distribution-on);
   --pk-accent-subtle: var(--pk-service-distribution-subtle);
   --pk-section-bit: var(--pk-service-distribution-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="update"] {
@@ -394,6 +398,7 @@
   --pk-accent-on: var(--pk-service-update-on);
   --pk-accent-subtle: var(--pk-service-update-subtle);
   --pk-section-bit: var(--pk-service-update-bit);
+  --pk-section-bit-display: inline;
 }
 
 [data-service="identity"] {
@@ -402,6 +407,7 @@
   --pk-accent-on: var(--pk-service-identity-on);
   --pk-accent-subtle: var(--pk-service-identity-subtle);
   --pk-section-bit: var(--pk-service-identity-bit);
+  --pk-section-bit-display: inline;
 }
 
 /* Reduced motion: every duration token collapses, so token-driven motion stops everywhere. */
@@ -429,6 +435,13 @@
 /* The section bit eases between section colours; the star never animates. */
 .polaris-section-bit {
   transition: fill var(--pk-duration-base) var(--pk-ease-standard);
+}
+
+/* The live section bit (bit="section"): the nearest data-service picks its colour, and core
+   (or no data-service) does not display it at all. A class rule, never an inline style. */
+.polaris-live-bit {
+  fill: var(--pk-section-bit);
+  display: var(--pk-section-bit-display);
 }
 
 @media (prefers-reduced-motion: reduce) {

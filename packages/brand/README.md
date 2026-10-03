@@ -23,7 +23,9 @@ launch-kit assets (favicons, PWA icons, Godot glyphs, social cards).
 ```tsx
 import { PolarisMark, PolarisLockup, PoweredByBadge } from "@polaris-key/brand/react";
 
-<PolarisMark size={48} bit="section" title="Polaris Key" />   // console header
+<PolarisMark size={48} title="Polaris Key" />                 // the default logo: no terminal bit
+<PolarisMark size={48} bit="license" title="Polaris Key" />   // a service section: the bit in its accent
+<PolarisMark size={48} bit="section" title="Polaris Key" />   // follows data-service; none on core
 <PolarisLockup layout="compact" theme="light" />
 <PoweredByBadge layout="compact" treatment="sticker" />
 ```

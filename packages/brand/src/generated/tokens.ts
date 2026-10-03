@@ -188,7 +188,10 @@ export const THEME_TOKENS = {
   },
 } as const satisfies Record<Theme, ResolvedTheme>;
 
-/** Per theme, each section's accent (solid, fg, on, subtle) and its section-bit colour. */
+/**
+ * Per theme, each section's accent (solid, fg, on, subtle) and its section-bit colour; bit is
+ * null on core, which draws no bit.
+ */
 export const SERVICE_ACCENTS = {
   dark: {
     core: {
@@ -196,7 +199,7 @@ export const SERVICE_ACCENTS = {
       fg: "#9a5cff",
       on: "#060912",
       subtle: "#18132e",
-      bit: "#ffc24d",
+      bit: null,
     },
     license: {
       solid: "#c6e940",
@@ -247,7 +250,7 @@ export const SERVICE_ACCENTS = {
       fg: "#7a2fff",
       on: "#ffffff",
       subtle: "#eae4ff",
-      bit: "#d07a00",
+      bit: null,
     },
     license: {
       solid: "#708d00",
@@ -296,6 +299,12 @@ export const SERVICE_ACCENTS = {
   Theme,
   Record<
     ServiceId,
-    { solid: string; fg: string; on: string; subtle: string; bit: string }
+    {
+      solid: string;
+      fg: string;
+      on: string;
+      subtle: string;
+      bit: string | null;
+    }
   >
 >;
