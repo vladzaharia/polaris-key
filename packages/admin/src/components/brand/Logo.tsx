@@ -36,7 +36,9 @@ export function LogoMark({
       theme={theme}
       bit={bit}
       title={title}
-      className={cn("polaris-mark", className)}
+      // Not the kit's `.polaris-mark` class: tokens.css declares it unlayered, so its
+      // `display: inline-block` would beat a layered utility such as `lg:hidden`.
+      className={className}
     />
   );
 }
