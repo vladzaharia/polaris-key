@@ -745,7 +745,13 @@
       "code": "pack-type-unsupported",
       "kind": "client",
       "service": "update",
-      "description": "A pack record's `type` is one this SDK cannot hold (v1: `files.tree` everywhere, `godot.pck` in Godot), so the pack is unusable (plans/P4-01.md §2.2)."
+      "description": "A pack record's `type` is one this SDK holds no handler for, or its `formatVersion` is one that handler does not list (`files.tree` everywhere and `godot.pck` in Godot since v1; the v3 types per SDK since P4-16, CONTENT §13; `ml.model` and `audio.bank` only once the host registers a configured handler), so the pack is unusable (plans/P4-01.md §2.2)."
+    },
+    {
+      "code": "pack-type-check-failed",
+      "kind": "client",
+      "service": "update",
+      "description": "A pack payload failed its type's device-side check (CONTENT §4.2, P4-16) after the engine verified it and before it committed, so nothing was activated, the install was abandoned and staging discarded. `detail` names the check: `json` (a data.json file is not strict JSON), `table` (an l10n.table file is not a PO, CSV or JSON table the plain parser reads), `locale` (a table's locale is not a well-formed BCP-47 tag or not the variant's locale), `descriptor` (an ml.model's model.json or an audio.bank's bank.json is missing or malformed), `runtime`, `quantization`, `memory` (the model's RAM or VRAM need is above the host's budget), `load-test` (the host's load test refused the model), `middleware` (the bank's middleware or major.minor version is not the host's), `size` (a file is above the handler's limit), or a game handler's own token; `path` names the file."
     },
     {
       "code": "pack-not-pinned",

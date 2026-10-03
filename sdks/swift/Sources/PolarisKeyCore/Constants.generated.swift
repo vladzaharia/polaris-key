@@ -135,6 +135,7 @@ public enum ErrorCode {
     public static let planNoStrategy = "plan-no-strategy"
     public static let packNoVariant = "pack-no-variant"
     public static let packTypeUnsupported = "pack-type-unsupported"
+    public static let packTypeCheckFailed = "pack-type-check-failed"
     public static let packNotPinned = "pack-not-pinned"
     public static let packNotEntitled = "pack-not-entitled"
     public static let packStateUnreadable = "pack-state-unreadable"
@@ -272,6 +273,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "plan-no-strategy",
     "pack-no-variant",
     "pack-type-unsupported",
+    "pack-type-check-failed",
     "pack-not-pinned",
     "pack-not-entitled",
     "pack-state-unreadable",
@@ -409,6 +411,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "plan-no-strategy": "client",
     "pack-no-variant": "client",
     "pack-type-unsupported": "client",
+    "pack-type-check-failed": "client",
     "pack-not-pinned": "client",
     "pack-not-entitled": "client",
     "pack-state-unreadable": "client",
@@ -474,6 +477,11 @@ public enum Feature {
     public static let packsApplyDelta = "packs.apply.delta"
     public static let packsState = "packs.state"
     public static let packsHandlers = "packs.handlers"
+    public static let packsTypeGodotZip = "packs.type.godot.zip"
+    public static let packsTypeL10nTable = "packs.type.l10n.table"
+    public static let packsTypeDataJson = "packs.type.data.json"
+    public static let packsTypeAudioBank = "packs.type.audio.bank"
+    public static let packsTypeMlModel = "packs.type.ml.model"
     public static let packsProvides = "packs.provides"
     public static let packsTransportApple = "packs.transport.apple"
     public static let packsTransportPlay = "packs.transport.play"
@@ -539,6 +547,11 @@ public let FEATURE_VALUES: [String] = [
     "packs.apply.delta",
     "packs.state",
     "packs.handlers",
+    "packs.type.godot.zip",
+    "packs.type.l10n.table",
+    "packs.type.data.json",
+    "packs.type.audio.bank",
+    "packs.type.ml.model",
     "packs.provides",
     "packs.transport.apple",
     "packs.transport.play",
@@ -1263,6 +1276,11 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.apply.delta": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.state": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.handlers": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.type.godot.zip": CapabilityRow(status: "na", service: "release", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "packs.type.l10n.table": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.type.data.json": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.type.audio.bank": CapabilityRow(status: "na", service: "release", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "packs.type.ml.model": CapabilityRow(status: "planned", service: "release", na: []),
     "packs.provides": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.transport.apple": CapabilityRow(status: "planned", service: "distribution", na: []),
     "packs.transport.play": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1275,4 +1293,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "b01a44b8b92ecb71ce32e1cc801d70ba1911a697894c399c999241fa78b6e758"
+public let CAPABILITY_DIGEST = "656512fb91ac68bdcb1e7f6f49178ba4dfe68067cd23d76adb28fef6307923d4"

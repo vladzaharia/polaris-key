@@ -710,6 +710,159 @@
       "allowedNa": []
     },
     {
+      "id": "packs.type.godot.zip",
+      "family": "packs",
+      "title": "`godot.zip` packs: a stored-entry zip checked by the godot.pck admission list and mounted at boot",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; only the Godot runtime can mount it."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; only the Godot runtime can mount it."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; only the Godot runtime can mount it."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; only the Godot runtime can mount it."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; a native Apple app has no Godot runtime to mount it (Godot on macOS and iOS uses the Godot SDK)."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; a native Apple app has no Godot runtime to mount it (Godot on macOS and iOS uses the Godot SDK)."
+        }
+      ]
+    },
+    {
+      "id": "packs.type.l10n.table",
+      "family": "packs",
+      "title": "`l10n.table` packs: PO, CSV or JSON tables parsed (never evaluated), the BCP-47 locale matched to the variant, hot activation",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.type.data.json",
+      "family": "packs",
+      "title": "`data.json` packs: strict-JSON documents, the formatVersion the handler lists, hot activation",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "packs.type.audio.bank",
+      "family": "packs",
+      "title": "`audio.bank` packs: the bank descriptor's middleware and version against the host's, hot reload through the host's middleware",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); this runtime hosts no audio middleware. A game may still register its own handler for the type."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); this runtime hosts no audio middleware. A game may still register its own handler for the type."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); this runtime hosts no audio middleware. A game may still register its own handler for the type."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); this runtime hosts no audio middleware. A game may still register its own handler for the type."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); a native Apple app built on this SDK hosts none. A game may still register its own handler for the type."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); a native Apple app built on this SDK hosts none. A game may still register its own handler for the type."
+        }
+      ]
+    },
+    {
+      "id": "packs.type.ml.model",
+      "family": "packs",
+      "title": "`ml.model` packs: the model descriptor's runtime, quantisation and RAM/VRAM needs against the host's budget, a host load test before the path swaps",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+        }
+      ]
+    },
+    {
       "id": "packs.provides",
       "family": "packs",
       "title": "isAvailable(contentId) from provides",

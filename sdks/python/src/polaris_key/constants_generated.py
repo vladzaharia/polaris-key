@@ -253,6 +253,7 @@ class ErrorCode:
     PLAN_NO_STRATEGY: Final = "plan-no-strategy"
     PACK_NO_VARIANT: Final = "pack-no-variant"
     PACK_TYPE_UNSUPPORTED: Final = "pack-type-unsupported"
+    PACK_TYPE_CHECK_FAILED: Final = "pack-type-check-failed"
     PACK_NOT_PINNED: Final = "pack-not-pinned"
     PACK_NOT_ENTITLED: Final = "pack-not-entitled"
     PACK_STATE_UNREADABLE: Final = "pack-state-unreadable"
@@ -390,6 +391,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "plan-no-strategy",
     "pack-no-variant",
     "pack-type-unsupported",
+    "pack-type-check-failed",
     "pack-not-pinned",
     "pack-not-entitled",
     "pack-state-unreadable",
@@ -529,6 +531,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "plan-no-strategy": "client",
         "pack-no-variant": "client",
         "pack-type-unsupported": "client",
+        "pack-type-check-failed": "client",
         "pack-not-pinned": "client",
         "pack-not-entitled": "client",
         "pack-state-unreadable": "client",
@@ -597,6 +600,11 @@ class Feature:
     PACKS_APPLY_DELTA: Final = "packs.apply.delta"
     PACKS_STATE: Final = "packs.state"
     PACKS_HANDLERS: Final = "packs.handlers"
+    PACKS_TYPE_GODOT_ZIP: Final = "packs.type.godot.zip"
+    PACKS_TYPE_L10N_TABLE: Final = "packs.type.l10n.table"
+    PACKS_TYPE_DATA_JSON: Final = "packs.type.data.json"
+    PACKS_TYPE_AUDIO_BANK: Final = "packs.type.audio.bank"
+    PACKS_TYPE_ML_MODEL: Final = "packs.type.ml.model"
     PACKS_PROVIDES: Final = "packs.provides"
     PACKS_TRANSPORT_APPLE: Final = "packs.transport.apple"
     PACKS_TRANSPORT_PLAY: Final = "packs.transport.play"
@@ -662,6 +670,11 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "packs.apply.delta",
     "packs.state",
     "packs.handlers",
+    "packs.type.godot.zip",
+    "packs.type.l10n.table",
+    "packs.type.data.json",
+    "packs.type.audio.bank",
+    "packs.type.ml.model",
     "packs.provides",
     "packs.transport.apple",
     "packs.transport.play",
@@ -1545,6 +1558,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.apply.delta": CapabilityRow("implemented", "release", ()),
         "packs.state": CapabilityRow("implemented", "release", ()),
         "packs.handlers": CapabilityRow("implemented", "release", ()),
+        "packs.type.godot.zip": CapabilityRow("na", "release", (CapabilityNa("python", "runtime"),)),
+        "packs.type.l10n.table": CapabilityRow("planned", "release", ()),
+        "packs.type.data.json": CapabilityRow("planned", "release", ()),
+        "packs.type.audio.bank": CapabilityRow("na", "release", (CapabilityNa("python", "runtime"),)),
+        "packs.type.ml.model": CapabilityRow("planned", "release", ()),
         "packs.provides": CapabilityRow("implemented", "release", ()),
         "packs.transport.apple": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
         "packs.transport.play": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
@@ -1558,4 +1576,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "67ef5aa2db37c45d0d616e8d09036415e25a85160021a3f89a6894a9738023bf"
+CAPABILITY_DIGEST: Final[str] = "c81194cc4829b2e7c55ca162003a340a59fd86070d6b4e7a7775644512d5a50b"

@@ -117,6 +117,21 @@
       "note": "update.packs.registerHandler; files.tree (hot: versioned directory plus pointer swap) built in."
     },
     "packs.provides": { "status": "implemented" },
+    "packs.type.godot.zip": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
+    },
+    "packs.type.l10n.table": { "status": "planned", "wp": "P4-16" },
+    "packs.type.data.json": { "status": "planned", "wp": "P4-16" },
+    "packs.type.audio.bank": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "P4-16: audio banks load through a game engine's middleware."
+    },
+    "packs.type.ml.model": { "status": "planned", "wp": "P4-16" },
     "packs.transport.apple": {
       "status": "planned",
       "unowned": true,

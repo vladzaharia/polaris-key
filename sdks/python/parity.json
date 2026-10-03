@@ -131,6 +131,21 @@
       "status": "implemented",
       "note": "update.packs.provides reads the record-level provides (CONTENT_ID_PATTERN, MAX_PROVIDES; an unusable list provides nothing); client.update.packs.is_available over the running set and pack_for over a packs decision's targets or the stamp's pins, unentitled and revoked releases never answering."
     },
+    "packs.type.godot.zip": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
+    },
+    "packs.type.l10n.table": { "status": "planned", "wp": "P4-16" },
+    "packs.type.data.json": { "status": "planned", "wp": "P4-16" },
+    "packs.type.audio.bank": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "P4-16: audio banks load through a game engine's middleware."
+    },
+    "packs.type.ml.model": { "status": "planned", "wp": "P4-16" },
     "packs.transport.apple": {
       "status": "na",
       "runtime": "python",

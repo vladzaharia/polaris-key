@@ -131,6 +131,7 @@ export const ErrorCode = {
   planNoStrategy: "plan-no-strategy",
   packNoVariant: "pack-no-variant",
   packTypeUnsupported: "pack-type-unsupported",
+  packTypeCheckFailed: "pack-type-check-failed",
   packNotPinned: "pack-not-pinned",
   packNotEntitled: "pack-not-entitled",
   packStateUnreadable: "pack-state-unreadable",
@@ -269,6 +270,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "plan-no-strategy",
   "pack-no-variant",
   "pack-type-unsupported",
+  "pack-type-check-failed",
   "pack-not-pinned",
   "pack-not-entitled",
   "pack-state-unreadable",
@@ -409,6 +411,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "plan-no-strategy": "client",
   "pack-no-variant": "client",
   "pack-type-unsupported": "client",
+  "pack-type-check-failed": "client",
   "pack-not-pinned": "client",
   "pack-not-entitled": "client",
   "pack-state-unreadable": "client",
@@ -474,6 +477,11 @@ export const Feature = {
   packsApplyDelta: "packs.apply.delta",
   packsState: "packs.state",
   packsHandlers: "packs.handlers",
+  packsTypeGodotZip: "packs.type.godot.zip",
+  packsTypeL10nTable: "packs.type.l10n.table",
+  packsTypeDataJson: "packs.type.data.json",
+  packsTypeAudioBank: "packs.type.audio.bank",
+  packsTypeMlModel: "packs.type.ml.model",
   packsProvides: "packs.provides",
   packsTransportApple: "packs.transport.apple",
   packsTransportPlay: "packs.transport.play",
@@ -540,6 +548,11 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "packs.apply.delta",
   "packs.state",
   "packs.handlers",
+  "packs.type.godot.zip",
+  "packs.type.l10n.table",
+  "packs.type.data.json",
+  "packs.type.audio.bank",
+  "packs.type.ml.model",
   "packs.provides",
   "packs.transport.apple",
   "packs.transport.play",
@@ -1400,6 +1413,25 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "packs.apply.delta": { status: "implemented", service: "release", na: [] },
   "packs.state": { status: "implemented", service: "release", na: [] },
   "packs.handlers": { status: "implemented", service: "release", na: [] },
+  "packs.type.godot.zip": {
+    status: "na",
+    service: "release",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "packs.type.l10n.table": { status: "planned", service: "release", na: [] },
+  "packs.type.data.json": { status: "planned", service: "release", na: [] },
+  "packs.type.audio.bank": {
+    status: "na",
+    service: "release",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "packs.type.ml.model": { status: "planned", service: "release", na: [] },
   "packs.provides": { status: "implemented", service: "release", na: [] },
   "packs.transport.apple": {
     status: "na",
@@ -1448,4 +1480,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "98831833a0a4c2c4d41dfe322dff9e1d0622b5f4caa8917c7cefdd4c68122433";
+  "2f02db3c746abe22a9d31d592797275b7edc955b8fe77ab7bbc07729dfc64ab3";
