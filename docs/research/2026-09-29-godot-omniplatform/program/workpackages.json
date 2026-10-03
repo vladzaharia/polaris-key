@@ -2204,7 +2204,7 @@
       "optional": false,
       "refs": [],
       "brief": "wp/S-08-cloudflare-async-compute.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "S-09",
