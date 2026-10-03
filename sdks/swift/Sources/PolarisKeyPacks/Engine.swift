@@ -86,7 +86,9 @@ public struct StagedPack: Sendable {
     }
 
     /// The file at exactly this index path.
-    public func file(_ path: String) -> InstalledFile? { files.first { $0.path == path } }
+    /// Compared by UTF-8 bytes, never Swift's canonical-equivalence `==`: an index path names one
+    /// file exactly, as in every other SDK.
+    public func file(_ path: String) -> InstalledFile? { files.first { sameBytes($0.path, path) } }
 }
 
 /// A handler's refusal of a staged payload: `pack-type-check-failed` with this `detail` (a
@@ -111,6 +113,11 @@ public struct PackPayloadReader: Sendable {
 
     public func read() throws -> InstalledPayload? { try reader().map(sortedPayload) }
 }
+
+/// Whether two strings are the same UTF-8 bytes. Paths, ids and names are matched this way, never
+/// with String `==`, which treats canonically equivalent strings (`"\u{E9}"`, `"e\u{301}"`) as
+/// equal where no other SDK does.
+func sameBytes(_ a: String, _ b: String) -> Bool { a.utf8.elementsEqual(b.utf8) }
 
 /// An installed payload with its files in index (path byte) order.
 func sortedPayload(_ p: InstalledPayload) -> InstalledPayload {

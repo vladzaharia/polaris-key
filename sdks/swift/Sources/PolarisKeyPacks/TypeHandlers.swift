@@ -218,10 +218,10 @@ public struct MlModel: Sendable, Equatable {
 
 /// `model.json` read from an index, or the refusal (`descriptor`).
 func mlModelDescriptor(_ files: [InstalledFile]) throws -> MlModelDescriptor? {
-    guard let f = files.first(where: { $0.path == "model.json" }), f.size <= PACK_DESCRIPTOR_MAX_BYTES,
+    guard let f = files.first(where: { sameBytes($0.path, "model.json") }), f.size <= PACK_DESCRIPTOR_MAX_BYTES,
         let (v, nonWire) = strictParse(try readAll(f.source)), case .object(let o) = v,
         case .string(let runtime)? = o["runtime"], isPackToken(runtime),
-        case .string(let file)? = o["file"], file != "model.json", files.contains(where: { $0.path == file }),
+        case .string(let file)? = o["file"], !sameBytes(file, "model.json"), files.contains(where: { sameBytes($0.path, file) }),
         case .int(let mem)? = o["memBytes"], wireInteger(mem, pointer: "/memBytes", min: 0, in: nonWire)
     else { return nil }
     var vram: Int?
@@ -300,7 +300,7 @@ public final class MlModelHandler: PackHandler, Sendable {
             )
         }
         if let loadTest {
-            let file = files.first { $0.path == d.file }!
+            let file = files.first { sameBytes($0.path, d.file) }!
             let passed: Bool
             do {
                 passed = try await loadTest(

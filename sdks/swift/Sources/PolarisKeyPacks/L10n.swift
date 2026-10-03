@@ -137,18 +137,176 @@ private func str(_ s: ArraySlice<Unicode.Scalar>) -> String {
 // ── JSON ───────────────────────────────────────────────────────────────────────────────────
 
 private func parseJsonTable(_ scalars: [Unicode.Scalar]) -> [RawTable]? {
-    guard let parsed = strictParse(Array(str(scalars[...]).utf8)),
-        case .object(let o) = parsed.value,
-        case .string(let locale)? = o["locale"],
-        case .object(let m)? = o["messages"]
+    let bytes = Array(str(scalars[...]).utf8)
+    // Strictness (V4 §1.2: duplicates by scalars, no trailing comma, …) is `strictParse`'s; the
+    // members are then read in order by `OrderedJSON`, because `JSONValue` keys a Swift
+    // dictionary, whose String equality is canonical equivalence: two ids every other SDK keeps
+    // apart (`"\u{E9}"` and `"e\u{301}"`) would merge into one message.
+    guard strictParse(bytes) != nil, case .object(let o)? = OrderedJSON.parse(bytes),
+        case .string(let locale)? = o.first(where: { sameBytes($0.key, "locale") })?.value,
+        case .object(let m)? = o.first(where: { sameBytes($0.key, "messages") })?.value
     else { return nil }
     // Member order is not portable, so a JSON table's messages are in UTF-8 byte order of ids.
     var messages: [L10nMessage] = []
-    for id in m.keys.sorted(by: { compareUTF8Bytes($0, $1) < 0 }) {
-        guard case .string(let s)? = m[id] else { return nil }
+    for (id, v) in m.sorted(by: { compareUTF8Bytes($0.key, $1.key) < 0 }) {
+        guard case .string(let s) = v else { return nil }
         messages.append(L10nMessage(context: nil, id: id, plural: nil, strings: [s]))
     }
     return [(locale, messages)]
+}
+
+/// A JSON value with its object members in document order and their names exactly as written
+/// (Unicode scalars, no normalisation). Only for text `strictParse` already accepted.
+enum OrderedJSON {
+    case object([(key: String, value: OrderedJSON)])
+    case array([OrderedJSON])
+    case string(String)
+    case other
+
+    static func parse(_ b: [UInt8]) -> OrderedJSON? {
+        var i = 0
+        guard let v = value(b, &i) else { return nil }
+        ws(b, &i)
+        return i == b.count ? v : nil
+    }
+
+    private static func ws(_ b: [UInt8], _ i: inout Int) {
+        while i < b.count, b[i] == 0x20 || b[i] == 0x09 || b[i] == 0x0a || b[i] == 0x0d { i += 1 }
+    }
+
+    private static func value(_ b: [UInt8], _ i: inout Int) -> OrderedJSON? {
+        ws(b, &i)
+        guard i < b.count else { return nil }
+        switch b[i] {
+        case UInt8(ascii: "{"):
+            i += 1
+            var members: [(key: String, value: OrderedJSON)] = []
+            ws(b, &i)
+            if i < b.count, b[i] == UInt8(ascii: "}") {
+                i += 1
+                return .object(members)
+            }
+            while true {
+                ws(b, &i)
+                guard let k = string(b, &i) else { return nil }
+                ws(b, &i)
+                guard i < b.count, b[i] == UInt8(ascii: ":") else { return nil }
+                i += 1
+                guard let v = value(b, &i) else { return nil }
+                members.append((k, v))
+                ws(b, &i)
+                guard i < b.count else { return nil }
+                if b[i] == UInt8(ascii: ",") {
+                    i += 1
+                    continue
+                }
+                guard b[i] == UInt8(ascii: "}") else { return nil }
+                i += 1
+                return .object(members)
+            }
+        case UInt8(ascii: "["):
+            i += 1
+            var items: [OrderedJSON] = []
+            ws(b, &i)
+            if i < b.count, b[i] == UInt8(ascii: "]") {
+                i += 1
+                return .array(items)
+            }
+            while true {
+                guard let v = value(b, &i) else { return nil }
+                items.append(v)
+                ws(b, &i)
+                guard i < b.count else { return nil }
+                if b[i] == UInt8(ascii: ",") {
+                    i += 1
+                    continue
+                }
+                guard b[i] == UInt8(ascii: "]") else { return nil }
+                i += 1
+                return .array(items)
+            }
+        case UInt8(ascii: "\""):
+            return string(b, &i).map { .string($0) }
+        default:
+            // A number, `true`, `false` or `null`: skip to the next structural byte.
+            while i < b.count, ![UInt8(ascii: ","), UInt8(ascii: "}"), UInt8(ascii: "]"), 0x20, 0x09, 0x0a, 0x0d]
+                .contains(b[i])
+            {
+                i += 1
+            }
+            return .other
+        }
+    }
+
+    private static func hex4(_ b: [UInt8], _ at: Int) -> UInt32? {
+        guard at + 4 <= b.count else { return nil }
+        var v: UInt32 = 0
+        for k in at..<at + 4 {
+            let c = b[k]
+            let d: UInt32
+            switch c {
+            case 48...57: d = UInt32(c - 48)
+            case 65...70: d = UInt32(c - 55)
+            case 97...102: d = UInt32(c - 87)
+            default: return nil
+            }
+            v = v * 16 + d
+        }
+        return v
+    }
+
+    private static func string(_ b: [UInt8], _ i: inout Int) -> String? {
+        guard i < b.count, b[i] == UInt8(ascii: "\"") else { return nil }
+        i += 1
+        var out = String.UnicodeScalarView()
+        var run: [UInt8] = []
+        func flush() {
+            if !run.isEmpty {
+                out.append(contentsOf: String(decoding: run, as: UTF8.self).unicodeScalars)
+                run = []
+            }
+        }
+        while i < b.count {
+            let c = b[i]
+            if c == UInt8(ascii: "\"") {
+                i += 1
+                flush()
+                return String(out)
+            }
+            if c != UInt8(ascii: "\\") {
+                run.append(c)
+                i += 1
+                continue
+            }
+            flush()
+            guard i + 1 < b.count else { return nil }
+            let e = b[i + 1]
+            i += 2
+            switch e {
+            case UInt8(ascii: "\""): out.append("\"")
+            case UInt8(ascii: "\\"): out.append("\\")
+            case UInt8(ascii: "/"): out.append("/")
+            case UInt8(ascii: "b"): out.append("\u{8}")
+            case UInt8(ascii: "f"): out.append("\u{C}")
+            case UInt8(ascii: "n"): out.append("\n")
+            case UInt8(ascii: "r"): out.append("\r")
+            case UInt8(ascii: "t"): out.append("\t")
+            case UInt8(ascii: "u"):
+                guard var v = hex4(b, i) else { return nil }
+                i += 4
+                if v >= 0xD800, v <= 0xDBFF, i + 6 <= b.count, b[i] == UInt8(ascii: "\\"),
+                    b[i + 1] == UInt8(ascii: "u"), let lo = hex4(b, i + 2), lo >= 0xDC00, lo <= 0xDFFF
+                {
+                    v = 0x10000 + ((v - 0xD800) << 10) + (lo - 0xDC00)
+                    i += 6
+                }
+                // A lone surrogate (which strictParse admits only as JSON allows) reads as U+FFFD.
+                out.append(Unicode.Scalar(v) ?? "\u{FFFD}")
+            default: return nil
+            }
+        }
+        return nil
+    }
 }
 
 // ── PO ─────────────────────────────────────────────────────────────────────────────────────

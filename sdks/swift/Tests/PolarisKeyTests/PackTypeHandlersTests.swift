@@ -492,4 +492,10 @@ final class PackTypeHandlersTests: XCTestCase {
             XCTAssertTrue(storage.store.isEmpty, mode)
         }
     }
+
+    func testStagedFilesAreMatchedByBytesNotCanonicalEquivalence() {
+        let s = staged([("mode\u{301}l.onnx", Array("x".utf8))], type: "ml.model")
+        XCTAssertNotNil(s.file("mode\u{301}l.onnx"))
+        XCTAssertNil(s.file("mod\u{E9}l.onnx"), "an NFC name never finds the NFD file")
+    }
 }
