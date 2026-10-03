@@ -36,6 +36,6 @@
     "@polaris-key/node": "workspace:*",
     "@types/better-sqlite3": "^7.6.11",
     "better-sqlite3": "^11.8.0",
-    "wrangler": "^4.40.0"
+    "wrangler": "^4.144.0"
   }
 }
