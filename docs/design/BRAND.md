@@ -600,8 +600,9 @@ map it follows.
 | `hsl(var(--pk-x) / <alpha>)`                                   | `var(--pk-x)`; for a tint use the `*-subtle` tokens                | hex has no channel form; no ad-hoc alpha                 |
 | `font-sans` (system)                                           | `--pk-font-sans` (Rubik) + `fonts.css`                             |                                                          |
 
-`tools/services.json`'s `console.accent` keys (`key`, `id`, …) predate this and can be retired in
-favour of the slug once the console migrates.
+`tools/services.json`'s old `console.accent` keys `key` (License) and `id` (Identity) are retired:
+since the console migration (ADMIN.md §7.2, chunk 1) every `console.accent` is the service slug,
+so `data-service` carries the same ids this package keys its accents by.
 
 ---
 
