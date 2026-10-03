@@ -31,6 +31,12 @@
  *     POST …/distribution/readiness/<appReleaseId>/<outletId>/{override,clear}
  *                                                              release the hold (audited, with a
  *                                                              reason) or hand it back
+ *     GET  …/distribution/asset-packs                          Apple-hosted asset packs by id, their
+ *                                                              level, newest version and states,
+ *                                                              retire candidates (levels no longer
+ *                                                              live) and the 200-pack / 200 GB
+ *                                                              quotas (P5-08; list only, never
+ *                                                              archives)
  *     GET  …/distribution/connectors                           every store connector: setup,
  *                                                              tracked objects, recent events (P5-02)
  *     GET  …/distribution/connectors/<kind>                    one connector
@@ -122,6 +128,7 @@ import {
   refreshReadiness,
   setReadinessOverride,
 } from "./readiness.js";
+import { listAssetPacks } from "./assetPacks.js";
 
 /** The console's view of one outlet. */
 export function outletView(
@@ -169,6 +176,14 @@ export async function handleDistributionAdmin(
   if (rest[0] === "connectors") return handleConnectorsAdmin(ctx);
   if (rest[0] === "matrix") return handleMatrixAdmin(ctx);
   if (rest[0] === "readiness") return handleReadinessAdmin(ctx);
+  if (rest[0] === "asset-packs") {
+    if (rest.length !== 1) return null;
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    return adminJson(
+      await listAssetPacks(db, slug, ctx.hooks.releaseCatalog()),
+    );
+  }
   if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 

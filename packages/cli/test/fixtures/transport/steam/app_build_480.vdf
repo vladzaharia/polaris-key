@@ -1,0 +1,12 @@
+"AppBuild"
+{
+	"AppID" "480"
+	"Desc" "pkey diceroll.core3d@1.0.0 (<record>)"
+	"ContentRoot" "content/"
+	"BuildOutput" "output/"
+	"SetLive" "beta"
+	"Depots"
+	{
+		"481" "depot_build_481.vdf"
+	}
+}

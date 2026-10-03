@@ -19,6 +19,13 @@ var check_fails := false
 var start_ok := true
 ## Pack statuses by name; a fetched pack goes PENDING then COMPLETED (listener events).
 var packs := {"foes": 8}
+## Where a completed pack's files live: `<assets_root>/<name>/11/11/assets`.
+var assets_root := "/data/data/gg.vlad.diceroll/files/assetpacks"
+## Per pack name, the statuses pad_fetch reports instead of DOWNLOADING then COMPLETED (the last
+## one stays the pack's status), e.g. [2, 9] for a download that needs the user's confirmation.
+var fetch_statuses := {}
+## Whether pad_confirm completes a pack waiting for confirmation (else it fails, as on a sideload).
+var confirm_completes := false
 ## What pi_verify refuses (empty: ok).
 var refuse: Array = []
 ## The journaled last install (pi_last), or null.
@@ -120,9 +127,10 @@ func cmd(json: String) -> String:
 		"pad_fetch":
 			var name := str(q.get("name"))
 			var r := _later(op, {"ok": true, "state": _state(name, 1)})
-			packs[name] = 4
-			push_event(_ev("pack_state", _state(name, 2)))
-			push_event(_ev("pack_state", _state(name, 4)))
+			var seq: Array = fetch_statuses.get(name, [2, 4])
+			for st in seq:
+				push_event(_ev("pack_state", _state(name, int(st))))
+			packs[name] = int(seq[-1])
 			return r
 		"pad_location":
 			var name := str(q.get("name"))
@@ -130,14 +138,24 @@ func cmd(json: String) -> String:
 				return JSON.stringify({"ok": true, "location": {"name": name, "storageMethod": 1, "assetsPath": null, "path": null, "installTime": true, "pck": null}})
 			if packs.get(name) != 4:
 				return JSON.stringify({"ok": true, "location": null})
-			var dir := "/data/data/gg.vlad.diceroll/files/assetpacks/%s/11/11/assets" % name
+			var dir := "%s/%s/11/11/assets" % [assets_root, name]
 			return JSON.stringify({"ok": true, "location": {"name": name, "storageMethod": 0, "assetsPath": dir, "path": dir.get_base_dir(), "installTime": false, "pck": "%s/%s.pck" % [dir, name]}})
 		"pad_remove":
 			packs[str(q.get("name"))] = 8
 			return _later(op, {"ok": true})
 		"pad_cancel":
+			var cn := str(q.get("name"))
+			if packs.has(cn) and int(packs[cn]) in [1, 2, 3, 7, 9]:
+				packs[cn] = 6
+				return JSON.stringify({"ok": true, "state": _state(cn, 6)})
 			return JSON.stringify({"ok": true, "state": null})
 		"pad_confirm":
+			if confirm_completes:
+				for n in packs:
+					if packs[n] == 7 or packs[n] == 9:
+						packs[n] = 4
+						push_event(_ev("pack_state", _state(n, 4)))
+				return _later(op, {"ok": true, "result": "accepted"})
 			return _later(op, {"ok": false, "error": "pack_failed", "exception": "AssetPackException", "message": "not installed by Play", "errorCode": -14})
 		"pi_can_install":
 			return JSON.stringify({"ok": true, "canInstall": true})

@@ -18,6 +18,22 @@ extends RefCounted
 ##     moves into the store after it is read back and hashed, then the state's pointer swap),
 ##     activation (`hot` now; `restart` at the next boot), and garbage collection.
 ##
+## Platform transports (P5-08; CONTENT §7, §8.1): `platform` (a PKeyPackPlatformTransport:
+## `apple-ba`, `play-pad`, `steam-depot`) carries some packs on this install. The copies it holds
+## at boot come to `load_state` beside the embedded baselines and are verified the same way (the
+## marker, then the payload or treeDigest against the signed record); instead of the embedded pin
+## check, a platform copy is accepted when its record is the stamp's pinned release or, for a
+## transport whose packs float (`floats()`: Apple-hosted packs, Steam content-only builds), a later
+## release of that pack (higher `seq`); a Play asset pack must be the pinned release. An accepted
+## copy replaces that pack's `res://` baseline for this process (revocation refusals apply as for
+## embedded baselines). For a pack the platform carries, the planner gets a target bound to the
+## platform's transport and lists that transport only while the platform is available, so the plan
+## is `noop`, `platform` or `plan-transport-unsupported`, never a silent CDN fallback. `platform`
+## asks the transport to deliver, re-reads its copy, and accepts it only when it is EXACTLY the
+## target release (`record-mismatch` otherwise; a bad marker or payload is `marker-rejected` with
+## the step). A platform copy is never written to the state document: its path is re-resolved at
+## every boot.
+##
 ## The install state is hardened exactly as P4-06's: a state read answers "missing" ONLY when
 ## there is no file and anything else makes the state `unreadable` (nothing is written, fetched or
 ## installed this process: `pack-state-unreadable`); a document that exists but does not parse is
@@ -108,6 +124,8 @@ var strategies: Array = ["delta", "chunk", "file", "full"]
 var transports: Array = ["pkey-cdn"]
 var storage: PKeyPackStorage
 var transport: PKeyPackTransport = PKeyPackTransport.new()
+## P5-08: the platform transport (PKeyPackPlatformTransport) carrying some packs here, or null.
+var platform: PKeyPackTransport = null
 ## () -> Dictionary used as a set of granted flags, or null when the product runs no License.
 var entitlements := Callable()
 ## () -> int epoch seconds.
@@ -252,9 +270,11 @@ func _persist() -> String:
 ## Load the state (re-verifying every entry), register the embedded baselines (each marker
 ## verified once, its bytes matched, its pin checked against the stamp), activate what this boot
 ## runs, persist the document and collect garbage. Run once, before `ensure`. `embedded`: the
-## transport's baselines ({marker, location, payload} or {location, error}). A coroutine
-## returning {refused: [{location, step}]}.
-func load_state(embedded: Array = []) -> Dictionary:
+## transport's baselines ({marker, location, payload} or {location, error}). `platform_copies`:
+## the platform transport's (P5-08: the same shape plus `transport` and `floats`), verified like
+## embedded ones under the platform pin rule, each replacing its pack's embedded baseline. A
+## coroutine returning {refused: [{location, step}]}.
+func load_state(embedded: Array = [], platform_copies: Array = []) -> Dictionary:
 	await _enter()
 	var refused: Array = []
 	for e in embedded:
@@ -262,6 +282,15 @@ func load_state(embedded: Array = []) -> Dictionary:
 			refused.append({"location": e["location"], "step": String(e["error"])})
 			continue
 		var r: Dictionary = await _verify_embedded(e)
+		if not r["ok"]:
+			refused.append({"location": e["location"], "step": r["step"]})
+		else:
+			_embedded[r["install"]["packId"]] = r["install"]
+	for e in platform_copies:
+		if e.has("error"):
+			refused.append({"location": e["location"], "step": String(e["error"])})
+			continue
+		var r: Dictionary = await _verify_platform(e)
 		if not r["ok"]:
 			refused.append({"location": e["location"], "step": r["step"]})
 		else:
@@ -921,15 +950,50 @@ func _verify_embedded(e: Dictionary) -> Dictionary:
 	var match := PKeyPackMarker.match_embedded(m, e["payload"], stamp)
 	if not match["ok"]:
 		return {"ok": false, "step": match["step"]}
+	return {"ok": true, "install": _baseline_install(m, match["variant"], e["location"])}
+
+
+func _baseline_install(m: Dictionary, variant_index: int, location: String) -> Dictionary:
 	var rec: Dictionary = m["record"]
 	records[m["recordSha256"]] = rec
-	var v: Dictionary = rec["variants"][match["variant"]]
-	return {"ok": true, "install": {
+	var v: Dictionary = rec["variants"][variant_index]
+	return {
 		"packId": m["packId"], "record": m["release"], "recordSha256": m["recordSha256"], "version": m["version"],
 		"seq": rec["seq"], "type": rec["type"], "variant": PKeyPackClaims.variant_key(v["variant"]),
 		"layout": v["files"]["layout"], "payloadSha256": v["payload"]["sha256"], "payloadSize": v["payload"]["size"],
-		"activation": _activation_of(rec), "location": e["location"], "embedded": true, "installedAt": rec["issuedAt"],
-	}}
+		"activation": _activation_of(rec), "location": location, "embedded": true, "installedAt": rec["issuedAt"],
+	}
+
+
+## A platform copy (P5-08): the marker and the bytes as for an embedded baseline (`match_embedded`
+## without the stamp), then `exact` (a record SHA-256: the copy must be that release, else
+## {ok: false, step: "pin", mismatch: true}) or, without it, the platform pin rule: the stamp's
+## pinned release, or a later `seq` of the pack when the copy's transport floats.
+func _verify_platform(e: Dictionary, exact: Variant = null) -> Dictionary:
+	var m: Dictionary = await PKeyPackMarker.verify_marker(e["marker"], {
+		"release_keys": release_keys, "product_trust": product_trust.call() if product_trust.is_valid() else {},
+		"expected_aud": product, "offload": offload,
+	})
+	if not m["ok"]:
+		return {"ok": false, "step": m["step"]}
+	if e.get("packId") is String and m["packId"] != e["packId"]:
+		return {"ok": false, "step": "cross-check"}
+	var match := PKeyPackMarker.match_embedded(m, e["payload"], null)
+	if not match["ok"]:
+		return {"ok": false, "step": match["step"]}
+	if exact is String:
+		if m["recordSha256"] != exact:
+			return {"ok": false, "step": "pin", "mismatch": true, "recordSha256": m["recordSha256"], "version": m["version"]}
+	else:
+		var pin = _stamp_pin(m["packId"])
+		if pin is Dictionary and not PKeyPackClaims.same(pin["release"].get("sha256"), m["recordSha256"]):
+			var floats: bool = e.get("floats", platform.floats() if platform != null and platform.has_method("floats") else false) == true
+			var pin_seq = pin["release"].get("seq")
+			if not floats or not PKeyClaims.is_number(pin_seq) or float(m["record"]["seq"]) <= float(pin_seq):
+				return {"ok": false, "step": "pin"}
+	var install := _baseline_install(m, match["variant"], e["location"])
+	install["platform"] = String(e.get("transport", platform.id() if platform != null else ""))
+	return {"ok": true, "install": install}
 
 
 ## The installs of a pack the planner can reuse: active, the embedded copy and previous.
@@ -1007,6 +1071,8 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 	var variant: Dictionary = record["variants"][sel["index"]]
 	if not PKeyPackClaims.same(variant["files"]["layout"], handler.layout):
 		return _err(PKeyConstants.ErrorCode.PACK_TYPE_UNSUPPORTED, "%s's variant is a %s, not a %s." % [pack_id, variant["files"]["layout"], handler.layout], pack_id)
+	if platform != null and platform.has_method("carries") and platform.carries(pack_id):
+		return _platform_preflight(pack_id, pin_sha, body_text, record, variant, delegated)
 
 	# 4. The index (a tree, or any installed release), the target, the plan. Only installs whose
 	# bytes can be opened count: the planner must not choose a delta from an unreadable base.
@@ -1102,6 +1168,71 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 		"installs": installs, "seeds": seeds, "planId": plan_id, "index": index, "plan": p, "delegation": delegated,
 		"chunk": chunk,
 	}
+
+
+## P5-08: step 4 for a pack the platform transport carries. The target is bound to the platform's
+## transport, which the planner may use only while the platform is available here; no index, seed
+## or object is fetched through the CDN transport.
+func _platform_preflight(pack_id: String, pin_sha: String, body_text: String, record: Dictionary, variant: Dictionary, delegated: Variant) -> Dictionary:
+	var installs := _installs_of(pack_id)
+	var target := PKeyPackSelect.plan_target(variant, pin_sha, null, null)
+	target["platform"] = {"transport": platform.id()}
+	var listed: Array = transports.duplicate()
+	if platform.availability().ok and not listed.has(platform.id()):
+		listed.append(platform.id())
+	var planner_installed: Array = []
+	for i in installs:
+		planner_installed.append({"release": i["recordSha256"], "payloadSha256": i["payloadSha256"], "files": null})
+	var caps := {
+		"strategies": strategies, "patchMethods": [], "transports": listed,
+		"memBudget": mem_budget, "freeDisk": storage.free_disk(),
+	}
+	var p := PKeyPackSelect.plan({"target": target, "installed": planner_installed, "caps": caps})
+	if p.has("error"):
+		return _err(p["error"], "No way to install %s: %s (it is bound to %s, which is not available here)." % [pack_id, p["error"], platform.id()], pack_id)
+	return {
+		"kind": "plan", "body": body_text, "recordSha256": pin_sha, "record": record, "variant": variant,
+		"installs": installs, "seeds": {}, "planId": "", "index": null, "plan": p, "delegation": delegated,
+		"chunk": null,
+	}
+
+
+## P5-08: the `platform` strategy. The transport delivers the pack, its copy is read again and
+## accepted only as exactly the target release, registered as this pack's baseline and activated
+## (hot now; restart when its id is not mounted yet in this process). Nothing is committed to the
+## state document: the copy's path is the platform's and is re-read at every boot. A coroutine.
+func _ensure_platform(pack_id: String, record_sha256: String) -> Dictionary:
+	var forward := func(pid: String, bytes: int, total: int) -> void:
+		_emit({"packId": pid, "phase": "download", "done": bytes, "total": total})
+	var has_signal: bool = platform.has_signal("pack_progress")
+	if has_signal:
+		platform.pack_progress.connect(forward)
+	var r: PKeyResult = await platform.ensure_pack(pack_id)
+	if has_signal:
+		platform.pack_progress.disconnect(forward)
+	if not r.ok:
+		return _err(String(r.code), r.message, pack_id, {"platform": r.detail})
+	var b: Dictionary = await platform.baseline(pack_id)
+	if b.is_empty():
+		return _err(String(PKeyErrors.PLATFORM_ERROR), "%s reports %s ready but holds no copy of it." % [platform.id(), pack_id], pack_id)
+	if b.has("error"):
+		return _err(PKeyConstants.ErrorCode.MARKER_REJECTED, "%s's copy from %s cannot be read as a pack." % [pack_id, platform.id()], pack_id, {"step": String(b["error"])})
+	var v: Dictionary = await _verify_platform(b, record_sha256)
+	if not v["ok"]:
+		if v.get("mismatch") == true:
+			return _err(String(PKeyErrors.RECORD_MISMATCH), "%s holds %s@%s, not the target release." % [platform.id(), pack_id, str(v.get("version"))], pack_id, {"recordSha256": v["recordSha256"]})
+		return _err(PKeyConstants.ErrorCode.MARKER_REJECTED, "%s's copy from %s was refused at %s." % [pack_id, platform.id(), v["step"]], pack_id, {"step": v["step"]})
+	var install: Dictionary = v["install"]
+	_embedded[pack_id] = install
+	var h = handlers.get(install["type"])
+	var before = running.get(pack_id)
+	if install["activation"] == "hot":
+		if before is Dictionary and before["location"] != install["location"] and h != null:
+			h.deactivate(before)
+		await _activate(install)
+	elif h != null and h.has_method("can_activate_now") and h.can_activate_now(install):
+		await _activate(install)
+	return {"install": install}
 
 
 ## Step 2 for one release ({sha256, seq, version}) of `pack_id`: the record fetched by hash and
@@ -1249,7 +1380,9 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 					return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "%s holds %s, which a delegated content key may not ship (%s)." % [pack_id, f["path"], rule], pack_id, {"path": f["path"], "detail": rule})
 		return await _commit(pack_id, pre["body"], pre["recordSha256"], record, variant, same["location"], plan_id, true, delegation)
 	if p["strategy"] == "platform":
-		return _err(PKeyConstants.ErrorCode.PLAN_TRANSPORT_UNSUPPORTED, "%s is platform-bound." % pack_id, pack_id)
+		if platform == null:
+			return _err(PKeyConstants.ErrorCode.PLAN_TRANSPORT_UNSUPPORTED, "%s is platform-bound." % pack_id, pack_id)
+		return await _ensure_platform(pack_id, pre["recordSha256"])
 
 	# 5–6. Each candidate in turn: journal, fetch, apply.
 	var first_failure = null

@@ -288,7 +288,9 @@ jobs:
   # app with get-task-allow; it asserts the product count); the xcframework for device and
   # simulator; the iOS export check (store preset has the Background Assets extension, App
   # Group and BA keys, sideload has none; both build for the device, unsigned); the PKeyApple
-  # facade's headless stub tests. No Apple account, certificate or App Store Connect is used.
+  # facade's headless stub tests. P5-08 adds `pkey transport apple-ba package` against the real
+  # `xcrun ba-package` and the platform transports suite (`transports`) beside the stub tests. No
+  # Apple account, certificate or App Store Connect is used.
   apple:
     name: Apple plugin (macos-26)
     runs-on: macos-26
@@ -335,6 +337,19 @@ jobs:
           echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
           XCODEGEN="$RUNNER_TEMP/xcodegen/bin/xcodegen" sdks/swift/PlatformHostTests/run.sh
+      # P5-08: `pkey transport apple-ba package` against the real `xcrun ba-package` (the other
+      # tests use an exec seam). No App Store Connect key: the upload runs against a fake.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: pkey transport apple-ba package (real xcrun ba-package)
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter "@polaris-key/cli..." build
+          xcrun ba-package --version
+          PKEY_REAL_BA_PACKAGE=1 pnpm --filter @polaris-key/cli exec vitest run test/transport.test.ts
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pkey-godot/4.7.2-ios
@@ -355,7 +370,7 @@ jobs:
       - name: PKeyApple facade stub tests (headless)
         run: |
           rm -rf sdks/godot/addons/polaris_key/native/ios
-          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" PKEY_TEST_SUITES=native_apple,update sdks/godot/tools/run_tests.sh
+          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" PKEY_TEST_SUITES=native_apple,update,transports sdks/godot/tools/run_tests.sh
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -372,7 +387,8 @@ jobs:
   # PackageInstaller verification refusals and Robolectric's PackageInstaller), assembleRelease of
   # both flavours of both modules and of the :boundary app, the flavour boundary on those release
   # outputs (tools/check_flavours.sh: no install permission and no session creation or commit in
-  # play, no Play Core in direct, no native libraries), and PKeyAndroid's headless stub tests. No
+  # play, no Play Core in direct, no native libraries), and PKeyAndroid's headless stub tests (with
+  # P5-08's platform transports suite). No
   # secrets, no signing key, no Play Console: In-App Updates and Play Asset Delivery on a real Play
   # install are the owner's device checklist (the P5-06 brief). First-party actions, plus Gradle's
   # own wrapper-validation action, SHA-pinned, which checks the committed gradle-wrapper.jar against
@@ -420,7 +436,7 @@ jobs:
       - run: sdks/godot/tools/fetch_godot.sh 4.7.2 "$HOME/.cache/pkey-godot/4.7.2"
       - name: PKeyAndroid stub tests (headless)
         run: >-
-          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" PKEY_TEST_SUITES=native_android,update
+          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" PKEY_TEST_SUITES=native_android,update,transports
           sdks/godot/tools/run_tests.sh
       - if: failure()
         uses: actions/upload-artifact@v4

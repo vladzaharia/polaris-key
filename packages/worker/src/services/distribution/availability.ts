@@ -56,6 +56,8 @@
 import { createHash } from "node:crypto";
 import {
   APP_DELIVERABLE_ID,
+  assetPackBase,
+  parseAssetPackId,
   releaseKeyBytes,
   type ParsedManifest,
 } from "@polaris-key/manifest";
@@ -1109,7 +1111,7 @@ export async function applyReport(
     );
   const platformRef = objectField(body, "platformRef");
   if (isRefusal(platformRef)) return platformRef;
-  return reportAvailability(ctx, ciWriter(ctx, principal), {
+  const result = await reportAvailability(ctx, ciWriter(ctx, principal), {
     release,
     outlet: outlet as string,
     buildId,
@@ -1118,6 +1120,47 @@ export async function applyReport(
     platformRef,
     detail,
   });
+  if (result.ok && typeof platformRef === "string")
+    await linkBackgroundAssetObjects(ctx, release, platformRef);
+  return result;
+}
+
+/**
+ * P5-08: a CI report from `pkey transport apple-ba upload` names the asset-pack version it
+ * uploaded (`platformRef.ascBackgroundAssetVersionId`). App Store Connect objects of that version
+ * the connector stored UNRESOLVED (its events arrived before the report) are linked to the
+ * report's pack release now; the connector's next read of each (the poller's reconcile, or the
+ * next event) writes their availability. Only `release_id` of still-unlinked rows changes, and
+ * only when the release is a pack whose id maps to the asset pack (`assetPackBase`), so a stray
+ * report can never re-link another pack's asset pack.
+ */
+async function linkBackgroundAssetObjects(
+  ctx: ReportContext,
+  release: CatalogRelease,
+  platformRef: string,
+): Promise<void> {
+  if (release.deliverableId === APP_DELIVERABLE_ID) return;
+  let ref: Record<string, unknown>;
+  try {
+    ref = JSON.parse(platformRef) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+  const versionId = ref.ascBackgroundAssetVersionId;
+  const identifier = ref.assetPackIdentifier;
+  if (typeof versionId !== "string" || typeof identifier !== "string") return;
+  const parsed = parseAssetPackId(identifier);
+  if (!parsed || assetPackBase(release.deliverableId) !== parsed.base) return;
+  await ctx.db.run(
+    `UPDATE dist_connector_objects SET release_id = ?
+      WHERE product = ? AND connector = 'asc' AND release_id IS NULL
+        AND json_extract(ref_json, '$.ascBackgroundAssetVersionId') = ?
+        AND json_extract(ref_json, '$.assetPackIdentifier') = ?`,
+    release.releaseId,
+    ctx.product,
+    versionId,
+    identifier,
+  );
 }
 
 /**
