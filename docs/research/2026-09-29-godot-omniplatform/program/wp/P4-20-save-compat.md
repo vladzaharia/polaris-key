@@ -116,16 +116,16 @@ saves and support). `provides` also backs Diceroll's `Content.available()` and `
 
 ## Acceptance criteria
 
-- [ ] Worker tests: dropping a provided id on a shared level fails the publish and names the id;
+- [x] Worker tests: dropping a provided id on a shared level fails the publish and names the id;
       the same drop listed in `removes` passes; a release that supports only a new level passes;
       the dry run reports the same result without writing.
-- [ ] `schema-parity.test.ts` passes with a mutation entry for each new validator code.
-- [ ] Every SDK has tests for `isAvailable` (installed and active; provided only by the target
+- [x] `schema-parity.test.ts` passes with a mutation entry for each new validator code.
+- [x] Every SDK has tests for `isAvailable` (installed and active; provided only by the target
       set; provided by an embedded baseline; not provided) and for `packFor`.
-- [ ] `pnpm --filter @polaris-key/cli test` covers `provides` collection, the policy failure and
+- [x] `pnpm --filter @polaris-key/cli test` covers `provides` collection, the policy failure and
       the fingerprint warning (and failure with `--strict`).
-- [ ] The green gate passes (`AGENTS.md`), including pytest, `swift test` and the Godot runner.
-- [ ] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
+- [x] The green gate passes (`AGENTS.md`), including pytest, `swift test` and the Godot runner.
+- [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
 
 ## Verify
 
@@ -179,3 +179,9 @@ Set the status in the PR that completes the work:
   answer for it).
 - **Not done here.** A CLI-side local `provides-dropped` pre-check against `--bases` was not
   added: the Worker's check runs on every submit, dry run included.
+- **Merge with P4-25.** P4-25's preflight delegation block now lives in the Python and Swift
+  fetch-and-verify helpers (as client-core's `fetchVerified`), so `pack_for`/`packFor` resolve a
+  delegated feed target's `provides` through its delegation; both reset the delegation budget
+  like `ensure`. Godot's `pack_for` calls P4-24's `is_revoked` directly.
+- **`supports()` examples.** The Node and Swift capability tests used `packs.provides` as their
+  example of a planned feature; they now use `packs.apply.chunk`.
