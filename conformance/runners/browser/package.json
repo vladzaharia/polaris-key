@@ -1,6 +1,6 @@
 {
   "name": "@polaris-key/conformance-browser",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "license": "MIT",
   "private": true,
   "type": "module",
