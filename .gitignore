@@ -37,6 +37,8 @@ __pycache__/
 # committed. The Gradle wrapper jar IS committed (a global *.jar ignore would otherwise drop it).
 .gradle/
 sdks/kotlin/local.properties
+sdks/kotlin/*/build/
+sdks/godot/native/android/build/
 sdks/godot/addons/polaris_key/native/android/
 !sdks/kotlin/gradle/wrapper/gradle-wrapper.jar
 
