@@ -16,6 +16,7 @@
 // either end is invisible to the caller. Telemetry must never be able to fail a sync.
 
 import type { DeviceFacts, JSONValue } from "@polaris-key/protocol/core";
+import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import { collectFacts, type ProbeDeclaration } from "../devices/facts.js";
 import type { CacheManager } from "./cache.js";
 import type { CoreContext } from "./context.js";
@@ -29,6 +30,9 @@ export type ReportSnapshot = {
   caps?: string[];
   /** The active pack set (plans/P4-01.md §2.11): its `packSetId`, when the host has packs. */
   content?: { packSetId: string };
+  /** Recent pack installs (P4-17): the pairs a lazy delta could serve. Bounded by the engine
+   *  (8) and again by the Worker. */
+  packInstalls?: PackInstallReport[];
 } & Partial<DeviceFacts>;
 
 /** Assemble the report body from re-verified content plus this host's software facts. */
@@ -37,6 +41,7 @@ export function buildSnapshot(
   probes: ProbeDeclaration[],
   caps?: string[],
   packSetId: string | null = null,
+  packInstalls: PackInstallReport[] = [],
 ): ReportSnapshot {
   const config: Record<string, JSONValue> = {};
   const entitlements: Record<string, JSONValue> = {};
@@ -61,6 +66,7 @@ export function buildSnapshot(
     entitlements,
     ...(caps ? { caps } : {}),
     ...(packSetId !== null ? { content: { packSetId } } : {}),
+    ...(packInstalls.length > 0 ? { packInstalls } : {}),
   };
 }
 

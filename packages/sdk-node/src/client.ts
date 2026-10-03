@@ -221,6 +221,7 @@ export class PolarisKeyClient {
 
     // `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).
     this.devices.packSetId = () => this.update.packs.packSetId();
+    this.devices.packInstalls = () => this.update.packs.packInstalls();
 
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
     this.onChange = opts.onChange;
@@ -390,7 +391,13 @@ export class PolarisKeyClient {
     await reportSnapshot(
       this.core,
       token,
-      buildSnapshot(this.cache, this.probes ?? [], this.caps(), packSetId),
+      buildSnapshot(
+        this.cache,
+        this.probes ?? [],
+        this.caps(),
+        packSetId,
+        this.update.packs.packInstalls(),
+      ),
     );
   }
 
