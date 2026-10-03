@@ -39,6 +39,6 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "esbuild": "0.28.1",
-    "miniflare": "4.20260623.0"
+    "miniflare": "4.20260730.0"
   }
 }

@@ -30,12 +30,12 @@
     "yaml": "^2.6.1"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.12.21",
+    "@cloudflare/vitest-pool-workers": "0.19.1",
     "@cloudflare/workers-types": "^4.20251001.0",
     "@polaris-key/cli": "workspace:*",
     "@polaris-key/node": "workspace:*",
     "@types/better-sqlite3": "^7.6.11",
     "better-sqlite3": "^11.8.0",
-    "wrangler": "^4.40.0"
+    "wrangler": "4.116.0"
   }
 }

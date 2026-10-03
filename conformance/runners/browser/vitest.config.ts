@@ -1,3 +1,4 @@
+import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
 // The browser conformance runner: `corpusV2.browser.test.ts` drives the shared corpus suites
@@ -36,7 +37,8 @@ export default defineConfig({
     testTimeout: 30_000,
     browser: {
       enabled: true,
-      provider: "playwright",
+      // Vitest 4 takes the provider as a factory from its own package.
+      provider: playwright(),
       headless: true,
       // A failing vector is a corpus-level fact, not a rendering one; no screenshot files.
       screenshotFailures: false,
