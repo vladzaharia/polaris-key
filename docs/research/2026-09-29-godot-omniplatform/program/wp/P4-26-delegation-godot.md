@@ -50,7 +50,7 @@ Port P4-19's content-key delegation to the Godot SDK, so every `delegationCases`
 
 - [x] Every `delegationCases` and `dataOnlyCases` row passes in the editor and the release template.
 - [x] Non-normalised paths and extension-disguised resources are refused (P4-08 review lesson).
-- [ ] The full green gate passes.
+- [x] The full green gate passes.
 
 ## Hand-off from P4-24
 
