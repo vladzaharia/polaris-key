@@ -2096,7 +2096,9 @@ markers. P4-21 lands the claims, the formats' parsers and the corpus; P4-02 (ing
   `index/<sha256>` are re-parsed against their install's record and payload on every use, seeded
   chunks are covered by the final payload hash (the repair pass refetches any that differ), and a
   resumed run's bytes are re-hashed before they are reused. The chunk strategy never carries a
-  delegated release (those are trees; chunks are container-only). Ingest of `chunks` is P4-22's
+  delegated release (those are trees; chunks are container-only). Blob fetches never carry the
+  device bearer past the control plane's origin: once a redirect leaves it, `Authorization` stays off
+  for the rest of the chain, and an `https` → `http` redirect is refused (Swift and Godot). Ingest of `chunks` is P4-22's
   (below, "Pack ingest").
 
 **Pack ingest (P4-02).** The Worker still signs no record: a pack record is CI-signed, and ingest

@@ -276,11 +276,29 @@ requests, seedChunks, selfChunks, repairedChunks}`.
   refuses the file (`pack-not-data-only`). Godot never routes delegated bytes through
   `load_resource_pack`.
 - **Swift** also drops `Authorization` on a cross-origin redirect (a `URLSession` task delegate),
-  as the Godot transport already did.
+  as the Godot transport already did. Once a redirect leaves the origin, `Authorization` stays off
+  for the rest of the chain, and an `https` → `http` redirect is refused (Godot's
+  `INSECURE_REDIRECT`).
 - **No HTTP transcript was added.** A chunk-bundle Range transcript needs a `transcript` proof on
   `packs.apply.chunk` in the feature registry, and a replayer in every SDK. That is a registry
   change, left for a planned package. Each SDK's fake-server tests cover the `Range`, `If-Range`,
-  `ETag` and `Content-Range` exchange instead.
+  `ETag` and `Content-Range` exchange instead. **Follow-up (open):** record a Worker scenario for a
+  chunk-bundle `Range` + `If-Range` fetch (`206` with exact `Content-Range` and `ETag`, and the
+  `200` when `If-Range` misses), add the `transcript` proof to `packs.apply.chunk` in
+  `features.json`, and replay it in the Node, Python, Swift and Godot replayers. Suggested owner:
+  P5-08, which already touches every SDK's transport layer; otherwise a lead-scheduled follow-up
+  package.
+- **Range support is declared by the transport.** client-core's `rangeRequests: false`, Python's
+  `supports_range` (read from the fetch's signature when not given), Swift's and Godot's transport
+  capability keep `chunk` unplanned (and skip the seed backfill) for a transport that cannot send
+  a bounded range. Godot's base `PKeyPackTransport.open_range` answers refused, so the strategy
+  falls back instead of retrying forever. P5-08's platform transports rely on this.
+- **Hardening from review.** Seed-index reads from every local store are capped at
+  `MAX_CHUNK_INDEX_BYTES` before the file is read. A missing seed index is fetched once per
+  process in every SDK. Python's `Content-Range` pattern matches ASCII digits only.
+- **Godot's ETag** can come back empty: an engine API limitation of `HTTPClient`'s header access.
+  An empty ETag is treated as absent. A store failure and `chunks-ref-mismatch` give the same
+  outcome in Godot (the strategy falls back), so the two are not told apart.
 - **Godot's applier runs on the main thread**, because it polls `HTTPClient`. Its hashing and
   decoding are native, and the repair pass's whole-output re-hash runs in a `PKeyPackJob`. Seed
   ids stay hex strings, the planner's existing keys (PackedByteArray keys were not measured).
