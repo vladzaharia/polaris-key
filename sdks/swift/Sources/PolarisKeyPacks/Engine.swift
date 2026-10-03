@@ -765,7 +765,13 @@ public actor PackEngine {
             revVerified[t] = nil
         }
         revDoc = next
-        if changed { try persistRevocations() }
+        do {
+            if changed { try persistRevocations() }
+        } catch {
+            // A failed write never keeps a revoked release running.
+            await unmountRevoked()
+            throw error
+        }
         await unmountRevoked()
     }
 
@@ -859,11 +865,10 @@ public actor PackEngine {
             try writeRevocations()
         } else if !stateUnreadable, !isEmptyRevocations(revDoc), doc?.revocationsStored != true {
             // A torn (or replaced) `state.json` lost the flag while the sibling file kept its
-            // entries: set it again, so an unreadable `revocations.json` later still refuses.
-            var d = try requireLoaded()
-            d.revocationsStored = true
-            doc = d
-            try persist()
+            // entries: set it again, so an unreadable `revocations.json` later still refuses. A
+            // failed write leaves the flag unset in memory; the next sibling write retries it. The
+            // load goes on: the sibling file is unchanged and still read.
+            try? persistFlag()
         }
     }
 
@@ -878,14 +883,27 @@ public actor PackEngine {
 
     private func writeRevocations() throws {
         guard let rs = opts.revocations else { return }
-        var d = try requireLoaded()
-        if !d.revocationsStored {
-            d.revocationsStored = true
-            doc = d
-            try persist()
-        }
+        // Without the flag on disk the sibling file is not written: an unreadable file later must
+        // never be read as "no revocations" while it holds some.
+        if try !requireLoaded().revocationsStored { try persistFlag() }
         try rs.replace(serializeRevocations(revDoc))
         revFile = true
+    }
+
+    /// Write `revocationsStored: true` to `state.json`. The in-memory document takes the flag only
+    /// once the write succeeded, so a failed write (which throws) is retried before the next
+    /// sibling write instead of being believed.
+    private func persistFlag() throws {
+        let before = try requireLoaded()
+        var flagged = before
+        flagged.revocationsStored = true
+        doc = flagged
+        do {
+            try persist()
+        } catch {
+            doc = before
+            throw error
+        }
     }
 
     /// Stop running every revoked release (a hot handler is deactivated).
