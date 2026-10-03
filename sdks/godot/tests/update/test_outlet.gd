@@ -5,7 +5,8 @@ extends RefCounted
 # and environment), itch (receipt; ITCHIO_APP diagnostic), macOS (receipt, ProductionSandbox, the
 # Mach-O leaf, the product's Caskroom link), Windows (path conventions; the package hook), Android
 # (getInstallSourceInfo: Play declared, Obtainium, F-Droid, a browser download, the shell's
-# forged installer), iOS (the AppDistributor hook, unavailable by default) and web (display
+# forged installer), iOS (AppDistributor and the bundle evidence through PKeyApple's launch
+# read, P5-05) and web (display
 # mode, the synthesised stamp). The mapping itself runs row for row in the conformance suite.
 
 const IDS := {
@@ -153,11 +154,30 @@ func _android(t: PKeyTestContext) -> void:
 
 func _ios_web(t: PKeyTestContext) -> void:
 	var e := _env("ios")
-	t.check("outlet: the AppDistributor hook is unavailable until P5-05 (no evidence)", PKeyOutletSignals.read_outlet_signals(e, IDS).is_empty() and PKeyOutletEnv.new().ios_app_distributor() == null)
+	PKeyApple.reset_launch()
+	t.check("outlet: no PKeyApple answer yet is no iOS evidence", PKeyOutletSignals.read_outlet_signals(e, IDS).is_empty() and PKeyOutletEnv.new().ios_app_distributor() == null and PKeyOutletEnv.new().ios_bundle_evidence() == null)
 	e.app_distributor = "appStore"
 	t.check("outlet: a plugin's appStore answer overrides a direct stamp", _detect(e)["kind"] == "app-store")
 	e.app_distributor = "timeout"
 	t.check("outlet: a timeout is no evidence", _detect(e, _stamp("app-store"))["confidence"] == "stamp")
+	e.app_distributor = null
+	e.bundle_evidence = {"provisioned": true, "altBundleIdentifier": null, "bundleIdentifier": "gg.vlad.diceroll"}
+	t.check("outlet: an embedded.mobileprovision vetoes an app-store stamp", _same(PKeyOutletSignals.read_outlet_signals(e, IDS), {"ios.provisioningProfile": true}) and _detect(e, _stamp("app-store"))["kind"] == "unknown")
+	e.bundle_evidence = {"provisioned": false, "altBundleIdentifier": "gg.vlad.diceroll", "bundleIdentifier": "gg.vlad.diceroll.ABCDE12345"}
+	t.check("outlet: AltStore's rewrite moves an app-store stamp to altstore (declared)", _same(PKeyOutletSignals.read_outlet_signals(e, IDS)["ios.bundleIdRewrite"], {"runtimeBundleId": "gg.vlad.diceroll.ABCDE12345", "altBundleIdentifier": "gg.vlad.diceroll"}) \
+			and _detect(e, _stamp("app-store"))["kind"] == "altstore")
+	e.bundle_evidence = {"provisioned": false, "altBundleIdentifier": null, "bundleIdentifier": "gg.vlad.diceroll"}
+	e.app_distributor = "testFlight"
+	t.check("outlet: TestFlight with clean bundle evidence is testflight (attested)", _detect(e, _stamp("app-store"))["kind"] == "testflight")
+	# The real env maps PKeyApple's launch answer: a timeout to `timeout`, other unavailable to null.
+	var real := PKeyOutletEnv.new()
+	PKeyApple._launch_distributor = {"signal": "unavailable", "reason": "timeout", "provisioned": false, "altBundleIdentifier": null, "bundleIdentifier": "gg.vlad.diceroll"}
+	t.check("outlet: PKeyApple's timed-out read is the `timeout` signal", real.ios_app_distributor() == "timeout" and _same(real.ios_bundle_evidence(), {"provisioned": false, "altBundleIdentifier": null, "bundleIdentifier": "gg.vlad.diceroll"}))
+	PKeyApple._launch_distributor = {"signal": "unavailable", "reason": "version", "provisioned": false}
+	t.check("outlet: PKeyApple's unavailable below iOS 17.4 is no signal", real.ios_app_distributor() == null)
+	PKeyApple._launch_distributor = {"signal": "marketplace:com.example", "provisioned": false}
+	t.check("outlet: PKeyApple's raw signal passes through", real.ios_app_distributor() == "marketplace:com.example")
+	PKeyApple.reset_launch()
 	var w := _env("web")
 	w.display = "standalone"
 	t.check("outlet: the web stamp plus display mode is web (heuristic)", _same(_detect(w, PKeyOutlet.WEB_STAMP), {"kind": "web", "confidence": "heuristic", "source": "web.displayMode", "subkind": null}))

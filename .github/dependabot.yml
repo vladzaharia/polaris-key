@@ -9,9 +9,6 @@ updates:
       # and the tsx tooling depend on it. Revisit when they support TS 7.
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
-      # tailwind-merge 3 supports only Tailwind v4; the admin console is on Tailwind 3.
-      - dependency-name: tailwind-merge
-        update-types: ["version-update:semver-major"]
       # wrangler >= 4.117 and @cloudflare/vitest-pool-workers >= 0.20 ship miniflare 5 alpha; both
       # are pinned to the last miniflare-4 releases together (see packages/worker/package.json).
       - dependency-name: wrangler

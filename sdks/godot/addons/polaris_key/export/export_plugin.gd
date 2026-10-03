@@ -18,6 +18,11 @@ extends EditorExportPlugin
 ##   polaris_key/build_number  PKEY_BUILD_NUMBER   integer build number
 ##   polaris_key/outlet_ids    PKEY_OUTLET_IDS     JSON object of the product's outlet identities
 ##                                                 (`pkey distribution outlet-ids --outlet <id>`)
+##   polaris_key/apple_background_assets  PKEY_APPLE_BACKGROUND_ASSETS  iOS only: auto, on or off
+##                                                 (PKeyAppleExport, P5-05): marks the exported
+##                                                 Info.plist so the post-export Xcode patch adds
+##                                                 the Background Assets extension to store builds
+##                                                 and leaves it out of sideload builds
 ##
 ## The plugin never reads `.pkey/distribution`: it may be YAML, which Godot cannot parse, and it
 ## sits at the product repo root, which need not be the project root. `bundleId` comes from the
@@ -33,6 +38,7 @@ extends EditorExportPlugin
 ## from a Microsoft Store export (outlet kind ms-store), whose only updater is StoreContext.
 
 const S := preload("res://addons/polaris_key/core/build_stamp.gd")
+const Apple := preload("res://addons/polaris_key/native/apple_export.gd")
 const N := preload("res://addons/polaris_key/export/native_export.gd")
 
 var _export_path := ""
@@ -50,14 +56,7 @@ func _supports_platform(_platform: EditorExportPlatform) -> bool:
 
 func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 	var p := S.platform_for(platform.get_os_name(), PackedStringArray())
-	var options: Array[Dictionary] = _stamp_options(p)
-	if p == "macos":
-		options.append_array(N.options())
-	return options
-
-
-func _stamp_options(p: String) -> Array[Dictionary]:
-	return [
+	var options: Array[Dictionary] = [
 		{
 			"option": {"name": S.OPTION_OUTLET, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM_SUGGESTION, "hint_string": ",".join(S.OUTLETS)},
 			"default_value": S.default_outlet(p),
@@ -94,6 +93,15 @@ func _stamp_options(p: String) -> Array[Dictionary]:
 			"update_visibility": true,
 		},
 	]
+	if p == "ios":
+		options.append({
+			"option": {"name": Apple.OPTION, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM, "hint_string": ",".join(Apple.MODES)},
+			"default_value": "auto",
+			"update_visibility": true,
+		})
+	if p == "macos":
+		options.append_array(N.options())
+	return options
 
 
 func _get_export_option_warning(_platform: EditorExportPlatform, option: String) -> String:
@@ -108,6 +116,9 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 			return S.channel_warning(str(get_option(S.OPTION_CHANNEL)), _version())
 		S.OPTION_BUILD_NUMBER:
 			return _join([S.version_warning(_version()), S.parse_build_number(get_option(S.OPTION_BUILD_NUMBER))["problem"]])
+		Apple.OPTION:
+			var v := _values("ios")
+			return _join([Apple.mode_warning(str(get_option(Apple.OPTION)), _outlet_kind(v)), Apple.min_ios_warning(_preset_string("application/min_ios_version"))])
 		S.OPTION_OUTLET_IDS:
 			var raw = get_option(S.OPTION_OUTLET_IDS)
 			var parsed: Dictionary = S.parse_outlet_ids(raw)
@@ -178,6 +189,41 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _f
 		"outlet_ids": v["outlet_ids"],
 	})
 	add_file(S.PATH, S.encode(stamp), false)
+	if platform == "ios":
+		_export_apple(v)
+
+
+## The iOS switches (PKeyAppleExport): the Background Assets mark in the Info.plist, and the
+## warnings a headless log shows.
+func _export_apple(v: Dictionary) -> void:
+	var mode := str(_get_or_env(Apple.OPTION, Apple.ENV, "auto"))
+	var kind := _outlet_kind(v)
+	for w in [Apple.mode_warning(mode, kind), Apple.min_ios_warning(_preset_string("application/min_ios_version"))]:
+		if w != "":
+			push_warning("Polaris Key Apple plugin: %s" % w)
+	var on := Apple.enabled(mode, kind)
+	var bundle_id := _preset_bundle_id()
+	if on and bundle_id == "":
+		push_warning("Polaris Key Apple plugin: no application/bundle_identifier, so no App Group can be named; Background Assets is left off.")
+		on = false
+	var content := Apple.plist_content(on, bundle_id)
+	if has_method("add_apple_embedded_platform_plist_content"):
+		call("add_apple_embedded_platform_plist_content", content)
+	else:
+		call("add_ios_plist_content", content)
+
+
+## The outlet kind this export stamps: the explicit kind, else the outlet when it is one.
+static func _outlet_kind(v: Dictionary) -> String:
+	var kind := str(v.get("outlet_kind", ""))
+	return kind if kind != "" else str(v.get("outlet", ""))
+
+
+func _preset_string(key: String) -> String:
+	var preset := get_export_preset()
+	if preset == null or not preset.has(key):
+		return ""
+	return str(preset.get(key))
 
 
 func _export_end() -> void:

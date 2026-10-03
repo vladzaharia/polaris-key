@@ -197,6 +197,9 @@ static func tree_pack(pack_id: String, version: String, seq: int, files: Diction
 	}
 	if not deltas.is_empty():
 		variant["deltas"] = deltas
+	if opts.get("chunks") is Dictionary:
+		# P4-11: a chunks member on a tree (planTarget maps it to no candidate).
+		variant["chunks"] = opts["chunks"]
 	var record := {
 		"schemaVersion": 1, "aud": PRODUCT, "deliverable": pack_id, "kind": "pack", "version": version, "seq": seq,
 		"issuedAt": 1759300000 + seq, "type": String(opts.get("type", "files.tree")), "formatVersion": int(opts.get("formatVersion", 1)),
@@ -243,6 +246,109 @@ static func kaykit_pack(which: String, seq: int, tweak := Callable()) -> Diction
 		"record": record, "objects": objects, "payload": payload, "payloadSha256": sha(payload)}
 
 
+## P4-11: a 64 KiB chunk of deterministic bytes for `label` (its SHA-256 doubled 11 times: cheap,
+## and distinct per label; chunks are stored raw, so their entropy does not matter).
+static func chunk_bytes(label: String, size := 65536) -> PackedByteArray:
+	var b := sha(label.to_utf8_buffer()).hex_decode()
+	while b.size() < size:
+		b.append_array(b)
+	return b.slice(0, size)
+
+
+## A `pkey-chunks/1` index (plans/P4-10.md §2.3) over `chunks` (the payload's chunks, in order,
+## every one raw: clen == len) and `bundles` (each an Array of chunks, concatenated in order). Each
+## record points into the first bundle that holds its chunk. {index, bundles: [bytes], payload}.
+static func chunk_index(chunks: Array, bundles: Array) -> Dictionary:
+	var where := {}
+	var bundle_bytes: Array = []
+	for j in bundles.size():
+		var bb := PackedByteArray()
+		for c in bundles[j]:
+			if not where.has(sha(c)):
+				where[sha(c)] = [j, bb.size()]
+			bb.append_array(c)
+		bundle_bytes.append(bb)
+	var payload := PackedByteArray()
+	for c in chunks:
+		payload.append_array(c)
+	var head := PackedByteArray()
+	head.resize(64)
+	head.encode_u32(0, 0x59454B50)  # "PKEY"
+	head.encode_u32(4, 0x4B4E4843)  # "CHNK"
+	head.encode_u16(8, 1)
+	head.encode_u16(10, 48)
+	head.encode_u32(12, 0)
+	head.encode_u32(16, chunks.size())
+	head.encode_u32(20, bundles.size())
+	head.encode_u32(24, payload.size())
+	head.encode_u32(28, 0)
+	var ps := sha(payload).hex_decode()
+	for k in 32:
+		head[32 + k] = ps[k]
+	var out := head
+	for c in chunks:
+		var rec := sha(c).hex_decode()
+		rec.resize(48)
+		var w: Array = where[sha(c)]
+		rec.encode_u32(32, c.size())
+		rec.encode_u32(36, c.size())
+		rec.encode_u32(40, w[0])
+		rec.encode_u32(44, w[1])
+		out.append_array(rec)
+	for bb in bundle_bytes:
+		var rec := sha(bb).hex_decode()
+		rec.resize(48)
+		rec.encode_u32(32, bb.size())
+		out.append_array(rec)
+	return {"index": out, "bundles": bundle_bytes, "payload": payload}
+
+
+## A container pack release (type `custom.blob` by default, hot) whose payload is `chunks` and
+## whose variant carries a chunk index over `bundles` (chunk_index), a raw `full`, and a container
+## files index of one entry covering the payload (gaps empty). The objects: the full payload, the
+## files index, the gaps, the chunk index and every bundle.
+static func chunk_pack(pack_id: String, version: String, seq: int, chunks: Array, bundles: Array, opts: Dictionary = {}) -> Dictionary:
+	var ci := chunk_index(chunks, bundles)
+	var payload: PackedByteArray = ci["payload"]
+	var idx: PackedByteArray = ci["index"]
+	var files := JSON.stringify({"format": "pkey-files/1", "layout": "container", "payload": {"size": payload.size(), "sha256": sha(payload)},
+		"files": [{"path": "blob.bin", "offset": 0, "size": payload.size(), "sha256": sha(payload), "blob": {"sha256": sha(payload), "bytes": payload.size(), "codec": "none"}}]}).to_utf8_buffer()
+	var gaps := PackedByteArray()
+	var objects := {sha(payload): payload, sha(files): files, sha(gaps): gaps, sha(idx): idx}
+	for bb in ci["bundles"]:
+		objects[sha(bb)] = bb
+	var variant := {
+		"variant": {}, "payload": {"size": payload.size(), "sha256": sha(payload)},
+		"full": {"sha256": sha(payload), "bytes": payload.size(), "size": payload.size(), "codec": "none"},
+		"files": {"format": "pkey-files/1", "layout": "container", "sha256": sha(files), "bytes": files.size(), "size": files.size(), "codec": "none",
+			"gaps": {"sha256": sha(gaps), "bytes": 0, "size": 0, "codec": "none"}},
+		"chunks": {"format": "pkey-chunks/1", "sha256": sha(idx), "bytes": idx.size(), "size": idx.size(), "codec": "none"},
+	}
+	var record := {
+		"schemaVersion": 1, "aud": PRODUCT, "deliverable": pack_id, "kind": "pack", "version": version, "seq": seq,
+		"issuedAt": 1759300000 + seq, "type": String(opts.get("type", "custom.blob")), "formatVersion": 1,
+		"handler": {"activation": "hot"}, "variants": [variant],
+	}
+	var s := sign_record(record)
+	var bundle_shas: Array = []
+	for bb in ci["bundles"]:
+		bundle_shas.append(sha(bb))
+	return {"packId": pack_id, "version": version, "seq": seq, "jws": s["jws"], "recordSha256": s["sha256"], "record": record,
+		"objects": objects, "payload": payload, "payloadSha256": sha(payload), "indexSha256": sha(idx), "fullSha256": sha(payload),
+		"bundles": bundle_shas}
+
+
+## A container handler for chunk packs (`custom.blob`): any format version, hot, no check.
+class BlobHandler extends PKeyPackHandler:
+	func _init(p_type := "custom.blob") -> void:
+		type = p_type
+		layout = "container"
+		activation = "hot"
+
+	func supports(_format_version: int) -> bool:
+		return true
+
+
 ## A content stamp's `content` pinning these releases (all required and essential by default).
 static func stamp_for(packs: Array, expects: Array = []) -> Dictionary:
 	var pins: Array = []
@@ -278,6 +384,14 @@ class FakeTransport extends PKeyPackTransport:
 	var cut_for := ""
 	var moved := false
 	var missing := {}
+	## P4-11 ranged opens (open_range): every request, in order ({sha256, offset, length, if_range}).
+	var range_calls: Array = []
+	## Answer every ranged open with a 200 and the whole object (a server that ignores Range).
+	var range_ignored := false
+	## Fail the body of the Nth ranged open (1-based) after `range_cut_bytes` bytes (an interrupted
+	## run); -1: never.
+	var range_cut_nth := -1
+	var range_cut_bytes := 0
 
 	func add(pack: Dictionary) -> FakeTransport:
 		records[pack["recordSha256"]] = pack["jws"]
@@ -324,6 +438,31 @@ class FakeTransport extends PKeyPackTransport:
 				return {"status": status, "content_range": cr, "error": "aborted"}
 			at += n
 		return {"status": status, "content_range": cr, "error": ""}
+
+	## Whether open_range answers (the engine plans chunk only then).
+	var ranges := true
+
+	func supports_range() -> bool:
+		return ranges
+
+	## A bounded single-range GET (P4-11): a 206 with `Content-Range: bytes o-e/size` (clipped at
+	## the object's end) and `ETag: "<sha256>"` when If-Range is the strong tag, else a 200 with the
+	## whole object (`range_ignored` forces that); the body is a PKeyPackChunks.MemoryBody.
+	func open_range(req: Dictionary) -> Dictionary:
+		range_calls.append(req.duplicate())
+		var h: String = req["sha256"]
+		if not objects.has(h) or missing.has(h):
+			return {"status": 404, "content_range": "", "etag": null, "error": "", "body": PKeyPackChunks.MemoryBody.new(PackedByteArray())}
+		var b: PackedByteArray = objects[h]
+		var tag := "\"%s\"" % h
+		if range_ignored or req.get("if_range") != tag:
+			return {"status": 200, "content_range": "", "etag": tag, "error": "", "body": PKeyPackChunks.MemoryBody.new(b)}
+		var o := int(req["offset"])
+		var e := mini(o + int(req["length"]) - 1, b.size() - 1)
+		if o >= b.size():
+			return {"status": 416, "content_range": "bytes */%d" % b.size(), "etag": tag, "error": "", "body": PKeyPackChunks.MemoryBody.new(PackedByteArray())}
+		var fail_at := range_cut_bytes if range_calls.size() == range_cut_nth else -1
+		return {"status": 206, "content_range": "bytes %d-%d/%d" % [o, e, b.size()], "etag": tag, "error": "", "body": PKeyPackChunks.MemoryBody.new(b.slice(o, e + 1), fail_at)}
 
 
 ## An engine over `root` with the test keys, the fake transport and `stamp`.

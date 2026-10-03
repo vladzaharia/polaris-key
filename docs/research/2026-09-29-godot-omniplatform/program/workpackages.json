@@ -1406,7 +1406,7 @@
       "optional": false,
       "refs": ["CONTENT §8.1 §10", "notes/A7 §3.4"],
       "brief": "wp/P4-11-chunk-sync-sdks.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-12",
@@ -1847,7 +1847,7 @@
       "optional": false,
       "refs": ["README §5.10", "PARITY §1", "notes/E1", "notes/E9 §7.1"],
       "brief": "wp/P5-05-apple-plugin-package.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-06",

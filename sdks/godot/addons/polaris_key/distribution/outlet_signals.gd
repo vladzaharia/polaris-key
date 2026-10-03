@@ -22,7 +22,11 @@ extends RefCounted
 ##                             WinGet/Scoop/Chocolatey path conventions
 ##   android.installSource     getInstallSourceInfo with the initiator's certificate SHA-256
 ##   android.installerMismatch installer != initiator, from the same call
-##   ios.appDistributor        the ios_app_distributor() hook (unavailable until P5-05)
+##   ios.appDistributor        AppDistributor.current through PKeyApple (P5-05), this launch's
+##                             answer; a timeout records `timeout`, which is no evidence
+##   ios.bundleIdRewrite       Info.plist's ALTBundleIdentifier (AltStore's rewrite), with the
+##                             running bundle id
+##   ios.provisioningProfile   an embedded.mobileprovision in the bundle (a veto of app-store)
 ##   web.displayMode           JavaScriptBridge (a web export)
 ##
 ## The stamp comes from PolarisKey.build_info() (the export plugin's build.json); without one, a
@@ -66,6 +70,11 @@ static func read_outlet_signals(env: PKeyOutletEnv = null, outlet_ids: Dictionar
 			var d = e.ios_app_distributor()
 			if d is String and d != "":
 				out["ios.appDistributor"] = d
+			var bundle = e.ios_bundle_evidence()
+			if bundle is Dictionary:
+				if bundle.get("altBundleIdentifier") is String:
+					out["ios.bundleIdRewrite"] = {"runtimeBundleId": bundle.get("bundleIdentifier"), "altBundleIdentifier": bundle["altBundleIdentifier"]}
+				out["ios.provisioningProfile"] = bundle.get("provisioned") == true
 		"web":
 			var mode := e.web_display_mode()
 			if mode != "":

@@ -152,10 +152,11 @@ work down the list until it passes.
 8. **OpenAPI and `routeCoverage`.** Add the slug to the discovery document's
    `services.required` in `packages/worker/openapi/polaris-key.v3.yaml` (in table order), and
    every new route to the spec and to `routeCoverage.test.ts` (rule 10).
-9. **Console.** A `SECTIONS` entry in `packages/admin/src/route.ts` with the table's accent, its
-   views and `Tab` values, `TAB_ICONS` in `components/Shell.tsx`, the dark and `.light`
-   `[data-service="<accent>"]` rules in `styles.css`, and the row's icon in `ServicesCard`'s
-   `SERVICE_ICONS` (a type error until it is there).
+9. **Console.** A `SECTIONS` entry in `packages/admin/src/route.ts` with the table's accent (the
+   slug), its views and `Tab` values, `TAB_ICONS` in `components/Shell.tsx`, a section accent in
+   `@polaris-key/brand` (`packages/brand/src/tokens/services.ts`; its `services.test.ts` fails
+   until there is one, and `gen:brand` emits the `[data-service="<slug>"]` rule), and the row's
+   icon in `ServicesCard`'s `SERVICE_ICONS` (a type error until it is there).
 10. **Docs.** A `packages/docs/src/content/docs/services/<slug>/` section with an `index` page,
     and its entry under "Services" in `packages/docs/astro.config.mjs`, in table order.
 11. **Parity and SDKs.** The feature registry (`conformance/parity/features.json`) must accept

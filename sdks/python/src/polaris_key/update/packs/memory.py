@@ -8,11 +8,19 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
+from ...constants_generated import MAX_CHUNK_INDEX_BYTES
 from .engine import InstalledPayload, PackOutput
 from .files import tree_digest
 from .ports import InstalledFile, MemorySource, slice_source
 
-__all__ = ["MemoryPackStorage", "MemoryPackStateStore", "memory_pack_storage", "memory_pack_state_store"]
+__all__ = [
+    "MemoryChunkIndexStore",
+    "MemoryRunJournal",
+    "MemoryPackStorage",
+    "MemoryPackStateStore",
+    "memory_pack_storage",
+    "memory_pack_state_store",
+]
 
 
 class _Staged:
@@ -47,6 +55,46 @@ class _Out:
     def write_file(self, path: str, data: bytes) -> None:
         self.tree[path] = bytes(data)
 
+    def read(self, offset: int, length: int) -> bytes:
+        return bytes(self.container[offset : offset + max(0, length)])
+
+
+class MemoryChunkIndexStore:
+    """P4-11's seed-index store over a dict (``indexes``: SHA-256 → stored bytes)."""
+
+    def __init__(self) -> None:
+        self.indexes: Dict[str, bytes] = {}
+
+    def get(self, sha256: str) -> Optional[bytes]:
+        """The stored index; one over ``MAX_CHUNK_INDEX_BYTES`` is absent (and dropped)."""
+        data = self.indexes.get(sha256)
+        if data is not None and len(data) > MAX_CHUNK_INDEX_BYTES:
+            del self.indexes[sha256]
+            return None
+        return data
+
+    def put(self, sha256: str, data: bytes) -> None:
+        self.indexes[sha256] = bytes(data)
+
+    def list(self) -> List[str]:
+        return sorted(self.indexes)
+
+    def remove(self, sha256: str) -> None:
+        self.indexes.pop(sha256, None)
+
+
+class MemoryRunJournal:
+    """P4-11's run journal over a dict (``journals``: plan id → text), dropped with staging."""
+
+    def __init__(self) -> None:
+        self.journals: Dict[str, str] = {}
+
+    def read(self, plan_id: str) -> Optional[str]:
+        return self.journals.get(plan_id)
+
+    def write(self, plan_id: str, text: str) -> None:
+        self.journals[plan_id] = text
+
 
 class MemoryPackStorage:
     """``PackStorage`` over dicts. ``store`` holds payloads by location
@@ -58,14 +106,19 @@ class MemoryPackStorage:
         self.staging: Dict[str, Dict[str, bytearray]] = {}
         self._outputs: Dict[str, _Out] = {}
         self.free = free_disk
+        #: P4-11: the seed-index store and the chunk strategy's run journal.
+        self.chunk_indexes = MemoryChunkIndexStore()
+        self.run_journal = MemoryRunJournal()
 
     def staged_object(self, plan_id: str, sha256: str) -> _Staged:
         return _Staged(self.staging.setdefault(plan_id, {}), sha256)
 
-    def output(self, plan_id: str, layout: str) -> PackOutput:
-        o = _Out()
-        self._outputs[plan_id] = o
-        return PackOutput(sink=o, tree=o)
+    def output(self, plan_id: str, layout: str, resume: bool = False) -> PackOutput:
+        o = self._outputs.get(plan_id) if resume and layout != "tree" else None
+        if o is None:
+            o = _Out()
+            self._outputs[plan_id] = o
+        return PackOutput(sink=o, tree=o, read=o.read)
 
     def commit(
         self, plan_id: str, pack_id: str, payload_sha256: str, layout: str, index: Optional[Dict[str, Any]]
@@ -119,6 +172,7 @@ class MemoryPackStorage:
     def remove_staging(self, plan_id: str) -> None:
         self.staging.pop(plan_id, None)
         self._outputs.pop(plan_id, None)
+        self.run_journal.journals.pop(plan_id, None)
 
     def list(self) -> Tuple[List[str], List[str]]:
         return list(self.store.keys()), list(self.staging.keys())

@@ -22,6 +22,7 @@
 import type { TrustSet } from "@polaris-key/jws";
 import type {
   AppContent,
+  ChunkIndexDoc,
   FilesIndexDoc,
   PackRecordDoc,
   PackVariant,
@@ -54,6 +55,15 @@ import {
   type StoredRevocation,
 } from "./revocations.js";
 import { applyDelta, applyFile, applyFull, type ApplyResult } from "./apply.js";
+import { parseChunkIndex } from "./chunks.js";
+import {
+  applyChunk,
+  chunkRangeFetch,
+  chunkRuns,
+  type ChunkOutput,
+  type ChunkSeed,
+  type ChunkVerdict,
+} from "./chunkApply.js";
 import { parseFilesIndex } from "./files.js";
 import { matchEmbedded, verifyMarker, type EmbeddedPayload } from "./marker.js";
 import {
@@ -76,9 +86,12 @@ import {
   indexReadable,
   planTarget,
   selectVariant,
+  usableCodec,
   type VariantPrefs,
 } from "./select.js";
 import {
+  CHUNKS_FORMAT,
+  MAX_CHUNK_INDEX_BYTES,
   MAX_DELEGATIONS_PER_CHECK,
   MAX_FILES_INDEX_BYTES,
 } from "@polaris-key/protocol/core";
@@ -185,15 +198,22 @@ export interface ObjectResponse {
   status: number;
   /** `Content-Range`, or null. */
   contentRange: string | null;
+  /** `ETag`, or null/absent when the host does not report it (P4-11: a chunk run's `206` must
+   *  carry exactly `"<bundle sha256>"` when it carries one). */
+  etag?: string | null;
   chunks: AsyncIterable<Uint8Array>;
 }
 
 /** `GET` of one stored object by its SHA-256, from `offset`; `ifRange` is the strong ETag
- *  (`"<sha256>"`) whenever `offset > 0`, so a resume never splices two versions. */
+ *  (`"<sha256>"`) whenever `offset > 0`, so a resume never splices two versions. With `length`
+ *  (P4-11's chunk runs) the request is the single bounded range
+ *  `Range: bytes=<offset>-<offset+length-1>`, sent with `Accept-Encoding: identity` where the
+ *  host may set it, and never a multi-range. */
 export type ObjectFetch = (req: {
   sha256: string;
   offset: number;
   ifRange: string | null;
+  length?: number;
 }) => Promise<ObjectResponse>;
 
 /** `GET` of one release record by hash (the body, or the failure's code). */
@@ -221,11 +241,19 @@ export interface InstalledPayload {
  *  or memory). Locations and plan ids are opaque to the engine. */
 export interface PackStorage {
   stagedObject(planId: string, sha256: string): Promise<StagedObject>;
-  /** The plan's output area: a byte sink for a container, a tree sink for a tree. */
+  /** The plan's output area: a byte sink for a container, a tree sink for a tree. It starts
+   *  empty, except that with `resume` (P4-11's chunk strategy) a container keeps what an earlier
+   *  attempt of the same plan wrote. A container's output can be read back (`read`): the chunk
+   *  strategy needs it, and is not planned without it. */
   output(
     planId: string,
     layout: string,
-  ): Promise<{ sink?: ByteSink; tree?: TreeSink }>;
+    opts?: { resume?: boolean },
+  ): Promise<{
+    sink?: ByteSink;
+    tree?: TreeSink;
+    read?: (offset: number, length: number) => Promise<Uint8Array>;
+  }>;
   /** Move the plan's verified output into the store, keeping the decoded files index beside it
    *  (never inside the payload's own paths), and return its location. */
   commit(
@@ -243,6 +271,24 @@ export interface PackStorage {
   removeStaging(planId: string): Promise<void>;
   list(): Promise<{ locations: string[]; plans: string[] }>;
   freeDisk(): Promise<number>;
+  /** P4-11's seed-index store (`pkey/index/<sha256>`): every installed payload's chunk index,
+   *  stored as fetched and re-verified against its record on every use. Without it no payload
+   *  is a seed and the chunk strategy is never planned. */
+  chunkIndexes?: ChunkIndexStore;
+  /** P4-11's run journal, `staging/<planId>/journal.json` (removed with the plan's staging). */
+  runJournal?: {
+    read(planId: string): Promise<string | null>;
+    write(planId: string, text: string): Promise<void>;
+  };
+}
+
+/** The seed-index store (P4-11): stored chunk-index objects by `chunks.sha256`. */
+export interface ChunkIndexStore {
+  get(sha256: string): Promise<Uint8Array | null>;
+  /** Atomic (temp + rename, or the host's equivalent). */
+  put(sha256: string, bytes: Uint8Array): Promise<void>;
+  list(): Promise<string[]>;
+  remove(sha256: string): Promise<void>;
 }
 
 /** An embedded baseline the host ships: its marker's text and its measured bytes. */
@@ -280,7 +326,8 @@ export interface PackEngineOptions {
   patchMethods: readonly string[];
   /** The memory budget for one delta frame (`memBytes`); at most 2^30 on wasm32. */
   memBudget: number;
-  /** The strategies to cost. Default `["delta", "file", "full"]` (v1 lists no `chunk`). */
+  /** The strategies to cost. Default `["delta", "chunk", "file", "full"]` (`chunk` from P4-11;
+   *  it is only planned when the storage keeps seed indexes). */
   strategies?: readonly string[];
   /** Default `["pkey-cdn"]`. */
   transports?: readonly string[];
@@ -311,6 +358,12 @@ export interface PackEngineOptions {
    * instead of failing an allocation. React sets it to its memory budget; Node streams.
    */
   oneShotBudget?: number;
+  /**
+   * Whether `fetchObject` can answer a bounded single range (`length`) with a `206` (P4-11).
+   * Default true. A host transport that cannot (a platform downloader, say) sets false, and the
+   * chunk strategy is never planned, so it can never get stuck on a range it cannot send.
+   */
+  rangeRequests?: boolean;
 }
 
 /** The error the pipeline raises when it cannot proceed. `code` is a registered client code
@@ -381,6 +434,8 @@ type Preflight =
       seeds: Map<string, InstalledPayload>;
       planId: string;
       index: FilesIndexDoc | null;
+      /** P4-11: the parsed target chunk index and the seeds, when the fetch rule ran. */
+      chunk: { index: ChunkIndexDoc; seeds: ChunkSeed[] } | null;
       plan: Exclude<PlanResult, { error: unknown }>;
       /** The delegation's compact JWS when a content key signed the record (plans/P4-19.md
        *  §2.3), else null. */
@@ -1593,7 +1648,54 @@ export class PackEngine {
             { packId, path: f.path, detail: "extension" },
           );
     }
-    const target = planTarget(variant, pin.release.sha256, index);
+    // P4-11's fetch rule (plans/P4-10.md §2.5): the target chunk index is staged and parsed
+    // before planning when the strategy is allowed, the variant's `chunks` is usable and at least
+    // one seed index is stored. Anything that fails leaves `chunks` null, never an error.
+    const strategies = this.opts.strategies ?? DEFAULT_STRATEGIES;
+    let chunk: { index: ChunkIndexDoc; seeds: ChunkSeed[] } | null = null;
+    const chunkSeedList: SeedEntry[] = [];
+    const chunksRef = usableChunksRef(variant);
+    if (
+      strategies.includes("chunk") &&
+      delegated === null &&
+      variant.files.layout === "container" &&
+      chunksRef !== null &&
+      this.opts.storage.chunkIndexes !== undefined &&
+      this.opts.rangeRequests !== false
+    ) {
+      chunkSeedList.push(...(await this.chunkSeeds(packId, installs, seeds)));
+      if (chunkSeedList.length > 0) {
+        const ok = await this.download(
+          planId,
+          packId,
+          { sha256: chunksRef.sha256, bytes: chunksRef.bytes },
+          null,
+        ).catch(() => false);
+        if (ok) {
+          const staged = await this.opts.storage.stagedObject(
+            planId,
+            chunksRef.sha256,
+          );
+          const r = await parseChunkIndex(
+            await readAll(await staged.source()),
+            chunksRef,
+            variant.payload,
+            { decode: (f, n) => this.opts.zstd.decode(f, n) },
+          );
+          if (r.ok)
+            chunk = {
+              index: r.index,
+              seeds: chunkSeedList.map((e) => e.seed),
+            };
+        }
+      }
+    }
+    const target = planTarget(
+      variant,
+      pin.release.sha256,
+      index,
+      chunk?.index ?? null,
+    );
     const budget = this.opts.oneShotBudget;
     if (
       budget !== undefined &&
@@ -1602,13 +1704,35 @@ export class PackEngine {
       variant.full.bytes + variant.full.size > budget
     )
       target.full = null;
-    const plannerInstalled: PlanInstalled[] = installs.map((i) => ({
-      release: i.recordSha256,
-      payloadSha256: i.payloadSha256,
-      files: seeds.get(i.location)?.files?.map((f) => f.sha256) ?? null,
-    }));
+    // Seeds count only when the target index parsed. This pack's installs carry their chunk ids;
+    // every other seed (another pack's payload, an embedded baseline) rides along as a synthetic
+    // entry whose payload is never a hash, so `noop` and `delta` can never match it.
+    const idsOf = (e: SeedEntry) => ({
+      ids: e.seed.index.records.map((r) => r[0]),
+    });
+    const plannerInstalled: PlanInstalled[] = installs.map((i) => {
+      const own =
+        chunk !== null
+          ? chunkSeedList.find((e) => e.location === i.location)
+          : undefined;
+      return {
+        release: i.recordSha256,
+        payloadSha256: i.payloadSha256,
+        files: seeds.get(i.location)?.files?.map((f) => f.sha256) ?? null,
+        ...(own ? { chunks: idsOf(own) } : {}),
+      };
+    });
+    if (chunk !== null)
+      for (const e of chunkSeedList)
+        if (!installs.some((i) => i.location === e.location))
+          plannerInstalled.push({
+            release: "",
+            payloadSha256: `seed:${e.payloadSha256}`,
+            files: null,
+            chunks: idsOf(e),
+          });
     const caps: PlanCaps = {
-      strategies: this.opts.strategies ?? ["delta", "file", "full"],
+      strategies,
       patchMethods: this.opts.patchMethods,
       transports: this.opts.transports ?? ["pkey-cdn"],
       memBudget: this.opts.memBudget,
@@ -1629,9 +1753,142 @@ export class PackEngine {
       seeds,
       planId,
       index,
+      chunk,
       plan: p,
       delegation: delegated,
     };
+  }
+
+  /**
+   * The chunk seeds for a pack (P4-11), deduplicated by payload, in this order: the pack's own
+   * readable installs, every other pack's active then previous install (by pack id), then the
+   * embedded baselines (by pack id). A seed is a container whose own record's variant carries a
+   * usable `chunks` ref, whose stored index parses bound to the installed payload, and whose
+   * payload opens. Stored indexes are never trusted: each is parsed again here.
+   */
+  private async chunkSeeds(
+    packId: string,
+    own: readonly PackInstall[],
+    opened: ReadonlyMap<string, InstalledPayload>,
+  ): Promise<SeedEntry[]> {
+    const store = this.opts.storage.chunkIndexes;
+    if (!store) return [];
+    const doc = this.requireLoaded();
+    const others = Object.keys({ ...doc.active, ...doc.previous })
+      .filter((id) => id !== packId)
+      .sort(compareBytes);
+    const candidates: PackInstall[] = [...own];
+    for (const id of others)
+      for (const i of [doc.active[id], doc.previous[id]])
+        if (i) candidates.push(i);
+    for (const id of [...this.embedded.keys()].sort(compareBytes)) {
+      const e = this.embedded.get(id)!;
+      if (id !== packId) candidates.push(e);
+    }
+    const out: SeedEntry[] = [];
+    const payloads = new Set<string>();
+    const locations = new Set<string>();
+    for (const i of candidates) {
+      if (i.layout !== "container" || payloads.has(i.payloadSha256)) continue;
+      if (locations.has(i.location) || this.unverifiable.has(i.location))
+        continue;
+      if (this.isRevoked(i.recordSha256)) continue;
+      const ref = installChunksRef(i);
+      if (ref === null) continue;
+      try {
+        const stored = await store.get(ref.sha256);
+        if (stored === null) continue;
+        const r = await parseChunkIndex(
+          stored,
+          ref,
+          { size: i.payloadSize, sha256: i.payloadSha256 },
+          { decode: (f, n) => this.opts.zstd.decode(f, n) },
+        );
+        if (!r.ok) continue;
+        const p =
+          opened.get(i.location) ??
+          (await this.opts.storage.installed(i).catch(() => null));
+        if (!p?.payload || p.payload.size !== i.payloadSize) continue;
+        payloads.add(i.payloadSha256);
+        locations.add(i.location);
+        out.push({
+          location: i.location,
+          payloadSha256: i.payloadSha256,
+          seed: { index: r.index, payload: p.payload },
+        });
+      } catch {
+        // An unreadable seed is simply not a seed.
+      }
+    }
+    return out;
+  }
+
+  /**
+   * After a pack is ensured (P4-11): keep the chunk index of every root install and embedded
+   * baseline that has one and lacks it, fetched by hash, verified against its record and its
+   * installed payload, and stored by `chunks.sha256`. Best effort: a failure only means no seed.
+   */
+  /** Seed indexes this process already tried to fetch (once each, success or not). */
+  private readonly seedIndexTried = new Set<string>();
+
+  private async storeSeedIndexes(): Promise<void> {
+    const store = this.opts.storage.chunkIndexes;
+    if (
+      !store ||
+      this.opts.rangeRequests === false ||
+      !(this.opts.strategies ?? DEFAULT_STRATEGIES).includes("chunk")
+    )
+      return;
+    const doc = this.requireLoaded();
+    const have = new Set(await store.list().catch(() => [] as string[]));
+    for (const i of [
+      ...Object.values(doc.active),
+      ...Object.values(doc.previous),
+      ...this.embedded.values(),
+    ]) {
+      if (i.layout !== "container") continue;
+      const ref = installChunksRef(i);
+      if (ref === null || have.has(ref.sha256)) continue;
+      // Once per index per process: a failing fetch is not retried on every ensure.
+      if (this.seedIndexTried.has(ref.sha256)) continue;
+      this.seedIndexTried.add(ref.sha256);
+      try {
+        const res = await this.opts.fetchObject({
+          sha256: ref.sha256,
+          offset: 0,
+          ifRange: null,
+        });
+        if (res.status !== 200) {
+          await res.chunks[Symbol.asyncIterator]().return?.();
+          continue;
+        }
+        const parts: Uint8Array[] = [];
+        let n = 0;
+        for await (const c of res.chunks) {
+          n += c.byteLength;
+          if (n > ref.bytes) break;
+          parts.push(c);
+        }
+        if (n !== ref.bytes) continue;
+        const stored = new Uint8Array(n);
+        let at = 0;
+        for (const c of parts) {
+          stored.set(c, at);
+          at += c.byteLength;
+        }
+        const r = await parseChunkIndex(
+          stored,
+          ref,
+          { size: i.payloadSize, sha256: i.payloadSha256 },
+          { decode: (f, k) => this.opts.zstd.decode(f, k) },
+        );
+        if (!r.ok) continue;
+        await store.put(ref.sha256, stored);
+        have.add(ref.sha256);
+      } catch {
+        // Best effort: the next ensure tries again.
+      }
+    }
   }
 
   /** `providesFacts` of a pack's verified record, by pack and hash (bounded memo). */
@@ -1794,7 +2051,9 @@ export class PackEngine {
     target?: { sha256: string; seq: number; version: string },
   ): Promise<PackInstall> {
     try {
-      return await this.ensureOneInner(packId, target);
+      const install = await this.ensureOneInner(packId, target);
+      await this.storeSeedIndexes().catch(() => undefined);
+      return install;
     } catch (e) {
       // plans/P4-13.md §2.5: when the only copy is an embedded baseline refused for `relearn`
       // (or for `revocationsStored` with an unreadable `revocations.json`) and the fetch cannot
@@ -1894,6 +2153,7 @@ export class PackEngine {
         variant,
         index,
         seeds,
+        pre.chunk,
       );
       if (objects === null) continue;
       const journal: PackJournal = {
@@ -1914,7 +2174,11 @@ export class PackEngine {
       };
       this.doc = beginInstall(this.requireLoaded(), journal);
       await this.persist();
-      const total = objects.reduce((a, o) => a + o.bytes, 0);
+      // A chunk plan's total is the planner's (the index and every fetched run).
+      const total =
+        cand.strategy === "chunk"
+          ? Math.max(cand.bytes, objects[0]?.bytes ?? 0)
+          : objects.reduce((a, o) => a + o.bytes, 0);
       const progress = { done: 0, total };
       this.emit({ packId, phase: "download", done: 0, total });
       for (const o of objects)
@@ -1925,18 +2189,31 @@ export class PackEngine {
             `Fetching ${packId}'s objects failed; the next ensure resumes.`,
             { packId },
           );
-      this.emit({ packId, phase: "apply", done: total, total });
+      if (cand.strategy !== "chunk")
+        this.emit({ packId, phase: "apply", done: total, total });
       // plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
       const seen: { refusal: DataOnlyRefusalSeen | null } = { refusal: null };
-      const result = await this.apply(
-        planId,
-        packId,
-        cand.strategy,
-        cand.delta ?? null,
-        variant,
-        seeds,
-        delegation !== null ? seen : null,
-      );
+      const result: ApplyResult | { verdict: ChunkVerdict } =
+        cand.strategy === "chunk"
+          ? await this.applyChunkPlan(
+              planId,
+              packId,
+              variant,
+              pre.chunk,
+              delegation,
+              total,
+            )
+          : await this.apply(
+              planId,
+              packId,
+              cand.strategy,
+              cand.delta ?? null,
+              variant,
+              seeds,
+              delegation !== null ? seen : null,
+            );
+      if (cand.strategy === "chunk")
+        this.emit({ packId, phase: "apply", done: total, total });
       if (seen.refusal !== null) {
         // A refusal aborts the plan: no fallback, staging discarded.
         const r: DataOnlyRefusalSeen = seen.refusal;
@@ -1950,12 +2227,17 @@ export class PackEngine {
         );
       }
       if (result.verdict.ok) {
+        if (cand.strategy === "chunk")
+          // The target index becomes a seed for the next release (best effort).
+          await this.keepStagedIndex(planId, variant).catch(() => undefined);
         const location = await this.opts.storage.commit(
           planId,
           packId,
           variant.payload.sha256,
           variant.files.layout,
-          result.index ?? index,
+          cand.strategy === "chunk"
+            ? index
+            : ((result as ApplyResult).index ?? index),
         );
         await this.typeCheck(
           packId,
@@ -1981,10 +2263,26 @@ export class PackEngine {
         return install;
       }
       const f = result.verdict;
+      if (
+        cand.strategy === "chunk" &&
+        f.error === "network-error" &&
+        (f as { detail?: string }).detail === "interrupted"
+      )
+        // The journals, the staged index and the output stay for the next `ensure`, which
+        // resumes the completed runs (re-hashed before reuse).
+        throw new PackError(
+          "network-error",
+          `Fetching ${packId}'s chunks failed; the next ensure resumes.`,
+          { packId, detail: "chunk" },
+        );
       firstFailure ??= new PackError(
         f.error,
         `Installing ${packId} by ${cand.strategy} failed: ${f.error}.`,
-        { packId, path: f.path ?? null, detail: cand.strategy },
+        {
+          packId,
+          path: (f as { path?: string }).path ?? null,
+          detail: cand.strategy,
+        },
       );
       await this.opts.storage.removeStaging(planId).catch(() => undefined);
     }
@@ -2011,6 +2309,7 @@ export class PackEngine {
     variant: PackVariant,
     index: FilesIndexDoc | null,
     seeds: Map<string, InstalledPayload>,
+    chunk: { index: ChunkIndexDoc } | null = null,
   ): { sha256: string; bytes: number }[] | null {
     const files = variant.files;
     const idx = { sha256: files.sha256, bytes: files.bytes };
@@ -2052,6 +2351,12 @@ export class PackEngine {
         ...gaps,
         ...[...blobs].map(([sha256, bytes]) => ({ sha256, bytes })),
       ];
+    }
+    if (strategy === "chunk") {
+      // The index only (staged by the fetch rule); the runs are fetched by the applier.
+      const ref = usableChunksRef(variant);
+      if (chunk === null || ref === null) return null;
+      return [{ sha256: ref.sha256, bytes: ref.bytes }];
     }
     return null;
   }
@@ -2102,6 +2407,97 @@ export class PackEngine {
     if (base === null)
       return { verdict: { ok: false, error: "delta-base-mismatch" } };
     return applyDelta(variant, k, base, ports);
+  }
+
+  /**
+   * The chunk strategy (P4-11; plans/P4-10.md §2.5): `applyChunk` over the staged target index,
+   * the seeds the preflight found, single-range requests through `chunkRangeFetch` (exact
+   * `Content-Range`, `If-Range` on the bundle hash) and the plan's container output, resumed from
+   * the run journal (`staging/<planId>/journal.json`), with the repair pass. A delegated release
+   * never gets here: it is a tree (plans/P4-19.md §2.3), and `planTarget` maps a tree's `chunks`
+   * to null; the check below keeps it that way whatever the planner says.
+   */
+  private async applyChunkPlan(
+    planId: string,
+    packId: string,
+    variant: PackVariant,
+    chunk: { index: ChunkIndexDoc; seeds: ChunkSeed[] } | null,
+    delegation: string | null,
+    total: number,
+  ): Promise<{ verdict: ChunkVerdict }> {
+    const ref = usableChunksRef(variant);
+    if (
+      chunk === null ||
+      ref === null ||
+      delegation !== null ||
+      variant.files.layout !== "container"
+    )
+      return { verdict: { ok: false, error: "chunks-ref-mismatch" } };
+    const storage = this.opts.storage;
+    const out = await storage.output(planId, "container", { resume: true });
+    if (!out.sink || !out.read)
+      return { verdict: { ok: false, error: "chunks-ref-mismatch" } };
+    const output: ChunkOutput = {
+      write: (o, b) => out.sink!.write(o, b),
+      read: (o, n) => out.read!(o, n),
+    };
+    const seeded = new Set<string>();
+    for (const s of chunk.seeds)
+      for (const r of s.index.records) seeded.add(r[0]);
+    const runs = chunkRuns(chunk.index.records, seeded).length;
+    const journal = storage.runJournal;
+    const done = readRunJournal(
+      journal ? await journal.read(planId).catch(() => null) : null,
+      ref.sha256,
+      runs,
+    );
+    const base = ref.bytes;
+    this.emit({ packId, phase: "download", done: base, total });
+    return applyChunk(
+      variant,
+      chunk.seeds,
+      {
+        objects: async (sha256) => {
+          const o = await storage.stagedObject(planId, sha256);
+          return (await o.size()) > 0 ? o.source() : null;
+        },
+        zstd: this.opts.zstd,
+        sha256: this.opts.sha256,
+        fetchRange: chunkRangeFetch((req) => this.opts.fetchObject(req)),
+        output,
+      },
+      {
+        repair: true,
+        completedRuns: done,
+        onRunDone: async (k) => {
+          done.add(k);
+          if (journal)
+            await journal
+              .write(planId, writeRunJournal(ref.sha256, runs, done))
+              .catch(() => undefined);
+        },
+        onProgress: (fetched) =>
+          this.emit({
+            packId,
+            phase: "download",
+            done: Math.min(total, base + fetched),
+            total,
+          }),
+      },
+    );
+  }
+
+  /** Keep a chunk plan's staged target index in the seed store. */
+  private async keepStagedIndex(
+    planId: string,
+    variant: PackVariant,
+  ): Promise<void> {
+    const store = this.opts.storage.chunkIndexes;
+    const ref = usableChunksRef(variant);
+    if (!store || ref === null) return;
+    const o = await this.opts.storage.stagedObject(planId, ref.sha256);
+    if ((await o.size()) !== ref.bytes) return;
+    await store.put(ref.sha256, await readAll(await o.source()));
   }
 
   /** Commit: the pointer swap, activation, garbage collection. */
@@ -2181,6 +2577,26 @@ export class PackEngine {
     for (const plan of listed.plans)
       if (!roots.plans.has(plan) && !held?.plans.has(plan))
         await this.opts.storage.removeStaging(plan).catch(() => undefined);
+    // P4-11: a stored seed index no root install's record names goes too.
+    const store = this.opts.storage.chunkIndexes;
+    if (store) {
+      const doc = this.requireLoaded();
+      const keep = new Set<string>();
+      for (const i of [
+        ...Object.values(doc.active),
+        ...Object.values(doc.previous),
+        ...Object.values(this.deferred.active),
+        ...Object.values(this.deferred.previous),
+        ...this.embedded.values(),
+        ...this.running.values(),
+      ]) {
+        const ref = installChunksRef(i);
+        if (ref !== null) keep.add(ref.sha256);
+      }
+      const stored = await store.list().catch(() => [] as string[]);
+      for (const sha of stored)
+        if (!keep.has(sha)) await store.remove(sha).catch(() => undefined);
+    }
   }
 
   /**
@@ -2325,6 +2741,121 @@ export class PackEngine {
       ? "ok"
       : "mismatch";
   }
+}
+
+/** The strategies an engine costs unless told otherwise (`chunk` from P4-11). */
+const DEFAULT_STRATEGIES: readonly string[] = [
+  "delta",
+  "chunk",
+  "file",
+  "full",
+];
+
+/** One chunk seed and where it came from. */
+interface SeedEntry {
+  location: string;
+  payloadSha256: string;
+  seed: ChunkSeed;
+}
+
+/** A variant's `chunks` ref when the chunk strategy could read it (plans/P4-10.md §2.5: the
+ *  format, a usable codec, both sizes within `MAX_CHUNK_INDEX_BYTES`), else null. */
+function usableChunksRef(
+  variant: PackVariant,
+): { sha256: string; bytes: number; size: number; codec: string } | null {
+  const c = (variant as { chunks?: unknown }).chunks as
+    | Record<string, unknown>
+    | undefined;
+  if (typeof c !== "object" || c === null) return null;
+  if (c.format !== CHUNKS_FORMAT || !usableCodec(c.codec)) return null;
+  if (
+    typeof c.sha256 !== "string" ||
+    typeof c.bytes !== "number" ||
+    typeof c.size !== "number" ||
+    c.bytes > MAX_CHUNK_INDEX_BYTES ||
+    c.size > MAX_CHUNK_INDEX_BYTES
+  )
+    return null;
+  return {
+    sha256: c.sha256,
+    bytes: c.bytes,
+    size: c.size,
+    codec: c.codec as string,
+  };
+}
+
+/** The usable `chunks` ref of an install's own variant, read from its (verified) record. */
+function installChunksRef(
+  i: PackInstall,
+): { sha256: string; bytes: number; size: number; codec: string } | null {
+  const rec = verifiedPayloadOf(i.record) as {
+    variants?: unknown;
+  } | null;
+  if (!rec || !Array.isArray(rec.variants)) return null;
+  for (const v of rec.variants as PackVariant[]) {
+    if (typeof v !== "object" || v === null) continue;
+    const key = (() => {
+      try {
+        return variantKey(v.variant);
+      } catch {
+        return null;
+      }
+    })();
+    if (key !== i.variant) continue;
+    if (v.payload?.sha256 !== i.payloadSha256) return null;
+    return usableChunksRef(v);
+  }
+  return null;
+}
+
+/** The run journal (P4-11): which runs of a chunk plan are complete, as a bitmap. */
+interface RunJournal {
+  v: 1;
+  index: string;
+  runs: number;
+  bitmap: string;
+}
+
+function readRunJournal(
+  text: string | null,
+  index: string,
+  runs: number,
+): Set<number> {
+  const done = new Set<number>();
+  if (text === null) return done;
+  try {
+    const j = JSON.parse(text) as Partial<RunJournal>;
+    const bytes = Math.ceil(runs / 8);
+    if (
+      j.v !== 1 ||
+      j.index !== index ||
+      j.runs !== runs ||
+      typeof j.bitmap !== "string" ||
+      j.bitmap.length !== bytes * 2 ||
+      !/^[0-9a-f]*$/.test(j.bitmap)
+    )
+      return done;
+    for (let k = 0; k < runs; k++) {
+      const b = parseInt(j.bitmap.slice((k >> 3) * 2, (k >> 3) * 2 + 2), 16);
+      if (b & (1 << (k & 7))) done.add(k);
+    }
+  } catch {
+    // A torn journal only costs refetching.
+  }
+  return done;
+}
+
+function writeRunJournal(
+  index: string,
+  runs: number,
+  done: Set<number>,
+): string {
+  const bits = new Uint8Array(Math.ceil(runs / 8));
+  for (const k of done) bits[k >> 3]! |= 1 << (k & 7);
+  let bitmap = "";
+  for (const b of bits) bitmap += b.toString(16).padStart(2, "0");
+  const j: RunJournal = { v: 1, index, runs, bitmap };
+  return JSON.stringify(j);
 }
 
 /** SHA-256 of the empty string: an empty object is legitimately zero bytes long. */

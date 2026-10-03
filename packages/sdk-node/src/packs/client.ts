@@ -534,6 +534,7 @@ export class PacksClient {
     sha256: string;
     offset: number;
     ifRange: string | null;
+    length?: number;
   }): Promise<ObjectResponse> {
     const t = await this.template("distribution", "blobs");
     if (t === null)
@@ -552,7 +553,13 @@ export class PacksClient {
     };
     arm();
     const headers: Record<string, string> = { ...this.authHeaders(url) };
-    if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
+    // A chunk run (P4-11) is one bounded single range; a resume is open-ended. Either way the
+    // bytes must arrive as stored, never as a transparently decoded gzip body: the Fetch
+    // standard sends `Accept-Encoding: identity` with every `Range` (undici does), so it is not
+    // set twice here.
+    if (req.length !== undefined)
+      headers.range = `bytes=${req.offset}-${req.offset + req.length - 1}`;
+    else if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
     if (req.ifRange !== null) headers["if-range"] = req.ifRange;
     let res: Response;
     try {
@@ -568,6 +575,7 @@ export class PacksClient {
     return {
       status: res.status,
       contentRange: res.headers.get("content-range"),
+      etag: res.headers.get("etag"),
       chunks: (async function* () {
         try {
           if (!body) return;

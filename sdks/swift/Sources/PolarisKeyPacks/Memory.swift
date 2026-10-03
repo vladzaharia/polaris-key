@@ -25,6 +25,8 @@ private final class MemoryBox: @unchecked Sendable {
     var store: [String: MemoryPayload] = [:]
     var staging: [String: [String: [UInt8]]] = [:]
     var outputs: [String: (container: [UInt8], length: Int, tree: [String: [UInt8]])] = [:]
+    var indexes: [String: [UInt8]] = [:]
+    var journals: [String: String] = [:]
     func with<R>(_ body: (MemoryBox) throws -> R) rethrows -> R {
         lock.lock()
         defer { lock.unlock() }
@@ -72,6 +74,23 @@ private struct MemoryTree: TreeSink {
     }
 }
 
+private struct MemoryChunkIndexStore: ChunkIndexStore {
+    let box: MemoryBox
+    /// Larger than `MAX_CHUNK_INDEX_BYTES` reads as absent, as the directory store.
+    func get(_ sha256: String) throws -> [UInt8]? {
+        box.with { b in b.indexes[sha256].flatMap { $0.count <= MAX_CHUNK_INDEX_BYTES ? $0 : nil } }
+    }
+    func put(_ sha256: String, _ bytes: [UInt8]) throws { box.with { $0.indexes[sha256] = bytes } }
+    func list() throws -> [String] { box.with { Array($0.indexes.keys) } }
+    func remove(_ sha256: String) throws { box.with { _ = $0.indexes.removeValue(forKey: sha256) } }
+}
+
+private struct MemoryRunJournalStore: RunJournalStore {
+    let box: MemoryBox
+    func read(_ planId: String) throws -> String? { box.with { $0.journals[planId] } }
+    func write(_ planId: String, _ text: String) throws { box.with { $0.journals[planId] = text } }
+}
+
 /// `PackStorage` over maps. `freeDisk` is what the planner is told (default 1 GiB).
 public final class MemoryPackStorage: PackStorage, @unchecked Sendable {
     private let box = MemoryBox()
@@ -94,10 +113,40 @@ public final class MemoryPackStorage: PackStorage, @unchecked Sendable {
         MemoryStaged(box: box, planId: planId, sha256: sha256)
     }
 
-    public func output(_ planId: String, _ layout: String) throws -> PackOutput {
-        box.with { $0.outputs[planId] = ([], 0, [:]) }
-        return PackOutput(sink: MemorySink(box: box, planId: planId), tree: MemoryTree(box: box, planId: planId))
+    /// The seed indexes by `chunks.sha256` (P4-11).
+    public var indexes: [String: [UInt8]] {
+        get { box.with { $0.indexes } }
+        set { box.with { $0.indexes = newValue } }
     }
+    /// The run journals by plan id (P4-11).
+    public var journals: [String: String] {
+        get { box.with { $0.journals } }
+        set { box.with { $0.journals = newValue } }
+    }
+
+    public func output(_ planId: String, _ layout: String) throws -> PackOutput {
+        try output(planId, layout, resume: false)
+    }
+
+    public func output(_ planId: String, _ layout: String, resume: Bool) throws -> PackOutput {
+        let box = self.box
+        box.with { b in
+            if !resume || b.outputs[planId] == nil { b.outputs[planId] = ([], 0, [:]) }
+        }
+        return PackOutput(
+            sink: MemorySink(box: box, planId: planId), tree: MemoryTree(box: box, planId: planId),
+            read: { offset, length in
+                box.with { b in
+                    guard let o = b.outputs[planId], length > 0, offset >= 0 else { return [] }
+                    let lo = Swift.min(offset, o.length)
+                    let hi = Swift.min(offset + length, o.length)
+                    return Array(o.container[lo..<hi])
+                }
+            })
+    }
+
+    public var chunkIndexes: (any ChunkIndexStore)? { MemoryChunkIndexStore(box: box) }
+    public var runJournal: (any RunJournalStore)? { MemoryRunJournalStore(box: box) }
 
     public func commit(
         _ planId: String, _ packId: String, _ payloadSha256: String, _ layout: String,
@@ -148,6 +197,7 @@ public final class MemoryPackStorage: PackStorage, @unchecked Sendable {
         box.with {
             $0.staging[planId] = nil
             $0.outputs[planId] = nil
+            $0.journals[planId] = nil
         }
     }
 

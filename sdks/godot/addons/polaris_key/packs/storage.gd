@@ -14,6 +14,10 @@ extends RefCounted
 ##   <root>/staging/<planId>/objects/<sha256>  objects being fetched (appended, resumable)
 ##   <root>/staging/<planId>/out/              the payload being built (`payload.bin` or a tree)
 ##   <root>/staging/<planId>/bake.json         a trailer bake in progress (A6 §5), for repair
+##   <root>/staging/<planId>/journal.json      the chunk strategy's run bitmap (P4-11), for resume
+##   <root>/index/<sha256>                     a seed's chunk index as stored (P4-11; notes/E8
+##                                             §5.7), keyed by its `chunks.sha256`, re-verified
+##                                             against the install's payload at every use
 ##   <root>/store/<sha256>.pck                 a committed container payload, never overwritten
 ##   <root>/store/<sha256>.zip                 the same for a container that is a zip (godot.zip:
 ##                                             Godot's ZIP pack source opens only `.zip` paths);
@@ -64,6 +68,10 @@ func store_dir() -> String:
 
 func trees_dir() -> String:
 	return root.path_join("trees")
+
+
+func index_dir() -> String:
+	return root.path_join("index")
 
 
 # ── Low-level file helpers ──────────────────────────────────────────────────────────────────
@@ -386,19 +394,29 @@ class FileSink extends RefCounted:
 	func _init(p_path: String) -> void:
 		path = p_path
 
-	func write(offset: int, bytes: PackedByteArray) -> bool:
-		if failed:
-			return false
-		if _f == null:
+	func _file() -> FileAccess:
+		if _f == null and not failed:
 			_f = FileAccess.open(path, FileAccess.READ_WRITE)
 			if _f == null:
 				failed = true
-				return false
+		return _f
+
+	func write(offset: int, bytes: PackedByteArray) -> bool:
+		if failed or _file() == null:
+			return false
 		_f.seek(offset)
 		if not _f.store_buffer(bytes) or _f.get_error() != OK:
 			failed = true
 			return false
 		return true
+
+	## Read back `length` bytes at `offset` (the chunk strategy's duplicate copies, repair pass and
+	## resumed runs); fewer at the end or on an error.
+	func read(offset: int, length: int) -> PackedByteArray:
+		if _file() == null or offset < 0 or length <= 0:
+			return PackedByteArray()
+		_f.seek(offset)
+		return _f.get_buffer(length)
 
 	func close() -> bool:
 		if _f != null:
@@ -438,15 +456,25 @@ class TreeSink extends RefCounted:
 		return not failed
 
 
+## The plan's container output for the chunk strategy (P4-11): an existing `out/payload.bin` is
+## kept (its journalled runs are re-hashed before reuse), else a fresh one as `output` makes it.
+## {sink} (readable back), or {} on failure.
+func resume_output(plan_id: String) -> Dictionary:
+	var file := out_dir(plan_id).path_join(CONTAINER_FILE)
+	if file_state(file) == 1:
+		return {"sink": FileSink.new(file)}
+	return output(plan_id, "container")
+
+
 ## The plan's output area: {sink} for a container, {tree} for a tree (a fresh, empty `out/`).
 func output(plan_id: String, layout: String) -> Dictionary:
 	var out := out_dir(plan_id)
+	var file := out.path_join(CONTAINER_FILE)
 	remove_tree(out)
 	if DirAccess.make_dir_recursive_absolute(out) != OK and not DirAccess.dir_exists_absolute(out):
 		return {}
 	if layout == "tree":
 		return {"tree": TreeSink.new(out)}
-	var file := out.path_join(CONTAINER_FILE)
 	var f := FileAccess.open(file, FileAccess.WRITE)
 	if f == null:
 		return {}
@@ -689,6 +717,77 @@ func free_disk() -> int:
 		return 0
 	var n := int(d.get_space_left())
 	return n if n > 0 else 9007199254740991
+
+
+# ── The chunk strategy: run journal and seed indexes (P4-11) ───────────────────────────────
+
+func run_journal_path(plan_id: String) -> String:
+	return staging_dir().path_join(plan_id).path_join("journal.json")
+
+
+## The plan's run journal text, or null when there is none or it cannot be read (a resume then
+## refetches every run).
+func run_journal_read(plan_id: String) -> Variant:
+	if plan_id == "" or plan_id.contains("/") or plan_id.contains(".."):
+		return null
+	var r := read_bytes(run_journal_path(plan_id))
+	if not r["ok"] or r.has("missing"):
+		return null
+	return (r["bytes"] as PackedByteArray).get_string_from_utf8()
+
+
+## Replace the plan's run journal (temp file, read back, rename).
+func run_journal_write(plan_id: String, text: String) -> bool:
+	if plan_id == "" or plan_id.contains("/") or plan_id.contains(".."):
+		return false
+	return atomic_write(run_journal_path(plan_id), text.to_utf8_buffer())
+
+
+func seed_index_path(sha256: String) -> String:
+	return index_dir().path_join(sha256)
+
+
+## A stored seed index's bytes (as fetched, possibly zstd), or null when there is none, it cannot
+## be read or it is longer than MAX_CHUNK_INDEX_BYTES (checked before reading). Never trusted: the engine re-verifies it against the install's payload at every use.
+func seed_index_get(sha256: String) -> Variant:
+	if not PKeyPackClaims.is_sha256(sha256):
+		return null
+	# Bounded before a byte is read: a kept index above MAX_CHUNK_INDEX_BYTES is no seed.
+	var f := FileAccess.open(seed_index_path(sha256), FileAccess.READ)
+	if f == null:
+		return null
+	var n := int(f.get_length())
+	f.close()
+	if n > PKeyConstants.MAX_CHUNK_INDEX_BYTES:
+		return null
+	var r := read_bytes(seed_index_path(sha256))
+	if not r["ok"] or r.has("missing"):
+		return null
+	return r["bytes"]
+
+
+## Keep a seed index (temp file, read back, rename).
+func seed_index_put(sha256: String, bytes: PackedByteArray) -> bool:
+	if not PKeyPackClaims.is_sha256(sha256) or bytes.size() > PKeyConstants.MAX_CHUNK_INDEX_BYTES:
+		return false
+	return atomic_write(seed_index_path(sha256), bytes)
+
+
+## Every stored seed index's sha256, or null on any listing error (never collected from then).
+func seed_index_list() -> Variant:
+	var l := list_dir(index_dir())
+	if not l["ok"]:
+		return null
+	var out: Array = []
+	for f in l["files"]:
+		if PKeyPackClaims.is_sha256(f):
+			out.append(f)
+	return out
+
+
+func seed_index_remove(sha256: String) -> void:
+	if PKeyPackClaims.is_sha256(sha256):
+		remove_tree(seed_index_path(sha256))
 
 
 # ── The bake journal (A6 §5: a crash between the trailer and the truncation) ─────────────────

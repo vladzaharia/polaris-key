@@ -49,7 +49,7 @@ runbook file wins and the wrapper page is stale.
 
 ## Before you start
 
-Two things are true of every page in this section:
+Three things are true of every page in this section:
 
 - **One privilege level.** A signed-in admin session is either a platform admin or it does not
   exist — there is no per-product tier. Every admin sees every product; a manifest's
@@ -59,6 +59,9 @@ Two things are true of every page in this section:
   off, and fields disable when nothing backs them — but that is an affordance, not the access
   control. Every admin endpoint re-checks session, group and CSRF on its own, so a stale tab or
   a hand-crafted request lands on the same rules a click would.
+- **A modern browser.** The console (and the customer portal) is built on Tailwind CSS v4, so
+  it needs **Safari 16.4+, Chrome 111+ (or Edge 111+), or Firefox 128+**. Older browsers load
+  it largely unstyled.
 
 For the data these pages describe, see [D1 data model](/docs/reference/data-model/); for the
 public routes a product itself serves, see [Public route table](/docs/reference/routes/).

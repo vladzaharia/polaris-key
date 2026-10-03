@@ -139,31 +139,31 @@ const PORTAL_ROWS: {
     key: "portalEnabled",
     label: "Customer portal",
     description: "Show this product’s licenses to verified customers.",
-    icon: <Globe2 aria-hidden className="size-4 text-primary" />,
+    icon: <Globe2 aria-hidden className="size-4 text-accent-fg" />,
   },
   {
     key: "oidcEnabled",
     label: "OIDC access",
     description: "Allow portal account linking from the shared OIDC subject.",
-    icon: <ShieldCheck aria-hidden className="size-4 text-primary" />,
+    icon: <ShieldCheck aria-hidden className="size-4 text-accent-fg" />,
   },
   {
     key: "magicEnabled",
     label: "Email magic links",
     description: "Allow verified email sign-in to link matching licenses.",
-    icon: <Mail aria-hidden className="size-4 text-primary" />,
+    icon: <Mail aria-hidden className="size-4 text-accent-fg" />,
   },
   {
     key: "licenseKeyClaimEnabled",
     label: "License-key claim",
     description: "Allow customers to add a license by entering a valid key.",
-    icon: <KeyRound aria-hidden className="size-4 text-primary" />,
+    icon: <KeyRound aria-hidden className="size-4 text-accent-fg" />,
   },
   {
     key: "releasesEnabled",
     label: "Release downloads",
     description: "Expose entitled release artifacts in the customer portal.",
-    icon: <Download aria-hidden className="size-4 text-primary" />,
+    icon: <Download aria-hidden className="size-4 text-accent-fg" />,
   },
 ];
 
@@ -309,7 +309,7 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
           <div className="flex flex-wrap items-start justify-between gap-4 py-4 last:pb-0">
             <div className="flex min-w-0 flex-1 items-start gap-3">
               <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                <Link2 aria-hidden className="size-4 text-primary" />
+                <Link2 aria-hidden className="size-4 text-accent-fg" />
               </div>
               <div className="min-w-0">
                 <label
@@ -441,7 +441,7 @@ function OidcCard({ slug }: { slug: string }): React.ReactElement {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <FileCog aria-hidden className="size-5 text-primary" />
+          <FileCog aria-hidden className="size-5 text-accent-fg" />
           <CardTitle>Identity config is authored in your repo</CardTitle>
         </div>
         <CardDescription>
@@ -451,11 +451,11 @@ function OidcCard({ slug }: { slug: string }): React.ReactElement {
             {data?.name ?? slug}
           </span>{" "}
           live in its{" "}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+          <code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-xs">
             .pkey/product
           </code>{" "}
           manifest. Platform OIDC is the default; use{" "}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+          <code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-xs">
             oidc.provider: custom
           </code>{" "}
           only when a product needs its own OIDC client. Edit the manifest,

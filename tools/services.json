@@ -8,7 +8,7 @@
       "defaultEnabled": true,
       "requires": [],
       "legacyModules": ["licensing"],
-      "console": { "accent": "key", "icon": "KeyRound" },
+      "console": { "accent": "license", "icon": "KeyRound" },
       "docs": "/docs/services/license/"
     },
     {
@@ -58,7 +58,7 @@
       "defaultEnabled": false,
       "requires": [],
       "legacyModules": ["oidc"],
-      "console": { "accent": "id", "icon": "UserRound" },
+      "console": { "accent": "identity", "icon": "UserRound" },
       "docs": "/docs/services/identity/"
     }
   ]

@@ -49,6 +49,8 @@ import {
   type TreePack,
   revocationFor,
 } from "./packFixtures.js";
+import { chunkStamp, containerPack, rangeServer } from "./chunkFixtures.js";
+import { opfsPackStore } from "../src/packs/opfs.js";
 
 const BASE = "https://k.test";
 const zstd: ZstdPort = {
@@ -436,6 +438,246 @@ describe("createBrowserPacks (update.packs, web)", () => {
     });
     expect(await none.packSetId()).toBeNull();
     expect(() => packs(byteServer(v1), [v1], { contentStamp: "{}" })).toThrow();
+  });
+});
+
+// @pkey-feature packs.apply.chunk packs.index.chunks
+describe("createBrowserPacks and chunk sync in OPFS (P4-11)", () => {
+  const BLOB = {
+    type: "custom.blob",
+    layout: "container" as const,
+    activation: "restart" as const,
+    supports: (v: number) => v === 1,
+  };
+  /** A credentialed-`fetch` stand-in over the chunk fixtures' range server. */
+  function rangeFetch(server: ReturnType<typeof rangeServer>) {
+    const calls: {
+      url: string;
+      range: string | null;
+      ifRange: string | null;
+    }[] = [];
+    const impl = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input));
+      const headers = new Headers(init?.headers);
+      calls.push({
+        url: url.toString(),
+        range: headers.get("range"),
+        ifRange: headers.get("if-range"),
+      });
+      const rec = /\/release\/records\/([0-9a-f]{64})$/.exec(url.pathname);
+      if (rec) {
+        const r = await server.fetchRecord(rec[1]!);
+        return r.ok ? new Response(r.body) : new Response("", { status: 404 });
+      }
+      const blob = /\/distribution\/blobs\/sha256\/([0-9a-f]{64})$/.exec(
+        url.pathname,
+      );
+      if (blob) {
+        const m = /^bytes=(\d+)-(\d*)$/.exec(headers.get("range") ?? "");
+        const o = await server.fetchObject({
+          sha256: blob[1]!,
+          offset: m ? Number(m[1]) : 0,
+          ...(m && m[2] !== ""
+            ? { length: Number(m[2]) - Number(m[1]) + 1 }
+            : {}),
+          ifRange: headers.get("if-range"),
+        });
+        const parts: Uint8Array[] = [];
+        try {
+          for await (const c of o.chunks) parts.push(c);
+        } catch {
+          // A cut body: the stream errors after what was sent.
+          const body = new ReadableStream<Uint8Array>({
+            start(ctl) {
+              ctl.enqueue(Buffer.concat(parts));
+              ctl.error(new TypeError("network error"));
+            },
+          });
+          return new Response(body, {
+            status: o.status,
+            headers: {
+              ...(o.contentRange ? { "content-range": o.contentRange } : {}),
+              ...(o.etag ? { etag: o.etag } : {}),
+            },
+          });
+        }
+        return new Response(Buffer.concat(parts), {
+          status: o.status,
+          headers: {
+            ...(o.contentRange ? { "content-range": o.contentRange } : {}),
+            ...(o.etag ? { etag: o.etag } : {}),
+          },
+        });
+      }
+      return new Response("", { status: 404 });
+    }) as typeof fetch;
+    return { impl, calls };
+  }
+
+  it("the OPFS seed store never reads an index over MAX_CHUNK_INDEX_BYTES", async () => {
+    const store = await opfsPackStore({
+      product: PRODUCT,
+      sha256: hashWasmSha256,
+      root: memoryDir(),
+    });
+    const idx = store.storage.chunkIndexes!;
+    const h = "ef".repeat(32);
+    await idx.put(h, new Uint8Array(8));
+    expect(await idx.get(h)).toHaveLength(8);
+    await idx.put(h, new Uint8Array(16 * 1024 * 1024 + 1));
+    expect(await idx.get(h)).toBeNull();
+  });
+
+  it("falls back to the full payload over OPFS when the server answers 200 to a range", async () => {
+    const v1 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.0.0",
+      seq: 1,
+      chunks: ["a", "b", "c", "d", "e", "f"],
+      bundles: [["a", "b", "c", "d", "e", "f"]],
+    });
+    const v2 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.1.0",
+      seq: 2,
+      chunks: ["a", "g", "c", "h", "i", "f", "j"],
+      bundles: [
+        ["a", "b", "c", "d", "e", "f"],
+        ["g", null, "h", "i", null, "j"],
+      ],
+    });
+    const server = rangeServer(v1, v2);
+    const root = memoryDir();
+    const f = rangeFetch(server);
+    const p = createBrowserPacks({
+      baseUrl: BASE,
+      product: PRODUCT,
+      discovery: discovery as never,
+      releaseKeys: RELEASE_KEYS,
+      productTrust: PRODUCT_TRUST,
+      contentStamp: JSON.stringify({
+        format: "pkey-content/1",
+        ...chunkStamp(v1),
+      }),
+      fetchImpl: f.impl,
+      zstd,
+      storage: "opfs",
+      opfsRoot: root,
+      handlers: [BLOB],
+    });
+    await p.ensure([v1.packId]);
+    server.ignoreRange = true;
+    const [install] = await p.ensureReleases([
+      {
+        pack: v2.packId,
+        release: { sha256: v2.recordSha256, seq: 2, version: "1.1.0" },
+      },
+    ]);
+    expect(install!.payloadSha256).toBe(sha(v2.payload));
+    // One range was tried and refused; then the full payload was fetched whole.
+    expect(
+      f.calls.filter((c) => c.range !== null && /-\d+$/.test(c.range)),
+    ).toHaveLength(1);
+    expect(
+      f.calls.some((c) => c.url.endsWith(sha(v2.payload)) && c.range === null),
+    ).toBe(true);
+    // What landed in the store is exactly v2: nothing the refused chunk attempt buffered or
+    // staged leaked into the full write, and the plan's staging is gone.
+    const packsDir = await (
+      await (
+        await root.getDirectoryHandle("polaris-key")
+      ).getDirectoryHandle(PRODUCT)
+    ).getDirectoryHandle("packs");
+    const stored = await (
+      await (
+        await (
+          await (
+            await packsDir.getDirectoryHandle("store")
+          ).getDirectoryHandle(v2.packId)
+        ).getDirectoryHandle(sha(v2.payload))
+      ).getFileHandle("payload.bin")
+    ).getFile();
+    const bytes = new Uint8Array(
+      await stored.slice(0, stored.size).arrayBuffer(),
+    );
+    expect(bytes.byteLength).toBe(v2.payload.byteLength);
+    expect(sha(bytes)).toBe(sha(v2.payload));
+    const staging = await packsDir.getDirectoryHandle("staging");
+    const left: string[] = [];
+    for await (const [name] of staging.entries()) left.push(name);
+    expect(left).toEqual([]);
+  });
+
+  it("installs v2 by chunk over OPFS in the planner's runs, and resumes a cut run", async () => {
+    const v1 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.0.0",
+      seq: 1,
+      chunks: ["a", "b", "c", "d", "e", "f"],
+      bundles: [["a", "b", "c", "d", "e", "f"]],
+    });
+    const v2 = await containerPack({
+      packId: "djdl.levels",
+      version: "1.1.0",
+      seq: 2,
+      chunks: ["a", "g", "c", "h", "i", "f", "j"],
+      bundles: [
+        ["a", "b", "c", "d", "e", "f"],
+        ["g", null, "h", "i", null, "j"],
+      ],
+    });
+    const server = rangeServer(v1, v2);
+    const root = memoryDir();
+    const make = () => {
+      const f = rangeFetch(server);
+      return {
+        calls: f.calls,
+        p: createBrowserPacks({
+          baseUrl: BASE,
+          product: PRODUCT,
+          discovery: discovery as never,
+          releaseKeys: RELEASE_KEYS,
+          productTrust: PRODUCT_TRUST,
+          contentStamp: JSON.stringify({
+            format: "pkey-content/1",
+            ...chunkStamp(v1),
+          }),
+          fetchImpl: f.impl,
+          zstd,
+          storage: "opfs",
+          opfsRoot: root,
+          handlers: [BLOB],
+        }),
+      };
+    };
+    const a = make();
+    await a.p.ensure([v1.packId]);
+    const t = {
+      pack: v2.packId,
+      release: { sha256: v2.recordSha256, seq: 2, version: "1.1.0" },
+    };
+    server.cutRange = 2;
+    await expect(a.p.ensureReleases([t])).rejects.toMatchObject({
+      code: "network-error",
+    });
+    const bounded = (calls: { range: string | null }[]) =>
+      calls
+        .filter((c) => c.range !== null && /-\d+$/.test(c.range))
+        .map((c) => c.range);
+    expect(bounded(a.calls)).toEqual(["bytes=0-65535", "bytes=131072-262143"]);
+
+    server.cutRange = 0;
+    const b = make();
+    const [install] = await b.p.ensureReleases([t]);
+    expect(install!.payloadSha256).toBe(sha(v2.payload));
+    expect(bounded(b.calls)).toEqual([
+      "bytes=131072-262143",
+      "bytes=327680-393215",
+    ]);
+    expect(b.calls.every((c) => c.range === null || c.ifRange !== null)).toBe(
+      true,
+    );
+    expect(b.calls.some((c) => c.url.endsWith(sha(v2.payload)))).toBe(false);
   });
 });
 

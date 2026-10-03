@@ -19,8 +19,12 @@ import {
   SERVICE_TABLE,
 } from "../src/services.generated.js";
 
-const styles = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "..", "src", "styles.css"),
+// The accent CSS now ships in @polaris-key/brand (docs/design/BRAND.md §5): tokens.css keys every
+// section by its slug and carries both themes' values; styles.css only imports it.
+const here = dirname(fileURLToPath(import.meta.url));
+const styles = readFileSync(join(here, "..", "src", "styles.css"), "utf8");
+const brandTokens = readFileSync(
+  join(here, "..", "..", "brand", "css", "tokens.css"),
   "utf8",
 );
 
@@ -52,22 +56,21 @@ describe("the service table, as the console sees it", () => {
     ).toEqual([...SERVICE_SLUGS]);
   });
 
-  it("styles.css has a dark and a light accent rule per service", () => {
+  it("the brand tokens have a section rule and both themes' accent per service", () => {
+    expect(styles).toContain('@import "@polaris-key/brand/tokens.css";');
     for (const row of SERVICE_TABLE) {
-      const dark = new RegExp(
-        `(^|\\n)\\s*\\[data-service="${row.accent}"\\]\\s*\\{`,
-      );
-      const light = new RegExp(
-        `\\.light \\[data-service="${row.accent}"\\]\\s*\\{`,
+      const rule = new RegExp(
+        `(^|\\n)\\[data-service="${row.accent}"\\]\\s*\\{[^}]*--pk-section-bit:`,
       );
       expect(
-        dark.test(styles),
-        `src/styles.css has no dark [data-service="${row.accent}"] accent rule (service "${row.slug}")`,
+        rule.test(brandTokens),
+        `@polaris-key/brand tokens.css has no [data-service="${row.accent}"] section rule (service "${row.slug}")`,
       ).toBe(true);
+      // One declaration per theme block: dark (:root), light (media query) and data-theme="light".
       expect(
-        light.test(styles),
-        `src/styles.css has no .light [data-service="${row.accent}"] accent rule (service "${row.slug}")`,
-      ).toBe(true);
+        brandTokens.split(`--pk-service-${row.accent}:`).length - 1,
+        `@polaris-key/brand tokens.css lacks a dark or light --pk-service-${row.accent} (service "${row.slug}")`,
+      ).toBe(3);
     }
   });
 

@@ -1,6 +1,11 @@
 # Generated artifacts — byte-compared against their emitters (docsCspParity, the docs
 # freshness suite), so prettier must never rewrite them.
 packages/worker/src/docsCsp.generated.ts
+# The SPA shells: their inline pre-paint theme script is allowed by a CSP hash
+# (packages/worker/src/adminCsp.ts), so a reformat would break the page. Hash-checked by
+# packages/admin/test/theme.test.tsx and packages/worker/test/adminCspParity.test.ts.
+packages/admin/index.html
+packages/admin/manage.html
 packages/docs/src/content/docs/reference/
 # P2b-05's storefront feed goldens: byte-compared against the rendered feed bodies.
 packages/worker/test/fixtures/feeds/
@@ -80,3 +85,5 @@ sdks/godot/native/macos/dist/
 sdks/godot/native/windows/dist/
 sdks/godot/native/windows/bin/
 sdks/godot/native/windows/velopack/shim/target/
+# P5-05: the hosted XCTest project's generated project, derived data and logs (run.sh).
+sdks/swift/PlatformHostTests/build/

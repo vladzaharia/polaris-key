@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fetch_godot.sh <version> <dir> [--template | --host-template]
+# fetch_godot.sh <version> <dir> [--template | --host-template | --ios-template]
 #
 # Puts the official Godot <version> editor for this host at <dir>/godot and, with --template
 # (Linux only), the official linux_release.x86_64 export template at
@@ -13,6 +13,10 @@
 # execs it) and Windows under Git Bash (the console build, with <dir>/godot a wrapper that execs
 # it, so stdout reaches the log).
 #
+# With --ios-template (macOS only; P5-05's iOS export check) it extracts templates/ios.zip and
+# templates/version.txt from the same pinned .tpz into <dir>/templates/, for the caller to copy
+# into Godot's export_templates/<version>.stable directory.
+#
 # The template comes from the full .tpz (1.28 GB): only templates/linux_release.x86_64 is
 # extracted and the archive is deleted, so the cache holds one 73 MB binary. A Range fetch of the
 # single zip member would be smaller but could not be checked against the upstream hash.
@@ -20,7 +24,7 @@
 set -eu
 
 if [ $# -lt 2 ]; then
-  echo "usage: fetch_godot.sh <version> <dir> [--template]" >&2
+  echo "usage: fetch_godot.sh <version> <dir> [--template | --host-template | --ios-template]" >&2
   exit 2
 fi
 VERSION="$1"
@@ -31,6 +35,7 @@ BASE="https://github.com/godotengine/godot/releases/download/${VERSION}-stable"
 
 need_editor=1
 need_template=0
+need_ios=0
 [ -x "$DIR/godot" ] && need_editor=0
 TEMPLATE_FILE=linux_release.x86_64
 if [ "$TEMPLATE" = "--host-template" ]; then
@@ -42,7 +47,10 @@ fi
 if { [ "$TEMPLATE" = "--template" ] || [ "$TEMPLATE" = "--host-template" ]; } && [ ! -f "$DIR/$TEMPLATE_FILE" ]; then
   need_template=1
 fi
-if [ "$need_editor" = 0 ] && [ "$need_template" = 0 ]; then
+if [ "$TEMPLATE" = "--ios-template" ] && [ ! -f "$DIR/templates/ios.zip" ]; then
+  need_ios=1
+fi
+if [ "$need_editor" = 0 ] && [ "$need_template" = 0 ] && [ "$need_ios" = 0 ]; then
   echo "fetch_godot: $DIR already holds Godot $VERSION"
   exit 0
 fi
@@ -132,6 +140,14 @@ if [ "$need_template" = 1 ]; then
   rm -f "$WORK/$tpz"
   mv "$WORK/$TEMPLATE_FILE" "$DIR/$TEMPLATE_FILE"
   chmod +x "$DIR/$TEMPLATE_FILE"
+fi
+
+if [ "$need_ios" = 1 ]; then
+  tpz="Godot_v${VERSION}-stable_export_templates.tpz"
+  fetch "$tpz"
+  mkdir -p "$DIR/templates"
+  unzip -q -o -j "$WORK/$tpz" "templates/ios.zip" "templates/version.txt" -d "$DIR/templates"
+  rm -f "$WORK/$tpz"
 fi
 
 echo "fetch_godot: Godot $VERSION ready in $DIR"

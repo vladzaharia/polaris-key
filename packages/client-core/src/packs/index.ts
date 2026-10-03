@@ -35,6 +35,23 @@ export {
   type ParseChunkIndexOptions,
   type ParseChunkIndexResult,
 } from "./chunks.js";
+export {
+  applyChunk,
+  chunkRangeFetch,
+  chunkRuns,
+  seedMap,
+  type ApplyChunkOptions,
+  type ApplyChunkPorts,
+  type ChunkApplyErrorCode,
+  type ChunkApplyFailure,
+  type ChunkOutput,
+  type ChunkRangeFetch,
+  type ChunkRangeResponse,
+  type ChunkRun,
+  type ChunkSeed,
+  type ChunkVerdict,
+  type ChunkVerdictOk,
+} from "./chunkApply.js";
 export { packSetId, type PackSetEntry } from "./set.js";
 export {
   CONTENT_ID_PATTERN,
@@ -78,6 +95,7 @@ export {
   FILES_TREE_HANDLER,
   PackEngine,
   PackError,
+  type ChunkIndexStore,
   type EmbeddedBaseline,
   type InstalledPayload,
   type ObjectFetch,

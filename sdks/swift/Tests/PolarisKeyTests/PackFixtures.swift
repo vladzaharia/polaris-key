@@ -323,6 +323,11 @@ final class WrappedStorage: PackStorage, @unchecked Sendable {
         try base.stagedObject(planId, sha256)
     }
     func output(_ planId: String, _ layout: String) throws -> PackOutput { try base.output(planId, layout) }
+    func output(_ planId: String, _ layout: String, resume: Bool) throws -> PackOutput {
+        try base.output(planId, layout, resume: resume)
+    }
+    var chunkIndexes: (any ChunkIndexStore)? { base.chunkIndexes }
+    var runJournal: (any RunJournalStore)? { base.runJournal }
     func commit(_ planId: String, _ packId: String, _ payloadSha256: String, _ layout: String, _ index: FilesIndexDoc?)
         throws -> String
     { try base.commit(planId, packId, payloadSha256, layout, index) }

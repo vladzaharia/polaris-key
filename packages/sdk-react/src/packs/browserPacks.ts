@@ -377,7 +377,12 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
               "Discovery names no blob endpoint.",
             );
           const headers: Record<string, string> = { ...(opts.headers ?? {}) };
-          if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
+          // A chunk run (P4-11) is one bounded single range (Accept-Encoding is the browser's:
+          // a forbidden header). `If-Range` costs one CORS preflight per bundle URL per
+          // Access-Control-Max-Age (notes/S-02 §4.4).
+          if (req.length !== undefined)
+            headers.range = `bytes=${req.offset}-${req.offset + req.length - 1}`;
+          else if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
           if (req.ifRange !== null) headers["if-range"] = req.ifRange;
           const res = await fetchImpl(expand(t, req.sha256), {
             credentials: "include",
@@ -387,6 +392,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
           return {
             status: res.status,
             contentRange: res.headers.get("content-range"),
+            etag: res.headers.get("etag"),
             chunks: (async function* () {
               if (!body) return;
               const reader = body.getReader();

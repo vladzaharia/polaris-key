@@ -94,7 +94,7 @@ static func canon(v: Variant) -> String:
 				parts.append(canon(x))
 			return "[" + ",".join(parts) + "]"
 		TYPE_FLOAT:
-			return str(int(v)) if v == floor(v) and absf(v) < 9.0e15 else JSON.stringify(v)
+			return str(int(v)) if v == floor(v) and absf(v) <= 9007199254740992.0 else JSON.stringify(v)
 		TYPE_INT:
 			return str(v)
 		TYPE_BOOL:

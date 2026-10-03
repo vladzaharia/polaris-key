@@ -49,6 +49,11 @@ PROBE_TARGET = (
 ).encode("ascii")
 
 __all__ = [
+    "ChunkServer",
+    "ContainerPack",
+    "chunk_data",
+    "container_pack",
+    "write_chunk_index",
     "PRODUCT",
     "RELEASE_KEYS",
     "PRODUCT_TRUST",
@@ -315,6 +320,241 @@ class ByteServer:
             content_range=f"bytes {offset}-{len(b) - 1}/{len(b)}" if ranged else None,
             chunks=chunks(),
         )
+
+
+# ── P4-11: container packs with a pkey-chunks/1 index ─────────────────────────────────────────
+
+
+def chunk_data(name: str, size: int = 65536) -> bytes:
+    """``size`` deterministic pseudo-random bytes named ``name`` (a chunk's content)."""
+    out = bytearray()
+    i = 0
+    while len(out) < size:
+        out += hashlib.sha256(f"{name}:{i}".encode("utf-8")).digest()
+        i += 1
+    return bytes(out[:size])
+
+
+def write_chunk_index(
+    records: List[List[Any]], bundles: List[List[Any]], payload_size: int, payload_sha256: str
+) -> bytes:
+    """A small ``pkey-chunks/1`` writer (plans/P4-10.md §2.3): the 64-byte header, then 48-byte
+    records ``[idHex, len, clen, bundle, offset]`` and bundles ``[shaHex, size]``."""
+
+    def u32(v: int) -> bytes:
+        return int(v).to_bytes(4, "little")
+
+    def u64(v: int) -> bytes:
+        return u32(v % 4294967296) + u32(v // 4294967296)
+
+    out = bytearray(b"PKEYCHNK")
+    out += (1).to_bytes(2, "little") + (48).to_bytes(2, "little")
+    out += u32(0) + u32(len(records)) + u32(len(bundles)) + u64(payload_size)
+    out += bytes.fromhex(payload_sha256)
+    for cid, length, clen, bundle, offset in records:
+        out += bytes.fromhex(cid) + u32(length) + u32(clen) + u32(bundle) + u32(offset)
+    for bsha, size in bundles:
+        out += bytes.fromhex(bsha) + u64(size) + u64(0)
+    return bytes(out)
+
+
+@dataclass
+class ContainerPack:
+    pack_id: str
+    version: str
+    seq: int
+    jws: str
+    record_sha256: str
+    payload: bytes
+    payload_sha256: str
+    objects: Dict[str, bytes]
+    index_sha256: str
+    index_bytes: int
+    full_sha256: str
+    #: Each chunk name → (bundle SHA-256, offset in it), in the bundles' order.
+    located: Dict[str, Any]
+    #: The bundles' SHA-256, in index order.
+    bundles: List[str]
+
+
+def container_pack(
+    pack_id: str,
+    version: str,
+    seq: int,
+    order: List[str],
+    bundles: List[List[str]],
+    *,
+    type: str = "custom.blob",
+    activation: str = "restart",
+    signer: Optional[Dict[str, str]] = None,
+) -> ContainerPack:
+    """A container pack release whose payload is the chunks named in ``order`` (64 KiB of
+    :func:`chunk_data` each), with a ``pkey-chunks/1`` index over ``bundles`` (each a list of
+    chunk names, filler included, stored raw: ``clen == len``). Every object is raw (``codec:
+    none``): the full payload, a one-entry container files index with an empty ``gaps``, the
+    chunk index and the bundles."""
+    names = set(order) | {n for b in bundles for n in b}
+    data = {n: chunk_data(n) for n in names}
+    bundle_bytes: List[bytes] = []
+    located: Dict[str, Any] = {}
+    where: Dict[str, Any] = {}
+    for bi, b in enumerate(bundles):
+        at = 0
+        parts = []
+        for n in b:
+            if n not in where:
+                where[n] = (bi, at)
+            parts.append(data[n])
+            at += len(data[n])
+        bundle_bytes.append(b"".join(parts))
+    bundle_sha = [sha(b) for b in bundle_bytes]
+    for n, (bi, at) in where.items():
+        located[n] = (bundle_sha[bi], at)
+    payload = b"".join(data[n] for n in order)
+    psha = sha(payload)
+    records = [[sha(data[n]), len(data[n]), len(data[n]), where[n][0], where[n][1]] for n in order]
+    index = write_chunk_index(records, [[bundle_sha[i], len(b)] for i, b in enumerate(bundle_bytes)], len(payload), psha)
+    files_index = _j(
+        {
+            "format": "pkey-files/1",
+            "layout": "container",
+            "payload": {"size": len(payload), "sha256": psha},
+            "files": [
+                {
+                    "path": "payload.bin",
+                    "size": len(payload),
+                    "sha256": psha,
+                    "offset": 0,
+                    "blob": {"sha256": psha, "bytes": len(payload), "codec": "none"},
+                }
+            ],
+        }
+    )
+    objects: Dict[str, bytes] = {psha: payload, sha(files_index): files_index, sha(index): index, sha(b""): b""}
+    for i, b in enumerate(bundle_bytes):
+        objects[bundle_sha[i]] = b
+    variant: Dict[str, Any] = {
+        "variant": {},
+        "payload": {"size": len(payload), "sha256": psha},
+        "full": {"sha256": psha, "bytes": len(payload), "size": len(payload), "codec": "none"},
+        "files": {
+            "format": "pkey-files/1",
+            "layout": "container",
+            "sha256": sha(files_index),
+            "bytes": len(files_index),
+            "size": len(files_index),
+            "codec": "none",
+            "gaps": {"sha256": sha(b""), "bytes": 0, "size": 0, "codec": "none"},
+        },
+        "chunks": {
+            "format": "pkey-chunks/1",
+            "sha256": sha(index),
+            "bytes": len(index),
+            "size": len(index),
+            "codec": "none",
+        },
+    }
+    record: Dict[str, Any] = {
+        "schemaVersion": 1,
+        "aud": PRODUCT,
+        "deliverable": pack_id,
+        "kind": "pack",
+        "version": version,
+        "seq": seq,
+        "issuedAt": 1759300000 + seq,
+        "type": type,
+        "formatVersion": 1,
+        "handler": {"activation": activation},
+        "variants": [variant],
+    }
+    if signer is not None:
+        jws = sign_jws(record, signer["pem"], signer["kid"], "pkey-release+jws")
+    else:
+        jws = sign_jws(record, _key(RELEASE_KID)["privateKeyPkcs8Pem"], RELEASE_KID, "pkey-release+jws")
+    return ContainerPack(
+        pack_id=pack_id,
+        version=version,
+        seq=seq,
+        jws=jws,
+        record_sha256=sha(jws),
+        payload=payload,
+        payload_sha256=psha,
+        objects=objects,
+        index_sha256=sha(index),
+        index_bytes=len(index),
+        full_sha256=psha,
+        located=located,
+        bundles=bundle_sha,
+    )
+
+
+@dataclass
+class ChunkServer:
+    """A fake blob server with bounded ``Range`` (``bytes=o-e``, clipped at the object's end),
+    ``If-Range`` and ``ETag: "<sha256>"``, recording every request. ``range_200`` answers every
+    ranged request with the whole object (``200``); ``cut_range`` cuts the body of that ranged
+    request (1-based) by raising after ``cut_at`` bytes."""
+
+    records: Dict[str, str] = field(default_factory=dict)
+    objects: Dict[str, bytes] = field(default_factory=dict)
+    calls: List[Dict[str, Any]] = field(default_factory=list)
+    range_200: bool = False
+    cut_range: Optional[int] = None
+    cut_at: int = 1000
+    ranged: int = 0
+    #: The ``ETag`` sent with every ``206`` instead of the object's own (a changed bundle).
+    range_etag: Optional[str] = None
+
+    @classmethod
+    def of(cls, *packs: Any) -> "ChunkServer":
+        s = cls()
+        for p in packs:
+            s.add(p)
+        return s
+
+    def add(self, p: Any) -> None:
+        self.records[p.record_sha256] = p.jws
+        self.objects.update(p.objects)
+
+    def fetch_record(self, h: str) -> Dict[str, Any]:
+        body = self.records.get(h)
+        return {"ok": False, "code": "not_found"} if body is None else {"ok": True, "body": body}
+
+    def range_calls(self) -> List[Dict[str, Any]]:
+        return [c for c in self.calls if c["length"] is not None]
+
+    def fetch_object(
+        self, sha256: str, offset: int, if_range: Optional[str], length: Optional[int] = None
+    ) -> ObjectResponse:
+        self.calls.append({"sha256": sha256, "offset": offset, "ifRange": if_range, "length": length})
+        b = self.objects.get(sha256)
+        if b is None:
+            return ObjectResponse(status=404, content_range=None, chunks=iter(()))
+        etag = f'"{sha256}"'
+        cut: Optional[int] = None
+        if length is not None:
+            self.ranged += 1
+            if self.cut_range == self.ranged:
+                cut = self.cut_at
+        validator_ok = if_range is None or if_range == etag
+        if length is not None and validator_ok and not self.range_200 and offset < len(b):
+            end = min(offset + length - 1, len(b) - 1)
+            status, body, cr = 206, b[offset : end + 1], f"bytes {offset}-{end}/{len(b)}"
+        elif length is None and offset > 0 and validator_ok:
+            status, body, cr = 206, b[offset:], f"bytes {offset}-{len(b) - 1}/{len(b)}"
+        else:
+            status, body, cr = 200, b, None
+
+        def chunks() -> Iterator[bytes]:
+            if cut is not None:
+                yield body[:cut]
+                raise ConnectionError("connection reset")
+            for at in range(0, len(body), 8192):
+                yield body[at : at + 8192]
+
+        if status == 206 and self.range_etag is not None:
+            etag = self.range_etag
+        return ObjectResponse(status=status, content_range=cr, chunks=chunks(), etag=etag)
 
 
 def revocation_for(

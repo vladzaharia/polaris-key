@@ -58,7 +58,7 @@ export function Deliverables({ slug }: { slug: string }): React.ReactElement {
           <button
             type="button"
             onClick={() => open(d)}
-            className="inline-flex items-center gap-1 font-mono text-xs underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1 font-mono text-xs underline-offset-2 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={`Open pack ${d.id}`}
           >
             {d.id}

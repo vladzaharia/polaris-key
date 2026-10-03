@@ -32,7 +32,7 @@ export function RotateKeyResultDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <KeyRound aria-hidden className="size-5 text-primary" />
+            <KeyRound aria-hidden className="size-5 text-accent-fg" />
             Signing key prepared
           </DialogTitle>
           <DialogDescription>

@@ -451,7 +451,7 @@ function SummaryChips({
             type="button"
             aria-pressed={active}
             onClick={() => onPlatform(active ? null : p.value)}
-            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Badge variant={active ? "success" : "outline"}>
               {p.value} {p.count}

@@ -10,12 +10,14 @@
 //   stampCases        §2.8's content stamp                      → parseContentStamp, and
 //                     `expect.holds` (when present)             → holdsOf (stampHolds)
 //   frameWindowCases  §2.7 rule 3's header window               → frameWindow
-//   applyCases        §2.9's appliers, verdicts and counters    → applyFull, applyDelta, applyFile
-//   chunkIndexCases   plans/P4-10.md §2.3 (planned: P4-11)      inputs materialised only
+//   applyCases        §2.9's appliers, verdicts and counters    → applyFull, applyDelta, applyFile,
+//                                                                  applyChunk
+//   chunkIndexCases   plans/P4-10.md §2.3's parser               → parseChunkIndex
 //
 // Content corpus v2 (plans/P4-10.md §4.3) adds `chunkIndexCases` and eight `strategy: chunk`
-// apply cases. Swift's parser and applier are P4-11's: both are declared planned by exact id
-// (and in `parity.json`), never skipped silently.
+// apply cases, run through P4-11's `parseChunkIndex` and `applyChunk`: seeds parsed unbound
+// (`parseChunkIndexBytes`), a fetcher that answers each single-range request with
+// `objects[sha256]` sliced to the range and clipped at the object's end, and an in-memory output.
 //
 // `content/` is not mirrored into the test bundle (plans/P4-01.md §4.1, §8.4): this runner reads
 // it from the checkout through `#filePath`, never `Bundle.module`. Verdicts are compared as JSON
@@ -139,38 +141,97 @@ final class ContentConformanceTests: XCTestCase {
         XCTAssertEqual(c["applyCases"]?.arrayValue?.count, 27)
     }
 
-    /// plans/P4-10.md §4.3: the sections Swift declares planned until P4-11, by exact id.
-    static let chunkIndexPlanned = [
-        "chunks-v1-valid", "chunks-v2-valid", "chunks-short-header", "chunks-bad-magic",
-        "chunks-bad-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-bad-length",
-        "chunks-bad-length-count", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref",
-        "chunks-bad-bundle-range", "chunks-reserved-nonzero", "chunks-size-mismatch",
-        "chunks-zero-clen", "chunks-bad-length-wrap", "chunks-size-high-word", "chunks-ref-tampered",
-        "chunks-ref-over-max", "chunks-payload-mismatch", "chunks-bundle-size-saturated",
-    ]
-    static let chunkApplyPlanned = [
+    /// plans/P4-10.md §4.3: the eight chunk apply cases, every one run (never skipped).
+    static let chunkApplyCases = [
         "chunk-v1-to-v2", "chunk-no-seed", "chunk-tampered-zstd", "chunk-tampered-raw",
         "chunk-bundle-truncated", "chunk-seed-tampered", "chunk-seed-tampered-repair",
         "chunk-index-for-other-payload",
     ]
 
-    func testChunkSectionsAreDeclaredPlannedByExactId() throws {
+    func testChunkApplyCaseIdsAreExactlyTheCorpusChunkCases() throws {
         let c = try ContentCorpus.load()
-        let idx = try XCTUnwrap(c["chunkIndexCases"]?.arrayValue).compactMap { $0.objectValue?["id"]?.stringValue }
-        XCTAssertEqual(idx, Self.chunkIndexPlanned)
         let apply = try XCTUnwrap(c["applyCases"]?.arrayValue).compactMap { $0.objectValue }
             .filter { $0["strategy"]?.stringValue == "chunk" }.compactMap { $0["id"]?.stringValue }
-        XCTAssertEqual(apply, Self.chunkApplyPlanned)
-        var u = URL(fileURLWithPath: #filePath)
-        for _ in 0..<3 { u.deleteLastPathComponent() }
-        let parity = try JSONDecoder().decode(
-            JSONValue.self, from: Data(contentsOf: u.appendingPathComponent("parity.json")))
-        for fid in ["packs.index.chunks", "packs.apply.chunk"] {
-            let e = parity.objectValue?["features"]?.objectValue?[fid]?.objectValue
-            XCTAssertEqual(e?["status"]?.stringValue, "planned", fid)
-            XCTAssertEqual(e?["wp"]?.stringValue, "P4-11", fid)
+        XCTAssertEqual(apply, Self.chunkApplyCases)
+    }
+
+    // @pkey-feature packs.index.chunks
+    /// plans/P4-10.md §2.3: every `chunkIndexCases` vector through `parseChunkIndex`, under every
+    /// zstd backend.
+    func testChunkIndexCases() throws {
+        let blobs = try ContentCorpus.blobs()
+        let cases = try XCTUnwrap(ContentCorpus.load()["chunkIndexCases"]?.arrayValue)
+        XCTAssertEqual(cases.count, 22)
+        for (label, zstd) in Self.backends {
+            for c in cases {
+                let o = try XCTUnwrap(c.objectValue)
+                let stored = try materialise(o["stored"]!, blobs)
+                let r = parseChunkIndex(
+                    stored, ref: PackObjectRef(json: o["chunks"]), payload: PackPayload(json: o["payload"]),
+                    decode: { try zstd.decode($0, size: $1) })
+                XCTAssertEqual(r.json, normalisedJSON(o["expect"]!), "[\(label)] \(o["id"]!): \(o["description"]!)")
+            }
         }
-        print("planned (P4-11): \(idx.count) chunkIndexCases, \(apply.count) chunk applyCases")
+    }
+
+    /// The u64 rule (plans/P4-10.md §2.3): low word first, saturated at 2^53, at any offset.
+    func testChunkU64RuleAtUnalignedOffsets() {
+        for pad in 0..<8 {
+            var b = [UInt8](repeating: 0xee, count: pad)
+            b += [0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00]
+            XCTAssertEqual(readChunkU64(b, pad), 2 * 4_294_967_296 + 1)
+            b = [UInt8](repeating: 0, count: pad) + [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00]
+            XCTAssertEqual(readChunkU64(b, pad), 9_007_199_254_740_991)
+            b = [UInt8](repeating: 0, count: pad) + [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00]
+            XCTAssertEqual(readChunkU64(b, pad), CHUNKS_U64_MAX)
+            b = [UInt8](repeating: 0, count: pad) + [UInt8](repeating: 0xff, count: 8)
+            XCTAssertEqual(readChunkU64(b, pad), CHUNKS_U64_MAX)
+        }
+    }
+
+    // @pkey-feature packs.apply.chunk
+    /// plans/P4-10.md §2.5: the eight `strategy: chunk` apply cases through `applyChunk`, under
+    /// every zstd backend. Seeds are parsed unbound; the fetcher answers each range with
+    /// `objects[bundle]` sliced to it and clipped at the object's end; the output is memory.
+    func testChunkApplyCases() async throws {
+        let blobs = try ContentCorpus.blobs()
+        let cases = try XCTUnwrap(ContentCorpus.load()["applyCases"]?.arrayValue).compactMap(\.objectValue)
+            .filter { $0["strategy"]?.stringValue == "chunk" }
+        XCTAssertEqual(cases.count, 8)
+        for (label, zstd) in Self.backends {
+            for o in cases {
+                let id = o["id"]!.stringValue!
+                var store: [String: [UInt8]] = [:]
+                for (h, src) in o["objects"]?.objectValue ?? [:] { store[h] = try materialise(src, blobs) }
+                var seeds: [ChunkSeed] = []
+                for sd in o["seeds"]?.arrayValue ?? [] {
+                    let so = try XCTUnwrap(sd.objectValue)
+                    if case .ok(let index) = parseChunkIndexBytes(try materialise(so["index"]!, blobs), payload: nil) {
+                        seeds.append(ChunkSeed(index: index, payload: MemorySource(try materialise(so["payload"]!, blobs))))
+                    }
+                }
+                let variant = try XCTUnwrap(PackVariant(json: o["variant"]!), id)
+                let objects = store
+                let output = MemoryChunkOutput(size: variant.payload.size)
+                let r = await applyChunk(
+                    variant, seeds: seeds,
+                    ApplyChunkPorts(
+                        objects: { h in objects[h].map { MemorySource($0) } }, zstd: zstd,
+                        fetchRange: { req in
+                            let b = objects[req.bundle] ?? []
+                            let lo = min(req.offset, b.count)
+                            let hi = min(req.offset + req.length, b.count)
+                            let part = Array(b[lo..<max(lo, hi)])
+                            return .ok(AsyncThrowingStream { c in
+                                c.yield(part)
+                                c.finish()
+                            })
+                        },
+                        output: output),
+                    repair: o["repair"]?.boolValue == true)
+                XCTAssertEqual(r.verdict.json, normalisedJSON(o["expect"]!), "[\(label)] \(id): \(o["description"]!)")
+            }
+        }
     }
 
     /// The `<ref>` inputs (the `put*` mutations included) materialise to the bytes each case's
@@ -235,8 +296,8 @@ final class ContentConformanceTests: XCTestCase {
         for c in cases {
             let o = try XCTUnwrap(c.objectValue)
             let id = o["id"]!.stringValue!
-            // Planned (P4-11), asserted by exact id in testChunkSectionsAreDeclaredPlannedByExactId.
-            if o["strategy"]?.stringValue == "chunk", Self.chunkApplyPlanned.contains(id) { continue }
+            // Run by testChunkApplyCases (async), whose ids are asserted exact.
+            if o["strategy"]?.stringValue == "chunk" { continue }
             var store: [String: [UInt8]] = [:]
             for (h, src) in o["objects"]?.objectValue ?? [:] { store[h] = try materialise(src, blobs) }
             let objects: ObjectPort = { h in store[h].map { MemorySource($0) } }
@@ -316,5 +377,28 @@ final class ContentConformanceTests: XCTestCase {
                 JSONValue.object(["window": w.map { .int($0) } ?? .null]), normalisedJSON(o["expect"]!),
                 "\(o["id"]!): \(o["description"]!)")
         }
+    }
+}
+
+/// An in-memory chunk output of a fixed size (the corpus runner's `new Uint8Array(size)`).
+final class MemoryChunkOutput: ChunkOutput, @unchecked Sendable {
+    private let lock = NSLock()
+    private var bytes: [UInt8]
+
+    init(size: Int) { bytes = [UInt8](repeating: 0, count: size) }
+
+    func write(_ offset: Int, _ data: [UInt8]) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard offset >= 0, offset + data.count <= bytes.count else { throw PackPortError.short }
+        bytes.replaceSubrange(offset..<(offset + data.count), with: data)
+    }
+
+    func read(_ offset: Int, _ length: Int) throws -> [UInt8] {
+        lock.lock()
+        defer { lock.unlock() }
+        let lo = min(max(offset, 0), bytes.count)
+        let hi = min(max(offset + length, lo), bytes.count)
+        return Array(bytes[lo..<hi])
     }
 }

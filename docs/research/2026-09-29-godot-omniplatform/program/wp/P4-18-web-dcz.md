@@ -49,6 +49,9 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
   (`server.mjs`, `cdtcap.mjs`, `worker.mjs`, `zstddec-prefix.mjs`) and `prototype/content/wasm/zdec.c`.
 - The distribution blob route (P4-05, P2b-04) and its tests; the React SDK's pack wiring and OPFS
   worker (P4-06, P4-11); the per-product CORS allowlist (P0-05); the Chromium job (P1b-05).
+  **Amendment (P4-11):** P4-11 did not build the OPFS sync-access-handle worker. React still stages
+  through P4-06's main-thread OPFS API (a write-behind container output); P4-18 builds the worker
+  behind the same `PackStorage` port (see the P4-11 brief's "Corrections from implementation").
 
 ## Scope
 
@@ -131,8 +134,9 @@ That moves README P4 v3's "web Compression Dictionary Transport" from speculativ
 
 1. Worker: the payload URL (rule 10), `Content-Encoding: zstd` streaming, `Use-As-Dictionary`,
    `dcz` on matching requests, the optional `409` guard, headers and caching; Worker tests.
-2. React SDK: `full` via the payload URL when available, the `dcz` path in the OPFS worker,
-   verification, fallback chain.
+2. React SDK: the OPFS sync-access-handle worker behind the `PackStorage` port (not built by
+   P4-11, amendment above), `full` via the payload URL when available, the `dcz` path in the OPFS
+   worker, verification, fallback chain.
 3. Playwright tests: dictionary offered and used; evicted or absent dictionary falls back; over
    100 MiB never offered; gated payload never offered; cross-origin with CORS.
 4. Adopter docs; the green gate.

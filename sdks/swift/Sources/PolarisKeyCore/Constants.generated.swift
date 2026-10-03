@@ -92,6 +92,7 @@ public enum ErrorCode {
     public static let httpError = "http-error"
     public static let invalidResponse = "invalid-response"
     public static let storeFailed = "store-failed"
+    public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
     public static let feedRejected = "feed-rejected"
@@ -230,6 +231,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "http-error",
     "invalid-response",
     "store-failed",
+    "platform-error",
     "no-token",
     "mint-unavailable",
     "feed-rejected",
@@ -368,6 +370,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "http-error": "client",
     "invalid-response": "client",
     "store-failed": "client",
+    "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",
     "feed-rejected": "client",
@@ -1269,10 +1272,10 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.delegation": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.plan": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.files": CapabilityRow(status: "implemented", service: "release", na: []),
-    "packs.index.chunks": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.index.chunks": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.apply.full": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.apply.file": CapabilityRow(status: "implemented", service: "release", na: []),
-    "packs.apply.chunk": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.apply.chunk": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.apply.delta": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.state": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.handlers": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1293,4 +1296,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "bb19e9124c31dd360d1ab4c5304eaeb496c7d43105eb77a274bcc57e87a3b5ff"
+public let CAPABILITY_DIGEST = "9a1504edba5d1830d162faa8c558d585334f103b1a42993d5218a6bfd13387e8"
