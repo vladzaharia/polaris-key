@@ -95,6 +95,7 @@ export {
   FILES_TREE_HANDLER,
   PackEngine,
   PackError,
+  type ChunkIndexStore,
   type EmbeddedBaseline,
   type InstalledPayload,
   type ObjectFetch,

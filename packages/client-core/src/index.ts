@@ -199,6 +199,7 @@ export {
   type ApplyVerdict,
   type ByteSink,
   type ByteSource,
+  type ChunkIndexStore,
   type ContainerVerdict,
   type EmbeddedBaseline,
   type EmbeddedPayload,
