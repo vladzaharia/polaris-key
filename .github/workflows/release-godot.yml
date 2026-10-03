@@ -145,6 +145,6 @@ jobs:
             --title "Polaris Key Godot $VERSION" \
             --notes-file release/NOTES.md \
             --verify-tag "${flags[@]}" \
-            release/polaris-key-godot-v$VERSION.zip \
-            release/polaris-key-godot-v$VERSION-assetlib.zip \
+            "release/polaris-key-godot-v$VERSION.zip" \
+            "release/polaris-key-godot-v$VERSION-assetlib.zip" \
             release/SHA256SUMS
