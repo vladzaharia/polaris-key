@@ -25,10 +25,12 @@
  */
 
 import type { FetchImpl } from "../../../../core/outletTokens.js";
-import { readCappedText } from "../../../../core/readCapped.js";
+import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
 import { STORE_ID } from "./setup.js";
 
 export type { FetchImpl };
+/** Re-exported: the shared redirect test lives in `core/readCapped.ts`. */
+export { isRedirect };
 
 export const STORE_API_ORIGIN = "https://manage.devcenter.microsoft.com";
 const PREFIX = "/v1.0/my/applications";
@@ -216,14 +218,6 @@ export class MsStoreClient {
       "flight submission",
     );
   }
-}
-
-/** A 3xx, or the opaque redirect a `redirect: "manual"` fetch answers in some runtimes. */
-export function isRedirect(res: Response): boolean {
-  return (
-    (res.status >= 300 && res.status < 400) ||
-    (res.type as string) === "opaqueredirect"
-  );
 }
 
 function checkId(id: string): string {

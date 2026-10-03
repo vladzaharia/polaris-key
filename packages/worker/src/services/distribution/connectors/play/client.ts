@@ -16,6 +16,10 @@
  *   - **429.** Google's quota is 3,000 queries a minute per bucket (notes/E2 §A1 "Quotas"); the
  *     poller is far below it, but a 429 is retried after `Retry-After` (capped), else an
  *     exponential backoff with jitter, at most `maxRetries` times; then `PlayError(429)`.
+ *   - **No redirects, bounded bodies.** `redirect: "manual"`, and any 3xx (or opaque redirect)
+ *     is a failure (`PlayError` with that status), so the bearer token never reaches a
+ *     `Location`. A body is read through `readCappedText` (at most `MAX_RESPONSE_BYTES`); an
+ *     oversized body is `PlayError(502)`, the same "unreadable answer" as malformed JSON.
  *   - **Errors carry a status line only** (`PlayError.message`), never a response body: the
  *     message may end up in `outlet_credentials.last_error` and on the connector page.
  *
@@ -23,6 +27,7 @@
  */
 
 import type { FetchImpl } from "../../../../core/outletTokens.js";
+import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
 
 export type { FetchImpl };
 
@@ -34,6 +39,14 @@ export const PLAY_REPORTING_ORIGIN =
   "https://playdeveloperreporting.googleapis.com";
 export const PLAY_REPORTING_SCOPE =
   "https://www.googleapis.com/auth/playdeveloperreporting";
+
+/**
+ * The most of one response body read. The edits API answers single small resources (an edit, a
+ * track list, a listing) and the Reporting API's `:query` pages are bounded by `pageSize`
+ * (`play/vitals.ts`); none is more than tens of KiB in practice. 4 MiB — the Microsoft Store
+ * client's cap — only bounds what a misbehaving endpoint could make the isolate buffer.
+ */
+export const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 /** An Android package name: it becomes a URL segment, so it is checked here as well. */
 const PACKAGE_NAME = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
@@ -166,6 +179,8 @@ export class GoogleApiClient {
     const token = await this.bearer(method, label);
     const init: RequestInit = {
       method,
+      // A redirect is a failure, never followed: the bearer token must not reach another URL.
+      redirect: "manual",
       headers: {
         authorization: `Bearer ${token}`,
         accept: "application/json",
@@ -183,16 +198,21 @@ export class GoogleApiClient {
         await this.sleep(backoffMillis(res, attempt));
         continue;
       }
-      if (!res.ok) {
-        await res.body?.cancel();
+      if (!res.ok || isRedirect(res)) {
+        await res.body?.cancel().catch(() => undefined);
         throw new PlayError(res.status, method, label);
       }
-      const text = await res.text();
-      if (text.trim() === "") return null;
       let parsed: unknown;
       try {
+        const text = await readCappedText(
+          res,
+          MAX_RESPONSE_BYTES,
+          () => new PlayError(502, method, label),
+        );
+        if (text.trim() === "") return null;
         parsed = JSON.parse(text);
       } catch {
+        // Oversized, a broken stream or malformed JSON: one "unreadable answer".
         throw new PlayError(502, method, label);
       }
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))

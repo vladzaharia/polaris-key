@@ -9,7 +9,9 @@
  *   - `googleAccessToken` — an OAuth access token for a Google service account through the
  *     JWT-bearer grant (RFC 7523): an RS256 assertion posted to Google's token endpoint. Cached in
  *     KV, SEALED under the `outlet-credential` AAD kind (a KV dump yields ciphertext), until
- *     300 s before Google's `expires_in`.
+ *     300 s before Google's `expires_in`. The exchange sends `redirect: "manual"` (any 3xx is a
+ *     failure, so the assertion is never re-posted elsewhere) and reads at most
+ *     `MAX_GOOGLE_TOKEN_RESPONSE_BYTES` of the answer.
  *   - `readSealedToken` / `writeSealedToken` / `outletTokenSlot` / `outletTokenSlotHash` — that
  *     sealed cache, exported so P5-04 caches Microsoft Entra client-credentials tokens the same
  *     way (check by `outletCredentialVersion`, open only on a miss).
@@ -36,6 +38,7 @@ import { sha256Hex } from "../crypto.js";
 import { open, seal, type SealContext } from "../keyvault.js";
 import { pk } from "../kv.js";
 import { signJwtEs256, signJwtRs256 } from "./jwt.js";
+import { isRedirect, readCappedText } from "./readCapped.js";
 import {
   GOOGLE_TOKEN_URI,
   openOutletCredential,
@@ -210,6 +213,12 @@ export const GOOGLE_JWT_BEARER_GRANT =
 const GOOGLE_ASSERTION_LIFETIME = 60 * 60;
 /** The cache stops serving a token this long before Google says it expires. */
 const GOOGLE_CACHE_MARGIN = 300;
+/**
+ * The most of a Google token response read. One is `{access_token, expires_in, token_type}` —
+ * an access token of ~200 B to ~2 KiB — so 64 KiB (the Entra exchange's cap) is generous while
+ * bounding what a misbehaving endpoint could make the isolate buffer.
+ */
+export const MAX_GOOGLE_TOKEN_RESPONSE_BYTES = 64 * 1024;
 
 /**
  * An OAuth access token for the `google-service-account` credential `credentialId` at `scopes`:
@@ -268,19 +277,32 @@ export async function googleAccessToken(
   );
   const res = await fetchImpl(GOOGLE_TOKEN_URI, {
     method: "POST",
+    // Never follow a redirect with the signed assertion in the body.
+    redirect: "manual",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: GOOGLE_JWT_BEARER_GRANT,
       assertion,
     }).toString(),
   });
-  if (!res.ok) throw new Error(`google token exchange failed: ${res.status}`);
+  if (!res.ok || isRedirect(res)) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error(`google token exchange failed: ${res.status}`);
+  }
   let body: { access_token?: unknown; expires_in?: unknown };
   try {
-    body = (await res.json()) as typeof body;
+    body = JSON.parse(
+      await readCappedText(
+        res,
+        MAX_GOOGLE_TOKEN_RESPONSE_BYTES,
+        () => new Error("too large"),
+      ),
+    ) as typeof body;
   } catch {
     throw new Error("google token exchange returned no JSON");
   }
+  // `null`, an array or a scalar is "no token", not a TypeError on the property reads below.
+  if (!body || typeof body !== "object" || Array.isArray(body)) body = {};
   if (
     typeof body.access_token !== "string" ||
     body.access_token.length === 0 ||
