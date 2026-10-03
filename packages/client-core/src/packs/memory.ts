@@ -4,6 +4,7 @@
 // directory store, React's OPFS store). Pure: no I/O.
 
 import type { FilesIndexDoc } from "@polaris-key/protocol/packs";
+import { MAX_CHUNK_INDEX_BYTES } from "@polaris-key/protocol/core";
 import { sha256Hex, treeDigest } from "./files.js";
 import type { InstalledPayload, PackStorage, StagedObject } from "./engine.js";
 import { memorySource, sliceSource, type InstalledFile } from "./ports.js";
@@ -59,7 +60,13 @@ export function memoryPackStorage(
     indexes,
     journals,
     chunkIndexes: {
-      get: async (sha256) => indexes.get(sha256)?.slice() ?? null,
+      get: async (sha256) => {
+        const b = indexes.get(sha256);
+        // Never more than a client accepts (plans/P4-10.md §2.3).
+        return b === undefined || b.byteLength > MAX_CHUNK_INDEX_BYTES
+          ? null
+          : b.slice();
+      },
       put: async (sha256, bytes) => {
         indexes.set(sha256, bytes.slice());
       },

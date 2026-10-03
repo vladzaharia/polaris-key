@@ -243,6 +243,8 @@ export function rangeServer(...packs: ContainerPack[]) {
     ignoreRange: false,
     /** Cut the body of the Nth bounded range request (1-based) after half its bytes. */
     cutRange: 0,
+    /** Objects answered 404 although the server holds them. */
+    missing: new Set<string>(),
     /** Answer bounded ranges with this `ETag` instead of the object's hash. */
     etag: null as string | null,
     ranges: () => calls.filter((c) => c.length !== undefined),
@@ -254,7 +256,9 @@ export function rangeServer(...packs: ContainerPack[]) {
     },
     fetchObject: async (req: RangeCall): Promise<ObjectResponse> => {
       calls.push({ ...req });
-      const b = objects.get(req.sha256);
+      const b = server.missing.has(req.sha256)
+        ? undefined
+        : objects.get(req.sha256);
       if (!b)
         return {
           status: 404,

@@ -315,6 +315,48 @@ describe("PackEngine: chunk sync from seeds (P4-11)", () => {
   });
 });
 
+describe("PackEngine: chunk hardening (P4-11 review)", () => {
+  it("never plans chunk when the host transport declares no range support", async () => {
+    const { v1, v2 } = await chain();
+    const server = rangeServer(v1, v2);
+    const e = engine({ server, stamp: chunkStamp(v1), rangeRequests: false });
+    await e.load();
+    await e.ensure([v1.packId]);
+    server.calls.length = 0;
+    const [install] = await e.ensureReleases([target(v2)]);
+    expect(install!.payloadSha256).toBe(sha(v2.payload));
+    expect(server.ranges()).toHaveLength(0);
+    // The target index is not even fetched: the fetch rule needs range support.
+    expect(server.calls.some((c) => c.sha256 === v2.indexSha256)).toBe(false);
+  });
+
+  it("tries a missing seed index once per process, not on every ensure", async () => {
+    const { v1 } = await chain();
+    const server = rangeServer(v1);
+    const storage = memoryPackStorage();
+    // The index object is gone from the server: the backfill fails.
+    server.missing.add(v1.indexSha256);
+    const e = engine({ server, storage, stamp: chunkStamp(v1) });
+    await e.load();
+    await e.ensure([v1.packId]);
+    await e.ensure([v1.packId]);
+    await e.ensure([v1.packId]);
+    expect(
+      server.calls.filter((c) => c.sha256 === v1.indexSha256),
+    ).toHaveLength(1);
+    expect(storage.indexes.size).toBe(0);
+  });
+
+  it("the in-memory seed store never answers an index over MAX_CHUNK_INDEX_BYTES", async () => {
+    const storage = memoryPackStorage();
+    await storage.chunkIndexes!.put(
+      "ab".repeat(32),
+      new Uint8Array(16 * 1024 * 1024 + 1),
+    );
+    expect(await storage.chunkIndexes!.get("ab".repeat(32))).toBeNull();
+  });
+});
+
 describe("chunkRangeFetch: the exact Content-Range rule (plans/P4-10.md §2.5)", () => {
   const bundle = "ab".repeat(32);
   const body = (n: number) =>

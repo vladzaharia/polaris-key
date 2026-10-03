@@ -358,6 +358,12 @@ export interface PackEngineOptions {
    * instead of failing an allocation. React sets it to its memory budget; Node streams.
    */
   oneShotBudget?: number;
+  /**
+   * Whether `fetchObject` can answer a bounded single range (`length`) with a `206` (P4-11).
+   * Default true. A host transport that cannot (a platform downloader, say) sets false, and the
+   * chunk strategy is never planned, so it can never get stuck on a range it cannot send.
+   */
+  rangeRequests?: boolean;
 }
 
 /** The error the pipeline raises when it cannot proceed. `code` is a registered client code
@@ -1654,7 +1660,8 @@ export class PackEngine {
       delegated === null &&
       variant.files.layout === "container" &&
       chunksRef !== null &&
-      this.opts.storage.chunkIndexes !== undefined
+      this.opts.storage.chunkIndexes !== undefined &&
+      this.opts.rangeRequests !== false
     ) {
       chunkSeedList.push(...(await this.chunkSeeds(packId, installs, seeds)));
       if (chunkSeedList.length > 0) {
@@ -1821,10 +1828,14 @@ export class PackEngine {
    * baseline that has one and lacks it, fetched by hash, verified against its record and its
    * installed payload, and stored by `chunks.sha256`. Best effort: a failure only means no seed.
    */
+  /** Seed indexes this process already tried to fetch (once each, success or not). */
+  private readonly seedIndexTried = new Set<string>();
+
   private async storeSeedIndexes(): Promise<void> {
     const store = this.opts.storage.chunkIndexes;
     if (
       !store ||
+      this.opts.rangeRequests === false ||
       !(this.opts.strategies ?? DEFAULT_STRATEGIES).includes("chunk")
     )
       return;
@@ -1838,6 +1849,9 @@ export class PackEngine {
       if (i.layout !== "container") continue;
       const ref = installChunksRef(i);
       if (ref === null || have.has(ref.sha256)) continue;
+      // Once per index per process: a failing fetch is not retried on every ensure.
+      if (this.seedIndexTried.has(ref.sha256)) continue;
+      this.seedIndexTried.add(ref.sha256);
       try {
         const res = await this.opts.fetchObject({
           sha256: ref.sha256,
