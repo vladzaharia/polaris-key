@@ -22,13 +22,19 @@
     "core.local": {
       "status": "implemented"
     },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "planned",
-      "wp": "P5-06",
-      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). P5-05 adds the iOS Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group, migrated from the file store, failures surfaced as keyring-error), which PKeyCore picks by default on iOS when the Apple plugin is present. The Android Keystore store is P5-06's; no work package owns a desktop keyring."
+      "unowned": true,
+      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
     },
     "license.gate": {
       "status": "implemented"
@@ -61,11 +67,21 @@
       "status": "implemented",
       "note": "OS.get_environment drops a leading U+FEFF from a value, so on a Godot host the two U+FEFF rows of config-matrix.json hold for the resolver, not for the process environment. A number's value is Godot's own reading, which is not correctly rounded, and a string value's \\u0000 reads as U+FFFD (both WIRE-CONTRACT-V3 §10); verdicts are unaffected."
     },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
-    "config.mirror": { "status": "implemented" },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
+    "config.mirror": {
+      "status": "implemented"
+    },
     "devices.fingerprint": {
       "status": "implemented",
       "note": "PKeyFingerprint: per-platform readers as pure parsers over captured output, the capture on a WorkerThreadPool task once a session; the desktop device id hashes MachineGuid (Windows), IOPlatformUUID (macOS) and the rule-2 machine-id (Linux).",
@@ -98,20 +114,37 @@
       "status": "implemented",
       "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
     },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
-    "release.record": { "status": "implemented" },
-    "update.check": { "status": "implemented" },
-    "update.feed": { "status": "implemented" },
-    "update.decide": { "status": "implemented" },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
+    "release.record": {
+      "status": "implemented"
+    },
+    "update.check": {
+      "status": "implemented"
+    },
+    "update.feed": {
+      "status": "implemented"
+    },
+    "update.decide": {
+      "status": "implemented"
+    },
     "update.content": {
       "status": "implemented",
       "note": "P4-24: core/feed.gd feed_content (packSets, packFloors, revocations parsed beside the claims with the token rule), distribution/decision.gd's content decision (select_pack_rows, composition, prestage, content-floor, revoked-content, packs; boot required only for revoked required content), services/update/flow.gd content steps 10-14; every feedContentCases and contentRows vector, stamp holds, on the editor and the release template."
     },
     "update.driver": {
       "status": "implemented",
-      "except": [{ "runtime": "ios", "reason": "outlet" }],
-      "note": "P3-10: one adapter per outlet kind (distribution/outlets/, PKeyOutletAdapter): store kinds open the https listing or PKeyOptions.update_page_url, platform kinds stay silent with their own message, web reloads, direct dispatches binary.method to the Sparkle, Velopack, WinSparkle or AppImageUpdate bridge (a missing plugin degrades to the build's download link from distribution.endpoints.builds), stages a verified sidecar .pck (updater/sidecar_swap.gd, Range resume through PKeyDownload) and restarts into it without --main-pack. The native plugins are P5-07's; inert in the editor, headless runs and debug builds."
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        }
+      ],
+      "note": "P3-10: one adapter per outlet kind (distribution/outlets/, PKeyOutletAdapter): store kinds open the https listing or PKeyOptions.update_page_url, platform kinds stay silent with their own message, web reloads, direct dispatches binary.method to the Sparkle, Velopack, WinSparkle or AppImageUpdate bridge (a missing plugin degrades to the build's download link from distribution.endpoints.builds), stages a verified sidecar .pck (updater/sidecar_swap.gd, Range resume through PKeyDownload) and restarts into it without --main-pack. The native plugins are P5-07's; inert in the editor, headless runs and debug builds. Android (P5-06): the play and play-testing adapters drive Play In-App Updates through PKeyAndroid (native/pkey_android.gd over the PolarisKeyAndroid plugin and polaris-key-platform's play flavour: flexible or immediate by the decision's urgency, complete a downloaded update, silent while Play stages, the listing on any failure or a non-Play install); direct builds offer binary {method: native} through the apk bridge (available only on a direct-flavour build with the plugin): the direct adapter runs PKeyUpdater.install_apk (updater/apk_update.gd: the record's APK downloaded into user://, checked against the verified record's payload size and SHA-256, then PKeyAndroid.apk_install, the verified PackageInstaller self-update with the outcome journaled for the next launch), opening the download link only when the plugin answers unsupported."
     },
     "update.bootguard": {
       "status": "implemented",
@@ -119,7 +152,7 @@
     },
     "outlet.detect": {
       "status": "implemented",
-      "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper, web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
+      "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper (PKeyAndroid.install_source() reads the same facts, plus the initiator's full signer set, through the P5-06 plugin), web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
     },
     "packs.record": {
       "status": "implemented",
@@ -200,10 +233,22 @@
       "wp": "P5-08",
       "note": "iOS goes through P5-05's plugin: PKeyApple (native/pkey_apple.gd) exposes AssetPackManager (ensure, status, checkForUpdates, remove, url(for:), pack_progress / pack_ready / pack_failed), Unsupported below iOS 26.4 (version) and in builds without the extension (outlet); P5-08 wires it as the apple-ba transport. No work package owns a macOS binding (program README §9).",
       "except": [
-        { "runtime": "linux", "reason": "runtime" },
-        { "runtime": "windows", "reason": "runtime" },
-        { "runtime": "android", "reason": "runtime" },
-        { "runtime": "web", "reason": "runtime" }
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
       ]
     },
     "packs.transport.play": {
@@ -230,7 +275,8 @@
           "runtime": "web",
           "reason": "runtime"
         }
-      ]
+      ],
+      "note": "P5-06's PKeyAndroid carries the Play Asset Delivery client (pack_status, pack_fetch, pack_location with the absolute .pck path re-read every launch, pack_remove, pack_cancel, pack_confirm for WAITING_FOR_WIFI and REQUIRES_USER_CONFIRMATION; one pack per call; pack_progress from the listener), Unsupported (outlet) on a direct build; P5-08 generates the asset-pack modules and wires it as the play-pad transport."
     },
     "packs.transport.steam": {
       "status": "planned",

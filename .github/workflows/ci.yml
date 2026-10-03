@@ -365,6 +365,72 @@ jobs:
             sdks/godot/build/ios_export_check/logs/
             sdks/godot/build/logs/
 
+  # P5-06: the Android platform AAR (sdks/kotlin :platform, proposed im.plrs.key:polaris-key-platform)
+  # and the Godot Android binding (sdks/godot/native/android, built as :godot), on JDK 17 and the
+  # runner's Android SDK with platforms;android-36 and build-tools;36.1.0. Steps: both flavours'
+  # unit tests (Robolectric; Play Core's FakeAppUpdateManager, a fake asset-pack manager, the
+  # PackageInstaller verification refusals and Robolectric's PackageInstaller), assembleRelease of
+  # both flavours of both modules and of the :boundary app, the flavour boundary on those release
+  # outputs (tools/check_flavours.sh: no install permission and no session creation or commit in
+  # play, no Play Core in direct, no native libraries), and PKeyAndroid's headless stub tests. No
+  # secrets, no signing key, no Play Console: In-App Updates and Play Asset Delivery on a real Play
+  # install are the owner's device checklist (the P5-06 brief). First-party actions, plus Gradle's
+  # own wrapper-validation action, SHA-pinned, which checks the committed gradle-wrapper.jar against
+  # Gradle's published checksums before anything runs it.
+  android:
+    name: Android platform AAR + Godot binding
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # `yes` dies of SIGPIPE when sdkmanager stops reading, which pipefail would report.
+          set +o pipefail
+          yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
+          "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
+      - name: Unit tests (play and direct)
+        working-directory: sdks/kotlin
+        run: >-
+          ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
+          :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
+      - name: Lint and assembleRelease (play and direct)
+        working-directory: sdks/kotlin
+        run: >-
+          ./gradlew --no-daemon :platform:lintPlayRelease :platform:lintDirectRelease
+          :godot:lintPlayRelease :godot:lintDirectRelease :platform:assembleRelease :godot:assembleRelease :boundary:assembleRelease
+      - name: Flavour boundary
+        run: sdks/kotlin/tools/check_flavours.sh
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkey-godot/4.7.2
+          key: pkey-godot-4.7.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      - run: sdks/godot/tools/fetch_godot.sh 4.7.2 "$HOME/.cache/pkey-godot/4.7.2"
+      - name: PKeyAndroid stub tests (headless)
+        run: >-
+          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" PKEY_TEST_SUITES=native_android,update
+          sdks/godot/tools/run_tests.sh
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-logs
+          path: |
+            sdks/kotlin/platform/build/reports/
+            sdks/godot/native/android/build/reports/
+            sdks/godot/build/logs/
+
   # The Godot SDK (sdks/godot): pure-GDScript SHA-512, both Ed25519 verifiers and the corpus
   # `jwsCases`, read from the generator-owned res:// mirror. PARITY requires the runner on the
   # editor AND an exported release template, because official 4.6+ templates ignore `--path`,

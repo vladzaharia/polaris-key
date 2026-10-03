@@ -100,7 +100,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `http-error` | `core` | Godot: The server answered a non-success status with no recognised error code in its body. |
 | `invalid-response` | `core` | Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field. |
 | `store-failed` | `core` | Godot: The credential or cache store could not be read or written. |
-| `platform-error` | `core` | Godot: the Apple platform plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) answered an error, or a reply that is not JSON; `detail` carries the plugin's own fields. |
+| `platform-error` | `core` | Godot: a native platform plugin answered an error, or a reply that is not JSON: the Apple plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) or the Android plugin (polaris-key-platform through PolarisKeyAndroid); `detail` carries the plugin's own fields. |
 | `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. |
 | `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. |
 | `feed-rejected` | `update` | A fetched channel feed (pkey-feed+jws) was refused at its signature, claims, channel binding, selector or freshness step; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 3–7). |

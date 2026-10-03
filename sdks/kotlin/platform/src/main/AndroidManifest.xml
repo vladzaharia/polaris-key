@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- polaris-key-platform: no permissions. A direct build's install permissions are the app's
+     choice (the Godot export plugin adds them to direct presets only). -->
+<manifest />
