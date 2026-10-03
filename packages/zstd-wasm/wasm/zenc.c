@@ -1,7 +1,7 @@
 // @polaris-key/zstd-wasm, encoder module (P4-17, notes/S-08 §6): libzstd 1.5.7 encoder plus
 // decoder for wasm32, no libc, built by `build.sh enc`. It produces a `zstd --patch-from` frame
-// byte-identical to `zstd --single-thread -<level> --patch-from=<from> <to>` (S-08 §4.2) and
-// verifies it by decoding in the same instance.
+// with the CLI's parameters for a single-threaded run (not its bytes: the stable input below
+// changes a few, see test/encoder.test.ts) and verifies it by decoding in the same instance.
 //
 // One job per instance, in this order (the JS driver in src/encoder.ts does it):
 //
@@ -16,8 +16,9 @@
 //      target where it lies instead of copying it into a window buffer of its own, so the peak
 //      is base + target + the match state, the S-08 model;
 //   4. `ze_reset` to the mark taken after the base (dropping the target and the context) and
-//      decode the frame over the base into a fresh target-sized buffer with `ze_decode`, which the
-//      driver hashes.
+//      decode the frame over the base, streamed in chunks, into a fresh target-sized buffer
+//      (`ze_dbegin` with the base as prefix and the applier's windowLogMax, which libzstd enforces
+//      on this streaming path), which the driver hashes. The frame is never resident here.
 //
 // Levels outside 1..15 are refused (ZE_LEVEL): single-threaded zstd 1.5.7 at levels 16-19 breaks
 // down on large prefixes (S-08 §4.1, a 19.6 MB delta where level 9 gives 0.53 MB), and this
@@ -118,14 +119,18 @@ __attribute__((export_name("ze_decode"))) long long ze_decode(void *dst, size_t 
   return (long long)r;
 }
 
-/* Streaming decode of one frame straight into dst[0..size) (ZSTD_d_stableOutBuffer): the
+/* Streaming decode of one frame straight into dst[0..size) (ZSTD_d_stableOutBuffer), with an
+ * optional raw-content prefix and a windowLogMax (10..30) libzstd enforces on this path: the
  * compressed input arrives in chunks and is never resident as a whole. */
 static ZSTD_outBuffer dob;
-__attribute__((export_name("ze_dbegin"))) int ze_dbegin(void *dst, size_t size) {
+__attribute__((export_name("ze_dbegin"))) int ze_dbegin(void *dst, size_t size, const void *prefix, size_t pn,
+                                                        unsigned wlm) {
+  if (wlm < 10 || wlm > ZSTD_WINDOWLOG_MAX) return ZD_ARG;
   ds = ZSTD_createDCtx();
   if (!ds) return ZD_MEMORY;
   CK(ZSTD_DCtx_setParameter(ds, ZSTD_d_stableOutBuffer, 1));
-  CK(ZSTD_DCtx_setParameter(ds, ZSTD_d_windowLogMax, ZSTD_WINDOWLOG_MAX));
+  CK(ZSTD_DCtx_setParameter(ds, ZSTD_d_windowLogMax, (int)wlm));
+  if (prefix) CK(ZSTD_DCtx_refPrefix(ds, prefix, pn));
   dob.dst = dst; dob.size = size; dob.pos = 0;
   return 0;
 }

@@ -3,7 +3,7 @@
 // the target through the package's own decoder, a pair at the 32 MiB cap stays under 96 MiB of
 // linear memory (workerd will not fail it, S-08 §2.5), and the content corpus's real v1 → v2
 // pack payload encodes to the pinned frame whether its inputs are raw or zstd-coded.
-import { createHash } from "node:crypto";
+import { createHash, randomFillSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
@@ -39,7 +39,8 @@ const v1 = decode(v1Full, V1_SIZE);
 const v2 = decodeWithPrefix(blob("deltas/v1-v2.pf.zst"), v1, V2_SIZE, 24);
 
 /**
- * The level-9 frame of v1 → v2, pinned. It is NOT the zstd CLI's bytes: the encoder reads the
+ * The level-9 frame of v1 → v2, pinned (unchanged by the streamed verify: decoding never alters
+ * the frame). It is NOT the zstd CLI's bytes: the encoder reads the
  * target from a stable input buffer (ZSTD_c_stableInBuffer) instead of copying it into a window
  * of its own, which saves a target-sized buffer (the difference between ~84 and ~116 MiB at the
  * 32 MiB cap) and changes 9 bytes of this frame. `zstd --single-thread -9 --patch-from=v1 v2`
@@ -227,6 +228,40 @@ describe("patchFrom on the corpus pair", () => {
 });
 
 describe("the memory budget (S-08 §5(4))", () => {
+  it("holds the worst case: 32 MiB of random base, 68% new incompressible target, under 110 MiB with the frame", async () => {
+    const rnd = (n: number): Uint8Array => {
+      const a = new Uint8Array(n);
+      for (let o = 0; o < n; o += 65536)
+        randomFillSync(a.subarray(o, Math.min(n, o + 65536)));
+      return a;
+    };
+    const from = rnd(CAP);
+    const keep = Math.floor(CAP * 0.32);
+    const to = new Uint8Array(CAP);
+    to.set(from.subarray(0, keep));
+    to.set(rnd(CAP - keep), keep);
+    // The consumer's limit against an incompressible full object of the cap's size.
+    const maxFrameBytes = Math.min(
+      Math.ceil(CAP * 0.7) - 1,
+      CAP - 1024 * 1024 - 1,
+    );
+    const r = await patchFrom({
+      from: input(from, from, "none", 1 << 20),
+      to: input(to, to, "none", 1 << 20),
+      level: 9,
+      maxInputBytes: CAP,
+      maxFrameBytes,
+    });
+    // The frame is ~21.8 MiB and lives in ONE preallocated buffer of maxFrameBytes: linear
+    // memory at its peak plus that buffer is the job's whole byte footprint (measured 83.8 +
+    // 22.4 = 106.2 MiB).
+    expect(r.frame.byteLength).toBeGreaterThan(20 * 1024 * 1024);
+    expect(r.frame.buffer.byteLength).toBe(maxFrameBytes);
+    expect(r.memoryBytes + r.frame.buffer.byteLength).toBeLessThanOrEqual(
+      110 * 1024 * 1024,
+    );
+  }, 120_000);
+
   it("keeps a 32 MiB pair at level 9 under 96 MiB of linear memory", async () => {
     const a = new Uint8Array(CAP);
     let s = 1;

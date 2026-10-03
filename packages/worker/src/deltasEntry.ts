@@ -7,7 +7,7 @@
  * its isolate's 128 MB (`max_batch_size = 1`, `max_concurrency = 1`).
  *
  * It is the ONLY module that imports the encoder (`@polaris-key/zstd-wasm/encoder`, whose
- * `zenc.wasm` arrives as a compiled `WebAssembly.Module`); `test/lazyDeltas.test.ts` asserts no
+ * `zenc.wasm` arrives as a compiled `WebAssembly.Module`); `test/deltaConsumer.test.ts` asserts no
  * other source file does, so the request Worker's bundle cannot encode, decode or diff a payload.
  */
 

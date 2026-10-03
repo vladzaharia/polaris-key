@@ -208,6 +208,23 @@ The spike note [`notes/S-08-cloudflare-async-compute.md`](../../notes/S-08-cloud
   - a `lazy_delta_settings` row per product (`enabled`, plus optional `hot_devices` and
     `daily_cap`), set by an operator (RUNBOOK "Lazy deltas"). Enabling a product never needs a
     deploy (rule 5).
+- **Decision: README §3.12's `patch.deltaBases: hot-pairs` is superseded** by the D1
+  `lazy_delta_settings` opt-in (lead decision, P4-17 review). `deltaBases` stays the CLI's integer
+  count of CI bases. A product opts into lazy deltas through operator data, not its manifest.
+- **Follow-up: an audited console toggle** for `lazy_delta_settings` (platform-admin session,
+  CSRF, rate limit, an audit row; P6-03's `update-health/settings` route is the model). Until it
+  exists the row is written with `wrangler d1 execute` (RUNBOOK "Lazy deltas"). It needs a route,
+  so the OpenAPI spec and `routeCoverage` change with it (rule 10).
+- **Per-device cap on demand rows (P4-17 review).** A device holds at most 32
+  `delta_demand_devices` rows per product; each report evicts that device's oldest rows past the
+  cap.
+- **Migration number: lead decision.** P4-17 keeps `0051_lazy_deltas.sql`; P6-01 and P6-02
+  renumber.
+- **The encoder holds the frame once.** It is written straight into one buffer preallocated at
+  `maxFrameBytes` (the largest frame worth keeping), and the verify streams the frame into the
+  decoder instead of copying it into linear memory. The worst case measured (a 32 MiB random
+  base, a target 68% new incompressible bytes) is 83.8 MiB of linear memory plus a 22.4 MiB frame
+  buffer, 106.2 MiB in all; a test keeps it under 110 MiB.
 - **The encoder's frame is not byte-identical to the CLI's.** S-08 measured identity with a
   buffered input. That needs a second target-sized buffer: about 116 MiB at the 32 MiB cap,
   against the 96 MiB budget. The committed encoder reads the target from a stable input buffer

@@ -1018,7 +1018,7 @@ deliverables:
     entitlement: extras.diceSkins # enforced by distribution at delivery
 patch: # computed in CI at publish, recorded by release, served by distribution
   strategies: [delta, chunk, file]
-  deltaBases: hot-pairs
+  deltaBases: hot-pairs # superseded (P4-17): deltaBases stays an integer; lazy deltas are an operator opt-in (lazy_delta_settings)
 ---
 # .pkey/distribution.yaml (proposed, illustrative): HOW IT REACHES DEVICES AND OUTLETS
 outlets: # identities only; capabilities are operator-owned

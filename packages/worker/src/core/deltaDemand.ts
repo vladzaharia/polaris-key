@@ -17,7 +17,8 @@
  *
  * `recordPackInstalls` is the only thing the report handler calls: one settings read and one
  * batch of upserts into `delta_demand_devices`, keyed by (product, pack, from, to, device), so a
- * device counts once per pair however often it reports. Nothing here reads a payload, encodes,
+ * device counts once per pair however often it reports, and holds at most
+ * `MAX_DEMAND_ROWS_PER_DEVICE` rows (its oldest are evicted). Nothing here reads a payload, encodes,
  * decodes or diffs a byte, and nothing enqueues: hot pairs are found by the nightly sweep and
  * new payloads by the R2 event the consumer Worker receives (`services/release/packs/deltas/`).
  * It FAILS OPEN and never throws (the snapshot is stored first): telemetry must never cost a
@@ -52,6 +53,9 @@ export const HOT_WINDOW_SECONDS = 7 * 86400;
 export const DEMAND_RETENTION_SECONDS = 30 * 86400;
 /** Deltas one product may generate per day, unless its settings say otherwise. */
 export const DEFAULT_DAILY_CAP = 20;
+/** Demand rows one device may hold per product; a report past it evicts the device's oldest. A
+ *  device can claim any pair, so this bounds what one device can write, whatever it sends. */
+export const MAX_DEMAND_ROWS_PER_DEVICE = 32;
 /** The `strategy` value that is not demand: the device already had a delta. */
 export const DELTA_STRATEGY = "delta";
 
@@ -221,8 +225,25 @@ export async function recordPackInstalls(
         params: [product, e.pack, e.from, e.to, deviceId, e.strategy, now],
       });
     }
-    if (statements.length > 0) await db.batch(statements);
-    return statements.length;
+    if (statements.length === 0) return 0;
+    const upserts = statements.length;
+    // Keep the device's newest rows only: the request path's writes stay bounded per device.
+    statements.push({
+      sql: `DELETE FROM delta_demand_devices
+             WHERE product = ? AND device_id = ? AND rowid NOT IN (
+               SELECT rowid FROM delta_demand_devices
+                WHERE product = ? AND device_id = ?
+                ORDER BY seen_at DESC, rowid DESC LIMIT ?)`,
+      params: [
+        product,
+        deviceId,
+        product,
+        deviceId,
+        MAX_DEMAND_ROWS_PER_DEVICE,
+      ],
+    });
+    await db.batch(statements);
+    return upserts;
   } catch {
     return 0;
   }

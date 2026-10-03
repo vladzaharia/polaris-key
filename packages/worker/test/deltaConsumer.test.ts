@@ -26,6 +26,7 @@ import { bytesFrom, sha } from "./packFixture.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { blobKey, deltaKey } from "../src/core/blobs.js";
 import {
+  MAX_DEMAND_ROWS_PER_DEVICE,
   boundedPackInstalls,
   hotPairs,
   refreshDemand,
@@ -540,6 +541,19 @@ describe("the queue consumer", () => {
       }),
     );
     expect(capped.result).toBe("refused:over-worker-cap");
+    // An encoder refusal of the sizes is over the cap only when a side really is.
+    const sizes = await world();
+    await demand(sizes.db, sha(sizes.v1.payload), sha(sizes.v2.payload), 3);
+    const malformed = await processDeltaMessage(
+      pairOf(sizes),
+      1,
+      sizes.deps({
+        encode: async () => {
+          throw new ZstdEncodeError("input-size", "malformed");
+        },
+      }),
+    );
+    expect(malformed.result).toBe("refused:malformed-sizes");
     const small = await world();
     await demand(small.db, sha(small.v1.payload), sha(small.v2.payload), 3);
     const out = await processDeltaMessage(
@@ -708,6 +722,23 @@ describe("demand and the nightly sweep", () => {
     expect(await hotPairs(w.db, P, 1, 10)).toEqual([
       { deliverableId: PACK, from: e.from, to: e.to, devices: 2 },
     ]);
+    // One device holds at most MAX_DEMAND_ROWS_PER_DEVICE rows: the newest are kept.
+    for (let i = 0; i < 40; i++)
+      await recordPackInstalls(
+        w.env,
+        w.db,
+        P,
+        "spammer",
+        [{ ...e, to: i.toString(16).padStart(64, "0") }],
+        NOW + 100 + i,
+      );
+    const kept = await w.db.all<{ to_sha256: string }>(
+      "SELECT to_sha256 FROM delta_demand_devices WHERE device_id = 'spammer' ORDER BY seen_at",
+    );
+    expect(kept).toHaveLength(MAX_DEMAND_ROWS_PER_DEVICE);
+    expect(kept[0]!.to_sha256).toBe(
+      (40 - MAX_DEMAND_ROWS_PER_DEVICE).toString(16).padStart(64, "0"),
+    );
     const off = await world({ enabled: false });
     expect(await recordPackInstalls(off.env, off.db, P, "d1", [e], NOW)).toBe(
       0,
@@ -820,5 +851,14 @@ describe("the request Worker cannot encode", () => {
     expect(deploy).toContain(
       'npx wrangler deploy -c wrangler.deltas.toml --env "$ENV"',
     );
+    // The queues (and the token's Queues Edit) are checked before any migration runs.
+    const preflight = deploy.indexOf(
+      'npx wrangler queues info "pkey-deltas-dlq-$ENV"',
+    );
+    expect(preflight).toBeGreaterThan(0);
+    expect(
+      deploy.indexOf('npx wrangler queues info "pkey-deltas-$ENV"'),
+    ).toBeGreaterThan(0);
+    expect(preflight).toBeLessThan(deploy.indexOf("d1 migrations apply"));
   });
 });

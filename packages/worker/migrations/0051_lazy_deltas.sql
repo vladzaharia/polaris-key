@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS lazy_delta_settings (
 
 -- `delta_demand_devices` — Core's. One row per (product, pack, from, to, device): the latest
 -- `packInstalls` entry that device reported for that pair. A device counts once per pair however
--- often it reports (the report is a last-snapshot, `setDeviceReported`). `strategy` is the
+-- often it reports (the report is a last-snapshot, `setDeviceReported`), and holds at most 32
+-- rows per product (newest kept). `strategy` is the
 -- strategy it installed with: a `delta` install is NOT demand (it already had a delta), but it
 -- keeps a generated delta warm. Pruned by the nightly sweep after `DEMAND_RETENTION_SECONDS`.
 CREATE TABLE IF NOT EXISTS delta_demand_devices (
@@ -39,6 +40,11 @@ CREATE TABLE IF NOT EXISTS delta_demand_devices (
 -- The sweep's window scans and the prune, by time.
 CREATE INDEX IF NOT EXISTS idx_delta_demand_devices_seen
   ON delta_demand_devices(product, seen_at);
+
+-- The per-device cap on the report path (`MAX_DEMAND_ROWS_PER_DEVICE`: a report evicts the
+-- device's oldest rows past it).
+CREATE INDEX IF NOT EXISTS idx_delta_demand_devices_device
+  ON delta_demand_devices(product, device_id, seen_at);
 
 -- "How many devices now sit on payload X" (the installed base an R2 event's new payload is
 -- joined with: devices that moved TO X are on X).

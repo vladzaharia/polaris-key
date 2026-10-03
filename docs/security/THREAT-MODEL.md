@@ -2187,7 +2187,9 @@ and a per-product `lazy_delta_settings` row.
   time (batch 1, concurrency 1), so an encode never shares an isolate with a request or with a
   second encode.
 - **Telemetry cannot write bytes, only counts.** A device can claim any (from, to) pair, but a
-  claim only adds one row per device and pair; the consumer encodes only between two payloads of
+  claim only upserts its own row for that pair, and a device holds at most 32 demand rows per
+  product (`MAX_DEMAND_ROWS_PER_DEVICE`; each report evicts its oldest past that), so what one
+  device can write is bounded however many pairs it invents; the consumer encodes only between two payloads of
   the same pack and variant that stored CI-signed records name, which the product holds refs to
   (possession, as for every other ref), under the threshold (25 distinct devices in 7 days by
   default) and the daily cap (20 per product by default). A fleet of forged devices can at most
@@ -2219,9 +2221,14 @@ Residuals, stated rather than defended:
 - **Demand rows hold device ids.** `delta_demand_devices` keeps (device, pair, strategy, time) for
   30 days to count distinct devices (docs/PRIVACY.md); they are not purged with the device.
 - **workerd enforces neither 128 MB nor `cpu_ms` locally** (notes/S-08 §2.5). The memory budget is
-  a test against the encoder's own measurement (≤ 96 MiB at the cap), and the cap is the only
-  defence against an isolate OOM in production; a pair above it is refused as
-  `over-worker-cap`, never attempted.
+  a test against the encoder's own measurement, and the cap is the only defence against an
+  isolate OOM in production; a pair above it is refused as `over-worker-cap`, never attempted.
+  At the 32 MiB cap linear memory peaks near 84 MiB, and the frame lives once, in one buffer
+  preallocated at the largest frame worth keeping (about 22.4 MiB against an incompressible
+  32 MiB full object): the worst case measured, a random base and a target 68% new incompressible
+  bytes, is 83.8 + 22.4 = 106.2 MiB, which a test keeps under 110 MiB. The remaining headroom to
+  128 MB (JS heap, the runtime, the index reads before the encode) is an inference, not a
+  measurement, until the live check at the cap (RUNBOOK "Lazy deltas").
 
 ### The compatibility matrix and the device simulator (P4-15)
 

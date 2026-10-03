@@ -45,6 +45,9 @@ export type LazyDeltaRefusal =
   | "dictionary-base"
   /** The frame would not save enough against the cheapest other strategy. */
   | "savings"
+  /** The encoder refused the recorded sizes as malformed (not integers, a `none` object whose
+   *  stored and decoded lengths differ). */
+  | "malformed-sizes"
   /** The product holds no ref to one of the two objects (possession, THREAT-MODEL §3). */
   | "no-ref"
   /** The encoder's verify decode did not give the target back. */
@@ -57,6 +60,7 @@ export const PERMANENT_REFUSALS: ReadonlySet<LazyDeltaRefusal> = new Set([
   "ci-delta",
   "unusable-codec",
   "over-worker-cap",
+  "malformed-sizes",
   "dictionary-base",
   "savings",
   "verify",

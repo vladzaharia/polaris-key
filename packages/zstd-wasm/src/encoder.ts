@@ -1,6 +1,6 @@
 // The lazy-delta encoder over one compiled `zenc.wasm` (P4-17, notes/S-08 §6): one
-// `zstd --patch-from` frame per call, byte-identical to `zstd --single-thread -<level>
-// --patch-from=<from> <to>`, verified by decoding it over the base in the same instance before it
+// `zstd --patch-from` frame per call, with the parameters `zstd --single-thread -<level>
+// --patch-from=<from> <to>` picks (not its exact bytes: test/encoder.test.ts), verified by decoding it over the base in the same instance before it
 // is returned. Each call instantiates the module afresh (zenc.c's bump allocator never frees), so
 // a job's linear memory is garbage once the call returns, and it never shares an instance.
 //
@@ -91,7 +91,13 @@ interface Exports {
     pn: number,
     wlm: number,
   ): bigint;
-  ze_dbegin(dst: number, size: number): number;
+  ze_dbegin(
+    dst: number,
+    size: number,
+    prefix: number,
+    pn: number,
+    wlm: number,
+  ): number;
   ze_dstep(src: number, n: number): bigint;
   ze_dpos(): number;
   ze_begin(prefix: number, pn: number, srcSize: bigint, level: number): number;
@@ -167,6 +173,12 @@ function refusal(r: number): ZstdEncodeError {
     "encode",
     `libzstd error ${r <= -1000 ? -1000 - r : r}`,
   );
+}
+
+/** libzstd's `ZSTD_compressBound`: the largest frame a `size`-byte input can produce. */
+export function compressBound(size: number): number {
+  const small = size < 128 * 1024 ? (128 * 1024 - size) >>> 11 : 0;
+  return size + Math.floor(size / 256) + small;
 }
 
 /** The `windowLogMax` a wasm32 decoder uses for `memBytes` (WIRE-CONTRACT-V4 §2.6). */
@@ -259,6 +271,44 @@ async function patchFrom(
   };
 
   /**
+   * Decode one frame, fed in chunks by `feed`, straight into dst[0..size) (`ze_dstep`: a stable
+   * output buffer, so libzstd keeps no window of its own and the frame is never resident), with
+   * an optional raw-content prefix and the windowLogMax libzstd enforces on this path. Throws
+   * `input` (or the caller's code) unless exactly one frame of exactly `size` bytes arrived.
+   */
+  const decodeInto = async (
+    dst: number,
+    size: number,
+    prefix: number,
+    pn: number,
+    wlm: number,
+    feed: (sink: (chunk: Uint8Array) => void) => Promise<void>,
+    code: ZstdEncodeErrorCode = "input",
+  ): Promise<void> => {
+    const rc = x.ze_dbegin(dst, size, prefix, pn, wlm);
+    if (rc !== 0) throw refusal(rc);
+    const inp = alloc(IN_CHUNK);
+    let last = 1;
+    await feed((chunk) => {
+      for (let o = 0; o < chunk.byteLength; o += IN_CHUNK) {
+        const part = chunk.subarray(
+          o,
+          Math.min(chunk.byteLength, o + IN_CHUNK),
+        );
+        if (last === 0)
+          throw new ZstdEncodeError(code, "bytes follow the end of the frame");
+        mem().set(part, inp);
+        last = Number(x.ze_dstep(inp, part.byteLength));
+        mem();
+        if (last < 0)
+          throw new ZstdEncodeError(code, `the frame did not decode (${last})`);
+      }
+    });
+    if (last !== 0 || x.ze_dpos() !== size)
+      throw new ZstdEncodeError(code, "the frame is not its declared size");
+  };
+
+  /**
    * Place one side's DECODED bytes in a fresh buffer and check their SHA-256. A `zstd` side is
    * decoded as it streams in, straight into the buffer (`ze_dstep`, a stable output buffer), so
    * its compressed bytes are never resident; the decoder context is reset away afterwards.
@@ -273,36 +323,7 @@ async function patchFrom(
       });
     } else {
       const mark = x.ze_mark();
-      const rc = x.ze_dbegin(dst, side.size);
-      if (rc !== 0) throw refusal(rc);
-      const inp = alloc(IN_CHUNK);
-      let last = 1;
-      await stream(side, (chunk) => {
-        for (let o = 0; o < chunk.byteLength; o += IN_CHUNK) {
-          const part = chunk.subarray(
-            o,
-            Math.min(chunk.byteLength, o + IN_CHUNK),
-          );
-          if (last === 0)
-            throw new ZstdEncodeError(
-              "input",
-              "an input holds bytes after its frame",
-            );
-          mem().set(part, inp);
-          last = Number(x.ze_dstep(inp, part.byteLength));
-          mem();
-          if (last < 0)
-            throw new ZstdEncodeError(
-              "input",
-              `an input's frame did not decode (${last})`,
-            );
-        }
-      });
-      if (last !== 0 || x.ze_dpos() !== side.size)
-        throw new ZstdEncodeError(
-          "input",
-          "an input's frame is not its declared size",
-        );
+      await decodeInto(dst, side.size, 0, 0, 30, (sink) => stream(side, sink));
       x.ze_reset(mark);
     }
     const got = await sha256Of(mem().subarray(dst, dst + side.size));
@@ -325,47 +346,47 @@ async function patchFrom(
   const longMode = x.ze_info(1) === 1;
   if (x.ze_input(target, to.size) !== 0) throw refusal(-9);
   const out = alloc(OUT_CHUNK);
-  const parts: Uint8Array[] = [];
+  // The frame goes straight into ONE buffer, preallocated at its largest allowed size, never into
+  // a list of chunks and a copy: at the 32 MiB cap the JS side then holds the frame once while
+  // linear memory is at its peak.
+  const frameCap = opts.maxFrameBytes ?? compressBound(to.size);
+  const frameBuf = new Uint8Array(frameCap);
   let frameBytes = 0;
   for (;;) {
     const w = Number(x.ze_step(out, OUT_CHUNK));
     mem();
     if (w < 0) throw refusal(w);
     if (w > 0) {
-      frameBytes += w;
-      if (opts.maxFrameBytes !== undefined && frameBytes > opts.maxFrameBytes)
+      if (frameBytes + w > frameCap)
         throw new ZstdEncodeError(
           "frame-too-large",
-          `the frame grew past ${opts.maxFrameBytes} bytes`,
+          `the frame grew past ${frameCap} bytes`,
         );
-      parts.push(mem().slice(out, out + w));
+      frameBuf.set(mem().subarray(out, out + w), frameBytes);
+      frameBytes += w;
     }
     if (x.ze_remaining() === 0) break;
   }
-  const frame = new Uint8Array(frameBytes);
-  let at = 0;
-  for (const p of parts) {
-    frame.set(p, at);
-    at += p.byteLength;
-  }
-  parts.length = 0;
+  const frame = frameBuf.subarray(0, frameBytes);
 
   // Verify (S-08 §6): drop the target and the context, keep the base resident, and decode the
-  // frame over it into a fresh buffer, with the window check every applier makes.
+  // frame over it, streamed in chunks, into a fresh buffer, with the window check every applier
+  // makes (libzstd enforces windowLogMax on the streaming path).
   x.ze_reset(afterBase);
-  const src = alloc(frame.byteLength);
-  mem().set(frame, src);
   const dst = alloc(to.size);
   const wlm = wasmWindowLogMax(from.size + to.size);
-  const r = Number(
-    x.ze_decode(dst, to.size, src, frame.byteLength, base, from.size, wlm),
+  await decodeInto(
+    dst,
+    to.size,
+    base,
+    from.size,
+    wlm,
+    async (sink) => {
+      for (let o = 0; o < frame.byteLength; o += IN_CHUNK)
+        sink(frame.subarray(o, Math.min(frame.byteLength, o + IN_CHUNK)));
+    },
+    "verify",
   );
-  mem();
-  if (r < 0)
-    throw new ZstdEncodeError(
-      "verify",
-      `the frame did not decode over its base (${r})`,
-    );
   const decoded = await sha256Of(mem().subarray(dst, dst + to.size));
   if (decoded !== to.sha256)
     throw new ZstdEncodeError("verify", "the frame decoded to another target");

@@ -173,7 +173,11 @@ CLOUDFLARE_API_TOKEN
 
 The token must be able to apply D1 migrations and deploy Workers in the `Polaris`
 Cloudflare account. The local OAuth login already has the needed account access, but CI
-needs its own token.
+needs its own token. It also needs **Queues Edit** (P4-17): `wrangler deploy` lists the account's
+queues for the request Worker's `DELTA_QUEUE` producer (Queues Read), and the lazy-delta consumer
+(`wrangler.deltas.toml`) attaches itself to `pkey-deltas-<env>` as its consumer, which needs Queues
+Edit. The deploy job's "Queues preflight" step (`wrangler queues info` on both queues) fails before
+any migration runs when the permission or a queue is missing.
 
 ## 3. Cloudflare resources
 

@@ -141,7 +141,8 @@ function encodeInput(bucket: R2Bucket, side: PayloadSide): EncodeInput {
   return {
     size: payload.size,
     bytes: full.bytes,
-    codec: full.codec === "none" ? "none" : "zstd",
+    // Passed as recorded: an unknown codec is the encoder's refusal, never read as zstd.
+    codec: full.codec as EncodeInput["codec"],
     sha256: payload.sha256,
     read: async function* () {
       const obj = await bucket.get(side.fullKey);
@@ -308,7 +309,18 @@ async function runPair(
     const code = (e as { code?: unknown })?.code;
     if (code === "frame-too-large") return refuse(db, key, "savings", now);
     if (code === "verify") return refuse(db, key, "verify", now);
-    if (code === "input-size") return refuse(db, key, "over-worker-cap", now);
+    if (code === "input-size") {
+      // Only a real side over the cap is `over-worker-cap` (the P4-17b evidence); a codec the
+      // encoder cannot read, or sizes it refuses as malformed, are their own reasons.
+      const sides = [pair.from.variant, pair.to.variant];
+      if (sides.some((v) => v.full.codec !== "zstd" && v.full.codec !== "none"))
+        return refuse(db, key, "unusable-codec", now);
+      if (
+        sides.some((v) => v.payload.size > maxBytes || v.full.bytes > maxBytes)
+      )
+        return refuse(db, key, "over-worker-cap", now);
+      return refuse(db, key, "malformed-sizes", now);
+    }
     // A stored object that does not match its record, or no memory: never a delta, never a
     // permanent mark (the next sweep may find it fixed), never a retry storm.
     if (code === "input" || code === "input-digest" || code === "memory")
