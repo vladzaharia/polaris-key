@@ -17,6 +17,14 @@
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
+ *     /distribution/commerce/binding                         GET, device token: the licence's
+ *                                                            purchase binding (P6-01, `commerce/`)
+ *     /distribution/commerce/claim                           POST, device token: claim a store
+ *                                                            purchase as a licence flag
+ *     /distribution/hooks/app-store                          POST, App Store Server Notifications
+ *                                                            V2, signed by Apple (P6-01)
+ *     /distribution/hooks/play-rtdn                          POST, Play RTDN over Pub/Sub push,
+ *                                                            Google OIDC (P6-01)
  *     /distribution/hooks/sentry                             POST, a Sentry alert, signed with
  *                                                            the integration's client secret;
  *                                                            opens halt candidates (P6-03,
@@ -54,6 +62,7 @@ import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
 import { handleFeedRoutes } from "./feeds/index.js";
 import { handleDownloadModel } from "./page/index.js";
+import { handleCommerceRoutes, isCommerceRoute } from "./commerce/index.js";
 
 /** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
  *  JSON objects (`platformRef`, `detail`). */
@@ -74,6 +83,10 @@ export async function handleDistributionRoutes(
     if (!verb || req.method !== "POST") return null;
     return handleCiRollout(ctx, rest[1] as string, rest[2] as string, verb);
   }
+
+  // The commerce bridge (P6-01): the binding and claim routes and the two store-notification
+  // hooks. `null` (Core's not-found) unless License is on and the store is set up.
+  if (isCommerceRoute(rest)) return handleCommerceRoutes(ctx);
 
   // A store webhook. `null` (Core's not-found) for an unknown connector, one without a webhook,
   // or a product the connector is not set up for — the connector decides the last.

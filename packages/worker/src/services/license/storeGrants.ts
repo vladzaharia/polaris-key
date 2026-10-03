@@ -1,0 +1,90 @@
+/// <reference types="@cloudflare/workers-types" />
+
+/**
+ * License's `applyStoreGrant` (P6-01, `core/storeGrants.ts`): the one writer of
+ * `license_store_grants`.
+ *
+ * Distribution has already verified the purchase with its store and bound it to this licence;
+ * this only records the effect. One row per (store, purchase key hash, flag):
+ *
+ *   - `grant`  — the row becomes `active` (granted now). A grant of a row already active changes
+ *     nothing (a replayed notification, a second claim of the same purchase).
+ *   - `revoke` — an active row becomes `revoked` (refund, revocation, a voided Play purchase, a
+ *     Steam non-owner). A revoke of a row that is not active changes nothing.
+ *
+ * A REFUND_REVERSED re-grants through `grant`. Every change is one audit row as
+ * `system:commerce`, naming the flag and the store — never a purchase token, never PII. The
+ * licence must exist in this product (`no_license` otherwise); its status is not consulted: a
+ * disabled licence keeps the grant it paid for, and `licenseUsable` already keeps a disabled
+ * licence from receiving a document.
+ */
+
+import type {
+  StoreGrantChange,
+  StoreGrantContext,
+  StoreGrantOutcome,
+} from "../../core/storeGrants.js";
+import { appendAudit, getLicense } from "../../core/data.js";
+import { randomId } from "../../core/platform.js";
+
+/** The audit actor of a store-grant change. */
+export const STORE_GRANT_ACTOR = "system:commerce";
+
+export async function applyStoreGrant(
+  ctx: StoreGrantContext,
+  change: StoreGrantChange,
+): Promise<StoreGrantOutcome> {
+  const { db, now } = ctx;
+  const product = ctx.product.slug;
+  const license = await getLicense(db, product, change.licenseId);
+  if (!license) return { ok: false, reason: "no_license" };
+
+  let changed: number;
+  if (change.action === "grant") {
+    changed = await db.runChanges(
+      `INSERT INTO license_store_grants
+         (product, license_id, flag, store, purchase_key_hash, state, granted_at, revoked_at)
+       VALUES (?, ?, ?, ?, ?, 'active', ?, NULL)
+       ON CONFLICT (product, store, purchase_key_hash, flag) DO UPDATE SET
+         state = 'active', granted_at = excluded.granted_at, revoked_at = NULL
+       WHERE license_store_grants.state <> 'active'
+         AND license_store_grants.license_id = excluded.license_id`,
+      product,
+      change.licenseId,
+      change.flag,
+      change.store,
+      change.purchaseKeyHash,
+      now,
+    );
+  } else {
+    changed = await db.runChanges(
+      `UPDATE license_store_grants SET state = 'revoked', revoked_at = ?
+        WHERE product = ? AND store = ? AND purchase_key_hash = ? AND flag = ?
+          AND license_id = ? AND state = 'active'`,
+      now,
+      product,
+      change.store,
+      change.purchaseKeyHash,
+      change.flag,
+      change.licenseId,
+    );
+  }
+  if (changed > 0)
+    await appendAudit(db, {
+      product,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: STORE_GRANT_ACTOR,
+      actor_name: "Commerce bridge",
+      actor_email: null,
+      action:
+        change.action === "grant"
+          ? "license.store_grant.grant"
+          : "license.store_grant.revoke",
+      target_kind: "license",
+      target_id: change.licenseId,
+      parent_id: null,
+      summary: change.summary.slice(0, 500),
+    });
+  return { ok: true, changed: changed > 0 };
+}

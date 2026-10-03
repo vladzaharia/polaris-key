@@ -42,6 +42,10 @@
  *     POST …/distribution/update-health/settings               the auto-halt settings (audited)
  *     POST …/distribution/update-health/candidates/<id>/{confirm,dismiss}
  *                                                              (`updateHealthAdmin.ts`)
+ *     GET  …/distribution/commerce                             the commerce bridge (P6-01): settings,
+ *                                                              store products, purchases, events
+ *     PUT  …/distribution/commerce/{settings,products}         (`commerce/admin.ts`)
+ *     DELETE …/distribution/commerce/products/<store>/<id>
  *
  * Narrative-only (the console's API is not in the wire spec). Every write is audited with the
  * session's subject. The session, CSRF, rate-limit and platform-admin gates run in
@@ -113,6 +117,7 @@ import {
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { CONNECTORS, connectorOf } from "./connectors/index.js";
 import { handleUpdateHealthAdmin } from "./updateHealthAdmin.js";
+import { handleCommerceAdmin } from "./commerce/admin.js";
 import { buildMatrix, MATRIX_DEFAULT_LIMIT } from "./matrix.js";
 import {
   READINESS_STATES,
@@ -170,6 +175,7 @@ export async function handleDistributionAdmin(
   if (rest[0] === "matrix") return handleMatrixAdmin(ctx);
   if (rest[0] === "readiness") return handleReadinessAdmin(ctx);
   if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
+  if (rest[0] === "commerce") return handleCommerceAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {

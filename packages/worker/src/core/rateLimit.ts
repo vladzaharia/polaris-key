@@ -106,6 +106,13 @@ const FAIL_MODE: Record<string, FailMode> = {
   // P6-03: the Sentry alert webhook, for the same reason — the limiter runs before the
   // `sentry-integration` credential is opened, and every open is an audit row.
   sentryWebhook: "closed",
+  // P6-01: the commerce bridge. A claim (per licence) and each store hook (per product) can open
+  // an outlet credential and call a store API, so a limiter outage refuses rather than letting a
+  // flood through to the vault and the store's quota. A refused store delivery is retried by the
+  // store (App Store Server Notifications and Pub/Sub push both redeliver on a non-2xx).
+  commerceClaim: "closed",
+  appStoreHook: "closed",
+  playRtdnHook: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
