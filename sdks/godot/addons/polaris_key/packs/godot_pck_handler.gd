@@ -71,7 +71,7 @@ func check_output(source: PKeyByteSource, record: Dictionary, variant: Dictionar
 ## even if a stored install claimed otherwise.
 func activate(install: Dictionary) -> void:
 	if install.has("delegation"):
-		push_error("PolarisKey: %s carries a delegation; a delegated release is never mounted." % install.get("packId", ""))
+		push_warning("PolarisKey: %s carries a delegation; a delegated release is never mounted." % install.get("packId", ""))
 		return
 	to_mount[install["packId"]] = install
 

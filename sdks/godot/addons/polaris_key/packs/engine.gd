@@ -77,6 +77,10 @@ var stamp: Variant = null
 ## The stamp's holds (`PKeyPackClaims.stamp_holds`; null when there are none or they are
 ## unusable): a hold's release is a release-key surface, never delegated (plans/P4-19.md §2.4).
 var holds: Variant = null
+## The packs the stamp names (pins, expects and every raw hold entry) when its holds are present
+## but unusable (`stamp_holds` null): fail closed, no delegated path for any of them, because a
+## well-formed hold may sit beside a malformed one (Dictionary used as a set; empty otherwise).
+var unusable_holds_packs := {}
 ## Variant preferences: {engine: "godot-<major>.<minor>", axes: {axis: [values…]}}.
 var prefs := {"engine": null, "axes": {}}
 var zstd := PKeyPackZstd.new()
@@ -1105,6 +1109,8 @@ func fetch_verified(pack_id: String, release: Dictionary) -> Dictionary:
 ## §2.4's delegated surface: never the stamp's pin or hold for the pack, never a stored
 ## revocation's replacement (release-key surfaces vouch for exact bytes).
 func _delegated_allowed(pack_id: String, sha256: String) -> bool:
+	if unusable_holds_packs.has(pack_id):
+		return false
 	if stamp is Dictionary and stamp.get("pins") is Array:
 		for p in stamp["pins"]:
 			if p is Dictionary and PKeyPackClaims.same(p.get("pack"), pack_id) and p.get("release") is Dictionary and PKeyPackClaims.same(p["release"].get("sha256"), sha256):
@@ -1247,7 +1253,9 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 			_persist()
 			storage.remove_staging(plan_id)
 			var ref: Dictionary = gate.refusal
-			return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "%s holds %s, which a delegated content key may not ship (%s)." % [pack_id, ref["path"], ref["rule"]], pack_id, {"path": ref["path"], "detail": ref["rule"]})
+			var why: String = "%s holds %s, which a delegated content key may not ship (%s)." % [pack_id, ref["path"], ref["rule"]] if ref["path"] != "" \
+					else "%s has no tree output the data-only rule can gate, so it is not written." % pack_id
+			return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, why, pack_id, {"path": ref["path"], "detail": ref["rule"]})
 		if result["verdict"]["ok"]:
 			# The handler's check over the verified output (godot.pck: header and directory).
 			var handler = handlers.get(record["type"])
@@ -1370,7 +1378,14 @@ func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, 
 	if out.is_empty():
 		return {"verdict": {"ok": false, "error": String(PKeyErrors.STORE_FAILED)}}
 	var gate: PKeyDataOnly.DataOnlySink = null
-	if data_only and out.has("tree"):
+	if data_only and not out.has("tree"):
+		# Fail closed: a delegated install with no tree sink to gate is refused, never written.
+		if out.has("sink"):
+			out["sink"].close()
+		gate = PKeyDataOnly.DataOnlySink.new(null)
+		gate.refusal = {"path": "", "rule": PKeyDataOnly.RULE_CONTENT}
+		return {"verdict": {"ok": false, "error": PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY}, "data_only": gate}
+	if data_only:
 		gate = PKeyDataOnly.DataOnlySink.new(out["tree"])
 		out["tree"] = gate
 	var ports := {"objects": objects, "zstd": zstd}

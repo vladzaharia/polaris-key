@@ -22,6 +22,9 @@ extends RefCounted
 #   pack_for  P4-20's pack_for answers through a delegation and skips a revoked one
 #   facet     PolarisKey.update.packs hands the stamp's holds to the engine (a held release is
 #             refused at jws even under a valid delegation) and content_input carries `delegated`
+#   review    no tree sink fails closed; unusable stamp holds refuse the delegated path for every
+#             pack the stamp names; mount() refuses a delegated install; the delegation cache
+#             misses after a trust rotation
 #   flow      PKeyUpdateFlow step 11: delegation entries are relevant (by known delegation or by
 #             scope), clear `relearn`, and add the decision-input revocation of a delegated release
 
@@ -52,6 +55,7 @@ func run(t: PKeyTestContext) -> void:
 	await _pack_for(t)
 	await _flow(t)
 	await _facet(t)
+	await _review(t)
 
 
 func _delegated(pack_id: String, version: String, seq: int, files: Dictionary, from: Variant = null, extra: Dictionary = {}) -> Dictionary:
@@ -507,3 +511,83 @@ func _facet(t: PKeyTestContext) -> void:
 			S.check_same(t, "facet: content_input carries the delegated releases", c.get("delegated") if c is Dictionary else null, {d["recordSha256"]: {"pack": PACK, "delegation": _g["sha256"]}})
 		sdk.queue_free()
 		S.remove_tree(root)
+
+
+# ── review (P4-26 review round 1) ───────────────────────────────────────────────────────────
+
+## A storage whose tree output has no tree sink (only a container sink).
+class NoTreeSink extends PKeyPackStorage:
+	func output(plan_id: String, layout: String) -> Dictionary:
+		var out := super.output(plan_id, "container" if layout == "tree" else layout)
+		return out
+
+
+func _sdk(root: String, stamp_text: String, tr: PKeyPackTransport) -> Array:
+	var stamp_file := root.path_join("pkey-content.json")
+	S.write_file(stamp_file, stamp_text.to_utf8_buffer())
+	var sdk := PKeyTestFixtures.new_sdk()
+	var opts := PKeyTestFixtures.options("http://127.0.0.1:9", PKeyMemoryStore.new("dev_7c1e2d"), [1759500000.0], "djdl", F.product_trust())
+	opts.pinned_release_keys = F.release_keys()
+	opts.expected_services = PackedStringArray(["release", "distribution"])
+	sdk.configure(opts)
+	await sdk.start()
+	var packs: PKeyPacks = sdk.update.packs
+	packs.root = root.path_join("pkey")
+	packs.stamp_path = stamp_file
+	packs.embedded_dir = root.path_join("none")
+	packs.transport = tr
+	return [sdk, packs]
+
+
+func _review(t: PKeyTestContext) -> void:
+	var d := _delegated(PACK, "1.0.0", 1, {"a.json": "{\"v\":1}"})
+	var w := _delegated("djdl.events.winter", "1.0.0", 1, {"b.json": "{\"v\":2}"})
+
+	# 1. A delegated install with no tree sink to gate is refused, never written.
+	var root := S.scratch("deleg-no-tree")
+	var e := F.engine(root, _transport().add(d), F.stamp_for([]))
+	e.storage = NoTreeSink.new(root)
+	await e.load_state([])
+	var r := await e.ensure_releases([_target(d)])
+	t.check("review: no tree sink fails closed (pack-not-data-only)", _code(r) == PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY and not e.doc["active"].has(PACK) and e.doc["inflight"].is_empty(), str(r))
+	S.remove_tree(root)
+
+	# 2. Unusable holds (a well-formed hold beside a malformed one): no delegated path for any pack
+	# the stamp names; a pack it does not name still takes it.
+	root = S.scratch("deleg-unusable-holds")
+	var stamp := F.stamp_for([])
+	stamp["holds"] = [{"pack": PACK, "release": _target(d)["release"]}, {"pack": 5}]
+	var pair: Array = await _sdk(root, F.stamp_text(stamp), _transport().add(d).add(w))
+	var packs: PKeyPacks = pair[1]
+	r = await packs.ensure_releases([_target(d)])
+	t.check("review: unusable holds: the engine knows the named packs", packs.engine != null and packs.engine.holds == null and packs.engine.unusable_holds_packs.has(PACK), S.canon(packs.engine.unusable_holds_packs if packs.engine != null else null))
+	t.check("review: unusable holds: a pack the stamp names is never delegated (jws)", _code(r) == String(PKeyErrors.RECORD_REJECTED) and _detail(r, "step") == "jws", str(r))
+	r = await packs.ensure_releases([_target(w)])
+	t.check("review: unusable holds: a pack the stamp does not name still installs", r.ok, str(r))
+
+	# 3. mount() refuses a delegated install, whatever queued it.
+	var h = packs.engine.handlers["godot.pck"]
+	h.to_mount["diceroll.core3d"] = {"packId": "diceroll.core3d", "recordSha256": "0".repeat(64), "record": "", "delegation": _g["jws"], "payloadSize": 1, "location": root.path_join("x.pck"), "type": "godot.pck"}
+	var m: Dictionary = await packs.mount()
+	S.check_same(t, "review: mount() refuses a delegated install (pack-not-data-only)", m, {"mounted": [], "refused": [{"packId": "diceroll.core3d", "code": PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "detail": "a delegated release is never mounted"}]})
+	pair[0].queue_free()
+	S.remove_tree(root)
+
+	# 4. The delegation cache misses after a trust change.
+	var keys := F.release_keys()
+	var opts := {"release_keys": keys, "product_trust": F.product_trust(), "expected_aud": F.PRODUCT, "expected_hash": d["recordSha256"], "delegation": _g["jws"]}
+	var ok1: Dictionary = await PKeyReleaseRecord.verify_release_record(d["jws"], opts)
+	var cached := PKeyReleaseRecord._delegation_cache.size()
+	var ok2: Dictionary = await PKeyReleaseRecord.verify_release_record(d["jws"], opts)
+	t.check("review: the delegation verifies, then hits the cache", ok1["ok"] and ok2["ok"] and PKeyReleaseRecord._delegation_cache.size() == cached)
+	var rotated := opts.duplicate()
+	rotated["release_keys"] = {"djdl-release-test-2027": F._keys["djdl-release-test-2027"]["publicKeyRaw"]}
+	var r1: Dictionary = await PKeyReleaseRecord.verify_release_record(d["jws"], rotated)
+	t.check("review: rotated release keys miss the cache and refuse (delegation)", not r1["ok"] and r1["step"] == "delegation", S.canon(r1))
+	var trusted := opts.duplicate()
+	var pt := F.product_trust()
+	pt["rotated-in"] = keys[F.RELEASE_KID]
+	trusted["product_trust"] = pt
+	var r2: Dictionary = await PKeyReleaseRecord.verify_release_record(d["jws"], trusted)
+	t.check("review: a product trust set that now holds the release key misses the cache and refuses (delegation)", not r2["ok"] and r2["step"] == "delegation", S.canon(r2))
+	t.check("review: neither refusal was cached", PKeyReleaseRecord._delegation_cache.size() == cached)

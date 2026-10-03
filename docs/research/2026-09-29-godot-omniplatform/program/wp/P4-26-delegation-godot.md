@@ -100,3 +100,10 @@ the `DELEGATION_PLANNED` and `DATA_ONLY_PLANNED` lists once the sections run for
 - **Timings (M-series Mac, 4.7.2).** The `delegationCases` section runs inside the conformance
   suite; `dataOnlyCases` takes 7.8 ms in the editor and 6.2 ms on the template; the `delegation`
   packs group 3.7 s in the editor and 2.9 s on the template (most of it the test signer).
+- **Review round 1.** A delegated apply without a tree sink to gate fails closed
+  (`pack-not-data-only`). When the stamp's holds are present but unusable (`stamp_holds` null),
+  `PolarisKey.update.packs` gives the engine every pack the stamp names (pins, expects and each raw
+  hold entry's `pack`), and none of them takes the delegated path. `handler.gd` notes that
+  replacing the `files.tree` handler drops its `simplify_path()` assertion (host code, trusted).
+  The `godot.pck` handler's refusal is a warning. New tests: no tree sink, unusable holds,
+  `mount()` refusing a delegated install, and a delegation cache miss after a trust rotation.

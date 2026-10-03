@@ -174,6 +174,10 @@ func start() -> PKeyResult:
 	var stamp_bytes := PKeyPackStorage.read_bytes(stamp_path) if content is Dictionary else {"ok": false}
 	if stamp_bytes["ok"] and not stamp_bytes.has("missing"):
 		e.holds = PKeyPackClaims.stamp_holds(stamp_bytes["bytes"])
+		if e.holds == null:
+			e.unusable_holds_packs = stamp_named_packs(stamp_bytes["bytes"], content)
+	elif content is Dictionary:
+		e.unusable_holds_packs = stamp_named_packs(PackedByteArray(), content)
 	e.prefs = prefs()
 	e.patch_methods = [PKeyConstants.PatchMethod.ZSTD_PATCH_FROM] if e.zstd.patch_from_available() else []
 	e.mem_budget = mem_budget
@@ -194,6 +198,24 @@ func start() -> PKeyResult:
 	_starting = false
 	_started.emit()
 	return PKeyResult.success()
+
+
+## Every pack id a content stamp names: its pins, its expects and every raw `holds` entry's `pack`
+## (read leniently, since the holds are unusable when this is called). plans/P4-19.md §2.4: with
+## unusable holds none of these takes the delegated path.
+static func stamp_named_packs(bytes: PackedByteArray, content: Dictionary) -> Dictionary:
+	var out := {}
+	for key in ["pins", "expects"]:
+		if content.get(key) is Array:
+			for p in content[key]:
+				if p is Dictionary and p.get("pack") is String:
+					out[p["pack"]] = true
+	var parsed := PKeyJson.parse_bytes(bytes) if not bytes.is_empty() else {"ok": false}
+	if parsed["ok"] and parsed["value"] is Dictionary and parsed["value"].get("holds") is Array:
+		for h in parsed["value"]["holds"]:
+			if h is Dictionary and h.get("pack") is String:
+				out[h["pack"]] = true
+	return out
 
 
 ## The licence's granted boolean flags, or null when the product runs no License service.
