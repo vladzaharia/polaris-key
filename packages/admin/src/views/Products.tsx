@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { api, type ProductDetail, type RotateKeyResult } from "../api.js";
 import { useResource } from "../context.js";
-import { navigate } from "../route.js";
+import { r } from "../console/routes.js";
+import { navigate } from "../console/router.js";
 import {
   Badge,
   Button,
@@ -35,6 +36,8 @@ import { EditProductDialog } from "./products/EditProductDialog.js";
 import { RotateKeyResultDialog } from "./products/RotateKeyResultDialog.js";
 import { SecretDialog } from "./products/SecretDialog.js";
 import { errorMessage, formatDate, releaseSourceOf } from "./products/util.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 type DialogKind = "edit" | "secret" | null;
 type ConfirmKind = "delete" | "rotate" | "resync" | null;
@@ -47,7 +50,7 @@ type ConfirmKind = "delete" | "rotate" | "resync" | null;
  */
 export function Products(): React.ReactElement {
   const toast = useToast();
-  const { data, loading, error, reload } = useResource("products", () =>
+  const { data, loading, error, reload } = useResource(qk.products(), () =>
     api.products(),
   );
   const products = data?.products ?? [];
@@ -79,18 +82,18 @@ export function Products(): React.ReactElement {
     setBusy(true);
     try {
       if (confirm === "delete") {
-        await api.deleteProduct(active.slug);
+        await mutate("deleteProduct", active.slug);
         toast.success("Product disabled", `“${active.slug}” was tombstoned.`);
         reload();
       } else if (confirm === "resync") {
-        await api.resyncProduct(active.slug);
+        await mutate("resyncProduct", active.slug);
         toast.success(
           "Resync triggered",
           `“${active.slug}” is syncing from GitHub.`,
         );
         reload();
       } else if (confirm === "rotate") {
-        const res = await api.rotateProductKey(active.slug);
+        const res = await mutate("rotateProductKey", active.slug);
         toast.success(
           "Key prepared",
           `“${active.slug}” has a staged signing key.`,
@@ -206,9 +209,7 @@ export function Products(): React.ReactElement {
           loading={loading && products.length === 0}
           filterable
           filterPlaceholder="Filter products…"
-          onRowClick={(p) =>
-            navigate({ kind: "product", slug: p.slug, view: "licenses" })
-          }
+          onRowClick={(p) => navigate(r.licenses(p.slug))}
           empty={
             <EmptyState
               icon={<Boxes aria-hidden />}

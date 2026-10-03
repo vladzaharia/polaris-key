@@ -7,7 +7,7 @@ import {
   type UpdateHealthObject,
   type UpdateHealthResponse,
 } from "../../api.js";
-import { invalidate, useResource } from "../../context.js";
+import { useResource } from "../../context.js";
 import {
   Badge,
   Button,
@@ -24,6 +24,8 @@ import {
   Switch,
   useToast,
 } from "../../components/ui/index.js";
+import { qk } from "../../console/data/queries.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * The Distribution section's UPDATE HEALTH tab (P6-03, README §6.2 item 6).
@@ -59,7 +61,7 @@ export function UpdateHealthView({
   slug: string;
 }): React.ReactElement {
   const { data, loading, error, reload } = useResource<UpdateHealthResponse>(
-    `distribution-update-health:${slug}`,
+    qk.health(slug),
     () => api.updateHealth(slug),
   );
 
@@ -242,8 +244,7 @@ function AutoHaltCard({
     setSaving(true);
     setFormError(null);
     try {
-      await api.saveAutoHalt(slug, draft);
-      invalidate(`distribution-update-health:${slug}`);
+      await mutate("saveAutoHalt", slug, draft);
       toast.success(
         "Auto-halt saved",
         draft.enabled
@@ -380,8 +381,12 @@ function SentryCard({
     if (!pending) return;
     setBusy(true);
     try {
-      await api.decideCandidate(slug, pending.candidate.id, pending.decision);
-      invalidate(`distribution-update-health:${slug}`);
+      await mutate(
+        "decideCandidate",
+        slug,
+        pending.candidate.id,
+        pending.decision,
+      );
       toast.success(
         pending.decision === "confirm"
           ? "Rollout halted"

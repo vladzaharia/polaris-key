@@ -283,7 +283,7 @@ describe("Deliverables tab", () => {
       await screen.findByRole("button", { name: `Open pack ${CORE}` }),
     );
     expect(window.location.hash).toBe(
-      `#/p/${SLUG}/deliverables/${encodeURIComponent(CORE)}`,
+      `#/p/${SLUG}/release/deliverables/${encodeURIComponent(CORE)}`,
     );
   });
 

@@ -3,14 +3,14 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   THEME_STORAGE_KEY,
   ThemeProvider,
   useTheme,
 } from "../src/components/theme.js";
-import { ThemeToggle } from "../src/components/Shell.js";
+import { ThemeMenu } from "../src/console/shell/ThemeMenu.js";
 
 /**
  * The theme contract (docs/design/BRAND.md §3): dark first, following the OS, with a persisted
@@ -121,16 +121,16 @@ describe("the pre-paint theme script", () => {
   });
 });
 
-describe("the theme toggle", () => {
+describe("the theme menu", () => {
   function Showing(): React.ReactElement {
     const { theme } = useTheme();
     return <output aria-label="showing">{theme}</output>;
   }
 
-  function renderToggle(): void {
+  function renderMenu(): void {
     render(
       <ThemeProvider>
-        <ThemeToggle />
+        <ThemeMenu />
         <Showing />
       </ThemeProvider>,
     );
@@ -142,30 +142,64 @@ describe("the theme toggle", () => {
   const stored = (): string | null =>
     window.localStorage.getItem(THEME_STORAGE_KEY);
 
-  it("cycles System → Dark → Light → System, persisting each choice on <html> and in storage", async () => {
+  /** Open the menu and pick a theme by its label. */
+  async function choose(label: "System" | "Dark" | "Light"): Promise<void> {
+    await userEvent.click(screen.getByRole("button", { name: /^Theme: / }));
+    const menu = await screen.findByRole("menu");
+    await userEvent.click(
+      within(menu).getByRole("menuitemradio", {
+        name: new RegExp(`^${label}`),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    (
+      Element.prototype as unknown as { hasPointerCapture: () => boolean }
+    ).hasPointerCapture = () => false;
+    (
+      Element.prototype as unknown as { scrollIntoView: () => void }
+    ).scrollIntoView = () => undefined;
+  });
+
+  it("offers System, Dark and Light as radio choices, the current one checked", async () => {
     mockSystem("light");
-    renderToggle();
+    renderMenu();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Theme: System" }),
+    );
+    const menu = await screen.findByRole("menu");
+    const items = within(menu).getAllByRole("menuitemradio");
+    expect(items.map((i) => i.textContent)).toEqual([
+      "SystemLight now",
+      "Dark",
+      "Light",
+    ]);
+    expect(items[0]!.getAttribute("aria-checked")).toBe("true");
+    expect(items[1]!.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("persists each choice on <html> and in storage, and returns to System", async () => {
+    mockSystem("light");
+    renderMenu();
 
     // System: no attribute (tokens.css follows the OS), resolved from the OS.
-    const toggle = screen.getByRole("button", { name: /^Theme: System\./ });
     expect(root.hasAttribute("data-theme")).toBe(false);
     expect(showing()).toBe("light");
     expect(stored()).toBe("system");
 
-    await userEvent.click(toggle);
+    await choose("Dark");
     expect(root.getAttribute("data-theme")).toBe("dark");
     expect(showing()).toBe("dark");
     expect(stored()).toBe("dark");
-    expect(
-      screen.getByRole("button", { name: "Theme: Dark. Switch to Light" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Theme: Dark" })).toBeTruthy();
 
-    await userEvent.click(toggle);
+    await choose("Light");
     expect(root.getAttribute("data-theme")).toBe("light");
     expect(showing()).toBe("light");
     expect(stored()).toBe("light");
 
-    await userEvent.click(toggle);
+    await choose("System");
     expect(root.hasAttribute("data-theme")).toBe(false);
     expect(stored()).toBe("system");
   });
@@ -173,17 +207,15 @@ describe("the theme toggle", () => {
   it("restores a persisted choice on the next load", () => {
     mockSystem("light");
     window.localStorage.setItem(THEME_STORAGE_KEY, "dark");
-    renderToggle();
+    renderMenu();
     expect(root.getAttribute("data-theme")).toBe("dark");
     expect(showing()).toBe("dark");
-    expect(
-      screen.getByRole("button", { name: "Theme: Dark. Switch to Light" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Theme: Dark" })).toBeTruthy();
   });
 
   it("follows the OS live while on System, and is dark when the OS gives no answer", () => {
     const system = mockSystem("dark");
-    renderToggle();
+    renderMenu();
     expect(showing()).toBe("dark");
     act(() => system.set("light"));
     expect(showing()).toBe("light");
@@ -191,7 +223,7 @@ describe("the theme toggle", () => {
     cleanup();
 
     vi.unstubAllGlobals(); // no matchMedia at all
-    renderToggle();
+    renderMenu();
     expect(showing()).toBe("dark");
   });
 });

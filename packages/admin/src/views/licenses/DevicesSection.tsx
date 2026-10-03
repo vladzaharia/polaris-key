@@ -1,6 +1,6 @@
 import * as React from "react";
 import { MonitorSmartphone } from "lucide-react";
-import { api, type DeviceDto } from "../../api.js";
+import { type DeviceDto } from "../../api.js";
 import {
   Badge,
   Button,
@@ -12,6 +12,7 @@ import {
   type ColumnDef,
 } from "../../components/ui/index.js";
 import { DeviceStatusBadge, formatStamp } from "./shared.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * One row per device that activated this license: identity, hardware binding, software facts,
@@ -39,7 +40,7 @@ export function DevicesSection({
     if (!target) return;
     setBusy(true);
     try {
-      await api.deauthorizeDevice(slug, id, target.deviceId);
+      await mutate("deauthorizeDevice", slug, id, target.deviceId);
       toast.success("Device deauthorized");
       onChanged();
       setTarget(null);
@@ -57,7 +58,7 @@ export function DevicesSection({
     if (!resetTarget) return;
     setBusy(true);
     try {
-      await api.resetDeviceFingerprint(slug, id, resetTarget.deviceId);
+      await mutate("resetDeviceFingerprint", slug, id, resetTarget.deviceId);
       toast.success(
         "Hardware binding cleared",
         "It re-binds on the next check-in.",

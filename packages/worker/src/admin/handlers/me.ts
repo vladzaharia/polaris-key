@@ -1,6 +1,11 @@
 /**
  * `/api/me` — the signed-in identity plus the CSRF token and the set of products this
  * session may administer (with each product's active catalog version).
+ *
+ * Also (ADMIN.md A-1): which deployment this is (`environment`, from the `PKEY_ENVIRONMENT`
+ * `[vars]` value; `null` when unset or unrecognised, so the console's badge stays hidden as it
+ * does in production) and when the session ends (`sessionExpiresAt`, epoch seconds — the
+ * session's own signed `exp`, a hard 8 h after sign-in).
  */
 
 import type { Env } from "../../env.js";
@@ -9,6 +14,18 @@ import { listProducts, getActiveSchema } from "../../repo.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
 import { adminJson } from "../lib/respond.js";
+
+/** The deployments the console can name. */
+export const CONSOLE_ENVIRONMENTS = ["prod", "staging", "dev"] as const;
+export type ConsoleEnvironment = (typeof CONSOLE_ENVIRONMENTS)[number];
+
+/** `PKEY_ENVIRONMENT`, validated: an unknown value is `null`, never echoed back. */
+export function consoleEnvironment(env: Env): ConsoleEnvironment | null {
+  const value = env.PKEY_ENVIRONMENT?.trim().toLowerCase();
+  return (CONSOLE_ENVIRONMENTS as readonly string[]).includes(value ?? "")
+    ? (value as ConsoleEnvironment)
+    : null;
+}
 
 export async function handleMe(
   env: Env,
@@ -40,5 +57,7 @@ export async function handleMe(
     csrf: session.csrf,
     platformAdmin: platform,
     products: adminProducts,
+    environment: consoleEnvironment(env),
+    sessionExpiresAt: session.exp,
   });
 }

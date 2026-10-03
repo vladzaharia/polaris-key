@@ -8,7 +8,7 @@ sidebar:
 `#/products` is the platform product registry — every product a session with platform-admin
 authority can see, which today is every product that exists. This page covers registering one,
 what its lifecycle actions actually do server-side, and the setup-health checklist the
-[Overview tab](/docs/admin/console-tour/#platform) is built from.
+[Overview page](/docs/admin/console-tour/#core) is built from.
 
 ## Registering a product
 
@@ -64,13 +64,13 @@ someone console access, it won't: add them to the platform OIDC provider's admin
 
 From the registry row menu or the product's own Settings page:
 
-| Action                               | What it does                                                                                                                                  |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Edit**                             | Updates name and per-license defaults. The compatibility window isn't here — it moved to [Update settings](/docs/admin/console-tour/#update). |
-| **Set secret**                       | Shortcut into [Secrets & keys](/docs/admin/secrets-and-keys/).                                                                                |
-| **Resync from GitHub**               | GitHub-linked products only (greyed out otherwise). Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below.         |
-| **Prepare signing key**              | Stages a new Ed25519 keypair. See [Secrets & keys](/docs/admin/secrets-and-keys/#rotating-the-signing-key).                                   |
-| **Delete** (Danger zone on Settings) | Tombstones the product. See below.                                                                                                            |
+| Action                               | What it does                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Edit**                             | Updates name and per-license defaults. The compatibility window isn't here — it moved to [Update → Feed](/docs/admin/console-tour/#update). |
+| **Set secret**                       | Shortcut into [Secrets & keys](/docs/admin/secrets-and-keys/).                                                                              |
+| **Resync from GitHub**               | GitHub-linked products only (greyed out otherwise). Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below.       |
+| **Prepare signing key**              | Stages a new Ed25519 keypair. See [Secrets & keys](/docs/admin/secrets-and-keys/#rotating-the-signing-key).                                 |
+| **Delete** (Danger zone on Settings) | Tombstones the product. See below.                                                                                                          |
 
 ### What resync actually re-applies
 

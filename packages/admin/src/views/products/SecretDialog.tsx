@@ -1,5 +1,5 @@
 import * as React from "react";
-import { api, type ProductDetail } from "../../api.js";
+import { type ProductDetail } from "../../api.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
@@ -22,6 +22,7 @@ import {
 } from "../../components/ui/index.js";
 import { errorMessage } from "./util.js";
 import { USAGE_CHOICES, type UsageChoice } from "../Secrets.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * Set a product secret. Both the name and value are write-only over the wire — the value is
@@ -66,7 +67,8 @@ export function SecretDialog({
     setBusy(true);
     setFormError(null);
     try {
-      await api.putProductSecret(
+      await mutate(
+        "putProductSecret",
         product.slug,
         n,
         value,

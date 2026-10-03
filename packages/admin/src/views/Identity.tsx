@@ -16,7 +16,7 @@ import {
   type PortalProductSettings,
   type UpdatePortalSettingsBody,
 } from "../api.js";
-import { invalidate, useResource } from "../context.js";
+import { useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
 import {
   Button,
@@ -37,6 +37,8 @@ import {
   useToast,
 } from "../components/ui/index.js";
 import { releaseSourceOf } from "./products/util.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * The Identity section (spec §8) — how a HUMAN reaches this product.
@@ -171,7 +173,7 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
   // Read through Identity's own endpoint rather than the copy embedded in the product row:
   // `identity/portal` is the table's owner, so it is the value a save round-trips against.
-  const { data, loading, error, reload } = useResource(`portal:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.portal(slug), () =>
     api.portalSettings(slug).then((r) => r.settings),
   );
   const settings = data ?? DEFAULT_PORTAL_SETTINGS;
@@ -210,7 +212,7 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.updatePortalSettings(slug, {
+      await mutate("updatePortalSettings", slug, {
         portalEnabled: form.portalEnabled,
         oidcEnabled: form.oidcEnabled,
         magicEnabled: form.magicEnabled,
@@ -218,7 +220,6 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
         releasesEnabled: form.releasesEnabled,
         autoLinkEnabled: form.autoLinkEnabled,
       });
-      invalidate(`portal:${slug}`);
       toast.success("Portal settings saved");
     } catch (err) {
       toast.error(
@@ -383,7 +384,7 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
  */
 function OidcCard({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
-  const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.product(slug), () =>
     api.product(slug).then((r) => r.product),
   );
   const [resyncing, setResyncing] = React.useState(false);
@@ -395,8 +396,7 @@ function OidcCard({ slug }: { slug: string }): React.ReactElement {
   const onResync = React.useCallback(async () => {
     setResyncing(true);
     try {
-      await api.resyncProduct(slug);
-      invalidate(`product:${slug}`);
+      await mutate("resyncProduct", slug);
       toast.success(
         "Re-sync complete",
         "Identity config was re-applied from the linked repo.",

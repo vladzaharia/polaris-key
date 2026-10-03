@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { BitColor } from "@polaris-key/brand";
 import { PolarisMark } from "@polaris-key/brand/react";
-import type { ServiceAccent } from "../../route.js";
+import type { ServiceAccent } from "../../console/nav.js";
 import { cn } from "../../lib/cn.js";
 import { useTheme } from "../theme.js";
 

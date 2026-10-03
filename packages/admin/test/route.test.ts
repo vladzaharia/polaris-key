@@ -1,28 +1,43 @@
 import { describe, expect, it } from "vitest";
 import {
-  hashFor,
-  isSectionEnabled,
-  isTabEnabled,
-  parseRoute,
+  ALL_PAGES,
+  GLOBAL_PAGES,
+  PRODUCT_PAGES,
   SECTIONS,
+  accentOf,
+  docsFor,
+  isPageEnabled,
+  isSectionEnabled,
+  navItems,
+  pageOf,
+  sameViewIn,
   sectionOf,
-  tabOf,
-  TABS,
   visibleSections,
-  type Route,
+  type GlobalPageId,
+  type PageId,
+  type ProductPageId,
   type ServiceState,
-  type Tab,
-} from "../src/route.js";
+} from "../src/console/nav.js";
+import {
+  LEGACY_REDIRECTS,
+  codecs,
+  hrefFor,
+  parseLocation,
+  productPage,
+  r,
+  viewKey,
+  withParam,
+  type Route,
+} from "../src/console/routes.js";
 import type { ServiceSlug } from "../src/api.js";
 
-// Hash routing is the only navigation layer (no router dep). These pin the parse/serialize
-// round-trip + the precedence rules so deep links and the product switcher stay in sync.
-//
-// `route.ts` also owns the suite console's NAV MODEL (D-15): a tab belongs to a service section,
-// and a section only exists for a product that runs that service. Three places read that answer
-// — sidebar, router, topbar — so it is pinned here rather than in each of them.
+/**
+ * The console's URL contract (docs/design/ADMIN.md §2.5–2.6): every page parses and round-trips,
+ * every pre-redesign URL redirects, a page that is not built yet redirects to the page that holds
+ * its capability today, and anything else is a not-found page that names the segment (SH-8).
+ * The nav model those URLs come from (nav.ts) is pinned here too.
+ */
 
-/** Everything on. The starting point for "and now turn exactly one thing off". */
 const ALL_ON: ServiceState = {
   license: { enabled: true },
   config: { enabled: true },
@@ -37,265 +52,510 @@ const withOff = (...off: ServiceSlug[]): ServiceState => ({
   ...Object.fromEntries(off.map((s) => [s, { enabled: false }])),
 });
 
-describe("parseRoute", () => {
-  it("empty hash defaults to the dashboard", () => {
-    expect(parseRoute("")).toEqual({ kind: "dashboard" });
-    expect(parseRoute("#/")).toEqual({ kind: "dashboard" });
-  });
+/** A route without its query, for `toEqual`. */
+function bare(route: Route): Record<string, unknown> {
+  const { query: _query, ...rest } = route;
+  return rest;
+}
 
-  it("#/products parses to the products registry", () => {
-    expect(parseRoute("#/products")).toEqual({ kind: "products" });
-  });
+const parse = (hash: string) => {
+  const parsed = parseLocation(hash);
+  return { route: bare(parsed.route), redirect: parsed.redirect };
+};
 
-  it("a product root defaults to the overview view", () => {
-    expect(parseRoute("#/p/djdl")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "overview",
-    });
-  });
+const READY_PRODUCT = PRODUCT_PAGES.filter((p) => p.ready);
+const NOT_READY = ALL_PAGES.filter((p) => !p.ready);
 
-  it("each known tab parses through", () => {
-    for (const { tab } of TABS) {
-      expect(parseRoute(`#/p/djdl/${tab}`)).toEqual({
-        kind: "product",
-        slug: "djdl",
-        view: tab,
+describe("every page parses and round-trips", () => {
+  it("Home is the empty hash, `#` and `#/`", () => {
+    for (const hash of ["", "#", "#/"]) {
+      expect(parse(hash)).toEqual({
+        route: { kind: "global", page: "home" },
+        redirect: undefined,
       });
     }
   });
 
-  it("a license detail carries the id", () => {
-    expect(parseRoute("#/p/djdl/licenses/lic_42")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "license",
-      id: "lic_42",
-    });
+  it("each built global page", () => {
+    for (const p of GLOBAL_PAGES.filter((g) => g.ready)) {
+      const hash = `#/${p.path}`;
+      const { route, redirect } = parse(hash);
+      expect(redirect, p.page).toBeUndefined();
+      expect(route).toEqual({ kind: "global", page: p.page });
+      expect(hrefFor(parseLocation(hash).route)).toBe(hash);
+    }
   });
 
-  it("a profile detail carries the id", () => {
-    // Profile editing is a routed page, not a modal: the payload is as large as the catalog,
-    // and "the profile that's wrong" needs a URL.
-    expect(parseRoute("#/p/djdl/profiles/default")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "profile",
-      id: "default",
-    });
-    // The list route is unaffected.
-    expect(parseRoute("#/p/djdl/profiles")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "profiles",
-    });
+  it("each built product page, at #/p/<slug>/<section>/<page>", () => {
+    for (const p of READY_PRODUCT) {
+      const hash = productPage("djdl", p.page as ProductPageId);
+      expect(hash).toBe(`#/p/djdl${p.path ? `/${p.path}` : ""}`);
+      const { route, redirect } = parse(hash);
+      expect(redirect, p.page).toBeUndefined();
+      expect(route).toEqual({ kind: "product", slug: "djdl", page: p.page });
+      expect(hrefFor(parseLocation(hash).route)).toBe(hash);
+    }
   });
 
-  it("an unknown view falls back to the OVERVIEW, not to licenses", () => {
-    // Re-baselined by the nav regroup: Licenses is a view a config-only product does not have,
-    // so it cannot be where "I don't know what you meant" lands. Overview is in the platform
-    // section, which every product has whatever it runs.
-    expect(parseRoute("#/p/djdl/bogus")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "overview",
-    });
+  it("each built record, with and without each tab", () => {
+    for (const p of READY_PRODUCT.filter((x) => x.record?.ready)) {
+      const page = p.page as ProductPageId;
+      const plain = productPage("djdl", page, { id: "rec_1" });
+      expect(parse(plain)).toEqual({
+        route: { kind: "product", slug: "djdl", page, id: "rec_1" },
+        redirect: undefined,
+      });
+      expect(hrefFor(parseLocation(plain).route)).toBe(plain);
+      for (const tab of p.record!.tabs ?? []) {
+        const hash = productPage("djdl", page, { id: "rec_1", tab });
+        expect(parse(hash).route).toEqual({
+          kind: "product",
+          slug: "djdl",
+          page,
+          id: "rec_1",
+          tab,
+        });
+        expect(hrefFor(parseLocation(hash).route)).toBe(hash);
+      }
+    }
   });
 
-  it("unknown product views fall back to the overview", () => {
-    expect(parseRoute("#/p/djdl/catalog")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "overview",
-    });
-    // `oidc` was a real tab before P7; the Identity section replaced it. An old bookmark must
-    // land somewhere sane rather than on a blank screen.
-    expect(parseRoute("#/p/djdl/oidc")).toEqual({
-      kind: "product",
-      slug: "djdl",
-      view: "overview",
-    });
-  });
-
-  it("decodes a URL-encoded slug and id (encoded slashes survive)", () => {
-    expect(parseRoute("#/p/my%20product/licenses/id%2Fwith%2Fslashes")).toEqual(
-      {
-        kind: "product",
-        slug: "my product",
-        view: "license",
-        id: "id/with/slashes",
-      },
+  it("the typed builders produce the same hashes as the table", () => {
+    expect(r.home()).toBe("#/");
+    expect(r.products()).toBe("#/products");
+    expect(r.overview("djdl")).toBe("#/p/djdl");
+    expect(r.keys("djdl")).toBe("#/p/djdl/keys");
+    expect(r.license("djdl", "lic_1", "keys")).toBe(
+      "#/p/djdl/license/licenses/lic_1/keys",
     );
+    expect(r.profile("djdl", "trial")).toBe("#/p/djdl/config/profiles/trial");
+    expect(r.deliverable("djdl", "core")).toBe(
+      "#/p/djdl/release/deliverables/core",
+    );
+    expect(r.feed("djdl")).toBe("#/p/djdl/update/feed");
   });
 
-  it("a garbage hash falls back to the dashboard", () => {
-    expect(parseRoute("#nonsense")).toEqual({ kind: "dashboard" });
+  it("keeps the query on a page, and round-trips it", () => {
+    const hash = r.licenses("djdl", {
+      status: "expired,active",
+      sort: "-expires",
+    });
+    expect(hash).toBe(
+      "#/p/djdl/license/licenses?status=expired%2Cactive&sort=-expires",
+    );
+    const { route } = parseLocation(hash);
+    expect(route.query.get("status")).toBe("expired,active");
+    expect(route.query.get("sort")).toBe("-expires");
+    expect(hrefFor(route)).toBe(hash);
+  });
+
+  it("drops empty query values from builders", () => {
+    expect(
+      r.matrix("djdl", { deliverable: "", view: null, window: undefined }),
+    ).toBe("#/p/djdl/distribution/matrix");
+  });
+
+  it("decodes and re-encodes slugs and ids (an encoded slash survives)", () => {
+    const hash = r.license("dj dl", "a/b c");
+    expect(hash).toBe("#/p/dj%20dl/license/licenses/a%2Fb%20c");
+    expect(parse(hash).route).toEqual({
+      kind: "product",
+      slug: "dj dl",
+      page: "licenses",
+      id: "a/b c",
+    });
+    expect(hrefFor(parseLocation(hash).route)).toBe(hash);
+  });
+
+  it("tolerates a trailing slash", () => {
+    expect(parse("#/p/djdl/license/tiers/").route).toEqual({
+      kind: "product",
+      slug: "djdl",
+      page: "tiers",
+    });
   });
 });
 
-describe("hashFor", () => {
-  it("serializes the dashboard + products routes", () => {
-    expect(hashFor({ kind: "dashboard" })).toBe("#/");
-    expect(hashFor({ kind: "products" })).toBe("#/products");
+describe("every old URL redirects (ADMIN.md §2.5)", () => {
+  // The table, verbatim. Each row: old hash → new hash.
+  const TABLE: [string, string][] = [
+    ["#/p/djdl/overview", "#/p/djdl"],
+    ["#/p/djdl/secrets", "#/p/djdl/keys"],
+    ["#/p/djdl/licenses", "#/p/djdl/license/licenses"],
+    ["#/p/djdl/licenses/lic_1", "#/p/djdl/license/licenses/lic_1"],
+    ["#/p/djdl/tiers", "#/p/djdl/license/tiers"],
+    ["#/p/djdl/fingerprints", "#/p/djdl/license/enrollment"],
+    ["#/p/djdl/config", "#/p/djdl/config/catalog"],
+    ["#/p/djdl/profiles", "#/p/djdl/config/profiles"],
+    ["#/p/djdl/profiles/trial", "#/p/djdl/config/profiles/trial"],
+    ["#/p/djdl/releases", "#/p/djdl/release/releases"],
+    ["#/p/djdl/deliverables", "#/p/djdl/release/deliverables"],
+    [
+      "#/p/djdl/deliverables/core%20pack",
+      "#/p/djdl/release/deliverables/core%20pack",
+    ],
+    ["#/p/djdl/compatibility", "#/p/djdl/release/compatibility"],
+    ["#/p/djdl/distribution", "#/p/djdl/distribution/matrix"],
+    ["#/p/djdl/distribution-matrix", "#/p/djdl/distribution/matrix"],
+    ["#/p/djdl/distribution-health", "#/p/djdl/distribution/health"],
+    ["#/p/djdl/updates", "#/p/djdl/update/feed"],
+    ["#/p/djdl/identity", "#/p/djdl/identity/portal"],
+  ];
+
+  it.each(TABLE)("%s → %s", (from, to) => {
+    const parsed = parseLocation(from);
+    expect(parsed.redirect).toBe(to);
+    // The route already is the target, so the first render shows the right page.
+    expect(bare(parsed.route)).toEqual(bare(parseLocation(to).route));
+    expect(parseLocation(to).redirect).toBeUndefined();
   });
 
-  it("serializes a tab route", () => {
-    expect(hashFor({ kind: "product", slug: "djdl", view: "config" })).toBe(
-      "#/p/djdl/config",
+  it("covers every one of the 19 tabs the old router knew", () => {
+    // The pre-redesign `Tab` union (route.ts at 17b90a32), written out so a change to the redirect
+    // table cannot quietly shrink what this test checks.
+    const OLD_TABS = [
+      "overview",
+      "services",
+      "devices",
+      "secrets",
+      "activity",
+      "settings",
+      "licenses",
+      "tiers",
+      "fingerprints",
+      "config",
+      "profiles",
+      "releases",
+      "deliverables",
+      "compatibility",
+      "distribution",
+      "distribution-matrix",
+      "distribution-health",
+      "updates",
+      "identity",
+    ];
+    expect(OLD_TABS).toHaveLength(19);
+    // Unchanged paths (Core's services, devices, activity, settings) still resolve directly.
+    const UNCHANGED = ["services", "devices", "activity", "settings"];
+    expect([...Object.keys(LEGACY_REDIRECTS), ...UNCHANGED].sort()).toEqual(
+      [...OLD_TABS].sort(),
     );
-  });
-
-  it("serializes a license-detail route with its id", () => {
-    expect(
-      hashFor({ kind: "product", slug: "djdl", view: "license", id: "lic_1" }),
-    ).toBe("#/p/djdl/licenses/lic_1");
-  });
-
-  it("serializes a profile-detail route under its list segment", () => {
-    expect(
-      hashFor({
+    for (const tab of OLD_TABS) {
+      const { route, redirect } = parseLocation(`#/p/djdl/${tab}`);
+      expect(route.kind, tab).toBe("product");
+      if (UNCHANGED.includes(tab)) expect(redirect, tab).toBeUndefined();
+      else expect(redirect, tab).toBeDefined();
+    }
+    // The three detail leaves keep their ids.
+    for (const [leaf, page] of [
+      ["licenses", "licenses"],
+      ["profiles", "profiles"],
+      ["deliverables", "deliverables"],
+    ] as const) {
+      expect(bare(parseLocation(`#/p/djdl/${leaf}/x1`).route)).toEqual({
         kind: "product",
         slug: "djdl",
-        view: "profile",
-        id: "default",
-      }),
-    ).toBe("#/p/djdl/profiles/default");
-  });
-
-  it("encodes slugs + ids with special characters", () => {
-    expect(
-      hashFor({ kind: "product", slug: "a/b", view: "license", id: "c d" }),
-    ).toBe("#/p/a%2Fb/licenses/c%20d");
-  });
-});
-
-describe("parseRoute ∘ hashFor round-trip", () => {
-  const routes: Route[] = [
-    { kind: "dashboard" },
-    { kind: "products" },
-    { kind: "product", slug: "djdl", view: "overview" },
-    { kind: "product", slug: "djdl", view: "licenses" },
-    { kind: "product", slug: "acme", view: "activity" },
-    { kind: "product", slug: "djdl", view: "settings" },
-    { kind: "product", slug: "djdl", view: "license", id: "lic_99" },
-    { kind: "product", slug: "djdl", view: "profile", id: "default" },
-    // P4-09: a pack deliverable's page; pack ids carry dots.
-    { kind: "product", slug: "djdl", view: "deliverable", id: "djdl.core3d" },
-  ];
-  for (const route of routes) {
-    it(`round-trips ${JSON.stringify(route)}`, () => {
-      expect(parseRoute(hashFor(route))).toEqual(route);
-    });
-  }
-});
-
-describe("tabOf", () => {
-  it("dashboard + products have no tab", () => {
-    expect(tabOf({ kind: "dashboard" })).toBeNull();
-    expect(tabOf({ kind: "products" })).toBeNull();
-  });
-
-  it("a license detail maps back to the licenses tab", () => {
-    expect(
-      tabOf({ kind: "product", slug: "djdl", view: "license", id: "x" }),
-    ).toBe("licenses");
-  });
-
-  it("a profile detail maps back to the profiles tab", () => {
-    // A detail leaf is not in the sidebar, so it has to name the tab that should light up —
-    // and the tab it names is also the enablement gate the router runs it through.
-    expect(
-      tabOf({ kind: "product", slug: "djdl", view: "profile", id: "x" }),
-    ).toBe("profiles");
-  });
-
-  it("a deliverable detail maps back to the deliverables tab", () => {
-    expect(
-      tabOf({ kind: "product", slug: "djdl", view: "deliverable", id: "x" }),
-    ).toBe("deliverables");
-  });
-
-  it("a tab view maps to itself", () => {
-    expect(tabOf({ kind: "product", slug: "djdl", view: "config" })).toBe(
-      "config",
-    );
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════
-// The nav model (D-15 / D-17)
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe("SECTIONS", () => {
-  it("declares every tab exactly once", () => {
-    // `TABS` is derived from `SECTIONS`, so a tab that appeared twice would render twice in the
-    // sidebar and make `sectionOf` return whichever section happened to be first.
-    const tabs = SECTIONS.flatMap((s) => s.items.map((i) => i.tab));
-    expect(new Set(tabs).size).toBe(tabs.length);
-    expect(tabs).toEqual(TABS.map((t) => t.tab));
-  });
-
-  it("groups the tabs under the services that own them", () => {
-    const bySection = Object.fromEntries(
-      SECTIONS.map((s) => [s.key, s.items.map((i) => i.tab)]),
-    );
-    expect(bySection).toEqual({
-      platform: [
-        "overview",
-        "services",
-        "devices",
-        "secrets",
-        "activity",
-        "settings",
-      ],
-      license: ["licenses", "tiers", "fingerprints"],
-      config: ["config", "profiles"],
-      release: ["releases", "deliverables", "compatibility"],
-      distribution: [
-        "distribution",
-        "distribution-matrix",
-        "distribution-health",
-      ],
-      update: ["updates"],
-      identity: ["identity"],
-    });
-  });
-
-  it("carries the D-17 accent tokens: each service's slug, and `core` for the platform", () => {
-    // @polaris-key/brand keys the section accents by service slug, and the always-on substrate
-    // gets the `core` accent. These strings are the CSS contract (`[data-service="…"]` in the
-    // brand's tokens.css), so a rename here is a silent theming regression.
-    expect(Object.fromEntries(SECTIONS.map((s) => [s.key, s.accent]))).toEqual({
-      platform: "core",
-      license: "license",
-      config: "config",
-      release: "release",
-      distribution: "distribution",
-      update: "update",
-      identity: "identity",
-    });
-  });
-
-  it("binds each section to the service that gates it, and the platform to none", () => {
-    expect(Object.fromEntries(SECTIONS.map((s) => [s.key, s.service]))).toEqual(
-      {
-        platform: null,
-        license: "license",
-        config: "config",
-        release: "release",
-        distribution: "distribution",
-        update: "update",
-        identity: "identity",
-      },
-    );
-  });
-});
-
-describe("sectionOf", () => {
-  it("is total over every tab", () => {
-    for (const { tab } of TABS) {
-      expect(sectionOf(tab).items.some((i) => i.tab === tab)).toBe(true);
+        page,
+        id: "x1",
+      });
     }
+  });
+
+  it("keeps the query across a redirect", () => {
+    expect(parseLocation("#/p/djdl/licenses?status=expired").redirect).toBe(
+      "#/p/djdl/license/licenses?status=expired",
+    );
+  });
+
+  it("does not invent a shape the old URL never had", () => {
+    expect(parseLocation("#/p/djdl/licenses/a/b").route.kind).toBe("not-found");
+    expect(parseLocation("#/p/djdl/tiers/t1").route.kind).toBe("not-found");
+    expect(parseLocation("#/p/djdl/config/nope").route.kind).toBe("not-found");
+  });
+
+  it("a section alone goes to its first page", () => {
+    expect(parseLocation("#/p/djdl/license").redirect).toBe(
+      "#/p/djdl/license/licenses",
+    );
+    expect(parseLocation("#/p/djdl/release").redirect).toBe(
+      "#/p/djdl/release/releases",
+    );
+    expect(parseLocation("#/p/djdl/update").redirect).toBe(
+      "#/p/djdl/update/feed",
+    );
+  });
+});
+
+describe("pages that are not built yet redirect to their host", () => {
+  const hashOf = (page: PageId): string =>
+    GLOBAL_PAGES.some((g) => g.page === page)
+      ? `#/${pageOf(page).path}`
+      : productPage("djdl", page as ProductPageId);
+
+  it.each(NOT_READY.map((p) => [p.page, p.host!] as const))(
+    "%s → %s",
+    (page, host) => {
+      const parsed = parseLocation(hashOf(page));
+      expect(parsed.redirect, page).toBe(hashOf(host));
+      const target = parsed.route;
+      expect(target.kind === "not-found" ? null : target.page).toBe(host);
+    },
+  );
+
+  it("a record that is not built yet goes to its collection", () => {
+    expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBe(
+      "#/p/djdl/license/tiers",
+    );
+    expect(
+      parseLocation("#/p/djdl/release/releases/rel_1/builds").redirect,
+    ).toBe("#/p/djdl/release/releases");
+    expect(parseLocation("#/p/djdl/devices/dev_1").redirect).toBe(
+      "#/p/djdl/devices",
+    );
+  });
+
+  it("every host is a built page in the same scope", () => {
+    for (const p of NOT_READY) {
+      expect(p.host, p.page).toBeDefined();
+      const host = pageOf(p.host!);
+      expect(host.ready, `${p.page} → ${p.host}`).toBe(true);
+      expect(sectionOf(host.page) === null, p.page).toBe(
+        sectionOf(p.page) === null,
+      );
+    }
+  });
+});
+
+describe("unknown segments resolve to not-found (SH-8)", () => {
+  it("names the product and the path it could not match", () => {
+    expect(parse("#/p/djdl/nope").route).toEqual({
+      kind: "not-found",
+      slug: "djdl",
+      path: "nope",
+    });
+    expect(parse("#/p/djdl/license/nope").route).toEqual({
+      kind: "not-found",
+      slug: "djdl",
+      path: "license/nope",
+    });
+  });
+
+  it("an unknown record tab is not silently the first tab", () => {
+    expect(parse("#/p/djdl/license/licenses/lic_1/bogus").route.kind).toBe(
+      "not-found",
+    );
+  });
+
+  it("global paths match exactly: #/productsfoo is not Products", () => {
+    expect(parse("#/productsfoo").route).toEqual({
+      kind: "not-found",
+      path: "productsfoo",
+    });
+    expect(parse("#/nothing/here").route.kind).toBe("not-found");
+  });
+
+  it("a product path with no slug, and a malformed escape", () => {
+    expect(parse("#/p").route.kind).toBe("not-found");
+    expect(parse("#/p/").route.kind).toBe("not-found");
+    expect(parse("#/p/%E0%A4%A/overview").route.kind).toBe("not-found");
+  });
+
+  it("a not-found route round-trips to its own hash", () => {
+    expect(hrefFor(parseLocation("#/p/djdl/nope").route)).toBe("#/p/djdl/nope");
+    expect(hrefFor(parseLocation("#/productsfoo").route)).toBe("#/productsfoo");
+  });
+});
+
+describe("the remount key (ADMIN.md §2.6)", () => {
+  const key = (hash: string) => viewKey(parseLocation(hash).route);
+
+  it("ignores the query and the record tab", () => {
+    expect(key("#/p/djdl/license/licenses?q=a")).toBe(
+      key("#/p/djdl/license/licenses?q=b"),
+    );
+    expect(key("#/p/djdl/license/licenses/l1/keys")).toBe(
+      key("#/p/djdl/license/licenses/l1/devices"),
+    );
+  });
+
+  it("changes with the product, the page and the record", () => {
+    expect(key("#/p/a/license/licenses")).not.toBe(
+      key("#/p/b/license/licenses"),
+    );
+    expect(key("#/p/a/license/licenses")).not.toBe(key("#/p/a/license/tiers"));
+    expect(key("#/p/a/license/licenses/l1")).not.toBe(
+      key("#/p/a/license/licenses/l2"),
+    );
+  });
+});
+
+describe("query codecs (ADMIN.md §5.7)", () => {
+  it("string: empty is absent, the fallback is never written", () => {
+    const c = codecs.string();
+    expect(c.parse(null)).toBe("");
+    expect(c.parse("abc")).toBe("abc");
+    expect(c.format("")).toBeNull();
+    expect(c.format("abc")).toBe("abc");
+  });
+
+  it("int: non-negative integers only, anything else reads as the fallback", () => {
+    const c = codecs.int(24);
+    expect(c.parse("168")).toBe(168);
+    expect(c.parse("-1")).toBe(24);
+    expect(c.parse("1.5")).toBe(24);
+    expect(c.parse("x")).toBe(24);
+    expect(c.parse(null)).toBe(24);
+    expect(c.format(24)).toBeNull();
+    expect(c.format(48)).toBe("48");
+  });
+
+  it("oneOf: an unknown value reads as the fallback", () => {
+    const c = codecs.oneOf(["matrix", "readiness"] as const, "matrix");
+    expect(c.parse("readiness")).toBe("readiness");
+    expect(c.parse("evil")).toBe("matrix");
+    expect(c.format("matrix")).toBeNull();
+  });
+
+  it("list: comma-separated, order kept, blanks dropped", () => {
+    const c = codecs.list();
+    expect(c.parse("active,,expired")).toEqual(["active", "expired"]);
+    expect(c.parse(null)).toEqual([]);
+    expect(c.format([])).toBeNull();
+    expect(c.format(["a", "b"])).toBe("a,b");
+  });
+
+  it("withParam sets and removes one parameter, leaving the rest", () => {
+    const q = new URLSearchParams("q=x&status=a");
+    expect(withParam(q, "status", codecs.list(), ["a", "b"]).toString()).toBe(
+      "q=x&status=a%2Cb",
+    );
+    expect(withParam(q, "status", codecs.list(), []).toString()).toBe("q=x");
+    expect(q.toString()).toBe("q=x&status=a");
+  });
+});
+
+describe("the nav model (nav.ts)", () => {
+  it("declares every page exactly once, with a unique path per scope", () => {
+    const ids = ALL_PAGES.map((p) => p.page);
+    expect(new Set(ids).size).toBe(ids.length);
+    const globalPaths = GLOBAL_PAGES.map((p) => p.path);
+    expect(new Set(globalPaths).size).toBe(globalPaths.length);
+    const productPaths = PRODUCT_PAGES.map((p) => p.path);
+    expect(new Set(productPaths).size).toBe(productPaths.length);
+  });
+
+  it("covers the §2.3 page set", () => {
+    const expected: PageId[] = [
+      "home",
+      "products",
+      "product-new",
+      "platform",
+      "overview",
+      "services",
+      "devices",
+      "keys",
+      "activity",
+      "settings",
+      "licenses",
+      "tiers",
+      "enrollment",
+      "catalog",
+      "catalog-edit",
+      "profiles",
+      "edge-mint",
+      "releases",
+      "channels",
+      "deliverables",
+      "compatibility",
+      "simulator",
+      "content-keys",
+      "matrix",
+      "rollouts",
+      "outlets",
+      "access",
+      "health",
+      "credentials",
+      "feed",
+      "portal",
+      "sign-in",
+    ];
+    expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
+  });
+
+  it("puts Core first, then one section per service in canonical order", () => {
+    expect(SECTIONS.map((s) => s.key)).toEqual([
+      "core",
+      "license",
+      "config",
+      "release",
+      "distribution",
+      "update",
+      "identity",
+    ]);
+    expect(SECTIONS[0]!.service).toBeNull();
+    for (const s of SECTIONS.slice(1)) expect(s.service).toBe(s.key);
+  });
+
+  it("carries the accent tokens: each service's slug, `core` for Core and the global pages", () => {
+    expect(SECTIONS.map((s) => s.accent)).toEqual([
+      "core",
+      "license",
+      "config",
+      "release",
+      "distribution",
+      "update",
+      "identity",
+    ]);
+    for (const g of GLOBAL_PAGES) expect(accentOf(g.page)).toBe("core");
+    expect(accentOf("tiers")).toBe("license");
+    expect(accentOf("health")).toBe("distribution");
+  });
+
+  it("every nav ITEM declares an icon component (owner, 2026-10-03)", () => {
+    // Items only: section headers deliberately have none (shell.test.tsx asserts that). Every page
+    // the sidebar or the palette can list, built or not yet, declares a lucide component.
+    for (const p of ALL_PAGES) {
+      expect(p.icon, `${p.page} has no icon`).toBeTruthy();
+      expect(
+        ["function", "object"].includes(typeof p.icon),
+        `${p.page}'s icon is not a component`,
+      ).toBe(true);
+    }
+  });
+
+  it("every page has an absolute, trailing-slash docs path", () => {
+    for (const p of ALL_PAGES) {
+      expect(docsFor(p.page), p.page).toMatch(/^\/docs\/([a-z0-9-]+\/)*$/);
+    }
+    for (const s of SECTIONS) expect(s.docs, s.key).toMatch(/^\/docs\//);
+  });
+
+  it("product `g` shortcuts are ADMIN.md §5.5's, unique, and never shadow `g h` or `g p`", () => {
+    const keys = PRODUCT_PAGES.map((p) => p.shortcut).filter(Boolean);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).not.toContain("h");
+    expect(keys).not.toContain("p");
+    expect(
+      Object.fromEntries(
+        PRODUCT_PAGES.filter((p) => p.shortcut).map((p) => [
+          p.shortcut,
+          p.page,
+        ]),
+      ),
+    ).toEqual({
+      o: "overview",
+      l: "licenses",
+      c: "catalog",
+      r: "releases",
+      m: "matrix",
+      a: "activity",
+      s: "settings",
+    });
+  });
+
+  it("every section lists at least one built page", () => {
+    for (const s of SECTIONS)
+      expect(navItems(s).length, s.key).toBeGreaterThan(0);
   });
 });
 
@@ -308,31 +568,17 @@ describe("enablement filtering", () => {
 
   it("hides exactly the section whose service is off", () => {
     expect(visibleSections(withOff("release")).map((s) => s.key)).toEqual([
-      "platform",
+      "core",
       "license",
       "config",
       "distribution",
       "update",
       "identity",
     ]);
-    // Distribution's section exists only while Distribution is on (P2b-01).
-    expect(visibleSections(withOff("distribution")).map((s) => s.key)).toEqual([
-      "platform",
-      "license",
-      "config",
-      "release",
-      "update",
-      "identity",
-    ]);
-    expect(isTabEnabled("distribution", withOff("distribution"))).toBe(false);
-    expect(isTabEnabled("distribution", ALL_ON)).toBe(true);
   });
 
-  it("keeps the platform section for a product that runs NOTHING", () => {
-    // The escape hatch: enablement is edited from Platform → Services, so a product with every
-    // service off must still have a nav that can reach it. Hiding the platform section would
-    // make an all-off product unrecoverable from the console.
-    const nothing = withOff(
+  it("keeps Core for a product that runs nothing", () => {
+    const none = withOff(
       "license",
       "config",
       "release",
@@ -340,57 +586,51 @@ describe("enablement filtering", () => {
       "update",
       "identity",
     );
-    expect(visibleSections(nothing).map((s) => s.key)).toEqual(["platform"]);
-    expect(isTabEnabled("services", nothing)).toBe(true);
+    expect(visibleSections(none).map((s) => s.key)).toEqual(["core"]);
   });
 
-  it("shows everything while enablement is still unknown", () => {
-    // Fail-OPEN, deliberately: this is an affordance filter, not an access control — the worker
-    // gates every one of these endpoints itself. Hiding first and revealing on load would make
-    // the nav jump under the operator's cursor and flash a "not enabled" screen on a deep link
-    // that is in fact enabled.
-    expect(visibleSections(null).map((s) => s.key)).toEqual(
-      SECTIONS.map((s) => s.key),
-    );
-    expect(isTabEnabled("licenses", null)).toBe(true);
+  it("shows everything while enablement is unknown, and treats a missing service as off", () => {
+    expect(visibleSections(null).length).toBe(SECTIONS.length);
+    expect(isSectionEnabled(SECTIONS[1]!, {})).toBe(false);
   });
 
-  it("treats a service missing from the map as off", () => {
-    // A worker that grew a sixth service would send a map this build has never seen; the
-    // reverse — a map missing a slug we DO know — must not read as enabled.
-    const partial = { license: { enabled: true } } as unknown as ServiceState;
-    expect(isTabEnabled("licenses", partial)).toBe(true);
-    expect(isTabEnabled("releases", partial)).toBe(false);
-  });
-
-  it("gates every tab through its own section", () => {
-    const off = withOff("license");
-    const expected: [Tab, boolean][] = [
-      ["overview", true],
-      ["services", true],
-      ["secrets", true],
-      ["activity", true],
-      ["settings", true],
-      ["licenses", false],
-      ["tiers", false],
-      ["fingerprints", false],
-      ["config", true],
-      ["profiles", true],
-      ["releases", true],
-      ["updates", true],
-      ["identity", true],
-    ];
-    for (const [tab, want] of expected) {
-      expect(isTabEnabled(tab, off), tab).toBe(want);
+  it("gates every product page through its own section", () => {
+    for (const p of PRODUCT_PAGES) {
+      const section = sectionOf(p.page)!;
+      const off = section.service === null ? ALL_ON : withOff(section.service);
+      expect(isPageEnabled(p.page as ProductPageId, off), p.page).toBe(
+        section.service === null,
+      );
+      expect(isPageEnabled(p.page as ProductPageId, ALL_ON)).toBe(true);
     }
   });
+});
 
-  it("isSectionEnabled agrees with visibleSections", () => {
-    const state = withOff("config", "identity");
-    for (const section of SECTIONS) {
-      expect(isSectionEnabled(section, state), section.key).toBe(
-        visibleSections(state).includes(section),
-      );
+describe("the product switcher keeps the page (sameViewIn, fixes SH-11)", () => {
+  it("keeps a page whose service the target runs", () => {
+    expect(sameViewIn("tiers", ALL_ON)).toBe("tiers");
+    expect(sameViewIn("activity", withOff("license"))).toBe("activity");
+  });
+
+  it("lands on Overview when the target does not run the page's service", () => {
+    expect(sameViewIn("tiers", withOff("license"))).toBe("overview");
+    expect(sameViewIn("matrix", withOff("distribution"))).toBe("overview");
+  });
+
+  it("keeps the page while the target's enablement is unknown", () => {
+    expect(sameViewIn("feed", null)).toBe("feed");
+  });
+});
+
+describe("global pages", () => {
+  it("have no section", () => {
+    for (const id of [
+      "home",
+      "products",
+      "platform",
+      "product-new",
+    ] as GlobalPageId[]) {
+      expect(sectionOf(id)).toBeNull();
     }
   });
 });

@@ -1,9 +1,10 @@
 import * as React from "react";
 import { AlertTriangle, FileCog, Pencil, Plus, Trash2 } from "lucide-react";
 import { api, ApiError, type ProfileSummary } from "../api.js";
-import { invalidate, useResource } from "../context.js";
+import { useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
-import { hashFor, navigate } from "../route.js";
+import { r } from "../console/routes.js";
+import { navigate } from "../console/router.js";
 import { absoluteTime, relativeTime } from "./format.js";
 import {
   Button,
@@ -17,6 +18,8 @@ import {
   CreateProfileDialog,
   type CreateProfileBody,
 } from "./profiles/CreateProfileDialog.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * Profiles view: list every profile for a product, create new profiles, open one to edit its
@@ -31,16 +34,17 @@ import {
  */
 export function Profiles({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
-  const res = useResource(`profiles:${slug}`, () => api.profiles(slug));
+  const res = useResource(qk.profiles(slug), () => api.profiles(slug));
   const profiles = res.data?.profiles ?? [];
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState<ProfileSummary | null>(null);
   const [busy, setBusy] = React.useState(false);
 
-  const refresh = (): void => invalidate(`profiles:${slug}`);
-  const open = (id: string): void =>
-    navigate({ kind: "product", slug, view: "profile", id });
+  const refresh = (): void => res.reload();
+  const open = (id: string): void => {
+    navigate(r.profile(slug, id));
+  };
 
   /**
    * CREATE THEN EDIT. A new profile has an id, a name, and an empty payload — there is nothing
@@ -51,7 +55,7 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
   const handleCreate = async (body: CreateProfileBody): Promise<void> => {
     setBusy(true);
     try {
-      const created = await api.createProfile(slug, body);
+      const created = await mutate("createProfile", slug, body);
       toast.success("Profile created", `Now configure “${body.id}”.`);
       setCreateOpen(false);
       refresh();
@@ -67,7 +71,7 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
     if (!deleting) return;
     setBusy(true);
     try {
-      await api.deleteProfile(slug, deleting.id);
+      await mutate("deleteProfile", slug, deleting.id);
       toast.success("Profile deleted", `Removed “${deleting.id}”.`);
       setDeleting(null);
       refresh();
@@ -96,7 +100,7 @@ export function Profiles({ slug }: { slug: string }): React.ReactElement {
       sortable: true,
       cell: (p) => (
         <a
-          href={hashFor({ kind: "product", slug, view: "profile", id: p.id })}
+          href={r.profile(slug, p.id)}
           className="rounded-sm font-medium text-foreground hover:text-accent-fg hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           {p.name || p.id}

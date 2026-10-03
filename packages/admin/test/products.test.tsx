@@ -148,12 +148,12 @@ describe("Products view", () => {
     expect(screen.getByText("Review setup warning")).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /Set secrets/ }).getAttribute("href"),
-    ).toBe("#/p/djdl/secrets");
+    ).toBe("#/p/djdl/keys");
     expect(
       screen
         .getByRole("link", { name: /Create test license/ })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/licenses");
+    ).toBe("#/p/djdl/license/licenses");
   });
 
   it("omits the License checklist items when License is disabled", async () => {
