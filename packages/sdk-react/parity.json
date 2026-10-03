@@ -161,7 +161,10 @@
       "status": "implemented",
       "note": "client-core parseFilesIndex, checkPaths and treeDigest; filesIndexCases in Chromium through @polaris-key/zstd-wasm's browser entry."
     },
-    "packs.index.chunks": { "status": "planned", "wp": "P4-11" },
+    "packs.index.chunks": {
+      "status": "implemented",
+      "note": "client-core parseChunkIndex; all 22 chunkIndexCases in Chromium through @polaris-key/zstd-wasm's browser entry; the OPFS store keeps seed indexes under <packs>/index/<sha256>."
+    },
     "packs.apply.full": {
       "status": "implemented",
       "note": "client-core applyFull; applyCases in Chromium under the WASM decoder."
@@ -170,7 +173,10 @@
       "status": "implemented",
       "note": "client-core applyFile with the type-neutral container rebuild; applyCases in Chromium under the WASM decoder."
     },
-    "packs.apply.chunk": { "status": "planned", "wp": "P4-11" },
+    "packs.apply.chunk": {
+      "status": "implemented",
+      "note": "client-core applyChunk over the OPFS store (a write-behind container output read back for duplicates, repair and resume; staging/<planId>/journal.json), single-range requests with If-Range; the 8 chunk applyCases in Chromium under the WASM decoder; chunk is in caps.strategies."
+    },
     "packs.apply.delta": {
       "status": "implemented",
       "note": "@polaris-key/zstd-wasm's browser entry (wasm32, P = 30, memBudget at most 2^30); the window check runs in the applier. dcz in Chromium is P4-18."

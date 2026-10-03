@@ -1406,10 +1406,10 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "packs.delegation": { status: "implemented", service: "release", na: [] },
   "packs.plan": { status: "implemented", service: "release", na: [] },
   "packs.index.files": { status: "implemented", service: "release", na: [] },
-  "packs.index.chunks": { status: "planned", service: "release", na: [] },
+  "packs.index.chunks": { status: "implemented", service: "release", na: [] },
   "packs.apply.full": { status: "implemented", service: "release", na: [] },
   "packs.apply.file": { status: "implemented", service: "release", na: [] },
-  "packs.apply.chunk": { status: "planned", service: "release", na: [] },
+  "packs.apply.chunk": { status: "implemented", service: "release", na: [] },
   "packs.apply.delta": { status: "implemented", service: "release", na: [] },
   "packs.state": { status: "implemented", service: "release", na: [] },
   "packs.handlers": { status: "implemented", service: "release", na: [] },
@@ -1484,4 +1484,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "7e7510858529d59ddc8f343bb11aa409502a4d404d888e5fadabec126a2e101c";
+  "b2801f458cbef9dbfb0b1357d4d4a8fcfb1afae8554b85f6ed3f6355103149e1";
