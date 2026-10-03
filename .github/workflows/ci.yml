@@ -392,7 +392,10 @@ jobs:
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # `yes` dies of SIGPIPE when sdkmanager stops reading, which pipefail would report.
+          set +o pipefail
           yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
           "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
       - name: Unit tests (play and direct)
         working-directory: sdks/kotlin
