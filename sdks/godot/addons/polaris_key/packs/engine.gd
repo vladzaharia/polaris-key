@@ -29,6 +29,21 @@ extends RefCounted
 ## `previous` alike; a fresh commit over a deferred active install carries it over to `previous`,
 ## re-verified before a rollback uses it. A listing that fails is never planned from.
 ##
+## Chunk sync (P4-11; plans/P4-10.md §2.5): with `chunk` in `strategies`, a container whose record
+## is not delegated and whose variant carries a usable `chunks` ref is planned from seeds: this
+## pack's readable installs, then the active and previous installs of every other pack (by pack
+## id), then the embedded baselines (by pack id), each a container whose own record names a chunk
+## index kept in the seed store (`<root>/index/<sha256>`, re-verified against the install's payload
+## at every use). The target index is staged like any object and handed to the planner; `chunk`
+## then rebuilds the payload by copying seeded chunks and fetching each missing run with one exact
+## single-range request (PKeyPackChunks.chunk_range_fetch), journalling each completed run in
+## `staging/<planId>/journal.json`. A refused range (a 200, another range or ETag) falls back to the
+## next candidate; an interrupted one keeps the plan, its staging and the run journal, so the next
+## ensure resumes and re-hashes the completed runs before reusing them. After every successful
+## ensure, each installed or embedded container whose index is not kept yet has it fetched by hash
+## and verified (best effort); garbage collection drops every kept index no root install names.
+## Delegated releases are trees, never planned by chunk, so no delegated byte takes this path.
+##
 ## Revocations (plans/P4-13.md §2.5) live in the sibling `revocations.json` (PKeyPackRevocations,
 ## PKeyPackStorage's `revocations_*`), never inside `state.json`. A release a verified revocation
 ## names is never installed, activated or mounted (`pack-revoked`), embedded baselines and pinned
@@ -88,8 +103,8 @@ var zstd := PKeyPackZstd.new()
 var patch_methods: Array = []
 ## The memory budget for one delta frame (`memBytes`).
 var mem_budget := 256 * 1024 * 1024
-## The strategies to cost (v1 lists no `chunk`).
-var strategies: Array = ["delta", "file", "full"]
+## The strategies to cost (`chunk` since P4-11; `full` is always the last fallback).
+var strategies: Array = ["delta", "chunk", "file", "full"]
 var transports: Array = ["pkey-cdn"]
 var storage: PKeyPackStorage
 var transport: PKeyPackTransport = PKeyPackTransport.new()
@@ -141,6 +156,8 @@ var _rev_jws := {}
 var _rev_file := false
 ## The last object fetch was refused with 403 (P4-05: `delivery_gate_missing`, `not_entitled`).
 var _denied := false
+## P4-11: the chunk indexes the post-install backfill already tried in this process (by sha256).
+var _backfill_tried := {}
 ## plans/P4-19.md §2.3: delegation records fetched in this process, by hash (each bound to its
 ## hash, and re-verified at every use against the current trust inputs).
 var _delegation_bodies := {}
@@ -506,6 +523,7 @@ func ensure(pack_ids: Array) -> PKeyResult:
 			_leave()
 			return _result(r["error"])
 		out.append(r["install"])
+		await _backfill_seed_indexes()
 	_leave()
 	return PKeyResult.success(out)
 
@@ -533,6 +551,7 @@ func ensure_releases(targets: Array) -> PKeyResult:
 			_leave()
 			return _result(r["error"])
 		out.append(r["install"])
+		await _backfill_seed_indexes()
 	_leave()
 	return PKeyResult.success(out)
 
@@ -1035,7 +1054,12 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 		for f in index["files"]:
 			if PKeyDataOnly.data_only_path_refusal(f["path"]) != "":
 				return _err(PKeyConstants.ErrorCode.PACK_NOT_DATA_ONLY, "%s holds %s, which a delegated content key may not ship." % [pack_id, f["path"]], pack_id, {"path": f["path"], "detail": PKeyDataOnly.RULE_EXTENSION})
-	var target := PKeyPackSelect.plan_target(variant, pin_sha, index)
+	# P4-11: the chunk context (the seeds and the staged target index), only for a container whose
+	# record is not delegated; any failure leaves the chunk candidate out, never an error.
+	var chunk = null
+	if delegated == null:
+		chunk = await _chunk_context(pack_id, plan_id, variant, installs, seeds)
+	var target := PKeyPackSelect.plan_target(variant, pin_sha, index, chunk["index"] if chunk is Dictionary else null)
 	if one_shot_budget >= 0 and target["full"] != null and float(variant["full"]["bytes"]) + float(variant["full"]["size"]) > float(one_shot_budget):
 		target["full"] = null
 	var planner_installed: Array = []
@@ -1046,7 +1070,17 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 			hashes = []
 			for f in files:
 				hashes.append(f["sha256"])
-		planner_installed.append({"release": i["recordSha256"], "payloadSha256": i["payloadSha256"], "files": hashes})
+		var entry := {"release": i["recordSha256"], "payloadSha256": i["payloadSha256"], "files": hashes}
+		var own = chunk["own"].get(i["location"]) if chunk is Dictionary else null
+		if own is Dictionary:
+			entry["chunks"] = {"ids": own["ids"]}
+		planner_installed.append(entry)
+	# Every other seed (other packs, embedded baselines) as a synthetic install: a payload hash that
+	# is never hex, so noop and delta never match it.
+	if chunk is Dictionary:
+		for sd in chunk["seeds"]:
+			if not sd["own"]:
+				planner_installed.append({"release": "", "payloadSha256": "seed:" + String(sd["payloadSha256"]), "files": null, "chunks": {"ids": sd["ids"]}})
 	# No delegated byte may reach `load_resource_pack`: the GDDL `zstd-patch-from` route mounts
 	# helper packs holding the delta's base files and frame, so it is never planned when the target
 	# or any install it could start from was signed by a content key (`file` and `full` remain).
@@ -1066,6 +1100,7 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 	return {
 		"kind": "plan", "body": body_text, "recordSha256": pin_sha, "record": record, "variant": variant,
 		"installs": installs, "seeds": seeds, "planId": plan_id, "index": index, "plan": p, "delegation": delegated,
+		"chunk": chunk,
 	}
 
 
@@ -1221,7 +1256,7 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 	var candidates: Array = [p]
 	candidates.append_array(p["fallbacks"])
 	for cand in candidates:
-		var objects = _objects_for(cand["strategy"], cand.get("delta"), variant, index, seeds)
+		var objects = _objects_for(cand["strategy"], cand.get("delta"), variant, index, seeds, pre.get("chunk"))
 		if objects == null:
 			continue
 		var journal_objects: Array = []
@@ -1251,7 +1286,16 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 		_emit({"packId": pack_id, "phase": "apply", "done": total, "total": total})
 		# plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
 		var gate: PKeyDataOnly.DataOnlySink = null
-		var result: Dictionary = await _apply(plan_id, pack_id, cand["strategy"], cand.get("delta"), variant, seeds, delegation != null)
+		var result: Dictionary
+		if cand["strategy"] == "chunk":
+			result = await _apply_chunk(plan_id, pack_id, variant, pre["chunk"], delegation, int(cand["bytes"]))
+			var cv: Dictionary = result["verdict"]
+			if not cv["ok"] and PKeyPackClaims.same(cv.get("error"), PKeyPackChunks.NETWORK_ERROR) and PKeyPackClaims.same(cv.get("detail"), PKeyPackChunks.INTERRUPTED):
+				# The state journal, the staged objects, the output and the run journal stay: the
+				# next ensure reuses the plan id and resumes, re-hashing every journalled run.
+				return _err(String(PKeyErrors.NETWORK), "Fetching %s's chunks was interrupted; the next ensure resumes." % pack_id, pack_id, {"detail": "chunk"})
+		else:
+			result = await _apply(plan_id, pack_id, cand["strategy"], cand.get("delta"), variant, seeds, delegation != null)
 		gate = result.get("data_only")
 		if gate != null and gate.refusal != null:
 			# A refusal aborts the plan: no fallback, staging discarded.
@@ -1284,6 +1328,9 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 					_persist()
 					storage.remove_staging(plan_id)
 					return _err(tchk["code"], "%s was refused before it committed: %s" % [pack_id, tchk.get("detail", "")], pack_id, {"path": tchk.get("path", ""), "step": cand["strategy"], "detail": String(tchk.get("detail", ""))})
+			if cand["strategy"] == "chunk":
+				# The verified target index becomes this install's seed index (best effort).
+				_keep_seed_index(plan_id, variant["chunks"])
 			var location: String = await PKeyPackJob.run(storage.commit.bind(plan_id, pack_id, variant["payload"]["sha256"], variant["files"]["layout"], result.get("index", index)), "PolarisKey pack commit")
 			if location == "":
 				if first_failure == null:
@@ -1305,8 +1352,13 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 	return _err(PKeyConstants.ErrorCode.PLAN_NO_STRATEGY, "No way to install %s." % pack_id, pack_id)
 
 
-## The objects a strategy fetches, in order; null when the strategy cannot run here.
-func _objects_for(strategy: String, delta: Variant, variant: Dictionary, index: Variant, seeds: Dictionary) -> Variant:
+## The objects a strategy fetches, in order; null when the strategy cannot run here. `chunk`
+## fetches only its index (already staged by the preflight); its runs are ranged requests.
+func _objects_for(strategy: String, delta: Variant, variant: Dictionary, index: Variant, seeds: Dictionary, chunk: Variant = null) -> Variant:
+	if strategy == "chunk":
+		if not (chunk is Dictionary):
+			return null
+		return [{"sha256": variant["chunks"]["sha256"], "bytes": int(variant["chunks"]["bytes"])}]
 	var files: Dictionary = variant["files"]
 	var idx := {"sha256": files["sha256"], "bytes": int(files["bytes"])}
 	var gaps: Array = []
@@ -1375,12 +1427,7 @@ static func _find_delta_index(variant: Dictionary, id: Variant) -> int:
 ## With `data_only`, the tree sink is a PKeyDataOnly.DataOnlySink (a delegated install), returned
 ## as the result's `data_only`.
 func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, variant: Dictionary, seeds: Dictionary, data_only := false) -> Dictionary:
-	var st := storage
-	var objects := func(sha256: String) -> Variant:
-		var n := st.staged_size(plan_id, sha256)
-		if n > 0 or (n == 0 and sha256 == PKeyPackStorage.EMPTY_SHA256):
-			return st.staged_source(plan_id, sha256)
-		return null
+	var objects := _staged_objects(plan_id)
 	var out := storage.output(plan_id, variant["files"]["layout"])
 	if out.is_empty():
 		return {"verdict": {"ok": false, "error": String(PKeyErrors.STORE_FAILED)}}
@@ -1434,6 +1481,308 @@ func _apply(plan_id: String, pack_id: String, strategy: String, delta: Variant, 
 	if gate != null:
 		r["data_only"] = gate
 	return r
+
+
+## The objects port over a plan's staging: Callable(sha256) -> PKeyByteSource or null.
+func _staged_objects(plan_id: String) -> Callable:
+	var st := storage
+	return func(sha256: String) -> Variant:
+		var n := st.staged_size(plan_id, sha256)
+		if n > 0 or (n == 0 and sha256 == PKeyPackStorage.EMPTY_SHA256):
+			return st.staged_source(plan_id, sha256)
+		return null
+
+
+# ── Chunk sync (P4-11) ──────────────────────────────────────────────────────────────────────
+
+## Whether this storage keeps seed indexes and a resumable container output (a custom storage may
+## not: the chunk strategy is then never planned).
+func _has_seed_store() -> bool:
+	return storage != null and storage.has_method("seed_index_get") and storage.has_method("seed_index_put") and storage.has_method("resume_output")
+
+
+## The variant an install was made from, out of its verified record (this process's `records`),
+## or null.
+func _install_variant(i: Dictionary) -> Variant:
+	var rec = records.get(i.get("recordSha256"))
+	if not (rec is Dictionary) or not (rec.get("variants") is Array):
+		return null
+	for v in rec["variants"]:
+		if v is Dictionary and v.get("variant") is Dictionary and PKeyPackClaims.variant_key(v["variant"]) == i.get("variant"):
+			return v
+	return null
+
+
+## An install's usable chunks ref (a container whose own record's variant names one), or null.
+func _install_chunks_ref(i: Dictionary) -> Variant:
+	if not PKeyPackClaims.same(i.get("layout"), "container"):
+		return null
+	var v = _install_variant(i)
+	if not (v is Dictionary) or not PKeyPackChunks.usable_ref(v.get("chunks")):
+		return null
+	if not (v.get("payload") is Dictionary) or not PKeyPackClaims.same(v["payload"].get("sha256"), i.get("payloadSha256")):
+		return null
+	return v["chunks"]
+
+
+## A kept seed index re-verified against the install's payload: the parsed index or null.
+## Thread-safe (storage reads, a hash, a decode and the parser).
+static func _seed_index_of(st: PKeyPackStorage, z: PKeyPackZstd, ref: Dictionary, payload: Dictionary) -> Variant:
+	var stored = st.seed_index_get(String(ref["sha256"]))
+	if not (stored is PackedByteArray):
+		return null
+	var r := PKeyPackChunks.parse_chunk_index(stored, ref, payload, z.decode)
+	return r["index"] if r["ok"] else null
+
+
+## The seeds for `pack_id` (P4-11), in order and deduplicated by payload SHA-256: this pack's
+## readable installs (`installs`, the order the planner lists them; their sources in `sources`),
+## then the active and previous installs of every other pack by pack id, then the embedded
+## baselines by pack id. Each is a container whose own record's variant carries a usable chunks
+## ref, whose kept index parses bound to its payload and whose payload opens. A coroutine
+## returning [{index, payload, ids, packId, payloadSha256, location, own}].
+func _chunk_seeds(pack_id: String, installs: Array, sources: Dictionary) -> Array:
+	var order: Array = []
+	for i in installs:
+		order.append([i, true])
+	var others: Array = []
+	for slot in ["active", "previous"]:
+		for id in doc[slot]:
+			if not others.has(id) and id != pack_id:
+				others.append(id)
+	others.sort_custom(func(a, b): return PKeyPackClaims.compare_bytes(String(a), String(b)) < 0)
+	for id in others:
+		for slot in ["active", "previous"]:
+			var i = doc[slot].get(id)
+			if i is Dictionary:
+				order.append([i, false])
+	var emb_ids: Array = _embedded.keys()
+	emb_ids.sort_custom(func(a, b): return PKeyPackClaims.compare_bytes(String(a), String(b)) < 0)
+	for id in emb_ids:
+		if id != pack_id:
+			order.append([_embedded[id], false])
+	var out: Array = []
+	var seen := {}
+	var locations := {}
+	for pair in order:
+		var i: Dictionary = pair[0]
+		var sha = i.get("payloadSha256")
+		if not (sha is String) or seen.has(sha) or install_revoked(i):
+			continue
+		if locations.has(i.get("location")) or _unverifiable.has(i.get("location")):
+			continue
+		var ref = _install_chunks_ref(i)
+		if ref == null:
+			continue
+		var payload := {"size": i["payloadSize"], "sha256": sha}
+		var parsed = await PKeyPackJob.run(_seed_index_of.bind(storage, zstd, ref, payload), "PolarisKey chunk seeds")
+		if not (parsed is Dictionary):
+			continue
+		var src = null
+		var opened = sources.get(i["location"]) if pair[1] else null
+		if opened is Dictionary and opened.get("payload") is PKeyByteSource:
+			src = opened["payload"]
+		else:
+			var f := PKeyByteSource.file(String(i["location"]))
+			if f.error == OK:
+				src = f
+		if not (src is PKeyByteSource) or float((src as PKeyByteSource).size) != float(i["payloadSize"]):
+			continue
+		seen[sha] = true
+		locations[i["location"]] = true
+		var ids: Array = []
+		for r in parsed["records"]:
+			ids.append(r[0])
+		out.append({"index": parsed, "payload": src, "ids": ids, "packId": i["packId"], "payloadSha256": sha, "location": i["location"], "own": pair[1]})
+	return out
+
+
+## The preflight's chunk step (P4-11): with `chunk` in the strategies, a container variant with a
+## usable chunks ref, a seed store and at least one seed, the target index is staged (the normal
+## object download) and parsed bound to the variant's payload. {index (planTarget's chunkIndex:
+## payloadSize, payloadSha256, records), parsed, seeds, own: {location: seed}} or null; never an
+## error. The caller has already excluded delegated records. A coroutine.
+func _chunk_context(pack_id: String, plan_id: String, variant: Dictionary, installs: Array, sources: Dictionary) -> Variant:
+	if not strategies.has("chunk") or not _has_seed_store():
+		return null
+	if not PKeyPackClaims.same(variant["files"].get("layout"), "container") or not PKeyPackChunks.usable_ref(variant.get("chunks")):
+		return null
+	# A release already installed is a noop: nothing to stage.
+	for i in installs:
+		if PKeyPackClaims.same(i.get("payloadSha256"), variant["payload"].get("sha256")):
+			return null
+	var seeds := await _chunk_seeds(pack_id, installs, sources)
+	if seeds.is_empty():
+		return null
+	var ref: Dictionary = variant["chunks"]
+	if not await _download(plan_id, pack_id, {"sha256": ref["sha256"], "bytes": int(ref["bytes"])}, null):
+		return null
+	var src := storage.staged_source(plan_id, ref["sha256"])
+	var z := zstd
+	var parsed: Dictionary = await PKeyPackJob.run(func() -> Dictionary: return PKeyPackChunks.parse_chunk_index(PKeyByteSource.read_all(src), ref, variant["payload"], z.decode), "PolarisKey chunk index")
+	if not parsed["ok"]:
+		return null
+	var own := {}
+	for sd in seeds:
+		if sd["own"]:
+			own[sd["location"]] = sd
+	var idx: Dictionary = parsed["index"]
+	return {"index": {"payloadSize": idx["payloadSize"], "payloadSha256": idx["payloadSha256"], "records": idx["records"]}, "parsed": idx, "seeds": seeds, "own": own}
+
+
+static var _lower_hex: RegEx = RegEx.create_from_string("^[0-9a-f]*$")
+
+
+## The run journal's completed runs for this index and run count (a Dictionary used as a set);
+## anything that does not match exactly is ignored (every run is then fetched again).
+static func _journal_runs(text: Variant, index_sha: String, runs: int) -> Dictionary:
+	var out := {}
+	if not (text is String):
+		return out
+	var j := JSON.new()
+	if j.parse(text) != OK or not (j.data is Dictionary):
+		return out
+	var d: Dictionary = j.data
+	var hex = d.get("bitmap")
+	if not PKeyPackClaims.same(d.get("v"), 1) or not PKeyPackClaims.same(d.get("index"), index_sha) or not PKeyPackClaims.same(d.get("runs"), runs):
+		return out
+	if not (hex is String) or (hex as String).length() != 2 * ((runs + 7) >> 3) or _lower_hex.search(hex) == null:
+		return out
+	var bits := (hex as String).hex_decode()
+	if bits.size() != (runs + 7) >> 3:
+		return out
+	for k in runs:
+		if bits[k >> 3] & (1 << (k & 7)):
+			out[k] = true
+	return out
+
+
+## `apply("chunk")` (P4-11): the container output kept for a resume, the run journal read, then
+## PKeyPackChunks.apply_chunk over the staged index, the seeds and the exact range adapter, with
+## the repair pass; each completed run sets its bit and rewrites the journal. A coroutine with
+## `_apply`'s answer (never the chunk index as `index`: the store keeps only a files index).
+func _apply_chunk(plan_id: String, pack_id: String, variant: Dictionary, chunk: Variant, delegation: Variant, total: int) -> Dictionary:
+	# A delegated release never gets here (it is a tree, and plan_target maps a tree's chunks to no
+	# candidate); this keeps it so whatever the planner says.
+	if not (chunk is Dictionary) or delegation != null or not PKeyPackClaims.same(variant["files"].get("layout"), "container") or not PKeyPackChunks.usable_ref(variant.get("chunks")):
+		return {"verdict": {"ok": false, "error": PKeyPackChunks.CHUNKS_REF_MISMATCH}}
+	var out: Dictionary = storage.resume_output(plan_id) if storage.has_method("resume_output") else {}
+	if out.is_empty() or not out.has("sink"):
+		return {"verdict": {"ok": false, "error": String(PKeyErrors.STORE_FAILED)}}
+	var sink = out["sink"]
+	var index_sha: String = variant["chunks"]["sha256"]
+	var seeds: Array = chunk["seeds"]
+	var runs := PKeyPackChunks.chunk_runs(chunk["parsed"]["records"], PKeyPackChunks.seed_map(seeds)).size()
+	var completed := _journal_runs(storage.run_journal_read(plan_id), index_sha, runs)
+	var bits := PackedByteArray()
+	bits.resize((runs + 7) >> 3)
+	for k in completed:
+		bits[k >> 3] |= 1 << (k & 7)
+	var journal := {"bits": bits}
+	var st := storage
+	var on_run_done := func(k: int) -> void:
+		var b: PackedByteArray = journal["bits"]
+		b[k >> 3] |= 1 << (k & 7)
+		journal["bits"] = b
+		st.run_journal_write(plan_id, JSON.stringify({"v": 1, "index": index_sha, "runs": runs, "bitmap": b.hex_encode()}))
+	var index_bytes := int(variant["chunks"]["bytes"])
+	_emit({"packId": pack_id, "phase": "download", "done": mini(index_bytes, total), "total": total})
+	var on_progress := func(fetched: int) -> void:
+		_emit({"packId": pack_id, "phase": "download", "done": mini(index_bytes + fetched, total), "total": total})
+	var ports := {
+		"objects": _staged_objects(plan_id), "zstd": zstd, "output": sink,
+		"fetch_range": PKeyPackChunks.chunk_range_fetch(transport.open_range),
+	}
+	var plain: Array = []
+	for sd in seeds:
+		plain.append({"index": sd["index"], "payload": sd["payload"]})
+	var r: Dictionary = await PKeyPackChunks.apply_chunk(variant, plain, ports, true, completed, on_run_done, on_progress)
+	if not sink.close() and r["verdict"]["ok"]:
+		return {"verdict": {"ok": false, "error": String(PKeyErrors.STORE_FAILED)}}
+	return {"verdict": r["verdict"]}
+
+
+## Keep a plan's staged, verified chunk index as a seed index (best effort).
+func _keep_seed_index(plan_id: String, ref: Dictionary) -> void:
+	if not _has_seed_store():
+		return
+	var src := storage.staged_source(plan_id, String(ref["sha256"]))
+	if float(src.size) == float(ref["bytes"]):
+		storage.seed_index_put(String(ref["sha256"]), PKeyByteSource.read_all(src))
+
+
+## After a successful ensure (P4-11): every active, previous or embedded container whose record
+## names a usable chunk index not kept yet has it fetched by hash (a plain GET capped at its
+## `bytes`), verified bound to the install's payload and kept. Best effort, once per index per
+## process; skipped without `chunk` or a seed store. A coroutine.
+func _backfill_seed_indexes() -> void:
+	if not strategies.has("chunk") or not _has_seed_store() or doc == null or state_issue == "unreadable":
+		return
+	var installs: Array = []
+	for slot in ["active", "previous"]:
+		installs.append_array(doc[slot].values())
+	installs.append_array(_embedded.values())
+	var kept = storage.seed_index_list() if storage.has_method("seed_index_list") else null
+	if not (kept is Array):
+		return
+	for i in installs:
+		var ref = _install_chunks_ref(i)
+		if ref == null:
+			continue
+		var sha: String = ref["sha256"]
+		if _backfill_tried.has(sha) or (kept as Array).has(sha):
+			continue
+		_backfill_tried[sha] = true
+		var cap := int(ref["bytes"])
+		var got := {"bytes": PackedByteArray(), "over": false}
+		var on_response := func(status: int, _content_range: String) -> bool: return status == 200
+		var on_chunk := func(c: PackedByteArray) -> bool:
+			var b: PackedByteArray = got["bytes"]
+			if b.size() + c.size() > cap:
+				got["over"] = true
+				return false
+			b.append_array(c)
+			got["bytes"] = b
+			return true
+		var res: Dictionary = await transport.fetch_object({"sha256": sha, "offset": 0, "if_range": ""}, on_response, on_chunk)
+		if int(res.get("status", 0)) != 200 or String(res.get("error", "")) != "" or got["over"]:
+			continue
+		var bytes: PackedByteArray = got["bytes"]
+		var payload := {"size": i["payloadSize"], "sha256": i["payloadSha256"]}
+		var z := zstd
+		var ok: bool = await PKeyPackJob.run(func() -> bool: return PKeyPackChunks.parse_chunk_index(bytes, ref, payload, z.decode)["ok"], "PolarisKey chunk index")
+		if ok:
+			storage.seed_index_put(sha, bytes)
+
+
+## Garbage collection of the seed store: every kept index no root install's record names goes
+## (roots: active, previous, the deferred, running and embedded). Nothing is removed when a root's
+## record is unknown here or the store cannot be listed.
+func _collect_seed_indexes() -> void:
+	if not storage.has_method("seed_index_list"):
+		return
+	var roots: Array = []
+	for slot in ["active", "previous"]:
+		roots.append_array(doc[slot].values())
+		roots.append_array(_deferred[slot].values())
+	roots.append_array(running.values())
+	roots.append_array(_embedded.values())
+	var keep := {}
+	for i in roots:
+		if not PKeyPackClaims.same(i.get("layout"), "container"):
+			continue
+		var v = _install_variant(i)
+		if v == null:
+			return
+		var c = v.get("chunks")
+		if c is Dictionary and c.get("sha256") is String:
+			keep[c["sha256"]] = true
+	var listed = storage.seed_index_list()
+	if not (listed is Array):
+		return
+	for sha in listed:
+		if not keep.has(sha):
+			storage.seed_index_remove(sha)
 
 
 ## The data-only rule over one reused file ({path, source}); "" when admitted. Thread-safe.
@@ -1514,6 +1863,7 @@ func _collect() -> void:
 	for plan in listed["plans"]:
 		if not roots["plans"].has(plan) and not (held is Dictionary and held["plans"].has(plan)):
 			storage.remove_staging(plan)
+	_collect_seed_indexes()
 
 
 ## Stage one object: resume from what is staged (its bytes re-hashed, never trusted), fetch the

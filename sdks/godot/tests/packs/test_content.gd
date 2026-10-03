@@ -11,10 +11,10 @@ extends RefCounted
 # else `head` + `tail` (or `tailFill`: `length` copies of `byte`), and the rule sees its first
 # DATA_ONLY_HEAD_BYTES, its last DATA_ONLY_TAIL_BYTES and the whole file, as the Node runner does.
 #
-# Content corpus v2 (plans/P4-10.md §4.3) adds chunkIndexCases and eight `strategy: chunk` apply
-# cases. Godot's chunk parser and applier are P4-11's: both are declared planned by exact id (and
-# in parity.json), never skipped silently; their <ref> inputs (the put* mutations included) are
-# materialised and checked against their refs here, as the Python and Swift runners do.
+# Content corpus v2 (plans/P4-10.md §4.3) adds chunkIndexCases (PKeyPackChunks.parse_chunk_index,
+# P4-11) and eight `strategy: chunk` apply cases (PKeyPackChunks.apply_chunk): the seeds' indexes
+# parsed unbound, a fetcher that answers each single-range request with the object's bytes clipped
+# at its end, and an in-memory output, exactly as conformance/runners/node/suites.ts.
 #
 # The `zstd-patch-from` decode is engine-internal (P4-01 decision 7): on an engine outside
 # PKeyPackZstd.PATCH_FROM_ENGINES (4.4, 4.5) the SDK does not advertise the method, so the planner
@@ -28,16 +28,8 @@ const CONTENT := "content/"
 
 const FLOORS := {"dataOnlyCases": 76, "pathCases": 18, "filesIndexCases": 15, "chunkIndexCases": 22, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 27}
 
-## plans/P4-10.md §4.3: the sections Godot declares planned until P4-11, by exact id.
-const CHUNK_INDEX_PLANNED := [
-	"chunks-v1-valid", "chunks-v2-valid", "chunks-short-header", "chunks-bad-magic",
-	"chunks-bad-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-bad-length",
-	"chunks-bad-length-count", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref",
-	"chunks-bad-bundle-range", "chunks-reserved-nonzero", "chunks-size-mismatch", "chunks-zero-clen",
-	"chunks-bad-length-wrap", "chunks-size-high-word", "chunks-ref-tampered", "chunks-ref-over-max",
-	"chunks-payload-mismatch", "chunks-bundle-size-saturated",
-]
-const CHUNK_APPLY_PLANNED := [
+## plans/P4-10.md §4.3: the chunk apply cases, every one run through apply_chunk (P4-11).
+const CHUNK_APPLY_CASES := [
 	"chunk-v1-to-v2", "chunk-no-seed", "chunk-tampered-zstd", "chunk-tampered-raw",
 	"chunk-bundle-truncated", "chunk-seed-tampered", "chunk-seed-tampered-repair",
 	"chunk-index-for-other-payload",
@@ -58,9 +50,10 @@ func run(t: PKeyTestContext) -> void:
 	_blobs(t, dir, doc)
 	_paths(t, doc.get("pathCases", []))
 	_files_index(t, doc.get("filesIndexCases", []))
-	_chunks_planned(t, doc)
+	_chunk_index(t, doc.get("chunkIndexCases", []))
 	_data_only(t, doc.get("dataOnlyCases", []))
 	_apply(t, (doc.get("applyCases", []) as Array).filter(func(c): return c["strategy"] != "chunk"))
+	await _apply_chunks(t, (doc.get("applyCases", []) as Array).filter(func(c): return c["strategy"] == "chunk"))
 	_pack_sets(t, doc.get("packSetIdCases", []))
 	_stamps(t, doc.get("stampCases", []))
 	_windows(t, doc.get("frameWindowCases", []))
@@ -161,33 +154,63 @@ func _apply(t: PKeyTestContext, cases: Array) -> void:
 		t.info("apply %s: %.1f ms" % [c["id"], ms])
 		n += 1
 	t.info("applyCases GDDL: %s" % S.canon(z.stats))
-	t.check("content: applyCases coverage (every non-chunk case)", n == cases.size() and n + CHUNK_APPLY_PLANNED.size() == FLOORS["applyCases"], "%d/%d" % [n, cases.size()])
+	t.check("content: applyCases coverage (every non-chunk case)", n == cases.size() and n + CHUNK_APPLY_CASES.size() == FLOORS["applyCases"], "%d/%d" % [n, cases.size()])
 
 
-## No silent skip: the planned lists are exactly the corpus's chunk cases, parity.json declares
-## both features planned in P4-11, and every chunk index case's input materialises to the bytes
-## its `chunks` ref names (except chunks-ref-tampered, whose stored frame is the mutated one).
-func _chunks_planned(t: PKeyTestContext, doc: Dictionary) -> void:
-	var idx_ids := []
-	for c in doc.get("chunkIndexCases", []):
-		idx_ids.append(c["id"])
-	var apply_ids := []
-	for c in doc.get("applyCases", []):
-		if c["strategy"] == "chunk":
-			apply_ids.append(c["id"])
-	t.check("content: chunkIndexCases are exactly the planned ids (P4-11)", idx_ids == CHUNK_INDEX_PLANNED, S.canon(idx_ids))
-	t.check("content: the chunk applyCases are exactly the planned ids (P4-11)", apply_ids == CHUNK_APPLY_PLANNED, S.canon(apply_ids))
-	# res://parity.json: the export preset's include_filter (*.json) packs it into the template too.
-	var parity = S.read_json("res://parity.json")
-	for fid in ["packs.index.chunks", "packs.apply.chunk"]:
-		var f = parity.get("features", {}).get(fid) if parity is Dictionary else null
-		t.check("content: parity.json declares %s planned in P4-11" % fid, f is Dictionary and f.size() == 2 and f.get("status") == "planned" and f.get("wp") == "P4-11", S.canon(f))
-	for c in doc.get("chunkIndexCases", []):
+## plans/P4-10.md §2.3: every chunk index case through parse_chunk_index (the engine's zstd
+## decoder); the verdict compared is {ok: true, chunks, bundleSizes} or the failure itself.
+func _chunk_index(t: PKeyTestContext, cases: Array) -> void:
+	var z := PKeyPackZstd.new()
+	var n := 0
+	var started := Time.get_ticks_usec()
+	for c in cases:
 		var stored := S.materialise(c["stored"])
-		var ref: Dictionary = c["chunks"]
-		var matches: bool = stored.size() == int(ref["bytes"]) and PKeyPackClaims.sha256_hex(stored) == ref["sha256"]
-		t.check("chunk index %s: its input materialises to its ref (planned: P4-11)" % c["id"], matches == (c["id"] != "chunks-ref-tampered"))
-	t.info("planned: P4-11 (packs.index.chunks, packs.apply.chunk): %d chunk index and %d chunk apply cases" % [idx_ids.size(), apply_ids.size()])
+		var r := PKeyPackChunks.parse_chunk_index(stored, c["chunks"], c["payload"], z.decode)
+		var verdict = r
+		if r["ok"]:
+			var sizes: Array = []
+			for b in r["index"]["bundles"]:
+				sizes.append(b[1])
+			verdict = {"ok": true, "chunks": (r["index"]["records"] as Array).size(), "bundleSizes": sizes}
+		S.check_same(t, "chunk index %s" % c["id"], verdict, c["expect"])
+		n += 1
+	t.info("chunkIndexCases: %d in %.1f ms" % [n, (Time.get_ticks_usec() - started) / 1000.0])
+	t.check("content: chunkIndexCases coverage", n == cases.size() and n == FLOORS["chunkIndexCases"], "%d/%d" % [n, cases.size()])
+
+
+## plans/P4-10.md §4.3: the eight chunk apply cases through apply_chunk. Seeds: each case seed's
+## index parsed unbound (skipped when it does not parse) and its payload; objects as for the other
+## apply cases; a fetcher answering objects[bundle] sliced to [offset, offset + length), clipped at
+## the object's end (a missing object is an empty body), always ok; an in-memory output.
+func _apply_chunks(t: PKeyTestContext, cases: Array) -> void:
+	var ids: Array = cases.map(func(c): return c["id"])
+	t.check("content: the chunk applyCases are exactly the corpus's eight (P4-11)", ids == CHUNK_APPLY_CASES, S.canon(ids))
+	var z := PKeyPackZstd.new()
+	var n := 0
+	for c in cases:
+		var started := Time.get_ticks_usec()
+		var store := {}
+		for h in c["objects"]:
+			store[h] = S.materialise(c["objects"][h])
+		var seeds: Array = []
+		for sd in c.get("seeds", []):
+			var p := PKeyPackChunks.parse_chunk_index_bytes(S.materialise(sd["index"]), null)
+			if p["ok"]:
+				seeds.append({"index": p["index"], "payload": PKeyByteSource.memory(S.materialise(sd["payload"]))})
+		var out := PKeyPackChunks.MemoryOutput.new(int(c["variant"]["payload"]["size"]))
+		var ports := {
+			"objects": func(h: String) -> Variant: return PKeyByteSource.memory(store[h]) if store.has(h) else null,
+			"zstd": z,
+			"fetch_range": func(bundle: String, offset: int, length: int) -> Dictionary:
+				var b: PackedByteArray = store.get(bundle, PackedByteArray())
+				return {"status": "ok", "body": PKeyPackChunks.MemoryBody.new(b.slice(mini(offset, b.size()), mini(offset + length, b.size())))},
+			"output": out,
+		}
+		var r: Dictionary = await PKeyPackChunks.apply_chunk(c["variant"], seeds, ports, c.get("repair") == true)
+		S.check_same(t, "apply %s" % c["id"], r["verdict"], c["expect"])
+		t.info("apply %s: %.1f ms" % [c["id"], (Time.get_ticks_usec() - started) / 1000.0])
+		n += 1
+	t.check("content: chunk applyCases coverage", n == CHUNK_APPLY_CASES.size(), "%d/%d" % [n, CHUNK_APPLY_CASES.size()])
 
 
 ## The data-only cases' file bytes: `content` (the whole file), else `head` + `tail` or `tailFill`.
