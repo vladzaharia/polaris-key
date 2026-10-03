@@ -40,7 +40,7 @@ this page or fails the freshness gate.
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
 | `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
-| `license_store_grants` | 0051_commerce.sql | `product`, `license_id`, `flag`, `store`, `purchase_key_hash`, `state`, `granted_at`, `revoked_at` |
+| `license_store_grants` | 0052_commerce.sql | `product`, `license_id`, `flag`, `store`, `purchase_key_hash`, `state`, `granted_at`, `revoked_at` |
 
 ## config
 
@@ -92,9 +92,9 @@ this page or fails the freshness gate.
 | `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
 | `dist_connector_settings` | 0042_distribution_connector_settings.sql | `product`, `connector`, `settings_json`, `updated_at`, `updated_by` |
 | `dist_readiness` | 0048_a_dist_readiness_blob_gc.sql | `product`, `app_release_id`, `outlet_id`, `blocking_pack_release_id`, `state`, `detail_json`, `source`, `override_reason`, `computed_at`, `updated_at`, `updated_by` |
-| `dist_store_products` | 0051_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by` |
-| `dist_purchase_bindings` | 0051_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
-| `dist_purchases` | 0051_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json` |
+| `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by` |
+| `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
+| `dist_purchases` | 0052_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json` |
 
 ## update
 

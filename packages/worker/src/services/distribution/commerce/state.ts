@@ -1,5 +1,5 @@
 /**
- * The commerce bridge's state (P6-01, migration 0051): the operator's store-product map, the
+ * The commerce bridge's state (P6-01, migration 0052): the operator's store-product map, the
  * purchase bindings and the verified purchases — and the one function that turns a verified
  * purchase into a grant or a revocation (`recordPurchase`).
  *
