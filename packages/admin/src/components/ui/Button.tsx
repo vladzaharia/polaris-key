@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
+import { Slot } from "radix-ui";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn.js";
 import { Spinner } from "./Spinner.js";
@@ -39,43 +39,38 @@ export interface ButtonProps
   loading?: boolean;
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    {
-      className,
-      variant,
-      size,
-      asChild = false,
-      loading = false,
-      disabled,
-      children,
-      ...props
-    },
-    ref,
-  ) => {
-    if (asChild) {
-      return (
-        <Slot
-          ref={ref}
-          className={cn(buttonVariants({ variant, size, className }))}
-          {...props}
-        >
-          {children}
-        </Slot>
-      );
-    }
+export function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  loading = false,
+  disabled,
+  children,
+  ref,
+  ...props
+}: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
+  if (asChild) {
     return (
-      <button
+      <Slot.Root
         ref={ref}
         className={cn(buttonVariants({ variant, size, className }))}
-        disabled={disabled ?? loading}
-        aria-busy={loading || undefined}
         {...props}
       >
-        {loading ? <Spinner className="size-4" /> : null}
         {children}
-      </button>
+      </Slot.Root>
     );
-  },
-);
-Button.displayName = "Button";
+  }
+  return (
+    <button
+      ref={ref}
+      className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled ?? loading}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {loading ? <Spinner className="size-4" /> : null}
+      {children}
+    </button>
+  );
+}
