@@ -1,0 +1,22 @@
+; PKeyVelopackNative, PKeyWinSparkleNative, PKeyStoreContextNative (P5-07): the Windows plugins in
+; one DLL. build.ps1 -Install copies this file, pkey_win.dll, velopack_libc.dll, WinSparkle.dll and
+; pkey_velopack_shim.exe into res://addons/polaris_key/native/bin/.
+;
+; [dependencies] puts the two updater DLLs and the Velopack launcher shim beside the exported
+; executable. The FIRST matching key wins, so a Microsoft Store build (the export plugin's
+; pkey_outlet_ms_store feature tag) matches the empty entries and ships neither updater nor shim:
+; StoreContext is the only updater a Store MSIX may run.
+[configuration]
+entry_symbol = "pkey_win_init"
+compatibility_minimum = "4.4"
+reloadable = false
+
+[libraries]
+windows.debug.x86_64 = "res://addons/polaris_key/native/bin/pkey_win.dll"
+windows.release.x86_64 = "res://addons/polaris_key/native/bin/pkey_win.dll"
+
+[dependencies]
+windows.debug.x86_64.pkey_outlet_ms_store = {}
+windows.release.x86_64.pkey_outlet_ms_store = {}
+windows.debug.x86_64 = { "res://addons/polaris_key/native/bin/velopack_libc.dll": "", "res://addons/polaris_key/native/bin/WinSparkle.dll": "", "res://addons/polaris_key/native/bin/pkey_velopack_shim.exe": "" }
+windows.release.x86_64 = { "res://addons/polaris_key/native/bin/velopack_libc.dll": "", "res://addons/polaris_key/native/bin/WinSparkle.dll": "", "res://addons/polaris_key/native/bin/pkey_velopack_shim.exe": "" }
