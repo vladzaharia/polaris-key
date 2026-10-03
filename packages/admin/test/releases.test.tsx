@@ -232,12 +232,13 @@ describe("Releases view — builds and artifacts (P2-07)", () => {
       .filter((r) => within(r).queryAllByRole("cell").length === 7);
     expect(rows).toHaveLength(6);
     const want: Array<[string, string, string, string, string, number]> = [
-      ["macos-universal", "macos", "universal", "zip", "41", 100],
-      ["windows-x86_64", "windows", "x86_64", "zip", "41", 101],
-      ["linux-x86_64", "linux", "x86_64", "tar.gz", "41", 102],
-      ["ios-arm64", "ios", "arm64", "ipa", "1041", 103],
-      ["android-arm64", "android", "arm64", "aab", "4041", 104],
-      ["web-wasm32", "web", "wasm32", "zip", "41", 105],
+      // Platform and arch by their display names; the raw arch follows where it differs.
+      ["macos-universal", "macOS", "Universal", "zip", "41", 100],
+      ["windows-x86_64", "Windows", "x64 (x86_64)", "zip", "41", 101],
+      ["linux-x86_64", "Linux", "x86_64", "tar.gz", "41", 102],
+      ["ios-arm64", "iOS / iPadOS", "arm64", "ipa", "1041", 103],
+      ["android-arm64", "Android", "ARM64", "aab", "4041", 104],
+      ["web-wasm32", "Web", "wasm32", "zip", "41", 105],
     ];
     for (const [
       i,
@@ -299,6 +300,10 @@ describe("Releases view — builds and artifacts (P2-07)", () => {
     expect(within(builds).getByText(/No builds declared/)).toBeTruthy();
     expect(within(builds).getByText("diceroll-macos.zip")).toBeTruthy();
     expect(within(builds).getByText("GitHub (synced)")).toBeTruthy();
+    // A file listed on its own carries its platform and arch together, never a bare arch.
+    expect(within(builds).getByText("macOS Universal").title).toBe(
+      "macOS · Universal",
+    );
   });
 
   it("badges a yanked release with its reason", async () => {
@@ -369,7 +374,7 @@ describe("Releases view — release artifacts in health", () => {
     });
     expect(within(files).getAllByRole("listitem")).toHaveLength(2);
     expect(within(files).getByText("game-linux-x86_64.tar.gz")).toBeTruthy();
-    expect(within(files).getByText("linux · x86_64")).toBeTruthy();
+    expect(within(files).getByText("Linux · x86_64")).toBeTruthy();
     expect(within(files).getByText("notes.txt")).toBeTruthy();
     // No assumed DMG/CLI rows are rendered: the view shows only the checks it is given.
     expect(screen.queryByText(/DMG/)).toBeNull();
@@ -431,7 +436,7 @@ describe("Releases view — release artifacts in health", () => {
     });
     expect(within(candidates).getAllByRole("listitem")).toHaveLength(2);
     expect(
-      within(candidates).getAllByText("linux · x86_64 · tar.gz"),
+      within(candidates).getAllByText("Linux · x86_64 · tar.gz"),
     ).toHaveLength(2);
   });
 });

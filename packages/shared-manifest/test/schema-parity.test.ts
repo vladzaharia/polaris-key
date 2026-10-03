@@ -1661,6 +1661,14 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (app(d).artifacts[1].id = "macos"),
   },
   {
+    // A build named by its arch alone shows as a bare "arm64" wherever its id is shown. A
+    // warning: the id is valid, so the schema accepts.
+    code: "bare_arch_artifact_id",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => (entry(d).id = "arm64"),
+  },
+  {
     code: "invalid_artifact_platform",
     file: "release",
     schema: "rejects",
