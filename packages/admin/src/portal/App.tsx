@@ -1046,11 +1046,7 @@ function Downloads(): React.ReactElement {
                           ) : null}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {[
-                            label?.long,
-                            artifact.kind,
-                            formatBytes(artifact.sizeBytes),
-                          ]
+                          {[artifact.kind, formatBytes(artifact.sizeBytes)]
                             .filter(Boolean)
                             .join(" · ")}
                         </p>

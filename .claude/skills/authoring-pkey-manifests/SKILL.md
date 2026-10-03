@@ -82,10 +82,10 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `win-x64`, `linux-arm64` (never a bare `arm64`/`x86_64`/`x64`, which is the warning
       `bare_arch_artifact_id`), and globs over files like `djdl-*-macos-arm64.app.zip`, not
       `djdl-*-arm64.app.zip`. The console, portal, download page and `pkey release publish`
-      label builds through `buildLabel` (`macOS · Apple silicon (arm64)`, `Windows · x64
-    (x86_64)`, `All platforms`), and a file lacking a platform inherits its build's or its
-      name's — so give the name something to say. See "How builds are labelled" on
-      `/docs/build/manifest/authoring/`.
+      label builds through `buildLabel` (`macOS · Apple silicon (arm64)`,
+      `Windows · x64 (x86_64)`, `All platforms`), and a file lacking a platform inherits its
+      build's or its name's — so give the name something to say. See "How builds are
+      labelled" on `/docs/build/manifest/authoring/`.
 - [ ] If the product ships content packs, declare each as `deliverables.<packId>` with
       `kind: pack` (at most 64, `too_many_pack_deliverables`): `type`
       (`godot.pck` | `files.tree`, required), `binding` (`pinned`, the default: each app release
