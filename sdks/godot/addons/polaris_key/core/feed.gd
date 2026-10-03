@@ -565,7 +565,18 @@ static func _parse_revocations(v: Variant, nw: PKeyJson.PointerSet) -> Variant:
 		if records.has(r["record"]):
 			return null
 		records[r["record"]] = true
-		out.append({"record": r["record"], "pack": r["pack"], "target": r["target"], "version": r["version"], "seq": r["seq"]})
+		# plans/P4-19.md §2.7: `kind` absent (a pack record target) or `delegation`; any other
+		# vocabulary token is a forward value whose entry is dropped alone; anything else makes the
+		# member unusable. (Godot acts on delegation entries from P4-26; until then step 11 skips
+		# them.)
+		var entry := {"record": r["record"], "pack": r["pack"], "target": r["target"], "version": r["version"], "seq": r["seq"]}
+		if r.has("kind"):
+			if not PKeyPackClaims.matches(PKeyPackClaims.VOCAB_TOKEN_PATTERN, r["kind"]):
+				return null
+			if r["kind"] != "delegation":
+				continue
+			entry["kind"] = "delegation"
+		out.append(entry)
 	return out
 
 

@@ -32,6 +32,9 @@ extends RefCounted
 #   revocationCases  PKeyReleaseRecord.verify_revocation  §2.3 steps 12–16, the body alone
 #                    (revocation_of), superseding (newer_revocation); replacement mode through
 #                    verify_release_record
+#   delegationCases  plans/P4-19.md: the three `feed` cases (a revocation entry's `kind`) through
+#                    verify_feed + feed_content; every other case is declared planned (P4-26) by
+#                    exact id (DELEGATION_PLANNED), with parity.json's packs.delegation entry
 #   update-matrix    vocabulary (the generated enums and PKeyVersion.SCHEMES), versionCases
 #                    (PKeyVersion.compare_versions), capabilityCases (effective_capabilities),
 #                    outletCases (resolve_update_outlet), bucketVectors (rollout_bucket), rows
@@ -65,6 +68,27 @@ const UPDATE_MATRIX := "res://tests/corpus/v2/update-matrix.json"
 const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
 const HEADERS_VERSION := 1
 const CORPUS_VERSION := 2
+## plans/P4-19.md §4: the delegationCases Godot declares planned until P4-26, by exact id (every
+## case but the three `feed` ones, which feed_content already reads).
+const DELEGATION_PLANNED := [
+	"delegated-valid-files-tree", "delegated-valid-data-json", "delegated-valid-prefix-is-pack-id",
+	"delegated-valid-delegation-by-2027-key", "delegated-valid-window-start",
+	"delegated-valid-window-end", "delegated-valid-unknown-types-ignored",
+	"release-kid-ignores-delegation", "delegation-record-verify-only", "delegation-unpinned-signer",
+	"delegation-signed-by-product-key", "delegation-hash-mismatch", "delegation-not-a-delegation",
+	"delegation-signed-by-content-key", "delegation-types-missing", "delegation-types-none-effective",
+	"delegation-types-too-many", "delegation-types-duplicate", "delegation-ttl-over-max",
+	"delegation-expires-before-issued", "delegation-expiresat-token",
+	"delegation-public-key-malformed", "delegation-key-is-release-key",
+	"delegation-key-is-product-key", "delegation-deliverable-app", "delegated-no-delegation-supplied",
+	"delegated-wrong-signer", "delegated-kid-malformed", "revocation-signed-by-content-key",
+	"app-record-by-content-key-release-only", "delegated-godot-pck", "delegated-type-not-delegated",
+	"delegated-container-layout", "delegated-outside-prefix", "delegated-prefix-not-segment",
+	"delegated-after-window", "delegated-before-window", "app-record-by-content-key",
+	"delegation-by-content-key-as-record", "revocation-of-delegation-valid",
+	"delegated-revoked-delegation", "delegated-revoked-record",
+	"revocation-of-delegation-replacement-ignored",
+]
 const FLOORS := {
 	"jwsCases": 36,
 	"licenseDocCases": 16,
@@ -78,6 +102,7 @@ const FLOORS := {
 	"feedContentCases": 48,
 	"revocationCases": 27,
 	"contentRows": 44,
+	"delegationCases": 46,
 	"versionCases": 25,
 	"capabilityCases": 10,
 	"outletCases": 12,
@@ -111,6 +136,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _record_cases(t, _section(t, corpus, "releaseRecordCases"))
 	await _feed_content_cases(t, _section(t, corpus, "feedContentCases"))
 	await _revocation_cases(t, _section(t, corpus, "revocationCases"))
+	await _delegation_cases(t, _section(t, corpus, "delegationCases"))
 	var um = _load(t, UPDATE_MATRIX)
 	if um != null:
 		_update_matrix(t, um)
@@ -586,6 +612,35 @@ func _revocation_cases(t: PKeyTestContext, cases: Array) -> void:
 			t.check("%s newer_revocation is symmetric" % id, is_same(win, back))
 			t.check("%s winner" % id, _json_eq(win["record"], winner["entry"]["record"]), String(win["record"]))
 	_coverage(t, "revocationCases", evaluated, cases.size(), _ms_since(t0))
+
+
+# ── delegationCases (plans/P4-19.md): the feed cases run; the rest are planned (P4-26) ─────
+
+func _delegation_cases(t: PKeyTestContext, cases: Array) -> void:
+	var planned: Array = []
+	var feed_cases: Array = []
+	for c in cases:
+		if c is Dictionary and c.get("mode") == "feed":
+			feed_cases.append(c)
+		elif c is Dictionary:
+			planned.append(c.get("id"))
+	t.check("delegationCases: every non-feed case is exactly the planned ids (P4-26)", _json_eq(planned, DELEGATION_PLANNED), JSON.stringify(planned))
+	var parity = PKeyPacksTestSupport.read_json("res://parity.json")
+	var f = parity.get("features", {}).get("packs.delegation") if parity is Dictionary else null
+	t.check("delegationCases: parity.json declares packs.delegation planned in P4-26", f is Dictionary and f.size() == 2 and f.get("status") == "planned" and f.get("wp") == "P4-26", JSON.stringify(f))
+	var evaluated := planned.size()
+	var t0 := Time.get_ticks_usec()
+	for c in feed_cases:
+		var e = c.get("expect")
+		var r := await PKeyFeed.verify_feed(c["jws"], {
+			"trust": c["trust"], "expected_aud": c["expectedAud"], "channel": c["channel"],
+			"platform": c["platform"], "now": c["now"], "check_freshness": c["checkFreshness"],
+		})
+		evaluated += 1
+		if t.check("%s verifies" % c["id"], r["ok"] and e is Dictionary, str(r.get("reason"))):
+			t.check("%s content" % c["id"], _json_eq(r["content"], e.get("content")), JSON.stringify(r["content"]).left(400))
+	t.info("planned: P4-26 (packs.delegation): %d delegationCases; %d feed cases run" % [planned.size(), feed_cases.size()])
+	_coverage(t, "delegationCases", evaluated, cases.size(), _ms_since(t0))
 
 
 # ── update-matrix.json contentRows (plans/P4-13.md §2.6) ───────────────────────────────────

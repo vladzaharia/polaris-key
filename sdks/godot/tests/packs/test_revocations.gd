@@ -9,7 +9,12 @@ extends RefCounted
 # them, which no corpus row can carry. Failures are injected through a PKeyPackStorage subclass.
 # The facet (PolarisKey.update.packs): content_input, record_revocations, and a `packs` answer
 # applied by boot_fetch (required and essential entries at their exact release, before mount)
-# and background() (the rest).
+# and background() (the rest). A failed flag write never lets the sibling file exist without the
+# flag on disk. Then the engine over real files: EACCES (chmod 000) and a directory at the path
+# both read as unreadable; with no flag nothing is written and baselines mount; with the flag they
+# are refused (offline pack-revoked/relearn) and the bytes stay untouched; a crash between the
+# flag and the file mounts; torn files, the cap through record_revocations, a rotated key, and a
+# lost flag restored. Permissions are restored in teardown.
 
 const S := preload("res://tests/packs/support.gd")
 const F := preload("res://tests/packs/fixtures.gd")
@@ -23,9 +28,13 @@ class Recorder extends PKeyPackStorage:
 	var order: Array = []
 	var revs_unreadable := false
 	var revs_writes: Array = []
+	## The state write fails (the store refuses it), as a full disk would.
+	var state_fails := false
 
 	func state_replace(text: String) -> bool:
 		order.append("state")
+		if state_fails:
+			return false
 		return super.state_replace(text)
 
 	func revocations_read() -> Dictionary:
@@ -54,6 +63,8 @@ func run(t: PKeyTestContext) -> void:
 	await _exact_releases(t, v1, v2)
 	await _flow(t, v1, v2)
 	await _facet(t, v1, v2)
+	await _flag_write_fails(t, v1, v2)
+	await _disk(t, v1, v2)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────────────────────
@@ -495,3 +506,186 @@ func _facet(t: PKeyTestContext, v1: Dictionary, v2: Dictionary) -> void:
 	t.check("facet: ensure_releases refuses the revoked release", not r.ok and String(r.code) == PKeyConstants.ErrorCode.PACK_REVOKED)
 	sdk.queue_free()
 	S.remove_tree(root)
+
+
+# ── A failed flag write (review round 1) ────────────────────────────────────────────────────
+
+func _flag_write_fails(t: PKeyTestContext, v1: Dictionary, v2: Dictionary) -> void:
+	var extra := F.tree_pack("djdl.extra", "1.0.0", 1, {"x.txt": "x"})
+	var root := S.scratch("revs-flag-fails")
+	var rec := Recorder.new(root.path_join("store"))
+	var e := _engine(root.path_join("store"), F.FakeTransport.new().add(v1), F.stamp_for([v1]), rec)
+	await e.load_state([])
+	rec.state_fails = true
+	await e.record_revocations([await _learned(F.revocation_for(v1))])
+	await e.record_revocations([await _learned(F.revocation_for(v2))])
+	var st = _json_file(_state_path(root))
+	t.check("flag fails: after two records no sibling file exists without the flag on disk", not FileAccess.file_exists(_revs_path(root)) and st is Dictionary and not st.has("revocationsStored"), S.canon(st))
+	t.check("flag fails: the flag is not believed in memory", not PKeyClaims.is_true(e.doc.get("revocationsStored")))
+	t.check("flag fails: the revocations still apply for the process", e.is_revoked(v1["recordSha256"]) and e.is_revoked(v2["recordSha256"]))
+	rec.state_fails = false
+	await e.record_revocations([await _learned(F.revocation_for(extra))])
+	st = _json_file(_state_path(root))
+	var rd = _json_file(_revs_path(root))
+	t.check("flag fails: once the state is writable, the flag then the file", st is Dictionary and st.get("revocationsStored") == true and rd is Dictionary and rd["revoked"].size() == 3)
+	S.remove_tree(root)
+
+
+# ── Over real files (review round 1) ────────────────────────────────────────────────────────
+
+func _chmod(path: String, mode: String) -> void:
+	OS.execute("chmod", [mode, ProjectSettings.globalize_path(path)])
+
+
+func _bytes(path: String) -> PackedByteArray:
+	return FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else PackedByteArray()
+
+
+## Write an entry signed by `rv` for `target` into a fresh revocations.json under `root`.
+func _write_doc(root: String, entries: Array) -> void:
+	var doc := PKeyPackRevocations.empty()
+	for x in entries:
+		var v: Dictionary = await _verified(x)
+		doc = PKeyPackRevocations.store(doc, v, x["jws"])["doc"]
+	S.write_file(_revs_path(root), PKeyPackRevocations.serialize(doc).to_utf8_buffer())
+
+
+func _flagged_state(root: String) -> void:
+	var st := PKeyPackState.empty()
+	st["revocationsStored"] = true
+	S.write_file(_state_path(root), JSON.stringify(st).to_utf8_buffer())
+
+
+func _load(root: String, v1: Dictionary, tr: PKeyPackTransport, rec: PKeyPackStorage = null) -> PKeyPackEngine:
+	var e := _engine(root.path_join("store"), tr, F.stamp_for([v1]), rec)
+	await e.load_state(_baseline(root, v1))
+	return e
+
+
+func _disk(t: PKeyTestContext, v1: Dictionary, v2: Dictionary) -> void:
+	var offline := F.FakeTransport.new()
+	var locked: Array = []
+
+	# EACCES and a directory at the path both read as unreadable.
+	var r1 := S.scratch("revs-disk-eacces")
+	await _write_doc(r1, [F.revocation_for(v2)])
+	_chmod(_revs_path(r1), "000")
+	locked.append(_revs_path(r1))
+	var denied := FileAccess.open(_revs_path(r1), FileAccess.READ) == null
+	if denied:
+		var st := PKeyPackStorage.new(r1.path_join("store")).revocations_read()
+		t.check("disk: a chmod 000 revocations.json reads as unreadable, not missing", not st["ok"])
+	else:
+		t.info("disk: chmod 000 does not deny this user (running as root); the EACCES case is covered by the directory case only")
+	var r2 := S.scratch("revs-disk-dir")
+	DirAccess.make_dir_recursive_absolute(_revs_path(r2))
+	t.check("disk: a directory at revocations.json reads as unreadable, not missing", not PKeyPackStorage.new(r2.path_join("store")).revocations_read()["ok"])
+
+	# No flag: zero writes, the baseline mounts over two loads.
+	var unreadable_root := r1 if denied else r2
+	for n in 2:
+		var rec := Recorder.new(unreadable_root.path_join("store"))
+		var e := await _load(unreadable_root, v1, offline, rec)
+		t.check("disk: unreadable without the flag, load %d: the baseline mounts, nothing is written" % (n + 1), e.revocations()["issue"] == "unreadable" and e.running.has("djdl.l10n") and not rec.order.has("revocations") and not rec.order.has("quarantine"), S.canon(rec.order))
+
+	# With the flag: refused, offline pack-revoked/relearn, the bytes untouched over two loads.
+	var r3 := S.scratch("revs-disk-flag")
+	await _write_doc(r3, [F.revocation_for(v2)])
+	var before := _bytes(_revs_path(r3))
+	_flagged_state(r3)
+	if denied:
+		_chmod(_revs_path(r3), "000")
+		locked.append(_revs_path(r3))
+	else:
+		S.remove_tree(_revs_path(r3))
+		DirAccess.make_dir_recursive_absolute(_revs_path(r3))
+	for n in 2:
+		var e := await _load(r3, v1, offline)
+		var r := await e.ensure(["djdl.l10n"])
+		t.check("disk: unreadable with the flag, load %d: the baseline is refused" % (n + 1), e.revocations()["issue"] == "unreadable" and not e.running.has("djdl.l10n"))
+		t.check("disk: unreadable with the flag, load %d: offline ensure is pack-revoked (relearn)" % (n + 1), not r.ok and String(r.code) == PKeyConstants.ErrorCode.PACK_REVOKED and r.detail is Dictionary and r.detail.get("detail") == "relearn", "%s %s" % [r.code, r.detail])
+	if denied:
+		_chmod(_revs_path(r3), "644")
+		t.check("disk: the unreadable file's bytes are untouched over two loads", _bytes(_revs_path(r3)) == before)
+	else:
+		t.check("disk: the directory at the path is untouched over two loads", DirAccess.dir_exists_absolute(_revs_path(r3)))
+
+	# A crash between the flag and the file (flag set, no file): the baseline mounts.
+	var r4 := S.scratch("revs-disk-crash")
+	_flagged_state(r4)
+	var e4 := await _load(r4, v1, offline)
+	t.check("disk: flag set but no file (a crash in between): absent is empty, the baseline mounts", e4.revocations()["issue"] == "" and e4.running.has("djdl.l10n") and not FileAccess.file_exists(_revs_path(r4)))
+
+	# Torn: quarantine; relearn persists to load 2; a second torn file keeps the first .torn;
+	# recover_state, then the baseline mounts.
+	var r5 := S.scratch("revs-disk-torn")
+	S.write_file(_revs_path(r5), "{torn".to_utf8_buffer())
+	var e5 := await _load(r5, v1, offline)
+	t.check("disk: torn, load 1: quarantined, baseline refused", FileAccess.get_file_as_string(_revs_path(r5) + ".torn") == "{torn" and not e5.running.has("djdl.l10n"))
+	e5 = await _load(r5, v1, offline)
+	var rd5 = _json_file(_revs_path(r5))
+	t.check("disk: torn, load 2: relearn persisted, baseline still refused", e5.revocations()["issue"] == "" and e5.revocations()["relearn"] == ["djdl.l10n"] and rd5 is Dictionary and rd5["relearn"] == ["djdl.l10n"] and not e5.running.has("djdl.l10n"))
+	S.write_file(_revs_path(r5), "{torn again".to_utf8_buffer())
+	e5 = await _load(r5, v1, offline)
+	t.check("disk: a second torn file never overwrites the first .torn", FileAccess.get_file_as_string(_revs_path(r5) + ".torn") == "{torn" and e5.revocations()["issue"] == "torn")
+	var rr := await e5.recover_state()
+	e5 = await _load(r5, v1, offline)
+	t.check("disk: recover_state, then the next load mounts the baseline", rr.ok and not FileAccess.file_exists(_revs_path(r5) + ".torn") and e5.running.has("djdl.l10n") and e5.revocations()["relearn"].is_empty())
+
+	# The cap through record_revocations: 258 across two calls -> 256 on disk.
+	var r6 := S.scratch("revs-disk-cap")
+	var e6 := _engine(r6.path_join("store"), offline, F.stamp_for([v1]))
+	await e6.load_state([])
+	var batch: Array = []
+	var oldest: Array = []
+	for i in PKeyPackRevocations.MAX_STORED_REVOCATIONS + 2:
+		var target := {"packId": "djdl.other", "version": "1.0.0", "seq": 1, "recordSha256": F.sha(("cap-target-%d" % i).to_utf8_buffer())}
+		var rv := F.revocation_for(target, {"issuedAt": 1000 + i})
+		if i < 2:
+			oldest.append(target["recordSha256"])
+		batch.append(await _learned(rv))
+		if batch.size() == 200:
+			await e6.record_revocations(batch)
+			batch = []
+	await e6.record_revocations(batch)
+	var rd6 = _json_file(_revs_path(r6))
+	t.check("disk: 258 revocations across two calls keep 256 on disk, the oldest dropped, no relearn", rd6 is Dictionary and rd6["revoked"].size() == PKeyPackRevocations.MAX_STORED_REVOCATIONS and not rd6["revoked"].has(oldest[0]) and not rd6["revoked"].has(oldest[1]) and rd6["relearn"].is_empty())
+	t.check("disk: the dropped targets are forgotten in the process too", not e6.is_revoked(oldest[0]) and not e6.is_revoked(oldest[1]))
+	var again6 := _engine(r6.path_join("store"), offline, F.stamp_for([v1]))
+	await again6.load_state([])
+	t.check("disk: all 256 re-verify on reload", again6.revocations()["verified"].size() == PKeyPackRevocations.MAX_STORED_REVOCATIONS and again6.revocations()["relearn"].is_empty())
+
+	# A rotated key: forgotten with no relearn, the file rewritten, the baseline mounting on loads
+	# 2 and 3.
+	var r7 := S.scratch("revs-disk-rotated")
+	var rotated := F.revocation_for(v1, {"kid": "djdl-release-test-2027"})
+	var doc7 := PKeyPackRevocations.empty()
+	doc7["revoked"][v1["recordSha256"]] = {"jws": rotated["jws"], "pack": "djdl.l10n", "version": "1.0.0", "seq": 1, "record": rotated["record"], "issuedAt": 1759350000}
+	S.write_file(_revs_path(r7), PKeyPackRevocations.serialize(doc7).to_utf8_buffer())
+	_flagged_state(r7)
+	await _load(r7, v1, offline)
+	var rd7 = _json_file(_revs_path(r7))
+	t.check("disk: a rotated key's entry is forgotten, no relearn, the file rewritten", rd7 is Dictionary and rd7["revoked"].is_empty() and rd7["relearn"].is_empty())
+	for n in [2, 3]:
+		var e7 := await _load(r7, v1, offline)
+		t.check("disk: rotated key, load %d: the baseline mounts" % n, e7.running.has("djdl.l10n") and not e7.is_revoked(v1["recordSha256"]))
+
+	# The flag lost with state.json: restored, then an unreadable file refuses.
+	var r8 := S.scratch("revs-disk-lost-flag")
+	await _write_doc(r8, [F.revocation_for(v2)])
+	_flagged_state(r8)
+	DirAccess.remove_absolute(_state_path(r8))
+	await _load(r8, v1, offline)
+	var st8 = _json_file(_state_path(r8))
+	t.check("disk: a deleted state.json gets revocationsStored back from the sibling file", st8 is Dictionary and st8.get("revocationsStored") == true)
+	S.remove_tree(_revs_path(r8))
+	DirAccess.make_dir_recursive_absolute(_revs_path(r8))
+	var e8 := await _load(r8, v1, offline)
+	t.check("disk: then an unreadable file refuses the baseline", e8.revocations()["issue"] == "unreadable" and not e8.running.has("djdl.l10n"))
+
+	# Teardown: permissions back, scratch removed.
+	for path in locked:
+		_chmod(path, "644")
+	t.check("disk: teardown restored every permission", locked.all(func(p): return FileAccess.open(p, FileAccess.READ) != null))
+	for root in [r1, r2, r3, r4, r5, r6, r7, r8]:
+		S.remove_tree(root)

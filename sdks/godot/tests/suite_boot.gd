@@ -205,6 +205,9 @@ func _revoked_content(t: PKeyTestContext, sc: Variant, rel: Dictionary) -> void:
 			# What this build's outlet would offer for the answer (a stamped Steam template offers no
 			# link; the editor's direct build opens release_url): an offer keeps it, blocked never.
 			var offered := PKeyUpdatePromptController.update_url(answer, view.gate._outlet(), "https://example.com/releases") != ""
+			# Never vacuous: a direct build (or the editor, which has no outlet) always offers one.
+			if view.gate._outlet() == "" or view.gate._outlet() == "direct":
+				t.check("dropin: revoked-content %s on a direct build has an update link to offer" % kind, offered)
 			t.check("dropin: revoked-content %s %s" % [kind, "keeps the outlet's update button" if kind == "offer" else "offers no update button"], button_shown == (kind == "offer" and offered), "shown=%s offered=%s outlet=%s" % [button_shown, offered, view.gate._outlet()])
 		sdk.queue_free()
 		await (Engine.get_main_loop() as SceneTree).process_frame

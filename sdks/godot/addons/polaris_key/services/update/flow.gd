@@ -337,7 +337,8 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 	var feed_revocations = fc.get("revocations")
 	if feed_revocations is Array:
 		for entry in feed_revocations:
-			if not H.has(entry["target"]):
+			# A delegation entry (plans/P4-19.md §2.7) is P4-26's in Godot: never fetched here.
+			if entry.get("kind") == "delegation" or not H.has(entry["target"]):
 				continue
 			var have = stored.get(entry["target"])
 			if have is Dictionary and have["record"] == entry["record"]:
@@ -400,7 +401,7 @@ static func _content_steps(opts: Dictionary, fc: Dictionary, feed_source: String
 		for p in c["relearn"]:
 			var all := true
 			for e in feed_revocations:
-				if e["pack"] == p and H.has(e["target"]) and not known.has(e["record"]):
+				if e.get("kind") != "delegation" and e["pack"] == p and H.has(e["target"]) and not known.has(e["record"]):
 					all = false
 					break
 			if all:

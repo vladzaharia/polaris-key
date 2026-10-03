@@ -700,9 +700,7 @@ func _load_revocations(state_unreadable: bool) -> void:
 	elif not state_unreadable and not PKeyPackRevocations.is_empty(rev_doc) and not PKeyClaims.is_true(doc.get("revocationsStored")):
 		# A torn (or replaced) `state.json` lost the flag while the sibling file kept its entries:
 		# set it again, so an unreadable `revocations.json` later still refuses.
-		doc = doc.duplicate(true)
-		doc["revocationsStored"] = true
-		_persist()
+		_persist_flag()
 
 
 ## Persist the revocations: `revocationsStored` in `state.json` first, then the sibling file. Never
@@ -718,16 +716,27 @@ func _persist_revocations() -> void:
 
 
 func _write_revocations() -> bool:
-	if not PKeyClaims.is_true(doc.get("revocationsStored")):
-		doc = doc.duplicate(true)
-		doc["revocationsStored"] = true
-		if _persist() != "":
-			# Without the flag on disk the sibling file is not written: an unreadable file later
-			# must never be read as "no revocations" while it holds some.
-			return false
+	if not PKeyClaims.is_true(doc.get("revocationsStored")) and not _persist_flag():
+		# Without the flag on disk the sibling file is not written: an unreadable file later must
+		# never be read as "no revocations" while it holds some.
+		return false
 	if not storage.revocations_replace(PKeyPackRevocations.serialize(rev_doc)):
 		return false
 	_rev_file = true
+	return true
+
+
+## Write `revocationsStored: true` to `state.json`. The in-memory document takes the flag only once
+## the write succeeded, so a failed write is retried before the next sibling write (the flag is
+## never believed to be on disk when it is not).
+func _persist_flag() -> bool:
+	var before: Dictionary = doc
+	var flagged: Dictionary = doc.duplicate(true)
+	flagged["revocationsStored"] = true
+	doc = flagged
+	if _persist() != "":
+		doc = before
+		return false
 	return true
 
 

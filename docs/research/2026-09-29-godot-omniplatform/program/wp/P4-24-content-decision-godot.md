@@ -75,8 +75,11 @@ passes there exactly as it does in client-core.
   `revocations_quarantine` and `revocations_clear_quarantine` over
   `user://pkey/content/revocations.json` (the same atomic write as `state.json`); the engine has a
   `revocations_enabled` switch instead of an optional second store. The sibling file is written
-  only after `revocationsStored` reached `state.json`; if that state write fails, the sibling write
-  is skipped (never a file without its flag).
+  only after `revocationsStored` reached `state.json`. Review round 1 found that the first version
+  set the flag in memory before that write succeeded, so after a failed state write the next
+  `record_revocations` wrote the sibling file without the flag on disk. `_persist_flag` now writes a
+  flagged copy and adopts it only on success (a test records twice over a failing state store).
+  client-core, Python and Swift share the pattern; the lead files that separately.
 - **A revoked `godot.pck` cannot be unmounted.** A revoked restart pack not yet mounted is withdrawn
   from this boot's mount (`PKeyGodotPckHandler.withdraw`); a mounted one stays until restart and is
   refused from the next boot. `mount()` also refuses a revoked release (`pack-revoked`).
@@ -90,6 +93,16 @@ passes there exactly as it does in client-core.
   the outlet's update button for an offer and none for `blocked`, and no banner under it. The
   prompt model gains `required`; `packs` shows nothing; a content floor uses
   `update_content_floor_body`. `update_available` fires for boot `required` too.
+- **Review round 1.** THREAT-MODEL.md qualifies "a revoked optional pack is unmounted" to hot and
+  not-yet-mounted packs and states the Godot residual (a mounted `godot.pck` stays loaded until
+  restart; `record_revocations` now emits `set_changed("restart")` for it). `feed_content` ports
+  P4-19's `kind` rule for revocation entries (absent or `delegation`; another token drops the
+  entry; a non-token makes the member unusable), so the three `feed` delegationCases run; Godot's
+  update check skips delegation entries (fetching, `relearn`) until P4-26. The other 43
+  delegationCases and all 76 dataOnlyCases are declared planned by exact id. Engine-level
+  persistence scenarios over real files (chmod 000, a directory at the path, the cap through
+  `record_revocations`, rotated keys, torn twice, the lost flag) are in the `revocations` group,
+  which now takes about 36 s in the editor (258 signed revocations).
 - **Timings (M-series Mac).** feedContentCases 48 in 558 ms (4.7.2 editor), 343 ms (4.7.2 macOS
   release template), 388 ms (4.4.1 editor); revocationCases 27 in 143 / 103 / 139 ms; contentRows
   44 in 13 / 16 / 12 ms; the `revocations` packs group in 4.1 / 2.7 / 3.7 s.

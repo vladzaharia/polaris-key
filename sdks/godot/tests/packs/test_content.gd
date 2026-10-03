@@ -6,6 +6,9 @@ extends RefCounted
 # applyCases (full, delta and file through the addon's appliers, the engine's own zstd and GDDL
 # decoders), packSetIdCases, stampCases and frameWindowCases.
 #
+# P4-19's dataOnlyCases are declared planned (P4-26) by exact id, with parity.json's
+# packs.delegation entry.
+#
 # Content corpus v2 (plans/P4-10.md §4.3) adds chunkIndexCases and eight `strategy: chunk` apply
 # cases. Godot's chunk parser and applier are P4-11's: both are declared planned by exact id (and
 # in parity.json), never skipped silently; their <ref> inputs (the put* mutations included) are
@@ -21,7 +24,7 @@ const S := preload("res://tests/packs/support.gd")
 ## The content corpus's directory under conformance/corpus/v2/ (PKEY_CONTENT_CORPUS names it).
 const CONTENT := "content/"
 
-const FLOORS := {"pathCases": 18, "filesIndexCases": 15, "chunkIndexCases": 22, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 27}
+const FLOORS := {"dataOnlyCases": 76, "pathCases": 18, "filesIndexCases": 15, "chunkIndexCases": 22, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 27}
 
 ## plans/P4-10.md §4.3: the sections Godot declares planned until P4-11, by exact id.
 const CHUNK_INDEX_PLANNED := [
@@ -31,6 +34,31 @@ const CHUNK_INDEX_PLANNED := [
 	"chunks-bad-bundle-range", "chunks-reserved-nonzero", "chunks-size-mismatch", "chunks-zero-clen",
 	"chunks-bad-length-wrap", "chunks-size-high-word", "chunks-ref-tampered", "chunks-ref-over-max",
 	"chunks-payload-mismatch", "chunks-bundle-size-saturated",
+]
+## plans/P4-19.md §2.5: the data-only rule's cases, declared planned until P4-26, by exact id.
+const DATA_ONLY_PLANNED := [
+	"ext-json-accepted", "ext-csv-accepted", "ext-tsv-accepted", "ext-po-accepted",
+	"ext-txt-accepted", "ext-png-accepted", "ext-jpg-accepted", "ext-jpeg-accepted",
+	"ext-webp-accepted", "ext-ogg-accepted", "ext-wav-accepted", "ext-mp3-accepted",
+	"ext-ttf-accepted", "ext-otf-accepted", "ext-uppercase-accepted", "ext-none-refused",
+	"ext-tres-refused", "ext-material-refused", "ext-theme-refused", "ext-translation-refused",
+	"ext-res-refused", "ext-gd-refused", "ext-remap-refused", "ext-import-refused", "ext-pck-refused",
+	"ext-zip-refused", "ext-so-refused", "ext-double-gd-refused", "ext-double-json-accepted",
+	"head-rsrc-refused", "head-rscc-refused", "head-gdpc-refused", "head-gdec-refused",
+	"head-gcpf-refused", "head-gdsc-refused", "head-gd-bracket-refused", "head-zip-local-refused",
+	"head-elf-refused", "head-mz-refused", "head-macho-32-be-refused", "head-macho-64-be-refused",
+	"head-macho-32-le-refused", "head-macho-64-le-refused", "head-macho-fat-refused",
+	"head-wasm-refused", "head-shebang-refused", "head-extends-refused", "head-class-name-refused",
+	"head-tool-refused", "tail-gdpc-footer", "tail-zip-eocd", "tail-bound-eocd-outside-accepted",
+	"head-bom-whitespace-gd-scene-refused", "head-bound-whitespace-refused",
+	"head-bound-all-whitespace-refused", "head-bound-short-whitespace-accepted",
+	"head-word-straddle-refused", "empty-file-accepted", "path-dotdot-refused",
+	"path-dot-leading-refused", "path-dot-segment-refused", "path-empty-segment-refused",
+	"path-trailing-slash-refused", "path-trailing-dot-segment-refused", "path-leading-slash-refused",
+	"path-backslash-refused", "path-scheme-refused", "text-object-script-refused",
+	"text-escaped-marker-refused", "text-u-escape-refused", "text-u-escape-nonascii-accepted",
+	"text-u-escape-malformed-refused", "text-big-u-escape-nonascii-accepted",
+	"text-big-u-escape-ascii-refused", "text-marker-png-ignored", "text-invalid-utf8-refused",
 ]
 const CHUNK_APPLY_PLANNED := [
 	"chunk-v1-to-v2", "chunk-no-seed", "chunk-tampered-zstd", "chunk-tampered-raw",
@@ -54,6 +82,7 @@ func run(t: PKeyTestContext) -> void:
 	_paths(t, doc.get("pathCases", []))
 	_files_index(t, doc.get("filesIndexCases", []))
 	_chunks_planned(t, doc)
+	_data_only_planned(t, doc)
 	_apply(t, (doc.get("applyCases", []) as Array).filter(func(c): return c["strategy"] != "chunk"))
 	_pack_sets(t, doc.get("packSetIdCases", []))
 	_stamps(t, doc.get("stampCases", []))
@@ -182,6 +211,17 @@ func _chunks_planned(t: PKeyTestContext, doc: Dictionary) -> void:
 		var matches: bool = stored.size() == int(ref["bytes"]) and PKeyPackClaims.sha256_hex(stored) == ref["sha256"]
 		t.check("chunk index %s: its input materialises to its ref (planned: P4-11)" % c["id"], matches == (c["id"] != "chunks-ref-tampered"))
 	t.info("planned: P4-11 (packs.index.chunks, packs.apply.chunk): %d chunk index and %d chunk apply cases" % [idx_ids.size(), apply_ids.size()])
+
+
+func _data_only_planned(t: PKeyTestContext, doc: Dictionary) -> void:
+	var ids := []
+	for c in doc.get("dataOnlyCases", []):
+		ids.append(c["id"])
+	t.check("content: dataOnlyCases are exactly the planned ids (P4-26)", ids == DATA_ONLY_PLANNED, S.canon(ids))
+	var parity = S.read_json("res://parity.json")
+	var f = parity.get("features", {}).get("packs.delegation") if parity is Dictionary else null
+	t.check("content: parity.json declares packs.delegation planned in P4-26", f is Dictionary and f.size() == 2 and f.get("status") == "planned" and f.get("wp") == "P4-26", S.canon(f))
+	t.info("planned: P4-26 (packs.delegation): %d dataOnlyCases" % ids.size())
 
 
 func _pack_sets(t: PKeyTestContext, cases: Array) -> void:

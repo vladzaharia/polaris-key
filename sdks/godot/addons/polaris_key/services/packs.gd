@@ -348,16 +348,24 @@ func content_input() -> Variant:
 
 
 ## Keep the revocations an update check verified (PKeyPackEngine.record_revocations):
-## `revocations` is PKeyUpdateFlow's {learned, relearnCleared}. A revoked running release stops
-## (set_changed fires). A coroutine.
+## `revocations` is PKeyUpdateFlow's {learned, relearnCleared}. A revoked running release stops:
+## set_changed("hot") when only hot packs stopped, set_changed("restart") when a `godot.pck` did
+## (one already mounted stays loaded until restart, since Godot cannot unload a resource pack; the
+## host may prompt a restart). A coroutine.
 func record_revocations(revocations: Dictionary) -> PKeyResult:
 	if engine == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Packs have not started.")
-	var before := engine.state()
+	var before: Dictionary = engine.running.duplicate()
 	var r := await engine.record_revocations(revocations.get("learned", []), revocations.get("relearnCleared", []))
-	var after := engine.state()
-	if before.get("running", {}).size() != after.get("running", {}).size():
-		set_changed.emit("hot")
+	var changed := ""
+	for id in before:
+		if not engine.running.has(id):
+			if before[id]["activation"] == "restart":
+				changed = "restart"
+			elif changed == "":
+				changed = "hot"
+	if changed != "":
+		set_changed.emit(changed)
 	return r
 
 

@@ -787,8 +787,11 @@ condemn or substitute it. The engine keeps every verified revocation in a siblin
 
 - A revoked release is never installed, activated or mounted (`pack-revoked`), embedded baselines
   and pinned packs included; a running one stops at once (a `hot` handler is deactivated, a
-  `godot.pck` not yet mounted is withdrawn from this boot; a mounted pack is refused from the
-  next boot), a rollback never goes back to one, and FETCH treats it as missing.
+  `godot.pck` not yet mounted is withdrawn from this boot; a mounted one stays loaded until
+  restart, because Godot cannot unload a resource pack, and is refused from the next boot;
+  `set_changed("restart")` fires so the host can prompt a restart), a rollback never goes back to
+  one, and FETCH treats it as missing. A revoked REQUIRED pack gives boot `required` from the next
+  boot.
 - The file is written only once the first entry is stored, with `revocationsStored: true` written
   to `state.json` first; an absent file is the empty document. A product that never had a
   revocation has no file, no flag and no `relearn`, so nothing here can refuse a mount.
