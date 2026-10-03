@@ -152,7 +152,8 @@ function BootScreen({
   return (
     <ThemeBackdrop>
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
-        <LogoMark size={48} bit="section" />
+        {/* Before the shell knows the route: the default mark, with no bit (BRAND.md §6). */}
+        <LogoMark size={48} />
         {children}
       </div>
     </ThemeBackdrop>

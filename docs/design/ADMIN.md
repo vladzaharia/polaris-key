@@ -47,7 +47,7 @@ baseline only), **yank** for releases, **revoke** for keys and licenses, **outle
    (inventory §0.3). The redesign gives each one a page, or deliberately defers it.
 5. **Brand-true.** Per-service accents follow the kit, dark-first with system follow. Gold means
    signed, and nothing else. The Star Cut identifies the delivery services. The section bit sits in
-   the header.
+   the header, in service sections only; core pages show the K without a bit.
 6. **Accessible by construction.**
    - WCAG 2.2 AA.
    - Keyboard-complete, including the two matrices.
@@ -298,7 +298,8 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
   states, their `ServiceBadge`s, and the delivery cards on Home and Overview. It never indicates
   live update status (kit rule): an "update available" or "rolling out" state is a `StatusPill`.
 - **The section bit in the header** is a deliberate, owner-approved extension of the kit's gold
-  rule. The kit draws the bit only in the display cut (≥ 48 px). The header mark is 28 px.
+  rule. It shows only in service sections; on core pages the K has no bit (BRAND.md §6,
+  2026-10-03). The kit draws the bit only in the display cut (≥ 48 px). The header mark is 28 px.
   Open question **Q1** asks the brand lead to draw a service-cut bit (recommended) or to accept a
   48 px brand block.
 
