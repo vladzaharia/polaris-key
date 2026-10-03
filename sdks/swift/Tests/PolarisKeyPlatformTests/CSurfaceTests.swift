@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 
 @testable import PolarisKeyPlatform
+import PolarisKeyPlatformC
 
 /// What the C callback received. A `@convention(c)` function cannot capture, so it writes here.
 private let received = PlatformLock<[String]>([])

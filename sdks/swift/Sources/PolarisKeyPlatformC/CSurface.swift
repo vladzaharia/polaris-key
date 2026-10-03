@@ -8,8 +8,14 @@
 // `pkp_call` is synchronous and safe from any thread; asynchronous ops answer
 // {"ok":true,"req":N} and deliver their result later through the callback, on an arbitrary
 // thread. `@_cdecl` (not Swift 6.2's `@c`) keeps the surface compilable with Xcode 16.4.
+//
+// It is its own target, PolarisKeyPlatformC, so a Swift consumer of PolarisKeyPlatform (the
+// SDK's PolarisKeyUpdate, an app) does not export `pkp_*` symbols that would clash with another
+// host's copy in the same process. Only a native host links it (the Godot xcframework build
+// compiles it as a second module over PolarisKeyPlatform).
 
 import Foundation
+import PolarisKeyPlatform
 
 @_cdecl("pkp_call")
 public func pkp_call(_ json: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {

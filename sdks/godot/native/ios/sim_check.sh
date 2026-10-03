@@ -101,11 +101,12 @@ func _ready() -> void:
 	_line("kc_delete", _r(apple.keychain_delete("simcheck", "token")))
 	_line("products", _r(await apple.products(PackedStringArray(["dev.polariskey.simcheck.pack"]))))
 	_line("pack_status", _r(await apple.pack_status("foes-c3")))
-	_line("listen", _r(apple.listen()))
+	_line("listen", _r(await apple.listen()))
 	# The autoload started the launch read on iOS; give it its 2 s deadline.
 	await get_tree().create_timer(2.5).timeout
 	_line("launch_distributor", PKeyApple.launch_distributor())
 	_line("outlet_env", PKeyOutletEnv.new().ios_app_distributor())
+	_line("launch_listening", PKeyApple.launch_listening())
 	_line("done", true)
 	get_tree().quit()
 EOF
@@ -219,5 +220,6 @@ ps = rows["pack_status"]
 need(ps["code"] == "unsupported" and ps["detail"]["reason"] == "outlet", "pack_status in a sideload build: %r" % ps)
 need(rows["listen"]["ok"], "listen")
 need(isinstance(rows["launch_distributor"], dict), "the autoload's launch read did not arrive")
+need(rows["launch_listening"] is True, "the autoload did not start the Transaction.updates listener")
 print("sim_check: OK")
 PY

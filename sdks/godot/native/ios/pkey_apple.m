@@ -104,6 +104,7 @@ static GSName g_class_name;
 static char *gstr_to_c(const void *s) {
     GDExtensionInt n = s_to_utf8(s, NULL, 0);
     char *buf = malloc((size_t)n + 1);
+    if (!buf) return NULL;
     s_to_utf8(s, buf, n);
     buf[n] = 0;
     return buf;
@@ -111,7 +112,17 @@ static char *gstr_to_c(const void *s) {
 
 static void run_cmd(const void *arg_str, void *r_str_uninit) {
     char *in = gstr_to_c(arg_str);
+    if (!in) {
+        // Out of memory: answer an error the facade maps to platform-error, never crash.
+        s_new_utf8(r_str_uninit, "{\"ok\":false,\"error\":\"out_of_memory\"}");
+        return;
+    }
     char *out = pkey_apple_cmd_c(in);
+    if (!out) {
+        free(in);
+        s_new_utf8(r_str_uninit, "{\"ok\":false,\"error\":\"out_of_memory\"}");
+        return;
+    }
     s_new_utf8(r_str_uninit, out);
     free(in);
     free(out);

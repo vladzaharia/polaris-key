@@ -267,14 +267,16 @@ jobs:
         # `#if compiler(>=6.3)`; this step proves the guards hold. The macos-26 job below compiles
         # the guarded code.
         run: |
-          for scheme in PolarisKeyPacks PolarisKeyUpdate PolarisKeyPlatform; do
+          for scheme in PolarisKeyPacks PolarisKeyUpdate PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
 
-  # P5-05: the Apple platform plugin with the Xcode 26 SDK. macos-26 (arm64, GA) ships Xcode 26.6
-  # (Swift 6.3) and the iOS 26.5 simulator runtime, so the guarded Background Assets client
-  # compiles here. Steps: the package's `swift test` (fakes only) and an iOS build of every
+  # P5-05: the Apple platform plugin with the Xcode 26 SDK. macos-26 (arm64, GA) ships Xcode
+  # 26.0.1 to 26.6 (26.6 the default) and the iOS 26.2, 26.4 and 26.5 simulator runtimes. Xcode
+  # is PINNED to 26.6 and the job fails unless the compiler is Swift 6.3 or later: the
+  # Background Assets client is behind `#if compiler(>=6.3)`, so an older default Xcode would
+  # silently compile it out. Steps: the package's `swift test` (fakes only) and an iOS build of every
   # library with warnings as errors; the hosted XCTest project (StoreKit Testing needs a host
   # app with get-task-allow; it asserts the product count); the xcframework for device and
   # simulator; the iOS export check (store preset has the Background Assets extension, App
@@ -289,7 +291,17 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-      - run: swift --version && xcodebuild -version
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          swift --version
+          v="$(swift --version 2>&1 | sed -n 's/.*Swift version \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1)"
+          major="${v%%.*}"; minor="${v#*.}"
+          if [ -z "$v" ] || [ "$major" -lt 6 ] || { [ "$major" -eq 6 ] && [ "$minor" -lt 3 ]; }; then
+            echo "Swift $v is below 6.3: the guarded Background Assets code would not compile" >&2
+            exit 1
+          fi
       - name: swift build + test (warnings as errors)
         run: |
           swift build --package-path sdks/swift -Xswiftc -warnings-as-errors
@@ -298,14 +310,18 @@ jobs:
         working-directory: sdks/swift
         run: |
           for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey PolarisKeyPlatform; do
+            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
       - name: hosted StoreKit / Keychain tests (iOS simulator)
+        # XcodeGen 2.45.4, the release asset checked against its SHA-256.
         run: |
-          brew install xcodegen
-          sdks/swift/PlatformHostTests/run.sh
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/xcodegen.zip" \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.45.4/xcodegen.zip
+          echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          XCODEGEN="$RUNNER_TEMP/xcodegen/bin/xcodegen" sdks/swift/PlatformHostTests/run.sh
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pkey-godot/4.7.2-ios

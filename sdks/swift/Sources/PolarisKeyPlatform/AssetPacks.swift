@@ -98,6 +98,12 @@ public struct UnavailableAssetPackClient: AssetPackClient {
 }
 
 /// Whether this process's Info.plist carries the managed Background Assets keys.
+///
+/// The guard is the pair that makes `AssetPackManager.shared` safe to touch: `BAAppGroupID` and
+/// `BAHasManagedAssetPacks` (S-01 measured the trap without them). `BAUsesAppleHosting` is NOT
+/// required: it says who hosts the packs (Apple, as opposed to a self-hosted managed server),
+/// not whether the managed manager is configured, and a self-hosted managed app legitimately
+/// omits it. The post-export patch writes all three for Polaris Key's store builds.
 public func backgroundAssetsConfigured(_ info: [String: Any]? = Bundle.main.infoDictionary) -> Bool {
     guard let info else { return false }
     return info["BAAppGroupID"] is String && (info["BAHasManagedAssetPacks"] as? Bool ?? false)

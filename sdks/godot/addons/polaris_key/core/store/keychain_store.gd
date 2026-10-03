@@ -12,7 +12,7 @@ extends PKeyStore
 ##
 ## Migration from the file store (an install that ran before the plugin was added): a token or
 ## device id found only in the files is moved into the Keychain on first read; the token file is
-## then removed. Failures are never swallowed: a failed Keychain operation sets `last_error`,
+## then removed (a failed removal is surfaced and retried on every read). Failures are never swallowed: a failed Keychain operation sets `last_error`,
 ## emits `failed` and makes status() report `degraded: keyring-error`. The token is never written
 ## to a file instead (no silent downgrade); a device id that cannot be stored in the Keychain is
 ## kept in the device file, so a Keychain fault does not mint a new device per launch.
@@ -56,12 +56,25 @@ func get_token() -> String:
 		return ""
 	var value = r.detail.get("value")
 	if value is String and value != "":
+		# A migration whose file delete failed: retry it on every read until it succeeds, so no
+		# plaintext copy of the token stays behind.
+		_remove_legacy_token()
 		return value
 	# Migrate a token the file store holds.
 	var legacy := files.get_token()
 	if legacy != "" and set_token(legacy):
-		files.clear_token()
+		_remove_legacy_token()
 	return legacy
+
+
+## Delete the file store's token file after the token reached the Keychain. A failure is
+## surfaced (`failed`) and retried by the next get_token().
+func _remove_legacy_token() -> void:
+	var path := files.path_of(PKeyFileStore.TOKEN_FILE)
+	if not FileAccess.file_exists(path):
+		return
+	if not files.clear_token():
+		_fail("remove", path, ERR_FILE_CANT_WRITE, "the token was moved into the Keychain but its file could not be removed; retried on the next read")
 
 
 func set_token(token: String) -> bool:
@@ -85,7 +98,11 @@ func has_device_id() -> bool:
 	if _device_id != "":
 		return true
 	var r := apple.keychain_get(product, DEVICE_ACCOUNT)
-	if r.ok and r.detail.get("value") is String and r.detail["value"] != "":
+	if not r.ok:
+		# Surfaced, not swallowed; the device file may still hold the id.
+		_keychain_fail("read", DEVICE_ACCOUNT, r)
+		return files.has_device_id()
+	if r.detail.get("value") is String and r.detail["value"] != "":
 		return true
 	return files.has_device_id()
 

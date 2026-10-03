@@ -3,10 +3,10 @@
 //   {"op": "<name>", …}  →  a synchronous result, or {"ok":true,"req":N} now and, later, one
 //                           event {"ev":"<name>","req":N, …result} through the event sink.
 //
-// Synchronous: ping, capabilities, listen, kc_get, kc_set, kc_delete, packs_watch,
-// packs_unwatch. Asynchronous (each in its own detached task, never on the caller's thread):
-// distributor, app_transaction, products, purchase, entitlements, finish, packs_status,
-// packs_ensure, packs_check_updates, packs_remove, packs_url. Unsolicited events:
+// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete (none of them waits on anything).
+// Asynchronous (each in its own detached task; the caller's thread never blocks): distributor,
+// app_transaction, products, purchase, entitlements, listen, finish, packs_status, packs_ensure,
+// packs_check_updates, packs_remove, packs_url, packs_watch, packs_unwatch. Unsolicited events:
 // transaction_updated, pack_progress, pack_ready, pack_failed, pack_status.
 //
 // Every failure is `{"ok":false,"error":"<code>", …}`; an API this OS or build lacks is
@@ -172,17 +172,12 @@ public final class PlatformHost: Sendable {
 
         case "listen":
             guard let store else { return Self.unsupported("runtime", "StoreKit is not available here.") }
-            // Started synchronously in order, so no update can arrive before the listener exists.
-            let started = PlatformLock(false)
-            let semaphore = DispatchSemaphore(value: 0)
-            Task.detached {
+            // Asynchronous like every op that touches an actor: the caller (Godot's main thread)
+            // never waits. The listener is idempotent, so a second `listen` is harmless.
+            return later(op) {
                 await store.startListener()
-                started.withLock { $0 = true }
-                semaphore.signal()
+                return ["ok": true]
             }
-            _ = semaphore.wait(timeout: .now() + 2)
-            let ok = started.withLock { $0 }
-            return ["ok": .bool(ok)]
 
         case "finish":
             guard let store else { return Self.unsupported("runtime", "StoreKit is not available here.") }
@@ -238,15 +233,7 @@ public final class PlatformHost: Sendable {
             if let u = packs.unsupported() { return u }
             let packs = self.packs
             let watch = op == "packs_watch"
-            let result = PlatformLock<PlatformObject>(["ok": false, "error": "timeout"])
-            let semaphore = DispatchSemaphore(value: 0)
-            Task.detached {
-                let r = watch ? await packs.watch(id: id) : await packs.unwatch(id: id)
-                result.withLock { $0 = r }
-                semaphore.signal()
-            }
-            _ = semaphore.wait(timeout: .now() + 2)
-            return result.withLock { $0 }
+            return later(op) { watch ? await packs.watch(id: id) : await packs.unwatch(id: id) }
 
         default:
             return ["ok": false, "error": "unknown_op", "op": .string(op)]

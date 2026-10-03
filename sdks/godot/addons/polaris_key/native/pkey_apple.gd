@@ -53,17 +53,27 @@ var native_class := NATIVE_CLASS
 ## How long an awaited call waits for its event.
 var timeout_s := 30.0
 
-var _results := {}
 var _dropped := 0
+
+## Results of asynchronous requests, keyed "<native id>:<req>", SHARED by every instance: the
+## native queue is one per process, so whichever instance polls may drain another instance's
+## result. Entries are consumed by the awaiting call, or dropped when it times out.
+static var _results := {}
+## Requests whose caller timed out: their results are dropped when they arrive.
+static var _abandoned := {}
 
 static var _shared: PKeyApple = null
 ## This launch's distributor answer (never persisted, never carried across launches).
 static var _launch_distributor: Variant = null
 static var _launch_started := false
+static var _launch_listening := false
 
 
 ## The process's facade: created on first use and added to the scene tree (deferred), so
-## `_process` drains the native queue every frame.
+## `_process` drains the native queue every frame. Use this one instance in a game: the
+## unsolicited events (transaction_updated, pack_*) are emitted by the instance that polls, so
+## a second instance that also polls would take some of them. Awaited results are safe across
+## instances (they are shared, keyed by request id). Other instances are for tests.
 static func shared() -> PKeyApple:
 	if _shared == null or not is_instance_valid(_shared):
 		_shared = PKeyApple.new()
@@ -74,16 +84,26 @@ static func shared() -> PKeyApple:
 	return _shared
 
 
-## Start this launch's AppDistributor read (once per process; never cached across launches).
-## Outlet detection reads the answer through launch_distributor() when it has arrived; until then
-## it has no iOS distributor evidence and the build stamp stands.
-static func start_launch_reads() -> void:
+## The launch work (once per process; the PolarisKey autoload calls it on iOS):
+##   - start the StoreKit Transaction.updates listener when StoreKit is there (S-09
+##     Recommendation 4: refunds, Ask to Buy and other devices' purchases arrive as
+##     transaction_updated from launch on, not only after the first purchase);
+##   - this launch's AppDistributor read, never cached across launches. Outlet detection reads
+##     the answer through launch_distributor() when it has arrived; until then it has no iOS
+##     distributor evidence and the build stamp stands.
+## `apple` is the instance to use (tests); shared() by default.
+static func start_launch_reads(apple: PKeyApple = null) -> void:
 	if _launch_started:
 		return
 	_launch_started = true
-	var apple := shared()
+	if apple == null:
+		apple = shared()
 	if apple.unsupported_reason() != "":
 		return
+	var caps := apple.capabilities()
+	if caps.ok and caps.detail is Dictionary and caps.detail.get("storeKit") == true:
+		var listening: PKeyResult = await apple.listen()
+		_launch_listening = listening.ok
 	var r: PKeyResult = await apple.distributor()
 	_launch_distributor = r.detail if r.ok and r.detail is Dictionary else null
 
@@ -94,10 +114,16 @@ static func launch_distributor() -> Variant:
 	return _launch_distributor
 
 
+## Whether the launch work started the Transaction.updates listener.
+static func launch_listening() -> bool:
+	return _launch_listening
+
+
 ## Forget this launch's reads (tests).
 static func reset_launch() -> void:
 	_launch_distributor = null
 	_launch_started = false
+	_launch_listening = false
 
 
 func _platform() -> String:
@@ -159,16 +185,24 @@ func call_async(q: Dictionary, wait_s := -1.0) -> Dictionary:
 	var limit_ms := int((wait_s if wait_s >= 0.0 else timeout_s) * 1000.0)
 	var t0 := Time.get_ticks_msec()
 	var tree := Engine.get_main_loop() as SceneTree
-	while not _results.has(req):
+	var key := _key(req)
+	while not _results.has(key):
 		poll()
-		if _results.has(req):
+		if _results.has(key):
 			break
 		if Time.get_ticks_msec() - t0 > limit_ms or tree == null:
+			# A late result must not linger: poll() drops results nobody waits for any more.
+			_abandoned[key] = true
 			return {"ok": false, "error": "timeout", "req": req}
 		await tree.process_frame
-	var out: Dictionary = _results[req]
-	_results.erase(req)
+	var out: Dictionary = _results[key]
+	_results.erase(key)
 	return out
+
+
+## The shared-results key of request `req` on this instance's native side.
+func _key(req: int) -> String:
+	return "%d:%d" % [native.get_instance_id() if native != null else 0, req]
 
 
 ## Drain the native event queue: results go to their awaiting call, the rest become signals.
@@ -185,7 +219,11 @@ func poll() -> int:
 		if not (ev is Dictionary):
 			continue
 		if ev.has("req"):
-			_results[int(ev["req"])] = ev
+			var key := _key(int(ev["req"]))
+			if _abandoned.has(key):
+				_abandoned.erase(key)
+			else:
+				_results[key] = ev
 		match str(ev.get("ev", "")):
 			"transaction_updated":
 				transaction_updated.emit(str(ev.get("jws", "")), ev)
@@ -259,7 +297,7 @@ func finish(transaction_id: String) -> PKeyResult:
 
 ## Start the Transaction.updates listener (idempotent); updates arrive as transaction_updated.
 func listen() -> PKeyResult:
-	return _wrap(PKeyConstants.Feature.COMMERCE_RECEIPT, call_sync({"op": "listen"}))
+	return await _async(PKeyConstants.Feature.COMMERCE_RECEIPT, {"op": "listen"})
 
 
 ## A Keychain value of service `pkey:<product>`: detail.value, null when absent.
@@ -302,11 +340,11 @@ func pack_path(path: String) -> PKeyResult:
 
 ## Forward a pack's system-initiated download progress as pack_progress (idempotent).
 func watch_pack(id: String) -> PKeyResult:
-	return _wrap(PKeyConstants.Feature.PACKS_TRANSPORT_APPLE, call_sync({"op": "packs_watch", "id": id}))
+	return await _async(PKeyConstants.Feature.PACKS_TRANSPORT_APPLE, {"op": "packs_watch", "id": id})
 
 
 func unwatch_pack(id: String) -> PKeyResult:
-	return _wrap(PKeyConstants.Feature.PACKS_TRANSPORT_APPLE, call_sync({"op": "packs_unwatch", "id": id}))
+	return await _async(PKeyConstants.Feature.PACKS_TRANSPORT_APPLE, {"op": "packs_unwatch", "id": id})
 
 
 func _async(feature: String, q: Dictionary, wait_s := -1.0) -> PKeyResult:

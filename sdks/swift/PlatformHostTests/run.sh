@@ -7,7 +7,9 @@
 #                storekitd keeps a StoreKit configuration per bundle id across runs)
 #   BUILD_DIR    where the generated project, derived data and logs go (default: ./build)
 #
-# Needs Xcode 26+ (the macos-26 CI job) and XcodeGen (`brew install xcodegen`). Uses no Apple
+#   XCODEGEN     the xcodegen binary (default: xcodegen on PATH; CI pins 2.45.4 by SHA-256)
+#
+# Needs Xcode 26+ (the macos-26 CI job) and XcodeGen. Uses no Apple
 # developer account: the app and the test bundle are ad hoc signed for the simulator.
 
 set -euo pipefail
@@ -16,7 +18,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 BUILD="${BUILD_DIR:-$HERE/build}"
 mkdir -p "$BUILD/logs" "$HERE/build/generated"
 
-command -v xcodegen >/dev/null || { echo "run.sh: xcodegen is required (brew install xcodegen)" >&2; exit 2; }
+XCODEGEN="${XCODEGEN:-xcodegen}"
+command -v "$XCODEGEN" >/dev/null || { echo "run.sh: xcodegen is required (XCODEGEN=<path>, or brew install xcodegen)" >&2; exit 2; }
 
 udid="${SIM_UDID:-}"
 if [ -z "$udid" ]; then
@@ -46,7 +49,7 @@ if rts:
 fi
 echo "run.sh: simulator $udid"
 
-(cd "$HERE" && xcodegen generate --spec project.yml --quiet)
+(cd "$HERE" && "$XCODEGEN" generate --spec project.yml --quiet)
 
 set +e
 xcodebuild test \

@@ -46,12 +46,9 @@ func _stubs(t: PKeyTestContext) -> void:
 		var why: String = pair[1]
 		var results := {
 			"capabilities": a.capabilities(),
-			"listen": a.listen(),
 			"keychain_get": a.keychain_get("diceroll", "token"),
 			"keychain_set": a.keychain_set("diceroll", "token", "pkeyt_x"),
 			"keychain_delete": a.keychain_delete("diceroll", "token"),
-			"watch_pack": a.watch_pack("foes-c3"),
-			"unwatch_pack": a.unwatch_pack("foes-c3"),
 		}
 		var all_unsupported := true
 		for k in results:
@@ -66,18 +63,25 @@ func _stubs(t: PKeyTestContext) -> void:
 
 
 func _facade(t: PKeyTestContext) -> void:
-	# The coroutine calls without the plugin (awaited, so in this function).
+	# The coroutine calls without the plugin (awaited, so in this function): off iOS (runtime) and
+	# on iOS without the GDExtension (dependency).
 	var desktop := _apple("windows")
-	var stub_calls: Array[PKeyResult] = [
-		await desktop.distributor(), await desktop.app_transaction(), await desktop.products(PackedStringArray([FOES])),
-		await desktop.purchase(FOES, TOKEN), await desktop.entitlements(), await desktop.finish("1"),
-		await desktop.pack_status("foes-c3"), await desktop.ensure_packs([{"id": "foes-c3", "path": "p"}]),
-		await desktop.check_pack_updates(), await desktop.remove_pack("foes-c3"), await desktop.pack_path("p"),
-	]
-	t.check("stubs: every awaited call is Unsupported (runtime) with its feature", stub_calls.all(func(r: PKeyResult): return not r.ok and r.code == &"unsupported" and r.detail.get("reason") == "runtime") \
-			and stub_calls[0].detail["feature"] == PKeyConstants.Feature.OUTLET_DETECT and stub_calls[3].detail["feature"] == PKeyConstants.Feature.COMMERCE_RECEIPT \
-			and stub_calls[7].detail["feature"] == PKeyConstants.Feature.PACKS_TRANSPORT_APPLE)
-	desktop.free()
+	var missing := _apple("ios")
+	missing.native_class = "PolarisKeyAppleMissingForTests"
+	for pair in [[desktop, "runtime"], [missing, "dependency"]]:
+		var a: PKeyApple = pair[0]
+		var why: String = pair[1]
+		var stub_calls: Array[PKeyResult] = [
+			await a.distributor(), await a.app_transaction(), await a.products(PackedStringArray([FOES])),
+			await a.purchase(FOES, TOKEN), await a.entitlements(), await a.finish("1"),
+			await a.pack_status("foes-c3"), await a.ensure_packs([{"id": "foes-c3", "path": "p"}]),
+			await a.check_pack_updates(), await a.remove_pack("foes-c3"), await a.pack_path("p"),
+			await a.listen(), await a.watch_pack("foes-c3"), await a.unwatch_pack("foes-c3"),
+		]
+		t.check("stubs: every awaited call (%d) is Unsupported (%s) with its feature" % [stub_calls.size(), why], stub_calls.all(func(r: PKeyResult): return not r.ok and r.code == &"unsupported" and r.detail.get("reason") == why) \
+				and stub_calls[0].detail["feature"] == PKeyConstants.Feature.OUTLET_DETECT and stub_calls[3].detail["feature"] == PKeyConstants.Feature.COMMERCE_RECEIPT \
+				and stub_calls[7].detail["feature"] == PKeyConstants.Feature.PACKS_TRANSPORT_APPLE)
+		a.free()
 
 	var fake := PKeyFakeAppleNative.new()
 	var a := _apple("ios", fake)
@@ -135,12 +139,44 @@ func _facade(t: PKeyTestContext) -> void:
 	a.timeout_s = 0.2
 	var late := await a.entitlements()
 	t.check("facade: a result that never arrives is timeout", not late.ok and late.code == PKeyErrors.TIMEOUT)
+	# The result turns up after the caller gave up: it is dropped, not kept forever.
+	fake.push_event({"ev": "entitlements", "req": int(late.detail["req"]), "ok": true, "entitlements": []})
+	a.poll()
+	t.check("facade: a result that arrives after its timeout is dropped", not PKeyApple._results.has(a._key(int(late.detail["req"]))) \
+			and not PKeyApple._abandoned.has(a._key(int(late.detail["req"]))))
+	a.timeout_s = 2.0
+	fake.never = PackedStringArray()
+	fake.packs_supported = true
+	var watch := await a.watch_pack("foes-c3")
+	var unwatch := await a.unwatch_pack("foes-c3")
+	t.check("facade: watch_pack and unwatch_pack answer through the event queue (no main-thread wait)", watch.ok and watch.detail.get("ev") == "packs_watch" \
+			and unwatch.ok and unwatch.detail.get("ev") == "packs_unwatch")
 
-	# The launch read feeds outlet detection, and is per process only.
+	# The launch work: the Transaction.updates listener (when StoreKit is there) and the
+	# distributor read that feeds outlet detection; once per process.
 	PKeyApple.reset_launch()
-	t.check("facade: no launch read before it is started", PKeyApple.launch_distributor() == null)
+	t.check("facade: no launch read before it is started", PKeyApple.launch_distributor() == null and not PKeyApple.launch_listening())
 	a.free()
-	fake = null
+	var lf := PKeyFakeAppleNative.new()
+	var la := _apple("ios", lf)
+	await PKeyApple.start_launch_reads(la)
+	t.check("launch: the Transaction.updates listener starts at launch when StoreKit is there", PKeyApple.launch_listening() \
+			and lf.calls.any(func(c): return c["op"] == "listen"))
+	t.check("launch: the distributor read is stored for outlet detection", PKeyApple.launch_distributor() is Dictionary \
+			and PKeyApple.launch_distributor()["signal"] == "appStore")
+	var calls_before := lf.calls.size()
+	await PKeyApple.start_launch_reads(la)
+	t.check("launch: it runs once per process", lf.calls.size() == calls_before)
+	PKeyApple.reset_launch()
+	var nf := PKeyFakeAppleNative.new()
+	nf.store_kit = false
+	var na := _apple("ios", nf)
+	await PKeyApple.start_launch_reads(na)
+	t.check("launch: no listener without StoreKit", not PKeyApple.launch_listening() and not nf.calls.any(func(c): return c["op"] == "listen") \
+			and PKeyApple.launch_distributor() is Dictionary)
+	PKeyApple.reset_launch()
+	la.free()
+	na.free()
 
 
 func _keychain(t: PKeyTestContext) -> void:
@@ -181,6 +217,28 @@ func _keychain(t: PKeyTestContext) -> void:
 	t.check("keychain: status reports keyring-error after a failure", broken.status().get("degraded", {}).get("reason") == "keyring-error")
 	var fallback_id := broken.get_device_id()
 	t.check("keychain: a device id that cannot reach the Keychain is still stable (device file)", PKeyDeviceId.is_well_formed(fallback_id) and broken.get_device_id() == fallback_id)
+	var fresh := PKeyKeychainStore.new("diceroll", made[-1], "user://pkey_test_keychain_h_%d" % Time.get_ticks_usec())
+	var fresh_errors := []
+	fresh.failed.connect(func(e: Dictionary): fresh_errors.append(e))
+	t.check("keychain: has_device_id surfaces a Keychain failure", not fresh.has_device_id() and fresh_errors.size() == 1 \
+			and fresh.status().get("degraded", {}).get("reason") == "keyring-error")
+
+	# A migration whose token-file delete fails is surfaced and retried on the next read.
+	var root4 := "user://pkey_test_keychain_r_%d" % Time.get_ticks_usec()
+	var legacy_files := PKeyFileStore.new("diceroll", root4)
+	legacy_files.set_token("pkeyt_orphan")
+	var fake4 := PKeyFakeAppleNative.new()
+	made.append(_apple("ios", fake4))
+	var stuck := PKeyKeychainStore.new("diceroll", made[-1], root4)
+	var stuck_files := _StuckFiles.new("diceroll", root4)
+	stuck.files = stuck_files
+	var stuck_errors := []
+	stuck.failed.connect(func(e: Dictionary): stuck_errors.append(e))
+	var token_path := root4.path_join("diceroll/token")
+	t.check("keychain: a failed delete after migration is surfaced and the file is still there", stuck.get_token() == "pkeyt_orphan" \
+			and fake4.keychain.get("diceroll/token") == "pkeyt_orphan" and FileAccess.file_exists(token_path) \
+			and stuck_errors.any(func(e): return str(e.get("message", "")).contains("retried on the next read")))
+	t.check("keychain: the next read retries the delete and removes the plaintext token", stuck.get_token() == "pkeyt_orphan" and not FileAccess.file_exists(token_path))
 	t.check("keychain: off iOS the preferred store is the file store", PKeyHeaders.platform() == "ios" or PKeyKeychainStore.preferred("diceroll", root) is PKeyFileStore)
 	for a in made:
 		a.free()
@@ -195,3 +253,15 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("export: a sideload mark is false with no group", E.plist_content(false, "gg.vlad.diceroll") == "<key>PKeyAppleBackgroundAssets</key>\n<false/>\n")
 	t.check("export: on for a sideload outlet warns", E.mode_warning("on", "altstore") != "" and E.mode_warning("auto", "altstore") == "" and E.mode_warning("sometimes", "app-store") != "")
 	t.check("export: a preset below iOS 17.0 warns", E.min_ios_warning("15.0") != "" and E.min_ios_warning("17.0") == "" and E.min_ios_warning("26.4") == "" and E.min_ios_warning("") == "")
+
+
+## A file store whose first clear_token() fails (a locked or read-only file).
+class _StuckFiles extends PKeyFileStore:
+	var failures := 1
+
+	func clear_token() -> bool:
+		if failures > 0:
+			failures -= 1
+			_fail("remove", path_of(TOKEN_FILE), ERR_FILE_CANT_WRITE, "stuck (test)")
+			return false
+		return super.clear_token()

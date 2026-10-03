@@ -4,7 +4,8 @@
 # beside it (see that file for why it is not committed in the addon).
 #
 # One dynamic framework per slice holds BOTH the C-interface glue (pkey_apple.m) and the
-# PolarisKeyPlatform Swift sources (sdks/swift/Sources/PolarisKeyPlatform), compiled in Swift 6
+# PolarisKeyPlatform Swift sources and its C surface (sdks/swift/Sources/PolarisKeyPlatform and
+# PolarisKeyPlatformC), compiled in Swift 6
 # language mode with warnings as errors:
 #
 #   ios-arm64                 device
@@ -28,6 +29,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../../../.." && pwd)"
 SRC="$REPO/sdks/swift/Sources/PolarisKeyPlatform"
+CSRC="$REPO/sdks/swift/Sources/PolarisKeyPlatformC"
 OUT="${OUT:-$REPO/sdks/godot/addons/polaris_key/native/ios/pkey_apple.xcframework}"
 MIN_IOS="${MIN_IOS:-17.0}"
 BUNDLE_ID="dev.polariskey.godot.pkey-apple"
@@ -61,8 +63,16 @@ slice() {
   mkdir -p "$dir"
   xcrun --sdk "$sdk" clang -c -fobjc-arc -fmodules -O2 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-cast-function-type \
     -I"$WORK" -target "$triple" -isysroot "$sdkp" "$HERE/pkey_apple.m" -o "$dir/pkey_apple.o"
+  # Two modules, as in the Swift package: PolarisKeyPlatform (a static library + its module),
+  # then the C surface PolarisKeyPlatformC over it, linked with the glue into one dylib.
+  mkdir -p "$dir/mods"
   xcrun --sdk "$sdk" swiftc -target "$triple" -sdk "$sdkp" -swift-version 6 -warnings-as-errors -O \
-    -parse-as-library -module-name PolarisKeyPlatform -emit-library "$SRC"/*.swift "$dir/pkey_apple.o" \
+    -parse-as-library -module-name PolarisKeyPlatform -emit-library -static \
+    -emit-module -emit-module-path "$dir/mods/PolarisKeyPlatform.swiftmodule" \
+    "$SRC"/*.swift -o "$dir/libPolarisKeyPlatform.a"
+  xcrun --sdk "$sdk" swiftc -target "$triple" -sdk "$sdkp" -swift-version 6 -warnings-as-errors -O \
+    -parse-as-library -module-name PolarisKeyPlatformC -I "$dir/mods" -emit-library "$CSRC"/*.swift \
+    "$dir/pkey_apple.o" "$dir/libPolarisKeyPlatform.a" \
     -Xlinker -install_name -Xlinker @rpath/pkey_apple.framework/pkey_apple \
     -framework Foundation -framework StoreKit -framework Security -o "$dir/pkey_apple"
 }

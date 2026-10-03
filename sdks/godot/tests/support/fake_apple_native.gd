@@ -17,6 +17,8 @@ var catalog := [
 ## Whether managed asset packs answer (false: unsupported with `packs_reason`).
 var packs_supported := true
 var packs_reason := "outlet"
+## Whether `capabilities` reports StoreKit.
+var store_kit := true
 ## A reply that is not JSON for this op (tests the facade's bad-reply path).
 var garbage_for := ""
 ## Ops whose result never arrives (tests the facade's timeout).
@@ -49,7 +51,7 @@ func cmd(json: String) -> String:
 		"ping":
 			return JSON.stringify({"ok": true, "mainThread": true, "protocol": 1})
 		"capabilities":
-			return JSON.stringify({"ok": true, "protocol": 1, "platform": "ios", "appDistributor": true, "appDistributorWeb": true, "managedAssetPacks": packs_supported, "backgroundAssetsConfigured": packs_supported, "storeKit": true, "keychain": true, "entitlementsForID": true})
+			return JSON.stringify({"ok": true, "protocol": 1, "platform": "ios", "appDistributor": true, "appDistributorWeb": true, "managedAssetPacks": packs_supported, "backgroundAssetsConfigured": packs_supported, "storeKit": store_kit, "keychain": true, "entitlementsForID": true})
 		"distributor":
 			return _later(op, distributor.duplicate(true))
 		"app_transaction":
@@ -71,7 +73,7 @@ func cmd(json: String) -> String:
 			finished.append(str(q.get("id")))
 			return _later(op, {"ok": true, "finished": true})
 		"listen":
-			return JSON.stringify({"ok": true})
+			return _later(op, {"ok": true})
 		"kc_get":
 			var key := "%s/%s" % [q.get("product"), q.get("account")]
 			if keychain.get("__fail__", false):
@@ -85,7 +87,7 @@ func cmd(json: String) -> String:
 		"kc_delete":
 			keychain.erase("%s/%s" % [q.get("product"), q.get("account")])
 			return JSON.stringify({"ok": true})
-		"packs_ensure", "packs_status", "packs_check_updates", "packs_remove", "packs_url", "packs_watch":
+		"packs_ensure", "packs_status", "packs_check_updates", "packs_remove", "packs_url", "packs_watch", "packs_unwatch":
 			if not packs_supported:
 				return JSON.stringify({"ok": false, "unsupported": true, "reason": packs_reason, "detail": "fake: no Background Assets (%s)" % packs_reason})
 			if op == "packs_ensure":
@@ -95,8 +97,8 @@ func cmd(json: String) -> String:
 					push_event({"ev": "pack_ready", "id": p["id"], "path": "/staging/" + str(p["path"])})
 					results.append({"id": p["id"], "ready": true, "path": "/staging/" + str(p["path"])})
 				return _later(op, {"ok": true, "packs": results})
-			if op == "packs_watch":
-				return JSON.stringify({"ok": true, "id": q.get("id")})
+			if op == "packs_watch" or op == "packs_unwatch":
+				return _later(op, {"ok": true, "id": q.get("id")})
 			return _later(op, {"ok": true})
 	return JSON.stringify({"ok": false, "error": "unknown_op", "op": op})
 

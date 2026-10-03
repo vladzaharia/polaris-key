@@ -271,6 +271,27 @@ disagree; S-09's §Recommendation was followed except where noted.
 - **Read-first correction.** The coordinator pointed at notes/S-06 §6, which is the itch section;
   the AppDistributor facts used here are S-06 §1 and its rule 5.
 
+- **Review round 1.**
+  - The C surface (`@_cdecl` `pkp_*`) is its own target, `PolarisKeyPlatformC`. Only native hosts
+    link it: the Godot xcframework build compiles PolarisKeyPlatform as a static module and the
+    C surface over it. `PolarisKeyUpdate` and other Swift consumers export no `pkp_*` symbol
+    (checked with `nm`).
+  - `listen`, `packs_watch` and `packs_unwatch` are asynchronous ops now. No op blocks the
+    calling (Godot main) thread; S-09's probe and the first cut waited up to 2 s on a semaphore.
+  - The PolarisKey autoload's launch work starts the `Transaction.updates` listener when
+    `capabilities().storeKit` is true (S-09 Recommendation 4), before the distributor read.
+  - PKeyApple's awaited results are shared across instances, keyed by native object and req.
+    A result that arrives after its caller timed out is dropped. `shared()` documents that a
+    game uses one instance.
+  - `PKeyKeychainStore` surfaces and retries a failed token-file delete after migration, and
+    `has_device_id()` surfaces a Keychain failure.
+  - The glue NULL-checks its `malloc`.
+  - THREAT-MODEL.md has a client token-store section.
+  - The `apple` CI job pins `/Applications/Xcode_26.6.app` (macos-26 ships 26.0.1 to 26.6,
+    26.6 the default) and fails unless `swift --version` is 6.3 or later, so the
+    `#if compiler(>=6.3)` code cannot be compiled out silently.
+  - XcodeGen 2.45.4 is downloaded and checked against its SHA-256.
+
 ### Owner checklist (device, account, TestFlight; not run)
 
 Needs the Apple developer account (Team ID, an App ID with App Groups plus the extension's App

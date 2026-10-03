@@ -65,7 +65,9 @@ final class HostTests: XCTestCase {
             ProductInfo(id: "pack.foes", type: "Non-Consumable", displayName: "Foes", displayPrice: "$4.99", price: "4.99")
         ])
         let (h, log) = host(fakeServices(store: store))
-        XCTAssertEqual(call(h, #"{"op":"listen"}"#), ["ok": true])
+        let listening = await log.result(call(h, #"{"op":"listen"}"#)["req"])
+        XCTAssertEqual(listening["ok"], true)
+        XCTAssertEqual(listening["ev"], "listen")
         let products = await log.result(call(h, #"{"op":"products","ids":["pack.foes","x"]}"#)["req"])
         guard case .array(let ps)? = products["products"] else { return XCTFail() }
         XCTAssertEqual(ps.count, 1)
@@ -130,8 +132,10 @@ final class HostTests: XCTestCase {
             call(h, #"{"op":"packs_ensure","packs":[{"id":"foes-c3","path":"foes/content.pck"}],"latest":true}"#)["req"])
         XCTAssertEqual(ev["ev"], "packs_ensure")
         XCTAssertEqual(log.named("pack_ready").first?["path"], "/staging/foes/content.pck")
-        XCTAssertEqual(call(h, #"{"op":"packs_watch","id":"foes-c3"}"#)["ok"], true)
-        XCTAssertEqual(call(h, #"{"op":"packs_unwatch","id":"foes-c3"}"#)["ok"], true)
+        let watched = await log.result(call(h, #"{"op":"packs_watch","id":"foes-c3"}"#)["req"])
+        XCTAssertEqual(watched["ok"], true)
+        let unwatched = await log.result(call(h, #"{"op":"packs_unwatch","id":"foes-c3"}"#)["req"])
+        XCTAssertEqual(unwatched["ok"], true)
         let url = await log.result(call(h, #"{"op":"packs_url","path":"foes/content.pck"}"#)["req"])
         XCTAssertEqual(url["exists"], true)
 
