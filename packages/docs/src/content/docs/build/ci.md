@@ -248,9 +248,11 @@ What the step does, in order:
    (`.glb`, `.gltf`, `.blend`, `.fbx`) as a compressed `.scn` (`RSCC`). The lint and the device
    decompress it and scan the body like any binary resource, so packs that carry imported models
    are admitted. The decompression is bounded: zstd only (Godot's default; another compression
-   mode fails), at most 256 MiB uncompressed per resource, blocks of 4 KiB to 1 MiB, each block
-   one zstd frame that decodes to exactly its declared size, and nothing after the closing
-   magic. A model that needs more than 256 MiB uncompressed fails; split it. A reference to a script the game
+   mode fails), at most 64 MiB uncompressed per resource and 512 MiB across a pack's compressed
+   resources, blocks of 4 KiB to 1 MiB, each block one zstd frame (as Godot writes them) that
+   decodes to exactly its declared size, and nothing after the closing magic. A model that needs
+   more than 64 MiB uncompressed (a 980,000-triangle mesh imports to about 59 MB) fails, and so
+   does the compressed resource that takes a pack past 512 MiB; split the model or the pack. A reference to a script the game
    already ships (`[ext_resource type="Script" …]`) names none of these and passes. The lint knows
    the built-in script set only; for another script language (a GDExtension) the device check,
    which asks its engine what a script is, is the one that refuses it. The header's engine must be `requires.engine`; more than

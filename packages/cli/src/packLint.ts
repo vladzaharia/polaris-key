@@ -47,7 +47,7 @@
 
 import { checkPaths } from "@polaris-key/client-core/packs";
 import { PCK_STRIP_PATHS, pckPathOk, type PckDirectory } from "./pck.js";
-import { rsccBody, rsccBodyIsResource } from "./rscc.js";
+import { rsccBody, rsccBodyIsResource, type RsccBudget } from "./rscc.js";
 
 /** Above this many entries the lint warns (S-05 §4.1: the mount stall grows with the count). */
 export const PCK_WARN_ENTRIES = 1000;
@@ -319,6 +319,8 @@ export function lintPck(
   const text = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
+  // The pack's RSCC decompression budget, counted in directory order (P4-27).
+  const budget: RsccBudget = { used: 0 };
   for (const e of dir.entries) {
     const p = e.path;
     if (stripped.has(p)) {
@@ -348,6 +350,7 @@ export function lintPck(
       p,
       bytes.subarray(e.offset, e.offset + e.size),
       kinds.markers,
+      budget,
     );
     if (code !== null) {
       errors.push(`${p}: ${code}; a pack carries data only.`);
@@ -423,7 +426,7 @@ const BINARY_RESOURCE_RE = /\.(scn|res)$/i;
  *
  *  - an `RSCC` resource (FileAccessCompressed), whatever its name, is decompressed under the
  *    bounds in `rscc.ts` (zstd only, a capped total, every block exactly its declared size; any
- *    other shape refused, P4-27); its body is a binary resource without the `RSRC` magic (the
+ *    other shape refused, P4-27; `budget` is the pack's running count of declared bytes); its body is a binary resource without the `RSRC` magic (the
  *    saver writes the magic only uncompressed) and gets the same marker rule as an `RSRC` one;
  *  - an `RSRC` resource, whatever its name (Godot's binary loader takes `.res`, `.scn` and every
  *    resource type's own extension, `.material`, `.mesh`, `.anim`…), is refused when the raw UTF-8
@@ -446,11 +449,12 @@ export function embeddedCode(
   p: string,
   data: Uint8Array,
   markers: readonly string[] = SCRIPT_MARKERS,
+  budget: RsccBudget = { used: 0 },
 ): string | null {
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
   if (magic === "RSCC") {
     // P4-27: bounded decompression (rscc.ts), then the RSRC rules on the body.
-    const r = rsccBody(data);
+    const r = rsccBody(data, undefined, budget);
     if ("why" in r) return `a compressed binary resource (RSCC) ${r.why}`;
     if (!rsccBodyIsResource(r.body))
       return "a compressed binary resource (RSCC) whose body is not a binary resource";

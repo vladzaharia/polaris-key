@@ -44,6 +44,7 @@ import {
   filesRefOf,
   lintPck,
   readPck,
+  RSCC_MAX_TOTAL,
   zstdCli,
 } from "../src/index.js";
 import {
@@ -481,6 +482,75 @@ function rsccFixtures(): CheckFixture[] {
       ],
     },
     {
+      // P4-27 audit GAP 1a: a window descriptor (not single segment, window byte 0xA8: 2^31,
+      // which the 32-bit wasm decoder refuses and a 64-bit device accepts) → refused on both.
+      name: "rscc-window-31",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}window.scn`,
+          rscc(
+            [
+              cat(
+                u32(0xfd2fb528),
+                new Uint8Array([0x80, 0xa8]),
+                u32(4096),
+                zblock(true, 0, 4096),
+                block,
+              ),
+              EMPTY_FRAME,
+            ],
+            4096,
+          ),
+        ],
+      ],
+    },
+    {
+      // GAP 1b: one raw zstd block of 200 KiB (above ZSTD_BLOCKSIZE_MAX) → refused on both.
+      name: "rscc-raw-block-200k",
+      files: [
+        ...kaykitV1(),
+        [
+          `${at}raw200k.scn`,
+          rscc(
+            [
+              cat(
+                u32(0xfd2fb528),
+                new Uint8Array([0xa0]),
+                u32(204800),
+                zblock(true, 0, 204800),
+                plainBody(204800),
+              ),
+            ],
+            204800,
+            { bs: 262144 },
+          ),
+        ],
+      ],
+    },
+    {
+      // GAP 2 (b): nine valid entries of zeros, each declaring 64 MiB − 4 KiB: the first eight
+      // fit the 512 MiB pack budget, the ninth crosses it and is refused without decoding.
+      name: "rscc-over-pack-budget",
+      files: [
+        ...kaykitV1(),
+        ...Array.from(
+          { length: 9 },
+          (_, i) =>
+            [`${at}zeros${i}.scn`, rsccRun(RSCC_MAX_TOTAL - 4096, 0x00)] as [
+              string,
+              Uint8Array,
+            ],
+        ),
+      ],
+    },
+    {
+      // GAP 2 (c): a resource header, then a run of 0x47 ('G', the first byte of GDScript) to
+      // the cap: admitted, and the device suite bounds its scan time.
+      name: "rscc-g-run",
+      files: [...kaykitV1(), [`${at}g.scn`, rsccRun(RSCC_MAX_TOTAL, 0x47)]],
+    },
+    {
       name: "rscc-body",
       files: [
         ...kaykitV1(),
@@ -495,6 +565,39 @@ function rsccFixtures(): CheckFixture[] {
       ],
     },
   ];
+}
+
+/**
+ * A valid RSCC of `total` bytes in 1 MiB blocks: a resource header (big-endian 0, real64 0,
+ * 4.7, format 6) as a raw zstd block, then `fill` as RLE blocks of at most 128 KiB.
+ */
+function rsccRun(total: number, fill: number): Uint8Array {
+  const MiB = 1048576;
+  const head = cat(u32(0), u32(0), u32(4), u32(7), u32(6));
+  const bc = Math.floor(total / MiB) + 1;
+  const frames: Uint8Array[] = [];
+  for (let i = 0; i < bc; i++) {
+    const size = i === bc - 1 ? total - (bc - 1) * MiB : MiB;
+    if (size === 0) {
+      frames.push(EMPTY_FRAME);
+      continue;
+    }
+    const parts: Uint8Array[] = [];
+    let left = size;
+    if (i === 0) {
+      parts.push(zblock(false, 0, head.length), head);
+      left -= head.length;
+    }
+    while (left > 0) {
+      const n = Math.min(131072, left);
+      left -= n;
+      parts.push(zblock(left === 0, 1, n), new Uint8Array([fill]));
+    }
+    frames.push(
+      cat(u32(0xfd2fb528), new Uint8Array([0xa0]), u32(size), ...parts),
+    );
+  }
+  return rscc(frames, total, { bs: MiB });
 }
 
 function rsccBomb(): Uint8Array {

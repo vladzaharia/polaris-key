@@ -2155,13 +2155,23 @@ committed or mounted:
   refusing it refused every pack with a model. Both validators now decompress it, which means
   running a decoder over attacker-chosen bytes, so the header is untrusted and bounded before any
   allocation or decode: compression mode 2 (zstd) only; block size 4 KiB–1 MiB; the declared
-  total at most 256 MiB (`RSCC_MAX_TOTAL`, one constant on both sides: about ten times the
-  largest real model import, and what a phone's worker can hold while it scans); the block table
-  and every block inside the entry; the closing magic exactly at its end. Every block must be
-  exactly one zstd frame (no skippable frame, no dictionary id, no second frame: libzstd's one-shot
-  decode, the engine's, would take those, the CLI's single-frame wasm decoder would not) whose
-  header declares the block's size, checked by a frame walk on both sides before anything is
-  allocated; each decode then gets that size as its output capacity
+  total at most 64 MiB per entry (`RSCC_MAX_TOTAL`); the declared totals of one pack's `RSCC`
+  entries at most 512 MiB together (`RSCC_PACK_BUDGET`, counted in directory order from each
+  header before that entry's blocks are read, so the entry that crosses it is refused without
+  being decompressed); the block table and every block inside the entry; the closing magic
+  exactly at its end. Both are one constant on both sides. The cap is measured, not guessed:
+  4.7.2's importer turns a script-written skinned character (90,601 vertices, 60 joints, 20
+  animations of 10 s at 30 fps) into an 18.2 MB body and a 980,000-triangle mesh into 58.7 MB;
+  64 MiB is about 4× the character and still admits the mesh. The per-pack budget matters
+  because single-segment RLE blocks regenerate 128 KiB from 4 bytes: a 12 kB entry can declare a
+  whole cap, so without it a 10 MB pack could demand hundreds of GiB of decoding. Every block
+  must be exactly one single-segment zstd frame (no skippable frame, no dictionary id, no second
+  frame: libzstd's one-shot decode, the engine's, would take those, the CLI's single-frame wasm
+  decoder would not; and no window descriptor, which every Godot frame lacks and on which the
+  32-bit wasm decoder and a 64-bit device disagree at 2^31) whose header declares the block's
+  size and whose zstd blocks each declare at most 128 KiB and at most that size (libzstd
+  versions differ on enforcing the limit for raw and RLE blocks), checked by a frame walk on
+  both sides before anything is allocated; each decode then gets that size as its output capacity
   (`PackedByteArray.decompress(size, COMPRESSION_ZSTD)` on the device, `@polaris-key/zstd-wasm`
   in the CLI) and must return exactly it, so a block that lies about its size (a bomb) stops at
   its declared size and is refused, and the work is bounded by the cap whatever the ratio. The
@@ -2170,9 +2180,13 @@ committed or mounted:
   omits the `RSRC` magic when compressing: the big-endian and real64 flags must be 0 or 1) and
   then gets the same marker rule as an `RSRC` entry. Any other shape is refused, with identical
   lines from both validators (`rscc-*` fixtures in `verdicts.json`, real 4.7.2 and 4.4.1 imports
-  admitted, run on both engines). Residual: a hostile pack can make a device decompress up to
-  256 MiB per resource during the check (off the main thread), which costs time and memory but
-  cannot write past a declared size or reach the mount.
+  admitted, run on both engines). The device's marker scan is linear whatever the bytes are: it
+  hex-encodes 1 MiB windows (overlapping by the longest marker) and searches them natively,
+  re-checking a window exactly only when a hit falls between bytes, instead of comparing at
+  every occurrence of a marker's first byte (`rscc-g-run`, 64 MiB of `G`, is checked in under a
+  second, with a time bound in the suite). Residual: a hostile pack can make a device decompress
+  and scan up to 512 MiB during the check (off the main thread, at most 64 MiB held at once),
+  which costs time and memory but cannot write past a declared size or reach the mount.
 - **The scans are fail-closed content rules, not parsers (P4-08 validator audit).** As
   recalled from the engine source rather than measured here, Godot's VariantParser reads newlines
   as whitespace and fields as Variants (StringName `&"…"`, `\u` escapes, an inline

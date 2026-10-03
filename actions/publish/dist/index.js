@@ -21039,7 +21039,9 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/rscc.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var RSCC_MAX_TOTAL = 268435456;
+var RSCC_MAX_TOTAL = 67108864;
+var RSCC_PACK_BUDGET = 536870912;
+var ZSTD_BLOCK_MAX = 131072;
 var RSCC_MIN_BLOCK = 4096;
 var RSCC_MAX_BLOCK = 1048576;
 var RSCC_MODE_ZSTD = 2;
@@ -21054,9 +21056,9 @@ function zstdFrameOk(f, size) {
   const single = fhd >> 5 & 1;
   const checksum = fhd >> 2 & 1;
   if ((fhd & 8) !== 0 || (fhd & 3) !== 0) return false;
-  if (fcsFlag === 0 && single === 0) return false;
-  let p = 5 + (single === 0 ? 1 : 0);
-  const fcsLen = [single, 2, 4, 8][fcsFlag];
+  if (single !== 1) return false;
+  let p = 5;
+  const fcsLen = [1, 2, 4, 8][fcsFlag];
   if (p + fcsLen > n) return false;
   let fcs;
   if (fcsLen === 1) fcs = f[p];
@@ -21076,6 +21078,7 @@ function zstdFrameOk(f, size) {
     const type = h >> 1 & 3;
     const bsize = h >>> 3;
     if (type === 3) return false;
+    if (bsize > ZSTD_BLOCK_MAX || bsize > size) return false;
     if (size === 0 && (type !== 0 || bsize !== 0)) return false;
     const payload = type === 1 ? 1 : bsize;
     if (payload > n - p) return false;
@@ -21088,7 +21091,7 @@ function zstdFrameOk(f, size) {
   }
   return p === n;
 }
-function rsccBody(data, decode2 = decode) {
+function rsccBody(data, decode2 = decode, budget) {
   const n = data.byteLength;
   if (n < 16) return { why: "whose header is truncated" };
   const dv = new DataView(data.buffer, data.byteOffset, n);
@@ -21107,6 +21110,13 @@ function rsccBody(data, decode2 = decode) {
     return {
       why: `that declares ${total} bytes, above the ${RSCC_MAX_TOTAL}-byte cap`
     };
+  if (budget !== void 0) {
+    budget.used += total;
+    if (budget.used > RSCC_PACK_BUDGET)
+      return {
+        why: `that takes the pack's declared RSCC bytes to ${budget.used}, past the ${RSCC_PACK_BUDGET}-byte budget`
+      };
+  }
   const bc = Math.floor(total / bs) + 1;
   const tableEnd = 16 + 4 * bc;
   if (tableEnd > n) return { why: "whose block table runs past the end" };
@@ -21315,6 +21325,7 @@ function lintPck(dir, bytes, opts) {
   const text = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
+  const budget = { used: 0 };
   for (const e of dir.entries) {
     const p = e.path;
     if (stripped.has(p)) {
@@ -21343,7 +21354,8 @@ function lintPck(dir, bytes, opts) {
     const code = embeddedCode(
       p,
       bytes.subarray(e.offset, e.offset + e.size),
-      kinds.markers
+      kinds.markers,
+      budget
     );
     if (code !== null) {
       errors.push(`${p}: ${code}; a pack carries data only.`);
@@ -21403,10 +21415,10 @@ function lintPck(dir, bytes, opts) {
 }
 var TEXT_RESOURCE_RE = /\.(tscn|tres|escn)$/i;
 var BINARY_RESOURCE_RE = /\.(scn|res)$/i;
-function embeddedCode(p, data, markers = SCRIPT_MARKERS) {
+function embeddedCode(p, data, markers = SCRIPT_MARKERS, budget = { used: 0 }) {
   const magic = Buffer.from(data.subarray(0, 4)).toString("latin1");
   if (magic === "RSCC") {
-    const r = rsccBody(data);
+    const r = rsccBody(data, void 0, budget);
     if ("why" in r) return `a compressed binary resource (RSCC) ${r.why}`;
     if (!rsccBodyIsResource(r.body))
       return "a compressed binary resource (RSCC) whose body is not a binary resource";

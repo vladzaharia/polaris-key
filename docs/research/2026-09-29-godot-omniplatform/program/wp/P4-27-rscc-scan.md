@@ -72,7 +72,7 @@ name, so every pack with an imported `.glb`/`.gltf`/`.blend`/`.fbx` is refused t
   output size, so a 0-byte block must hold only empty raw blocks and no checksum, and neither side
   decodes it. Pinned by `rscc-empty-tail` and, on the device, by an engine-written
   `FileAccess.open_compressed` file of 8192 bytes.
-- **Bounds.** `RSCC_MAX_TOTAL` = 256 MiB on both sides (justified in `rscc.ts`); block size
+- **Bounds.** `RSCC_MAX_TOTAL` (64 MiB since the audit below) on both sides; block size
   4096–1 MiB (Godot writes 4096; the floor caps the block count at 65,537); modes other than 2
   refused. The CLI stays synchronous: the wasm decoder's `decode` is synchronous, so `lintPck`'s
   signature is unchanged.
@@ -83,6 +83,27 @@ name, so every pack with an imported `.glb`/`.gltf`/`.blend`/`.fbx` is refused t
   96×96 grid (446 kB, 164 blocks, 670 kB body) in about 6 ms. The device's `rscc_body` decodes
   4 MiB (1025 blocks, half zeros, half random) in 2 ms on the 4.7.2 editor and release template
   and 5 ms on the 4.4.1 editor (the `pck rscc` info line in the packs suite).
-- **Gate note.** `updater guard: ready confirms after BOOT_OK_SECONDS` (P3-10's 0.2 s timer
-  test, untouched here) failed once in the editor while the JS gate loaded the machine and once
-  in the template; a third full 4.7.2 run (editor and template) was green.
+- **Audit round (GAP 1a, 1b, 2).** (1a) Frames must be single-segment on both sides: a window
+  descriptor of 2^31 is refused by the 32-bit wasm libzstd and accepted by a 64-bit device
+  (`rscc-window-31`). (1b) No zstd block may declare more than 128 KiB or more than the frame's
+  size (`rscc-raw-block-200k`). (2) Single-segment RLE regenerates 128 KiB per 4 bytes, so the
+  cap was a cheap amplifier: `RSCC_MAX_TOTAL` drops to 64 MiB, measured (a script-written skinned
+  character, 300×300 grid, 60 joints, 20 animations of 10 s at 30 fps, imports to an 18,216,754-
+  byte body; a 700×700 grid mesh, 980,000 triangles, to 58,746,302; the cap is about 4× the
+  character, capped at 64 MiB), and `RSCC_PACK_BUDGET` = 512 MiB bounds a pack's declared RSCC
+  bytes in directory order, counted from the header before decoding (`rscc-over-pack-budget`:
+  the ninth of nine 64 MiB − 4 KiB entries is refused). The device's marker scan
+  (`first_present`, which replaced `find_bytes` for every caller, uncompressed resources and
+  text included) hex-encodes 1 MiB windows overlapping by the longest marker − 1 and searches
+  each natively, re-checking a window with its decimal form only for a hit at an odd hex
+  offset, so its GDScript work is per window, not per hit; `_without_backslashes` became a
+  native string replace. `rscc-g-run` (64 MiB of `G` after a header) is admitted and checked in
+  751 ms (4.7.2 editor) and 514 ms (4.4.1), bounded at 5 s in the suite; the per-hit scan spent
+  about 62 ms per MiB of `G`. (2d) The CLI keeps one wasm instance per frame: zdec.c's bump
+  allocator never frees and the module exports no reset, so a shared instance would grow by
+  every block; instantiation is cheap (64 MiB in 16,385 blocks of 4096 decodes in 602 ms; the
+  lint of `rscc-g-run` takes 24 ms and of `rscc-over-pack-budget` 124 ms).
+- **Follow-up: a flaky P3-10 test.** `updater guard: ready confirms after BOOT_OK_SECONDS`
+  (tests/updater/test_guard.gd, its 0.2 s timing assertion) is flaky under load: it failed once
+  in the editor while the JS gate loaded the machine and once in the release template, and a
+  third full 4.7.2 run was green. It is not changed here.

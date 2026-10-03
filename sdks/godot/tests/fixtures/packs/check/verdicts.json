@@ -190,8 +190,8 @@
     },
     "rscc-over-cap": {
       "errors": [
-        "assets/kaykit/big.scn: a compressed binary resource (RSCC) that declares 268435457 bytes, above the 268435456-byte cap; a pack carries data only.",
-        "assets/kaykit/max.scn: a compressed binary resource (RSCC) that declares 4294967295 bytes, above the 268435456-byte cap; a pack carries data only."
+        "assets/kaykit/big.scn: a compressed binary resource (RSCC) that declares 268435457 bytes, above the 67108864-byte cap; a pack carries data only.",
+        "assets/kaykit/max.scn: a compressed binary resource (RSCC) that declares 4294967295 bytes, above the 67108864-byte cap; a pack carries data only."
       ],
       "warnings": []
     },
@@ -216,7 +216,7 @@
       "errors": [
         "assets/kaykit/says-short.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
         "assets/kaykit/is-short.scn: a compressed binary resource (RSCC) whose block 0 does not decode to 4096 bytes; a pack carries data only.",
-        "assets/kaykit/is-long.scn: a compressed binary resource (RSCC) whose block 0 does not decode to 4096 bytes; a pack carries data only.",
+        "assets/kaykit/is-long.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only.",
         "assets/kaykit/tail-long.scn: a compressed binary resource (RSCC) whose block 1 is not one zstd frame of 100 bytes; a pack carries data only.",
         "assets/kaykit/tail-nonempty.scn: a compressed binary resource (RSCC) whose block 1 is not one zstd frame of 0 bytes; a pack carries data only.",
         "assets/kaykit/tail-checksum.scn: a compressed binary resource (RSCC) whose block 1 is not one zstd frame of 0 bytes; a pack carries data only."
@@ -254,6 +254,28 @@
         "assets/kaykit/after.scn: a compressed binary resource (RSCC) with bytes after its closing RSCC magic; a pack carries data only.",
         "assets/kaykit/twice.scn: a compressed binary resource (RSCC) with bytes after its closing RSCC magic; a pack carries data only."
       ],
+      "warnings": []
+    },
+    "rscc-window-31": {
+      "errors": [
+        "assets/kaykit/window.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 4096 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-raw-block-200k": {
+      "errors": [
+        "assets/kaykit/raw200k.scn: a compressed binary resource (RSCC) whose block 0 is not one zstd frame of 204800 bytes; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-over-pack-budget": {
+      "errors": [
+        "assets/kaykit/zeros8.scn: a compressed binary resource (RSCC) that takes the pack's declared RSCC bytes to 603942912, past the 536870912-byte budget; a pack carries data only."
+      ],
+      "warnings": []
+    },
+    "rscc-g-run": {
+      "errors": [],
       "warnings": []
     },
     "rscc-body": {

@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   RSCC_MAX_TOTAL,
+  RSCC_PACK_BUDGET,
   rsccBody,
   rsccBodyIsResource,
   zstdFrameOk,
@@ -83,6 +84,11 @@ describe("rsccBody (P4-27)", () => {
     expect(rsccBody(h)).toEqual({
       why: "whose block table runs past the end",
     });
+    // The pack budget counts the declared total before the table is read.
+    const budget = { used: RSCC_PACK_BUDGET - RSCC_MAX_TOTAL + 1 };
+    expect(rsccBody(h, undefined, budget)).toEqual({
+      why: `that takes the pack's declared RSCC bytes to ${RSCC_PACK_BUDGET + 1}, past the ${RSCC_PACK_BUDGET}-byte budget`,
+    });
     dv.setUint32(12, RSCC_MAX_TOTAL + 1, true);
     expect(rsccBody(h)).toEqual({
       why: `that declares ${RSCC_MAX_TOTAL + 1} bytes, above the ${RSCC_MAX_TOTAL}-byte cap`,
@@ -109,7 +115,13 @@ describe("rsccBody (P4-27)", () => {
     expect(zstdFrameOk(frame(0xe0, [5, 0, 0, 0, 1, 0, 0, 0], rle5), 5)).toBe(
       false,
     );
-    // A window descriptor (not single segment) with a 4-byte size.
-    expect(zstdFrameOk(frame(0x80, [0x00, 5, 0, 0, 0], rle5), 5)).toBe(true);
+    // A window descriptor (not single segment) is refused (P4-27 audit GAP 1a).
+    expect(zstdFrameOk(frame(0x80, [0x00, 5, 0, 0, 0], rle5), 5)).toBe(false);
+    // No block may declare more than the frame's size or 128 KiB (GAP 1b).
+    expect(zstdFrameOk(frame(0x20, [4], rle5), 4)).toBe(false);
+    const rle128k1 = [0x0b, 0x00, 0x10, 0x41]; // RLE, last, 131073
+    expect(zstdFrameOk(frame(0xa0, [1, 0, 2, 0], rle128k1), 131073)).toBe(
+      false,
+    );
   });
 });

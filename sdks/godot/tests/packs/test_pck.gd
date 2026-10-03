@@ -9,6 +9,11 @@ extends RefCounted
 
 const S := preload("res://tests/packs/support.gd")
 const DIR := "res://tests/fixtures/packs/check"
+## The rscc-g-run time bound (P4-27 audit GAP 2): measured 751 ms (4.7.2 editor) and 514 ms
+## (4.4.1) on Apple silicon; about 6× the slowest, for slower CI runners. The per-hit scan it
+## replaced spent about 62 ms per MiB of hits (measured on 4 MiB of 'G'), about 4 s on this body
+## for that marker alone, and per entry, with 256 MiB declarable then.
+const G_RUN_BOUND_MS := 5000
 
 
 func run(t: PKeyTestContext) -> void:
@@ -190,6 +195,16 @@ func _rscc_probes(t: PKeyTestContext) -> void:
 	r = PKeyPck.rscc_body(bytes)
 	t.check("pck rscc: 4 MiB in 1025 blocks decodes", r.has("body") and (r["body"] as PackedByteArray).size() == big.size())
 	t.info("pck rscc: 4 MiB (1025 blocks) decompressed in %d ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
+	# P4-27 audit GAP 2: a 64 MiB body that is a run of 'G' (every byte a first-byte hit for
+	# GDScript) is decompressed and scanned in time linear in its size, not in its hits.
+	var gpck := FileAccess.get_file_as_bytes(DIR.path_join("rscc-g-run.pck"))
+	var gsrc := PKeyByteSource.memory(gpck)
+	var gdir := PKeyPck.read_directory(gsrc)
+	var t1 := Time.get_ticks_usec()
+	var gchk := PKeyPck.directory_check(gsrc, gdir, ["res://assets/kaykit/"]) if gdir["ok"] else {}
+	var gms := (Time.get_ticks_usec() - t1) / 1000.0
+	t.info("pck rscc: rscc-g-run (64 MiB body, a run of 'G') checked in %d ms" % gms)
+	t.check("pck rscc: a 64 MiB run of 'G' is admitted within %d ms" % G_RUN_BOUND_MS, gdir["ok"] and gchk.get("ok", false) and gms < G_RUN_BOUND_MS, "%d ms %s" % [gms, S.canon(gchk)])
 	S.remove_tree(scratch)
 
 

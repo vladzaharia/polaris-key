@@ -355,7 +355,7 @@ static func remap_problem(data: PackedByteArray) -> String:
 		return "a .remap or .import with a backslash"
 	if not utf8_valid(data):
 		return "a .remap or .import that is not valid UTF-8"
-	if find_bytes(data, PackedByteArray([0xEF, 0xBB, 0xBF])) != -1:
+	if has_bytes(data, PackedByteArray([0xEF, 0xBB, 0xBF])):
 		return "a .remap or .import with a byte-order mark"
 	for line in _lines(data.get_string_from_utf8()):
 		if _re(_PATH_ANY).search(line) != null and _re(_PATH_LINE).search(line) == null:
@@ -453,13 +453,13 @@ static func uid_cache_problem(data: PackedByteArray, in_pack: Dictionary) -> Str
 ## marker (P4-27); an `RSRC` resource whose bytes name a script marker anywhere (`_binary_code`); a text
 ## resource (a `[gd_scene`/`[gd_resource` head, or a `.tscn`/`.tres`/`.escn` name) that fails the
 ## content rule (`_text_code`); a `.scn`/`.res`/exported file that is neither. Fails closed.
-static func embedded_code(p: String, data: PackedByteArray) -> String:
+static func embedded_code(p: String, data: PackedByteArray, budget: Variant = null) -> String:
 	# By CONTENT first: Godot's binary loader takes `.material`, `.mesh`, `.anim` and every other
 	# binary resource extension, so the extension never decides whether bytes are scanned.
 	var magic := data.slice(0, 4).get_string_from_ascii() if data.size() >= 4 else ""
 	if magic == "RSCC":
 		# P4-27: bounded decompression (`rscc_body`), then the RSRC rules on the body.
-		var r := rscc_body(data)
+		var r := rscc_body(data, budget)
 		if r.has("why"):
 			return "a compressed binary resource (RSCC) %s" % r["why"]
 		var body: PackedByteArray = r["body"]
@@ -481,10 +481,15 @@ static func embedded_code(p: String, data: PackedByteArray) -> String:
 	return ""
 
 
-## The largest total an `RSCC` resource may declare: 256 MiB (packLint's `RSCC_MAX_TOTAL`, the
-## same number; rscc.ts justifies it: about ten times the largest real model import, and what a
-## mid-range phone holds comfortably while the worker scans the whole body).
-const RSCC_MAX_TOTAL := 268435456
+## The largest total an `RSCC` resource may declare: 64 MiB (packLint's `RSCC_MAX_TOTAL`, the
+## same number; rscc.ts records the measured basis: a skinned, animated character imports to an
+## 18.2 MB body and a 980,000-triangle mesh to 58.7 MB; about 4× the character, capped at 64 MiB).
+const RSCC_MAX_TOTAL := 67108864
+## The declared RSCC bytes one pack may hold in total, counted in directory order before any of
+## an entry's blocks are read (packLint's `RSCC_PACK_BUDGET`): 512 MiB.
+const RSCC_PACK_BUDGET := 536870912
+## The largest zstd block (`ZSTD_BLOCKSIZE_MAX`).
+const ZSTD_BLOCK_MAX := 131072
 ## The block-size bounds (Godot writes 4096): the block count stays at most the cap / 4096.
 const RSCC_MIN_BLOCK := 4096
 const RSCC_MAX_BLOCK := 1048576
@@ -499,12 +504,13 @@ const ZSTD_MAGIC := 0xFD2FB528
 ## mode, block size, total, bc = total / block size + 1 compressed sizes, the blocks, "RSCC". Every
 ## header field is bounded before anything is allocated or decoded: zstd only, the block size in
 ## RSCC_MIN_BLOCK..RSCC_MAX_BLOCK, the total at most RSCC_MAX_TOTAL, the table and every block
-## inside the entry, the closing magic exactly at its end. Each block must be one zstd frame
+## inside the entry, the closing magic exactly at its end, and the pack's running total of declared
+## bytes (`budget`, a {used} Dictionary the caller owns) within RSCC_PACK_BUDGET. Each block must be one zstd frame
 ## declaring its size (`zstd_frame_ok`; `decompress` alone would take concatenated and skippable
 ## frames, the CLI's decoder would not) and decode to exactly that size: `decompress` is given it
 ## as the output capacity, so a block that lies about its size stops there and is refused.
 ## Thread-safe: ints and PackedByteArrays only.
-static func rscc_body(data: PackedByteArray) -> Dictionary:
+static func rscc_body(data: PackedByteArray, budget: Variant = null) -> Dictionary:
 	var n := data.size()
 	if n < 16:
 		return {"why": "whose header is truncated"}
@@ -517,6 +523,10 @@ static func rscc_body(data: PackedByteArray) -> Dictionary:
 	var total := data.decode_u32(12)
 	if total > RSCC_MAX_TOTAL:
 		return {"why": "that declares %d bytes, above the %d-byte cap" % [total, RSCC_MAX_TOTAL]}
+	if budget is Dictionary:
+		budget["used"] = int(budget.get("used", 0)) + total
+		if int(budget["used"]) > RSCC_PACK_BUDGET:
+			return {"why": "that takes the pack's declared RSCC bytes to %d, past the %d-byte budget" % [int(budget["used"]), RSCC_PACK_BUDGET]}
 	@warning_ignore("integer_division")
 	var bc := total / bs + 1
 	var table_end := 16 + 4 * bc
@@ -555,9 +565,10 @@ static func rscc_body(data: PackedByteArray) -> Dictionary:
 
 
 ## Whether `f` is exactly one zstd frame whose header declares `size` content bytes (rscc.ts
-## `zstdFrameOk`): the frame magic first, no reserved bit, no dictionary id, a content size present
-## and equal to `size`, a block walk (raw, RLE or compressed; no reserved type) that ends with the
-## last-block flag and the optional checksum exactly at the end. A frame of 0 bytes may carry only
+## `zstdFrameOk`): the frame magic first, Single_Segment set, no reserved bit, no dictionary id, a
+## content size equal to `size`, a block walk (raw, RLE or compressed; no reserved type; no block
+## declaring more than 128 KiB or more than `size`) that ends with the last-block flag and the
+## optional checksum exactly at the end. A frame of 0 bytes may carry only
 ## empty raw blocks and no checksum, so it is never decoded (`decompress` takes no zero size).
 static func zstd_frame_ok(f: PackedByteArray, size: int) -> bool:
 	var n := f.size()
@@ -569,10 +580,12 @@ static func zstd_frame_ok(f: PackedByteArray, size: int) -> bool:
 	var checksum := (fhd >> 2) & 1
 	if (fhd & 0x08) != 0 or (fhd & 0x03) != 0:
 		return false
-	if fcs_flag == 0 and single == 0:
+	# Single_Segment only (no window descriptor): every frame Godot writes has it, and the 32-bit
+	# wasm decoder and a 64-bit device disagree on a window of 2^31.
+	if single != 1:
 		return false
-	var p := 5 + (1 if single == 0 else 0)
-	var fcs_len := single
+	var p := 5
+	var fcs_len := 1
 	if fcs_flag == 1:
 		fcs_len = 2
 	elif fcs_flag == 2:
@@ -604,6 +617,9 @@ static func zstd_frame_ok(f: PackedByteArray, size: int) -> bool:
 		var type := (h >> 1) & 3
 		var bsize := h >> 3
 		if type == 3:
+			return false
+		# No block above 128 KiB or above the frame's size (for raw and RLE, the regenerated size).
+		if bsize > ZSTD_BLOCK_MAX or bsize > size:
 			return false
 		if size == 0 and (type != 0 or bsize != 0):
 			return false
@@ -641,40 +657,76 @@ static func _binary_code(data: PackedByteArray) -> String:
 	return "" if m == "" else "a binary resource that names %s (an embedded script or its source)" % m
 
 
+## The text without its backslashes, natively (the caller has checked it is valid UTF-8 with no
+## NUL, so the round trip is exact but for a leading byte-order mark, which the parse drops and
+## which no ASCII marker can include; measured on 4.7.2 and 4.4.1).
 static func _without_backslashes(data: PackedByteArray) -> PackedByteArray:
-	var out := PackedByteArray()
-	var start := 0
-	var at := data.find(0x5C)
-	while at != -1:
-		out.append_array(data.slice(start, at))
-		start = at + 1
-		at = data.find(0x5C, start)
-	out.append_array(data.slice(start))
-	return out
+	return data.get_string_from_utf8().replace("\\", "").to_utf8_buffer()
 
 
 ## The first script marker (in `script_markers()` order, then the engine's extra Script classes)
 ## whose UTF-8 bytes occur anywhere in `data`, or "".
 static func _marker(data: PackedByteArray) -> String:
-	for s in (_script_kinds()["markers"] as PackedStringArray):
-		if find_bytes(data, s.to_utf8_buffer()) != -1:
-			return s
-	return ""
+	var markers: PackedStringArray = _script_kinds()["markers"]
+	var needles: Array = []
+	for m in markers:
+		needles.append(m.to_utf8_buffer())
+	var k := first_present(data, needles)
+	return "" if k == -1 else markers[k]
 
 
-## The first index of `needle` in `hay`, or -1 (native `find` on the needle's first byte, then a
-## slice compare).
-static func find_bytes(hay: PackedByteArray, needle: PackedByteArray) -> int:
-	if needle.is_empty() or needle.size() > hay.size():
+## Whether `needle` occurs in `hay` (an empty needle never does).
+static func has_bytes(hay: PackedByteArray, needle: PackedByteArray) -> bool:
+	return first_present(hay, [needle]) != -1
+
+
+## The bytes the scan reads per window (P4-27 audit GAP 2).
+const SCAN_WINDOW := 1048576
+
+
+## The index of the first of `needles` (list order) that occurs anywhere in `hay`, or -1, in
+## GDScript work linear in `hay.size() / SCAN_WINDOW` whatever the bytes are (P4-27 audit GAP 2:
+## a body that is a run of a marker's first byte made a per-hit loop take minutes). Each window,
+## overlapping the next by the longest needle − 1 bytes, is hex-encoded once and searched
+## natively per needle; a hit at an odd offset straddles bytes, so that window is re-checked
+## exactly with its decimal form (`[71, 68, …]`, where `, ` delimits every byte).
+static func first_present(hay: PackedByteArray, needles: Array) -> int:
+	var longest := 0
+	var hexes := PackedStringArray()
+	var decs := PackedStringArray()
+	for nd in needles:
+		var b: PackedByteArray = nd
+		longest = maxi(longest, b.size())
+		hexes.append(b.hex_encode())
+		decs.append(", %s, " % str(b).substr(1, str(b).length() - 2) if b.size() > 0 else "")
+	if longest == 0 or hay.size() == 0:
 		return -1
-	var first := needle[0]
-	var last := hay.size() - needle.size()
-	var at := hay.find(first, 0)
-	while at != -1 and at <= last:
-		if hay.slice(at, at + needle.size()) == needle:
-			return at
-		at = hay.find(first, at + 1)
-	return -1
+	var best := -1
+	var start := 0
+	while start < hay.size():
+		var end := mini(hay.size(), start + SCAN_WINDOW + longest - 1)
+		var win := hay.slice(start, end)
+		var h := win.hex_encode()
+		var d := ""
+		for k in needles.size():
+			if best != -1 and k >= best:
+				break
+			if hexes[k] == "":
+				continue
+			var at := h.find(hexes[k])
+			if at == -1:
+				continue
+			if at % 2 == 1:
+				if d == "":
+					var w := str(win)
+					d = ", %s, " % w.substr(1, w.length() - 2)
+				if d.find(decs[k]) == -1:
+					continue
+			best = k
+		if best == 0 or end == hay.size():
+			break
+		start += SCAN_WINDOW
+	return best
 
 
 static func _latin1(b: PackedByteArray) -> String:
@@ -704,7 +756,7 @@ static func _text_code(data: PackedByteArray) -> String:
 		m = _marker(bare)
 		if m != "":
 			return "a text resource that names %s behind escapes (an embedded script or its source)" % m
-	if find_bytes(data, PackedByteArray([0x5C, 0x75])) != -1 or find_bytes(data, PackedByteArray([0x5C, 0x55])) != -1:
+	if first_present(data, [PackedByteArray([0x5C, 0x75]), PackedByteArray([0x5C, 0x55])]) != -1:
 		return "a text resource with a \\u escape, which can spell a script type"
 	return ""
 
@@ -729,6 +781,8 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 	var named := {}
 	var deferred := PackedStringArray()
 	var entries: Array = dir["entries"]
+	# The pack's RSCC decompression budget, counted in directory order (P4-27).
+	var budget := {"used": 0}
 	var in_pack := {}
 	for e in entries:
 		in_pack[e["path"]] = true
@@ -764,7 +818,7 @@ static func directory_check(source: PKeyByteSource, dir: Dictionary, prefixes: A
 			if why != "":
 				errors.append({"path": p, "why": "%s; a pack registers only its own UIDs." % why})
 			continue
-		var code := embedded_code(p, data) if scanned else ""
+		var code := embedded_code(p, data, budget) if scanned else ""
 		if code != "":
 			errors.append({"path": p, "why": "%s; a pack carries data only." % code})
 			continue
@@ -824,6 +878,7 @@ static func tree_check(dir: String) -> Dictionary:
 	var paths = PKeyPackStorage.walk_tree(dir)
 	if paths == null:
 		return {"ok": false, "code": DIRECTORY_REFUSED, "detail": "the staged tree cannot be listed", "path": ""}
+	var budget := {"used": 0}
 	for p in paths:
 		var why := ""
 		if _is_script(p):
@@ -834,7 +889,7 @@ static func tree_check(dir: String) -> Dictionary:
 			var src := PKeyByteSource.file(dir.path_join(p))
 			var resource: bool = _re(_TEXT_RES).search(p) != null or _re(_BINARY_RES).search(p) != null or sniffs_resource(src.read(0, 67))
 			if resource:
-				var code := embedded_code(p, PKeyByteSource.read_all(src))
+				var code := embedded_code(p, PKeyByteSource.read_all(src), budget)
 				if code != "":
 					why = "%s; a pack carries data only." % code
 		if why != "":

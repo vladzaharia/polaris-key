@@ -699,8 +699,9 @@ on parser details: an `RSRC` entry is refused if a script marker (`GDScript`, `C
 `[gd_scene`/`[gd_resource` head) also for a NUL, invalid UTF-8 or a `\u` escape, and for a
 marker found again once every backslash is removed (an unknown escape keeps its character);
 an `RSCC` (compressed, the scene importer's `.scn`) under any name is decompressed with
-`PKeyPck.rscc_body` (zstd only, at most `RSCC_MAX_TOTAL` = 256 MiB, every block one zstd frame of
-exactly its declared size, the closing magic last) and its body gets the binary rule; anything
+`PKeyPck.rscc_body` (zstd only, at most `RSCC_MAX_TOTAL` = 64 MiB per entry and
+`RSCC_PACK_BUDGET` = 512 MiB per pack, every block one single-segment zstd frame of exactly its
+declared size with no zstd block above 128 KiB, the closing magic last) and its body gets the binary rule; anything
 else about it is refused. An in-prefix `.remap`/`.import` is refused for a NUL or other control byte,
 a backslash, invalid UTF-8, a byte-order mark, or a line with a `path` key anywhere in it that is
 not exactly `path[.<x>] = "<plain literal>"`. Besides `.gd`/`.gdc`/`.cs`, the
