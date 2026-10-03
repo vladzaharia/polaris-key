@@ -32,6 +32,7 @@ import shutil
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
+from ...constants_generated import MAX_CHUNK_INDEX_BYTES
 from .engine import InstalledPayload, PackOutput
 from .files import tree_digest
 from .ports import READ_CHUNK, InstalledFile
@@ -368,11 +369,25 @@ class DirChunkIndexStore:
         return os.path.join(self.dir, sha256)
 
     def get(self, sha256: str) -> Optional[bytes]:
+        """The stored index, or ``None``. A file over ``MAX_CHUNK_INDEX_BYTES`` is never read: it
+        is treated as absent and removed."""
+        path = self._path(sha256)
         try:
-            with open(self._path(sha256), "rb") as f:
-                return f.read()
+            with open(path, "rb") as f:
+                if os.fstat(f.fileno()).st_size > MAX_CHUNK_INDEX_BYTES:
+                    big = True
+                else:
+                    big = False
+                    data = f.read(MAX_CHUNK_INDEX_BYTES + 1)
         except (FileNotFoundError, NotADirectoryError):
             return None
+        if big or len(data) > MAX_CHUNK_INDEX_BYTES:
+            try:
+                _rm(path)
+            except OSError:
+                pass  # Absent either way: the backfill may store a good copy later.
+            return None
+        return data
 
     def put(self, sha256: str, data: bytes) -> None:
         target = self._path(sha256)

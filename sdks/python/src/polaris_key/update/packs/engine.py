@@ -56,6 +56,7 @@ from .chunk_apply import (
     INTERRUPTED,
     ApplyChunkPorts,
     ChunkSeed,
+    accepts_range,
     apply_chunk,
     chunk_range_fetch,
     chunk_runs,
@@ -528,6 +529,7 @@ class PackEngine:
         checkpoint_bytes: int = 8 << 20,
         one_shot_budget: Optional[int] = None,
         revocations: Any = None,
+        supports_range: Optional[bool] = None,
     ) -> None:
         self._product = product
         self._release_keys = dict(release_keys)
@@ -553,6 +555,15 @@ class PackEngine:
         self._new_plan_id = new_plan_id
         self._checkpoint_bytes = checkpoint_bytes
         self._one_shot_budget = one_shot_budget
+        #: P4-11: whether ``fetch_object`` sends a bounded single range (its fourth argument,
+        #: ``length``). ``None``: read from its signature (a three-argument transport cannot).
+        #: Without it the chunk strategy is never planned.
+        self._supports_range = (
+            accepts_range(fetch_object) if supports_range is None else bool(supports_range)
+        )
+        #: P4-11: seed-index SHA-256s the backfill already tried this process (once each,
+        #: success or failure).
+        self._seed_index_tried: Set[str] = set()
 
         from .handlers import DataJsonHandler, L10nTableHandler
 
@@ -1501,6 +1512,7 @@ class PackEngine:
         chunks_ref = _usable_chunks_ref(variant)
         if (
             "chunk" in self._strategies
+            and self._supports_range
             and delegated is None
             and files["layout"] == "container"
             and chunks_ref is not None
@@ -1688,8 +1700,9 @@ class PackEngine:
             if i.get("layout") != "container":
                 continue
             ref = _install_chunks_ref(i)
-            if ref is None or ref["sha256"] in have:
+            if ref is None or ref["sha256"] in have or ref["sha256"] in self._seed_index_tried:
                 continue
+            self._seed_index_tried.add(ref["sha256"])
             try:
                 limit = int(ref["bytes"])
                 res = self._fetch_object(ref["sha256"], 0, None)

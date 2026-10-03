@@ -27,6 +27,7 @@ engine fall back to the next strategy; ``interrupted`` keeps the run journal for
 
 from __future__ import annotations
 
+import inspect
 import re
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Set, Tuple
@@ -48,6 +49,7 @@ __all__ = [
     "chunk_runs",
     "seed_map",
     "chunk_range_fetch",
+    "accepts_range",
     "RANGE_REFUSED",
     "INTERRUPTED",
 ]
@@ -459,7 +461,24 @@ def apply_chunk(
 
 # ── The exact Content-Range adapter ─────────────────────────────────────────────────────────
 
-_CONTENT_RANGE_RE = re.compile(r"bytes (\d{1,16})-(\d{1,16})/(\d{1,16})")
+#: ASCII digits only (``[0-9]``, never ``\d``): a non-ASCII digit never reads as a number.
+_CONTENT_RANGE_RE = re.compile(r"bytes ([0-9]{1,16})-([0-9]{1,16})/([0-9]{1,16})")
+
+
+def accepts_range(fetch_object: Callable[..., Any]) -> bool:
+    """Whether ``fetch_object`` can be called with the fourth ``length`` argument a chunk run
+    needs. A transport with the older three-argument shape cannot send a bounded range, so the
+    chunk strategy treats every run as refused (and the engine falls back) instead of calling it.
+    A callable whose signature cannot be read is assumed to accept it."""
+    try:
+        sig = inspect.signature(fetch_object)
+    except (TypeError, ValueError):
+        return True
+    try:
+        sig.bind("0" * 64, 0, None, 1)
+    except TypeError:
+        return False
+    return True
 
 
 def _release(chunks: Any) -> None:
@@ -499,7 +518,12 @@ def chunk_range_fetch(fetch_object: Callable[..., Any]) -> ChunkRangeFetch:
     hash. Anything else (a ``200``, another range, another tag) is ``refused`` and the body is
     never read. The body is cut at the range's length. Never multi-range."""
 
+    ranged = accepts_range(fetch_object)
+
     def fetch_range(bundle: str, offset: int, length: int) -> ChunkRangeResponse:
+        if not ranged:
+            # A transport without bounded ranges: refused (fall back), never interrupted.
+            return ChunkRangeResponse(status="refused")
         tag = f'"{bundle}"'
         res = fetch_object(bundle, offset, tag, length)
         end = offset + length - 1

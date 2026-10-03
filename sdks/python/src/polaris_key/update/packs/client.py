@@ -377,6 +377,7 @@ class PacksClient:
             revocations=storage.revocation_store(),
             fetch_record=self._fetch_record,
             fetch_object=self._fetch_object,
+            supports_range=True,
             entitlements=self._entitlements,
             now=lambda: ctx.now(),
             new_plan_id=lambda: secrets.token_hex(12),

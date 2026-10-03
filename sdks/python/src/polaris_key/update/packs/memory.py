@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
+from ...constants_generated import MAX_CHUNK_INDEX_BYTES
 from .engine import InstalledPayload, PackOutput
 from .files import tree_digest
 from .ports import InstalledFile, MemorySource, slice_source
@@ -65,7 +66,12 @@ class MemoryChunkIndexStore:
         self.indexes: Dict[str, bytes] = {}
 
     def get(self, sha256: str) -> Optional[bytes]:
-        return self.indexes.get(sha256)
+        """The stored index; one over ``MAX_CHUNK_INDEX_BYTES`` is absent (and dropped)."""
+        data = self.indexes.get(sha256)
+        if data is not None and len(data) > MAX_CHUNK_INDEX_BYTES:
+            del self.indexes[sha256]
+            return None
+        return data
 
     def put(self, sha256: str, data: bytes) -> None:
         self.indexes[sha256] = bytes(data)

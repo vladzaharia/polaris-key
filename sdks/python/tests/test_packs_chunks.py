@@ -620,3 +620,73 @@ def test_the_python_client_syncs_chunks_with_bounded_ranges_into_the_directory_s
     assert not any(s["sha256"] == v2.full_sha256 for s in srv.seen)
     assert sorted(DirPackStorage(root).chunk_indexes.list()) == sorted([v1.index_sha256, v2.index_sha256])
     c.close()
+
+
+# ── review follow-ups: transports without ranges, ASCII digits, bounded seed reads, backfill ──
+
+
+def test_a_three_argument_transport_never_plans_chunk_and_installs_by_full() -> None:
+    server = ChunkServer()
+    old = lambda s, o, r: server.fetch_object(s, o, r)  # noqa: E731 - the pre-P4-11 shape
+    e = installed_v1(server, fetch_object=old)
+    v2 = v1_v2()["v2"]
+    assert e._preflight("djdl.levels", release(v2)).plan["strategy"] == "full"
+    e.ensure_releases([target(v2)])
+    assert stored_payload(e, "djdl.levels") == v2.payload
+    assert server.range_calls() == []
+
+
+def test_a_three_argument_transport_declared_ranged_is_refused_and_falls_back() -> None:
+    server = ChunkServer()
+    old = lambda s, o, r: server.fetch_object(s, o, r)  # noqa: E731
+    e = installed_v1(server, fetch_object=old, supports_range=True)
+    v2 = v1_v2()["v2"]
+    assert e._preflight("djdl.levels", release(v2)).plan["strategy"] == "chunk"
+    e.ensure_releases([target(v2)])  # refused (not interrupted): no network-error raised
+    assert stored_payload(e, "djdl.levels") == v2.payload
+    assert server.range_calls() == []
+    assert any(c["sha256"] == v2.full_sha256 for c in server.calls)
+    assert e.state().inflight == {}
+
+
+def test_chunk_range_fetch_refuses_over_a_three_argument_fetch_without_calling_it() -> None:
+    called: List[Any] = []
+    r = chunk_range_fetch(lambda s, o, i: called.append((s, o, i)))(_B, 10, 10)
+    assert r.status == "refused" and called == []
+
+
+@pytest.mark.parametrize("cr", ["bytes \u0661\u0660-19/100", "bytes 10-1\u0669/100", "bytes 10-19/10\uff10"])
+def test_chunk_range_fetch_refuses_non_ascii_digits(cr: str) -> None:
+    fetch, _, body = _answer(206, cr)
+    assert chunk_range_fetch(fetch)(_B, 10, 10).status == "refused"
+    assert body.read is False
+
+
+def test_a_stored_seed_index_over_the_limit_is_absent(tmp_path: Any) -> None:
+    from polaris_key.constants_generated import MAX_CHUNK_INDEX_BYTES
+    from polaris_key.update.packs.memory import MemoryChunkIndexStore
+
+    h = "cd" * 32
+    d = DirPackStorage(str(tmp_path)).chunk_indexes
+    d.put(h, b"ok")
+    assert d.get(h) == b"ok"
+    with open(f"{d.dir}/{h}", "wb") as f:
+        f.truncate(MAX_CHUNK_INDEX_BYTES + 1)  # sparse: never read
+    assert d.get(h) is None
+    assert d.list() == []
+    m = MemoryChunkIndexStore()
+    m.indexes[h] = b"\0" * (MAX_CHUNK_INDEX_BYTES + 1)
+    assert m.get(h) is None and m.list() == []
+
+
+def test_the_seed_index_backfill_is_tried_once_per_index_per_process() -> None:
+    p = v1_v2()
+    server = ChunkServer.of(p["v1"])
+    index = p["v1"].index_sha256
+    del server.objects[index]  # the backfill's fetch fails (404)
+    e = engine(server)
+    e.load()
+    e.ensure_releases([target(p["v1"])])
+    e.ensure_releases([target(p["v1"])])  # already current: the backfill runs again
+    assert [c["sha256"] for c in server.calls].count(index) == 1
+    assert e._storage.chunk_indexes.list() == []
