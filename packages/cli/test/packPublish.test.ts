@@ -445,7 +445,7 @@ describe("publishing a godot.pck pack", () => {
         scriptExtensions: ["lua"],
       }),
     ).rejects.toThrow(
-      /apply to a godot\.pck pack's lint; diceroll\.l10n is a files\.tree pack/,
+      /apply to a godot\.pck or godot\.zip pack's lint; diceroll\.l10n is a files\.tree pack/,
     );
     await expect(
       publishPack({ ...opts(cwd, server).o, scriptExtensions: [".lua"] }),

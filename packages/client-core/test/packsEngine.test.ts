@@ -606,7 +606,7 @@ describe("PackEngine: a files.tree pack through the pipeline", () => {
       version: "1.0.0",
       seq: 1,
       files: { a: "1" },
-      type: "l10n.table",
+      type: "custom.table",
     });
     const t = engine({ server: byteServer(table), stamp: stampFor(table) });
     await t.load();

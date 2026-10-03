@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 189 distinct emit sites.
+codes with their JSON-pointer paths. 193 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -95,12 +95,16 @@ the offending value, or the allowed set.
 | `invalid_pack_channels` | error | release | `/release/deliverables/app/content/packChannels` | content.packChannels maps 1 to $\{MAX_PACK_CHANNEL_MAP\} pack ids or prefixes ending in .* (diceroll.events.*) to a canonical channel name. |
 | `invalid_pack_conflicts` | error | release | `${at}/conflicts/${i}` | conflicts names other declared packs; $\{String(c)\} is $\{c === id ? "this pack" : "not a declared pack"\}. |
 | `invalid_pack_conflicts` | error | release | `${at}/conflicts` | conflicts lists 1 to $\{MAX_PACK_CONFLICTS\} distinct pack ids this pack never shares a resolved set with. |
+| `invalid_pack_format_version` | error | release | `${at}/formatVersion` | formatVersion is an integer from 1 to $\{MAX_PACK_FORMAT_VERSION\}: the version of the type's own format the device's handler must list. |
+| `invalid_pack_format_version` | error | release | `${at}/formatVersion` | a $\{type\} pack takes no formatVersion: $\{type === "godot.pck" ? "it is the PCK header's" : "its format is 1"\}. |
+| `invalid_pack_format_version` | error | release | `${at}/formatVersion` | a data.json pack declares formatVersion, the version of its documents' JSON Schema: a device installs only the versions its handler lists. |
 | `invalid_pack_handler` | error | release | `${at}/handler/activation` | handler.activation must be one of $\{PACK_ACTIVATIONS.join(", ")\}. |
 | `invalid_pack_handler` | error | release | `${at}/handler/mountOrder` | handler.mountOrder must be an integer from 0 to $\{MAX_PACK_MOUNT_ORDER\}. |
 | `invalid_pack_handler` | error | release | `${at}/handler/prefixes` | handler.prefixes must be 1 to $\{MAX_PACK_PREFIXES\} distinct res:// directory prefixes ending in / ($\{HANDLER_PREFIX_PATTERN.source\}), each at most $\{MAX_PACK_PREFIX_BYTES\} bytes. |
 | `invalid_pack_handler` | error | release | `${at}/handler` | handler must be an object \{ mountOrder?, prefixes?, activation? \}. |
-| `invalid_pack_handler` | error | release | `${at}/handler` | a godot.pck pack declares handler.prefixes (the res:// directories it mounts) and activates on restart. |
-| `invalid_pack_handler` | error | release | `${at}/handler` | a files.tree pack is not mounted into res://, so it takes no handler.prefixes or handler.mountOrder. |
+| `invalid_pack_handler` | error | release | `${at}/handler` | a $\{type\} pack declares handler.prefixes (the res:// directories it mounts) and activates on restart. |
+| `invalid_pack_handler` | error | release | `${at}/handler` | a $\{type\} pack is not mounted into res://, so it takes no handler.prefixes or handler.mountOrder. |
+| `invalid_pack_locale` | error | release | `${at}/variants/locale` | an l10n.table pack's locale variants are well-formed BCP-47 tags (fr, pt-BR, zh-Hant-TW): the device refuses a table whose locale is not its variant's. |
 | `invalid_pack_patch` | error | release | `${at}/patch` | patch is \{ strategies?: a non-empty distinct subset of $\{PACK_PATCH_STRATEGIES.join(", ")\}, deltaBases?: an integer from 0 to $\{MAX_PACK_DELTA_BASES\} \}. |
 | `invalid_pack_policy` | error | release | `${at}/baseline` | baseline must be one of $\{PACK_BASELINES.join(", ")\}. |
 | `invalid_pack_policy` | error | release | `${at}/contentPolicy` | contentPolicy must be \{ dataOnly: true \}: a v1 pack carries data only, never scripts. |
@@ -108,10 +112,10 @@ the offending value, or the allowed set.
 | `invalid_pack_policy` | error | release | `${at}/required` | required must be a boolean. |
 | `invalid_pack_policy` | error | release | `${at}/required` | a required pack is delivered as essential and carries no entitlement: the app cannot run without it, so nothing may withhold it. |
 | `invalid_pack_provides` | error | release | `${at}/provides` | provides is \{required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default $\{DEFAULT_PROVIDES_FILE\}\}, and nothing else. |
-| `invalid_pack_requires` | error | release | `${at}/requires/engine` | a godot.pck pack declares requires.engine (godot-\<major>.\<minor>): a PCK mounts only into the engine version that exported it. |
+| `invalid_pack_requires` | error | release | `${at}/requires/engine` | a $\{type\} pack declares requires.engine (godot-\<major>.\<minor>): a Godot pack mounts only into the engine version that exported it. |
 | `invalid_pack_requires` | error | release | `${at}/requires/packs/${target}` | requires.packs names another declared compatible or standalone pack; $\{target\} is $\{target === id ? "this pack" : targetBinding === undefined ? "not a declared pack" : "pinned, and a pinned pack never enters a resolved set"\}. |
 | `invalid_pack_requires` | error | release | `${at}/requires` | requires is \{ engine?, contentApi?, packs? \}: engine matching $\{ENGINE_PATTERN.source\}; contentApi an object of app deliverable id → a range such as ">=3 \<5"; packs an object of pack id → a version range such as ">=1.2.0 \<2.0.0" (features has no meaning yet). |
-| `invalid_pack_type` | error | release | `${at}/type` | a pack's type is required and must be one of $\{PACK_TYPES.join(", ")\}. |
+| `invalid_pack_type` | error | release | `${at}/type` | a pack's type is required and must be one of $\{MANIFEST_PACK_TYPES.join(", ")\}, or custom.\<name> ($\{CUSTOM_PACK_TYPE_PATTERN.source\}) for a type whose handler the game registers. |
 | `invalid_pack_variants` | error | release | `${at}/variants/${axis}` | variant axes must be among $\{VARIANT_AXES.join(", ")\}. |
 | `invalid_pack_variants` | error | release | `${at}/variants/${axis}` | each variant axis lists 1 to $\{MAX_PACK_VARIANT_VALUES\} distinct values matching $\{VARIANT_VALUE_PATTERN.source\}. |
 | `invalid_pack_variants` | error | release | `${at}/variants` | variants must be an object of axis → values (axes $\{VARIANT_AXES.join(", ")\}). |

@@ -2420,7 +2420,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "deliverables": {
-      "description": "The product's deliverables (P2-04, README §3.4). \`app\` is the product's application; any other id is a pack (kind: pack, P4-02), in the v1 subset: binding pinned, types godot.pck and files.tree, data-only. At most 64 packs (the validator's too_many_pack_deliverables; maxProperties counts app, which every document declaring a pack has). Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
+      "description": "The product's deliverables (P2-04, README §3.4). \`app\` is the product's application; any other id is a pack (kind: pack, P4-02), with the types of CONTENT §4.2 (godot.pck, godot.zip, files.tree, l10n.table, data.json, audio.bank, ml.model, custom.<name>), data-only. At most 64 packs (the validator's too_many_pack_deliverables; maxProperties counts app, which every document declaring a pack has). Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
       "type": "object",
       "propertyNames": {
         "type": "string",
@@ -2438,15 +2438,37 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "maxProperties": 65
     },
     "packDeliverable": {
-      "description": "A pack deliverable (P4-02, P4-12, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck pack declares handler.prefixes, activates on restart and declares requires.engine; a files.tree pack takes no handler.prefixes or mountOrder; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema; requires.contentApi is keyed by the app deliverable (app); requires.packs names other declared compatible or standalone packs; conflicts names other declared packs.",
+      "description": "A pack deliverable (P4-02, P4-12, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck or godot.zip pack declares handler.prefixes, activates on restart and declares requires.engine; any other type takes no handler.prefixes or mountOrder; formatVersion is required for data.json and refused for godot.pck, godot.zip and files.tree; an l10n.table pack's locale variants are BCP-47 tags; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema; requires.contentApi is keyed by the app deliverable (app); requires.packs names other declared compatible or standalone packs; conflicts names other declared packs.",
       "type": "object",
       "properties": {
         "kind": {
           "const": "pack"
         },
         "type": {
-          "description": "The pack type: godot.pck (a Godot resource pack) or files.tree (a directory of files). P4-16 adds more.",
-          "enum": ["godot.pck", "files.tree"]
+          "description": "The pack type (CONTENT §4.2): godot.pck or godot.zip (a Godot pack mounted into res:// at a boot), files.tree (a directory of files), l10n.table (PO, CSV or JSON translation tables), data.json (JSON documents), audio.bank (FMOD or Wwise banks with a bank.json), ml.model (a model with a model.json), or custom.<name> for a type whose handler the game registers (P4-16).",
+          "anyOf": [
+            {
+              "enum": [
+                "godot.pck",
+                "files.tree",
+                "godot.zip",
+                "l10n.table",
+                "data.json",
+                "audio.bank",
+                "ml.model"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^custom\\\\.[a-z][a-z0-9-]{0,31}$"
+            }
+          ]
+        },
+        "formatVersion": {
+          "description": "The version of the type's own format, signed as the record's formatVersion: a device installs only versions its handler lists (P4-16). Required for data.json (its documents' JSON Schema version); allowed for l10n.table, ml.model, audio.bank and custom.<name> (default 1); refused for godot.pck (the PCK header's), godot.zip and files.tree (format 1).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
         },
         "binding": {
           "description": "How app releases bind this pack (CONTENT §6.1): pinned (each app release pins the exact pack release), compatible (the server resolves the newest release whose requires.contentApi range holds each live app contentApi level) or standalone (resolved for every level; depends only on its type's format). Default pinned.",
@@ -2493,7 +2515,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
               }
             },
             "activation": {
-              "description": "restart (default for godot.pck) or hot (default for files.tree).",
+              "description": "restart (default for godot.pck and godot.zip) or hot (default for every other type).",
               "enum": ["restart", "hot"]
             }
           }
@@ -11226,7 +11248,6 @@ var ENTITLEMENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 var VARIANT_AXIS_PATTERN = /^[a-z][a-z0-9-]{0,15}$/;
 var VARIANT_VALUE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,34}$/;
 var ENGINE_PATTERN = /^godot-[0-9]+\.[0-9]+$/;
-var PACK_TYPES = ["godot.pck", "files.tree"];
 var DELEGABLE_PACK_TYPES = [
   "files.tree",
   "data.json",
@@ -12949,6 +12970,28 @@ var PACK_BINDINGS = ["pinned", "compatible", "standalone"];
 var PACK_BASELINES = ["embedded", "none"];
 var PACK_PATCH_STRATEGIES = ["delta", "file", "chunk"];
 var PACK_FIELDS_NOT_SUPPORTED = ["removes"];
+var MANIFEST_PACK_TYPES = [
+  "godot.pck",
+  "files.tree",
+  "godot.zip",
+  "l10n.table",
+  "data.json",
+  "audio.bank",
+  "ml.model"
+];
+var CUSTOM_PACK_TYPE_PATTERN = /^custom\.[a-z][a-z0-9-]{0,31}$/;
+function isManifestPackType(t) {
+  return typeof t === "string" && (MANIFEST_PACK_TYPES.includes(t) || CUSTOM_PACK_TYPE_PATTERN.test(t));
+}
+var MOUNTED_PACK_TYPES = ["godot.pck", "godot.zip"];
+function isMountedPackType(t) {
+  return MOUNTED_PACK_TYPES.includes(t);
+}
+function packTypeTakesFormatVersion(t) {
+  return t === "data.json" || t === "l10n.table" || t === "ml.model" || t === "audio.bank" || CUSTOM_PACK_TYPE_PATTERN.test(t);
+}
+var MAX_PACK_FORMAT_VERSION = 2147483647;
+var BCP47_TAG_PATTERN = /^(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{5,8})(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?$/i;
 var CONTENT_ID_PATTERN = /^[!-~]{1,128}$/;
 var MAX_PROVIDES = 4096;
 var DEFAULT_PROVIDES_FILE = ".pkey/provides.json";
@@ -14480,14 +14523,39 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         `provides is {required?: boolean, from?: a repo-relative path to the JSON list of content ids, at most 256 characters, no . or .. segments; default ${DEFAULT_PROVIDES_FILE}}, and nothing else.`
       );
   }
-  const type = isOneOf(def.type, PACK_TYPES) ? def.type : null;
+  const type = isManifestPackType(def.type) ? def.type : null;
   if (!type)
     add2(
       errors,
       "release",
       `${at}/type`,
       "invalid_pack_type",
-      `a pack's type is required and must be one of ${PACK_TYPES.join(", ")}.`
+      `a pack's type is required and must be one of ${MANIFEST_PACK_TYPES.join(", ")}, or custom.<name> (${CUSTOM_PACK_TYPE_PATTERN.source}) for a type whose handler the game registers.`
+    );
+  if (def.formatVersion !== void 0) {
+    if (!Number.isSafeInteger(def.formatVersion) || def.formatVersion < 1 || def.formatVersion > MAX_PACK_FORMAT_VERSION)
+      add2(
+        errors,
+        "release",
+        `${at}/formatVersion`,
+        "invalid_pack_format_version",
+        `formatVersion is an integer from 1 to ${MAX_PACK_FORMAT_VERSION}: the version of the type's own format the device's handler must list.`
+      );
+    else if (type !== null && !packTypeTakesFormatVersion(type))
+      add2(
+        errors,
+        "release",
+        `${at}/formatVersion`,
+        "invalid_pack_format_version",
+        `a ${type} pack takes no formatVersion: ${type === "godot.pck" ? "it is the PCK header's" : "its format is 1"}.`
+      );
+  } else if (type === "data.json")
+    add2(
+      errors,
+      "release",
+      `${at}/formatVersion`,
+      "invalid_pack_format_version",
+      "a data.json pack declares formatVersion, the version of its documents' JSON Schema: a device installs only the versions its handler lists."
     );
   if (def.binding !== void 0 && !isOneOf(def.binding, PACK_BINDINGS))
     add2(
@@ -14576,23 +14644,23 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       );
   }
   const h = asRecord(handler);
-  if (type === "godot.pck") {
+  if (type !== null && isMountedPackType(type)) {
     if (h.prefixes === void 0 || h.activation !== void 0 && h.activation !== "restart")
       add2(
         errors,
         "release",
         `${at}/handler`,
         "invalid_pack_handler",
-        "a godot.pck pack declares handler.prefixes (the res:// directories it mounts) and activates on restart."
+        `a ${type} pack declares handler.prefixes (the res:// directories it mounts) and activates on restart.`
       );
-  } else if (type === "files.tree") {
+  } else if (type !== null) {
     if (h.prefixes !== void 0 || h.mountOrder !== void 0)
       add2(
         errors,
         "release",
         `${at}/handler`,
         "invalid_pack_handler",
-        "a files.tree pack is not mounted into res://, so it takes no handler.prefixes or handler.mountOrder."
+        `a ${type} pack is not mounted into res://, so it takes no handler.prefixes or handler.mountOrder.`
       );
   }
   const variants = def.variants;
@@ -14731,14 +14799,25 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         `a pack's channels lists 1 to ${MAX_PACK_CHANNELS} distinct canonical channel names (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`
       );
   }
-  if (type === "godot.pck" && asRecord(requires).engine === void 0)
+  if (type !== null && isMountedPackType(type) && asRecord(requires).engine === void 0)
     add2(
       errors,
       "release",
       `${at}/requires/engine`,
       "invalid_pack_requires",
-      "a godot.pck pack declares requires.engine (godot-<major>.<minor>): a PCK mounts only into the engine version that exported it."
+      `a ${type} pack declares requires.engine (godot-<major>.<minor>): a Godot pack mounts only into the engine version that exported it.`
     );
+  if (type === "l10n.table" && isRecord3(variants)) {
+    const locales = variants.locale;
+    if (Array.isArray(locales) && locales.some((l) => typeof l !== "string" || !BCP47_TAG_PATTERN.test(l)))
+      add2(
+        errors,
+        "release",
+        `${at}/variants/locale`,
+        "invalid_pack_locale",
+        "an l10n.table pack's locale variants are well-formed BCP-47 tags (fr, pt-BR, zh-Hant-TW): the device refuses a table whose locale is not its variant's."
+      );
+  }
   const entitlement = def.entitlement;
   if (entitlement !== void 0) {
     if (typeof entitlement !== "string" || !ENTITLEMENT_PATTERN.test(entitlement))
@@ -15337,12 +15416,12 @@ function normalizePackDeliverables(raw) {
   return out;
 }
 function normalizePackDeliverable(id, raw) {
-  if (!isRecord3(raw) || raw.kind !== "pack" || !isOneOf(raw.type, PACK_TYPES))
+  if (!isRecord3(raw) || raw.kind !== "pack" || !isManifestPackType(raw.type))
     return null;
   const type = raw.type;
   const h = asRecord(raw.handler);
   const handler = {
-    activation: isOneOf(h.activation, PACK_ACTIVATIONS) ? h.activation : type === "files.tree" ? "hot" : "restart"
+    activation: isOneOf(h.activation, PACK_ACTIVATIONS) ? h.activation : isMountedPackType(type) ? "restart" : "hot"
   };
   if (Number.isSafeInteger(h.mountOrder))
     handler.mountOrder = h.mountOrder;
@@ -15373,6 +15452,7 @@ function normalizePackDeliverable(id, raw) {
     kind: "pack",
     id,
     type,
+    formatVersion: packTypeTakesFormatVersion(type) && Number.isSafeInteger(raw.formatVersion) && raw.formatVersion >= 1 && raw.formatVersion <= MAX_PACK_FORMAT_VERSION ? raw.formatVersion : 1,
     binding: isOneOf(raw.binding, PACK_BINDINGS) ? raw.binding : "pinned",
     baseline: isOneOf(raw.baseline, PACK_BASELINES) ? raw.baseline : "none",
     required: raw.required === true,
@@ -18008,7 +18088,7 @@ function scanStrictJson(text) {
     }
     nonWire.add(node);
   };
-  const refuse = () => {
+  const refuse2 = () => {
     throw new StrictJsonRefused();
   };
   const ws = () => {
@@ -18020,22 +18100,22 @@ function scanStrictJson(text) {
   };
   const hex4 = () => {
     const h = text.slice(i, i + 4);
-    if (!/^[0-9a-fA-F]{4}$/.test(h)) refuse();
+    if (!/^[0-9a-fA-F]{4}$/.test(h)) refuse2();
     i += 4;
     return parseInt(h, 16);
   };
   const str = () => {
-    if (text.charCodeAt(i) !== 34) refuse();
+    if (text.charCodeAt(i) !== 34) refuse2();
     i++;
     let out = "";
     for (; ; ) {
-      if (i >= text.length) refuse();
+      if (i >= text.length) refuse2();
       const c = text.charCodeAt(i);
       if (c === 34) {
         i++;
         break;
       }
-      if (c < 32) refuse();
+      if (c < 32) refuse2();
       if (c === 92) {
         const e = text[i + 1];
         i += 2;
@@ -18068,7 +18148,7 @@ function scanStrictJson(text) {
             out += String.fromCharCode(hex4());
             break;
           default:
-            refuse();
+            refuse2();
         }
         continue;
       }
@@ -18083,25 +18163,25 @@ function scanStrictJson(text) {
           k++;
           continue;
         }
-        refuse();
-      } else if (u >= 56320 && u <= 57343) refuse();
+        refuse2();
+      } else if (u >= 56320 && u <= 57343) refuse2();
     }
     return out;
   };
   const num = () => {
     NUMBER_TOKEN_RE.lastIndex = i;
     const m = NUMBER_TOKEN_RE.exec(text);
-    if (!m) refuse();
+    if (!m) refuse2();
     const token = m[0];
     i += token.length;
-    if (!numberTokenInRange(token)) refuse();
+    if (!numberTokenInRange(token)) refuse2();
     if (isNonWireIntegerToken(token)) record();
   };
   const value = (depth) => {
     ws();
     const c = text[i];
     if (c === "{") {
-      if (depth + 1 > MAX_JSON_DEPTH) refuse();
+      if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       const names = /* @__PURE__ */ new Set();
       ws();
@@ -18112,11 +18192,11 @@ function scanStrictJson(text) {
       for (; ; ) {
         ws();
         const name = str();
-        if (name.indexOf("\0") !== -1) refuse();
-        if (names.has(name)) refuse();
+        if (name.indexOf("\0") !== -1) refuse2();
+        if (names.has(name)) refuse2();
         names.add(name);
         ws();
-        if (text[i] !== ":") refuse();
+        if (text[i] !== ":") refuse2();
         i++;
         segs.push(name);
         ids.push(-1);
@@ -18132,11 +18212,11 @@ function scanStrictJson(text) {
           i++;
           return;
         }
-        refuse();
+        refuse2();
       }
     }
     if (c === "[") {
-      if (depth + 1 > MAX_JSON_DEPTH) refuse();
+      if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       ws();
       if (text[i] === "]") {
@@ -18158,7 +18238,7 @@ function scanStrictJson(text) {
           i++;
           return;
         }
-        refuse();
+        refuse2();
       }
     }
     if (c === '"') {
@@ -18175,7 +18255,7 @@ function scanStrictJson(text) {
         return;
       }
     }
-    refuse();
+    refuse2();
   };
   try {
     ws();
@@ -19748,6 +19828,503 @@ function windowAllowed(frame, memBytes, p = 31) {
   return limit !== null && window !== null && window <= 2 ** limit;
 }
 
+// ../client-core/dist/packs/ports.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var READ_CHUNK = 1 << 20;
+function memorySource(bytes) {
+  return {
+    size: bytes.byteLength,
+    read: (offset, length) => Promise.resolve(bytes.subarray(Math.min(offset, bytes.byteLength), Math.min(offset + length, bytes.byteLength)))
+  };
+}
+async function readAll(source) {
+  const out = new Uint8Array(source.size);
+  for (let at = 0; at < source.size; ) {
+    const chunk = await source.read(at, Math.min(READ_CHUNK, source.size - at));
+    if (chunk.byteLength === 0)
+      break;
+    out.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return out;
+}
+
+// ../client-core/dist/packs/handlers/types.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../client-core/dist/packs/handlers/l10n.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var BCP47_RE = /^(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{5,8})(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?$/;
+var TAG_CHARS_RE = /^[A-Za-z0-9-]{2,35}$/;
+function bcp47Canonical(tag) {
+  const canonical = tag.replace(/_/g, "-");
+  if (!TAG_CHARS_RE.test(canonical))
+    return null;
+  return BCP47_RE.test(canonical.toLowerCase()) ? canonical : null;
+}
+var asciiLower2 = (s) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+function sameLocale(a, b) {
+  return asciiLower2(a.replace(/_/g, "-")) === asciiLower2(b.replace(/_/g, "-"));
+}
+var fail3 = { ok: false, detail: "table" };
+function parseL10nFile(path13, bytes) {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    return fail3;
+  }
+  if (text.includes("\0"))
+    return fail3;
+  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  let at = 0;
+  while (at < body.length && " 	\n\r".includes(body[at]))
+    at++;
+  if (at === body.length)
+    return fail3;
+  let raw;
+  if (body[at] === "{")
+    raw = parseJsonTable(body);
+  else if (body.startsWith("#", at) || body.startsWith("msgid", at) || body.startsWith("msgctxt", at))
+    raw = parsePo(body);
+  else
+    raw = parseCsv(body);
+  if (raw === null)
+    return fail3;
+  const tables = [];
+  for (const t of raw) {
+    const locale = bcp47Canonical(t.locale);
+    if (locale === null)
+      return { ok: false, detail: "locale" };
+    tables.push({ path: path13, locale, messages: t.messages });
+  }
+  return { ok: true, tables };
+}
+function parseJsonTable(text) {
+  const parsed = strictParse(new TextEncoder().encode(text));
+  if (parsed === null)
+    return null;
+  const v = parsed.value;
+  if (typeof v !== "object" || v === null || Array.isArray(v))
+    return null;
+  const o = v;
+  if (typeof o.locale !== "string")
+    return null;
+  const m = o.messages;
+  if (typeof m !== "object" || m === null || Array.isArray(m))
+    return null;
+  const messages = [];
+  for (const id of Object.keys(m).sort(compareBytes)) {
+    const s = m[id];
+    if (typeof s !== "string")
+      return null;
+    messages.push({ context: null, id, plural: null, strings: [s] });
+  }
+  return [{ locale: o.locale, messages }];
+}
+var PO_KEYWORD_RE = /^(msgctxt|msgid_plural|msgid|msgstr(?:\[(\d{1,2})\])?)[ \t]+([\s\S]*)$/;
+function poString(s) {
+  if (s[0] !== '"')
+    return null;
+  let out = "";
+  let i = 1;
+  for (; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"')
+      break;
+    if (c !== "\\") {
+      out += c;
+      continue;
+    }
+    const e = s[++i];
+    if (e === "\\")
+      out += "\\";
+    else if (e === '"')
+      out += '"';
+    else if (e === "n")
+      out += "\n";
+    else if (e === "t")
+      out += "	";
+    else if (e === "r")
+      out += "\r";
+    else
+      return null;
+  }
+  if (i >= s.length)
+    return null;
+  for (let j = i + 1; j < s.length; j++)
+    if (s[j] !== " " && s[j] !== "	")
+      return null;
+  return out;
+}
+function parsePo(text) {
+  const entries = [];
+  let cur = null;
+  let last = null;
+  const complete = (e) => e.id !== null && e.strings.length > 0;
+  for (let line of text.split("\n")) {
+    if (line.endsWith("\r"))
+      line = line.slice(0, -1);
+    if (/^[ \t]*$/.test(line)) {
+      last = null;
+      continue;
+    }
+    if (line.startsWith("#")) {
+      last = null;
+      continue;
+    }
+    if (line.startsWith('"')) {
+      const s2 = poString(line);
+      if (s2 === null || cur === null || last === null)
+        return null;
+      if (last === "ctxt")
+        cur.context += s2;
+      else if (last === "id")
+        cur.id += s2;
+      else if (last === "plural")
+        cur.plural += s2;
+      else
+        cur.strings[cur.strings.length - 1] += s2;
+      continue;
+    }
+    const m = PO_KEYWORD_RE.exec(line);
+    if (!m)
+      return null;
+    const kw = m[1];
+    const s = poString(m[3]);
+    if (s === null)
+      return null;
+    if (kw === "msgctxt" || kw === "msgid") {
+      const opensNew = cur === null || complete(cur) || kw === "msgid" && cur.id !== null || kw === "msgctxt";
+      if (opensNew) {
+        if (cur !== null && !complete(cur))
+          return null;
+        if (cur !== null)
+          entries.push(cur);
+        cur = {
+          context: null,
+          id: null,
+          plural: null,
+          strings: [],
+          indexed: null
+        };
+      }
+      if (kw === "msgctxt") {
+        cur.context = s;
+        last = "ctxt";
+      } else {
+        cur.id = s;
+        last = "id";
+      }
+      continue;
+    }
+    if (cur === null || cur.id === null)
+      return null;
+    if (kw === "msgid_plural") {
+      if (cur.plural !== null || cur.strings.length > 0)
+        return null;
+      cur.plural = s;
+      last = "plural";
+      continue;
+    }
+    const index = m[2];
+    if (index === void 0) {
+      if (cur.plural !== null || cur.strings.length > 0)
+        return null;
+      cur.indexed = false;
+    } else {
+      if (cur.plural === null)
+        return null;
+      if (Number(index) !== cur.strings.length)
+        return null;
+      cur.indexed = true;
+    }
+    cur.strings.push(s);
+    last = "str";
+  }
+  if (cur !== null) {
+    if (!complete(cur))
+      return null;
+    entries.push(cur);
+  }
+  let locale = null;
+  let headers = 0;
+  const messages = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const e of entries) {
+    if (e.id === "" && e.context === null) {
+      if (++headers > 1 || e.plural !== null)
+        return null;
+      for (const l of e.strings[0].split("\n")) {
+        const mm = /^Language:([\s\S]*)$/.exec(l);
+        if (mm && locale === null)
+          locale = mm[1].replace(/^[ \t]+|[ \t]+$/g, "");
+      }
+      continue;
+    }
+    const key = `${e.context === null ? "0" : `1${e.context}`}\0${e.id}`;
+    if (seen.has(key))
+      return null;
+    seen.add(key);
+    messages.push({
+      context: e.context,
+      id: e.id,
+      plural: e.plural,
+      strings: e.strings
+    });
+  }
+  if (headers === 0 || locale === null || locale === "")
+    return null;
+  return [{ locale, messages }];
+}
+function csvRecords(text) {
+  const records = [];
+  let record = [];
+  let i = 0;
+  const n = text.length;
+  let started = false;
+  while (i < n) {
+    let field = "";
+    if (text[i] === '"') {
+      started = true;
+      i++;
+      for (; ; ) {
+        if (i >= n)
+          return null;
+        const c = text[i];
+        if (c === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i += 2;
+            continue;
+          }
+          i++;
+          break;
+        }
+        field += c;
+        i++;
+      }
+      if (i < n && text[i] !== "," && text[i] !== "\n" && !(text[i] === "\r" && text[i + 1] === "\n"))
+        return null;
+    } else {
+      while (i < n && text[i] !== "," && text[i] !== "\n" && !(text[i] === "\r" && text[i + 1] === "\n")) {
+        if (text[i] === '"')
+          return null;
+        field += text[i];
+        i++;
+      }
+      if (field.length > 0)
+        started = true;
+    }
+    record.push(field);
+    if (i >= n)
+      break;
+    if (text[i] === ",") {
+      started = true;
+      i++;
+      if (i >= n)
+        record.push("");
+      continue;
+    }
+    i += text[i] === "\r" ? 2 : 1;
+    if (started)
+      records.push(record);
+    record = [];
+    started = false;
+  }
+  if (started)
+    records.push(record);
+  return records;
+}
+function parseCsv(text) {
+  const records = csvRecords(text);
+  if (records === null || records.length === 0)
+    return null;
+  const header = records[0];
+  if (header.length < 2)
+    return null;
+  const locales = header.slice(1);
+  const lower = /* @__PURE__ */ new Set();
+  for (const l of locales) {
+    const k = asciiLower2(l.replace(/_/g, "-"));
+    if (lower.has(k))
+      return null;
+    lower.add(k);
+  }
+  const tables = locales.map((locale) => ({
+    locale,
+    messages: []
+  }));
+  const keys = /* @__PURE__ */ new Set();
+  for (const r of records.slice(1)) {
+    if (r.length !== header.length)
+      return null;
+    const key = r[0];
+    if (key === "" || keys.has(key))
+      return null;
+    keys.add(key);
+    for (let c = 1; c < r.length; c++)
+      tables[c - 1].messages.push({
+        context: null,
+        id: key,
+        plural: null,
+        strings: [r[c]]
+      });
+  }
+  return tables;
+}
+
+// ../client-core/dist/packs/handlers/types.js
+var DEFAULT_MAX_TYPE_FILE_BYTES = 16 * 1024 * 1024;
+var MAX_DESCRIPTOR_BYTES2 = 65536;
+var TYPE_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
+var refuse = (detail, path13, message) => ({
+  detail,
+  ...path13 !== void 0 ? { path: path13 } : {},
+  ...message !== void 0 ? { message } : {}
+});
+var formatsOf = (v) => new Set(v ?? [1]);
+async function filesOf(p) {
+  return [...(await p.read())?.files ?? []].sort((a, b) => compareBytes(a.path, b.path));
+}
+var DataJsonHandler = class {
+  opts;
+  type = "data.json";
+  layout = "tree";
+  activation = "hot";
+  formats;
+  maxFileBytes;
+  live = /* @__PURE__ */ new Map();
+  constructor(opts = {}) {
+    this.opts = opts;
+    this.formats = formatsOf(opts.formatVersions);
+    this.maxFileBytes = opts.maxFileBytes ?? DEFAULT_MAX_TYPE_FILE_BYTES;
+  }
+  supports(formatVersion) {
+    return this.formats.has(formatVersion);
+  }
+  /** The live release's documents, or null. */
+  documents(packId) {
+    return this.live.get(packId) ?? null;
+  }
+  async check(staged2) {
+    for (const f of staged2.files) {
+      if (f.size > this.maxFileBytes)
+        return refuse("size", f.path);
+      if (strictParse(await readAll(f.source)) === null)
+        return refuse("json", f.path);
+    }
+    return null;
+  }
+  async activate(install, payload) {
+    const docs = /* @__PURE__ */ new Map();
+    for (const f of await filesOf(payload)) {
+      const parsed = strictParse(await readAll(f.source));
+      if (parsed === null)
+        throw new Error(`${install.packId}: ${f.path} is no longer strict JSON.`);
+      docs.set(f.path, parsed.value);
+    }
+    this.live.set(install.packId, docs);
+    await this.opts.onActivate?.(install.packId, docs);
+  }
+  async deactivate(install) {
+    this.live.delete(install.packId);
+    await this.opts.onDeactivate?.(install.packId);
+  }
+};
+async function readL10nTables(files, locale, maxFileBytes = DEFAULT_MAX_TYPE_FILE_BYTES) {
+  const tables = [];
+  for (const f of files) {
+    if (f.size > maxFileBytes)
+      return { ok: false, refusal: refuse("size", f.path) };
+    const r = parseL10nFile(f.path, await readAll(f.source));
+    if (!r.ok)
+      return { ok: false, refusal: refuse(r.detail, f.path) };
+    for (const t of r.tables)
+      if (locale !== void 0 && !sameLocale(t.locale, locale))
+        return {
+          ok: false,
+          refusal: refuse("locale", f.path, `${f.path} is a ${t.locale} table in the ${locale} variant.`)
+        };
+    tables.push(...r.tables);
+  }
+  return { ok: true, tables };
+}
+var L10nTableHandler = class {
+  opts;
+  type = "l10n.table";
+  layout = "tree";
+  activation = "hot";
+  formats;
+  maxFileBytes;
+  live = /* @__PURE__ */ new Map();
+  constructor(opts = {}) {
+    this.opts = opts;
+    this.formats = formatsOf(opts.formatVersions);
+    this.maxFileBytes = opts.maxFileBytes ?? DEFAULT_MAX_TYPE_FILE_BYTES;
+  }
+  supports(formatVersion) {
+    return this.formats.has(formatVersion);
+  }
+  /** The live release's tables, or null. */
+  tables(packId) {
+    return this.live.get(packId) ?? null;
+  }
+  async check(staged2) {
+    const r = await readL10nTables(staged2.files, staged2.variant.variant.locale, this.maxFileBytes);
+    return r.ok ? null : r.refusal;
+  }
+  async activate(install, payload) {
+    const r = await readL10nTables(await filesOf(payload), void 0, this.maxFileBytes);
+    if (!r.ok)
+      throw new Error(`${install.packId}: its tables no longer parse (${r.refusal.detail}).`);
+    this.live.set(install.packId, r.tables);
+    await this.opts.onActivate?.(install.packId, r.tables);
+  }
+  async deactivate(install) {
+    const was = this.live.get(install.packId) ?? [];
+    this.live.delete(install.packId);
+    await this.opts.onDeactivate?.(install.packId, was);
+  }
+};
+async function readModelDescriptor(files) {
+  const d = files.find((f) => f.path === "model.json");
+  if (!d || d.size > MAX_DESCRIPTOR_BYTES2)
+    return { ok: false };
+  const parsed = strictParse(await readAll(d.source));
+  if (parsed === null)
+    return { ok: false };
+  const v = parsed.value;
+  if (typeof v !== "object" || v === null || Array.isArray(v))
+    return { ok: false };
+  const o = v;
+  const wire = (x, ptr) => typeof x === "number" && Number.isSafeInteger(x) && x >= 0 && !parsed.nonWire.has(ptr);
+  if (typeof o.runtime !== "string" || !TYPE_TOKEN_PATTERN.test(o.runtime))
+    return { ok: false };
+  if (typeof o.file !== "string" || o.file === "model.json")
+    return { ok: false };
+  const file = files.find((f) => f.path === o.file);
+  if (!file)
+    return { ok: false };
+  if (!wire(o.memBytes, "/memBytes"))
+    return { ok: false };
+  if (o.vramBytes !== void 0 && !wire(o.vramBytes, "/vramBytes"))
+    return { ok: false };
+  if (o.quantization !== void 0 && (typeof o.quantization !== "string" || !TYPE_TOKEN_PATTERN.test(o.quantization)))
+    return { ok: false };
+  return {
+    ok: true,
+    file,
+    descriptor: {
+      runtime: o.runtime,
+      file: o.file,
+      memBytes: o.memBytes,
+      ...o.vramBytes !== void 0 ? { vramBytes: o.vramBytes } : {},
+      ...o.quantization !== void 0 ? { quantization: o.quantization } : {}
+    }
+  };
+}
+
 // src/packManifest.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 function packContext(docs) {
@@ -20344,28 +20921,28 @@ async function findMarkers(dir) {
   return out.sort();
 }
 async function readMarker(file, ctx) {
-  const fail3 = (step, why) => {
+  const fail4 = (step, why) => {
     throw new Error(`${file}: marker rejected at ${step}: ${why}`);
   };
   const text = await readFile4(file, "utf8");
-  if (!scanStrictJson(text).ok) fail3("format", "not strict JSON");
+  if (!scanStrictJson(text).ok) fail4("format", "not strict JSON");
   const m = JSON.parse(text);
   if (!m || typeof m !== "object" || m.format !== MARKER_FORMAT || !isPackId(m.packId) || typeof m.version !== "string" || !VERSION_RE4.test(m.version) || typeof m.release !== "string")
-    fail3("format", `not a ${MARKER_FORMAT} document`);
+    fail4("format", `not a ${MARKER_FORMAT} document`);
   const jws = m.release;
   const trust = {};
   for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
   const v = await verifyJws(jws, trust, { typ: "pkey-release+jws" });
   if (!v)
-    fail3("jws", "the record does not verify under .pkey/release's releaseKeys");
+    fail4("jws", "the record does not verify under .pkey/release's releaseKeys");
   if (!releaseRecordClaims(v.payload, {
     expectedAud: ctx.product,
     nonWire: v.nonWireIntegers
   }))
-    fail3("claims", "the record fails the record claims");
+    fail4("claims", "the record fails the record claims");
   const record = v.payload;
   if (record.kind !== "pack" || record.deliverable !== m.packId || record.version !== m.version)
-    fail3("cross-check", "the record is not this marker's pack release");
+    fail4("cross-check", "the record is not this marker's pack release");
   let identity;
   if (file.endsWith(MARKER_SUFFIX)) {
     const payloadFile = file.slice(0, -MARKER_SUFFIX.length);
@@ -20373,7 +20950,7 @@ async function readMarker(file, ctx) {
     try {
       bytes = await readFile4(payloadFile);
     } catch {
-      return fail3("payload", `${path5.basename(payloadFile)} is not beside it`);
+      return fail4("payload", `${path5.basename(payloadFile)} is not beside it`);
     }
     identity = { size: bytes.byteLength, sha256: sha256Hex2(bytes) };
   } else {
@@ -20384,7 +20961,7 @@ async function readMarker(file, ctx) {
   if (!record.variants.some(
     (x) => x.payload.sha256 === identity.sha256 && x.payload.size === identity.size
   ))
-    fail3(
+    fail4(
       "payload",
       `the payload (sha256 ${identity.sha256.slice(0, 12)}…) is none of ${record.deliverable} ${record.version}'s variants: a stale marker`
     );
@@ -21705,6 +22282,216 @@ function stripPck(src, name = "the payload") {
   return { bytes, removed, directory: again };
 }
 
+// src/packTypes.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var BANK_VERSION_PATTERN = /^[0-9]{1,9}\.[0-9]{1,9}(\.[0-9]{1,9})?$/;
+var TOKEN = /^[a-z][a-z0-9-]{0,31}$/;
+var MAX_DESCRIPTOR_BYTES3 = 65536;
+function installed(files) {
+  return files.map((f) => ({
+    path: f.path,
+    size: f.size,
+    sha256: f.sha256,
+    source: memorySource(f.data)
+  }));
+}
+function staged(files, variant) {
+  return {
+    packId: "",
+    record: {},
+    variant: { variant },
+    location: "",
+    files: installed(files),
+    payload: null
+  };
+}
+var DETAIL_TEXT = {
+  json: "not strict JSON with an object at the top (UTF-8 without a BOM, no duplicate member, trailing comma, comment, NaN or second value)",
+  table: "not a table the device's plain parsers read (a PO file with a Language header, a CSV file with a key column and locale columns, or a JSON object with locale and messages)",
+  locale: "a table whose locale is not a well-formed BCP-47 tag, or not the variant's locale",
+  size: "above the 16 MiB a device parses"
+};
+async function lintTypeTree(type, files, variant) {
+  const errors = [];
+  if (type === "data.json" || type === "l10n.table") {
+    const h = type === "data.json" ? new DataJsonHandler() : new L10nTableHandler();
+    const r = await h.check(staged(files, variant));
+    if (r !== null)
+      errors.push(
+        `${r.path ?? ""}: ${type} ${DETAIL_TEXT[r.detail] ?? r.detail}${r.message ? ` (${r.message})` : ""}.`
+      );
+  } else if (type === "ml.model") {
+    const d = await readModelDescriptor(installed(files));
+    if (!d.ok)
+      errors.push(
+        'model.json: an ml.model pack carries a model.json at its root, strict JSON declaring runtime (a lowercase token such as "onnx" or "gguf"), file (exactly a path of the payload) and memBytes (the RAM it needs, a non-negative integer), with optional vramBytes and quantization.'
+      );
+  } else if (type === "audio.bank") {
+    const why = bankDescriptorProblem(files);
+    if (why !== null) errors.push(`bank.json: ${why}`);
+  }
+  return { errors, warnings: [] };
+}
+function bankDescriptorProblem(files) {
+  const shape = 'an audio.bank pack carries a bank.json at its root, strict JSON declaring middleware (a lowercase token such as "fmod" or "wwise"), version ("major.minor" or "major.minor.patch") and optionally banks (the bank files in load order, each exactly a path of the payload)';
+  const d = files.find((f) => f.path === "bank.json");
+  if (!d || d.size > MAX_DESCRIPTOR_BYTES3) return `${shape}.`;
+  const parsed = strictParse(d.data);
+  const o = parsed?.value;
+  if (typeof o !== "object" || o === null || Array.isArray(o))
+    return `${shape}.`;
+  const m = o;
+  if (typeof m.middleware !== "string" || !TOKEN.test(m.middleware))
+    return `${shape}: middleware is missing or not a token.`;
+  if (typeof m.version !== "string" || !BANK_VERSION_PATTERN.test(m.version))
+    return `${shape}: version is missing or not major.minor[.patch].`;
+  if (m.banks !== void 0) {
+    const paths = new Set(files.map((f) => f.path));
+    if (!Array.isArray(m.banks) || m.banks.length === 0 || new Set(m.banks).size !== m.banks.length || !m.banks.every(
+      (b) => typeof b === "string" && b !== "bank.json" && paths.has(b)
+    ))
+      return `${shape}: banks names a file the payload does not hold, twice, or bank.json itself.`;
+  }
+  return null;
+}
+var LFH = 67324752;
+function indexOfGdpc(b) {
+  for (let i = b.indexOf(71); i >= 0 && i + 3 < b.length; i = b.indexOf(71, i + 1))
+    if (b[i + 1] === 68 && b[i + 2] === 80 && b[i + 3] === 67) return i;
+  return -1;
+}
+var CDH = 33639248;
+var EOCD = 101010256;
+var ZIP64_LOCATOR = 117853008;
+function readGodotZip(b, name = "the zip") {
+  const fail4 = (why) => {
+    throw new PckError(`${name}: ${why}`);
+  };
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  const u16 = (at) => dv.getUint16(at, true);
+  const u32 = (at) => dv.getUint32(at, true);
+  if (b.byteLength < 22 + 30) fail4("too short to be a zip with an entry.");
+  const gdpc = indexOfGdpc(b);
+  if (gdpc >= 0)
+    fail4(
+      `holds the bytes GDPC at offset ${gdpc}; Godot could read it as a PCK rather than a zip.`
+    );
+  if (u32(0) !== LFH)
+    fail4(
+      "does not start with a local file header: a godot.zip holds nothing before its first entry."
+    );
+  const e = b.byteLength - 22;
+  if (u32(e) !== EOCD)
+    fail4(
+      "does not end with an end-of-central-directory record without a comment: a godot.zip carries no comment or trailing bytes."
+    );
+  if (e >= 20 && u32(e - 20) === ZIP64_LOCATOR)
+    fail4("is a ZIP64 archive; a godot.zip is a plain zip under 4 GiB.");
+  const disk = u16(e + 4);
+  const cdDisk = u16(e + 6);
+  const onDisk = u16(e + 8);
+  const count = u16(e + 10);
+  const cdSize = u32(e + 12);
+  const cdOffset = u32(e + 16);
+  if (u16(e + 20) !== 0) fail4("has an archive comment.");
+  if (disk !== 0 || cdDisk !== 0 || onDisk !== count)
+    fail4("spans several disks.");
+  if (count === 65535 || cdSize === 4294967295 || cdOffset === 4294967295)
+    fail4("uses ZIP64 fields.");
+  if (count === 0) fail4("has no entries.");
+  if (cdOffset + cdSize !== e)
+    fail4(
+      "has bytes between its central directory and its end record, or a central directory that does not fit."
+    );
+  const entries = [];
+  const seen = /* @__PURE__ */ new Set();
+  const ranges = [];
+  const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  let p = cdOffset;
+  for (let i = 0; i < count; i++) {
+    if (p + 46 > e || u32(p) !== CDH)
+      fail4(`central directory entry ${i} is malformed.`);
+    const flags = u16(p + 8);
+    const method = u16(p + 10);
+    const crc = u32(p + 16);
+    const csize = u32(p + 20);
+    const size = u32(p + 24);
+    const nameLen = u16(p + 28);
+    const extraLen = u16(p + 30);
+    const commentLen = u16(p + 32);
+    const startDisk = u16(p + 34);
+    const local = u32(p + 42);
+    const end = p + 46 + nameLen + extraLen + commentLen;
+    if (end > e) fail4(`central directory entry ${i} runs past the directory.`);
+    let entryName;
+    try {
+      entryName = text.decode(b.subarray(p + 46, p + 46 + nameLen));
+    } catch {
+      return fail4(`central directory entry ${i}'s name is not UTF-8.`);
+    }
+    const label = entryName || `entry ${i}`;
+    if (flags & 65) fail4(`${label}: an encrypted entry.`);
+    if (flags & 8)
+      fail4(`${label}: written with a data descriptor; store it without one.`);
+    if (csize === 4294967295 || size === 4294967295 || local === 4294967295)
+      fail4(`${label}: ZIP64 fields.`);
+    if (startDisk !== 0) fail4(`${label}: on another disk.`);
+    if (commentLen !== 0) fail4(`${label}: carries an entry comment.`);
+    if (local + 30 > cdOffset || u32(local) !== LFH)
+      fail4(`${label}: its local header is missing.`);
+    const lNameLen = u16(local + 26);
+    const lExtraLen = u16(local + 28);
+    const data = local + 30 + lNameLen + lExtraLen;
+    if (u16(local + 6) !== flags || u16(local + 8) !== method || u32(local + 14) !== crc || u32(local + 18) !== csize || u32(local + 22) !== size || lNameLen !== nameLen || !b.subarray(local + 30, local + 30 + nameLen).every((x, k) => x === b[p + 46 + k]))
+      fail4(`${label}: its local header disagrees with its central entry.`);
+    if (data + csize > cdOffset)
+      fail4(`${label}: its data runs into the central directory.`);
+    ranges.push([local, data + csize]);
+    p = end;
+    if (entryName.endsWith("/")) {
+      if (size !== 0 || csize !== 0 || method !== 0)
+        fail4(`${label}: a directory entry with data.`);
+      if (!pckPathOk(entryName.slice(0, -1)))
+        fail4(
+          `${label}: not a normal path (no leading /, no ., .. or empty segment); the engine would mount it elsewhere.`
+        );
+      continue;
+    }
+    if (method !== 0 || csize !== size)
+      fail4(
+        `${label}: a compressed entry (method ${method}); a godot.zip stores every entry (zip -0), and the wire compresses.`
+      );
+    if (!pckPathOk(entryName))
+      fail4(
+        `${label}: not a normal path (no leading /, no ., .. or empty segment); the engine would mount it elsewhere.`
+      );
+    if (seen.has(entryName)) fail4(`${label}: listed twice.`);
+    seen.add(entryName);
+    if (crc32(b.subarray(data, data + size)) !== crc)
+      fail4(`${label}: its CRC-32 does not match its data.`);
+    entries.push({
+      rawPath: entryName,
+      path: entryName,
+      offset: data,
+      size,
+      md5: "",
+      flags: 0
+    });
+  }
+  if (p !== e) fail4("its central directory holds more than its entries.");
+  ranges.sort((x, y) => x[0] - y[0]);
+  for (let i = 1; i < ranges.length; i++)
+    if (ranges[i][0] < ranges[i - 1][1]) fail4("two entries overlap.");
+  return {
+    header: {
+      formatVersion: 0,
+      engine: { major: 0, minor: 0, patch: 0 },
+      flags: 0
+    },
+    entries
+  };
+}
+
 // src/delegate.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash8, generateKeyPairSync as generateKeyPairSync2 } from "node:crypto";
@@ -22373,9 +23160,9 @@ function binaryRefs(b, start) {
   let pos = start;
   let part = "header";
   let limit = b.byteLength;
-  const fail3 = () => new Stop(`is a binary resource whose ${part} cannot be read${AMBIGUOUS}`);
+  const fail4 = () => new Stop(`is a binary resource whose ${part} cannot be read${AMBIGUOUS}`);
   const need = (n) => {
-    if (n < 0 || pos + n > limit) throw fail3();
+    if (n < 0 || pos + n > limit) throw fail4();
   };
   const u32 = () => {
     need(4);
@@ -22397,11 +23184,11 @@ function binaryRefs(b, start) {
   const text = (s) => {
     const z = s.indexOf(0);
     const cut = z === -1 ? s : s.subarray(0, z);
-    if (Buffer.from(cut).indexOf(BOM) !== -1) throw fail3();
+    if (Buffer.from(cut).indexOf(BOM) !== -1) throw fail4();
     try {
       return dec2.decode(cut);
     } catch {
-      throw fail3();
+      throw fail4();
     }
   };
   try {
@@ -22469,16 +23256,16 @@ function binaryRefs(b, start) {
         const inline = b.subarray(pos, pos + n);
         pos += n;
         if (prop && isResourcePath(inline)) throw new Stop(RESOURCE_PATH_WHY);
-        if (prop && !nameUtf8(inline)) throw fail3();
-      } else if (id >= nstr) throw fail3();
+        if (prop && !nameUtf8(inline)) throw fail4();
+      } else if (id >= nstr) throw fail4();
       else if (prop && rpNames.has(id)) throw new Stop(RESOURCE_PATH_WHY);
-      else if (prop && badNames.has(id)) throw fail3();
+      else if (prop && badNames.has(id)) throw fail4();
     };
     let walked = 0;
     for (let i = 0; i < offsets.length; i++) {
       const off = offsets[i];
       const prev = i === 0 ? tableEnd - 1 : offsets[i - 1];
-      if (off < 0 || off <= prev || off > b.byteLength) throw fail3();
+      if (off < 0 || off <= prev || off > b.byteLength) throw fail4();
       limit = i + 1 < offsets.length ? Math.max(off, Math.min(offsets[i + 1], b.byteLength)) : b.byteLength;
       pos = off;
       str();
@@ -22574,7 +23361,7 @@ function binaryRefs(b, start) {
                   why: `has an inline external reference (the pre-4.0 binary form)${AMBIGUOUS}`
                 };
               if (kind === 2 || kind === 3) skip(4);
-              else if (kind !== 0) throw fail3();
+              else if (kind !== 0) throw fail4();
               break;
             }
             case 26:
@@ -22623,7 +23410,7 @@ function binaryRefs(b, start) {
         }
       }
       walked += pos - off;
-      if (walked > b.byteLength) throw fail3();
+      if (walked > b.byteLength) throw fail4();
     }
     return { refs };
   } catch (e) {
@@ -23410,9 +24197,9 @@ var MAX_PREFLIGHT_RELEASES = 16;
 function checkScriptKinds(pack, opts) {
   const exts = opts.scriptExtensions ?? [];
   const types = opts.scriptTypes ?? [];
-  if ((exts.length || types.length) && pack.type !== "godot.pck")
+  if ((exts.length || types.length) && pack.type !== "godot.pck" && pack.type !== "godot.zip")
     throw new Error(
-      `--script-extensions and --script-types apply to a godot.pck pack's lint; ${pack.id} is a ${pack.type} pack.`
+      `--script-extensions and --script-types apply to a godot.pck or godot.zip pack's lint; ${pack.id} is a ${pack.type} pack.`
     );
   const badExt = exts.find((x) => !/^[A-Za-z0-9_]{1,32}$/.test(x));
   if (badExt !== void 0)
@@ -23425,10 +24212,10 @@ function checkScriptKinds(pack, opts) {
       `--script-types takes script class names (LuaScript), not ${JSON.stringify(badType)}.`
     );
 }
-async function findPck(dir) {
+async function findPck(dir, ext = ".pck") {
   let names;
   try {
-    names = (await readdir4(dir, { withFileTypes: true })).filter((e) => e.isFile() && e.name.endsWith(".pck")).map((e) => e.name).sort();
+    names = (await readdir4(dir, { withFileTypes: true })).filter((e) => e.isFile() && e.name.endsWith(ext)).map((e) => e.name).sort();
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`${dir} does not exist.`);
@@ -23436,7 +24223,7 @@ async function findPck(dir) {
   }
   if (names.length !== 1)
     throw new Error(
-      `${dir} must hold exactly one .pck file (found ${names.length}${names.length ? `: ${names.join(", ")}` : ""}).`
+      `${dir} must hold exactly one ${ext} file (found ${names.length}${names.length ? `: ${names.join(", ")}` : ""}).`
     );
   return path8.join(dir, names[0]);
 }
@@ -23469,19 +24256,59 @@ async function loadVariant(pack, variant, root, settings = {}) {
       lintWarnings: lint.warnings.map((w) => `${name}: ${w}`)
     };
   }
+  if (pack.type === "godot.zip") {
+    const file = await findPck(dir, ".zip");
+    const bytes = new Uint8Array(await readFile7(file));
+    const name = path8.basename(file);
+    let zipDir;
+    try {
+      zipDir = readGodotZip(bytes, name);
+    } catch (e) {
+      return {
+        variant,
+        key,
+        location: file,
+        payload: { layout: "container", bytes, files: [] },
+        stripped: [],
+        formatVersion: 1,
+        lintErrors: [e.message],
+        lintWarnings: []
+      };
+    }
+    const lint = lintPck(zipDir, bytes, {
+      prefixes: pack.handler.prefixes ?? [],
+      // P4-28: the same reference and script-kind settings as a godot.pck.
+      ...settings.attachable ? { attachable: settings.attachable } : {},
+      ...settings.scriptExtensions ? { scriptExtensions: settings.scriptExtensions } : {},
+      ...settings.scriptTypes ? { scriptTypes: settings.scriptTypes } : {}
+    });
+    const payload = containerPayload(bytes, zipDir);
+    const paths2 = lintTreePaths(payload.files.map((f) => f.path));
+    return {
+      variant,
+      key,
+      location: file,
+      payload,
+      stripped: [],
+      formatVersion: 1,
+      lintErrors: [...lint.errors, ...paths2.errors].map((e) => `${name}: ${e}`),
+      lintWarnings: lint.warnings.map((w) => `${name}: ${w}`)
+    };
+  }
   const tree = await readTree(dir);
   const paths = lintTreePaths(tree.files.map((f) => f.path));
+  const typed = tree.errors.length === 0 && paths.errors.length === 0 ? await lintTypeTree(pack.type, tree.files, variant) : { errors: [], warnings: [] };
   return {
     variant,
     key,
     location: dir,
     payload: { layout: "tree", files: tree.files },
     stripped: [],
-    formatVersion: 1,
-    lintErrors: [...tree.errors, ...paths.errors].map(
+    formatVersion: pack.formatVersion,
+    lintErrors: [...tree.errors, ...paths.errors, ...typed.errors].map(
       (e) => `${variantDirName(variant)}/${e}`
     ),
-    lintWarnings: []
+    lintWarnings: typed.warnings.map((w) => `${variantDirName(variant)}/${w}`)
   };
 }
 function decodeJwsPayload(jws) {
@@ -23544,8 +24371,11 @@ async function loadBase(pack, release, keys, warn) {
     }
     const dir = path8.join(release.dir, key || "default");
     try {
-      if (pack.type === "godot.pck") {
-        const bytes = new Uint8Array(await readFile7(await findPck(dir)));
+      if (isMountedPackType(pack.type)) {
+        const zip = pack.type === "godot.zip";
+        const bytes = new Uint8Array(
+          await readFile7(await findPck(dir, zip ? ".zip" : ".pck"))
+        );
         const sha = sha256Hex2(bytes);
         if (sha !== v.payload.sha256 || bytes.byteLength !== v.payload.size) {
           warn(
@@ -23553,7 +24383,10 @@ async function loadBase(pack, release, keys, warn) {
           );
           continue;
         }
-        const p = containerPayload(bytes, readPck(bytes, label));
+        const p = containerPayload(
+          bytes,
+          zip ? readGodotZip(bytes, label) : readPck(bytes, label)
+        );
         payloads.set(key, { sha256: sha, bytes, files: p.files });
       } else {
         const tree = await readTree(dir);
@@ -23614,7 +24447,7 @@ function markerJson(packId, version, jws) {
 `;
 }
 function markerPathFor(type, location) {
-  return type === "godot.pck" ? `${location}${MARKER_SUFFIX}` : path8.join(location, ...TREE_MARKER_PATH.split("/"));
+  return isMountedPackType(type) ? `${location}${MARKER_SUFFIX}` : path8.join(location, ...TREE_MARKER_PATH.split("/"));
 }
 async function publishPack(opts) {
   const out = opts.stdout;
@@ -24264,7 +25097,7 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
       for (const v of variants) {
         const vdir = path8.join(dest, variantDirName(v.variant));
         await mkdir2(vdir, { recursive: true });
-        if (pack.type === "godot.pck")
+        if (isMountedPackType(pack.type))
           await writeFile6(
             path8.join(vdir, path8.basename(v.location)),
             v.payload.bytes

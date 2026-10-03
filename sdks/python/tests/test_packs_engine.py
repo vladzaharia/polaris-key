@@ -482,7 +482,8 @@ def test_refuses_with_typed_codes() -> None:
     e.load()
     assert _code(lambda: e.ensure(["djdl.other"])).code == "pack-not-pinned"
 
-    table = tree_pack("djdl.table", "1.0.0", 1, {"a": "1"}, type="l10n.table")
+    # audio.bank has no Python handler (a typed runtime N/A, P4-16).
+    table = tree_pack("djdl.table", "1.0.0", 1, {"a": "1"}, type="audio.bank")
     t = engine(ByteServer.of(table), stamp=stamp_for(table))
     t.load()
     assert _code(lambda: t.ensure(["djdl.table"])).code == "pack-type-unsupported"

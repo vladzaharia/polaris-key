@@ -5,8 +5,9 @@ title: "Packs"
 description: "Content packs as release deliverables: declaring them, the pinned, compatible and standalone bindings, contentApi, publishing a pack in stage rounds and one record, pins, holds, resolved pack sets, floors per contentApi line, embedded baselines and the delivery gate."
 ---
 
-A **pack** is content an app loads at run time — a Godot resource pack (`godot.pck`) or a
-directory of files (`files.tree`) — released on its own versions, like the app. Release records
+A **pack** is content an app loads at run time — a Godot resource pack (`godot.pck`), a
+directory of files (`files.tree`), translation tables, JSON data, audio banks, a model, or a type
+the game defines (see [Pack types](#pack-types)) — released on its own versions, like the app. Release records
 every pack release, which app releases pin which pack releases, and what each build embeds.
 Distribution serves the bytes; the SDKs install them. The terms are on the
 [concepts page](/docs/start/concepts/#packs).
@@ -102,6 +103,53 @@ deliverables:
 - These are the defaults CI signs into **each variant** of a pack record (`requires`,
   `conflicts`). The record is the truth: resolution reads the signed values, so a release keeps
   the range it was published with.
+
+## Pack types
+
+A pack's `type` names the handler a device installs it with. Transport, patching, signing,
+revocation and garbage collection are the same for every type; the handler adds the type's own
+checks over the verified payload before it commits, and what activation does. A payload that
+fails them is refused with `pack-type-check-failed` (its `detail` names the check, its `path` the
+file), nothing is activated and the staged bytes are discarded. `pkey release publish` runs the
+same checks, with the device's own functions, before it signs anything.
+
+| Type            | Payload                                            | Activation              | Checks (device and publish)                                                                                                                                                                                                                                     | SDKs                                   |
+| --------------- | -------------------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `godot.pck`     | one `.pck`, uncompressed entries                   | restart                 | the PCK header (engine, format) and the admission list over `handler.prefixes`                                                                                                                                                                                  | Godot                                  |
+| `godot.zip`     | one `.zip` of stored entries                       | restart                 | read strictly (nothing before the first entry, no comment, no ZIP64, encryption or data descriptor, stored entries only, normal paths), then the `godot.pck` admission list                                                                                     | Godot                                  |
+| `files.tree`    | a directory of files                               | hot                     | the path rules                                                                                                                                                                                                                                                  | all                                    |
+| `l10n.table`    | PO, CSV or JSON tables                             | hot                     | every file a table the plain parsers read; each table's locale a well-formed BCP-47 tag and, in a `locale` variant, that locale (`locale`, `table`); `formatVersion` listed by the handler                                                                      | all                                    |
+| `data.json`     | JSON documents (balance tables, event definitions) | hot                     | every file strict JSON with an object at the top, whatever its name (`json`); the declared `formatVersion` listed by the handler                                                                                                                                | all                                    |
+| `audio.bank`    | FMOD or Wwise banks and a `bank.json`              | hot (host reloads)      | `bank.json` declares `middleware` and `version`; the device runs that middleware at the same `major.minor` (`descriptor`, `middleware`)                                                                                                                         | Godot (others: the game's own handler) |
+| `ml.model`      | GGUF, ONNX or safetensors and a `model.json`       | hot (after a load test) | `model.json` declares `runtime`, `file` and `memBytes` (optional `vramBytes`, `quantization`); the host's runtimes, quantisations and RAM/VRAM budget, then its load test over the staged file (`descriptor`, `runtime`, `quantization`, `memory`, `load-test`) | Node, React, Python, Swift             |
+| `custom.<name>` | a file or a tree                                   | the game's handler      | the path rules; anything else is the game's                                                                                                                                                                                                                     | all, through `registerHandler`         |
+
+- **Handlers parse, never evaluate.** A table or document is read by a plain parser; nothing is
+  passed to a script engine, a resource loader or `load_resource_pack` (only `godot.pck` and
+  `godot.zip` are mounted, and a content key can never sign either). In Godot, translations are
+  built with `Translation.add_message` and registered with `TranslationServer`, never loaded as a
+  `.translation` resource.
+- **When the checks run.** Over every newly staged payload, before it commits. A release whose
+  exact payload is already installed is reused without a second check, and so is a rollback to
+  the previous release: the bytes were checked when first admitted. An embedded baseline is
+  CI-built and release-signed, and is not re-checked either.
+- **Godot plurals.** Godot 4.6 and later register a PO file's plural forms; 4.4 and 4.5 register
+  the singular form only. A pack's `Plural-Forms` formula is never evaluated: Godot's own plural
+  rules for the locale apply.
+- **Format by content.** An `l10n.table` file is a JSON table when it starts with `{`, a PO file
+  when it starts with `#`, `msgid` or `msgctxt`, and CSV otherwise (a key column, then one column
+  per locale), whatever its name.
+- **Tiny, frequently tuned values belong in managed config**, not a `data.json` pack: config is a
+  signed document with enforced and default states, delivered with no install at all. A pack suits
+  data large or structured enough to version and patch as content.
+- **Under a content key** ([delegation](#content-keys-delegation)) only `files.tree`, `data.json`
+  and `l10n.table` can be signed, in tree layout, and every file passes the data-only extension
+  allow-list. `.translation` is not on it, so a delegated `l10n.table` is PO, CSV or JSON text.
+- **Which SDK holds what** is a typed answer: `supports("packs.type.<type>")` returns the
+  registry's `runtime` N/A where an SDK ships no handler (`godot.zip` outside Godot, `audio.bank`
+  outside Godot, `ml.model` in Godot), and installing such a pack raises `pack-type-unsupported`.
+  `data.json` and `l10n.table` handlers are built in; `ml.model` and `audio.bank` need the host to
+  register one with its budget or middleware, since only the host knows them.
 
 ## The delivery gate
 
@@ -553,6 +601,17 @@ revocation has no `revocations.json` and nothing is refused.
   from `user://pkey/store/<sha256>.pck`. `--patch-from` frames are decoded by Godot's own delta
   decoder, so `zstd-patch-from` is advertised on Godot 4.6 and later only. The content stamp is
   `res://pkey_packs/pkey-content.json`, beside the embedded baselines.
+- The [pack-type](#pack-types) handlers: `DataJsonHandler` and `L10nTableHandler` are built in
+  (register your own instance for its `documents(packId)` or `tables(packId)` and its
+  `onActivate` callback, or for other format versions), and `MlModelHandler` is registered by the
+  host with `runtimes`, `ramBytes`, optional `vramBytes`, `quantizations` and a `loadTest`, after
+  which `model(packId)` names the live model. Python spells them `DataJsonHandler`,
+  `L10nTableHandler` and `MlModelHandler(runtimes=…, ram_bytes=…, load_test=…)`. In Godot,
+  `PKeyDataJsonHandler`, `PKeyL10nTableHandler` (through `TranslationServer`) and
+  `PKeyGodotZipHandler` are built in, and the game registers
+  `PKeyAudioBankHandler.new({"middleware": "fmod", "version": "2.02.22", "reload": …})`. A game's
+  `custom.<name>` handler is registered with `registerHandler` (`register_handler` in Python and
+  Godot) and may refuse a staged payload from its `check`.
 - Every SDK runs the content decision and keeps revocations (P4-13, P4-23, P4-24). In Godot,
   `PolarisKey.update.decide()` runs it whenever the build ships a content stamp, the revocations
   live in `user://pkey/content/revocations.json`, and `PKeyBoot` stops at BLOCKED with the

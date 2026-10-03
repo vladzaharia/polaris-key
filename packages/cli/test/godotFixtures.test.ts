@@ -1501,12 +1501,18 @@ async function generate(): Promise<Generated> {
   const z = zstdCli(work);
   const v1 = writeTestPck(kaykitV1());
   const v2 = writeTestPck(kaykitV2());
+  // P4-16: kaykit v1 as Godot 4.4 exports it (PCK format v2, engine 4.4.1), so the device test
+  // can install a published godot.pck on 4.4 as well as on 4.7.
+  const v1g44 = writeTestPck(kaykitV1(), { version: 2, engine: [4, 4, 1] });
   files.set("update/kaykit-v1.pck", v1);
   files.set("update/kaykit-v2.pck", v2);
+  files.set("update/kaykit-v1-g44.pck", v1g44);
   const p1 = containerPayload(v1, readPck(v1));
   const p2 = containerPayload(v2, readPck(v2));
+  const p3 = containerPayload(v1g44, readPck(v1g44));
   const b1 = await buildPayload(z, p1);
   const b2 = await buildPayload(z, p2);
+  const b3 = await buildPayload(z, p3);
   const pd = buildPayloadDelta(
     z,
     { bytes: v1, sha256: b1.payload.sha256 },
@@ -1522,7 +1528,7 @@ async function generate(): Promise<Generated> {
   if ("skipped" in fd) throw new Error(`files delta: ${fd.skipped}`);
   const objects = new Map<string, Uint8Array>();
   const keep = (b: Uint8Array) => objects.set(sha(b), b);
-  for (const b of [b1, b2]) {
+  for (const b of [b1, b2, b3]) {
     keep(b.full.stored);
     keep(b.indexStored.stored);
     if (b.gaps) keep(b.gaps.stored);
@@ -1531,22 +1537,35 @@ async function generate(): Promise<Generated> {
   keep(pd.stored);
   keep(fd.patchStored);
   keep(fd.dataStored);
-  const variant = (b: typeof b1, deltas: unknown[]) => ({
+  const variant = (b: typeof b1, deltas: unknown[], engine = ENGINE) => ({
     variant: {},
     payload: b.payload,
     full: b.full.ref,
     files: filesRefOf(b),
-    requires: { engine: ENGINE },
+    requires: { engine },
     ...(deltas.length ? { deltas } : {}),
   });
+  // The record's formatVersion, as `pkey release publish` signs it: the PCK header's
+  // (WIRE-CONTRACT-V4 §2.5.1).
+  const fv = (b: Uint8Array) => readPck(b).header.formatVersion;
   const manifest = {
     format: "pkey-godot-fixtures/1",
     prefixes: [PREFIX],
     engine: ENGINE,
-    v1: { pck: "kaykit-v1.pck", variant: variant(b1, []) },
+    v1: {
+      pck: "kaykit-v1.pck",
+      formatVersion: fv(v1),
+      variant: variant(b1, []),
+    },
     v2: {
       pck: "kaykit-v2.pck",
+      formatVersion: fv(v2),
       variant: variant(b2, [pd.delta, fd.delta]),
+    },
+    v1g44: {
+      pck: "kaykit-v1-g44.pck",
+      formatVersion: fv(v1g44),
+      variant: variant(b3, [], "godot-4.4"),
     },
     objects: [...objects.keys()].sort(),
   };
@@ -1590,8 +1609,9 @@ describe("the Godot SDK's pack fixtures (P4-08)", () => {
     const committed = JSON.parse(
       readFileSync(path.join(OUT, "update", "manifest.json"), "utf8"),
     ) as {
-      v1: { variant: Variant };
-      v2: { variant: Variant };
+      v1: { variant: Variant; formatVersion: number };
+      v2: { variant: Variant; formatVersion: number };
+      v1g44: { variant: Variant; formatVersion: number };
       objects: string[];
     };
     const obj = (h: string): Uint8Array => {
@@ -1608,11 +1628,16 @@ describe("the Godot SDK's pack fixtures (P4-08)", () => {
       ref.codec === "zstd" ? unzstd(obj(ref.sha256)) : obj(ref.sha256);
     const v1 = g.files.get("update/kaykit-v1.pck")!;
     const v2 = g.files.get("update/kaykit-v2.pck")!;
+    const v1g44 = g.files.get("update/kaykit-v1-g44.pck")!;
     for (const [key, bytes] of [
       ["v1", v1],
       ["v2", v2],
+      ["v1g44", v1g44],
     ] as const) {
       const v = committed[key].variant;
+      expect(committed[key].formatVersion).toBe(
+        readPck(bytes).header.formatVersion,
+      );
       expect(v.payload).toEqual({ size: bytes.byteLength, sha256: sha(bytes) });
       expect(sha(open(v.full))).toBe(sha(bytes));
       const index = JSON.parse(new TextDecoder().decode(open(v.files))) as {

@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 49 | 3 | 2 | 7 |
-| React | `web`, `desktop-bridge` | 41 | 12 | 2 | 6 |
-| Python | `python` | 49 | 3 | 2 | 7 |
-| Swift | `macos`, `ios` | 50 | 3 | 2 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 51 | 0 | 7 | 3 |
+| Node | `node` | 52 | 5 | 2 | 7 |
+| React | `web`, `desktop-bridge` | 44 | 14 | 2 | 6 |
+| Python | `python` | 52 | 5 | 2 | 7 |
+| Swift | `macos`, `ios` | 53 | 5 | 2 | 6 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 55 | 1 | 7 | 3 |
 
 ## Core
 
@@ -106,6 +106,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.apply.delta` | Raw-prefix delta | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | any: dependency; any: version |
 | `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + `content/` `packSetIdCases` (P4-04) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.handlers` | Handler contract; registerHandler for custom types | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.type.godot.zip` | `godot.zip` packs: a stored-entry zip checked by the godot.pck admission list and mounted at boot | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓ | node, python, web, desktop-bridge, macos, ios: runtime |
+| `packs.type.l10n.table` | `l10n.table` packs: PO, CSV or JSON tables parsed (never evaluated), the BCP-47 locale matched to the variant, hot activation | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.type.data.json` | `data.json` packs: strict-JSON documents, the formatVersion the handler lists, hot activation | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.type.audio.bank` | `audio.bank` packs: the bank descriptor's middleware and version against the host's, hot reload through the host's middleware | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓ | node, python, web, desktop-bridge, macos, ios: runtime |
+| `packs.type.ml.model` | `ml.model` packs: the model descriptor's runtime, quantisation and RAM/VRAM needs against the host's budget, a host load test before the path swaps | unit | ✓ | ✓ | ✓ | ✓ | N/A (linux, macos, windows, android, ios, web: runtime) | linux, macos, windows, android, ios, web: runtime |
 | `packs.provides` | isAvailable(contentId) from provides | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | planned (P5-08); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
 | `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (P5-08); N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |

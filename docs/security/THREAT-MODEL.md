@@ -2433,6 +2433,49 @@ Residuals not closed by P4-08 (P4-28 closed two: attaching app scripts, and anot
   replace a store pack and the digest the install state holds for it. That is the same boundary
   as the SDK cache (below), and it is no worse than replacing the game itself.
 
+### Pack-type handlers (P4-16)
+
+P4-16 adds the v3 pack types (CONTENT §4.2): `l10n.table`, `data.json`, `ml.model`, `audio.bank`,
+`godot.zip` and game-registered `custom.<name>`. Transport, signing, patching, revocation and GC
+are unchanged; each type adds a handler `check` over the already verified payload (hashes, path
+rules and, for a delegated release, the data-only rule) and its activation. A refusal is
+`pack-type-check-failed`: the install is abandoned and staging discarded, and nothing activates.
+
+- **Handlers parse and never evaluate.** Tables (PO, CSV, JSON) and documents are read by plain
+  parsers in every SDK. JSON goes through the strict parser (V4 §1.2: no duplicate member, BOM,
+  comment or trailing comma, an object at the top). No handler calls `eval`, a reviver that
+  builds objects, `str_to_var`, `ConfigFile`, `JSON.to_native(..., true)`, `ResourceLoader` or
+  `Expression`. Godot builds `Translation` objects with `add_message`, never loads a
+  `.translation` resource, and never hands a pack's `Plural-Forms` formula to `Expression`.
+  A file's format is judged by its bytes, never its name.
+- **Paths.** Handlers look files up by exact index path. Only `model.json`'s `file` and
+  `bank.json`'s `banks` name files, and each must equal an index path byte for byte (no
+  normalisation), so nothing a payload says can reach outside its own verified tree.
+- **What reaches host code.** An `ml.model` file reaches the host's `loadTest` and runtime, and
+  `audio.bank` files reach the host's middleware reload. They are release-signed only (neither
+  type is delegable), and the model or bank parser is the host's: a malicious model or bank is
+  as dangerous as the host's runtime lets it be. The runtime, quantisation and RAM/VRAM checks
+  bound resource use, not parser safety.
+- **`godot.zip` is mounted, so its reader is admission control.** Godot tries its PCK reader on
+  every pack before its ZIP reader, whatever the extension. That reader accepts a `GDPC` magic
+  at the start, at the end, and at a self-contained export's embedded-PCK offset inside the file
+  it opens. Measured on 4.7.2: a `.zip` with a PCK appended mounted that PCK's hidden files.
+  minizip also follows a ZIP64 locator found before the end record. The CLI lint and the Godot
+  check therefore both refuse:
+  - a zip holding `GDPC` anywhere;
+  - anything before the first local header, an archive or entry comment, ZIP64 (or its
+    locator), encryption, data descriptors, compressed entries, local headers disagreeing with
+    central ones, overlapping data, and a non-normal or repeated path.
+
+  The `godot.pck` admission list and code scans then run over the entries. A zip install is
+  stored as `<sha256>.zip` (named by its leading `PK`), and `mount()` refuses a `godot.zip`
+  install at any other path. A content key can never sign a `godot.zip` (P4-19).
+
+- **`custom.<name>` relaxes nothing.** The engine's path rules and, in Godot, the v1 tree rule
+  (`PKeyPck.tree_check`, in the base handler's `check_tree`) apply before a game's own check.
+  What the game's handler then does with the bytes is the game's: a `custom.*` type is never
+  delegable because such a handler may execute what it loads.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -2735,4 +2778,8 @@ content-key delegation (P4-19), `DELEGABLE_PACK_TYPES` or `DATA_ONLY_EXTENSIONS`
 gains a scope dimension, the delegated path is allowed on a surface beyond a compatible or
 standalone pack's feed target and the reload of a stored delegated install, any SDK or handler
 passes a delegated file to `load_resource_pack` or to any other engine API that mounts or loads
-code, or a non-tree layout becomes delegable, or the head or tail sniff is narrowed.
+code, or a non-tree layout becomes delegable, or the head or tail sniff is narrowed; or, for the
+pack-type handlers (P4-16), a handler starts evaluating what it reads (a script engine, an object
+reviver, a resource loader, a plural-formula evaluator) or resolves a path from payload contents
+other than by exact index match, a type joins `MOUNTED_PACK_TYPES`, or a rule of the `godot.zip`
+reader is relaxed in the CLI or on a device.

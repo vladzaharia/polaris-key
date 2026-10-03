@@ -47,6 +47,13 @@ export {
 } from "./update/useUpdateDecision.js";
 // `update.packs` for the web transport (P4-06).
 export {
+  DataJsonHandler,
+  L10nTableHandler,
+  MlModelHandler,
+  type L10nTable,
+  type MlModel,
+  type PackCheckRefusal,
+  type StagedPack,
   PackError,
   WASM_MEM_BUDGET,
   createBrowserPacks,

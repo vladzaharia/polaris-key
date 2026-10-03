@@ -4,7 +4,7 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | P5: Distribution connectors and native plugins                                                                                                                                                                                           |
 | Size        | 2–3 engineer-weeks                                                                                                                                                                                                                       |
-| Depends on  | [P3-10](P3-10-godot-updater.md), [S-01](S-01-apple-background-assets.md)                                                                                                                                                                 |
+| Depends on  | [P3-10](P3-10-godot-updater.md), [S-01](S-01-apple-background-assets.md), [S-09](S-09-apple-storekit-distributor.md)                                                                                                                     |
 | Unblocks    | [P5-08](P5-08-platform-pack-transports.md), [P6-01](P6-01-commerce-bridge.md), [P6-02](P6-02-trust-tiers.md)                                                                                                                             |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                                                                       |
@@ -192,3 +192,7 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
   `distribution/outlets/app_store.gd` and `testflight.gd` call it.
 - The Xcode patch script and the export-plugin switches for store and sideload IPAs.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P5-05 done`.
+
+## Plan amendments (S-09)
+
+The spike note [`notes/S-09-apple-storekit-distributor.md`](../../notes/S-09-apple-storekit-distributor.md) changes this package: its §Recommendation and §Proposed edits for this package override this brief where they differ.

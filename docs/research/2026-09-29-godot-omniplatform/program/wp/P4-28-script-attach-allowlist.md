@@ -117,3 +117,9 @@ scripts packs may attach, and let CI know about extra script languages.
   typed `Resource` naming one ~30 MB app scene, plus one naming a scene declaring 71,303,793
   bytes (over the 64 MiB pack cap), is admitted with both typed PackedScene: 25 ms in the 4.7.2 editor, 21 ms on the 4.7.2 release template and 24 ms on 4.4.1 (bound `TYPE_SCALE_BOUND_MS` = 3,000). Both validators also refuse a binary property
   name that is not valid UTF-8 (`refs-name-utf8`).
+- **Merged with P4-16 (godot.zip).** A `godot.zip` gets the same reference check: the device's
+  `PKeyGodotZipHandler.check`/`check_output` take the attachable list (set on both built-in
+  handlers at start, passed by `mount()`'s two-type loop), and the publish lint of a zip takes
+  `content.attachable`, `--script-extensions` and `--script-types` like a PCK (tests in
+  `packTypes.test.ts` and `test_types.gd`). The fixture generator re-ran for `update/` and
+  `kaykit-v1-g44.pck`; P4-16's mutex-guarded `helper_version` probe is kept.
