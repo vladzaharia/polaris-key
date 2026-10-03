@@ -45,7 +45,7 @@ from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
 from .files import parse_files_index
 from .marker import match_embedded, verify_marker
 from .plan import plan
-from .provides import PackProvider, ProvidesFacts, ProvidesMemo, entitled
+from .provides import PackProvider, ProvidesFacts, ProvidesMemo, entitled, memo_key
 from .revocations import (
     clear_relearn,
     empty_revocations,
@@ -578,7 +578,7 @@ class PackEngine:
             self._require_loaded()
             granted = self._entitlements() if self._entitlements is not None else None
             for i in self._running.values():
-                f = self._provides.facts_of(i["recordSha256"], i["record"])
+                f = self._provides.facts_of(memo_key(i["packId"], i["recordSha256"]), i["record"])
                 if content_id in f.provides and entitled(f, granted):
                     return True
             return False
@@ -1249,7 +1249,8 @@ class PackEngine:
         """A target's facts (P4-20): from an install or embedded baseline of that release, else
         its record fetched and verified (``_fetch_verified``); ``None`` when that fails."""
         sha256 = release["sha256"]
-        hit = self._provides.get(sha256)
+        key = memo_key(pack_id, sha256)
+        hit = self._provides.get(key)
         if hit is not None:
             return hit
         doc = self._require_loaded()
@@ -1260,12 +1261,12 @@ class PackEngine:
             self._embedded.get(pack_id),
         ):
             if i is not None and i["recordSha256"] == sha256 and i["packId"] == pack_id:
-                return self._provides.facts_of(sha256, i["record"])
+                return self._provides.facts_of(key, i["record"])
         try:
             body, _ = self._fetch_verified(pack_id, release)
         except Exception:
             return None
-        return self._provides.facts_of(sha256, body)
+        return self._provides.facts_of(key, body)
 
     def _fetch_verified(self, pack_id: str, release: Mapping[str, Any]) -> Tuple[str, Dict[str, Any]]:
         """Step 2 for one pin: the record fetched by hash and verified against the pinned

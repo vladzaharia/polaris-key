@@ -402,7 +402,8 @@ export class PackEngine {
     string,
     { pack: string; delegation: string }
   >();
-  /** P4-20: `providesFacts` of verified records, by record hash. */
+  /** P4-20: `providesFacts` of verified records, by pack id and record hash (a hash alone would
+   *  let a target that names another pack's record answer for it). */
   private readonly providesMemo = new Map<string, ProvidesFacts>();
   private queue: Promise<unknown> = Promise.resolve();
 
@@ -610,7 +611,7 @@ export class PackEngine {
     this.requireLoaded();
     const granted = this.opts.entitlements?.() ?? null;
     for (const i of this.running.values()) {
-      const f = this.factsOf(i.recordSha256, i.record);
+      const f = this.factsOf(i.packId, i.recordSha256, i.record);
       if (f.provides.has(contentId) && entitled(f, granted)) return true;
     }
     return false;
@@ -1473,13 +1474,14 @@ export class PackEngine {
     };
   }
 
-  /** `providesFacts` of a verified record, by its hash (bounded memo). */
-  private factsOf(sha256: string, jws: string): ProvidesFacts {
-    const hit = this.providesMemo.get(sha256);
+  /** `providesFacts` of a pack's verified record, by pack and hash (bounded memo). */
+  private factsOf(pack: string, sha256: string, jws: string): ProvidesFacts {
+    const key = `${pack}\u0000${sha256}`;
+    const hit = this.providesMemo.get(key);
     if (hit) return hit;
     const f = providesFacts(verifiedPayloadOf(jws));
     if (this.providesMemo.size >= MAX_PROVIDES_MEMO) this.providesMemo.clear();
-    this.providesMemo.set(sha256, f);
+    this.providesMemo.set(key, f);
     return f;
   }
 
@@ -1487,7 +1489,7 @@ export class PackEngine {
    *  fetched and verified (`fetchVerified`); null when that fails. */
   private async targetFacts(t: PackTarget): Promise<ProvidesFacts | null> {
     const sha = t.release.sha256;
-    const hit = this.providesMemo.get(sha);
+    const hit = this.providesMemo.get(`${t.pack}\u0000${sha}`);
     if (hit) return hit;
     const doc = this.requireLoaded();
     for (const i of [
@@ -1497,10 +1499,10 @@ export class PackEngine {
       this.embedded.get(t.pack),
     ])
       if (i && i.recordSha256 === sha && i.packId === t.pack)
-        return this.factsOf(sha, i.record);
+        return this.factsOf(t.pack, sha, i.record);
     try {
       const { body } = await this.fetchVerified(t.pack, t);
-      return this.factsOf(sha, body);
+      return this.factsOf(t.pack, sha, body);
     } catch {
       return null;
     }
@@ -1511,7 +1513,11 @@ export class PackEngine {
   private async fetchVerified(
     packId: string,
     pin: { release: { sha256: string; seq: number; version: string } },
-  ): Promise<{ body: string; record: PackRecordDoc; delegated: string | null }> {
+  ): Promise<{
+    body: string;
+    record: PackRecordDoc;
+    delegated: string | null;
+  }> {
     const got = await this.opts.fetchRecord(pin.release.sha256);
     if (!got.ok)
       throw new PackError(
@@ -2191,7 +2197,9 @@ function entitled(
   f: ProvidesFacts,
   granted: ReadonlySet<string> | null,
 ): boolean {
-  return f.entitlement === null || granted === null || granted.has(f.entitlement);
+  return (
+    f.entitlement === null || granted === null || granted.has(f.entitlement)
+  );
 }
 
 /** The delegation hash of a delegated install (its stored delegation and the record's kid), or

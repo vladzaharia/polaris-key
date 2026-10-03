@@ -111,8 +111,14 @@ class PackProvider:
         return {"packId": self.pack_id, "release": self.release.to_dict()}
 
 
+def memo_key(pack_id: str, sha256: str) -> str:
+    """A memo key: the pack id and the record hash (a hash alone would let a target that names
+    another pack's record answer for it)."""
+    return f"{pack_id}\0{sha256}"
+
+
 class ProvidesMemo:
-    """``provides_facts`` of verified records, by record hash (bounded: cleared when full)."""
+    """``provides_facts`` of verified records, by ``memo_key`` (bounded: cleared when full)."""
 
     def __init__(self, limit: int = MAX_PROVIDES_MEMO) -> None:
         self._limit = limit

@@ -208,6 +208,16 @@ describe("isAvailable and packFor", () => {
     expect(await e.packFor("anything")).toBeNull();
   });
 
+  it("skips a target that names another pack's record, even once that record is known", async () => {
+    const foes = await pack("djdl.foes", ["foe.goblin"]);
+    const server = byteServer(foes);
+    const e = engine({ server, stamp: stampFor(foes) });
+    await e.load();
+    expect(await e.packFor("foe.goblin")).toEqual(provider(foes));
+    const forged = { ...target(foes), pack: "djdl.other" };
+    expect(await e.packFor("foe.goblin", [forged])).toBeNull();
+  });
+
   it("skips a target whose record cannot be fetched", async () => {
     const gone = await pack("djdl.gone", ["foe.ghost"]);
     const e = engine({ server: byteServer(), stamp: stampFor(gone) });

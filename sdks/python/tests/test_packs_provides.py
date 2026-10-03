@@ -214,6 +214,15 @@ def test_answers_nothing_for_an_id_no_pack_provides() -> None:
     assert e.pack_for("anything") is None
 
 
+def test_skips_a_target_that_names_another_packs_record() -> None:
+    foes = pack("djdl.foes", ["foe.goblin"])
+    e = engine(ByteServer.of(foes), stamp=stamp_for(foes))
+    e.load()
+    assert e.pack_for("foe.goblin") == provider(foes)
+    forged = {**target(foes), "pack": "djdl.other"}
+    assert e.pack_for("foe.goblin", [forged]) is None
+
+
 def test_skips_a_target_whose_record_cannot_be_fetched() -> None:
     gone = pack("djdl.gone", ["foe.ghost"])
     e = engine(ByteServer(), stamp=stamp_for(gone))

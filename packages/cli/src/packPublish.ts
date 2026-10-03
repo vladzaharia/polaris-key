@@ -102,6 +102,7 @@ import {
   type ContentSigner,
 } from "./delegate.js";
 import { lintPck, lintTreePaths } from "./packLint.js";
+import { collectProvides } from "./saveCompat.js";
 import {
   buildFilesDelta,
   buildPayload,
@@ -180,6 +181,10 @@ export interface PackPublishOptions {
   chunkMinPayloadBytes?: number;
   /** The largest chunk index published (tests; default `MAX_PUBLISHED_INDEX_BYTES`). */
   maxChunkIndexBytes?: number;
+  /** P4-20 `--provides`: the JSON list of content ids (overrides the declared `provides.from`). */
+  providesFile?: string;
+  /** P4-20 `--removes`: content ids this release stops providing, acknowledged. */
+  removes?: string[];
 }
 
 export interface PackVariantReport {
@@ -564,6 +569,22 @@ export async function publishPack(
       `--version ${version} does not parse under ${packId}'s ${pack.versioning.scheme} scheme.`,
     );
   const releaseId = `${packId}@${version}`;
+  // P4-20: the content ids this release provides and the drops it acknowledges (`saveCompat.ts`).
+  const saveCompat = await collectProvides({
+    cwd: opts.cwd,
+    pack,
+    ...(opts.providesFile !== undefined
+      ? { providesFile: opts.providesFile }
+      : {}),
+    removes: opts.removes ?? [],
+    warn,
+  });
+  if (saveCompat.provides)
+    out.write(
+      `Provides: ${saveCompat.provides.length} content id${saveCompat.provides.length === 1 ? "" : "s"}${saveCompat.removes ? `; removes ${saveCompat.removes.join(", ")}` : ""}\n`,
+    );
+  else if (saveCompat.removes)
+    out.write(`Removes: ${saveCompat.removes.join(", ")}\n`);
 
   // 2. Payloads: check, strip, lint.
   const root = path.resolve(opts.cwd, opts.dir);
@@ -1063,11 +1084,14 @@ export async function publishPack(
       },
       ...(gate ? { entitlement: gate } : {}),
       variants: recordVariants,
-    };
+      // P4-20: the record-level members WIRE-CONTRACT-V4 §2.5.1 reserves.
+      ...(saveCompat.provides ? { provides: saveCompat.provides } : {}),
+      ...(saveCompat.removes ? { removes: saveCompat.removes } : {}),
+    } as PackRecordDoc;
     const payloadBytes = Buffer.byteLength(JSON.stringify(record));
     if (payloadBytes > MAX_RECORD_PAYLOAD_BYTES)
       throw new Error(
-        `The pack record is ${payloadBytes} bytes; a release record is at most ${MAX_RECORD_PAYLOAD_BYTES} (fewer variants or delta bases).`,
+        `The pack record is ${payloadBytes} bytes; a release record is at most ${MAX_RECORD_PAYLOAD_BYTES} (fewer variants, delta bases or provided content ids).`,
       );
     if (!releaseRecordClaims(record, { expectedAud: opts.product }))
       throw new Error(

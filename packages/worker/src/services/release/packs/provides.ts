@@ -195,9 +195,7 @@ export async function checkProvidesKept(
   }
   const named = dropped.slice(0, NAMED_IDS).join(", ");
   const more =
-    dropped.length > NAMED_IDS
-      ? ` and ${dropped.length - NAMED_IDS} more`
-      : "";
+    dropped.length > NAMED_IDS ? ` and ${dropped.length - NAMED_IDS} more` : "";
   return {
     ok: false,
     reason: "provides-dropped",

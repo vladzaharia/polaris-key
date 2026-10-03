@@ -270,11 +270,13 @@ async function publishApp(
 
 async function records(pack: string): Promise<number> {
   return (
-    (await db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM release_records WHERE product = ? AND deliverable_id = ?",
-      SLUG,
-      pack,
-    ))?.n ?? 0
+    (
+      await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM release_records WHERE product = ? AND deliverable_id = ?",
+        SLUG,
+        pack,
+      )
+    )?.n ?? 0
   );
 }
 

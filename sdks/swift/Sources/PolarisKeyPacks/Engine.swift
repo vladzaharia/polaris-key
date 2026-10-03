@@ -566,7 +566,7 @@ public actor PackEngine {
     public func isAvailable(_ contentId: String) async throws -> Bool {
         _ = try requireLoaded()
         let granted = await opts.entitlements()
-        for i in running.values where providesMemo.facts(i.recordSha256, i.record).answers(contentId, granted) {
+        for i in running.values where providesMemo.facts(i.packId + "\u{0}" + i.recordSha256, i.record).answers(contentId, granted) {
             return true
         }
         return false
@@ -601,14 +601,17 @@ public actor PackEngine {
     /// fetched and verified (`fetchVerified`); nil when that fails.
     private func targetFacts(_ t: PackTarget) async -> ProvidesFacts? {
         let sha = t.release.sha256
-        if let hit = providesMemo.get(sha) { return hit }
+        // Keyed by pack and hash: a hash alone would let a target naming another pack's record
+        // answer for it.
+        let key = t.pack + "\u{0}" + sha
+        if let hit = providesMemo.get(key) { return hit }
         guard let doc else { return nil }
         for case let i? in [doc.active[t.pack], doc.previous[t.pack], running[t.pack], embedded[t.pack]]
         where i.recordSha256 == sha && i.packId == t.pack {
-            return providesMemo.facts(sha, i.record)
+            return providesMemo.facts(key, i.record)
         }
         guard let (body, _) = try? await fetchVerified(t.pack, t.release) else { return nil }
-        return providesMemo.facts(sha, body)
+        return providesMemo.facts(key, body)
     }
 
     /// Mark this boot healthy (CONTENT §10 step 7).

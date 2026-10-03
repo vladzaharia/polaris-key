@@ -27,6 +27,7 @@ import {
   publishRelease,
   type PublishSource,
 } from "./publish.js";
+import { parseRemoves } from "./saveCompat.js";
 import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
 import { publishPack } from "./packPublish.js";
 import { CONTENT_STAMP_USAGE, writeContentStampFile } from "./contentStamp.js";
@@ -786,6 +787,15 @@ async function cmdRelease(
           ["content-stamp", "embedded", "pin"],
           `--deliverable ${deliverable} is a pack; these stamp an app release's packs`,
         );
+        refuseFlags(
+          parsed,
+          ["content-interface", "strict"],
+          `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`,
+        );
+        if (parsed.bare.has("removes") || parsed.bare.has("provides"))
+          throw new Error(
+            "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...].",
+          );
         // P4-03: a pack release.
         await publishPack({
           ...common,
@@ -803,9 +813,18 @@ async function cmdRelease(
           ...(contentKeyPem !== undefined ? { contentKeyPem } : {}),
           ...(delegation !== undefined ? { delegation } : {}),
           ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
+          ...(flagString(parsed, "provides") !== undefined
+            ? { providesFile: flagString(parsed, "provides") }
+            : {}),
+          removes: parseRemoves(parsed.multi["removes"] ?? []),
         });
         return 0;
       }
+      refuseFlags(
+        parsed,
+        ["provides", "removes"],
+        "they list a pack release's content ids; the app's code interface is --content-interface",
+      );
       refuseFlags(
         parsed,
         ["out", "bases"],
@@ -834,6 +853,10 @@ async function cmdRelease(
         contentStamp: flagString(parsed, "content-stamp"),
         embedded: flagString(parsed, "embedded"),
         pins: parsed.multi["pin"] ?? [],
+        ...(flagString(parsed, "content-interface") !== undefined
+          ? { contentInterface: flagString(parsed, "content-interface") }
+          : {}),
+        strict: flagBool(parsed, "strict"),
       });
       return 0;
     }
@@ -1085,10 +1108,11 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
               [--base-url url] [--release-key-file pem] [--min-supported-seq n]
               [--no-record] [--content-stamp file | --embedded dir --pin pack@v ...]
-              [--dry-run]
+              [--content-interface registry.json [--strict]] [--dry-run]
   pkey release publish --product slug --version v --dir path --deliverable packId
               [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
               [--content-key-file pem --delegation sha256]
+              [--provides ids.json] [--removes id[,id...] ...]
   pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
               [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
   pkey release revoke packId@version --reason text --product slug [--replacement version]
@@ -1134,6 +1158,13 @@ for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundle
 the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record,
 uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the
 record, payloads and chunk indexes for the next publish's --bases.
+Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or
+the pack's declared provides.from (default .pkey/provides.json; provides.required fails a
+publish without it); Polaris Key refuses a release that stops providing an id its predecessor
+provided at a live contentApi level both support, unless --removes acknowledges it. An app
+publish with --content-interface hashes that registry (canonical JSON, SHA-256), stores it with
+the release and warns when it changed since the channel's current app release while contentApi
+did not (--strict fails instead, before anything is uploaded).
 pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one
 release for this app release (written into the stamp's holds; never a pinned pack).
 pkey release revoke signs a kind: revocation release record with the release key and submits it:

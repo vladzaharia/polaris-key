@@ -169,6 +169,17 @@ final class PackProvidesTests: XCTestCase {
         XCTAssertNil(p)
     }
 
+    func testSkipsATargetThatNamesAnotherPacksRecord() async throws {
+        let foes = pack("djdl.foes", strings(["foe.goblin"]))
+        let e = engine(server: ByteServer(foes), stamp: stampFor(foes))
+        _ = try await e.load()
+        let first = try await e.packFor("foe.goblin")
+        XCTAssertEqual(first, provider(foes))
+        let forged = PackTarget(pack: "djdl.other", release: target(foes).release)
+        let p = try await e.packFor("foe.goblin", targets: [forged])
+        XCTAssertNil(p)
+    }
+
     func testSkipsATargetWhoseRecordCannotBeFetched() async throws {
         let gone = pack("djdl.gone", strings(["foe.ghost"]))
         let e = engine(server: ByteServer(), stamp: stampFor(gone))

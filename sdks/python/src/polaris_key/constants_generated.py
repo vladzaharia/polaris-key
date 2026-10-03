@@ -1545,7 +1545,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.apply.delta": CapabilityRow("implemented", "release", ()),
         "packs.state": CapabilityRow("implemented", "release", ()),
         "packs.handlers": CapabilityRow("implemented", "release", ()),
-        "packs.provides": CapabilityRow("planned", "release", ()),
+        "packs.provides": CapabilityRow("implemented", "release", ()),
         "packs.transport.apple": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
         "packs.transport.play": CapabilityRow("na", "distribution", (CapabilityNa("python", "runtime"),)),
         "packs.transport.steam": CapabilityRow("planned", "distribution", ()),
@@ -1558,4 +1558,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "0928af74e8477944350e8fab4f88c749e0c37b251092d79748cdbf36d14e978c"
+CAPABILITY_DIGEST: Final[str] = "9fe9ee2b85f4dbda1953a474d857b343025fcc95ea1068426cbf54125ddffd7b"

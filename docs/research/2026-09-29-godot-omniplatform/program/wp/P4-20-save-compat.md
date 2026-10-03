@@ -147,3 +147,35 @@ mise exec node@22 -- pnpm test
 
 Set the status in the PR that completes the work:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P4-20 done`.
+
+## Corrections from implementation
+
+- **Plan mode confirmed "no".** `plans/P4-01.md` §2.3 and WIRE-CONTRACT-V4 §2.5.1 reserve
+  record-level `provides` and `removes` ("ignored by v1"). They stay non-claims: no corpus
+  section, wire member, `PROTOCOL_VERSION` or claim changed. Every SDK reads them with one
+  tolerant reader beside the claims (`providesOf`: absent or unusable provides nothing).
+- **Size.** Diceroll's registry, overcounted to ~1,215 namespaced ids, is 22,435 bytes of
+  payload, inside the 65,536-byte cap. `MAX_PROVIDES` is 4,096 ids of at most 128 characters
+  (printable ASCII without the space).
+- **Predecessor.** A pack record's `seq` always rises, so P is the stored pack record of the
+  deliverable with the highest `seq`, whatever its channel; provides is record-level, so
+  variants do not matter. A release with no `requires.contentApi` range supports every level;
+  two unranged releases are always compared. Live levels are every channel's live app releases'
+  contentApi values. A record without `provides` after one that had it drops every id.
+- **Refusal reasons.** `pack-provides` (malformed list, or missing under `provides.required`) and
+  `provides-dropped`; warnings are a new optional `warnings` member of the pack submit answer.
+  The check runs before the ticket round is promoted.
+- **`removes` is never declared.** It belongs to one release (`--removes`); the manifest keeps
+  `pack_field_not_supported` for it. `provides` is the policy `{required?, from?}` with the new
+  code `invalid_pack_provides`.
+- **Fingerprint storage.** `release_metadata.content_interface` (migration 0050); the submit takes
+  an unsigned `contentInterface` beside the descriptor and answers the channel's current app
+  release's fingerprint and contentApi. The CLI runs a dry-run submit first so `--strict` fails
+  before any upload. Canonical JSON is object keys sorted by UTF-16 code unit, no whitespace.
+- **SDK gaps found.** Python, Swift and Godot have no P4-19 delegation support, so their
+  fetch-and-verify helper has no delegation branch; Godot has no revocation store yet (P4-24),
+  so `pack_for` calls a duck-typed `is_revoked` when the engine has one. The memo is keyed by
+  pack id and record hash in every SDK (a hash alone let a target naming another pack's record
+  answer for it).
+- **Not done here.** A CLI-side local `provides-dropped` pre-check against `--bases` was not
+  added: the Worker's check runs on every submit, dry run included.

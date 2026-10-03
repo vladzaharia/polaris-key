@@ -294,6 +294,62 @@ of the older engine keep their set throughout.
 Either submit, dry run or not, answers `packSets`: the resulting sets with the selectors and app
 releases that receive them, and every selector whose set changed. `dryRun: true` writes nothing.
 
+## Save compatibility
+
+Saves reference **content ids**, never paths, so a pack release that silently stops shipping an
+id breaks players' saves. Three guards turn that into a CI failure (P4-20, CONTENT §6.7 item 8).
+
+**1. `provides` and `removes` at publish.** A pack release may list the content ids it provides.
+CI writes the list as a JSON array (for example `.pkey/provides.json`, generated from the game's
+content registry) and `pkey release publish --deliverable <packId>` signs it, sorted, into the
+record's `provides`. Ids are opaque: printable ASCII without spaces, 1–128 characters, at most
+4,096 distinct (Diceroll's ~1,200 ids take about 22 KB of the 64 KiB record). The pack's
+declaration names the file and whether it is mandatory:
+
+```yaml
+diceroll.foes:
+  kind: pack
+  type: godot.pck
+  binding: compatible
+  requires: { contentApi: { app: ">=4" } }
+  provides: { required: true, from: .pkey/provides.json }
+```
+
+`--provides <file>` overrides `from`. Polaris Key compares each release with the deliverable's
+previous one, at every live contentApi level both support:
+
+| Reason             | When                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provides-dropped` | an id the previous release provided is neither provided nor acknowledged in `removes`; the message names the ids and the levels             |
+| `pack-provides`    | `provides` or `removes` is not a list of distinct content ids, or the release has no `provides` while the pack declares `provides.required` |
+
+To retire an id on purpose, acknowledge it for that one release: `--removes foe.troll` (repeat
+the flag, or separate ids with commas). A release whose contentApi range shares no live level
+with its predecessor's is a contentApi bump, and nothing is compared. Two releases without a
+range (`pinned`, `standalone`) are always on one line. A `removes` id the previous release never
+provided, or one this release still provides, comes back in the answer's `warnings`. The check
+runs on the dry run too, before anything is promoted.
+
+**2. `isAvailable` and `packFor` on the device.** Every SDK answers from the verified records'
+`provides`, so a game can show "Continue (downloading 12 MB…)":
+
+- `isAvailable(contentId)` (Godot `is_available`) is true when a pack in the **active** set provides
+  the id: mounted this boot for a restart pack, active for a hot one, embedded baselines included.
+- `packFor(contentId, targets?)` (Godot `pack_for`, Python `pack_for`) names the pack and release in
+  the **target** set (the content stamp's pins, or a `packs` decision's install list) that provides
+  it, reading only records, so the game can `estimate` and `ensure` that pack.
+
+A revoked release, a target whose record cannot be fetched or verified, and a pack the licence
+is not entitled to never answer.
+
+**3. The content-interface fingerprint.** `contentApi` bumps are a discipline. On the app publish,
+`--content-interface <registry.json>` hashes an explicit registry of what the code references
+(for Diceroll, its content-id registry and the path prefixes it loads) as the SHA-256 of its
+canonical JSON, stores it with the release as unsigned metadata (never in the signed record),
+and compares it with the channel's current app release: a changed fingerprint with an unchanged
+contentApi is a warning, and `--strict` fails the publish before anything is uploaded. Deriving
+the registry from a Godot project automatically is still an open question; export it yourself.
+
 ## Revocations
 
 A revocation (P4-13, `kind: revocation`) is a release record signed in CI by a **release key**,

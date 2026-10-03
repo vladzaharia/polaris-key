@@ -183,7 +183,7 @@
       "status": "implemented",
       "note": "update.packs.registerHandler; files.tree built in."
     },
-    "packs.provides": { "status": "planned", "wp": "P4-20" },
+    "packs.provides": { "status": "implemented" },
     "packs.transport.apple": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],

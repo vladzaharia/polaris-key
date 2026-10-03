@@ -84,7 +84,10 @@ import {
 } from "../../core/publisher.js";
 import { appendAudit } from "../../core/data.js";
 import { randomId } from "../../core/platform.js";
-import { APP_DELIVERABLE_ID, MAX_DESCRIPTOR_BYTES } from "@polaris-key/manifest";
+import {
+  APP_DELIVERABLE_ID,
+  MAX_DESCRIPTOR_BYTES,
+} from "@polaris-key/manifest";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import {
   ingestReleaseDescriptor,
