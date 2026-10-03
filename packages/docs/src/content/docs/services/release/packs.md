@@ -129,6 +129,13 @@ same checks, with the device's own functions, before it signs anything.
   `godot.zip` are mounted, and a content key can never sign either). In Godot, translations are
   built with `Translation.add_message` and registered with `TranslationServer`, never loaded as a
   `.translation` resource.
+- **When the checks run.** Over every newly staged payload, before it commits. A release whose
+  exact payload is already installed is reused without a second check, and so is a rollback to
+  the previous release: the bytes were checked when first admitted. An embedded baseline is
+  CI-built and release-signed, and is not re-checked either.
+- **Godot plurals.** Godot 4.6 and later register a PO file's plural forms; 4.4 and 4.5 register
+  the singular form only. A pack's `Plural-Forms` formula is never evaluated: Godot's own plural
+  rules for the locale apply.
 - **Format by content.** An `l10n.table` file is a JSON table when it starts with `{`, a PO file
   when it starts with `#`, `msgid` or `msgctxt`, and CSV otherwise (a key column, then one column
   per locale), whatever its name.

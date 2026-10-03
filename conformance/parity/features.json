@@ -833,32 +833,32 @@
         {
           "runtime": "linux",
           "reason": "runtime",
-          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+          "why": "For the Godot SDK only (the registry keys N/As by runtime, and Swift on macOS and iOS and React on the web implement the type): Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
         },
         {
           "runtime": "macos",
           "reason": "runtime",
-          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+          "why": "For the Godot SDK only (the registry keys N/As by runtime, and Swift on macOS and iOS and React on the web implement the type): Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
         },
         {
           "runtime": "windows",
           "reason": "runtime",
-          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+          "why": "For the Godot SDK only (the registry keys N/As by runtime, and Swift on macOS and iOS and React on the web implement the type): Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
         },
         {
           "runtime": "android",
           "reason": "runtime",
-          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+          "why": "For the Godot SDK only (the registry keys N/As by runtime, and Swift on macOS and iOS and React on the web implement the type): Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
         },
         {
           "runtime": "ios",
           "reason": "runtime",
-          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+          "why": "For the Godot SDK only (the registry keys N/As by runtime, and Swift on macOS and iOS and React on the web implement the type): Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
         },
         {
           "runtime": "web",
           "reason": "runtime",
-          "why": "Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
+          "why": "For the Godot SDK only (the registry keys N/As by runtime, and Swift on macOS and iOS and React on the web implement the type): Godot has no machine-learning runtime to load or load-test a model with, so the GDScript SDK ships no ml.model handler; a game that adds a runtime (a GDExtension) can register its own handler through register_handler."
         }
       ]
     },
