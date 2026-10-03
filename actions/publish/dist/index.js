@@ -22272,6 +22272,8 @@ function parseAttachable(list = []) {
   return { paths, dirs, uids };
 }
 var AMBIGUOUS = ", so the device cannot tell what it loads";
+var RESOURCE_PATH_WHY = "sets resource_path, which can put it in the resource cache under an app path";
+var RESOURCE_PATH = Buffer.from("resource_path");
 function uidProblem(u, raw, ctx) {
   if (u === null || u < 0n)
     return `references ${raw}, which is not a canonical uid://${AMBIGUOUS}`;
@@ -22306,6 +22308,8 @@ var EXT_ATTR_RE = / ([a-z_]+)="([^"\\]*)"/g;
 var EXT_KEYS = ["type", "uid", "path", "id"];
 function textRefs(text) {
   const t = text.replace(/\r/g, "\n");
+  if (t.includes("resource_path") || t.replace(/\\/g, "").includes("resource_path"))
+    return { why: RESOURCE_PATH_WHY };
   const lines2 = t.split("\n");
   const refs = [];
   for (let i = 0; i < lines2.length; i++) {
@@ -22368,9 +22372,10 @@ function binaryRefs(b, start) {
   const dec2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let pos = start;
   let part = "header";
+  let limit = b.byteLength;
   const fail3 = () => new Stop(`is a binary resource whose ${part} cannot be read${AMBIGUOUS}`);
   const need = (n) => {
-    if (n < 0 || pos + n > b.byteLength) throw fail3();
+    if (n < 0 || pos + n > limit) throw fail3();
   };
   const u32 = () => {
     need(4);
@@ -22418,7 +22423,8 @@ function binaryRefs(b, start) {
     skip(4 * RESERVED_FIELDS);
     part = "reference tables";
     const nstr = u32();
-    for (let i = 0; i < nstr; i++) str();
+    const rpNames = /* @__PURE__ */ new Set();
+    for (let i = 0; i < nstr; i++) if (isResourcePath(str())) rpNames.add(i);
     const refs = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
@@ -22434,6 +22440,7 @@ function binaryRefs(b, start) {
     }
     const nint = u32();
     const offsets = [];
+    let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
       const path13 = text(str());
       need(8);
@@ -22446,20 +22453,31 @@ function binaryRefs(b, start) {
         };
       offsets.push(hi > 2097151 ? -1 : hi * 4294967296 + lo);
     }
+    tableEnd = pos;
     part = "properties";
     const real = flags & FLAG_REAL64 ? 8 : 4;
-    const name = () => {
+    const name = (prop) => {
       const id = u32();
-      if (id & 2147483648) skip(id & 2147483647);
-      else if (id >= nstr) throw fail3();
+      if (id & 2147483648) {
+        const n = id & 2147483647;
+        need(n);
+        const inline = b.subarray(pos, pos + n);
+        pos += n;
+        if (prop && isResourcePath(inline)) throw new Stop(RESOURCE_PATH_WHY);
+      } else if (id >= nstr) throw fail3();
+      else if (prop && rpNames.has(id)) throw new Stop(RESOURCE_PATH_WHY);
     };
-    for (const off of offsets) {
-      if (off < 0 || off > b.byteLength) throw fail3();
+    let walked = 0;
+    for (let i = 0; i < offsets.length; i++) {
+      const off = offsets[i];
+      const prev = i === 0 ? tableEnd - 1 : offsets[i - 1];
+      if (off < 0 || off <= prev || off > b.byteLength) throw fail3();
+      limit = i + 1 < offsets.length ? Math.max(off, Math.min(offsets[i + 1], b.byteLength)) : b.byteLength;
       pos = off;
       str();
       const pc = u32();
       for (let j = 0; j < pc; j++) {
-        name();
+        name(true);
         let pending = 1;
         while (pending > 0) {
           pending--;
@@ -22539,7 +22557,7 @@ function binaryRefs(b, start) {
               let subs = dv.getUint16(pos + 2, true) & 32767;
               pos += 4;
               if (format < 3) subs += 1;
-              for (let k = 0; k < names + subs; k++) name();
+              for (let k = 0; k < names + subs; k++) name(false);
               break;
             }
             case 24: {
@@ -22597,12 +22615,21 @@ function binaryRefs(b, start) {
           }
         }
       }
+      walked += pos - off;
+      if (walked > b.byteLength) throw fail3();
     }
     return { refs };
   } catch (e) {
     if (e instanceof Stop) return { why: e.why };
     throw e;
   }
+}
+function isResourcePath(s) {
+  const z = s.indexOf(0);
+  let cut = z === -1 ? s : s.subarray(0, z);
+  if (cut.length >= 3 && cut[0] === 239 && cut[1] === 187 && cut[2] === 191)
+    cut = cut.subarray(3);
+  return Buffer.from(cut).equals(RESOURCE_PATH);
 }
 function uidCacheIds(data) {
   if (data.byteLength < 4) return [];
