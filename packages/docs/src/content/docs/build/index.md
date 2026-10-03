@@ -23,7 +23,7 @@ those documents and gates the app on them. Everything below is one of those thre
 | [The .pkey/ manifest](/docs/build/manifest/)      | The three files, the `ConfigEntry` catalog shape, editor tooling, and how a resync reconciles the manifest with admin overrides    |
 | [Onboarding a product](/docs/build/onboarding/)   | The end-to-end walkthrough — stand up the platform, declare services, register, integrate, ship — using djdl as the worked example |
 | [Registering a product](/docs/build/registering/) | How a product becomes a row: repo-link vs. manual create, and the `modules`/`devices.registration` switches                        |
-| [SDKs](/docs/build/sdks/)                         | One wire contract, six surfaces — Node, React, Python, Swift, Godot and the CLI                                                        |
+| [SDKs](/docs/build/sdks/)                         | One wire contract, six surfaces — Node, React, Python, Swift, Godot and the CLI                                                    |
 | [The wire contract](/docs/build/wire/)            | The frozen JWS envelope your client verifies, for debugging a rejection or porting a sixth SDK                                     |
 | [Going offline](/docs/build/offline/)             | The three offline depths: grace, air-gapped bundles, and local-only builds                                                         |
 | [API reference](/docs/build/api/)                 | Where the machine-readable OpenAPI spec and the full route table live                                                              |
