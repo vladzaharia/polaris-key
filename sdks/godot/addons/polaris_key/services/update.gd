@@ -218,6 +218,7 @@ func decide(channel := "", staged: Variant = null, skip_version: Variant = null)
 	var core: PKeyCore = ready["core"]
 	if not core.cache.apply_update(flow["committed"], flow["records"]):
 		push_warning("PolarisKey: the update slices could not be written (%s)." % str(core.last_store_error))
+	packs.remember_feed_content(flow.get("content"))
 	if flow.get("revocations") is Dictionary:
 		var kept: PKeyResult = await packs.record_revocations(flow["revocations"])
 		if not kept.ok:
@@ -321,6 +322,7 @@ func feed(channel := "") -> PKeyUpdateFeed:
 		if pinned.has(h):
 			records[h] = core.cache.release_records[h]
 	core.cache.apply_update(step["committed"], records)
+	packs.remember_feed_content(step.get("content"))
 	_end()
 	return PKeyUpdateFeed.of(step["feed"], step["feed_source"], step["errors"])
 

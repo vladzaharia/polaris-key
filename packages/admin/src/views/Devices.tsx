@@ -180,6 +180,11 @@ export function Devices({ slug }: { slug: string }): React.ReactElement {
           ),
       },
       {
+        id: "trust",
+        header: "Trust",
+        cell: (r) => <TrustBadge device={r} />,
+      },
+      {
         id: "platform",
         header: "Platform",
         cell: (r) => (
@@ -648,6 +653,16 @@ function DeviceFacts({
           "License-free (registered, no license)"
         )}
       </Row>
+      <Row label="Trust level">
+        <TrustBadge device={d} />
+        {d.trustLevel === "attested" && d.attestedAt ? (
+          <span className="text-xs text-muted-foreground">
+            {" "}
+            · attested {formatStamp(d.attestedAt)}
+          </span>
+        ) : null}
+      </Row>
+      <Row label="Last verdict">{verdictText(d.lastVerdict)}</Row>
       <Row label="First seen">{formatStamp(d.firstSeen)}</Row>
       <Row label="Last seen">{formatStamp(d.lastSeen)}</Row>
       <Row label="Platform">
@@ -692,4 +707,38 @@ function DeviceFacts({
       ) : null}
     </dl>
   );
+}
+
+/** P6-02: the device trust level. `basic` is the expected level for web, desktop and sideloaded
+ *  builds, so it is shown neutrally, never as a warning. */
+function TrustBadge({
+  device: d,
+}: {
+  device: ProductDeviceDto;
+}): React.ReactElement {
+  return d.trustLevel === "attested" ? (
+    <Badge variant="success" title={verdictText(d.lastVerdict)}>
+      Attested
+    </Badge>
+  ) : (
+    <Badge variant="outline" title={verdictText(d.lastVerdict)}>
+      Basic
+    </Badge>
+  );
+}
+
+/** One line for the last attestation verdict. */
+function verdictText(v: ProductDeviceDto["lastVerdict"]): string {
+  if (!v) return "No attestation";
+  const kind =
+    v.kind === "app-attest"
+      ? "App Attest"
+      : v.kind === "play-integrity"
+        ? "Play Integrity"
+        : (v.kind ?? "Attestation");
+  const when = typeof v.at === "number" ? ` (${formatStamp(v.at)})` : "";
+  if (v.outcome === "attested") return `${kind}: attested${when}`;
+  if (v.outcome === "rejected")
+    return `${kind}: rejected${v.reason ? `, ${v.reason}` : ""}${when}`;
+  return `${kind}: ${v.outcome ?? "unknown"}${when}`;
 }

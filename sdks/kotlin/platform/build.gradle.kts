@@ -1,8 +1,8 @@
 // polaris-key-platform (proposed coordinates im.plrs.key:polaris-key-platform). Two flavours, and
 // the flavour is a POLICY boundary (Play forbids self-update and REQUEST_INSTALL_PACKAGES in Play
 // builds):
-//   play    install source, Keystore, Play In-App Updates, Play Asset Delivery. No PackageInstaller
-//           session code, no install permission.
+//   play    install source, Keystore, Play In-App Updates, Play Asset Delivery, the standard Play
+//           Integrity API (P6-02). No PackageInstaller session code, no install permission.
 //   direct  install source, Keystore, verified PackageInstaller self-update. No Play Core.
 // Pure Kotlin: no NDK, no .so files (a later zstd-jni must be 16 KB page aligned, notes/E4 §2.1).
 plugins {
@@ -55,6 +55,7 @@ base { archivesName.set("polaris-key-platform") }
 dependencies {
     "playApi"(libs.play.app.update)
     "playApi"(libs.play.asset.delivery)
+    "playApi"(libs.play.integrity)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

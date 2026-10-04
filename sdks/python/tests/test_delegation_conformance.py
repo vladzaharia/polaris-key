@@ -65,7 +65,10 @@ def test_delegation_case(case: Dict[str, Any]) -> None:
         )
         assert r.ok, f"{case['id']}: {case['description']} (refused: {r.reason})"
         assert r.content is not None
-        assert r.content.to_dict() == want["content"], case["description"]
+        # plans/P4-29.md §2.2: these feeds carry no delta menu.
+        got = r.content.to_dict()
+        assert got.pop("deltas") is None, case["description"]
+        assert got == want["content"], case["description"]
         return
     if case["mode"] == "revocation":
         rv = verify_revocation(

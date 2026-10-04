@@ -310,3 +310,56 @@ static func _publish(c: Dictionary) -> Dictionary:
 	out["requests"] = c["requests"]
 	out["cost"] = c["cost"]
 	return out
+
+
+## A delta's id: a `payload` delta's `artifact.sha256`, a `files` delta's `patch.sha256`; null
+## for anything else.
+static func delta_id(d: Variant) -> Variant:
+	if not (d is Dictionary):
+		return null
+	var ref = null
+	if PKeyPackClaims.same(d.get("scope"), "payload"):
+		ref = d.get("artifact")
+	elif PKeyPackClaims.same(d.get("scope"), "files"):
+		ref = d.get("patch")
+	var id = ref.get("sha256") if ref is Dictionary else null
+	return id if id is String else null
+
+
+## `with_feed_deltas(variant, deltas)` (plans/P4-29.md §2.4 step 2; client-core `withFeedDeltas`):
+## the variant with the feed's menu for its payload appended to a COPY of its deltas, after the
+## record's own. Unchanged, with empty `feedIds`, when `deltas` is null, the variant is not usable,
+## its layout is not `container`, or the menu has no key equal to `variant.payload.sha256`. An
+## entry whose `artifact.sha256` equals an existing delta id is skipped (a record delta wins).
+## `feedIds` lists the appended artifact hashes in feed order. The merged list may exceed
+## MAX_VARIANT_DELTAS, a claim on records only. Returns {variant, feedIds}; never fails, never
+## changes its arguments.
+static func with_feed_deltas(variant: Dictionary, deltas: Variant) -> Dictionary:
+	if not (deltas is Dictionary) or not variant_usable(variant) \
+			or not PKeyPackClaims.same(variant["files"].get("layout"), "container") \
+			or not (variant.get("payload") is Dictionary) or not (deltas as Dictionary).has(variant["payload"].get("sha256")):
+		return {"variant": variant, "feedIds": []}
+	var merged: Array = (variant["deltas"] as Array).duplicate() if variant.get("deltas") is Array else []
+	var ids := {}
+	for d in merged:
+		# As select.ts: a `payload` delta's artifact, any other scope's patch.
+		var ref = null
+		if d is Dictionary:
+			ref = d.get("artifact") if PKeyPackClaims.same(d.get("scope"), "payload") else d.get("patch")
+		if ref is Dictionary and ref.get("sha256") is String:
+			ids[ref["sha256"]] = true
+	var feed_ids: Array = []
+	var entries = deltas[variant["payload"]["sha256"]]
+	if entries is Array:
+		for e in entries:
+			var h: String = e["artifact"]["sha256"]
+			if ids.has(h):
+				continue
+			ids[h] = true
+			merged.append({"method": e["method"], "scope": "payload", "from": e["from"], "memBytes": e["memBytes"], "artifact": {"sha256": h, "bytes": e["artifact"]["bytes"]}})
+			feed_ids.append(h)
+	if feed_ids.is_empty():
+		return {"variant": variant, "feedIds": feed_ids}
+	var out := variant.duplicate()
+	out["deltas"] = merged
+	return {"variant": out, "feedIds": feed_ids}

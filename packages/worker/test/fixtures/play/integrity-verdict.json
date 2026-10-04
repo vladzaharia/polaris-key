@@ -1,0 +1,25 @@
+{
+  "$comment": "P6-02: a decodeIntegrityToken response in the shape Google documents for a STANDARD request (developer.android.com/google/play/integrity/verdicts), recorded as a template: the fake decoder (test/attest.test.ts) fills requestDetails.requestHash with the hash the token was minted for and timestampMillis with the mint time, and a test may override any member. No real token, app or device.",
+  "tokenPayloadExternal": {
+    "requestDetails": {
+      "requestPackageName": "gg.acme.djdl",
+      "requestHash": "{requestHash}",
+      "timestampMillis": "{timestampMillis}"
+    },
+    "appIntegrity": {
+      "appRecognitionVerdict": "PLAY_RECOGNIZED",
+      "packageName": "gg.acme.djdl",
+      "certificateSha256Digest": ["6a6a1474b5cbbb2b1aa57e0bc3"],
+      "versionCode": "111"
+    },
+    "deviceIntegrity": {
+      "deviceRecognitionVerdict": ["MEETS_DEVICE_INTEGRITY"]
+    },
+    "accountDetails": {
+      "appLicensingVerdict": "LICENSED"
+    },
+    "environmentDetails": {
+      "playProtectVerdict": "NO_ISSUES"
+    }
+  }
+}

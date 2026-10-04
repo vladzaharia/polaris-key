@@ -981,6 +981,22 @@ export interface Delivery {
   reportedAvailability(): Promise<
     { releaseId: string; outletId: string; state: string }[]
   >;
+  /**
+   * P6-02: what a device attestation is verified against — the bundle ids of the product's LIVE
+   * `app-store` and `testflight` outlets (App Attest's RP ID is `<TeamID>.<bundleId>`), and the
+   * Play package with the `google-service-account` credential PINNED to it (Distribution's own
+   * pin check, `resolvePlaySetup`), or why there is none. Optional so a test double need not
+   * implement it; Core's attest route treats a missing method like a missing setup.
+   */
+  attestationTargets?(): Promise<AttestationTargets>;
+}
+
+/** P6-02: the store identities a device attestation must match (`Delivery.attestationTargets`). */
+export interface AttestationTargets {
+  appleBundleIds: string[];
+  play:
+    | { packageName: string; credentialId: string }
+    | { packageName: null; credentialId: null; inert: string };
 }
 
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────

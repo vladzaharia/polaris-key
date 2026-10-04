@@ -48,6 +48,7 @@ import {
   type LicensedDeviceToken,
 } from "./devices.js";
 import { resolveMergedPayload } from "./payload.js";
+import { trustRefusal } from "./deviceTrust.js";
 import {
   entitledChannels,
   injectAdminPolicy,
@@ -297,7 +298,15 @@ export async function accessRefusal(
         return wireError(403, "version_blocked", {
           allowedRange: decision.allowedRange,
         });
-      return null;
+      return trustRefusal(
+        env,
+        db,
+        product,
+        decision.device,
+        "gatedDelivery",
+        now,
+        "wire",
+      );
     }
     if (decision.code === "version_blocked")
       return wireError(403, "version_blocked", {
@@ -315,7 +324,15 @@ export async function accessRefusal(
       "download_auth_required",
       "a valid license is required to download this release artifact",
     );
-  return null;
+  return trustRefusal(
+    env,
+    db,
+    product,
+    valid.device,
+    "gatedDelivery",
+    now,
+    "flat",
+  );
 }
 
 // ── A delivery gate (P4-05) ─────────────────────────────────────────────────────────────────
@@ -357,5 +374,14 @@ export async function entitlementFlagRefusal(
       Object.hasOwn(payload.entitlements, f) &&
       payload.entitlements[f]?.value === true,
   );
-  return held ? null : wireError(403, "not_entitled");
+  if (!held) return wireError(403, "not_entitled");
+  return trustRefusal(
+    env,
+    db,
+    product,
+    valid.device,
+    "gatedDelivery",
+    now,
+    "wire",
+  );
 }

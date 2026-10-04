@@ -1814,7 +1814,7 @@
       "optional": false,
       "refs": ["plans/P4-29.md §2.2 §2.4 §4 §5"],
       "brief": "wp/P4-30-feed-delta-menu-python-swift.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "P4-29"
     },
     {
@@ -1833,7 +1833,7 @@
       "optional": false,
       "refs": ["plans/P4-29.md §2.2 §2.4 §4 §5"],
       "brief": "wp/P4-31-feed-delta-menu-godot.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "P4-29"
     },
     {
@@ -2034,7 +2034,7 @@
       "optional": false,
       "refs": ["README §10 P6"],
       "brief": "wp/P6-02-trust-tiers.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P6-03",
