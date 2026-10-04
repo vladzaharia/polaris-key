@@ -817,7 +817,8 @@ Validate portal email:
   portal settings are active.
 - D1 migrations are applied to `polaris_key_prod`.
 - KV namespace `POLARIS_HOT_prod` is bound as `HOT`.
-- Durable Object namespace `RL` is bound in prod.
+- Durable Object namespaces `RL`, `UPDATE_HEALTH` and `SINGLE_USE` are bound in prod (migration
+  tags `v1` to `v3`).
 - R2 bucket `polaris-key-blobs-prod` is bound as `BLOBS`, with 180-day age locks on `blobs/`,
   `bundles/`, `deltas/` and `gated/`, a 1-day expiry on `staging/`, and `r2.dev` disabled.
 - `https://dl.plrs.im/manage` and `https://dl.plrs.im./manage` (trailing dot) answer 404 with

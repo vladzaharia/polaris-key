@@ -13,6 +13,13 @@ import {
 } from "../../../core/platform.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
+  artefactRef,
+  consumeArtefact,
+  deleteArtefact,
+  putArtefact,
+  type ArtefactRef,
+} from "../../../core/singleUse.js";
+import {
   getOrCreateAccountByEmail,
   getOrCreateAccountByIdentity,
   portalIdentityIssuerKey,
@@ -35,26 +42,33 @@ import {
 import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
 
 const FLOW_TTL_SECONDS = 600;
-const FLOW_PREFIX = "portal:oidc-flow:";
-const MAGIC_PREFIX = "portal:magic:";
 
 /**
- * KV key for an in-flight portal OIDC sign-in, addressed by its `state`.
+ * Single-use store address (`core/singleUse.ts`, I-02) of an in-flight portal OIDC sign-in,
+ * by its `state`. Both portal credentials live there rather than in KV because KV `get` then
+ * `delete` is not atomic (G15): two racing callbacks, or two clicks on one magic link, could
+ * both be served. The store's `consume` hands a record out at most once.
  *
  * R12-04: both portal credentials (the OIDC `state` and the magic-link token) used to be the
- * key name verbatim, so a KV listing alone was a credential dump: a live `state` beside its
- * PKCE `verifier`, and a working magic-link token beside the victim's email. Hashing under
- * `KEY_HASH_PEPPER` makes a listing inert, exactly as the admin and product flow keys do.
+ * key name verbatim, so a listing alone was a credential dump: a live `state` beside its PKCE
+ * `verifier`, and a working magic-link token beside the victim's email. The address is the
+ * secret's hash under `KEY_HASH_PEPPER`, so a listing stays inert.
  *
  * Exported for tests that plant or inspect a flow record.
  */
-export async function portalFlowKey(env: Env, state: string): Promise<string> {
-  return `${FLOW_PREFIX}${await hashKey(state, env.KEY_HASH_PEPPER)}`;
+export async function portalFlowKey(
+  env: Env,
+  state: string,
+): Promise<ArtefactRef> {
+  return artefactRef("portal-flow", await hashKey(state, env.KEY_HASH_PEPPER));
 }
 
-/** KV key for a pending magic link, addressed by its token. R12-04: see `portalFlowKey`. */
-export async function portalMagicKey(env: Env, token: string): Promise<string> {
-  return `${MAGIC_PREFIX}${await hashKey(token, env.KEY_HASH_PEPPER)}`;
+/** Single-use store address of a pending magic link, by its token. See `portalFlowKey`. */
+export async function portalMagicKey(
+  env: Env,
+  token: string,
+): Promise<ArtefactRef> {
+  return artefactRef("portal-magic", await hashKey(token, env.KEY_HASH_PEPPER));
 }
 
 interface FlowRecord {
@@ -236,9 +250,12 @@ export async function handlePortalLogin(
   const { verifier, challenge } = await pkce();
   const redirectUri = `${url.origin}/callback`;
   const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo };
-  await env.HOT.put(await portalFlowKey(env, state), JSON.stringify(flow), {
-    expirationTtl: FLOW_TTL_SECONDS,
-  });
+  await putArtefact(
+    env,
+    await portalFlowKey(env, state),
+    JSON.stringify(flow),
+    FLOW_TTL_SECONDS,
+  );
 
   const authorize = new URL(`${cfg.issuer.replace(/\/$/, "")}/authorize`);
   authorize.searchParams.set("response_type", "code");
@@ -274,11 +291,15 @@ export async function handlePortalCallback(
   if (!caps.portalEnabled || !caps.oidcEnabled) {
     return htmlError(404, "OIDC sign-in is disabled.");
   }
-  const flowKey = await portalFlowKey(env, state);
-  const raw = await env.HOT.get(flowKey);
+  // Atomic and single-use: of two racing callbacks for one `state`, one gets the flow.
+  const raw = await consumeArtefact(env, await portalFlowKey(env, state));
   if (!raw) return htmlError(400, "This sign-in link has expired.");
-  const flow = JSON.parse(raw) as FlowRecord;
-  await env.HOT.delete(flowKey);
+  let flow: FlowRecord;
+  try {
+    flow = JSON.parse(raw) as FlowRecord;
+  } catch {
+    return htmlError(400, "This sign-in link has expired.");
+  }
 
   const cfg = platformOidcConfig(env);
   if (!cfg) return htmlError(500, "Portal OIDC is not configured.");
@@ -402,12 +423,10 @@ export async function handleMagicStart(
   if (returnTo) verifyUrl.searchParams.set("return_to", returnTo);
   const record: MagicRecord = { email, returnTo };
   const magicKey = await portalMagicKey(env, token);
-  await env.HOT.put(magicKey, JSON.stringify(record), {
-    expirationTtl: FLOW_TTL_SECONDS,
-  });
+  await putArtefact(env, magicKey, JSON.stringify(record), FLOW_TTL_SECONDS);
   const sent = await sendMagicLink(env, email, verifyUrl.toString());
   if (!sent) {
-    await env.HOT.delete(magicKey);
+    await deleteArtefact(env, magicKey);
     return authJson(
       {
         error: "email_not_configured",
@@ -432,11 +451,15 @@ export async function handleMagicVerify(
   if (!caps.portalEnabled || !caps.magicEnabled) {
     return htmlError(404, "Email sign-in is disabled.");
   }
-  const magicKey = await portalMagicKey(env, token);
-  const raw = await env.HOT.get(magicKey);
+  // Atomic and single-use: two clicks (or a prefetcher and a click) cannot both sign in.
+  const raw = await consumeArtefact(env, await portalMagicKey(env, token));
   if (!raw) return htmlError(400, "This magic link has expired.");
-  await env.HOT.delete(magicKey);
-  const record = JSON.parse(raw) as MagicRecord;
+  let record: MagicRecord;
+  try {
+    record = JSON.parse(raw) as MagicRecord;
+  } catch {
+    return htmlError(400, "This magic link has expired.");
+  }
   const account = await getOrCreateAccountByEmail(db, record.email, now);
   if (account.status !== "active") return htmlError(403, "Account disabled.");
   await syncAccountLicenseLinks(db, account.id, now);

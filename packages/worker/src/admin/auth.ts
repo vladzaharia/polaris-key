@@ -3,7 +3,8 @@
  * activation in `../services/identity/oidc.ts` (which mints license tokens). Here we just prove
  * an operator's identity + groups and drop a signed session cookie.
  *
- * - `GET /manage/login`     -> 302 to the IdP authorize endpoint (PKCE, state in KV).
+ * - `GET /manage/login`     -> 302 to the IdP authorize endpoint (PKCE, state in the
+ *                             single-use store, `core/singleUse.ts`).
  * - `GET /manage/callback`  -> exchange the code, verify the ID token, gate on a platform
  *                             OR product admin group, set the session cookie, 302 to /manage/.
  *
@@ -18,6 +19,12 @@ import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../crypto.js";
 import { clientIp, rateLimitOk } from "../core/rateLimit.js";
+import {
+  artefactRef,
+  consumeArtefact,
+  putArtefact,
+  type ArtefactRef,
+} from "../core/singleUse.js";
 import { platformOidcConfig } from "../platformOidc.js";
 import { brandedHtmlSecurityHeaders } from "../securityHeaders.js";
 import { escapeHtml, renderBrandPage } from "../core/brandHtml.js";
@@ -29,20 +36,21 @@ import {
 } from "./session.js";
 
 const FLOW_TTL_SECONDS = 600;
-const ADMIN_FLOW_PREFIX = "admin:flow:";
-
 /**
- * KV key for an in-flight admin sign-in.
+ * Single-use store address (`core/singleUse.ts`, I-02) of an in-flight admin sign-in. The
+ * callback `consume`s it, so two racing callbacks for one `state` cannot both be served (G15:
+ * KV `get` then `delete` was not atomic).
  *
- * R12-04: the `state` used to be the key name verbatim, so anyone who could list the HOT
- * namespace read live OIDC `state` values straight out of the key names — a credential dump
- * from metadata alone, with the PKCE `verifier` sitting in the value next to it. Hashing under
- * `KEY_HASH_PEPPER` makes the listing inert: a key name is no longer a usable `state`, and
- * without the pepper it cannot be reversed into one. Matches what `kv.ts` (device tokens) and
- * identity's browser session (download tokens) already do.
+ * R12-04: the `state` used to be the key name verbatim, so anyone who could list the store
+ * read live OIDC `state` values straight out of the key names — a credential dump from
+ * metadata alone, with the PKCE `verifier` sitting in the value next to it. The address is the
+ * `state`'s hash under `KEY_HASH_PEPPER`, so a listing is inert. Exported for tests.
  */
-async function adminFlowKey(state: string, env: Env): Promise<string> {
-  return `${ADMIN_FLOW_PREFIX}${await hashKey(state, env.KEY_HASH_PEPPER)}`;
+export async function adminFlowKey(
+  state: string,
+  env: Env,
+): Promise<ArtefactRef> {
+  return artefactRef("admin-flow", await hashKey(state, env.KEY_HASH_PEPPER));
 }
 
 interface FlowRecord {
@@ -240,9 +248,12 @@ export async function handleAdminLogin(
     redirectUri,
     ...(returnTo ? { returnTo } : {}),
   };
-  await env.HOT.put(await adminFlowKey(state, env), JSON.stringify(flow), {
-    expirationTtl: FLOW_TTL_SECONDS,
-  });
+  await putArtefact(
+    env,
+    await adminFlowKey(state, env),
+    JSON.stringify(flow),
+    FLOW_TTL_SECONDS,
+  );
 
   const authorize = new URL(`${cfg.issuer.replace(/\/$/, "")}/authorize`);
   authorize.searchParams.set("response_type", "code");
@@ -282,17 +293,14 @@ export async function handleAdminCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlError(400, "Missing authorization code.");
-  const flowKey = await adminFlowKey(state, env);
-  const raw = await env.HOT.get(flowKey);
+  const raw = await consumeArtefact(env, await adminFlowKey(state, env));
   if (!raw) return htmlError(400, "This sign-in link has expired. Try again.");
   let flow: FlowRecord;
   try {
     flow = JSON.parse(raw) as FlowRecord;
   } catch {
-    await env.HOT.delete(flowKey);
     return htmlError(400, "This sign-in link has expired. Try again.");
   }
-  await env.HOT.delete(flowKey);
 
   const identity = await verifier.verify({ code, flow, env });
   if (!identity || !identity.sub)

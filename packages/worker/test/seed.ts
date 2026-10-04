@@ -19,6 +19,7 @@ import { parseServices } from "../src/core/services.js";
 import { readIdentityIssuance } from "../src/core/identityTrust.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
+import { makeSingleUseNamespace } from "./singleUseMock.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -55,6 +56,7 @@ export function makeEnv(kv: KvMock, _slugs: string[]): Env {
     HOT: asKv(kv),
     DB: undefined,
     RL: makeRlNamespace(),
+    SINGLE_USE: makeSingleUseNamespace(),
     PLATFORM_KEK: TEST_KEK,
   };
   return env as Env;

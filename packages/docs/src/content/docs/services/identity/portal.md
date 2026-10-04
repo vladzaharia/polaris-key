@@ -52,9 +52,11 @@ share one IdP client and one trust boundary. Rate-limited to 20 requests per min
 
 **Magic links.** `POST /api/magic/start` takes `{ "email": "…" }`, rate-limited to 8 per minute
 per IP, and — only if the platform has an `EMAIL` binding configured — sends a link to
-`/magic/verify?token=…`. The token is single-use and expires in **10 minutes**: the KV record
-behind it is deleted the moment `/magic/verify` reads it, before the token is even checked
-against anything else, so a link can never be redeemed twice. The email is explicit about the
+`/magic/verify?token=…`. The token is single-use and expires in **10 minutes**: the record
+behind it lives in the Worker's atomic single-use store (a sharded Durable Object) and
+`/magic/verify` consumes it in one operation — read and delete together, before anything else is
+checked — so a link can never be redeemed twice, not even by two clicks that arrive at once. The
+portal OIDC `state` is held the same way. The email is explicit about the
 window: "This link expires in 10 minutes."
 
 Both paths accept an optional `returnTo`, which must be same-origin and additionally may not

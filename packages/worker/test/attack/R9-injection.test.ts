@@ -75,6 +75,7 @@ import {
   PORTAL_CSRF_HEADER,
   issuePortalSession,
 } from "../../src/services/identity/portal/session.js";
+import { artefacts } from "../singleUseMock.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SLUG = "djdl";
@@ -616,7 +617,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     const product = (await loadProduct(env, db, SLUG))!;
 
     // A flow record is all the attacker needs; GET /djdl/auth/start hands them one.
-    await env.HOT.put(
+    await artefacts(env).put(
       await flowKey(env, SLUG, "ATTACKER_STATE"),
       JSON.stringify({
         verifier: "v",
@@ -655,7 +656,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
     await seedCustomOidc(db, "http://169.254.169.254/latest/meta-data");
     const product = (await loadProduct(env, db, SLUG))!;
-    await env.HOT.put(
+    await artefacts(env).put(
       await flowKey(env, SLUG, "S"),
       JSON.stringify({
         verifier: "v",
@@ -691,7 +692,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
       await seedCustomOidc(db, "https://exfil.attacker.example");
       const product = (await loadProduct(env, db, SLUG))!;
-      await env.HOT.put(
+      await artefacts(env).put(
         await flowKey(env, SLUG, "S3"),
         JSON.stringify({
           verifier: "v",
@@ -726,7 +727,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       redirectUris: [`https://key.plrs.im/${SLUG}/identity/auth/callback`],
     });
     const product = (await loadProduct(env, db, SLUG))!;
-    await env.HOT.put(
+    await artefacts(env).put(
       await flowKey(env, SLUG, "S2"),
       JSON.stringify({
         verifier: "v",
@@ -1269,8 +1270,12 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
       product,
     );
     expect(res.status).toBe(302); // accepted
-    const stored = kv.keys().find((k) => k.startsWith(`p:${SLUG}:flow:`))!;
-    const flow = JSON.parse((await kv.get(stored))!) as { returnTo?: string };
+    const state = new URL(res.headers.get("location")!).searchParams.get(
+      "state",
+    )!;
+    const flow = JSON.parse(
+      (await artefacts(env).get(await flowKey(env, SLUG, state)))!,
+    ) as { returnTo?: string };
     expect(flow.returnTo).toBe("https://key.plrs.im/manage/api/products");
 
     // The portal twin (portal/auth.ts:100) refuses the same value.
@@ -1514,7 +1519,7 @@ describe("R9-10 KV key construction", () => {
     const product = (await loadProduct(env, db, SLUG))!;
 
     // Plant a device-flow record and try to reach it through the plain flow reader.
-    await kv.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, SLUG, "VICTIM"),
       JSON.stringify({ x: 1 }),
     );
@@ -1539,7 +1544,7 @@ describe("R9-10 KV key construction", () => {
       expect(res.status).toBe(400); // "unknown state" — never resolves cross-namespace
     }
     expect(
-      await kv.get(await deviceFlowKey(env, SLUG, "VICTIM")),
+      await artefacts(env).get(await deviceFlowKey(env, SLUG, "VICTIM")),
     ).not.toBeNull();
   });
 
@@ -1690,7 +1695,7 @@ describe("R9-12 escapeHtml coverage", () => {
     const kv = new KvMock();
     const env = makeEnv(kv, [SLUG]);
     await seedProduct(db, SLUG);
-    await kv.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, SLUG, "DC"),
       JSON.stringify({
         state: "s",

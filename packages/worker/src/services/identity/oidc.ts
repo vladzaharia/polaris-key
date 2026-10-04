@@ -76,6 +76,15 @@ import {
 } from "../../core/authz.js";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
+import {
+  artefactRef,
+  consumeArtefact,
+  deleteArtefact,
+  getArtefact,
+  putArtefact,
+  updateArtefact,
+  type ArtefactRef,
+} from "../../core/singleUse.js";
 
 const FLOW_TTL_SECONDS = 600;
 /** The poll cadence advertised by `/identity/auth/device/start`, enforced server-side (R8-02). */
@@ -325,14 +334,21 @@ async function getProvisioning(
 }
 
 /**
- * KV key for an in-flight product sign-in, addressed by its OIDC `state`.
+ * Single-use store address (`core/singleUse.ts`, I-02) of an in-flight product sign-in, by its
+ * OIDC `state`.
  *
- * R12-04: the `state` used to be the key name verbatim, so anyone who could LIST the HOT
- * namespace read live `state` values straight out of the key names, with the PKCE `verifier`
- * and `nonce` sitting in the value beside them. Hashing under `KEY_HASH_PEPPER` makes a listing
- * inert: a key name is no longer a usable `state`, and without the pepper it cannot be
- * reversed into one. Same shape as the admin flow key (`admin/auth.ts`), device tokens
- * (`kv.ts`) and browser sessions (`browserSession.ts`).
+ * Flow records, device-code records and the user-code index live in the atomic single-use store
+ * rather than KV (G15): every step that must happen once — the callback's claim of a `state`,
+ * a confirmation's spend of its CSRF token, the poll interval, the final redemption — is one
+ * atomic operation there (`updateArtefact`'s compare-and-set, or `consumeArtefact`), where KV's
+ * `get` then `put`/`delete` let two racing requests both pass.
+ *
+ * R12-04: the `state` used to be the key name verbatim, so anyone who could LIST the store read
+ * live `state` values straight out of the key names, with the PKCE `verifier` and `nonce`
+ * sitting in the value beside them. The address is the `state`'s hash under `KEY_HASH_PEPPER`,
+ * so a listing is inert: a key name is no longer a usable `state`, and without the pepper it
+ * cannot be reversed into one. The product prefixes the id, so one product's address can never
+ * name another's record.
  *
  * Exported for tests that plant or inspect a flow record; production code reaches it only
  * through the handlers below.
@@ -341,24 +357,30 @@ export async function flowKey(
   env: Env,
   product: string,
   state: string,
-): Promise<string> {
-  return `p:${product}:flow:${await hashKey(state, env.KEY_HASH_PEPPER)}`;
+): Promise<ArtefactRef> {
+  return artefactRef(
+    "oidc-flow",
+    `${product}:${await hashKey(state, env.KEY_HASH_PEPPER)}`,
+  );
 }
 
 /**
- * KV key for a device-code sign-in, addressed by its `deviceCode`.
+ * Single-use store address of a device-code sign-in, by its `deviceCode`.
  *
  * R12-04: the device code is the poll credential (together with the device id), so it gets
- * the same peppered hash as `flowKey`. Every reader (verify, confirm and poll) derives the key
- * the same way, so a lookup by device code still works and a key listing yields nothing that
- * can be polled.
+ * the same peppered hash as `flowKey`. Every reader (verify, confirm and poll) derives the
+ * address the same way, so a lookup by device code still works and a listing yields nothing
+ * that can be polled.
  */
 export async function deviceFlowKey(
   env: Env,
   product: string,
   code: string,
-): Promise<string> {
-  return `p:${product}:device-flow:${await hashKey(code, env.KEY_HASH_PEPPER)}`;
+): Promise<ArtefactRef> {
+  return artefactRef(
+    "device-flow",
+    `${product}:${await hashKey(code, env.KEY_HASH_PEPPER)}`,
+  );
 }
 
 // ── the RFC 8628 user code ──────────────────────────────────────────────────
@@ -412,18 +434,22 @@ export function normalizeUserCode(
 }
 
 /**
- * KV key for the user-code index: normalised user code → the flow's `deviceCode`.
+ * Single-use store address of the user-code index: normalised user code → the flow's
+ * `deviceCode`. Written with `ifAbsent`, so two flows can never claim one live user code.
  *
- * R12-04: a user code is a short-lived bearer handle for the confirmation page, so the key name
- * is its peppered hash — a HOT listing yields nothing a visitor could type. The value is the
+ * R12-04: a user code is a short-lived bearer handle for the confirmation page, so the address
+ * is its peppered hash — a listing yields nothing a visitor could type. The value is the
  * device code, which never leaves the server on this path.
  */
 export async function deviceUserKey(
   env: Env,
   product: string,
   normalisedUserCode: string,
-): Promise<string> {
-  return `p:${product}:device-user:${await hashKey(normalisedUserCode, env.KEY_HASH_PEPPER)}`;
+): Promise<ArtefactRef> {
+  return artefactRef(
+    "device-user",
+    `${product}:${await hashKey(normalisedUserCode, env.KEY_HASH_PEPPER)}`,
+  );
 }
 
 /** Drop a flow's user-code index. Records written before the independent code existed carry a
@@ -434,7 +460,7 @@ async function deleteUserCodeIndex(
   userCode: string,
 ): Promise<void> {
   const code = normalizeUserCode(userCode);
-  if (code) await env.HOT.delete(await deviceUserKey(env, product, code));
+  if (code) await deleteArtefact(env, await deviceUserKey(env, product, code));
 }
 
 function safeReturnTo(req: Request, raw: string | null): string | undefined {
@@ -897,10 +923,11 @@ async function beginAuthFlow(
   }
   const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
   if (viaDeviceCode) flow.viaDeviceCode = true;
-  await env.HOT.put(
+  await putArtefact(
+    env,
     await flowKey(env, product.slug, state),
     JSON.stringify(flow),
-    { expirationTtl: FLOW_TTL_SECONDS },
+    FLOW_TTL_SECONDS,
   );
 
   const authorize = new URL(`${oidc.issuer.replace(/\/$/, "")}/authorize`);
@@ -990,15 +1017,22 @@ export async function handleAuthDeviceStart(
   if (flow instanceof Response) return flow;
   const deviceCode = b64url(randomBytes(16));
   // The user code is independent of the device code (RFC 8628 §6.1). A live collision would
-  // point two flows at one code, so an occupied index slot means "draw again".
-  let userKey: string | null = null;
+  // point two flows at one code, so the index slot is claimed atomically (`ifAbsent`) and an
+  // occupied one means "draw again". The device record is written right after; until then the
+  // index resolves to nothing and the entry page answers "not valid or expired".
+  let claimed = false;
   let code = "";
-  for (let i = 0; i < USER_CODE_ATTEMPTS && !userKey; i++) {
+  for (let i = 0; i < USER_CODE_ATTEMPTS && !claimed; i++) {
     code = generateUserCode();
-    const key = await deviceUserKey(env, product.slug, code);
-    if ((await env.HOT.get(key)) === null) userKey = key;
+    claimed = await putArtefact(
+      env,
+      await deviceUserKey(env, product.slug, code),
+      deviceCode,
+      FLOW_TTL_SECONDS,
+      { ifAbsent: true },
+    );
   }
-  if (!userKey) return errorResponse(503, "unavailable", "try again");
+  if (!claimed) return errorResponse(503, "unavailable", "try again");
   const userCode = formatUserCode(code);
   const deviceRecord: DeviceFlowRecord = {
     state: flow.state,
@@ -1007,12 +1041,12 @@ export async function handleAuthDeviceStart(
     authorizeUrl: flow.authorizeUrl,
     deviceName,
   };
-  await env.HOT.put(
+  await putArtefact(
+    env,
     await deviceFlowKey(env, product.slug, deviceCode),
     JSON.stringify(deviceRecord),
-    { expirationTtl: FLOW_TTL_SECONDS },
+    FLOW_TTL_SECONDS,
   );
-  await env.HOT.put(userKey, deviceCode, { expirationTtl: FLOW_TTL_SECONDS });
   // The page a human types the code into, and the same page with the code pre-filled for a QR
   // code or a clickable link (RFC 8628 §3.2, §3.3.1). Neither carries the device code: that is
   // the poll credential and stays between this server and the polling client.
@@ -1067,22 +1101,26 @@ async function confirmDeviceFlow(
     return errorResponse(403, "forbidden", "confirmation failed");
 
   // The confirmation is an authorization input for the poll surfaces, so it is recorded on
-  // the flow the pollers actually read, not only on the device record (R8-01).
+  // the flow the pollers actually read, not only on the device record (R8-01). The flow must
+  // still exist (checked first, so an expired flow spends nothing).
   const stateKey = await flowKey(env, product.slug, record.state);
   const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
-  const flowRaw = await env.HOT.get(stateKey);
-  if (!flowRaw) return errorResponse(404, "not_found", "device code expired");
-  const flow = parseFlowRecord<FlowRecord>(flowRaw);
-  if (!flow) return errorResponse(404, "not_found", "device code expired");
-  flow.confirmedAt = now;
-  await env.HOT.put(stateKey, JSON.stringify(flow), {
-    expirationTtl: FLOW_TTL_SECONDS,
+  const flowRaw = await getArtefact(env, stateKey);
+  if (!flowRaw || !parseFlowRecord<FlowRecord>(flowRaw))
+    return errorResponse(404, "not_found", "device code expired");
+  // Spend the CSRF token atomically (single-use): of two racing POSTs carrying it, one
+  // confirms and the other is refused like any stale token.
+  const spent = await updateArtefact(env, deviceKey, {
+    expect: { csrf: token },
+    set: { confirmedAt: now },
+    unset: ["csrf"],
   });
-  record.confirmedAt = now;
-  delete record.csrf; // single-use
-  await env.HOT.put(deviceKey, JSON.stringify(record), {
-    expirationTtl: FLOW_TTL_SECONDS,
+  if (!spent.ok) return errorResponse(403, "forbidden", "confirmation failed");
+  const stamped = await updateArtefact(env, stateKey, {
+    set: { confirmedAt: now },
   });
+  if (!stamped.ok)
+    return errorResponse(404, "not_found", "device code expired");
   // A confirmed flow is done with its user code: nobody else who learns the code (a stream, a
   // photographed QR code, a guess) can re-render the page, re-mint the CSRF token or read the
   // authorize URL after the human has confirmed.
@@ -1166,11 +1204,13 @@ async function renderDeviceConfirmation(
 ): Promise<Response> {
   const csrf = b64url(randomBytes(16));
   record.csrf = csrf;
-  await env.HOT.put(
+  // An update, never a put: it cannot resurrect a record a poll redeemed meanwhile.
+  const minted = await updateArtefact(
+    env,
     await deviceFlowKey(env, product.slug, deviceCode),
-    JSON.stringify(record),
-    { expirationTtl: FLOW_TTL_SECONDS },
+    { set: { csrf } },
   );
+  if (!minted.ok) return errorResponse(404, "not_found", "device code expired");
   // Never the raw device id: with `state` it is half of what `/identity/auth/poll` checks, so
   // the page would hand it to anyone who holds the user code (R8-02, P1-06).
   const deviceLabel = record.deviceName || "Unnamed device";
@@ -1312,14 +1352,14 @@ export async function handleAuthDeviceEntry(
 
   const userCode = normalizeUserCode(rawCode);
   const deviceCode = userCode
-    ? await env.HOT.get(await deviceUserKey(env, product.slug, userCode))
+    ? await getArtefact(env, await deviceUserKey(env, product.slug, userCode))
     : null;
   const raw = deviceCode
-    ? await env.HOT.get(await deviceFlowKey(env, product.slug, deviceCode))
+    ? await getArtefact(env, await deviceFlowKey(env, product.slug, deviceCode))
     : null;
   const parsed = raw ? parseFlowRecord<DeviceFlowRecord>(raw) : null;
   // A confirmed flow no longer answers to its user code (the index is deleted on confirmation;
-  // this also covers a KV read that still sees the index for a moment after the delete).
+  // this also covers a request that read the index just before that delete).
   const record = parsed && !parsed.confirmedAt ? parsed : null;
   if (!userCode || !deviceCode || !record) {
     // A confirmation POST for a code that has gone away is still a refused confirmation.
@@ -1360,7 +1400,7 @@ export async function handleAuthDeviceVerify(
   const deviceCode = url.searchParams.get("device_code");
   if (!deviceCode) return errorResponse(400, "bad_request", "missing code");
   const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
-  const raw = await env.HOT.get(deviceKey);
+  const raw = await getArtefact(env, deviceKey);
   if (!raw) return errorResponse(404, "not_found", "device code expired");
   const record = parseFlowRecord<DeviceFlowRecord>(raw);
   if (!record) return errorResponse(404, "not_found", "device code expired");
@@ -1440,27 +1480,29 @@ export async function handleAuthCallback(
   );
   if (limited) return limited;
   const stateKey = await flowKey(env, product.slug, state);
-  const raw = await env.HOT.get(stateKey);
-  if (!raw) return errorResponse(400, "bad_request", "unknown state");
-  const flow = parseFlowRecord<FlowRecord>(raw);
-  if (!flow) return errorResponse(400, "bad_request", "unknown state");
   // Single-use state (R8-04). Claim the flow before any outbound call so a second callback
   // can never overwrite the license a poller is already waiting on; a replay gets exactly the
-  // same generic answer as an unknown state.
-  if (flow.consumedAt)
-    return errorResponse(400, "bad_request", "unknown state");
-  flow.consumedAt = now;
-  await env.HOT.put(stateKey, JSON.stringify(flow), {
-    expirationTtl: FLOW_TTL_SECONDS,
+  // same generic answer as an unknown state. The claim is one atomic compare-and-set in the
+  // single-use store (G15): of two racing callbacks, exactly one sees `consumedAt` absent.
+  const claim = await updateArtefact(env, stateKey, {
+    expect: { consumedAt: null },
+    set: { consumedAt: now },
   });
+  if (!claim.ok || !claim.payload)
+    return errorResponse(400, "bad_request", "unknown state");
+  const flow = parseFlowRecord<FlowRecord>(claim.payload);
+  if (!flow) {
+    await deleteArtefact(env, stateKey);
+    return errorResponse(400, "bad_request", "unknown state");
+  }
   const oidc = await resolveOidcConfig(env, db, product);
   if (oidc instanceof Response) {
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return oidc;
   }
   // Defense in depth: the stored flow's redirect_uri must still be allow-listed.
   if (!redirectUriAllowed(oidc.row, flow.redirectUri)) {
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
 
@@ -1482,18 +1524,18 @@ export async function handleAuthCallback(
   if (!tokenRes.ok) {
     // Delete the flow rather than recording a reason — pollers must not be able to
     // enumerate IdP failure modes (D8). The poll surface returns a generic error.
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return errorResponse(502, "oidc_error", "token exchange failed");
   }
   let tokens: { id_token?: string };
   try {
     tokens = (await tokenRes.json()) as { id_token?: string };
   } catch {
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return errorResponse(502, "oidc_error", "token response invalid");
   }
   if (!tokens.id_token) {
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return errorResponse(502, "oidc_error", "no id_token");
   }
 
@@ -1517,7 +1559,7 @@ export async function handleAuthCallback(
     if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce)
       throw new Error("nonce mismatch");
   } catch {
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
@@ -1527,7 +1569,7 @@ export async function handleAuthCallback(
   // (R8-05a). Same generic 401 as any other bad ID token.
   const identity = mapClaims(claims);
   if (!identity.sub) {
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
@@ -1553,26 +1595,24 @@ export async function handleAuthCallback(
   // decision with the only party that holds the device code.
   if (flow.viaDeviceCode) {
     if (await identityRefusal(db, product, identity, now)) {
-      await env.HOT.delete(stateKey);
+      await deleteArtefact(env, stateKey);
       return errorResponse(403, "forbidden", "not entitled");
     }
     flow.identity = identity;
-    await env.HOT.put(stateKey, JSON.stringify(flow), {
-      expirationTtl: FLOW_TTL_SECONDS,
-    });
+    await updateArtefact(env, stateKey, { set: { identity } });
     return signedInPage();
   }
   const result = await activateFromIdentity(db, product, identity, now);
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     return errorResponse(403, "forbidden", "not entitled");
   }
   flow.licenseId = result.licenseId;
   if (flow.returnTo) {
     const license = await getLicense(db, product.slug, result.licenseId);
     if (!license) {
-      await env.HOT.delete(stateKey);
+      await deleteArtefact(env, stateKey);
       return errorResponse(401, "unauthorized", "license unavailable");
     }
     const session = await createBrowserSession(
@@ -1583,7 +1623,7 @@ export async function handleAuthCallback(
       now,
       req,
     );
-    await env.HOT.delete(stateKey);
+    await deleteArtefact(env, stateKey);
     if (!session.ok) {
       return errorResponse(
         session.status,
@@ -1600,9 +1640,7 @@ export async function handleAuthCallback(
       },
     });
   }
-  await env.HOT.put(stateKey, JSON.stringify(flow), {
-    expirationTtl: FLOW_TTL_SECONDS,
-  });
+  await updateArtefact(env, stateKey, { set: { licenseId: flow.licenseId } });
   return signedInPage();
 }
 
@@ -1766,7 +1804,7 @@ async function pollAuthFlow(
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing state/device");
   const stateKey = await flowKey(env, product.slug, state);
-  const raw = await env.HOT.get(stateKey);
+  const raw = await getArtefact(env, stateKey);
   if (!raw) return json({ status: "timeout" });
   const flow = parseFlowRecord<FlowRecord>(raw);
   if (!flow) return json({ status: "timeout" });
@@ -1817,8 +1855,9 @@ async function pollAuthFlow(
       ) {
         if (!flow.identityShownAt) {
           flow.identityShownAt = now;
-          await env.HOT.put(stateKey, JSON.stringify(flow), {
-            expirationTtl: FLOW_TTL_SECONDS,
+          await updateArtefact(env, stateKey, {
+            expect: { identityShownAt: null },
+            set: { identityShownAt: now },
           });
         }
         return json({
@@ -1835,7 +1874,7 @@ async function pollAuthFlow(
     if ("error" in result) {
       // The callback checked this; it can still change underneath a waiting flow (the
       // identity's licence was disabled meanwhile). Same generic answer as every failure (D8).
-      await env.HOT.delete(stateKey);
+      await deleteArtefact(env, stateKey);
       return json({ status: "error" });
     }
     licenseId = result.licenseId;
@@ -1843,18 +1882,29 @@ async function pollAuthFlow(
     // Recorded before minting, so a retried poll after a failed mint reuses this licence and
     // never runs the activation (or the merge) twice.
     flow.licenseId = licenseId;
-    await env.HOT.put(stateKey, JSON.stringify(flow), {
-      expirationTtl: FLOW_TTL_SECONDS,
-    });
+    await updateArtefact(env, stateKey, { set: { licenseId } });
   }
 
+  // Redeem the flow atomically BEFORE minting (G15): of two racing polls, exactly one takes the
+  // record and mints; the other sees it gone and answers `timeout`, as it would a moment later.
+  // A mint that then fails puts the record back (with its `licenseId`), so a retried poll
+  // reuses that licence and never runs the activation (or the merge) twice.
+  const redeemed = await consumeArtefact(env, stateKey);
+  if (!redeemed) return json({ status: "timeout" });
   let token: string;
   try {
     token = await authorizeAndMint(env, db, product, licenseId, deviceId, now);
   } catch {
+    const back = parseFlowRecord<FlowRecord>(redeemed) ?? flow;
+    back.licenseId = licenseId;
+    await putArtefact(
+      env,
+      stateKey,
+      JSON.stringify(back),
+      FLOW_TTL_SECONDS,
+    ).catch(() => undefined);
     return json({ status: "error" });
   }
-  await env.HOT.delete(stateKey);
   return json({
     status: "ready",
     token,
@@ -1931,7 +1981,7 @@ export async function handleAuthDevicePoll(
   );
   if (limited) return limited;
   const deviceKey = await deviceFlowKey(env, product.slug, state);
-  const raw = await env.HOT.get(deviceKey);
+  const raw = await getArtefact(env, deviceKey);
   if (!raw) return json({ status: "timeout" });
   const deviceFlow = parseFlowRecord<DeviceFlowRecord>(raw);
   if (!deviceFlow) return json({ status: "timeout" });
@@ -1948,10 +1998,21 @@ export async function handleAuthDevicePoll(
       { status: 429 },
     );
   }
-  deviceFlow.lastPollAt = now;
-  await env.HOT.put(deviceKey, JSON.stringify(deviceFlow), {
-    expirationTtl: FLOW_TTL_SECONDS,
+  // Taking the poll slot is a compare-and-set on the `lastPollAt` this poll read: of two polls
+  // racing inside one interval, one proceeds and the other is told to slow down, so the
+  // deferred activation below can never run twice side by side.
+  const slot = await updateArtefact(env, deviceKey, {
+    expect: { lastPollAt: deviceFlow.lastPollAt ?? null },
+    set: { lastPollAt: now },
   });
+  if (!slot.ok) {
+    if (!slot.payload) return json({ status: "timeout" });
+    return json(
+      { status: "slow_down", interval: DEVICE_POLL_INTERVAL_SECONDS },
+      { status: 429 },
+    );
+  }
+  deviceFlow.lastPollAt = now;
   if (!deviceFlow.confirmedAt) return json({ status: "pending" });
   const res = await pollAuthFlow(
     env,
@@ -1973,7 +2034,7 @@ export async function handleAuthDevicePoll(
     .json()
     .catch(() => null)) as { status?: string } | null;
   if (bodyOut?.status === "ready" || bodyOut?.status === "timeout") {
-    await env.HOT.delete(deviceKey);
+    await deleteArtefact(env, deviceKey);
     await deleteUserCodeIndex(env, product.slug, deviceFlow.userCode);
   }
   return res;
