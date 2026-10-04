@@ -44,6 +44,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * Go to `hash` and wait until the router has applied it. jsdom fires `hashchange` as a later
+ * task, so clicking straight after the assignment can race the route change (on a loaded
+ * machine the switcher re-rendered under the click and its popover closed).
+ */
+async function go(hash: string): Promise<void> {
+  const changed = new Promise<void>((resolve) =>
+    window.addEventListener("hashchange", () => resolve(), { once: true }),
+  );
+  act(() => {
+    window.location.hash = hash;
+  });
+  await act(() => changed);
+}
+
 /** Open the switcher and return the product names it lists. */
 async function switcherOptions(): Promise<string[]> {
   await userEvent.click(
@@ -94,9 +109,7 @@ describe("qk.products() holds one shape for the Products page and the switcher",
     // The page that filled the cache still reads it.
     expect(within(standalone.container).getByText("djdl")).toBeTruthy();
 
-    act(() => {
-      window.location.hash = "#/products";
-    });
+    await go("#/products");
     await expectProductsPageRow();
     expectNoReactError();
   });
@@ -108,15 +121,11 @@ describe("qk.products() holds one shape for the Products page and the switcher",
       true,
     );
 
-    act(() => {
-      window.location.hash = "#/products";
-    });
+    await go("#/products");
     await expectProductsPageRow();
 
     // And back on a product page the switcher still lists it from the shared entry.
-    act(() => {
-      window.location.hash = "#/p/djdl";
-    });
+    await go("#/p/djdl");
     expect((await switcherOptions()).some((t) => t.startsWith("DJDL"))).toBe(
       true,
     );
