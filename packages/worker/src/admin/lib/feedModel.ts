@@ -3,44 +3,41 @@
  * supports, where its feed answers, and how a settings write is validated. Pure: no database,
  * no environment. The admin handlers (`../handlers/feeds.ts`) and their tests share it.
  *
- * Yank semantics follow each protocol (notes/S-12 §8.2). A verb the protocol has no state for is
- * refused with `unsupported_by_ecosystem` rather than recorded as a console-only fiction:
+ * NOTHING HERE IS PER-ECOSYSTEM. Every answer is read from the ecosystem's feed adapter
+ * (`services/distribution/registry/<ecosystem>/index.ts`, the `FeedAdapter` contract): its label,
+ * its feed path, its capabilities (which the admin API exposes as `capabilities`), the namespace
+ * keys its ingest rules declare in `@polaris-key/manifest` and the extension settings it accepts.
+ * A new feed changes nothing in this file.
  *
- *   npm    no yank that keeps lockfiles working; deprecate (npm's `deprecated` message) instead
- *   PyPI   PEP 592 yank: pinned installs still work, resolvers skip the version
- *   Swift  the version leaves the release list and stays fetchable
- *   Maven  no protocol notion; with `yankHidesFromIndex` the version leaves maven-metadata.xml
- *   OCI    the version tag is removed and the digest stays pullable
- *   Godot  the version leaves the asset listings
+ * Yank semantics follow each protocol (notes/S-12 §8.2), as each adapter declares them. A verb the
+ * protocol has no state for is refused with `unsupported_by_ecosystem` rather than recorded as a
+ * console-only fiction.
  */
 
 import {
   PACKAGE_ECOSYSTEMS,
+  packageNamespaceEmpty,
   type PackageEcosystem,
 } from "@polaris-key/manifest";
+import {
+  requireFeedAdapter,
+  type FeedCapabilities,
+} from "../../services/distribution/registry/index.js";
 
-export { PACKAGE_ECOSYSTEMS, type PackageEcosystem };
+export { PACKAGE_ECOSYSTEMS, type PackageEcosystem, type FeedCapabilities };
 
-/** What one ecosystem's protocol can express about a version's state. */
-export interface FeedCapabilities {
-  /** A yank (and so an unyank) exists in the protocol. */
-  yank: boolean;
-  /** A deprecation message (and so an undeprecate) exists in the protocol. */
-  deprecate: boolean;
-  /** The feed's `yankHidesFromIndex` setting applies (the protocol has a list to leave). */
-  yankPolicy: boolean;
+function perEcosystem<T>(
+  pick: (ecosystem: PackageEcosystem) => T,
+): Readonly<Record<PackageEcosystem, T>> {
+  return Object.fromEntries(
+    PACKAGE_ECOSYSTEMS.map((e) => [e, pick(e)]),
+  ) as Record<PackageEcosystem, T>;
 }
 
+/** Every ecosystem's capabilities, from its adapter (what the admin API exposes). */
 export const FEED_CAPABILITIES: Readonly<
   Record<PackageEcosystem, FeedCapabilities>
-> = {
-  npm: { yank: false, deprecate: true, yankPolicy: false },
-  pypi: { yank: true, deprecate: false, yankPolicy: false },
-  swift: { yank: true, deprecate: false, yankPolicy: false },
-  maven: { yank: true, deprecate: false, yankPolicy: true },
-  oci: { yank: true, deprecate: false, yankPolicy: false },
-  godot: { yank: true, deprecate: false, yankPolicy: false },
-};
+> = perEcosystem((e) => requireFeedAdapter(e).capabilities);
 
 /** The version verbs the Feeds console offers. */
 export const VERSION_VERBS = [
@@ -74,15 +71,7 @@ export function feedBaseUrl(
   owner: string,
 ): string | null {
   if (origin === null) return null;
-  const o = encodeURIComponent(owner);
-  switch (ecosystem) {
-    case "pypi":
-      return `${origin}/pypi/${o}/simple/`;
-    case "oci":
-      return `${origin}/v2/${o}/`;
-    default:
-      return `${origin}/${ecosystem}/${o}/`;
-  }
+  return `${origin}${requireFeedAdapter(ecosystem).feedPath(encodeURIComponent(owner))}`;
 }
 
 /** A feed's settings as the console reads and writes them (`dist_registry_feeds`). */
@@ -108,11 +97,6 @@ export const FEED_ACCESS_MODES = [
 ] as const;
 export const SETTABLE_ACCESS_MODES: readonly string[] = ["public"];
 
-const NPM_SCOPE = /^@[a-z0-9][a-z0-9._~-]{0,213}$/;
-const SWIFT_SCOPE = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
-const MAVEN_GROUP = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
-const PYPI_NAME = /^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/;
-const GODOT_PUBLISHER = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const MAX_LIST = 32;
 const MAX_ITEM = 128;
 
@@ -121,22 +105,7 @@ export function namespaceEmpty(
   ecosystem: PackageEcosystem,
   ns: Record<string, unknown>,
 ): boolean {
-  switch (ecosystem) {
-    case "npm":
-    case "swift":
-      return typeof ns.scope !== "string" || ns.scope === "";
-    case "maven":
-      return !Array.isArray(ns.groupPrefixes) || ns.groupPrefixes.length === 0;
-    case "pypi":
-      return (
-        (!Array.isArray(ns.prefixes) || ns.prefixes.length === 0) &&
-        (!Array.isArray(ns.names) || ns.names.length === 0)
-      );
-    case "godot":
-      return typeof ns.publisher !== "string" || ns.publisher === "";
-    case "oci":
-      return false;
-  }
+  return packageNamespaceEmpty(ecosystem, ns);
 }
 
 function stringList(v: unknown, pattern: RegExp): string[] | null {
@@ -165,47 +134,23 @@ export function parseNamespace(
 ): Record<string, unknown> | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const ns = raw as Record<string, unknown>;
-  const allowed: Record<PackageEcosystem, readonly string[]> = {
-    npm: ["scope"],
-    swift: ["scope"],
-    maven: ["groupPrefixes"],
-    pypi: ["prefixes", "names"],
-    godot: ["publisher"],
-    oci: [],
-  };
-  if (Object.keys(ns).some((k) => !allowed[ecosystem].includes(k))) return null;
+  const fields = requireFeedAdapter(ecosystem).ingest.namespace.fields;
+  if (Object.keys(ns).some((k) => !Object.hasOwn(fields, k))) return null;
   const out: Record<string, unknown> = {};
-  const scalar = (key: string, pattern: RegExp): boolean => {
+  for (const [key, field] of Object.entries(fields)) {
     const v = ns[key];
-    if (v === undefined || v === "") return true;
-    if (typeof v !== "string" || !pattern.test(v)) return false;
-    out[key] = v;
-    return true;
-  };
-  const list = (key: string, pattern: RegExp): boolean => {
-    const v = ns[key];
-    if (v === undefined) return true;
-    const parsed = stringList(v, pattern);
-    if (parsed === null) return false;
-    if (parsed.length) out[key] = parsed;
-    return true;
-  };
-  switch (ecosystem) {
-    case "npm":
-      return scalar("scope", NPM_SCOPE) ? out : null;
-    case "swift":
-      return scalar("scope", SWIFT_SCOPE) ? out : null;
-    case "godot":
-      return scalar("publisher", GODOT_PUBLISHER) ? out : null;
-    case "maven":
-      return list("groupPrefixes", MAVEN_GROUP) ? out : null;
-    case "pypi":
-      return list("prefixes", PYPI_NAME) && list("names", PYPI_NAME)
-        ? out
-        : null;
-    case "oci":
-      return out;
+    if (field.kind === "string") {
+      if (v === undefined || v === "") continue;
+      if (typeof v !== "string" || !field.pattern.test(v)) return null;
+      out[key] = v;
+    } else {
+      if (v === undefined) continue;
+      const parsed = stringList(v, field.pattern);
+      if (parsed === null) return null;
+      if (parsed.length) out[key] = parsed;
+    }
   }
+  return out;
 }
 
 /**
@@ -218,23 +163,10 @@ export function parseExtPatch(
 ): { ok: true; patch: Record<string, unknown> } | { ok: false; key: string } {
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     return { ok: false, key: "ext" };
-  const checks: Record<string, (v: unknown) => boolean> = {};
-  const bool = (v: unknown) => typeof v === "boolean";
-  if (FEED_CAPABILITIES[ecosystem].yankPolicy) checks.yankHidesFromIndex = bool;
-  if (ecosystem === "pypi") checks.htmlFallback = bool;
-  if (ecosystem === "swift") checks.requireSigned = bool;
-  if (ecosystem === "oci")
-    checks.retainUntaggedDays = (v) =>
-      typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 3650;
-  if (ecosystem === "godot") {
-    checks.categoryId = (v) =>
-      typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 1_000_000;
-    checks.supportLevel = (v) =>
-      typeof v === "string" && /^[a-z][a-z-]{0,31}$/.test(v);
-  }
+  const checks = requireFeedAdapter(ecosystem).settings.ext;
   const patch: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    const check = checks[key];
+    const check = Object.hasOwn(checks, key) ? checks[key] : undefined;
     if (!check) return { ok: false, key };
     if (value !== null && !check(value)) return { ok: false, key };
     patch[key] = value;
@@ -255,12 +187,6 @@ export function applyExtPatch(
   return out;
 }
 
-/** A label for every ecosystem, for audit summaries. */
-export const ECOSYSTEM_LABELS: Readonly<Record<PackageEcosystem, string>> = {
-  npm: "npm",
-  pypi: "PyPI",
-  swift: "Swift",
-  maven: "Maven",
-  oci: "OCI",
-  godot: "Godot",
-};
+/** A label for every ecosystem, for audit summaries (the adapters' labels). */
+export const ECOSYSTEM_LABELS: Readonly<Record<PackageEcosystem, string>> =
+  perEcosystem((e) => requireFeedAdapter(e).label);

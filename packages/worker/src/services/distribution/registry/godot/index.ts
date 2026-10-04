@@ -1,15 +1,91 @@
 /**
- * The Godot feed (F-09, plans/F-01.md §6.8): the renderer F-02's materialiser runs for the
- * `godot` ecosystem, and its routes on the registry host. See `documents.ts` for the two editor
- * API shapes and `routes.ts` for the URL layout.
+ * The Godot feed (F-09, plans/F-01.md §6.8) as a `FeedAdapter` (`../adapter.ts`): the renderer
+ * F-02's materialiser runs for the `godot` ecosystem, and its routes on the registry host. See
+ * `documents.ts` for the two editor API shapes and `routes.ts` for the URL layout.
  */
 
+import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { extInteger, rendererOf, type FeedAdapter } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderGodot } from "./render.js";
 import { GODOT_ROUTES } from "./routes.js";
 
-export const GODOT_RENDERER: RegistryRenderer = {
+export const GODOT_ADAPTER: FeedAdapter<"godot"> = {
   ecosystem: "godot",
-  render: renderGodot,
+  label: "Godot",
+  hostPrefix: "/godot/",
+  feedPath: (owner) => `/godot/${owner}/`,
   routes: GODOT_ROUTES,
+  // The documents carry the publisher, category and support level from the feed's settings.
+  renderer: { render: renderGodot, stamp: "package+feed" },
+  ingest: PACKAGE_ECOSYSTEM_RULES.godot,
+  settings: {
+    ext: {
+      categoryId: extInteger(0, 1_000_000),
+      supportLevel: (v) =>
+        typeof v === "string" && /^[a-z][a-z-]{0,31}$/.test(v),
+    },
+  },
+  capabilities: {
+    // A yanked version leaves the asset listings.
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "tags",
+    signing: false,
+    immutableVersions: true,
+    delete: false,
+    search: true,
+    authChallenge: "basic",
+  },
+  setup: {
+    clients: ["The Godot editor's asset library", "GodotEnv"],
+    inputs: ["baseUrl"],
+  },
+  openapi: [
+    [
+      "/godot/{owner}/asset-library/api/configure",
+      ["get", "head"],
+      "godotLegacyConfigure",
+    ],
+    [
+      "/godot/{owner}/asset-library/api/asset",
+      ["get", "head"],
+      "godotLegacySearch",
+    ],
+    [
+      "/godot/{owner}/asset-library/api/asset/{id}",
+      ["get", "head"],
+      "godotLegacyAsset",
+    ],
+    ["/godot/{owner}/store/api/v1/", ["get", "head"], "godotStoreOverview"],
+    ["/godot/{owner}/store/api/v1/tags/", ["get", "head"], "godotStoreTags"],
+    [
+      "/godot/{owner}/store/api/v1/licenses/",
+      ["get", "head"],
+      "godotStoreLicenses",
+    ],
+    [
+      "/godot/{owner}/store/api/v1/search/query/",
+      ["get", "head"],
+      "godotStoreSearch",
+    ],
+    [
+      "/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/",
+      ["get", "head"],
+      "godotStoreAsset",
+    ],
+    [
+      "/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/",
+      ["get", "head"],
+      "godotStoreReleases",
+    ],
+    ["/godot/{owner}/index.json", ["get", "head"], "godotIndex"],
+    ["/godot/{owner}/files/{sha256}/{file}", ["get", "head"], "godotZip"],
+    ["/godot/{owner}/icons/{sha256}.png", ["get", "head"], "godotIcon"],
+  ],
+  harness: { clients: ["godot"] },
 };
+
+/** The materialiser's view of the adapter. */
+export const GODOT_RENDERER: RegistryRenderer = rendererOf(GODOT_ADAPTER);

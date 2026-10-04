@@ -1,15 +1,63 @@
 /**
  * The Swift package registry feed (F-06, plans/F-01.md §5.3 and §6.8; SwiftPM `Registry.md`,
- * SE-0292): one `RegistryRenderer`, its documents (`render.ts`) and its read routes
- * (`routes.ts`). `registry/index.ts` adds it to `RENDERERS`.
+ * SE-0292) as a `FeedAdapter` (`../adapter.ts`): its documents (`render.ts`) and its read routes
+ * (`routes.ts`). `registry/index.ts` lists it in `FEED_ADAPTERS`.
  */
 
+import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { extBoolean, rendererOf, type FeedAdapter } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderSwift } from "./render.js";
 import { SWIFT_ROUTES } from "./routes.js";
 
-export const SWIFT_RENDERER: RegistryRenderer = {
+export const SWIFT_ADAPTER: FeedAdapter<"swift"> = {
   ecosystem: "swift",
-  render: renderSwift,
+  label: "Swift",
+  hostPrefix: "/swift/",
+  feedPath: (owner) => `/swift/${owner}/`,
   routes: SWIFT_ROUTES,
+  renderer: { render: renderSwift, stamp: "package" },
+  ingest: PACKAGE_ECOSYSTEM_RULES.swift,
+  settings: { ext: { requireSigned: extBoolean } },
+  capabilities: {
+    // A yanked version leaves the release list and stays fetchable for existing pins.
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "latest",
+    signing: true,
+    immutableVersions: true,
+    delete: false,
+    search: false,
+    authChallenge: "basic",
+  },
+  setup: {
+    clients: ["SwiftPM"],
+    inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
+  },
+  openapi: [
+    ["/swift/{owner}/{scope}/{name}", ["get", "head"], "swift.releases"],
+    [
+      "/swift/{owner}/{scope}/{name}/{version}",
+      ["get", "head"],
+      "swift.release",
+    ],
+    [
+      "/swift/{owner}/{scope}/{name}/{version}/Package.swift",
+      ["get", "head"],
+      "swift.manifest",
+    ],
+    [
+      "/swift/{owner}/{scope}/{name}/{version}.zip",
+      ["get", "head"],
+      "swift.archive",
+    ],
+    ["/swift/{owner}/identifiers", ["get", "head"], "swift.identifiers"],
+    // Login is the host dispatcher's 501 (SwiftPM Registry.md §4).
+    ["/swift/{owner}/login", ["post"], "host"],
+  ],
+  harness: { clients: ["swift", "swift-compat", "swift-linux"] },
 };
+
+/** The materialiser's view of the adapter. */
+export const SWIFT_RENDERER: RegistryRenderer = rendererOf(SWIFT_ADAPTER);

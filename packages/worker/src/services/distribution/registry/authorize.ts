@@ -143,8 +143,13 @@ export interface FeedReadContext {
   readonly nowMs?: number;
 }
 
-/** The challenge a non-public mode answers in tier 1, by ecosystem. */
-function challengeFor(ecosystem: RegistryEcosystem): ChallengeKind {
+/**
+ * The challenge a non-public mode answers in tier 1, by ecosystem. Each feed adapter declares the
+ * same value as `capabilities.authChallenge`, and the conformance suite
+ * (`test/feedAdapters.test.ts`) pins the two together, so the console never claims a challenge
+ * the ladder does not send.
+ */
+export function challengeFor(ecosystem: RegistryEcosystem): ChallengeKind {
   return ecosystem === "oci" ? "oci-bearer" : "basic";
 }
 
