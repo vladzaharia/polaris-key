@@ -143,6 +143,7 @@ function GeneralSection({
       );
     },
   });
+  const serving = form.rhf.watch("enabled");
   return (
     <Form form={form} aria-label="General">
       <SettingsSection
@@ -160,7 +161,11 @@ function GeneralSection({
       >
         <SettingsRow
           label="Serving"
-          help="Off, every client gets the registry's not-found, the same answer as a feed that does not exist."
+          help={
+            serving
+              ? "On: clients install and update from this feed."
+              : "Off: every client gets the registry's not-found, the same answer as a feed that does not exist."
+          }
         >
           <FormField<boolean> name="enabled" label="Enabled" hideLabel>
             {(field) => (
@@ -655,6 +660,7 @@ function PolicySection({
       toast.success("Platform policy saved");
     },
   });
+  const served = form.rhf.watch("enabled");
   return (
     <Form form={form} aria-label="Platform policy">
       <SettingsSection
@@ -673,7 +679,11 @@ function PolicySection({
       >
         <SettingsRow
           label="Serve this ecosystem"
-          help="Off, every owner's feed of this ecosystem answers not-found, whatever its own settings say."
+          help={
+            served
+              ? "On: each owner's feed of this ecosystem serves as its own settings say."
+              : "Off: every owner's feed of this ecosystem answers not-found, whatever its own settings say."
+          }
         >
           <FormField<boolean> name="enabled" label="Served" hideLabel>
             {(field) => (

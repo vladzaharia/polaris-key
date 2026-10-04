@@ -222,9 +222,10 @@ function OverviewBody({
           <RecentActivity slug={slug} />
         )
       }
-      side={<TrustPanel slug={slug} product={p} />}
-      split="1-1"
     >
+      {/* Trust & SDK carries a code sample and is far taller than the checklist or the activity
+          feed: it takes its own full-width row, so no card stretches to match it. */}
+      <TrustPanel slug={slug} product={p} />
       {!complete || showChecklist ? <RecentActivity slug={slug} /> : null}
     </DashboardTemplate>
   );

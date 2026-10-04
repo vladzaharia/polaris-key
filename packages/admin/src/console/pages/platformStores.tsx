@@ -63,7 +63,7 @@ import { queryClient } from "../data/queryClient.js";
 import { Link, useSearchParam } from "../router.js";
 import { codecs, r } from "../routes.js";
 import { CollectionTemplate } from "../templates/Collection.js";
-import { Panel, STRETCH_CELL } from "../templates/Dashboard.js";
+import { Panel } from "../templates/Dashboard.js";
 import { useTableUrlState } from "../useTableUrlState.js";
 
 // ── data ─────────────────────────────────────────────────────────────────────────────────────
@@ -476,39 +476,25 @@ function StoreDetail({
 
   return (
     <div className="space-y-6">
-      {/* The Account card only when the store has shared settings to show. */}
-      <div
-        className={cn(
-          "grid grid-cols-1 gap-6",
-          s.settings.length > 0 && "lg:grid-cols-3",
-        )}
-      >
-        <div
-          className={cn(STRETCH_CELL, s.settings.length > 0 && "lg:col-span-2")}
-        >
-          <CredentialsPanel
-            connection={s}
-            action={
-              configured && s.appsListing ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  loading={checking}
-                  onClick={() => void recheck()}
-                >
-                  <RefreshCw aria-hidden />
-                  Re-check
-                </Button>
-              ) : undefined
-            }
-          />
-        </div>
-        {s.settings.length > 0 ? (
-          <div className={STRETCH_CELL}>
-            <SettingsPanel connection={s} />
-          </div>
-        ) : null}
-      </div>
+      {/* Credentials, then the Account card (only when the store has shared settings): each its
+          own row, as the two grow independently and a pair would stretch the shorter one. */}
+      <CredentialsPanel
+        connection={s}
+        action={
+          configured && s.appsListing ? (
+            <Button
+              variant="outline"
+              size="sm"
+              loading={checking}
+              onClick={() => void recheck()}
+            >
+              <RefreshCw aria-hidden />
+              Re-check
+            </Button>
+          ) : undefined
+        }
+      />
+      {s.settings.length > 0 ? <SettingsPanel connection={s} /> : null}
 
       {outcome ? (
         <OutcomePanel
