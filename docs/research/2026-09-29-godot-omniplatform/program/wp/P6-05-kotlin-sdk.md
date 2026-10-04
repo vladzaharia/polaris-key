@@ -1,117 +1,118 @@
-# P6-05 Optional: the Kotlin SDK at full parity
+# P6-05 The Kotlin SDK at full parity (umbrella)
 
-| Field       | Value                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P6: Commerce, ops, web (optional)                                                                                                                                                     |
-| Size        | 6–8 engineer-weeks                                                                                                                                                                    |
-| Depends on  | [P5-06](P5-06-kotlin-aar.md), [P1b-01](P1b-01-parity-registry.md), [P3-02](P3-02-wire-v4-contract-corpus.md), [P1b-03](P1b-03-http-transcripts.md), [P1b-02](P1b-02-sdk-constants.md) |
-| Unblocks    | none                                                                                                                                                                                  |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                     |
-| Plan mode   | no for the SDK itself; any corpus case it finds missing goes to `pkey-wire-planner`                                                                                                   |
-| Gates       | none listed. In practice: a new conformance runner, `parity:check`, the language lists in docs, `tools/gen-mirrors.ts`, and a new CI job and release workflow                         |
-| Human input | none listed. In practice: a decision that native Android (or JVM) apps are in scope (decision 10), and a Maven Central publisher account with a signing key before the first release  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
+| Field       | Value |
+| ----------- | ----- |
+| Phase       | P6: Commerce, ops, web |
+| Size | 0.1 engineer-weeks |
+| Depends on | [P6-06](P6-06-kotlin-core-runner.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md), [P6-10](P6-10-godot-android-binding-on-kotlin.md), [P6-11](P6-11-kotlin-compose-ui-kit.md), [P6-12](P6-12-kotlin-android-glue.md) |
+| Unblocks | none |
+| Role | `pkey-sdk-porter` |
+| Plan mode   | no (an umbrella: it has no code of its own; a corpus case a child finds missing goes to `pkey-wire-planner`) |
+| Gates       | none of its own; the children's gates, and the closing checks below |
+| Human input | none. Decided 2026-10-04: build now; Kotlin artifacts ship only through Polaris Key's own Maven feed, with no Maven Central account or signing key |
+| Repo        | `vladzaharia/polaris-key` |
 
-This is a kickoff brief for an optional, multi-PR package. The first PR is the skeleton, the corpus
-runner and the parity manifest; each later PR closes a group of feature ids.
+This package is an **umbrella**. It owns no branch and no pull request. It is `done` when all of its
+children are `done` and the closing checks below pass; the lead then sets it with
+`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-05 done`. It stays
+`todo` until then (it is not dispatched), and `--ready` lists it only once every child is done.
+
+The graph's id pattern has no letter suffix, so the slices have their own ids, and the original
+sketch's letters map as below.
+
+| Slice | Package                                                                 | Role                  | Size (weeks) | Depends on                                                                                  |
+| ----- | ----------------------------------------------------------------------- | --------------------- | ------------ | ------------------------------------------------------------------------------------------- |
+| a     | [P6-06](P6-06-kotlin-core-runner.md) core module, runner, parity        | `pkey-sdk-porter`     | 1.5–2        | P1b-01, P1b-02, P1b-03, P3-02, P5-06                                                        |
+| b     | [P6-07](P6-07-kotlin-license-config-identity.md) licence, config, devices, identity, release | `pkey-sdk-porter` | 1.5–2        | P6-06                                                                                       |
+| c     | [P6-08](P6-08-kotlin-update-packs.md) update and packs                  | `pkey-sdk-porter`     | 2–3          | P6-06, P6-07, P4-11, P4-29                                                                  |
+| d     | [P6-09](P6-09-kotlin-platform-module.md) platform module, Integrity     | `pkey-implementer`    | 1.5–2        | P6-06, P5-06, P6-02                                                                         |
+| e     | [P6-10](P6-10-godot-android-binding-on-kotlin.md) Godot binding on platform | `pkey-godot-engineer` | 1–1.5     | P6-09, P5-08                                                                                |
+| f     | [P6-11](P6-11-kotlin-compose-ui-kit.md) Compose UI kit                  | `pkey-implementer`    | 2–3          | P6-07, P6-08                                                                                |
+| g     | [P6-12](P6-12-kotlin-android-glue.md) Android glue (added)              | `pkey-sdk-porter`     | 1–1.5        | P6-08, P6-09                                                                                |
 
 ## Goal
 
-A Kotlin SDK in `sdks/kotlin/`, for Android apps and JVM desktop, that reaches parity with Node and
-Swift feature by feature: its `parity.json` starts with every feature `planned` and ends with every
-row `implemented` or an allowed `na`, proven by the same corpus files, and by transcripts once
-P1b-03 exists. It builds on P5-06's `platform` AAR for everything Android-specific.
+A full-parity Kotlin SDK in `sdks/kotlin` for native Android apps and, where sensible, JVM desktop,
+with a Jetpack Compose UI kit, whose `parity.json` has no `planned` row except those that Swift
+also leaves `planned` and `unowned` (`identity.oidc`, `commerce.receipt`, `packs.transport.steam`),
+and whose Godot Android binding is rebuilt on the platform module only.
 
 ## Why
 
-- Decision 10 in [§11](../../README.md#11-decisions-needed): a Kotlin SDK if native Android apps are
-  in scope; its AAR is the Godot Android backend either way.
-- PARITY orders new SDKs and gives Kotlin +6–8 weeks
-  ([PARITY §9](../../PARITY.md#9-new-sdks-order-and-shape) item 3); a new SDK starts with every
-  feature `planned` and the gate shows its backlog ([PARITY §3.3](../../PARITY.md#33-the-wave-model-extended)).
+- Owner decisions of 2026-10-04 (supersede [README §11 decision 10](../../README.md#11-decisions-needed)
+  and [PARITY §9](../../PARITY.md#9-new-sdks-order-and-shape) item 3, which called this optional):
+  1. Build it now; it is no longer optional.
+  2. Full-parity SDK for native Android (and JVM where sensible) plus a Compose UI kit modelled on
+     the SwiftUI kit: every screen centred and polished; a neutral default theme that inherits the
+     host app's look; Polaris Key branding optional through one opt-in switch; the "Powered by"
+     badge optional and off by default.
+  3. The Godot Android binding is rebuilt on the Kotlin SDK's **platform module only** (Play,
+     Keystore, PackageInstaller, Integrity). Verification stays in Godot's shared GDScript core,
+     as Godot on iOS uses only Swift's `PolarisKeyPlatform`.
+  4. **No Maven Central.** Kotlin artifacts are distributed only through Polaris Key's own Maven
+     feed ([F-07](F-07-maven-feed.md), [F-10](F-10-sdks-onto-feeds.md)).
+- One 6–8 week package was not reviewable; the SDK now builds in slices that each flip a named set
+  of parity rows.
 
 ## Read first
 
-- `AGENTS.md` (the wave model, the green gate) and `.claude/agents/pkey-sdk-porter.md`.
-- [PARITY §2](../../PARITY.md#2-what-parity-means), §4, [§5](../../PARITY.md#5-the-feature-inventory)
-  and [§7](../../PARITY.md#7-runtime-limits-that-become-typed-nas); notes/E9 (the `KA` and `KJ` rows,
-  items 16–17 of §10: Android JCA Ed25519 is API 33+, Tink below; JDK has EdDSA since 15).
-- `sdks/swift/` as the structural model (targets per service, the corpus mirror) and
-  `conformance/runners/node/` as the runner model; `tools/gen-mirrors.ts`.
-- P5-06's `sdks/kotlin/platform` module and its flavours.
+- `AGENTS.md`, `.claude/agents/pkey-sdk-porter.md`, [PARITY](../../PARITY.md), `conformance/parity/features.json`.
+- [P5-06](P5-06-kotlin-aar.md) (what exists in `sdks/kotlin` today, with its Corrections) and each
+  child brief.
 
 ## Scope
 
-**In:**
-
-- Gradle modules beside `platform`, mirroring Swift's targets: `core`, `license`, `config`,
-  `update`, and later `packs` and `ui` (Compose). Coroutines (`suspend`, `Flow`) per PARITY §2.3.
-- A JUnit conformance runner reading `conformance/corpus/v2/` in place on the JVM (no mirror), and
-  wire v4 and content corpora as they exist when this starts.
-- `sdks/kotlin/parity.json`, all `planned` at first, registered in the `sdks` list of
-  `conformance/parity/features.json`, and the `@pkey-feature` test tags.
-- A catalog-mirror target in `tools/gen-mirrors.ts` and generated constants (P1b-02) for Kotlin.
-- A CI job (JVM tests; Android unit tests) and a release workflow for Maven Central.
-- Every place that lists the SDK languages (AGENTS.md, README, the docs pages, `test:all`), as the
-  Godot SDK did (report §5.11).
-
-**Out** (and where it belongs instead):
-
-- Android platform edges (→ [P5-06](P5-06-kotlin-aar.md), already built).
-- New corpus cases (→ plan mode with `pkey-wire-planner`).
-- Kotlin Multiplatform for Apple targets (notes/E9: out of scope).
+**In:** the seven children above, and the closing checks. **Out:** Compose Multiplatform, Kotlin
+Multiplatform for Apple targets (notes/E9), a Kotlin desktop UI kit, any Maven Central publication.
 
 ## Design notes
 
-- **Crypto.** Ed25519 through JCA on the JVM (15+) and on Android API 33+, Tink below; the minimum
-  Android API is a decision for the first PR. SHA-256 and HTTP from the platform; `zstd-jni` for
-  deltas (its `.so` files must be 16 KB page aligned).
-- **Typed N/As** as PARITY §2.2: the JVM has no install source or In-App Updates; Android has no
-  hardware serials (an app-scoped id and the Keystore instead).
-- **Order the work by the registry**, not by service: core verification and the corpus runner first,
-  then licence and config, then devices and identity, then update and packs. Each PR flips rows in
-  `parity.json` and must keep `parity:check` green.
-- **Ask before starting.** This package is optional; the human decides whether native Android apps
-  are in scope. Recommended start point: after the wire v4 corpus (P3-02) and transcripts (P1b-03)
-  exist, so the SDK is built once against the final contract.
+- **Build order.** P6-06 first; P6-07 and P6-09 can then run in parallel; P6-08 follows P6-07;
+  P6-12 needs P6-08 and P6-09; P6-11 needs P6-07 and P6-08; P6-10 waits for P6-09 and P5-08.
+  Only one corpus-touching package at a time ([README §5](README.md)); every Kotlin slice edits
+  `sdks/kotlin/parity.json`, so rebase before review.
+- **Module map** (proposed in P6-06, settled there): JVM libraries `:core`, `:license`, `:config`,
+  `:identity`, `:release`, `:update`, `:packs`, `:sdk`; Android libraries `:platform` (standalone),
+  `:android` (the only module that sees both core and platform), `:ui`, `:godot`.
+- **Distribution.** Every module carries `maven-publish` metadata (sources jar, POM, Gradle module
+  metadata) to a local `build/repo`. [F-10](F-10-sdks-onto-feeds.md) publishes them to Polaris Key's
+  feed; no child adds a `signing` or Central plugin.
+- **Typed N/As** per [PARITY §2.2](../../PARITY.md#22-typed-unsupported-here): the JVM has no install
+  source or In-App Updates; Android has no hardware serials (app-scoped id and Keystore instead).
+  The registry rows for `android` and `jvm` are settled once, in P6-06.
 
 ## Steps
 
-1. Plan in the first PR: modules, minimum API levels, dependency list, publishing coordinates.
-2. Skeleton, corpus runner, `parity.json`; CI job.
-3. Feature groups in order, one PR each, with transcripts where they exist.
-4. Docs page, language lists, release workflow.
+1. Dispatch the children in the order above; each follows its own brief and review.
+2. When all are `done`, run the closing checks and set this package `done`.
 
 ## Acceptance criteria
 
-- [ ] The Kotlin runner passes every `cases.json` and `gate-matrix.json` case it loads, and those
-      of any corpus file present when the package closes.
-- [ ] `sdks/kotlin/parity.json` has no `planned` row left, and every `na` is allowed by the registry.
-- [ ] `parity:check` and the green gate pass (`AGENTS.md`), with the new Kotlin job green.
+- [ ] P6-06 to P6-12 are all `done`.
+- [ ] `sdks/kotlin/parity.json` has no `planned` row except the Swift-matching unowned rows, each
+      with a note; every `na` is allowed by the registry; `parity:check` is green.
+- [ ] The Kotlin runner passes every file in `conformance/corpus/v2/` and every transcript in
+      `conformance/transcripts/` that exists when the last child closes.
+- [ ] The Godot AAR's dependency graph contains `:platform` and no other SDK module.
+- [ ] No Maven Central, Sonatype or `signing` configuration exists in `sdks/kotlin`.
+- [ ] Every place that lists the SDK languages (AGENTS.md, READMEs, docs pages, `test:all`) names Kotlin.
 
 ## Verify
 
 ```sh
-( cd sdks/kotlin && ./gradlew test )
+( cd sdks/kotlin && ./gradlew build )
 mise exec node@22 -- pnpm parity:check -- --check
+mise exec node@22 -- node docs/research/2026-09-29-godot-omniplatform/program/check.mjs
+grep -rniE "maven ?central|sonatype|signing" sdks/kotlin --include=*.kts --include=*.toml --include=*.properties
 ```
 
 ## Hand-off
 
-- A published Kotlin SDK whose Android backend is the same AAR Godot uses; Unity and MAUI Android
-  can bind the same AAR.
+- A published-ready Kotlin SDK and UI kit for [F-10](F-10-sdks-onto-feeds.md) to put on the feed;
+  Unity and MAUI Android can bind the same `:platform` AAR.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-05 done`.
 
-## Plan amendments (P4-10)
+## Plan amendments (P4-10, P4-19, P4-29)
 
-The approved [`plans/P4-10.md`](../plans/P4-10.md) changes this package; its §8.5 bullet for this
-package, and every decision in §8.1 that names it as owner, override this brief where they differ.
-
-## Plan amendments (P4-19)
-
-The approved [`plans/P4-19.md`](../plans/P4-19.md) changes this package; its §8.5 bullet for this
-package, and every decision in §8.1 that names it as owner, override this brief where they differ.
-
-## Plan amendments (P4-29)
-
-The approved [`plans/P4-29.md`](../plans/P4-29.md) adds the parity feature `packs.delta.feed` (the feed's delta menu: `feedContent`'s `deltas`, `withFeedDeltas`, at most one feed-offered delta per install, journal `feedDelta`), proved by `cases.json#feedContentCases`, `plan-matrix.json#feedDeltaCases` and `content/cases.json#feedDeltaApplyCases`. The Kotlin `parity.json` lists it like every other feature; its §2.4 and §5 override this brief where they differ.
+The approved plans' amendments for the Kotlin SDK moved to [P6-08](P6-08-kotlin-update-packs.md),
+which owns the pack engine they change.
