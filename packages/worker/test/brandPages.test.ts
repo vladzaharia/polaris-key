@@ -29,8 +29,9 @@ import {
   emailAssetOrigin,
   renderEmail,
   sendMagicLink,
-  sendPortalNotice,
+  sendNotice,
 } from "../src/services/identity/portal/email.js";
+import { licenseAddedNotice } from "../src/services/identity/portal/notices.js";
 import type { Env } from "../src/env.js";
 import { artefacts } from "./singleUseMock.js";
 
@@ -260,8 +261,13 @@ describe("the portal email", () => {
     const env = makeEnv(new KvMock(), []);
     env.CONSOLE_ORIGIN = undefined;
     const sent = capture(env);
-    await sendPortalNotice(env, "ada@example.com", "Device disconnected", "x");
-    expect(sent[0]!.text).toBe("x");
+    const message = licenseAddedNotice({
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      origin: "http://key.plrs.im",
+    });
+    await sendNotice(env, "ada@example.com", message);
+    expect(sent[0]!.text).toBe(message.text);
     expect(sent[0]!.html).not.toContain("<img");
     expect(sent[0]!.html).toContain(">Polaris Key</td>");
   });

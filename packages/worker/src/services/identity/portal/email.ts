@@ -1,5 +1,6 @@
 /**
- * The portal's email: the magic sign-in link and the account notices.
+ * The portal's email: the branded renderer, the magic sign-in link and the transport for the
+ * account notices (whose copy lives in `notices.ts`).
  *
  * Every message carries a plain-text part (the canonical copy; clients that refuse HTML show
  * it) and a branded HTML part built by `renderEmail` to docs/design/BRAND.md §2 ("Emails"):
@@ -16,7 +17,9 @@
  */
 
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import type { Env } from "../../../core/platform.js";
+import type { Db, Env } from "../../../core/platform.js";
+import type { NoticeMessage } from "./notices.js";
+import { listVerifiedAccountEmails } from "./repo.js";
 
 function fromAddress(env: Env): string {
   return env.PORTAL_EMAIL_FROM ?? "Polaris Key <noreply@plrs.im>";
@@ -87,6 +90,8 @@ export interface EmailContent {
   paragraphs: string[];
   /** One call to action, a URL the Worker built. */
   action?: { label: string; url: string };
+  /** A security notice's "Wasn't you? Secure your account" line, a URL the Worker built. */
+  secure?: { label: string; url: string };
   /** The small print under the card. Plain text. */
   footer: string;
   /** The origin to load the icon from, or null to leave it out. */
@@ -116,6 +121,9 @@ export function renderEmail(c: EmailContent): string {
       ) +
       `<p style="margin:0;font-family:${mono};font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="${escapeHtml(c.action.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.action.url)}</a></p>`
     : "";
+  const secure = c.secure
+    ? `<p class="pk-text" style="margin:24px 0 0;font-family:${font};font-size:15px;line-height:22px;color:${LIGHT.text.default}"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="${escapeHtml(c.secure.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.secure.label)}</a></p>`
+    : "";
   return [
     `<!doctype html>`,
     `<html lang="en">`,
@@ -136,6 +144,7 @@ export function renderEmail(c: EmailContent): string {
     `<h1 class="pk-strong" style="margin:0 0 16px;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.heading)}</h1>`,
     ...c.paragraphs.map((t) => para(t)),
     action,
+    secure,
     `</td></tr>`,
     `<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:${font};font-size:13px;line-height:20px;color:${LIGHT.text.muted}">${escapeHtml(c.footer)}</td></tr>`,
     `</table>`,
@@ -147,9 +156,6 @@ export function renderEmail(c: EmailContent): string {
     .filter((line) => line !== "")
     .join("\n");
 }
-
-const NOTICE_FOOTER =
-  "You are receiving this because of a change to your Polaris Key account.";
 
 export async function sendMagicLink(
   env: Env,
@@ -181,24 +187,47 @@ export async function sendMagicLink(
   return true;
 }
 
-export async function sendPortalNotice(
+/** One notice to one address. No binding or no address: nothing is sent. */
+export async function sendNotice(
   env: Env,
   to: string | null | undefined,
-  subject: string,
-  text: string,
+  message: NoticeMessage,
 ): Promise<void> {
   if (!to || !env.EMAIL) return;
-  await env.EMAIL.send({
-    from: fromAddress(env),
-    to,
-    subject,
-    text,
-    html: renderEmail({
-      subject,
-      heading: subject,
-      paragraphs: [text],
-      footer: NOTICE_FOOTER,
-      origin: emailAssetOrigin(env.CONSOLE_ORIGIN),
-    }),
-  });
+  await env.EMAIL.send({ from: fromAddress(env), to, ...message });
+}
+
+/**
+ * A security notice (PORTAL.md §6.3): one message per address, to every verified email on the
+ * account plus `alsoTo` (the session's address, which a brand-new account may not have verified
+ * a row for yet). Sent separately, so no recipient learns the account's other addresses.
+ */
+export async function sendSecurityNotice(
+  env: Env,
+  db: Db,
+  accountId: string,
+  alsoTo: string | null | undefined,
+  message: NoticeMessage,
+): Promise<number> {
+  if (!env.EMAIL) return 0;
+  const recipients = await securityNoticeRecipients(db, accountId, alsoTo);
+  for (const to of recipients) await sendNotice(env, to, message);
+  return recipients.length;
+}
+
+/** Every verified address on the account, plus `alsoTo`, de-duplicated case-insensitively. */
+export async function securityNoticeRecipients(
+  db: Db,
+  accountId: string,
+  alsoTo: string | null | undefined,
+): Promise<string[]> {
+  const seen = new Map<string, string>();
+  for (const email of [
+    ...(await listVerifiedAccountEmails(db, accountId)),
+    ...(alsoTo ? [alsoTo] : []),
+  ]) {
+    const key = email.trim().toLowerCase();
+    if (key && !seen.has(key)) seen.set(key, email.trim());
+  }
+  return [...seen.values()];
 }

@@ -336,6 +336,21 @@ const AUTO_LINK_ENABLED_SQL = `
   ) = 1`;
 
 /**
+ * Every address the portal verified for this account (a magic link it delivered, or a platform
+ * IdP's `email_verified: true` claim). Security notices go to all of them (PORTAL.md §6.3).
+ */
+export async function listVerifiedAccountEmails(
+  db: Db,
+  accountId: string,
+): Promise<string[]> {
+  const rows = await db.all<{ email: string }>(
+    "SELECT email FROM portal_account_emails WHERE account_id = ? AND verified_at > 0 ORDER BY created_at, email",
+    accountId,
+  );
+  return rows.map((row) => row.email);
+}
+
+/**
  * Fold every license this account can prove it owns into `portal_license_links`.
  *
  * Cross-product visibility is intentional (one portal account, every product the person holds

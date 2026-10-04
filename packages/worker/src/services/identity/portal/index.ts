@@ -33,7 +33,7 @@ import { portalSecurityHeaders } from "./headers.js";
 
 function portalShell(): Response {
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key — Portal</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
     {
       status: 200,
       headers: {

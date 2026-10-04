@@ -136,6 +136,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   emailSendRecipientHour: "closed",
   emailSendRecipientDay: "closed",
   emailSendProductDay: "closed",
+  // PX-W7 (G23): "Email me the download" mails the account's own address. It is a send, so
+  // it fails CLOSED: a limiter outage must not turn it into an unmetered mailer on the shared
+  // sender quota. A refused request is a retry for one person.
+  portalEmailDownload: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

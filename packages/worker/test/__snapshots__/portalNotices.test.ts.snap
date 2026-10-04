@@ -1,0 +1,151 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`notice templates: copy > accountDeleted: subject and plain text 1`] = `
+{
+  "subject": "Your Polaris Key account has been deleted",
+  "text": "Your Polaris Key account, its email addresses and its sign-in methods have been erased, as you asked.
+
+Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.
+
+You are receiving this because your Polaris Key account was deleted. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > deviceRemoved: subject and plain text 1`] = `
+{
+  "subject": "Studio PC was removed from Tidewater Studio",
+  "text": "Studio PC was removed from your Tidewater Studio license and no longer counts toward its device limit.
+
+To use Tidewater Studio on it again, sign in to Tidewater Studio on that device.
+
+See your devices: https://key.plrs.im/#/p/tidewater/devices
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > downloadLink: subject and plain text 1`] = `
+{
+  "subject": "Download Mossgarden for macOS",
+  "text": "Here is the macOS download you asked for. Open this email on the device you want to install Mossgarden on.
+
+The link opens your Polaris Key library, so you may be asked to sign in first.
+
+Download Mossgarden: https://key.plrs.im/#/p/mossgarden/download?platform=macos
+
+You are receiving this because you asked Polaris Key to email you a download link. If you didn't, you can ignore it: the link only opens your own library.",
+}
+`;
+
+exports[`notice templates: copy > full HTML of a plain notice and a security notice 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Mossgarden is in your library</title>
+<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}@media (prefers-color-scheme: dark){.pk-bg{background-color:#060912 !important}.pk-card{background-color:#0d111b !important;border-color:#212633 !important}.pk-strong{color:#ffffff !important}.pk-text{color:#dbe4ff !important}.pk-muted{color:#b5bed3 !important}.pk-btn{background-color:#9a5cff !important}.pk-btn-a{color:#060912 !important}.pk-link{color:#9a5cff !important}}[data-ogsc] .pk-bg{background-color:#060912 !important}[data-ogsc] .pk-card{background-color:#0d111b !important;border-color:#212633 !important}[data-ogsc] .pk-strong{color:#ffffff !important}[data-ogsc] .pk-text{color:#dbe4ff !important}[data-ogsc] .pk-muted{color:#b5bed3 !important}[data-ogsc] .pk-btn{background-color:#9a5cff !important}[data-ogsc] .pk-btn-a{color:#060912 !important}[data-ogsc] .pk-link{color:#9a5cff !important}</style>
+</head>
+<body class="pk-bg" style="margin:0;padding:0;background-color:#f6f8ff">
+<table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f8ff" style="width:100%;background-color:#f6f8ff">
+<tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px">
+<tr><td style="padding:0 0 24px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="40" style="width:40px;padding:0 12px 0 0;vertical-align:middle"><img src="https://key.plrs.im/assets/branding/key/app-icon-dark-180.png" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;border-radius:9px"></td><td class="pk-strong" style="vertical-align:middle;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:20px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:#060912">Polaris Key</td></tr></table></td></tr>
+<tr><td class="pk-card" bgcolor="#ffffff" style="padding:32px;background-color:#ffffff;border:1px solid #dadee9;border-radius:10px">
+<h1 class="pk-strong" style="margin:0 0 16px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:#060912">Mossgarden is in your library</h1>
+<p class="pk-text" style="margin:0 0 16px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#262d40">Mossgarden was added to your Polaris Key account with a license key.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="#7a2fff" style="border-radius:6px;background-color:#7a2fff"><a class="pk-btn-a" href="https://key.plrs.im/#/p/mossgarden" style="display:inline-block;padding:12px 24px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px">Open Mossgarden</a></td></tr></table><p class="pk-muted" style="margin:0 0 16px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#48536b">If the button does not work, paste this link into your browser:</p><p style="margin:0;font-family:ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="https://key.plrs.im/#/p/mossgarden" style="color:#7a2fff;text-decoration:underline">https://key.plrs.im/#/p/mossgarden</a></p>
+</td></tr>
+<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:13px;line-height:20px;color:#48536b">You are receiving this because of a change to your Polaris Key account.</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>"
+`;
+
+exports[`notice templates: copy > full HTML of a plain notice and a security notice 2`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Steam was disconnected from your Polaris Key account</title>
+<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}@media (prefers-color-scheme: dark){.pk-bg{background-color:#060912 !important}.pk-card{background-color:#0d111b !important;border-color:#212633 !important}.pk-strong{color:#ffffff !important}.pk-text{color:#dbe4ff !important}.pk-muted{color:#b5bed3 !important}.pk-btn{background-color:#9a5cff !important}.pk-btn-a{color:#060912 !important}.pk-link{color:#9a5cff !important}}[data-ogsc] .pk-bg{background-color:#060912 !important}[data-ogsc] .pk-card{background-color:#0d111b !important;border-color:#212633 !important}[data-ogsc] .pk-strong{color:#ffffff !important}[data-ogsc] .pk-text{color:#dbe4ff !important}[data-ogsc] .pk-muted{color:#b5bed3 !important}[data-ogsc] .pk-btn{background-color:#9a5cff !important}[data-ogsc] .pk-btn-a{color:#060912 !important}[data-ogsc] .pk-link{color:#9a5cff !important}</style>
+</head>
+<body class="pk-bg" style="margin:0;padding:0;background-color:#f6f8ff">
+<table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f8ff" style="width:100%;background-color:#f6f8ff">
+<tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px">
+<tr><td style="padding:0 0 24px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="40" style="width:40px;padding:0 12px 0 0;vertical-align:middle"><img src="https://key.plrs.im/assets/branding/key/app-icon-dark-180.png" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;border-radius:9px"></td><td class="pk-strong" style="vertical-align:middle;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:20px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:#060912">Polaris Key</td></tr></table></td></tr>
+<tr><td class="pk-card" bgcolor="#ffffff" style="padding:32px;background-color:#ffffff;border:1px solid #dadee9;border-radius:10px">
+<h1 class="pk-strong" style="margin:0 0 16px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:#060912">Steam was disconnected from your Polaris Key account</h1>
+<p class="pk-text" style="margin:0 0 16px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#262d40">Steam can no longer be used to sign in to your Polaris Key account.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="#7a2fff" style="border-radius:6px;background-color:#7a2fff"><a class="pk-btn-a" href="https://key.plrs.im/#/account/methods" style="display:inline-block;padding:12px 24px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px">See your sign-in methods</a></td></tr></table><p class="pk-muted" style="margin:0 0 16px;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#48536b">If the button does not work, paste this link into your browser:</p><p style="margin:0;font-family:ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="https://key.plrs.im/#/account/methods" style="color:#7a2fff;text-decoration:underline">https://key.plrs.im/#/account/methods</a></p>
+<p class="pk-text" style="margin:24px 0 0;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:22px;color:#262d40"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="https://key.plrs.im/#/account/methods" style="color:#7a2fff;text-decoration:underline">Secure your account</a></p>
+</td></tr>
+<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:13px;line-height:20px;color:#48536b">You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>"
+`;
+
+exports[`notice templates: copy > licenseAdded: subject and plain text 1`] = `
+{
+  "subject": "Mossgarden is in your library",
+  "text": "Mossgarden was added to your Polaris Key account with a license key.
+
+Open Mossgarden: https://key.plrs.im/#/p/mossgarden
+
+You are receiving this because of a change to your Polaris Key account.",
+}
+`;
+
+exports[`notice templates: copy > methodAdded: subject and plain text 1`] = `
+{
+  "subject": "Steam was connected to your Polaris Key account",
+  "text": "Steam was added as a way to sign in to your Polaris Key account.
+
+See your sign-in methods: https://key.plrs.im/#/account/methods
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > methodRemoved: subject and plain text 1`] = `
+{
+  "subject": "Steam was disconnected from your Polaris Key account",
+  "text": "Steam can no longer be used to sign in to your Polaris Key account.
+
+See your sign-in methods: https://key.plrs.im/#/account/methods
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > newDeviceSignIn: subject and plain text 1`] = `
+{
+  "subject": "A new device signed in to Polaris Key",
+  "text": "Mara's MacBook Pro signed in to your Polaris Key account, near Lisbon, Portugal.
+
+If this was you, there is nothing to do.
+
+Review your sign-ins: https://key.plrs.im/#/account/sessions
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.",
+}
+`;
