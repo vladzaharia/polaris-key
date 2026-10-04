@@ -52,7 +52,8 @@
  *     products read says so.
  *
  * Out of this file: the review screenshot (a deep link in v1, A-17g), subscriptions and
- * consumables (not granted by P6-01), uploading Background Asset files (P5-08), and the console.
+ * consumables (not granted by P6-01), uploading Background Asset files (P5-08), and the console
+ * UI (A-17g).
  */
 
 import {
