@@ -12,8 +12,11 @@
 #           commit anywhere in the dex (Play services' GooglePlayServicesUtilLight only READS
 #           getAllSessions, notes/S-10 §5, so a bare "PackageInstaller" match would be wrong); no
 #           direct-flavour class; no install-status receiver
-#   direct  no com.google.android.play class or reference; no play-flavour class
-#   both    no native libraries (pure Kotlin: no .so to 16 KB-align, notes/E4 §2.1)
+#   direct  no com.google.android.play class or reference; no play-flavour class; the platform
+#           AAR's classes.jar references no Play Core either (P6-09), though it carries the
+#           flavour-neutral PlatformIntegrity (which answers Unsupported "outlet" there)
+#   both    no native libraries (pure Kotlin: no .so to 16 KB-align, notes/E4 §2.1); the
+#           PlatformIntegrity surface is present (P6-09)
 #
 # Exits non-zero on the first violated rule, printing every violation of that build first.
 # Needs the Android SDK (ANDROID_HOME, default ~/Library/Android/sdk) with build-tools.
@@ -68,6 +71,17 @@ for flavor in play direct; do
     fi
   done
 
+  # The platform AAR's own bytecode (P6-09): Integrity is in both, Play Core only in play.
+  jar="$WORK/$flavor.classes.jar"
+  unzip -p "$(aar platform polaris-key-platform "$flavor")" classes.jar >"$jar"
+  if unzip -l "$jar" | grep -q 'im/plrs/key/platform/PlatformIntegrity.class'; then ok "platform AAR has PlatformIntegrity"; else fail "platform AAR lacks PlatformIntegrity"; fi
+  n="$(unzip -p "$jar" '*.class' | LC_ALL=C grep -a -c 'com/google/android/play/' || true)"
+  if [ "$flavor" = direct ]; then
+    [ "$n" = 0 ] && ok "platform AAR references no Play Core" || fail "platform AAR references Play Core ($n)"
+  else
+    [ "$n" -ge 1 ] && ok "platform AAR links Play Core" || fail "platform AAR has no Play Core reference"
+  fi
+
   perms="$("$AAPT2" dump permissions "$apk")"
   manifest="$("$AAPT2" dump xmltree "$apk" --file AndroidManifest.xml)"
   dex="$WORK/$flavor.dex.txt"
@@ -90,11 +104,15 @@ for flavor in play direct; do
     [ "$n" = 1 ] && ok "Play Asset Delivery present" || fail "Play Asset Delivery missing ($n)"
     n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/PlayIntegrity;'" "$dex")"
     [ "$n" = 1 ] && ok "Play Integrity present" || fail "Play Integrity missing ($n)"
+    n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/PlayPlatformIntegrity;'" "$dex")"
+    [ "$n" = 1 ] && ok "PlatformIntegrity over Play present" || fail "PlatformIntegrity over Play missing ($n)"
   else
     n="$(count 'Lcom/google/android/play/' "$dex")"
     [ "$n" = 0 ] && ok "no Play Core class or reference" || fail "$n Play Core references"
     n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/|Class descriptor *: 'Lim/plrs/key/godot/PlayCommands" "$dex")"
     [ "$n" = 0 ] && ok "no play-flavour class" || fail "$n play-flavour classes"
+    n="$(count "Class descriptor *: 'Lim/plrs/key/platform/PlatformIntegrity;'" "$dex")"
+    [ "$n" = 1 ] && ok "PlatformIntegrity present (Unsupported outlet)" || fail "PlatformIntegrity missing ($n)"
     n="$(count 'Landroid/content/pm/PackageInstaller;\.createSession' "$dex")"
     [ "$n" -ge 1 ] && ok "PackageInstaller self-update present" || fail "PackageInstaller self-update missing"
     if echo "$manifest" | grep -q 'im.plrs.key.platform.direct.InstallStatusReceiver'; then ok "install-status receiver declared"; else fail "install-status receiver missing"; fi
