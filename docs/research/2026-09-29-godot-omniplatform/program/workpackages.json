@@ -2002,7 +2002,7 @@
       "optional": false,
       "refs": ["README §3.10", "CONTENT §6.7 item 9"],
       "brief": "wp/P6-01-commerce-bridge.md",
-      "status": "todo",
+      "status": "done",
       "milestone": "Paid packs on stores"
     },
     {

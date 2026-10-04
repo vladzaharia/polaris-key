@@ -168,7 +168,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 | Id                                            | Title                                                                        | Depends on                           | Role        | Weeks | Status  |
 | --------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------ | ----------- | ----- | ------- |
-| [P6-01](wp/P6-01-commerce-bridge.md) ✋       | Commerce bridge: store purchases become licence entitlements per deliverable | P5-02, P5-03, P5-05, S-07            | implementer | 3–4   | todo    |
+| [P6-01](wp/P6-01-commerce-bridge.md) ✋       | Commerce bridge: store purchases become licence entitlements per deliverable | P5-02, P5-03, P5-05, S-07            | implementer | 3–4   | done    |
 | [P6-02](wp/P6-02-trust-tiers.md) ✋           | Device trust tiers from App Attest and Play Integrity                        | P5-05, P5-06, P5-01                  | implementer | 1–1.5 | todo    |
 | [P6-03](wp/P6-03-update-funnel-autohalt.md)   | Update funnel, auto-halt from telemetry, and Sentry integration              | P3-03, P2b-04                        | implementer | 1–1.5 | done    |
 | [P6-04](wp/P6-04-hosted-web.md) ✋ _optional_ | Optional: Polaris-hosted, channel-pinned web builds                          | P2-01, P0-05, P2b-04, P2-05          | implementer | 1–1.5 | blocked |
