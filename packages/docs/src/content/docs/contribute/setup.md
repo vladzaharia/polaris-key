@@ -16,7 +16,7 @@ pnpm install                                   # JS workspace (Node 22 — see b
 ( cd sdks/python && python3 -m venv .venv && \
   .venv/bin/pip install -e ".[dev]" )          # Python SDK (add ",keyring" for the extra)
 # Swift uses the system toolchain (macOS 14+, Swift 6); no install step.
-# Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/README.md); no install step.
+# Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/CONTRIBUTING.md); no install step.
 ```
 
 ## Node must be 22

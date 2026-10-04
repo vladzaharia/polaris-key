@@ -52,7 +52,7 @@ window, escalating publicly is reasonable.
 
 - The Worker at `key.plrs.im` and everything under `packages/worker/`
 - The admin console and customer portal (`packages/admin/`)
-- All four client SDKs — Node, React, Python, Swift (`packages/sdk-*`, `sdks/`)
+- All five client SDKs — Node, React, Python, Swift, Godot (`packages/sdk-*`, `sdks/`)
 - The shared wire contract and conformance corpus (`packages/shared-*`, `conformance/`)
 - The release-distribution path: appcasts, `install.sh`, artifact serving, the GitHub App
   integration, and the webhook

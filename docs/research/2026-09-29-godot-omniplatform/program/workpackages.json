@@ -531,7 +531,7 @@
       "optional": false,
       "refs": ["README §5.12", "README §6.1"],
       "brief": "wp/P1-12-godot-release.md",
-      "status": "todo",
+      "status": "in-review",
       "milestone": "Diceroll can adopt managed config, licensing and identity"
     },
     {

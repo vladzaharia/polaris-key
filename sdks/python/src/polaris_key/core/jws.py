@@ -10,7 +10,7 @@ and unchanged from v2 — only the ``typ`` values were rebranded::
     signature        = Ed25519 over the ASCII bytes of signingInput
     compact JWS      = signingInput "." base64url(signature)
 
-SECURITY — the normative verification order (§1) in all five implementations::
+SECURITY — the normative verification order (§1) in all six implementations::
 
     1. split on "." -> exactly 3 segments
     2. len(encHeader)  > MAX_HEADER_B64  -> FAIL   (cap the ENCODED form, pre-decode)

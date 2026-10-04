@@ -1,7 +1,7 @@
 # Contributing to Polaris Key
 
-Polaris Key is a **contract-first, five-language** monorepo: one Cloudflare Worker plus SDKs
-for Node, Python, Swift, and React, all agreeing on a single frozen wire format. The most
+Polaris Key is a **contract-first, six-language** monorepo: one Cloudflare Worker plus SDKs
+for Node, React, Python, Swift and Godot, all agreeing on a single frozen wire format. The most
 important rule follows from that: **the wire contract is the source of truth, and every
 language must verify it identically.** Read the canonical glossary —
 `packages/docs/src/content/docs/start/concepts.md`, served at `/docs/start/concepts/` — for
@@ -14,7 +14,7 @@ pnpm install                                   # JS workspace (Node 22 — see b
 ( cd sdks/python && python3 -m venv .venv && \
   .venv/bin/pip install -e ".[dev]" )          # Python SDK (add ",keyring" for the extra)
 # Swift uses the system toolchain (macOS 14+, Swift 6); no install step.
-# Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/README.md); no install step.
+# Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/CONTRIBUTING.md); no install step.
 ```
 
 **Use Node 22.** `engines` pins `>=22` and CI runs 22, but the constraint is sharper than that:
@@ -76,7 +76,7 @@ pnpm gen:services -- --check     # service-table drift gate
 pnpm typecheck
 ```
 
-It is intentionally lightweight (the full five-language matrix runs in CI, not locally). For a
+It is intentionally lightweight (the full six-language matrix runs in CI, not locally). For a
 trivial or docs-only commit you can skip it with `git commit --no-verify`.
 
 ## More on the docs site
@@ -92,7 +92,7 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
   `core/` + `services/<slug>/` split, `boundaries.test.ts`, and `mount.ts` as the composition
   root.
 - [The contract-first wave model](https://key.plrs.im/docs/contribute/waves/) — contract →
-  catalog → corpus → SDKs, the five-language walkthrough for a wire-visible field, and the full
+  catalog → corpus → SDKs, the six-language walkthrough for a wire-visible field, and the full
   drift-gate inventory.
 - [The conformance corpus](https://key.plrs.im/docs/contribute/corpus/) — the generator, the
   language runners, the generator-owned mirrors (Swift, Godot), and how to add a case.

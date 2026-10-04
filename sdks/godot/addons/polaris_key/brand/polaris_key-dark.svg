@@ -1,0 +1,9 @@
+<!--
+  GENERATED FILE — do not edit by hand.
+
+  Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
+  packages/brand/kit/06-games/key/dark/key-16.svg, verbatim.
+  `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+  its source and regenerate.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" role="img" aria-label="Polaris Key"><title>Polaris Key</title><desc>favicon cut; dark; gold terminal bit omitted.</desc><g transform="translate(0 0) scale(1.0)"><path fill="#9a5cff" d="M2 3 L6 1 L6 13 L2 15 Z"/><path fill="#9a5cff" d="M8 9 L10 9 L14 13 L11 15 L8 12 Z"/><path fill="#ffffff" d="M11.5 1 L13 3 L15.5 4.5 L13 6 L11.5 8 L10 6 L7.5 4.5 L10 3 Z"/></g></svg>

@@ -15,7 +15,7 @@ extends RefCounted
 ##
 ## PURE: no OS, file or network call, and nothing throws. A malformed signal value is no
 ## evidence. The tables are static vars, not consts (thread-reachable code never indexes a const
-## Array; README "Writing GDScript here").
+## Array; CONTRIBUTING.md "Writing GDScript here").
 
 const UNKNOWN := "unknown"
 const MARKETPLACE := "marketplace:"

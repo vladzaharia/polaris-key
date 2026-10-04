@@ -121,7 +121,7 @@ describe("R2-06 · duplicate JSON keys are rejected, not resolved (regression)",
 
     // Before the fix this VERIFIED: TS took the trailing `alg:"EdDSA"` while Swift's
     // JSONSerialization took the leading `alg:"none"` — the downgrade guard giving opposite
-    // answers for identical signed bytes. Rejection is the only resolution all five
+    // answers for identical signed bytes. Rejection is the only resolution all six
     // implementations can agree on.
     expect(await verifyJws(jws, { [KID]: PUB })).toBeNull();
   });

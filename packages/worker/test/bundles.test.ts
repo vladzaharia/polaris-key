@@ -4,7 +4,7 @@
  *
  * ── WHY THE ASSERTIONS RUN THROUGH `inspectBundle` ──────────────────────────────────────────
  *
- * A bundle is only correct if the four SDKs accept it, and `@polaris-key/client-core`'s `inspectBundle`
+ * A bundle is only correct if the five SDKs accept it, and `@polaris-key/client-core`'s `inspectBundle`
  * IS the walk they all run (§7's numbered steps, pinned byte-for-byte by the corpus's
  * `bundleCases`). So this suite never hand-parses what the endpoint emits: it verifies the
  * artifact the way an air-gapped machine would, against the product's PINNED key, and reads the

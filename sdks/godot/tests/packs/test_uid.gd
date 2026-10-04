@@ -121,4 +121,8 @@ func run(t: PKeyTestContext) -> void:
 		t.check("uid: pack %s's resource loads by uid:// and reaches this project's resource by uid alone" % x, thing != null and thing.get_meta("tag", "") == "data-%s" % x and by_uid != null and by_uid.get_meta("tag", "") == "main" and by_both != null and by_both.get_meta("tag", "") == "main")
 		var scene = load("uid://s05data%sscn1" % x)
 		t.check("uid: pack %s's scene instantiates" % x, scene is PackedScene and (scene as PackedScene).can_instantiate())
-	S.remove_tree(scratch)
+	# The mounted packs stay on disk for the rest of the process, as a game's do (a mounted pack is
+	# never removed or overwritten): dataB.pck now serves res://.godot/uid_cache.bin, which every
+	# later mount reads, and Godot 4.5.x dereferences a vanished pack file there and crashes
+	# (FileAccessPack seeks before its null check; 4.4 and 4.6+ log an error). run_tests.sh's
+	# per-run HOME removes the scratch directory.

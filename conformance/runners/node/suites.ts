@@ -1082,7 +1082,7 @@ export function defineCorpusSuites({
   // Every family's JWS goes through this verifier's own `verifyJws` with the family's keys, `typ`
   // and cap. Whenever it accepts, its `nonWireIntegers` must equal the case's member as a set (an
   // absent member is the empty set), and a case that carries the member must be accepted. So
-  // the four SDKs' pointer sets cannot drift: one that misses or invents a pointer fails here.
+  // the SDKs' pointer sets cannot drift: one that misses or invents a pointer fails here.
   const POINTER_FAMILIES: [
     string,
     { id: string; nonWireIntegers?: string[] }[],
