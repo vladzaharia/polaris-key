@@ -22,6 +22,9 @@ import type {
 
 export const SLUG = "diceroll";
 
+/** The CI release key that signs the fixture's app release records (AGENTS rule 2). */
+export const RELEASE_KID = "diceroll-release-2026";
+
 /** A deterministic 64-hex SHA-256 stand-in, distinct per seed. */
 export function sha(seed: number): string {
   return (seed.toString(16).padStart(4, "0") + "ab").repeat(11).slice(0, 64);
@@ -137,6 +140,7 @@ const V041: ReleaseDto = {
   sourceUrl: "https://github.com/vladzaharia/diceroll/releases/tag/v0.4.1",
   status: "ok",
   yank: null,
+  signer: { kind: "release", kid: RELEASE_KID, recordSha256: sha(41) },
   builds: SIX,
   artifacts: [
     ...SIX.map((b, i) => payload("v0.4.1", b, 100 + i)),
@@ -171,6 +175,7 @@ const V042: ReleaseDto = {
   sourceUrl: "https://github.com/vladzaharia/diceroll/releases/tag/v0.4.2",
   status: "ok",
   yank: null,
+  signer: { kind: "release", kid: RELEASE_KID, recordSha256: sha(42) },
   builds: FIVE,
   artifacts: FIVE.map((b, i) => payload("v0.4.2", b, 200 + i)),
 };
@@ -205,6 +210,7 @@ const V030: ReleaseDto = {
   sourceUrl: "https://github.com/vladzaharia/diceroll/releases/tag/v0.3.0",
   status: "ok",
   yank: null,
+  signer: null,
   builds: [],
   artifacts: [
     {

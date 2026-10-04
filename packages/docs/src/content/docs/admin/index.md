@@ -45,6 +45,7 @@ runbook file wins and the wrapper page is stale.
 | [Deploying to production](/docs/admin/deploy/)                      | The full bootstrap runbook — external providers, Cloudflare resources, secrets, first deploy, DJDL onboarding.                    |
 | [Offline bundles](/docs/admin/bundles/)                             | When to mint one, the console dialog, the `pkey bundle` CLI, and the import-window vs. grace-days distinction.                    |
 | [Activity](/docs/admin/activity/)                                   | What lands in a product's audit log, and how the console pages through it.                                                        |
+| [Operations](/docs/admin/operations/)                               | Cron runs, heartbeats, queue backlog, storage, indexes and store connectors, and what Healthy, Degraded and Failed mean.          |
 | [Where the security material lives](/docs/admin/security-pointers/) | The disclosure policy, and why the threat model and audit findings stay repo-only.                                                |
 
 ## Before you start

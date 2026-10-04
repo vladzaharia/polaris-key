@@ -1,59 +1,68 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   ProductDeviceDetail,
   ProductDeviceDto,
   ProductDevicePage,
+  ProductDeviceQuery,
   ProductDeviceSummary,
 } from "../src/api.js";
+import {
+  expectNoAxeViolations,
+  hashQuery,
+  renderAt,
+  resetCore,
+} from "./coreTestUtils.js";
 
-const productDevices = vi.fn();
-const productDeviceSummary = vi.fn();
-const productDevice = vi.fn();
+const productDevices =
+  vi.fn<(slug: string, q: ProductDeviceQuery) => Promise<ProductDevicePage>>();
+const productDeviceSummary =
+  vi.fn<(slug: string) => Promise<ProductDeviceSummary>>();
+const productDevice =
+  vi.fn<(slug: string, id: string) => Promise<ProductDeviceDetail>>();
 const deauthorizeProductDevice = vi.fn();
 const resetProductDeviceFingerprint = vi.fn();
-vi.mock("../src/api.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/api.js")>();
+
+vi.mock("../src/api.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
   return {
     ...actual,
     api: {
-      ...actual.api,
-      productDevices: (...a: unknown[]) => productDevices(...a),
-      productDeviceSummary: (...a: unknown[]) => productDeviceSummary(...a),
-      productDevice: (...a: unknown[]) => productDevice(...a),
-      deauthorizeProductDevice: (...a: unknown[]) =>
-        deauthorizeProductDevice(...a),
-      resetProductDeviceFingerprint: (...a: unknown[]) =>
-        resetProductDeviceFingerprint(...a),
+      productDevices: (s: string, q: ProductDeviceQuery) =>
+        productDevices(s, q),
+      productDeviceSummary: (s: string) => productDeviceSummary(s),
+      productDevice: (s: string, id: string) => productDevice(s, id),
+      deauthorizeProductDevice: (s: string, id: string) =>
+        deauthorizeProductDevice(s, id),
+      resetProductDeviceFingerprint: (s: string, id: string) =>
+        resetProductDeviceFingerprint(s, id),
     },
   };
 });
 
-import { resetCache } from "../src/context.js";
-import { Toaster, TooltipProvider } from "../src/components/ui/index.js";
-import { Devices } from "../src/views/Devices.js";
+const { ApiError } = await import("../src/api.js");
+const { DevicesPage } = await import("../src/console/pages/core/Devices.js");
+const { useRoute } = await import("../src/console/router.js");
 
-function dev(
-  id: string,
+const NOW = Math.floor(Date.now() / 1000);
+
+function device(
+  n: number,
   over: Partial<ProductDeviceDto> = {},
 ): ProductDeviceDto {
   return {
-    deviceId: id,
+    deviceId: `dev_${n}`,
     status: "authorized",
-    firstSeen: 1_700_000_000,
-    lastSeen: 1_700_003_600,
+    firstSeen: NOW - 1000,
+    lastSeen: NOW - 10,
+    label: `Device ${n}`,
     platform: "windows",
-    arch: "x86_64",
-    appVersion: "1.0.0",
-    licenseId: null,
-    seatNo: null,
+    arch: "x64",
+    appVersion: "2.4.0",
+    licenseId: `lic_${n}`,
+    seatNo: 1,
     ...over,
   };
 }
@@ -66,7 +75,7 @@ const SUMMARY: ProductDeviceSummary = {
   ],
   licensed: { licensed: 1, licenseFree: 1 },
   byPlatform: [
-    { value: "windows", count: 1 },
+    { value: "windows", count: 2 },
     { value: "linux", count: 1 },
   ],
   byArch: [],
@@ -74,7 +83,10 @@ const SUMMARY: ProductDeviceSummary = {
   byAppVersion: [],
 };
 
-function detail(d: ProductDeviceDto, over: Partial<ProductDeviceDetail> = {}) {
+function detail(
+  d: ProductDeviceDto,
+  over: Partial<ProductDeviceDetail> = {},
+): ProductDeviceDetail {
   return {
     ...d,
     fingerprint: null,
@@ -83,17 +95,21 @@ function detail(d: ProductDeviceDto, over: Partial<ProductDeviceDetail> = {}) {
   } as ProductDeviceDetail;
 }
 
-function mount() {
-  return render(
-    <TooltipProvider>
-      <Toaster>
-        <Devices slug="djdl" />
-      </Toaster>
-    </TooltipProvider>,
+/** The page as the router renders it: the drawer id comes from the URL. */
+function Routed() {
+  const route = useRoute();
+  return (
+    <DevicesPage
+      slug="djdl"
+      deviceId={route.kind === "product" ? route.id : undefined}
+    />
   );
 }
 
+const mount = (hash = "#/p/djdl/devices") => renderAt(hash, <Routed />);
+
 beforeEach(() => {
+  resetCore();
   for (const m of [
     productDevices,
     productDeviceSummary,
@@ -103,162 +119,185 @@ beforeEach(() => {
   ])
     m.mockReset();
   productDeviceSummary.mockResolvedValue(SUMMARY);
-  (
-    Element.prototype as unknown as { hasPointerCapture: () => boolean }
-  ).hasPointerCapture = () => false;
-  (
-    Element.prototype as unknown as { scrollIntoView: () => void }
-  ).scrollIntoView = () => undefined;
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
-    class {
-      observe(): void {}
-      unobserve(): void {}
-      disconnect(): void {}
-    };
+  productDevices.mockResolvedValue({
+    devices: [
+      device(1),
+      device(2, { licenseId: null, seatNo: null, label: "Free one" }),
+    ],
+    nextCursor: null,
+  });
 });
-afterEach(() => {
-  cleanup();
-  resetCache();
-});
+afterEach(cleanup);
 
-describe("Devices view", () => {
-  it("lists licensed and license-free devices with summary chips and follows nextCursor", async () => {
-    const page1: ProductDevicePage = {
-      devices: [
-        dev("dev-free"),
-        dev("dev-lic", { licenseId: "lic_1", seatNo: 2 }),
-      ],
-      nextCursor: "CUR1",
-    };
-    const page2: ProductDevicePage = {
-      devices: [dev("dev-old", { label: "Steam Deck" })],
-      nextCursor: null,
-    };
-    productDevices.mockImplementation(
-      async (_s: string, q: { cursor?: string | null }) =>
-        q.cursor ? page2 : page1,
-    );
+describe("Core → Devices", () => {
+  it("lists licensed and license-free devices with the summary, linking each license (DEV-1)", async () => {
     mount();
-
-    await waitFor(() => expect(screen.getByText("dev-free")).toBeTruthy());
-    expect(screen.getByText("License-free")).toBeTruthy();
-    expect(screen.getByText("lic_1")).toBeTruthy();
-    expect(screen.getByText(/seat 2/)).toBeTruthy();
-    // Default filter is authorized devices only.
+    expect(await screen.findByText("Device 1")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "lic_1" }).getAttribute("href"),
+    ).toBe("#/p/djdl/license/licenses/lic_1");
+    expect(screen.getAllByText("License-free").length).toBeGreaterThan(1);
+    expect(screen.getByRole("button", { name: /Authorized/ })).toBeTruthy();
+    // No filter: every status, from the head.
     expect(productDevices.mock.calls[0]![1]).toMatchObject({
-      status: "authorized",
+      status: "all",
+      limit: 50,
     });
-    // Chips come from the summary endpoint.
-    await screen.findByText("2 authorized");
-    expect(screen.getByText("1 license-free")).toBeTruthy();
-
-    await userEvent.click(screen.getByRole("button", { name: "Load more" }));
-    await screen.findByText("Steam Deck");
-    expect(productDevices.mock.calls.at(-1)![1]).toMatchObject({
-      cursor: "CUR1",
-    });
-    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
   });
 
-  it("refetches from the head when a filter changes", async () => {
-    productDevices.mockResolvedValue({
-      devices: [dev("dev-a")],
-      nextCursor: null,
-    });
+  it("follows nextCursor on Load more", async () => {
+    const user = userEvent.setup();
+    productDevices
+      .mockResolvedValueOnce({ devices: [device(1)], nextCursor: "c1" })
+      .mockResolvedValueOnce({ devices: [device(3)], nextCursor: null });
     mount();
-    await screen.findByText("dev-a");
+    await screen.findByText("Device 1");
+    await user.click(screen.getByRole("button", { name: /Load more/ }));
+    expect(await screen.findByText("Device 3")).toBeTruthy();
+    expect(productDevices.mock.calls[1]![1]).toMatchObject({ cursor: "c1" });
+  });
 
-    // Clicking a platform chip filters the list by that platform.
-    await userEvent.click(
-      await screen.findByRole("button", { name: /linux 1/ }),
-    );
+  it("a summary tile is a filter: it writes the URL and refetches from the head (DEV-4)", async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByText("Device 1");
+    const tile = screen.getByRole("button", { name: /Deauthorized/ });
+    await user.click(tile);
+    await waitFor(() => expect(hashQuery().get("status")).toBe("deauthorized"));
     await waitFor(() =>
       expect(productDevices.mock.calls.at(-1)![1]).toMatchObject({
-        platform: "linux",
+        status: "deauthorized",
         cursor: null,
       }),
     );
+    expect(tile.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("deauthorizes a license-free device from the drawer, warning that it can re-register", async () => {
-    const d = dev("dev-free");
-    productDevices.mockResolvedValue({ devices: [d], nextCursor: null });
-    productDevice.mockResolvedValue(detail(d));
-    deauthorizeProductDevice.mockResolvedValue({
-      ok: true,
-      deviceId: "dev-free",
-    });
-    mount();
-
-    await userEvent.click(await screen.findByText("dev-free"));
-    const drawer = await screen.findByRole("dialog");
-    await within(drawer).findByText(/License-free \(registered/);
-    await userEvent.click(
-      within(drawer).getByRole("button", { name: "Deauthorize" }),
+  it("reads filters from the URL (round trip)", async () => {
+    mount(
+      "#/p/djdl/devices?status=authorized&platform=linux&license=free&q=dev_",
     );
+    await waitFor(() => expect(productDevices).toHaveBeenCalled());
+    expect(productDevices.mock.calls[0]![1]).toMatchObject({
+      status: "authorized",
+      platform: "linux",
+      licensed: false,
+      q: "dev_",
+    });
+    expect(
+      await screen.findByText(/Showing license-free devices only/),
+    ).toBeTruthy();
+  });
 
+  it("opens the routed drawer with every fact as text (DEV-2, DEV-3)", async () => {
+    productDevice.mockResolvedValue(
+      detail(device(1), {
+        facts: {
+          os: {
+            name: "macOS",
+            version: "15.1",
+            build: "24B83",
+            kernel: "24.1.0",
+          },
+          hardware: {
+            cpuModel: "Apple M2",
+            cpuCores: 8,
+            ramMb: 16384,
+            machineModel: "Mac14,2",
+          },
+          runtime: { name: "node", version: "22" },
+          probes: { rekordbox: { present: true, version: "7.0" } },
+          updatedAt: NOW,
+        },
+        fingerprint: {
+          status: "verified",
+          hwid: "abcdef0123456789",
+          components: { cpu: "Apple M2" },
+          componentCount: 1,
+          firstSeen: NOW,
+          lastSeen: NOW,
+        },
+      }),
+    );
+    mount("#/p/djdl/devices/dev_1");
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("Mac14,2")).toBeTruthy();
+    expect(within(dialog).getByText(/build 24B83/)).toBeTruthy();
+    expect(within(dialog).getByText("rekordbox")).toBeTruthy();
+    expect(within(dialog).getByText("16.0 GB")).toBeTruthy();
+    expect(
+      within(dialog).getByRole("button", { name: "Reset binding…" }),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getAllByRole("button", { name: "Close" }).at(-1)!,
+    );
+    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/devices"));
+  });
+
+  it("deauthorizes a license-free device (L2), warning that it can register again", async () => {
+    const user = userEvent.setup();
+    const free = device(2, { licenseId: null, seatNo: null });
+    productDevice.mockResolvedValue(detail(free));
+    deauthorizeProductDevice.mockResolvedValue({ ok: true, deviceId: "dev_2" });
+    mount("#/p/djdl/devices/dev_2");
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Deauthorize…" }),
+    );
     const confirm = await screen.findByRole("alertdialog");
     expect(within(confirm).getByText(/can register again/)).toBeTruthy();
-    await userEvent.click(
+    expect(within(confirm).getByText(/no seat is freed/)).toBeTruthy();
+    await user.click(
       within(confirm).getByRole("button", { name: "Deauthorize" }),
     );
-
     await waitFor(() =>
-      expect(deauthorizeProductDevice).toHaveBeenCalledWith("djdl", "dev-free"),
+      expect(deauthorizeProductDevice).toHaveBeenCalledWith("djdl", "dev_2"),
     );
-    // The list reloads after the action.
+    // Invalidation refetches the list and the summary.
     await waitFor(() =>
-      expect(productDevices.mock.calls.length).toBeGreaterThan(1),
+      expect(productDeviceSummary.mock.calls.length).toBeGreaterThan(1),
     );
   });
 
   it("offers a binding reset only when the device has a fingerprint", async () => {
-    const d = dev("dev-fp");
-    productDevices.mockResolvedValue({ devices: [d], nextCursor: null });
-    productDevice.mockResolvedValue(
-      detail(d, {
-        fingerprint: {
-          status: "verified",
-          hwid: "BgNwYHns5OhG",
-          components: { cpu: "abcd1234" },
-          componentCount: 1,
-          firstSeen: 1,
-          lastSeen: 2,
-        },
-      }),
+    productDevice.mockResolvedValue(detail(device(1)));
+    mount("#/p/djdl/devices/dev_1");
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText(
+      "No binding: this device has not sent a fingerprint.",
     );
-    resetProductDeviceFingerprint.mockResolvedValue({
-      ok: true,
-      deviceId: "dev-fp",
-    });
-    mount();
-
-    await userEvent.click(await screen.findByText("dev-fp"));
-    const drawer = await screen.findByRole("dialog");
-    await userEvent.click(
-      await within(drawer).findByRole("button", { name: "Reset binding" }),
-    );
-    const confirm = await screen.findByRole("alertdialog");
-    await userEvent.click(
-      within(confirm).getByRole("button", { name: "Reset binding" }),
-    );
-    await waitFor(() =>
-      expect(resetProductDeviceFingerprint).toHaveBeenCalledWith(
-        "djdl",
-        "dev-fp",
-      ),
-    );
+    expect(
+      within(dialog).queryByRole("button", { name: "Reset binding…" }),
+    ).toBeNull();
   });
 
-  it("shows an empty state and an error state", async () => {
-    productDevices.mockResolvedValueOnce({ devices: [], nextCursor: null });
-    mount();
-    await screen.findByText("No devices yet");
-    cleanup();
+  it("a drawer load error offers Retry", async () => {
+    const user = userEvent.setup();
+    productDevice
+      .mockRejectedValueOnce(new ApiError(500))
+      .mockResolvedValue(detail(device(1)));
+    mount("#/p/djdl/devices/dev_1");
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Retry" }),
+    );
+    expect(await within(dialog).findByText("Hardware")).toBeTruthy();
+  });
 
-    productDevices.mockRejectedValueOnce(new Error("boom"));
+  it("shows a first-run empty state, and an error state with Retry", async () => {
+    productDevices.mockResolvedValue({ devices: [], nextCursor: null });
     mount();
-    await screen.findByText("Couldn’t load devices");
-    expect(screen.getByText("boom")).toBeTruthy();
+    expect(await screen.findByText("No devices yet")).toBeTruthy();
+    cleanup();
+    resetCore();
+    productDevices.mockRejectedValue(new ApiError(500));
+    mount();
+    expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+
+  it("passes axe", async () => {
+    const { container } = mount();
+    await screen.findByText("Device 1");
+    await expectNoAxeViolations(container);
   });
 });

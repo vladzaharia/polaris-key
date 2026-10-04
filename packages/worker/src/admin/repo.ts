@@ -12,6 +12,7 @@ import type {
   DeviceRow,
   ProductRow,
   ProfileRow,
+  SchemaRow,
   TierRow,
 } from "../repo.js";
 
@@ -135,6 +136,53 @@ export async function nextSchemaVersion(
     product,
   );
   return (r?.v ?? 0) + 1;
+}
+
+/**
+ * Every catalog version a product has published, newest first (ADMIN.md A-6). Versions are never
+ * deleted: a publish deactivates the old row and inserts the next, so this is the full history.
+ */
+export async function listSchemaVersions(
+  db: Db,
+  product: string,
+): Promise<SchemaRow[]> {
+  return db.all<SchemaRow>(
+    "SELECT * FROM product_schema WHERE product = ? ORDER BY catalog_version DESC",
+    product,
+  );
+}
+
+/** One catalog version, active or not. */
+export async function getSchemaVersion(
+  db: Db,
+  product: string,
+  version: number,
+): Promise<SchemaRow | null> {
+  return db.first<SchemaRow>(
+    "SELECT * FROM product_schema WHERE product = ? AND catalog_version = ?",
+    product,
+    version,
+  );
+}
+
+/**
+ * Who published each console catalog version: the `schema.publish` audit rows (their target id
+ * is the version). A version with no row came from the product's manifest (create or resync).
+ */
+export async function listSchemaPublishers(
+  db: Db,
+  product: string,
+): Promise<
+  {
+    target_id: string | null;
+    actor_name: string | null;
+    actor_email: string | null;
+  }[]
+> {
+  return db.all(
+    "SELECT target_id, actor_name, actor_email FROM audit WHERE product = ? AND action = 'schema.publish'",
+    product,
+  );
 }
 
 // ── Licenses ─────────────────────────────────────────────────────────────────
@@ -438,6 +486,44 @@ export async function countLicensesUsingProfile(
     profileId,
   );
   return r?.n ?? 0;
+}
+
+/**
+ * What points at each profile, by profile id: the tiers whose baseline it is and the licenses
+ * that list it (`license_profiles`), the two referrer classes `countLicensesUsingProfile` sums.
+ * The console's Profiles list shows the counts, the profile record lists them, and Delete stays
+ * disabled while either is non-empty.
+ */
+export async function listProfileReferences(
+  db: Db,
+  product: string,
+): Promise<{
+  tiers: { profile_id: string; id: string; label: string }[];
+  licenses: {
+    profile_id: string;
+    id: string;
+    name: string | null;
+    email: string | null;
+  }[];
+}> {
+  const tiers = await db.all<{ profile_id: string; id: string; label: string }>(
+    "SELECT profile_id, id, label FROM tiers WHERE product = ? AND profile_id IS NOT NULL ORDER BY id",
+    product,
+  );
+  const licenses = await db.all<{
+    profile_id: string;
+    id: string;
+    name: string | null;
+    email: string | null;
+  }>(
+    `SELECT lp.profile_id AS profile_id, l.id AS id, l.name AS name, l.email AS email
+       FROM license_profiles lp
+       JOIN licenses l ON l.product = lp.product AND l.id = lp.license_id
+      WHERE lp.product = ?
+      ORDER BY l.id`,
+    product,
+  );
+  return { tiers, licenses };
 }
 
 export async function countLicensesUsingTier(

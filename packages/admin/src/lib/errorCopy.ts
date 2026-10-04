@@ -93,6 +93,14 @@ export const DISTRIBUTION_ERROR_MESSAGES: Record<string, string> = {
     "That TestFlight group doesn't exist in App Store Connect.",
   no_webhook_secret: "No webhook secret is set for this connector.",
   unknown_track: "Google Play doesn't have that track.",
+  // A-9: the 404s keep their reason.
+  unknown_outlet:
+    "That outlet isn't declared any more. The page has been refreshed.",
+  unknown_channel: "That channel doesn't exist for this product.",
+  unknown_release:
+    "That release doesn't exist any more. The page has been refreshed.",
+  unknown_deliverable: "That deliverable isn't declared any more.",
+  unknown_candidate: "That Sentry candidate doesn't exist any more.",
 };
 
 /** Is this a network failure (fetch rejected before any response)? */

@@ -91,6 +91,177 @@ const ROUTES: Record<string, unknown> = {
     bindings: { DB: true, HOT: true },
   },
   "/manage/api/platform/activity": { items: [], nextCursor: null },
+  "/manage/api/platform/settings": {
+    settings: [
+      {
+        key: "LAZY_DELTAS",
+        area: "background-jobs",
+        label: "Lazy deltas",
+        description: "Lazy hot-pair deltas.",
+        kind: "switch",
+        scripts: ["main", "deltas"],
+        precedence: "ceiling",
+        default: "off",
+        deployValue: "runtime",
+        value: "off",
+        source: "default",
+        forcedOff: false,
+        stored: null,
+        version: 0,
+        confirm: { on: "L1", off: "L0" },
+      },
+      {
+        key: "BLOB_GC_GRACE_DAYS",
+        area: "background-jobs",
+        label: "Blob collector grace period",
+        description: "Grace before deletion.",
+        kind: "integer",
+        unit: "days",
+        min: 1,
+        max: 365,
+        scripts: ["main"],
+        precedence: "runtime",
+        default: 30,
+        deployValue: null,
+        value: 30,
+        source: "default",
+        forcedOff: false,
+        stored: null,
+        version: 0,
+        confirm: { raise: "L0", lower: "L1" },
+      },
+    ],
+    storeAvailable: true,
+    propagationSeconds: 30,
+    deployTime: [
+      { name: "PKEY_ENVIRONMENT", area: "deployment", value: "staging" },
+    ],
+    secrets: [{ name: "KEY_HASH_PEPPER", set: true }],
+    constants: [],
+    warnings: [],
+  },
+  "/manage/api/products/kek": {
+    ok: true,
+    active: "kek-1",
+    kids: ["kek-1"],
+    counts: { keys: { "kek-1": 2 } },
+    remaining: 0,
+    unopenable: 0,
+  },
+  "/manage/api/platform/operations": {
+    generatedAt: 1_790_000_000,
+    probes: {
+      d1: { bound: true, ok: true, latencyMs: 8 },
+      kv: { bound: true, ok: true, latencyMs: 9 },
+      r2: { bound: true, ok: true, latencyMs: 11 },
+      updateHealth: { bound: false },
+      email: { bound: false },
+    },
+    queues: {
+      deltas: {
+        bound: true,
+        ok: true,
+        latencyMs: 4,
+        backlogCount: 0,
+        backlogBytes: 0,
+        oldestMessageAt: null,
+      },
+      deadLetter: {
+        bound: true,
+        ok: true,
+        latencyMs: 4,
+        backlogCount: 0,
+        backlogBytes: 0,
+        oldestMessageAt: null,
+      },
+      consumer: {
+        maxBatchSize: 1,
+        maxBatchTimeoutSeconds: 5,
+        maxRetries: 3,
+        maxConcurrency: 1,
+      },
+    },
+    heartbeats: [],
+    jobs: {
+      latest: { maintenance: null, connectorPoll: null },
+      recent: [],
+      failures: [],
+    },
+    storage: {
+      d1: { sizeBytes: 1_000_000 },
+      r2: { committedBytes: 0, objects: 0, byKind: [] },
+    },
+    indexes: { missing: [] },
+    connectors: {
+      items: [],
+      lastPollFailure: null,
+      commerce: { available: false },
+    },
+    recentErrors: { jobFailures: [], lazyDeltaRefusals: [] },
+  },
+  "/manage/api/platform/store-connections": {
+    ok: true,
+    stores: [
+      {
+        store: "app-store",
+        label: "App Store",
+        configured: true,
+        primary: "app-store.api-key",
+        credentials: [
+          {
+            id: "app-store.api-key",
+            store: "app-store",
+            slot: "api-key",
+            kind: "asc-api-key",
+            label: "App Store Connect API key (team)",
+            configured: true,
+            source: "secret",
+            meta: { keyId: "ABC123DEFG", issuerId: "69a6de7f-0000" },
+            console: {
+              present: false,
+              status: null,
+              meta: null,
+              createdAt: null,
+              createdBy: null,
+              rotatedAt: null,
+              lastUsedAt: null,
+              lastOkAt: null,
+              lastError: null,
+            },
+            secret: {
+              name: "PLATFORM_ASC_API_KEY",
+              present: true,
+              valid: true,
+            },
+            pinField: "appleId",
+            pins: 0,
+          },
+        ],
+        settings: [],
+        appsListing: true,
+        assignments: [],
+      },
+    ],
+  },
+  "/manage/api/platform/store-connections/app-store/apps": {
+    ok: true,
+    store: "app-store",
+    source: "secret",
+    fetchedAt: 1_790_000_000,
+    cached: false,
+    truncated: false,
+    apps: [
+      {
+        appId: "1234567890",
+        name: "Godot Demo",
+        pins: {},
+        identifiers: { bundleId: "com.acme.demo", sku: null },
+        status: { appStore: { versions: [], phasedRelease: null } },
+        assignedProduct: null,
+        assignedVia: null,
+      },
+    ],
+  },
 };
 
 let server: PreviewServer;
@@ -222,14 +393,17 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
-  it("Home, Products, the new-product wizard and Deployment load with no violations", async () => {
+  it("Home, Products, the new-product wizard and every Platform page load with no violations", async () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
     for (const [hash, title] of [
       ["#/", "Home"],
       ["#/products", "Products"],
       ["#/products/new?via=manual&step=basics", "New product"],
-      ["#/platform", "Deployment"],
+      ["#/platform", "Settings"],
+      ["#/platform/operations", "Operations"],
+      ["#/platform/deployment", "Deployment"],
+      ["#/platform/store-connections", "Store connections"],
     ] as const) {
       await page.evaluate((h) => {
         location.hash = h;
@@ -238,9 +412,26 @@ describe("overlays under the Worker's CSP", () => {
       await page.waitForTimeout(200);
       expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
     }
-    expect(await page.evaluate(() => location.hash)).toBe(
-      "#/platform/deployment",
-    );
+    await check(page, "store app assign dialog", async () => {
+      await page
+        .getByRole("button", { name: "Actions for Godot Demo" })
+        .click();
+      await page.getByRole("menuitem", { name: "Assign to product…" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.context().close();
+  });
+
+  it("Platform → Settings: a setting's confirmation", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => {
+      location.hash = "#/platform/settings";
+    });
+    await page.locator("[data-page-title]", { hasText: "Settings" }).waitFor();
+    await check(page, "platform setting confirmation", async () => {
+      await page.getByRole("switch", { name: "Lazy deltas" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
     await page.context().close();
   });
 

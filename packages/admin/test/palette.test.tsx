@@ -48,8 +48,9 @@ describe("the sources", () => {
     expect(labels).toContain("Licenses");
     expect(labels).toContain("Matrix");
     expect(labels).not.toContain("Releases");
-    // Not-built pages are not offered: they would only redirect.
-    expect(labels).not.toContain("Edge mint");
+    // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
+    expect(labels).toContain("Sign-in");
+    expect(labels).not.toContain("Package feeds");
     expect(items.find((i) => i.label === "Licenses")!.href).toBe(
       "#/p/djdl/license/licenses",
     );
@@ -61,7 +62,10 @@ describe("the sources", () => {
       "Home",
       "Products",
       // The Platform section's built pages (notes/S-13 §9.1).
+      "Settings",
       "Deployment",
+      "Operations",
+      "Store connections",
     ]);
   });
 
@@ -197,8 +201,9 @@ describe("the palette in the console", () => {
     boot("#/p/djdl", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     let dialog = await openPalette();
+    // The product's Settings, not Platform → Settings.
     await userEvent.click(
-      await within(dialog).findByRole("option", { name: /^Settings/ }),
+      await within(dialog).findByRole("option", { name: /^Settings.*DJDL/ }),
     );
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/settings"));
     expect(

@@ -128,9 +128,10 @@ describe("qk.products() holds one shape for the Products page and the switcher",
     // page's heading to take focus first: route focus lands on it once it renders, and on a
     // loaded machine that could happen after the switcher opened, closing it (focus outside).
     await go("#/p/djdl");
+    // The product Overview is titled with the product's name (chunk 5, OVR-1).
     const heading = await screen.findByRole("heading", {
       level: 1,
-      name: "Overview",
+      name: "DJDL",
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect((await switcherOptions()).some((t) => t.startsWith("DJDL"))).toBe(
