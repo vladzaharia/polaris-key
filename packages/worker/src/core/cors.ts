@@ -146,7 +146,9 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "identity/auth/device/poll",
 ];
 
-/** Core route kinds are all device-facing, and every one of them is covered. */
+/** Core route kinds that answer CORS. The attestation routes (P6-02) are not among them: no
+ *  browser can attest (App Attest and Play Integrity are native-only), so a cross-origin
+ *  attest request has nothing to reach. */
 const CORS_CORE_KINDS: ReadonlySet<Route["kind"]> = new Set<Route["kind"]>([
   "discovery",
   "jwks",

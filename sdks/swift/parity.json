@@ -44,6 +44,12 @@
     "devices.register": { "status": "implemented" },
     "devices.manage": { "status": "implemented" },
     "devices.report": { "status": "implemented" },
+    "devices.attest": {
+      "status": "planned",
+      "unowned": true,
+      "except": [{ "runtime": "macos", "reason": "runtime" }],
+      "note": "P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client."
+    },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
