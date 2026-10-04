@@ -69,6 +69,9 @@ export function HowChannelsResolve(): React.ReactElement {
   );
 }
 
+const POLICY_ROW =
+  "grid grid-cols-[9rem_minmax(0,1fr)_auto] items-center gap-x-3";
+
 function Row({
   term,
   children,
@@ -318,7 +321,7 @@ export function ChannelLane({
             )
           ) : (
             <ul
-              className="flex flex-col gap-1"
+              className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3"
               aria-label={`What ${c.channel} serves per platform`}
             >
               {platforms.map((p) => {
@@ -339,28 +342,27 @@ export function ChannelLane({
           )}
         </Row>
         <Row term="Policy">
-          <ul className="flex flex-col gap-1">
-            <li className="flex flex-wrap items-center gap-x-2">
-              <span>
-                Minimum supported{" "}
-                {c.minSupported ? (
-                  <span className="font-mono text-xs">{c.minSupported}</span>
-                ) : (
-                  <span className="text-fg-muted">none</span>
-                )}
-              </span>
+          {/* Label, value, action: each in its own column, actions flush right. */}
+          <ul className="flex max-w-2xl flex-col gap-1.5">
+            <li className={POLICY_ROW}>
+              <span>Minimum supported</span>
+              {c.minSupported ? (
+                <span className="font-mono text-xs">{c.minSupported}</span>
+              ) : (
+                <span className="text-fg-muted">None</span>
+              )}
               <InlineEdit
                 label={c.minSupported ? "Change…" : "Set…"}
                 onClick={() => onAction({ kind: "minSupported", channel: c })}
               />
             </li>
-            <li className="flex flex-wrap items-center gap-x-2">
+            <li className={POLICY_ROW}>
+              <span>Critical update</span>
               <span>
-                Critical update{" "}
                 {c.critical ? (
                   <StatusPill tone="warning">Critical</StatusPill>
                 ) : (
-                  <span className="text-fg-muted">no</span>
+                  <span className="text-fg-muted">Not critical</span>
                 )}
               </span>
               <InlineEdit
@@ -369,11 +371,11 @@ export function ChannelLane({
               />
             </li>
             {isApp ? (
-              <li className="flex flex-wrap items-center gap-x-2">
+              <li className={POLICY_ROW}>
                 {floor ? (
                   <>
+                    <span>Rollback floor</span>
                     <span>
-                      Rollback floor{" "}
                       <span className="font-mono text-xs">{floor.version}</span>
                       <span className="text-xs text-fg-muted">
                         {" "}
@@ -407,10 +409,10 @@ export function ChannelLane({
                     />
                   </>
                 ) : (
-                  <span>
-                    Rollback floor{" "}
-                    <span className="text-fg-muted">none recorded yet</span>
-                  </span>
+                  <>
+                    <span>Rollback floor</span>
+                    <span className="text-fg-muted">None recorded yet</span>
+                  </>
                 )}
               </li>
             ) : (
@@ -433,7 +435,7 @@ export function ChannelLane({
                         className="flex flex-wrap items-center gap-x-2"
                       >
                         <span>
-                          contentApi {f.contentApi}: ≥{" "}
+                          Content API {f.contentApi}: ≥{" "}
                           <span className="font-mono text-xs">
                             {f.minSupported}
                           </span>

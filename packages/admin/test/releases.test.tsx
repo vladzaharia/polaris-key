@@ -218,7 +218,8 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
         .getAttribute("href"),
     ).toBe("#/p/djdl/release/releases/v0.4.2");
     // Both channels serve 0.4.2 on at least one platform: the server's resolution, once (REL-4).
-    expect(await within(row).findByText("stable · beta")).toBeTruthy();
+    expect(await within(row).findByText("stable")).toBeTruthy();
+    expect(within(row).getByText("beta")).toBeTruthy();
     // Builds as platform glyphs, with a labelled list for assistive tech.
     const builds = within(row).getByRole("list", { name: "Builds of 0.4.2" });
     expect(within(builds).getAllByRole("listitem")).toHaveLength(5);
@@ -232,7 +233,7 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
     ).toBe("https://github.com/vladzaharia/diceroll/releases/tag/v0.4.2");
     // A legacy release lists its files instead of builds, and has no signed record.
     const legacy = await rowOf("0.3.0");
-    expect(within(legacy).getByText("1 files")).toBeTruthy();
+    expect(within(legacy).getByText("1 file")).toBeTruthy();
     expect(within(legacy).getByText("No signed record")).toBeTruthy();
   });
 
@@ -404,7 +405,7 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
       within(row).getByRole("button", { name: "Actions for 0.4.1" }),
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Promote to…" }),
+      await screen.findByRole("menuitem", { name: "Promote…" }),
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(

@@ -294,7 +294,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
           style={
             { "--sidebar-w": rail ? "3.5rem" : "15rem" } as React.CSSProperties
           }
-          className="relative grid h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
+          className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
         >
           <a
             href="#content"

@@ -45,7 +45,9 @@ describe("Distribution → Rollouts", () => {
     const rows = within(t).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(4);
     expect(within(rows[0]!).getByText("Halted")).toBeTruthy();
-    expect(within(rows[0]!).getByText(/by Automatic/)).toBeTruthy();
+    expect(
+      within(rows[0]!).getByText(/by Polaris Key \(auto-halt\)/),
+    ).toBeTruthy();
     // DOV-3: the release is a link showing its version, not a raw id.
     expect(
       within(t).getAllByRole("link", { name: "2.4.0" }).length,

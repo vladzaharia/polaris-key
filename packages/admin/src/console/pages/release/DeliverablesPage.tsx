@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cn } from "../../../lib/cn.js";
 import { AlertTriangle, Info } from "lucide-react";
 import type { DeliverableDto } from "../../../api.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
@@ -44,7 +45,11 @@ export function GateCell({
     <span className="inline-flex flex-wrap items-center gap-1.5">
       <Link
         to={productPage(slug, "access", { query: { deliverable: d.id } })}
-        className="text-accent-fg underline-offset-4 hover:underline"
+        // No gate is the quiet case: muted, so real gates stand out.
+        className={cn(
+          "underline-offset-4 hover:underline",
+          d.gate ? "text-accent-fg" : "text-fg-muted hover:text-fg-strong",
+        )}
       >
         {d.gate ? (
           <span className="font-mono text-xs">{d.gate}</span>

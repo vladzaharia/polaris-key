@@ -75,7 +75,6 @@ export function FeedPage({ slug }: { slug: string }): React.ReactElement {
       header={
         <PageHeader
           title="Feed"
-          description="Who may read the version check and the changelog, the versions this product supports, and the policy every build in the feed must meet."
           refetching={feed.isFetching && !feed.isPending}
         />
       }
@@ -210,15 +209,19 @@ function AccessSection({
       >
         <SettingsRow
           label="Who may read it"
+          align="block"
           help={
             locked
               ? "Read-only until the product has a release configuration."
-              : "An operator-set mode survives a resync until it is reverted."
+              : admin
+                ? "Set in the console: it survives a resync until it is reverted."
+                : undefined
           }
         >
           <FormField<Mode>
             name="metadataAccess"
-            label="Mode"
+            label="Who may read it"
+            hideLabel
             group
             disabled={locked}
           >
@@ -226,7 +229,7 @@ function AccessSection({
               <RadioCards<Mode>
                 {...field}
                 readOnly={locked}
-                columns={2}
+                columns={4}
                 options={MODES.map((m) => ({
                   value: m,
                   label: ACCESS_LABELS[m] ?? m,
@@ -236,10 +239,7 @@ function AccessSection({
             )}
           </FormField>
         </SettingsRow>
-        <SettingsRow
-          label="Artifact access"
-          help="Who may read the appcast and download what it points at. Distribution owns it."
-        >
+        <SettingsRow label="Artifact access">
           {access.isPending ? (
             <Skeleton className="h-5 w-40" />
           ) : access.data ? (
@@ -317,7 +317,7 @@ function CompatSection({
       <SettingsSection
         id="feed-compat"
         title="Compatibility window"
-        description="The client versions this product supports. Every license grant is intersected with it."
+        description="Every license grant is intersected with this window."
         source={
           <SourceBadge
             source={admin ? "admin" : "manifest"}
@@ -335,11 +335,8 @@ function CompatSection({
           </>
         }
       >
-        <SettingsRow
-          label="Range"
-          help="Semantic versions, such as 1.0.0 to 2.99.0."
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div className="px-5 py-4">
+          <div className="grid max-w-xl gap-3 sm:grid-cols-2">
             <FormField<string>
               name="compatMin"
               label="Lowest supported"
@@ -355,7 +352,7 @@ function CompatSection({
               {(field) => <VersionInput {...field} placeholder="99.0.0" />}
             </FormField>
           </div>
-        </SettingsRow>
+        </div>
       </SettingsSection>
       <RevertConfirm
         slug={slug}
@@ -429,20 +426,22 @@ function PolicySection({
         }
       >
         <SettingsRow
-          label="macOS"
-          help="Rendered as sparkle:minimumSystemVersion, such as 13.0. Leave empty for no minimum."
+          label="Minimum macOS version"
+          help="Leave empty for no minimum."
         >
           <FormField<string>
             name="minimumSystemVersion"
             label="Minimum macOS version"
+            hideLabel
             disabled={locked}
+            className="w-40"
           >
             {(field) => (
               <Input
                 {...field}
                 mono
                 autoComplete="off"
-                placeholder="none"
+                placeholder="13.0"
                 readOnly={locked}
               />
             )}
@@ -455,6 +454,7 @@ function PolicySection({
           <FormField<boolean>
             name="requireSparkleSignature"
             label="Require Sparkle signatures"
+            hideLabel
             group
             disabled={locked}
           >
@@ -512,7 +512,7 @@ function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
     <SettingsSection
       id="feed-endpoints"
       title="Endpoints"
-      description="The public URLs updaters and scripts read. Point an app at discovery and let it find the rest."
+      description="Point an app at discovery; it finds the rest."
     >
       <ul className="space-y-2 px-5 py-4" aria-label="Feed endpoints">
         {rows.map((row) => {

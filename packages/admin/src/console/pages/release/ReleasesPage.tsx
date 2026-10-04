@@ -150,7 +150,16 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
       accessorFn: (x) => x.title ?? "",
       meta: { priority: 3, label: "Title" },
       cell: ({ row }) =>
-        row.original.title ?? <span className="text-fg-muted">—</span>,
+        row.original.title ? (
+          <span
+            className="line-clamp-2 min-w-[10rem] max-w-[18rem]"
+            title={row.original.title}
+          >
+            {row.original.title}
+          </span>
+        ) : (
+          <span className="text-fg-muted">—</span>
+        ),
     },
     {
       id: "channel",
@@ -164,7 +173,13 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
       cell: ({ row }) => {
         const on = servingChannels(row.original.releaseId, appChannels);
         return on.length ? (
-          <span className="text-sm">{on.join(" · ")}</span>
+          <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-sm">
+            {on.map((c) => (
+              <span key={c} className="whitespace-nowrap">
+                {c}
+              </span>
+            ))}
+          </span>
         ) : (
           <span className="text-fg-muted">—</span>
         );
@@ -193,13 +208,16 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
       },
       cell: ({ row }) =>
         row.original.builds.length ? (
-          <PlatformGlyphs
-            platforms={row.original.builds.map((b) => b.platform)}
-            label={`Builds of ${row.original.version}`}
-          />
+          <span className="block min-w-[15rem]">
+            <PlatformGlyphs
+              platforms={row.original.builds.map((b) => b.platform)}
+              label={`Builds of ${row.original.version}`}
+            />
+          </span>
         ) : (
           <span className="text-xs text-fg-muted">
-            {row.original.artifacts.length} files
+            {row.original.artifacts.length}{" "}
+            {row.original.artifacts.length === 1 ? "file" : "files"}
           </span>
         ),
     },
@@ -232,7 +250,7 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
 
   const rowActions = (x: ReleaseDto): RowActionItem[] => [
     {
-      label: "Promote to…",
+      label: "Promote…",
       disabledReason: x.yank
         ? "A yanked release can't be promoted. Unyank it, or pin it."
         : undefined,
@@ -275,7 +293,6 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
               </span>
             ) : null
           }
-          description={`What Polaris Key knows ${product.data?.name ?? slug} publishes: every download and update feed resolves against these releases.`}
           meta={
             <>
               <SyncSummary health={health.data} product={product.data} />

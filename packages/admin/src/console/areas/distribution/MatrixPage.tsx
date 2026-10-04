@@ -305,6 +305,18 @@ const LEGEND: { node: React.ReactNode; key: string }[] = [
     node: <StatusPill domain="availability" state="rejected" size="sm" />,
   },
   {
+    key: "pending",
+    node: <StatusPill domain="availability" state="pending" size="sm" />,
+  },
+  {
+    key: "ready",
+    node: (
+      <StatusPill tone="success" size="sm">
+        Ready
+      </StatusPill>
+    ),
+  },
+  {
     key: "rolling",
     node: <StatusPill domain="rollout" state="active" size="sm" />,
   },
@@ -313,6 +325,13 @@ const LEGEND: { node: React.ReactNode; key: string }[] = [
     node: <StatusPill domain="rollout" state="halted" size="sm" />,
   },
 ];
+
+/** Each view's cells use their own words, so the legend follows the view. */
+const LEGEND_KEYS: Record<MatrixView, string[]> = {
+  availability: ["live", "review", "pending", "na", "held", "rejected"],
+  readiness: ["ready", "held", "pending"],
+  rollouts: ["rolling", "halted", "pending"],
+};
 
 export function MatrixPage({ slug }: { slug: string }): React.ReactElement {
   const [deliverable] = useSearchParam("deliverable", QUERY.deliverable);
@@ -390,10 +409,8 @@ export function MatrixPage({ slug }: { slug: string }): React.ReactElement {
     <div className="space-y-5" data-template="matrix">
       <PageHeader
         title="Matrix"
-        description={
+        meta={
           <>
-            Every recent release of {deliverableName} on every outlet: where it
-            is live, where it is in review, and how far it has rolled out.{" "}
             <a
               className="text-accent-fg underline-offset-4 hover:underline"
               href={docsUrl("rolloutControl")}
@@ -523,7 +540,9 @@ export function MatrixPage({ slug }: { slug: string }): React.ReactElement {
         aria-label="Legend"
         className="flex flex-wrap items-center gap-2 text-xs text-fg-muted"
       >
-        {LEGEND.map((l) => (
+        {LEGEND.filter((l) =>
+          (LEGEND_KEYS[view] ?? LEGEND_KEYS.availability).includes(l.key),
+        ).map((l) => (
           <li key={l.key}>{l.node}</li>
         ))}
       </ul>

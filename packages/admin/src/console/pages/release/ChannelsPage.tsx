@@ -117,7 +117,7 @@ export function ChannelsPage({ slug }: { slug: string }): React.ReactElement {
   const header = (
     <PageHeader
       title="Channels"
-      description="What each channel serves on every platform, and the policy behind it. Changes made here survive a resync until you revert them."
+      description="Changes made here survive a resync until you revert them."
       meta={<HowChannelsResolve />}
       refetching={query.isFetching && !query.isPending}
     />

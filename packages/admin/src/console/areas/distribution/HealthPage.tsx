@@ -136,11 +136,13 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
 
   return (
     <DashboardTemplate
+      // Funnels and Auto-halt are equal-weight panels: half and half.
+      split="1-1"
       header={
         <>
           <PageHeader
             title="Health"
-            description={`What devices report after an update reaches them, over the last ${windowHours} ${windowHours === 1 ? "hour" : "hours"}.`}
+            description={`Over the last ${windowHours} ${windowHours === 1 ? "hour" : "hours"}.`}
             freshness={
               data
                 ? {
@@ -180,7 +182,6 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
             <StatTile label="Rollouts watched" loading />
             <StatTile label="Halted by auto-halt" loading />
             <StatTile label="Open Sentry candidates" loading />
-            <StatTile label="Auto-halt status" loading />
           </>
         ) : data ? (
           <>
@@ -199,10 +200,6 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
                   ? formatCount(openCandidates.length)
                   : "—"
               }
-            />
-            <StatTile
-              label="Auto-halt status"
-              value={data.autoHalt.settings.enabled ? "On" : "Off"}
             />
           </>
         ) : undefined
@@ -231,8 +228,9 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
           ) : data && data.rollouts.length === 0 ? (
             <EmptyState
               kind="first-run"
+              variant="inline"
               title="No rollouts to watch"
-              description="Health follows each staged rollout: how many devices were offered the update, installed it, and kept it. Start a rollout to see its funnel."
+              description="Each staged rollout's funnel appears here."
               primaryAction={
                 <Button variant="outline" asChild>
                   <Link to={r.rollouts(slug)}>Go to Rollouts</Link>

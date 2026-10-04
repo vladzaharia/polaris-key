@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ExternalLink, Pin } from "lucide-react";
+import { Ban, ExternalLink, Pin } from "lucide-react";
 import type {
   ChannelPolicyDto,
   DistributionMatrix,
@@ -100,7 +100,7 @@ function BuildsTab({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-fg-muted">
           {release.builds.length
-            ? `${release.builds.length} ${release.builds.length === 1 ? "build" : "builds"}, ${release.artifacts.length} files`
+            ? `${release.builds.length} ${release.builds.length === 1 ? "build" : "builds"}, ${release.artifacts.length} ${release.artifacts.length === 1 ? "file" : "files"}`
             : "No builds declared: these are the files the GitHub sync indexed."}
         </p>
         {count ? (
@@ -552,7 +552,9 @@ export function ReleaseRecord({
         titleAside={
           <span className="inline-flex flex-wrap items-center gap-2">
             {release.yank ? (
-              <StatusPill tone="neutral">Yanked</StatusPill>
+              <StatusPill tone="neutral" icon={Ban}>
+                Yanked
+              </StatusPill>
             ) : serving.length ? (
               <StatusPill tone="success">
                 Live on {serving.join(", ")}
@@ -583,7 +585,8 @@ export function ReleaseRecord({
         meta={
           <>
             {release.yank ? (
-              <span className="text-sm text-fg">
+              // The reason is the point of a yank: it reads as a warning, not muted meta.
+              <span className="text-sm font-bold text-warning">
                 Yanked: {release.yank.reason}
               </span>
             ) : null}
