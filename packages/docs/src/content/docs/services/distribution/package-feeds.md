@@ -229,6 +229,70 @@ listed as available.
 `<origin>/swift/<owner>`, the feed's `scope`, and one example package identity
 `<scope>.<Name>` with its newest stable version.
 
+## Maven
+
+The Maven feed is a plain Maven repository at `https://pkg.plrs.im/maven/<owner>/`, laid out as
+Gradle and Maven expect: `<group/as/path>/<artifactId>/<version>/<artifactId>-<version>[-<classifier>].<extension>`.
+It serves the files a publication carried (the POM, Gradle's `.module`, the jar or AAR and any
+classified file such as `-sources.jar`) and two things it derives instead of storing:
+
+- **`maven-metadata.xml`** for each artifact, rendered from the package's versions:
+  - `versions` lists every version that is not yanked, oldest first;
+  - `release` (Maven's `RELEASE`) is the `stable` channel's current version, and is left out
+    while the stable channel serves nothing;
+  - `latest` (Maven's `LATEST`) is the newest listed version of any channel, so a beta published
+    after the last stable release is `latest` but never `release`;
+  - `lastUpdated` is the newest listed version's publication time.
+- **Checksum sidecars**: `.md5`, `.sha1`, `.sha256` and `.sha512` beside every file and beside
+  `maven-metadata.xml`, from digests computed when the version was published. They cannot
+  disagree with the bytes, so Gradle's and Maven's strict checksum policies pass.
+
+Maven has no yank or deprecation of its own:
+
+- **A yanked version** leaves `maven-metadata.xml`, so no dynamic version (`1.+`, a range,
+  `LATEST`, `RELEASE`) resolves to it again. Its files stay downloadable by exact coordinates,
+  so a build that pinned it keeps working.
+- **A deprecated version** stays listed. The message shows in the console.
+
+Paths are case-sensitive and must match the declared `groupId:artifactId`. `-SNAPSHOT` versions
+are refused at publish, so there is no version-level metadata. Signatures (`.asc`) and directory
+listings are not served. Every Maven answer, the metadata and POMs included, is
+`application/octet-stream` with `Content-Disposition: attachment`: Gradle and Maven ignore the
+response type.
+
+**Gradle** (`settings.gradle.kts`). `exclusiveContent` sends your groups only to this feed and
+never looks for them anywhere else, which is the dependency-confusion guard:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven { url = uri("https://pkg.plrs.im/maven/<owner>/") }
+            }
+            filter { includeGroupAndSubgroups("<groupPrefix>") }
+        }
+        mavenCentral()
+    }
+}
+```
+
+**Maven** (`pom.xml`), with checksum failures fatal:
+
+```xml
+<repositories>
+  <repository>
+    <id>polaris-key-<owner></id>
+    <url>https://pkg.plrs.im/maven/<owner>/</url>
+    <releases><checksumPolicy>fail</checksumPolicy></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+</repositories>
+```
+
+`<owner>` is the product slug (`polaris-key` for the platform's own packages) and `<groupPrefix>`
+each entry of the feed's group prefixes (`im.plrs.key` for the platform's).
+
 ## Local testing
 
 `pnpm --filter @polaris-key/worker registry:clients` stands up a seeded local Worker on the

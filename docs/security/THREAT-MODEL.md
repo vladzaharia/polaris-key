@@ -992,8 +992,9 @@ JPEG and the archive types. Reviewed once, here:
 - `text/x-swift` is the only `text/*` type, and it always leaves as `attachment`. PNG and JPEG
   cannot carry script; SVG is never served.
 - XML is **not** on the list, at any status. POMs, `.module` files and `maven-metadata.xml` go
-  out as `application/octet-stream` attachments. F-07's client matrix proves Gradle and Maven
-  ignore the type; if one does not, F-07 stops and asks rather than add `xml`.
+  out as `application/octet-stream` attachments. F-07's client matrix (Gradle 8 and 9, Maven
+  3.9 with checksum policy `fail`) proves Gradle and Maven ignore the type; a client that did not
+  would be a stop-and-ask, never a reason to add `xml`.
 - HTML is not on the list. The PyPI simple page (`application/vnd.pypi.simple.v1+html`) is
   admitted only on a route flagged `inertDocument`, at 200, without `Content-Disposition`, and
   only under a policy `inertDocumentPolicy` accepts (`sandbox` with no script token,
@@ -1017,6 +1018,16 @@ base-uri 'none'; form-action 'none'` and `Vary: Accept`, and give HTML only when
 **Tenant-supplied text.** Package names, descriptions, `package.json`-derived fields, POMs and
 Godot descriptions are tenant input. They are served only inside JSON, as octet-stream
 attachments, or escaped inside the inert PyPI page; none is ever rendered as an HTML document.
+
+**Maven (F-07).** `maven-metadata.xml` and every checksum sidecar are derived on the server
+(the metadata from Release's state, the sidecars from the digests computed at ingest), never
+uploaded, so a publisher cannot ship a checksum that disagrees with its bytes. The paths are
+parsed segment by segment (no escapes, no dot segments) and matched exactly against the declared
+`groupId:artifactId`; files are looked up by name in the version's own file list and served from
+the blob store by SHA-256, so no path reaches another package's or another owner's bytes. A
+yank is not a takedown: Maven has no yank, so a yanked version leaves the metadata (no dynamic
+version resolves to it) but its files stay downloadable by exact coordinates, as PyPI's PEP 592
+yank does. Removing compromised bytes is an operator action outside tier 1's feed (residual).
 
 **The access ladder runs before the cache.** `authorizeFeedRead` checks, in order, the platform
 kill switch, the owner's Distribution and `packageFeeds`, the feed's `enabled` and then the mode

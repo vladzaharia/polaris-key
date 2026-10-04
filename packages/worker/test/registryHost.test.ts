@@ -386,7 +386,8 @@ describe("registry host: isolation", () => {
       // scoped name (test/registry/npm.test.ts pins their not-found with a database).
       "/npm/djdl/sdk",
       // `/pypi/…` has routes since F-05 (its unknown owners: test/registry/pypi.test.ts).
-      "/maven/djdl/im/plrs/key/sdk/maven-metadata.xml",
+      // Maven has routes (F-07): its unknown owners and repositories are pinned, with a
+      // database, in test/registry/maven.test.ts.
       "/godot/djdl/index.json",
     ]) {
       const res = await worker.fetch(new Request(PKG + path), env(PKG));

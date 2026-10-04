@@ -16,6 +16,7 @@ import type { RegistryRenderer } from "./materialise.js";
 import { NPM_RENDERER } from "./npm/index.js";
 import { PYPI_RENDERER } from "./pypi/index.js";
 import { SWIFT_RENDERER } from "./swift/index.js";
+import { MAVEN_RENDERER } from "./maven/index.js";
 
 /** Every renderer this build carries, one per ecosystem. */
 export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
@@ -23,6 +24,7 @@ export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
     ["npm", NPM_RENDERER], // F-04
     ["pypi", PYPI_RENDERER], // F-05
     ["swift", SWIFT_RENDERER], // F-06
+    ["maven", MAVEN_RENDERER], // F-07
   ]);
 
 /** Every registry route, in renderer order. */

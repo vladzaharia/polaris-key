@@ -90,6 +90,12 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, or its checksum sidecar (registry host only) |
+| HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml (registry host only) |
+| HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, maven-metadata.xml (registry host only) |
+| HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument (registry host only) |

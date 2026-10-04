@@ -6,7 +6,8 @@
  *   node scripts/registry-clients/run.mjs [--client <name>]... [--port <n>]
  *
  *   1. a fresh local state directory (D1, R2, KV) under the OS temp dir;
- *   2. `seed.mjs`: every migration, the fixture owner, then each `fixtures/<ecosystem>.mjs`;
+ *   2. `seed.mjs`: every migration, the fixture owner, then each `fixtures/<ecosystem>.mjs`
+ *      (`seedFixture(ctx)` from seed.mjs, `seedWithBindings(env, ctx)` from `fixtures.mjs`);
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
  *      request the clients make arrives on the registry host (`core/registryHost.ts`);
  *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin),
@@ -38,6 +39,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
+import { seedFixtures } from "./fixtures.mjs";
 import { FIXTURE_OWNER, seed } from "./seed.mjs";
 
 const CLIENTS = join(WORKER, "scripts", "registry-clients", "clients");
@@ -88,6 +90,7 @@ let dev = null;
 let failed = 0;
 try {
   await seed(state);
+  await seedFixtures(state, FIXTURE_OWNER);
   // Per-client fixtures (F-05 onwards): `clients/<client>.seed.mjs`, or the seed of the client's
   // family (`swift-compat` → `swift.seed.mjs`), each run once, as a script with STATE (the state
   // directory) and OWNER in its environment, before the Worker starts.

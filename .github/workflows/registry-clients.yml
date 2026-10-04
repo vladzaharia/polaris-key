@@ -98,6 +98,17 @@ jobs:
           - client: swift-linux
             ecosystem: swift
             os: ubuntu-latest
+          # F-07: Gradle 8.x and 9.x through exclusiveContent, Maven 3.9 with checksum policy
+          # fail. Each runs in its official container (Docker on the runner).
+          - client: gradle8
+            ecosystem: maven
+            os: ubuntu-latest
+          - client: gradle9
+            ecosystem: maven
+            os: ubuntu-latest
+          - client: maven
+            ecosystem: maven
+            os: ubuntu-latest
     # A dispatch with `ecosystem` set runs only that ecosystem's rows; the others pass, empty. (A
     # job-level `if:` cannot read `matrix`, so the filter is a step condition.)
     env:

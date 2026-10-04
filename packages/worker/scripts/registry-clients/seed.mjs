@@ -55,6 +55,9 @@ export async function seed(persistTo) {
        created_at, modified_at)
      VALUES ('${FIXTURE_OWNER}', 'Registry smoke', 'registry-smoke-kid', 'AAAA', '0.0.0', '99.0.0',
        30, 5, NULL, NULL, NULL, ${now}, ${now});`,
+    `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status,
+       created_at)
+     VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
     `UPDATE products SET services_json = '${JSON.stringify(services)}' WHERE slug = '${FIXTURE_OWNER}';`,
     `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at)
      VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
@@ -129,7 +132,8 @@ async function seedFixtures(persistTo, now) {
   };
   for (const f of files.sort()) {
     const mod = await import(pathToFileURL(join(FIXTURES, f)).href);
-    await mod.seedFixture(ctx);
+    // The other style, `seedWithBindings(env, ctx)` over getPlatformProxy, runs from fixtures.mjs.
+    if (typeof mod.seedFixture === "function") await mod.seedFixture(ctx);
   }
 }
 
