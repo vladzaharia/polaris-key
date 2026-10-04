@@ -549,7 +549,8 @@ const RENDER: Record<Lang, (c: ProductCatalog) => string> = {
   python: renderPython,
   swift: renderSwift,
   gdscript: renderGdscript,
-  kotlin: (c) => renderKotlin(c, arg("--kotlin-package") ?? DEFAULT_KOTLIN_PACKAGE),
+  kotlin: (c) =>
+    renderKotlin(c, arg("--kotlin-package") ?? DEFAULT_KOTLIN_PACKAGE),
 };
 
 function arg(name: string): string | undefined {
