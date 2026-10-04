@@ -20,12 +20,16 @@
 
 import type { ServiceRegistry } from "./core/registry.js";
 import type { ByteRoute } from "./core/bytesHost.js";
-import type { RegistryRoute } from "./core/registryHost.js";
+import type {
+  OwnerlessRegistryRoute,
+  RegistryRoute,
+} from "./core/registryHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
 import { releaseService } from "./services/release/index.js";
 import {
   DISTRIBUTION_BYTE_ROUTES,
+  DISTRIBUTION_OWNERLESS_ROUTES,
   DISTRIBUTION_REGISTRY_ROUTES,
   DOWNLOAD_PAGE_ROUTE,
   distributionService,
@@ -74,4 +78,13 @@ export const BYTE_ROUTES: readonly ByteRoute[] = [
  */
 export const REGISTRY_ROUTES: readonly RegistryRoute[] = [
   ...DISTRIBUTION_REGISTRY_ROUTES,
+];
+
+/**
+ * The registry host's owner-less routes (F-21, plans/F-20.md §6.4): OCI's token service
+ * `GET /v2/token`, whose owners are named in its `scope` parameters. GET and HEAD only;
+ * `routeCoverage` checks it against `REGISTRY_PATHS` with `REGISTRY_ROUTES`.
+ */
+export const REGISTRY_OWNERLESS_ROUTES: readonly OwnerlessRegistryRoute[] = [
+  ...DISTRIBUTION_OWNERLESS_ROUTES,
 ];

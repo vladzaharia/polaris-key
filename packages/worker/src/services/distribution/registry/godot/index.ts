@@ -10,10 +10,25 @@ import {
   rendererOf,
   defineFeedAdapter,
   type FeedAdapter,
+  type FeedOpenApiRow,
 } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderGodot } from "./render.js";
 import { GODOT_ROUTES } from "./routes.js";
+
+/** Each row, then its tokenised twin under `/godot/{owner}/t/{token}/…`, served by one route. */
+function withTokenisedPaths(
+  rows: readonly FeedOpenApiRow[],
+): readonly FeedOpenApiRow[] {
+  return rows.flatMap((row) => [
+    row,
+    [
+      row[0].replace("/godot/{owner}/", "/godot/{owner}/t/{token}/"),
+      row[1],
+      row[2],
+    ] as const,
+  ]);
+}
 
 export const GODOT_ADAPTER: FeedAdapter<"godot"> = defineFeedAdapter({
   ecosystem: "godot",
@@ -47,7 +62,8 @@ export const GODOT_ADAPTER: FeedAdapter<"godot"> = defineFeedAdapter({
     clients: ["The Godot editor's asset library", "GodotEnv"],
     inputs: ["baseUrl"],
   },
-  openapi: [
+  // F-21: every path also answers under `/godot/{owner}/t/{token}/…` (a URL token, §6.3).
+  openapi: withTokenisedPaths([
     [
       "/godot/{owner}/asset-library/api/configure",
       ["get", "head"],
@@ -88,7 +104,7 @@ export const GODOT_ADAPTER: FeedAdapter<"godot"> = defineFeedAdapter({
     ["/godot/{owner}/index.json", ["get", "head"], "godotIndex"],
     ["/godot/{owner}/files/{sha256}/{file}", ["get", "head"], "godotZip"],
     ["/godot/{owner}/icons/{sha256}.png", ["get", "head"], "godotIcon"],
-  ],
+  ]),
   // `godot-editor` drives real 4.6 and 4.7 editors, which CI does not have.
   harness: { clients: ["godot"], local: ["godot-editor"] },
 });

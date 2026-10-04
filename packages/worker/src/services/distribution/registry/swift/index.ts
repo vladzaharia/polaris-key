@@ -13,6 +13,7 @@ import {
 } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderSwift } from "./render.js";
+import { SWIFT_LOGIN_ROUTE } from "./login.js";
 import { SWIFT_ROUTES } from "./routes.js";
 
 export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
@@ -21,6 +22,8 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
   hostPrefix: "/swift/",
   feedPath: (owner) => `/swift/${owner}/`,
   routes: SWIFT_ROUTES,
+  // F-21: `swift package-registry login` checks a registry token here.
+  authRoutes: [SWIFT_LOGIN_ROUTE],
   renderer: { render: renderSwift, stamp: "package" },
   ingest: PACKAGE_ECOSYSTEM_RULES.swift,
   settings: { ext: { requireSigned: extBoolean } },
@@ -58,8 +61,8 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
       "swift.archive",
     ],
     ["/swift/{owner}/identifiers", ["get", "head"], "swift.identifiers"],
-    // Login is the host dispatcher's 501 (SwiftPM Registry.md §4).
-    ["/swift/{owner}/login", ["post"], "host"],
+    // F-21: SwiftPM's login (Registry.md §4.1), a credential route.
+    ["/swift/{owner}/login", ["post"], "swift.login"],
   ],
   harness: { clients: ["swift", "swift-compat", "swift-linux"] },
 });

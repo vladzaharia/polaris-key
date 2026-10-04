@@ -50,7 +50,11 @@ import {
   registryEcosystemOf,
   registryNotFound,
 } from "../src/core/registryHost.js";
-import { REGISTRY_ROUTES, SERVICES } from "../src/mount.js";
+import {
+  REGISTRY_OWNERLESS_ROUTES,
+  REGISTRY_ROUTES,
+  SERVICES,
+} from "../src/mount.js";
 import {
   DISTRIBUTION_REGISTRY_ROUTES,
   FEED_ADAPTERS,
@@ -308,6 +312,8 @@ const FEED_B: RenderFeed = {
 /** Sample values for the OpenAPI path parameters, per ecosystem where one differs. */
 const COMMON_PARAMS: Record<string, string> = {
   owner: OWNER,
+  // F-21: Godot's tokenised URLs (`/t/{token}/`); a well-formed token nobody minted.
+  token: `pkeyr_${"t".repeat(43)}`,
   sha256: "a".repeat(64),
   version: "1.0.0",
 };
@@ -355,9 +361,19 @@ function samplePath(eco: string, template: string): string {
   });
 }
 
-/** The rows of an adapter's own routes (not the dispatcher's fixed answers). */
-const routeRows = (a: FeedAdapter) =>
-  a.openapi.filter(([, , owner]) => owner !== "host");
+/** Every route name an adapter owns: reads, credential routes (F-21) and owner-less routes. */
+const allRouteNames = (a: FeedAdapter): string[] => [
+  ...a.routes.map((r) => r.name),
+  ...(a.authRoutes ?? []).map((r) => r.name),
+  ...(a.ownerlessRoutes ?? []).map((r) => r.name),
+];
+
+/** The rows of an adapter's own read routes (not the dispatcher's fixed answers, F-21's
+ *  credential routes or its owner-less routes, which have suites of their own). */
+const routeRows = (a: FeedAdapter) => {
+  const reads = new Set(a.routes.map((r) => r.name));
+  return a.openapi.filter(([, , owner]) => reads.has(owner));
+};
 
 async function render(
   a: FeedAdapter,
@@ -402,15 +418,19 @@ describe("feed adapters: registration", () => {
       expect(RENDERERS.get(a.ecosystem)?.stamp).toBe(a.renderer.stamp);
       expect(RENDERERS.get(a.ecosystem)?.routes).toBe(a.routes);
     }
+    // Read routes, then F-21's credential routes; owner-less routes are their own list.
     expect(DISTRIBUTION_REGISTRY_ROUTES).toEqual(
-      FEED_ADAPTERS.flatMap((a) => a.routes),
+      FEED_ADAPTERS.flatMap((a) => [...a.routes, ...(a.authRoutes ?? [])]),
     );
     for (const route of DISTRIBUTION_REGISTRY_ROUTES)
       expect(REGISTRY_ROUTES, route.name).toContain(route);
+    expect(REGISTRY_OWNERLESS_ROUTES).toEqual(
+      FEED_ADAPTERS.flatMap((a) => a.ownerlessRoutes ?? []),
+    );
   });
 
   it("route names are unique across every feed", () => {
-    const names = FEED_ADAPTERS.flatMap((a) => a.routes.map((r) => r.name));
+    const names = FEED_ADAPTERS.flatMap((a) => allRouteNames(a));
     expect(new Set(names).size).toBe(names.length);
   });
 
@@ -456,8 +476,8 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
     });
 
     it("documents every route in OpenAPI, and each row's path reaches the route it names", () => {
-      const names = new Set(a.routes.map((r) => r.name));
-      const documented = new Set(routeRows(a).map(([, , o]) => o));
+      const names = new Set(allRouteNames(a));
+      const documented = new Set(a.openapi.map(([, , o]) => o));
       for (const n of names)
         expect(documented.has(n), `route ${n} has no openapi row`).toBe(true);
       for (const [path, methods, owner] of a.openapi) {
@@ -476,7 +496,18 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
           true,
         );
         const sample = samplePath(eco, path);
-        const first = a.routes.find((r) => r.match(sample) !== null);
+        const ownerless = (a.ownerlessRoutes ?? []).find((r) =>
+          r.matches(sample),
+        );
+        if (ownerless) {
+          expect(ownerless.name, `${sample} (${path})`).toBe(owner);
+          continue;
+        }
+        // A POST row reaches the credential route declaring it; a read row a read route.
+        const pool = methods.includes("post")
+          ? (a.authRoutes ?? []).filter((r) => r.methods?.includes("POST"))
+          : a.routes;
+        const first = pool.find((r) => r.match(sample) !== null);
         expect(first?.name, `${sample} (${path})`).toBe(owner);
         expect(first!.match(sample)!.owner).toBe(OWNER);
       }
@@ -594,8 +625,15 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
       });
       expect(supports(a.capabilities, "render")).toBe(true);
       expect(ops.unyank).toEqual(ops.yank);
-      // Tier 1 has no registry tokens (F-21).
-      expect(ops.auth.mode).toBe("unsupported");
+      // F-21: registry tokens, judged by the same ladder; the rules are the credential routes.
+      expect(ops.auth).toEqual({
+        mode: "api",
+        plane: "worker",
+        rules: [
+          ...(a.authRoutes ?? []).map((r) => r.name),
+          ...(a.ownerlessRoutes ?? []).map((r) => r.name),
+        ],
+      });
       expect(a.capabilities.rate).toEqual({ kind: "none" });
       expect(a.capabilities.limits).toEqual({
         maxFiles: a.ingest.maxFiles,

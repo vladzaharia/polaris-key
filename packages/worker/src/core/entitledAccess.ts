@@ -385,3 +385,33 @@ export async function entitlementFlagRefusal(
     "wire",
   );
 }
+
+/**
+ * Does `license` hold one of `flags`? The licence-only twin of `entitlementFlagRefusal`, for a
+ * caller with no device (F-21's licence-bound registry tokens, plans/F-20.md §6.2): the same
+ * grant composition (`resolveMergedPayload` with no device, then `injectAdminPolicy`), and a flag
+ * is held when its entry's value is `true`. The caller has already checked `licenseUsable`.
+ * Device trust does not apply: a registry token has no device (the portal download's rule).
+ */
+export async function licenseHoldsFlags(
+  db: Db,
+  product: string,
+  license: LicenseRow,
+  flags: readonly string[],
+  now: number,
+): Promise<boolean> {
+  if (flags.length === 0) return false;
+  const { payload, tier } = await resolveMergedPayload(
+    db,
+    product,
+    license,
+    null,
+    now,
+  );
+  injectAdminPolicy(payload, tier, license, tighterMin, tighterMax);
+  return flags.some(
+    (f) =>
+      Object.hasOwn(payload.entitlements, f) &&
+      payload.entitlements[f]?.value === true,
+  );
+}

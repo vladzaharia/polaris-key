@@ -41,7 +41,7 @@ import {
   type RegistryRoute,
   type RegistryRouteContext,
 } from "../../../../core/registryHost.js";
-import { authorizeFeedRead, feedPrincipal } from "../authorize.js";
+import { authorizeFeedRead } from "../authorize.js";
 import { registryCacheHeaders } from "../cache.js";
 import {
   readRegistryObject,
@@ -49,7 +49,12 @@ import {
   type MaterialiseDeps,
   type RegistryRenderer,
 } from "../materialise.js";
-import { feedRoute, type FeedRouteDef } from "../serve.js";
+import {
+  feedReadContext,
+  feedRoute,
+  requestCredential,
+  type FeedRouteDef,
+} from "../serve.js";
 import { cachedRegistrySettings, d1RegistrySettings } from "../settings.js";
 import {
   SWIFT_NAME,
@@ -477,8 +482,8 @@ const identifiers: SwiftEndpoint = {
       if (d.ecosystem !== "swift" || !claimed.has(d.name.toLowerCase()))
         continue;
       const decision = await authorizeFeedRead(
-        { db: ctx.db, services: ctx.product.services, settings: source },
-        feedPrincipal(req),
+        feedReadContext(req, ctx, { settings: source }),
+        requestCredential(req, ctx),
         ctx.product.slug,
         "swift",
         d.id,

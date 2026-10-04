@@ -23,7 +23,7 @@ import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
-import { REGISTRY_ROUTES } from "../src/mount.js";
+import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -188,7 +188,8 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  * The registry host's paths (F-02, plans/F-01.md §6.10): `pkg.plrs.im` answers only these, each
  * documented under a path-level `servers` override with tag `registry`. The third column names
  * what answers: `host` for the dispatcher's own fixed answers (the landing page, OCI's `/v2/`
- * root, Swift's login, OCI's token endpoint), else the `REGISTRY_ROUTES` entry by name.
+ * root), else the `REGISTRY_ROUTES` or `REGISTRY_OWNERLESS_ROUTES` entry by name (F-21: Swift's
+ * login and OCI's token service are routes now).
  *
  * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
  * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
@@ -319,8 +320,11 @@ describe("registry host (F-02, rule 10)", () => {
     }
   });
 
-  it("REGISTRY_PATHS and REGISTRY_ROUTES agree in both directions", () => {
-    const routeNames = REGISTRY_ROUTES.map((r) => r.name);
+  it("REGISTRY_PATHS and the registry routes (owned and owner-less) agree in both directions", () => {
+    const routeNames = [
+      ...REGISTRY_ROUTES.map((r) => r.name),
+      ...REGISTRY_OWNERLESS_ROUTES.map((r) => r.name),
+    ];
     const documented = new Set(
       REGISTRY_PATHS.map(([, , owner]) => owner).filter((o) => o !== "host"),
     );
