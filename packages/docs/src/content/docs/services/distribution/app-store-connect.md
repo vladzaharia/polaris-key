@@ -236,19 +236,19 @@ Uploading the build stays in CI; everything after the upload is here.
 | `distribute/versions[?platform=]`     | the app's App Store versions (state, whether still editable, build, release type, phased release) and its live review submissions                                                |
 | `distribute/preflight?versionId=<id>` | a readiness checklist: build, export compliance, screenshots per locale, age rating, App Review contact, price, availability, beta review details, App Privacy (portal-only)     |
 
-| `POST`                              | Body                                                 | Sends to App Store Connect                                                                   |
-| ----------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `distribute/export-compliance`      | `{ buildId, usesNonExemptEncryption }`               | `PATCH /v1/builds/{id}` (an unanswered build only)                                           |
-| `distribute/beta-localization`      | `{ buildId, locale, whatsNew }`                      | TestFlight's What to Test: `POST` or `PATCH /v1/betaBuildLocalizations`                      |
-| `distribute/testflight/groups`      | `{ buildId, betaGroupIds }`                          | `POST /v1/betaGroups/{id}/relationships/builds` per group not yet holding the build          |
-| `distribute/testflight/beta-review` | `{ buildId }`                                        | `POST /v1/betaAppReviewSubmissions` (external groups see the build after review)             |
-| `distribute/version`                | `{ platform, versionString }`                        | reuses the editable version with that string, or `POST /v1/appStoreVersions`                 |
-| `distribute/version/build`          | `{ versionId, buildId }`                             | `PATCH /v1/appStoreVersions/{id}/relationships/build`                                        |
-| `distribute/version/release-type`   | `{ versionId, releaseType, earliestReleaseDate? }`   | `PATCH /v1/appStoreVersions/{id}`: `MANUAL`, `AFTER_APPROVAL` or `SCHEDULED` (a future date) |
-| `distribute/version/phased-release` | `{ versionId }`                                      | `POST /v1/appStoreVersionPhasedReleases`; the phased-release controls above manage it later  |
-| `distribute/version-localization`   | `{ versionId, locale, whatsNew?, promotionalText? }` | `POST` or `PATCH /v1/appStoreVersionLocalizations` (release notes only)                      |
-| `distribute/submit`                 | `{ versionId, confirm }`                             | the open review submission or a new one, the version as an item, then `submitted: true`      |
-| `distribute/submission/cancel`      | `{ submissionId }`                                   | `PATCH /v1/reviewSubmissions/{id}` `canceled: true`                                          |
+| `POST`                              | Body                                                                           | Sends to App Store Connect                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `distribute/export-compliance`      | `{ buildId, usesNonExemptEncryption }`                                         | `PATCH /v1/builds/{id}` (an unanswered build only)                                               |
+| `distribute/beta-localization`      | `{ buildId, locale, whatsNew }`                                                | TestFlight's What to Test: `POST` or `PATCH /v1/betaBuildLocalizations`                          |
+| `distribute/testflight/groups`      | `{ buildId, betaGroupIds }`                                                    | `POST /v1/betaGroups/{id}/relationships/builds` per group not yet holding the build              |
+| `distribute/testflight/beta-review` | `{ buildId }`                                                                  | `POST /v1/betaAppReviewSubmissions` (external groups see the build after review)                 |
+| `distribute/version`                | `{ platform, versionString }`                                                  | reuses the editable version with that string, or `POST /v1/appStoreVersions`                     |
+| `distribute/version/build`          | `{ versionId, buildId }`                                                       | `PATCH /v1/appStoreVersions/{id}/relationships/build`                                            |
+| `distribute/version/release-type`   | `{ versionId, releaseType, earliestReleaseDate? }`                             | `PATCH /v1/appStoreVersions/{id}`: `MANUAL`, `AFTER_APPROVAL` or `SCHEDULED` (a future date)     |
+| `distribute/version/phased-release` | `{ versionId }`                                                                | `POST /v1/appStoreVersionPhasedReleases`; the phased-release controls above manage it later      |
+| `distribute/version-localization`   | `{ versionId, locale, whatsNew?, promotionalText? }`                           | `POST` or `PATCH /v1/appStoreVersionLocalizations` (release notes only)                          |
+| `distribute/submit`                 | `{ versionId, confirm, inAppPurchaseVersionIds?, backgroundAssetVersionIds? }` | the open review submission or a new one, the version and any given items, then `submitted: true` |
+| `distribute/submission/cancel`      | `{ submissionId }`                                                             | `PATCH /v1/reviewSubmissions/{id}` `canceled: true`                                              |
 
 **Each write needs an `Idempotency-Key` header**, a fresh UUID per thing you mean to do; without
 one the answer is 422 `idempotency_key_required`. Sending the same request again with the same key
@@ -274,7 +274,50 @@ code (`appleCode`, such as `ENTITY_ERROR.ATTRIBUTE.INVALID`), never its message.
 audited as `distribution.asc.<step>` with Apple's state before and after kept on the operation.
 
 The preflight reads presence only: it never returns the App Review contact, the demo account or its
-password. It cannot check App Privacy, which has no API.
+password. It cannot check App Privacy, which has no API. When the product maps App Store products
+and none of the app's in-app purchases has passed review yet, it adds a `firstInAppPurchase` line
+(see below).
+
+## In-app purchases
+
+The App Store rows of the [commerce bridge](/docs/services/distribution/commerce/)'s product map
+can be created in App Store Connect from the console API, under the same prefix, as
+**non-consumable** in-app purchases of the pinned app. Only a mapped product id can be created,
+priced or made available (`unmapped_product`): what exists at Apple follows your map.
+
+| `GET`                                             | Answers                                                                                                                                                                                      |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `iap/products`                                    | each App Store mapping (product id, flag, deliverable) beside Apple's state: `missing`, `MISSING_METADATA`, `READY_TO_SUBMIT`, `WAITING_FOR_REVIEW`, `APPROVED`…; a type mismatch is flagged |
+| `iap/price-points?productId=<id>&territory=<USA>` | the price points Apple offers for that purchase in one territory, cheapest first, and its current price                                                                                      |
+| `distribute/submission-items[?platform=]`         | the in-app purchase versions and Background Asset versions that can join the next App Review submission                                                                                      |
+
+| `POST`             | Body                                                                        | Sends to App Store Connect                                                                                       |
+| ------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `iap/create`       | `{ productId, referenceName, reviewNote?, familySharable?, localizations }` | `POST /v2/inAppPurchases` (`NON_CONSUMABLE`), a version, then `POST /v2/inAppPurchaseLocalizations` per locale   |
+| `iap/localization` | `{ productId, locale, name, description? }`                                 | `POST` or `PATCH /v2/inAppPurchaseLocalizations` on the purchase's editable version                              |
+| `iap/price`        | `{ productId, baseTerritory, pricePointId` or `customerPrice, confirm? }`   | `POST /v1/inAppPurchasePriceSchedules`: one price in the base territory, effective now; Apple derives the others |
+| `iap/availability` | `{ productId }`                                                             | `POST /v1/inAppPurchaseAvailabilities`: every territory, and new ones (only while none is set)                   |
+
+`localizations` lists one to ten `{ locale, name, description? }` (display name up to 35
+characters, description up to 55). The same `Idempotency-Key` rules as Distribute apply: an
+existing purchase, version, locale, price or availability is found first and left alone. A mapped
+id that already exists as a consumable or subscription is refused (`iap_type_mismatch`); Apple does
+not let a product id change type or be reused.
+
+**A price change is typed.** The first price needs no confirmation. Once the purchase has a price,
+any other price needs `confirm` set to the app's name exactly as App Store Connect shows it
+(otherwise 422 `confirmation_required` or `confirmation_mismatch`, nothing sent), because once a
+price increase takes effect it cannot be reverted. Setting the same price again sends nothing.
+
+**Submitting.** Pass the ids from `distribute/submission-items` to `distribute/submit` as
+`inAppPurchaseVersionIds` and `backgroundAssetVersionIds`. Each is re-read and must be the pinned
+app's (an in-app purchase version through its purchase and your map; a Background Asset version
+through its asset), ready (`iap_not_ready`, `background_asset_not_ready`) and, for an asset, built
+for the submission's platform, before the submission is opened; one foreign id
+(`unknown_iap_version`, `unknown_background_asset_version`) sends nothing. Apple requires an
+app's **first** in-app purchase to be submitted with an app version in App Store Connect itself:
+until one of the app's purchases has passed review, `submission-items` offers none and `submit`
+refuses them (409 `first_iap_portal`). The review screenshot is added in App Store Connect too.
 
 ## Security
 

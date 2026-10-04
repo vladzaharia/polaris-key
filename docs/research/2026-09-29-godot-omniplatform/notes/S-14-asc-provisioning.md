@@ -924,3 +924,54 @@ beside `controls.ts`. Where the build departs from §7 and §8.2 above, the code
   demo account as booleans only, price, availability, and the beta review detail and
   localizations. The first-IAP "portal" flag is A-17e's; App Privacy is reported as unverifiable
   (`ok: null`), the operator's tick being A-17c's portal checklist.
+
+## Corrections (A-17e as built, 2026-10-04)
+
+A-17e landed the in-app purchase flow in `packages/worker/src/services/distribution/commerce/appleCatalog.ts`.
+Where the build departs from §7, §8.3 and §10 above, the code is the fact:
+
+- **Routes live in the ASC connector's tables.** §6 named `…/commerce/appleCatalog.ts` and the
+  connector prefix; the handlers are connector controls and reads under
+  `…/distribution/connectors/asc/`: `GET iap/products`, `GET iap/price-points`,
+  `GET distribute/submission-items`, `POST iap/{create,localization,price,availability}`. A-17d's
+  plumbing (`distributeControl`, `step`, `proveOwned`, the field validators) moved to
+  `connectors/asc/flow.ts` so Distribute and the catalog share it without importing each other.
+- **Mapped ids only.** Every write and the price-point read take a `productId` that must be an
+  `app-store` row of `dist_store_products` (404 `unmapped_product`); the IAP id is never request
+  input, it is found under the pinned app by `filter[productId]`. A mapped id that already exists
+  as another type is refused (409 `iap_type_mismatch`), never changed.
+- **Create is one multi-step write**: the IAP, its version (Apple 4.5's `inAppPurchaseVersions`:
+  the newest editable one is reused, else one is created; whether Apple creates a version with
+  the IAP is unverified, the pre-read covers both), and one v2 localization per locale (1 to 10;
+  display name ≤ 35, description ≤ 55, reference name ≤ 64). `iap/localization` adds or edits one
+  locale later. Price and availability are separate writes because the price-point picker needs
+  the created IAP.
+- **Price.** One manual price in the base territory, effective now (`startDate: null`); Apple
+  derives the other territories. A future-dated change is not offered (it would need the current
+  price kept until that date). "First price" is decided by Apple's schedule read: none → the
+  `initial` assertion; any other price → a typed `confirm` (the app's name, as for submit and
+  release) → `typedConfirmation`; a price that appears between the check and the write meets
+  neither and the gate refuses it. The ledger's before and after carry the base territory, the
+  customer price and the price point id (`audit.ts` projection of `inAppPurchasePriceSchedules`).
+  The point may be named by id or by customer price, and must be one Apple lists for that IAP in
+  that territory (422 `unknown_price_point`).
+- **Availability** is every territory plus new ones, written only while the IAP has none: one set
+  here or in the portal is the operator's and is not changed.
+- **Submission items.** `distribute/submit` takes optional `inAppPurchaseVersionIds` and
+  `backgroundAssetVersionIds` (≤ 20 each), proven after the typed confirmation and before the
+  submission is opened. An IAP version is walked version → IAP → mapped product id → the pinned
+  app's IAP, and needs a non-consumable IAP in `READY_TO_SUBMIT`, `DEVELOPER_ACTION_NEEDED` or
+  `REJECTED` with an editable version (409 `iap_not_ready`). A Background Asset version needs its
+  asset on the pinned app (`include=app`), state `COMPLETE`, an App Store release in
+  `PREPARE_FOR_SUBMISSION`, `READY_FOR_REVIEW` or `REJECTED`, and the submission's platform.
+- **First IAP.** "First" means no IAP of the app is `APPROVED`, `DEVELOPER_REMOVED_FROM_SALE` or
+  `REMOVED_FROM_SALE` (subscriptions are not counted; P6-01 grants none). Then
+  `submission-items` offers no IAP versions, `submit` refuses them (409 `first_iap_portal`), the
+  products read sets `firstInAppPurchase`, and A-17d's preflight gains a non-blocking
+  `firstInAppPurchase` line (`ok: null`) when the product maps any App Store product.
+- **No deep links in the API.** The review screenshot and the first-IAP submission are portal
+  steps; the console (A-17g) builds their links from A-17f's constant table.
+- **No gate change.** A-17a's allow rules already covered every request; the S-15 default of IAP
+  localizations from the listing model (A-18b) is not applied, A-18b not having landed.
+- **Unverified live:** Apple's price point ids are taken as opaque URL-safe tokens; one carrying a
+  character outside the gate's identifier set would be refused (`write_denied`), not sent.
