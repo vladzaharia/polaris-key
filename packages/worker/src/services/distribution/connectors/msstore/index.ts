@@ -26,8 +26,8 @@ export const msStoreConnector: DistributionConnector = {
   outletKinds: MSSTORE_OUTLET_KINDS,
   poll: pollMsStore,
   controls: {},
-  async status({ db, product }) {
-    const { setup, inert } = await resolveMsStoreSetup(db, product);
+  async status({ env, db, product }) {
+    const { setup, inert } = await resolveMsStoreSetup(env, db, product);
     const objects = await listObjects(db, product, MSSTORE_CONNECTOR, {
       types: [APPLICATION_OBJECT, FLIGHT_OBJECT, SUBMISSION_OBJECT],
     });

@@ -75,9 +75,7 @@ function teamToken(o: PlatformPlayOptions, scope: string) {
 }
 
 /** `apps:search`, every page up to the cap. */
-async function searchApps(
-  o: PlatformPlayOptions,
-): Promise<{
+async function searchApps(o: PlatformPlayOptions): Promise<{
   apps: Array<{ packageName: string; displayName: string | null }>;
   more: boolean;
 }> {

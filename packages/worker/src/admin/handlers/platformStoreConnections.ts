@@ -77,6 +77,7 @@ import {
 } from "../../services/distribution/connectors/platformApps.js";
 import { listPlatformAscApps } from "../../services/distribution/connectors/asc/platform.js";
 import { listPlatformPlayApps } from "../../services/distribution/connectors/play/platform.js";
+import { listPlatformMsStoreApps } from "../../services/distribution/connectors/msstore/platform.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
@@ -112,6 +113,8 @@ const LISTERS: Partial<
   "app-store": (o) => listPlatformAscApps({ ...o, use: "asc:platform-apps" }),
   "google-play": (o) =>
     listPlatformPlayApps({ ...o, use: "play:platform-apps" }),
+  "microsoft-store": (o) =>
+    listPlatformMsStoreApps({ ...o, use: "ms-store:platform-apps" }),
 };
 
 function actorOf(session: AdminSession): PlatformEventActor {

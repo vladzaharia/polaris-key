@@ -39,8 +39,10 @@
  *   8. **The AAD kind.** Only the vault, the owner and the sweep spell `"platform-credential"`.
  *   9. **The writers.** Only the owner and the store-connections handler name
  *      `putPlatformCredential`, `deletePlatformCredential`, `setPlatformPin` or `clearPlatformPin`.
- *  10. **The opener.** Only the owner and the token helpers name `openPlatformCredential`: every
- *      other path gets a token, minted after the product's pin is checked.
+ *  10. **The opener.** Only the owner, the token helpers and two reviewed Distribution files (the
+ *      Microsoft Store token, the Steam commerce key) name `openPlatformCredential`; every other
+ *      path gets a token, minted after the product's pin is checked — and the open itself refuses
+ *      a product whose pin does not match.
  *
  * Adding an entry to any allowlist is a custody decision: it needs a review that says why, and
  * the threat model's review trigger (§9) applies. P6-02 is expected to add one reviewed entry.
@@ -111,6 +113,9 @@ const PLATFORM_WRITER_ALLOW_FILES = [
 const PLATFORM_OPENER_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
   "src/core/outletTokens.ts",
+  // Reviewed (A-16): the Entra exchange lives beside P5-04's own token code; it checks the
+  // product's pin before its cache, and the open checks it again.
+  "src/services/distribution/connectors/msstore/token.ts",
 ];
 
 interface Source {
