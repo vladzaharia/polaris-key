@@ -16,10 +16,34 @@ Distribution **`polaris-key`**, import package **`polaris_key`**, console script
 
 ## Install
 
+New versions are published to Polaris Key's PyPI feed only (the releases already on PyPI stay
+there). Name the feed as an explicit index for this one project, never as an extra index, so no
+other index can answer for `polaris-key`. With uv:
+
+```toml
+# pyproject.toml
+[[tool.uv.index]]
+name = "polaris-key"
+url = "https://pkg.plrs.im/pypi/polaris-key/simple/"
+explicit = true
+
+[tool.uv.sources]
+polaris-key = { index = "polaris-key" }
+```
+
 ```sh
-pip install polaris-key
+uv add polaris-key
 # optional extras: OS keyring + alternate CLI front ends
-pip install "polaris-key[keyring,click,typer]"
+uv add "polaris-key[keyring,click,typer]"
+```
+
+pip cannot route one project to one index: install the dependencies from your usual index, then
+the package alone from the feed. Poetry and the rest:
+[Installing the SDKs from the feeds](/docs/build/install-from-feeds/).
+
+```sh
+pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"
+pip install --no-deps --index-url https://pkg.plrs.im/pypi/polaris-key/simple/ polaris-key
 ```
 
 Requires Python ≥ 3.9. Runtime deps: `cryptography`, `httpx`, and below Python 3.14 `zstandard`

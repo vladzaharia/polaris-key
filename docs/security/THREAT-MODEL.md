@@ -1087,6 +1087,18 @@ symbol); review catches the rest.
   refuse the slug; delete and rename refuse the row), published by trusted publishing only. Its
   Swift feed requires signed releases (`swift-unsigned`, never relaxed for the system product);
   the Worker checks presence and the `cms-1.0.0` format, SwiftPM verifies the chain.
+- **Our release pipeline (F-10).** One reusable workflow, `publish-package.yml`, is the system
+  product's only trusted publisher: every release workflow calls it, GitHub names it in
+  `job_workflow_ref`, and its job runs in the `package-registry` environment, whose deployment
+  policy admits release tags only; the job also refuses any non-tag ref and any commit not on
+  main, and the publisher requires a ruleset-protected ref. Merging never publishes (the
+  Changesets action has no publish step), and no workflow holds an npm, PyPI, Maven Central or
+  registry token, so a compromised dependency of a PR job has nothing to publish with. The Swift
+  signing key lives only in `package-registry`'s secrets: the signing job decodes it into the
+  runner's temp directory, never echoes it, and deletes it in an `always()` step; without it the
+  job stops rather than publish unsigned. Residual: anyone who can push a protected release tag
+  can publish a version (the ruleset is the control), and a version once published is immutable,
+  so a bad release is yanked and superseded, never replaced.
 
 **What remains (F-03, F-10).** Strict-router setup snippets keep each feed the only source of
 its names. The owner publishes nothing to public registries and claims the public names at

@@ -32,21 +32,33 @@ Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable
 
 ## Install
 
+The package is published, signed, to Polaris Key's Swift registry as `polaris-key.PolarisKey`.
+Register the scope once (add `--global` for every project on the machine):
+
+```sh
+swift package-registry set --scope polaris-key https://pkg.plrs.im/swift/polaris-key
+```
+
 ```swift
 // Package.swift
 dependencies: [
-    .package(path: "../polaris-key/sdks/swift")
+    .package(id: "polaris-key.PolarisKey", from: "0.1.0")
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
-        .product(name: "PolarisKey", package: "PolarisKey"),
-        .product(name: "PolarisKeyUI", package: "PolarisKey"),
+        .product(name: "PolarisKey", package: "polaris-key.PolarisKey"),
+        .product(name: "PolarisKeyUI", package: "polaris-key.PolarisKey"),
         // The signed update decision (macOS and iOS). Sparkle is linked on macOS only — see
         // "Updates" below.
-        .product(name: "PolarisKeyUpdate", package: "PolarisKey"),
+        .product(name: "PolarisKeyUpdate", package: "polaris-key.PolarisKey"),
     ])
 ]
 ```
+
+Signature enforcement and the other clients:
+[Installing the SDKs from the feeds](/docs/build/install-from-feeds/). Working on the SDK itself,
+depend on a checkout instead: `.package(path: "../polaris-key/sdks/swift")`, with
+`package: "PolarisKey"` in each product.
 
 ## Headless usage
 
