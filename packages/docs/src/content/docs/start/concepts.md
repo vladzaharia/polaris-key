@@ -393,7 +393,9 @@ vocabulary first; the records arrive with the distribution manifest and the pack
 - **rollout** — percentage exposure of a release on one outlet; distribution state, carried into
   Update's feed. Distinct from a **channel**, which is Release's.
 - **listing** — store-page metadata (name, subtitle, description, icon, screenshots, category)
-  that feeds storefront sources and the download page.
+  that feeds storefront sources and the download page. The **shared listing** is a product's one
+  listing, entered once or imported, from which every store's listing is projected and graded in
+  a fit report; `.pkey/distribution` `listing` is one of its import sources.
 - **outlet capabilities** — what an outlet permits: `binaryUpdates` (`self` | `store` | `none`),
   `codeUpdates`, `dataUpdates`, `channelSwitch`, `commerce`, `downloadedScripts`. The
   security-relevant bits are operator-owned, never manifest-writable.

@@ -77,6 +77,32 @@ projections, is what makes "Add to storefronts" a review rather than data entry
 - Imported listing text is data: stored as text and rendered escaped, never as HTML (S-15 §9 3(g)).
 - Microsoft keywords validate to 7 × 30 (the stricter of the two documented limits).
 
+### Corrections from the code (A-18b implementation)
+
+- **Rule 10 needs no table change.** Every console route is the `adminApi` route kind, which
+  `routeCoverage.test.ts` already lists in `NARRATIVE_ONLY`; the listing routes ride it, as every
+  other `/manage/api/products/<slug>/distribution/…` route does.
+- **The migration is `0063_dist_listing.sql`** (main's highest was `0062`).
+- **The manifest's root `listing` is not stored by itself.** Distribution keeps only each outlet's
+  merged listing (`dist_outlets.listing_json`). The import is therefore an explicit admin action
+  (`POST …/listing/import`) that reads the listing an outlet shows (named, or the first live one
+  with a listing), never a manifest ingest. Asset URLs are not imported (assets are blobs, A-18d).
+- **The feeds read the model field by field over the manifest listing**, so a product without a
+  `dist_listings` row renders byte-identical feeds. Only AltStore (and PAL) and Obtainium switch;
+  Scoop, Flathub and F-Droid keep reading the manifest. The feed cache stamp follows the model.
+- **Release notes reach Distribution through a new read-only hook method,
+  `ReleaseCatalog.releaseNotes`** (Distribution may not read Release's tables). The Markdown
+  stripping reuses the download page's linear-time copy of `release/changelog.ts`'s rules
+  (`page/model.ts` `stripMarkdown`, now exported).
+- **The store columns live in `core/storefront/listingProfiles.ts`** as data for all eight stores;
+  only the Apple adapter exists, and its `ListingProfile` is now derived from its column
+  (`adapterListingProfile`). A-18e–i and A-18m derive theirs the same way.
+- **A-17d had landed, so it is retrofitted:** `distribute/version-localization` takes an optional
+  `releaseId` and defaults `whatsNew` (store notes) and `promotionalText` (the model) from the
+  listing when the request omits them, refusing a value over Apple's limit
+  (`listing_does_not_fit`); the preflight gains an advisory `listingFit` check that never blocks
+  `ready` (App Store Connect's own listing is what review sees until A-18m).
+
 ## Steps
 
 1. Migration, `TABLE_OWNERS`, validators.
