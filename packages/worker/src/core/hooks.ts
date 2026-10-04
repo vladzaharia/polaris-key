@@ -492,6 +492,19 @@ export interface ReleaseCatalog {
   releases(deliverableId: string): Promise<CatalogRelease[]>;
   /** One release by id, whatever its deliverable, or null (one read; P4-05). */
   release(releaseId: string): Promise<CatalogRelease | null>;
+  /**
+   * One release's title and notes as stored (Markdown or plain text), or null (one read). A-18b's
+   * store notes default from them (Distribution's listing model). The notes are answered whatever
+   * the metadata access mode: the only caller is the platform-admin console.
+   */
+  releaseNotes(
+    releaseId: string,
+  ): Promise<{
+    releaseId: string;
+    version: string;
+    title: string | null;
+    notes: string | null;
+  } | null>;
   /** A release's builds, by build id. */
   builds(releaseId: string): Promise<CatalogBuild[]>;
   /** A release's artifact records, with where their bytes live; narrowed to one build when

@@ -60,6 +60,11 @@
  *     GET  …/distribution/package-feeds                        the owner's packageFeeds switch
  *     PUT  …/distribution/package-feeds                        {enabled, expectedVersion} (F-03;
  *                                                              409 on a stale version)
+ *     GET|PUT …/distribution/listing[/…]                       the shared listing model (A-18b):
+ *                                                              the model, overrides, per-release
+ *                                                              store notes, the fit report and
+ *                                                              the manifest import
+ *                                                              (`listing/admin.ts`)
  *
  * Narrative-only (the console's API is not in the wire spec). Every write is audited with the
  * session's subject. The session, CSRF, rate-limit and platform-admin gates run in
@@ -151,6 +156,7 @@ import {
   setReadinessOverride,
 } from "./readiness.js";
 import { listAssetPacks } from "./assetPacks.js";
+import { handleListingAdmin } from "./listing/admin.js";
 
 /** The console's view of one outlet. */
 export function outletView(
@@ -209,6 +215,7 @@ export async function handleDistributionAdmin(
   if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
   if (rest[0] === "commerce") return handleCommerceAdmin(ctx);
   if (rest[0] === "package-feeds") return handlePackageFeedsAdmin(ctx);
+  if (rest[0] === "listing") return handleListingAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {

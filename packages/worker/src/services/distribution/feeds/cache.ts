@@ -12,8 +12,9 @@
  *     pause withdraws a release from the feeds immediately, not five minutes later), the yanks,
  *     the stored availability reports, the outlets, the registered F-Droid files, whether
  *     release notes are public, and what flips P4-14's readiness hold cheaply: the readiness rows
- *     (an operator's override or clear takes effect at once), the transports and delivery access. A change to any of them is a new key. A new release reaches the
- *     feeds within five minutes.
+ *     (an operator's override or clear takes effect at once), the transports and delivery access,
+ *     and the shared listing model the AltStore and Obtainium feeds read (A-18b). A change to any
+ *     of them is a new key. A new release reaches the feeds within five minutes.
  *   - THE ACCESS CHECK is never cached: a route reads the delivery access (`feedReaders`) before
  *     it looks here, so a deliverable made non-public has no feed from that request on.
  *   - Only a rendered answer is stored, never a not-found.
@@ -70,7 +71,16 @@ export async function feedStateStamp(
                FROM (SELECT deliverable_id, outlet_id, transport FROM dist_transports
                       WHERE product = ? ORDER BY deliverable_id, outlet_id)) AS tr,
             (SELECT COUNT(*) || ':' || COALESCE(MAX(modified_at), 0)
-               FROM dist_access WHERE product = ?) AS ac`,
+               FROM dist_access WHERE product = ?) AS ac,
+            (SELECT COALESCE(MAX(modified_at), 0) || ':' ||
+                    (SELECT COUNT(*) || ':' || COALESCE(MAX(modified_at), 0)
+                       FROM dist_listing_locales WHERE product = ?) || ':' ||
+                    (SELECT COUNT(*) || ':' || COALESCE(MAX(modified_at), 0)
+                       FROM dist_listing_overrides WHERE product = ?)
+               FROM dist_listings WHERE product = ?) AS li`,
+    product,
+    product,
+    product,
     product,
     product,
     product,
