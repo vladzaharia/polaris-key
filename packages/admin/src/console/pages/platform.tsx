@@ -1,8 +1,8 @@
 /**
  * The Platform section's pages (notes/S-13 §9.1): instance-wide, product-less. One lazy chunk,
  * loaded when the operator opens the section. Deployment is built here (A-11's identity and deploy
- * history, A-12's platform activity); Settings, Operations, Store connections and Package feeds
- * redirect to it until their pages land (`nav.ts`).
+ * history, A-12's platform activity) and Store connections in `platformStores.tsx` (A-16); the
+ * pages still to come redirect to Deployment until they land (`nav.ts`).
  */
 
 import * as React from "react";
@@ -35,6 +35,7 @@ import { Timeline, TimelineItem } from "../../ui/Timeline.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { PageHeader } from "../components/PageHeader.js";
 import { qk } from "../data/queries.js";
+import { StoreConnections } from "./platformStores.js";
 import { queryClient } from "../data/queryClient.js";
 import type { GlobalPageId } from "../nav.js";
 import {
@@ -59,6 +60,7 @@ export default function PlatformPages({
   page: GlobalPageId;
 }): React.ReactElement | null {
   if (page === "platform-deployment") return <Deployment />;
+  if (page === "platform-stores") return <StoreConnections />;
   return null;
 }
 

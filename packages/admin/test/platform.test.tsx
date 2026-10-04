@@ -133,12 +133,7 @@ describe("the Platform section in the sidebar", () => {
     expect(deployment.getAttribute("href")).toBe("#/platform/deployment");
     expect(deployment.querySelector("svg[data-nav-icon]")).not.toBeNull();
     // Pages still to come are not listed: they would only redirect.
-    for (const name of [
-      "Settings",
-      "Operations",
-      "Store connections",
-      "Package feeds",
-    ]) {
+    for (const name of ["Settings", "Operations", "Package feeds"]) {
       expect(
         within(nav())
           .queryAllByRole("link", { name })
@@ -173,7 +168,7 @@ describe("Platform URLs", () => {
     );
   });
 
-  for (const path of ["settings", "operations", "store-connections", "feeds"]) {
+  for (const path of ["settings", "operations", "feeds"]) {
     it(`#/platform/${path} redirects to Deployment`, async () => {
       boot(`#/platform/${path}`, { extra: platformRoutes() });
       await deploymentPage();

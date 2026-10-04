@@ -12,8 +12,72 @@ you can see every app the team key reaches, assign an app to a product from that
 typing its id, and let a product with no store key of its own use the team key — for its own app
 only.
 
-The console page arrives with the Platform section; until then everything here is the admin API
-under `/manage/api/platform/store-connections`, platform admins only (anyone else gets 403).
+In the console it is **Platform → Store connections**. The same data is the admin API under
+`/manage/api/platform/store-connections`. Both are for platform admins only (anyone else gets 403).
+
+## The console page
+
+Pick a store from the tiles at the top (App Store, Google Play, Microsoft Store, Steam). The
+choice is kept in the URL (`?store=google-play`), so a link opens the same store. Each tile shows
+the state of the store's primary credential and how many apps are assigned.
+
+- **Credentials.** One row per slot (the App Store has two: the App Store Connect API key, which
+  lists the apps, and the In-App Purchase key). Each row shows whether the credential is present,
+  where it comes from (stored in the console, or a Worker secret by name), the account it belongs
+  to (issuer ID, key ID, service account email, seller, tenant and client IDs) and, for a console
+  credential, when it last worked and was last used. When the store refused the last check, its
+  status line is shown (`Partner Center token: HTTP 401`). The page never shows a key, and has no
+  field to enter one.
+  - **Working**: the store accepted the console credential at its last use.
+  - **Present, not checked**: present but not checked yet. A Worker secret records no check
+    history; Re-check lists the apps live and shows any error the store returns.
+  - **Last check failed**: the store refused it; the status line says how.
+  - **Secret invalid**: the Worker secret is set but its JSON did not pass the validator (a wrong
+    field name, a PEM that lost its line breaks).
+  - **Not set**: no credential in either source.
+- **Account.** The store's shared settings (the Apple Developer Team ID, Play's push identity and
+  project number, Steam's operator-entered app ids), with the source of each value.
+- **Apps.** Every app the team credential can see, with its identifiers, the store's own status
+  and the product that holds it ("through the product's own key" when a product's own credential
+  pins it). Search and the assignment filter are kept in the URL. **Re-check** reads the store
+  again instead of the one-minute cache (`?refresh=1`), and refreshes the credential's health.
+  For Google Play, **Show track status** is off by default: it adds `?tracks=1`, which opens and
+  deletes a short edit per app (see below).
+- **Assign to product…** (an app's row menu) asks you to choose a product and confirm (a caution
+  confirmation: the change is reversible and changes what that product's connectors act on). The
+  confirmation lists what will be pinned, including the bundle ID for the In-App Purchase key.
+  Afterwards a result panel lists every pin set, any pin released, the product's own keys
+  re-pinned, and the own keys left alone because their account could not be told from their
+  metadata. Check those and re-pin them on the product's Keys & secrets page. An app held through
+  a product's own key can only be assigned to that product.
+- **Release from …** (the row menu of an assigned app) asks for the same caution confirmation.
+  The product's connectors that used the team credential stop with `pin_missing` until an app is
+  assigned again. Keys the product holds of its own keep their pins.
+
+When an assignment is refused, the dialog stays open and says why in plain words:
+
+- **Another product already holds this app** (`app_assigned_elsewhere`): an app belongs to one
+  product at a time, through the team credential or through a key of its own. Release it from
+  that product, or re-pin that product's own key, and then assign it.
+- **The product's own key belongs to another account** (`own_credential_other_account`): the
+  product holds a key of its own from a different store account than the team credential.
+  Assigning would point the two keys at different accounts. Re-pin or delete that key on the
+  product, and then assign again.
+
+### Adding a credential
+
+A store with no team credential shows how to add one. Add it as a Worker secret through the
+**Sync Worker secrets** workflow, so the key never passes through a terminal, a chat or the
+console. From the machine that holds the key file:
+
+```sh
+gh secret set PLATFORM_ASC_API_KEY --env production < key.json   # the secret name of the slot
+gh workflow run sync-worker-secrets.yml -f target=prod
+```
+
+The secret names and JSON shapes are in [Deploy](/docs/admin/deploy/) (DEPLOYMENT.md §4). After
+the workflow runs, the store's tile and credential row show the credential as present. Re-check
+then lists its apps.
 
 ## Credentials and where they come from
 

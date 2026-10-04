@@ -35,6 +35,15 @@ export const qk = {
   platformVersion: (): QueryKey => ["platform", "version"],
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
+  /** Every store connection; as a prefix, also every store's apps listing. */
+  platformStores: (): QueryKey => ["platform", "store-connections"],
+  platformStoreApps: (store: string, tracks: boolean): QueryKey => [
+    "platform",
+    "store-connections",
+    store,
+    "apps",
+    tracks ? "tracks" : "plain",
+  ],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
 

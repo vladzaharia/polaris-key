@@ -151,6 +151,120 @@ export interface PlatformActivityPage {
   nextCursor: PlatformCursor | null;
 }
 
+// ── platform store connections (A-16; worker `admin/handlers/platformStoreConnections.ts`) ──
+
+/** A store the platform holds one team-level connection for. */
+export type PlatformStore =
+  | "app-store"
+  | "google-play"
+  | "microsoft-store"
+  | "steam";
+
+/** One credential slot of a store connection: presence and metadata, never a key. */
+export interface PlatformStoreCredential {
+  /** `<store>.<slot>`: `app-store.api-key`, `app-store.in-app-purchase-key`, … */
+  id: string;
+  store: PlatformStore;
+  slot: string;
+  kind: string;
+  label: string;
+  configured: boolean;
+  /** The source a connector would use now. */
+  source: "console" | "secret" | null;
+  /** Key id, issuer id, client email, tenant, client and seller ids. Never the key. */
+  meta: Record<string, string> | null;
+  console: {
+    present: boolean;
+    status: string | null;
+    meta: Record<string, string> | null;
+    createdAt: number | null;
+    createdBy: string | null;
+    rotatedAt: number | null;
+    lastUsedAt: number | null;
+    lastOkAt: number | null;
+    /** A status line the Worker composed (`HTTP 401`), never a store response body. */
+    lastError: string | null;
+  };
+  secret: { name: string; present: boolean; valid: boolean };
+  /** What a product's pin on this credential names (`appleId`, `packageName`, …). */
+  pinField: string;
+  pins: number;
+}
+
+/** A non-secret store setting shared by every product (the Apple Team ID, …). */
+export interface PlatformStoreSetting {
+  key: string;
+  label: string;
+  usedBy: string;
+  value: string | null;
+  source: "console" | "env" | null;
+  envName: string | null;
+  updatedAt: number | null;
+  updatedBy: string | null;
+}
+
+/** One store's connection, as `GET /manage/api/platform/store-connections` lists it. */
+export interface PlatformStoreConnection {
+  store: PlatformStore;
+  label: string;
+  configured: boolean;
+  /** The primary slot's id: the one the apps listing uses and an assignment pins. */
+  primary: string;
+  credentials: PlatformStoreCredential[];
+  settings: PlatformStoreSetting[];
+  appsListing: boolean;
+  /** Which product holds which app: credential id → pin. */
+  assignments: { product: string; pins: Record<string, string> }[];
+}
+
+/** One app the team credential can see, joined with the product holding it. */
+export interface PlatformStoreApp {
+  /** The value an assignment pins (Apple ID, package name, Store ID, Steam app id). */
+  appId: string;
+  name: string | null;
+  /** Pins on the store's other credentials an assignment sets too (the bundle id). */
+  pins: Record<string, string>;
+  identifiers: Record<string, string | null>;
+  /** The store's distribution status, in its own vocabulary. */
+  status: Record<string, unknown>;
+  assignedProduct: string | null;
+  assignedVia: "platform" | "own-credential" | null;
+}
+
+/** `GET /manage/api/platform/store-connections/<store>/apps`. */
+export interface PlatformStoreApps {
+  store: PlatformStore;
+  source: "console" | "secret";
+  /** Epoch seconds. */
+  fetchedAt: number;
+  cached: boolean;
+  truncated: boolean;
+  /** `false`: the store could not list its apps; only operator-entered ones are shown (Steam). */
+  listed?: boolean;
+  apps: PlatformStoreApp[];
+}
+
+/** `PUT …/apps/<appId>/product`. */
+export interface PlatformStoreAssignResult {
+  store: PlatformStore;
+  appId: string;
+  product: string;
+  pins: { credential: string; pin: string; changed: boolean }[];
+  released: { credential: string; pin: string }[];
+  /** The product's own keys re-pinned to the same app (same store account as the team key). */
+  ownCredentialsRepinned: string[];
+  /** Own keys left alone because their store account cannot be told from their metadata. */
+  ownCredentialsSkipped: { id: string; reason: string }[];
+}
+
+/** `DELETE …/apps/<appId>/product`. */
+export interface PlatformStoreReleaseResult {
+  store: PlatformStore;
+  appId: string;
+  product: string;
+  cleared: { credential: string; pin: string }[];
+}
+
 // ── products (platform registry) ──────────────────────────────────────────────
 type ProductReleaseSource = "manual" | "github" | (string & {});
 
@@ -1787,6 +1901,53 @@ const rawApi = {
     call<PlatformActivityPage>(
       `/manage/api/platform/activity${cursorQuery(cursor)}`,
     ),
+  /** Every store's team credential (presence and metadata only), settings and assignments. */
+  platformStoreConnections: () =>
+    call<{ stores: PlatformStoreConnection[] }>(
+      "/manage/api/platform/store-connections",
+    ),
+  /**
+   * The apps a store's team credential can see. `refresh` reads the store again instead of the
+   * minute-long cache; `tracks` adds Play's track status (it opens and deletes an edit per app,
+   * so only on an explicit opt-in).
+   */
+  platformStoreApps: (
+    store: PlatformStore,
+    opts: { refresh?: boolean; tracks?: boolean } = {},
+  ) => {
+    const q = new URLSearchParams();
+    if (opts.refresh === true) q.set("refresh", "1");
+    if (opts.tracks === true) q.set("tracks", "1");
+    const qs = q.toString();
+    return call<PlatformStoreApps>(
+      `/manage/api/platform/store-connections/${enc(store)}/apps${qs ? `?${qs}` : ""}`,
+    );
+  },
+  /** Assign a store app to a product: its pin on the team credential (and its own keys' re-pin). */
+  assignPlatformStoreApp: (
+    store: PlatformStore,
+    appId: string,
+    product: string,
+  ) =>
+    call<PlatformStoreAssignResult>(
+      `/manage/api/platform/store-connections/${enc(store)}/apps/${enc(appId)}/product`,
+      { method: "PUT", body: JSON.stringify({ product }) },
+    ),
+  /**
+   * Release a store app from the product holding it. `heldBy` is not sent (the Worker finds the
+   * holder itself): it names the product whose connector state the release makes stale.
+   */
+  releasePlatformStoreApp: (
+    store: PlatformStore,
+    appId: string,
+    heldBy: string,
+  ) => {
+    void heldBy;
+    return call<PlatformStoreReleaseResult>(
+      `/manage/api/platform/store-connections/${enc(store)}/apps/${enc(appId)}/product`,
+      { method: "DELETE" },
+    );
+  },
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),

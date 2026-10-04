@@ -671,7 +671,10 @@ describe("global pages", () => {
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
     expect(platformLinks().map((p) => p.page)).toEqual(["home", "products"]);
-    expect(platformItems().map((p) => p.page)).toEqual(["platform-deployment"]);
+    expect(platformItems().map((p) => p.page)).toEqual([
+      "platform-deployment",
+      "platform-stores",
+    ]);
   });
 
   it("#/platform follows the chain to Deployment in one redirect", () => {

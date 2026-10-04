@@ -79,7 +79,9 @@ export type WriteMethod =
   | "deleteProfile"
   | "createTier"
   | "patchTier"
-  | "deleteTier";
+  | "deleteTier"
+  | "assignPlatformStoreApp"
+  | "releasePlatformStoreApp";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -376,6 +378,24 @@ export const MUTATIONS: MutationTable = {
   deleteTier: {
     label: "tier delete",
     invalidates: (slug) => [prefix(qk.tiers(slug)), prefix(qk.licenses(slug))],
+  },
+  assignPlatformStoreApp: {
+    label: "store app assign",
+    // The connection list (assignments, pin counts), every store's apps listing (who holds what),
+    // and the product's outlet credentials and connector health (pins, credential source).
+    invalidates: (_store, _appId, product) => [
+      prefix(qk.platformStores()),
+      prefix(qk.credentials(product)),
+      prefix(qk.health(product)),
+    ],
+  },
+  releasePlatformStoreApp: {
+    label: "store app release",
+    invalidates: (_store, _appId, heldBy) => [
+      prefix(qk.platformStores()),
+      prefix(qk.credentials(heldBy)),
+      prefix(qk.health(heldBy)),
+    ],
   },
 };
 
