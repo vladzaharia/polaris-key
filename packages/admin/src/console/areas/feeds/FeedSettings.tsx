@@ -6,8 +6,9 @@
  * its own resource and its own section.
  *
  * - **General:** enabled. Turning a feed off is L1.
- * - **Access:** Public. The other modes are shown, unavailable: clients would need registry
- *   credentials, which the registry does not issue.
+ * - **Access:** public, token, licensed or entitled (F-21). Leaving public is L1: anonymous
+ *   clients get the native 401 within 30 seconds and need a registry token (the Tokens page).
+ *   Entitled lists the feed's packages with no delivery gate, which licence tokens are refused.
  * - **Namespace:** the dependency-confusion rule ingest enforces (scope, prefixes, groups,
  *   publisher). OCI's namespace is the owner itself.
  * - **Limits:** the size ceiling, at most the platform's.
@@ -23,6 +24,15 @@ import type {
   FeedEcosystem,
   FeedSettingsWrite,
 } from "../../../api.js";
+import {
+  BadgeCheck,
+  Globe,
+  KeyRound,
+  Package,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
+import { Callout } from "../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { Form, FormField, useAdminForm } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
@@ -45,8 +55,10 @@ import {
   YANK_EFFECTS,
   bytesToMiB,
   mibToBytes,
+  tokensHref,
   type FeedScope,
 } from "./model.js";
+import { Link } from "../../router.js";
 
 /** What an ecosystem panel receives (F-12 adds one per ecosystem to `FEED_PANELS`). */
 export interface FeedPanelProps {
@@ -94,7 +106,7 @@ export function FeedSettingsTab({
         </p>
       ) : null}
       <GeneralSection eco={eco} detail={detail} save={save} />
-      <AccessSection detail={detail} save={save} />
+      <AccessSection eco={eco} scope={scope} detail={detail} save={save} />
       <NamespaceSection eco={eco} detail={detail} save={save} />
       <LimitsSection detail={detail} save={save} />
       <YankSection eco={eco} detail={detail} save={save} />
@@ -192,39 +204,54 @@ function GeneralSection({
   );
 }
 
+/** One icon per access mode (every option carries one). */
+const FEED_ACCESS_ICONS: Record<string, LucideIcon> = {
+  public: Globe,
+  authenticated: KeyRound,
+  licensed: BadgeCheck,
+  entitled: ShieldCheck,
+};
+
 function AccessSection({
+  eco,
+  scope,
   detail,
   save,
 }: {
+  eco: FeedEcosystem;
+  scope: FeedScope;
   detail: FeedDetailDto;
   save: Save;
 }): React.ReactElement {
+  const gate = useConfirmGate<string>();
   const form = useAdminForm<{ accessMode: string }>({
     values: { accessMode: detail.settings.accessMode },
     resetOn: [detail.settings.version],
     mapServerErrors: serverFieldErrors,
     onSubmit: async (v) => {
+      if (
+        detail.settings.accessMode === "public" &&
+        v.accessMode !== "public" &&
+        !(await gate.ask(v.accessMode))
+      )
+        throw new SaveCancelled();
       await save({ accessMode: v.accessMode });
       toast.success("Access saved");
     },
   });
-  const options = detail.accessModes.map((m) => ({
-    value: m.mode,
-    label: (
-      <span className="inline-flex items-center gap-2">
-        {FEED_ACCESS_LABELS[m.mode] ?? m.mode}
-        {m.available ? null : (
-          <StatusPill tone="neutral" icon={null} size="sm">
-            Unavailable
-          </StatusPill>
-        )}
-      </span>
-    ),
-    description: m.available
-      ? FEED_ACCESS_DESCRIPTIONS[m.mode]
-      : `${FEED_ACCESS_DESCRIPTIONS[m.mode]} The registry issues no credentials, so this mode cannot be set.`,
-    disabled: !m.available,
-  }));
+  const options = detail.accessModes
+    .filter((m) => m.available)
+    .map((m) => {
+      const Icon = FEED_ACCESS_ICONS[m.mode] ?? Globe;
+      return {
+        value: m.mode,
+        label: FEED_ACCESS_LABELS[m.mode] ?? m.mode,
+        description: FEED_ACCESS_DESCRIPTIONS[m.mode],
+        icon: <Icon aria-hidden className="size-4" />,
+      };
+    });
+  const chosen = form.rhf.watch("accessMode");
+  const ungated = detail.ungatedPackages ?? [];
   return (
     <Form form={form} aria-label="Access">
       <SettingsSection
@@ -257,7 +284,55 @@ function AccessSection({
             )}
           </FormField>
         </SettingsRow>
+        {chosen !== "public" ? (
+          <SettingsRow
+            label="Registry tokens"
+            help="Clients authenticate with a registry token, minted on the Tokens page, or by a licensee in the portal."
+          >
+            <Link
+              to={tokensHref(scope)}
+              className="inline-flex items-center gap-1.5 text-sm text-accent-fg underline-offset-4 hover:underline"
+            >
+              <KeyRound aria-hidden className="size-4" />
+              Open Tokens
+            </Link>
+          </SettingsRow>
+        ) : null}
+        {chosen === "entitled" && ungated.length > 0 ? (
+          <SettingsRow label="Packages without a gate" align="block">
+            <Callout tone="warning" title="Licence tokens are refused these packages">
+              <p>
+                Entitled admits a licence-bound token only for a package whose
+                delivery access names an entitlement flag the licence holds.
+                These {ECOSYSTEM_LABELS[eco]} packages have none:
+              </p>
+              <ul className="mt-2 space-y-1">
+                {ungated.map((p) => (
+                  <li key={p.id} className="flex items-center gap-1.5">
+                    <Package aria-hidden className="size-4 text-fg-muted" />
+                    <span className="font-mono text-xs">{p.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </Callout>
+          </SettingsRow>
+        ) : null}
       </SettingsSection>
+      <ConfirmDialog
+        open={gate.open}
+        onOpenChange={(open) => {
+          if (!open) gate.cancel();
+        }}
+        intent={intentOf("feed.tighten")}
+        title={`Require a token for the ${ECOSYSTEM_LABELS[eco]} feed?`}
+        consequences={[
+          "Clients without a registry token get the registry's 401 within 30 seconds.",
+          "Each client then needs the authenticated setup from the Tokens page.",
+          "Bytes already installed or cached by clients stay where they are.",
+        ]}
+        confirmLabel={`Switch to ${FEED_ACCESS_LABELS[gate.payload ?? ""] ?? "this mode"}`}
+        onConfirm={gate.confirm}
+      />
     </Form>
   );
 }

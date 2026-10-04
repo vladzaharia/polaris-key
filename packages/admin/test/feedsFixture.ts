@@ -250,10 +250,75 @@ export function feedDetail(
     capabilities: CAPS[eco],
     accessModes: [
       { mode: "public", available: true },
-      { mode: "authenticated", available: false },
-      { mode: "licensed", available: false },
-      { mode: "entitled", available: false },
+      { mode: "authenticated", available: true },
+      { mode: "licensed", available: true },
+      { mode: "entitled", available: true },
     ],
+    ungatedPackages:
+      eco === "npm" ? [{ id: "npm.sdk", name: "@djdl/sdk" }] : [],
+  };
+}
+
+/** F-21: one scope's registry tokens. */
+export function registryTokens(scope: "platform" | "product") {
+  const owner = scope === "platform" ? "polaris-key" : "djdl";
+  return {
+    owner,
+    registryOrigin: "https://pkg.plrs.im",
+    username: "__token__",
+    tokens: [
+      {
+        tokenId: "rtok_ci",
+        label: "CI pull",
+        hint: "Ab3x",
+        scopes: ["read"],
+        ecosystems: ["npm", "oci"],
+        binding: "owner",
+        licenseId: null,
+        presentation: "header",
+        createdBy: "admin:ada@x.io",
+        createdAt: T0 - 86_400,
+        expiresAt: T0 + 89 * 86_400,
+        lastUsedAt: T0 - 3_600,
+        revokedAt: null,
+        revokedBy: null,
+        revokeReason: null,
+        status: "active",
+      },
+      {
+        tokenId: "rtok_old",
+        label: "Old laptop",
+        hint: "Zz9q",
+        scopes: ["read"],
+        ecosystems: null,
+        binding: "license",
+        licenseId: "lic_1",
+        presentation: "header",
+        createdBy: "portal:pacc_1",
+        createdAt: T0 - 9 * 86_400,
+        expiresAt: T0 + 81 * 86_400,
+        lastUsedAt: null,
+        revokedAt: T0 - 86_400,
+        revokedBy: "admin:ada@x.io",
+        revokeReason: "manual",
+        status: "revoked",
+      },
+    ],
+    feeds: ECOS.map((eco) => ({
+      ecosystem: eco,
+      label: eco,
+      enabled: eco === "npm" || eco === "godot",
+      accessMode: eco === "npm" ? "licensed" : "public",
+      baseUrl: `https://pkg.plrs.im/${eco === "oci" ? "v2" : eco}/${owner}/`,
+    })),
+    limits: {
+      minDays: 1,
+      maxDays: 365,
+      defaultDays: 90,
+      urlDefaultDays: 30,
+      perOwner: 500,
+      perLicense: 10,
+    },
   };
 }
 
@@ -493,6 +558,9 @@ export function feedRoutes(): Record<string, unknown> {
     routes[`${p}/activity`] = ACTIVITY("polaris-key", eco);
     routes[`${q}/activity`] = ACTIVITY("djdl", eco);
   }
+  routes["/manage/api/platform/feeds/tokens"] = registryTokens("platform");
+  routes["/manage/api/products/djdl/distribution/feeds/tokens"] =
+    registryTokens("product");
   routes[
     "/manage/api/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode"
   ] = packageRecord("platform", "npm");

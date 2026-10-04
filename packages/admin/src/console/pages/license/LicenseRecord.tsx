@@ -18,6 +18,7 @@ import { navigate } from "../../router.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
+import { LicenseRegistryTokens } from "../../areas/feeds/RegistryTokens.js";
 import { confirmFor } from "../../../lib/actions.js";
 import { fromSeconds, formatRelative } from "../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../lib/labels.js";
@@ -284,7 +285,15 @@ function LicenseRecordBody({
           />
         </div>
       ) : null}
-      {tab === "keys" ? <LicenseKeys slug={slug} license={license} /> : null}
+      {tab === "keys" ? (
+        <div className="space-y-6">
+          <LicenseKeys slug={slug} license={license} />
+          {/* F-21: tokens bound to this licence, while the product's package feeds are on. */}
+          {product?.packageFeeds ? (
+            <LicenseRegistryTokens slug={slug} licenseId={id} />
+          ) : null}
+        </div>
+      ) : null}
       {tab === "devices" ? (
         <LicenseDevices slug={slug} license={license} limit={limit} />
       ) : null}

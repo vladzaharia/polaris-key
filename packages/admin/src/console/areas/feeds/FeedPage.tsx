@@ -44,6 +44,7 @@ import {
   SYSTEM_PRODUCT_SLUG,
   feedHref,
   packageHref,
+  TOKEN_ENV,
   setupSnippets,
   type FeedScope,
 } from "./model.js";
@@ -355,11 +356,19 @@ function SetupTab({
         docs={docsUrl("packageFeedsHost")}
       />
     );
-  const snippets = setupSnippets(eco, {
-    baseUrl: detail.feed.baseUrl,
-    owner: detail.owner,
-    namespace: detail.settings.namespace,
-  });
+  // F-21: a non-public feed's setup names the token through an environment variable; the real
+  // token appears only in the shown-once dialog on the Tokens page.
+  const snippets = setupSnippets(
+    eco,
+    {
+      baseUrl: detail.feed.baseUrl,
+      owner: detail.owner,
+      namespace: detail.settings.namespace,
+    },
+    detail.settings.accessMode === "public"
+      ? { kind: "none" }
+      : { kind: "env", name: TOKEN_ENV },
+  );
   return (
     <div className="space-y-4">
       {detail.feed.status !== "enabled" ? (

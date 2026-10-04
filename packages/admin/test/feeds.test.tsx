@@ -50,6 +50,179 @@ async function heading(name: string | RegExp): Promise<HTMLElement> {
   return screen.findByRole("heading", { level: 1, name });
 }
 
+describe("registry auth (F-21)", () => {
+  it("leaving Public asks first (L1), and Entitled names the packages without a gate", async () => {
+    const log = boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "PUT /manage/api/products/djdl/distribution/feeds/npm/settings": {
+          ok: true,
+          settings: feedDetail("product", "npm").settings,
+        },
+      },
+    });
+    const access = await within(await mainReady()).findByRole("form", {
+      name: "Access",
+    });
+    await userEvent.click(
+      within(access).getByRole("radio", { name: /Entitled/ }),
+    );
+    expect(access.textContent).toContain("@djdl/sdk");
+    expect(
+      within(access).getByRole("link", { name: /Open Tokens/ }),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(access).getByRole("button", { name: /^Save/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toContain("401");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Switch to Entitled/ }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 3,
+        accessMode: "entitled",
+      }),
+    );
+  });
+
+  it("the Tokens page lists tokens, mints one and shows it once with every client's setup", async () => {
+    const minted = {
+      ok: true,
+      token: `pkeyr_${"k".repeat(43)}`,
+      view: {
+        ...(
+          feedRoutes()[
+            "/manage/api/products/djdl/distribution/feeds/tokens"
+          ] as { tokens: Record<string, unknown>[] }
+        ).tokens[0],
+        tokenId: "rtok_new",
+        label: "Build box",
+        ecosystems: null,
+      },
+    };
+    const log = boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "POST /manage/api/products/djdl/distribution/feeds/tokens": minted,
+      },
+    });
+    await heading("Registry tokens");
+    const table = await within(main()).findByRole("table", {
+      name: "Registry tokens",
+    });
+    expect(table.textContent).toContain("CI pull");
+    expect(table.textContent).toContain("Licensee, in the portal");
+    await userEvent.click(
+      within(main()).getByRole("button", { name: /New token/ }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "New registry token",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "Build box",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "POST")?.json).toEqual({
+        label: "Build box",
+        binding: "owner",
+        expiresInDays: 90,
+        ecosystems: null,
+      }),
+    );
+    const shown = await screen.findByRole("dialog", {
+      name: "Registry token created",
+    });
+    expect(shown.textContent).toContain(minted.token);
+    // The npm feed is enabled: its .npmrc carries the real token.
+    expect(shown.textContent).toContain(
+      `//pkg.plrs.im/npm/djdl/:_authToken=${minted.token}`,
+    );
+  });
+
+  it("revoking a token is L2", async () => {
+    const log = boot("#/platform/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        "POST /manage/api/platform/feeds/tokens/rtok_ci/revoke": {
+          ok: true,
+          view: {},
+        },
+      },
+    });
+    const table = await within(await mainReady()).findByRole("table", {
+      name: "Registry tokens",
+    });
+    await within(table).findByText("CI pull");
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Actions for CI pull" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Revoke/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(confirmFor("registryToken.revoke").level).toBe(2);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Revoke token" }),
+    );
+    await waitFor(() =>
+      expect(
+        log.calls.some(
+          (c) =>
+            c.method === "POST" &&
+            c.path.endsWith("/manage/api/platform/feeds/tokens/rtok_ci/revoke"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("authenticated snippets name the token by env, or carry it; Godot needs a URL token", () => {
+    const ctx = {
+      baseUrl: "https://pkg.plrs.im/npm/acme/",
+      owner: "acme",
+      namespace: { scope: "@acme" },
+    };
+    const env = setupSnippets("npm", ctx, {
+      kind: "env",
+      name: "PKEY_REGISTRY_TOKEN",
+    });
+    expect(env[0]!.code).toBe(
+      "@acme:registry=https://pkg.plrs.im/npm/acme/\n//pkg.plrs.im/npm/acme/:_authToken=${PKEY_REGISTRY_TOKEN}",
+    );
+    const oci = setupSnippets(
+      "oci",
+      { ...ctx, baseUrl: "https://pkg.plrs.im/v2/acme/" },
+      { kind: "token", value: "pkeyr_x" },
+    );
+    expect(oci[0]!.code).toBe(
+      "echo 'pkeyr_x' | docker login pkg.plrs.im -u __token__ --password-stdin",
+    );
+    const godot = setupSnippets(
+      "godot",
+      { ...ctx, baseUrl: "https://pkg.plrs.im/godot/acme/" },
+      { kind: "godot-url", value: "pkeyr_g" },
+    );
+    expect(godot[0]!.code).toBe(
+      "https://pkg.plrs.im/godot/acme/t/pkeyr_g/asset-library/api",
+    );
+    const maven = setupSnippets(
+      "maven",
+      { ...ctx, baseUrl: "https://pkg.plrs.im/maven/acme/" },
+      { kind: "env", name: "PKEY_REGISTRY_TOKEN" },
+    );
+    expect(maven[2]!.code).toContain(
+      "<password>${env.PKEY_REGISTRY_TOKEN}</password>",
+    );
+  });
+});
+
 describe("the Feeds overview", () => {
   it("platform scope: every feed with status, counts, access and registry URL, the owners, no caveats", async () => {
     boot("#/platform/feeds", { extra: feedRoutes() });
@@ -95,6 +268,7 @@ describe("the Feeds overview", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Tokens",
     ]);
     // Nothing suggests a public registry, and nothing is "coming soon".
     expect(main().textContent).not.toMatch(
@@ -308,7 +482,7 @@ describe("a feed page", () => {
     expect(oci[0]!.code).toBe("docker pull pkg.plrs.im/acme/server:1.2.3");
   });
 
-  it("Settings: each section saves with the version it read; access modes beyond Public are unavailable", async () => {
+  it("Settings: each section saves with the version it read; every access mode can be chosen (F-21)", async () => {
     const log = boot("#/p/djdl/distribution/feeds/npm/settings", {
       extra: {
         ...feedRoutes(),
@@ -330,8 +504,8 @@ describe("a feed page", () => {
           r.hasAttribute("disabled") ||
           r.getAttribute("data-disabled") !== null,
       ),
-    ).toEqual([false, true, true, true]);
-    expect(access.textContent).toContain("Unavailable");
+    ).toEqual([false, false, false, false]);
+    expect(access.textContent).not.toContain("Unavailable");
     expect(access.textContent).not.toMatch(/coming soon|ships/i);
     // The platform policy is the platform's: not in product scope.
     expect(

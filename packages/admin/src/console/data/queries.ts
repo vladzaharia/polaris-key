@@ -80,6 +80,12 @@ export const qk = {
     eco,
     "activity",
   ],
+  /** F-21: the scope's registry tokens; `license` narrows to one licence's (`""` = all). */
+  pkgFeedTokens: (scope: FeedScope, license: string): QueryKey => [
+    ...qkFeeds(scope),
+    "tokens",
+    license,
+  ],
   /** Every product's queries (a platform-wide write that changes what each product shows). */
   allProducts: (): QueryKey => ["product"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
