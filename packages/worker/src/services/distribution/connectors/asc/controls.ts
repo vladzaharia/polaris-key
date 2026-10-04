@@ -481,21 +481,26 @@ const registerWebhook: ConnectorControl = (c) =>
       );
     const url = webhookUrl(c.origin, c.product);
     const created = single(
-      await run.client.post(ascPath("webhooks"), {
-        data: {
-          type: "webhooks",
-          attributes: {
-            enabled: true,
-            eventTypes: [...ASC_WEBHOOK_EVENT_TYPES],
-            name: `Polaris Key (${c.product})`,
-            secret: secret.value.secret,
-            url,
-          },
-          relationships: {
-            app: { data: { type: "apps", id: setup.appleId } },
+      await run.client.post(
+        ascPath("webhooks"),
+        {
+          data: {
+            type: "webhooks",
+            attributes: {
+              enabled: true,
+              eventTypes: [...ASC_WEBHOOK_EVENT_TYPES],
+              name: `Polaris Key (${c.product})`,
+              secret: secret.value.secret,
+              url,
+            },
+            relationships: {
+              app: { data: { type: "apps", id: setup.appleId } },
+            },
           },
         },
-      }),
+        // The gate admits the callback URL only on the origin this request arrived at.
+        { hookOrigin: c.origin },
+      ),
     );
     if (!created)
       return refuse(

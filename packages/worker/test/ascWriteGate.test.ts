@@ -211,6 +211,10 @@ describe("deny by default at run time", () => {
       "/v1/users/U1",
       "/v1/users/U1/visibleApps",
       "/v1/userInvitations",
+      // Case-insensitive: another spelling is refused too, whatever Apple would answer.
+      "/v1/Users",
+      "/v1/USERS/U1",
+      "/v1/UserInvitations",
     ])
       expect(denial("GET", p)).toBe("personal_data");
     expect(denial("GET", "/v1/apps")).toBeNull();
@@ -320,13 +324,23 @@ describe("body checks", () => {
       data: { type: "apps", id: "1234567890", attributes },
     });
     const ok = "https://key.plrs.im/djdl/distribution/hooks/app-store";
+    const own = { hookOrigin: "https://key.plrs.im" };
     expect(
       denial(
         "PATCH",
         "/v1/apps/1234567890",
         app({ subscriptionStatusUrl: ok, subscriptionStatusUrlVersion: "V2" }),
+        own,
       ),
     ).toBeNull();
+    // Without the handler's own origin, no callback URL is admitted at all.
+    expect(
+      denial(
+        "PATCH",
+        "/v1/apps/1234567890",
+        app({ subscriptionStatusUrl: ok }),
+      ),
+    ).toBe("value_not_allowed");
     expect(
       denial(
         "PATCH",
@@ -340,6 +354,9 @@ describe("body checks", () => {
     for (const bad of [
       "http://key.plrs.im/djdl/distribution/hooks/app-store",
       "https://evil.example/djdl/distribution/hooks/app-store?x=1",
+      // A clean URL of the right shape on another host (A-17a fix round 1).
+      "https://evil.example/djdl/distribution/hooks/app-store",
+      "https://key.plrs.im.evil.example/djdl/distribution/hooks/app-store",
       "https://user:pw@key.plrs.im/djdl/distribution/hooks/app-store",
       "https://key.plrs.im:8443/djdl/distribution/hooks/app-store",
       "https://key.plrs.im/djdl/distribution/hooks/asc",
@@ -350,6 +367,7 @@ describe("body checks", () => {
           "PATCH",
           "/v1/apps/1234567890",
           app({ subscriptionStatusUrl: bad }),
+          own,
         ),
       ).toBe("value_not_allowed");
     expect(denial("PATCH", "/v1/apps/1234567890", app({ bundleId: "x" }))).toBe(
@@ -429,16 +447,24 @@ describe("body checks", () => {
         relationships: { app: { data: { type: "apps", id: "1" } } },
       },
     });
+    const own = { hookOrigin: "https://key.plrs.im" };
     expect(
       denial(
         "POST",
         "/v1/webhooks",
         hook("https://key.plrs.im/djdl/distribution/hooks/asc"),
+        own,
       ),
     ).toBeNull();
-    expect(
-      denial("POST", "/v1/webhooks", hook("https://attacker.example/collect")),
-    ).toBe("value_not_allowed");
+    for (const [url, ctx] of [
+      ["https://attacker.example/collect", own],
+      ["https://attacker.example/djdl/distribution/hooks/asc", own],
+      ["https://key.plrs.im/djdl/distribution/hooks/asc", undefined],
+      ["https://key.plrs.im/djdl/distribution/hooks/asc", { hookOrigin: "" }],
+    ] as const)
+      expect(denial("POST", "/v1/webhooks", hook(url), ctx), url).toBe(
+        "value_not_allowed",
+      );
   });
 
   it("linkage bodies: identifiers of the rule's type, at least one", () => {
@@ -669,6 +695,42 @@ describe("the client consults the gate before the token", () => {
       "https://api.appstoreconnect.apple.com/v2/inAppPurchases",
     );
     expect(String(calls[0]![1].body)).not.toContain("typedConfirmation");
+  });
+
+  it("gates the exact bytes it sends: a toJSON cannot swap the body after the check", async () => {
+    const { c, token, fetchImpl } = client();
+    // An object that looks harmless to a property read but serialises to a certificate request.
+    const sneaky = {
+      data: {
+        type: "bundleIds",
+        attributes: { identifier: "gg.a.b", name: "b", platform: "IOS" },
+      },
+      toJSON: () => ({
+        data: {
+          type: "certificates",
+          attributes: { certificateType: "DEVELOPER_ID_APPLICATION" },
+        },
+      }),
+    };
+    await expect(c.post(ascPath("bundleIds"), sneaky)).rejects.toBeInstanceOf(
+      AscWriteDenied,
+    );
+    // A body that does not serialise to JSON at all is refused, not sent bodiless.
+    await expect(
+      c.post(ascPath("bundleIds"), (() => undefined) as unknown as object),
+    ).rejects.toThrow("invalid_body");
+    expect(token).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    // And what is admitted is sent byte for byte as checked.
+    const plain = {
+      data: {
+        type: "bundleIds",
+        attributes: { identifier: "gg.a.b", name: "b", platform: "IOS" },
+      },
+    };
+    await c.post(ascPath("bundleIds"), plain);
+    const calls = fetchImpl.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0]![1].body).toBe(JSON.stringify(plain));
   });
 });
 

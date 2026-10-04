@@ -331,6 +331,23 @@ describe("performAscWrite", () => {
         NOW,
       ),
     ).rejects.toThrow("Idempotency-Key");
+    // Testers' emails are never stored: an email-shaped natural key is refused, nothing written.
+    await expect(
+      beginAscOperation(
+        db,
+        {
+          ...TEAM_KEY,
+          op: "beta_tester.invite",
+          naturalKey: "ada@example.test",
+        },
+        {},
+        "u1",
+        NOW,
+      ),
+    ).rejects.toThrow("email");
+    expect(
+      await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM asc_operations"),
+    ).toEqual({ n: 0 });
     await expect(
       db.run(
         `INSERT INTO asc_operations (op_id, scope, product, op, natural_key, state, request_hash, actor, created_at)

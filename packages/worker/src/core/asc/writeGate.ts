@@ -48,10 +48,14 @@ export type AscMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
  *     handler compared it with Apple's own value before calling.
  *   - `initial`: the handler's natural-key pre-read found no existing object of this kind (the
  *     first price schedule, the first availability), so the write sets rather than changes.
+ *   - `hookOrigin`: the Worker's own public origin (`https://key.plrs.im`), from the request the
+ *     handler is serving. A callback URL (the webhook, the App Store Server Notifications URL) is
+ *     admitted only on this exact origin; without it, every callback URL is refused.
  */
 export interface AscGateContext {
   typedConfirmation?: boolean;
   initial?: boolean;
+  hookOrigin?: string;
 }
 
 /**
@@ -163,11 +167,16 @@ function oneOf(
 
 /**
  * A URL the Worker itself serves for one product: `https://<host>/<slug>/<suffix>`, no
- * credentials, query, fragment or port other than 443. The host is the Worker's (built from the
- * request origin by the handler); the gate fixes the shape so a URL from anywhere else cannot be
- * registered as an Apple callback.
+ * credentials, query, fragment or port other than 443, on exactly the origin the handler asserted
+ * as its own (`ctx.hookOrigin`). The gate fixes both the host and the shape, so a URL from anywhere
+ * else cannot be registered as an Apple callback.
  */
-function isOwnHookUrl(value: unknown, suffix: string): boolean {
+function isOwnHookUrl(
+  value: unknown,
+  suffix: string,
+  hookOrigin: string | undefined,
+): boolean {
+  if (typeof hookOrigin !== "string" || hookOrigin === "") return false;
   if (typeof value !== "string" || value.length > 512) return false;
   let u: URL;
   try {
@@ -177,6 +186,7 @@ function isOwnHookUrl(value: unknown, suffix: string): boolean {
   }
   return (
     u.protocol === "https:" &&
+    u.origin === hookOrigin &&
     u.username === "" &&
     u.password === "" &&
     u.port === "" &&
@@ -236,13 +246,17 @@ export const ASC_WRITE_ALLOW: readonly AscAllowRule[] = [
     ],
     relationships: {},
     confirm: "plain",
-    check: (d) => {
+    check: (d, ctx) => {
       const a = attrs(d);
       for (const k of [
         "subscriptionStatusUrl",
         "subscriptionStatusUrlForSandbox",
       ])
-        if (k in a && a[k] !== null && !isOwnHookUrl(a[k], ASN_SUFFIX))
+        if (
+          k in a &&
+          a[k] !== null &&
+          !isOwnHookUrl(a[k], ASN_SUFFIX, ctx.hookOrigin)
+        )
           return "value_not_allowed";
       for (const k of [
         "subscriptionStatusUrlVersion",
@@ -609,8 +623,10 @@ export const ASC_WRITE_ALLOW: readonly AscAllowRule[] = [
     attributes: ["enabled", "eventTypes", "name", "secret", "url"],
     relationships: { app: "apps" },
     confirm: "plain",
-    check: (d) =>
-      isOwnHookUrl(attrs(d).url, WEBHOOK_SUFFIX) ? null : "value_not_allowed",
+    check: (d, ctx) =>
+      isOwnHookUrl(attrs(d).url, WEBHOOK_SUFFIX, ctx.hookOrigin)
+        ? null
+        : "value_not_allowed",
     why: "P5-02's webhook registration, to the product's own hook",
   },
   {
@@ -644,7 +660,8 @@ const COMPILED = ASC_WRITE_ALLOW.map((rule) => ({
 
 /** Personal data and team membership: refused for every method, reads included. */
 function isPersonalData(path: string): boolean {
-  return /^\/v1\/(users|userInvitations)(\/|$)/.test(path);
+  // Case-insensitive: a `/v1/Users` spelling is refused too, whatever Apple would answer.
+  return /^\/v1\/(users|userinvitations)(\/|$)/i.test(path);
 }
 
 /** The allow rule for one method and request path, or null. */

@@ -35,7 +35,11 @@
  */
 
 import { isRedirect, readCappedText } from "../readCapped.js";
-import { checkAscRequest, type AscGateContext } from "./writeGate.js";
+import {
+  AscWriteDenied,
+  checkAscRequest,
+  type AscGateContext,
+} from "./writeGate.js";
 
 export { AscWriteDenied, type AscGateContext } from "./writeGate.js";
 
@@ -240,8 +244,16 @@ export class AscClient {
     // Defence in depth: whatever built the URL, it must still be the one host.
     if (url.origin !== ASC_ORIGIN || !isApiPath(url.pathname))
       throw new Error("refusing a request outside App Store Connect");
+    // Serialise once, and gate what will actually be sent: the gate checks the parsed form of the
+    // exact string the request carries, so a `toJSON` or a getter cannot send something other
+    // than what was checked. A body that does not serialise to JSON is refused outright.
+    const serialised = body === undefined ? undefined : JSON.stringify(body);
+    if (body !== undefined && typeof serialised !== "string")
+      throw new AscWriteDenied(method, url.pathname, "invalid_body");
+    const sent: unknown =
+      serialised === undefined ? undefined : JSON.parse(serialised);
     // The write gate, BEFORE the token: a refused request mints nothing and sends nothing.
-    checkAscRequest(method, url.pathname, body, gate);
+    checkAscRequest(method, url.pathname, sent, gate);
     const token = await this.bearer(method, url.pathname);
     const init: RequestInit = {
       method,
@@ -250,9 +262,11 @@ export class AscClient {
       headers: {
         authorization: `Bearer ${token}`,
         accept: "application/json",
-        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+        ...(serialised !== undefined
+          ? { "content-type": "application/json" }
+          : {}),
       },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(serialised !== undefined ? { body: serialised } : {}),
     };
     for (let attempt = 0; ; attempt++) {
       this.calls++;

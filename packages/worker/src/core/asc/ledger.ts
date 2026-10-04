@@ -41,7 +41,11 @@ export interface AscOpKey {
   product: string | null;
   /** The operation, e.g. `bundle_id.register`. Lower-case dotted. */
   op: string;
-  /** What `find` looks up: an identifier, a version string, a group name. */
+  /**
+   * What `find` looks up: an identifier, a version string, a group name. Stored raw in
+   * `natural_key`, so it must never be personal data: a key containing `@` is refused. A tester
+   * (S-14 §7.3 looks testers up by email) passes a keyed digest of the email instead.
+   */
   naturalKey: string;
   /** The console's `Idempotency-Key` for this user intent. */
   idempotencyKey: string;
@@ -82,6 +86,9 @@ function validateKey(k: AscOpKey): void {
     throw new Error("invalid Idempotency-Key");
   if (k.naturalKey === "" || k.naturalKey.length > 512)
     throw new Error("invalid ASC natural key");
+  // Testers' emails are not stored at all (S-14 corrections): no email-shaped natural key.
+  if (k.naturalKey.includes("@"))
+    throw new Error("an ASC natural key must not carry an email");
 }
 
 /** The derived `op_id` (hex SHA-256 of an unambiguous JSON array). */
@@ -106,7 +113,11 @@ function canonicalJson(v: unknown): string {
   return JSON.stringify(v ?? null);
 }
 
-/** The request hash a replay is compared with. */
+/**
+ * The request hash a replay is compared with. Unsalted SHA-256: a caller keeps personal data (a
+ * tester's email) out of `request`, or digests it first, so the stored hash cannot be reversed by
+ * guessing.
+ */
 export function ascRequestHash(request: unknown): Promise<string> {
   return sha256Hex(canonicalJson(request));
 }

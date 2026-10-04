@@ -1313,18 +1313,25 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
 `api.storekit(-sandbox).apple.com` (P6-01's hosts).
 
 **Controls**, each enforced by a test (`test/ascWriteGate.test.ts`, `test/ascLedger.test.ts`,
-`test/ascControls.test.ts`):
+`test/ascControls.test.ts`, `test/ascWriteReach.test.ts`):
 
 - **(a) Deny by default, before the token.** `AscClient` calls `checkAscRequest` before its token
   thunk: a write passes only when an `ASC_WRITE_ALLOW` rule matches its method and path template
   exactly and its JSON:API body (resource type, every attribute key, every relationship name and
   identifier type, `included` types, the rule's value checks: non-consumable IAPs only, the gate's
   capability types, export compliance but never `expired`, the notification and webhook URLs fixed
-  to the product's own hook shape). Anything else throws `AscWriteDenied`: no token is minted and
-  nothing is sent. **No rule is a `DELETE`**, and none touches users, invitations, certificates,
+  to the product's own hook shape on the origin the handler asserts as its own, `hookOrigin`).
+  Anything else throws `AscWriteDenied`: no token is minted and nothing is sent. The client
+  serialises a body once and gates the parsed form of that exact string, so what is checked is what
+  is sent. **No rule is a `DELETE`**, and none touches users, invitations, certificates,
   devices or profiles; reads of `/v1/users*` and `/v1/userInvitations*` are refused too (personal
-  data). The approved surface is S-14 §7.5 with the owner's corrections (no relationship
-  `DELETE`s).
+  data, matched case-insensitively). The approved surface is S-14 §7.5 with the owner's
+  corrections (no relationship `DELETE`s).
+- **(a″) No way around the client.** A source scan (`test/ascWriteReach.test.ts`) keeps the ASC
+  token minters (`ascToken`, `platformAscToken`) and `new AscClient(` to the two files that build
+  the gated client (`connectors/asc/run.ts`, `platform.ts`), and the API host
+  `api.appstoreconnect.apple.com` to `core/asc/client.ts`, so no raw `fetch` with a bearer token
+  can skip the gate. Adding a file to either list is a custody review.
 - **(a′) Every spec write classified, in CI.** A pinned copy of the write operations of Apple's
   OpenAPI document 4.5 (`test/fixtures/asc/openapi-writes.json`, generated from the spec with
   SHA-256 `ASC_SPEC_PIN`) must be classified exactly once, allowed or denied with a reason
@@ -1338,7 +1345,8 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   type the app's name; the handler compares it with Apple's current value and only then asserts
   `typedConfirmation` to the gate, which refuses those operations without it. A first price
   schedule or availability needs the handler's `initial` assertion (its pre-read found none).
-  P5-02's `release` control takes `confirm` since A-17a.
+  P5-02's `release` control takes `confirm` since A-17a, and the console's **Release this
+  version** is an L3 action whose dialog asks for the app's name.
 - **(e) Ledger and audit.** Every A-17 step is an `asc_operations` row keyed by
   `sha256(scope, product, op, natural key, Idempotency-Key)`: a replay returns the stored result
   without calling Apple, a reused key with another body is refused, a 5xx or timeout after a write
@@ -1346,7 +1354,8 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   own reads projected through a per-type allow-list; passwords, secrets, emails, phone numbers,
   testers' names and contact fields are never stored, nor any request or Apple error body (only the
   status and Apple's `errors[].code` token). One audit row per write: `distribution.asc.<op>` in
-  the product's trail, `platform.asc.<op>` in `platform_audit` for team scope.
+  the product's trail, `platform.asc.<op>` in `platform_audit` for team scope. A natural key
+  containing `@` is refused, so a tester's email never becomes a stored key.
 - **(f) Budget meter.** Apple meters per key (3,600 per hour, measured). The team key has one
   platform-wide KV slot fed by the poller, the apps listing and A-17's flows; background work stops
   at 20 % left and the poller at 5 %, while an operator's control is never refused, so one
@@ -1361,9 +1370,11 @@ certificates, register devices, delete anything, or send any request the allow t
 
 **Residual risk.** The gate is code in the same Worker that holds the key: a compromise of the
 Worker's code or of `PLATFORM_KEK` (A1) bypasses it, and then A11b is lost in full. The owner
-accepted this instead of a second, App Manager key. The value checks bound the hook URLs' shape, not
-their host (the host is the Worker's own origin, built server-side). The 429 response shape has not
-been observed (A-17h).
+accepted this instead of a second, App Manager key. The hook URLs are bound to the origin the
+handler asserts (the request's own), so a handler that passed a wrong `hookOrigin` would widen that
+check. Two concurrent requests under one Idempotency-Key can both proceed (the `find` pre-read and
+Apple's own duplicate refusal bound the harm). The 429 response shape has not been observed
+(A-17h).
 
 ### Store connectors: App Store Connect (P5-02)
 

@@ -872,7 +872,21 @@ A-17a landed the substrate in `packages/worker/src/core/asc/`. Where the build d
   now feeds the team key's slot too, and `budgetAllows` adds the `background` class (stops at 20 %
   left) beside the poller and the operator.
 - **P5-02's `release` control** now requires `confirm` (the app's name, compared with Apple's
-  current value): 422 `confirmation_required` / `confirmation_mismatch`, nothing sent.
+  current value): 422 `confirmation_required` / `confirmation_mismatch`, nothing sent. The
+  console's **Release this version** is retrofitted with it: `connector.releaseVersion` is L3
+  (`typed: "appName"`), the dialog has its own **App name** field (the console does not know the
+  name, so the Worker does the comparison) and sends it as `confirm`.
+- **A natural key never carries an email.** §7.3 makes a tester's email the natural key
+  (`filter[email]`); the ledger stores `natural_key` raw, so `beginAscOperation` refuses a key
+  containing `@`. A-17d passes a keyed digest of the email (or the group plus a count) instead,
+  and keeps the email out of the request object it hashes (the request hash is unsalted SHA-256).
+- **Callback URLs are pinned to the Worker's origin.** The gate admits a webhook or App Store
+  Server Notifications URL only on the origin the handler asserts (`AscGateContext.hookOrigin`,
+  from the request it serves); without it every callback URL is refused.
+- **The gate checks what is sent.** The client serialises a body once and gates the parsed form
+  of that exact string, so a `toJSON` or a getter cannot send something other than what was
+  checked. The personal-data read refusal (`/v1/users*`, `/v1/userInvitations*`) is
+  case-insensitive.
 - **The gate's capability types** (`GATE_CAPABILITY_TYPES`) are a superset for A-17b's wizard:
   `IN_APP_PURCHASE`, `PUSH_NOTIFICATIONS`, `GAME_CENTER`, `ICLOUD`, `APP_GROUPS`,
   `ASSOCIATED_DOMAINS`, `APPLE_ID_AUTH`, `DATA_PROTECTION`. There is no `APP_ATTEST` (A-17h).
