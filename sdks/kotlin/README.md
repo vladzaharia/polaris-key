@@ -1,9 +1,26 @@
 # Polaris Key — Kotlin (Android platform backend)
 
-`polaris-key-platform` is the shared Android backend for Polaris Key (P5-06): the Godot SDK
-reaches it through the `PolarisKeyAndroid` plugin now, and the Kotlin SDK proper (P6-05), Unity
-and MAUI build on it later. Pure Kotlin, no NDK. Proposed Maven coordinates:
-`im.plrs.key:polaris-key-platform` (not published yet).
+`polaris-key-platform` is the Kotlin SDK's Android platform module (P5-06, moved into the SDK
+structure by P6-09): the Godot SDK reaches it through the `PolarisKeyAndroid` plugin now, and the
+rest of the Kotlin SDK (P6-05), Unity and MAUI build on it. Pure Kotlin, no NDK.
+
+**Standalone.** `:platform` depends on no other SDK module, so a host that wants only the Android
+edges (Godot, later Unity and MAUI) links it alone, exactly as Godot on iOS links only Swift's
+`PolarisKeyPlatform`. `./gradlew :platform:checkStandalone` (part of `check`, and run by the
+`android` CI job) fails if any compile or runtime classpath of any variant holds a project
+dependency or an `im.plrs.key` module. A convenience that wants the core belongs in `:android`
+(P6-12), never here.
+
+**Coordinates.** One artifact per flavour, each with its own POM (the play one depends on Play
+Core, the direct one must not), sources jar and Gradle module metadata:
+`im.plrs.key:polaris-key-platform-play` and `im.plrs.key:polaris-key-platform-direct`. They are
+published only to a local repository, `./gradlew :platform:publishAllPublicationsToLocalRepository`
+into `sdks/kotlin/build/repo` (`tools/check_publication.sh` checks it). There is no signing and no
+Maven Central: adopters get them from the Polaris Key Maven feed later (F-07, F-10).
+
+**Stability.** The Kotlin API is public SDK surface (`explicitApi`, KDoc on every type) and grows
+additively: the Godot binding addresses it through its `cmd(json)` surface, so a rename is a
+breaking change for P6-10.
 
 | Module      | Where                      | What                                                                                   |
 | ----------- | -------------------------- | -------------------------------------------------------------------------------------- |
@@ -13,7 +30,8 @@ and MAUI build on it later. Pure Kotlin, no NDK. Proposed Maven coordinates:
 
 Versions follow Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
 compile and target SDK 36, min SDK 24, Java 17 bytecode), so the AARs drop into a Godot Gradle
-export unchanged. Play Core: `app-update` 2.1.0, `asset-delivery` 2.3.0, `integrity` 1.6.0.
+export unchanged. The SDK-wide values live in `gradle/libs.versions.toml` (`androidCompileSdk`,
+`androidTargetSdk`, `androidMinSdk`, `jvmTarget`), never in a module's build file. Play Core: `app-update` 2.1.0, `asset-delivery` 2.3.0, `integrity` 1.6.0.
 
 ## The flavours are a policy boundary
 
@@ -60,6 +78,15 @@ permissions into play builds (notes/S-10 §2).
   `INTEGRITY_TOKEN_PROVIDER_INVALID` (-19). The request hash is the Worker's `requestHash` from
   `POST /<product>/devices/attest/challenge`, verbatim (1–500 characters). Failures are
   `IntegrityError(errorCode)` with the `StandardIntegrityErrorCode`, or none without Play services.
+- **`PlatformIntegrity.create(context)`** (P6-09): the same Integrity surface in every flavour.
+  `prepare(cloudProjectNumber)` and `request(cloudProjectNumber, requestHash)` answer an
+  `IntegrityResult`: `Success` (a `PlatformIntegrityToken` with its `prepared`/`reprepared` flags),
+  `Refused` (a project number that is not positive, a hash outside 1–500 characters; Play is never
+  asked), `Failed(exception, message, errorCode)` (Play's failure), or `Unsupported(reason)`. The
+  `play` flavour answers through `play.PlayPlatformIntegrity` over `play.PlayIntegrity` (Play's
+  manager created on first use); the `direct` flavour answers `Unsupported("outlet")` to every call
+  and carries no Play Core class. The cloud project number is the host app's, supplied at call time
+  (the Worker returns it with each challenge); the module never embeds one.
 - **`direct.ApkInstaller(context)`**: `verify` and `install(file, sha256, versionCode, options)`.
   Refusals before any session: `missing_file`, `path_not_private`, `hash_required`,
   `hash_mismatch`, `unparseable`, `package_mismatch`, `signer_mismatch`, `version_not_higher`,
@@ -79,6 +106,8 @@ cd sdks/kotlin
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
 ./gradlew :platform:assembleRelease :godot:assembleRelease :boundary:assembleRelease
 tools/check_flavours.sh        # the boundary on the release AARs and APKs
+./gradlew :platform:checkStandalone :platform:publishAllPublicationsToLocalRepository
+tools/check_publication.sh     # both flavours in build/repo with POM, sources and .module
 ```
 
 JDK 17 or later and the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`) with
