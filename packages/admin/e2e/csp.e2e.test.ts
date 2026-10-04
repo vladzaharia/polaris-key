@@ -91,6 +91,63 @@ const ROUTES: Record<string, unknown> = {
     bindings: { DB: true, HOT: true },
   },
   "/manage/api/platform/activity": { items: [], nextCursor: null },
+  "/manage/api/platform/settings": {
+    settings: [
+      {
+        key: "LAZY_DELTAS",
+        area: "background-jobs",
+        label: "Lazy deltas",
+        description: "Lazy hot-pair deltas.",
+        kind: "switch",
+        scripts: ["main", "deltas"],
+        precedence: "ceiling",
+        default: "off",
+        deployValue: "runtime",
+        value: "off",
+        source: "default",
+        forcedOff: false,
+        stored: null,
+        version: 0,
+        confirm: { on: "L1", off: "L0" },
+      },
+      {
+        key: "BLOB_GC_GRACE_DAYS",
+        area: "background-jobs",
+        label: "Blob collector grace period",
+        description: "Grace before deletion.",
+        kind: "integer",
+        unit: "days",
+        min: 1,
+        max: 365,
+        scripts: ["main"],
+        precedence: "runtime",
+        default: 30,
+        deployValue: null,
+        value: 30,
+        source: "default",
+        forcedOff: false,
+        stored: null,
+        version: 0,
+        confirm: { raise: "L0", lower: "L1" },
+      },
+    ],
+    storeAvailable: true,
+    propagationSeconds: 30,
+    deployTime: [
+      { name: "PKEY_ENVIRONMENT", area: "deployment", value: "staging" },
+    ],
+    secrets: [{ name: "KEY_HASH_PEPPER", set: true }],
+    constants: [],
+    warnings: [],
+  },
+  "/manage/api/products/kek": {
+    ok: true,
+    active: "kek-1",
+    kids: ["kek-1"],
+    counts: { keys: { "kek-1": 2 } },
+    remaining: 0,
+    unopenable: 0,
+  },
 };
 
 let server: PreviewServer;
@@ -222,14 +279,15 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
-  it("Home, Products, the new-product wizard and Deployment load with no violations", async () => {
+  it("Home, Products, the new-product wizard, Settings and Deployment load with no violations", async () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
     for (const [hash, title] of [
       ["#/", "Home"],
       ["#/products", "Products"],
       ["#/products/new?via=manual&step=basics", "New product"],
-      ["#/platform", "Deployment"],
+      ["#/platform", "Settings"],
+      ["#/platform/deployment", "Deployment"],
     ] as const) {
       await page.evaluate((h) => {
         location.hash = h;
@@ -241,6 +299,19 @@ describe("overlays under the Worker's CSP", () => {
     expect(await page.evaluate(() => location.hash)).toBe(
       "#/platform/deployment",
     );
+    await page.context().close();
+  });
+
+  it("Platform → Settings: a setting's confirmation", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => {
+      location.hash = "#/platform/settings";
+    });
+    await page.locator("[data-page-title]", { hasText: "Settings" }).waitFor();
+    await check(page, "platform setting confirmation", async () => {
+      await page.getByRole("switch", { name: "Lazy deltas" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
     await page.context().close();
   });
 

@@ -7,7 +7,7 @@ import { PENDING, boot, resetConsole } from "./consoleHarness.js";
 /**
  * The Platform section (notes/S-13 §9.1, owner decision 3 of 2026-10-04): a sidebar group, the
  * redirects of the pages still to come, the Deployment page (A-11), platform activity (A-12) and
- * the account menu's version chip.
+ * the account menu's version chip. Settings (4P-1) has its own suite, `platformSettings.test.tsx`.
  */
 
 const axe = configureAxe({
@@ -106,6 +106,23 @@ function platformRoutes(
           }
         : deployment(),
     "/manage/api/platform/activity": ACTIVITY,
+    "/manage/api/platform/settings": {
+      settings: [],
+      storeAvailable: true,
+      propagationSeconds: 30,
+      deployTime: [],
+      secrets: [],
+      constants: [],
+      warnings: [],
+    },
+    "/manage/api/products/kek": {
+      ok: true,
+      active: "kek-1",
+      kids: ["kek-1"],
+      counts: {},
+      remaining: 0,
+      unopenable: 0,
+    },
     ...over,
   };
 }
@@ -132,13 +149,10 @@ describe("the Platform section in the sidebar", () => {
     const deployment = within(nav()).getByRole("link", { name: "Deployment" });
     expect(deployment.getAttribute("href")).toBe("#/platform/deployment");
     expect(deployment.querySelector("svg[data-nav-icon]")).not.toBeNull();
+    const settings = within(nav()).getByRole("link", { name: "Settings" });
+    expect(settings.getAttribute("href")).toBe("#/platform/settings");
     // Pages still to come are not listed: they would only redirect.
-    for (const name of [
-      "Settings",
-      "Operations",
-      "Store connections",
-      "Package feeds",
-    ]) {
+    for (const name of ["Operations", "Store connections", "Package feeds"]) {
       expect(
         within(nav())
           .queryAllByRole("link", { name })
@@ -165,15 +179,15 @@ describe("the Platform section in the sidebar", () => {
 });
 
 describe("Platform URLs", () => {
-  it("#/platform goes to Settings, which goes to Deployment until it is built", async () => {
+  it("#/platform goes to Settings", async () => {
     boot("#/platform", { extra: platformRoutes() });
-    await deploymentPage();
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/platform/deployment"),
+      expect(window.location.hash).toBe("#/platform/settings"),
     );
   });
 
-  for (const path of ["settings", "operations", "store-connections", "feeds"]) {
+  for (const path of ["operations", "store-connections", "feeds"]) {
     it(`#/platform/${path} redirects to Deployment`, async () => {
       boot(`#/platform/${path}`, { extra: platformRoutes() });
       await deploymentPage();

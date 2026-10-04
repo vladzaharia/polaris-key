@@ -559,11 +559,9 @@ const PLATFORM_PAGES: NavPage[] = [
     label: "Settings",
     path: "platform/settings",
     icon: ServerCog,
-    docs: "/docs/admin/kek/",
+    docs: "/docs/admin/platform-settings/",
     inNav: true,
-    // The settings store API (A-13) has landed; its page (4P-1) has not. Until then, Deployment.
-    ready: false,
-    host: "platform-deployment",
+    ready: true,
     group: "platform",
   },
   {

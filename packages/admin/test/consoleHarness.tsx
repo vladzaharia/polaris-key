@@ -83,10 +83,17 @@ export interface FetchLog {
 /** A route body that never answers: the page stays in its loading state. */
 export const PENDING = Symbol("pending");
 
+/** A scripted route as a function of the request: keyset pages, or a write's answer. */
+export type RouteFn = (
+  query: URLSearchParams,
+  req: { method: string; path: string; body?: string; json?: unknown },
+) => unknown;
+
 /**
  * A scripted fetch: `"<METHOD> <path>"` first (a write's own response), then the exact path, then
  * the longest matching prefix; `{}` otherwise. A body may be a `Response` (status, error shapes),
- * `PENDING`, or a function of the request's query (keyset pages) and its parsed body.
+ * `PENDING`, or a `RouteFn` of the request (its query for keyset pages; its method, path, raw body
+ * and parsed body for writes).
  */
 export function mockFetch(routes: Record<string, unknown>): FetchLog {
   const log: FetchLog = { calls: [] };
@@ -132,10 +139,13 @@ export function mockFetch(routes: Record<string, unknown>): FetchLog {
       if (raw === PENDING) return new Promise<Response>(() => undefined);
       const body =
         typeof raw === "function"
-          ? (raw as (q: URLSearchParams, sent: unknown) => unknown)(
-              new URLSearchParams(query),
-              sent,
-            )
+          ? (raw as RouteFn)(new URLSearchParams(query), {
+              method,
+              path,
+              ...(typeof init?.body === "string"
+                ? { body: init.body, json: sent }
+                : {}),
+            })
           : raw;
       if (body instanceof Response) return body.clone();
       return new Response(JSON.stringify(body ?? {}), {

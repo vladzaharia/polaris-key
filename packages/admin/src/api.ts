@@ -151,6 +151,110 @@ export interface PlatformActivityPage {
   nextCursor: PlatformCursor | null;
 }
 
+// ── platform settings (A-13, notes/S-13 §5, §6.4) ─────────────────────────────────
+
+/** ADMIN.md §5.2 destructive levels, as the settings registry declares them per direction. */
+export type PlatformConfirmLevel = "L0" | "L1" | "L2" | "L3";
+
+/**
+ * Where an effective value came from. `failsafe`: the store could not be read, so a kill switch
+ * resolved to off.
+ */
+export type PlatformSettingSource =
+  | "runtime"
+  | "deploy"
+  | "default"
+  | "failsafe";
+
+interface PlatformSettingBase {
+  key: string;
+  area: string;
+  label: string;
+  description: string;
+  /** The Worker scripts that read it (`main`, `deltas`). */
+  scripts: string[];
+  /** `ceiling`: a deploy-time `off` is a hard off no runtime value can override. */
+  precedence: "runtime" | "ceiling";
+  /** The raw `[vars]` string, `null` when unset. */
+  deployValue: string | null;
+  source: PlatformSettingSource;
+  /** A `ceiling` setting whose `[vars]` value is `off`. */
+  forcedOff: boolean;
+  /** The runtime row, if any: its value, whether it applies, who set it and when (epoch s). */
+  stored: {
+    value: unknown;
+    valid: boolean;
+    updatedAt: number;
+    updatedBy: string;
+  } | null;
+  /** The `expectedVersion` the next write must send (0: no runtime value). */
+  version: number;
+}
+
+export interface PlatformSwitchSetting extends PlatformSettingBase {
+  kind: "switch";
+  default: "on" | "off";
+  value: "on" | "off";
+  confirm: { on: PlatformConfirmLevel; off: PlatformConfirmLevel };
+}
+
+export interface PlatformIntegerSetting extends PlatformSettingBase {
+  kind: "integer";
+  unit: "bytes" | "days";
+  /** Inclusive bounds on a runtime value. */
+  min: number;
+  max: number;
+  default: number;
+  value: number;
+  confirm: { raise: PlatformConfirmLevel; lower: PlatformConfirmLevel };
+}
+
+export type PlatformSetting = PlatformSwitchSetting | PlatformIntegerSetting;
+
+/** A deploy-time value that is not a credential (a list for the parsed issuer allowlist). */
+export interface PlatformDeployValue {
+  name: string;
+  area: string;
+  value: string | string[] | null;
+  /** When a legacy name supplied the value, that name. */
+  legacyName?: string;
+}
+
+/** `GET /manage/api/platform/settings` (worker `admin/handlers/platformSettings.ts`). */
+export interface PlatformSettingsView {
+  settings: PlatformSetting[];
+  /** False when the settings table could not be read. */
+  storeAvailable: boolean;
+  /** How long a change takes to reach every isolate. */
+  propagationSeconds: number;
+  deployTime: PlatformDeployValue[];
+  /** Presence only: never a value, a length or a hash. */
+  secrets: { name: string; set: boolean }[];
+  /** Code constants that act as policy. */
+  constants: { name: string; area: string; value: number; unit: string }[];
+  warnings: { code: string; message: string; names: string[] }[];
+}
+
+/** `PATCH /manage/api/platform/settings/<key>`. `confirm` echoes the key for an L2+ change. */
+export interface PlatformSettingWrite {
+  value: string | number;
+  expectedVersion: number;
+  confirm?: string;
+}
+
+/** `GET /manage/api/products/kek`: the keyring (kid names and per-kid counts, never key material). */
+export interface PlatformKekStatus {
+  ok: true;
+  active: string;
+  kids: string[];
+  /** Sealed-value group → kid → count. */
+  counts: Record<string, Record<string, number>>;
+  /** Values not yet sealed under `active`. */
+  remaining: number;
+  /** Values under a kid that is no longer in the ring. */
+  unopenable: number;
+}
+
 // ── products (platform registry) ──────────────────────────────────────────────
 type ProductReleaseSource = "manual" | "github" | (string & {});
 
@@ -2095,6 +2199,23 @@ const rawApi = {
     call<PlatformActivityPage>(
       `/manage/api/platform/activity${cursorQuery(cursor)}`,
     ),
+  /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
+  platformSettings: () =>
+    call<PlatformSettingsView>("/manage/api/platform/settings"),
+  /** Store a runtime value; 409 `version_conflict` when the row moved past `expectedVersion`. */
+  patchPlatformSetting: (key: string, body: PlatformSettingWrite) =>
+    call<PlatformSetting>(`/manage/api/platform/settings/${enc(key)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** Drop the runtime value: back to the deploy var or the code default (version-guarded). */
+  revertPlatformSetting: (key: string, expectedVersion: number) =>
+    call<PlatformSetting>(
+      `/manage/api/platform/settings/${enc(key)}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
+  /** The KEK keyring: active kid, the ring, per-kid counts. 503 when the ring does not parse. */
+  platformKek: () => call<PlatformKekStatus>("/manage/api/products/kek"),
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),

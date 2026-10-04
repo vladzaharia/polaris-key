@@ -62,6 +62,7 @@ describe("the sources", () => {
       "Home",
       "Products",
       // The Platform section's built pages (notes/S-13 §9.1).
+      "Settings",
       "Deployment",
     ]);
   });
@@ -198,8 +199,9 @@ describe("the palette in the console", () => {
     boot("#/p/djdl", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     let dialog = await openPalette();
+    // The product's Settings, not Platform → Settings.
     await userEvent.click(
-      await within(dialog).findByRole("option", { name: /^Settings/ }),
+      await within(dialog).findByRole("option", { name: /^Settings.*DJDL/ }),
     );
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/settings"));
     expect(
