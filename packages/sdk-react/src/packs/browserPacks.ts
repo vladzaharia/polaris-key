@@ -47,6 +47,7 @@ import {
   type VerifiedRevocation,
   type BootFetchResult,
   type BootOptions,
+  type ObjectFetch,
   type ObjectResponse,
   type PackEstimate,
   type PackHandler,
@@ -321,6 +322,60 @@ function randomId(): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * The browser pack transport's object fetch (`PackEngine`'s `fetchObject`): one object by hash
+ * from discovery's `distribution.endpoints.blobs` template, a chunk run (P4-11) as one bounded
+ * single range, a resume as an open range, with `If-Range` when the engine asks for it.
+ * Credentials are omitted. Exported for the transcript replayer only (P4-32); not part of the
+ * package's public surface.
+ *
+ * @internal
+ */
+export function browserObjectFetch(o: {
+  /** The current `distribution.endpoints.blobs` template, or null when discovery names none. */
+  blobs: () => string | null;
+  baseUrl: string;
+  fetchImpl: typeof fetch;
+  headers?: Record<string, string>;
+}): ObjectFetch {
+  return async (req): Promise<ObjectResponse> => {
+    const t = o.blobs();
+    if (t === null)
+      throw new PackError(
+        ErrorCode.serviceUnavailable,
+        "Discovery names no blob endpoint.",
+      );
+    const headers: Record<string, string> = { ...(o.headers ?? {}) };
+    // A chunk run (P4-11) is one bounded single range (Accept-Encoding is the browser's:
+    // a forbidden header). `If-Range` costs one CORS preflight per bundle URL per
+    // Access-Control-Max-Age (notes/S-02 §4.4).
+    if (req.length !== undefined)
+      headers.range = `bytes=${req.offset}-${req.offset + req.length - 1}`;
+    else if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
+    if (req.ifRange !== null) headers["if-range"] = req.ifRange;
+    const url = new URL(
+      t.split("{sha256}").join(encodeURIComponent(req.sha256)),
+      `${o.baseUrl}/`,
+    ).toString();
+    const res = await o.fetchImpl(url, { credentials: "omit", headers });
+    const body = res.body;
+    return {
+      status: res.status,
+      contentRange: res.headers.get("content-range"),
+      etag: res.headers.get("etag"),
+      chunks: (async function* () {
+        if (!body) return;
+        const reader = body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) return;
+          yield value;
+        }
+      })(),
+    };
+  };
+}
+
 /** Build the browser pack facet. Nothing is fetched or opened until the first call. */
 export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   const stamp = stampOf(opts.contentStamp);
@@ -437,41 +492,12 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
             return { ok: false, code: ErrorCode.networkError };
           }
         },
-        fetchObject: async (req): Promise<ObjectResponse> => {
-          const t = template("distribution", "blobs");
-          if (t === null)
-            throw new PackError(
-              ErrorCode.serviceUnavailable,
-              "Discovery names no blob endpoint.",
-            );
-          const headers: Record<string, string> = { ...(opts.headers ?? {}) };
-          // A chunk run (P4-11) is one bounded single range (Accept-Encoding is the browser's:
-          // a forbidden header). `If-Range` costs one CORS preflight per bundle URL per
-          // Access-Control-Max-Age (notes/S-02 §4.4).
-          if (req.length !== undefined)
-            headers.range = `bytes=${req.offset}-${req.offset + req.length - 1}`;
-          else if (req.offset > 0) headers.range = `bytes=${req.offset}-`;
-          if (req.ifRange !== null) headers["if-range"] = req.ifRange;
-          const res = await fetchImpl(expand(t, req.sha256), {
-            credentials: "omit",
-            headers,
-          });
-          const body = res.body;
-          return {
-            status: res.status,
-            contentRange: res.headers.get("content-range"),
-            etag: res.headers.get("etag"),
-            chunks: (async function* () {
-              if (!body) return;
-              const reader = body.getReader();
-              for (;;) {
-                const { done, value } = await reader.read();
-                if (done) return;
-                yield value;
-              }
-            })(),
-          };
-        },
+        fetchObject: browserObjectFetch({
+          blobs: () => template("distribution", "blobs"),
+          baseUrl: opts.baseUrl,
+          fetchImpl,
+          ...(opts.headers ? { headers: opts.headers } : {}),
+        }),
         ...(opts.nativePayload === false
           ? {}
           : {
