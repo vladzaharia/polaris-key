@@ -191,13 +191,13 @@ describe("A-17e: the products read", () => {
     expect(r.json.firstInAppPurchase).toBe(false);
     expect(r.json.priceChangeWarning).toMatch(/can't be reverted/);
     const rows = r.json.products as Record<string, unknown>[];
-    expect(rows.map((p) => [p.storeProductId, p.status, p.typeMismatch])).toEqual(
-      [
-        [FULL, "missing", false],
-        [LEGACY, "APPROVED", false],
-        [SOUNDTRACK, "READY_TO_SUBMIT", true],
-      ],
-    );
+    expect(
+      rows.map((p) => [p.storeProductId, p.status, p.typeMismatch]),
+    ).toEqual([
+      [FULL, "missing", false],
+      [LEGACY, "APPROVED", false],
+      [SOUNDTRACK, "READY_TO_SUBMIT", true],
+    ]);
     expect(rows[1]).toMatchObject({ flag: "legacy", deliverableId: "app" });
     expect(writes(w)).toEqual([]);
   });
@@ -384,9 +384,7 @@ describe("A-17e: create a non-consumable IAP", () => {
 
   it("refuses a mapped id that exists as another type, sending nothing", async () => {
     const w = await world();
-    w.fake.put(
-      iap("iap-c", FULL, "READY_TO_SUBMIT", { type: "CONSUMABLE" }),
-    );
+    w.fake.put(iap("iap-c", FULL, "READY_TO_SUBMIT", { type: "CONSUMABLE" }));
     const r = await post(w, "iap/create", {
       productId: FULL,
       referenceName: "Full",
@@ -432,7 +430,11 @@ describe("A-17e: price (first set plain, change typed) and availability", () => 
     const iapId = await created(w);
     const r = await get(w, `iap/price-points?productId=${FULL}&territory=GBR`);
     expect(r.status).toBe(200);
-    expect(r.json).toMatchObject({ iapId, territory: "GBR", priceChange: false });
+    expect(r.json).toMatchObject({
+      iapId,
+      territory: "GBR",
+      priceChange: false,
+    });
     expect(
       (r.json.pricePoints as { customerPrice: string }[]).map(
         (p) => p.customerPrice,
@@ -550,7 +552,10 @@ describe("A-17e: price (first set plain, change typed) and availability", () => 
     expect((await ascAudits(w)).at(-1)!.summary).toMatch(
       /Changed the price .* from 0\.99 \(USA\) to 1\.99 \(USA\), typed/,
     );
-    const priceRows = await w.db.all<{ before_json: string; after_json: string }>(
+    const priceRows = await w.db.all<{
+      before_json: string;
+      after_json: string;
+    }>(
       "SELECT before_json, after_json FROM asc_operations WHERE op = 'iap.price' AND state = 'done' ORDER BY created_at, rowid",
     );
     expect(JSON.parse(priceRows.at(-1)!.before_json).attributes).toMatchObject({
@@ -732,7 +737,9 @@ describe("A-17e: IAP and Background Asset versions ride Distribute's submission"
       ],
       submit: { outcome: "written" },
     });
-    const items = writes(w).filter((q) => q.path === "/v1/reviewSubmissionItems");
+    const items = writes(w).filter(
+      (q) => q.path === "/v1/reviewSubmissionItems",
+    );
     expect(items.map((q) => q.body)).toEqual([
       {
         data: {
