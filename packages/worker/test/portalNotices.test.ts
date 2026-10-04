@@ -8,7 +8,7 @@
  * security notices), and the handlers are driven end to end for who receives what.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { THEME_TOKENS } from "@polaris-key/brand";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -132,7 +132,7 @@ describe("notice templates: rules", () => {
       expect(m.html).toContain("@media (prefers-color-scheme: dark)");
       expect(m.html).toContain(THEME_TOKENS.dark.surface.page);
       expect(m.html).toContain(
-        `${ORIGIN}/assets/branding/key/app-icon-dark-180.png`,
+        `${ORIGIN}/assets/branding/key/key-horizontal-light-944.png`,
       );
       expect(m.html).not.toMatch(/<script|\son\w+=|powered by/i);
     });
@@ -395,6 +395,33 @@ describe("security notices reach every verified address", () => {
     expect(sent[0]!.subject).toBe("Your Polaris Key account has been deleted");
     expect(`${sent[0]!.subject}${sent[0]!.text}`).not.toMatch(/portal/i);
   });
+
+  it("account deletion: a failed send never blocks it, and the others still go out", async () => {
+    const db = makeTestDb();
+    const { env, sent } = portalEnv();
+    const send = env.EMAIL!.send.bind(env.EMAIL);
+    env.EMAIL = {
+      send: async (m: Sent) => {
+        if (m.to === "ada.work@example.com") throw new Error("mail down");
+        return send(m as never);
+      },
+    } as unknown as Env["EMAIL"];
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const s = await session(env, db);
+    await linkEmail(db, s.accountId, "ada.work@example.com", NOW);
+    const res = await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: s.cookie, csrf: s.csrf }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    expect(sent.map((m) => m.to)).toEqual(["ada@example.com"]);
+    expect(warn).toHaveBeenCalledWith("security notice: 1 of 2 sends failed");
+    expect(String(warn.mock.calls[0]![0])).not.toContain("@");
+    warn.mockRestore();
+  });
 });
 
 describe("POST /api/products/:product/email-download (G23)", () => {
@@ -442,6 +469,29 @@ describe("POST /api/products/:product/email-download (G23)", () => {
     expect((await call()).status).toBe(404);
     expect(sent).toHaveLength(0);
   });
+
+  it.each([
+    ["releases_enabled", 1, 0],
+    ["portal_enabled", 0, 1],
+  ] as const)(
+    "404 when the product's %s is off",
+    async (_flag, portal, releases) => {
+      const { db, sent, call } = await setup();
+      await db.run(
+        `INSERT INTO portal_product_settings
+           (product, portal_enabled, oidc_enabled, magic_enabled,
+            license_key_claim_enabled, releases_enabled, branding_json, created_at, modified_at)
+         VALUES (?, ?, 1, 1, 1, ?, NULL, ?, ?)`,
+        "djdl",
+        portal,
+        releases,
+        NOW,
+        NOW,
+      );
+      expect((await call()).status).toBe(404);
+      expect(sent).toHaveLength(0);
+    },
+  );
 
   it("404 without a license for the product, and for an unknown product", async () => {
     const { env, db, sent } = await setup();

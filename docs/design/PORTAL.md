@@ -1158,6 +1158,16 @@ accounts were joined". Security emails (method added or removed, device approved
 always go to every verified email on the account and carry "Wasn't you? Secure your account". The
 emails use the kit PNG lockup and no "Powered by" badge.
 
+PX-W7 implementation note (2026-10-04): the header is the kit's horizontal lockup PNG,
+`/lockups/key/key-horizontal-{light,dark}-944.png` shown at 472 × 160 with `alt="Polaris Key"`
+(BRAND.md §2 "Emails"), served from the console origin's `/assets/branding/key/`
+(`packages/admin/vite.config.ts` emits it next to the web icons). The email ground is light, so
+the `light` variant (for light backgrounds) is the default, and the email's dark palette swaps in
+the `dark` variant for the clients that apply `prefers-color-scheme` (BRAND.md's example names
+the `dark` file; on the light ground its white wordmark would vanish). A client that inverts the
+ground without honouring the palette can still dim the `light` wordmark; that is the residual
+risk. With no usable `https` origin a text wordmark stands in.
+
 ### 6.4 Error copy
 
 Errors say what happened, in the user's terms, and the next step. Map every flat error code the API
