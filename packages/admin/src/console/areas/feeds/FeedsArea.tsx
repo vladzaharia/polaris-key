@@ -250,7 +250,7 @@ function overviewColumns(scope: FeedScope): DataColumn<FeedSummary>[] {
       id: "last",
       header: "Last publish",
       accessorFn: (f) => f.lastPublishedAt ?? 0,
-      meta: { priority: 2, label: "Last publish" },
+      meta: { numeric: true, priority: 2, label: "Last publish" },
       cell: ({ row }) =>
         row.original.lastPublishedAt ? (
           <Timestamp at={fromSeconds(row.original.lastPublishedAt)} />

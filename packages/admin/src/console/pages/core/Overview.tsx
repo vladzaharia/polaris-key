@@ -915,7 +915,7 @@ function TrustPanel({
         {jwks ? (
           <div className="space-y-1">
             <p className="text-xs font-bold text-fg-muted">JWKS</p>
-            <p className="flex items-start gap-1">
+            <p className="flex items-center gap-1">
               <code className="min-w-0 flex-1 font-mono text-xs text-fg [overflow-wrap:anywhere]">
                 {jwks}
               </code>

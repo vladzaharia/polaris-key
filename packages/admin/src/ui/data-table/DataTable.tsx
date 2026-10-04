@@ -546,7 +546,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     return cn(
       "px-3 align-middle",
       alignClass(meta?.numeric ? "end" : meta?.align),
-      meta?.numeric && "tabular-nums",
+      (meta?.numeric || meta?.align === "end") && "tabular-nums",
       meta?.mono && "font-mono text-xs",
     );
   };
@@ -1044,9 +1044,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     <dt className="text-fg-muted">
                       {columnLabel(c.column.columnDef as DataColumn<T>)}
                     </dt>
+                    {/* Term left, value flush right: a card reads like a settings row. */}
                     <dd
                       className={cn(
-                        "min-w-0 text-fg",
+                        "flex min-w-0 flex-wrap items-center justify-end gap-x-2 text-right text-fg [&>*]:min-w-0",
                         c.column.columnDef.meta?.mono && "font-mono",
                       )}
                     >

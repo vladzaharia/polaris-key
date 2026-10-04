@@ -184,19 +184,30 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
    * included. A box counts while it is narrower than 90% of `ref` (the row): a pill, a button or a
    * field's frame, not a full-width wrapper.
    */
+  /** The element that set the last `inkRight` result: the report names it. */
+  let inkEdge: Element | null = null;
   const inkRight = (el: Element, ref: number): number | null => {
     let right: number | null = null;
-    const take = (x: number) =>
-      (right = right === null ? x : Math.max(right, x));
-    for (const r of ink(el)) take(r.right);
+    inkEdge = null;
+    const take = (x: number, by: Element | null) => {
+      if (right === null || x > right) {
+        right = x;
+        inkEdge = by;
+      }
+    };
+    for (const r of ink(el)) take(r.right, null);
     for (const e of [el, ...Array.from(el.querySelectorAll("*"))]) {
       if (hidden(e)) continue;
       const r = e.getBoundingClientRect();
-      if ((hasBox(e) || e.matches(REPLACED)) && r.width < ref * 0.9)
-        take(r.right);
+      // A control's frame is its edge at any width: a full-width button ends where its box
+      // ends, not where its centred label does.
+      if (e.matches(REPLACED) || (hasBox(e) && e.matches("a[href]")))
+        take(r.right, e);
+      else if (hasBox(e) && r.width < ref * 0.9) take(r.right, e);
     }
     return right;
   };
+  const edgeName = () => (inkEdge ? ` set by ${short(inkEdge)}` : "");
   const contentRight = (el: Element) =>
     el.getBoundingClientRect().right -
     px(cs(el).paddingRight) -
@@ -504,7 +515,7 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
         rule: "right-align",
         kind,
         where: where(row),
-        detail: `value ends at x=${Math.round(right)}, row content edge x=${Math.round(edge)} (${Math.round(edge - right)}px short)`,
+        detail: `value ends at x=${Math.round(right)}${edgeName()}, row content edge x=${Math.round(edge)} (${Math.round(edge - right)}px short)`,
         cause: `row {${short(row)} justify:${cs(row).justifyContent}} value {${short(value)} text-align:${cs(value).textAlign} justify:${cs(value).justifyContent}}`,
         html: snip(value),
       });

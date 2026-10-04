@@ -63,7 +63,7 @@ export function StatusPill({
     <span
       data-tone={t}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full border font-normal",
+        "inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full border font-normal",
         size === "sm" ? "h-5 px-1.5 text-xs" : "h-6 px-2 text-xs",
         TONE_CLASSES[t],
         className,

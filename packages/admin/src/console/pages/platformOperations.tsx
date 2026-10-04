@@ -40,7 +40,6 @@ import { DescriptionList } from "../../ui/DescriptionList.js";
 import { EmptyState } from "../../ui/EmptyState.js";
 import { ErrorState } from "../../ui/ErrorState.js";
 import { StatusPill } from "../../ui/StatusPill.js";
-import { Switch } from "../../ui/Switch.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { PageHeader } from "../components/PageHeader.js";
 import { qk } from "../data/queries.js";
@@ -371,14 +370,18 @@ const STEP_COLUMNS: DataColumn<OperationsStepRun>[] = [
     id: "startedAt",
     header: "Last run",
     accessorKey: "startedAt",
-    meta: { priority: 2 },
+    meta: { numeric: true, priority: 2 },
     cell: ({ row }) => <Timestamp at={row.original.startedAt} />,
   },
   {
     id: "duration",
     header: "Duration",
     accessorFn: (r) => r.durationMs ?? -1,
-    meta: { priority: 2, csv: (r) => String(r.durationMs ?? "") },
+    meta: {
+      numeric: true,
+      priority: 2,
+      csv: (r) => String(r.durationMs ?? ""),
+    },
     cell: ({ row }) => formatMs(row.original.durationMs),
   },
   {
@@ -411,23 +414,27 @@ type RecentRun = NonNullable<PlatformOperations["jobs"]>["recent"][number];
 
 const RECENT_COLUMNS: DataColumn<RecentRun>[] = [
   {
-    id: "startedAt",
-    header: "Started",
-    accessorKey: "startedAt",
-    meta: { priority: 1, primary: true },
-    cell: ({ row }) => <Timestamp at={row.original.startedAt} />,
-  },
-  {
     id: "job",
     header: "Job",
     accessorFn: (r) => jobLabel(r.job),
-    meta: { priority: 1 },
+    meta: { priority: 1, primary: true },
+  },
+  {
+    id: "startedAt",
+    header: "Started",
+    accessorKey: "startedAt",
+    meta: { numeric: true, priority: 1 },
+    cell: ({ row }) => <Timestamp at={row.original.startedAt} />,
   },
   {
     id: "duration",
     header: "Duration",
     accessorFn: (r) => r.durationMs ?? -1,
-    meta: { priority: 2, csv: (r) => String(r.durationMs ?? "") },
+    meta: {
+      numeric: true,
+      priority: 2,
+      csv: (r) => String(r.durationMs ?? ""),
+    },
     cell: ({ row }) => formatMs(row.original.durationMs),
   },
   {
@@ -908,7 +915,7 @@ const CONNECTOR_COLUMNS: DataColumn<OperationsConnector>[] = [
     id: "polled",
     header: "Last poll",
     accessorFn: (c) => c.lastPolledAt ?? 0,
-    meta: { priority: 2 },
+    meta: { numeric: true, priority: 2 },
     cell: ({ row }) =>
       row.original.lastPolledAt !== null ? (
         <Timestamp at={ms(row.original.lastPolledAt)} />
@@ -920,7 +927,7 @@ const CONNECTOR_COLUMNS: DataColumn<OperationsConnector>[] = [
     id: "event",
     header: "Last webhook",
     accessorFn: (c) => c.lastEventAt ?? 0,
-    meta: { priority: 3, defaultHidden: true },
+    meta: { numeric: true, priority: 3, defaultHidden: true },
     cell: ({ row }) =>
       row.original.lastEventAt !== null ? (
         <Timestamp at={ms(row.original.lastEventAt)} />
@@ -1068,19 +1075,17 @@ export function Operations(): React.ReactElement {
           <HealthPill health={assessment.overall} size="md" />
         ) : undefined
       }
-      meta={
-        <Switch
-          checked={auto}
-          onCheckedChange={onAuto}
-          label={`Refresh every ${OPERATIONS_REFRESH_MS / 1000} s`}
-        />
-      }
       freshness={
         ops.dataUpdatedAt
           ? {
               updatedAt: ops.dataUpdatedAt,
               onRefresh: () => void ops.refetch(),
               refreshing: ops.isFetching,
+              auto: {
+                checked: auto,
+                onCheckedChange: onAuto,
+                label: `Refresh every ${OPERATIONS_REFRESH_MS / 1000} s`,
+              },
             }
           : undefined
       }

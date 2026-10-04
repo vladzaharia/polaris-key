@@ -151,14 +151,14 @@ const COLUMNS: DataColumn<ProductRow>[] = [
     id: "modified",
     header: "Changed",
     accessorFn: (row) => row.product.modifiedAt,
-    meta: { priority: 2 },
+    meta: { numeric: true, priority: 2 },
     cell: ({ row }) => <When seconds={row.original.product.modifiedAt} />,
   },
   {
     id: "created",
     header: "Created",
     accessorFn: (row) => row.product.createdAt,
-    meta: { priority: 3 },
+    meta: { numeric: true, priority: 3 },
     cell: ({ row }) => <When seconds={row.original.product.createdAt} />,
   },
 ];

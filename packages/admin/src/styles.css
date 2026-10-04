@@ -183,6 +183,10 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;
+    /* A long unbroken token (a secret name, a URL, an id) wraps inside its box instead of
+       spilling out of it or pushing the page sideways. It changes no box's min-content width,
+       so tables and flex rows size exactly as before. */
+    overflow-wrap: break-word;
   }
 
   /* Visible focus everywhere keyboard users land: 2 px violet with a 2 px offset in the surface

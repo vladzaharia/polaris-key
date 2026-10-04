@@ -20,6 +20,14 @@ import { Button } from "../../ui/Button.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Link } from "../router.js";
 
+/**
+ * A cell of a side-by-side row of panels: the row's cells stretch to the tallest, and the cell's
+ * last panel grows to fill its cell, so neighbouring panels share their top and bottom edges
+ * instead of leaving the page running on under the shorter one.
+ */
+export const STRETCH_CELL =
+  "flex min-w-0 flex-col gap-6 [&>:last-child]:flex-1";
+
 export function DashboardTemplate({
   header,
   attention,
@@ -60,14 +68,14 @@ export function DashboardTemplate({
           {primary || side ? (
             <div
               className={cn(
-                "grid grid-cols-1 items-start gap-6",
+                "grid grid-cols-1 gap-6",
                 half ? "lg:grid-cols-2" : "lg:grid-cols-3",
               )}
             >
               {primary ? (
                 <div
                   className={cn(
-                    "min-w-0",
+                    STRETCH_CELL,
                     half
                       ? !side && "lg:col-span-2"
                       : side
@@ -78,7 +86,7 @@ export function DashboardTemplate({
                   {primary}
                 </div>
               ) : null}
-              {side ? <div className="min-w-0">{side}</div> : null}
+              {side ? <div className={STRETCH_CELL}>{side}</div> : null}
             </div>
           ) : null}
           {children}
@@ -111,7 +119,7 @@ export function Panel({
     <section
       aria-labelledby={id}
       className={cn(
-        "rounded-lg border border-border bg-surface-raised",
+        "flex flex-col rounded-lg border border-border bg-surface-raised",
         className,
       )}
     >
@@ -128,7 +136,7 @@ export function Panel({
         </div>
         {action ? <div className="max-w-full">{action}</div> : null}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="min-w-0 flex-1 p-4">{children}</div>
     </section>
   );
 }

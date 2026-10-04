@@ -273,7 +273,7 @@ export function Home(): React.ReactElement {
           <ul
             aria-label="Products"
             aria-busy
-            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {[0, 1, 2].map((i) => (
               <li
@@ -292,7 +292,7 @@ export function Home(): React.ReactElement {
         ) : (
           <ul
             aria-label="Products"
-            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {shown.map((p) => (
               <li key={p.slug}>
@@ -326,7 +326,10 @@ function ProductCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-bold text-fg-strong">
+          <h3
+            className="truncate text-base font-bold text-fg-strong"
+            title={name}
+          >
             <Link
               to={r.overview(p.slug)}
               className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0"
@@ -334,7 +337,12 @@ function ProductCard({
               {name}
             </Link>
           </h3>
-          <p className="truncate font-mono text-xs text-fg-muted">{p.slug}</p>
+          <p
+            className="truncate font-mono text-xs text-fg-muted"
+            title={p.slug}
+          >
+            {p.slug}
+          </p>
         </div>
         <span className="shrink-0 text-xs text-fg-muted">
           {label(PROVIDER_LABELS, releaseSourceOf(p))}

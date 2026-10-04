@@ -444,7 +444,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
         id: "expiresAt",
         header: "Expires",
         accessorKey: "expiresAt",
-        meta: { priority: 2 },
+        meta: { numeric: true, priority: 2 },
         cell: ({ row }) => (
           <Timestamp at={fromSeconds(row.original.expiresAt)} />
         ),
@@ -453,7 +453,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
         id: "issuedAt",
         header: "Issued",
         accessorKey: "issuedAt",
-        meta: { priority: 3 },
+        meta: { numeric: true, priority: 3 },
         cell: ({ row }) => (
           <Timestamp at={fromSeconds(row.original.issuedAt)} />
         ),

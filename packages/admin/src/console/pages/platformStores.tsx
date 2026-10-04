@@ -63,7 +63,7 @@ import { queryClient } from "../data/queryClient.js";
 import { Link, useSearchParam } from "../router.js";
 import { codecs, r } from "../routes.js";
 import { CollectionTemplate } from "../templates/Collection.js";
-import { Panel } from "../templates/Dashboard.js";
+import { Panel, STRETCH_CELL } from "../templates/Dashboard.js";
 import { useTableUrlState } from "../useTableUrlState.js";
 
 // ── data ─────────────────────────────────────────────────────────────────────────────────────
@@ -479,12 +479,12 @@ function StoreDetail({
       {/* The Account card only when the store has shared settings to show. */}
       <div
         className={cn(
-          "grid grid-cols-1 items-start gap-6",
+          "grid grid-cols-1 gap-6",
           s.settings.length > 0 && "lg:grid-cols-3",
         )}
       >
         <div
-          className={cn("min-w-0", s.settings.length > 0 && "lg:col-span-2")}
+          className={cn(STRETCH_CELL, s.settings.length > 0 && "lg:col-span-2")}
         >
           <CredentialsPanel
             connection={s}
@@ -504,7 +504,7 @@ function StoreDetail({
           />
         </div>
         {s.settings.length > 0 ? (
-          <div className="min-w-0">
+          <div className={STRETCH_CELL}>
             <SettingsPanel connection={s} />
           </div>
         ) : null}

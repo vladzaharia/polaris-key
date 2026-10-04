@@ -559,7 +559,7 @@ export function ConnectorCard({
   return (
     <section
       aria-labelledby={`connector-${connector.kind}`}
-      className="space-y-3 rounded-lg border border-border bg-surface-raised p-4"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3
@@ -587,7 +587,8 @@ export function ConnectorCard({
         </ul>
       ) : null}
       {actions.length ? (
-        <div className="flex flex-wrap gap-2">
+        // Pinned to the card's foot, level with its neighbour's in a row of cards.
+        <div className="mt-auto flex flex-wrap gap-2">
           {actions.map((a) => (
             <Button
               key={a.label}
