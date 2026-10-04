@@ -213,6 +213,11 @@ export async function productDownloads(
     byId: Map<string, PortalFile>;
   }
   const memo = new Map<number, Promise<Annotated>>();
+  // Entitlement is decided from the version and channel the hook returns (Release's
+  // channelReleases), while the mint reads them through getPortalReleaseFacts. Both read the
+  // same release_metadata rows today; if either source moves, the two can drift, which
+  // test/portalDownloads.test.ts ("every file it offers is one the token mint
+  // answers") guards against.
   const annotateNow = async (release: CustomerRelease): Promise<Annotated> => {
     const covered = await accountMayDownload(
       db,

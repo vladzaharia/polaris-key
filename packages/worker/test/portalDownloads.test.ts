@@ -33,6 +33,8 @@ import {
 import type { CustomerFile } from "../src/core/hooks.js";
 import { detectPlatform as coreDetect } from "../src/core/platformDetect.js";
 import { detectPlatform as pageDetect } from "../src/services/distribution/page/detect.js";
+import { rateLimitOk } from "../src/core/rateLimit.js";
+import type { Env } from "../src/env.js";
 import { handlePortalApi } from "./portalHarness.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { NOW, seedLicenseWithKey } from "./seed.js";
@@ -587,5 +589,28 @@ describe("GET /api/products/<p>/downloads", () => {
     );
     // Sanity: the bytes host stays the only non-GitHub redirect target.
     expect(BYTES).toMatch(/^https:/);
+  });
+});
+
+describe("the downloads listing's rate limit", () => {
+  it("fails open: a limiter outage does not 429 a signed-in owner's product page", async () => {
+    const down = {
+      RL: {
+        idFromName: () => {
+          throw new Error("limiter down");
+        },
+      },
+    } as unknown as Env;
+    const rl = {
+      bucket: "portalDownloads",
+      id: "acct",
+      limit: 1,
+      windowSec: 60,
+    };
+    expect(await rateLimitOk(down, SLUG, rl, NOW)).toBe(true);
+    // The fail-closed default still holds for a bucket that never registered.
+    expect(
+      await rateLimitOk(down, SLUG, { ...rl, bucket: "unregistered" }, NOW),
+    ).toBe(false);
   });
 });

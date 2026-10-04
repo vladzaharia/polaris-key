@@ -142,6 +142,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   adminAccessDenied: "open",
   portalDeviceDisconnect: "open",
   portalDownloadToken: "open",
+  // PX-W2: the product page's downloads listing. A read charged only after ownership is
+  // proven; it mints no URL (the token mint above re-checks everything), so nothing to guard.
+  portalDownloads: "open",
 
   // ── public read surfaces — fail open ───────────────────────────────────────
   // The release surface (R10-05) is a *delivery* path: appcasts, version checks and binary
