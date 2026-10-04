@@ -544,8 +544,29 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
       ];
       return k;
     };
-    while (menuBytes(sized(0)) + 2000 < MAX_FEED_PAYLOAD_BYTES) mirrors++;
-    let pad = 0;
+    // The first mirror count whose payload comes within 2,000 bytes of the cap. Size grows with
+    // mirrors, so a doubling-then-bisecting search finds the same count a linear walk would,
+    // in a few dozen signatures rather than hundreds (the linear walk timed out on CI runners).
+    const roomy = (m: number) => {
+      mirrors = m;
+      return menuBytes(sized(0)) + 2000 < MAX_FEED_PAYLOAD_BYTES;
+    };
+    let lo = 0;
+    let hi = 1;
+    while (roomy(hi)) {
+      lo = hi;
+      hi *= 2;
+    }
+    if (!roomy(lo)) hi = lo;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (roomy(mid)) lo = mid;
+      else hi = mid;
+    }
+    mirrors = hi;
+    // Each pad character adds one payload byte; start the walk just short of the gap so it
+    // still checks the stop conditions step by step over the last few bytes.
+    let pad = Math.max(0, MAX_FEED_PAYLOAD_BYTES - menuBytes(sized(0)) - 16);
     while (
       menuBytes(sized(pad)) < MAX_FEED_PAYLOAD_BYTES &&
       sign(sized(pad), "android").doc.deltas
