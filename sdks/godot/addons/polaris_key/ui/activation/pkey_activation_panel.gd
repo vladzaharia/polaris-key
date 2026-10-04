@@ -17,6 +17,12 @@ signal activated()
 ## default: only a product with a free tier turns it on.
 @export var offer_enrollment := false
 
+## Show the panel's own "Activate" title (off when a host card already has one).
+var show_title := true:
+	set(value):
+		if show_title != value:
+			show_title = value
+			refresh_view()
 var mode := "main"
 var busy := false
 var message := ""
@@ -95,6 +101,7 @@ func _render() -> void:
 	sign_in_dialog.visible = mode == "sign-in"
 	offline_dialog.visible = mode == "offline"
 	_title.text = t.text("activation_title")
+	_title.visible = show_title
 	var subtitle := ""
 	if caps["key_entry"] and caps["sign_in"]:
 		subtitle = "activation_subtitle"
