@@ -316,6 +316,7 @@ final class WrappedStorage: PackStorage, @unchecked Sendable {
     let base: any PackStorage
     var verifyOverride: (@Sendable (PackInstall) throws -> Bool)?
     var listOverride: (@Sendable () throws -> (locations: [String], plans: [String]))?
+    var installedOverride: (@Sendable (InstalledPayload?) throws -> InstalledPayload?)?
 
     init(_ base: any PackStorage) { self.base = base }
 
@@ -331,7 +332,10 @@ final class WrappedStorage: PackStorage, @unchecked Sendable {
     func commit(_ planId: String, _ packId: String, _ payloadSha256: String, _ layout: String, _ index: FilesIndexDoc?)
         throws -> String
     { try base.commit(planId, packId, payloadSha256, layout, index) }
-    func installed(_ install: PackInstall) throws -> InstalledPayload? { try base.installed(install) }
+    func installed(_ install: PackInstall) throws -> InstalledPayload? {
+        let got = try base.installed(install)
+        return try installedOverride?(got) ?? got
+    }
     func verify(_ install: PackInstall) throws -> Bool { try verifyOverride?(install) ?? base.verify(install) }
     func remove(_ location: String) throws { try base.remove(location) }
     func removeStaging(_ planId: String) throws { try base.removeStaging(planId) }

@@ -112,11 +112,14 @@ public struct PackJournal: Sendable, Equatable {
     public var startedAt: Int
     /// The delegation's compact JWS for a delegated record (as `PackInstall.delegation`).
     public var delegation: String?
+    /// plans/P4-29.md §2.4 step 6: the feed-offered delta being installed, when `delta` names one.
+    /// Optional, so `PACK_STATE_VERSION` stays 1.
+    public var feedDelta: FeedDelta?
 
     public init(
         planId: String, packId: String, record: String, recordSha256: String, variant: String,
         strategy: String, delta: String? = nil, objects: [JournalObject], startedAt: Int,
-        delegation: String? = nil
+        delegation: String? = nil, feedDelta: FeedDelta? = nil
     ) {
         self.planId = planId
         self.packId = packId
@@ -128,6 +131,7 @@ public struct PackJournal: Sendable, Equatable {
         self.objects = objects
         self.startedAt = startedAt
         self.delegation = delegation
+        self.feedDelta = feedDelta
     }
 
     public var json: JSONValue {
@@ -142,6 +146,7 @@ public struct PackJournal: Sendable, Equatable {
             "startedAt": .int(startedAt),
         ]
         if let delta { o["delta"] = .string(delta) }
+        if let feedDelta { o["feedDelta"] = feedDelta.json }
         if let delegation { o["delegation"] = .string(delegation) }
         return .object(o)
     }
@@ -249,6 +254,16 @@ private func asInstall(_ v: JSONValue, _ packId: String) -> PackInstall? {
         installedAt: at, delegation: delegation)
 }
 
+/// A journal's `feedDelta`: the shape of a feed menu entry (plans/P4-29.md §2.2).
+private func asFeedDelta(_ v: JSONValue) -> FeedDelta? {
+    guard let o = v.objectValue, let a = o["artifact"]?.objectValue,
+        let from = o["from"]?.stringValue, isSha256Hex(from), let method = o["method"]?.stringValue,
+        o["scope"]?.stringValue == "payload", let mem = nat(o["memBytes"]), mem >= 1,
+        let sha = a["sha256"]?.stringValue, isSha256Hex(sha), let bytes = nat(a["bytes"]), bytes >= 1
+    else { return nil }
+    return FeedDelta(from: from, method: method, memBytes: mem, artifactSha256: sha, artifactBytes: bytes)
+}
+
 private func asJournal(_ v: JSONValue, _ packId: String) -> PackJournal? {
     guard let o = v.objectValue, o["packId"]?.stringValue == packId, isPackId(packId) else {
         return nil
@@ -261,6 +276,12 @@ private func asJournal(_ v: JSONValue, _ packId: String) -> PackJournal? {
     if let d = o["delta"] {
         guard let s = d.stringValue else { return nil }
         delta = s
+    }
+    // plans/P4-29.md §2.4 step 6: optional; a malformed one makes the journal unreadable.
+    var feedDelta: FeedDelta?
+    if let f = o["feedDelta"] {
+        guard let x = asFeedDelta(f) else { return nil }
+        feedDelta = x
     }
     var delegation: String?
     if let d = o["delegation"] {
@@ -279,7 +300,7 @@ private func asJournal(_ v: JSONValue, _ packId: String) -> PackJournal? {
     return PackJournal(
         planId: planId, packId: packId, record: record, recordSha256: rs, variant: variant,
         strategy: strategy, delta: delta, objects: objects, startedAt: started,
-        delegation: delegation)
+        delegation: delegation, feedDelta: feedDelta)
 }
 
 /// Whether stored text is at least a version-1 state document's shape.

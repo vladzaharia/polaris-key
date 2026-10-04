@@ -79,6 +79,10 @@ export type Route =
   /** `POST /<p>/devices/register` — the keyless device-token mint (wire v3 §6). A CORE route,
    *  not a service one: the device principal is substrate, available under every policy. */
   | { kind: "register"; product: string }
+  /** `POST /<p>/devices/attest/challenge` and `POST /<p>/devices/attest` (P6-02): device
+   *  attestation raising the trust level. CORE routes, beside `register`. */
+  | { kind: "attestChallenge"; product: string }
+  | { kind: "attest"; product: string }
   /** A product-scoped request for a service the core router has cut over. `rest` is the path
    *  after `/<product>/<slug>`, already split; `[]` means the bare namespace.
    *
@@ -164,6 +168,10 @@ export function matchRoute(pathname: string): Route {
       return { kind: "report", product };
     case "/devices/register":
       return { kind: "register", product };
+    case "/devices/attest":
+      return { kind: "attest", product };
+    case "/devices/attest/challenge":
+      return { kind: "attestChallenge", product };
     // The permanent aliases (§R1). `/<p>/changelog` is NOT among them: unlike these it was never
     // compiled into a shipped binary or a published curl line, so wire v3 moves it to
     // `/<p>/release/changelog` outright.

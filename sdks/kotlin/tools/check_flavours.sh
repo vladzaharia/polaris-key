@@ -88,6 +88,8 @@ for flavor in play direct; do
     [ "$n" = 1 ] && ok "In-App Updates present" || fail "In-App Updates missing ($n)"
     n="$(count "Class descriptor *: 'Lcom/google/android/play/core/assetpacks/AssetPackManager;'" "$dex")"
     [ "$n" = 1 ] && ok "Play Asset Delivery present" || fail "Play Asset Delivery missing ($n)"
+    n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/PlayIntegrity;'" "$dex")"
+    [ "$n" = 1 ] && ok "Play Integrity present" || fail "Play Integrity missing ($n)"
   else
     n="$(count 'Lcom/google/android/play/' "$dex")"
     [ "$n" = 0 ] && ok "no Play Core class or reference" || fail "$n Play Core references"

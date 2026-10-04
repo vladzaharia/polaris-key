@@ -44,6 +44,12 @@
     "devices.register": { "status": "implemented" },
     "devices.manage": { "status": "implemented" },
     "devices.report": { "status": "implemented" },
+    "devices.attest": {
+      "status": "planned",
+      "unowned": true,
+      "except": [{ "runtime": "macos", "reason": "runtime" }],
+      "note": "P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client."
+    },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
@@ -115,9 +121,8 @@
       "note": "libzstd 1.5.7 (facebook/zstd SwiftPM package): ZSTD_DCtx_refPrefix with ZSTD_d_windowLogMax; the window check runs in the applier before every prefix decode, macOS and iOS alike."
     },
     "packs.delta.feed": {
-      "status": "planned",
-      "wp": "P4-30",
-      "note": "P4-30 ports feedContent's deltas, withFeedDeltas and the one-feed-delta rule (plans/P4-29.md §5 order 2)."
+      "status": "implemented",
+      "note": "feedContent reads the feed's deltas menu (both caps, both uniqueness rules, a non-payload entry dropped alone), withFeedDeltas merges it into the selected container variant before planTarget, and PackEngine tries at most one feed-offered delta per install (fallback on a failed fetch or any delta verdict), journalling it as feedDelta for resume; UpdateClient hands PacksClient the menu of the feed each check used (fresh or stale) and reads the committed feed from the cache when the engine starts."
     },
     "packs.state": {
       "status": "implemented",

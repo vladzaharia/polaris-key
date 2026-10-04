@@ -33,12 +33,15 @@ var ks_reset := ""
 var never := PackedStringArray()
 ## A reply that is not JSON for this op.
 var garbage_for := ""
+## Play Integrity (P6-02): the StandardIntegrityErrorCode the next integrity_token fails with (0:
+## success, which answers `token:<cloudProjectNumber>:<requestHash>`).
+var integrity_error := 0
 
 var calls: Array[Dictionary] = []
 var _queue: Array[Dictionary] = []
 var _req := 0
 
-const PLAY_OPS := ["iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm"]
+const PLAY_OPS := ["iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm", "integrity_prepare", "integrity_token"]
 const DIRECT_OPS := ["pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints"]
 
 
@@ -78,7 +81,7 @@ func cmd(json: String) -> String:
 			_queue.clear()
 			return JSON.stringify({"ok": true, "dropped": 0, "events": out})
 		"capabilities":
-			return JSON.stringify({"ok": true, "protocol": 1, "flavor": flavor, "sdk": 34, "package": "gg.vlad.diceroll", "keystore": true, "inAppUpdates": flavor == "play", "assetPacks": flavor == "play", "packageInstaller": flavor == "direct"})
+			return JSON.stringify({"ok": true, "protocol": 1, "flavor": flavor, "sdk": 34, "package": "gg.vlad.diceroll", "keystore": true, "inAppUpdates": flavor == "play", "assetPacks": flavor == "play", "packageInstaller": flavor == "direct", "playIntegrity": flavor == "play"})
 		"install_source":
 			return JSON.stringify({"ok": true, "installer": installer, "initiator": installer, "initiatorCertSha256": null, "packageSource": 0, "updateOwner": null, "selfUpdated": false, "sdk": 34})
 		"ks_get":
@@ -139,6 +142,14 @@ func cmd(json: String) -> String:
 			return JSON.stringify({"ok": true, "state": null})
 		"pad_confirm":
 			return _later(op, {"ok": false, "error": "pack_failed", "exception": "AssetPackException", "message": "not installed by Play", "errorCode": -14})
+		"integrity_prepare":
+			return _later(op, {"ok": true, "prepared": true})
+		"integrity_token":
+			if integrity_error != 0:
+				var code := integrity_error
+				integrity_error = 0
+				return _later(op, {"ok": false, "error": "integrity", "exception": "StandardIntegrityException", "message": "fake", "errorCode": code})
+			return _later(op, {"ok": true, "token": "token:%s:%s" % [q.get("cloudProjectNumber"), q.get("requestHash")], "prepared": true, "reprepared": false})
 		"pi_can_install":
 			return JSON.stringify({"ok": true, "canInstall": true})
 		"pi_open_settings":

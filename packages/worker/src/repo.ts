@@ -37,6 +37,10 @@ export interface ProductRow {
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
   // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
   web_origins_json?: string | null;
+  // The device-trust policy (migrations/0053_d/e, P6-02): operator-owned, never written by an
+  // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
+  trust_policy_json?: string | null;
+  trust_policy_source?: string;
   created_at: number;
   modified_at: number;
 }
@@ -135,6 +139,12 @@ export interface DeviceRow {
   /** R11-02 — the seat ordinal this device holds. NULL = holds no seat. Written only by
    *  `claimDeviceSeat`/`releaseDeviceSeat`; `upsertDevice` deliberately preserves it. */
   seat_no?: number | null;
+  /** P6-02 — `basic` or `attested` (migrations/0053_a). Written only by `setDeviceTrust` and
+   *  `resetDeviceTrust`; `upsertDevice` deliberately preserves it, like `seat_no`. */
+  trust_level?: string;
+  attested_at?: number | null;
+  /** The last attestation verdict summary (never a raw token or attestation object). */
+  attestation_json?: string | null;
 }
 
 export interface ProfileRow {
@@ -1252,6 +1262,69 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
     row.app_version ?? null,
     row.sdk_name ?? null,
     row.sdk_version ?? null,
+  );
+}
+
+/**
+ * P6-02 — record an attestation outcome on a device row. `level` is written only when the
+ * verdict raised the device (`attested`); a refused attempt records its verdict and leaves the
+ * level alone, so a bad attestation can never lower or raise anything.
+ */
+export async function setDeviceTrust(
+  db: Db,
+  product: string,
+  deviceId: string,
+  t: { attested: boolean; at: number; json: string },
+): Promise<void> {
+  if (t.attested) {
+    await db.run(
+      "UPDATE devices SET trust_level = 'attested', attested_at = ?, attestation_json = ? WHERE product = ? AND device_id = ?",
+      t.at,
+      t.json,
+      product,
+      deviceId,
+    );
+    return;
+  }
+  await db.run(
+    "UPDATE devices SET attestation_json = ? WHERE product = ? AND device_id = ?",
+    t.json,
+    product,
+    deviceId,
+  );
+}
+
+/**
+ * P6-02 — drop a device back to `basic`. Called whenever a NEW credential is minted for a device
+ * id without proof of the old one (keyless re-registration, a licence bind or rebind): the device
+ * id is client-chosen, so whoever holds the new token has not shown they are the attested
+ * install. A token rotation, which presents the old token, keeps the level.
+ */
+export async function resetDeviceTrust(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<void> {
+  await db.run(
+    "UPDATE devices SET trust_level = 'basic', attested_at = NULL WHERE product = ? AND device_id = ? AND trust_level != 'basic'",
+    product,
+    deviceId,
+  );
+}
+
+/** P6-02 — write the operator's device-trust policy (`trust_policy_source = 'admin'`). */
+export async function setTrustPolicy(
+  db: Db,
+  product: string,
+  json: string | null,
+  now: number,
+): Promise<void> {
+  await db.run(
+    "UPDATE products SET trust_policy_json = ?, trust_policy_source = ?, modified_at = ? WHERE slug = ?",
+    json,
+    json === null ? "default" : "admin",
+    now,
+    product,
   );
 }
 

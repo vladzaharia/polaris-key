@@ -93,7 +93,7 @@ from .ports import (
     hashlib_sha256,
     read_all,
 )
-from .select import index_readable, plan_target, select_variant, usable_codec
+from .select import index_readable, plan_target, select_variant, usable_codec, with_feed_deltas
 from .sets import pack_set_id
 from .state import (
     abandon_install,
@@ -419,6 +419,8 @@ class _Plan:
     #: P4-11: the target chunk index (``index``), its ``ref`` and the ``seeds``, when the fetch
     #: rule ran and the index parsed.
     chunk: Optional[Dict[str, Any]] = None
+    #: plans/P4-29.md §2.4: the delta ids the feed's menu added to ``variant`` (merged).
+    feed_ids: Set[str] = field(default_factory=set)
 
 
 def _usable_chunks_ref(variant: Any) -> Optional[Dict[str, Any]]:
@@ -530,6 +532,7 @@ class PackEngine:
         one_shot_budget: Optional[int] = None,
         revocations: Any = None,
         supports_range: Optional[bool] = None,
+        feed_deltas: Optional[Callable[[], Optional[Mapping[str, Any]]]] = None,
     ) -> None:
         self._product = product
         self._release_keys = dict(release_keys)
@@ -564,6 +567,12 @@ class PackEngine:
         #: P4-11: seed-index SHA-256s the backfill already tried this process (once each,
         #: success or failure).
         self._seed_index_tried: Set[str] = set()
+        #: plans/P4-29.md §2.4: the delta menu of the most recently committed feed of the
+        #: canonical channel (``feed_content``'s ``deltas``), fresh or stale, or ``None``. Each
+        #: entry for the selected container variant's payload joins the record's deltas as one
+        #: more candidate; at most one feed-offered delta is tried per install. ``None``: only
+        #: the record's deltas are planned.
+        self._feed_deltas = feed_deltas
 
         from .handlers import DataJsonHandler, L10nTableHandler
 
@@ -1440,11 +1449,17 @@ class PackEngine:
             if seed is not None:
                 seeds[i["location"]] = seed
                 installs.append(i)
+        # plans/P4-29.md §2.4 step 6: a journal whose delta neither the record nor its own
+        # `feedDelta` names is abandoned and re-planned.
         prior = doc["inflight"].get(pack_id)
+        prior_usable = (
+            prior is not None
+            and prior["recordSha256"] == want
+            and prior["variant"] == variant_key(variant["variant"])
+            and _journal_delta_known(prior, variant)
+        )
         early = self._preflight_plans.get(pack_id)
-        if prior is not None and prior["recordSha256"] == want and prior["variant"] == variant_key(
-            variant["variant"]
-        ):
+        if prior_usable:
             plan_id = prior["planId"]
         elif early is not None and early[1] == want:
             plan_id = early[0]
@@ -1538,6 +1553,16 @@ class PackEngine:
                             }
                 except Exception:
                     chunk = None
+        # plans/P4-29.md §2.4 steps 1–2 and 6: the committed feed's menu, plus a resumed
+        # journal's own feed delta, join the record's deltas (a record delta wins a shared id).
+        merged, merged_ids = with_feed_deltas(variant, self._feed_menu())
+        feed_ids: Set[str] = set(merged_ids)
+        if prior_usable and prior["strategy"] == "delta" and prior.get("feedDelta"):
+            merged, again = with_feed_deltas(
+                merged, {variant["payload"]["sha256"]: [prior["feedDelta"]]}
+            )
+            feed_ids.update(again)
+        variant = dict(merged)
         target = plan_target(variant, want, index, chunk["index"] if chunk is not None else None)
         budget = self._one_shot_budget
         full = variant["full"]
@@ -1609,7 +1634,17 @@ class PackEngine:
             plan=p,
             delegation=delegated,
             chunk=chunk,
+            feed_ids=feed_ids,
         )
+
+    def _feed_menu(self) -> Optional[Mapping[str, Any]]:
+        """The committed feed's delta menu, or ``None`` (a raising source is no menu)."""
+        if self._feed_deltas is None:
+            return None
+        try:
+            return self._feed_deltas()
+        except Exception:
+            return None
 
     def _chunk_seeds(
         self,
@@ -1976,8 +2011,23 @@ class PackEngine:
                 ErrorCode.PLAN_TRANSPORT_UNSUPPORTED, f"{pack_id} is platform-bound.", pack_id=pack_id
             )
 
+        # 5–6. Each candidate in turn. plans/P4-29.md §2.4 step 5: at most one feed-offered delta
+        # per install; once it fails the rest of the menu is skipped.
         first_failure: Optional[PackError] = None
+        feed_tried = False
         for cand in [p] + list(p["fallbacks"]):
+            from_feed = (
+                cand["strategy"] == "delta"
+                and cand.get("delta") is not None
+                and cand["delta"] in pre.feed_ids
+            )
+            if from_feed and feed_tried:
+                continue
+            feed_delta = _feed_entry_of(variant, cand["delta"]) if from_feed else None
+            if from_feed and feed_delta is None:
+                continue
+            if from_feed:
+                feed_tried = True
             objects = self._objects_for(
                 cand["strategy"], cand.get("delta"), variant, index, seeds, pre.chunk
             )
@@ -1993,6 +2043,8 @@ class PackEngine:
             }
             if cand.get("delta") is not None:
                 journal["delta"] = cand["delta"]
+            if feed_delta is not None:
+                journal["feedDelta"] = feed_delta
             journal["objects"] = [{"sha256": s, "bytes": b, "done": 0} for s, b in objects]
             journal["startedAt"] = self._now()
             if delegation is not None:
@@ -2007,19 +2059,27 @@ class PackEngine:
             )
             progress = {"done": 0, "total": total}
             self._emit(PackProgress(pack_id, "download", 0, total))
+            fetched = True
             for s, b in objects:
                 if not self._download(plan_id, pack_id, s, b, progress):
+                    # plans/P4-29.md §2.4 step 5: a feed delta that cannot be fetched (a cold
+                    # delta's 404, say) falls back like any other failure of that candidate.
+                    if from_feed:
+                        fetched = False
+                        break
                     # The journal and what is staged stay for the next `ensure`, which resumes.
                     raise PackError(
                         ErrorCode.NETWORK_ERROR,
                         f"Fetching {pack_id}'s objects failed; the next ensure resumes.",
                         pack_id=pack_id,
                     )
-            if cand["strategy"] != "chunk":
+            if fetched and cand["strategy"] != "chunk":
                 self._emit(PackProgress(pack_id, "apply", total, total))
             # plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
             seen: Dict[str, Optional[DataOnlyRefusalSeen]] = {"refusal": None}
-            if cand["strategy"] == "chunk":
+            if not fetched:
+                result = ApplyResult(verdict={"ok": False, "error": ErrorCode.NETWORK_ERROR})
+            elif cand["strategy"] == "chunk":
                 result = self._apply_chunk(plan_id, pack_id, variant, pre.chunk, delegation, total)
                 self._emit(PackProgress(pack_id, "apply", total, total))
             else:
@@ -2638,6 +2698,49 @@ def _target(t: Any) -> Tuple[str, Dict[str, Any]]:
     if not isinstance(release, Mapping):
         release = {"sha256": release.sha256, "seq": release.seq, "version": release.version}
     return pack, {"sha256": release["sha256"], "seq": release["seq"], "version": release["version"]}
+
+
+def _delta_id(d: Any) -> Optional[str]:
+    """A delta's id: a ``payload`` delta's ``artifact.sha256``, a ``files`` delta's
+    ``patch.sha256``."""
+    if not isinstance(d, dict):
+        return None
+    scope = d.get("scope")
+    ref = d.get("artifact") if scope == "payload" else d.get("patch") if scope == "files" else None
+    sha = ref.get("sha256") if isinstance(ref, dict) else None
+    return sha if isinstance(sha, str) else None
+
+
+def _journal_delta_known(j: Mapping[str, Any], variant: Mapping[str, Any]) -> bool:
+    """plans/P4-29.md §2.4 step 6: whether a journal's ``delta`` is one the record or the
+    journal's own ``feedDelta`` names (always true for a journal of another strategy)."""
+    if j.get("strategy") != "delta" or j.get("delta") is None:
+        return True
+    if any(_delta_id(d) == j["delta"] for d in variant.get("deltas") or []):
+        return True
+    fd = j.get("feedDelta")
+    return isinstance(fd, dict) and fd["artifact"]["sha256"] == j["delta"]
+
+
+def _feed_entry_of(variant: Mapping[str, Any], delta_id: str) -> Optional[Dict[str, Any]]:
+    """The merged feed entry of a planned feed delta, as the journal keeps it."""
+    d = next(
+        (
+            x
+            for x in variant.get("deltas") or []
+            if x.get("scope") == "payload" and _delta_id(x) == delta_id
+        ),
+        None,
+    )
+    if d is None:
+        return None
+    return {
+        "from": d["from"],
+        "method": d["method"],
+        "scope": "payload",
+        "memBytes": d["memBytes"],
+        "artifact": {"sha256": d["artifact"]["sha256"], "bytes": d["artifact"]["bytes"]},
+    }
 
 
 def _install_delegation(i: Mapping[str, Any]) -> Optional[str]:

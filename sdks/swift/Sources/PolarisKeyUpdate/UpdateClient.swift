@@ -278,7 +278,22 @@ public actor UpdateClient {
         self.core = core
         let configured = try configure(options, pinnedTrust: core.pinnedTrust)
         self.configured = configured
-        self.packs = PacksClient(core: core, releaseKeys: configured.releaseKeys, options: options.packs)
+        // plans/P4-29.md §2.4 step 1: before any check this process, the menu of the committed
+        // feed of the configured channel, re-verified on the reload path (no freshness: a stale
+        // menu only falls back). No cache or no committed feed is no menu.
+        let platform = configured.options.platform ?? PlatformFamily.headerValue
+        self.packs = PacksClient(
+            core: core, releaseKeys: configured.releaseKeys, options: options.packs,
+            loadFeedDeltas: { [core] in
+                guard let platform else { return nil }
+                let committed = reloadFeeds(
+                    await core.updateSlices().feeds, trust: await core.trust, expectedAud: core.product,
+                    platform: platform)
+                for k in boundChannels(core.channel) {
+                    if let cf = committed.feeds[k] { return .some(cf.feed.content.deltas) }
+                }
+                return nil
+            })
     }
 
     /// The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), detecting it first when the
@@ -602,6 +617,7 @@ extension UpdateClient {
             throw raise(error)
         case .ok(let run):
             await core.commitUpdateSlices(feeds: run.feeds, releaseRecords: run.releaseRecords)
+            packs.noteFeedDeltas(run.feed.content.deltas)
             if let revocations = run.revocations { try await packs.recordRevocations(revocations) }
             return run.check
         }
@@ -633,6 +649,7 @@ extension UpdateClient {
             throw raise(error)
         case .ok(let run):
             await core.commitUpdateSlices(feeds: run.feeds)
+            packs.noteFeedDeltas(run.feed.content.deltas)
             return FeedCheck(
                 channel: run.check.channel, feed: run.feed, source: run.check.feed,
                 errors: run.check.errors.filter { $0.code != RECORD_WITHHELD })
