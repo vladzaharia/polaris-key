@@ -20,6 +20,10 @@ expected. The client loads discovery itself when the session has not; a transcri
 runs a ``discover`` step, and records no discovery exchange in the step, has it answered here with
 the Worker's standard templates (the fallback the Node and React replayers use), so the recording
 only has to hold the feed and record traffic.
+
+``chunkRange`` (P4-32, plans/P4-32.md §5) is ``chunk_range_fetch`` over the packs client's own
+object fetch (``client.update.packs._fetch_object``), against the blobs template the last
+discover returned. ``range`` is the fetch's status; ``bytes`` the body it returned, as a string.
 """
 
 # @pkey-feature core.discover core.sync core.cache license.activate license.enroll
@@ -27,6 +31,7 @@ only has to hold the feed and record traffic.
 # @pkey-feature config.schema release.changelog release.download
 # @pkey-feature identity.devicecode config.mint
 # @pkey-feature update.feed release.record update.decide
+# @pkey-feature packs.apply.chunk
 
 from __future__ import annotations
 
@@ -41,6 +46,7 @@ import pytest
 
 from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
 from polaris_key.core.store import CacheRecord
+from polaris_key.update.packs import chunk_range_fetch
 
 from transcript_replay import (
     ReplayError,
@@ -162,6 +168,12 @@ def _act(
             out["code"] = e.code
     elif action == "installUrl":
         out["url"] = client.release.install_url()
+    elif action == "chunkRange":
+        fetch_range = chunk_range_fetch(client.update.packs._fetch_object)
+        r = fetch_range(args["bundle"], int(args["offset"]), int(args["length"]))
+        out["range"] = r.status
+        if r.status == "ok":
+            out["bytes"] = b"".join(bytes(c) for c in r.chunks).decode("latin-1")
     elif action == "updateDecide":
         staged = args.get("staged")
         try:
@@ -369,4 +381,18 @@ def test_an_update_step_without_its_record_request_fails(monkeypatch: pytest.Mon
         lambda items: [x for x in items if "/release/records/" not in x["request"]["path"]],
     )
     with pytest.raises(ReplayError, match=r"unexpected request: GET /djdl/release/records/"):
+        replay(t, monkeypatch)
+
+
+def test_a_chunk_range_with_another_content_range_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``packs-chunk-range`` passes only when the SDK reads the exact run: a recorded
+    Content-Range altered to another range must be refused, so the step's ``range`` fails."""
+
+    def edit(items):
+        for x in items:
+            x["response"]["headers"]["content-range"] = "bytes 17-40/64"
+        return items
+
+    t = doctor(next(x for x in TRANSCRIPTS if x["id"] == "packs-chunk-range"), 1, edit)
+    with pytest.raises(AssertionError, match=r"step 1 \(chunkRange\): range"):
         replay(t, monkeypatch)

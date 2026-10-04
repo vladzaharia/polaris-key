@@ -7,6 +7,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
+// @pkey-feature packs.apply.chunk
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -27,6 +28,11 @@
 // that never ran a `discover` step, and records no discovery exchange in the step, has it
 // answered here with the Worker's standard templates — the same fallback React's replayer uses —
 // so the recording only has to hold the feed and record traffic.
+//
+// `chunkRange` (P4-32, plans/P4-32.md §5) is client-core's `chunkRangeFetch` over the Node packs
+// client's own object fetch (`client.update.packs`'s `fetchObject`, reached through a typed cast:
+// TypeScript's `private` is compile-time only), against the blobs template the last discover
+// returned. `range` is the fetch's status; `bytes` the body it returned, as a string.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,7 +44,7 @@ import {
   type SignInPrompt,
   type Store,
 } from "@polaris-key/node";
-import { recordHash } from "@polaris-key/client-core";
+import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
 import { signJws } from "@polaris-key/jws";
 import {
   applies,
@@ -244,6 +250,24 @@ async function act(
     case "installUrl":
       out.url = client.release.installUrl();
       break;
+    case "chunkRange": {
+      const packs = client.update.packs as unknown as {
+        fetchObject: Parameters<typeof chunkRangeFetch>[0];
+      };
+      const fetchRange = chunkRangeFetch((req) => packs.fetchObject(req));
+      const r = await fetchRange({
+        bundle: String(step.args.bundle),
+        offset: Number(step.args.offset),
+        length: Number(step.args.length),
+      });
+      out.range = r.status;
+      if (r.status === "ok") {
+        const parts: Uint8Array[] = [];
+        for await (const c of r.chunks) parts.push(c);
+        out.bytes = Buffer.concat(parts).toString("latin1");
+      }
+      break;
+    }
     case "updateDecide":
       try {
         const check = await client.update.decide({
@@ -436,6 +460,24 @@ describe("the Node replayer fails on a doctored transcript", () => {
     const t = JSON.parse(JSON.stringify(base)) as Transcript;
     t.steps[1]!.expect.documents = { license: "applied", config: "applied" };
     await expect(replay(t)).rejects.toThrow(/step 1 \(sync\): documents/);
+  });
+});
+
+// @pkey-feature packs.apply.chunk
+describe("the Node replayer's chunkRange mapping fails on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "packs-chunk-range")!;
+
+  it("a recorded Content-Range that is not the requested run", async () => {
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        response: {
+          ...x.response,
+          headers: { ...x.response.headers, "content-range": "bytes 17-40/64" },
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/step 1 \(chunkRange\): range/);
   });
 });
 
