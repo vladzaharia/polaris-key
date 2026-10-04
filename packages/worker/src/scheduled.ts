@@ -32,6 +32,7 @@
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
 import { runScheduledServices } from "./core/registry.js";
+import { drainRenderQueue, selfCheckRenders } from "./core/registryQueue.js";
 import { SERVICES } from "./mount.js";
 import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
@@ -465,6 +466,48 @@ export async function runConnectorPolls(
 }
 
 /**
+ * The package-feed renders, on EVERY cron tick (plans/F-01.md §6.5): drain the render queue
+ * (`core/registryQueue.ts` `drainRenderQueue`, into Distribution's `registryMaterialiser`), then
+ * the self-check, which re-renders up to `SELF_CHECK_BUDGET` packages whose stored render stamp
+ * differs from D1, across every live product. Both are idempotent and fault-isolated: a failure
+ * is recorded as its own step and the tick's other work stands. Counts land in `report` as
+ * `registry:rendered`, `registry:dropped` and `registry:selfCheck`.
+ */
+export async function runRegistryRenders(
+  env: Env,
+  db: Db,
+  now: number,
+  report: MaintenanceReport,
+): Promise<void> {
+  const startedAt = Date.now();
+  try {
+    const drained = await drainRenderQueue(SERVICES, { env, db, now });
+    report.counts["registry:rendered"] = drained.rendered;
+    report.counts["registry:dropped"] = drained.dropped;
+    if (drained.failed > 0)
+      report.failures["registry:drain"] =
+        `${drained.failed} render(s) failed and stay queued`;
+  } catch (e) {
+    report.failures["registry:drain"] =
+      e instanceof Error ? e.message : String(e);
+  }
+  try {
+    const slugs = (await listProducts(db)).map((p) => p.slug);
+    const checked = await selfCheckRenders(SERVICES, { env, db, now }, slugs);
+    report.counts["registry:selfCheck"] = checked.rerendered;
+    for (const [slug, message] of Object.entries(checked.failures))
+      report.failures[`registry:selfCheck:${slug}`] = message;
+  } catch (e) {
+    report.failures["registry:selfCheck"] =
+      e instanceof Error ? e.message : String(e);
+  }
+  (report.timings ??= {})["registry"] = {
+    startedAt,
+    durationMs: Date.now() - startedAt,
+  };
+}
+
+/**
  * A-14: persist the tick for the Operations page — its `platform_job_runs` rows and the `main`
  * heartbeat (`core/platformOps.ts`). Recording is not the job: a failure to record is added to
  * the report as the `opsRecord` step, so it surfaces in the thrown aggregate like any other step,
@@ -529,6 +572,7 @@ export async function handleScheduled(
   const report = poll
     ? await runConnectorPolls(env, db, now)
     : await runScheduledMaintenance(db, now, env);
+  await runRegistryRenders(env, db, now, report);
   await recordTick(env, db, {
     job: poll ? "connectorPoll" : "maintenance",
     cron: cron ?? null,
