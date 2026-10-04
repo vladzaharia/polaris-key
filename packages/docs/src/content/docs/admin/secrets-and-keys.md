@@ -184,6 +184,11 @@ The lifecycle, all from this section:
 | **Retire**                     | a staged row's menu                         | `POST .../keys/retire`                           | Marks a non-active key retired.                                                                                                 |
 | **Revoke**                     | a retired row's menu (type the key id)      | `POST .../keys/revoke`                           | Marks a non-active key revoked: the trust manifest lists it as revoked and clients reject what it signed (compromise response). |
 
+### Rotating the signing key
+
+Rotation is Prepare, wait out the trust window, then Activate: the old key retires in the same
+step and keeps verifying the documents it signed while it ages out of the trust set.
+
 A staged key shows a live countdown to the end of its **trust-refresh window** (5 minutes):
 clients need that long to pick the new key up from the trust manifest before anything is signed
 with it, or a client that hasn't refreshed would reject a document signed by a `kid` it doesn't
