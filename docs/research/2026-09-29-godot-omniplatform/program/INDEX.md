@@ -111,7 +111,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## P4: Packs
 
-31 work packages, 35.25–47.25 weeks.
+32 work packages, 35.75–48.25 weeks.
 
 | Id                                                   | Title                                                                                                                                                   | Depends on                               | Role           | Weeks     | Status |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | --------- | ------ |
@@ -146,6 +146,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-29](wp/P4-29-feed-delta-menu.md) ⚑               | The feed's delta menu: offer lazy deltas in the signed feed, read them in every SDK's planner                                                           | P4-17, P4-13, P4-18                      | implementer    | 1–1.5     | done   |
 | [P4-30](wp/P4-30-feed-delta-menu-python-swift.md) ⚑  | Feed delta menu in Python and Swift                                                                                                                     | P4-29                                    | sdk-porter     | 0.5–0.75  | done   |
 | [P4-31](wp/P4-31-feed-delta-menu-godot.md) ⚑         | Feed delta menu in Godot                                                                                                                                | P4-29                                    | godot-engineer | 0.5–0.75  | done   |
+| [P4-32](wp/P4-32-chunk-range-transcript.md) ⚑        | HTTP transcript for the chunk-bundle Range + If-Range fetch                                                                                             | P4-11                                    | sdk-porter     | 0.5–1     | todo   |
 
 ## P5: Distribution connectors and native plugins
 
@@ -274,6 +275,7 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [P4-29](wp/P4-29-feed-delta-menu.md)               | `plans/P4-29.md`                     | implementer    |
 | [P4-30](wp/P4-30-feed-delta-menu-python-swift.md)  | `plans/P4-29.md` (shared with P4-29) | sdk-porter     |
 | [P4-31](wp/P4-31-feed-delta-menu-godot.md)         | `plans/P4-29.md` (shared with P4-29) | godot-engineer |
+| [P4-32](wp/P4-32-chunk-range-transcript.md)        | `plans/P4-32.md`                     | sdk-porter     |
 | [F-01](wp/F-01-feeds-plan.md)                      | `plans/F-01.md`                      | planning only  |
 | [F-20](wp/F-20-registry-credentials-plan.md)       | `plans/F-20.md`                      | planning only  |
 
