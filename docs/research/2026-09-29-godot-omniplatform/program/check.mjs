@@ -18,8 +18,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const GRAPH = join(HERE, "workpackages.json");
 const INDEX = join(HERE, "INDEX.md");
 // A two-digit id, with an optional lower-case letter for packages split from one spike row
-// (A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11).
-const ID_RE = /^(P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I)-\d{2}[a-z]?$/;
+// (A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11, I-10a/b from notes/S-16 §8,
+// U-11a…c, U-15a…c and U-24a…b from notes/S-17 §6).
+const ID_RE = /^(P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U)-\d{2}[a-z]?$/;
 const DONE = new Set(["done", "dropped"]);
 
 const raw = readFileSync(GRAPH, "utf8");
@@ -188,7 +189,7 @@ const fmtEst = ([a, b]) => (a === b ? `${a}` : `${a}–${b}`);
 
 // The header rows every brief carries that are derived from the graph (kept in sync by --sync-briefs).
 const ID_IN_TEXT =
-  /\b(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I)-\d{2}[a-z]?\b/g;
+  /\b(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U)-\d{2}[a-z]?\b/g;
 function dependantsOf() {
   const m = new Map(wps.map((w) => [w.id, []]));
   for (const w of wps) for (const d of w.deps) m.get(d)?.push(w.id);
