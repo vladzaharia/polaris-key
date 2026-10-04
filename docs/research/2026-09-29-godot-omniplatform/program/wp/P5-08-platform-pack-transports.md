@@ -284,7 +284,9 @@ ba-package` (`PKEY_REAL_BA_PACKAGE=1`). It also runs `suite_transports` beside t
   owner's. Apple on macOS answers `unsupported` (`runtime`): no package owns a macOS binding
   (P5-05 Out), and the registry allows no N/A there. No other SDK had a row planned under P5-08.
 - **Timings (`suite_transports`, 82 checks).** 985 ms on the 4.7.2 editor, 824 ms on the 4.7.2
-  macOS release template, and 949 ms on the 4.4.1 editor.
+  macOS release template, and 949 ms on the 4.4.1 editor. After review round 1 and the merge of
+  main (90 checks, full `ci` set green on each): 1376 ms on the 4.7.2 editor, 1003 ms on the
+  4.7.2 macOS release template, and 2010 ms on the 4.4.1 editor.
 - **Not done here, with owners.**
   - **Holding a store release through a connector** (`PENDING_DEVELOPER_RELEASE`). P4-14's Out
     points here, but this brief's scope does not include it. The docs now tell the operator to set
