@@ -524,17 +524,20 @@ const setNotificationsUrl: ConnectorControl = (c) => {
       now: c.now,
       find: () => readAppAsn(run, setup.appleId),
       satisfied: (app) => asnMatches(app.attributes, url),
-      write: async () =>
-        single(
-          await run.client.patch(
-            ascPath("apps", setup.appleId),
-            {
-              data: { type: "apps", id: setup.appleId, attributes: want },
-            },
-            // The gate admits the URL only on the origin this request arrived at.
-            { hookOrigin: c.origin },
-          ),
-        ),
+      // A-17h: Apple answers this PATCH 200 with an echo of the URL it did not keep. The echo
+      // is never evidence: returning null makes the ledger's after (and so a replay's answer)
+      // the verification re-read, or the pre-read if that re-read fails.
+      write: async () => {
+        await run.client.patch(
+          ascPath("apps", setup.appleId),
+          {
+            data: { type: "apps", id: setup.appleId, attributes: want },
+          },
+          // The gate admits the URL only on the origin this request arrived at.
+          { hookOrigin: c.origin },
+        );
+        return null;
+      },
       reread: async () => {
         verified = await readAppAsn(run, setup.appleId);
         return verified;

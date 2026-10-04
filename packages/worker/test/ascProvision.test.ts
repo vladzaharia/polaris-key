@@ -66,6 +66,9 @@ class SetupFake {
   readonly log: Req[] = [];
   /** A-17h: Apple answers the PATCH 200 with an echo but does not keep it. */
   asnPersists = false;
+  /** Once a PATCH lands, every read of the app answers 503 (the verification read fails). */
+  failAppReadAfterPatch = false;
+  private appReadBroken = false;
   groups: AscResource[] = [];
   testers: Tester[] = [];
   availability: AscResource | null = null;
@@ -146,10 +149,15 @@ class SetupFake {
     if (p === `/v1/apps/${APPLE_ID}` && method === "PATCH") {
       const attrs = data?.attributes as Record<string, unknown>;
       if (this.asnPersists) this.w.fake.set("apps", APPLE_ID, attrs);
+      if (this.failAppReadAfterPatch) this.appReadBroken = true;
       return this.json(200, {
         data: { ...app, attributes: { ...app.attributes, ...attrs } },
       });
     }
+    if (p === `/v1/apps/${APPLE_ID}` && method === "GET" && this.appReadBroken)
+      return this.json(503, {
+        errors: [{ status: "503", code: "SERVICE_UNAVAILABLE" }],
+      });
     if (p === `/v1/apps/${APPLE_ID}/betaGroups` && method === "GET")
       return this.json(200, { data: this.groups, links: {} });
     if (p === "/v1/betaGroups" && method === "POST") {
@@ -428,6 +436,41 @@ describe("setup/notifications-url", () => {
     w.setup.log.length = 0;
     const again = await call(w, "/setup/notifications-url", {}, key);
     expect(again.json).toMatchObject({ outcome: "replayed", persisted: false });
+    expect(w.setup.log).toEqual([]);
+  });
+
+  it("never takes Apple's PATCH echo as proof: a failed verification read, then a replay, still answers not persisted", async () => {
+    const w = await world();
+    w.setup.failAppReadAfterPatch = true;
+    const key = "asn-reread-fails-1";
+    const r = await call(w, "/setup/notifications-url", {}, key);
+    expect(r.status).toBe(200);
+    expect(w.setup.writes()).toHaveLength(1);
+    const fallback = {
+      deepLink: `https://appstoreconnect.apple.com/apps/${APPLE_ID}/distribution/info`,
+      url: ASN_URL,
+      version: "V2",
+    };
+    expect(r.json).toMatchObject({
+      outcome: "written",
+      persisted: false,
+      fallback,
+    });
+    const [row] = await ledger(w);
+    expect(row).toMatchObject({ op: "app.notifications_url", state: "done" });
+    // The ledger's after is the pre-read, never the echo of the unsaved URL.
+    expect(row!.after_json as string).not.toContain(ASN_URL);
+    expect(row!.result_ids_json as string).toContain(APPLE_ID);
+    expect(await setupAudits(w)).toHaveLength(1);
+
+    // The console retries after a dropped response: the replay must not claim success.
+    w.setup.log.length = 0;
+    const again = await call(w, "/setup/notifications-url", {}, key);
+    expect(again.json).toMatchObject({
+      outcome: "replayed",
+      persisted: false,
+      fallback,
+    });
     expect(w.setup.log).toEqual([]);
   });
 
