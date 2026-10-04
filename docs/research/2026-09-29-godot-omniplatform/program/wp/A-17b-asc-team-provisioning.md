@@ -36,3 +36,9 @@ No change to scope. Once A-18a lands, its writes call `performStoreWrite` instea
 
 The role agent sets `--set A-17b in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set A-17b done`.
+
+## Corrections
+
+As built, A-17b departs from S-14 in its routes, its file layout, the wizard's capability list and
+the shared-bundle confirmation phrase. Each departure is recorded in S-14's "Corrections (A-17b as
+built, 2026-10-04)".
