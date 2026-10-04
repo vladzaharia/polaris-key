@@ -74,6 +74,8 @@ export default defineConfig(async () => {
             // A bytes host for the isolation smoke test. SELF requests to any other host
             // (every other test uses key.plrs.im) route exactly as without it.
             BLOB_ORIGIN: "https://dl.workerd.test",
+            // F-02: a registry host for its isolation smoke test, likewise.
+            PKG_ORIGIN: "https://pkg.workerd.test",
             TEST_MIGRATIONS: migrations,
             // 32 zero bytes, base64 — the same constant the Node lane seeds with.
             PLATFORM_KEK: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
