@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { clientIp, clientNetwork, rateLimitOk } from "../src/core/rateLimit.js";
+import {
+  clientIp,
+  clientNetwork,
+  RL_SHARDS,
+  rateLimitOk,
+  rateLimitShard,
+  shardIndex,
+  wideNetworkOf,
+} from "../src/core/rateLimit.js";
+import { handlePortalLogin } from "../src/services/identity/portal/auth.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -49,6 +58,114 @@ describe("rateLimitOk", () => {
     expect(await rateLimitOk(env, "djdl", rl, NOW)).toBe(true);
     expect(await rateLimitOk(env, "acme", rl, NOW)).toBe(true);
     expect(await rateLimitOk(env, "djdl", rl, NOW)).toBe(false);
+  });
+});
+
+// R10-04a (I-02): `_portal` and `_admin` were literal Durable Object names, so every customer's
+// and every operator's sign-in serialised through two objects.
+describe("rate-limit sharding (R10-04a)", () => {
+  /** The object names a mock RL namespace was asked for. */
+  function recordShards(env: ReturnType<typeof makeEnv>): string[] {
+    const names: string[] = [];
+    const ns = env.RL;
+    const idFromName = ns.idFromName.bind(ns);
+    ns.idFromName = (name: string) => {
+      names.push(name);
+      return idFromName(name);
+    };
+    return names;
+  }
+
+  it("spreads the _portal and _admin limiters over RL_SHARDS objects", () => {
+    for (const limiter of ["_portal", "_admin"]) {
+      const shards = new Set<string>();
+      for (let i = 0; i < 2000; i++) {
+        shards.add(
+          rateLimitShard(limiter, {
+            bucket: "portalLogin",
+            id: `198.51.100.${i % 256}:${i}`,
+            limit: 1,
+            windowSec: 60,
+          }),
+        );
+      }
+      expect(shards.size).toBe(RL_SHARDS);
+      for (const name of shards)
+        expect(name).toMatch(new RegExp(`^${limiter}:\\d+$`));
+    }
+  });
+
+  it("keeps one counter in exactly one object, so the limit stays exact", async () => {
+    const env = makeEnv(new KvMock(), []);
+    const names = recordShards(env);
+    const rl = {
+      bucket: "portalLogin",
+      id: "203.0.113.9",
+      limit: 3,
+      windowSec: 60,
+    };
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => rateLimitOk(env, "_portal", rl, NOW)),
+    );
+    expect(results.filter(Boolean).length).toBe(3);
+    expect(new Set(names).size).toBe(1);
+    expect(names[0]).toBe(
+      `_portal:${shardIndex("portalLogin:203.0.113.9", RL_SHARDS)}`,
+    );
+  });
+
+  it("gives two clients of one limiter independent budgets in (usually) different objects", async () => {
+    const env = makeEnv(new KvMock(), []);
+    const a = {
+      bucket: "adminLogin",
+      id: "192.0.2.1",
+      limit: 1,
+      windowSec: 60,
+    };
+    const b = { ...a, id: "192.0.2.2" };
+    expect(await rateLimitOk(env, "_admin", a, NOW)).toBe(true);
+    expect(await rateLimitOk(env, "_admin", a, NOW)).toBe(false);
+    expect(await rateLimitOk(env, "_admin", b, NOW)).toBe(true);
+  });
+
+  it("leaves a product's own limiter as one object per product", () => {
+    const rl = { bucket: "activate", id: "x", limit: 1, windowSec: 60 };
+    expect(rateLimitShard("djdl", rl)).toBe("djdl");
+    expect(rateLimitShard("djdl", { ...rl, id: "y" })).toBe("djdl");
+  });
+
+  it("shards the email buckets in every limiter", () => {
+    const rl = {
+      bucket: "emailSendRecipientHour",
+      id: "h",
+      limit: 1,
+      windowSec: 60,
+    };
+    expect(rateLimitShard("djdl", rl)).toBe(
+      `djdl:${shardIndex("emailSendRecipientHour:h", RL_SHARDS)}`,
+    );
+  });
+
+  it("routes portal sign-in through a _portal shard, not the literal `_portal` object", async () => {
+    const env = makeEnv(new KvMock(), []);
+    const names = recordShards(env);
+    await handlePortalLogin(
+      mkReq("GET", { "cf-connecting-ip": "203.0.113.50" }),
+      env,
+      makeTestDb(),
+    );
+    expect(names.length).toBeGreaterThan(0);
+    expect(names).not.toContain("_portal");
+    expect(names.every((n) => /^_portal:\d+$/.test(n))).toBe(true);
+  });
+});
+
+describe("wideNetworkOf", () => {
+  it("collapses IPv4 to its /24 and IPv6 to its /48", () => {
+    expect(wideNetworkOf("192.0.2.77")).toBe("192.0.2.0/24");
+    expect(wideNetworkOf("2001:db8:1:2:3:4:5:6")).toBe("2001:db8:1::/48");
+    expect(wideNetworkOf("2001:db8:1::9")).toBe("2001:db8:1::/48");
+    expect(wideNetworkOf("unknown")).toBe("unknown");
   });
 });
 

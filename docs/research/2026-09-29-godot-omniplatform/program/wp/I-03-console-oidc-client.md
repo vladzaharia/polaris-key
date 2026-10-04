@@ -49,6 +49,14 @@ One Pocket ID client serves console admin, the root portal and every `provider: 
 - The client is created by the owner in Pocket ID's admin UI; agents never create or read it. Until the owner sets the secrets, the fallback keeps the console working.
 - Do not log or echo the secrets; follow the existing secret-handling pattern in `admin/auth.ts`.
 
+- **Correction (implementer, 2026-10-04).** The code also read `ADMIN_OIDC_*` as a _legacy alias_
+  of `PLATFORM_OIDC_*`: `platformOidcConfig` fell back to it for the portal and products, and
+  Platform → Settings reported it as `legacyName` with a `legacy_oidc_names` warning. Giving the
+  names to the console means the portal must stop reading them, or a deploy with only the admin
+  trio would sign customers in through the operators' client. So `platformOidcConfig` now reads
+  `PLATFORM_OIDC_*` only, the settings inventory lists both trios, and the warning became
+  `console_oidc_shared` (shown while the console falls back).
+
 ## Steps
 
 1. Change the precedence in a console-specific config function, with tests.

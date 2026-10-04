@@ -34,10 +34,16 @@ class_name = "RateLimitDO"
 
 # P6-03: the update-health counters (`src/updateHealthDo.ts`), one object per (product,
 # deliverable, release), reached only through `src/core/updateHealth.ts`. `durable_objects` is
-# NOT inheritable, so every environment below repeats both bindings.
+# NOT inheritable, so every environment below repeats every binding.
 [[durable_objects.bindings]]
 name = "UPDATE_HEALTH"
 class_name = "UpdateHealthDO"
+
+# I-02: the atomic single-use store (`src/singleUseDo.ts`): sign-in flows, magic links, device
+# codes and email codes, consumed at most once. Reached only through `src/core/singleUse.ts`.
+[[durable_objects.bindings]]
+name = "SINGLE_USE"
+class_name = "SingleUseDO"
 
 [[migrations]]
 tag = "v1"
@@ -56,6 +62,11 @@ new_sqlite_classes = ["RateLimitDO"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["UpdateHealthDO"]
+
+# I-02: the single-use store. Its own append-only tag, SQLite-backed like the others.
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SingleUseDO"]
 
 # ---------------------------------------------------------------------------
 # Scheduled maintenance (R11-09 / R12-10). Without this block the worker has no `scheduled()`
@@ -146,6 +157,9 @@ class_name = "RateLimitDO"
 [[env.prod.durable_objects.bindings]]
 name = "UPDATE_HEALTH"
 class_name = "UpdateHealthDO"
+[[env.prod.durable_objects.bindings]]
+name = "SINGLE_USE"
+class_name = "SingleUseDO"
 [[env.prod.kv_namespaces]]
 binding = "HOT"
 id = "51b31c97ac2140e5af2402bed1a31e71"
@@ -213,6 +227,9 @@ class_name = "RateLimitDO"
 [[env.staging.durable_objects.bindings]]
 name = "UPDATE_HEALTH"
 class_name = "UpdateHealthDO"
+[[env.staging.durable_objects.bindings]]
+name = "SINGLE_USE"
+class_name = "SingleUseDO"
 [[env.staging.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_STAGING_KV_ID"
@@ -270,6 +287,9 @@ class_name = "RateLimitDO"
 [[env.dev.durable_objects.bindings]]
 name = "UPDATE_HEALTH"
 class_name = "UpdateHealthDO"
+[[env.dev.durable_objects.bindings]]
+name = "SINGLE_USE"
+class_name = "SingleUseDO"
 [[env.dev.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_DEV_KV_ID"
@@ -323,6 +343,9 @@ class_name = "RateLimitDO"
 [[env.test.durable_objects.bindings]]
 name = "UPDATE_HEALTH"
 class_name = "UpdateHealthDO"
+[[env.test.durable_objects.bindings]]
+name = "SINGLE_USE"
+class_name = "SingleUseDO"
 [[env.test.kv_namespaces]]
 binding = "HOT"
 id = "local-registry-clients-kv"
@@ -344,6 +367,9 @@ PKEY_ENVIRONMENT = "test"
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
 # Optional portal-specific secret:
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
+# Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
+#   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
+#   console signs in through PLATFORM_OIDC_*; the portal never reads them.
 # Customer portal email:
 #   prod binds Cloudflare Email Service as EMAIL and restricts senders to noreply@plrs.im.
 #   Set PORTAL_EMAIL_FROM if the default sender should not be "Polaris Key <noreply@plrs.im>".

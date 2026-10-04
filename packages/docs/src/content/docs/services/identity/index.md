@@ -19,8 +19,10 @@ live inside this service.
 D-14 makes this a deliberately narrow carve: what lands here is the OIDC, browser-session and
 portal code that already existed, moved into `services/identity/` with a namespace and a
 descriptor around it — not a new, centralized identity capability. Building that is explicitly
-out of scope for now. A product that does not enable Identity has none of this: no
-`/identity/*` routes at all, and the customer portal simply shows nothing for that product.
+out of scope for now. A product that does not enable Identity has no `/identity/*` routes at
+all. The customer portal is the exception: it is a platform concern and runs for every product
+regardless of the Identity flag, governed by the product's portal settings instead (see
+[Customer portal](/docs/services/identity/portal/#the-identity-flag-does-not-gate-the-portal)).
 
 ## In this section
 

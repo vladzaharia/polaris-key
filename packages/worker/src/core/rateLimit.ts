@@ -4,7 +4,8 @@ import type { Env } from "../env.js";
 // Abuse protection on the credential-minting hot paths (activate/token/mint) and admin login.
 // Backed by an atomic per-product Durable Object (`../rateLimitDo.ts`) so concurrent bursts
 // can't slip past a non-atomic counter. Keyed by (product, bucket, id) — product-scoped like
-// everything else.
+// everything else. The platform-global `_portal` and `_admin` limiters, and the email buckets,
+// are sharded across several objects (`rateLimitShard`, R10-04a).
 //
 // Only this CLIENT half lives in core. `RateLimitDO` itself stays at `src/rateLimitDo.ts`,
 // re-exported by `src/index.ts`: wrangler binds the class by NAME off the entrypoint's exports
@@ -125,6 +126,16 @@ const FAIL_MODE: Record<string, FailMode> = {
   // the limiter gone, one device could spend the whole product's daily quota.
   attestChallenge: "closed",
   attest: "closed",
+  // I-02: the email send limits (`core/emailLimits.ts`). A refused send is answered exactly
+  // like a sent one by the caller (enumeration safety, I-08), so failing closed costs a real
+  // user one resend and an outage can never become an unlimited mail cannon at a victim's
+  // inbox or the shared sender quota.
+  emailSendIp: "closed",
+  emailSendNetwork: "closed",
+  emailSendDevice: "closed",
+  emailSendRecipientHour: "closed",
+  emailSendRecipientDay: "closed",
+  emailSendProductDay: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
@@ -152,6 +163,55 @@ function failModeFor(bucket: string): FailMode {
   return FAIL_MODE[bucket] ?? "closed";
 }
 
+/**
+ * FNV-1a (32-bit) of `s`, reduced to `[0, n)`. A spreading function, not a security one: the
+ * inputs it shards are either already peppered hashes or attacker-chosen values whose only
+ * effect is which shard they land in.
+ */
+export function shardIndex(s: string, n: number): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h % n;
+}
+
+/**
+ * R10-04a: the platform-global limiter names that are split across several objects. `_portal`
+ * (every customer's sign-in) and `_admin` (every operator's) were literal shard names, so all
+ * interactive sign-in for the platform serialised through two Durable Objects: a cross-tenant
+ * availability chokepoint reachable with no credentials. Each is now `RL_SHARDS` objects, and a
+ * counter's object is chosen by a hash of its `(bucket, id)`, so one counter still lives in
+ * exactly one object (the limit stays exact) while different clients spread out.
+ *
+ * A product's own limiter stays one object per product: it is already tenant-scoped.
+ */
+export const SHARDED_LIMITERS: ReadonlySet<string> = new Set([
+  "_portal",
+  "_admin",
+]);
+
+/**
+ * Buckets sharded in EVERY limiter, whatever the product: the email send and verify limits
+ * (`core/emailLimits.ts`). They are keyed by recipient, network or device, so a busy product's
+ * sign-in mail does not pile onto that product's one limiter object either.
+ */
+export const SHARDED_BUCKET_PREFIX = "email";
+
+/** Objects per sharded limiter. */
+export const RL_SHARDS = 32;
+
+/** The limiter object name for one check (`RL.idFromName`). Exported for tests. */
+export function rateLimitShard(product: string, rl: RateLimit): string {
+  if (
+    !SHARDED_LIMITERS.has(product) &&
+    !rl.bucket.startsWith(SHARDED_BUCKET_PREFIX)
+  )
+    return product;
+  return `${product}:${shardIndex(`${rl.bucket}:${rl.id}`, RL_SHARDS)}`;
+}
+
 /** Returns true if the call is within the limit (and counts it), false if it should 429. */
 export async function rateLimitOk(
   env: Env,
@@ -160,7 +220,7 @@ export async function rateLimitOk(
   now: number,
 ): Promise<boolean> {
   try {
-    const stub = env.RL.get(env.RL.idFromName(product));
+    const stub = env.RL.get(env.RL.idFromName(rateLimitShard(product, rl)));
     const res = await stub.fetch("https://rl/check", {
       method: "POST",
       body: JSON.stringify({
@@ -213,6 +273,26 @@ export function clientNetwork(req: Request): string {
   if (!ip.includes(":")) return ip;
   const hextets = expandIpv6(ip);
   return hextets ? `${hextets.slice(0, 4).join(":")}::/64` : ip;
+}
+
+/**
+ * A WIDER network than `clientNetwork`, for the email send limit "per network" (I-02): the
+ * IPv4 /24 (`192.0.2.0/24`) or the IPv6 /48 (`2001:db8:1::/48`, a common end-site
+ * assignment), so one site cannot multiply its per-address budget by its address count. Takes
+ * the address string (`clientIp`); anything unparseable is returned as-is.
+ */
+export function wideNetworkOf(ip: string): string {
+  if (!ip.includes(":")) {
+    const octets = ip.split(".");
+    if (
+      octets.length === 4 &&
+      octets.every((o) => /^\d{1,3}$/.test(o) && Number(o) <= 255)
+    )
+      return `${octets.slice(0, 3).map(Number).join(".")}.0/24`;
+    return ip;
+  }
+  const hextets = expandIpv6(ip);
+  return hextets ? `${hextets.slice(0, 3).join(":")}::/48` : ip;
 }
 
 /** The eight hextets of an IPv6 address (lower-case, no leading zeros), or null. Accepts `::`

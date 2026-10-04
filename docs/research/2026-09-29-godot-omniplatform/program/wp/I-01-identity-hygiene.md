@@ -61,12 +61,45 @@ These are gaps G10 and G14 and threat-model item 11 in S-16. They are wrong toda
 
 ## Acceptance criteria
 
-- [ ] A fresh OIDC licence row has `origin = 'oidc'`; a test proves it.
-- [ ] Portal identities are keyed by issuer; existing rows are migrated; the portal suite passes.
-- [ ] THREAT-MODEL A6, the §5 `sub`/`email_verified` rows and T5 are corrected.
-- [ ] Docs and the service summary state that the portal runs regardless of the Identity flag.
-- [ ] `authPoll` is absent from discovery; `gen:transcripts -- --check` passes; the PR lists the SDK grep showing no reader.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] A fresh OIDC licence row has `origin = 'oidc'`; a test proves it.
+- [x] Portal identities are keyed by issuer; existing rows are migrated; the portal suite passes.
+- [x] THREAT-MODEL A6, the §5 `sub`/`email_verified` rows and T5 are corrected.
+- [x] Docs and the service summary state that the portal runs regardless of the Identity flag.
+- [x] `authPoll` is absent from discovery; `gen:transcripts -- --check` passes; the PR lists the SDK grep showing no reader.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+
+## Corrections from the implementation
+
+Recorded by I-01 where the code made this brief's text inexact:
+
+- **The backfill cannot live in the migration.** The platform issuer is a Worker secret
+  (`PLATFORM_OIDC_ISSUER`), which D1 SQL cannot read. Migration `0059_portal_identity_issuer.sql`
+  therefore adds only a data-layer guard (an insert trigger that refuses a `provider` that is
+  neither an http(s) issuer URL nor the legacy literal `'oidc'`) and leaves existing rows
+  untouched; the Worker re-keys the legacy `provider = 'oidc'` rows to the configured issuer
+  (`rekeyLegacyPortalIdentities`, an idempotent `UPDATE OR IGNORE`) before every portal OIDC
+  sign-in, ahead of the identity lookup. The guard is expand-only on purpose: `deploy.yml` applies
+  migrations before it deploys the Worker, so a pre-I-01 Worker that is still serving (between the
+  two steps, or after a failed deploy) or one rolled back to in Cloudflare keeps writing `'oidc'`
+  on first-time portal sign-ins, and those must not fail. Such rows are re-keyed at the user's next
+  sign-in on the I-01 Worker. Refusing the literal belongs to a later contract-phase migration. The
+  column keeps its name (`provider`), so a Worker deployed before the migration keeps working, and
+  a Worker rollback needs no SQL; the optional data-shape rollback is in the migration header and
+  is exercised by a test. The issuer key is normalised without a trailing slash
+  (`portalIdentityIssuerKey`), like every other issuer URL in the flow, so an operator editing
+  `PLATFORM_OIDC_ISSUER` only by its trailing slash does not orphan identities.
+  No table changes owner, so `TABLE_OWNERS` is unchanged.
+- **Transcripts did not move.** `conformance/transcripts/discovery-capabilities.json` records a
+  product with Identity off (`"identity": { "enabled": false }`), so it never carried `authPoll`;
+  `gen:transcripts` rewrote nothing. The advertisement was pinned instead by
+  `test/fixtures/discovery-golden.json` (a sanctioned edit, noted in `discoveryGolden.test.ts`),
+  `test/surfaces.test.ts` and the OpenAPI discovery example, all updated.
+- **The "service summary"** is `tools/services.json`'s `identity.summary`, regenerated into
+  `packages/admin/src/services.generated.ts` with `gen:services`.
+- **SDK grep** (no reader of `authPoll`):
+  `grep -rniE "authPoll|auth_poll|identity/auth/poll" packages/*/src sdks` outside
+  `packages/worker` and `packages/docs` returns nothing (covers `sdks/{godot,kotlin,python,swift}`,
+  `sdk-node`, `sdk-react`, `client-core`, `cli`, `admin`).
 
 ## Verify
 

@@ -387,18 +387,14 @@ async function productSetupView(
     .filter((secret) => !secret.configured)
     .map((secret) => secret.name);
 
+  // The platform client only (I-03): `ADMIN_OIDC_*` is the console's own client and never
+  // serves a `provider: platform` product.
+  // Per field, so the readiness row names exactly the variable that is missing.
   const platformOidcIssuer =
-    typeof env.PLATFORM_OIDC_ISSUER === "string"
-      ? env.PLATFORM_OIDC_ISSUER
-      : typeof env.ADMIN_OIDC_ISSUER === "string"
-        ? env.ADMIN_OIDC_ISSUER
-        : undefined;
+    typeof env.PLATFORM_OIDC_ISSUER === "string" && env.PLATFORM_OIDC_ISSUER;
   const platformOidcClientId =
-    typeof env.PLATFORM_OIDC_CLIENT_ID === "string"
-      ? env.PLATFORM_OIDC_CLIENT_ID
-      : typeof env.ADMIN_OIDC_CLIENT_ID === "string"
-        ? env.ADMIN_OIDC_CLIENT_ID
-        : undefined;
+    typeof env.PLATFORM_OIDC_CLIENT_ID === "string" &&
+    env.PLATFORM_OIDC_CLIENT_ID;
   const oidcProvider = oidc?.provider === "custom" ? "custom" : "platform";
   const oidcMissing = oidc
     ? oidcProvider === "custom"

@@ -216,8 +216,6 @@ export interface PlatformDeployValue {
   name: string;
   area: string;
   value: string | string[] | null;
-  /** When a legacy name supplied the value, that name. */
-  legacyName?: string;
 }
 
 /** `GET /manage/api/platform/settings` (worker `admin/handlers/platformSettings.ts`). */

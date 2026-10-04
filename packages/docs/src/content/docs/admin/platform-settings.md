@@ -58,8 +58,8 @@ read the settings fresh at the start of each run.
 
 Platform → Settings has these sections, top to bottom.
 
-- **Warnings.** Each warning the API returns (legacy `ADMIN_OIDC_*` names, `PLATFORM_KEK_ID` set,
-  `PORTAL_SESSION_SECRET` unset) is shown first.
+- **Warnings.** Each warning the API returns (the console still shares the customer sign-in
+  client, `PLATFORM_KEK_ID` set, `PORTAL_SESSION_SECRET` unset) is shown first.
 - **Background jobs.** The four runtime settings. Each row shows the effective value and a source
   badge: _Code default_, _Deploy var_ or _Set in console_ (with who set it and when). Each row
   saves on its own:
@@ -76,8 +76,9 @@ Platform → Settings has these sections, top to bottom.
   - A stored value outside the bounds is flagged as not applied.
   - If the settings store cannot be read, the switches show _Off: store unreadable_ and nothing
     can be saved.
-- **Identity & access**, **Delivery** and **Email.** The deploy-time values, read-only. A value
-  that came from a legacy name says so.
+- **Identity & access**, **Delivery** and **Email.** The deploy-time values, read-only. Identity
+  shows the console's own client (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform
+  client the portal and products use (`PLATFORM_OIDC_*`).
 - **Limits.** The code constants: retention, the bucket's age lock, the collector's shortest
   grace and the delta size ceiling. Collapsed until you open it.
 - **Keyring.** The KEK keyring, read-only: which KEK secrets are set, the `PLATFORM_KEK_ACTIVE`
@@ -114,15 +115,17 @@ Returns:
   row (value, whether it is valid, who set it and when), bounds, and the `version` the next write
   must send;
 - `deployTime`: the deploy-time values that are not credentials, such as the environment, the
-  admin group, the identity provider's issuer and client id, the parsed issuer allowlist, the
-  origins, the bucket and the KEK kid names. A value that came from a legacy `ADMIN_OIDC_*` name
-  says so in `legacyName`;
+  admin group, the issuer and client id of the console's client (`ADMIN_OIDC_*`) and of the
+  platform client (`PLATFORM_OIDC_*`), the parsed issuer allowlist, the origins, the bucket and
+  the KEK kid names;
 - `secrets`: every platform secret as `{ name, set }`. The value, its length and any hash of it
   are never returned;
 - `constants`: code constants that act as policy, such as the admin session length and the audit
   retention;
-- `warnings`: the legacy `ADMIN_OIDC_*` names are what resolved; `PLATFORM_KEK_ID` is set; or
-  `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions with the admin secret.
+- `warnings`: `console_oidc_shared` while the console signs in through the platform client
+  because `ADMIN_OIDC_ISSUER` or `ADMIN_OIDC_CLIENT_ID` is unset (`names` lists which);
+  `PLATFORM_KEK_ID` is set; or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions
+  with the admin secret.
 
 ```http
 PATCH /manage/api/platform/settings/<key>

@@ -17,7 +17,7 @@
  *
  * A row whose render fails stays queued with its `attempts` counted (`stmtRenderFailed`), and the
  * drain reads fewest-attempts first, so a package that keeps failing never holds the head of the
- * queue ahead of fresh changes; an enqueue resets the count (0058_f).
+ * queue ahead of fresh changes; an enqueue resets the count (0060).
  */
 
 import type { Env } from "../env.js";

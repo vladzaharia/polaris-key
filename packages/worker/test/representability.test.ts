@@ -53,6 +53,7 @@ import { handleTrustManifest } from "../src/core/trust.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { flowKey, handleAuthCallback } from "../src/services/identity/oidc.js";
 import { getLicenseBySub } from "../src/repo.js";
+import { artefacts } from "./singleUseMock.js";
 
 // The OIDC suite swaps only the IdP's remote key getter, as `oidcEdge` and `R8-oidc` do, so the
 // real `jwtVerify` still runs over the ID token.
@@ -768,7 +769,7 @@ describe("OIDC sign-in stores an unsignable name or email as null", () => {
           headers: { "content-type": "application/json" },
         }),
     );
-    await w.env.HOT.put(
+    await artefacts(w.env).put(
       await flowKey(w.env, SLUG, "S"),
       JSON.stringify({ verifier: "v", nonce: "n", redirectUri: REDIRECT }),
     );
