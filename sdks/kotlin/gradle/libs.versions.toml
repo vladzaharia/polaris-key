@@ -6,6 +6,12 @@
 # java.net.http does not exist on Android), and Tink as the Ed25519 backend below Android API 33
 # (compileOnly in :core: the JCA backend needs nothing, and :android brings tink-android, P6-12).
 [versions]
+# The shared Android conventions every module reads (P6-09): compile and target SDK, min SDK and the
+# JVM bytecode level. Change them here, never in a module's build file.
+androidCompileSdk = "36"
+androidTargetSdk = "36"
+androidMinSdk = "24"
+jvmTarget = "17"
 agp = "8.6.1"
 kotlin = "2.1.21"
 godot = "4.7.2.stable"

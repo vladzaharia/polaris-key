@@ -8,10 +8,10 @@
 //     :update :packs                            (P6-08)
 //     :sdk          the umbrella client          (P6-07)
 //   Android libraries:
-//     :platform     polaris-key-platform, the shared Android backend (install source, Keystore,
-//                   and per flavour Play In-App Updates + Play Asset Delivery, or PackageInstaller
-//                   self-update). STANDALONE: it depends on no other SDK module, so the Godot
-//                   binding links it alone (P5-06, P6-09)
+//     :platform     polaris-key-platform-{play,direct}, the shared Android backend (install
+//                   source, Keystore, Play Integrity, and per flavour Play In-App Updates + Play
+//                   Asset Delivery, or PackageInstaller self-update). STANDALONE: it depends on no
+//                   other SDK module, so the Godot binding links it alone (P5-06, P6-09)
 //     :android      the only module that sees both :core and :platform (P6-12)
 //     :ui           the Compose UI kit (P6-11)
 //     :godot        the Godot Android plugin (v2) binding :platform, kept with the Godot SDK in

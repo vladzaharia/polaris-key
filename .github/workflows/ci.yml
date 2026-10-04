@@ -404,7 +404,7 @@ jobs:
             sdks/kotlin/core/build/reports/
             sdks/kotlin/conformance/build/reports/
 
-  # P5-06: the Android platform AAR (sdks/kotlin :platform, proposed im.plrs.key:polaris-key-platform)
+  # P5-06/P6-09: the Android platform AAR (sdks/kotlin :platform, polaris-key-platform-{play,direct})
   # and the Godot Android binding (sdks/godot/native/android, built as :godot), on JDK 17 and the
   # runner's Android SDK with platforms;android-36 and build-tools;36.1.0. Steps: both flavours'
   # unit tests (Robolectric; Play Core's FakeAppUpdateManager, a fake asset-pack manager, the
@@ -455,6 +455,13 @@ jobs:
       - name: Module boundaries (:core has no Android dependency, :platform no SDK module)
         working-directory: sdks/kotlin
         run: ./gradlew --no-daemon checkModuleBoundaries
+      # P6-09: :platform stays standalone (no project or im.plrs.key module on any classpath), and
+      # both flavours publish to the local build/repo with POM, sources and Gradle module metadata.
+      - name: Standalone platform and local publication
+        working-directory: sdks/kotlin
+        run: |
+          ./gradlew --no-daemon :platform:checkStandalone :platform:publishAllPublicationsToLocalRepository
+          tools/check_publication.sh
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pkey-godot/4.7.2

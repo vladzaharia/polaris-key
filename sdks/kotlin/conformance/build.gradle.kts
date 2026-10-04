@@ -10,7 +10,7 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(libs.versions.jvmTarget.get().toInt())
 }
 
 dependencies {
