@@ -332,6 +332,7 @@ const TABLE_OWNERS = {
     "delta_demand",
     "platform_deploys",
     "platform_audit",
+    "registry_render_queue",
   ],
   license: [
     "licenses",
@@ -368,6 +369,7 @@ const TABLE_OWNERS = {
     "release_delegations",
     "release_delegated_records",
     "release_lazy_deltas",
+    "release_packages",
   ],
   distribution: [
     "dist_outlets",
@@ -385,6 +387,9 @@ const TABLE_OWNERS = {
     "dist_store_products",
     "dist_purchase_bindings",
     "dist_purchases",
+    "dist_registry_owners",
+    "dist_registry_feeds",
+    "dist_registry_policy",
   ],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [

@@ -595,6 +595,10 @@ describe("R11-05 product scoping", () => {
       // product (the KEK sweep, A-13's settings). Read only by the platform-admin activity
       // endpoint; product-scoped actions still go to `audit`, which is product-first.
       "platform_audit",
+      // 0055_d (F-03) — the platform's per-ecosystem package-feed kill switch and size ceiling.
+      // One row per ecosystem, above every owner's own settings; written only by a platform
+      // admin. Each owner's settings live in `dist_registry_feeds`, which IS product-first.
+      "dist_registry_policy",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
@@ -857,7 +861,7 @@ describe("R11-08 migration safety", () => {
   });
 
   it("migrations are additive only, so migrate-then-deploy ordering is forward-safe", () => {
-    // TWO deliberate exceptions, both create/copy/drop/rename rebuilds — the only shape SQLite
+    // THREE deliberate exceptions, all create/copy/drop/rename rebuilds — the only shape SQLite
     // offers for changing a constraint in place:
     //   * 0016_drop_dead_pii.sql removes `customers`, `identity` and
     //     `release_download_tokens.customer_id`, none of which any code in src/ reads or writes
@@ -865,7 +869,15 @@ describe("R11-08 migration safety", () => {
     //   * 0017_portal_fk_cascade.sql rebuilds four portal tables to add `ON DELETE CASCADE`. It
     //     changes NO column and NO name, only the foreign-key clause, so old code reads and
     //     writes them exactly as before — the rebuild is invisible above the schema.
-    const REBUILDS = ["0016_drop_dead_pii.sql", "0017_portal_fk_cascade.sql"];
+    //   * 0055_b_release_deliverables_kind.sql (F-03) rebuilds `release_deliverables` to widen its
+    //     kind CHECK with `package` and add two NULLable columns. It renames and removes nothing an
+    //     older Worker reads or writes, so the rebuild is invisible above the schema too; its
+    //     child rows are set aside and restored around the drop (the file says why).
+    const REBUILDS = [
+      "0016_drop_dead_pii.sql",
+      "0017_portal_fk_cascade.sql",
+      "0055_b_release_deliverables_kind.sql",
+    ];
     const sql = MIGRATION_FILES.filter((f) => !REBUILDS.includes(f))
       .map(sqlFor)
       .join("\n")
