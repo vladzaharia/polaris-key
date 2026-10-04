@@ -301,11 +301,30 @@ star field (`surface-page`, no art behind it). The card has three slots:
 - `h1` "Sign in to Polaris Key", one line of lede.
 - **Email** (`autocomplete="username webauthn"`), so the browser offers saved passkeys as you type
   (conditional UI, drawn on desktop), then **Continue** (the one primary).
-- "or", then provider buttons, full width and equal weight (App Review 4.8): **Continue with
-  Apple**, **Continue with Google**, **Continue with Steam**. **No other providers; no Discord.**
+- "or", then the **provider row** (below): Apple, Google and Steam as logo-only buttons in one
+  row, equal width and equal weight (App Review 4.8). **No other providers; no Discord.**
 - **Sign in with a passkey** (ghost button) for people whose browser didn't offer one.
 - Quiet links under a rule: **Have a license key?** (§4.5) and **Sign in with another device**
   (§4.23).
+
+**The provider row** (`ProviderRow`, owner decision 2026-10-04):
+
+- **One row, never a stack.** Every provider button sits in a single row of equal-width buttons, at
+  every breakpoint. The row follows the same order everywhere: Apple, Google, Steam.
+- **Logo only.** Each button shows only the provider's mark, 24 px, centred in a 52 px tall
+  `secondary` button. Google's G keeps its four colours; the Apple and Steam marks take
+  `text-strong`, as each provider's guidelines allow. There is no visible text in the button.
+- **Named for everyone.** Each button has the accessible name **Continue with Apple**, **Continue with
+  Google** or **Continue with Steam** (`aria-label`, repeated as the hover tooltip), and the row is a
+  `role="group"` labelled "Or continue with". In "add a method" contexts the names read **Connect
+  Apple** and **Connect Google** (§4.10).
+- **Focus and hover:** the standard violet 2 px ring with 2 px offset on `:focus-visible` (02 shows it
+  on Google), and `border-strong` on hover. The buttons are 52 px tall, so every target clears 44 px.
+- **1 to 3 buttons.** The row has as many buttons as the product ships providers. Three split the
+  row into thirds (01); two split it in half (02, 06, 07, 08); one keeps the width of a half-row
+  button, centred, so a lone logo never becomes a full-width bar (14, Drift Kart: Steam only).
+- The **known-account hint** (§4.3) keeps its labelled primary ("Continue with Steam"): it is the
+  step's one primary, not a provider row.
 
 **Which providers appear** follows where the product ships (S-16 owner decision): Apple whenever
 the product ships on iOS or macOS App Store and offers any social sign-in (always, on the hosted
@@ -380,10 +399,11 @@ that returns to the full method list for this context.
 
 ![License-key sign-in](portal/05-signin-key-desktop-dark.png)
 
-The quiet path from **Have a license key?**: one mono field that is tolerant of dashes, spaces and
-case and **validates the format as you type** ("12 of 16"), **Continue** (disabled until the
-format is valid), and "Lost your key? Sign in with the email you bought with." Each successful use
-is a **key entry** (S-16) and leads to §4.6.
+The quiet path from **Have a license key?**: the `KeyField` (§4.17), empty and focused with the
+placeholder `pkey_product_…` and a **Paste** button inside the field, the help line "Paste the whole
+key. It starts with pkey\_ and capital letters matter.", **Continue** (disabled until the format is
+valid), and "Lost your key? Sign in with the email you bought with." Each successful use is a **key
+entry** (S-16) and leads to §4.6.
 
 ### 4.6 Key entry: the account upgrade (skippable, then forced)
 
@@ -394,7 +414,8 @@ is a **key entry** (S-16) and leads to §4.6.
 S-16 owner decision (2026-10-04): a license key has a limited, product-configurable number of
 **entries** (5, 10, 25 …), counted across the portal and apps.
 
-- **While entries remain:** a key card (product icon, name, tier, key ending, **Key works**), "Keep
+- **While entries remain:** a key card (product icon, name, tier, the masked key
+  `pkey_nightfall_…Tz4g`, **Key works**), "Keep
   Nightfall in an account", a segmented **entries meter** ("2 of 5 key entries left · This was entry
   3", used segments in `warning`), email with **Create account**, the product's providers, and
   **Skip for now and open Nightfall** (ghost). "Already have an account? Sign in".
@@ -481,7 +502,8 @@ to sign in", and "<Developer> · <where>":
 - Reached from `/tv` (type the code) or the TV's QR (`verification_uri_complete`). The header adds a
   code panel, "Code from your TV · WDJB-MJHT · Check it matches the screen".
 - Body: "Sign in to finish on your TV · Use your phone or computer here. The TV signs in by itself
-  when you're done." then the §4.1 methods (Drift Kart: Steam and Google), and "Didn't start this on
+  when you're done." then the §4.1 methods (Drift Kart ships only on Steam, so its provider row has
+  one button: the one-button case), and "Didn't start this on
   a TV? Cancel it. Someone may be trying to use your account."
 - Signed in already: straight to the confirm step (§4.8) with the device name.
 - Done: "Drift Kart is signed in on Living room TV · Look at your TV: it continues by itself", the
@@ -495,8 +517,9 @@ After a first sign-in with a platform identity (Steam, Apple, Google, Game Cente
 gate (§4.29), a skippable card: "Signed in with Steam · marafox · Done", "Add another way to sign
 in · If you ever can't get into Steam, a second way in keeps your library yours", rows for **Add a
 passkey** (recommended: the gate already confirmed an email, so a passkey can be added at once),
-the confirmed email shown as **Added** ("Confirmed just now · sign in with a code"), **Apple**,
-**Google**; a quiet dashed link row **Already have a Polaris Key
+the confirmed email shown as **Added** ("Confirmed just now · sign in with a code"), then "Or
+connect another account" over a provider row of the providers not yet linked (Apple, Google; names
+**Connect Apple**, **Connect Google**); a quiet dashed link row **Already have a Polaris Key
 account? Link an existing account** (§4.11; the way out for an Apple Hide My Email first sign-in whose
 relay address can never match an existing account); **Skip for now**; "You can add these any time in
 Account → Sign-in methods". Shown once per account and again only if the account still has a single method
@@ -623,11 +646,10 @@ Opened by the header action, the phone bar pill, ⌘K, the empty library, the no
 `/activate?key=`. **Always a modal over the Library** (a bottom sheet on phones); there is no redeem
 page.
 
-1. **Enter:** "Activate a license", one line ("Type or paste a key from a store, a developer or an
-   email. The product joins your library and stays there, even if you lose the key."), the mono key
-   field: dashes, spaces and case don't matter; it is normalised and grouped as you type, the format
-   is validated live ("14 of 16"; a character outside the alphabet is flagged at once), **Continue**
-   enables when the format is valid.
+1. **Enter:** "Activate a license", one line ("Paste a key from a store, a developer or an email.
+   The product joins your library and stays there, even if you lose the key."), the `KeyField`
+   (below) with "Key for Mossgarden · Little Fern" under it once a key is pasted, and **Continue**,
+   which enables when the format is valid.
 2. **Confirm:** the product's key art across the top of the modal, the icon overlapping it, "Key
    recognised · Mossgarden · Little Fern", `h2` **Add Mossgarden to your account?**, the tier tag,
    the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with **Change key**, and
@@ -635,6 +657,40 @@ page.
 3. **Done:** the art with **In your library**, "Mossgarden is in your library · Download it, see
    your license and manage devices on its page. You won't need the key again.", **Activate another**
    and **Open Mossgarden** (the product page; focus lands on its `h1`).
+
+**The license key and its field.** Polaris Key license keys are **not** grouped codes. The real
+format (`packages/worker/src/crypto.ts`, `mintLicenseKey` and `productFromKey`) is
+
+```text
+pkey_<product-slug>_<22 characters of base64url>
+pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w
+```
+
+The slug is lower case (`a-z 0-9 -`); the 22 characters are 128 random bits in base64url, mixed case,
+using `A–Z a–z 0–9 - _`. Keys are **case-sensitive**: `Q7x` and `q7X` are different keys.
+
+The `KeyField`:
+
+- **Monospace and paste-first.** A single field (`autocomplete="off"`, `autocapitalize="off"`,
+  `autocorrect="off"`, `spellcheck="false"`, `inputmode="text"`) with a **Paste** button while empty,
+  placeholder `pkey_product_…`. A 38-character key wraps at any character instead of scrolling, so the
+  whole key stays visible on a phone.
+- **Never rewritten.** No auto-grouping, no dashes inserted, **no uppercasing or lowercasing**. The
+  only normalisation is trimming leading and trailing whitespace (and newlines from a paste).
+- **Format validation** is the regex `^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]{22})$`. A valid key gets the
+  success border and a check ("Key format is valid"); **Continue** enables. (`productFromKey`
+  accepts 8 or more characters after the slug; the portal checks the exact minted length so a
+  cut-off paste is caught before any request.)
+- **The parts are coloured:** `pkey_` and the separator in `text-subtle`, the slug in `accent-fg`,
+  the secret in `text-strong`.
+- **The product is known before the server is called.** The `pkey_<product>_` prefix names the
+  product, so the modal shows **Key for Mossgarden · Little Fern** (product icon, name, developer)
+  as soon as the key is pasted, from the slug and public product presentation (G1) alone. Nothing
+  about the key is sent until **Continue** (G22 preview). An unknown slug shows the slug itself
+  ("Key for mossgarden"); a key with no `pkey_` prefix gets the "Not a license key" error.
+- **Masked display** (product page, key card, anywhere a stored key is shown) is the prefix, the
+  slug, an ellipsis and the last 4: `pkey_tidewater_…KQ2w`. Only the last 4 are kept, so a key is
+  never shown in full after it is entered.
 
 ### 4.18 Activate license: deep link
 
@@ -654,8 +710,9 @@ Inline under the field (S-16 claim rules), never a toast:
 
 | Case                         | Copy and action                                                                                                                                                                                        |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Not a key (format)           | Live while typing: "That doesn't look like a license key. Check for missing characters."                                                                                                               |
-| **Unknown key**              | "We couldn't find that key. Check it against your receipt: 0 and O, 1 and I are easy to mix up."                                                                                                       |
+| **Not a license key**        | No `pkey_` prefix, shown at once: "That isn't a Polaris Key license key. Ours start with pkey\_. This one looks like a Steam key: activate it in Steam." (the Steam line only for the 5×3 Steam shape) |
+| **Incomplete key**           | Right prefix, wrong length or a character outside `A–Z a–z 0–9 - _`: "This key is cut short. After mossgarden\_ come 22 characters, and this has 15. Copy the whole key again."                        |
+| **Unknown key**              | "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it."                                                                      |
 | **Owned by another account** | "This Nightfall license is already in another Polaris Key account. A license never moves by its key." Notice: "If that account is yours too, sign in to it and join the two. Link an existing account" |
 | **Verified-email mismatch**  | "Lumen RAW was bought with m•••@proton.me. It joins only the account with that email verified." **Add and verify that email** (unless the product sets `claimByKey`)                                   |
 | **No key entries left**      | **Decided:** a `warning` notice, not a block, when signed in: "This key has used all 5 entries. Add it here and Ember Tactics signs you in instead of asking for the key." **Continue** stays enabled. |
@@ -722,7 +779,7 @@ action and **Email me the desktop links**.
 **What's new**, **License**, **"<Product> knows you as …"** (the identity this product uses, with
 **Manage sign-in methods**; only for products with Identity on, §3.1), **Devices** (seat meter, rows with **Remove**, dormant rows), **Package
 access** and **Help** are unchanged from the converged design: every non-covered build is listed
-with **Not included** and its reason as text; the key shows only its end with **Get a new key**
+with **Not included** and its reason as text; the key is masked as `pkey_tidewater_…KQ2w` (prefix, slug, last 4) with **Get a new key**
 (G7); devices show "+1 not using a seat"; package tokens show prefix, last used, expiry and the
 amber "Expires in 6 days" pill.
 
@@ -979,32 +1036,32 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 
 ### 5.2 New components
 
-| Component                                                                                                                                                   | Contract                                                                                                                                                                                                                                                                                         |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PortalShell`                                                                                                                                               | Header (lockup, Library/Discover nav, ⌘K, **Activate license** action, account menu), phone bottom bar (Library · Activate pill · Discover), footer, skip link, `main`.                                                                                                                          |
-| `AccountMenu`                                                                                                                                               | Avatar chip and menu (Account, Sign-in methods, Approve a new device, Appearance, Help, Sign out); a sheet on phones.                                                                                                                                                                            |
-| `LoginCard`                                                                                                                                                 | The one sign-in frame: lockup, card with `header` / `body` / `footer` slots, legal footer, star field. Owns step transitions and focus (each step's `h1` receives focus).                                                                                                                        |
-| `CardHeader`                                                                                                                                                | `variant: "context" \| "app" \| "device"`. Props are **data only**: `icon`, `name`, `developer`, `where` (origin or device label), `code`. No children, no HTML, no colours. Reserved-name check happens server-side at client registration.                                                     |
-| `MethodStack`                                                                                                                                               | Email (identifier-first) with conditional UI, providers filtered by `capabilities` (Apple, Google, Steam only), passkey button, quiet links.                                                                                                                                                     |
-| `UsualMethodHint`                                                                                                                                           | Reads `pk_last_method` and renders "You usually sign in with …"; renders nothing without the cookie.                                                                                                                                                                                             |
-| `CodeEntry`                                                                                                                                                 | Six cells, paste, auto-submit, resend countdown, BroadcastChannel and re-check.                                                                                                                                                                                                                  |
-| `KeyField`                                                                                                                                                  | Mono, normalises dashes/spaces/case, groups as you type, live format validation with a count, `aria-invalid` and error slot. Used by key sign-in and the Activate modal.                                                                                                                         |
-| `AccountUpgrade`                                                                                                                                            | Key card, entries meter, method stack; `forced` removes the skip and switches the notice to danger.                                                                                                                                                                                              |
-| `AppConsent`                                                                                                                                                | The confirm step: person row, "what it gets" list (license, Cloud Sync when present, profile and email), the pairwise-id line, Continue/Cancel.                                                                                                                                                  |
-| `EmailGate`                                                                                                                                                 | The required first-provider-sign-in step (§4.29): provider strip, `ProfileImport`, email radio cards or an empty field (Steam), inline `CodeEntry` for typed or unverified addresses, optional terms checkbox, join-on-conflict hand-off to `LinkAccounts`.                                      |
-| `ProfileImport`, `ProfileEditor`, `Avatar`                                                                                                                  | The imported name and picture with source badge (gate); the Account → Profile editor (name chips, picture tiles, upload, explicit-choice tags); the one avatar used everywhere (picture, else initials; never before authentication).                                                            |
-| `AddMethodNudge`                                                                                                                                            | Rows of methods to add, recommended first, skip.                                                                                                                                                                                                                                                 |
-| `LinkAccounts`                                                                                                                                              | Two proven account cards, consequences, join.                                                                                                                                                                                                                                                    |
-| `DeviceApproval`                                                                                                                                            | New-device side (QR, code, poll) and approving side (dialog with device details, deny/approve).                                                                                                                                                                                                  |
-| `ProductArt`                                                                                                                                                | `variant: "banner" \| "tile" \| "thumb" \| "icon"`; proxied art (G1) with the flat tint-and-icon / tint-and-letter fallback. No gradients.                                                                                                                                                       |
-| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: art with the status pill on a solid plate, icon overlapping, name, developer, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4). |
-| `DiscoverTile`                                                                                                                                              | Art, icon, name, developer, offer terms, platforms, "why you can add it", **Add to library** → added state (green edge, **In your library**, **Open**).                                                                                                                                          |
-| `ActivateDialog`                                                                                                                                            | Steps enter → confirm (art header, product, tier, terms, key echo) → done; inline errors (§4.19); `prefill` and `fromProduct` props for the deep link. Mounted once in `PortalShell`, opened from anywhere.                                                                                      |
-| `JumpPalette`                                                                                                                                               | ⌘K (§4.27).                                                                                                                                                                                                                                                                                      |
-| `ProductHeader`, `SectionNav`, `GetItPanel`, `FileRow`, `StoreHandoff`, `LicenseCard`, `SeatMeter`, `DeviceRow`, `PackageAccessCard`, `ProductIdentityCard` | As in the converged design. `SectionNav` omits absent sections, including Cloud Sync.                                                                                                                                                                                                            |
-| `CloudSyncCard`                                                                                                                                             | Storage bar, data classes, per-device last sync, export, delete with step-up. Rendered only when the product's `services.cloudSync` is on.                                                                                                                                                       |
-| `SignInMethods`                                                                                                                                             | The Account section: grouped rows, connect flows (provider redirect or code), disconnect with inline step-up, last-method guard, audit footnote.                                                                                                                                                 |
-| `FocusedFlow`                                                                                                                                               | Minimal chrome and return-URL handling for `free-device` and `download`.                                                                                                                                                                                                                         |
+| Component                                                                                                                                                   | Contract                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PortalShell`                                                                                                                                               | Header (lockup, Library/Discover nav, ⌘K, **Activate license** action, account menu), phone bottom bar (Library · Activate pill · Discover), footer, skip link, `main`.                                                                                                                            |
+| `AccountMenu`                                                                                                                                               | Avatar chip and menu (Account, Sign-in methods, Approve a new device, Appearance, Help, Sign out); a sheet on phones.                                                                                                                                                                              |
+| `LoginCard`                                                                                                                                                 | The one sign-in frame: lockup, card with `header` / `body` / `footer` slots, legal footer, star field. Owns step transitions and focus (each step's `h1` receives focus).                                                                                                                          |
+| `CardHeader`                                                                                                                                                | `variant: "context" \| "app" \| "device"`. Props are **data only**: `icon`, `name`, `developer`, `where` (origin or device label), `code`. No children, no HTML, no colours. Reserved-name check happens server-side at client registration.                                                       |
+| `MethodStack`                                                                                                                                               | Email (identifier-first) with conditional UI, the `ProviderRow` (Apple, Google, Steam only, filtered by `capabilities`: one row of 1–3 equal-width, logo-only buttons, each named "Continue with <Provider>", §4.1), passkey button, quiet links.                                                  |
+| `UsualMethodHint`                                                                                                                                           | Reads `pk_last_method` and renders "You usually sign in with …"; renders nothing without the cookie.                                                                                                                                                                                               |
+| `CodeEntry`                                                                                                                                                 | Six cells, paste, auto-submit, resend countdown, BroadcastChannel and re-check.                                                                                                                                                                                                                    |
+| `KeyField`                                                                                                                                                  | Mono, paste-first (Paste button while empty), wraps instead of scrolling; never groups or changes case, trims whitespace only; validates `^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]{22})$`; shows "Key for <Product>" from the slug before any request; `KeyMask` renders `pkey_<slug>_…<last 4>` (§4.17). |
+| `AccountUpgrade`                                                                                                                                            | Key card, entries meter, method stack; `forced` removes the skip and switches the notice to danger.                                                                                                                                                                                                |
+| `AppConsent`                                                                                                                                                | The confirm step: person row, "what it gets" list (license, Cloud Sync when present, profile and email), the pairwise-id line, Continue/Cancel.                                                                                                                                                    |
+| `EmailGate`                                                                                                                                                 | The required first-provider-sign-in step (§4.29): provider strip, `ProfileImport`, email radio cards or an empty field (Steam), inline `CodeEntry` for typed or unverified addresses, optional terms checkbox, join-on-conflict hand-off to `LinkAccounts`.                                        |
+| `ProfileImport`, `ProfileEditor`, `Avatar`                                                                                                                  | The imported name and picture with source badge (gate); the Account → Profile editor (name chips, picture tiles, upload, explicit-choice tags); the one avatar used everywhere (picture, else initials; never before authentication).                                                              |
+| `AddMethodNudge`                                                                                                                                            | Rows of methods to add, recommended first, skip.                                                                                                                                                                                                                                                   |
+| `LinkAccounts`                                                                                                                                              | Two proven account cards, consequences, join.                                                                                                                                                                                                                                                      |
+| `DeviceApproval`                                                                                                                                            | New-device side (QR, code, poll) and approving side (dialog with device details, deny/approve).                                                                                                                                                                                                    |
+| `ProductArt`                                                                                                                                                | `variant: "banner" \| "tile" \| "thumb" \| "icon"`; proxied art (G1) with the flat tint-and-icon / tint-and-letter fallback. No gradients.                                                                                                                                                         |
+| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: art with the status pill on a solid plate, icon overlapping, name, developer, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).   |
+| `DiscoverTile`                                                                                                                                              | Art, icon, name, developer, offer terms, platforms, "why you can add it", **Add to library** → added state (green edge, **In your library**, **Open**).                                                                                                                                            |
+| `ActivateDialog`                                                                                                                                            | Steps enter → confirm (art header, product, tier, terms, key echo) → done; inline errors (§4.19); `prefill` and `fromProduct` props for the deep link. Mounted once in `PortalShell`, opened from anywhere.                                                                                        |
+| `JumpPalette`                                                                                                                                               | ⌘K (§4.27).                                                                                                                                                                                                                                                                                        |
+| `ProductHeader`, `SectionNav`, `GetItPanel`, `FileRow`, `StoreHandoff`, `LicenseCard`, `SeatMeter`, `DeviceRow`, `PackageAccessCard`, `ProductIdentityCard` | As in the converged design. `SectionNav` omits absent sections, including Cloud Sync.                                                                                                                                                                                                              |
+| `CloudSyncCard`                                                                                                                                             | Storage bar, data classes, per-device last sync, export, delete with step-up. Rendered only when the product's `services.cloudSync` is on.                                                                                                                                                         |
+| `SignInMethods`                                                                                                                                             | The Account section: grouped rows, connect flows (provider redirect or code), disconnect with inline step-up, last-method guard, audit footnote.                                                                                                                                                   |
+| `FocusedFlow`                                                                                                                                               | Minimal chrome and return-URL handling for `free-device` and `download`.                                                                                                                                                                                                                           |
 
 `Button` gains two variants: **quiet** (transparent, `border-strong` outline, `text-strong` label,
 icon in `accent-fg`; the library's quick action) and **action** (`surface-raised`, `border-strong`,
@@ -1060,10 +1117,12 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 6. **Say why, then what to do.** "This is your only way to sign in. Connect another one first, then
    you can remove Apple."
 7. **Sentence case** everywhere; status words capitalised as labels.
-8. **Providers by their own names:** "Continue with Apple / Google / Steam". No other providers.
+8. **Providers by their own names:** each logo-only button is named "Continue with Apple / Google /
+   Steam" (accessible name and tooltip). No other providers.
 9. **Numbers and dates:** "2 of 3", "2 of 5 key entries left", "Expires in 9 days", "until 14 Mar
    2027", "last used 3 weeks ago". Versions without a leading "v", in mono.
-10. **Product names, not slugs,** in UI and email.
+10. **Product names, not slugs,** in UI and email. (The one place a slug shows is inside a license
+    key, which is printed exactly as issued: `pkey_mossgarden_…`.)
 11. **Don't over-promise.** Only say a page "signs you in by itself" when it does; only mention
     Cloud Sync for products that have it.
 
@@ -1078,6 +1137,7 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 | Key upgrade         | "Keep Nightfall in an account · 2 of 5 key entries left"                                              |
 | Key upgrade, forced | "This key has used all 5 entries. From now on Nightfall is opened through an account."                |
 | Discover            | "Products their developers offer to your account. Adding one gives you its license straight away."    |
+| License key field   | "Paste the whole key. It starts with pkey\_ and capital letters matter." · "Key for Mossgarden"       |
 | Activate confirm    | "Add Mossgarden to your account?"                                                                     |
 | Nudge               | "If you ever can't get into Steam, a second way in keeps your library yours."                         |
 | Email gate          | "Confirm your email · Steam doesn't share an email. Add one so you can get back in without Steam."    |
@@ -1085,7 +1145,7 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 | Join accounts       | "We never join accounts just because emails look alike."                                              |
 | Approve a device    | "Only approve if you started this yourself, on a device in front of you."                             |
 | Cloud Sync delete   | "Deleting clears the copy in Cloud Sync. Files already on your devices stay there."                   |
-| Key storage         | "Only the end of a key is kept, so it can't be shown in full. A new key replaces this one."           |
+| Key storage         | "Only the last 4 characters are kept, so a key can’t be shown in full. A new key replaces this one."  |
 | Delete account      | "Deleting it doesn't cancel your licenses: they stay with each developer and you can add them again." |
 
 ### 6.3 Emails
@@ -1152,7 +1212,8 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
    `contentinfo`; exactly one `h1` per screen (sign-in, boot and error screens included); cards use
    `h2`, tiles `h3` (fixes PA-13 heading order).
 2. **Names:** every icon-only control has an accessible name ("More for Nightfall", "Copy SHA-256",
-   "Open Tidewater Studio"); the avatar link is "Account: <email>"; platform glyph groups are one
+   "Open Tidewater Studio"); provider buttons are logo-only and named "Continue with Apple" etc.
+   (§4.1); the avatar link is "Account: <email>"; platform glyph groups are one
    `role="img"` with a list label.
 3. **Status** is always icon plus word; the seat meter is `role="img"` with a text label; the
    "Not included" reason is visible text.
@@ -1385,7 +1446,7 @@ All files are in [portal/](portal/) as `NN-name-{desktop|mobile}-{dark|light}.pn
 | 02  | Login card with product context                    | 4.2  |
 | 03  | Known account: "You usually sign in with Steam"    | 4.3  |
 | 04  | Enter the code                                     | 4.4  |
-| 05  | Use a license key                                  | 4.5  |
+| 05  | Use a license key (empty, paste-first)             | 4.5  |
 | 06  | Key entry: account upgrade, skippable              | 4.6  |
 | 07  | Key entry: account upgrade, forced                 | 4.6  |
 | 08  | App sign-in: web app, method choice                | 4.7  |
@@ -1493,3 +1554,18 @@ Connected products lists Identity products only, with the pairwise-id subtitle a
 rest), and every screen with the header avatar (18–34, 36–38, 40–42) plus 12 and 15, whose avatar now
 shows the profile picture
 (Mara's Steam avatar; Sam has none, so initials).
+
+## Appendix F · Owner feedback applied (2026-10-04, third round)
+
+| #   | Feedback                                                                                                                                                                                                                                                                            | Where                                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 16  | Providers as **one row of logo-only buttons**: equal width, the mark only, accessible names "Continue with …", focus ring; 1, 2 and 3 buttons designed; email-first and passkey kept                                                                                                | §4.1, §4.9, §4.10, §5.2, §6.1, §9     |
+| 17  | **Real license keys**: `pkey_<product-slug>_<22-char base64url>`, case-sensitive; mono, paste-first field, no grouping or case changes, trim only; the exact-format regex; "Key for <Product>" parsed from the prefix before the server is called; masked as `pkey_tidewater_…KQ2w` | §4.5, §4.6, §4.17, §4.19, §4.20, §5.2 |
+
+**Screens changed by this round:** 01 (three providers), 02 (two, with the focus ring on Google), 06
+and 07 (two; masked key on the key card), 08 (two), 14 (one: Drift Kart ships only on Steam), 16
+("Or connect another account" row with Connect Apple and Connect Google), 05 (empty key field with
+Paste), 26 (a pasted key with "Key for Mossgarden"), 27 (the key echoed in full, parts coloured), 29
+(six states: Not a license key and Incomplete key added; every key real), 30 (prefilled real key),
+and 31 to 34 (masked key on the License card). The device-limit flow (35) shows no key and is
+unchanged.
