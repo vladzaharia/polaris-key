@@ -8,19 +8,19 @@ DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Production shape
 
-| Item                 | Value                                          |
-| -------------------- | ---------------------------------------------- |
-| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8` |
-| Worker env           | `prod`                                         |
-| Public origin        | `https://key.plrs.im`                          |
-| Admin                | `https://key.plrs.im/manage`                   |
-| Customer portal      | `https://key.plrs.im`                          |
-| D1 database          | `polaris_key_prod`                             |
-| KV namespace         | `POLARIS_HOT_prod`                             |
-| PocketID issuer      | `https://id.plrs.im`                           |
-| Platform admin group | `admins`                                       |
-| GitHub App           | `polaris-key`                                  |
-| Email sender         | `Polaris Key <noreply@plrs.im>`                |
+| Item                 | Value                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8`                                       |
+| Worker env           | `prod`                                                                               |
+| Public origin        | `https://key.plrs.im`                                                                |
+| Admin                | `https://key.plrs.im/manage`                                                         |
+| Customer portal      | `https://key.plrs.im`                                                                |
+| D1 database          | `polaris_key_prod`                                                                   |
+| KV namespace         | `POLARIS_HOT_prod`                                                                   |
+| PocketID issuer      | `https://id.plrs.im`                                                                 |
+| Platform admin group | `admins`                                                                             |
+| GitHub App           | `polaris-key`                                                                        |
+| Email sender         | `Polaris Key <noreply@auth.plrs.im>` (I-18; `noreply@plrs.im` until the switch-over) |
 
 Reserved platform routes:
 
@@ -649,6 +649,82 @@ bytes by chance, about 1.5e-5 per file (65,557 positions × 2^-32). It fails clo
 reports the file by path before anything is signed. The remedy is to re-encode the file (any
 change of the compressed bytes moves the match).
 
+## Sign-in email (I-18)
+
+Every sign-in and account email leaves ONE shared sender, `noreply@auth.plrs.im`, on the
+dedicated auth sending subdomain `auth.plrs.im`, so its reputation is every product's (S-16 §9
+risk 9). Platform mail is sent as `Polaris Key`; mail for sign-in started through a product as
+`<App> via Polaris Key`, where `<App>` is the product's display name after the reserved-name
+validator (`src/core/emailSender.ts`; a refused name falls back to the slug). Every send goes
+through `deliverEmail` (`src/core/emailDelivery.ts`): binding, sender, Apple private relay, the
+hashed suppression list, the per-product daily cap (passthrough mail only), then the send.
+Throttling, quota, an unverified sender and provider outages answer `email_unavailable`; the
+login card then offers another sign-in method.
+
+Until the owner steps below are done the Worker keeps sending from `noreply@plrs.im`
+(`EMAIL_SENDER_ADDRESS` unset in prod) and staging answers `email_unavailable`.
+
+### Owner setup (DNS and Apple; agents never touch either)
+
+1. **Onboard the subdomain on Email Sending.** Cloudflare dashboard → Compute → Email Service →
+   Email Sending → Onboard Domain → `auth.plrs.im` → Add records and onboard (or
+   `npx wrangler email sending enable auth.plrs.im`). Onboarding publishes, and locks:
+
+   | Type | Name                                | Value                                                                                                             |
+   | ---- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+   | MX   | `cf-bounce.auth.plrs.im`            | `route1.mx.cloudflare.net`, `route2.mx.cloudflare.net`, `route3.mx.cloudflare.net` (priorities set by Cloudflare) |
+   | TXT  | `cf-bounce.auth.plrs.im`            | `v=spf1 include:_spf.mx.cloudflare.net ~all`                                                                      |
+   | TXT  | `cf-bounce._domainkey.auth.plrs.im` | `v=DKIM1; h=sha256; k=rsa; p=<public key Cloudflare generates>`                                                   |
+   | TXT  | `_dmarc.auth.plrs.im`               | `v=DMARC1; p=reject;`                                                                                             |
+
+   `npx wrangler email sending dns get auth.plrs.im` prints the exact values. Leave
+   **Drop suppressed recipients** (Email Sending → `auth.plrs.im` → Settings) **off**, the
+   default: with it on, Cloudflare drops a suppressed recipient silently and the Worker never
+   learns to stop trying.
+
+2. **Add one SPF record on the subdomain itself** (for Apple's sender check, step 4):
+
+   | Type | Name           | Value                                        |
+   | ---- | -------------- | -------------------------------------------- |
+   | TXT  | `auth.plrs.im` | `v=spf1 include:_spf.mx.cloudflare.net ~all` |
+
+3. **Check the records:** `pnpm --filter @polaris-key/worker email:dns-check` must print
+   `auth.plrs.im: aligned` (bounce MX, SPF on `cf-bounce.auth.plrs.im` with Cloudflare's include,
+   the `cf-bounce` DKIM key, an enforcing DMARC policy that allows relaxed SPF alignment).
+   `-- plrs.im` checks the apex the same way.
+4. **Register the sender with Apple's private email relay.** developer.apple.com → Certificates,
+   Identifiers & Profiles → Services → Sign in with Apple for Email Communication → Configure →
+   add the domains `auth.plrs.im` and `cf-bounce.auth.plrs.im` and the address
+   `noreply@auth.plrs.im`, then confirm Apple shows each domain as SPF-verified.
+5. **Switch the Worker over** (one reviewed commit to `packages/worker/wrangler.toml`): in
+   `[env.prod.vars]` uncomment `EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"` and
+   `EMAIL_APPLE_RELAY = "registered"`, add `EMAIL_APPLE_RELAY = "registered"` to
+   `[env.staging.vars]`, and deploy staging first.
+6. **Staging deliverability check.** On `key-staging.plrs.im` request a portal magic link to a
+   Gmail address you control, then Gmail → Show original: `SPF: PASS` (domain
+   `cf-bounce.auth.plrs.im`), `DKIM: PASS` (domain `auth.plrs.im`), `DMARC: PASS`, `From:
+Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.appleid.com`)
+   address of a test Apple account and confirm it arrives. Paste both Authentication-Results
+   headers into the I-18 PR, then deploy prod.
+7. **Quota.** `GET /accounts/<id>/email/sending/limits` gives the account's daily quota. The
+   per-product default cap is 500 a day (`EMAIL_SEND_PRODUCT_DAILY_DEFAULT`); raise or lower it
+   for the deployment with `EMAIL_PRODUCT_DAILY_CAP`, or per product (below).
+
+### Operating it
+
+- **A product is capped** (its users see "We can't send email right now"): its own cap is a row,
+  `wrangler d1 execute polaris_key_prod --remote --command "INSERT INTO email_product_caps (product, daily_cap, modified_at) VALUES ('<slug>', <n>, unixepoch()) ON CONFLICT(product) DO UPDATE SET daily_cap = excluded.daily_cap, modified_at = excluded.modified_at"`.
+  Delete the row to return to the deployment value. The day is a sliding 24 hours.
+- **Suppression list** (`email_suppressions`): keyed by the peppered hash of the address, never
+  the address. A hard bounce suppresses for 90 days, a complaint, a Cloudflare suppression
+  (`E_RECIPIENT_SUPPRESSED`) or an operator entry permanently. A suppressed recipient is answered
+  exactly like a sent one. To clear one, remove it from Cloudflare's list too (Email Sending →
+  Suppressions) or the next send re-adds it.
+- **Bounce and complaint events:** Cloudflare pushes none to a Worker. The Worker learns of them
+  through `E_RECIPIENT_SUPPRESSED` on a later send; the dashboard's Analytics tab and the GraphQL
+  `emailSendingAdaptive` dataset show the rest (delivery rate over 95 %, hard bounces under 2 %,
+  complaints under 0.1 %).
+
 ## The blob collector (P4-14)
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:
@@ -774,7 +850,8 @@ Portal magic links are hidden:
 
 - Confirm at least one product has portal and magic links enabled.
 - Confirm prod deployed with the `EMAIL` send binding.
-- Confirm Cloudflare Email Service allows `noreply@plrs.im`.
+- Confirm Cloudflare Email Service allows the sender (`EMAIL_SENDER_ADDRESS`, else
+  `noreply@plrs.im`); "Sign-in email (I-18)" above has the setup and the DNS check.
 
 DJDL OIDC activation fails with `platform oidc is not configured`:
 

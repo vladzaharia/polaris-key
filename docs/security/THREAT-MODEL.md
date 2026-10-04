@@ -2481,15 +2481,55 @@ of 32 objects instead of one of one.
 **Email limits (S-16 §5.4 item 4), primitives only.** `src/core/emailLimits.ts` holds the send
 and verify limits as named constants: per recipient (peppered hash) 5 an hour and 20 a day, per
 client address 10 an hour, per network (IPv4 /24, IPv6 /48) 30 an hour, per device 3 starts an
-hour, a per-product daily cap (default 1,000 until I-21 sets the operational value); codes of 6
+hour; codes of 6
 digits, 10 minutes, dead after 5 wrong attempts, replaced (so invalidated) by a new code for the
 same recipient and flow; 10 wrong attempts across codes in an hour lock the recipient out of new
 codes for 15 minutes. Every limit is per product, so one tenant's traffic can neither drain
 another's budget nor lock a person out of another product. Both primitives answer without a
 reason (`{ send }`, `{ ok }`), so a caller that echoes them leaks nothing. **Open until I-08:** no
 route uses them yet; the enumeration-safe answers (a refused or locked send answered exactly like a
-sent one), the flow binding and Turnstile belong to I-08, and the operational cap and
-`email_unavailable` to I-21. Today's portal `/api/magic/start` keeps its per-IP limit only.
+sent one), the flow binding and Turnstile belong to I-07. The per-product daily cap moved to the
+send choke point (below). Today's portal `/api/magic/start` keeps its per-IP limit only.
+
+**Shared-sender email delivery (S-16 §5.4 items 4 and 7, §9 risk 9; I-18).** Every sign-in and
+account email leaves one sender address on the dedicated auth sending subdomain
+(`noreply@auth.plrs.im`), so one tenant's abuse, or one bad list, would damage every product's
+delivery. All mail goes through one choke point, `deliverEmail` (`src/core/emailDelivery.ts`):
+
+- _Sender spoofing by a tenant._ The display name is either exactly `Polaris Key` (platform mail)
+  or `<App> via Polaris Key` with a fixed suffix. `<App>` is the product's display name only if
+  `checkSenderAppName` accepts it: at most 40 code points; no control, format (bidi override,
+  zero-width), separator, private-use or surrogate code point and none of `"` `<` `>` `@` `\`,
+  checked on the raw and the NFKC form, before whitespace is collapsed, so CR/LF header injection
+  and full-width brackets are refused, not flattened; and no reserved name after folding (marks
+  stripped, Cyrillic/Greek look-alikes and digit swaps mapped): "polaris" and "plrs" anywhere,
+  and the whole names portal, console, admin and the mailbox roles (support, security, noreply,
+  postmaster, abuse, billing, account). A refused name falls back to the slug through the same
+  validator, and to no mail at all, never to the platform's own name. Name and address go to the
+  binding as a structured `{ name, email }`, never a hand-built header.
+- _Draining the shared quota._ A per-product daily cap on passthrough mail (default 500, the
+  `EMAIL_PRODUCT_DAILY_CAP` var, or the product's `email_product_caps` row), charged after
+  suppression so it counts only mail that leaves; over it the product answers
+  `email_unavailable`, which names no recipient. Platform mail (account notices, the
+  dormant-account warning, merge and join notices) is never capped (owner, 2026-10-04).
+- _Reputation from bounces and complaints._ A hashed suppression list (`email_suppressions`,
+  keyed by the peppered recipient hash, never the address; platform-wide by design) is checked
+  before every send and fails closed. Cloudflare exposes no bounce or complaint push to a Worker;
+  its `E_RECIPIENT_SUPPRESSED` refusal is recorded permanently, a hard bounce (through the
+  `recordDeliveryEvent` hook) for 90 days. A suppressed recipient is answered like a sent one, so
+  the response does not reveal that an address bounced or complained.
+- _Apple private relay._ Relay addresses accept mail only from registered senders; until the
+  owner records the registration (`EMAIL_APPLE_RELAY`), relay recipients get `email_unavailable`
+  rather than a send that bounces against the shared reputation.
+- _Provider failure._ No provider error escapes as an exception: quota, rate, an unverified
+  sender or an outage answers `email_unavailable`, so a notice never fails the action it reports.
+
+**Residual:** spoofing of the sender domain itself is prevented by DNS, not code: SPF on
+`cf-bounce.auth.plrs.im`, the `cf-bounce` DKIM key and an enforcing DMARC policy on
+`auth.plrs.im` are owner-held and checked by `pnpm --filter @polaris-key/worker email:dns-check`
+(RUNBOOK "Sign-in email"). Until the switch-over, mail still leaves `noreply@plrs.im`. A tenant
+can still pick an honest-looking but misleading name that is not on the reserved list; the
+fixed suffix and the slug in the login card are the mitigation.
 
 ### Release keys, the strict verifier and the signed feed (wire contract v4, P3-02)
 
