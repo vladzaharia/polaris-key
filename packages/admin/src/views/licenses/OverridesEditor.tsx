@@ -11,7 +11,7 @@ import {
   entryDefault,
   isSecretEntry,
   type InheritedValue,
-} from "../../SchemaForm.js";
+} from "../../schema/index.js";
 
 /**
  * The per-license override editor. It is the shared `ManagedPayloadEditor` plus one thing only

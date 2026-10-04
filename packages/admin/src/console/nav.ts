@@ -16,8 +16,8 @@
  * ── Pages that are not built yet ──────────────────────────────────────────────────────────────
  * The table declares the whole §2.3 page set so URLs and typed builders exist from chunk 2 on. A
  * page whose redesign lands in a later area chunk carries `ready: false` and a `host`: the page
- * that holds the capability today (Edge mint still lives inside Keys & secrets until chunk 7, for
- * example). The router redirects a not-ready page to its host, and the sidebar and palette list
+ * that holds the capability today (Outlet credentials still live inside Keys & secrets until
+ * chunk 9, for example). The router redirects a not-ready page to its host, and the sidebar and palette list
  * only ready pages, so every capability stays reachable and no URL is a dead end. An area chunk
  * flips `ready` and deletes `host` when it builds the page.
  *
@@ -308,8 +308,7 @@ export const SECTIONS: NavSection[] = [
         icon: FilePen,
         docs: "/docs/services/config/catalog/",
         inNav: false,
-        ready: false,
-        host: "catalog",
+        ready: true,
       },
       {
         page: "profiles",
@@ -321,7 +320,8 @@ export const SECTIONS: NavSection[] = [
         ready: true,
         record: {
           noun: "Profile",
-          tabs: ["payload", "used-by", "history"],
+          // A History tab joins these once the activity log filters by target (ADMIN.md A-2).
+          tabs: ["payload", "used-by"],
           ready: true,
         },
       },
@@ -332,9 +332,7 @@ export const SECTIONS: NavSection[] = [
         icon: Stamp,
         docs: "/docs/services/config/edge-mint/",
         inNav: true,
-        // Mounted inside Keys & secrets until the Config chunk (7) moves it.
-        ready: false,
-        host: "keys",
+        ready: true,
       },
     ],
   },

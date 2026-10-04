@@ -1,7 +1,6 @@
 import * as React from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { SecretUsage } from "../api.js";
-import { EdgeMintRecipes } from "./EdgeMintRecipes.js";
 import { OutletCredentials } from "./OutletCredentials.js";
 import { useResource } from "../context.js";
 import {
@@ -237,7 +236,6 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
           </form>
         </Card>
       ) : null}
-      {data ? <EdgeMintRecipes slug={slug} /> : null}
       {data ? <OutletCredentials slug={slug} /> : null}
     </section>
   );

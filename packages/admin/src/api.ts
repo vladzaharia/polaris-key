@@ -1508,9 +1508,35 @@ export interface ProfileSummary {
   description?: string;
   modifiedBy?: string;
   modifiedAt?: number;
+  /** How many tiers (baseline) and licenses (profile stack) point at it. */
+  usedBy?: { tiers: number; licenses: number };
 }
-export interface ProfileDetail extends ProfileSummary {
+export interface ProfileDetail extends Omit<ProfileSummary, "usedBy"> {
   payload: RedactedPayload;
+  /** The tiers and licenses that point at it; Delete is refused while either is non-empty. */
+  usedBy?: {
+    tiers: { id: string; label: string }[];
+    licenses: { id: string; name?: string; email?: string }[];
+  };
+}
+
+// ── catalog history and usage (A-6, A-7b) ─────────────────────────────────────
+export interface CatalogVersionSummary {
+  version: number;
+  active: boolean;
+  createdAt: number;
+  entryCount: number;
+  /** `admin`: published in the console; `manifest`: written by the product's `.pkey/schema`. */
+  source: "admin" | "manifest";
+  publishedBy: string | null;
+}
+
+/** What sets one catalog key: ids and names, never a value. */
+export interface CatalogKeyUsage {
+  profiles: { id: string; name: string }[];
+  /** Tiers that inherit one of those profiles as their baseline. */
+  tiers: { id: string; label: string; profile: string }[];
+  licenses: { id: string; name: string | null; email: string | null }[];
 }
 
 // ── tiers ─────────────────────────────────────────────────────────────────────
@@ -1927,11 +1953,39 @@ const rawApi = {
 
   // ── config: catalog ───────────────────────────────────────────────────────────
   schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/config/catalog`),
-  publishSchema: (slug: string, catalog: ProductCatalog) =>
+  /**
+   * Publish a new catalog version. `expectedVersion` is the version the draft started from (`0`
+   * for a first publish): when another publish landed since, the server answers 409
+   * `catalog_version_conflict` instead of overwriting it (ADMIN.md A-6).
+   */
+  publishSchema: (
+    slug: string,
+    catalog: ProductCatalog,
+    expectedVersion?: number,
+  ) =>
     call<{ ok: true; schemaVersion: number }>(`${p(slug)}/config/catalog`, {
       method: "PUT",
-      body: JSON.stringify({ catalog }),
+      body: JSON.stringify(
+        expectedVersion === undefined
+          ? { catalog }
+          : { catalog, expectedVersion },
+      ),
     }),
+  /** Every published catalog version, newest first (A-6). */
+  catalogVersions: (slug: string) =>
+    call<{ versions: CatalogVersionSummary[] }>(
+      `${p(slug)}/config/catalog/versions`,
+    ),
+  /** One catalog version, active or not (A-6). */
+  catalogVersion: (slug: string, version: number) =>
+    call<ProductCatalog>(`${p(slug)}/config/catalog/versions/${version}`),
+  /** The profiles, tiers and licenses that set each key (A-7b). */
+  catalogUsage: (slug: string, keys: readonly string[]) =>
+    call<{ keys: Record<string, CatalogKeyUsage> }>(
+      `${p(slug)}/config/catalog/usage?${keys
+        .map((k) => `key=${enc(k)}`)
+        .join("&")}`,
+    ),
 
   // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
   edgeMintRecipes: (slug: string) =>
@@ -2118,6 +2172,16 @@ const rawApi = {
     call<{ ok: true; id: string }>(`${p(slug)}/config/profiles/${enc(id)}`, {
       method: "PUT",
       body: JSON.stringify({ updates }),
+    }),
+  /** Edit a profile's name and description (A-7); `description: null` clears it. */
+  patchProfile: (
+    slug: string,
+    id: string,
+    body: { name?: string; description?: string | null },
+  ) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/config/profiles/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
     }),
   deleteProfile: (slug: string, id: string) =>
     call<{ ok: true; id: string }>(`${p(slug)}/config/profiles/${enc(id)}`, {

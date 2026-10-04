@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   ManagedField,
@@ -8,7 +14,7 @@ import {
   validateEntry,
   widgetFor,
   type FieldResult,
-} from "../src/SchemaForm.js";
+} from "../src/schema/index.js";
 import type { ConfigEntry } from "../src/api.js";
 
 beforeEach(() => {
@@ -296,7 +302,7 @@ describe("SchemaField — control per schema/kind", () => {
         onChange={vi.fn()}
       />,
     );
-    expect(screen.getByText("flag")).toBeTruthy();
+    expect(screen.getByText("Flag")).toBeTruthy();
   });
 
   it("picks the widget from the schema, letting `ui.widget` only break ties", () => {
@@ -334,9 +340,8 @@ describe("SchemaField — control per schema/kind", () => {
     expect(await screen.findByText("Daylight")).toBeTruthy();
   });
 
-  it("carries `ui.unit` in the label, so the control stays Field's direct child", () => {
-    // `Field` clones its single child to inject id/aria — a layout wrapper around the control
-    // would take them and leave the input unlabelled and never `aria-invalid`.
+  it("carries `ui.unit` in the visible label that names the control (SCF-2)", () => {
+    // The control is named by its visible label, unit included; no `aria-label` overrides it.
     render(
       <SchemaField
         entry={entry({ schema: { type: "integer" }, ui: { unit: "ms" } })}
@@ -345,9 +350,10 @@ describe("SchemaField — control per schema/kind", () => {
       />,
     );
     expect(screen.getByText("(ms)")).toBeTruthy();
-    const input = screen.getByLabelText("A field");
+    const input = screen.getByLabelText("A field (ms)");
     expect(input.tagName).toBe("INPUT");
     expect(input.id).toBeTruthy();
+    expect(input.getAttribute("aria-label")).toBeNull();
   });
 });
 
@@ -531,8 +537,8 @@ describe("ManagedField — v2 management state + updatedAt", () => {
         onStateChange={vi.fn()}
       />,
     );
-    // The state badge reflects the v2 ManagementState.
-    expect(screen.getByText("enforced")).toBeTruthy();
+    // The state badge reflects the v2 ManagementState (badge and selected radio both read it).
+    expect(screen.getAllByText("Enforced").length).toBeGreaterThanOrEqual(2);
     // An updatedAt stamp is rendered.
     expect(screen.getByText(/Updated/)).toBeTruthy();
     // The state selector is a segmented radio group, labelled per entry.
@@ -588,13 +594,18 @@ describe("ManagedField — v2 management state + updatedAt", () => {
     );
     const selected = screen.getByRole("radio", { name: "Default" });
     selected.focus();
-    await userEvent.keyboard("{ArrowRight}");
-    expect(onStateChange).toHaveBeenLastCalledWith("enforced");
-    // Only the selected option is a tab stop.
-    expect(selected.getAttribute("tabindex")).toBe("0");
+    // Held, as a real key press is: the radio group selects what the arrow focuses.
+    await userEvent.keyboard("{ArrowRight>}");
+    await waitFor(() =>
+      expect(onStateChange).toHaveBeenLastCalledWith("enforced"),
+    );
+    await userEvent.keyboard("{/ArrowRight}");
+    // One tab stop for the whole group (roving tabindex).
     expect(
-      screen.getByRole("radio", { name: "Hidden" }).getAttribute("tabindex"),
-    ).toBe("-1");
+      screen
+        .getAllByRole("radio")
+        .filter((r) => r.getAttribute("tabindex") === "0"),
+    ).toHaveLength(1);
   });
 });
 
@@ -615,7 +626,10 @@ describe("ManagedField — set vs unset is a real state", () => {
     expect(screen.getByText(/clients fall back to system/)).toBeTruthy();
     // No editor at all until the operator asks for one.
     expect(screen.queryByLabelText("A field")).toBeNull();
-    expect(screen.getByRole("button", { name: "Set value" })).toBeTruthy();
+    // Each row's button is named for its key (SCF-6: no N identical "Set value" buttons).
+    expect(
+      screen.getByRole("button", { name: "Set a value for A field" }),
+    ).toBeTruthy();
   });
 
   it("an unset row names the layer it inherits from when there is one", () => {
@@ -652,7 +666,7 @@ describe("ManagedField — set vs unset is a real state", () => {
       />,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Clear A field" }),
+      screen.getByRole("button", { name: "Remove A field from the payload" }),
     );
     expect(onSetChange).toHaveBeenCalledWith(false);
   });
@@ -685,7 +699,7 @@ describe("ManagedField — secrets are write-only", () => {
     key: "api.token",
   });
 
-  it("never renders a stored secret: it masks and offers Replace", async () => {
+  it("never renders a stored secret: it stays read-only until Replace is ticked", async () => {
     render(
       <ManagedField
         entry={secret}
@@ -697,15 +711,17 @@ describe("ManagedField — secrets are write-only", () => {
         onStateChange={vi.fn()}
       />,
     );
-    const masked = screen.getByLabelText("API token") as HTMLInputElement;
+    const masked = screen.getByLabelText(/^API token/) as HTMLInputElement;
     expect(masked.type).toBe("password");
     expect(masked.readOnly).toBe(true);
     // Whatever is in the box, it is not a value the server sent — the API redacts it.
     expect(masked.value).not.toMatch(/[A-Za-z0-9]/);
-    expect(screen.getByText("configured")).toBeTruthy();
+    expect(screen.getByText("Configured")).toBeTruthy();
 
-    await userEvent.click(screen.getByRole("button", { name: "Replace" }));
-    const editable = screen.getByLabelText("API token") as HTMLInputElement;
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /Replace the existing value/ }),
+    );
+    const editable = screen.getByLabelText(/^API token/) as HTMLInputElement;
     expect(editable.readOnly).toBe(false);
     expect(editable.value).toBe("");
   });
@@ -727,7 +743,7 @@ describe("ManagedField — secrets are write-only", () => {
     expect(screen.getByText(/removes the stored secret/)).toBeTruthy();
   });
 
-  it("an unconfigured secret shows a 'not set' badge", () => {
+  it("an unconfigured secret shows a 'Missing' badge", () => {
     render(
       <ManagedField
         entry={secret}
@@ -739,9 +755,9 @@ describe("ManagedField — secrets are write-only", () => {
         onStateChange={vi.fn()}
       />,
     );
-    expect(screen.getByText("not set")).toBeTruthy();
+    expect(screen.getByText("Missing")).toBeTruthy();
     expect(
-      (screen.getByLabelText("API token") as HTMLInputElement).readOnly,
+      (screen.getByLabelText(/^API token/) as HTMLInputElement).readOnly,
     ).toBe(false);
   });
 });

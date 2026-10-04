@@ -75,6 +75,7 @@ export type WriteMethod =
   | "updateFingerprintPolicy"
   | "revertFingerprintPolicy"
   | "createProfile"
+  | "patchProfile"
   | "putProfilePayload"
   | "deleteProfile"
   | "createTier"
@@ -348,6 +349,15 @@ export const MUTATIONS: MutationTable = {
   createProfile: {
     label: "profile create",
     invalidates: (slug) => [prefix(qk.profiles(slug))],
+  },
+  patchProfile: {
+    label: "profile details",
+    // Tier and license pages show profile names.
+    invalidates: (slug) => [
+      prefix(qk.profiles(slug)),
+      prefix(qk.tiers(slug)),
+      prefix(qk.licenses(slug)),
+    ],
   },
   putProfilePayload: {
     label: "profile payload",

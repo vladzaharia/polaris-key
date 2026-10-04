@@ -51,6 +51,14 @@ export const qk = {
 
   // config
   catalog: (slug: string) => product(slug, "config", "catalog"),
+  /** The version history (A-6). Under the catalog prefix, so a publish refreshes it. */
+  catalogVersions: (slug: string) =>
+    product(slug, "config", "catalog", "versions"),
+  catalogVersion: (slug: string, version: number) =>
+    product(slug, "config", "catalog", "versions", version),
+  /** Who sets these keys (A-7b); the keys sorted and joined, so one set is one entry. */
+  catalogUsage: (slug: string, keys: readonly string[]) =>
+    product(slug, "config", "catalog", "usage", [...keys].sort().join(",")),
   profiles: (slug: string) => product(slug, "config", "profiles"),
   profile: (slug: string, id: string) =>
     product(slug, "config", "profiles", "record", id),
