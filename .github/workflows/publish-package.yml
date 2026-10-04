@@ -1,0 +1,108 @@
+name: Publish a package to its feed
+
+# The one publishing step for every SDK this repository ships (F-10, plans/F-01.md §5.1). Each
+# release workflow (release.yml, release-python.yml, release-swift.yml, release-kotlin.yml,
+# release-godot.yml, release-image.yml) builds and packs its files, uploads them as a workflow
+# artifact, and calls this workflow, which publishes them with `pkey release publish` (the
+# committed polaris-key/publish Action at the commit being released) to the system product
+# `polaris-key`. The feeds serve them on pkg.plrs.im, and NOWHERE else: no npmjs, GitHub Packages,
+# PyPI, Maven Central, Swift Package Index, Docker Hub or Godot store (owner decision 2026-10-04,
+# feeds only).
+#
+# Trusted publishing (P2-02): this file is the polaris-key product's one trusted publisher
+# (.pkey/release `publishing.trustedPublisher`). GitHub names a called workflow in the OIDC
+# token's job_workflow_ref, so every caller publishes through this one policy, and the job runs in
+# the `package-registry` environment, whose deployment policy admits tags only. The job exchanges
+# its OIDC token for a short-lived pkeyci_ token; the repository stores no publishing secret.
+#
+# Owner setup (DEPLOYMENT §3, "Registry host and feeds"): the `package-registry` environment with
+# a tag deployment policy (`@polaris-key/*@*`, `python-v*`, `swift-v*`, `kotlin-v*`, `godot-v*`),
+# a tag ruleset protecting those tags (the publisher requires ref_protected), and the trusted
+# publisher registered for polaris-key in each environment (link the monorepo to the bootstrapped
+# system product, or claim the policy in the console).
+
+on:
+  workflow_call:
+    inputs:
+      deliverable:
+        description: The package deliverable .pkey/release declares (npm.node, pypi.polaris-key, …).
+        required: true
+        type: string
+      artifact:
+        description: The workflow artifact holding the packed files (uploaded by the caller in the same run).
+        required: true
+        type: string
+      version:
+        description: The version the files carry (required for swift and oci, checked against the files otherwise).
+        required: true
+        type: string
+      base-url:
+        description: The Polaris Key origin whose feeds receive the package.
+        required: false
+        type: string
+        default: https://key.plrs.im
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.deliverable }} ${{ inputs.version }}
+    runs-on: ubuntu-latest
+    environment:
+      name: package-registry
+      url: https://pkg.plrs.im/
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # The environment's deployment policy admits tags only; this refuses anything else even if
+      # that policy is ever loosened.
+      - name: A tag, on main
+        if: github.ref_type != 'tag'
+        run: |
+          echo "::error::Packages are published from release tags only (got ${GITHUB_REF})." >&2
+          exit 1
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # As deploy.yml (R7-04): only a tag on a commit that landed on main may publish.
+      - name: The commit is on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Refusing to publish: $GITHUB_SHA is not an ancestor of origin/main." >&2
+            exit 1
+          fi
+      - name: Channel
+        id: channel
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # A pre-release (semver `-…`, or PEP 440 letters such as 1.1.0b1) goes to beta, so it
+          # never becomes npm's `latest`, Maven's RELEASE or the image's `latest`.
+          case "$VERSION" in
+            *[-A-Za-z]*) echo "channel=beta" >> "$GITHUB_OUTPUT" ;;
+            *) echo "channel=stable" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: dist-feed
+      - name: Publish ${{ inputs.deliverable }}
+        id: publish
+        uses: ./actions/publish
+        with:
+          product: polaris-key
+          deliverable: ${{ inputs.deliverable }}
+          version: ${{ inputs.version }}
+          channel: ${{ steps.channel.outputs.channel }}
+          dir: dist-feed
+          base-url: ${{ inputs.base-url }}
+      - name: Summary
+        env:
+          DELIVERABLE: ${{ inputs.deliverable }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ steps.channel.outputs.channel }}
+          OUTCOME: ${{ steps.publish.outputs.outcome }}
+        run: echo "Published $DELIVERABLE $VERSION to the $CHANNEL channel ($OUTCOME)." >> "$GITHUB_STEP_SUMMARY"

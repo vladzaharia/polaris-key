@@ -1,19 +1,41 @@
 name: Release Swift SDK
 
+# A `swift-vX.Y.Z` tag publishes polaris-key.PolarisKey to Polaris Key's Swift registry on
+# pkg.plrs.im (deliverable swift.polariskey, F-10, plans/F-01.md §5.1 and §5.3), signed:
+#
+#   validate  the tag, the commit is on main, `swift test`;
+#   sign      on macOS, in the `package-registry` environment, which holds the signing secrets:
+#             sdks/swift/tools/sign-registry-release.sh checks SWIFT_REGISTRY_SIGNING_KEY,
+#             SWIFT_REGISTRY_SIGNING_CERT and SWIFT_REGISTRY_CERT_CHAIN (and stops with the error
+#             §5.3 fixes when one is missing: it NEVER falls back to unsigned), writes the key files
+#             to the runner's temp directory, runs `swift package-registry publish --dry-run` with
+#             the signing flags (the zip, its cms-1.0.0 signature and the signed Package.swift, no
+#             registry contacted), and an always() step deletes the key files;
+#   publish   publish-package.yml, the polaris-key product's trusted publisher, sends those files
+#             to the feed;
+#   release   the GitHub release of the tag, for the git-URL path, which keeps working.
+#
+# Never to the Swift Package Index or any other registry (owner decision 2026-10-04, feeds only).
+# Install: /docs/build/install-from-feeds/.
+
 on:
   push:
     tags:
       - "swift-v*"
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Validate Swift SDK release
     runs-on: macos-14
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@v7
       - name: Validate semver tag
+        id: tag
         env:
           TAG: ${{ github.ref_name }}
         run: |
@@ -21,6 +43,7 @@ jobs:
             echo "Swift release tags must be swift-vMAJOR.MINOR.PATCH" >&2
             exit 1
           fi
+          echo "version=${TAG#swift-v}" >> "$GITHUB_OUTPUT"
       # As deploy.yml (R7-04): only a tag on a commit that landed on main may publish.
       - name: The commit is on main
         run: |
@@ -32,6 +55,52 @@ jobs:
           fi
       - name: Test
         run: swift test --package-path sdks/swift
+
+  sign:
+    name: Sign the registry release
+    needs: validate
+    runs-on: macos-14
+    environment: package-registry
+    steps:
+      - uses: actions/checkout@v7
+      - name: Sign (swift package-registry publish --dry-run)
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          SWIFT_REGISTRY_SIGNING_KEY: ${{ secrets.SWIFT_REGISTRY_SIGNING_KEY }}
+          SWIFT_REGISTRY_SIGNING_CERT: ${{ secrets.SWIFT_REGISTRY_SIGNING_CERT }}
+          SWIFT_REGISTRY_CERT_CHAIN: ${{ secrets.SWIFT_REGISTRY_CERT_CHAIN }}
+        run: >-
+          sdks/swift/tools/sign-registry-release.sh "$VERSION"
+          "$GITHUB_WORKSPACE/build/swift-registry" "$RUNNER_TEMP/swift-registry-keys"
+      - name: Delete the key files
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/swift-registry-keys"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: swift-registry
+          path: build/swift-registry/
+          if-no-files-found: error
+
+  publish:
+    name: Swift registry
+    needs: [validate, sign]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: swift.polariskey
+      artifact: swift-registry
+      version: ${{ needs.validate.outputs.version }}
+
+  release:
+    name: Create GitHub release
+    needs: [validate, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

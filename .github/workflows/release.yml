@@ -1,21 +1,40 @@
 name: Release SDKs
 
+# The JS packages (@polaris-key/*) in two separate steps, so that merging never publishes
+# anything (owner decision 2026-10-04: no publishing until a person tags a release):
+#
+#   1. On main, Changesets opens and maintains the "Version Packages" PR. That is all it does
+#      here: there is no `publish` input, so merging the PR bumps versions and changelogs and
+#      publishes nothing.
+#   2. A person releases by tagging the versioned commit on main: `pnpm changeset tag` writes one
+#      tag per package version (`@polaris-key/<name>@<version>`). Push each tag on its own
+#      (`git push origin <tag>`): GitHub starts no workflow for a push of more than three tags at
+#      once. Each tag runs the jobs below for that package: build, `pnpm pack` into dist-pkg/ (which rewrites `workspace:*` to
+#      real versions), then publish to the npm feed on pkg.plrs.im through publish-package.yml,
+#      the polaris-key product's trusted publisher (F-10, plans/F-01.md §5.1).
+#
+# The packages go to Polaris Key's npm feed only: never npmjs or GitHub Packages (owner decision,
+# feeds only). Install: /docs/build/install-from-feeds/. The pkey image follows the
+# @polaris-key/cli tag in release-image.yml; Python, Swift, Kotlin and Godot are released from
+# their own tags.
+
 on:
   push:
     branches: [main]
+    tags:
+      - "@polaris-key/*@*"
 
-# Changesets opens/maintains a "Version Packages" PR; merging it publishes the JS SDKs
-# (@polaris-key/*) to the private registry. Python (PyPI) and Swift (git tag) are released
-# from their own tags.
+permissions:
+  contents: read
+
 jobs:
-  release:
-    name: Changesets publish
+  version-pr:
+    name: Changesets version PR
     runs-on: ubuntu-latest
-    if: github.repository == 'vladzaharia/polaris-key'
+    if: github.repository == 'vladzaharia/polaris-key' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       pull-requests: write
-      packages: write
     steps:
       - uses: actions/checkout@v7
       # No `version:` here — the action reads `packageManager` from package.json.
@@ -26,32 +45,119 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: "https://npm.pkg.github.com"
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm lint
       - run: pnpm --filter @polaris-key/cli bundle:action -- --check
+      # The version PR only. With no `publish` input the action never publishes, so merging the
+      # PR publishes nothing; a release is the tags above.
       - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
-        id: changesets
-        with:
-          publish: pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # The CLI outside npm (P2-06): when @polaris-key/cli is published, attach the standalone
-      # bundle to its GitHub release as pkey.mjs, so a repository with no node_modules (a Godot
-      # project) can run `node pkey.mjs validate`. The bundle is the committed, freshness-checked
-      # actions/publish/dist/index.js.
-      - name: Attach pkey.mjs to the @polaris-key/cli release
-        if: steps.changesets.outputs.published == 'true'
+
+  pack:
+    name: Pack ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    if: github.repository == 'vladzaharia/polaris-key' && startsWith(github.ref, 'refs/tags/@polaris-key/')
+    outputs:
+      deliverable: ${{ steps.tag.outputs.deliverable }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: tag
+        name: The tag names a public package at its version
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
+          TAG: ${{ github.ref_name }}
         run: |
-          version=$(node -e 'const p=JSON.parse(process.env.PUBLISHED).find((x)=>x.name==="@polaris-key/cli");if(p)console.log(p.version)')
-          if [ -n "$version" ]; then
-            cp actions/publish/dist/index.js pkey.mjs
-            gh release upload "@polaris-key/cli@${version}" pkey.mjs --clobber
+          if [[ ! "$TAG" =~ ^@polaris-key/([a-z0-9-]+)@([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            echo "::error::$TAG is not @polaris-key/<name>@<semver>." >&2
+            exit 1
+          fi
+          name="@polaris-key/${BASH_REMATCH[1]}"
+          version="${BASH_REMATCH[2]}"
+          found="$(node -e '
+            const fs = require("fs"), path = require("path");
+            for (const d of fs.readdirSync("packages")) {
+              const f = path.join("packages", d, "package.json");
+              if (!fs.existsSync(f)) continue;
+              const p = JSON.parse(fs.readFileSync(f, "utf8"));
+              if (p.name === process.argv[1] && !p.private) console.log(p.version);
+            }' "$name")"
+          if [ -z "$found" ]; then
+            echo "::error::$name is not a public package of this repository." >&2
+            exit 1
+          fi
+          if [ "$found" != "$version" ]; then
+            echo "::error::$TAG does not match $name's package.json version $found." >&2
+            exit 1
+          fi
+          {
+            echo "name=$name"
+            echo "deliverable=npm.${name#@polaris-key/}"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the package and what it depends on, then test it
+        env:
+          NAME: ${{ steps.tag.outputs.name }}
+        run: |
+          pnpm --filter "${NAME}..." build
+          pnpm --filter "$NAME" run --if-present test
+      - run: pnpm --filter @polaris-key/cli bundle:action -- --check
+      - name: Pack into dist-pkg/
+        env:
+          NAME: ${{ steps.tag.outputs.name }}
+        run: pnpm --filter "$NAME" pack --pack-destination "$GITHUB_WORKSPACE/dist-pkg"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-package
+          path: dist-pkg/
+          if-no-files-found: error
+
+  npm:
+    name: npm feed
+    needs: pack
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: ${{ needs.pack.outputs.deliverable }}
+      artifact: npm-package
+      version: ${{ needs.pack.outputs.version }}
+
+  # The CLI outside a package manager (P2-06): with @polaris-key/cli, attach the standalone bundle
+  # to the tag's GitHub release as pkey.mjs, so a repository with no node_modules (a Godot
+  # project) can run `node pkey.mjs validate`. The bundle is the committed, freshness-checked
+  # actions/publish/dist/index.js.
+  cli-bundle:
+    name: Attach pkey.mjs
+    needs: [pack, npm]
+    if: startsWith(github.ref, 'refs/tags/@polaris-key/cli@')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.pack.outputs.version }}
+        run: |
+          cp actions/publish/dist/index.js pkey.mjs
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" pkey.mjs --clobber
+          else
+            flags=()
+            case "$VERSION" in *-*) flags+=(--prerelease) ;; esac
+            gh release create "$TAG" --title "pkey $VERSION" \
+              --notes "pkey $VERSION: the standalone CLI bundle (node pkey.mjs)." \
+              --verify-tag "${flags[@]}" pkey.mjs
           fi
