@@ -957,19 +957,27 @@ const releaseType: ConnectorControl = distributeControl(async (f, body) => {
       const current = attr(v, "earliestReleaseDate");
       return current !== null && Date.parse(current) === Date.parse(date);
     },
-    write: async () =>
-      single(
-        await f.run.client.patch(path, {
-          data: {
-            type: "appStoreVersions",
-            id: versionId,
-            attributes: {
-              releaseType: type,
-              ...(date ? { earliestReleaseDate: date } : {}),
+    // The gate types a release type that auto-releases a version in or after review (A-18a); it
+    // is told the state of the pre-read this step just made (always a submittable one here).
+    write: async (existing) => {
+      const state = versionState(existing);
+      return single(
+        await f.run.client.patch(
+          path,
+          {
+            data: {
+              type: "appStoreVersions",
+              id: versionId,
+              attributes: {
+                releaseType: type,
+                ...(date ? { earliestReleaseDate: date } : {}),
+              },
             },
           },
-        }),
-      ),
+          state ? { resourceState: state } : {},
+        ),
+      );
+    },
     reread: async () => single(await f.run.client.get(path)),
     resultIds: () => ({ versionId }),
     summary: () =>

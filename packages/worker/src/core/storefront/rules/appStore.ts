@@ -97,6 +97,19 @@ export const GATE_CAPABILITY_TYPES: readonly string[] = [
   "DATA_PROTECTION",
 ];
 
+/**
+ * App Store version states before review: a release-type change here is a setting, not a release
+ * (`appVersionState`, with the legacy `appStoreState` spellings that coincide).
+ */
+export const PRE_REVIEW_VERSION_STATES: readonly string[] = [
+  "PREPARE_FOR_SUBMISSION",
+  "DEVELOPER_REJECTED",
+  "REJECTED",
+  "METADATA_REJECTED",
+  "INVALID_BINARY",
+  "READY_FOR_REVIEW",
+];
+
 const ASN_SUFFIX = "distribution/hooks/app-store";
 const WEBHOOK_SUFFIX = "distribution/hooks/asc";
 
@@ -335,7 +348,26 @@ export const ASC_WRITE_ALLOW: readonly AscAllowRule[] = [
     ],
     relationships: { build: "builds" },
     confirm: "plain",
-    why: "version settings and its build",
+    check: (d, ctx) => {
+      // A release type that releases on its own (AFTER_APPROVAL, SCHEDULED, or any value but
+      // MANUAL), or a new release date, set on a version already in or past review releases it
+      // without another step: that is a release, so it is typed (owner rule; A-18a, from A-17's
+      // review). Before review it is a setting, confirmed again when the submission is typed. The
+      // handler passes the version's state from its own pre-read; a missing state is treated as
+      // in review.
+      const a = attrs(d);
+      const autoRelease =
+        ("releaseType" in a && a.releaseType !== "MANUAL") ||
+        ("earliestReleaseDate" in a && a.earliestReleaseDate !== null);
+      if (
+        autoRelease &&
+        !PRE_REVIEW_VERSION_STATES.includes(ctx.resourceState ?? "") &&
+        ctx.typedConfirmation !== true
+      )
+        return "typed_confirmation_required";
+      return null;
+    },
+    why: "version settings and its build (a release type that auto-releases a version in or after review is typed)",
   },
   {
     method: "PATCH",
@@ -371,12 +403,22 @@ export const ASC_WRITE_ALLOW: readonly AscAllowRule[] = [
     attributes: ["phasedReleaseState"],
     relationships: { appStoreVersion: "appStoreVersions" },
     confirm: "plain",
-    check: (d) =>
-      oneOf(attrs(d).phasedReleaseState, ["INACTIVE", "ACTIVE"], true) ||
-      !("phasedReleaseState" in attrs(d))
-        ? null
-        : "value_not_allowed",
-    why: "choose a phased release for a version before it ships",
+    check: (d, ctx) => {
+      const a = attrs(d);
+      if (
+        !(
+          oneOf(a.phasedReleaseState, ["INACTIVE", "ACTIVE"], true) ||
+          !("phasedReleaseState" in a)
+        )
+      )
+        return "value_not_allowed";
+      // Creating it ACTIVE starts releasing a version that is already out: a release, so typed
+      // (owner rule; A-18a, from A-17's review). INACTIVE is the choice made before it ships.
+      if (a.phasedReleaseState === "ACTIVE" && ctx.typedConfirmation !== true)
+        return "typed_confirmation_required";
+      return null;
+    },
+    why: "choose a phased release for a version before it ships (creating it ACTIVE is typed)",
   },
   {
     method: "PATCH",
