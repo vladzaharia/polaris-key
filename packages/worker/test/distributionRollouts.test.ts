@@ -390,6 +390,34 @@ describe("rollout semantics", () => {
     expect(await rolloutRow(w)).toBeNull();
   });
 
+  it("keeps the reason on the console's 404s (A-9)", async () => {
+    const w = await setup();
+    const cases: Array<[string, unknown, string]> = [
+      ["/nowhere/stable", { releaseId: "v1.1.0", bp: 1 }, "unknown_outlet"],
+      [
+        "/direct/Not_A_Channel",
+        { releaseId: "v1.1.0", bp: 1 },
+        "unknown_channel",
+      ],
+      ["/direct/stable", { releaseId: "v9.9.9", bp: 1 }, "unknown_release"],
+      [
+        "/direct/stable",
+        { deliverable: "nope", releaseId: "v1.1.0", bp: 1 },
+        "unknown_deliverable",
+      ],
+      ["/direct/stable/pause", {}, "no_rollout"],
+    ];
+    for (const [path, body, reason] of cases) {
+      const res = await admin(w, "POST", `/rollouts${path}`, body);
+      expect(res.status, path).toBe(404);
+      expect(await res.json(), path).toMatchObject({
+        code: "not_found",
+        reason,
+      });
+    }
+    expect(await rolloutRow(w)).toBeNull();
+  });
+
   it("refuses to roll out a yanked release", async () => {
     const w = await setup();
     await w.db.run(

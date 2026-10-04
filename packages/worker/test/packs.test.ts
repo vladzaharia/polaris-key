@@ -2009,4 +2009,61 @@ describe("console pack views (P4-09)", () => {
     );
     expect(res.status).toBe(401);
   });
+
+  it("the console yanks and unyanks a pack release through the admin route (ADMIN.md §6.3.4, PKD-1)", async () => {
+    await seedPins();
+    const id = `${CORE}@1.0.0`;
+    const yank = await admin(
+      env,
+      db,
+      "POST",
+      `/releases/${encodeURIComponent(id)}/yank`,
+      { reason: "corrupt textures" },
+    );
+    expect(yank.status, await yank.clone().text()).toBe(200);
+    const listed = await getJson(
+      `/deliverables/${encodeURIComponent(CORE)}/releases`,
+    );
+    const row = (listed.releases as Record<string, any>[]).find(
+      (r) => r.releaseId === id,
+    )!;
+    expect(row.yank).toMatchObject({
+      reason: "corrupt textures",
+      by: "admin:u1",
+    });
+    const unyank = await admin(
+      env,
+      db,
+      "DELETE",
+      `/releases/${encodeURIComponent(id)}/yank`,
+    );
+    expect(unyank.status, await unyank.clone().text()).toBe(200);
+    const after = await getJson(
+      `/deliverables/${encodeURIComponent(CORE)}/releases`,
+    );
+    expect(
+      (after.releases as Record<string, any>[]).find((r) => r.releaseId === id)!
+        .yank,
+    ).toBeNull();
+  });
+
+  it("the console Releases list names each app release record's signer", async () => {
+    await seedPins();
+    await db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, metadata_access, artifacts_access, created_at,
+          modified_at, deliverable_id, seq)
+       VALUES (?, 'v0.9.0', '0.9.0', 'public', 'public', ?, ?, 'app', 1)`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    const body = await getJson("/releases");
+    const rows = body.releases as Record<string, any>[];
+    const signed = rows.find((r) => r.version === "1.5.0")!;
+    expect(signed.signer).toMatchObject({ kind: "release", kid: RELEASE_KID });
+    expect(signed.signer.recordSha256).toMatch(/^[0-9a-f]{64}$/);
+    // A release no signed record describes (a legacy GitHub-synced one) has no signer.
+    expect(rows.find((r) => r.releaseId === "v0.9.0")!.signer).toBeNull();
+  });
 });

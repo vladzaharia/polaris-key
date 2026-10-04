@@ -1,14 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { configureAxe } from "vitest-axe";
 import type {
+  EdgeMintIdentity,
+  EdgeMintRecipesResponse,
   PortalProductSettings,
   ProductDetail,
   ResyncResult,
   UpdatePortalSettingsBody,
 } from "../src/api.js";
 import { resetCache } from "../src/context.js";
-import { Toaster } from "../src/components/ui/index.js";
+import { KitProviders } from "../src/kit/KitProviders.js";
+import { AppToaster } from "../src/ui/toast.js";
 
 const portalSettings =
   vi.fn<(slug: string) => Promise<{ settings: PortalProductSettings }>>();
@@ -21,6 +31,8 @@ const updatePortalSettings =
   >();
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
+const edgeMintRecipes =
+  vi.fn<(slug: string) => Promise<EdgeMintRecipesResponse>>();
 
 vi.mock("../src/api.js", async () => {
   const actual =
@@ -33,11 +45,23 @@ vi.mock("../src/api.js", async () => {
         updatePortalSettings(slug, body),
       product: (slug: string) => product(slug),
       resyncProduct: (slug: string) => resyncProduct(slug),
+      edgeMintRecipes: (slug: string) => edgeMintRecipes(slug),
     },
   };
 });
 
-const { Identity } = await import("../src/views/Identity.js");
+const { PortalPage } = await import("../src/console/pages/identity/Portal.js");
+const { SignInPage, parseGroupMap } =
+  await import("../src/console/pages/identity/SignIn.js");
+
+const axe = configureAxe({
+  rules: {
+    // jsdom computes no colour; contrast is the brand suite's and the browser's.
+    "color-contrast": { enabled: false },
+    // A page rendered without the shell has no landmarks around it.
+    region: { enabled: false },
+  },
+});
 
 const PORTAL: PortalProductSettings = {
   portalEnabled: true,
@@ -62,15 +86,52 @@ const PRODUCT: ProductDetail = {
   adminGroup: "djdl-admins",
   createdAt: 1_700_000_000,
   modifiedAt: 1_710_000_000,
+  services: {
+    license: { enabled: true },
+    config: { enabled: true },
+    release: { enabled: true },
+    distribution: { enabled: true },
+    update: { enabled: true },
+    identity: { enabled: true },
+  },
 };
 
-function renderIdentity() {
+const CUSTOM: EdgeMintIdentity = {
+  provider: "custom",
+  issuer: "https://id.djdl.example",
+  clientId: "djdl-console-client",
+  groupRoleMapJson: JSON.stringify({
+    "djdl-pro": { role: "member", tier: "pro" },
+    "djdl-beta": { role: "tester" },
+  }),
+};
+
+function mintResponse(
+  identity: EdgeMintIdentity | null,
+  oidcDefault = false,
+): EdgeMintRecipesResponse {
+  return {
+    registration: "requires-license",
+    anonymousEnroll: false,
+    oidcDefault,
+    publicMint: false,
+    licenseEnabled: true,
+    identity,
+    recipes: [],
+  };
+}
+
+function wrap(ui: React.ReactElement) {
   return render(
-    <Toaster>
-      <Identity slug="djdl" />
-    </Toaster>,
+    <KitProviders>
+      <div data-service="identity">{ui}</div>
+      <AppToaster />
+    </KitProviders>,
   );
 }
+
+const renderPortal = () => wrap(<PortalPage slug="djdl" />);
+const renderSignIn = () => wrap(<SignInPage slug="djdl" />);
 
 function toggle(name: string): HTMLElement {
   return screen.getByRole("switch", { name });
@@ -80,15 +141,27 @@ function checked(el: HTMLElement): boolean {
   return el.getAttribute("aria-checked") === "true";
 }
 
+const saveButton = () =>
+  screen.queryByRole("button", { name: "Save portal settings" });
+
+async function axeViolations(container: HTMLElement): Promise<string[]> {
+  const results = await axe(container);
+  return results.violations.map(
+    (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+  );
+}
+
 beforeEach(() => {
   resetCache();
   portalSettings.mockReset();
   updatePortalSettings.mockReset();
   product.mockReset();
   resyncProduct.mockReset();
+  edgeMintRecipes.mockReset();
   portalSettings.mockResolvedValue({ settings: PORTAL });
   updatePortalSettings.mockResolvedValue({ ok: true, settings: PORTAL });
   product.mockResolvedValue({ product: PRODUCT });
+  edgeMintRecipes.mockResolvedValue(mintResponse(CUSTOM));
   // jsdom lacks these Radix-needed APIs.
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
@@ -106,18 +179,35 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("Identity — the customer portal card", () => {
-  it("renders all five portal modules at the state the identity endpoint reported", async () => {
-    renderIdentity();
+// ── Identity → Portal ──────────────────────────────────────────────────────────────────────────
 
+describe("Identity → Portal", () => {
+  it("titles the page Portal, matching its sidebar item (IDN-5)", async () => {
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Portal" }),
+    ).toBeTruthy();
+  });
+
+  it("shows a loading state and never the code defaults while the endpoint is pending (IDN-4)", async () => {
+    let resolve!: (v: { settings: PortalProductSettings }) => void;
+    portalSettings.mockReturnValue(new Promise((r) => (resolve = r)));
+    renderPortal();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-skeleton="form"]')).not.toBeNull(),
+    );
+    // The defaults have every module on; none of them may stand in for the real value.
+    expect(screen.queryByRole("switch")).toBeNull();
+
+    resolve({ settings: PORTAL });
+    await waitFor(() => expect(checked(toggle("OIDC access"))).toBe(false));
+  });
+
+  it("renders all five portal modules at the state the identity endpoint reported", async () => {
+    renderPortal();
     // Five separate switches, not one "portal on/off": each is a module a customer either can or
     // cannot reach, and collapsing them would make "portal on" mean five different things.
-    //
-    // Wait for the SETTLED value, not merely for the switch to exist: the card seeds its form
-    // from the response in an effect, so the switches are briefly in the DOM at their initial
-    // state and `findByRole` can resolve on that one render when the machine is busy. The
-    // defaults already have the portal (and every other module) on, so wait on the two switches
-    // the fixture turns OFF — only the settled response can produce those.
     await waitFor(() => {
       expect(checked(toggle("OIDC access"))).toBe(false);
       expect(checked(toggle("License-key claim"))).toBe(false);
@@ -128,20 +218,15 @@ describe("Identity — the customer portal card", () => {
   });
 
   it("reads the portal state through the identity endpoint, not the copy on the product row", async () => {
-    // `identity/portal` OWNS the table. Seeding the form from the product row's embedded copy
-    // would show a value a save does not round-trip against, so the two would drift apart after
-    // the first write.
+    // `identity/portal` OWNS the table. Seeding from the product row's embedded copy would show a
+    // value a save does not round-trip against.
     product.mockResolvedValue({
       product: {
         ...PRODUCT,
         portalSettings: { ...PORTAL, portalEnabled: false, oidcEnabled: true },
       },
     });
-    renderIdentity();
-
-    // Wait on the value only the endpoint supplies: the form's defaults already show the portal
-    // switch on (and OIDC on), so waiting on the portal switch alone passed before the endpoint
-    // answered and the OIDC assertion then raced it.
+    renderPortal();
     await waitFor(() => {
       expect(checked(toggle("OIDC access"))).toBe(false);
       expect(checked(toggle("Customer portal"))).toBe(true);
@@ -149,14 +234,40 @@ describe("Identity — the customer portal card", () => {
     expect(portalSettings).toHaveBeenCalledWith("djdl");
   });
 
-  it("saves the whole module set through updatePortalSettings", async () => {
-    renderIdentity();
-    await screen.findByRole("switch", { name: "Customer portal" });
+  it("says when the settings were last changed, and when they never were", async () => {
+    renderPortal();
+    expect(await screen.findByText(/Last changed/)).toBeTruthy();
+    cleanup();
+    resetCache();
+    portalSettings.mockResolvedValue({
+      settings: { ...PORTAL, modifiedAt: 0 },
+    });
+    renderPortal();
+    expect(
+      await screen.findByText("Never changed: these are the defaults."),
+    ).toBeTruthy();
+  });
+
+  it("offers no Save until a module actually moves", async () => {
+    renderPortal();
+    await waitFor(() => expect(checked(toggle("OIDC access"))).toBe(false));
+    expect(saveButton()).toBeNull();
+    expect(updatePortalSettings).not.toHaveBeenCalled();
 
     await userEvent.click(toggle("OIDC access"));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Save portal settings" }),
-    );
+    expect(saveButton()).not.toBeNull();
+    // Moving it back leaves nothing to save.
+    await userEvent.click(toggle("OIDC access"));
+    await waitFor(() => expect(saveButton()).toBeNull());
+  });
+
+  it("saves the whole module set through updatePortalSettings and refetches the portal settings", async () => {
+    renderPortal();
+    await waitFor(() => expect(checked(toggle("OIDC access"))).toBe(false));
+    expect(portalSettings).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(toggle("OIDC access"));
+    await userEvent.click(saveButton()!);
 
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
     const [slug, body] = updatePortalSettings.mock.calls[0]!;
@@ -169,14 +280,31 @@ describe("Identity — the customer portal card", () => {
       releasesEnabled: true,
       autoLinkEnabled: null,
     });
-    // `branding` is a blob this card never renders; sending it back would let a console that
-    // cannot show branding overwrite it.
+    // `branding` is a blob this page only reads; sending it back could overwrite it.
     expect("branding" in body).toBe(false);
+    // The invalidation table: `portal settings` → the portal query.
+    await waitFor(() => expect(portalSettings).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Portal settings saved")).toBeTruthy();
+  });
+
+  it("keeps the draft and says why when a save fails", async () => {
+    updatePortalSettings.mockRejectedValue(new Error("Database unavailable"));
+    renderPortal();
+    await waitFor(() => expect(checked(toggle("OIDC access"))).toBe(false));
+
+    await userEvent.click(toggle("OIDC access"));
+    await userEvent.click(saveButton()!);
+
+    await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
+    expect(
+      (await screen.findAllByText(/Database unavailable/)).length,
+    ).toBeGreaterThan(0);
+    expect(checked(toggle("OIDC access"))).toBe(true);
+    expect(saveButton()).not.toBeNull();
   });
 
   it("targets …/identity/portal on the wire", async () => {
-    // The rest of this suite runs against a mocked `api`, so nothing in it would notice the module
-    // still pointing at the old product-settings path. This one case exercises the REAL client.
+    // The rest of this suite runs against a mocked `api`; this one case exercises the REAL client.
     const actual =
       await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
     const fetchSpy = vi.fn(
@@ -203,10 +331,8 @@ describe("Identity — the customer portal card", () => {
   });
 
   it("renders automatic linking as a TRI-STATE, defaulting to auto", async () => {
-    // R5-01/R5-02: `null` means "follow the OIDC issuer". A switch cannot express that — it
-    // would have to render `null` as on or off, and the first touch would freeze a value that
-    // is supposed to track the issuer. So it is a select with "auto" as a nameable choice.
-    renderIdentity();
+    // R5-01/R5-02: `null` means "follow the OIDC issuer". A switch cannot express that.
+    renderPortal();
     const control = await screen.findByRole("combobox", {
       name: "Automatic license linking",
     });
@@ -220,114 +346,301 @@ describe("Identity — the customer portal card", () => {
     portalSettings.mockResolvedValue({
       settings: { ...PORTAL, autoLinkEnabled: false },
     });
-    renderIdentity();
+    renderPortal();
     const control = await screen.findByRole("combobox", {
       name: "Automatic license linking",
     });
-    expect(control.textContent).toContain("Never link");
+    await waitFor(() => expect(control.textContent).toContain("Never link"));
 
     await userEvent.click(control);
     await userEvent.click(
       await screen.findByRole("option", { name: /Always link/ }),
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Save portal settings" }),
-    );
-
+    await userEvent.click(saveButton()!);
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
     expect(updatePortalSettings.mock.calls[0]![1]).toMatchObject({
       autoLinkEnabled: true,
     });
+
+    await waitFor(() => expect(saveButton()).toBeNull());
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Automatic license linking" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Auto \(follow/ }),
+    );
+    await userEvent.click(saveButton()!);
+    await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(2));
+    expect(updatePortalSettings.mock.calls[1]![1]).toMatchObject({
+      autoLinkEnabled: null,
+    });
   });
 
-  it("keeps save inert until a module actually moves", async () => {
-    renderIdentity();
-    await screen.findByRole("switch", { name: "Customer portal" });
+  it("locks the sign-in methods and modules while the portal is off (IDN-3)", async () => {
+    portalSettings.mockResolvedValue({
+      settings: { ...PORTAL, portalEnabled: false },
+    });
+    renderPortal();
+    await waitFor(() => expect(checked(toggle("Customer portal"))).toBe(false));
 
+    for (const name of [
+      "OIDC access",
+      "Email magic links",
+      "License-key claim",
+      "Release downloads",
+    ]) {
+      expect(toggle(name).hasAttribute("disabled"), name).toBe(true);
+    }
     expect(
       screen
-        .getByRole("button", { name: "Save portal settings" })
+        .getByRole("combobox", { name: "Automatic license linking" })
         .hasAttribute("disabled"),
     ).toBe(true);
-    expect(updatePortalSettings).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText("Turn on the customer portal to change this.").length,
+    ).toBe(2);
+
+    // Turning the portal on in the draft unlocks them.
+    await userEvent.click(toggle("Customer portal"));
+    expect(toggle("OIDC access").hasAttribute("disabled")).toBe(false);
+    expect(toggle("Release downloads").hasAttribute("disabled")).toBe(false);
   });
 
-  it("shows an empty state with a working retry when portal settings fail to load", async () => {
-    portalSettings.mockReset();
+  it("locks Release downloads while the Release service is off, with a way to Services (IDN-3)", async () => {
+    product.mockResolvedValue({
+      product: {
+        ...PRODUCT,
+        services: { ...PRODUCT.services!, release: { enabled: false } },
+      },
+    });
+    renderPortal();
+    await waitFor(() =>
+      expect(toggle("Release downloads").hasAttribute("disabled")).toBe(true),
+    );
+    expect(toggle("OIDC access").hasAttribute("disabled")).toBe(false);
+    expect(screen.getByText(/Release is off for this product/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open Services" }).getAttribute("href"),
+    ).toBe("#/p/djdl/services");
+  });
+
+  it("shows branding as a read-out: none, or the stored value (IDN-4)", async () => {
+    renderPortal();
+    expect(
+      await screen.findByText(
+        "None. The portal shows the product name in the Polaris Key theme.",
+      ),
+    ).toBeTruthy();
+    cleanup();
+    resetCache();
+    portalSettings.mockResolvedValue({
+      settings: { ...PORTAL, branding: { accent: "#7c3aed" } },
+    });
+    renderPortal();
+    const tree = await screen.findByRole("tree", { name: "Portal branding" });
+    expect(within(tree).getByText(/#7c3aed/)).toBeTruthy();
+    // Read-only: no input edits it.
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("shows an error state with a working retry when portal settings fail to load", async () => {
     portalSettings
       .mockRejectedValueOnce(new Error("nope"))
       .mockResolvedValue({ settings: PORTAL });
-    renderIdentity();
+    renderPortal();
 
-    expect(
-      await screen.findByText("Couldn’t load portal settings"),
-    ).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const alert = await screen.findByRole("alert");
+    await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     expect(
       await screen.findByRole("switch", { name: "Customer portal" }),
     ).toBeTruthy();
   });
+
+  it("passes axe", async () => {
+    const { container } = renderPortal();
+    await waitFor(() => expect(checked(toggle("OIDC access"))).toBe(false));
+    expect(await axeViolations(container)).toEqual([]);
+  });
 });
 
-describe("Identity — the OIDC explainer absorbed from views/Oidc.tsx", () => {
-  it("still states that identity config is manifest-authored and un-editable here", async () => {
-    renderIdentity();
+// ── Identity → Sign-in ─────────────────────────────────────────────────────────────────────────
 
-    // The substance the standalone tab existed to deliver: WHERE the four un-editable things are
-    // authored, and that the admin API has no write path for them. An operator who turns "OIDC
-    // access" on above and then hunts for a provider form has been handed half an answer.
+describe("Identity → Sign-in", () => {
+  it("titles the page Sign-in and states that identity config is manifest-authored", async () => {
+    renderSignIn();
     expect(
-      await screen.findByText(/Identity config is authored in your repo/),
+      await screen.findByRole("heading", { level: 1, name: "Sign-in" }),
     ).toBeTruthy();
     expect(
-      screen.getByText(/The admin API does not expose OIDC settings/),
+      await screen.findByRole("heading", { name: "Where it is authored" }),
     ).toBeTruthy();
     expect(screen.getAllByText(".pkey/product").length).toBeGreaterThan(0);
-    // The escape hatch: platform OIDC is the default, and `custom` is the opt-out.
-    expect(screen.getByText("oidc.provider: custom")).toBeTruthy();
     // No console-side editor is offered for any of it.
     expect(screen.queryByRole("combobox", { name: /provider/i })).toBeNull();
     expect(screen.queryByRole("textbox", { name: /client/i })).toBeNull();
   });
 
-  it("offers re-sync as the one action the API does support", async () => {
-    resyncProduct.mockResolvedValue({ ok: true, slug: "djdl" });
-    renderIdentity();
-
-    const button = await screen.findByRole("button", {
-      name: /Re-sync from linked repo/,
-    });
-    await userEvent.click(button);
-    await waitFor(() => expect(resyncProduct).toHaveBeenCalledWith("djdl"));
+  it("shows the current provider, issuer and client from config/mint (IDN-2)", async () => {
+    renderSignIn();
+    expect(await screen.findByText("Custom")).toBeTruthy();
+    expect(screen.getByText("https://id.djdl.example")).toBeTruthy();
+    expect(screen.getAllByText(/djdl-console-client/).length).toBeGreaterThan(
+      0,
+    );
+    expect(edgeMintRecipes).toHaveBeenCalledWith("djdl");
   });
 
-  it("gates re-sync on the product actually being linked to a repo", async () => {
-    // `release/resync.ts` 422s anything whose `release_source` is not `github`, so an enabled
-    // button on a manual product is an affordance the server is guaranteed to refuse.
+  it("reads an unset provider as the platform default", async () => {
+    edgeMintRecipes.mockResolvedValue(
+      mintResponse({
+        provider: null,
+        issuer: null,
+        clientId: null,
+        groupRoleMapJson: null,
+      }),
+    );
+    renderSignIn();
+    expect(await screen.findByText("Platform OIDC")).toBeTruthy();
+    expect(screen.getByText("The platform issuer")).toBeTruthy();
+    expect(screen.getByText("The platform client")).toBeTruthy();
+    expect(screen.getByText("No groups are mapped.")).toBeTruthy();
+  });
+
+  it("lists the group map with each tier linked to its record", async () => {
+    renderSignIn();
+    const table = await screen.findByRole("table", {
+      name: "Groups and tiers",
+    });
+    const rows = within(table).getAllByRole("row");
+    expect(rows).toHaveLength(3);
+    expect(within(rows[1]!).getByText("djdl-pro")).toBeTruthy();
+    expect(
+      within(rows[1]!).getByRole("link", { name: "pro" }).getAttribute("href"),
+    ).toBe("#/p/djdl/license/tiers/pro");
+    expect(within(rows[2]!).getByText("Entitlement only")).toBeTruthy();
+  });
+
+  it("says what happens to a signed-in account in no mapped group", async () => {
+    renderSignIn();
+    expect(await screen.findByText(/is refused \(not entitled\)/)).toBeTruthy();
+    cleanup();
+    resetCache();
+    edgeMintRecipes.mockResolvedValue(mintResponse(CUSTOM, true));
+    renderSignIn();
+    expect(
+      await screen.findByText(/gets the auto-issue default tier/),
+    ).toBeTruthy();
+  });
+
+  it("flags a group map that does not parse", async () => {
+    edgeMintRecipes.mockResolvedValue(
+      mintResponse({ ...CUSTOM, groupRoleMapJson: "{not json" }),
+    );
+    renderSignIn();
+    expect(
+      await screen.findByText(/The stored group map is not valid JSON/),
+    ).toBeTruthy();
+  });
+
+  it("shows the service-off state when Identity is off", async () => {
+    edgeMintRecipes.mockResolvedValue(mintResponse(null));
+    renderSignIn();
+    expect(
+      await screen.findByRole("heading", {
+        name: "Identity is off for this product",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open Services" }).getAttribute("href"),
+    ).toBe("#/p/djdl/services");
+  });
+
+  it("shows a loading state, then an error state with a working retry", async () => {
+    edgeMintRecipes
+      .mockRejectedValueOnce(new Error("nope"))
+      .mockResolvedValue(mintResponse(CUSTOM));
+    renderSignIn();
+    expect(document.querySelector('[data-skeleton="record"]')).not.toBeNull();
+
+    const alert = await screen.findByRole("alert");
+    await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Custom")).toBeTruthy();
+  });
+
+  it("confirms a resync (L1, caution) with its consequences before running it (IDN-1)", async () => {
+    resyncProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    renderSignIn();
+    await screen.findByText("Custom");
+
+    const trigger = () =>
+      screen.getByRole("button", { name: "Resync from repo…" });
+    await waitFor(() => expect(trigger().hasAttribute("disabled")).toBe(false));
+    await userEvent.click(trigger());
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Resync from the linked repo?"),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(/The OIDC provider, group map and provisioning/),
+    ).toBeTruthy();
+    expect(resyncProduct).not.toHaveBeenCalled();
+
+    // Cancel runs nothing.
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(resyncProduct).not.toHaveBeenCalled();
+
+    await userEvent.click(trigger());
+    await userEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Resync",
+      }),
+    );
+    await waitFor(() => expect(resyncProduct).toHaveBeenCalledWith("djdl"));
+    expect(await screen.findByText("Resynced from repo")).toBeTruthy();
+    // The invalidation table: resync → everything under the product (the mint read included).
+    await waitFor(() => expect(edgeMintRecipes).toHaveBeenCalledTimes(2));
+  });
+
+  it("gates resync on the product actually being linked to a repo", async () => {
+    // `release/resync.ts` 422s anything whose `release_source` is not `github`.
     product.mockResolvedValue({
       product: { ...PRODUCT, releaseSource: "manual" },
     });
-    renderIdentity();
+    renderSignIn();
 
-    const button = await screen.findByRole("button", {
-      name: /Re-sync from linked repo/,
-    });
-    expect(button.hasAttribute("disabled")).toBe(true);
-    await userEvent.click(button);
+    const button = () =>
+      screen.getByRole("button", { name: "Resync from repo…" });
+    await waitFor(() =>
+      expect(button().getAttribute("aria-disabled")).toBe("true"),
+    );
+    await userEvent.click(button());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(resyncProduct).not.toHaveBeenCalled();
   });
 
-  it("keeps the explainer up when the portal card cannot load", async () => {
-    // The two cards load independently on purpose: a portal-settings failure must not hide the
-    // one card that tells the operator where identity config actually lives.
-    portalSettings.mockRejectedValue(new Error("nope"));
-    renderIdentity();
+  it("passes axe", async () => {
+    const { container } = renderSignIn();
+    await screen.findByRole("table", { name: "Groups and tiers" });
+    expect(await axeViolations(container)).toEqual([]);
+  });
+});
 
+describe("parseGroupMap", () => {
+  it("reads role and tier grants, bare-string roles, and refuses non-objects", () => {
+    expect(parseGroupMap(null)).toEqual([]);
+    expect(parseGroupMap("")).toEqual([]);
+    expect(parseGroupMap("[]")).toBe("invalid");
+    expect(parseGroupMap("{")).toBe("invalid");
     expect(
-      await screen.findByText("Couldn’t load portal settings"),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(/Identity config is authored in your repo/),
-    ).toBeTruthy();
+      parseGroupMap(
+        JSON.stringify({ a: { role: "member", tier: "pro" }, b: "admin" }),
+      ),
+    ).toEqual([
+      { group: "a", role: "member", tier: "pro" },
+      { group: "b", role: "admin", tier: null },
+    ]);
   });
 });

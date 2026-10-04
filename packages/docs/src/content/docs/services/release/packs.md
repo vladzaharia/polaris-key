@@ -490,35 +490,40 @@ verifies it: older builds simply never install delegated releases.
 
 Packs appear in the Release section beside the app; there is no separate content section.
 
-- **Deliverables** lists the app and every declared pack: kind, pack type, binding, whether it is
-  required, its embedded baseline, its delivery, its gate and its latest release. A `pinned` pack
-  that no app release pins is flagged **Not pinned by any app release**: it reaches no device
-  yet. (A compatible or standalone pack reaches devices through the resolved sets instead, so it
-  is not flagged.) When the gate differs from the entitlement the latest release signed
-  (an operator gated or un-gated the pack after publishing), both are shown; devices follow the
-  signed one until the next publish.
-- **A pack's page** lists its releases newest first, with version, `seq`, channel and yank, and
-  for each release **which app releases pin it** (an app release that is itself yanked is
-  marked). A yanked pack release keeps its pins, so check this column before yanking. Expanding a
-  release shows each variant's engine, payload size, full-download bytes and its delta menu (each
-  delta's base version and download bytes), as the signed record gives them, and a variant's
-  files on request.
+- **Deliverables** lists the app and every declared pack: kind, binding, latest release, gate and
+  how many app releases pin it; pack type, `required`, embedded baseline and delivery are a click
+  away under **Columns**. The app row opens Releases; a pack row opens the pack's record. A
+  `pinned` pack that no app release pins is marked **Not pinned**, with the next step: pin it from
+  an app release's manifest, or switch its binding to `compatible`. (A compatible or standalone
+  pack reaches devices through the resolved sets instead, so it is not marked.) The gate links to
+  where it is set; when it differs from the entitlement the latest release signed (an operator
+  gated or un-gated the pack after publishing), both are shown, and devices follow the signed one
+  until the next publish.
+- **A pack's record** has four tabs. **Releases** lists its releases newest first, with version
+  (`seq` on hover and in the release's drawer), channel, signer and **which app releases pin it**,
+  each a link (an app release that is itself yanked is marked). A yanked pack release keeps its
+  pins, so check this column before yanking; **Yank** and **Unyank** are in each row's menu.
+  Opening a release shows each variant as a card (its axes, engine, payload size, full-download
+  bytes and delta menu, as the signed record gives them) and its files as a searchable tree.
+  **Channels** shows the pack's channel lanes, with its floors per contentApi line. **Delivery**
+  edits its gate: who may download it and the entitlement a device needs. **Files** browses the
+  files of any release and variant.
 - **Compatibility** sets app releases against pack releases, each cell pinned, held, compatible,
   incompatible or revoked, with the live contentApi levels and per-outlet liveness, and
   simulates what a device running one app release on one outlet gets
   ([Compatibility and the device simulator](/docs/services/release/compatibility/)).
-- **Releases**: an app release's expanded row shows its `contentApi`, the pack release it pins
-  for each pack (with `required`, `delivery` and whether the pinned release is yanked) and an
-  **Embeds** column, the packs each build ships embedded.
+- **An app release's record** shows, on its **Packs** tab, its `contentApi` and the pack release
+  it pins for each pack (with `required`, `delivery` and whether the pinned release is yanked),
+  each a link to the pack record; each build card names the packs that build ships embedded.
+- **Content keys** lists each delegation: its scope, the pack types it covers (and what it was
+  delegated, when that differs), its window ("expires in…") and status (`active`, `closed` or
+  `revoked`, with the revocation's reason, key and date), the release key that signed it, the
+  content key's fingerprint, how many releases it signed and `seq`. Each pack release also shows
+  its signer: the release key, or the delegation it was signed under. Delegating and revoking are
+  CI acts, so there are no controls.
 
-- **Content keys** lists each delegation: its scope, types, `seq`, window and status (`active`,
-  `closed` or `revoked`), the release key that signed it, the content key's fingerprint, how many
-  releases it signed and its revocation. Each pack release also shows its signer: the release key,
-  or the delegation it was signed under. Minting and revoking are CI acts, so there are no
-  controls.
-
-Everything here is read-only. The console never shows where a pack's objects are stored, only
-their sizes and hashes. Its admin routes, all under `/manage/api/products/<slug>/release/` and
+Apart from yanks, channel policy and the delivery gate, everything here is read-only. The console
+never shows where a pack's objects are stored, only their sizes and hashes. Its admin routes, all under `/manage/api/products/<slug>/release/` and
 behind the same platform-admin session as the rest of the console:
 
 | Method and path                                                  | Answers                                                                                                                                                                                                                                                                    |
@@ -526,7 +531,7 @@ behind the same platform-admin session as the rest of the console:
 | `GET deliverables`                                               | `deliverables[]` (the app first, then packs by id) with their declaration, `gate` and `latest`, and `gateKnown` (false while Distribution is off).                                                                                                                         |
 | `GET deliverables/<id>/releases`                                 | A pack's `releases[]`, newest first (at most 100), each with its `variants[]` (sizes and `deltas[]`), `yank` and `pinnedBy[]`. 404 for the app or an unknown id.                                                                                                           |
 | `GET deliverables/<id>/releases/<releaseId>/files?variant=<key>` | One variant's files (`variant` empty for an unvaried pack), read from its files index one index per request: `files[]` (path, size, SHA-256, offset, blob size and codec; at most 2,000) and `total`. 404 when the release is not that pack's or its index cannot be read. |
-| `GET releases`                                                   | The app's releases ([Channels](/docs/services/release/channels/)), each with its `contentApi` and `pins[]` and each build's `embeds`.                                                                                                                                      |
+| `GET releases`                                                   | The app's releases ([Channels](/docs/services/release/channels/)), each with its `contentApi`, `pins[]`, each build's `embeds` and its record's `signer`.                                                                                                                  |
 
 ## Reading packs
 

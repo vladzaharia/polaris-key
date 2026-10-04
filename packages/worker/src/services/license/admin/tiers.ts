@@ -55,6 +55,16 @@ function tierWriteChecks(body: Record<string, unknown>): WriteChecks {
     .wireInteger("policyDeviceLimit", body.policyDeviceLimit);
 }
 
+/** A PATCH field: `null` clears it, a value of `type` replaces it, anything else keeps it. */
+function nullable<T>(
+  raw: unknown,
+  type: "string" | "number",
+  stored: T | null,
+): T | null {
+  if (raw === null) return null;
+  return typeof raw === type ? (raw as T) : stored;
+}
+
 async function profileExists(
   db: Db,
   slug: string,
@@ -161,19 +171,22 @@ export async function handleTiers(
         "policyDeviceLimit must be a positive integer",
         { fields: ["policyDeviceLimit"] },
       );
+    // A-3: `null` clears a nullable field (no profile; the product's expiry and device-limit
+    // defaults apply), an absent field keeps the stored value.
     await upsertTier(db, {
       ...row,
       label: typeof body.label === "string" ? body.label : row.label,
-      profile_id:
-        typeof body.profile === "string" ? body.profile : row.profile_id,
-      policy_expiry_days:
-        typeof body.policyExpiryDays === "number"
-          ? body.policyExpiryDays
-          : row.policy_expiry_days,
-      policy_device_limit:
-        typeof body.policyDeviceLimit === "number"
-          ? body.policyDeviceLimit
-          : row.policy_device_limit,
+      profile_id: nullable(body.profile, "string", row.profile_id),
+      policy_expiry_days: nullable(
+        body.policyExpiryDays,
+        "number",
+        row.policy_expiry_days,
+      ),
+      policy_device_limit: nullable(
+        body.policyDeviceLimit,
+        "number",
+        row.policy_device_limit,
+      ),
       channels_json:
         "channels" in body ? parseChannels(body.channels) : row.channels_json,
       min_version:

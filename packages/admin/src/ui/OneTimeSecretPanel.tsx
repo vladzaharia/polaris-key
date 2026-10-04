@@ -29,6 +29,8 @@ export interface OneTimeSecretPanelProps {
   closeRequested?: boolean;
   onCancelClose?: () => void;
   onConfirmClose?: () => void;
+  /** More ways out beside Done ("Open license", "Create another"); gate them on `acknowledged`. */
+  actions?: React.ReactNode;
 }
 
 /** Save `value` as a file. Resolves false when the browser refused every method. */
@@ -74,6 +76,7 @@ export function OneTimeSecretPanel({
   closeRequested = false,
   onCancelClose,
   onConfirmClose,
+  actions,
 }: OneTimeSecretPanelProps): React.ReactElement {
   const [ackState, setAckState] = React.useState(false);
   const acknowledged = ackProp ?? ackState;
@@ -165,6 +168,7 @@ export function OneTimeSecretPanel({
         ) : null}
       </DialogBody>
       <DialogFooter>
+        {actions}
         <Button
           disabledReason={
             acknowledged
