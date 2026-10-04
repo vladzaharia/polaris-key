@@ -268,6 +268,31 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
 # `lazy_delta_settings` count demand and generate deltas; anything else turns it all off.
 LAZY_DELTAS = "off"
 
+# F-02: the LOCAL registry-client harness only (`wrangler dev --env test`, run by
+# scripts/registry-clients/run.mjs and .github/workflows/registry-clients.yml). It is never
+# deployed: no routes, no workers.dev subdomain, and local-only placeholder ids. The harness
+# passes PKG_ORIGIN with --var, because it names the port it listens on.
+[env.test]
+workers_dev = false
+[[env.test.durable_objects.bindings]]
+name = "RL"
+class_name = "RateLimitDO"
+[[env.test.durable_objects.bindings]]
+name = "UPDATE_HEALTH"
+class_name = "UpdateHealthDO"
+[[env.test.kv_namespaces]]
+binding = "HOT"
+id = "local-registry-clients-kv"
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_registry_clients"
+database_id = "00000000-0000-4000-8000-000000000000"
+[[env.test.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-registry-clients"
+[env.test.vars]
+PKEY_ENVIRONMENT = "test"
+
 # Trusted publishing (P2-02; optional — without them /release/publish/uploads answers 404):
 #   R2_ACCOUNT_ID, R2_PARENT_ACCESS_KEY_ID, R2_PARENT_SECRET_ACCESS_KEY (docs/DEPLOYMENT.md).
 # Required secrets (set with `wrangler secret put <NAME> --env <env>`):

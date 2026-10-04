@@ -115,7 +115,7 @@ export function renderRegistryLandingPage(env: Env): string {
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
       : "",
     `<p class="lede">${escapeHtml(description)}</p>`,
-    `<p class="about">Package managers fetch from here, each from its owner's feed. Setup lines for every client are in the console. There is nothing to browse.</p>`,
+    `<p class="about">Package managers fetch from here, each from its owner's feed. The console has the setup lines for every client. There is nothing to browse.</p>`,
     `<nav aria-label="Polaris Key">`,
     `<ul>`,
     `<li><a href="${escapeHtml(`${consoleOrigin}/`)}">Open the console</a></li>`,
