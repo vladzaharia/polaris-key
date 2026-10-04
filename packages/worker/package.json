@@ -17,6 +17,7 @@
     "dryrun": "wrangler deploy --dry-run",
     "check:representable": "node scripts/check-representable.mjs",
     "registry:clients": "node scripts/registry-clients/run.mjs",
+    "registry:self-publish": "../../node_modules/.bin/tsx scripts/registry-clients/self-publish.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
