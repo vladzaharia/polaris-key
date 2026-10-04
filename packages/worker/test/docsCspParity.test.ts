@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   DOCS_SCRIPT_HASHES,
+  DOCS_STYLE_ATTR_HASHES,
   DOCS_STYLE_HASHES,
 } from "../src/docsCsp.generated.js";
 
@@ -36,6 +37,18 @@ function* htmlFiles(dir: string): Generator<string> {
 const SCRIPT_RE = /<script(?<attrs>[^>]*)>(?<body>[\s\S]*?)<\/script>/gi;
 const STYLE_RE = /<style[^>]*>(?<body>[\s\S]*?)<\/style>/gi;
 
+const STYLE_ATTR_RE = /<[a-z][^>]*?\sstyle="(?<value>[^"]*)"/gi;
+const ENTITIES: Record<string, string> = {
+  "&quot;": '"',
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&#39;": "'",
+  "&#x27;": "'",
+};
+const decode = (v: string): string =>
+  v.replace(/&(?:quot|amp|lt|gt|#39|#x27);/g, (m) => ENTITIES[m]!);
+
 function cspHash(body: string): string {
   return `'sha256-${createHash("sha256").update(body, "utf8").digest("base64")}'`;
 }
@@ -46,6 +59,7 @@ describe.skipIf(!existsSync(dist))(
     it("the committed hash sets equal a fresh sweep of the built HTML", () => {
       const scripts = new Set<string>();
       const styles = new Set<string>();
+      const styleAttrs = new Set<string>();
       for (const file of htmlFiles(dist)) {
         const html = readFileSync(file, "utf8");
         for (const match of html.matchAll(SCRIPT_RE)) {
@@ -53,6 +67,10 @@ describe.skipIf(!existsSync(dist))(
           const body = match.groups?.body ?? "";
           if (/\ssrc\s*=/i.test(attrs) || body.length === 0) continue;
           scripts.add(cspHash(body));
+        }
+        for (const match of html.matchAll(STYLE_ATTR_RE)) {
+          const value = decode(match.groups?.value ?? "");
+          if (value.length > 0) styleAttrs.add(cspHash(value));
         }
         for (const match of html.matchAll(STYLE_RE)) {
           const body = match.groups?.body ?? "";
@@ -62,6 +80,7 @@ describe.skipIf(!existsSync(dist))(
       }
       expect([...scripts].sort()).toEqual([...DOCS_SCRIPT_HASHES]);
       expect([...styles].sort()).toEqual([...DOCS_STYLE_HASHES]);
+      expect([...styleAttrs].sort()).toEqual([...DOCS_STYLE_ATTR_HASHES]);
     });
   },
 );
