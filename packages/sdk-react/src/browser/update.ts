@@ -18,6 +18,7 @@
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type {
   BinaryMethod,
+  FeedDeltas,
   InstalledBuild,
   UpdateCheck,
 } from "@polaris-key/protocol/update";
@@ -79,6 +80,9 @@ export interface BrowserDecideResult {
     learned: { revocation: VerifiedRevocation; jws: string }[];
     relearnCleared: string[];
   };
+  /** plans/P4-29.md §2.4 step 1: the delta menu of the feed the decision used (fresh or the
+   *  committed copy), for `BrowserPacks.recordFeedDeltas`; null when it has none. */
+  feedDeltas: FeedDeltas | null;
 }
 
 /** The transport's own code for a failed fetch: React's `network`, unless the Worker's answer
@@ -248,6 +252,7 @@ export async function decideBrowserUpdate(
     check: r.check,
     cache: r.cache,
     ...(r.revocations ? { revocations: r.revocations } : {}),
+    feedDeltas: r.content.deltas,
   };
 }
 
