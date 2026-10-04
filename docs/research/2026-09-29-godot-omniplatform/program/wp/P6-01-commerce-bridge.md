@@ -254,8 +254,27 @@ a transaction only after a claim answered ok (P5-05's hand-off).
 - **Workerd.** `test-workerd/commerce.test.ts` runs the X.509 verifier, the App Store JWS check and
   the Play push-token check in the runtime.
 
+- **Review fixes (2026-10-03).** A refund or revocation of a recorded purchase revokes every
+  grant the purchase made, by its hash, before the product map is read (a deleted or remapped
+  mapping no longer keeps a refunded flag). Each hook verifies the store's signature or token
+  before the per-product rate limit; unverified traffic is limited per client IP
+  (`appStoreHookIp`, `playRtdnHookIp`), so junk cannot drain the bucket a refund needs. Hook and
+  claim bodies go through `core/readCapped.ts`. Steam ownership must be outright — `permanent`,
+  not `sitelicense`, not `usercanceled` — per Steamworks' CheckAppOwnership v4 documentation
+  (https://partner.steamgames.com/doc/webapi/ISteamUser#CheckAppOwnership: `permanent` is "not
+  true for ownership via Family Sharing, free weekends or PC Café program"). `core/x509.ts` was
+  hardened for P6-02 and exposes `parseCertificate`, `getExtension` and `verifyChain` (with
+  `understood` critical OIDs, `leafDigitalSignature`, and the parsed chain). The App Store leaf is
+  checked with `leafDigitalSignature: "ifPresent"`: no real Apple leaf was available to confirm
+  the extension is always present, so a present keyUsage must allow signing and an absent one is
+  accepted. The Apple root fixture is the DER `test/fixtures/commerce/AppleRootCA-G3.cer` (the
+  repo ignores `*.pem`). Godot gained `PolarisKey.commerce.claim_app_store(tx)`, which finishes
+  the StoreKit transaction only after a successful claim.
+
 **Proposed follow-ups (unowned).** (1) Enforce 3.1.3(b) at the Worker's gated delivery once
 delivery requests carry the requesting outlet — a wire change, plan mode. (2) An App Store
 re-check poll (transaction history) as a backstop for lost notifications. (3) `commerce.receipt`
 in the Node, Python, Swift and React SDKs (still planned, no owner). (4) A console view of the
-commerce state (admin API only today).
+commerce state (admin API only today). (5) An operator re-bind: an audited admin action that
+moves a recorded purchase (and its grants) to another licence, for a player who lost their
+licence or bought before binding — today the first licence keeps a purchase forever.

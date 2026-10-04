@@ -80,6 +80,11 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
    }
    ```
 
+   **Set `appAppleId`** (the app's numeric Apple ID, App Store Connect → App Information):
+   Production notifications for any other Apple ID are then ignored, which closes the case of a
+   notification URL shared between two apps with the same bundle id across teams. It is optional
+   only because sandbox notifications do not carry it.
+
    A store runs only when its block is present **and** an active credential is pinned to the
    same app. `acceptSandbox` (App Store) and `acceptTestPurchases` (Play) default to `false`: a
    production product refuses sandbox transactions and licence-tester purchases. Turn them on

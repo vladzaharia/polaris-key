@@ -21,6 +21,12 @@ extends RefCounted
 ##                                 Then sync() to receive the licence document with the flag. On
 ##                                 the App Store, finish() the transaction only after a claim
 ##                                 answered ok (P5-05).
+##   claim_app_store(tx, apple)    claim a StoreKit transaction from PKeyApple.purchase()
+##                                 (`tx` = detail.transaction: {id, jws}) and finish() it ONLY
+##                                 when the claim answered ok (P5-05: finish after the server
+##                                 recorded it). detail = the claim's, plus `finished`. A refused
+##                                 or failed claim leaves the transaction unfinished, so StoreKit
+##                                 redelivers it and a later claim can retry
 ##   hidden_here(flag)             true when this build's outlet must not unlock `flag` although
 ##                                 the licence holds it (App Store 3.1.3(b), below)
 ##   is_unlocked(flag)             the licence holds `flag` and the outlet does not hide it
@@ -132,6 +138,25 @@ func claim(store: String, payload: Dictionary) -> PKeyResult:
 	if not parsed["ok"] or not (parsed["value"] is Dictionary) or not PKeyClaims.is_true(parsed["value"].get("ok")):
 		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "commerce/claim answered a body that is not a claim.", r.detail)
 	return PKeyResult.success(parsed["value"])
+
+
+## Claim a StoreKit transaction and finish it only after the claim succeeded. `tx` is the
+## `transaction` dictionary PKeyApple.purchase() (or transaction_updated) carries: {id, jws}.
+## `apple` is anything with a coroutine `finish(id) -> PKeyResult` (default PKeyApple.shared()).
+## A coroutine.
+func claim_app_store(tx: Dictionary, apple: Object = null) -> PKeyResult:
+	if not (tx.get("jws") is String) or not (tx.get("id") is String) or String(tx["id"]) == "":
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "claim_app_store needs the transaction's id and jws.")
+	var r := await claim("app-store", {"signedTransaction": tx["jws"]})
+	if not r.ok:
+		return r
+	var store = apple if apple != null else PKeyApple.shared()
+	var f: PKeyResult = await store.finish(String(tx["id"]))
+	var detail: Dictionary = (r.detail as Dictionary).duplicate()
+	detail["finished"] = f.ok
+	if not f.ok:
+		detail["finishError"] = String(f.code)
+	return PKeyResult.success(detail)
 
 
 ## Whether this build's outlet hides `flag` (App Store 3.1.3(b); see the header).

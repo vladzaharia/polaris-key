@@ -24,6 +24,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _binding(t)
 	await _claims(t)
 	await _refusals(t)
+	await _claim_app_store(t)
 	await _client_side(t)
 	await _outlet_rule(t)
 	server.queue_free()
@@ -112,6 +113,38 @@ func _refusals(t: PKeyTestContext) -> void:
 		var r: PKeyResult = await sdk.commerce.claim("app-store", {"signedTransaction": "h.p.s"})
 		var reason: String = r.detail["error"]["reason"] if not r.ok and r.detail is Dictionary and r.detail.get("error") is Dictionary else ""
 		t.check("refusal %s/%s: the server's code and reason" % [c[2], c[3]], not r.ok and r.code == c[2] and reason == c[3], "%s reason=%s" % [r, reason])
+	sdk.queue_free()
+
+
+## A stand-in for PKeyApple: records finish() calls.
+class FakeApple:
+	extends RefCounted
+	var finished: Array = []
+
+	func finish(id: String) -> PKeyResult:
+		await Engine.get_main_loop().process_frame
+		finished.append(id)
+		return PKeyResult.success({"finished": true})
+
+
+func _claim_app_store(t: PKeyTestContext) -> void:
+	var sdk = await _sdk()
+	var apple := FakeApple.new()
+	var tx := {"id": "2000000111", "jws": "h.p.s"}
+	plan = {"/distribution/commerce/claim": _json(403, {"error": {"code": "forbidden"}, "reason": "binding_mismatch"})}
+	var refused: PKeyResult = await sdk.commerce.claim_app_store(tx, apple)
+	t.check("claim_app_store: a refused claim does not finish", not refused.ok and refused.code == &"forbidden" and apple.finished.is_empty(), str(refused))
+	plan = {"/distribution/commerce/claim": _json(503, {"error": {"code": "unavailable"}, "reason": "store_unavailable"})}
+	var down: PKeyResult = await sdk.commerce.claim_app_store(tx, apple)
+	t.check("claim_app_store: a failed claim does not finish", not down.ok and apple.finished.is_empty(), str(down))
+	plan = {"/distribution/commerce/claim": _json(200, {"ok": true, "store": "app-store", "productId": "p", "flag": "extras.diceSkins", "deliverable": "app", "state": "active", "granted": true, "changed": true})}
+	server.requests.clear()
+	var ok: PKeyResult = await sdk.commerce.claim_app_store(tx, apple)
+	t.check("claim_app_store: finishes after a successful claim", ok.ok and ok.detail["finished"] == true and apple.finished == ["2000000111"], str(ok))
+	var req := _last("/distribution/commerce/claim")
+	t.check("claim_app_store: claims the transaction's JWS", not req.is_empty() and _body(req) == {"store": "app-store", "signedTransaction": "h.p.s"})
+	var bad: PKeyResult = await sdk.commerce.claim_app_store({"jws": "h.p.s"}, apple)
+	t.check("claim_app_store: needs the transaction id", not bad.ok and bad.code == PKeyErrors.INVALID_OPTIONS and apple.finished.size() == 1)
 	sdk.queue_free()
 
 
