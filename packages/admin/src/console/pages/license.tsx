@@ -1,11 +1,12 @@
 import * as React from "react";
-import { Licenses } from "../../views/Licenses.js";
-import { LicenseDetail } from "../../views/LicenseDetail.js";
-import { Tiers } from "../../views/Tiers.js";
-import { FingerprintPolicy } from "../../views/FingerprintPolicy.js";
+import { EnrollmentPage } from "./license/EnrollmentPage.js";
+import { LicenseRecord } from "./license/LicenseRecord.js";
+import { LicensesPage } from "./license/LicensesPage.js";
+import { TierRecord } from "./license/TierRecord.js";
+import { TiersPage } from "./license/TiersPage.js";
 import type { SectionPageProps } from "./types.js";
 
-/** License: the legacy views at their new URLs, unchanged until chunk 6. */
+/** License (ADMIN.md §6.5): Licenses and the license record, Tiers and the tier record, Enrollment. */
 export default function LicensePages({
   route,
 }: SectionPageProps): React.ReactElement | null {
@@ -13,14 +14,18 @@ export default function LicensePages({
   switch (route.page) {
     case "licenses":
       return route.id !== undefined ? (
-        <LicenseDetail slug={slug} id={route.id} />
+        <LicenseRecord slug={slug} id={route.id} tab={route.tab} />
       ) : (
-        <Licenses slug={slug} />
+        <LicensesPage slug={slug} />
       );
     case "tiers":
-      return <Tiers slug={slug} />;
+      return route.id !== undefined ? (
+        <TierRecord slug={slug} id={route.id} tab={route.tab} />
+      ) : (
+        <TiersPage slug={slug} />
+      );
     case "enrollment":
-      return <FingerprintPolicy slug={slug} />;
+      return <EnrollmentPage slug={slug} />;
     default:
       return null;
   }

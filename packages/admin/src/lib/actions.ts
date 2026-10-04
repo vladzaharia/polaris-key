@@ -32,12 +32,15 @@ export const ACTION_LEVELS = {
   "attention.dismiss": 0,
   "preferences.save": 0,
   "filters.clear": 0,
+  // Chunk 9: recomputes the server's own answer; no operator choice to confirm.
+  "readiness.refresh": 0,
 
   // L1 · reversible, impactful
   "signing.prepare": 1,
   "signing.activate": 1,
   "license.disable": 1,
   "license.enable": 1,
+  "device.resetBinding": 1,
   "rollout.pause": 1,
   "rollout.resume": 1,
   "channel.unpin": 1,
@@ -51,6 +54,25 @@ export const ACTION_LEVELS = {
   "repo.resync": 1,
   "sentry.dismiss": 1,
   "rollout.setPercentage": 1,
+  // Chunk 9 (Distribution and Update)
+  "rollout.start": 1,
+  "readiness.clearOverride": 1,
+  "outlet.narrowCapabilities": 1,
+  "distributionKey.remove": 1,
+  "distributionKey.dismiss": 1,
+  "outletCredential.rotate": 1,
+  "outletCredential.pin": 1,
+  "connector.phasedPause": 1,
+  "connector.phasedResume": 1,
+  "connector.storeFraction": 1,
+  "connector.storeResume": 1,
+  "connector.publicLink": 1,
+  "connector.webhook": 1,
+  "connector.priority": 1,
+  "connector.settings": 1,
+  // Store connections (A-16)
+  "storeApp.assign": 1,
+  "storeApp.release": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,
@@ -67,6 +89,12 @@ export const ACTION_LEVELS = {
   "signing.retire": 2,
   "readiness.override": 2,
   "catalog.publishRemovingKeys": 2,
+  // Chunk 9: store-side verbs that cannot be taken back, and a weakened feed check.
+  "connector.phasedComplete": 2,
+  "connector.storeHalt": 2,
+  "connector.storeComplete": 2,
+  "connector.releaseVersion": 2,
+  "update.signatureOff": 2,
 
   // L3 · catastrophic (typed confirmation)
   "product.delete": 3,
@@ -74,6 +102,14 @@ export const ACTION_LEVELS = {
   "signing.breakGlassActivate": 3,
   "kek.reseal": 3,
   "portalAccount.delete": 3,
+
+  // Release · channels and yanks (ADMIN.md §6.3), levelled by §5.2's definitions: an unyank and a
+  // pack floor change what devices are offered and can be undone (L1); lowering or clearing a
+  // rollback floor re-opens a downgrade the floor exists to stop (L2).
+  "release.unyank": 1,
+  "channel.setPackFloor": 1,
+  "channel.lowerFloor": 2,
+  "channel.clearFloor": 2,
 } as const satisfies Record<string, ActionLevel>;
 
 export type ActionId = keyof typeof ACTION_LEVELS;

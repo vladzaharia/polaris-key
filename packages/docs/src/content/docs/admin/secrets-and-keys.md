@@ -1,18 +1,20 @@
 ---
 title: "Secrets & keys"
-description: "Write-only product secrets and their usage, edge-mint recipe approval, the setup-health required-secrets list, outlet credentials, and signing-key rotation."
+description: "Core → Keys & secrets: signing keys and their lifecycle, write-only product secrets and their usage, CI publishing, edge-mint recipe approval and outlet credentials."
 sidebar:
   order: 6
 ---
 
-Two Platform-section surfaces, covered together because both are sealed under the same platform
-KEK and both exist whether or not a product runs any service at all: the Secrets tab, and the
-signing-key card on Settings.
+**Core → Keys & secrets** (`#/p/<slug>/keys`) holds what a product signs and authenticates with,
+whether or not it runs any service at all: its **signing keys**, its write-only **secrets**, and
+its **CI publishing** credentials. Signing keys and secrets are sealed under the same platform KEK.
+While Config or Distribution is on, the page ends with **Edge mint and store credentials**: the
+edge-mint recipe approvals and the outlet credentials described below.
 
 ## Product secrets
 
-The Secrets tab is a **write-only** form: a name and a value, `PUT
-/manage/api/products/<slug>/secrets/<name>`. The server seals the value under `PLATFORM_KEK` and
+Secrets are **write-only**. **Set secret** opens a drawer with a name, a value and a usage, and
+saves with `PUT /manage/api/products/<slug>/secrets/<name>`. The server seals the value under `PLATFORM_KEK` and
 stores it; the response echoes the **name only** — never the value, on this write or any later
 read. There is no endpoint that returns a secret's value, by design; if you need to confirm one
 is right, rotate it rather than trying to recover it.
@@ -24,7 +26,7 @@ keyring](/docs/admin/kek/) → _Product operations_).
 
 ### Secret usage
 
-Each secret also has a **usage**, chosen in the form's _Usage_ selector (or sent as `"usage"` on
+Each secret also has a **usage**, chosen in the drawer's _Usage_ selector (or sent as `"usage"` on
 the `PUT`):
 
 | Usage                     | Meaning                                                                                                    |
@@ -40,27 +42,14 @@ current_ never changes what it may sign, and a change of usage is audited on its
 
 ### Edge-mint recipes
 
-Below the form, products that declare edge-mint recipes get an **Edge-mint recipes** card. A
-recipe arrives from the linked repo, so it mints only once you have **approved it exactly as it
-stands**: each recipe shows as _Pending approval_, _Approved_, or _Changed since approval_ (with
-the approved value beside each changed field), next to its signing secret's usage. **Approve**
-shows the full recipe once more and records exactly those values; if a push changed it in the
-meantime the approval is refused and the card reloads. **Revoke** drops the approval. When the
-mint is public — the product's registration is open, auto-issue allows anonymous enrolment, or
-Identity is on with an OIDC default tier — the card warns that an approved recipe is a public token mint, and approval needs an explicit
-acknowledgement. The acknowledgement belongs to the approval: if the mint becomes public after you
-approved without it, the recipe shows _Changed since approval_ and stops minting until you
-re-approve it. When Identity is on, the card also shows the identity provider and group map an
-approval covers, because signing in is how people get device tokens without a key; a push that
-changes them makes the recipe _Changed since approval_ too, with the approved values beside the new
-ones, and so does turning License off after an approval given with it on. When the change arrives
-by a manifest push, the ingest also drops the approval (audited as `config.mint.invalidate`), so
-the recipe returns to _Pending approval_ and a later push that reverts the change does not restore
-it: review the licences and devices issued in between before you re-approve. While License is
-off the card and the approve dialog warn that the mint does not check device licences, so an
-approval given then (recorded as such) lets a disabled or expired licence mint. The setup checklist lists each recipe awaiting approval
-and each recipe secret not yet marked edge-mint. The full rule, the admin endpoints and the
-upgrade backfill are in [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
+Edge-mint recipes are approved on their own page, **Config → Edge mint**. A recipe arrives from
+the linked repo, so it mints only once its signing secret, set here with usage _Edge-mint signing
+key_, is marked edge-mint and you have **approved the recipe exactly as it stands** there. The
+setup checklist lists each recipe awaiting approval and each recipe secret not yet marked
+edge-mint. The full rule (public mints, sign-in trust, License checks and why a widening is
+permanent), the admin endpoints and the console page are on
+[Edge mint](/docs/services/config/edge-mint/#approving-a-recipe); the upgrade backfill is in
+[Two operator conditions](/docs/services/config/edge-mint/#two-operator-conditions).
 
 :::note[A different, related mechanism]
 Catalog-declared **managed secrets** — a config entry with `kind: "secret"`, or `secret: true` —
@@ -72,19 +61,25 @@ catalog-declared managed secret are stored in different tables and read through 
 paths. See [Config entry reference](/docs/reference/config-entry/) for the catalog side.
 :::
 
-### The required-secrets checklist
+### The secrets list
 
-The same form shows a **Required secrets** list above the input — the product's setup-health
-projection filtered to just the secret names it names, each with a **Configured**/**Missing**
-badge and, where relevant, which part of the manifest asked for it (for example "Edge mint"
-and the recipe id). Clicking a name fills it into the form. This is the same computation the Overview
-tab's "needs attention" strip draws from — see [Products](/docs/admin/products/#setup-health)
-for exactly which manifest fields feed it.
+The list is the union of every secret stored for the product and every secret its configuration
+requires but nobody has set: each row has its **usage**, a **Configured** or **Missing** status,
+when it was last set, and what requires it (for example "OIDC client secret", or "Edge mint" and
+the recipe id). A row's **Set…** (or **Replace…**) opens the drawer with its name filled in.
+Saving over a configured secret needs **Replace the existing value** ticked first, so a stored
+value is never overwritten by accident. The required names come from the same setup computation
+as the Overview checklist — see [Products](/docs/admin/products/#setup-health) for exactly which
+manifest fields feed it.
+
+`GET /manage/api/products/<slug>/secrets` returns the list as
+`{ secrets: [{ name, configured, usage, createdAt, updatedAt, requiredBy }] }`. It never reads a
+value: the sealed column is not even selected.
 
 ## Outlet credentials
 
-Below the edge-mint card, the Secrets tab has an **Outlet credentials** card: the keys the
-Distribution service uses to reach a store on the product's behalf. They are **not** product
+**Distribution → Outlet credentials** holds the keys the Distribution service uses to reach a store
+on the product's behalf, and the Sentry integration secret. They are **not** product
 secrets, and the difference is the point. Edge-mint can sign with any product secret an operator
 marks _edge-mint_, for any device of the product — and under open registration anyone can be a
 device — so a store key stored as a product secret would be one approval away from a public
@@ -141,7 +136,7 @@ The rules, all enforced by the Worker rather than by the console:
   of the one app it may be used for in this product, and its connector runs only while the
   product's `.pkey/distribution` names that same app. Send it as `pin` with the key (the form asks
   for it), or alone — `{"kind": "asc-api-key", "pin": "1234567890"}`, no `value` — to re-pin a
-  stored key without pasting the `.p8` again (the pin icon on a row). A rotation that leaves `pin`
+  stored key without pasting the `.p8` again (**Pin…** in a row's menu). A rotation that leaves `pin`
   out keeps the old pin. Each change of a pin is audited as `outlet_credential.pin` with the old
   and the new app id. A key with no pin, or a pin naming another app than the manifest does, is
   stored but unused: see
@@ -158,44 +153,50 @@ The rules, all enforced by the Worker rather than by the console:
 - **Deleted with the product,** and re-sealed by the KEK rotation sweep like everything else on
   this page (its own `outletCredentials` bucket in `GET /manage/api/products/kek`).
 
-**Delete** (the bin icon on a row, `DELETE …/outlet-credentials/<id>`) removes the value for good;
-connectors that used it stop working until a new one is set.
+**Delete…** (in a row's menu, `DELETE …/outlet-credentials/<id>`) removes the value for good;
+connectors that used it stop working until a new one is set. In the console, **Set credential…**
+asks for the kind first, then its fields and its pin; **Rotate…** in a row's menu replaces a stored
+value, and typing an existing id in Set credential warns that saving rotates it. Each row shows
+the last result a connector reported, as text. Below the table, **Store connectors** shows each
+connector's state and its configuration actions.
 
-## Rotating the signing key
+## Signing keys
 
 Every product signs everything it hands a client — license documents, config documents, trust
 manifests, offline bundles — with one Ed25519 keypair, sealed the same way a product secret is.
-**Prepare signing key**, available from both the product registry row menu and the Settings page,
-is `POST /manage/api/products/<slug>/keys/rotate`:
+The **Signing keys** section lists every key with its state: **Active**, **Staged**, **Retired** or
+**Revoked**, its algorithm, when it entered that state, and its public key with a copy button.
+The product's JWKS URL sits under the list.
 
-1. A new Ed25519 keypair is generated and sealed under the active KEK.
-2. It's inserted as **`staged`** — published for trust discovery, but not yet the key anything
-   is signed with.
-3. The response returns the new `kid` and **public key once**, in a dialog that stays open until
-   you dismiss it. Record both now — this is the only response that ever carries the public key
-   directly; after this it's only recoverable via the product's JWKS or trust-manifest endpoint.
+The lifecycle, all from this section:
 
-The private key never leaves the platform's KEK-sealed storage at any point in this flow.
+| Action                         | Where                                       | Endpoint                                         | Effect                                                                                                                          |
+| ------------------------------ | ------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Prepare signing key**        | the section header (asks first)             | `POST .../keys/prepare` (or `.../keys/rotate`)   | Mints a new key as **staged**: published for trust discovery, not yet signing anything.                                         |
+| **Activate**                   | a staged row, once its trust window ends    | `POST .../keys/activate`                         | Retires the active key and promotes the staged one, in one batch.                                                               |
+| **Activate now (break-glass)** | a staged row's menu, before the window ends | `POST .../keys/activate` with `breakGlass: true` | The same, early. You type the key id to confirm; clients that have not refreshed reject documents until they do.                |
+| **Retire**                     | a staged row's menu                         | `POST .../keys/retire`                           | Marks a non-active key retired.                                                                                                 |
+| **Revoke**                     | a retired row's menu (type the key id)      | `POST .../keys/revoke`                           | Marks a non-active key revoked: the trust manifest lists it as revoked and clients reject what it signed (compromise response). |
 
-### The rest of the lifecycle
+### Rotating the signing key
 
-A staged key isn't live yet on purpose: clients need a **trust-refresh window** to have picked up
-the new key from the trust manifest before anything is actually signed with it, or a client that
-hasn't refreshed would reject a document signed by a `kid` it doesn't recognize. The full
-lifecycle has four actions; today only the first has a console button — the rest are admin-API
-calls, the same authenticated pattern [Offline bundles](/docs/admin/bundles/) describes for the
-`pkey` CLI (a session cookie plus the echoed CSRF token):
+Rotation is Prepare, wait out the trust window, then Activate: the old key retires in the same
+step and keeps verifying the documents it signed while it ages out of the trust set.
 
-| Action                                       | Endpoint                                     | Effect                                                                                                                                                               |
-| -------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Prepare** (console: _Prepare signing key_) | `POST .../keys/rotate` or `.../keys/prepare` | Mints and stages a new key.                                                                                                                                          |
-| **Activate**                                 | `POST .../keys/activate`                     | Retires the current active key and promotes the staged one, in one batch. Refused (`409`) before the trust-cache window elapses unless `breakGlass: true` is passed. |
-| **Retire**                                   | `POST .../keys/retire`                       | Marks a non-active key retired.                                                                                                                                      |
-| **Revoke**                                   | `POST .../keys/revoke`                       | Marks a non-active key revoked (compromise response).                                                                                                                |
+A staged key shows a live countdown to the end of its **trust-refresh window** (5 minutes):
+clients need that long to pick the new key up from the trust manifest before anything is signed
+with it, or a client that hasn't refreshed would reject a document signed by a `kid` it doesn't
+recognize. Activate is disabled, with that reason, until the window ends.
 
 Retire and revoke both refuse (`409`) on the **currently active** key — stage and activate a
 replacement first. A product must always have exactly one active key; this guard is what stops
-an operator from accidentally leaving it with zero.
+an operator from accidentally leaving it with zero. The private key never leaves the platform's
+KEK-sealed storage at any point.
+
+`GET /manage/api/products/<slug>/keys` returns
+`{ keys: [{ kid, status, alg, publicKey, createdAt, activateAfter, activatedAt, retiredAt, revokedAt }], now }`
+— public material only, active key first. `now` is the server's clock, which the countdown is
+measured against.
 
 :::caution[If you suspect a key was compromised]
 Prepare a new key, wait out (or break-glass through) the trust window, activate it, then revoke
@@ -203,6 +204,23 @@ the old one — the same shape as a `PLATFORM_KEK` compromise response in [Opera
 keyring](/docs/admin/kek/) → _KEK compromise (containment)_, one level down: that runbook
 rotates the KEK that seals every product's keys; this rotates one product's own signing key.
 :::
+
+## CI publishing
+
+The **CI publishing** section holds how your CI proves who it is:
+
+- **Trusted publisher** — the GitHub repository, workflow, environment and scopes a GitHub Actions
+  run must match to exchange its OIDC token for a short-lived publishing token. A linked repo's
+  manifest can declare it (_From manifest_); **Edit…** claims it (_Set in console_), after which
+  resyncs leave it alone. Claiming is the only way to grant `release:yank`.
+  `GET`/`PUT /manage/api/products/<slug>/ci-publisher`.
+- **CI tokens** — static tokens for a CI that is not GitHub Actions, and the short-lived tokens
+  trusted runs were issued, with their scopes, status and expiry. **Issue token…** shows a new
+  token once (only its hash is stored); it lasts 1 to 90 days. **Revoke…** refuses it from then on,
+  together with any upload tickets it bought and has not used.
+  `GET`/`POST /manage/api/products/<slug>/ci-tokens`, `DELETE .../ci-tokens/<tokenId>`.
+
+See [CI publishing](/docs/build/ci/) for the workflow side.
 
 ## Reference
 

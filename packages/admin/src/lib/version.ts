@@ -3,10 +3,10 @@
  * handlers check version bounds with (`@polaris-key/manifest`, `W/admin/lib/writeChecks.ts`), so
  * the console never accepts a value the server refuses, or refuses one it accepts.
  *
- * `compareVersions` orders by SemVer 2.0 precedence (build metadata ignored). `compareDottedVersion`
- * keeps the legacy views' contract (dotted numerics, 0 when either side does not parse) so the two
- * local copies in `views/Licenses.tsx` and `views/licenses/PolicySection.tsx` can import it when
- * their area chunk rebuilds them.
+ * `compareVersions` orders by SemVer 2.0 precedence (build metadata ignored); the License pages
+ * check their version windows with it through `versionRangeError` (LIC-9: the old dotted copies
+ * passed `1.2.0-beta` against `1.0`). `compareDottedVersion` keeps the legacy contract (dotted
+ * numerics, 0 when either side does not parse) for any caller that still wants it.
  */
 
 import { SEMVER_RE } from "@polaris-key/manifest";

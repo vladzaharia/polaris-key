@@ -7,7 +7,7 @@ import { PENDING, boot, resetConsole } from "./consoleHarness.js";
 /**
  * The Platform section (notes/S-13 §9.1, owner decision 3 of 2026-10-04): a sidebar group, the
  * redirects of the pages still to come, the Deployment page (A-11), platform activity (A-12) and
- * the account menu's version chip.
+ * the account menu's version chip. Settings (4P-1) has its own suite, `platformSettings.test.tsx`.
  */
 
 const axe = configureAxe({
@@ -106,6 +106,23 @@ function platformRoutes(
           }
         : deployment(),
     "/manage/api/platform/activity": ACTIVITY,
+    "/manage/api/platform/settings": {
+      settings: [],
+      storeAvailable: true,
+      propagationSeconds: 30,
+      deployTime: [],
+      secrets: [],
+      constants: [],
+      warnings: [],
+    },
+    "/manage/api/products/kek": {
+      ok: true,
+      active: "kek-1",
+      kids: ["kek-1"],
+      counts: {},
+      remaining: 0,
+      unopenable: 0,
+    },
     ...over,
   };
 }
@@ -132,13 +149,10 @@ describe("the Platform section in the sidebar", () => {
     const deployment = within(nav()).getByRole("link", { name: "Deployment" });
     expect(deployment.getAttribute("href")).toBe("#/platform/deployment");
     expect(deployment.querySelector("svg[data-nav-icon]")).not.toBeNull();
+    const settings = within(nav()).getByRole("link", { name: "Settings" });
+    expect(settings.getAttribute("href")).toBe("#/platform/settings");
     // Pages still to come are not listed: they would only redirect.
-    for (const name of [
-      "Settings",
-      "Operations",
-      "Store connections",
-      "Package feeds",
-    ]) {
+    for (const name of ["Package feeds"]) {
       expect(
         within(nav())
           .queryAllByRole("link", { name })
@@ -165,15 +179,15 @@ describe("the Platform section in the sidebar", () => {
 });
 
 describe("Platform URLs", () => {
-  it("#/platform goes to Settings, which goes to Deployment until it is built", async () => {
+  it("#/platform goes to Settings", async () => {
     boot("#/platform", { extra: platformRoutes() });
-    await deploymentPage();
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/platform/deployment"),
+      expect(window.location.hash).toBe("#/platform/settings"),
     );
   });
 
-  for (const path of ["settings", "operations", "store-connections", "feeds"]) {
+  for (const path of ["feeds"]) {
     it(`#/platform/${path} redirects to Deployment`, async () => {
       boot(`#/platform/${path}`, { extra: platformRoutes() });
       await deploymentPage();
@@ -362,5 +376,367 @@ describe("the version chip", () => {
     await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
     await screen.findByRole("menuitem", { name: /Sign out/ });
     expect(screen.queryByRole("menuitem", { name: /Version/ })).toBeNull();
+  });
+});
+
+// ── Operations (4P-3, over A-14) ──────────────────────────────────────────────────
+
+const GENERATED = 1_790_000_000;
+
+function step(name: string, over: Record<string, unknown> = {}) {
+  return {
+    step: name,
+    startedAt: (GENERATED - 600) * 1000,
+    durationMs: 850,
+    outcome: "ok",
+    items: 1,
+    rowsAffected: 3,
+    error: null,
+    ...over,
+  };
+}
+
+function operations(over: Record<string, unknown> = {}) {
+  return {
+    generatedAt: GENERATED,
+    probes: {
+      d1: { bound: true, ok: true, latencyMs: 12 },
+      kv: { bound: true, ok: true, latencyMs: 20 },
+      r2: { bound: true, ok: true, latencyMs: 31 },
+      updateHealth: { bound: true },
+      email: { bound: false },
+    },
+    queues: {
+      deltas: {
+        bound: true,
+        ok: true,
+        latencyMs: 5,
+        backlogCount: 4,
+        backlogBytes: 2048,
+        oldestMessageAt: GENERATED - 120,
+      },
+      deadLetter: {
+        bound: true,
+        ok: true,
+        latencyMs: 5,
+        backlogCount: 0,
+        backlogBytes: 0,
+        oldestMessageAt: null,
+      },
+      consumer: {
+        maxBatchSize: 1,
+        maxBatchTimeoutSeconds: 5,
+        maxRetries: 3,
+        maxConcurrency: 1,
+      },
+    },
+    heartbeats: [
+      {
+        script: "main",
+        at: GENERATED - 300,
+        versionTag: "v0.8.6",
+        cloudflareVersionId: null,
+        outcome: "connectorPoll:ok",
+        backlogCount: null,
+        backlogBytes: null,
+        oldestMessageAt: null,
+      },
+      {
+        script: "deltas",
+        at: GENERATED - 60,
+        versionTag: "v0.8.6",
+        cloudflareVersionId: null,
+        outcome: "ok",
+        backlogCount: 4,
+        backlogBytes: 2048,
+        oldestMessageAt: GENERATED - 120,
+      },
+    ],
+    jobs: {
+      latest: {
+        maintenance: {
+          runId: "r1",
+          job: "maintenance",
+          cron: "17 3 * * *",
+          startedAt: (GENERATED - 3600) * 1000,
+          durationMs: 4200,
+          outcome: "ok",
+          steps: [step("retention"), step("audit:*")],
+        },
+        connectorPoll: {
+          runId: "r2",
+          job: "connectorPoll",
+          cron: "*/15 * * * *",
+          startedAt: (GENERATED - 600) * 1000,
+          durationMs: 900,
+          outcome: "ok",
+          steps: [step("asc:poll")],
+        },
+      },
+      recent: [
+        {
+          runId: "r2",
+          job: "connectorPoll",
+          cron: "*/15 * * * *",
+          startedAt: (GENERATED - 600) * 1000,
+          durationMs: 900,
+          outcome: "ok",
+          steps: 1,
+        },
+        {
+          runId: "r1",
+          job: "maintenance",
+          cron: "17 3 * * *",
+          startedAt: (GENERATED - 3600) * 1000,
+          durationMs: 4200,
+          outcome: "ok",
+          steps: 2,
+        },
+      ],
+      failures: [],
+    },
+    storage: {
+      d1: { sizeBytes: 12_400_000 },
+      r2: {
+        committedBytes: 5_000_000_000,
+        objects: 42,
+        byKind: [
+          { kind: "bundle", gated: false, bytes: 5_000_000_000, objects: 42 },
+        ],
+      },
+    },
+    indexes: { missing: [] },
+    connectors: {
+      items: [
+        {
+          connector: "asc",
+          productsConfigured: 2,
+          objectsTracked: 7,
+          lastPolledAt: GENERATED - 600,
+          lastEventAt: null,
+          failedEvents24h: 0,
+        },
+        {
+          connector: "play",
+          productsConfigured: 0,
+          objectsTracked: 0,
+          lastPolledAt: null,
+          lastEventAt: null,
+          failedEvents24h: 0,
+        },
+      ],
+      lastPollFailure: null,
+      commerce: { available: false },
+    },
+    recentErrors: {
+      jobFailures: [],
+      lazyDeltaRefusals: [
+        { reason: "too_large", count: 3, lastAt: GENERATED - 90 },
+      ],
+    },
+    ...over,
+  };
+}
+
+async function operationsPage(): Promise<HTMLElement> {
+  await screen.findByRole("heading", { level: 1, name: "Operations" });
+  return main();
+}
+
+describe("Operations", () => {
+  const route = (over: Record<string, unknown> = {}) =>
+    platformRoutes({ "/manage/api/platform/operations": operations(over) });
+
+  it("is in the sidebar and opens at its own URL", async () => {
+    boot("#/platform/operations", { extra: route() });
+    await operationsPage();
+    expect(window.location.hash).toBe("#/platform/operations");
+    expect(
+      within(nav())
+        .getByRole("link", { name: "Operations" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+    expect(document.title).toBe("Operations · Polaris Key");
+  });
+
+  it("reads Healthy when every check passes, with the figures in tiles", async () => {
+    boot("#/platform/operations", { extra: route() });
+    const page = await operationsPage();
+    await within(page).findByText("Every check passed");
+    expect(within(page).getAllByText("Healthy").length).toBeGreaterThan(0);
+    expect(within(page).queryByText("Needs attention")).toBeNull();
+    expect(within(page).getAllByText("12.4 MB").length).toBeGreaterThan(0);
+    expect(within(page).getAllByText("5 GB").length).toBeGreaterThan(0);
+    expect(within(page).getByText("0 in the dead-letter queue")).toBeTruthy();
+  });
+
+  it("shows the latest run's steps and the recent history", async () => {
+    boot("#/platform/operations", { extra: route() });
+    const page = await operationsPage();
+    await within(page).findByRole("heading", { name: "Nightly maintenance" });
+    expect(within(page).getByText("retention")).toBeTruthy();
+    expect(within(page).getByText("audit:*")).toBeTruthy();
+    expect(within(page).getByText("Daily at 03:17 UTC")).toBeTruthy();
+    expect(within(page).getByText("Recent runs")).toBeTruthy();
+    expect(within(page).getAllByText("850 ms").length).toBeGreaterThan(0);
+  });
+
+  it("is Degraded with a failed step's error, and Failed when a core binding does not answer", async () => {
+    const failedRun = {
+      ...operations().jobs.latest.maintenance,
+      outcome: "failed",
+      steps: [step("retention", { outcome: "failed", error: "D1 busy" })],
+    };
+    boot("#/platform/operations", {
+      extra: route({
+        jobs: {
+          ...operations().jobs,
+          latest: { ...operations().jobs.latest, maintenance: failedRun },
+        },
+      }),
+    });
+    let page = await operationsPage();
+    await within(page).findByText("Needs attention");
+    expect(within(page).getAllByText("Degraded").length).toBeGreaterThan(0);
+    expect(within(page).getByText("D1 busy")).toBeTruthy();
+    cleanup();
+    boot("#/platform/operations", {
+      extra: route({
+        probes: {
+          ...operations().probes,
+          d1: { bound: true, ok: false, latencyMs: 3000, error: "no answer" },
+        },
+      }),
+    });
+    page = await operationsPage();
+    await within(page).findByText("D1 database");
+    expect(within(page).getAllByText("Failed").length).toBeGreaterThan(0);
+  });
+
+  it("flags a dead-letter backlog, missing indexes and a stalled consumer", async () => {
+    const o = operations();
+    boot("#/platform/operations", {
+      extra: route({
+        queues: {
+          ...o.queues,
+          deadLetter: { ...o.queues.deadLetter, backlogCount: 2 },
+        },
+        indexes: { missing: ["idx_blob_objects_kind"] },
+        heartbeats: [
+          { ...o.heartbeats[0] },
+          { ...o.heartbeats[1], at: GENERATED - 2 * 3600 },
+        ],
+      }),
+    });
+    const page = await operationsPage();
+    await within(page).findByText("Needs attention");
+    expect(
+      within(page).getAllByText("Dead-letter queue").length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(page).getAllByText("idx_blob_objects_kind").length,
+    ).toBeGreaterThan(0);
+    expect(within(page).getByText("Stalled")).toBeTruthy();
+  });
+
+  it("calls an idle consumer healthy however old its heartbeat is", async () => {
+    const o = operations();
+    boot("#/platform/operations", {
+      extra: route({
+        queues: {
+          ...o.queues,
+          deltas: { ...o.queues.deltas, backlogCount: 0 },
+        },
+        heartbeats: [
+          { ...o.heartbeats[0] },
+          { ...o.heartbeats[1], at: GENERATED - 5 * 86400 },
+        ],
+      }),
+    });
+    const page = await operationsPage();
+    await within(page).findByText("Lazy-delta consumer");
+    expect(within(page).getByText("Idle")).toBeTruthy();
+    expect(within(page).queryByText("Needs attention")).toBeNull();
+  });
+
+  it("marks a section the Worker could not read as unavailable, never healthy", async () => {
+    boot("#/platform/operations", {
+      extra: route({ jobs: null, connectors: null, heartbeats: null }),
+    });
+    const page = await operationsPage();
+    await within(page).findByText("Needs attention");
+    expect(
+      within(page).getAllByText(/run history could not be read/).length,
+    ).toBeGreaterThan(0);
+    expect(within(page).getAllByText("Unavailable").length).toBeGreaterThan(0);
+  });
+
+  it("lists connectors, with an unused one as not configured", async () => {
+    boot("#/platform/operations", { extra: route() });
+    const page = await operationsPage();
+    await within(page).findByText("App Store Connect");
+    expect(within(page).getByText("Google Play")).toBeTruthy();
+    expect(within(page).getByText("Not configured")).toBeTruthy();
+  });
+
+  it("has no analytics panel", async () => {
+    boot("#/platform/operations", { extra: route() });
+    const page = await operationsPage();
+    await within(page).findByRole("heading", { name: "Store connectors" });
+    expect(within(page).queryByText(/analytics/i)).toBeNull();
+  });
+
+  it("pauses and resumes auto-refresh, and remembers the choice", async () => {
+    boot("#/platform/operations", { extra: route() });
+    const page = await operationsPage();
+    const sw = await within(page).findByRole("switch", {
+      name: "Refresh every 30 s",
+    });
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(sw);
+    expect(sw.getAttribute("aria-checked")).toBe("false");
+    expect(
+      window.localStorage.getItem("pk-admin-operations-auto-refresh"),
+    ).toBe("false");
+    window.localStorage.removeItem("pk-admin-operations-auto-refresh");
+  });
+
+  it("refetches on Refresh", async () => {
+    let calls = 0;
+    boot("#/platform/operations", {
+      extra: platformRoutes({
+        "/manage/api/platform/operations": () => {
+          calls += 1;
+          return operations();
+        },
+      }),
+    });
+    const page = await operationsPage();
+    await within(page).findByRole("heading", { name: "Nightly maintenance" });
+    const before = calls;
+    await userEvent.click(
+      within(page).getByRole("button", { name: /refresh/i }),
+    );
+    await waitFor(() => expect(calls).toBeGreaterThan(before));
+  });
+
+  it("shows a retryable error when the snapshot cannot load", async () => {
+    boot("#/platform/operations", {
+      extra: platformRoutes({
+        "/manage/api/platform/operations": new Response("{}", { status: 500 }),
+      }),
+    });
+    const page = await operationsPage();
+    expect(
+      await within(page).findByRole("button", { name: "Retry" }),
+    ).toBeTruthy();
+  });
+
+  it("passes axe", async () => {
+    boot("#/platform/operations", { extra: route() });
+    const page = await operationsPage();
+    await within(page).findByRole("heading", { name: "Nightly maintenance" });
+    const results = await axe(page);
+    expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 });

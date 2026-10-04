@@ -55,17 +55,42 @@ a `kind: "secret"` value does redaction change the response shape.
 
 ## The admin surface
 
-| Route                             | Behaviour                                                                                                     |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `GET .../config/profiles`         | List: `id`, `name`, `description`, `modifiedBy`, `modifiedAt`. No payload.                                    |
-| `POST .../config/profiles`        | Create: an empty payload (`{ config: {}, secrets: {}, entitlements: {} }`), an operator- or server-chosen id. |
-| `GET .../config/profiles/<id>`    | Detail: the full payload, redacted (below).                                                                   |
-| `PUT .../config/profiles/<id>`    | Batch-edit: `{ updates: OverrideUpdate[] }`, validated against the active catalog.                            |
-| `DELETE .../config/profiles/<id>` | Refused `409` with a reference count while any license still uses the profile.                                |
+| Route                             | Behaviour                                                                                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET .../config/profiles`         | List: `id`, `name`, `description`, `modifiedBy`, `modifiedAt`, and `usedBy: { tiers, licenses }` counts. No payload.                            |
+| `POST .../config/profiles`        | Create: an empty payload (`{ config: {}, secrets: {}, entitlements: {} }`), an operator- or server-chosen id. A taken id is refused (below).    |
+| `GET .../config/profiles/<id>`    | Detail: the full payload, redacted (below), and `usedBy`: the tiers (`id`, `label`) and licenses (`id`, `name`, `email`) that point at it.      |
+| `PATCH .../config/profiles/<id>`  | Edit details: `{ name?, description? }`. A blank `description` (or `null`) clears it; a blank `name` is refused `422`. Audits `profile.update`. |
+| `PUT .../config/profiles/<id>`    | Batch-edit: `{ updates: OverrideUpdate[] }`, validated against the active catalog.                                                              |
+| `DELETE .../config/profiles/<id>` | Refused `409` (`reason: "profile_in_use"`) with a reference count while any tier or license still uses the profile.                             |
 
-`PUT` answers `409` with no active catalog to validate against, and `422` with a `fields` array on
-any invalid update in the batch — the whole write is all-or-nothing. A successful write re-stores
-the payload and audits `profile.overrides`.
+`POST` answers `409` with `reason: "profile_exists"` when the id is already a profile's: a create
+never replaces an existing profile's payload. `PATCH` changes only the name and description; the
+id is what tiers and licenses refer to, so it never changes.
+
+`PUT` answers `409` (`reason: "no_active_catalog"`) with no active catalog to validate against,
+and `422` with a `fields` array on any invalid update in the batch — the whole write is
+all-or-nothing. A successful write re-stores the payload and audits `profile.overrides`.
+
+### In the console
+
+**Config → Profiles** lists every profile with what uses it ("1 tier · 4 licenses"); the row opens
+the profile. **New profile** asks for the id, a name and a description, then opens the new profile
+to set its values; it is unavailable until the product has a catalog. **Delete…** in a row's menu
+or on the profile is unavailable, with the reason, while any tier or license still uses the
+profile.
+
+A profile has two tabs:
+
+- **Payload** — the managed payload editor, shared with a license's overrides: keys grouped by
+  category (`ui.advanced` keys under **More settings**), search across keys, labels and values,
+  "Not set" as its own state, and a save bar with **Review changes** (each key's before, after and
+  effective value). Only the keys you changed block a save; **Jump to first error** opens the
+  group that holds it. A background refresh never discards your edits, and leaving the page with
+  unsaved edits asks first.
+- **Used by** — the tiers and licenses that point at the profile, each linked.
+
+**Edit details…** changes the name and description.
 
 `PUT .../license/licenses/<id>/overrides` — a License route — validates and stores through this
 exact same batch function. A profile's payload and a license's own overrides are edited
@@ -154,7 +179,8 @@ this".
 ## Deleting a profile
 
 `DELETE` is refused with `409` and a reference count while any license still uses the profile —
-directly, or through a tier. An operator has to detach it first. Deleting a profile can therefore
+directly, or through a tier. The console shows the same fact before you try: Delete stays
+unavailable while the profile's **Used by** list is not empty. An operator has to detach it first. Deleting a profile can therefore
 never silently blank the settings of a license still running against it.
 
 ## See also

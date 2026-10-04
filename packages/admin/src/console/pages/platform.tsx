@@ -1,8 +1,9 @@
 /**
  * The Platform section's pages (notes/S-13 §9.1): instance-wide, product-less. One lazy chunk,
  * loaded when the operator opens the section. Deployment is built here (A-11's identity and deploy
- * history, A-12's platform activity); Settings, Operations, Store connections and Package feeds
- * redirect to it until their pages land (`nav.ts`).
+ * history, A-12's platform activity), Settings in `platformSettings.tsx` (4P-1, on A-13),
+ * Operations in `platformOperations.tsx` (4P-3, on A-14) and Store connections in
+ * `platformStores.tsx` (A-16); Package feeds redirects to Deployment until its page lands (`nav.ts`).
  */
 
 import * as React from "react";
@@ -34,9 +35,12 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Timeline, TimelineItem } from "../../ui/Timeline.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { PageHeader } from "../components/PageHeader.js";
+import { PlatformSettingsPage } from "./platformSettings.js";
 import { qk } from "../data/queries.js";
+import { StoreConnections } from "./platformStores.js";
 import { queryClient } from "../data/queryClient.js";
 import type { GlobalPageId } from "../nav.js";
+import { Operations } from "./platformOperations.js";
 import {
   AttentionList,
   DashboardTemplate,
@@ -52,13 +56,16 @@ export function fetchPlatformActivity() {
   return api.platformActivity();
 }
 
-/** The section's page for a route. Only Deployment is built; the rest redirect before here. */
+/** The section's page for a route. A page that is not built redirects before here. */
 export default function PlatformPages({
   page,
 }: {
   page: GlobalPageId;
 }): React.ReactElement | null {
   if (page === "platform-deployment") return <Deployment />;
+  if (page === "platform-settings") return <PlatformSettingsPage />;
+  if (page === "platform-operations") return <Operations />;
+  if (page === "platform-stores") return <StoreConnections />;
   return null;
 }
 
@@ -640,11 +647,13 @@ function MigrationsPanel({
 /** The verb phrase of a platform action; an action without one reads as its code. */
 const ACTION_VERBS: Record<string, string> = {
   "kek.reseal": "re-sealed values under KEK",
+  "platform.setting.set": "changed platform setting",
+  "platform.setting.revert": "reverted platform setting",
 };
 
 /**
  * Platform activity (A-12): `platform_audit`, the admin actions that belong to no product (a KEK
- * re-seal sweep, and the platform settings writes to come). Newest first, with Load more.
+ * re-seal sweep, a platform settings write). Newest first, with Load more.
  */
 export function ActivityPanel(): React.ReactElement {
   const activity = useQuery(

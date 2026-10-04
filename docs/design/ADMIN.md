@@ -277,13 +277,13 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 that is not built yet carries `ready: false` in `nav.ts` and redirects to Deployment, with no
 "coming soon" copy:
 
-| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13 |
-| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4               |
-| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data first (A-14: probes, queues, cron runs, storage), Cloudflare analytics optional later (A-15)                                                                                                                                                                                            |
-| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                   |
-| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                        |
+| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13                                                                        |
+| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                      |
+| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then |
+| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                                                                                          |
+| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                               |
 
 **Rejected moves, so they stay rejected:**
 
@@ -728,7 +728,7 @@ assignment.
 | Level                          | Meaning                                              | Confirmation                                                     | Examples                                                                                                                                                                                                                                                                                                                                                                           |
 | ------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **L0 · reversible, local**     | No effect outside the console, or trivially undone   | none; toast with **Undo** where an inverse exists                | dismiss an attention item, save viewer preferences, clear filters                                                                                                                                                                                                                                                                                                                  |
-| **L1 · reversible, impactful** | Changes what devices or customers see, can be undone | `ConfirmDialog intent="caution"` with a `consequences` list      | prepare signing key, activate signing key (after its trust window), disable license, pause rollout, resume, unpin, mark or clear critical, set minimum supported, promote, pin, revert to manifest, disable a service, resync from repo, mark Sentry candidate dismissed, set rollout percentage                                                                                   |
+| **L1 · reversible, impactful** | Changes what devices or customers see, can be undone | `ConfirmDialog intent="caution"` with a `consequences` list      | prepare signing key, activate signing key (after its trust window), disable license, pause rollout, resume, unpin, mark or clear critical, set minimum supported, promote, pin, revert to manifest, disable a service, resync from repo, mark Sentry candidate dismissed, set rollout percentage, assign or release a store app (Platform → Store connections)                     |
 | **L2 · irreversible or broad** | Cannot be undone, or affects many devices            | `ConfirmDialog intent="danger"`; confirm button repeats the verb | revoke license key, deauthorize device, confirm Sentry candidate (halts the rollout), yank release, halt rollout, complete rollout, revoke edge-mint approval, delete tier, delete profile, delete outlet credential, revoke CI token, retire signing key, override readiness, publish a catalog that removes keys (with an acknowledgement checkbox listing referencing profiles) |
 | **L3 · catastrophic**          | Destroys a product, an account or the trust root     | `ConfirmDialog intent="danger"` with **`typedConfirmation`**     | delete product (type the slug; this is the value sent as `confirmSlug`, fixing PRD-4), revoke a signing key (type the kid), break-glass activate (type the kid), re-seal KEK sweep on Platform (type "reseal"), delete portal account (customer types `delete`)                                                                                                                    |
 
@@ -770,6 +770,9 @@ Declared in `mutations.ts`. A unit test enumerates every mutation and fails if o
 | readiness refresh / override / clear                  | `distribution.readiness`, `distribution.matrix.*`, `release.compat.*`                                                                                                          |
 | Sentry confirm / dismiss, auto-halt settings          | `distribution.health`, and on confirm also `distribution.rollouts` and `distribution.matrix.*`                                                                                 |
 | delivery access save / revert                         | `distribution.access`, `release.deliverables`                                                                                                                                  |
+| outlet capabilities narrow / revert (chunk 9)         | `distribution.outlets`                                                                                                                                                         |
+| distribution key put / delete (chunk 9)               | `distribution.keys`                                                                                                                                                            |
+| store connector control (chunk 9)                     | `distribution.connectors`, plus everything "rollout start / set / verb" invalidates                                                                                            |
 | catalog publish                                       | `config.catalog`, `config.profiles.*`, every `license(id)` (overrides re-validate)                                                                                             |
 | profile payload / create / delete                     | `config.profiles`, `config.profile(id)`, `license.licenses` (on delete)                                                                                                        |
 | tier create / patch / delete                          | `license.tiers`, `license.licenses`                                                                                                                                            |
@@ -1385,6 +1388,52 @@ Cell drawer (2.4.0 × Google Play) ───────────────
   its configuration actions: App Store Connect **Release this version**, **TestFlight public link**
   and **Webhook setup**; Google Play **Update priority** and **Settings**. Rollout-shaped
   connector verbs stay in the matrix cell drawer.
+
+**Notes (chunk 9 as built, 2026-10-04).** Where the build differs from the text above:
+
+- **Where things live.** The pages are in `src/console/areas/distribution/` (Matrix with its
+  `CellDrawer`, Rollouts, Outlets & feeds, Access, Health, Outlet credentials, the shared
+  `RolloutDialogs` and `StoreControls`) and `src/console/areas/update/FeedPage.tsx`; their reads
+  are one fetcher per key family in `areas/distribution/data.ts`. The matrix key is
+  `qk.matrix(slug, "<deliverable>:<limit>")`; `qk.health(slug, windowHours)` gained the window;
+  `qk.outlets`, `qk.distributionKeys` and `qk.connectors` are new, with their writes in
+  `mutations.ts` (`setRollout`, the three readiness writes, capability narrow and revert, key put
+  and delete, `connectorControl`).
+- **No server effect note.** The matrix response carries no `effect` (inventory MTX-10 described
+  one that `services/distribution/matrix.ts` does not return), so the header states the effect in
+  its own words and links the docs; nothing is repeated in the dialogs. The hard-coded caveat is
+  gone with `Distribution.tsx` (DOV-1).
+- **No History section yet.** The cell drawer's History needs A-2 (activity filters, chunk 5);
+  per T3 it is hidden rather than faked until A-2 lands.
+- **Paging.** The matrix API takes a `limit` (20 or 50) and no offset, so there is no
+  Newer/Older pager; a full matrix says "Showing the newest N releases" and offers 50.
+- **Health defaults to 24 h** and always sends `windowHours`; the auto-halt rates are `percent`
+  `NumberInput`s, required and strictly between 0 and 100 % (the server refuses `null`, so they
+  are not nullable). The Auto-halt panel shows the last reading's time; the per-rollout reading is
+  in each funnel's rates line.
+- **Outlet credentials.** Delete stays L2 (§5.2) with the confirm repeating the verb; OUT-7's
+  "typed confirmation" is not added. The `asc-webhook-secret` kind offers **Generate the secret**
+  (`generate: true`). A 409 `app_assigned_elsewhere` (the platform store connection, A-16) is
+  worded in the pin and set forms; the App Store Connect card shows whose key it uses
+  (`setup.credentialSource`, `platformSource`) and the connectors section links the store
+  connections docs. The platform Store connections page itself is A-16's (the Platform section).
+- **Access.** A pack's gate is a catalog-flag `Combobox` while Config is on, a text field
+  otherwise; the app's `entitled` describes Release's channel and version window (the app row's
+  `entitlement` is stored, not enforced, so it is not offered). `?deliverable=<pack>` focuses that
+  pack's section (DLV-3).
+- **Update → Feed** saves metadata access, the compatibility window and the artifact policy as
+  three forms (each its own PATCH with only its fields) and lists the endpoint URLs per channel;
+  artifact access is shown read-only with a link to Access.
+- **A-9** shipped: the rollout, readiness-override and Sentry-candidate 404s carry `reason`, and
+  `DISTRIBUTION_ERROR_MESSAGES` words the five new reasons.
+- **Tests.** The admin suite went from 987 to 1037. Dropped with
+  their behaviour: `distribution.test.tsx`'s three (the chain card moved to Services, the
+  descriptor hooks card is removed, the read-only rollouts list became Rollouts). Rewritten:
+  `distributionMatrix` (5 → 15), `updateHealth` → `distributionHealth` (4 → 12), `updateSettings`
+  → `updateFeed` (22 → 18; the delivery-access cases moved to `distributionAccess`, 9) and the
+  eight outlet-credential cases of `secrets.test.tsx` → `outletCredentials` (16); new
+  `distributionRollouts` (8) and `distributionOutlets` (11). `e2e/distribution.e2e.test.ts` opens
+  every page, drawer and dialog under the Worker's CSP.
 
 ### 6.5 Licenses
 
@@ -2236,7 +2285,9 @@ callers.
 
 **Where things live.** `src/console/pages/global/` holds Home, Products, the wizard
 (`ProductNew`) and the attention model (`attention.ts`); `src/console/pages/platform.tsx` is the
-Platform section's lazy chunk (Deployment and the Platform activity panel);
+Platform section's lazy chunk (Deployment and the Platform activity panel), with Settings in
+`platformSettings.tsx`, Operations in `platformOperations.tsx` and Store connections in
+`platformStores.tsx` beside it;
 `src/console/components/DeleteProductDialog.tsx` is the one L3 product delete, used by Products and
 by the product Settings danger zone. The product helpers moved from `views/products/util.ts` to
 `src/lib/products.ts`. `views/Dashboard.tsx`, `views/Products.tsx` and `views/products/*` are
@@ -2274,6 +2325,111 @@ deleted.
   has loading, empty, error and no-results tests, its main mutation with its invalidation, its
   confirm level, a URL round trip and an axe pass. `queryKeyShapes.test.ts` now requires the
   registry list to have exactly one reader, the shell's `useProducts`.
+
+#### Chunk 6 as built (2026-10-04)
+
+Where the License build differs from the text above:
+
+- **Where things live.** The pages are in `src/console/pages/license/` (`LicensesPage`,
+  `CreateLicenseDialog`, `LicenseRecord` with `LicenseTerms`, `LicenseKeys`, `LicenseDevices`,
+  `LicenseConfig` and `LicenseDialogs`, `TiersPage`, `TierRecord` with `TierForm`,
+  `EnrollmentPage`, and `shared.tsx`); `pages/license.tsx` routes between them. The tier record
+  is routed (`tiers/:id`, tabs `overview` and `used-by`).
+- **History tab.** A-2 is chunk 5's, so the license record ships with Overview, Keys, Devices and
+  Config overrides, and **More actions → View in activity** opens Activity with `?q=<license
+id>` (LDT-17). The History tab joins the record's `tabs` in `nav.ts` once A-2 lands.
+- **Device drawer.** The Devices tab uses chunk 3's `DeviceTable`; a row opens the routed device
+  drawer (`devices/:id`), which chunk 5 builds with the facts as visible text (LDT-15, DEV-3).
+  Until it lands that URL resolves to the Devices page.
+- **Config overrides** keep the current `ManagedPayloadEditor` (chunk 7 rebuilds it) with the
+  §6.5.2 failure states; once opened, the tab stays mounted so a draft survives a tab switch.
+- **Expiry on create** is explicit: the tier's term (the body omits `expiresAt`, so the server
+  derives it, R3-06), No expiry (`null`), or a date (the end of the local day, LIC-5).
+  `maxOfflineDays` is checked against the server's 1 to 365.
+- **Fingerprint mode.** Off is `enabled: false` (enforcement off for every tier); the other modes
+  are `enabled: true` with that `defaultMode`. A stored `enabled` with `defaultMode: "off"` reads
+  as Off with a note that tiers with their own mode still enforce it.
+- **Kit additions.** `DataTable` column `meta.defaultHidden`, and no action menu on a row without
+  a valid action; `OneTimeSecretPanel.actions`; `useUnsavedChangesGuard({ allow })` for a
+  record's own route tabs; `device.resetBinding` (L1) in `lib/actions.ts`.
+- **A-3** is in the Worker for the license and tier `PATCH` routes (product `adminGroup` is chunk
+  5's); A-3b is not built: the list stays in client mode.
+- **Temporary home.** `views/legacyBits.tsx` holds the three helpers the legacy `Devices.tsx`
+  and `profiles/ProfileDetail.tsx` imported from `licenses/shared.tsx`; it goes with them.
+- **Tests.** The four License suites (47 tests) are replaced by `licenses`, `licenseRecord`,
+  `tiers`, `enrollment` and `licenseModel` (94 tests; the admin package goes from 987 to 1,036). Two assertions moved to the device
+  drawer with the hardware and software columns: "shows the truncated hwid and the software
+  summary" and "marks a device that never sent a fingerprint as unverified".
+
+#### Chunk 7 as built (2026-10-04)
+
+Config: Catalog, the catalog editor, Profiles, the
+profile record, the payload editor and Edge mint, at `src/console/pages/config/`. Where the build
+differs from the text above:
+
+- **Where things live.** `SchemaForm.tsx` is split into `src/schema/` (`entry.ts`: the validator,
+  entry helpers and the one set of kind/state tables; `SchemaField`, `ManagementStateControl`,
+  `ManagedField`; `catalogValidation.ts`: the editor's whole-catalog checks and JSON lint).
+  `ManagedPayloadEditor.tsx` is rebuilt in place, so the license override tab keeps its import;
+  its `onSubmit` may resolve or reject, and the draft stays until the refetch shows the server
+  holding it (a swallowed failure never loses the draft). `OverridesEditor.tsx` changed one import
+  line, and three `licenses.test.tsx` assertions follow the new row copy.
+- **Used by (PRF-2, PRF-8)** is the server's, not computed from cached queries: the profile list
+  carries `usedBy` counts and the profile detail the tiers and licenses (`GET …/config/profiles`).
+  The license list's fetcher is chunk 6's, and the delete guard needs exact counts.
+- **Profile History** is not a tab yet: it needs A-2 (activity filtered by target), which is
+  chunk 5's. The record's tabs are Payload and Used by; `nav.ts` declares only those.
+- **Create (PRF-5).** The server now refuses a taken id (`409 profile_exists`): `POST` used to
+  upsert, so a duplicate id silently replaced that profile's payload. "Publish a catalog first" is
+  the New profile button's disabled reason when the catalog is missing.
+- **A-7b** (catalog usage) is built: the key drawer's "Overridden by" and the review's breaking
+  removals read it. Catalog ownership (CAT-3) is `From manifest` for a repo-linked product
+  (`releaseSource: "github"`), whose next resync re-applies `.pkey/schema`.
+- **The payload JSON control** is a mono textarea with Format; CodeMirror is the catalog editor's
+  JSON mode only.
+- **Temporary mount.** Edge mint left Keys & secrets (`views/Secrets.tsx` no longer mounts it);
+  the shell and palette tests that used Edge mint as their not-ready page now use Sign-in.
+- **API additions** are admin routes (narrative-only under rule 10), covered by
+  `packages/worker/test/configAdmin.test.ts`, audited where they write (`profile.update`); no
+  migration.
+
+#### Chunk 4P-1 as built (2026-10-04)
+
+**Platform → Settings** (`#/platform/settings`, T4) is built on A-13's settings API, and
+`platform-settings` is `ready` in `nav.ts`, so `#/platform` now lands on Settings. The page is
+`src/console/pages/platformSettings.tsx`, in the Platform lazy chunk. Its help link is
+`/docs/admin/platform-settings/`, and the Keyring section links `/docs/admin/kek/`.
+
+- **Background jobs.** Each of the four settings is its own save scope:
+  - The source badge shows _Code default_, _Deploy var_ or _Set in console_ (by whom and when).
+  - Switches apply on flip. Integers use a per-row `SaveBar`. The byte cap is entered in MiB and
+    bounded to [1, 32], so it can only be lowered.
+  - Confirm levels come from the registry's `confirm` for each direction. An L0 change applies at
+    once, with Undo in the toast: Undo restores the previous runtime value or deletes the new
+    one. L1 is a caution `ConfirmDialog` that lists the consequences. L2 and above would send
+    `confirm: <key>`, and L3 adds the typed key; no setting uses either yet.
+  - Revert is always confirmed (L1 at least) and names the value that comes back.
+  - Every write sends `expectedVersion`. On a 409 the row offers **Reload**. A typed number
+    survives the reload (`keepMine`), and Save retries it with the new version.
+  - A ceiling hard off shows as _Locked off by deploy var_ with the reason. An unreadable store
+    shows as _Off: store unreadable_ and disables the controls.
+- **Read-only inventory.** Identity & access, Delivery and Email list the deploy-time values,
+  each flagged when a legacy name supplied it. Limits holds the code constants and starts
+  collapsed. The API's warnings are shown above the sections.
+- **Keyring.** This closes the "KEK has no console UI" gap, read-only. It shows KEK secret
+  presence, the `PLATFORM_KEK_ACTIVE` and `PLATFORM_KEK_ID` kid names, and from
+  `GET /products/kek` the active kid, the ring with per-kid counts and the re-seal progress
+  (remaining, unopenable). A 503 shows "The platform keyring is unusable". The L3 re-seal sweep
+  is not in this chunk: it stays the runbook's `POST`.
+- **Secrets.** Presence only, with what each secret is for and what being unset means.
+- **History.** The `platform.setting.*` rows of `GET /platform/activity`, filtered on the client.
+  Each fetch reads up to 5 pages until it has 10 matches. The rows show the value before and
+  after. The query key is `["platform", "activity", "settings"]`, so a settings write's
+  invalidation of the platform trail also refreshes Deployment's activity panel. That panel now
+  words the two setting actions.
+- **Tests.** The new `platformSettings.test.tsx` has 20 tests. `platform.test.tsx`,
+  `route.test.ts`, `palette.test.tsx` and the CSP e2e follow the new `ready` entry. The CSP e2e
+  also opens a setting's confirmation and records zero violations.
 
 #### Chunk 11 · Docs, a11y sweep, visual baseline, cleanup
 

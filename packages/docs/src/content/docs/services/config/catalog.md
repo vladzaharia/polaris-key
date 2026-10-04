@@ -188,6 +188,47 @@ document-signing prune) never throws for the same reason in reverse: an uninterp
 there just marks the value invalid, so a stale or corrupt catalog can't turn a routine config
 fetch into a `500`.
 
+### History, concurrent publishes and usage
+
+Every publish keeps the previous version: a version is deactivated, never deleted. The admin API
+reads them back, and guards a publish against one that landed in between:
+
+| Route                                      | Behaviour                                                                                                                                                                                                                                                                   |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET .../config/catalog`                   | The active catalog. `404` before the first publish.                                                                                                                                                                                                                         |
+| `PUT .../config/catalog`                   | Publish `{ catalog, expectedVersion? }`. With `expectedVersion` (the version the draft started from, `0` for the first), a different active version answers `409 catalog_version_conflict` with `currentVersion`, and nothing is written. Without it, the last writer wins. |
+| `GET .../config/catalog/versions`          | Every version, newest first: `version`, `active`, `createdAt`, `entryCount`, `source` (`admin` for a console publish, `manifest` for one `.pkey/schema` wrote) and `publishedBy`.                                                                                           |
+| `GET .../config/catalog/versions/<n>`      | One version's catalog, active or not.                                                                                                                                                                                                                                       |
+| `GET .../config/catalog/usage?key=a&key=b` | Per key, the profiles whose payload sets it, the tiers that inherit one of those profiles, and the licenses whose own overrides set it. Ids and names only, never a value. Up to 100 keys.                                                                                  |
+
+## In the console
+
+**Config → Catalog** shows the active catalog as one table: key and label, kind, default,
+management default, category and user grant, with search and kind, category and management
+filters that stay in the URL. The header shows the version, the key count and who owns the
+catalog: a product linked to a repository shows **From manifest**, because the next resync
+re-applies `.pkey/schema` over a console publish. Opening a key shows its schema, hints and
+**Overridden by**: the profiles, tiers and licenses that set it. **Version history** lists every
+version and compares an earlier one with the active one. With no catalog yet, **Create catalog**
+opens the editor on an empty draft.
+
+**Edit catalog** opens the editor:
+
+- **Form** edits one entry at a time: key, kind, label, category, description, the schema's
+  common keywords for its type (or the whole fragment as JSON, checked by the same validator the
+  server runs), default, management default, user grant and form hints. The list beside it marks
+  added, changed and invalid entries.
+- **JSON** edits the whole document, with the catalog validator marking problems by line and a
+  Format button. Both modes edit the same draft.
+- The draft stays in the browser tab until you publish or discard it, so leaving the page or
+  reloading does not lose it. The title shows the version it will become.
+- **Review changes** shows the draft against the version it started from. A removed key that a
+  profile or license still sets is marked breaking, and publishing it needs your acknowledgement
+  (its values are dropped from those payloads). A manifest-owned catalog warns that the next
+  resync re-applies `.pkey/schema`.
+- If someone published in the meantime, publishing answers with what changed on the server; you
+  can review your draft against the newer version, or discard it.
+
 ## Worked examples
 
 ```jsonc

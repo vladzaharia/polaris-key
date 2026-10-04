@@ -73,8 +73,8 @@ The files are a **baseline**, not the live state. A resync (re-link, or a signed
 webhook) updates product metadata, service enablement, fingerprint and auto-issue policy,
 catalog shape, OIDC, release settings, profiles, tiers, and provisioning — but five blocks can
 be **claimed** by an admin from the console (`services_source`, `fingerprint_policy_source`,
-`auto_issue_source`, and from Update settings `compat_source` for the compatibility window and
-`access_source` for the two release access modes), and a resync skips whichever ones an admin
+`auto_issue_source`, and from Update → Feed `compat_source` for the compatibility window and
+`access_source` for the metadata access mode), and a resync skips whichever ones an admin
 already owns. The operator-only artifact policy — the Sparkle signature requirement and the
 minimum macOS version — has no manifest spelling at all, so no push can write or erase it. "Revert to
 manifest" hands ownership back without changing the values, so the manifest re-applies on the

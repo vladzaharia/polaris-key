@@ -141,12 +141,9 @@ every sync; the richer, on-demand checklist described in
 [Health checks](#health-checks) below is a separate, deeper read triggered from the
 console.
 
-The console renders `release_channels` two ways for a reason: as badges on the release
-each channel currently points at ("what does this release serve"), and as a separate list
-of every channel name ("what does `beta` ship right now"). The second view exists because
-the first can't show a dangling pointer — a channel row referencing a `release_id` the
-store no longer holds has no release row to attach a badge to, and that gap is itself worth
-seeing.
+The console shows what a channel serves from the channel policy's own resolution (Release
+→ Channels, one lane per channel), not by re-deriving it from `release_channels`. A release's
+row and record name the channels that serve it on at least one platform.
 
 ## The release model
 
@@ -255,7 +252,7 @@ where a device token actually exists to evaluate it against. See Update's
 ## Health checks
 
 `GET` the release admin API's health endpoint (surfaced in the console as **Release
-health**) runs a live checklist, in order, stopping early once a prerequisite is missing:
+health**, in the Releases page's **Repo sync** drawer) runs a live checklist, in order, stopping early once a prerequisite is missing:
 
 1. **Release config** — are the GitHub owner, repo, installation id, and binary name all
    present at all.
@@ -330,11 +327,11 @@ to check.
 - **The customer portal** queries `release_metadata` and `release_artifacts` directly to
   list a product's releases and to mint and redeem the short-lived tokens behind a gated
   download — never a live GitHub call on a request a customer is waiting on.
-- **The console's Releases view** reads all four tables through the release admin API: the
-  metadata and artifact rows for the releases table itself, `release_channels` for the
-  channel map, and `release_health` for each release's status badge. It leads the view,
-  with the live [health checklist](#health-checks) and the sync-state card
-  alongside it, describing how the belief was formed rather than standing in for it.
+- **The console's Releases page** reads these tables through the release admin API: the
+  metadata and artifact rows for the releases table and each release record, and each app
+  release's signed record for its signer (the CI release key's `kid`). The live
+  [health checklist](#health-checks) and the last sync attempt sit in its **Repo sync**
+  drawer, describing how the belief was formed rather than standing in for it.
 - **The live release and update routes** — including the `entitled` access check — do not
   read this store, except for one `release_channel_floors` lookup per moving selector. They resolve a request's selector against GitHub directly (see
   [Eligibility](/docs/services/update/eligibility/) for how `entitled` evaluates a caller's
@@ -343,7 +340,7 @@ to check.
 ## See also
 
 - [GitHub sync](/docs/services/release/github-sync/) — what triggers a write to this store,
-  and what "Manifest sync" shows beside "Release health" in the console.
+  and what the last sync shows beside "Release health" in the console.
 - [Artifacts, changelog & install](/docs/services/release/artifacts/) — the routes that
   serve what this store indexes.
 - [D1 data model](/docs/reference/data-model/) — the full column list for every table named

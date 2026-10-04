@@ -142,9 +142,21 @@ where the same check governs the feed.
 
 An operator never edits release configuration field-by-field. The GitHub coordinates,
 binary name, channel workflow, Sparkle key, and access modes all live in the linked repo's
-`.pkey/release` file; the console's Releases view is a read surface over what the last sync
-applied, plus a **Resync from repo** action and a live **Release health** check. What the
-health check evaluates, and what "Manifest sync" shows beside it, are both covered on
+`.pkey/release` file. The console's **Release** section reads what the last sync and CI
+applied, and holds the operator controls Release does have:
+
+- **Releases** lists the app's releases from the truth store, each linking to its record
+  (builds and files, the packs it pins, where each channel serves it, its distribution
+  row). The **Repo sync** drawer holds the live **Release health** check, the last sync
+  attempt and **Resync from repo**, whose result lists what it re-applied.
+- **Channels** shows one lane per channel, for the app and every pack: pointer, what it
+  serves on each platform, and its policy (promote, pin, minimum supported, critical, the
+  rollback floor, a pack's floors per contentApi line, revert to manifest).
+- **Deliverables**, **Content keys** and **Compatibility** cover packs; see
+  [Packs](/docs/services/release/packs/#in-the-console) and
+  [Compatibility](/docs/services/release/compatibility/).
+
+What the health check evaluates, and what the last sync records, are covered on
 [GitHub sync](/docs/services/release/github-sync/) and
 [The truth store](/docs/services/release/truth-store/) rather than duplicated here.
 
