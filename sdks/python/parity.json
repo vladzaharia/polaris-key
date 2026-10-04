@@ -125,6 +125,11 @@
       "status": "implemented",
       "note": "compression.zstd's ZstdDict(base, is_raw=True).as_prefix on 3.14+, zstandard's DICT_TYPE_RAWCONTENT below (a hard dependency there), window_log_max always set; the window check runs in the applier whatever the decoder, and a start-up probe gates zstd-patch-from."
     },
+    "packs.delta.feed": {
+      "status": "planned",
+      "wp": "P4-30",
+      "note": "P4-30 ports feed_content's deltas, with_feed_deltas and the one-feed-delta rule (plans/P4-29.md §5 order 2)."
+    },
     "packs.state": {
       "status": "implemented",
       "note": "update.packs PackEngine and the install-state machine over DirPackStorage in the platform data directory: journal, resume with Range/If-Range, atomic pointer swap with fsync, confirm, rollback, GC roots, a torn state.json held aside, an unreadable one refused, embedded baselines; packSetId on devices/report."

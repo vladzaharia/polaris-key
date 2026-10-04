@@ -88,8 +88,10 @@ import {
   planTarget,
   selectVariant,
   usableCodec,
+  withFeedDeltas,
   type VariantPrefs,
 } from "./select.js";
+import type { FeedDelta, FeedDeltas } from "@polaris-key/protocol/update";
 import {
   CHUNKS_FORMAT,
   MAX_CHUNK_INDEX_BYTES,
@@ -443,6 +445,13 @@ export interface PackEngineOptions {
    * same candidate itself, then the plan's remaining candidates.
    */
   nativePayload?: NativePayloadPort;
+  /**
+   * plans/P4-29.md §2.4: the delta menu of the most recently committed feed of the canonical
+   * channel (`feedContent`'s `deltas`), fresh or stale, or null. Each entry for the selected
+   * container variant's payload joins the record's deltas as one more candidate; at most one
+   * feed-offered delta is tried per install. Omit it and only the record's deltas are planned.
+   */
+  feedDeltas?: () => FeedDeltas | null;
 }
 
 /** The error the pipeline raises when it cannot proceed. `code` is a registered client code
@@ -519,6 +528,8 @@ type Preflight =
       /** The delegation's compact JWS when a content key signed the record (plans/P4-19.md
        *  §2.3), else null. */
       delegation: string | null;
+      /** plans/P4-29.md §2.4: the delta ids the feed's menu added to `variant` (merged). */
+      feedIds: ReadonlySet<string>;
     };
 
 /** What `estimate` reports for a set of packs (the consent dialog's size disclosure). */
@@ -1657,16 +1668,20 @@ export class PackEngine {
       }
     }
     const installs = readable;
+    // plans/P4-29.md §2.4 step 6: a journal whose delta neither the record nor its own
+    // `feedDelta` names is abandoned and re-planned.
     const prior = doc.inflight[packId];
-    const early = this.preflightPlans.get(packId);
-    const planId =
-      prior &&
+    const priorUsable =
+      prior !== undefined &&
       prior.recordSha256 === pin.release.sha256 &&
-      prior.variant === variantKey(variant.variant)
-        ? prior.planId
-        : early && early.recordSha256 === pin.release.sha256
-          ? early.planId
-          : this.opts.newPlanId();
+      prior.variant === variantKey(variant.variant) &&
+      journalDeltaKnown(prior, variant);
+    const early = this.preflightPlans.get(packId);
+    const planId = priorUsable
+      ? prior.planId
+      : early && early.recordSha256 === pin.release.sha256
+        ? early.planId
+        : this.opts.newPlanId();
     this.preflightPlans.set(packId, {
       planId,
       recordSha256: pin.release.sha256,
@@ -1777,8 +1792,19 @@ export class PackEngine {
         }
       }
     }
+    // plans/P4-29.md §2.4 steps 1–2 and 6: the committed feed's menu, plus a resumed journal's
+    // own feed delta, join the record's deltas (a record delta wins a shared id).
+    let merged = withFeedDeltas(variant, this.feedMenu());
+    const feedIds = new Set(merged.feedIds);
+    if (priorUsable && prior.strategy === "delta" && prior.feedDelta) {
+      const again = withFeedDeltas(merged.variant, {
+        [variant.payload.sha256]: [prior.feedDelta],
+      });
+      for (const id of again.feedIds) feedIds.add(id);
+      merged = { variant: again.variant, feedIds: [...feedIds] };
+    }
     const target = planTarget(
-      variant,
+      merged.variant,
       pin.release.sha256,
       index,
       chunk?.index ?? null,
@@ -1835,7 +1861,7 @@ export class PackEngine {
       body,
       recordSha256: pin.release.sha256,
       record,
-      variant,
+      variant: merged.variant,
       installs,
       seeds,
       planId,
@@ -1843,7 +1869,17 @@ export class PackEngine {
       chunk,
       plan: p,
       delegation: delegated,
+      feedIds,
     };
+  }
+
+  /** The committed feed's delta menu, or null (a throwing source is no menu). */
+  private feedMenu(): FeedDeltas | null {
+    try {
+      return this.opts.feedDeltas?.() ?? null;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -2231,9 +2267,19 @@ export class PackEngine {
         { packId },
       );
 
-    // 5–6. Each candidate in turn: journal, fetch, apply.
+    // 5–6. Each candidate in turn: journal, fetch, apply. plans/P4-29.md §2.4 step 5: at most
+    // one feed-offered delta per install; once it fails the rest of the menu is skipped.
     let firstFailure: PackError | null = null;
+    let feedTried = false;
     for (const cand of [p, ...p.fallbacks]) {
+      const fromFeed =
+        cand.strategy === "delta" &&
+        cand.delta !== undefined &&
+        pre.feedIds.has(cand.delta);
+      if (fromFeed && feedTried) continue;
+      const feedDelta = fromFeed ? feedEntryOf(variant, cand.delta!) : null;
+      if (fromFeed && feedDelta === null) continue;
+      if (fromFeed) feedTried = true;
       const objects = this.objectsFor(
         cand.strategy,
         cand.delta ?? null,
@@ -2251,6 +2297,7 @@ export class PackEngine {
         variant: variantKey(variant.variant),
         strategy: cand.strategy,
         ...(cand.delta !== undefined ? { delta: cand.delta } : {}),
+        ...(feedDelta !== null ? { feedDelta } : {}),
         objects: objects.map((o) => ({
           sha256: o.sha256,
           bytes: o.bytes,
@@ -2285,20 +2332,29 @@ export class PackEngine {
             )
           : null;
       let result: ApplyResult | { verdict: ChunkVerdict };
+      let fetched = true;
       if (native !== null) result = native;
       else {
         for (const o of objects)
-          if (!(await this.download(planId, packId, o, progress)))
+          if (!(await this.download(planId, packId, o, progress))) {
+            // plans/P4-29.md §2.4 step 5: a feed delta that cannot be fetched (a cold delta's
+            // 404, say) falls back like any other failure of that candidate.
+            if (fromFeed) {
+              fetched = false;
+              break;
+            }
             // The journal and what is staged stay for the next `ensure`, which resumes them.
             throw new PackError(
               "network-error",
               `Fetching ${packId}'s objects failed; the next ensure resumes.`,
               { packId },
             );
-        if (cand.strategy !== "chunk")
+          }
+        if (fetched && cand.strategy !== "chunk")
           this.emit({ packId, phase: "apply", done: total, total });
-        result =
-          cand.strategy === "chunk"
+        result = !fetched
+          ? { verdict: { ok: false, error: "network-error" } }
+          : cand.strategy === "chunk"
             ? await this.applyChunkPlan(
                 planId,
                 packId,
@@ -2987,6 +3043,45 @@ interface SeedEntry {
 
 /** A variant's `chunks` ref when the chunk strategy could read it (plans/P4-10.md §2.5: the
  *  format, a usable codec, both sizes within `MAX_CHUNK_INDEX_BYTES`), else null. */
+/** A delta's id: a `payload` delta's `artifact.sha256`, a `files` delta's `patch.sha256`. */
+function deltaIdOf(d: unknown): string | undefined {
+  const x = d as {
+    scope?: unknown;
+    artifact?: { sha256?: unknown };
+    patch?: { sha256?: unknown };
+  };
+  const id =
+    x?.scope === "payload"
+      ? x.artifact?.sha256
+      : x?.scope === "files"
+        ? x.patch?.sha256
+        : undefined;
+  return typeof id === "string" ? id : undefined;
+}
+
+/** plans/P4-29.md §2.4 step 6: whether a journal's `delta` is one the record or the journal's
+ *  own `feedDelta` names (always true for a journal of another strategy). */
+function journalDeltaKnown(j: PackJournal, variant: PackVariant): boolean {
+  if (j.strategy !== "delta" || j.delta === undefined) return true;
+  if ((variant.deltas ?? []).some((d) => deltaIdOf(d) === j.delta)) return true;
+  return j.feedDelta?.artifact.sha256 === j.delta;
+}
+
+/** The merged feed entry of a planned feed delta, as the journal keeps it. */
+function feedEntryOf(variant: PackVariant, id: string): FeedDelta | null {
+  const d = (variant.deltas ?? []).find(
+    (x) => x.scope === "payload" && deltaIdOf(x) === id,
+  ) as PayloadDelta | undefined;
+  if (!d) return null;
+  return {
+    from: d.from,
+    method: d.method,
+    scope: "payload",
+    memBytes: d.memBytes,
+    artifact: { sha256: d.artifact.sha256, bytes: d.artifact.bytes },
+  };
+}
+
 function usableChunksRef(
   variant: PackVariant,
 ): { sha256: string; bytes: number; size: number; codec: string } | null {

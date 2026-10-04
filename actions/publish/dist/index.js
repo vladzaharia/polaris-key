@@ -11210,7 +11210,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-4MWQFEX2.js
+// ../shared-protocol/dist/chunk-Q7Q7O2DW.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MAX_JSON_DEPTH = 64;
 var MAX_RECORD_JWS_BYTES = 88844;

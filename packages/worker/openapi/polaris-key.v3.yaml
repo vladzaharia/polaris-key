@@ -2231,7 +2231,13 @@ paths:
         multi-range request gets the whole 200, and no response carries `Content-Encoding`;
         `HEAD` returns the same headers. Only an object every holder of whose public key is
         `public` is cached `public, max-age=31536000, immutable, no-transform`; anything else,
-        and everything under the gated prefix, is `private, no-store, no-transform`. Served on
+        and everything under the gated prefix, is `private, no-store, no-transform`. P4-29: when
+        neither blob key is held, the hash may name a generated lazy delta (stored at
+        `deltas/<from>/<to>.zstd-patch-from`, or under `gated/`) this product holds a
+        `lazy-delta` ref to, as the feed's delta menu offers it; it is served under its pack's
+        rules exactly as the pack's other objects (a gated one needs the pack's current gate),
+        only while `LAZY_DELTAS` is `on` and the product is opted in. A cold delta is the plain
+        not-found. Served on
         the console host (always an octet-stream attachment) and on the bytes host.
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -2347,7 +2353,9 @@ paths:
         When `Available-Dictionary` (RFC 9842) is the SHA-256 of the `from` of a published
         `zstd-patch-from` payload delta to this payload and `dcz` is accepted, the answer is
         `Content-Encoding: dcz`: `5E 2A 4D 18 20 00 00 00`, the 32-byte `from`, then the stored
-        delta artifact, unchanged (its bytes are the artifact's plus 40). Another dictionary, or
+        delta artifact, unchanged (its bytes are the artifact's plus 40). P4-29: the ready lazy
+        deltas to the payload count too (after the record's own), while `LAZY_DELTAS` is `on`
+        and the product is opted in. Another dictionary, or
         none, gets the full payload; with `?via=dcz` (the SDK's guard against a silent full
         download) those are `409` with no body. Authorised exactly as `downloadBlob` authorises
         the `full` object (and, for dcz, the artifact): by the holders of its keys, the pack's
@@ -5314,7 +5322,16 @@ paths:
         every revocation; content alone never causes `feed_not_composable`. P4-19: a revocation of
         a delegation is listed with `kind: delegation` and `pack` = the delegation's scope root;
         it counts as referenced, so it is kept under the 64-entry cap and at the third shedding
-        step, and leaves only when `revocations` is omitted.
+        step, and leaves only when `revocations` is omitted. P4-29 (plans/P4-29.md §2.2, §6):
+        the document may carry `deltas`, the delta menu: target payload SHA-256 → up to 4
+        `payload`-scope `zstd-patch-from` deltas to it (`{from, method, scope, memBytes,
+        artifact {sha256, bytes}}`, at most 64 in all), the ready lazy deltas of the pack
+        records the document names (its `packSets` releases and its targets' pins and holds),
+        ranked by the base's installed devices. Listed only while the deployment's `LAZY_DELTAS`
+        is `on` and the product is opted in; the menu is added after the document is chosen and
+        shed, only into the room left under the cap, lowest-ranked entries trimmed first
+        (audited), so it never changes the document or sheds a content member. Clients read it
+        with `feedContent`; every byte it produces is checked against the CI-signed record.
         Governed by the release METADATA access mode; under `entitled` the licence's
         entitlements must hold the canonical channel (403 `channel_not_allowed`). `public`
         caches `public, max-age=60, no-transform`, every other mode `private, no-store,

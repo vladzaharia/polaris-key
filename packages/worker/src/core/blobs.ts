@@ -680,9 +680,9 @@ export interface RefHolder {
   storageKey: string;
   refKind: string;
   /**
-   * `pack-upload`: the ref id (a pack deliverable id). `pack-object`: the ref id up to its first
-   * `@` (a pack release id is `<packId>@<version>`, P4-02, and a deliverable id never holds `@`).
-   * Any other kind: `""` — those holders are counted, not named.
+   * `pack-upload` and `lazy-delta` (P4-29): the ref id (a pack deliverable id). `pack-object`: the
+   * ref id up to its first `@` (a pack release id is `<packId>@<version>`, P4-02, and a
+   * deliverable id never holds `@`). Any other kind: `""` — those holders are counted, not named.
    */
   holder: string;
 }
@@ -716,6 +716,7 @@ export async function refHolders(
        SELECT storage_key, ref_kind,
               CASE ref_kind
                 WHEN 'pack-upload' THEN ref_id
+                WHEN 'lazy-delta' THEN ref_id
                 WHEN 'pack-object' THEN substr(ref_id, 1, instr(ref_id, '@') - 1)
                 ELSE '' END AS holder
          FROM blob_refs
@@ -732,6 +733,39 @@ export async function refHolders(
     refKind: r.ref_kind,
     holder: r.holder,
   }));
+}
+
+/** The `blob_refs.ref_kind` a generated lazy delta is held by (P4-17; Release's
+ *  `LAZY_DELTA_REF_KIND`, restated here because Core imports no service). */
+export const LAZY_DELTA_REF = "lazy-delta";
+
+/** The most `deltas/` keys `lazyDeltaKeys` reads for one hash. */
+export const MAX_LAZY_DELTA_KEYS = 8;
+
+/**
+ * The stored `deltas/…` keys (either prefix) of the object with SHA-256 `sha256` that `product`
+ * holds a `lazy-delta` ref to (P4-29, plans/P4-29.md §6.3): the blob route's third candidate
+ * when neither `blobs/sha256/<hex>` key is held. One read on `idx_blob_objects_sha256`. A cold
+ * delta (its ref dropped) is absent, so the route answers not-found and the device falls back.
+ */
+export async function lazyDeltaKeys(
+  db: Db,
+  product: string,
+  sha256: string,
+): Promise<string[]> {
+  if (!/^[0-9a-f]{64}$/.test(sha256)) return [];
+  const rows = await db.all<{ storage_key: string }>(
+    `SELECT DISTINCT o.storage_key FROM blob_objects o
+       JOIN blob_refs r ON r.storage_key = o.storage_key
+      WHERE o.sha256 = ? AND o.kind = 'delta'
+        AND r.product = ? AND r.ref_kind = ?
+      ORDER BY o.storage_key
+      LIMIT ${MAX_LAZY_DELTA_KEYS}`,
+    sha256,
+    product,
+    LAZY_DELTA_REF,
+  );
+  return rows.map((r) => r.storage_key);
 }
 
 // ── Serving ─────────────────────────────────────────────────────────────────────────────────

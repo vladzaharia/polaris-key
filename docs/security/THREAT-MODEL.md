@@ -2319,12 +2319,24 @@ and a per-product `lazy_delta_settings` row.
   acknowledged without work. Idempotency comes from the pair's `release_lazy_deltas` row and the
   deterministic key (`head` before work, create-only put), never from the event: a duplicate or a
   re-PUT event does nothing.
+- **The delta menu (P4-29, WIRE-CONTRACT-V4 §2.4.2).** The feed's `deltas` member offers the
+  `ready` lazy deltas per target payload (at most 4 per target, 64 per feed). It is inside the
+  feed payload, so the **product key** signs it: it carries the Worker's authority, never CI's.
+  A device merges an entry into the selected container variant only beside the record's own
+  deltas (a record delta wins a shared id and a cost tie), and the applier checks the artifact
+  against the entry, the base against `from`, the frame's window against `memBytes` (bounded by
+  the device's `memBudget`) and the output against the **CI-signed record's** `payload`, writing
+  at most `payload.size` bytes. Any failure, a 404 included, falls back, and **at most one
+  feed-offered delta is tried per install**, so a hostile menu wastes at most one artifact the
+  planner already priced below the alternatives. The menu is added last into the room under the
+  feed's 65,536-byte cap and trimmed first, so it can never shed a content member or make a feed
+  uncomposable. Serving follows the pack's delivery rule: the blob route resolves a lazy delta by
+  its hash only through this product's `lazy-delta` ref, so a `gated/deltas/…` frame is served
+  only to a caller the pack's current gate admits, and a cold delta (ref dropped) is the plain
+  not-found. Either P4-17 switch withdraws both the menu and the serving at the next request.
 
 Residuals, stated rather than defended:
 
-- **The delta menu is not served yet.** Offering a lazy delta to devices needs the feed's
-  reserved `deltas` member to be given a shape, which is a wire change (WIRE-CONTRACT-V4 §2.4;
-  P4-17's Corrections). Until then generated deltas are stored and recorded only.
 - **Demand rows hold device ids.** `delta_demand_devices` keeps (device, pair, strategy, time) for
   30 days to count distinct devices (docs/PRIVACY.md); they are not purged with the device.
 - **workerd enforces neither 128 MB nor `cpu_ms` locally** (notes/S-08 §2.5). The memory budget is
@@ -3248,6 +3260,9 @@ Poison the release channel
 │   ├── CANNOT install a release the device knows is revoked
 │   ├── NOTE: a device remembers at most 256 revoked targets; more revocations push the oldest out (`plans/P4-13.md` §2.5)
 │   ├── CANNOT forge a delegation or widen its scope, types or window (P4-19: release-key signed, verified against pinned release keys only)
+│   ├── CAN offer, reorder or withhold feed deltas (P4-29): bandwidth and CPU only, bounded by one feed-offered delta per install, `memBudget` and the declared `bytes`
+│   ├── CANNOT change installed bytes through a feed delta (the output must equal the CI-signed record's `payload`)
+│   ├── CANNOT make a device decode past `memBudget` or write past `payload.size` through a feed delta
 │   ├── CAN withhold a delegation record (packs under it then cannot install) or its revocation (as for any revocation) (P4-19)
 │   └── CANNOT stop an install from running, except through a CI-signed revocation of a required pack (the licence documents it also signs are AT-1's subject)
 ├── Hold a delegated content key (P4-19)
