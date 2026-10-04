@@ -434,6 +434,69 @@ ${[...arm(on, true), ...arm(off, false)].join("\n")}
 `;
 }
 
+/** Kotlin's hard keywords: an identifier spelled as one is back-ticked. */
+export const KOTLIN_KEYWORDS = new Set([
+  "as",
+  "break",
+  "class",
+  "continue",
+  "do",
+  "else",
+  "false",
+  "for",
+  "fun",
+  "if",
+  "in",
+  "interface",
+  "is",
+  "null",
+  "object",
+  "package",
+  "return",
+  "super",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typealias",
+  "typeof",
+  "val",
+  "var",
+  "when",
+  "while",
+]);
+
+/** A slug as a Kotlin enum entry: camelCase, back-ticked if it is a keyword. */
+export function kotlinCase(slug: string): string {
+  const name = slug.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+  return KOTLIN_KEYWORDS.has(name) ? `\`${name}\`` : name;
+}
+
+export function renderKotlin(table: ServiceTable): string {
+  const entries = table.services
+    .map((r) => `    ${kotlinCase(r.slug)}(${q(r.slug)}, ${r.defaultEnabled}),`)
+    .join("\n");
+  return `${banner("//")}
+package im.plrs.key.core
+
+/** The opt-in services, in canonical order. Core is not a service — it is always on. */
+public enum class ServiceSlug(
+    /** The wire and route slug. */
+    public val slug: String,
+    /** Whether a product runs this service when it has never said otherwise. */
+    public val isDefaultEnabled: Boolean,
+) {
+${entries}
+    ;
+
+    public companion object {
+        /** The service with this slug, or null. */
+        public fun of(slug: String?): ServiceSlug? = entries.firstOrNull { it.slug == slug }
+    }
+}
+`;
+}
+
 // ── Targets ────────────────────────────────────────────────────────────────────────────────
 
 export interface Target {
@@ -476,6 +539,10 @@ export const TARGETS: readonly Target[] = [
   {
     path: "sdks/godot/addons/polaris_key/core/services_generated.gd",
     render: renderGdscript,
+  },
+  {
+    path: "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt",
+    render: renderKotlin,
   },
 ];
 

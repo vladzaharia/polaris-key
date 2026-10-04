@@ -1,0 +1,145 @@
+{
+  "$schema": "../../conformance/parity/manifest.schema.json",
+  "sdk": "kotlin",
+  "runtimes": ["android", "jvm"],
+  "testRoots": [
+    "sdks/kotlin/core/src/test",
+    "sdks/kotlin/conformance/src/test"
+  ],
+  "features": {
+    "core.verify": { "status": "implemented" },
+    "core.cache": { "status": "implemented" },
+    "core.bundle": { "status": "implemented" },
+    "core.discover": { "status": "implemented" },
+    "core.sync": { "status": "implemented" },
+    "core.local": { "status": "implemented" },
+    "core.headers": { "status": "implemented" },
+    "core.errors": { "status": "implemented" },
+    "core.caps": { "status": "implemented" },
+    "core.store": {
+      "status": "planned",
+      "wp": "P6-12",
+      "except": [{ "runtime": "jvm", "reason": "dependency" }],
+      "note": "P6-06 ships InMemoryStore and the 0600 FileStore (the JVM's store, which supports() reports as dependency); P6-12 adds the Android Keystore store over :platform's SecureStore."
+    },
+    "license.gate": { "status": "planned", "wp": "P6-07" },
+    "license.activate": { "status": "planned", "wp": "P6-07" },
+    "license.enroll": { "status": "planned", "wp": "P6-07" },
+    "license.deactivate": { "status": "planned", "wp": "P6-07" },
+    "license.entitlements": { "status": "planned", "wp": "P6-07" },
+    "license.channels": { "status": "planned", "wp": "P6-07" },
+    "license.reregister": { "status": "planned", "wp": "P6-07" },
+    "config.resolve": { "status": "planned", "wp": "P6-07" },
+    "config.list": { "status": "planned", "wp": "P6-07" },
+    "config.secret": { "status": "planned", "wp": "P6-07" },
+    "config.schema": { "status": "planned", "wp": "P6-07" },
+    "config.mint": { "status": "planned", "wp": "P6-07" },
+    "config.mirror": { "status": "planned", "wp": "P6-07" },
+    "devices.fingerprint": {
+      "status": "planned",
+      "wp": "P6-12",
+      "note": "P6-06's :core derives fingerprints and device ids from supplied inputs and passes every fingerprint.json section in :conformance; P6-12 adds Android's inputs (the app-scoped id and the Keystore anchor)."
+    },
+    "devices.facts": { "status": "planned", "wp": "P6-07" },
+    "devices.register": { "status": "planned", "wp": "P6-07" },
+    "devices.manage": { "status": "planned", "wp": "P6-07" },
+    "devices.report": { "status": "planned", "wp": "P6-07" },
+    "devices.attest": {
+      "status": "planned",
+      "unowned": true,
+      "except": [{ "runtime": "jvm", "reason": "runtime" }],
+      "note": "P6-09 brings the standard Play Integrity API into :platform for native hosts; as in Swift (App Attest in PolarisKeyPlatform), no work package wires attestation into the Kotlin SDK client."
+    },
+    "identity.oidc": {
+      "status": "planned",
+      "unowned": true,
+      "note": "Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07)."
+    },
+    "identity.devicecode": { "status": "planned", "wp": "P6-07" },
+    "release.changelog": { "status": "planned", "wp": "P6-07" },
+    "release.download": { "status": "planned", "wp": "P6-07" },
+    "release.record": { "status": "planned", "wp": "P6-07" },
+    "update.check": { "status": "planned", "wp": "P6-08" },
+    "update.feed": { "status": "planned", "wp": "P6-08" },
+    "update.decide": { "status": "planned", "wp": "P6-08" },
+    "update.content": { "status": "planned", "wp": "P6-08" },
+    "update.driver": {
+      "status": "planned",
+      "wp": "P6-12",
+      "except": [{ "runtime": "jvm", "reason": "runtime" }]
+    },
+    "update.bootguard": { "status": "planned", "wp": "P6-08" },
+    "outlet.detect": {
+      "status": "planned",
+      "wp": "P6-12",
+      "note": "P6-06's :core holds detectOutlet and passes every outlet-matrix.json row in :conformance; P6-12 adds the readers over :platform's install source."
+    },
+    "packs.record": { "status": "planned", "wp": "P6-08" },
+    "packs.revoke": { "status": "planned", "wp": "P6-08" },
+    "packs.delegation": { "status": "planned", "wp": "P6-08" },
+    "packs.delta.feed": { "status": "planned", "wp": "P6-08" },
+    "packs.plan": { "status": "planned", "wp": "P6-08" },
+    "packs.index.files": { "status": "planned", "wp": "P6-08" },
+    "packs.index.chunks": { "status": "planned", "wp": "P6-08" },
+    "packs.apply.full": { "status": "planned", "wp": "P6-08" },
+    "packs.apply.file": { "status": "planned", "wp": "P6-08" },
+    "packs.apply.chunk": { "status": "planned", "wp": "P6-08" },
+    "packs.apply.delta": { "status": "planned", "wp": "P6-08" },
+    "packs.state": { "status": "planned", "wp": "P6-08" },
+    "packs.handlers": { "status": "planned", "wp": "P6-08" },
+    "packs.type.godot.zip": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime"
+    },
+    "packs.type.l10n.table": { "status": "planned", "wp": "P6-08" },
+    "packs.type.data.json": { "status": "planned", "wp": "P6-08" },
+    "packs.type.audio.bank": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime"
+    },
+    "packs.type.ml.model": {
+      "status": "planned",
+      "wp": "P6-08",
+      "note": "No Kotlin N/A: as in Swift, a host-registered handler loads the model with the host's own runtime (TensorFlow Lite, ONNX Runtime)."
+    },
+    "packs.provides": { "status": "planned", "wp": "P6-08" },
+    "packs.transport.apple": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime"
+    },
+    "packs.transport.play": {
+      "status": "planned",
+      "wp": "P6-12",
+      "except": [{ "runtime": "jvm", "reason": "runtime" }]
+    },
+    "packs.transport.steam": {
+      "status": "planned",
+      "unowned": true,
+      "except": [{ "runtime": "android", "reason": "runtime" }],
+      "note": "As in Swift, no work package builds a Steam-depot transport for a JVM desktop app (P5-08 covers Godot only)."
+    },
+    "packs.transport.msix": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime"
+    },
+    "packs.transport.flatpak": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime"
+    },
+    "ui.stages": {
+      "status": "implemented",
+      "note": ":core's bootTransition; every stage-matrix.json row, probe, guard and confirm case in :conformance."
+    },
+    "ui.kit": { "status": "planned", "wp": "P6-11" },
+    "commerce.receipt": {
+      "status": "planned",
+      "unowned": true,
+      "note": "Play Billing is a store edge, not an SDK service; P6-01 is the server side. As in Swift, no work package wires receipts into the Kotlin SDK client."
+    }
+  }
+}

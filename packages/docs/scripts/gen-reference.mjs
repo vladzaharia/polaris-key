@@ -533,9 +533,11 @@ function corpusInventory() {
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
     `One generator (\`tools/sign-corpus.ts\`) signs every vector, and every language runner
 verifies them: Node, Python, Swift, React (the gate matrix, the \`web\` rows of
-\`headers.json\` and the no-environment answers of \`config-matrix.json\`) and Godot (every
+\`headers.json\` and the no-environment answers of \`config-matrix.json\`), Godot (every
 \`cases.json\` family and the \`fingerprint.json\` device ids, from an editor and an exported
-release template). \`pnpm gen:corpus -- --check\` is the CI drift gate,
+release template) and Kotlin (the families its \`:core\` owns and \`headers.json\`,
+\`fingerprint.json\`, \`stage-matrix.json\` and \`outlet-matrix.json\`, read in place on both
+Ed25519 backends). \`pnpm gen:corpus -- --check\` is the CI drift gate,
 over the source and both generator-owned mirrors (the Swift test resources and the Godot
 \`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`). Corpus v1 is deleted — v2 is the
 only corpus. \`corpusVersion ${cases.corpusVersion}\`,

@@ -2106,7 +2106,7 @@
       "optional": false,
       "refs": ["PARITY §9", "README §11 decision 10", "PARITY §3"],
       "brief": "wp/P6-06-kotlin-core-runner.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P6-07",
@@ -2165,7 +2165,7 @@
       "optional": false,
       "refs": ["PARITY §1", "notes/E2", "notes/E9 §7.2"],
       "brief": "wp/P6-09-kotlin-platform-module.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P6-10",

@@ -21,6 +21,8 @@ import {
   readWorkerSource,
   renderAll,
   renderGdscript,
+  renderKotlin,
+  ktq,
   renderPython,
   renderSwift,
   renderTs,
@@ -45,6 +47,7 @@ const RENDERERS = {
   python: renderPython,
   swift: renderSwift,
   gdscript: renderGdscript,
+  kotlin: renderKotlin,
 };
 
 const withSources = (patch: Partial<Sources>): Sources => ({
@@ -121,7 +124,14 @@ describe("the sources", () => {
       expect(new Set(Object.values(values))).toEqual(new Set(byName[name]));
       for (const v of byName[name]!) expect(values[v]).toBe(v);
     }
-    expect(byName.sdkId).toEqual(["node", "react", "python", "swift", "godot"]);
+    expect(byName.sdkId).toEqual([
+      "node",
+      "react",
+      "python",
+      "swift",
+      "godot",
+      "kotlin",
+    ]);
   });
 
   it("storeBackend and storeDegradedReason equal client-core's STORE_BACKENDS and STORE_DEGRADED_REASONS", () => {
@@ -369,6 +379,17 @@ describe("renderers", () => {
     expect(swift).toContain('public static let x86_64 = "x86_64"');
     expect(swift).toContain("public let PROTOCOL_VERSION = 4");
 
+    const kt = renderKotlin(MODEL);
+    expect(kt).toContain("package im.plrs.key.core");
+    expect(kt).toContain(
+      '    public const val serviceUnavailable: String = "service-unavailable"',
+    );
+    expect(kt).toContain('    public const val x86_64: String = "x86_64"');
+    expect(kt).toContain("public const val PROTOCOL_VERSION: Int = 4");
+    expect(kt).toContain(
+      "public const val MAX_WIRE_INTEGER: Long = 9007199254740991L",
+    );
+
     const gd = renderGdscript(MODEL);
     expect(gd).toContain("class_name PKeyConstants");
     expect(gd).toContain(
@@ -388,11 +409,23 @@ describe("renderers", () => {
     }
   });
 
-  it("Swift leaves ServiceSlug to ServiceSlug.generated.swift; the others emit it", () => {
+  it("Swift and Kotlin leave ServiceSlug to their gen:services files; the others emit it", () => {
     expect(renderSwift(MODEL)).not.toMatch(/public enum ServiceSlug/);
+    expect(renderKotlin(MODEL)).not.toMatch(/public object ServiceSlug/);
+    expect(renderKotlin(MODEL)).toContain("public object StoreBackend {");
     expect(renderTs(MODEL)).toContain("export const ServiceSlug = {");
     expect(renderPython(MODEL)).toContain("class ServiceSlug:");
     expect(renderGdscript(MODEL)).toContain("class ServiceSlug:");
+  });
+
+  it("back-ticks a Kotlin keyword and escapes a Kotlin template", () => {
+    const enums = [{ name: "mode", description: "d", values: ["in"] }];
+    const kt = renderKotlin(buildModel(withSources({ enums })));
+    expect(kt).toContain('public const val `in`: String = "in"');
+    expect(ktq("^[a-z]$")).toBe('"^[a-z]\\$"');
+    expect(renderKotlin(MODEL)).toContain(
+      'public const val CHANNEL_NAME_PATTERN: String = "^[a-z0-9][a-z0-9-]{0,63}\\$"',
+    );
   });
 
   it("back-ticks a Swift keyword", () => {

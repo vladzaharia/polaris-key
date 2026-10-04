@@ -43,6 +43,12 @@ gate-matrix-only runner); the ones a contributor touches most:
   runs `config-matrix.json` with the environment layer on and off (the gate and stage matrices
   follow with the licence client and the boot stage machine), run by
   `sdks/godot/tools/run_tests.sh` on an editor and an exported release template.
+- **Kotlin** — `sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/`: `CorpusV2Test.kt`
+  (the JWS, document, trust, clock-floor and bundle families and their pointer sets),
+  `HeadersTest.kt`, `FingerprintTest.kt`, `StageMatrixTest.kt` and `OutletMatrixTest.kt`, reading
+  `conformance/corpus/v2/` in place (no mirror). `( cd sdks/kotlin && ./gradlew :conformance:test )`
+  runs every suite on the JCA Ed25519 backend and again with Tink forced; the later slices of
+  P6-05 add their families to the same module.
 - **The Worker** — three slices. `packages/worker/test/headersCorpus.test.ts` runs every
   `headers.json` row through the normaliser that stores the client metadata headers. `packages/worker/test/fingerprintCorpus.test.ts` covers the
   fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
@@ -309,6 +315,7 @@ serves the recorded responses and asserts each request.
 | Python replayer        | `sdks/python/tests/test_transcripts.py` over `transcript_replay.py`                     |
 | Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift`  |
 | Godot replayer         | `sdks/godot/tests/suite_transcripts.gd` over `support/transcript_replay.gd`             |
+| Kotlin replayer        | `sdks/kotlin/conformance/…/TranscriptTest.kt` over `TranscriptReplay.kt` (in place)     |
 
 **Recording.** A scenario seeds a product, builds each request exactly as a wire-contract client
 would, sends it through `dispatchWith` (the router with the request clock injected), asserts

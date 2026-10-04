@@ -84,11 +84,11 @@ conventions, its dependency list contains no SDK module, and the flavour boundar
 
 ## Acceptance criteria
 
-- [ ] `./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest` pass and cover
+- [x] `./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest` pass and cover
       Integrity, including every refusal and `Unsupported` case.
-- [ ] `tools/check_flavours.sh` passes on the release AARs and `:boundary` APKs with Integrity present.
-- [ ] `:platform`'s resolved dependency graph contains no `im.plrs.key` module (a CI check).
-- [ ] `publishAllPublicationsToLocalRepository` produces both flavours' artifacts with POM, sources
+- [x] `tools/check_flavours.sh` passes on the release AARs and `:boundary` APKs with Integrity present.
+- [x] `:platform`'s resolved dependency graph contains no `im.plrs.key` module (a CI check).
+- [x] `publishAllPublicationsToLocalRepository` produces both flavours' artifacts with POM, sources
       and `.module`; no signing or Central configuration exists.
 - [ ] The device checks (Integrity token on an internal-track install; install-source row of the
       P5-06 checklist) are recorded in the PR by the person who ran them.
@@ -108,3 +108,38 @@ conventions, its dependency list contains no SDK module, and the flavour boundar
 - The role agent sets `--set P6-09 in-review` when it hands off. After review, the lead adds the last
   commit of the PR:
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-09 done`.
+
+## Corrections from implementation
+
+- **P6-06 had not landed.** It was `todo` (its branch empty) when this package was dispatched, so
+  there was no shared convention plugin to move onto. The shared values went into the version
+  catalog instead (`androidCompileSdk`, `androidTargetSdk`, `androidMinSdk`, `jvmTarget` in
+  `sdks/kotlin/gradle/libs.versions.toml`), read by `:platform` and `:boundary`; `explicitApi` and
+  the Java 17 toolchain were already on `:platform`. P6-06 should read the same catalog entries
+  (or fold them into its convention plugin) rather than add a second set. `:godot` lives with the
+  Godot SDK and is rebuilt by P6-10, so it was left untouched.
+- **Integrity was already in the AAR.** P6-02 added `play.PlayIntegrity` and the Godot ops
+  `integrity_prepare`/`integrity_token`; this package adopted them unchanged and added the
+  flavour-neutral surface the brief asks for: `PlatformIntegrity.create(context)` answering a typed
+  `IntegrityResult` (`Success`, `Refused`, `Failed`, `Unsupported`) in every flavour, over
+  `play.PlayPlatformIntegrity` in `play` and `Unsupported("outlet")` in `direct`. The Godot binding
+  is untouched (no behaviour change; P6-10 rebinds it).
+- **Coordinates are one artifact per flavour:** `im.plrs.key:polaris-key-platform-play` and
+  `im.plrs.key:polaris-key-platform-direct`, not a single `im.plrs.key:polaris-key-platform`. One
+  coordinate would need one POM, which would be wrong for one flavour (the play AAR depends on Play
+  Core, the direct one must not). The AAR base name stays `polaris-key-platform`, so the release
+  AAR file names that the Godot export plugin and `check_flavours.sh` read are unchanged.
+- **The local repository is `sdks/kotlin/build/repo`** (the root build directory, newly ignored), so
+  later modules (P6-06's `:core`) publish beside it. `tools/check_publication.sh` checks the AAR,
+  POM, sources jar and `.module` of each flavour, no SDK dependency in either POM, no Play Core in
+  the direct POM, no signature, and no signing/Sonatype/Central configuration in any build script.
+- **The dependency check is a Gradle task**, `:platform:checkStandalone` (part of `check`): it walks
+  the eight compile and runtime classpaths of the four variants and fails on any project dependency
+  or `im.plrs.key` module, resolved or not (verified by injecting an unresolvable
+  `im.plrs.key:polaris-key-core`). The `android` CI job runs it with the local publication and
+  `check_publication.sh` as a new step.
+- **`check_flavours.sh` extended** to read each platform AAR's `classes.jar`: `PlatformIntegrity` in
+  both, no `com/google/android/play/` reference in direct, and `PlayPlatformIntegrity` /
+  `PlatformIntegrity` present in the play / direct boundary APKs.
+- **Docs section.** The README carries the module's documentation; a docs-site page for the
+  Kotlin SDK belongs with P6-06's "every place that lists the SDK languages" pass.
