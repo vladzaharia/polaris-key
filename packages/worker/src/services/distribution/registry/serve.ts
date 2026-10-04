@@ -12,7 +12,13 @@
  * immutable answer held in the cache, within the settings window.
  */
 
-import type { RegistryRouteContext } from "../../../core/registryHost.js";
+import {
+  FEED_READ_ROUTE,
+  type RegistryEcosystem,
+  type RegistryRoute,
+  type RegistryRouteContext,
+  type RegistryRouteMatch,
+} from "../../../core/registryHost.js";
 import { authorizeFeedRead, feedPrincipal, feedRefusal } from "./authorize.js";
 import {
   PRIVATE_CACHE_CONTROL,
@@ -79,4 +85,56 @@ export async function serveFeedRead(
       headers,
     }),
   );
+}
+
+/** What a feed route declares; `feedRoute` supplies the ladder around it. */
+export interface FeedRouteDef {
+  readonly name: string;
+  readonly ecosystem: RegistryEcosystem;
+  readonly inertDocument?: true;
+  match(pathname: string): RegistryRouteMatch | null;
+  /** The deliverable this request reads, or `null` for a list document. */
+  deliverableId(params: Record<string, string>): string | null;
+  readonly queryNames?: readonly string[];
+  /** OCI only: the repository under the owner, for the challenge's scope. */
+  repository?(params: Record<string, string>): string | undefined;
+  /** Tests only: a settings source other than D1. */
+  readonly settings?: RegistrySettingsSource;
+  /** The answer, computed only once the ladder has admitted the read. */
+  serve(
+    req: Request,
+    ctx: RegistryRouteContext,
+    cache: "public" | "private",
+  ): Promise<Response>;
+}
+
+/**
+ * The only way to build a registry route: its `handle` is `serveFeedRead` around `def.serve`, and
+ * the result carries `FEED_READ_ROUTE`, which the structural test demands of every
+ * `REGISTRY_ROUTES` entry. Every ecosystem's routes (F-04 to F-09) are built here.
+ */
+export function feedRoute(def: FeedRouteDef): RegistryRoute {
+  const repository = def.repository;
+  return {
+    [FEED_READ_ROUTE]: true,
+    name: def.name,
+    service: "distribution",
+    ecosystem: def.ecosystem,
+    ...(def.inertDocument ? { inertDocument: true as const } : {}),
+    match: (p) => def.match(p),
+    handle: (req, ctx) => {
+      const repo = repository?.(ctx.params);
+      return serveFeedRead(
+        req,
+        ctx,
+        {
+          deliverableId: def.deliverableId(ctx.params),
+          ...(def.queryNames ? { queryNames: def.queryNames } : {}),
+          ...(repo !== undefined ? { repository: repo } : {}),
+          ...(def.settings ? { settings: def.settings } : {}),
+        },
+        (cache) => def.serve(req, ctx, cache),
+      );
+    },
+  };
 }

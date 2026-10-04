@@ -195,8 +195,20 @@ export interface RegistryRouteContext {
   readonly waitUntil?: (p: Promise<unknown>) => void;
 }
 
+/**
+ * The mark `feedRoute` (`services/distribution/registry/serve.ts`) puts on every route it builds.
+ * A route so marked answers a read only through `serveFeedRead`, the access ladder (`authorize`
+ * then cache). `test/registryHost.test.ts` requires it on every `REGISTRY_ROUTES` entry, so no
+ * registry route can skip the ladder.
+ */
+export const FEED_READ_ROUTE: unique symbol = Symbol.for(
+  "polaris-key.registry.feedRead",
+) as never;
+
 /** One route that may answer on the registry host. */
 export interface RegistryRoute {
+  /** Set by `feedRoute` only (see {@link FEED_READ_ROUTE}). */
+  readonly [FEED_READ_ROUTE]?: true;
   /** For logs, tests and `routeCoverage`'s `REGISTRY_PATHS`. */
   readonly name: string;
   /** Every registry route is Distribution's; with it off for the owner the route never runs. */

@@ -29,7 +29,11 @@ import type { Env } from "./env.js";
 import { sessionFromRequest } from "./admin/session.js";
 import { isSafeAssetPath } from "./http.js";
 import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
-import { DOCS_SCRIPT_HASHES, DOCS_STYLE_HASHES } from "./docsCsp.generated.js";
+import {
+  DOCS_SCRIPT_HASHES,
+  DOCS_STYLE_ATTR_HASHES,
+  DOCS_STYLE_HASHES,
+} from "./docsCsp.generated.js";
 
 /**
  * The docs CSP: the same strict shape as `appSecurityHeaders`' policy, plus the SHA-256
@@ -40,6 +44,8 @@ import { DOCS_SCRIPT_HASHES, DOCS_STYLE_HASHES } from "./docsCsp.generated.js";
 function docsCsp(): string {
   const script = ["'self'", ...DOCS_SCRIPT_HASHES].join(" ");
   const style = ["'self'", ...DOCS_STYLE_HASHES].join(" ");
+  // Inline `style="…"` attributes (Expressive Code's token colours) are admitted by hash only.
+  const styleAttr = ["'unsafe-hashes'", ...DOCS_STYLE_ATTR_HASHES].join(" ");
   return [
     "default-src 'self'",
     "base-uri 'none'",
@@ -48,6 +54,7 @@ function docsCsp(): string {
     "form-action 'self'",
     `script-src ${script}`,
     `style-src ${style}`,
+    `style-src-attr ${styleAttr}`,
     "img-src 'self' data:",
     "connect-src 'self'",
   ].join("; ");

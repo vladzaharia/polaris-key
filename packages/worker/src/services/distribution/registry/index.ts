@@ -42,4 +42,4 @@ export {
   type RegistryQueue,
   type RegistryRenderer,
 } from "./materialise.js";
-export { serveFeedRead } from "./serve.js";
+export { feedRoute, serveFeedRead, type FeedRouteDef } from "./serve.js";

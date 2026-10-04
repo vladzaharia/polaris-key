@@ -50,7 +50,7 @@ import {
   type RegistryQueueItem,
   type RegistryRenderer,
 } from "../src/services/distribution/registry/materialise.js";
-import { serveFeedRead } from "../src/services/distribution/registry/serve.js";
+import { feedRoute } from "../src/services/distribution/registry/serve.js";
 import { DISTRIBUTION_REGISTRY_ROUTES } from "../src/services/distribution/registry/index.js";
 import {
   dispatchRegistryHost,
@@ -62,6 +62,7 @@ import { setServices } from "../src/repo.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import { makeTestDb } from "./helpers.js";
+import { deleteProduct } from "../src/admin/repo.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2 } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -209,6 +210,22 @@ describe("authorizeFeedRead", () => {
       ok: true,
       cache: "public",
     });
+  });
+
+  it("a product whose status is not active answers the not-found", async () => {
+    for (const status of ["deleted", "suspended", null]) {
+      const s = new FakeSettings();
+      forgetRegistrySettings();
+      s.value = { ...s.value, productStatus: status };
+      expect(await run(s), String(status)).toEqual({
+        ok: false,
+        challenge: "not-found",
+      });
+    }
+    forgetRegistrySettings();
+    const active = new FakeSettings();
+    active.value = { ...active.value, productStatus: "active" };
+    expect((await run(active)).ok).toBe(true);
   });
 
   it("each step that is off (or has no row) answers the not-found", async () => {
@@ -386,7 +403,12 @@ describe("d1RegistrySettings", () => {
     const db = makeTestDb();
     for (const t of REGISTRY_TABLES) await db.run(`DROP TABLE ${t}`);
     const s = await d1RegistrySettings(db).settings("djdl", "npm");
-    expect(s).toEqual({ policy: null, owner: null, feed: null });
+    expect(s).toEqual({
+      productStatus: null,
+      policy: null,
+      owner: null,
+      feed: null,
+    });
     expect(
       await authorizeFeedRead(
         { db, services: ON },
@@ -401,6 +423,7 @@ describe("d1RegistrySettings", () => {
   it("an unconfigured owner on the migrated schema has the seeded policy and no owner or feed row", async () => {
     const db = makeTestDb();
     expect(await d1RegistrySettings(db).settings("djdl", "npm")).toEqual({
+      productStatus: null,
       policy: {
         ecosystem: "npm",
         enabled: true,
@@ -435,6 +458,7 @@ describe("d1RegistrySettings", () => {
        VALUES ('djdl', 'npm', 1, 'licensed', '{"scope":"@djdl"}', 1000, '{"yankHidesFromIndex":true}', 3, 0)`,
     );
     expect(await d1RegistrySettings(db).settings("djdl", "npm")).toEqual({
+      productStatus: "active",
       policy: {
         ecosystem: "npm",
         enabled: true,
@@ -458,6 +482,42 @@ describe("d1RegistrySettings", () => {
     expect(
       await d1RegistrySettings(db).settings("djdl", "cargo"),
     ).toMatchObject({ policy: null, feed: null });
+  });
+
+  it("deleting a product turns its packageFeeds off and stops its reads", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "djdl");
+    await db.run(
+      "INSERT INTO dist_registry_owners (product, enabled, updated_at) VALUES ('djdl', 1, 0)",
+    );
+    await db.run(
+      `INSERT INTO dist_registry_feeds (product, ecosystem, enabled, access_mode, namespace_json, max_package_bytes, ext_json, version, updated_at)
+       VALUES ('djdl', 'npm', 1, 'public', '{"scope":"@djdl"}', 1000, '{}', 1, 0)`,
+    );
+    const read = () =>
+      authorizeFeedRead(
+        { db, services: ON },
+        { kind: "anonymous" },
+        "djdl",
+        "npm",
+        null,
+      );
+    forgetRegistrySettings();
+    expect(await read()).toEqual({ ok: true, cache: "public" });
+    await deleteProduct(db, "djdl", 5);
+    expect(
+      await db.first(
+        "SELECT enabled FROM dist_registry_owners WHERE product = 'djdl'",
+      ),
+    ).toEqual({ enabled: 0 });
+    forgetRegistrySettings();
+    expect(await read()).toEqual({ ok: false, challenge: "not-found" });
+    // Even with the owner row switched back on, the deleted product still serves nothing.
+    await db.run(
+      "UPDATE dist_registry_owners SET enabled = 1 WHERE product = 'djdl'",
+    );
+    forgetRegistrySettings();
+    expect(await read()).toEqual({ ok: false, challenge: "not-found" });
   });
 
   it("propagates any error other than a missing table", async () => {
@@ -677,30 +737,25 @@ describe("access runs before the cache (plans/F-01.md §6.6)", () => {
     settings: RegistrySettingsSource,
     counter: { n: number },
   ): RegistryRoute {
-    return {
+    return feedRoute({
       name: "fake.tarball",
-      service: "distribution",
       ecosystem: "npm",
       match: (p) => {
         const m = /^\/npm\/([^/]+)\/-\/(.+\.tgz)$/.exec(p);
         return m ? { owner: m[1]!, params: { file: m[2]! } } : null;
       },
-      handle: (req, ctx) =>
-        serveFeedRead(
-          req,
-          ctx,
-          { deliverableId: "sdk", settings },
-          async (cache) => {
-            counter.n++;
-            return new Response("tarball-bytes", {
-              headers: {
-                "content-type": "application/gzip",
-                ...registryCacheHeaders(cache, "immutable", "c".repeat(64)),
-              },
-            });
+      deliverableId: () => "sdk",
+      settings,
+      serve: async (_req, _ctx, cache) => {
+        counter.n++;
+        return new Response("tarball-bytes", {
+          headers: {
+            "content-type": "application/gzip",
+            ...registryCacheHeaders(cache, "immutable", "c".repeat(64)),
           },
-        ),
-    };
+        });
+      },
+    });
   }
 
   const url = `${PKG}/npm/${SLUG}/-/sdk-1.0.0.tgz`;
