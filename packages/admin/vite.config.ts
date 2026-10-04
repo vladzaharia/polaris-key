@@ -30,6 +30,25 @@ const BRAND_WEB_FILES: readonly string[] = [
   "app-icon-dark-maskable-512.png",
 ];
 
+/**
+ * Rubik (the brand package's WOFF2 files and their licence) at a stable, unhashed path, for the
+ * Worker's server-rendered pages (packages/worker/src/core/brandHtml.ts): their stylesheet is a
+ * build constant allowed by its hash, so it cannot follow Vite's content-hashed font names. The
+ * SPAs themselves keep loading the hashed copies their CSS imports.
+ */
+const BRAND_FONT_DIR = "assets/branding/fonts";
+const BRAND_FONT_FILES: readonly string[] = [
+  "rubik-latin-400.woff2",
+  "rubik-latin-700.woff2",
+  "OFL.txt",
+];
+
+const brandFonts = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/fonts/rubik-latin-400.woff2",
+  ),
+);
+
 const brandWebKey = dirname(
   createRequire(import.meta.url).resolve(
     "@polaris-key/brand/web/key/favicon.svg",
@@ -41,32 +60,49 @@ const CONTENT_TYPES: Record<string, string> = {
   ico: "image/x-icon",
   png: "image/png",
   webmanifest: "application/manifest+json",
+  woff2: "font/woff2",
+  txt: "text/plain; charset=utf-8",
 };
 
+const BRAND_DIRS: readonly {
+  dir: string;
+  files: readonly string[];
+  from: string;
+}[] = [
+  { dir: BRAND_WEB_DIR, files: BRAND_WEB_FILES, from: brandWebKey },
+  { dir: BRAND_FONT_DIR, files: BRAND_FONT_FILES, from: brandFonts },
+];
+
 function brandWebAssets(): Plugin {
-  const prefix = `/${BRAND_WEB_DIR}/`;
   return {
     name: "polaris-key-brand-web-assets",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const path = req.url?.split("?")[0] ?? "";
-        const name = path.startsWith(prefix) ? path.slice(prefix.length) : "";
-        if (!BRAND_WEB_FILES.includes(name)) return next();
-        const ext = name.split(".").pop() ?? "";
-        res.setHeader(
-          "content-type",
-          CONTENT_TYPES[ext] ?? "application/octet-stream",
-        );
-        res.end(readFileSync(join(brandWebKey, name)));
+        for (const { dir, files, from } of BRAND_DIRS) {
+          const prefix = `/${dir}/`;
+          const name = path.startsWith(prefix) ? path.slice(prefix.length) : "";
+          if (!files.includes(name)) continue;
+          const ext = name.split(".").pop() ?? "";
+          res.setHeader(
+            "content-type",
+            CONTENT_TYPES[ext] ?? "application/octet-stream",
+          );
+          res.end(readFileSync(join(from, name)));
+          return;
+        }
+        next();
       });
     },
     generateBundle() {
-      for (const name of BRAND_WEB_FILES) {
-        this.emitFile({
-          type: "asset",
-          fileName: `${BRAND_WEB_DIR}/${name}`,
-          source: readFileSync(join(brandWebKey, name)),
-        });
+      for (const { dir, files, from } of BRAND_DIRS) {
+        for (const name of files) {
+          this.emitFile({
+            type: "asset",
+            fileName: `${dir}/${name}`,
+            source: readFileSync(join(from, name)),
+          });
+        }
       }
     },
   };

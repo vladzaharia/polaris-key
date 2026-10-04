@@ -41,12 +41,13 @@ import {
   hashKey,
   platformOidcConfig,
   secret,
-  staticHtmlSecurityHeaders,
+  brandedHtmlSecurityHeaders,
   randomId,
   type Db,
   type Env,
 } from "../../core/platform.js";
 import { openProductSecret, type Product } from "../../core/products.js";
+import { renderBrandPage } from "../../core/brandHtml.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
   clientIp,
@@ -1114,16 +1115,16 @@ function sameOriginPost(req: Request): boolean {
   return !origin || origin === "null" || origin === new URL(req.url).origin;
 }
 
-/** Headers for the device-flow HTML pages: the static-page bundle, no Referer, no caching.
+/** Headers for the device-flow HTML pages: the branded-page bundle, no Referer, no caching.
  *  `formTarget` widens `form-action` by exactly one origin — the IdP the confirmation POST
  *  303s to — because browsers apply `form-action` to every redirect a form submission follows,
  *  so `'self'` alone would block the hand-off the confirmation button exists to make. */
 function deviceHtmlHeaders(formTarget?: string): Headers {
   // R1-09: `index.ts`'s `secureResponse` backstop would supply this policy anyway, but a
   // handler that emits HTML should not depend on the dispatcher — a direct call (a test, or a
-  // future internal caller) must be hardened too. `staticHtmlSecurityHeaders` preserves the
+  // future internal caller) must be hardened too. `brandedHtmlSecurityHeaders` preserves the
   // `referrer-policy` set here.
-  const headers = staticHtmlSecurityHeaders(
+  const headers = brandedHtmlSecurityHeaders(
     new Headers({
       "content-type": "text/html; charset=utf-8",
       // A device-flow URL can hold a device or user code: never let it ride along as a
@@ -1148,13 +1149,6 @@ function deviceHtmlHeaders(formTarget?: string): Headers {
   }
   return headers;
 }
-
-const PAGE_STYLE = {
-  body: "font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #0c0f17; color: #f8fafc;",
-  main: "max-width: 440px; margin: 12vh auto; padding: 32px;",
-  button:
-    "display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border:0; border-radius:8px; background:#5b7cfa; color:#fff; font:inherit; font-weight:650; cursor:pointer;",
-};
 
 /** Mint a fresh single-use CSRF token onto the record and render the confirmation page: the
  *  product, the device label and the user code, and one button. `hidden` are the extra fields
@@ -1181,29 +1175,22 @@ async function renderDeviceConfirmation(
   const hiddenInputs = Object.entries(hidden)
     .map(
       ([name, value]) =>
-        `\n      <input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
+        `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
     )
     .join("");
-  const html = `<!doctype html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Authorize ${escapeHtml(product.name)}</title>
-<body style="${PAGE_STYLE.body}">
-  <main style="${PAGE_STYLE.main}">
-    <p style="color:#9aa4b2; margin:0 0 8px;">Polaris Key</p>
-    <h1 style="font-size: 28px; margin:0 0 16px;">Authorize ${escapeHtml(product.name)}</h1>
-    <p style="line-height:1.5; color:#cbd5e1;">An app is asking to activate this device. Check that the code and device match what the app shows before signing in.</p>
-    <dl style="display:grid; grid-template-columns: 110px 1fr; gap:10px; margin:24px 0; color:#cbd5e1;">
-      <dt>Code</dt><dd style="margin:0; color:#fff; font-weight:700; letter-spacing:.08em;">${escapeHtml(record.userCode)}</dd>
-      <dt>Device</dt><dd style="margin:0;">${escapeHtml(deviceLabel)}</dd>
-      <dt>Product</dt><dd style="margin:0;">${escapeHtml(product.slug)}</dd>
-    </dl>
-    <form method="post" action="${escapeHtml(action)}">${hiddenInputs}
-      <input type="hidden" name="csrf" value="${escapeHtml(csrf)}">
-      <button type="submit" style="${PAGE_STYLE.button}">Continue to sign in</button>
-    </form>
-  </main>
-</body>`;
+  const html = renderBrandPage({
+    title: `Authorize ${product.name}`,
+    eyebrow: "Device activation",
+    heading: `Authorize ${product.name}`,
+    body:
+      `<p>An app is asking to activate this device. Check that the code and device match what the app shows before signing in.</p>` +
+      `<dl><dt>Code</dt><dd class="code">${escapeHtml(record.userCode)}</dd>` +
+      `<dt>Device</dt><dd>${escapeHtml(deviceLabel)}</dd>` +
+      `<dt>Product</dt><dd>${escapeHtml(product.slug)}</dd></dl>` +
+      `<form method="post" action="${escapeHtml(action)}">${hiddenInputs}` +
+      `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
+      `<button class="button" type="submit">Continue to sign in</button></form>`,
+  });
   return new Response(html, {
     status: 200,
     headers: deviceHtmlHeaders(record.authorizeUrl),
@@ -1219,24 +1206,19 @@ function renderDeviceEntry(
 ): Response {
   const error =
     status === 404
-      ? `\n    <p role="alert" style="line-height:1.5; color:#fca5a5; margin:0 0 16px;">That code is not valid or has expired. Check the code on your device and try again.</p>`
+      ? `<p class="alert" role="alert">That code is not valid or has expired. Check the code on your device and try again.</p>`
       : "";
-  const html = `<!doctype html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Connect a device to ${escapeHtml(product.name)}</title>
-<body style="${PAGE_STYLE.body}">
-  <main style="${PAGE_STYLE.main}">
-    <p style="color:#9aa4b2; margin:0 0 8px;">Polaris Key</p>
-    <h1 style="font-size: 28px; margin:0 0 16px;">Connect a device to ${escapeHtml(product.name)}</h1>
-    <p style="line-height:1.5; color:#cbd5e1;">Enter the code shown on your device.</p>${error}
-    <form method="post" action="${escapeHtml(action)}">
-      <label for="user_code" style="display:block; margin:24px 0 8px; color:#cbd5e1;">Code</label>
-      <input id="user_code" name="user_code" type="text" required autofocus autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="XXXX-XXXX" style="box-sizing:border-box; width:100%; min-height:42px; padding:0 12px; margin:0 0 16px; border:1px solid #334155; border-radius:8px; background:#111827; color:#fff; font:inherit; font-size:20px; letter-spacing:.08em; text-transform:uppercase;">
-      <button type="submit" style="${PAGE_STYLE.button}">Continue</button>
-    </form>
-  </main>
-</body>`;
+  const html = renderBrandPage({
+    title: `Connect a device to ${product.name}`,
+    eyebrow: "Device activation",
+    heading: `Connect a device to ${product.name}`,
+    body:
+      `<p class="muted">Enter the code shown on your device.</p>${error}` +
+      `<form method="post" action="${escapeHtml(action)}">` +
+      `<label for="user_code">Code</label>` +
+      `<input id="user_code" name="user_code" type="text" required autofocus autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="XXXX-XXXX">` +
+      `<button class="button" type="submit">Continue</button></form>`,
+  });
   return new Response(html, { status, headers: deviceHtmlHeaders() });
 }
 
@@ -1625,12 +1607,16 @@ export async function handleAuthCallback(
 /** The callback's "return to the app" page. */
 function signedInPage(): Response {
   return new Response(
-    '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You\'re signed in</h1><p>You can close this tab and return to the app.</p>',
+    renderBrandPage({
+      title: "Signed in",
+      heading: "You're signed in",
+      body: `<p class="muted">You can close this tab and return to the app.</p>`,
+    }),
     {
       status: 200,
       // R1-09 — see the device-authorization page above: set the policy at the sink as well
       // as in the dispatcher backstop.
-      headers: staticHtmlSecurityHeaders(
+      headers: brandedHtmlSecurityHeaders(
         new Headers({
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-store",
