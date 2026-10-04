@@ -1,6 +1,18 @@
 > Research note for [Godot on Polaris Key](../README.md), 2026-10-04. Spike S-16, commissioned
 
 > **Owner decisions (2026-10-04):** Option C approved. **Scope: everything, phases 0–3 including the per-product issuer** ("Sign in with <Product>", ~86 agent-days). Issuer: decide in I-16's plan, leaning in-house on jose (Ory Hydra stays the alternative). Safety defaults confirmed: a licence carrying an email attaches only to a user with that verified email (no attach-by-key unless the product sets `claimByKey`); a licence with an owner never moves by presenting its key; Polaris runs no recovery desk — beyond a user's remaining links, recovery is the developer's job via the console's audited relink tool (step-up, reason, notice, 72-hour undo); custom auth domains deferred, passkeys enrol on key.plrs.im only. Pocket ID facts (checked by the lead, 2026-10-04): separate OIDC clients per app are supported [V] (pocket-id.org/docs/introduction), so I-03 can give the console its own client; `email_verified` is in the discovery document's `claims_supported` [M] (id.plrs.im/.well-known/openid-configuration), so verified status is available per user at sign-in; a bulk export through the admin REST API needs an admin API key (the users endpoint answers 401 without one) [M] — I-09 therefore migrates by claim at each user's next sign-in, with a bulk export only if the owner issues an admin API key.
+
+> **Owner decision (2026-10-04): the legacy licence-key flow becomes a bounded on-ramp to accounts.**
+>
+> 1. **Entries are limited.** Each licence key has a limited number of key _entries_ (activations by typing or pasting the key) through the portal or an app. The limit is product-configurable (for example 5, 10 or 25).
+> 2. **Every portal entry offers an upgrade.** Each time the key is used in the portal, the user is prompted to upgrade to an account (which adds sync and the other account features). They may **skip** while entries remain.
+> 3. **When entries run out, the portal forces it.** The skip is removed and the user must create or sign in to an account, to which the licence then attaches (subject to the claim rules above).
+> 4. **When entries run out, apps refuse the key.** They direct the user to the customer portal to set up their account, with a deep link to the product's portal page.
+> 5. **Only key entry is affected.** Existing licensed installs are never affected: device tokens, refresh, offline grace and the signed licence document keep working exactly as today.
+>
+> This changes device-facing behaviour (a new refusal on activation-by-key, carrying the portal URL), so it goes through the I-04 contract plan: contract → errors.json → transcripts → all six SDKs, plus the SDK UI kits' activation screens.
+>
+> **Owner decision (2026-10-04): the licence-level config override layer is removed in favour of user-level managed config (S-17).** Licences without a user simply don't get that layer. Existing licence overrides need a migration path, designed in S-17: onto the owning user where one exists, otherwise dropped with operator visibility.
 > by the lead on the owner's direction of 2026-10-04: define what a proper Identity service is,
 > whether a proxy to a platform or product IdP, a Polaris-run OIDC/OAuth2 provider, or both. It
 > has no program brief yet; §8 proposes an `I-` work-package namespace. Research and design only:
