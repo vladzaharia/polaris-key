@@ -2,6 +2,7 @@ import * as React from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "../components/theme.js";
 import { Button } from "../ui/Button.js";
+import { Announcer } from "../ui/LiveRegion.js";
 import { AppToaster, toast } from "../ui/toast.js";
 import type { PortalAccount } from "./api.js";
 import { ActivateProvider, useActivate } from "./activate.js";
@@ -42,6 +43,7 @@ export function PortalApp(): React.ReactElement {
     <ThemeProvider>
       <QueryClientProvider client={client}>
         <AppToaster />
+        <Announcer />
         <Boot />
       </QueryClientProvider>
     </ThemeProvider>

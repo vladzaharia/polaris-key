@@ -4,6 +4,7 @@
  */
 import { vi } from "vitest";
 import { render, type RenderResult } from "@testing-library/react";
+import { configureAxe } from "vitest-axe";
 import type {
   PortalArtifact,
   PortalCapabilities,
@@ -199,4 +200,16 @@ export function signedIn(
 
 export function renderPortal(): RenderResult {
   return render(<PortalApp />);
+}
+
+const axe = configureAxe({
+  rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
+});
+
+/** axe over the whole document, as "rule: targets" lines (empty when clean). */
+export async function axeViolations(): Promise<string[]> {
+  const results = await axe(document.body);
+  return results.violations.map(
+    (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+  );
 }

@@ -17,6 +17,7 @@ import {
   type PortalMe,
   type PortalRelease,
 } from "./api.js";
+import { browser } from "./browser.js";
 import { isSignedOut } from "./errors.js";
 
 /**
@@ -168,4 +169,19 @@ export function useRemoveDevice(product: string, licenseId: string) {
 
 export function useDeleteAccount() {
   return useMutation({ mutationFn: () => portalApi.deleteMe() });
+}
+
+/**
+ * Start a download: mint a fresh link (`POST …/token`, "Download links are made fresh when you
+ * click") and follow it.
+ */
+export function useStartDownload() {
+  return useMutation({
+    mutationFn: (v: {
+      product: string;
+      releaseId: string;
+      artifactId: string;
+    }) => portalApi.downloadToken(v.product, v.releaseId, v.artifactId),
+    onSuccess: (res) => browser.go(res.url),
+  });
 }
