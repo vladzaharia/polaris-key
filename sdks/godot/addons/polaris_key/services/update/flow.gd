@@ -30,8 +30,9 @@ extends RefCounted
 ##                   delegation}} (the pack engine's delegated_releases(), plans/P4-19.md §2.7)}.
 ##                   Omitted: no content decision, every answer is P3-01's
 ##
-## Returns {ok: true, check: {channel, decision, feed, record, errors}, boot, feed_doc,
-## record_doc, committed: {k: {jws, feed, content}}, records: {h: {jws, record}}, cache: {feeds,
+## Returns {ok: true, check: {channel, decision, feed, record, errors}, boot, feed_doc, content
+## (PKeyFeed.feed_content over feed_doc with its own non-wire pointers, the delta menu included:
+## client-core's check result `content`, plans/P4-29.md §2.4 step 1), record_doc, committed: {k: {jws, feed, content}}, records: {h: {jws, record}}, cache: {feeds,
 ## releaseRecords}, revocations?: {learned: [{revocation, jws}], relearnCleared: [packId]}} or
 ## {ok: false, error: {code, detail}} when there is nothing to decide from. `revocations` (with
 ## `content` only) is what the pack engine stores (PKeyPackEngine.record_revocations).
@@ -232,8 +233,10 @@ static func run(opts: Dictionary) -> Dictionary:
 	var revocations = null
 	var decision_feed: Dictionary = feed
 	var decision_record = record
+	# client-core's check result `content` (plans/P4-29.md §2.4 step 1): the feed's content members
+	# read with its own non-wire pointers, the delta menu included.
+	var fc: Dictionary = step["content"] if step.get("content") is Dictionary else PKeyFeed.feed_content(feed)
 	if opts.get("content") is Dictionary:
-		var fc: Dictionary = step["content"] if step.get("content") is Dictionary else PKeyFeed.feed_content(feed)
 		decision_feed = PKeyFeed.with_feed_content(feed, fc)
 		var steps := await _content_steps(opts, fc, feed_source, errors)
 		content_input = steps["input"]
@@ -274,6 +277,7 @@ static func run(opts: Dictionary) -> Dictionary:
 		},
 		"boot": PKeyDecision.boot_decision(decision),
 		"feed_doc": feed,
+		"content": fc,
 		"record_doc": record,
 		"committed": committed,
 		"records": kept,

@@ -1378,6 +1378,20 @@ export interface ProductDeviceDto {
   sdkVersion?: string;
   licenseId: string | null;
   seatNo: number | null;
+  /** P6-02: `attested` once the device proved a genuine store install (App Attest or Play
+   *  Integrity); everything else, including web, desktop and sideloaded builds, is `basic`. */
+  trustLevel?: "basic" | "attested";
+  attestedAt?: number | null;
+  /** The last attestation verdict summary (kind, outcome, reason or verdicts), never a token. */
+  lastVerdict?: AttestationVerdictDto | null;
+}
+
+export interface AttestationVerdictDto {
+  kind?: string;
+  outcome?: string;
+  reason?: string;
+  at?: number;
+  [k: string]: unknown;
 }
 
 /** A single device, with the hardware binding and software facts the list omits. */

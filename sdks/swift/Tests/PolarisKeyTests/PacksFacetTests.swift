@@ -1,4 +1,4 @@
-// @pkey-feature packs.state packs.handlers packs.record packs.delegation packs.provides packs.apply.chunk
+// @pkey-feature packs.state packs.handlers packs.record packs.delegation packs.provides packs.apply.chunk packs.delta.feed
 //
 // `update.packs` end to end against a fake control plane (the port of the Node SDK's
 // `test/packs.test.ts`): a `files.tree` pack installed from its pinned record into the platform
@@ -35,6 +35,10 @@ final class FakeBlobs: PackObjectTransport, @unchecked Sendable {
             _objects = [:]
             for p in packs { for (h, b) in p.objects { _objects[h] = b } }
         }
+    }
+    /// Serve these objects (by SHA-256) beside whatever `set` gave.
+    func add(_ objects: [String: [UInt8]]) {
+        lock.withLock { for (h, b) in objects { _objects[h] = b } }
     }
     var seen: [Seen] {
         get { lock.withLock { _seen } }
@@ -141,9 +145,10 @@ final class PacksFacetTests: XCTestCase {
 
     private func client(
         stamp: PackStampSource?, embedded: [EmbeddedPack] = [], token: Bool = true,
-        transport: (any PackObjectTransport)? = nil, handlers: [any PackHandler] = []
+        transport: (any PackObjectTransport)? = nil, handlers: [any PackHandler] = [],
+        store given: InMemoryStore? = nil
     ) async throws -> (PolarisKeyClient, UpdateClient) {
-        let store = InMemoryStore(deviceId: "dev_packs")
+        let store = given ?? InMemoryStore(deviceId: "dev_packs")
         if token { await store.setToken("pkeyt_test") }
         let core = CoreOptions(
             productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
@@ -230,6 +235,107 @@ final class PacksFacetTests: XCTestCase {
         let (c2, update2) = try await client(stamp: try stamp("stamp-free.json", holds: false))
         let installs = try await update2.packs.ensureReleases([target])
         XCTAssertEqual(installs.first?.delegation, d.jws)
+        await c2.close()
+    }
+
+    // ── The feed's delta menu (plans/P4-29.md §2.4; packs.delta.feed) ──────────────────────
+
+    /// A channel feed for this host's platform whose delta menu offers the probe frame from the
+    /// probe base to the probe target.
+    private func feedWithMenu() -> String {
+        let now = Int(Date().timeIntervalSince1970)
+        let menu: FeedDeltas = [
+            sha256Of(PackFixtures.probeTarget): [
+                FeedDelta(
+                    from: sha256Of(PackFixtures.probeBase), method: "zstd-patch-from",
+                    memBytes: PackFixtures.probeBase.count + PackFixtures.probeTarget.count,
+                    artifactSha256: sha256Of(PackFixtures.probeFrame), artifactBytes: PackFixtures.probeFrame.count)
+            ]
+        ]
+        let target: JSONValue = .object([
+            "platform": .string(PlatformFamily.headerValue ?? "macos"),
+            "release": .object([
+                "sha256": .string(String(repeating: "a", count: 64)), "seq": .int(10), "version": .string("1.0.0"),
+            ]),
+            "floor": .null, "critical": .bool(false),
+            "outlets": .object([
+                "direct": .object([
+                    "kind": .string("direct"), "live": .object(["version": .string("1.0.0"), "seq": .int(10)]),
+                    "halted": .bool(false),
+                ])
+            ]),
+        ])
+        return PackFixtures.sign(
+            .object([
+                "schemaVersion": .int(1), "iss": .string("key.plrs.im"), "aud": .string("djdl"),
+                "channel": .string("stable"), "selector": .object([:]), "seq": .int(1),
+                "issuedAt": .int(now - 10), "expiresAt": .int(now + 800),
+                "app": .object([
+                    "deliverable": .string("app"), "versionScheme": .string("semver"), "targets": .array([target]),
+                ]),
+                "deltas": feedDeltasJSON(menu),
+            ]), kid: PackFixtures.productKid, typ: JwsTyp.feed.rawValue)
+    }
+
+    /// v1 (the probe base) and v2 (the probe target, no record delta) served, the probe frame on
+    /// the blob route, discovery with a feed endpoint, and a stamp pinning v1.
+    private func feedDeltaSetup() async throws -> (stamp: PackStampSource, v2: PackTarget) {
+        let v1 = feedRelease("1.0.0", 1, PackFixtures.probeBase)
+        var v2 = feedRelease("1.1.0", 2, PackFixtures.probeTarget)
+        v2.objects[sha256Of(PackFixtures.probeFrame)] = PackFixtures.probeFrame
+        blobs.set([])
+        blobs.add(v1.objects)
+        blobs.add(v2.objects)
+        for r in [v1, v2] { await server.reply("/djdl/release/records/\(r.recordSha256)", body: r.jws) }
+        await server.reply(
+            "/djdl/.well-known/polaris.json",
+            body: """
+                {"product":"djdl","services":{"license":{"enabled":false},"config":{"enabled":false},\
+                "release":{"enabled":true,"endpoints":{"record":"https://key.example/djdl/release/records/{sha256}"}},\
+                "distribution":{"enabled":true,"endpoints":{"blobs":"https://key.example/djdl/distribution/blobs/sha256/{sha256}"}},\
+                "update":{"enabled":true,"endpoints":{"feed":"https://key.example/djdl/update/{channel}/feed.jws"}}}}
+                """)
+        await server.reply("/djdl/update/stable/feed.jws", body: feedWithMenu())
+        let url = work.appendingPathComponent("stamp-feed-delta.json")
+        try Data(
+            stampText(
+                AppContent(
+                    contentApi: 1, pins: [ContentPin(pack: feedPack, sha256: v1.recordSha256, seq: 1, version: "1.0.0")],
+                    expects: [ContentExpect(pack: feedPack, required: true, delivery: "essential")])
+            ).utf8
+        ).write(to: url)
+        return (.file(url), v2.target)
+    }
+
+    private var blobPaths: [String] { blobs.seen.map { URL(fileURLWithPath: $0.path).lastPathComponent } }
+
+    func testPlansTheCommittedFeedsLazyDeltaAfterChannelFeed() async throws {
+        let (stamp, v2) = try await feedDeltaSetup()
+        let (c, update) = try await client(stamp: stamp, handlers: [FeedBlobHandler()])
+        _ = try await update.packs.ensure([feedPack])
+        _ = try await update.channelFeed()
+        blobs.seen = []
+        let installs = try await update.packs.ensureReleases([v2])
+        XCTAssertEqual(installs.first?.payloadSha256, sha256Of(PackFixtures.probeTarget))
+        XCTAssertEqual(blobPaths, [sha256Of(PackFixtures.probeFrame)])
+        await c.close()
+    }
+
+    func testReadsTheCommittedFeedsMenuFromTheCacheWhenTheEngineStarts() async throws {
+        // Before any check (offline).
+        let (stamp, v2) = try await feedDeltaSetup()
+        let store = InMemoryStore(deviceId: "dev_packs")
+        let (c, update) = try await client(stamp: stamp, handlers: [FeedBlobHandler()], store: store)
+        _ = try await update.packs.ensure([feedPack])
+        _ = try await update.channelFeed()
+        await c.close()
+        // The Worker's feed is gone; the next process has only the committed feed.
+        await server.reply("/djdl/update/stable/feed.jws", status: 404, body: "{}")
+        blobs.seen = []
+        let (c2, again) = try await client(stamp: stamp, handlers: [FeedBlobHandler()], store: store)
+        let installs = try await again.packs.ensureReleases([v2])
+        XCTAssertEqual(installs.first?.payloadSha256, sha256Of(PackFixtures.probeTarget))
+        XCTAssertEqual(blobPaths, [sha256Of(PackFixtures.probeFrame)])
         await c2.close()
     }
 

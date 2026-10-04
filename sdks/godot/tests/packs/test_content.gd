@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record packs.index.chunks packs.apply.chunk packs.delegation
+# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record packs.index.chunks packs.apply.chunk packs.delegation packs.delta.feed
 # The content corpus (conformance/corpus/v2/content/cases.json, read from the checkout through
 # PKEY_CONTENT_CORPUS; plans/P4-01.md §4.4), mirroring conformance/runners/node/suites.ts
 # `defineContentSuites` vector for vector: the blobs table, pathCases, filesIndexCases,
@@ -16,6 +16,10 @@ extends RefCounted
 # parsed unbound, a fetcher that answers each single-range request with the object's bytes clipped
 # at its end, and an in-memory output, exactly as conformance/runners/node/suites.ts.
 #
+# Content corpus v2's feedDeltaApplyCases (plans/P4-29.md §4.4): the variant merged with the feed's
+# menu (PKeyPackSelect.with_feed_deltas, exactly one feed id), then the merged feed delta applied
+# with apply_delta over the installed payload: the output is checked against the RECORD's payload.
+#
 # The `zstd-patch-from` decode is engine-internal (P4-01 decision 7): on an engine outside
 # PKeyPackZstd.PATCH_FROM_ENGINES (4.4, 4.5) the SDK does not advertise the method, so the planner
 # never picks a delta, and a delta apply case must give its own verdict when that comes before the
@@ -26,7 +30,7 @@ const S := preload("res://tests/packs/support.gd")
 ## The content corpus's directory under conformance/corpus/v2/ (PKEY_CONTENT_CORPUS names it).
 const CONTENT := "content/"
 
-const FLOORS := {"dataOnlyCases": 76, "pathCases": 18, "filesIndexCases": 15, "chunkIndexCases": 22, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 27}
+const FLOORS := {"dataOnlyCases": 76, "pathCases": 18, "filesIndexCases": 15, "chunkIndexCases": 22, "packSetIdCases": 7, "stampCases": 10, "frameWindowCases": 13, "applyCases": 27, "feedDeltaApplyCases": 4}
 
 ## plans/P4-10.md §4.3: the chunk apply cases, every one run through apply_chunk (P4-11).
 const CHUNK_APPLY_CASES := [
@@ -54,6 +58,7 @@ func run(t: PKeyTestContext) -> void:
 	_data_only(t, doc.get("dataOnlyCases", []))
 	_apply(t, (doc.get("applyCases", []) as Array).filter(func(c): return c["strategy"] != "chunk"))
 	await _apply_chunks(t, (doc.get("applyCases", []) as Array).filter(func(c): return c["strategy"] == "chunk"))
+	_feed_delta_apply(t, doc.get("feedDeltaApplyCases", []))
 	_pack_sets(t, doc.get("packSetIdCases", []))
 	_stamps(t, doc.get("stampCases", []))
 	_windows(t, doc.get("frameWindowCases", []))
@@ -155,6 +160,42 @@ func _apply(t: PKeyTestContext, cases: Array) -> void:
 		n += 1
 	t.info("applyCases GDDL: %s" % S.canon(z.stats))
 	t.check("content: applyCases coverage (every non-chunk case)", n == cases.size() and n + CHUNK_APPLY_CASES.size() == FLOORS["applyCases"], "%d/%d" % [n, cases.size()])
+
+
+## plans/P4-29.md §4.4: merge, then apply the merged variant's feed delta (Node's
+## `feedDeltaApplyCases` runner, vector for vector). Without the patch-from decode a case gives its
+## own verdict when that comes before the first decode, else delta-apply-failed, as in _apply.
+func _feed_delta_apply(t: PKeyTestContext, cases: Array) -> void:
+	var z := PKeyPackZstd.new()
+	var patch_from := z.patch_from_available()
+	var n := 0
+	for c in cases:
+		var started := Time.get_ticks_usec()
+		var store := {}
+		for h in c["objects"]:
+			store[h] = S.materialise(c["objects"][h])
+		var objects := func(h: String) -> Variant:
+			return PKeyByteSource.memory(store[h]) if store.has(h) else null
+		var merged := PKeyPackSelect.with_feed_deltas(c["variant"], c["deltas"])
+		n += 1
+		if not t.check("feed delta apply %s: one feed id" % c["id"], (merged["feedIds"] as Array).size() == 1, S.canon(merged["feedIds"])):
+			continue
+		var k := -1
+		var ds: Array = merged["variant"]["deltas"]
+		for i in ds.size():
+			if ds[i]["scope"] == "payload" and ds[i]["artifact"]["sha256"] == merged["feedIds"][0]:
+				k = i
+				break
+		var base := S.materialise(c["installed"]["payload"])
+		var r := PKeyPackApply.apply_delta(merged["variant"], k, PKeyByteSource.memory(base), {"objects": objects, "zstd": z})
+		var want = c["expect"]
+		if not patch_from:
+			var closed: bool = r["verdict"].get("ok") == false and r["verdict"].get("error") == PKeyPackApply.DELTA_APPLY_FAILED
+			t.check("feed delta apply %s (without patch-from: its verdict or delta-apply-failed)" % c["id"], S.same(r["verdict"], want) or closed, "got %s want %s" % [S.canon(r["verdict"]), S.canon(want)])
+		else:
+			S.check_same(t, "feed delta apply %s" % c["id"], r["verdict"], want)
+		t.info("feed delta apply %s: %.1f ms" % [c["id"], (Time.get_ticks_usec() - started) / 1000.0])
+	t.check("content: feedDeltaApplyCases coverage", n == cases.size() and n >= FLOORS["feedDeltaApplyCases"], "%d/%d" % [n, cases.size()])
 
 
 ## plans/P4-10.md §2.3: every chunk index case through parse_chunk_index (the engine's zstd

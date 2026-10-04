@@ -5,7 +5,7 @@
 | Phase       | P6: Commerce, ops, web                                                                                                                                                                                                                                                    |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                      |
 | Depends on  | [P5-05](P5-05-apple-plugin-package.md), [P5-06](P5-06-kotlin-aar.md), [P5-01](P5-01-outlet-credentials.md)                                                                                                                                                                |
-| Unblocks    | none                                                                                                                                                                                                                                                                      |
+| Unblocks    | [P6-09](P6-09-kotlin-platform-module.md)                                                                                                                                                                                                                                  |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                        |
 | Plan mode   | no (server-side only; stop and escalate if a signed document would change)                                                                                                                                                                                                |
 | Gates       | threat model; also rule 10 (two new Core routes), a D1 migration, `test:workerd`, `ci:macos` and `ci:android` for the native additions, and `parity.json`                                                                                                                 |
@@ -137,3 +137,70 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
   bridge consult; `trust_policy_json` as an operator-owned setting.
 - `devices.attest` in the Godot SDK and the native calls in the Apple package and the AAR.
 - Set the status: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-02 done`.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-03. The code is the fact where this brief and the code
+disagree.
+
+- **The Team ID is operator-owned, not from the outlet identity.** No `.pkey/distribution` outlet
+  identity carries a Team ID (`app-store` has `appleId` and `bundleId`). The RP ID is
+  `<teamId>.<bundleId>` with `teamId` from the operator's trust policy (`appAttest.teamId`) and the
+  bundle ids of the live `app-store` and `testflight` outlets. The policy also carries the aaguid
+  environment (`appAttest.environment`) and, for the client, the Play cloud project number
+  (`playIntegrity.cloudProjectNumber`, returned with each challenge as `play.cloudProjectNumber`).
+- **`trust_policy_source` is `default` or `admin`, never `manifest`.** No manifest field, ingest or
+  resync writes the policy (so rule 9 does not apply). It is written by a new platform-admin
+  resource, `GET|PUT|DELETE /manage/api/products/<slug>/trust-policy` (narrative-only, like every
+  admin route), audited as `trust_policy.set` / `trust_policy.reset`. There is no console editor for
+  the policy yet (follow-up); the console's product-wide devices list shows the trust level and the
+  last verdict, as scoped.
+- **Module split.** `core/attestation.ts` holds the two routes and the Play decode (the one file on
+  the reach-test token allowlist); the pure verifiers are `core/appAttest.ts` (pinned Apple root),
+  `core/playIntegrity.ts`, `core/cbor.ts` and `core/x509.ts`; the policy and the accessor the
+  enforcement points call are `core/deviceTrust.ts` (`trustRefusal(env, db, product, device, op,
+now, shape)`). App Attest verifies its chain with P6-01's `core/x509.ts` (one X.509 parser for the Worker; P6-02's interim copy was deleted when P6-01 landed): the `x5c` certificates plus the pinned root, the nonce OID in `policy.understood`, and `leafDigitalSignature: "ifPresent"` (the credential key signs assertions, so a keyUsage that is present must allow it; Apple documents no keyUsage requirement for the credential certificate, so `require` could refuse genuine devices). P6-01's verifier already handled P-384 issuers, so it needed no change.
+- **Play credential and pin.** No new outlet-credential kind or pin: the existing
+  `google-service-account` kind with its `packageName` pin (P5-03) is reused, chosen by
+  Distribution's own `resolvePlaySetup` through a new optional descriptor-hook method,
+  `Delivery.attestationTargets()` (which also lists the Apple bundle ids). `core/attestation.ts` is
+  added to the reach test's `TOKENS_IMPORT_ALLOW_FILES` (it may call `googleAccessToken`, not
+  `openOutletCredential`), with a guard test that the entry stays that narrow.
+- **Challenge binding.** The challenge response carries `requestHash =
+base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`; App Attest's client data
+  hash is `SHA-256(UTF-8(requestHash))` and a standard Play request passes `requestHash` verbatim.
+- **Errors and limits.** Three new wire codes in `conformance/parity/errors.json`:
+  `attestation_required` (403, an enforced refusal), `attestation_rejected` (422) and
+  `attestation_unavailable` (409 not set up, 503 Google unreachable). Rate limits, per device and
+  fail-closed: `attestChallenge` 10/hour, `attest` 4/hour.
+- **Enforcement points.** Edge-mint (`services/config/mint.ts`, after the per-device budget) and
+  gated delivery: `core/entitledAccess.ts`'s `accessRefusal` (the `licensed`/`authenticated` and
+  `entitled` modes, after the existing checks pass) and `entitlementFlagRefusal` (the pack gate,
+  after the flag is held). The commerce claim: P6-01's `POST …/distribution/commerce/claim` calls `trustRefusal(…, "commerceClaim", …)` after authentication and its per-licence budget, before any store setup is read.
+- **Not in the brief: resets.** A keyless re-registration or a licence (re)bind of an existing
+  device id resets the level to `basic` (`resetDeviceTrust`), because the id is client-chosen and a
+  new token minted without the old one is not proof of the attested install. A token rotation keeps
+  the level.
+- **CORS.** The two routes are excluded from CORS (no browser can attest), in `core/cors.ts` and the
+  routeCoverage exclusion list.
+- **Native and Godot names.** Swift (`PolarisKeyPlatform/AppAttest.swift`): commands
+  `app_attest_supported`, `app_attest_attest {requestHash, keyId?}`, `app_attest_assert` behind the
+  `AppAttestClient` seam (unsupported `runtime` on macOS, the simulator and extensions). Kotlin
+  (play flavour): `play.PlayIntegrity` over `com.google.android.play:integrity` 1.6.0, Godot binding
+  ops `integrity_prepare` / `integrity_token` (the direct flavour answers unsupported `outlet`).
+  Godot: `PolarisKey.devices.attest()` returns a `PKeyResult` whose detail is
+  `{trust_level, kind, attested_at}`; the App Attest key id is kept in the Keychain store and
+  regenerated on `invalid_key`. The cloud project number comes from the challenge, else the new
+  `PKeyOptions.play_cloud_project_number`. The capability engine registers a
+  `devices.attest|outlet` detector so `supports()` agrees with `attest()`. No CI change was
+  needed: the existing `apple` and `android` jobs run the new Swift, Kotlin and Godot suites.
+  The Swift SDK client itself stays `planned` (unowned) for `devices.attest`, as do Node, Python
+  and React as runtime N/As.
+- **Migration number.** The migrations are `0053_a`–`0053_e` (lead decision: P4-17 keeps 0051,
+  P6-01 takes 0052).
+- **Review follow-ups (lead decisions).** A Play verdict marked `testingDetails.isTestingResponse`
+  is refused (`testing_response`) unless the policy sets `playIntegrity.allowTestingResponses:
+true`; the flag is recorded in the verdict summary. The threat model also records that
+  `attested` rides on a liftable bearer token and that one handset can attest many client-chosen
+  device ids. The operator page and the Godot README say to attest after licence activation, and
+  that a rare 422 from KV propagation is retried. After P6-01 landed: App Attest moved onto P6-01's `core/x509.ts`, the commerce claim got its trust gate, and the migrations sit after P6-01's (0051 lazy deltas, 0052 commerce, 0053_a–e trust).

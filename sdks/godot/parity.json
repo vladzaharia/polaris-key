@@ -105,6 +105,18 @@
       "status": "implemented",
       "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
     },
+    "devices.attest": {
+      "status": "implemented",
+      "except": [
+        { "runtime": "linux", "reason": "runtime" },
+        { "runtime": "macos", "reason": "runtime" },
+        { "runtime": "windows", "reason": "runtime" },
+        { "runtime": "web", "reason": "runtime" },
+        { "runtime": "ios", "reason": "outlet" },
+        { "runtime": "android", "reason": "outlet" }
+      ],
+      "note": "P6-02: PolarisKey.devices.attest() (services/devices.gd) posts devices/attest/challenge, then devices/attest with an App Attest attestation (PKeyApple.app_attest over PolarisKeyPlatform's DCAppAttestService ops, clientDataHash = SHA-256 of the challenge's requestHash; the key id kept in the Keychain, re-attested with a fresh key when a reinstall, migration or restore killed it) or a standard Play Integrity token (PKeyAndroid.integrity_token over polaris-key-platform's play flavour, the requestHash verbatim, the cloud project number from the challenge or PKeyOptions.play_cloud_project_number). Unsupported runtime on desktop and web (and where App Attest does not run, the simulator); outlet on an iOS install that is not App Store or TestFlight, an Android install Google Play did not make or the direct plugin build, and a mobile build without the native plugin. Server codes are surfaced verbatim."
+    },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
@@ -195,9 +207,8 @@
       "note": "P4-08: zstd --patch-from frames decoded by the ENGINE's own GDDL delta decoder (a PACK_FILE_DELTA helper pack over a private-namespace prefix: a trailer appended to the installed store pack and truncated back, or a copy host), after the window check; advertised (zstd-patch-from) only on the pinned engines PKeyPackZstd.PATCH_FROM_ENGINES (4.6, 4.7) whose start-up probe decodes. On the 4.4 floor the planner never chooses a delta and the corpus's decode cases fail closed (delta-apply-failed)."
     },
     "packs.delta.feed": {
-      "status": "planned",
-      "wp": "P4-31",
-      "note": "P4-31 ports the reader, the merge and the one-feed-delta rule, the native payload port path included (plans/P4-29.md §5 order 3)."
+      "status": "implemented",
+      "note": "P4-31: core/feed.gd feed_content reads the deltas menu (plans/P4-29.md §2.2: both caps and both uniqueness rules counting dropped entries, a forward scope dropped alone, integer claims through PKeyClaims.is_wire_integer); packs/select.gd with_feed_deltas; PKeyPackEngine.feed_deltas (PKeyPacks wires the menu of the feed the last update check committed, else the cached committed feed) tries at most one feed-offered delta per install, falls back after a 404 or any verdict, journals feedDelta and merges it again on resume, and re-plans a journal whose delta is unknown. Godot has no native payload port, so there is no native path. Every feedContentCases deltas check, feedDeltaCases and feedDeltaApplyCases vector on the editor and the release template."
     },
     "packs.state": {
       "status": "implemented",
