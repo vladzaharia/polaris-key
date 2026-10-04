@@ -44,9 +44,9 @@ function yankView(y: ReleaseYankRow | undefined): YankView | null {
 /** One row of `GET …/release/deliverables`. */
 export interface DeliverableView {
   id: string;
-  /** `app` or `pack` (`release_deliverables.kind`). */
+  /** `app`, `pack` or `package` (`release_deliverables.kind`). */
   kind: string;
-  /** The pack type (`godot.pck`, `files.tree`, …); null for the app. */
+  /** The pack type (`godot.pck`, `files.tree`, …), a package's ecosystem; null for the app. */
   type: string | null;
   /** False for a pack row whose declaration does not read back (a resync rewrites it). */
   declared: boolean;
@@ -134,6 +134,36 @@ export async function deliverablesView(
         : null,
       releaseCount: releases.length,
       pinnedByAppReleases: isApp ? null : (pinCounts.get(d.id) ?? 0),
+    });
+  }
+  // F-03: the package deliverables, after the app and packs (their feed record is F-11's page).
+  for (const pkg of await catalog.packageDeliverables()) {
+    const versions = await catalog.packageVersions(pkg.id);
+    const newest = versions[versions.length - 1] ?? null;
+    out.push({
+      id: pkg.id,
+      kind: "package",
+      type: pkg.ecosystem,
+      declared: true,
+      binding: null,
+      required: null,
+      baseline: null,
+      delivery: null,
+      variantKeys: [],
+      assertedEntitlement: null,
+      gate: null,
+      latest: newest
+        ? {
+            releaseId: newest.releaseId,
+            version: newest.version,
+            seq: newest.seq,
+            publishedAt: newest.publishedAt,
+            yanked: newest.state === "yanked",
+            entitlement: null,
+          }
+        : null,
+      releaseCount: versions.length,
+      pinnedByAppReleases: null,
     });
   }
   return { deliverables: out, gateKnown: delivery !== null };

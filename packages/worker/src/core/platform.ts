@@ -76,5 +76,6 @@ export {
 
 export {
   appSecurityHeaders,
+  brandedHtmlSecurityHeaders,
   staticHtmlSecurityHeaders,
 } from "../securityHeaders.js";

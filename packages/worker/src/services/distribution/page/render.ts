@@ -21,7 +21,9 @@
  * `maxTouchPoints > 1`. With no detected platform, every platform's primary is offered.
  */
 
+import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
+import { themedLockup } from "../../../core/brandHtml.js";
 import type { DetectedPlatform, PagePlatform } from "./detect.js";
 import {
   pickBuild,
@@ -73,42 +75,81 @@ export function safeHref(url: string | null): string | null {
   return null;
 }
 
-/** The page's whole stylesheet: allowed by its SHA-256 in the page's CSP, nothing else is. */
-export const PAGE_CSS = `
-:root{color-scheme:light dark;--bg:#fbfaf8;--fg:#1d1b18;--muted:#6b6660;--card:#fff;--line:#e4e0da;--accent:#3a4fd9;--accent-fg:#fff}
-@media (prefers-color-scheme:dark){:root{--bg:#141312;--fg:#efece7;--muted:#a39e97;--card:#1d1c1a;--line:#34312d;--accent:#8c9bff;--accent-fg:#0e0e14}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main,header,footer{max-width:56rem;margin:0 auto;padding:0 1rem}
-header{padding-top:2.5rem}
-h1{font-size:2rem;margin:0}
-h2{font-size:1.15rem;margin:2rem 0 .75rem}
-h3{font-size:1rem;margin:1.25rem 0 .5rem}
-.sub,.by,.meta,.note,footer{color:var(--muted)}
-.sub{margin:.25rem 0 0;font-size:1.1rem}
-.by{margin:.25rem 0 0;font-size:.9rem}
-.primary{margin:1.5rem 0;padding:1.25rem;border:1px solid var(--line);border-radius:.75rem;background:var(--card)}
-.button{display:inline-block;padding:.7rem 1.2rem;border-radius:.5rem;background:var(--accent);color:var(--accent-fg);font-weight:600;text-decoration:none}
-.meta{margin:.5rem 0 0;font-size:.875rem}
-.touch-only{display:none}
-@media (hover:none) and (pointer:coarse){.touch-only{display:block}.pointer-only{display:none}}
-.choose{list-style:none;padding:0;display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}
-.choose li{padding:1rem;border:1px solid var(--line);border-radius:.75rem;background:var(--card)}
-.ways{list-style:none;padding:0;margin:0}
-.way{padding:.75rem 0;border-top:1px solid var(--line);display:grid;gap:.35rem}
-.way-head{font-weight:600}
-.way a{color:var(--accent)}
-code{font:.85rem/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
-.cmd{display:block;padding:.5rem .75rem;border-radius:.4rem;background:var(--card);border:1px solid var(--line)}
-.qr{width:9rem;height:9rem;border-radius:.25rem}
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:.875rem}
-th,td{text-align:left;padding:.4rem .6rem;border-top:1px solid var(--line);vertical-align:top}
-th{color:var(--muted);font-weight:500}
-.sha{word-break:break-all}
-.summary{white-space:pre-line}
-footer{padding:2rem 1rem 3rem;font-size:.85rem}
-`.trim();
+/** The page's colours for one theme: the brand theme tokens, Distribution's green as the one
+ *  accent (BRAND.md §8: the bytes host is a delivery surface), the Star Cut's inks. */
+function palette(theme: "dark" | "light"): string {
+  const t = THEME_TOKENS[theme];
+  const accent = SERVICE_ACCENTS[theme].distribution;
+  return [
+    `color-scheme:${theme}`,
+    `--bg:${t.surface.page}`,
+    `--card:${t.surface.raised}`,
+    `--sunken:${t.surface.sunken}`,
+    `--strong:${t.text.strong}`,
+    `--fg:${t.text.default}`,
+    `--muted:${t.text.muted}`,
+    `--line:${t.border.subtle}`,
+    `--edge:${t.border.strong}`,
+    `--accent:${accent.solid}`,
+    `--accent-link:${accent.fg}`,
+    `--accent-fg:${accent.on}`,
+    `--accent-subtle:${accent.subtle}`,
+    `--focus:${t.focus}`,
+    `--mb:${BRAND.violet[theme]}`,
+    `--ms:${BRAND.star[theme]}`,
+    `--mt:${BRAND.text[theme]}`,
+  ].join(";");
+}
+
+/**
+ * The page's whole stylesheet: allowed by its SHA-256 in the page's CSP, nothing else is. Dark
+ * first, light under `prefers-color-scheme: light` (BRAND.md §3). The type is the system stack
+ * behind Rubik with no `@font-face`: the bytes host's policy has no font source (BRAND.md §8,
+ * "What the page omits").
+ */
+export const PAGE_CSS = [
+  `:root{${palette("dark")}}`,
+  `@media (prefers-color-scheme:light){:root{${palette("light")}}}`,
+  `*{box-sizing:border-box}`,
+  `html{background:var(--bg)}`,
+  `body{margin:0;background:var(--bg);color:var(--fg);font-family:${FONT.sans};font-synthesis:none;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}`,
+  `main,header,footer{max-width:56rem;margin:0 auto;padding:0 1rem}`,
+  `header{padding-top:2.5rem}`,
+  `h1{margin:0;color:var(--strong);font-size:2rem;line-height:2.5rem;font-weight:700;letter-spacing:-.01em}`,
+  `h2{margin:2rem 0 .75rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700}`,
+  `h3{margin:1.25rem 0 .5rem;color:var(--strong);font-size:1rem;font-weight:700}`,
+  `.sub,.by,.meta,.note,footer{color:var(--muted)}`,
+  `.sub{margin:.25rem 0 0;font-size:1.125rem}`,
+  `.by{margin:.25rem 0 0;font-size:.875rem}`,
+  `.primary{margin:1.5rem 0;padding:1.25rem;border:1px solid var(--line);border-radius:10px;background:var(--card)}`,
+  `.primary h2{margin-top:0}`,
+  `.button{display:inline-flex;align-items:center;min-height:44px;padding:.625rem 1.25rem;border-radius:6px;background:var(--accent);color:var(--accent-fg);font-weight:700;text-decoration:none}`,
+  `.meta{margin:.5rem 0 0;font-size:.875rem}`,
+  `.touch-only{display:none}`,
+  `@media (hover:none) and (pointer:coarse){.touch-only{display:block}.pointer-only{display:none}}`,
+  `.choose{list-style:none;padding:0;display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}`,
+  `.choose li{padding:1rem;border:1px solid var(--line);border-radius:10px;background:var(--card)}`,
+  `.choose .primary{margin:0;padding:0;border:0;background:none}`,
+  `.ways{list-style:none;padding:0;margin:0}`,
+  `.way{padding:.75rem 0;border-top:1px solid var(--line);display:grid;gap:.35rem}`,
+  `.way-head{color:var(--strong);font-weight:700}`,
+  `a{color:var(--accent-link)}`,
+  `a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
+  `code{font:.85rem/1.4 ${FONT.mono};overflow-wrap:anywhere}`,
+  `.cmd{display:block;padding:.5rem .75rem;border-radius:6px;background:var(--sunken);border:1px solid var(--line);color:var(--strong)}`,
+  `.qr{width:9rem;height:9rem;border-radius:4px}`,
+  `.scroll{overflow-x:auto}`,
+  `table{border-collapse:collapse;width:100%;font-size:.875rem;font-variant-numeric:tabular-nums}`,
+  `th,td{text-align:left;padding:.5rem .75rem;border-top:1px solid var(--line);vertical-align:top}`,
+  `th{color:var(--muted);font-weight:400;font-size:.75rem}`,
+  `.sha{word-break:break-all}`,
+  `.summary{white-space:pre-line}`,
+  `footer{padding:2.5rem 1rem 3rem;font-size:.875rem}`,
+  `footer p{margin:0 0 1rem}`,
+  `.delivery{display:block;line-height:0}`,
+  `.delivery svg{display:block;max-width:100%;height:auto}`,
+  `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
+].join("\n");
 
 const KEY_LABELS: Readonly<Record<string, string>> = {
   "android-app-signing": "Android app signing certificate",
@@ -313,6 +354,17 @@ function way(a: PageAction, group: PagePlatformGroup): string {
   return `<li class="way" data-action="${esc(a.kind)}">${parts.join("")}</li>`;
 }
 
+let delivery: string | null = null;
+
+/**
+ * The footer's service mark: the Polaris Key Delivery compact lockup (the Star Cut, BRAND.md
+ * §1.1, §7.1) at 48 px tall, so its glyph is the 24 px service cut. Built once, on first use.
+ */
+function deliveryMark(): string {
+  delivery ??= themedLockup("delivery", "compact", 48, "lockup");
+  return delivery;
+}
+
 /** Render the page. */
 export function renderDownloadPage(
   model: DownloadModel,
@@ -432,7 +484,7 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Other ways to get it</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer>Verify a download's SHA-256 before you install it. Served by Polaris Key.</footer>`,
+    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${deliveryMark()}</p></footer>`,
     "</body></html>",
     "",
   ].join("\n");

@@ -33,6 +33,11 @@ import {
   CONTENT_ID_PATTERN,
   MAX_PROVIDES,
   providesListProblem,
+  SYSTEM_PRODUCT_SLUG,
+  isPackageName,
+  packageNameNorm,
+  parseManifestPackageDeliverable,
+  type PackageEcosystem,
 } from "./index.js";
 
 const PRODUCT = { slug: "acme", name: "Acme" };
@@ -1669,7 +1674,7 @@ describe("release model vocabulary (P2-03)", () => {
       "signature",
       "checksum",
     ]);
-    expect(DELIVERABLE_KINDS).toEqual(["app", "pack"]);
+    expect(DELIVERABLE_KINDS).toEqual(["app", "pack", "package"]);
   });
 
   it.each([APP_DELIVERABLE_ID, "diceroll.core3d", "l10n-de", "a.b-c.d0"])(
@@ -2133,5 +2138,123 @@ describe("providesListProblem (P4-20)", () => {
     for (const bad of ["", "foe goblin", "x".repeat(129), "é", 7])
       expect(providesListProblem([bad])).toMatch(/not a content id/);
     expect(CONTENT_ID_PATTERN.test("x".repeat(128))).toBe(true);
+  });
+});
+
+describe("package deliverables (F-03, plans/F-01.md §3.1)", () => {
+  const withPackages = (
+    deliverables: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    release: {
+      ghOwner: "vladzaharia",
+      ghRepo: "polaris-key",
+      binaryName: "pkey",
+      deliverables,
+    },
+  });
+  const npmNode = {
+    kind: "package",
+    ecosystem: "npm",
+    name: "@polaris-key/node",
+    artifacts: { tarball: { match: "dist-pkg/polaris-key-node-*.tgz" } },
+  };
+
+  it("a product declares packages without deliverables.app, and they parse in id order", () => {
+    const res = parseManifest({
+      product: JSON.stringify({
+        slug: SYSTEM_PRODUCT_SLUG,
+        name: "Polaris Key",
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+      release: JSON.stringify(
+        withPackages({
+          "swift.polariskey": {
+            kind: "package",
+            ecosystem: "swift",
+            name: "polaris-key.PolarisKey",
+            artifacts: { archive: { match: "build/swift-registry/*.zip" } },
+          },
+          "npm.node": npmNode,
+        }),
+      ),
+    });
+    expect(res.ok ? [] : res.errors).toEqual([]);
+    if (!res.ok) return;
+    expect(res.manifest.release?.app).toBeNull();
+    expect(res.manifest.release?.packDeliverables).toEqual([]);
+    expect(res.manifest.release?.packageDeliverables).toEqual([
+      { ...npmNode, id: "npm.node" },
+      {
+        kind: "package",
+        id: "swift.polariskey",
+        ecosystem: "swift",
+        name: "polaris-key.PolarisKey",
+        artifacts: { archive: { match: "build/swift-registry/*.zip" } },
+      },
+    ]);
+  });
+
+  it("the system product's slug is a valid, unreserved product slug", () => {
+    expect(SYSTEM_PRODUCT_SLUG).toBe("polaris-key");
+    const res = validateManifestDocuments({
+      product: { slug: SYSTEM_PRODUCT_SLUG, name: "Polaris Key" },
+    } as never);
+    expect(res.errors.map((e) => e.code)).not.toContain("reserved_slug");
+  });
+
+  it("parseManifestPackageDeliverable reads a persisted def_json back, and refuses a non-package", () => {
+    expect(
+      parseManifestPackageDeliverable(JSON.stringify(npmNode), "npm.node"),
+    ).toEqual({ ...npmNode, id: "npm.node" });
+    expect(
+      parseManifestPackageDeliverable(
+        JSON.stringify({ ...npmNode, platform: "macos" }),
+        "npm.node",
+      ),
+    ).toBeNull();
+    expect(
+      parseManifestPackageDeliverable({ kind: "pack" }, "x.pack"),
+    ).toBeNull();
+    expect(parseManifestPackageDeliverable("{nope", "x")).toBeNull();
+  });
+
+  it("names normalise per ecosystem: PEP 503, and case-insensitive npm, Swift and Maven", () => {
+    expect(packageNameNorm("pypi", "Polaris_Key..SDK")).toBe("polaris-key-sdk");
+    expect(packageNameNorm("npm", "@Polaris-Key/Node")).toBe(
+      "@polaris-key/node",
+    );
+    expect(packageNameNorm("swift", "polaris-key.PolarisKey")).toBe(
+      "polaris-key.polariskey",
+    );
+    expect(packageNameNorm("maven", "im.plrs.key:Polaris-Key")).toBe(
+      "im.plrs.key:polaris-key",
+    );
+    expect(packageNameNorm("godot", "polaris_key")).toBe("polaris_key");
+  });
+
+  it("each ecosystem's grammar accepts the platform packages and refuses look-alikes", () => {
+    const ok: Array<[PackageEcosystem, string]> = [
+      ["npm", "@polaris-key/client-core"],
+      ["pypi", "polaris-key"],
+      ["swift", "polaris-key.PolarisKey"],
+      ["maven", "im.plrs.key:polaris-key-platform"],
+      ["oci", "pkey"],
+      ["oci", "tools/pkey-cli"],
+      ["godot", "polaris_key"],
+    ];
+    for (const [e, n] of ok)
+      expect(isPackageName(e, n), `${e} ${n}`).toBe(true);
+    const bad: Array<[PackageEcosystem, string]> = [
+      ["npm", "polaris-key"],
+      ["npm", "@Polaris/Node"],
+      ["pypi", "-polaris"],
+      ["swift", "-scope.Name"],
+      ["maven", "im.plrs.key"],
+      ["oci", "Pkey"],
+      ["godot", "Polaris-Key"],
+      ["npm", `@a/${"x".repeat(220)}`],
+    ];
+    for (const [e, n] of bad)
+      expect(isPackageName(e, n), `${e} ${n}`).toBe(false);
   });
 });

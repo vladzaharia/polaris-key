@@ -372,7 +372,8 @@ product without an artifact map still sniffs the right platform.
 
 ### Pack deliverables
 
-Any deliverable other than `app` is a content pack (`kind: pack`): data the app loads at run
+Any deliverable other than `app` is a content pack (`kind: pack`) or a package (`kind:
+package`, [below](#package-deliverables)). A pack is data the app loads at run
 time, released on its own versions, and pinned by app releases or resolved per live contentApi
 level. See [Packs](/docs/services/release/packs/) for what Release does with them. The
 validator accepts this set of fields, so a manifest never declares behaviour that is not
@@ -502,6 +503,70 @@ deliverables:
   resource a pack reaches by UID: the device resolves app UIDs itself and admits non-script
   ones, but the publish lint cannot and refuses every unlisted UID. Keep the list equal to the Godot
   SDK's `PKeyOptions.pack_attachable`; it is never stamped into a release.
+
+### Package deliverables
+
+A package (`kind: package`) is a library or image other software installs from a package feed:
+an npm package, a Python distribution, a Swift package, a Maven artifact, an OCI image or a
+Godot addon. Each version is published with `pkey release publish --deliverable <id>` and served
+only by the product's package feed for that ecosystem, never by a device-facing route. A product
+may declare packages and no `deliverables.app` (the platform's own product does).
+
+```yaml
+deliverables:
+  npm.node:
+    kind: package
+    ecosystem: npm # npm | pypi | swift | maven | oci | godot
+    name: "@polaris-key/node" # the ecosystem's grammar
+    artifacts:
+      tarball: { match: "dist-pkg/polaris-key-node-*.tgz" }
+  swift.polariskey:
+    kind: package
+    ecosystem: swift
+    name: polaris-key.PolarisKey
+    artifacts:
+      archive: { match: "*.zip" }
+```
+
+- **`ecosystem`** is one of `npm`, `pypi`, `swift`, `maven`, `oci` and `godot`
+  (`invalid_package_ecosystem`).
+- **`name`** follows the ecosystem's grammar (`invalid_package_name`): a scoped, lower-case npm
+  name (`@scope/name`, at most 214 characters); a PEP 508 name for PyPI; `scope.Name` for Swift
+  (SE-0292); `groupId:artifactId` for Maven; lower-case repository path components for OCI;
+  `[a-z0-9_]`, at most 64, for Godot (the addon's id under `addons/`).
+- No two packages share an ecosystem and a name (`package_name_collision`): names compare after
+  PEP 503 normalisation for PyPI (`Acme_SDK` is `acme-sdk`), and case-insensitively for npm,
+  Swift and Maven.
+- **`artifacts`** maps 1–16 entry ids to `{ match }` file-name globs over `--dir`; a package takes
+  none of the app's or a pack's fields (`platform`, `arch`, `format`, `content`, `binding`, `type`,
+  `packType`: `invalid_package_field`).
+- At most 64 package deliverables (`too_many_package_deliverables`).
+- A package never has a transport: `.pkey/distribution` refuses one that names it
+  (`invalid_transport_deliverable`).
+
+Declaring a package never turns a feed on. The feeds, their namespaces (the only names a feed
+takes) and their size ceilings are operator settings; a publish to an ecosystem whose feed is not
+configured, or of a name outside its namespace, is refused (`invalid_descriptor`, reason
+`package-namespace`).
+
+`pkey release publish --deliverable <id> --dir <path>` reads what each ecosystem's packer wrote,
+because the Worker never unpacks a package:
+
+| Ecosystem | `--dir` holds                                                                                                                | `--version`             |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| npm       | the `npm pack` / `pnpm pack` tarball (its `package/package.json`)                                                            | read from the tarball   |
+| pypi      | the wheels and the sdist (each wheel's `METADATA` becomes its PEP 658 `core-metadata` file)                                  | read from `METADATA`    |
+| swift     | the `swift package-registry publish --dry-run` scratch directory: the zip, its `.sig`, the signed `Package*.swift` manifests | required                |
+| maven     | one version's directory of a Maven publication (POM, jars, `.module`; checksum sidecars are ignored)                         | read from the POM       |
+| oci       | an OCI image layout (`oci-layout`, `index.json`, `blobs/sha256/`) of one image or image index                                | required (also the tag) |
+| godot     | the addon zip (`addons/<name>/plugin.cfg`) and an optional PNG icon                                                          | read from `plugin.cfg`  |
+
+A package version is unique forever: a version that was ever published — even one since yanked
+or deprecated — is never published again (`release_exists`, reason `package-version-taken`). A
+package release is never signed, so it carries no release record (`release_record_rejected`,
+reason `package-unsigned`), and `--release-key-file`, `--tag`, `--meta` and the pack flags do not
+apply. A Maven `-SNAPSHOT` version is refused (`maven-snapshot`), and so is an unsigned Swift
+release on a feed that requires signatures, which is the default (`swift-unsigned`).
 
 Resync writes the declaration to `release_deliverables.def_json` (and each channel's
 `includes` to its channel policy, unless an operator owns that channel). The map also defines

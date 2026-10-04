@@ -37,6 +37,9 @@ export interface ProductRow {
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
   // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
   web_origins_json?: string | null;
+  /** 1 for the platform's own product (`SYSTEM_PRODUCT_SLUG`, migrations/0058_a), set only by
+   *  the package-feeds bootstrap; delete and rename refuse it. */
+  system?: number;
   // The device-trust policy (migrations/0053_d/e, P6-02): operator-owned, never written by an
   // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
   trust_policy_json?: string | null;

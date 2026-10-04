@@ -29,6 +29,9 @@
  *     payload (both as `files/<releaseId>/<name>`), on the bytes host when `BLOB_ORIGIN` is set — what P2b-05's feeds, P2b-06's page, P3-09's updater feeds and
  *     P4-05's pack transports link to.
  *
+ *   - `packageFeed` (F-03, `registryFeeds.ts`): one ecosystem's package-feed settings under the
+ *     owner switch and the platform policy — what Release's package ingest holds a publish to.
+ *
  * Read-only by contract: a hook never writes.
  */
 
@@ -49,6 +52,7 @@ import { listOutlets, parseJsonColumn } from "./outlets.js";
 import { selectFeedWith } from "./feeds/select.js";
 import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
+import { packageFeedOf } from "./registryFeeds.js";
 import { resolvePlaySetup } from "./connectors/play/setup.js";
 
 /** A reverse-DNS bundle id, re-checked before it becomes part of an App Attest RP ID. */
@@ -177,6 +181,8 @@ export function delivery(ctx: HookContext): Delivery {
     },
 
     entitlement: (deliverable: string) => entitlementOf(db, slug, deliverable),
+
+    packageFeed: (ecosystem: string) => packageFeedOf(db, slug, ecosystem),
 
     async transports() {
       return (

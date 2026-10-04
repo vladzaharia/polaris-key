@@ -63,6 +63,18 @@ public class Endpoints(baseUrl: String, public val product: String) {
     public val configDocument: String get() = url("config/document")
     public val configSchema: String get() = url("config/schema")
 
+    /** `/config/mint/:recipeId/token`; the caller checks the recipe id against the router's alphabet. */
+    public fun configMint(recipeId: String): String = url("config/mint/${segment(recipeId)}/token")
+
+    public val identityDeviceStart: String get() = url("identity/auth/device/start")
+    public val identityDevicePoll: String get() = url("identity/auth/device/poll")
+    public val releaseChangelog: String get() = url("release/changelog")
+    public val releaseInstall: String get() = url("release/install.sh")
+
+    /** `/release/dl/:version/:file`: `file` is `<binary>-<arch>[.dmg]`. Each is ONE segment. */
+    public fun releaseDownload(version: String, file: String): String =
+        url("release/dl/${segment(version)}/${segment(file)}")
+
     /** The signed-document route for one cache slice. */
     public fun document(slice: DocumentSlice): String = when (slice) {
         DocumentSlice.license -> licenseDocument

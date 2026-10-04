@@ -40,7 +40,7 @@ class CapabilitiesTest {
     fun anUnknownFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports("core.teleport", DEFAULT_SERVICES)))
 
     @Test
-    fun aPlannedFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports(Feature.licenseGate, DEFAULT_SERVICES)))
+    fun aPlannedFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports(Feature.devicesFingerprint, DEFAULT_SERVICES)))
 
     @Test
     fun aRuntimeNaIsRuntimeOnEveryListedRuntime() {
@@ -99,14 +99,14 @@ class CapabilitiesTest {
         val caps = jvm.caps(DEFAULT_SERVICES)
         assertEquals(caps, FEATURE_VALUES.filter { it in caps })
         assertTrue(Feature.coreSync in caps)
-        assertFalse(Feature.licenseGate in caps)
+        assertFalse(Feature.devicesFingerprint in caps)
     }
 
     @Test
     fun anUnsupportedCallThrowsTheRegistryCode() {
-        val u = (jvm.supports(Feature.licenseGate, DEFAULT_SERVICES) as Support.Unavailable).unsupported
+        val u = (jvm.supports(Feature.devicesFingerprint, DEFAULT_SERVICES) as Support.Unavailable).unsupported
         val e = UnsupportedException(u)
         assertEquals(ErrorCode.unsupported, e.code)
-        assertTrue(e.message!!.contains(Feature.licenseGate))
+        assertTrue(e.message!!.contains(Feature.devicesFingerprint))
     }
 }

@@ -407,7 +407,7 @@ export function PackRecord({
       : "releases";
 
   const decl = list.data?.deliverables.find(
-    (d) => d.id === id && d.kind !== "app",
+    (d) => d.id === id && d.kind === "pack",
   );
   const releases = releasesQuery.data?.releases ?? [];
   const lanes = channelsQuery.data?.deliverables.find(

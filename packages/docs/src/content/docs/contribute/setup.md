@@ -61,7 +61,7 @@ pnpm --filter @polaris-key/worker test:workerd
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
-( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test )   # Kotlin
+( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test :sdk:test :conformance:test )   # Kotlin
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```

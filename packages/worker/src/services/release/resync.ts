@@ -602,6 +602,7 @@ async function applyRepoManifest(
         rel.app,
         now,
         rel.packDeliverables,
+        rel.packageDeliverables,
       ),
     );
     updated.push("deliverables");

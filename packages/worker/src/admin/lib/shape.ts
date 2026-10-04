@@ -197,6 +197,9 @@ export async function productView(
   return {
     slug: p.slug,
     name: p.name,
+    // F-03: the platform's own product (the package-feeds owner of our SDKs). The console keeps it
+    // out of the product switcher and the Products registry; it is reached from Platform.
+    system: p.system === 1,
     releaseSource: p.release_source ?? "manual",
     signingKid,
     jwksUrl,

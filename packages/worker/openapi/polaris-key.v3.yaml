@@ -79,6 +79,12 @@ tags:
     description: Update feed — Sparkle appcasts (per-arch), version checks, eligibility.
   - name: identity
     description: Product OIDC (browser + device flow) and browser sessions.
+  - name: registry
+    description: >
+      The registry host, `pkg.plrs.im` (F-02): package feeds for registry clients (npm, PyPI,
+      SwiftPM, Maven and Gradle, OCI, Godot). Same Worker, third custom domain; every path here
+      carries a `servers` override. No cookies, no CORS, GET and HEAD only, a sandbox CSP on
+      every answer and an explicit type allowlist (`core/registryHost.ts`).
   - name: aliases
     description: >
       The permanent alias spellings: the four pre-namespace paths (SUFeedURL values compiled
@@ -5007,6 +5013,28 @@ paths:
         current app release's `releaseId`, `version`, `contentApi` and fingerprint (`previous`,
         null when the channel serves none), which `pkey release publish --content-interface`
         compares.
+        F-03 (plans/F-01.md §3.2, §6.10): a PACKAGE release is a descriptor of `kind: package`
+        (no `builds`, `tag` or `content`; a `package` block of `ecosystem`, `name`, `files` with
+        `r2` locations only, and the CLI-extracted `metadata`), for a `kind: package` deliverable
+        of `.pkey/release`. Its release id is `<deliverable>@<version>`. It is never signed: a
+        submit carrying a `record` with it is refused `release_record_rejected`, reason
+        `package-unsigned` (400), and so is `contentInterface` (`bad_body`). It is refused
+        `invalid_descriptor` with reason `package-shape` (the validator's findings in
+        `errors`, `unsupported_deliverable_kind` among them when the descriptor's kind and the
+        deliverable's disagree), `maven-snapshot` (a Maven `-SNAPSHOT` version),
+        `package-namespace` (no feed of the ecosystem is configured for the product, or the
+        name is outside the feed's namespace), `package-too-large` (over the feed's size
+        ceiling, never above the platform's: per release, per blob for OCI) or `swift-unsigned`
+        (a Swift release without its `cms-1.0.0` signature on a feed that requires one, the
+        default); `release_exists` with reason `package-version-taken` (409) when the version
+        was ever published, in any state — a yanked or deprecated version is never published
+        again, and only the identical descriptor of a live version answers `outcome:
+        unchanged`; `distribution_disabled` (409) while Distribution is off. After promotion
+        the Worker reads each npm tarball and Maven file once for its SHA-512, SHA-1 (and MD5)
+        digests. The answer is the app answer without `record`, `packSets` or
+        `contentInterface`. Package releases are served only by the package feeds: no
+        device-facing route (the channel feed, the update decision, builds, files, blobs, the
+        appcast, the records route, the download page, the storefront feeds) ever shows one.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -7344,6 +7372,80 @@ paths:
         - { name: sha256, in: path, required: true, schema: { type: string } }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  # ── registry host (pkg.plrs.im) ───────────────────────────────────────────────
+  #
+  # F-02 (plans/F-01.md §6.1, §6.10). The registry host is the same Worker on a third custom
+  # domain, so its paths carry a path-level `servers` override. Each ecosystem package (F-04 to
+  # F-09) adds its routes here under tag `registry`, each linking its protocol specification
+  # rather than restating it; `test/routeCoverage.test.ts` checks this section against
+  # `mount.ts` `REGISTRY_ROUTES` in both directions (its `REGISTRY_PATHS` table).
+  /:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: registryLanding
+      tags: [registry]
+      summary: The registry host's landing page (registry host only)
+      description: >
+        F-02. A static HTML page naming the host (the Polaris Key Delivery lockup, BRAND §8) and
+        linking the console and the docs. No request input reaches it. It carries the
+        inert-document policy the host checks (`sandbox` with no tokens, `default-src 'none'`,
+        the one stylesheet by hash, `img-src data:`, `base-uri`, `form-action` and
+        `frame-ancestors` `'none'`), plus the host's own headers: `nosniff`,
+        `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-origin`, no cookie
+        read or set, no CORS. On the console host `/` is unchanged.
+      responses:
+        "200":
+          description: "HTML. `text/html; charset=utf-8`, `cache-control: public, max-age=3600`."
+          content:
+            text/html:
+              schema: { type: string }
+    head:
+      operationId: registryLandingHead
+      tags: [registry]
+      summary: The registry host's landing page, headers only (registry host only)
+      description: F-02. As `GET /`, with no body.
+      responses:
+        "200":
+          description: "`text/html; charset=utf-8`, `cache-control: public, max-age=3600`."
+  /v2/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: ociBase
+      tags: [registry]
+      summary: OCI distribution base endpoint (registry host only)
+      description: >
+        F-02. The OCI Distribution Specification's base endpoint (`end-1`,
+        https://github.com/opencontainers/distribution-spec/blob/main/spec.md#determining-support).
+        Always 200 with `Docker-Distribution-API-Version: registry/2.0` and the body `{}`, the
+        same for everyone: authentication challenges are made per repository. `/v2` answers the
+        same. Any method other than GET and HEAD under `/v2/` is 405 with OCI's error JSON
+        (`UNSUPPORTED`). The repository routes are F-08's.
+      responses:
+        "200":
+          description: The registry speaks OCI distribution v2.
+          headers:
+            Docker-Distribution-API-Version:
+              schema: { type: string, const: registry/2.0 }
+          content:
+            application/json:
+              schema: { type: object, maxProperties: 0 }
+              examples:
+                base: { value: {} }
+    head:
+      operationId: ociBaseHead
+      tags: [registry]
+      summary: OCI distribution base endpoint, headers only (registry host only)
+      description: F-02. As `GET /v2/`, with no body.
+      responses:
+        "200":
+          description: The registry speaks OCI distribution v2.
+          headers:
+            Docker-Distribution-API-Version:
+              schema: { type: string, const: registry/2.0 }
 components:
   securitySchemes:
     ciToken:

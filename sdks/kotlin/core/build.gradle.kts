@@ -12,6 +12,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     `java-library`
+    `java-test-fixtures`
     `maven-publish`
 }
 
@@ -37,6 +38,13 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
 }
+
+// The test fixtures (a throwaway Ed25519 signer and a scripted transport, src/testFixtures) are
+// shared by the service modules' tests through `testFixtures(project(":core"))` and are NEVER
+// published: the fixture variants are skipped from the java component.
+val javaComponent = components["java"] as AdhocComponentWithVariants
+javaComponent.withVariantsFromConfiguration(configurations["testFixturesApiElements"]) { skip() }
+javaComponent.withVariantsFromConfiguration(configurations["testFixturesRuntimeElements"]) { skip() }
 
 publishing {
     publications {

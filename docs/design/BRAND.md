@@ -610,6 +610,17 @@ route that is not a byte route):
   games, the platform's first audience. The page `<title>` is "Polaris Key Delivery" (with the
   environment in parentheses on staging and dev).
 
+### The registry host, pkg.plrs.im
+
+The registry host (`https://pkg.plrs.im`, with `pkg-staging` and `pkg-dev`, F-02) serves package
+feeds and is Distribution's, as the bytes host is. Its root answers the same page under the same
+contract and the same omissions (`packages/worker/src/core/registryLanding.ts`): the Polaris Key
+Delivery lockup, the delivery green, the title "Polaris Key Delivery", the console and docs
+links, and the environment named on staging and dev. Only its two sentences differ: "The package
+registry for libraries and tools published through Polaris Key." and a short paragraph saying that
+package managers fetch from here, that the console has each client's setup lines, and that there
+is nothing to browse. It never lists owners, packages or versions.
+
 ---
 
 ## 9. Accessibility

@@ -1,10 +1,11 @@
 // Generalized schema-mirror generator (the multi-language successor to djdl's
 // scripts/gen-config-schema.ts). Given a product catalog JSON (the `/<product>/config/schema`
 // shape), it emits self-contained typed mirrors for products that want compile-time
-// config types: TypeScript, Python (dataclasses), Swift and GDScript. Products that stay purely
-// data-driven skip this and read the catalog at runtime.
+// config types: TypeScript, Python (dataclasses), Swift, GDScript and Kotlin. Products that stay
+// purely data-driven skip this and read the catalog at runtime.
 //
-//   tsx tools/gen-mirrors.ts --catalog <path> --out-dir <dir> --lang ts,python,swift,gdscript
+//   tsx tools/gen-mirrors.ts --catalog <path> --out-dir <dir> --lang ts,python,swift,gdscript,kotlin
+//                            [--kotlin-package com.example.catalog]
 //   tsx tools/gen-mirrors.ts ... --check     # CI drift guard (exit 1 if stale)
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -355,19 +356,201 @@ static func entries_by_kind(kind: String) -> Array:
 `;
 }
 
+// ── Kotlin mirror (the Kotlin SDK, P6-07) ────────────────────────────────────
+//
+// One file in the caller's package (`--kotlin-package`, default `DEFAULT_KOTLIN_PACKAGE`), with no
+// dependency on the SDK, so it compiles in any Kotlin/JVM or Android module. It carries the Swift
+// mirror's fields plus the entry's `accessor`, its JSON `schema` and its catalog `default` as JSON
+// text (a secret's default is never compiled in: anything in a binary can be extracted). Every
+// declaration is `public`, so it also compiles under explicit-API mode.
+//
+// Deterministic like the other renderers: entries keep the catalog's order, JSON text has its
+// object keys sorted, and string literals are ASCII only: quotes, backslashes, `$` (a template in
+// Kotlin), control characters and every non-ASCII UTF-16 unit are escaped.
+
+/** The package a Kotlin mirror is written in when the caller names none. */
+export const DEFAULT_KOTLIN_PACKAGE = "im.plrs.key.catalog";
+
+/** A Kotlin string literal: ASCII only, every special character (including `$`) escaped. */
+export function ktStr(s: string): string {
+  let out = '"';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i] as string;
+    const cu = s.charCodeAt(i);
+    if (ch === "\\") out += "\\\\";
+    else if (ch === '"') out += '\\"';
+    else if (ch === "$") out += "\\$";
+    else if (ch === "\n") out += "\\n";
+    else if (ch === "\r") out += "\\r";
+    else if (ch === "\t") out += "\\t";
+    else if (cu < 0x20 || cu >= 0x7f)
+      out += `\\u${cu.toString(16).toUpperCase().padStart(4, "0")}`;
+    else out += ch;
+  }
+  return `${out}"`;
+}
+
+function ktOptStr(s: unknown): string {
+  return typeof s === "string" ? ktStr(s) : "null";
+}
+
+/** JSON text with every object's keys sorted (arrays keep their order). */
+export function sortedJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(sortedJson).join(",")}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj)
+    .filter((k) => obj[k] !== undefined)
+    .sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${sortedJson(obj[k])}`).join(",")}}`;
+}
+
+function ktStringList(values: unknown): string {
+  if (!Array.isArray(values) || values.length === 0) return "emptyList()";
+  return `listOf(${values.map((v) => ktStr(String(v))).join(", ")})`;
+}
+
+function ktStringMap(values: unknown): string {
+  if (!values || typeof values !== "object") return "emptyMap()";
+  const entries = Object.entries(values as Record<string, unknown>).sort(
+    ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0),
+  );
+  if (entries.length === 0) return "emptyMap()";
+  return `mapOf(${entries.map(([k, v]) => `${ktStr(k)} to ${ktStr(String(v))}`).join(", ")})`;
+}
+
+export function renderKotlin(
+  catalog: ProductCatalog,
+  pkg: string = DEFAULT_KOTLIN_PACKAGE,
+): string {
+  if (!/^[a-z_][A-Za-z0-9_]*(\.[a-z_][A-Za-z0-9_]*)*$/.test(pkg))
+    throw new Error(`not a Kotlin package name: ${pkg}`);
+  const rows = catalog.entries
+    .map((e: ConfigEntry) => {
+      const ui = (e.ui ?? {}) as Record<string, unknown>;
+      const order =
+        typeof ui.order === "number" && Number.isInteger(ui.order)
+          ? String(ui.order)
+          : "null";
+      const dependsOnEquals =
+        e.dependsOn === undefined
+          ? "null"
+          : typeof e.dependsOn.equals === "string"
+            ? ktStr(e.dependsOn.equals)
+            : ktStr(JSON.stringify(e.dependsOn.equals));
+      const defaultJson =
+        e.kind === "secret" || e.default === undefined
+          ? "null"
+          : ktStr(sortedJson(e.default));
+      return [
+        `        ConfigSchemaEntry(`,
+        `            key = ${ktStr(e.key)},`,
+        `            kind = ConfigKind.${e.kind},`,
+        `            category = ${ktStr(e.category)},`,
+        `            label = ${ktStr(e.label)},`,
+        `            description = ${ktStr(e.description)},`,
+        `            widget = ${ktOptStr(ui.widget)},`,
+        `            help = ${ktOptStr(ui.help)},`,
+        `            placeholder = ${ktOptStr(ui.placeholder)},`,
+        `            order = ${order},`,
+        `            scopes = ${ktStringList(ui.scopes)},`,
+        `            advanced = ${ui.advanced ? "true" : "false"},`,
+        `            unit = ${ktOptStr(ui.unit)},`,
+        `            optionLabels = ${ktStringMap(ui.optionLabels)},`,
+        `            adminSection = ${ktOptStr(ui.adminSection)},`,
+        `            isSecret = ${e.kind === "secret" ? "true" : "false"},`,
+        `            managementDefault = ${e.managementDefault ? `ManagementState.${e.managementDefault}` : "null"},`,
+        `            userGrant = ${e.userGrant ? "true" : "false"},`,
+        `            grantLabel = ${ktOptStr(e.grantLabel)},`,
+        `            dependsOnKey = ${e.dependsOn ? ktStr(e.dependsOn.key) : "null"},`,
+        `            dependsOnEquals = ${dependsOnEquals},`,
+        `            accessor = ${ktOptStr(e.accessor)},`,
+        `            schemaJson = ${ktStr(sortedJson(e.schema))},`,
+        `            defaultJson = ${defaultJson},`,
+        `        ),`,
+      ].join("\n");
+    })
+    .join("\n");
+
+  return `${BANNER}
+// Typed mirror of a Polaris Key product catalog, for the Kotlin SDK. It depends on nothing, so it
+// compiles in any Kotlin/JVM or Android module. A secret's catalog default is never compiled in.
+
+package ${pkg}
+
+public enum class ConfigKind(public val wire: String) {
+    config("config"),
+    secret("secret"),
+    flag("flag"),
+}
+
+public enum class ManagementState(public val wire: String) {
+    default("default"),
+    enforced("enforced"),
+    hidden("hidden"),
+}
+
+public data class ConfigSchemaEntry(
+    val key: String,
+    val kind: ConfigKind,
+    val category: String,
+    val label: String,
+    val description: String,
+    val widget: String?,
+    val help: String?,
+    val placeholder: String?,
+    val order: Int?,
+    val scopes: List<String>,
+    val advanced: Boolean,
+    val unit: String?,
+    val optionLabels: Map<String, String>,
+    val adminSection: String?,
+    val isSecret: Boolean,
+    val managementDefault: ManagementState?,
+    val userGrant: Boolean,
+    val grantLabel: String?,
+    val dependsOnKey: String?,
+    val dependsOnEquals: String?,
+    val accessor: String?,
+    /** The entry's JSON Schema fragment, as JSON text with sorted keys. */
+    val schemaJson: String,
+    /** The catalog default as JSON text with sorted keys; null when absent, and always for a secret. */
+    val defaultJson: String?,
+)
+
+public object ProductCatalog {
+    public const val VERSION: Int = ${catalog.schemaVersion}
+
+    public val entries: List<ConfigSchemaEntry> = listOf(
+${rows}
+    )
+
+    /** Every declared key, in catalog order. */
+    public val keys: List<String> = entries.map { it.key }
+
+    public fun entry(key: String): ConfigSchemaEntry? = entries.firstOrNull { it.key == key }
+
+    public fun entriesByKind(kind: ConfigKind): List<ConfigSchemaEntry> = entries.filter { it.kind == kind }
+}
+`;
+}
+
 // ── CLI ──────────────────────────────────────────────────────────────────────
-type Lang = "ts" | "python" | "swift" | "gdscript";
+type Lang = "ts" | "python" | "swift" | "gdscript" | "kotlin";
 const FILENAME: Record<Lang, string> = {
   ts: "catalog.generated.ts",
   python: "catalog_generated.py",
   swift: "ConfigSchema.generated.swift",
   gdscript: "catalog_generated.gd",
+  kotlin: "ConfigSchema.generated.kt",
 };
 const RENDER: Record<Lang, (c: ProductCatalog) => string> = {
   ts: renderTs,
   python: renderPython,
   swift: renderSwift,
   gdscript: renderGdscript,
+  kotlin: (c) =>
+    renderKotlin(c, arg("--kotlin-package") ?? DEFAULT_KOTLIN_PACKAGE),
 };
 
 function arg(name: string): string | undefined {
@@ -400,7 +583,7 @@ async function main(): Promise<void> {
   const check = process.argv.includes("--check");
   if (!catalogPath || !outDir) {
     console.error(
-      "usage: gen-mirrors --catalog <path> --out-dir <dir> [--lang ts,python,swift,gdscript] [--check]",
+      "usage: gen-mirrors --catalog <path> --out-dir <dir> [--lang ts,python,swift,gdscript,kotlin] [--kotlin-package <pkg>] [--check]",
     );
     process.exit(2);
   }

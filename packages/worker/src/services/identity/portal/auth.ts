@@ -26,7 +26,11 @@ import {
 } from "./session.js";
 import { sendMagicLink } from "./email.js";
 import { portalSecurityHeaders } from "./headers.js";
-import { isSameOriginNavigation } from "../../../core/platform.js";
+import {
+  brandedHtmlSecurityHeaders,
+  isSameOriginNavigation,
+} from "../../../core/platform.js";
+import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
 
 const FLOW_TTL_SECONDS = 600;
 const FLOW_PREFIX = "portal:oidc-flow:";
@@ -63,12 +67,22 @@ interface MagicRecord {
   returnTo?: string;
 }
 
+/** A portal sign-in error page: the branded, script-free shell (`core/brandHtml.ts`). Every
+ *  message is a hard-coded literal, escaped anyway. A retry is offered where one can help. */
 function htmlError(status: number, message: string): Response {
+  const retry = status === 400 || status === 401 || status === 429;
   return new Response(
-    `<!doctype html><meta charset=utf-8><title>Portal sign-in</title><body><h1>${message}</h1>`,
+    renderBrandPage({
+      title: "Sign-in",
+      eyebrow: "Polaris Key account",
+      heading: message,
+      body: retry
+        ? `<p class="actions"><a class="button" href="${escapeHtml("/")}">Back to sign-in</a></p>`
+        : "",
+    }),
     {
       status,
-      headers: portalSecurityHeaders(
+      headers: brandedHtmlSecurityHeaders(
         new Headers({
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-store",

@@ -1,0 +1,21 @@
+---
+/**
+ * The header's brand block: the Pinned K from the launch kit, then the site name as UI text.
+ *
+ * The mark is displayed at 32 px, so it is the kit's service cut (24–32 px; BRAND.md §1.3), and
+ * it never carries the terminal bit: the bit needs the display cut at 48 px or more, and the
+ * default Polaris Key mark has none (BRAND.md §6). "dark" means for dark grounds, so each theme
+ * shows its own file. The name beside it is not a redrawn wordmark; the mark is decorative
+ * (empty alt) because that visible name already labels the link.
+ */
+import markDark from "@polaris-key/brand/marks/key/svg/key-service-dark.svg?url";
+import markLight from "@polaris-key/brand/marks/key/svg/key-service-light.svg?url";
+
+const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
+---
+
+<a href={siteTitleHref} class="site-title pk-site-title sl-flex">
+  <img class="pk-site-mark light:sl-hidden" src={markDark} alt="" width="32" height="32" />
+  <img class="pk-site-mark dark:sl-hidden" src={markLight} alt="" width="32" height="32" />
+  <span translate="no">{siteTitle}</span>
+</a>

@@ -63,7 +63,7 @@ export function isLandingPath(pathname: string): boolean {
   return pathname === "/";
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -249,7 +249,7 @@ export function landingEnvironment(env: Env): string | null {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
-interface LandingArt {
+export interface LandingArt {
   lockups: string;
   faviconHref: string;
 }
@@ -259,9 +259,10 @@ let art: LandingArt | null = null;
 /**
  * The page's artwork, built on first use and kept for the isolate's life. Lazy so that a brand
  * template this page cannot theme fails the first request to `/`, not the Worker's module load
- * (which would take every route on both hosts down with it).
+ * (which would take every route on both hosts down with it). Shared with the registry host's
+ * page (`registryLanding.ts`), which shows the same Polaris Key Delivery lockup.
  */
-function landingArt(): LandingArt {
+export function landingArt(): LandingArt {
   art ??= {
     lockups:
       themedLockup("horizontal", 80, "lockup-full") +

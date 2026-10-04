@@ -39,10 +39,19 @@ public class PolarisException(
 public class PolarisResponse(
     public val status: Int,
     public val body: ByteArray,
-    /** Response headers; read with [header], case-insensitively. */
+    /** Response headers, one value per name (the last of a repeated one); read with [header]. */
     public val headers: Map<String, String> = emptyMap(),
+    /**
+     * Every response header line in arrival order, repeated names kept (`set-cookie`, `link`, a
+     * multi-line `www-authenticate`); read with [headerValues]. Defaults to [headers]' pairs.
+     */
+    public val headerList: List<Pair<String, String>> = headers.entries.map { it.key to it.value },
 ) {
     public fun header(name: String): String? = headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value
+
+    /** Every value of the header [name], case-insensitively, in arrival order. */
+    public fun headerValues(name: String): List<String> =
+        headerList.filter { it.first.equals(name, ignoreCase = true) }.map { it.second }
 
     public val isOk: Boolean get() = status in 200..299
 
@@ -109,7 +118,9 @@ public class OkHttpTransport(client: OkHttpClient = OkHttpClient()) : PolarisTra
                     url = next.toString()
                     return@use
                 }
-                return PolarisResponse(r.code, read(r, request.maxBodyBytes), r.headers.toMap())
+                return PolarisResponse(
+                    r.code, read(r, request.maxBodyBytes), r.headers.toMap(), r.headers.map { it.first to it.second },
+                )
             }
         }
         throw PolarisException(ErrorCode.tooManyRedirects, "more than $MAX_REDIRECTS redirects")
@@ -144,7 +155,9 @@ public class OkHttpTransport(client: OkHttpClient = OkHttpClient()) : PolarisTra
             }
 
             override fun onResponse(call: Call, response: Response) {
-                cont.resume(response)
+                // A response that lands after the caller cancelled is closed, never leaked: its
+                // connection goes back to the pool instead of holding a socket and a body open.
+                cont.resume(response) { _, value, _ -> value.close() }
             }
         })
     }

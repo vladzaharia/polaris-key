@@ -6,7 +6,7 @@ extends RefCounted
 ## The preset picks the flavour with `polaris_key/android_flavor` (or PKEY_ANDROID_FLAVOR in CI):
 ##
 ##   play    polaris-key-platform and polaris-key-godot, play flavour, plus Play Core
-##           (app-update, asset-delivery) from Maven. NO install permission: Play forbids
+##           (app-update, asset-delivery, integrity) from Maven. NO install permission: Play forbids
 ##           self-update and REQUEST_INSTALL_PACKAGES in Play builds (notes/E2 §A2, §B2)
 ##   direct  the two AARs, direct flavour (verified PackageInstaller self-update), no Play Core, and
 ##           the manifest entries REQUEST_INSTALL_PACKAGES and UPDATE_PACKAGES_WITHOUT_USER_ACTION
@@ -25,9 +25,10 @@ const FLAVORS := ["play", "direct", "none"]
 const DEFAULT_FLAVOR := "play"
 ## Where build.sh installs the AARs, relative to res://addons/ (what _get_android_libraries wants).
 const BIN := "polaris_key/native/android/bin"
-## Play Core, the versions polaris-key-platform's play flavour compiles against
-## (sdks/kotlin/gradle/libs.versions.toml).
-const PLAY_DEPENDENCIES := ["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0"]
+## Play Core: exactly the libraries polaris-key-platform-play's POM names (sdks/kotlin/gradle/
+## libs.versions.toml), Play Integrity included (P6-02); sdks/kotlin/tools/check_publication.sh fails
+## when this list and that POM differ (P6-10).
+const PLAY_DEPENDENCIES := ["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"]
 const DIRECT_PERMISSIONS := ["android.permission.REQUEST_INSTALL_PACKAGES", "android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"]
 ## The outlet kinds each flavour suits (a mismatch only warns: the stamp is the product's call).
 const PLAY_KINDS := ["play", "play-testing"]

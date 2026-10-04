@@ -107,6 +107,12 @@ import { getReleaseConfig } from "./config.js";
 import { resolveChannelReleases } from "./resolve.js";
 import { handleDelegationsRead } from "./packs/delegations.js";
 import {
+  ingestPackageDescriptor,
+  isPackageDescriptor,
+  type PackageIngestResult,
+  type PackageSource,
+} from "./packages/ingest.js";
+import {
   checkReleaseRecord,
   getRecordForRelease,
   RELEASE_RECORD_REJECTED,
@@ -550,8 +556,14 @@ interface R2Location {
 function r2Locations(descriptor: unknown): R2Location[] {
   const out: R2Location[] = [];
   const builds = (descriptor as { builds?: unknown } | null)?.builds;
-  if (!Array.isArray(builds)) return out;
-  for (const b of builds) {
+  // A package release's files are its `package.files` (F-03), one flat list.
+  const files = (descriptor as { package?: { files?: unknown } } | null)
+    ?.package?.files;
+  const groups: unknown[] = [
+    ...(Array.isArray(builds) ? builds : []),
+    ...(Array.isArray(files) ? [{ artifacts: files }] : []),
+  ];
+  for (const b of groups) {
     const artifacts = (b as { artifacts?: unknown } | null)?.artifacts;
     if (!Array.isArray(artifacts)) continue;
     for (const a of artifacts) {
@@ -636,6 +648,22 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     );
   const contentInterface =
     typeof body.contentInterface === "string" ? body.contentInterface : null;
+  // F-03: a package release is never signed (plans/F-01.md §2), and carries no app fingerprint.
+  const isPackage = isPackageDescriptor(body.descriptor);
+  if (isPackage && body.record !== undefined)
+    return refusal(
+      400,
+      RELEASE_RECORD_REJECTED,
+      "package-unsigned",
+      "a package release carries no release record: package versions are never signed (the package feeds and each ecosystem's own integrity checks serve them), so publish the descriptor alone.",
+    );
+  if (isPackage && contentInterface !== null)
+    return refusal(
+      400,
+      ErrorCode.BadRequest,
+      "bad_body",
+      "contentInterface is an app release's; a package release carries none",
+    );
 
   // 1. The ticket.
   const found = await findUploadTicket(env, db, {
@@ -727,6 +755,18 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
         },
       );
   }
+
+  // F-03: a package release takes its own ingest from here (`packages/ingest.ts`).
+  if (isPackage)
+    return finishPackageSubmit(ctx, {
+      holder,
+      bucket,
+      ticketHash: ticket.ticketHash,
+      needed,
+      unverified,
+      dryRun,
+      descriptor: body.descriptor,
+    });
 
   // 3. The descriptor, judged as the real submit will judge it, before anything is promoted.
   const pending = new Map(
@@ -953,6 +993,160 @@ async function handleSubmit(ctx: ServiceContext): Promise<Response> {
     ...(result.packSets ? { packSets: result.packSets } : {}),
     ...interfaceAnswer,
   });
+}
+
+/**
+ * The rest of a package release's submit (F-03): plan it as a dry run (every refusal before
+ * anything is promoted), then claim the ticket, promote, ingest, audit. The same steps 3 and 4 as
+ * an app release's, through the package ingest and with no record.
+ */
+async function finishPackageSubmit(
+  ctx: ServiceContext,
+  s: {
+    holder: CiTokenRecord;
+    bucket: R2Bucket;
+    ticketHash: string;
+    needed: Map<string, { sha256: string; size: number; staging: string }>;
+    unverified: string[];
+    dryRun: boolean;
+    descriptor: unknown;
+  },
+): Promise<Response> {
+  const { db, env, product, now } = ctx;
+  const descriptor = s.descriptor;
+  const eco = (descriptor as { package?: { ecosystem?: unknown } } | null)
+    ?.package?.ecosystem;
+  const delivery = ctx.hooks.delivery();
+  const feed = delivery
+    ? typeof eco === "string"
+      ? await delivery.packageFeed(eco)
+      : null
+    : undefined;
+  const source: PackageSource = {
+    kind: s.holder.kind,
+    ...(s.holder.kind === "oidc" ? { publisher: ciActor(s.holder) } : {}),
+    tokenId: s.holder.tokenId,
+    ...(provenanceRun(descriptor)
+      ? { runUrl: provenanceRun(descriptor)! }
+      : {}),
+  };
+  const plan = await ingestPackageDescriptor(
+    db,
+    env,
+    product.slug,
+    descriptor,
+    {
+      now,
+      dryRun: true,
+      pendingPromotion: new Map(
+        [...s.needed].map(([k, n]) => [k, { sha256: n.sha256, size: n.size }]),
+      ),
+      feed,
+      source,
+    },
+  );
+  if (!plan.ok) return packageRefusal(plan);
+  if (s.dryRun)
+    return json({
+      ok: true,
+      dryRun: true,
+      releaseId: plan.releaseId,
+      outcome: plan.outcome,
+      descriptorSha256: plan.descriptorSha256,
+      planned: plan.planned,
+      unverified: s.unverified,
+    });
+  if (!(await claimUploadTicket(db, s.ticketHash, now)))
+    return refusal(
+      409,
+      ErrorCode.BadRequest,
+      "ticket_redeemed",
+      "this upload ticket was already redeemed",
+    );
+  for (const [key, n] of s.needed) {
+    const res = await promote(
+      s.bucket,
+      n.staging,
+      key,
+      { sha256: n.sha256, size: n.size },
+      { db, now, product: product.slug },
+    );
+    if (!res.ok) {
+      await releaseUploadTicket(db, s.ticketHash, now);
+      return refusal(
+        res.reason === "missing" ||
+          res.reason === "size_mismatch" ||
+          res.reason === "digest_mismatch"
+          ? 400
+          : 409,
+        ErrorCode.BadRequest,
+        res.reason === "missing"
+          ? "staged_object_missing"
+          : res.reason === "size_mismatch" || res.reason === "digest_mismatch"
+            ? "staged_object_mismatch"
+            : "promote_failed",
+        `${n.staging} could not be promoted (${res.reason})`,
+        { key, staged: n.staging },
+      );
+    }
+  }
+  const result = await ingestPackageDescriptor(
+    db,
+    env,
+    product.slug,
+    descriptor,
+    { now, promoted: s.needed.keys(), feed, source },
+  );
+  if (!result.ok) {
+    await releaseUploadTicket(db, s.ticketHash, now);
+    return packageRefusal(result);
+  }
+  if (s.needed.size > 0) {
+    try {
+      await s.bucket.delete([...s.needed.values()].map((n) => n.staging));
+    } catch {
+      // Best effort: the bucket's one-day rule takes them anyway.
+    }
+  }
+  if (result.outcome !== "unchanged") {
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: ciActor(s.holder),
+      actor_name: "CI",
+      actor_email: null,
+      action: "release.publish",
+      target_kind: "release",
+      target_id: result.releaseId,
+      parent_id: null,
+      summary: `Published package ${result.descriptor.package.name} ${result.descriptor.version} (${result.releaseId}) through trusted publishing`,
+    });
+    await bumpReleaseGeneration(env, product.slug, now);
+  }
+  return json({
+    ok: true,
+    dryRun: false,
+    releaseId: result.releaseId,
+    outcome: result.outcome,
+    descriptorSha256: result.descriptorSha256,
+  });
+}
+
+function packageRefusal(
+  r: Extract<PackageIngestResult, { ok: false }>,
+): Response {
+  return refusal(r.status, r.code, r.reason, r.message, {
+    ...(r.errors ? { errors: r.errors } : {}),
+    ...(r.retryable ? { retryable: true } : {}),
+  });
+}
+
+/** The descriptor's `provenance.workflowRun`, read defensively. */
+function provenanceRun(descriptor: unknown): string | null {
+  const run = (descriptor as { provenance?: { workflowRun?: unknown } } | null)
+    ?.provenance?.workflowRun;
+  return typeof run === "string" ? run : null;
 }
 
 /**

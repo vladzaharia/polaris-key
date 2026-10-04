@@ -155,7 +155,12 @@ export function DeliverablesPage({
       header: "Kind",
       accessorKey: "kind",
       meta: { priority: 2, label: "Kind" },
-      cell: ({ row }) => (row.original.kind === "app" ? "App" : "Pack"),
+      cell: ({ row }) =>
+        row.original.kind === "app"
+          ? "App"
+          : row.original.kind === "package"
+            ? "Package"
+            : "Pack",
     },
     {
       id: "binding",
@@ -269,8 +274,10 @@ export function DeliverablesPage({
         columns={columns}
         getRowId={(d) => d.id}
         rowLabel={(d) => (d.kind === "app" ? "App" : d.id)}
+        // Only a pack has its own record here; the app and a package (F-03, whose record is its
+        // feed's) open the releases list.
         rowHref={(d) =>
-          d.kind === "app" ? r.releases(slug) : r.deliverable(slug, d.id)
+          d.kind === "pack" ? r.deliverable(slug, d.id) : r.releases(slug)
         }
         linkComponent={Link}
         state={state}

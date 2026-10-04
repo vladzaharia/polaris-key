@@ -457,6 +457,13 @@ export async function planDescriptorIngest(
       v.errors.map((e) => `${e.path}: ${e.message}`).join("; "),
       { errors: v.errors },
     );
+  // A package release (F-03) is ingested by `packages/ingest.ts`, through the submit route only:
+  // its bytes are r2-located and it is never attached to a GitHub release.
+  if (v.descriptor.kind === "package")
+    return refuse(
+      "invalid_descriptor",
+      "a package release is published through pkey release publish (the submit route), never attached to a GitHub release.",
+    );
   const d = v.descriptor;
   const releaseId = v.releaseId;
   const descriptorSha256 = await sha256Hex(canonicalDescriptorJson(d));

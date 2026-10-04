@@ -93,6 +93,26 @@ release instead of answering not-found. That release then holds the channel up l
 floor: if it is later deleted upstream, the channel answers not-found rather than falling
 further. A floor with no unyanked release below it holds nothing up.
 
+### Package versions
+
+A [package](/docs/build/manifest/authoring/#package-deliverables) version's yank is also its
+feed state: the version is marked yanked (with the reason, which PyPI shows as its PEP 592 yank
+reason) and its feeds re-render. Unyank returns it to live. A package version can also be
+**deprecated**, a warning the feeds show (npm's `deprecated`) while the version stays
+installable:
+
+```http
+POST   /manage/api/products/<product>/release/releases/<releaseId>/deprecate   {"message": "use 2.x"}
+DELETE /manage/api/products/<product>/release/releases/<releaseId>/deprecate
+```
+
+Deprecation applies to package versions only (404 otherwise) and never to a yanked one (409:
+unyank it first); it is audited as `release.package.deprecate` / `release.package.undeprecate`.
+A yank overrides a deprecation, and an unyank leaves the version live. None of this frees the
+version: a package version is never published again, whatever its state. Moving a channel's
+pointer for a package deliverable re-renders its feeds too (`stable` is the feeds' `latest`
+tag; every other channel is a tag of its own name).
+
 ## Who can change it
 
 **CI**, with a `pkeyci_` token issued for the product:

@@ -2123,7 +2123,7 @@
       "optional": false,
       "refs": ["PARITY §5"],
       "brief": "wp/P6-07-kotlin-license-config-identity.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P6-08",
@@ -2184,7 +2184,7 @@
       "optional": false,
       "refs": ["PARITY §1", "notes/E4 §3.1"],
       "brief": "wp/P6-10-godot-android-binding-on-kotlin.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P6-11",
@@ -2605,7 +2605,7 @@
       "optional": false,
       "refs": ["notes/S-12 §5", "notes/S-12 §7.1", "plans/F-01.md §6.1–§6.7"],
       "brief": "wp/F-02-registry-host.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-03",
@@ -2630,7 +2630,7 @@
       "optional": false,
       "refs": ["notes/S-12 §6", "plans/F-01.md §3, §6.3–§6.5"],
       "brief": "wp/F-03-package-releases.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-04",

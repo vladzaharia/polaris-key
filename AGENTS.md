@@ -31,8 +31,10 @@ sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
   godot/             Godot addon               pure-GDScript verify and a headless runner
-  kotlin/            Gradle build              :core (JVM: verify, cache, sync, stages) + the
-                                               :conformance runner; :platform Android backend
+  kotlin/            Gradle build              :core (JVM: verify, cache, sync, stages, devices),
+                                               the :license :config :identity :release services
+                                               and the umbrella :sdk + the :conformance runner;
+                                               :platform Android backend
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and browser runners
                      + parity/ (features.json registry, errors.json + enums.json; each SDK
                        keeps its own parity.json)
@@ -125,7 +127,8 @@ pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=w
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
-( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test )  # Kotlin (JDK 17;
+( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test \
+    :identity:test :release:test :sdk:test :conformance:test )  # Kotlin (JDK 17;
                                  # :conformance runs every suite on JCA and again with Tink forced)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)

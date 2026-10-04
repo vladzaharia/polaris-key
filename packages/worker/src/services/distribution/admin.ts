@@ -52,6 +52,9 @@
  *                                                              store products, purchases, events
  *     PUT  …/distribution/commerce/{settings,products}         (`commerce/admin.ts`)
  *     DELETE …/distribution/commerce/products/<store>/<id>
+ *     GET  …/distribution/package-feeds                        the owner's packageFeeds switch
+ *     PUT  …/distribution/package-feeds                        {enabled, expectedVersion} (F-03;
+ *                                                              409 on a stale version)
  *
  * Narrative-only (the console's API is not in the wire spec). Every write is audited with the
  * session's subject. The session, CSRF, rate-limit and platform-admin gates run in
@@ -124,6 +127,15 @@ import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { CONNECTORS, connectorOf } from "./connectors/index.js";
 import { handleUpdateHealthAdmin } from "./updateHealthAdmin.js";
 import { handleCommerceAdmin } from "./commerce/admin.js";
+import {
+  packageFeedsOf,
+  stmtSetPackageFeeds,
+  stmtUpdatePackageFeeds,
+} from "./registryFeeds.js";
+import {
+  RENDER_ALL,
+  stmtEnqueuePackageRender,
+} from "../../core/registryQueue.js";
 import { buildMatrix, MATRIX_DEFAULT_LIMIT } from "./matrix.js";
 import {
   READINESS_STATES,
@@ -191,6 +203,7 @@ export async function handleDistributionAdmin(
   }
   if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
   if (rest[0] === "commerce") return handleCommerceAdmin(ctx);
+  if (rest[0] === "package-feeds") return handlePackageFeedsAdmin(ctx);
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {
@@ -757,4 +770,76 @@ async function handleConnectorsAdmin(
       },
     );
   return adminJson(result);
+}
+
+/**
+ * `…/distribution/package-feeds` (F-03, plans/F-01.md §6.3): the owner's operator-owned
+ * `packageFeeds` sub-capability. Off stops every feed read for the owner at once (F-02's
+ * dispatcher answers the same not-found as an unknown owner); on queues a full render, in the same
+ * batch. Optimistic: `expectedVersion` is the version the operator saw (0 for never written), and
+ * a stale one is a 409 with the current state.
+ */
+async function handlePackageFeedsAdmin(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response | null> {
+  const { req, db, product, session, now, rest } = ctx;
+  if (rest.length !== 1) return null;
+  const slug = product.slug;
+  if (req.method === "GET")
+    return adminJson({ packageFeeds: await packageFeedsOf(db, slug) });
+  if (req.method !== "PUT")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const body = await readBody(req);
+  const fields: string[] = [];
+  if (typeof body.enabled !== "boolean") fields.push("enabled");
+  if (
+    typeof body.expectedVersion !== "number" ||
+    !Number.isSafeInteger(body.expectedVersion) ||
+    body.expectedVersion < 0
+  )
+    fields.push("expectedVersion");
+  if (fields.length > 0)
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "enabled is a boolean and expectedVersion the version you saw (0 for never set)",
+      { fields },
+    );
+  const enabled = body.enabled as boolean;
+  const expected = body.expectedVersion as number;
+  const statements = [
+    stmtSetPackageFeeds(slug, enabled, expected, session.sub, now),
+    stmtUpdatePackageFeeds(slug, enabled, expected, session.sub, now),
+    ...(enabled
+      ? [stmtEnqueuePackageRender(slug, RENDER_ALL, "package-feeds", now)]
+      : []),
+  ];
+  let changed: number;
+  if (db.batchChanges) {
+    const counts = await db.batchChanges(statements);
+    changed = (counts[0] ?? 0) + (counts[1] ?? 0);
+  } else {
+    const before = await packageFeedsOf(db, slug);
+    await db.batch(statements);
+    const after = await packageFeedsOf(db, slug);
+    changed = after.version !== before.version ? 1 : 0;
+  }
+  const current = await packageFeedsOf(db, slug);
+  if (changed === 0)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "the package-feeds setting changed since you read it",
+      { reason: "version_conflict", packageFeeds: current },
+    );
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "distribution.package_feeds.update",
+    { kind: "package-feeds", id: slug },
+    `${enabled ? "Turned on" : "Turned off"} package feeds for ${slug}`,
+  );
+  return adminJson({ ok: true, packageFeeds: current });
 }

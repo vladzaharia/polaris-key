@@ -72,6 +72,14 @@ export interface Env {
    */
   BLOB_ORIGIN?: string;
   /**
+   * The registry host's origin, e.g. `https://pkg.plrs.im` (F-02, plans/F-01.md §6.1). A request
+   * whose host is this origin's host reaches ONLY the registry routes (`core/registryHost.ts`),
+   * the host's landing page at `/` and OCI's `/v2/` root; everything else answers not-found.
+   * Unset (or unparsable, or equal to the bytes host) ⇒ there is no registry host and routing is
+   * byte-identical to a Worker without it. A `[vars]` value, public, per environment.
+   */
+  PKG_ORIGIN?: string;
+  /**
    * The console host's origin, e.g. `https://key.plrs.im` (P2b-06). The public download page on
    * the bytes host links the storefront feeds, which are served here, through it. Unset (or
    * equal to the bytes host) ⇒ the page leaves the feed rows (AltStore, SideStore, Obtainium,
