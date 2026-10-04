@@ -13,8 +13,8 @@ const pkg = JSON.parse(
 
 describe("sdk identity", () => {
   it("matches package.json", () => {
-    // The browser bundle can't read package.json at runtime, so these are literals. This test
-    // is what keeps them honest when Changesets bumps the version.
+    // The browser bundle can't read package.json at runtime, so these are literals. CI stamps
+    // both (tools/sdk-version.mjs STAMP_TARGETS); this test keeps them in step in the tree.
     expect(SDK_NAME).toBe(pkg.name);
     expect(SDK_VERSION).toBe(pkg.version);
   });

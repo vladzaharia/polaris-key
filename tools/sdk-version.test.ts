@@ -296,6 +296,9 @@ describe("stamping", () => {
     expect(read("sdks/godot/addons/polaris_key/polaris_key.gd")).toContain(
       'const SDK_VERSION := "0.8.13-main.7"',
     );
+    expect(read("packages/sdk-react/src/version.ts")).toContain(
+      'export const SDK_VERSION = "0.8.13-main.7";',
+    );
     const node = JSON.parse(read("packages/sdk-node/package.json")) as {
       version: string;
       dependencies?: Record<string, string>;

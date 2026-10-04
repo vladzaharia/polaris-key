@@ -191,6 +191,12 @@ export const STAMP_TARGETS = [
     file: "sdks/godot/addons/polaris_key/polaris_key.gd",
     pattern: /^(const SDK_VERSION := ")[^"]*(")$/m,
   },
+  // The browser bundle cannot read package.json, so @polaris-key/react carries its version as a
+  // literal (sdk-node reads package.json at runtime and needs no target).
+  {
+    file: "packages/sdk-react/src/version.ts",
+    pattern: /^(export const SDK_VERSION = ")[^"]*(";)$/m,
+  },
 ];
 
 /** The public npm packages' package.json paths (relative to `root`), sorted. */

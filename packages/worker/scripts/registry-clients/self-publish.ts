@@ -249,6 +249,9 @@ function buildAll(
     );
   stampVersions(ROOT, { version: v.version, pep440: v.pep440 });
   try {
+    // As CI does: rebuild from the stamped tree, since @polaris-key/react compiles its version
+    // into dist (its browser bundle cannot read package.json).
+    if (wants("npm")) sh("pnpm", ["--filter", "@polaris-key/react", "build"]);
     if (wants("npm"))
       for (const f of publicPackageJsons(ROOT)) {
         const name = (
@@ -356,6 +359,8 @@ function buildAll(
     }
   } finally {
     restoreStamps();
+    // Put the React dist back on the unstamped version, so the tree is as it was.
+    if (wants("npm")) sh("pnpm", ["--filter", "@polaris-key/react", "build"]);
   }
 }
 
@@ -687,9 +692,26 @@ function clients(
             "--no-fund",
             `@polaris-key/node${spec}`,
             `@polaris-key/cli${spec}`,
+            `@polaris-key/react${spec}`,
+            // React itself is only a peer: the check reads a file, it never renders.
+            "--legacy-peer-deps",
           ],
           { cwd: d },
         );
+        // The browser SDK's version is a compiled literal, the one it sends on the wire.
+        const reactSrc = readFileSync(
+          join(
+            d,
+            "node_modules",
+            "@polaris-key",
+            "react",
+            "dist",
+            "version.js",
+          ),
+          "utf8",
+        );
+        const reactSdk =
+          /^export const SDK_VERSION = "([^"]*)";$/m.exec(reactSrc)?.[1] ?? "";
         const sdk = out(
           "node",
           [
@@ -724,6 +746,7 @@ function clients(
           expect("@polaris-key/node SDK_VERSION", sdk, v.version),
           expect("its client-core", core, v.version),
           expect("@polaris-key/cli", cli, v.version),
+          expect("@polaris-key/react SDK_VERSION", reactSdk, v.version),
         ].join("; ");
       }),
     );
