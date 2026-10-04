@@ -122,6 +122,15 @@ const PLATFORM_WRITER_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
   "src/admin/handlers/platformStoreConnections.ts",
 ];
+/** Where a TEAM-WIDE purpose (`{ team: actor }`, no product, no pin) may be built: the platform
+ *  apps listers only. Everywhere else a platform credential is used for a product and its pin. */
+const PLATFORM_TEAM_PURPOSE_ALLOW_FILES = [
+  "src/core/platformCredentials.ts", // the type itself
+  "src/services/distribution/connectors/asc/platform.ts",
+  "src/services/distribution/connectors/play/platform.ts",
+  "src/services/distribution/connectors/msstore/platform.ts",
+  "src/services/distribution/commerce/steam.ts", // inside fetchSteamApps only (checked below)
+];
 const PLATFORM_OPENER_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
   "src/core/outletTokens.ts",
@@ -243,6 +252,22 @@ function reachViolations(sources: Source[]): string[] {
       /\bopenPlatformCredential\b/.test(body)
     )
       out.push(`${src.file} names the platform-credential opener`);
+    const team = /\{\s*team\s*:/;
+    if (
+      !PLATFORM_TEAM_PURPOSE_ALLOW_FILES.includes(src.file) &&
+      team.test(body)
+    )
+      out.push(`${src.file} builds a team-wide platform purpose`);
+    if (src.file === "src/services/distribution/commerce/steam.ts") {
+      const start = body.indexOf("async function fetchSteamApps(");
+      const end = start < 0 ? -1 : body.indexOf("\n}\n", start);
+      const outside =
+        start < 0 ? body : body.slice(0, start) + body.slice(end + 3);
+      if (team.test(outside))
+        out.push(
+          `${src.file} builds a team-wide platform purpose outside fetchSteamApps`,
+        );
+    }
   }
   return out;
 }
@@ -418,6 +443,24 @@ describe("outlet-credential reach", () => {
       'src/core/ingest.ts spells the "platform-credential" seal kind',
       "src/services/distribution/connectors/asc/setup.ts names a platform-credential writer",
       "src/services/distribution/commerce/apple.ts names the platform-credential opener",
+    ]);
+  });
+
+  it("A-16: a team-wide purpose is built only by the apps listers", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/services/distribution/connectors/play/run.ts",
+          text: "platformGoogleAccessToken(env, db, { team: actor }, scopes, use, now);",
+        },
+        {
+          file: "src/services/distribution/commerce/steam.ts",
+          text: "async function publisherKey() {\n  return open({ team: x });\n}\nasync function fetchSteamApps(o) {\n  return open({ team: o.actor });\n}\n",
+        },
+      ]),
+    ).toEqual([
+      "src/services/distribution/connectors/play/run.ts builds a team-wide platform purpose",
+      "src/services/distribution/commerce/steam.ts builds a team-wide platform purpose outside fetchSteamApps",
     ]);
   });
 });

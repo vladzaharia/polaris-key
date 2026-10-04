@@ -32,10 +32,13 @@
  *   - **Platform-admin writes only.** `putPlatformCredential`, `deletePlatformCredential`,
  *     `setPlatformPin` and `clearPlatformPin` are named only by this module and the Core admin
  *     handlers (`test/outletCredentialReach.test.ts`).
- *   - **One reader, audited.** `openPlatformCredential` is named only here and in
- *     `core/outletTokens.ts`; every call appends an audit row — to the product's `audit` for a
- *     product open (`platform_credential.use`), to the platform trail (`core/platformEvents.ts`)
- *     for a team-wide open (the apps listing).
+ *   - **One reader, audited.** `openPlatformCredential` is named only here, in
+ *     `core/outletTokens.ts`, and in two reviewed Distribution files —
+ *     `connectors/msstore/token.ts` (the Entra exchange) and `commerce/steam.ts` (the raw Steam
+ *     key per call). Every call appends an audit row: to the product's `audit` for a product open
+ *     (`platform_credential.use`), to `platform_audit` for a team-wide open (the apps listing).
+ *     A token served from a memo or the sealed KV cache is not audited (by design, as for product
+ *     credentials) — the pin is checked before every such hit.
  *   - **Never a value out.** Status reads presence and metadata (key id, issuer id, source); the
  *     sealed column and the `.p8` never leave this module except as a token minted from them.
  */
@@ -672,7 +675,9 @@ const USE_RE = /^[a-z0-9][a-z0-9:._-]{0,63}$/;
  * source is usable, the product's pin does not match, the value will not open or will not
  * re-validate, or `use` is invalid; never throws for any of those, never says which. Every call
  * appends one audit row (see `PlatformOpenPurpose`) and stamps `last_used_at` on a console row.
- * Named only here and in `core/outletTokens.ts`, which checks its memo first.
+ * Named only here, in `core/outletTokens.ts`, `connectors/msstore/token.ts` and `commerce/steam.ts`
+ * (the reach test's opener allowlist); the token helpers check the pin and their memo or sealed
+ * cache first, so a cache hit opens (and audits) nothing.
  */
 export async function openPlatformCredential<I extends PlatformCredentialId>(
   env: Env,

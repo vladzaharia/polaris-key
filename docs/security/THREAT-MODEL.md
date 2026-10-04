@@ -1174,9 +1174,12 @@ falling back to the team credential when the product has no credential of the ki
   Steam commerce key, both re-checked by the open) name `openPlatformCredential`.
 - **Every use and write audited.** A product open is a `platform_credential.use` row in that
   product's trail; a team-wide open (the apps listing), every credential and setting write and
-  every assignment are platform events (`core/platformEvents.ts`: A-12's `platform_audit` once it
-  exists, a structured log line until then); an assignment is also `outlet_credential.pin` in the
-  product's trail. Audit payloads carry metadata and pins, never key material.
+  every assignment are rows of `platform_audit` (A-12's table, through `appendPlatformAudit`; read
+  by `GET /manage/api/platform/activity`, pruned with it after 180 days); an assignment is also
+  `outlet_credential.pin` in the product's trail. Audit payloads carry metadata and pins, never
+  key material. By design a token served from the per-isolate memo (App Store) or the sealed KV
+  cache (Google, Microsoft) is **not** audited — only the open that minted it is — exactly as for
+  product outlet credentials; the pin is checked before every such hit.
 - **Bounded, redirect-free reads.** The listings use each store's fixed host with
   `redirect: "manual"` and capped bodies: App Store Connect `GET /v1/apps` (at most 5 pages of 200,
   versions and TestFlight versions as includes, at most 20 phased-release reads); Play Reporting
