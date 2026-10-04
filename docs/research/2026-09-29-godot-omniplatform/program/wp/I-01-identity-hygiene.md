@@ -12,6 +12,8 @@
 | Human input | none                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                           |
 
+> Forward references re-mapped to the re-cut S-16 table on 2026-10-04 ([S-16 §8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)); scope unchanged.
+
 ## Goal
 
 The small, standalone Identity defects S-16 found are fixed before any redesign: fresh OIDC licences carry `origin: "oidc"`, portal identities are keyed by issuer, the stale THREAT-MODEL rows are corrected, the docs match the code on portal gating, and the dead `authPoll` entry is gone from the Identity discovery fragment.
@@ -42,13 +44,13 @@ These are gaps G10 and G14 and threat-model item 11 in S-16. They are wrong toda
 
 **Out** (and where it belongs instead):
 
-- Retiring the `/auth/poll` route itself and its rate-limit buckets (→ I-13).
-- Any user or link model (→ I-06).
+- Retiring the `/auth/poll` route itself and its rate-limit buckets (→ I-15).
+- Any user or link model (→ I-05).
 - Atomic single-use consumption (→ I-02).
 
 ## Design notes
 
-- Keep the `/auth/poll` route answering; only its advertisement goes. I-13 replaces it with the native redirect token route.
+- Keep the `/auth/poll` route answering; only its advertisement goes. I-15 replaces it with the native redirect token route.
 - The migration must be reversible and safe on a production-shaped copy: number it when rebasing, never in advance (program README §5).
 - D7 (owner default accepted with "everything"): the portal stays a platform concern. Fix the docs, not the code.
 
@@ -111,8 +113,8 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 ## Hand-off
 
-- I-06 builds the user model on licences whose `origin` is now trustworthy.
-- I-13 retires the `/auth/poll` route.
+- I-05 builds the user model on licences whose `origin` is now trustworthy.
+- I-15 retires the `/auth/poll` route.
 
 The role agent sets `--set I-01 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
