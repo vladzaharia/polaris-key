@@ -1,0 +1,19 @@
+{
+  "assetPackID": "diceroll-core3d-c4",
+  "downloadPolicy": {
+    "essential": {
+      "installationEventTypes": [
+        "firstInstallation",
+        "subsequentUpdate"
+      ]
+    }
+  },
+  "fileSelectors": [
+    {
+      "directory": "pkey/diceroll-core3d-c4"
+    }
+  ],
+  "platforms": [
+    "iOS"
+  ]
+}

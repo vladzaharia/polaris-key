@@ -1,0 +1,11 @@
+// Written by pkey transport play-pad modules (Polaris Key). Regenerated on every run.
+plugins {
+    id 'com.android.asset-pack'
+}
+
+assetPack {
+    packName = "diceroll_core3d"
+    dynamicDelivery {
+        deliveryType = "fast-follow"
+    }
+}

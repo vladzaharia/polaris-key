@@ -740,7 +740,7 @@ export interface DistributionMatrix {
     kind: string;
     transport: string;
     derives: boolean;
-    /** Whether v1 acts on the transport (P4-05); an unsupported one is stored, not served. */
+    /** Whether Polaris Key acts on the transport (delivers it, P4-05, or tracks a store transport through reports, P5-08); an unsupported one is stored only. */
     supported: boolean;
   }>;
   releases: Array<{

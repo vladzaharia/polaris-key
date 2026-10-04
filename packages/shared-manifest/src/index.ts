@@ -5142,3 +5142,5 @@ export * from "./distribution.js";
 export * from "./releaseKeys.js";
 // Human-readable build and artifact labels: platform and architecture, together.
 export * from "./labels.js";
+// P5-08: the asset-pack ids and Play asset-pack names a pack id maps to on store transports.
+export * from "./transportIds.js";

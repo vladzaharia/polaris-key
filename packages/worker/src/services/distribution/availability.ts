@@ -56,6 +56,8 @@
 import { createHash } from "node:crypto";
 import {
   APP_DELIVERABLE_ID,
+  assetPackBase,
+  parseAssetPackId,
   releaseKeyBytes,
   type ParsedManifest,
 } from "@polaris-key/manifest";
@@ -81,7 +83,6 @@ import {
   listOutlets,
   listTransports,
   parseJsonColumn,
-  SUPPORTED_TRANSPORTS,
   type DistOutletRow,
   type DistTransportRow,
 } from "./outlets.js";
@@ -138,8 +139,16 @@ export const FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/;
 export const REPORT_TYPES = ["availability", "submission", "key"] as const;
 export type ReportType = (typeof REPORT_TYPES)[number];
 
-/** Transports over which Polaris Key itself delivers the bytes: the v1 set (`outlets.ts`). */
-export const DERIVED_TRANSPORTS: readonly string[] = SUPPORTED_TRANSPORTS;
+/**
+ * Transports over which Polaris Key itself delivers the bytes (P4-05), so a self-hosted outlet's
+ * availability is derived without a report. A subset of `SUPPORTED_TRANSPORTS` (`outlets.ts`),
+ * which also lists the store transports P5-08 acts on through reports; a test keeps it a subset.
+ */
+export const DERIVED_TRANSPORTS: readonly string[] = [
+  "pkey-cdn",
+  "web",
+  "embedded",
+];
 
 /**
  * Outlet kinds Polaris Key hosts itself (no third party reviews or serves the build): the direct
@@ -491,8 +500,9 @@ async function derivedAvailability(
  *     build matching the outlet that EMBEDS the pack (its `embeds`, or every `baseline: embedded`
  *     pack when its descriptor said nothing): `buildId` `''`, `since` the app release's, and
  *     `detail: {appReleaseId, buildIds}`.
- *   - anything else (`apple-ba`, `steam-depot`, …: `SUPPORTED_TRANSPORTS` excludes it): nothing.
- *     The transport row is stored and listed unsupported; a store reports its own state.
+ *   - anything else (`apple-ba`, `play-pad`, `steam-depot`: not in `DERIVED_TRANSPORTS`; and any
+ *     unsupported transport): nothing. A store transport's state comes from CI reports and the
+ *     connectors (P5-08); an unsupported one's row is stored and listed unsupported.
  *
  * Reads only through Release's catalog hook and Core's blob store. A yanked release derives
  * nothing (the caller checks), as for the app.
@@ -1109,7 +1119,14 @@ export async function applyReport(
     );
   const platformRef = objectField(body, "platformRef");
   if (isRefusal(platformRef)) return platformRef;
-  return reportAvailability(ctx, ciWriter(ctx, principal), {
+  if (buildId === "")
+    buildId = await assetPackBuildKey(
+      ctx,
+      release,
+      outlet as string,
+      platformRef,
+    );
+  const result = await reportAvailability(ctx, ciWriter(ctx, principal), {
     release,
     outlet: outlet as string,
     buildId,
@@ -1118,6 +1135,86 @@ export async function applyReport(
     platformRef,
     detail,
   });
+  if (result.ok && typeof platformRef === "string")
+    await linkBackgroundAssetObjects(ctx, release, platformRef);
+  return result;
+}
+
+/**
+ * P5-08: the row key of an apple-ba pack report. A pack release can be bound at two content levels
+ * on one outlet, through two asset packs (`<pack>-c3`, `<pack>-c4`), each with its own state; a
+ * whole-release row would let one level's report overwrite the other's. So a pack report on an
+ * outlet whose transport for that pack is `apple-ba`, naming `platformRef.assetPackIdentifier`
+ * that maps back to the pack (`assetPackBase`), is stored with `build_id` = that asset pack, as the
+ * App Store Connect connector stores its rows. Anything else keeps the whole-release key (`''`).
+ */
+async function assetPackBuildKey(
+  ctx: ReportContext,
+  release: CatalogRelease,
+  outlet: string,
+  platformRef: string | null | undefined,
+): Promise<string> {
+  if (
+    release.deliverableId === APP_DELIVERABLE_ID ||
+    typeof platformRef !== "string"
+  )
+    return "";
+  let ref: Record<string, unknown>;
+  try {
+    ref = JSON.parse(platformRef) as Record<string, unknown>;
+  } catch {
+    return "";
+  }
+  const id = ref.assetPackIdentifier;
+  if (typeof id !== "string") return "";
+  const parsed = parseAssetPackId(id);
+  if (!parsed || assetPackBase(release.deliverableId) !== parsed.base)
+    return "";
+  const t = await transportOf(
+    ctx.db,
+    ctx.product,
+    release.deliverableId,
+    outlet,
+  );
+  return t === "apple-ba" ? id : "";
+}
+
+/**
+ * P5-08: a CI report from `pkey transport apple-ba upload` names the asset-pack version it
+ * uploaded (`platformRef.ascBackgroundAssetVersionId`). App Store Connect objects of that version
+ * the connector stored UNRESOLVED (its events arrived before the report) are linked to the
+ * report's pack release now; the connector's next read of each (the poller's reconcile, or the
+ * next event) writes their availability. Only `release_id` of still-unlinked rows changes, and
+ * only when the release is a pack whose id maps to the asset pack (`assetPackBase`), so a stray
+ * report can never re-link another pack's asset pack.
+ */
+async function linkBackgroundAssetObjects(
+  ctx: ReportContext,
+  release: CatalogRelease,
+  platformRef: string,
+): Promise<void> {
+  if (release.deliverableId === APP_DELIVERABLE_ID) return;
+  let ref: Record<string, unknown>;
+  try {
+    ref = JSON.parse(platformRef) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+  const versionId = ref.ascBackgroundAssetVersionId;
+  const identifier = ref.assetPackIdentifier;
+  if (typeof versionId !== "string" || typeof identifier !== "string") return;
+  const parsed = parseAssetPackId(identifier);
+  if (!parsed || assetPackBase(release.deliverableId) !== parsed.base) return;
+  await ctx.db.run(
+    `UPDATE dist_connector_objects SET release_id = ?
+      WHERE product = ? AND connector = 'asc' AND release_id IS NULL
+        AND json_extract(ref_json, '$.ascBackgroundAssetVersionId') = ?
+        AND json_extract(ref_json, '$.assetPackIdentifier') = ?`,
+    release.releaseId,
+    ctx.product,
+    versionId,
+    identifier,
+  );
 }
 
 /**

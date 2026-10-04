@@ -95,8 +95,9 @@ export interface MatrixOutlet {
   transport: string;
   /** Self-hosted on a transport we serve: `live` is derived without a report. */
   derives: boolean;
-  /** Whether Polaris Key acts on the transport in v1 (`SUPPORTED_TRANSPORTS`, P4-05); an
-   *  unsupported one is stored and shown "not delivered by Polaris Key". */
+  /** Whether Polaris Key acts on the transport (`SUPPORTED_TRANSPORTS`: the transports it delivers,
+   *  P4-05, and P5-08's store transports it tracks through reports); an unsupported one is stored
+   *  only and shown "not delivered by Polaris Key". */
   supported: boolean;
 }
 

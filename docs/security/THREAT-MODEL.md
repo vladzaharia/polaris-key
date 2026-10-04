@@ -2242,8 +2242,9 @@ The new trust boundary is **content CI ↔ device**, mediated by a release-key s
   cannot re-delegate. Its key bytes must equal no pinned release key and no product key.
 - **Release-key surfaces stay release-key surfaces.** The delegated path is allowed only on a
   compatible or standalone pack's feed target and on the reload of a stored delegated install.
-  App records, stamp and record pins, holds, revocations, replacements, markers and embedded
-  baselines never pass a delegation, so a content-key signature fails there at `jws`. Ingest
+  App records, stamp and record pins, holds, revocations, replacements, markers, embedded
+  baselines and platform-delivered copies (P5-08's `apple-ba`, `play-pad` and `steam-depot`
+  transports) never pass a delegation, so a content-key signature fails there at `jws`. Ingest
   refuses a pin or hold naming a delegated release (`pin-delegated`, `hold-delegated`).
 - **Data only.** A delegated release must be tree layout (a container is never delegable), and
   every file passes the data-only rule: an already-normalised path, an extension allow-list (the
@@ -3175,6 +3176,51 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
 - **Residual.** The install source is declared by the installer and forgeable through `adb`
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
+
+### Platform pack transports (P5-08)
+
+Apple-hosted Background Assets, Play Asset Delivery and Steam depots move pack bytes that Polaris
+Key never served. The store is a byte mover, not a trust anchor.
+
+- **Platform-delivered bytes are untrusted input.** The Godot transports (`packs/transport_*.gd`)
+  only locate the store's copy: the path is re-resolved on every call and never persisted, and
+  nothing is ever written into the store's directory. The engine verifies the copy's marker
+  (`pkey-marker/1`, the compact release record, against the pinned release keys only), then
+  hashes the payload, or every file into the treeDigest, against that signed record before
+  anything activates or mounts, exactly as for an embedded baseline. A store's own hashes, version
+  numbers and "installed" answers are never trusted. A marker for another pack is refused
+  (`cross-check`).
+- **Which release a copy may be.** At boot a copy is accepted when it is the stamp's pinned
+  release, or, on a transport whose packs float (`apple-ba`, `steam-depot`, CONTENT §6.6), a later
+  `seq` of the same pack that is not revoked. A Play copy must be exactly the pin, because PAD packs
+  ship with the bundle. When a decision names an exact release, only that release is accepted
+  (`record-mismatch`). Revocation and `relearn` refusals apply as for embedded baselines, and a
+  delegated release can never arrive this way (see "Release-key surfaces" above). A platform copy
+  is never written to the pack state document, so a store-side swap is re-verified at every boot.
+  A pack bound to a platform transport is never silently fetched from the CDN instead
+  (`plan-transport-unsupported` when the plugin is missing). The one CDN request a platform copy
+  can cause is P4-11's best-effort chunk-index backfill: a single GET per index per process of
+  that copy's chunk index, hash-verified before use and dropped on any failure, so it can only
+  make the copy a chunk seed for CDN packs. It never fetches the payload or a feed delta.
+- **CI's App Store Connect key.** `pkey transport apple-ba upload` signs its ES256 tokens with
+  CI's own key from the environment only (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY` or
+  `ASC_KEY_PATH`). It is never logged, never sent to the pre-signed part-upload URLs, and never the
+  key the Worker's connector holds. A token lasts 20 minutes.
+- **Resource pinning.** Asset-pack ids are lossy (`a.b` and `a-b` would collide) and App Store
+  Connect never reuses an archived id, so every apple-ba pack of the product is mapped at once
+  before any request. The first upload records the asset pack's resource id in
+  `.pkey/asset-packs.json` (repository-reviewed). A later upload refuses an asset pack whose
+  resource is not the recorded one, one that exists unrecorded (it is adopted only with an
+  explicit `--expect-resource`), and a recorded one that has vanished. A version can therefore
+  never land in another pack's asset pack, a write that would switch every installed app.
+- **Linking connector objects to releases.** A Background Asset object is linked to a pack release
+  only through the upload report's ids, and only when the asset pack's name maps back to that
+  release's pack id (`assetPackBase`). Two releases claiming one version link neither. A report
+  links only still-unlinked objects, and never unlinks one. Each asset pack keeps its own
+  availability row (`build_id` = the asset-pack id), so one level's state cannot overwrite
+  another's. The connector's ownership proof (P5-02) still decides which objects are this app's.
+- **The asset-pack listing** (`GET …/distribution/asset-packs`) is a console (admin) read behind
+  the console's own session and CSRF rules. It never archives, because archiving is irreversible.
 
 ### Device trust levels: App Attest and Play Integrity (P6-02)
 

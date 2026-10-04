@@ -160,7 +160,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P5-05](wp/P5-05-apple-plugin-package.md) ✋     | Apple plugin package: AppDistributor, AppTransaction, Background Assets, StoreKit 2, Keychain; Godot iOS binding | P3-10, S-01, S-09                               | implementer | 2–3   | done   |
 | [P5-06](wp/P5-06-kotlin-aar.md) ✋               | Kotlin AAR: install source, In-App Updates, PAD, PackageInstaller, Keystore; Godot Android binding               | P3-10, S-05, S-10                               | implementer | 2–3   | done   |
 | [P5-07](wp/P5-07-desktop-plugins.md) ✋          | Desktop plugins: macOS Sparkle bridge; Windows Velopack, WinSparkle and StoreContext                             | P3-10, S-05, S-11                               | implementer | 2–3   | done   |
-| [P5-08](wp/P5-08-platform-pack-transports.md) ✋ | Platform pack transports: Background Assets, Play Asset Delivery, Steam depots, with CI steps                    | P5-02, P5-05, P5-06, P4-14, P4-08, P4-03, P5-03 | implementer | 2     | todo   |
+| [P5-08](wp/P5-08-platform-pack-transports.md) ✋ | Platform pack transports: Background Assets, Play Asset Delivery, Steam depots, with CI steps                    | P5-02, P5-05, P5-06, P4-14, P4-08, P4-03, P5-03 | implementer | 2     | done   |
 
 ## P6: Commerce, ops, web
 
