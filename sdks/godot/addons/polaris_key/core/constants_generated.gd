@@ -420,10 +420,11 @@ class SdkId:
 	const PYTHON := "python"
 	const SWIFT := "swift"
 	const GODOT := "godot"
+	const KOTLIN := "kotlin"
 
 
 ## Every `SdkId` value, in source order.
-const SDK_ID_VALUES := ["node", "react", "python", "swift", "godot"]
+const SDK_ID_VALUES := ["node", "react", "python", "swift", "godot", "kotlin"]
 
 
 ## Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal.

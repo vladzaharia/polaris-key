@@ -62,6 +62,12 @@
       "title": "Godot",
       "manifest": "sdks/godot/parity.json",
       "constants": "sdks/godot/addons/polaris_key/core/constants_generated.gd"
+    },
+    {
+      "id": "kotlin",
+      "title": "Kotlin",
+      "manifest": "sdks/kotlin/parity.json",
+      "constants": "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt"
     }
   ],
   "features": [
@@ -172,6 +178,11 @@
           "runtime": "python",
           "reason": "dependency",
           "why": "The keyring backend is the optional `polaris-key[keyring]` extra; without it, or without a usable OS keyring, the token lives in a 0600 file, Store.status() says keyring-unavailable and supports() says dependency (P1b-10)."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "dependency",
+          "why": "A JVM desktop process reaches no OS keyring (Keychain, Credential Manager, Secret Service) without a native library, which the Kotlin SDK does not ship; the token lives in a 0600 file, Store.status() says keyring-unavailable and supports() says dependency (P6-06). Android has the Keystore (P6-12)."
         }
       ]
     },
@@ -602,6 +613,11 @@
           "runtime": "ios",
           "reason": "outlet",
           "why": "iOS forbids self-update; the SDK offers a store link only."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A JVM desktop build has no install source to update through: no In-App Updates and no installer API the Kotlin SDK can drive, so the update client offers the download link only (P6-05, P6-12)."
         }
       ]
     },
@@ -841,6 +857,16 @@
           "runtime": "ios",
           "reason": "runtime",
           "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; a native Apple app has no Godot runtime to mount it (Godot on macOS and iOS uses the Godot SDK)."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; a native Android or JVM app built on the Kotlin SDK has no Godot runtime to mount it (Godot on Android uses the Godot SDK)."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A godot.zip is a Godot resource pack, mounted by Godot's load_resource_pack; a native Android or JVM app built on the Kotlin SDK has no Godot runtime to mount it (Godot on Android uses the Godot SDK)."
         }
       ]
     },
@@ -908,6 +934,16 @@
           "runtime": "ios",
           "reason": "runtime",
           "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); a native Apple app built on this SDK hosts none. A game may still register its own handler for the type."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); a native Android or JVM app built on the Kotlin SDK hosts none. A game may still register its own handler for the type."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "An audio bank is loaded by a game engine's audio middleware (FMOD or Wwise inside the engine); a native Android or JVM app built on the Kotlin SDK hosts none. A game may still register its own handler for the type."
         }
       ]
     },
@@ -1145,6 +1181,11 @@
           "runtime": "*",
           "reason": "outlet",
           "why": "An unpackaged app has no MSIX package identity."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "MSIX optional packages are installed through Windows' package manager API (WinRT), which a JVM process cannot call without native code the Kotlin SDK does not ship."
         }
       ]
     },
@@ -1184,6 +1225,11 @@
           "runtime": "windows",
           "reason": "runtime",
           "why": "Flatpak is Linux-only."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "Flatpak extensions are managed through the Flatpak portal and its D-Bus interfaces, which the Kotlin SDK does not reach from a JVM process."
         }
       ]
     },

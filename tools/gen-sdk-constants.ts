@@ -46,8 +46,9 @@
 // generated module each instead of one shared one.
 //
 // SERVICE SLUGS. tools/gen-services.ts owns the `*services.generated.*` files; this generator
-// reads the same table and emits a `ServiceSlug` group of its own — except in Swift, where
-// `ServiceSlug.generated.swift` already declares the enum and a second declaration would clash.
+// reads the same table and emits a `ServiceSlug` group of its own — except in Swift and Kotlin,
+// where `ServiceSlug.generated.swift` and `ServiceSlug.generated.kt` already declare the enum and
+// a second declaration would clash.
 
 import {
   existsSync,
@@ -68,7 +69,7 @@ import {
   type CapabilityManifest,
   type SdkCapabilities,
 } from "./capabilities.js";
-import { loadTable, SWIFT_KEYWORDS } from "./gen-services.js";
+import { KOTLIN_KEYWORDS, loadTable, SWIFT_KEYWORDS } from "./gen-services.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -1212,6 +1213,104 @@ const ERROR_CODE_KINDS := ${gdLiteral(Object.fromEntries(model.errorKinds))}
   return out.join("");
 }
 
+/** A Kotlin string literal: JSON's escapes, plus `$` (a template in Kotlin) and `\f` (no Kotlin escape). */
+export function ktq(value: string): string {
+  return JSON.stringify(value).replace(/\$/g, "\\$").replace(/\\f/g, "\\u000C");
+}
+
+/** A camelCase member as a Kotlin identifier, back-ticked if it is a hard keyword. */
+export function kotlinIdent(camel: string): string {
+  return KOTLIN_KEYWORDS.has(camel) ? `\`${camel}\`` : camel;
+}
+
+/** Groups the Kotlin SDK declares by hand: `ServiceSlug` is ServiceSlug.generated.kt (gen:services). */
+export const KOTLIN_DECLARED: ReadonlySet<string> = new Set(["ServiceSlug"]);
+
+function kotlinScalar(s: Scalar): string {
+  const v = s.value;
+  if (typeof v === "string")
+    return `public const val ${s.name}: String = ${ktq(v)}`;
+  if (typeof v === "number")
+    return Math.abs(v) <= 2147483647
+      ? `public const val ${s.name}: Int = ${v}`
+      : `public const val ${s.name}: Long = ${v}L`;
+  if (Array.isArray(v))
+    return `public val ${s.name}: List<String> = listOf(${v.map(ktq).join(", ")})`;
+  const entries = Object.entries(v);
+  return entries.length === 0
+    ? `public val ${s.name}: Map<String, String> = emptyMap()`
+    : `public val ${s.name}: Map<String, String> = mapOf(\n${entries.map(([k, x]) => `    ${ktq(k)} to ${ktq(x)},`).join("\n")}\n)`;
+}
+
+function kotlinCaps(caps: SdkCapabilities): string {
+  return `
+/** One declared N/A: on \`runtime\`, the feature is unsupported for \`reason\`. */
+public data class CapabilityNa(val runtime: String, val reason: String)
+
+/** One feature's row in \`CAPABILITIES\`. */
+public data class CapabilityRow(val status: String, val service: String, val na: List<CapabilityNa>)
+
+/** The parity-registry id of the SDK this module belongs to. */
+public const val CAPABILITY_SDK: String = ${ktq(caps.sdk)}
+
+/** The runtimes this SDK's manifest lists. */
+public val CAPABILITY_RUNTIMES: List<String> = listOf(${caps.runtimes.map(ktq).join(", ")})
+
+/** ${CAPS_DOC} */
+public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
+${caps.rows
+  .map(
+    (r) =>
+      `    ${ktq(r.feature)} to CapabilityRow(${ktq(r.status)}, ${ktq(r.service)}, listOf(${r.na
+        .map((n) => `CapabilityNa(${ktq(n.runtime)}, ${ktq(n.reason)})`)
+        .join(", ")})),`,
+  )
+  .join("\n")}
+)
+
+/** SHA-256 of the canonical table; \`pnpm parity:check\` recomputes it from the manifest. */
+public const val CAPABILITY_DIGEST: String = ${ktq(capabilityDigest(caps))}
+`;
+}
+
+export function renderKotlin(model: Model, caps?: SdkCapabilities): string {
+  const out: string[] = [
+    `${banner("//")}
+// \`ServiceSlug\` is not here: ServiceSlug.generated.kt (pnpm gen:services) declares it.
+
+@file:Suppress("unused", "ObjectPropertyName")
+
+package im.plrs.key.core
+`,
+  ];
+  for (const g of model.groups) {
+    if (KOTLIN_DECLARED.has(g.name)) continue;
+    out.push(`
+/** ${g.doc} */
+public object ${g.name} {
+${g.members.map((m) => `    public const val ${kotlinIdent(m.camel)}: String = ${ktq(m.value)}`).join("\n")}
+}
+
+/** Every \`${g.name}\` value, in source order. */
+public val ${valuesName(g)}: List<String> = listOf(
+${g.members.map((m) => `    ${ktq(m.value)},`).join("\n")}
+)
+`);
+    if (g.name === "ErrorCode") {
+      out.push(`
+/** The registry: every error code and its kind (\`wire\` or \`client\`). */
+public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
+${model.errorKinds.map(([code, kind]) => `    ${ktq(code)} to ${ktq(kind)},`).join("\n")}
+)
+`);
+    }
+  }
+  for (const s of model.scalars)
+    out.push(`\n/** ${s.doc} */\n${kotlinScalar(s)}\n`);
+  if (caps) out.push(kotlinCaps(caps));
+  return out.join("");
+}
+
 // ── Targets ────────────────────────────────────────────────────────────────────────────────
 
 export interface Target {
@@ -1254,6 +1353,11 @@ export const TARGETS: readonly Target[] = [
     sdk: "godot",
     render: renderGdscript,
     onlyIfDir: "sdks/godot/addons/polaris_key",
+  },
+  {
+    path: "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt",
+    sdk: "kotlin",
+    render: renderKotlin,
   },
 ];
 
