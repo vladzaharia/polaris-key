@@ -2231,7 +2231,7 @@
       "optional": false,
       "refs": ["PARITY §5.7", "README §5.8"],
       "brief": "wp/P6-11-kotlin-compose-ui-kit.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P6-12",
@@ -2250,7 +2250,7 @@
       "optional": false,
       "refs": ["PARITY §2.2", "notes/E2 §A2 §A3"],
       "brief": "wp/P6-12-kotlin-android-glue.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-01",
@@ -3577,7 +3577,7 @@
         "notes/S-15 §11 (changes to A-17a; decision 3)"
       ],
       "brief": "wp/A-17a-asc-write-substrate.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "A-17b",
@@ -3595,7 +3595,7 @@
       "optional": false,
       "refs": ["notes/S-14 §10 (A-17b)"],
       "brief": "wp/A-17b-asc-team-provisioning.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-17c",
@@ -3613,7 +3613,7 @@
       "optional": false,
       "refs": ["notes/S-14 §10 (A-17c)"],
       "brief": "wp/A-17c-asc-product-setup.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-17d",
@@ -3635,7 +3635,7 @@
         "notes/S-15 §11 (changes to A-17d)"
       ],
       "brief": "wp/A-17d-asc-distribute.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-17e",
@@ -3653,7 +3653,7 @@
       "optional": false,
       "refs": ["notes/S-14 §10 (A-17e)"],
       "brief": "wp/A-17e-asc-iap.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-17f",
