@@ -36,3 +36,14 @@ No change to scope. Once A-18a lands, its writes call `performStoreWrite` instea
 
 The role agent sets `--set A-17c in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set A-17c done`.
+
+## Corrections (as built, 2026-10-04)
+
+- **The ASN `PATCH` is no longer [U].** A-17h ran: Apple answers 200 and echoes the URL, but does
+  not persist it. The control trusts only its verification re-read and otherwise answers the App
+  Information deep link and the URL to paste (`persisted: false`); `setup/notifications-url/verify`
+  and the test notification confirm the portal step.
+- **Every departure from S-14 §7 and §8.1** (the platform-pin path before the manifest names the
+  app, group names as operator input, emails-only testers keyed by an HMAC digest, the checklist in
+  `dist_connector_settings` with no migration) is listed in
+  [S-14's "Corrections (A-17c as built)"](../../notes/S-14-asc-provisioning.md#corrections-a-17c-as-built-2026-10-04).
