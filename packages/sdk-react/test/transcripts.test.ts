@@ -1,6 +1,7 @@
 // @vitest-environment node
 //
 // @pkey-feature core.discover config.schema release.changelog release.download update.feed release.record update.decide
+// @pkey-feature packs.apply.chunk
 //
 // The React transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, over the shared TypeScript replay engine
 // in `conformance/runners/node/transcriptReplay.ts`.
@@ -25,13 +26,19 @@
 // mapping is exercised by the synthetic transcript at the end of this file, and is ready for an
 // update transcript that does not presuppose a device-token store.
 //
+// `chunkRange` (P4-32, plans/P4-32.md §5) is client-core's `chunkRangeFetch` over the browser
+// pack transport's own object fetch (`browserObjectFetch`, the closure `createBrowserPacks` hands
+// the engine), against the blobs template of the last discovery the transcript ran. The browser
+// sends no `X-PKey-*` headers there, which is why the recording asserts none.
+//
 // `result` is `discoverProduct`'s outcome; React reports a 404 as `{kind:"error",status:404}`,
 // which is the vocabulary's `not-found`. `services` is the map the browser adapter installs from
 // it (BrowserAdapter.loadCapabilities): the document's map on success, otherwise the
 // pre-discovery belief, which with no `expectServices` is `defaultServices()`.
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { recordHash } from "@polaris-key/client-core";
+import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
+import { browserObjectFetch } from "../src/packs/browserPacks.js";
 import { newTestKey, signCompact } from "./fixtures.js";
 import {
   discoverProduct,
@@ -208,6 +215,36 @@ async function replay(t: Transcript): Promise<void> {
         }
         break;
       }
+      case "chunkRange": {
+        const doc = discovered as {
+          services?: Record<
+            string,
+            { enabled?: boolean; endpoints?: Record<string, string> }
+          >;
+        } | null;
+        const dist = doc?.services?.distribution;
+        const fetchRange = chunkRangeFetch(
+          browserObjectFetch({
+            blobs: () =>
+              dist?.enabled === true ? (dist.endpoints?.blobs ?? null) : null,
+            baseUrl: t.baseUrl,
+            fetchImpl: base.fetchImpl,
+          }),
+        );
+        const r = await fetchRange({
+          bundle: String(step.args.bundle),
+          offset: Number(step.args.offset),
+          length: Number(step.args.length),
+        });
+        observed.range = r.status;
+        if (r.status === "ok") {
+          let text = "";
+          for await (const c of r.chunks)
+            text += new TextDecoder("latin1").decode(c);
+          observed.bytes = text;
+        }
+        break;
+      }
       default:
         throw new Error(
           `the React replayer has no mapping for "${step.action}"`,
@@ -231,6 +268,7 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       "config-schema-fetch",
       "discovery-capabilities",
       "discovery-failure",
+      "packs-chunk-range",
       "release-changelog",
     ]);
   });
@@ -241,6 +279,24 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       await replay(t);
     });
   }
+});
+
+// @pkey-feature packs.apply.chunk
+describe("the React replayer's chunkRange mapping fails on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "packs-chunk-range")!;
+
+  it("a recorded Content-Range that is not the requested run", async () => {
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        response: {
+          ...x.response,
+          headers: { ...x.response.headers, "content-range": "bytes 17-40/64" },
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/step 1: range/);
+  });
 });
 
 describe("the React replayer fails on a doctored transcript", () => {

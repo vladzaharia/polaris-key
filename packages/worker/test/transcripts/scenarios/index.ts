@@ -16,6 +16,7 @@ import { edgeMint } from "./mint.js";
 import { syncErrors, syncEtag304 } from "./sync.js";
 import { updateFeedRollback, updateRecordByHash } from "./update.js";
 import { commerceClaim } from "./commerce.js";
+import { packsChunkRange } from "./packs.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -35,4 +36,5 @@ export const SCENARIOS: Scenario[] = [
   updateFeedRollback,
   updateRecordByHash,
   commerceClaim,
+  packsChunkRange,
 ];

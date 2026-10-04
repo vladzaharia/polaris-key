@@ -558,7 +558,9 @@ public actor PacksClient {
         }
     }
 
-    private static func fetchObject(
+    /// One object by hash over `transport`. Internal (not private) so the transcript replayer
+    /// can run `chunkRangeFetch` over it through `@testable import` (P4-32); not public API.
+    static func fetchObject(
         _ core: CoreContext, _ transport: any PackObjectTransport, _ req: ObjectRequest
     ) async throws -> ObjectResponse {
         if core.localOnly {
