@@ -236,7 +236,7 @@ describe("Create license", () => {
     );
     await pick(dialog, "Add profile", /Studio/);
     await pick(dialog, "Add profile", /Base/);
-    expect(within(dialog).getByText("21 d")).toBeTruthy();
+    expect(within(dialog).getByText("21 days")).toBeTruthy();
 
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Create license" }),
@@ -412,9 +412,9 @@ describe("license channel picker", () => {
     expect(within(group).queryByLabelText("dev")).toBeNull();
     expect(within(group).queryByLabelText("Nightly")).toBeNull();
     expect(within(group).getAllByLabelText("pr")).toHaveLength(1);
-    expect(within(group).getByText("every PR build")).toBeTruthy();
+    expect(within(group).getByText("Every PR build")).toBeTruthy();
     expect(
-      within(group).getByText("manual; the grant also covers beta"),
+      within(group).getByText("Manual; the grant also covers beta"),
     ).toBeTruthy();
   });
 });

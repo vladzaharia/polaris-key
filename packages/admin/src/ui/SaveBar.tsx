@@ -116,7 +116,7 @@ export function SaveBar<T extends FieldValues>({
         }
       }}
       className={cn(
-        "sticky bottom-0 z-30 -mx-1 mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface-overlay px-4 pt-3 shadow-elevation-3",
+        "sticky bottom-0 z-30 mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface-overlay px-4 pt-3 shadow-elevation-3",
         "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
         className,
       )}

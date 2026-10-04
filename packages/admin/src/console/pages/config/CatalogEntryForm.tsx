@@ -5,7 +5,6 @@ import { KIND_LABELS } from "../../../lib/labels.js";
 import {
   MANAGEMENT_STATES,
   SchemaField,
-  formatValue,
   schemaIssue,
   type CatalogIssue,
 } from "../../../schema/index.js";
@@ -156,6 +155,7 @@ export function CatalogEntryForm({
         >
           {(f) => (
             <SegmentedControl<ConfigKind>
+              className="w-fit self-start"
               aria-labelledby={f["aria-labelledby"]}
               value={entry.kind}
               onChange={(kind) => {
@@ -196,7 +196,6 @@ export function CatalogEntryForm({
         <FormField
           name="category"
           label="Category"
-          help="Groups the key in forms."
           value={entry.category}
           error={issue("category")}
         >
@@ -407,7 +406,6 @@ export function CatalogEntryForm({
         ) : null}
         <Checkbox
           label="Edit the schema as JSON"
-          description="For keywords the controls above do not cover (items, properties, combinators)."
           checked={advanced}
           onCheckedChange={(on) => {
             setAdvanced(on);
@@ -433,7 +431,7 @@ export function CatalogEntryForm({
             help={
               entry.default === undefined
                 ? "No default: clients get nothing until a profile or license sets the key."
-                : `Clients fall back to ${formatValue(entry.default)}.`
+                : undefined
             }
             onChange={(result) => set("default", result.value)}
           />
@@ -463,6 +461,7 @@ export function CatalogEntryForm({
         >
           {(f) => (
             <SegmentedControl<ManagementState>
+              className="w-fit self-start"
               aria-labelledby={f["aria-labelledby"]}
               value={entry.managementDefault ?? "default"}
               onChange={(v) =>
@@ -481,7 +480,6 @@ export function CatalogEntryForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Checkbox
             label="Grant to the user"
-            description="Shown to the user as an included capability."
             checked={entry.userGrant === true}
             onCheckedChange={(on) => set("userGrant", on ? true : undefined)}
           />
@@ -553,12 +551,7 @@ export function CatalogEntryForm({
               />
             )}
           </FormField>
-          <FormField
-            name="order"
-            label="Order"
-            help="Sort position within the category."
-            value={ui.order}
-          >
+          <FormField name="order" label="Order" value={ui.order}>
             {(f) => (
               <Input
                 {...f}

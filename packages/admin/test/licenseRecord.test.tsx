@@ -283,7 +283,7 @@ describe("license record: Terms", () => {
     const group = within(form)
       .getAllByRole("group", { name: "Release channels" })
       .at(-1)!;
-    expect(within(group).getByText("not offered")).toBeTruthy();
+    expect(within(group).getByText("Not offered")).toBeTruthy();
     await userEvent.click(within(group).getByLabelText("dev"));
     await userEvent.click(within(group).getByLabelText("beta"));
     await userEvent.click(screen.getByRole("button", { name: "Save terms" }));

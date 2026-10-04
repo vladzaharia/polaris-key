@@ -232,14 +232,14 @@ describe("Edge mint page", () => {
     );
   });
 
-  it("with anonymous enrolment on a closed product, warns and requires the acknowledgement", async () => {
+  it("with anonymous enrollment on a closed product, warns and requires the acknowledgement", async () => {
     const backend = open(recipes([recipe()], "requires-license", true));
     expect(
-      await screen.findByText(/Because anonymous enrolment is on/),
+      await screen.findByText(/Because anonymous enrollment is on/),
     ).toBeTruthy();
     const drawer = await openApprove();
     expect(
-      within(drawer).getByText(/I understand anonymous enrolment is on/),
+      within(drawer).getByText(/I understand anonymous enrollment is on/),
     ).toBeTruthy();
     expect(
       within(drawer)
@@ -449,12 +449,12 @@ describe("Edge mint page", () => {
     expect(
       (await screen.findByTestId("edge-mint-license-off")).textContent,
     ).toMatch(
-      /does not check device licences, so a disabled or expired licence can mint/,
+      /does not check device licenses, so a disabled or expired license can mint/,
     );
     const drawer = await openApprove();
     expect(
       within(drawer).getByTestId("edge-mint-approve-license-off").textContent,
-    ).toMatch(/License is off: this mint does not check device licences/);
+    ).toMatch(/License is off: this mint does not check device licenses/);
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Approve" }),
     );

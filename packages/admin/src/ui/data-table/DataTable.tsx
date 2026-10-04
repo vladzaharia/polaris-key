@@ -515,11 +515,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const renderLink = (row: T, children: React.ReactNode): React.ReactNode => {
     if (!rowHref) return children;
     const href = rowHref(row);
+    // A block, so a truncating cell inside it gets a bounded width (phone cards especially).
     const cls =
-      "font-bold text-fg-strong underline-offset-2 hover:text-accent-fg hover:underline";
+      "block min-w-0 max-w-full font-bold text-fg-strong underline-offset-2 hover:text-accent-fg hover:underline";
     if (LinkComponent) {
       return (
-        <span data-row-link-wrap className="contents">
+        <span data-row-link-wrap className="block min-w-0">
           <LinkComponent to={href} className={cls}>
             {children}
           </LinkComponent>
@@ -963,7 +964,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                       : undefined
                 }
                 className={cn(
-                  "h-9 px-3 text-xs font-bold whitespace-nowrap text-fg-muted",
+                  "h-9 px-3 align-middle text-xs leading-4 font-bold whitespace-nowrap text-fg-muted",
                   alignClass(meta?.numeric ? "end" : meta?.align),
                   stickyPrimary(col) &&
                     cn(stickyPrimary(col), "z-[3] bg-surface-raised"),
@@ -974,7 +975,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     type="button"
                     onClick={(e) => onSort(col.id, e.shiftKey)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-sm hover:text-fg-strong",
+                      "inline-flex items-center gap-1 rounded-sm align-middle leading-4 hover:text-fg-strong",
                       meta?.numeric && "flex-row-reverse",
                     )}
                   >

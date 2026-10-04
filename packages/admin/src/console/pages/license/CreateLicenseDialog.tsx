@@ -259,7 +259,6 @@ export function CreateLicenseDialog({
           "Copy the key now. It is shown only once."
         ) : (
           <>
-            A holder, their terms, and their first key.{" "}
             <a
               className="underline underline-offset-2 hover:text-fg-strong"
               href={docsUrl("createLicense")}
@@ -313,7 +312,7 @@ export function CreateLicenseDialog({
                 error={errors.name}
                 announceError
               >
-                {(f) => <Input {...f} placeholder="Ada Lovelace" autoFocus />}
+                {(f) => <Input {...f} placeholder="Full name" autoFocus />}
               </FormField>
             </div>
             <div data-create-field="email">
@@ -327,7 +326,7 @@ export function CreateLicenseDialog({
                 announceError
               >
                 {(f) => (
-                  <Input {...f} type="email" placeholder="ada@example.com" />
+                  <Input {...f} type="email" placeholder="name@company.com" />
                 )}
               </FormField>
             </div>
@@ -351,7 +350,8 @@ export function CreateLicenseDialog({
           className="contents"
         >
           <DialogBody className="space-y-5">
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            {/* Fields first, then the effective policy at full width, so its values never wrap word by word. */}
+            <div className="grid gap-5">
               <div className="space-y-5">
                 <FormField
                   name="tier"
@@ -463,7 +463,7 @@ export function CreateLicenseDialog({
                       error={errors.minVersion}
                       announceError
                     >
-                      {(f) => <VersionInput {...f} placeholder="1.2.0" />}
+                      {(f) => <VersionInput {...f} placeholder="e.g. 1.2.0" />}
                     </FormField>
                   </div>
                   <div data-create-field="maxVersion">
@@ -477,7 +477,7 @@ export function CreateLicenseDialog({
                       error={errors.maxVersion}
                       announceError
                     >
-                      {(f) => <VersionInput {...f} placeholder="2.0.0" />}
+                      {(f) => <VersionInput {...f} placeholder="e.g. 2.0.0" />}
                     </FormField>
                   </div>
                 </div>
@@ -542,7 +542,6 @@ export function CreateLicenseDialog({
                     },
                     ...policy,
                   ]}
-                  description="What devices on this license receive, and where each value comes from."
                 />
               </div>
             </div>

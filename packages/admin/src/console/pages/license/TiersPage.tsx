@@ -75,12 +75,28 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         header: "Tier",
         accessorFn: (t) => t.label || t.id,
         meta: { priority: 1, primary: true },
+        cell: ({ getValue }) => (
+          <span
+            className="block max-w-[18rem] truncate"
+            title={getValue() as string}
+          >
+            {getValue() as string}
+          </span>
+        ),
       },
       {
         id: "id",
         header: "Id",
         accessorKey: "id",
         meta: { priority: 2, mono: true },
+        cell: ({ getValue }) => (
+          <span
+            className="block max-w-[14rem] truncate"
+            title={getValue() as string}
+          >
+            {getValue() as string}
+          </span>
+        ),
       },
       {
         id: "profile",
@@ -104,7 +120,11 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         header: "Expiry",
         accessorFn: (t) => t.policyExpiryDays ?? Number.MAX_SAFE_INTEGER,
         meta: { priority: 2, csv: (t) => termText(t.policyExpiryDays) },
-        cell: ({ row }) => termText(row.original.policyExpiryDays),
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap">
+            {termText(row.original.policyExpiryDays)}
+          </span>
+        ),
       },
       {
         id: "devices",
@@ -117,7 +137,9 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         },
         cell: ({ row }) =>
           row.original.policyDeviceLimit ?? (
-            <span className="text-fg-muted">Product default</span>
+            <span className="whitespace-nowrap text-fg-muted">
+              Product default
+            </span>
           ),
       },
       {
@@ -135,10 +157,14 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
           t.minVersion || t.maxVersion
             ? `${t.minVersion ? `≥ ${t.minVersion}` : ""}${t.minVersion && t.maxVersion ? " · " : ""}${t.maxVersion ? `≤ ${t.maxVersion}` : ""}`
             : "",
-        meta: { priority: 3, mono: true },
+        meta: { priority: 3 },
         cell: ({ getValue }) =>
-          (getValue() as string) || (
-            <span className="font-sans text-fg-muted">Any</span>
+          (getValue() as string) ? (
+            <span className="whitespace-nowrap font-mono">
+              {getValue() as string}
+            </span>
+          ) : (
+            <span className="text-fg-muted">Any</span>
           ),
       },
       {
@@ -177,7 +203,6 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
               </span>
             ) : null
           }
-          description="Named terms a license can be put on: a profile, a term, a device limit, channels and a version window."
           primaryAction={
             <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
               New tier
@@ -302,13 +327,7 @@ function CreateTierDrawer({
   existingIds: string[];
 }): React.ReactElement {
   return (
-    <Drawer
-      open={open}
-      onOpenChange={onOpenChange}
-      title="New tier"
-      description="Licenses on a tier get its profile and policy."
-      size="lg"
-    >
+    <Drawer open={open} onOpenChange={onOpenChange} title="New tier" size="lg">
       {open ? (
         <CreateTierForm
           slug={slug}

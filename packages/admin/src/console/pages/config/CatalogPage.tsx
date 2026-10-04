@@ -7,6 +7,7 @@ import {
   KIND_TONE,
   STATE_TONE,
   UNCATEGORISED,
+  categoryLabel,
   formatValue,
   isSecretEntry,
   schemaSummary,
@@ -100,11 +101,14 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
           alwaysVisible: true,
         },
         cell: ({ row }) => (
-          <span className="flex min-w-0 flex-col">
+          <span
+            className="flex min-w-0 max-w-[22rem] flex-col"
+            title={row.original.key}
+          >
             <span className="truncate font-mono text-xs text-fg-strong">
               {row.original.key}
             </span>
-            <span className="truncate text-xs text-fg-muted">
+            <span className="truncate text-xs font-normal text-fg-muted">
               {row.original.label}
             </span>
           </span>
@@ -154,7 +158,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "category",
         header: "Category",
-        accessorFn: (e) => e.category || UNCATEGORISED,
+        accessorFn: (e) => categoryLabel(e.category || UNCATEGORISED),
         meta: { priority: 2 },
       },
       {
@@ -219,16 +223,15 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       title="Catalog"
       titleAside={
         catalog.data ? (
-          <span className="text-sm text-fg-muted">
-            v{catalog.data.schemaVersion} · {entries.length}{" "}
-            {entries.length === 1 ? "key" : "keys"}
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <StatusPill tone="neutral" icon={false} size="sm">
+              v{catalog.data.schemaVersion}
+            </StatusPill>
+            <span className="text-sm text-fg-muted">
+              {entries.length} {entries.length === 1 ? "key" : "keys"}
+            </span>
+            <SourceBadge source={source} path={CATALOG_PATH} />
           </span>
-        ) : null
-      }
-      description="The config, secret and flag keys this product declares."
-      meta={
-        catalog.data ? (
-          <SourceBadge source={source} path={CATALOG_PATH} />
         ) : null
       }
       refetching={catalog.isFetching && !catalog.isPending}
@@ -372,23 +375,34 @@ function KeyDrawer({
                 },
                 {
                   term: "Category",
-                  detail: entry.category || UNCATEGORISED,
+                  detail: categoryLabel(entry.category || UNCATEGORISED),
                 },
                 { term: "Schema", detail: schemaSummary(entry.schema) },
                 {
                   term: "Default",
                   detail: isSecretEntry(entry)
                     ? "(write-only)"
-                    : formatValue(entry.default),
+                    : `${formatValue(entry.default)}${ui?.unit && entry.default !== undefined ? ` ${ui.unit}` : ""}`,
                 },
-                {
-                  term: "Management default",
-                  detail: MANAGEMENT_LABELS[stateOf(entry)],
-                },
-                {
-                  term: "User grant",
-                  detail: entry.userGrant ? (entry.grantLabel ?? "Yes") : "No",
-                },
+                // Only the fields that apply to this kind of key.
+                ...(entry.kind === "config"
+                  ? [
+                      {
+                        term: "Management default",
+                        detail: MANAGEMENT_LABELS[stateOf(entry)],
+                      },
+                    ]
+                  : []),
+                ...(entry.kind === "flag"
+                  ? [
+                      {
+                        term: "User grant",
+                        detail: entry.userGrant
+                          ? (entry.grantLabel ?? "Yes")
+                          : "No",
+                      },
+                    ]
+                  : []),
                 ...(entry.accessor
                   ? [{ term: "Accessor", detail: entry.accessor }]
                   : []),
@@ -414,7 +428,6 @@ function KeyDrawer({
                     ]
                   : []),
                 ...(ui?.widget ? [{ term: "Widget", detail: ui.widget }] : []),
-                ...(ui?.unit ? [{ term: "Unit", detail: ui.unit }] : []),
                 ...(ui?.help ? [{ term: "Help", detail: ui.help }] : []),
                 ...(ui?.advanced
                   ? [{ term: "Shown under", detail: "More settings" }]
@@ -559,7 +572,6 @@ function HistoryDrawer({
       }}
       size="lg"
       title="Version history"
-      description={`v${active.schemaVersion} is active. Choose an earlier version to see what changed since.`}
     >
       <DrawerBody>
         <div className="space-y-6">
@@ -576,19 +588,24 @@ function HistoryDrawer({
               {versions.data!.versions.map((v) => (
                 <li
                   key={v.version}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
                 >
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono font-bold text-fg-strong">
-                      v{v.version}
+                  <span className="min-w-0 space-y-0.5">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-bold text-fg-strong">
+                        v{v.version}
+                      </span>
+                      {v.active ? (
+                        <StatusPill tone="success" size="sm">
+                          Active
+                        </StatusPill>
+                      ) : null}
+                      <SourceBadge source={v.source} path={CATALOG_PATH} />
                     </span>
-                    {v.active ? (
-                      <StatusPill tone="success" size="sm">
-                        Active
-                      </StatusPill>
-                    ) : null}
-                    <SourceBadge source={v.source} path={CATALOG_PATH} />
-                    <span className="text-fg-muted">
+                    <span
+                      className="block truncate text-xs text-fg-muted"
+                      title={v.publishedBy ?? undefined}
+                    >
                       {v.entryCount} {v.entryCount === 1 ? "key" : "keys"} ·{" "}
                       <Timestamp at={fromSeconds(v.createdAt)} />
                       {v.publishedBy ? ` · ${v.publishedBy}` : ""}

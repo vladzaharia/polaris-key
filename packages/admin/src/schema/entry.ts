@@ -220,8 +220,13 @@ export interface CategoryGroup {
   entries: ConfigEntry[];
 }
 
-/** The category an entry without one is filed under. */
+/** The category an entry without one is filed under (the stored value). */
 export const UNCATEGORISED = "general";
+
+/** A category as the console shows it: the uncategorised bucket reads "General". */
+export function categoryLabel(category: string): string {
+  return category === UNCATEGORISED ? "General" : category;
+}
 
 /**
  * Group entries by `category`, preserving first-seen category order and ordering entries within
@@ -254,7 +259,8 @@ export function groupByCategory(entries: ConfigEntry[]): CategoryGroup[] {
 /** Kind → status tone. Secret reads as a warning: its value is write-only. */
 export const KIND_TONE: Record<ConfigKind, Tone> = {
   config: "neutral",
-  secret: "warning",
+  // A secret is not a warning: an outlined pill, apart from the amber of Enforced.
+  secret: "outline",
   flag: "info",
 };
 
@@ -262,7 +268,8 @@ export const KIND_TONE: Record<ConfigKind, Tone> = {
 export const STATE_TONE: Record<ManagementState, Tone> = {
   default: "neutral",
   enforced: "accent",
-  hidden: "warning",
+  // Hidden reads distinct from Enforced (it was the same amber).
+  hidden: "neutral",
 };
 
 /**

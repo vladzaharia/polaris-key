@@ -87,7 +87,8 @@ describe("Catalog page", () => {
     await waitFor(() =>
       expect(within(table()).getAllByRole("row")).toHaveLength(5),
     );
-    expect(screen.getByText("v8 · 4 keys")).toBeTruthy();
+    expect(screen.getByText("v8")).toBeTruthy();
+    expect(screen.getByText("4 keys")).toBeTruthy();
     const timeout = within(table()).getByText("network.timeout").closest("tr")!;
     expect(within(timeout).getByText("Config")).toBeTruthy();
     expect(within(timeout).getByText("Enforced")).toBeTruthy();
@@ -138,7 +139,8 @@ describe("Catalog page", () => {
     );
     await screen.findByRole("heading", { level: 1, name: "Edit catalog" });
     expect(window.location.hash).toBe("#/p/djdl/config/catalog/edit");
-    expect(screen.getByText("v1 (draft)")).toBeTruthy();
+    expect(screen.getByText("v1")).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
     expect(screen.getByText("No entries yet")).toBeTruthy();
   });
 
@@ -270,7 +272,7 @@ const labelBox = async (): Promise<HTMLInputElement> =>
 describe("Catalog editor", () => {
   it("edits an entry in the form and publishes it with expectedVersion (A-6)", async () => {
     const backend = await openEditor();
-    expect(screen.getByText("v8 → v9 (draft)")).toBeTruthy();
+    expect(screen.getByText("v8 → v9")).toBeTruthy();
     const label = await labelBox();
     await userEvent.clear(label);
     await userEvent.type(label, "Request timeout");

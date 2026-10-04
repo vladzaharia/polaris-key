@@ -66,7 +66,7 @@ describe("effectivePolicy", () => {
       source: "product",
     });
     expect(line(lines, "Offline")).toMatchObject({
-      value: "30 d",
+      value: "30 days",
       source: "product",
     });
     expect(line(lines, "Channels")).toMatchObject({
