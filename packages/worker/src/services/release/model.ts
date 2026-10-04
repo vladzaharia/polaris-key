@@ -49,7 +49,7 @@ export interface ReleaseDeliverableRow {
   def_source: string;
   created_at: number;
   modified_at: number;
-  /** A package's ecosystem and declared name (F-03, 0056_b); NULL for the app and packs. */
+  /** A package's ecosystem and declared name (F-03, 0058_b); NULL for the app and packs. */
   ecosystem?: string | null;
   package_name?: string | null;
 }

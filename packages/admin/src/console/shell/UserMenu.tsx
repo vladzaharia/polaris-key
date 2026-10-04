@@ -1,6 +1,6 @@
 import * as React from "react";
-import { BookOpen, Keyboard, LogOut } from "lucide-react";
-import type { Me } from "../../api.js";
+import { BookOpen, CloudUpload, Keyboard, LogOut } from "lucide-react";
+import type { Me, PlatformIdentity } from "../../api.js";
 import {
   Button,
   DropdownMenu,
@@ -11,6 +11,15 @@ import {
   DropdownMenuTrigger,
 } from "../../components/ui/index.js";
 import { Kbd } from "./bits.js";
+import { r } from "../routes.js";
+import { Link } from "../router.js";
+
+/** The version chip's text: "v0.8.6 · prod", the short commit, or "Development build". */
+export function versionChipLabel(v: PlatformIdentity): string {
+  const build = v.releaseTag ?? (v.gitSha ? v.gitSha.slice(0, 7) : null);
+  if (!build) return "Development build";
+  return v.environment ? `${build} · ${v.environment}` : build;
+}
 
 /** "18:40" in the viewer's locale and clock (ADMIN.md §5.9). */
 export function formatSessionEnd(epochSeconds: number): string {
@@ -22,15 +31,19 @@ export function formatSessionEnd(epochSeconds: number): string {
 
 /**
  * The account menu (ADMIN.md §2.2, fixes SH-14): who is signed in, when the session ends (A-1;
- * the session is a hard 8 h, so the time is worth knowing before a long edit), the shortcut sheet,
- * the docs home and Sign out. The theme lives in its own menu beside this one.
+ * the session is a hard 8 h, so the time is worth knowing before a long edit), the running build
+ * (a chip linking to Platform → Deployment, so the version is one click from every page; notes/S-13
+ * §9.1), the shortcut sheet, the docs home and Sign out. The theme lives in its own menu beside
+ * this one.
  */
 export function UserMenu({
   me,
+  version,
   onShortcuts,
   onSignOut,
 }: {
   me: Me;
+  version?: PlatformIdentity | null;
   onShortcuts: () => void;
   onSignOut: () => void;
 }): React.ReactElement {
@@ -65,6 +78,17 @@ export function UserMenu({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {version ? (
+          <DropdownMenuItem asChild>
+            <Link to={r.platformDeployment()} data-version-chip="">
+              <CloudUpload aria-hidden />
+              <span className="flex-1">Version</span>
+              <span className="rounded-full border border-border bg-surface-sunken px-2 py-0.5 font-mono text-xs text-fg">
+                {versionChipLabel(version)}
+              </span>
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onSelect={onShortcuts}>
           <Keyboard aria-hidden />
           Keyboard shortcuts

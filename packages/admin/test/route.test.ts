@@ -3,8 +3,13 @@ import {
   ALL_PAGES,
   GLOBAL_PAGES,
   PRODUCT_PAGES,
+  PLATFORM_GROUP,
   SECTIONS,
   accentOf,
+  groupOf,
+  isPlatformPage,
+  platformItems,
+  platformLinks,
   docsFor,
   isPageEnabled,
   isSectionEnabled,
@@ -292,7 +297,17 @@ describe("pages that are not built yet redirect to their host", () => {
       ? `#/${pageOf(page).path}`
       : productPage("djdl", page as ProductPageId);
 
-  it.each(NOT_READY.map((p) => [p.page, p.host!] as const))(
+  /**
+   * A host may itself redirect (the Platform section root goes to Settings, which goes to
+   * Deployment until Settings is built): follow the chain to the page that renders.
+   */
+  const builtHost = (page: PageId): PageId => {
+    let p = pageOf(page);
+    for (let i = 0; i < 5 && !p.ready; i++) p = pageOf(p.host!);
+    return p.page;
+  };
+
+  it.each(NOT_READY.map((p) => [p.page, builtHost(p.page)] as const))(
     "%s → %s",
     (page, host) => {
       const parsed = parseLocation(hashOf(page));
@@ -314,10 +329,10 @@ describe("pages that are not built yet redirect to their host", () => {
     );
   });
 
-  it("every host is a built page in the same scope", () => {
+  it("every host chain ends at a built page in the same scope", () => {
     for (const p of NOT_READY) {
       expect(p.host, p.page).toBeDefined();
-      const host = pageOf(p.host!);
+      const host = pageOf(builtHost(p.page));
       expect(host.ready, `${p.page} → ${p.host}`).toBe(true);
       expect(sectionOf(host.page) === null, p.page).toBe(
         sectionOf(p.page) === null,
@@ -450,6 +465,11 @@ describe("the nav model (nav.ts)", () => {
       "products",
       "product-new",
       "platform",
+      "platform-settings",
+      "platform-deployment",
+      "platform-operations",
+      "platform-stores",
+      "platform-feeds",
       "overview",
       "services",
       "devices",
@@ -629,8 +649,38 @@ describe("global pages", () => {
       "products",
       "platform",
       "product-new",
+      "platform-deployment",
     ] as GlobalPageId[]) {
       expect(sectionOf(id)).toBeNull();
     }
+  });
+
+  it("the Platform section's pages are one sidebar group; Home and Products are links", () => {
+    expect(PLATFORM_GROUP.items.map((p) => p.page)).toEqual([
+      "platform-settings",
+      "platform-deployment",
+      "platform-operations",
+      "platform-stores",
+      "platform-feeds",
+    ]);
+    for (const p of PLATFORM_GROUP.items) {
+      expect(isPlatformPage(p.page)).toBe(true);
+      expect(groupOf(p.page)).toBe("platform");
+      expect(p.path.startsWith("platform/")).toBe(true);
+    }
+    expect(groupOf("home")).toBeNull();
+    expect(groupOf("tiers")).toBe("license");
+    expect(platformLinks().map((p) => p.page)).toEqual(["home", "products"]);
+    expect(platformItems().map((p) => p.page)).toEqual(["platform-deployment"]);
+  });
+
+  it("#/platform follows the chain to Deployment in one redirect", () => {
+    expect(parseLocation("#/platform").redirect).toBe("#/platform/deployment");
+    expect(r.platform()).toBe("#/platform");
+    expect(r.platformDeployment()).toBe("#/platform/deployment");
+    expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");
+    const wizard = parseLocation("#/products/new?via=manual&step=basics");
+    expect(wizard.redirect).toBeUndefined();
+    expect(wizard.route).toMatchObject({ kind: "global", page: "product-new" });
   });
 });

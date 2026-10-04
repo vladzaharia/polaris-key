@@ -70,6 +70,13 @@ export default defineConfig(async () => {
           // The blob store (P2-01): miniflare's local R2, so `test-workerd/blobs.test.ts`
           // exercises the real binding's checksum, range and conditional-put behaviour.
           r2Buckets: ["BLOBS"],
+          // A-14: the lazy-delta queue and its dead-letter queue, producer bindings as in
+          // wrangler.toml's environments, so `test-workerd/operations.test.ts` reads the real
+          // `Queue.metrics()` of a producer-only binding to a queue with no consumer (the DLQ).
+          queueProducers: {
+            DELTA_QUEUE: "pkey-deltas-test",
+            DELTA_DLQ: "pkey-deltas-dlq-test",
+          },
           bindings: {
             // A bytes host for the isolation smoke test. SELF requests to any other host
             // (every other test uses key.plrs.im) route exactly as without it.

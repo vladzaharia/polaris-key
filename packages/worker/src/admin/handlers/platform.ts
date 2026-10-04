@@ -1,6 +1,6 @@
 /**
- * The Platform section's admin API (notes/S-13 §9.2): instance-wide, product-less, read-only
- * but for the package-feeds bootstrap. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
+ * The Platform section's admin API (notes/S-13 §9.2): instance-wide, product-less, read-only so
+ * far except the settings store and the package-feeds bootstrap. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
  * limiter and CSRF check.
  *
  *   GET /api/platform/version     — build identity (A-11). Cheap: the SPA's skew check calls it.
@@ -9,6 +9,13 @@
  *                                   build's newest, missing required indexes, binding presence
  *                                   (A-11).
  *   GET /api/platform/activity    — `platform_audit`, keyset-paginated, newest first (A-12).
+ *   GET/PATCH/DELETE /api/platform/settings[/:key]
+ *                                 — the platform settings store and the read-only inventory
+ *                                   (A-13, `platformSettings.ts`).
+ *   GET /api/platform/operations  — the self-reported Operations snapshot (A-14,
+ *                                   `core/operations.ts`): binding probes, queue and DLQ
+ *                                   backlog, cron runs, heartbeats, storage, indexes,
+ *                                   connectors, recent errors.
  *   POST /api/platform/feeds/bootstrap — create (or re-assert) the system product that owns the
  *                                   platform packages (F-03, `../systemProduct.ts`); idempotent,
  *                                   audited `feed.bootstrap` in `platform_audit`.
@@ -22,7 +29,14 @@ import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
-import { adminJson, err, forbidden, notFound } from "../lib/respond.js";
+import {
+  AdminBodyError,
+  adminJson,
+  err,
+  forbidden,
+  notFound,
+} from "../lib/respond.js";
+import { handlePlatformSettings } from "./platformSettings.js";
 import {
   appliedMigrations,
   deployIdentity,
@@ -33,6 +47,7 @@ import { missingRequiredIndexes } from "../../scheduled.js";
 import { listPlatformAudit, listPlatformDeploys } from "../../repo.js";
 import { ensureSystemProduct } from "../systemProduct.js";
 import { platformAudit } from "../audit.js";
+import { operationsSnapshot } from "../../core/operations.js";
 
 /** The bindings the Deployment page lists. Presence only. */
 const BINDINGS = [
@@ -42,6 +57,7 @@ const BINDINGS = [
   "UPDATE_HEALTH",
   "BLOBS",
   "DELTA_QUEUE",
+  "DELTA_DLQ",
   "EMAIL",
   "ASSETS",
   "CF_VERSION_METADATA",
@@ -173,18 +189,41 @@ export async function handlePlatform(
       return err(405, "method_not_allowed", "method not allowed");
     return bootstrapFeeds(env, db, session, now);
   }
+  if (rest[0] === "settings") {
+    try {
+      return await handlePlatformSettings(
+        req,
+        env,
+        db,
+        session,
+        rest.slice(1),
+        now,
+      );
+    } catch (e) {
+      if (e instanceof AdminBodyError)
+        return err(e.status, e.code, e.message, e.extra);
+      throw e;
+    }
+  }
   if (rest.length !== 1) return notFound();
   const [resource] = rest;
   if (
     resource !== "version" &&
     resource !== "deployment" &&
-    resource !== "activity"
+    resource !== "activity" &&
+    resource !== "operations"
   )
     return notFound();
   if (req.method !== "GET")
     return err(405, "method_not_allowed", "method not allowed");
   if (resource === "version") return adminJson(identity(env));
   if (resource === "deployment") return deployment(req, env, db);
+  if (resource === "operations")
+    return adminJson(
+      await operationsSnapshot(env, db, now, {
+        missingIndexes: missingRequiredIndexes,
+      }),
+    );
   return activity(req, db);
 }
 

@@ -36,7 +36,9 @@ describe("admin SPA", () => {
         .getAllByRole("status")
         .some((el) => el.textContent === "Loading console…"),
     ).toBe(true);
-    expect(await screen.findByText(/Welcome, Ada/)).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Home" }),
+    ).toBeTruthy();
     expect(screen.getByRole("link", { name: "Polaris Key home" })).toBeTruthy();
   });
 
@@ -44,13 +46,20 @@ describe("admin SPA", () => {
     let fail = true;
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
+      vi.fn(async (input: RequestInfo | URL) =>
         fail
           ? new Response("{}", { status: 500 })
-          : new Response(JSON.stringify(ME), {
-              status: 200,
-              headers: { "content-type": "application/json" },
-            }),
+          : new Response(
+              JSON.stringify(
+                String(input).includes("/manage/api/products")
+                  ? { products: [] }
+                  : ME,
+              ),
+              {
+                status: 200,
+                headers: { "content-type": "application/json" },
+              },
+            ),
       ),
     );
     render(<App />);
@@ -60,7 +69,9 @@ describe("admin SPA", () => {
     ).toBe("/manage/login");
     fail = false;
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(await screen.findByText(/Welcome, Ada/)).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Home" }),
+    ).toBeTruthy();
   });
 
   it("renders a product page at its new URL", async () => {

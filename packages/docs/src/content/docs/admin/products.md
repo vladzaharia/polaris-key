@@ -8,20 +8,37 @@ sidebar:
 `#/products` is the platform product registry — every product a session with platform-admin
 authority can see, which today is every product that exists. This page covers registering one,
 what its lifecycle actions actually do server-side, and the setup-health checklist the
-[Overview page](/docs/admin/console-tour/#core) is built from.
+[Overview page](/docs/admin/console-tour/#core) and Home are built from.
+
+The registry is a table: each product's name (a link to its Overview; a click anywhere on the row
+follows it), slug, the services it runs, whether its setup is complete, where it comes from
+(GitHub or manual) and when it last changed. Search, the Setup and Source filters, and the sort
+live in the URL, so a filtered view can be bookmarked or shared.
+
+**Home** (`#/`) is the cross-product view of the same registry: a **Needs attention** list (every
+product's open setup items, each with the one link that fixes it), live figures (products,
+products needing attention, setup complete, repository-linked) and a card per product with the
+services it runs. Its filter and sort are in the URL too.
 
 ## Registering a product
 
-**New product** opens a two-tab dialog. Both tabs end with a success panel naming the new
-product's signing `kid` and public key — **record it now**; the private key never leaves the
-platform, sealed under `PLATFORM_KEK` from the moment it's minted.
+**New product** opens a full-page wizard at `#/products/new`. You choose the source first
+(**Link a GitHub repository** or **Start manually**; `?via=github|manual` preselects it), then
+fill one step at a time. The step is in the URL (`?step=…`) and the draft is kept for the tab, so
+a refresh loses nothing; leaving with a draft asks first. A **Review** step comes before anything
+is created. The result names the new product's signing `kid` and public key, with a copy button —
+give the public key to your SDK trust configuration and release tooling (it is also in the
+product's JWKS); the private key never leaves the platform, sealed under `PLATFORM_KEK` from the
+moment it's minted. **Open product** takes you to its Overview.
 
 ### Manual
 
-For early experiments, before release syncing, OIDC or provisioning matter. You supply a slug,
-an optional display name, an optional config catalog (JSON or YAML — publish one later from
-Catalog if you skip it), and the per-license defaults (compat window, offline days, device
-limit). The worker mints an Ed25519 signing key and an active catalog (empty if none was
+For early experiments, before release syncing, OIDC or provisioning matter. The steps are
+**Basics** (a slug, an optional display name and the metadata-only admin group), **Catalog** (an
+optional config catalog in JSON or YAML — publish one later from Catalog if you skip it) and
+**Defaults** (the per-license offline days and device limit; blank uses the platform default). The
+compatibility window is not asked for: it lives in
+[Update → Feed](/docs/admin/console-tour/#update). The worker mints an Ed25519 signing key and an active catalog (empty if none was
 supplied) in one batch — **a product can never exist without a usable signing key**. No release
 row and no edge-mint row are created; this path has no GitHub coordinates to hang them on.
 
@@ -29,9 +46,10 @@ row and no edge-mint row are created; this path has no GitHub coordinates to han
 
 The path onboarding actually uses. You give a repository URL; the linked GitHub App reads its
 `.pkey/` directory, validates the manifest, and registers the product from it — services,
-tiers, profiles, OIDC configuration, release coordinates, edge-mint recipes, all of it. The
-success panel lists **remaining secrets**: names the manifest declared but that have no value
-yet (an OIDC client secret, an edge-mint signing key). Set each one from
+tiers, profiles, OIDC configuration, release coordinates, edge-mint recipes, all of it. A refused
+manifest is listed problem by problem on the Review step, so you can fix them in one commit. The
+result lists **remaining secrets**: names the manifest declared but that have no value yet (an
+OIDC client secret, an edge-mint signing key), with a **Set missing secrets** button into
 [Secrets & keys](/docs/admin/secrets-and-keys/) — they're write-only and never echoed back.
 This is also the path DJDL uses in production; see [Operating: the KEK
 keyring](/docs/admin/kek/) → _Product operations_ for its specific checklist.
@@ -75,7 +93,7 @@ out of the product switcher and the Products list.
 
 ### The `adminGroup` field is metadata, not a grant
 
-Both dialogs, and Settings, carry an "Admin group" field labeled _metadata only_. It's recorded
+The wizard's Basics step, and Settings, carry an "Admin group" field labeled _metadata only_. It's recorded
 on the product row and shown back to you, and it authorizes **nothing**: there is no
 per-product admin tier. The console authorizes every request on the platform-wide
 `PLATFORM_ADMIN_GROUP` alone (see [Operating: the KEK keyring](/docs/admin/kek/) → _Secrets_).
@@ -86,15 +104,14 @@ someone console access, it won't: add them to the platform OIDC provider's admin
 
 ## Per-product actions
 
-From the registry row menu or the product's own Settings page:
+The registry row menu opens the product's own pages rather than repeating their forms, so each
+setting has one form with one set of rules:
 
-| Action                               | What it does                                                                                                                                |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Edit**                             | Updates name and per-license defaults. The compatibility window isn't here — it moved to [Update → Feed](/docs/admin/console-tour/#update). |
-| **Set secret**                       | Shortcut into [Secrets & keys](/docs/admin/secrets-and-keys/).                                                                              |
-| **Resync from GitHub**               | GitHub-linked products only (greyed out otherwise). Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below.       |
-| **Prepare signing key**              | Stages a new Ed25519 keypair. See [Secrets & keys](/docs/admin/secrets-and-keys/#rotating-the-signing-key).                                 |
-| **Delete** (Danger zone on Settings) | Tombstones the product. See below.                                                                                                          |
+| Action                                                        | What it does                                                                                                                                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Open overview**, **Open settings**, **Open keys & secrets** | Go to that page of the product. Name and per-license defaults are edited in Settings; secrets and signing keys in [Secrets & keys](/docs/admin/secrets-and-keys/). |
+| **Resync from repo…**                                         | Repository-linked products only. Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below. You confirm the consequences first.             |
+| **Delete product…** (also the Danger zone on Settings)        | Tombstones the product. See below.                                                                                                                                 |
 
 ### What resync actually re-applies
 
@@ -120,7 +137,7 @@ exactly as it was.
 
 ### What deleting a product actually does
 
-"Delete" is a **tombstone**, not a row deletion — nothing here is a `DELETE FROM`. It:
+**Delete product** is a **tombstone**, not a row deletion — nothing here is a `DELETE FROM`. It:
 
 - flips the product's `status` to `deleted` and stamps `deleted_at`;
 - disables every license **and scrubs its PII** — `email`, `name`, `sub`, `groups`, and the
@@ -130,13 +147,14 @@ exactly as it was.
 - removes portal account-to-license links for the product.
 
 Audit rows are never touched — the product's own history, including the deletion itself, is
-preserved. You confirm by typing the product's slug back, the same pattern the license
-enable/disable and tier/profile deletes use for anything that can't be undone.
+preserved. You confirm by typing the product's slug back; what you type is what the console sends
+the worker as `confirmSlug`, which the worker checks against the slug before it changes anything.
 
 ## Setup health
 
-The Overview tab's "needs attention" strip and guided checklist are both projections of one
-server-computed setup state, recomputed on every product read rather than cached. It checks six
+The Overview tab's "needs attention" strip and guided checklist, the registry's Setup column and
+Home's Needs attention list are all projections of one server-computed setup state, recomputed on
+every product read rather than cached. It checks six
 things:
 
 | Module              | Healthy when                                                                                                                                                                                                       |

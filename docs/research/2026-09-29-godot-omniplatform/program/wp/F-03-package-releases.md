@@ -105,8 +105,8 @@ mise exec node@22 -- pnpm gen:corpus -- --check && mise exec node@22 -- pnpm gen
 Where the code disagreed with plans/F-01.md, the code was the fact. None of these changes a wire
 shape, the corpus or `PROTOCOL_VERSION`.
 
-1. **Migration numbers.** `0056_a_products_system`, `0056_b_release_deliverables_kind`,
-   `0056_c_release_packages`, `0056_d_registry` (after main's highest at the final merge, `0055_platform_store_connections`). `LATEST_MIGRATION`
+1. **Migration numbers.** `0058_a_products_system`, `0058_b_release_deliverables_kind`,
+   `0058_c_release_packages`, `0058_d_registry` (after main's highest at the final merge, `0057_platform_operations`). `LATEST_MIGRATION`
    follows.
 2. **The `release_deliverables` rebuild sets the child rows aside** instead of relying on
    `PRAGMA defer_foreign_keys = ON`: SQLite counts the violations the DROP's implicit DELETE makes

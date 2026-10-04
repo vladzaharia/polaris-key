@@ -600,7 +600,17 @@ describe("R11-05 product scoping", () => {
       // product (the KEK sweep, A-13's settings). Read only by the platform-admin activity
       // endpoint; product-scoped actions still go to `audit`, which is product-first.
       "platform_audit",
-      // 0056_d (F-03) — the platform's per-ecosystem package-feed kill switch and size ceiling.
+      // 0056 (A-13) — the platform settings store: instance-wide runtime values for the keys of
+      // the typed `PLATFORM_SETTINGS` registry (background-job switches and tunables, no tenant
+      // data). Written and read only by the platform-admin settings endpoint and the resolver.
+      "platform_settings",
+      // 0057 (A-14) — self-reported operations: one row per cron step family or failed step
+      // (`platform_job_runs`) and one heartbeat per Worker script (`platform_heartbeats`). Both
+      // describe the deployment's own background work, are written only by the cron and the
+      // lazy-delta consumer, and are read only by the platform-admin Operations endpoint.
+      "platform_job_runs",
+      "platform_heartbeats",
+      // 0058_d (F-03) — the platform's per-ecosystem package-feed kill switch and size ceiling.
       // One row per ecosystem, above every owner's own settings; written only by a platform
       // admin. Each owner's settings live in `dist_registry_feeds`, which IS product-first.
       "dist_registry_policy",
@@ -874,14 +884,14 @@ describe("R11-08 migration safety", () => {
     //   * 0017_portal_fk_cascade.sql rebuilds four portal tables to add `ON DELETE CASCADE`. It
     //     changes NO column and NO name, only the foreign-key clause, so old code reads and
     //     writes them exactly as before — the rebuild is invisible above the schema.
-    //   * 0056_b_release_deliverables_kind.sql (F-03) rebuilds `release_deliverables` to widen its
+    //   * 0058_b_release_deliverables_kind.sql (F-03) rebuilds `release_deliverables` to widen its
     //     kind CHECK with `package` and add two NULLable columns. It renames and removes nothing an
     //     older Worker reads or writes, so the rebuild is invisible above the schema too; its
     //     child rows are set aside and restored around the drop (the file says why).
     const REBUILDS = [
       "0016_drop_dead_pii.sql",
       "0017_portal_fk_cascade.sql",
-      "0056_b_release_deliverables_kind.sql",
+      "0058_b_release_deliverables_kind.sql",
     ];
     const sql = MIGRATION_FILES.filter((f) => !REBUILDS.includes(f))
       .map(sqlFor)

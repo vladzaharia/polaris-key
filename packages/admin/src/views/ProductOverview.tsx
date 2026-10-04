@@ -30,7 +30,7 @@ import {
   onboardingOf,
   setupStateOf,
   signingBundleOf,
-} from "./products/util.js";
+} from "../lib/products.js";
 import { qk } from "../console/data/queries.js";
 import { fetchProduct } from "../console/data/hooks.js";
 

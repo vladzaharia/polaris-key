@@ -74,6 +74,83 @@ export interface Me {
   sessionExpiresAt?: number;
 }
 
+// ── platform (A-11 deploy identity, A-12 platform audit) ─────────────────────────
+
+/** Cloudflare's own record of the running version (the version metadata binding). */
+export interface PlatformCloudflareVersion {
+  id: string;
+  tag: string | null;
+  /** ISO 8601, as Cloudflare reports it. */
+  uploadedAt: string | null;
+}
+
+/** `GET /manage/api/platform/version` (worker `core/deployIdentity.ts`). */
+export interface PlatformIdentity {
+  releaseTag: string | null;
+  gitSha: string | null;
+  cloudflare: PlatformCloudflareVersion | null;
+  protocolVersion: number;
+  discoveryVersion: number;
+  latestMigration: string;
+  environment: ConsoleEnvironment | null;
+}
+
+/** A keyset position in a platform list: the last row's `at` and `id`. */
+export interface PlatformCursor {
+  beforeAt: number;
+  beforeId: string;
+}
+
+/** One `platform_deploys` row: a deploy the workflow recorded. */
+export interface PlatformDeploy {
+  id: string;
+  /** Epoch seconds. */
+  at: number;
+  environment: string | null;
+  tag: string | null;
+  gitSha: string | null;
+  runUrl: string | null;
+  scripts: string[];
+  latestMigration: string | null;
+  cloudflareVersionId: string | null;
+  deltasVersionId: string | null;
+  smoke: string | null;
+}
+
+/** `GET /manage/api/platform/deployment`. */
+export interface PlatformDeployment {
+  current: PlatformIdentity;
+  deploys: { items: PlatformDeploy[]; nextCursor: PlatformCursor | null };
+  migrations: {
+    latest: string;
+    /** `null`: `d1_migrations` could not be read (unknown, not "none applied"). */
+    applied: { name: string; appliedAt: string | null }[] | null;
+    upToDate: boolean | null;
+  };
+  /** `missing: null`: the index check could not run. */
+  indexes: { missing: string[] | null };
+  /** Binding name → present. Presence only, never an id. */
+  bindings: Record<string, boolean>;
+}
+
+/** One `platform_audit` row: an admin action that belongs to no product. */
+export interface PlatformActivityItem {
+  id: string;
+  /** Epoch seconds. */
+  at: number;
+  actor: { sub: string; name: string; email: string };
+  action: string;
+  target: { kind: string; id: string } | null;
+  summary: string;
+  before: unknown;
+  after: unknown;
+}
+
+export interface PlatformActivityPage {
+  items: PlatformActivityItem[];
+  nextCursor: PlatformCursor | null;
+}
+
 // ── products (platform registry) ──────────────────────────────────────────────
 type ProductReleaseSource = "manual" | "github" | (string & {});
 
@@ -1679,6 +1756,19 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 const enc = encodeURIComponent;
+
+/** A platform list's keyset position as a query string (`""` for the first page). */
+function cursorQuery(cursor?: PlatformCursor | null): string {
+  if (
+    !cursor ||
+    typeof cursor !== "object" ||
+    typeof cursor.beforeAt !== "number" ||
+    !cursor.beforeId
+  ) {
+    return "";
+  }
+  return `?beforeAt=${cursor.beforeAt}&beforeId=${enc(cursor.beforeId)}`;
+}
 /** Build a per-product API base. */
 const p = (slug: string): string => `/manage/api/products/${enc(slug)}`;
 
@@ -1686,6 +1776,20 @@ const rawApi = {
   // ── identity ────────────────────────────────────────────────────────────────
   me: () => call<Me>("/manage/api/me"),
   logout: () => call<{ ok: true }>("/manage/api/logout", { method: "POST" }),
+
+  // ── platform (instance-wide, product-less; A-11/A-12, notes/S-13 §9.2) ─────────
+  /** Which build of Polaris Key is running. Cheap: the account menu's version chip reads it. */
+  platformVersion: () => call<PlatformIdentity>("/manage/api/platform/version"),
+  /** Identity, deploy history (keyset `cursor`), D1 migrations, indexes and bindings. */
+  platformDeployment: (cursor?: PlatformCursor | null) =>
+    call<PlatformDeployment>(
+      `/manage/api/platform/deployment${cursorQuery(cursor)}`,
+    ),
+  /** `platform_audit`, newest first (keyset `cursor`). */
+  platformActivity: (cursor?: PlatformCursor | null) =>
+    call<PlatformActivityPage>(
+      `/manage/api/platform/activity${cursorQuery(cursor)}`,
+    ),
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
@@ -1705,10 +1809,15 @@ const rawApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  deleteProduct: (slug: string) =>
+  /**
+   * Tombstone a product. `confirmSlug` is what the operator TYPED in the L3 confirmation (ADMIN.md
+   * §5.2): the worker refuses unless it equals the slug, and the client never fills it in itself
+   * (fixes PRD-4: an auto-filled guard guards nothing).
+   */
+  deleteProduct: (slug: string, confirmSlug: string) =>
     call<{ ok: true; slug: string }>(p(slug), {
       method: "DELETE",
-      body: JSON.stringify({ confirmSlug: slug }),
+      body: JSON.stringify({ confirmSlug }),
     }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),

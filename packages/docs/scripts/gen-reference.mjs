@@ -336,6 +336,9 @@ const TABLE_OWNERS = {
     "platform_store_settings",
     "platform_audit",
     "registry_render_queue",
+    "platform_settings",
+    "platform_job_runs",
+    "platform_heartbeats",
   ],
   license: [
     "licenses",

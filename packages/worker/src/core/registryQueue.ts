@@ -1,5 +1,5 @@
 /**
- * The package-feed render queue (F-03, plans/F-01.md §6.5; `registry_render_queue`, 0056_d).
+ * The package-feed render queue (F-03, plans/F-01.md §6.5; `registry_render_queue`, 0058_d).
  *
  * Distribution renders each ecosystem's index documents (packuments, simple pages, release
  * lists, …) into R2 when a package changes. Release is where packages change, but Release cannot

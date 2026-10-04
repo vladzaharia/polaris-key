@@ -8,6 +8,7 @@ import { PROTOCOL_VERSION } from "@polaris-key/protocol";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { DISCOVERY_VERSION } from "./discovery.js";
+import { RELEASE_TAG } from "./platformOps.js";
 
 /**
  * The newest file in `migrations/` that this build ships. `test/deployIdentity.test.ts` pins it
@@ -15,10 +16,8 @@ import { DISCOVERY_VERSION } from "./discovery.js";
  * `*_index_assertion.sql`), so adding a migration without bumping this fails the suite. Compared
  * with `d1_migrations` to say whether the database has caught up with the code.
  */
-export const LATEST_MIGRATION = "0056_d_registry.sql";
+export const LATEST_MIGRATION = "0058_d_registry.sql";
 
-/** A release tag as `deploy.yml` accepts it (its "Select target" step). */
-const RELEASE_TAG = /^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 const GIT_SHA = /^[0-9a-f]{40}$/;
 
 export interface CloudflareVersion {

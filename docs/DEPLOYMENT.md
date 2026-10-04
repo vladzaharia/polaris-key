@@ -391,8 +391,9 @@ fixed in code. A product opts in from its own `.pkey/release` (`publishing.trust
 
 Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues
 enabled, two queues per environment, a second Worker script and, after its first deploy, two R2
-event-notification rules. The feature ships off (`LAZY_DELTAS = "off"` in both scripts); none of
-this changes behaviour until an operator turns it on.
+event-notification rules. The feature ships off: both scripts carry `LAZY_DELTAS = "runtime"`,
+which hands the switch to the console's platform settings store (A-13), where it defaults to off.
+None of this changes behaviour until an operator turns it on.
 
 1. **Queues** (per environment `<env>` = `prod`, `staging`, `dev`):
 
@@ -437,8 +438,11 @@ this changes behaviour until an operator turns it on.
    acknowledges an object of at most 1 MiB at once, and anything that is not a pack payload of
    an opted-in product after one lookup.
 
-4. **Turn it on** for a product: set `LAZY_DELTAS = "on"` in BOTH scripts' `[env.<env>.vars]`,
-   deploy both, then opt the product in (RUNBOOK "Lazy deltas").
+4. **Turn it on** in the console (Platform → Settings, or
+   `PATCH /manage/api/platform/settings/LAZY_DELTAS`), with no deploy: both scripts read the same
+   `platform_settings` row within 30 seconds. Then opt the product in (RUNBOOK "Lazy deltas").
+   `LAZY_DELTAS = "off"` in a script's `[env.<env>.vars]` is the deploy-time hard off that no
+   console value can override.
 
 ## 4. Worker secrets
 
@@ -639,6 +643,24 @@ After the first deploy that includes A-11, confirm on the Deployment endpoint th
 `migrations.applied` is a list (not `null`): that proves `d1_migrations` is readable through the
 binding on hosted D1, which the workerd lane shows only for local D1. If it is `null`, the page
 reports migrations as unknown and nothing else is affected.
+
+**Self-reported operations (A-14).** `GET /manage/api/platform/operations` (platform admins
+only) returns what the Worker can see about itself, with no Cloudflare token: `probes` (D1, KV and
+R2 answer, with latency), `queues` (the lazy-delta queue and its dead-letter queue: backlog count,
+bytes and oldest message, plus the consumer's fixed settings), `heartbeats` (when the cron and the
+lazy-delta consumer last ran, and on which build), `jobs` (each cron's latest run with its steps,
+recent runs and failed steps), `storage` (D1 size, committed R2 bytes by kind), `indexes`,
+`connectors` (per store connector: products, tracked objects, last poll, last webhook, failed
+webhooks in the last day) and `recentErrors`. A section that cannot be read is `null`; the rest
+still answers. It needs nothing new provisioned. The request Worker binds the existing dead-letter queue `pkey-deltas-dlq-<env>` as a
+producer, `DELTA_DLQ`, used only for `metrics()` (the deploy's queues preflight already checks the
+queue exists, and the token's Queues Edit already covers the binding). After the first deploy that
+includes A-14, confirm on the Operations endpoint that `queues.deadLetter.ok` is `true`: that
+proves `metrics()` answers on a producer-only binding to a queue with no consumer on hosted
+Queues, which the workerd lane shows only for local queues. If it is `false`, the page shows the
+reason and the dead-letter backlog as unknown, and nothing else is affected. The cron and the
+lazy-delta consumer write `platform_job_runs` and `platform_heartbeats`; the nightly sweep prunes
+both after 30 days.
 
 CI does not deploy on `main` pushes. PRs and `main` still run `.github/workflows/ci.yml`.
 

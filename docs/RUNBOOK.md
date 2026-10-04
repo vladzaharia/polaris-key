@@ -459,9 +459,9 @@ to F-09) and the console pages (F-11) follow.
 - **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
   first; a Worker older than F-03 is reported as such and nothing is uploaded.
 
-### Do not roll back past 0056_b with package rows
+### Do not roll back past 0058_b with package rows
 
-`0056_b_release_deliverables_kind.sql` rebuilds `release_deliverables` to admit `kind = 'package'`
+`0058_b_release_deliverables_kind.sql` rebuilds `release_deliverables` to admit `kind = 'package'`
 (forward-only, like 0016). An older Worker reads and writes the table unchanged, so rolling the
 CODE back is safe. Rolling the SCHEMA back past it (recreating the old `CHECK (kind IN ('app',
 'pack'))`) needs the package rows gone first: `release_packages`, then the `release_metadata`,
@@ -542,10 +542,18 @@ been unreferenced for the grace period **and** are older than the 180-day bucket
 surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep`,
 `blobGcLog`).
 
-- **Stop it:** set `BLOB_GC_MODE = "off"` under the environment's `[vars]` and deploy. Nothing is
-  deleted while it is off; turning it back on resumes where it stopped.
-- **Grace period:** `BLOB_GC_GRACE_DAYS` (default 30, never under 1). The lock age, not the grace,
+- **Stop it:** in the console, Platform → Settings → Blob collector → off
+  (`PATCH /manage/api/platform/settings/BLOB_GC_MODE` with `{"value":"off","expectedVersion":N}`).
+  No deploy: every isolate picks it up within 30 seconds, and the nightly tick reads it fresh.
+  Nothing is deleted while it is off; turning it back on resumes where it stopped. For a stop no
+  console session can undo, set `BLOB_GC_MODE = "off"` under the environment's `[vars]` and
+  deploy: a deploy-time `off` is a hard off (A-13 `ceiling` precedence).
+- **Grace period:** Platform → Settings → Blob collector grace period (`BLOB_GC_GRACE_DAYS`;
+  default 30, a console value from 1 to 365 days). A console value wins over the `[vars]` value;
+  "Revert" (`DELETE …/settings/BLOB_GC_GRACE_DAYS`) returns to it. The lock age, not the grace,
   bounds how soon anything goes.
+- **Who changed it:** every console change is a `platform.setting.set` or
+  `platform.setting.revert` row in Platform activity, with the value before and after.
 - **Before trusting it on a product:** read the dry run, `GET /manage/api/products/<slug>/blob-gc`
   (the live pack releases, the refs the next tick drops, the earliest deletion date).
 - **What happened:** `blob_gc_log` (one row per dropped or restored ref and per deleted object;
@@ -565,8 +573,12 @@ CI delta from that base, the consumer Worker `polaris-key-deltas-<env>` encodes 
 `release_lazy_deltas`. Pairs with a side over 32 MiB are refused as `over-worker-cap` (the
 evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
 
-- **Turn it on.** `LAZY_DELTAS = "on"` in both `wrangler.toml` and `wrangler.deltas.toml` for the
-  environment, deploy both, then opt a product in:
+- **Turn it on.** In the console, Platform → Settings → Lazy deltas → on
+  (`PATCH /manage/api/platform/settings/LAZY_DELTAS` with `{"value":"on","expectedVersion":N}`).
+  No deploy: both scripts read the same `platform_settings` row (the request Worker within 30
+  seconds, the consumer on its next message). It only takes effect while both TOML files carry
+  `LAZY_DELTAS = "runtime"` (the committed value); `"off"` there is a deploy-time hard off. Then
+  opt a product in:
 
   ```sh
   npx wrangler d1 execute polaris_key_<env> --env <env> --remote --command \
@@ -577,8 +589,13 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
   `hot_devices` (default 25) and `daily_cap` (default 20 deltas a day) are optional columns of the
   same row.
 
-- **Turn it off.** `enabled = 0` for one product (counting and generation stop at once), or
-  `LAZY_DELTAS = "off"` and deploy for everything. Stored deltas stay until they go cold.
+- **Turn it off.** `enabled = 0` for one product (counting and generation stop at once), or the
+  console's Lazy deltas switch for everything (within 30 seconds). For an off no console session
+  can undo, set `LAZY_DELTAS = "off"` in both TOML files and deploy both. Stored deltas stay until
+  they go cold.
+- **The size cap.** `LAZY_DELTA_MAX_BYTES` in `wrangler.deltas.toml` (32 MiB) is the deploy-time
+  value; Platform → Settings → Lazy delta size cap may only lower it (1 MiB to 32 MiB, the
+  measured ceiling).
 - **Withdraw the menu (P4-29).** The channel feed lists a product's `ready` lazy deltas in its
   `deltas` member, and the blob route and the payload URL serve them, only while both switches
   are on. Either switch withdraws the menu at the next feed request (the feed's `seq` moves) and

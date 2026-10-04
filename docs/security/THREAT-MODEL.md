@@ -2462,6 +2462,85 @@ privilege level.
   holds no secret by construction. The per-product `kek.reseal` rows stay, so each product's own
   log still shows the sweep.
 
+### Platform settings and operations: the runtime settings store (A-13)
+
+A-13 makes four deploy settings editable from the console without a deploy, through
+`platform_settings` (migration 0056) and `GET`/`PATCH`/`DELETE /manage/api/platform/settings`
+behind the same gates as the rest of the Platform section (session, `PLATFORM_ADMIN_GROUP`, the
+per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-admin check). There
+is no new privilege level and no outbound call.
+
+- **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
+  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE` and `BLOB_GC_GRACE_DAYS`, and
+  nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
+  is never applied (the resolver falls through to `[vars]` or the code default). Each is a
+  background job's kill switch or tunable. The worst a hostile session can do with them is waste
+  delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
+  only lower), stop the collector (it costs storage), or restart it with a one-day grace (the
+  180-day R2 age lock still bounds every deletion, and the collector deletes only unreferenced
+  objects; see "Readiness holds, pack gates and the blob collector"). None changes what a device
+  is offered or what is signed.
+- **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
+  A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
+  session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
+  different `PLATFORM_ADMIN_GROUP`, another origin, a KEK kid, the admin IdP) would let that
+  session make itself permanent, or move the platform's trust roots, from inside the console.
+  Deploy-time settings need the repository and the deploy token, a separate boundary. So
+  origins, the privilege root, the admin IdP, security gates, key material and kid selection,
+  session lengths, rate limits, retention periods and bucket names stay deploy-time, and
+  `test/platformSettings.test.ts` refuses any of those names (or a `*_SECRET`, `*_KEY*`,
+  `*_TTL*`, `*_ORIGIN` or `*_PEPPER` name) in the registry.
+- **A deploy-time off survives a compromised session.** Kill switches use `ceiling` precedence:
+  `[vars]` = `off` is a hard off that no D1 value overrides, and the resolver answers it without
+  reading the table. The committed value is `"runtime"` (the console decides, default off for
+  lazy deltas, on for the collector). An unreadable store resolves a kill switch to off, never on.
+- **Auditable, race-free writes.** Every `PATCH` and `DELETE` carries `expectedVersion` and is
+  one conditional statement (409 on a mismatch), so two operators cannot silently overwrite each
+  other, and each appends a `platform_audit` row (actor from the verified session) with the stored
+  and effective value before and after. `before_json` / `after_json` are safe because no secret
+  can be in the registry.
+- **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
+  not credentials (the environment, the admin group name, the IdP issuer and client id, the
+  parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
+  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
+  when the legacy `ADMIN_OIDC_*` names are what resolved, when `PLATFORM_KEK_ID` is set, and
+  when `PORTAL_SESSION_SECRET` is unset (the portal then signs with `ADMIN_SESSION_SECRET`).
+- **Propagation.** Each isolate caches the table for 30 s; the cron handler and the lazy-delta
+  consumer re-read it at the start of each invocation. A setting that must take effect instantly
+  does not belong in this store.
+
+### Self-reported operations (A-14)
+
+`GET /manage/api/platform/operations` (A-14, notes/S-13 §7.2 phase 1) sits behind the same
+dispatcher and platform-admin check as the routes above. It reads only what the Worker can see
+itself: binding probes (D1 `SELECT 1`, a KV `get` and an R2 `head` of a fixed absent key), the
+two queues' `metrics()`, D1's `meta.size_after`, `blob_objects` totals, the required-index check,
+the connector tables, and two new Core tables the Worker writes about itself. **Phase 1 adds no
+credential and no outbound host.**
+
+- **`platform_job_runs` holds cron failure reasons.** One run per cron tick, persisted from the
+  `MaintenanceReport` `handleScheduled` already builds: successful per-product steps folded by
+  family, each failed step under its full name with the caught exception's message truncated to
+  300 characters. These are the strings the thrown aggregate already writes to Cloudflare's
+  invocation logs, now admin-readable for 30 days (pruned nightly). No request data reaches a
+  cron step, and the R12 posture keeps exception messages secret-free. This is **not** an
+  unhandled-exception ring: nothing in a request path writes free text to D1.
+- **`platform_heartbeats` holds one row per script.** `main` on every cron tick and `deltas` (the
+  lazy-delta consumer) after every batch: time, the validated release tag, the Cloudflare
+  version id, a truncated outcome label and, for the consumer, the queue backlog after the batch.
+  Nothing in it is secret.
+- **`DELTA_DLQ` is a send-capable binding used only to read.** The request Worker binds the
+  dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
+  `metrics()`; Cloudflare offers no read-only queue binding. A source check
+  (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
+  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`) and the
+  binding-presence list name it. The residual risk, accepted: code running in the request Worker
+  could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
+  It reaches no device and no signed document.
+- **Probes are bounded.** Each binding probe has a 3-second limit and is fault-isolated, so a
+  hung binding degrades one panel, not the admin plane. Error text in the snapshot is truncated
+  and comes from caught exceptions; binding presence is a boolean, never a resource id.
+
 ### The compatibility matrix and the device simulator (P4-15)
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
@@ -3588,4 +3667,12 @@ Platform section (A-11, A-12), a Worker path starts writing `platform_deploys`, 
 step gains a credential or a permission beyond the deploy token's D1 edit, a platform route starts
 reporting a binding's resource id or any secret-derived value, a route updates or deletes a
 `platform_audit` row, or a writer puts a secret (or a hash or length of one) in `before_json` or
-`after_json`.
+`after_json`; or, for the platform settings store (A-13), a setting is added to
+`PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
+entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
+one day), the settings inventory starts reporting anything about a secret beyond its presence,
+or a path reads one of the four settings from the raw `[vars]` instead of through the resolver;
+or, for self-reported operations (A-14), the `DELTA_DLQ` binding is used for anything but
+`metrics()`, a request path starts persisting free-text error capture, a job-run or heartbeat
+writer stores request data or an untruncated message, or the Operations route gains an outbound
+host or a credential.

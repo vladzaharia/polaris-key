@@ -6,8 +6,9 @@
  *   /api/me                                  — the signed-in identity + CSRF + grants
  *   /api/products                            — PLATFORM registry CRUD (platform admins only)
  *   /api/products/<slug>/...                 — per-product admin (platform admins only)
- *   /api/platform/{version,deployment,activity} — instance-wide, product-less (platform admins
- *                                              only; A-11/A-12, `handlers/platform.ts`)
+ *   /api/platform/{version,deployment,activity,operations} — instance-wide, product-less
+ *                                              (platform admins only; A-11/A-12/A-14,
+ *                                              `handlers/platform.ts`)
  *   /api/platform/store-connections/...      — team-level store connections (platform admins
  *                                              only; A-16, `handlers/platformStoreConnections.ts`)
  *

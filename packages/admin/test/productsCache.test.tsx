@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "../src/components/ui/index.js";
-import { Products } from "../src/views/Products.js";
+import { Products } from "../src/console/pages/global/Products.js";
 import {
   ALL_ON,
   ME,
@@ -22,7 +22,7 @@ import {
 /**
  * Regression: the Products page showed no products, or the whole console went blank.
  *
- * `views/Products.tsx` cached the raw `{ products }` response under `qk.products()`, while the
+ * The old `views/Products.tsx` cached the raw `{ products }` response under `qk.products()`, while the
  * shell's `useProducts` (which feeds the product switcher) cached the bare array under the same
  * key. Whichever fetched first decided the shape and broke the other reader: the page read
  * `array.products` (nothing), or the switcher called `.filter` on an object (a crash outside the
@@ -124,8 +124,15 @@ describe("qk.products() holds one shape for the Products page and the switcher",
     await go("#/products");
     await expectProductsPageRow();
 
-    // And back on a product page the switcher still lists it from the shared entry.
+    // And back on a product page the switcher still lists it from the shared entry. Wait for the
+    // page's heading to take focus first: route focus lands on it once it renders, and on a
+    // loaded machine that could happen after the switcher opened, closing it (focus outside).
     await go("#/p/djdl");
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "Overview",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
     expect((await switcherOptions()).some((t) => t.startsWith("DJDL"))).toBe(
       true,
     );

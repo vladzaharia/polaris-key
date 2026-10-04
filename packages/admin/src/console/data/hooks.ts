@@ -5,7 +5,13 @@
  */
 
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { api, setCsrf, type Me, type ProductDetail } from "../../api.js";
+import {
+  api,
+  setCsrf,
+  type Me,
+  type PlatformIdentity,
+  type ProductDetail,
+} from "../../api.js";
 import { qk } from "./queries.js";
 import { queryClient } from "./queryClient.js";
 
@@ -26,7 +32,9 @@ export function useMe(): UseQueryResult<Me> {
  * (`{ products }`) under the same key broke the shell's switcher and the Products page in turn.
  */
 export function fetchProducts(): Promise<ProductDetail[]> {
-  return api.products().then((r) => r.products);
+  // The system product (F-03) is the platform's own (the package-feeds owner of our SDKs): it is
+  // reached from Platform, never listed beside registered products or offered by the switcher.
+  return api.products().then((r) => r.products.filter((p) => !p.system));
 }
 
 export function useProducts(): UseQueryResult<ProductDetail[]> {
@@ -54,6 +62,26 @@ export function useProduct(slug: string | null): UseQueryResult<ProductDetail> {
         queryClient
           .getQueryData<ProductDetail[]>(qk.products())
           ?.find((p) => p.slug === slug),
+    },
+    queryClient,
+  );
+}
+
+export function fetchPlatformVersion(): Promise<PlatformIdentity> {
+  return api.platformVersion();
+}
+
+/**
+ * The running build (A-11), for the account menu's version chip. It changes only on a deploy, so
+ * it is not refetched on every focus; a failure hides the chip rather than reporting anything.
+ */
+export function usePlatformVersion(): UseQueryResult<PlatformIdentity> {
+  return useQuery(
+    {
+      queryKey: qk.platformVersion(),
+      queryFn: fetchPlatformVersion,
+      staleTime: 5 * 60_000,
+      retry: false,
     },
     queryClient,
   );
