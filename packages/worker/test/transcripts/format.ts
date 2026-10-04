@@ -79,6 +79,11 @@
 //                   and the store products, as the Worker listed them
 //   reason          commerceClaim / commerceBinding on a refusal: the body's `reason`
 //   flag / state / granted   commerceClaim on "ok": the flag, the purchase state, whether granted
+//   range           chunkRange: "ok" (the server answered the exact 206 the run needs, or the
+//                   206 clipped at the end of the object) | "refused" (any other answer: the
+//                   strategy fails, WIRE-CONTRACT-V4 §11.4)
+//   bytes           chunkRange on "ok": the returned body, as a string (fewer than `length`
+//                   bytes when the 206 was clipped at the end of the object)
 //   licenseStatus   the gate's status afterwards (client-core `licenseState`)
 //   tokenHeld       whether the client holds a device token afterwards
 //
@@ -106,6 +111,16 @@
 // mintToken { recipeId }; updateDecide { channel } (the REQUESTED name, which may be an alias);
 // commerceClaim { store, payload } (payload: the store's own fields, sent beside `store`). pollSignIn and waitForSignIn act on the prompt the transcript's last
 // beginSignIn returned.
+//
+// chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
+// fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
+// Kotlin `chunkRangeFetch`, Godot `PKeyPackChunks.chunk_range_fetch`) of `length` bytes at
+// `offset` from the bundle whose SHA-256 is `bundle` (hex), over the SDK's own pack-object
+// transport, against the blobs template the transcript's last discover returned. It sends
+// `Range: bytes=<offset>-<offset+length-1>` and `If-Range: "<bundle>"`. A step whose `if-range`
+// is in `requiredHeaders` instead of `headers` records the server's answer to a STALE validator
+// (the recorder sent one no SDK can, the blobs URL being content-addressed): the replay proves
+// the SDK refuses a 200 to its own If-Range.
 
 export const TRANSCRIPT_VERSION = 1;
 
@@ -171,7 +186,9 @@ export type Action =
   /** P6-01: `client.commerce.getBinding()` — the licence's purchase binding and the products. */
   | "commerceBinding"
   /** P6-01: `client.commerce.claim(store, payload)` — a store purchase as a licence flag. */
-  | "commerceClaim";
+  | "commerceClaim"
+  /** P4-32: one chunk-bundle Range + If-Range fetch (WIRE-CONTRACT-V4 §11.4). */
+  | "chunkRange";
 
 export interface Step {
   action: Action;
@@ -234,6 +251,7 @@ export interface UpdateInitial {
  *  header change a transcript change. */
 export const RECORDED_RESPONSE_HEADERS = [
   "cache-control",
+  "content-range",
   "content-type",
   "etag",
   "retry-after",
