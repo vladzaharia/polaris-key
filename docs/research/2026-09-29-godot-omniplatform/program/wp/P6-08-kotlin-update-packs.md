@@ -1,16 +1,16 @@
 # P6-08 Kotlin SDK update client and packs engine
 
-| Field       | Value |
-| ----------- | ----- |
-| Phase       | P6: Commerce, ops, web |
-| Size | 2–3 engineer-weeks |
-| Depends on | [P6-06](P6-06-kotlin-core-runner.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P4-11](P4-11-chunk-sync-sdks.md), [P4-29](P4-29-feed-delta-menu.md) |
-| Unblocks | [P6-05](P6-05-kotlin-sdk.md), [P6-11](P6-11-kotlin-compose-ui-kit.md), [P6-12](P6-12-kotlin-android-glue.md) |
-| Role | `pkey-sdk-porter` |
-| Plan mode   | no (every case it needs exists in the corpus; a missing one goes to `pkey-wire-planner`) |
+| Field       | Value                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web                                                                                                                                                    |
+| Size        | 2–3 engineer-weeks                                                                                                                                                        |
+| Depends on  | [P6-06](P6-06-kotlin-core-runner.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P4-11](P4-11-chunk-sync-sdks.md), [P4-29](P4-29-feed-delta-menu.md)              |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md), [P6-11](P6-11-kotlin-compose-ui-kit.md), [P6-12](P6-12-kotlin-android-glue.md)                                                              |
+| Role        | `pkey-sdk-porter`                                                                                                                                                         |
+| Plan mode   | no (every case it needs exists in the corpus; a missing one goes to `pkey-wire-planner`)                                                                                  |
 | Gates       | `parity:check`, the Kotlin runner's `update-matrix.json`, `plan-matrix.json` and `content/` suites, `pnpm gen:constants -- --check`, the registry rows for the pack types |
-| Human input | none |
-| Repo        | `vladzaharia/polaris-key` |
+| Human input | none                                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                 |
 
 Slice c of [P6-05](P6-05-kotlin-sdk.md).
 
