@@ -6,7 +6,14 @@ import { Announcer } from "../ui/LiveRegion.js";
 import { AppToaster, toast } from "../ui/toast.js";
 import type { PortalAccount } from "./api.js";
 import { ActivateProvider, useActivate } from "./activate.js";
+import {
+  JumpIconButton,
+  JumpPalette,
+  JumpTrigger,
+} from "./components/JumpPalette.js";
 import { PortalShell } from "./components/PortalShell.js";
+import { useLibrary } from "./library.js";
+import { SCALE_THRESHOLD } from "./model/libraryView.js";
 import { StarScreen } from "./components/States.js";
 import { createPortalQueryClient, useLicenses, useSession } from "./data.js";
 import { portalErrorCopy } from "./errors.js";
@@ -103,9 +110,43 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
     setParams({ activate: null, product: null });
   }, [activateParam, productParam, activate]);
 
+  // ⌘K (§4.27) from 8 products.
+  const lib = useLibrary();
+  const scaled = (lib.products?.length ?? 0) >= SCALE_THRESHOLD;
+  const [jumpOpen, setJumpOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (!scaled) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setJumpOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [scaled]);
+
   return (
-    <PortalShell account={account} route={route} libraryCount={libraryCount}>
+    <PortalShell
+      account={account}
+      route={route}
+      libraryCount={libraryCount}
+      headerExtra={
+        scaled ? <JumpTrigger onOpen={() => setJumpOpen(true)} /> : null
+      }
+      phoneHeaderExtra={
+        scaled ? <JumpIconButton onOpen={() => setJumpOpen(true)} /> : null
+      }
+    >
       <Page route={route} account={account} />
+      {scaled ? (
+        <JumpPalette
+          open={jumpOpen}
+          onOpenChange={setJumpOpen}
+          products={lib.products ?? []}
+          onActivate={() => activate.open()}
+        />
+      ) : null}
     </PortalShell>
   );
 }
@@ -119,7 +160,7 @@ function Page({
 }): React.ReactElement {
   switch (route.kind) {
     case "library":
-      return <LibraryPage account={account} />;
+      return <LibraryPage account={account} params={route.params} />;
     case "discover":
       return <DiscoverPage />;
     case "product":

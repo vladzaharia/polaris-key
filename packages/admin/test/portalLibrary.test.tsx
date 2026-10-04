@@ -136,7 +136,7 @@ describe("Library on today's data (PX-02)", () => {
     expect(
       await screen.findByText("3 products ·", { exact: false }),
     ).toBeTruthy();
-    const tiles = screen.getAllByRole("article");
+    const tiles = await screen.findAllByRole("article");
     expect(
       tiles.map(
         (t) => within(t).getByRole("heading", { level: 3 }).textContent,

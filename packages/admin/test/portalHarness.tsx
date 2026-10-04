@@ -213,3 +213,13 @@ export async function axeViolations(): Promise<string[]> {
     (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
   );
 }
+
+// jsdom has no ResizeObserver; cmdk and Radix's size hooks need one.
+(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver ??=
+  class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  };
+// cmdk scrolls the selected item into view; jsdom has no layout.
+Element.prototype.scrollIntoView ??= function scrollIntoView(): void {};
