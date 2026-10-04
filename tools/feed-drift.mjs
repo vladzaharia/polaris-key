@@ -224,12 +224,18 @@ export function checkListing(deliverable, listing, expected) {
       problems.push(
         `dist-tag ${tag} is ${listing.tags[tag] ?? "unset"}, not ${want}`,
       );
+    // `latest` is only ever a stable release: any prerelease there (this build or an older
+    // one of any channel) was promoted by nobody.
+    const latest = listing.tags.latest;
     if (
       ecosystem === "npm" &&
       expected.channel !== "stable" &&
-      listing.tags.latest === want
+      latest !== undefined &&
+      kindOf(latest, ecosystem) !== "stable"
     )
-      problems.push(`dist-tag latest names the ${kind} build ${want}`);
+      problems.push(
+        `dist-tag latest names the ${kindOf(latest, ecosystem)} build ${latest}`,
+      );
     if (ecosystem === "oci" && !listing.tags[tag])
       problems.push(`the image has no ${tag} tag`);
   }

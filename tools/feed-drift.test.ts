@@ -103,6 +103,27 @@ describe("checkListing", () => {
         MAIN,
       ),
     ).toContain("dist-tag latest names the main build 0.9.1-main.4");
+    // An older prerelease in `latest` is just as wrong (no stable release yet).
+    expect(
+      checkListing(
+        npm,
+        {
+          versions: ["0.9.1-main.3", "0.9.1-main.4"],
+          tags: { latest: "0.9.1-main.3", main: "0.9.1-main.4" },
+        },
+        MAIN,
+      ),
+    ).toEqual(["dist-tag latest names the main build 0.9.1-main.3"]);
+    expect(
+      checkListing(
+        npm,
+        {
+          versions: ["0.9.1-rc.1", "0.9.1-main.4"],
+          tags: { latest: "0.9.1-rc.1", main: "0.9.1-main.4" },
+        },
+        MAIN,
+      ),
+    ).toEqual(["dist-tag latest names the beta build 0.9.1-rc.1"]);
   });
 
   it("a release is judged among releases: a newer main build does not fail it", () => {
