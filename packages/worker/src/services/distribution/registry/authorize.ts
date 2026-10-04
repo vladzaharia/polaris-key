@@ -108,8 +108,11 @@ export function extractFeedCredential(req: Request): FeedCredential | null {
     return null;
   }
   // Cargo sends the token as the whole value. A value with a space is some other scheme this
-  // host does not speak.
-  if (sp === -1) return { scheme: "raw", token: value };
+  // host does not speak, and a bare scheme name (`Bearer`, `Basic`) carries no token.
+  if (sp === -1)
+    return /^(bearer|basic)$/i.test(value)
+      ? null
+      : { scheme: "raw", token: value };
   return null;
 }
 
