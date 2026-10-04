@@ -357,7 +357,9 @@ export function browserObjectFetch(o: {
       t.split("{sha256}").join(encodeURIComponent(req.sha256)),
       `${o.baseUrl}/`,
     ).toString();
-    const res = await o.fetchImpl(url, { credentials: "omit", headers });
+    // Called unbound: the page's own `fetch` throws "Illegal invocation" with `this` set to `o`.
+    const fetchImpl = o.fetchImpl;
+    const res = await fetchImpl(url, { credentials: "omit", headers });
     const body = res.body;
     return {
       status: res.status,
