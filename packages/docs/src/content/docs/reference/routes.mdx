@@ -90,6 +90,14 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint, headers only (registry host only) |
 | GET | `/{product}/release/changelog` | release | Release changelog |

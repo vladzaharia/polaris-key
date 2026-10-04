@@ -23,6 +23,11 @@ on:
       - "packages/cli/src/package/**"
       - ".github/workflows/registry-clients.yml"
   workflow_dispatch:
+    inputs:
+      ecosystem:
+        description: "Run only this ecosystem's clients (curl, npm, …); empty runs every job."
+        required: false
+        default: ""
 
 # Least privilege: the jobs only read the checkout.
 permissions:
@@ -30,14 +35,47 @@ permissions:
 
 jobs:
   client:
-    name: Registry client (${{ matrix.client }})
+    name: Registry client (${{ matrix.name || matrix.client }})
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.ecosystem == '' || inputs.ecosystem == matrix.ecosystem }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - client: curl
+            ecosystem: curl
             os: ubuntu-latest
+          # F-04: the npm feed (plans/F-01.md §6.8). Each row pins its client's major release.
+          - client: npm
+            name: npm 10
+            ecosystem: npm
+            os: ubuntu-latest
+            env: NPM_VERSION=10
+          - client: npm
+            name: npm 11
+            ecosystem: npm
+            os: ubuntu-latest
+            env: NPM_VERSION=11
+          - client: pnpm
+            name: pnpm 9
+            ecosystem: npm
+            os: ubuntu-latest
+            env: PNPM_VERSION=9
+          - client: pnpm
+            name: pnpm 10
+            ecosystem: npm
+            os: ubuntu-latest
+            env: PNPM_VERSION=10
+          - client: yarn
+            name: Yarn 4
+            ecosystem: npm
+            os: ubuntu-latest
+            env: YARN_VERSION=4
+          - client: bun
+            name: Bun
+            ecosystem: npm
+            os: ubuntu-latest
+            bun: true
     steps:
       - uses: actions/checkout@v7
       # No `version:` here: the action reads `packageManager` from package.json.
@@ -46,7 +84,12 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - if: ${{ matrix.bun }}
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: pnpm install --frozen-lockfile
       # The Worker imports the built workspace packages (brand, manifest, protocol, …).
       - run: pnpm build
-      - run: pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}
+      - name: Run the client
+        run: |
+          if [ -n "${{ matrix.env }}" ]; then export ${{ matrix.env }}; fi
+          pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}

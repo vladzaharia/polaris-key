@@ -6,15 +6,15 @@
  *   node scripts/registry-clients/run.mjs [--client <name>]... [--port <n>]
  *
  *   1. a fresh local state directory (D1, R2, KV) under the OS temp dir;
- *   2. `seed.mjs`: every migration, then the fixture owner;
+ *   2. `seed.mjs`: every migration, the fixture owner, then each `fixtures/<ecosystem>.mjs`;
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
  *      request the clients make arrives on the registry host (`core/registryHost.ts`);
  *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin)
  *      and OWNER (the fixture owner) in its environment; a non-zero exit fails the run.
  *
- * F-02 ships one smoke client, `curl`. F-04 to F-09 add their ecosystem's clients (npm, pip,
- * SwiftPM, Gradle, docker, GodotEnv) as further `clients/*.sh` and matrix rows in
- * `.github/workflows/registry-clients.yml`. Nothing here reaches a deployed environment.
+ * F-02 ships one smoke client, `curl`; F-04 adds npm, pnpm, yarn and bun. F-05 to F-09 add
+ * their ecosystem's clients (pip, SwiftPM, Gradle, docker, GodotEnv) as further `clients/*.sh`
+ * and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here reaches a deployed environment.
  */
 
 import { spawn, spawnSync } from "node:child_process";
@@ -72,7 +72,7 @@ mkdirSync(assets);
 let dev = null;
 let failed = 0;
 try {
-  seed(state);
+  await seed(state);
   dev = spawn(
     WRANGLER,
     [
