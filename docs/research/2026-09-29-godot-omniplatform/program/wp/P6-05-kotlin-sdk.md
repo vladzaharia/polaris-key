@@ -130,10 +130,11 @@ this brief and the code disagree.
 - **Transcripts.** The runner replays 17 of the 18 transcripts on both Ed25519 backends (JCA and
   Tink forced, 98 tests each). `commerce-claim.json` proves `commerce.receipt`, which is planned
   and unowned in Kotlin as in Swift, so `parity.json` makes it not applicable.
-- **The `signing` grep (over `.kts`, `.toml` and `.properties`) has two benign hits**, none of them
+- **The `signing` grep (over `.kts`, `.toml` and `.properties`) has only benign hits**, none of them
   a publishing configuration: `mavenCentral()` as a dependency-resolution repository in
-  `settings.gradle.kts` (lines 33 and 42), and the `:boundary` probe app's release build signed with
-  the debug key so `tools/check_flavours.sh` can inspect its APK. `check_publication.sh` passes
+  `settings.gradle.kts` (lines 33 and 42), the `:boundary` probe app's release build signed with
+  the debug key so `tools/check_flavours.sh` can inspect its APK, and two comments that say
+  "no signing, no Maven Central" (`platform/build.gradle.kts:15`, `android/build.gradle.kts:25`). `check_publication.sh` passes
   ("no signing, Sonatype or Central configuration").
 - **`./gradlew build` failed on `:ui` until the close-out fixed two build-file defects** that
   P6-11's CI line (`:ui:testDebugUnitTest`, `:ui:lintRelease`) never ran into.

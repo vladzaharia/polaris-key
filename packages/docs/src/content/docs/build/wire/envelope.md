@@ -16,7 +16,7 @@ compact JWS  = signingInput "." base64url(signature)
 
 The signature is verified over the encoded segments **exactly as received**. The payload is
 never re-serialised before verification, which is what makes the construction byte-stable
-across five languages with five different JSON writers.
+across every SDK, each with its own JSON writer.
 
 Spec references on this page: §1 (JWS mechanics), §2 (the envelope), §3 (claim validation).
 Implementation: `packages/shared-jws/src/index.ts` and `packages/client-core/src/verify.ts`.
