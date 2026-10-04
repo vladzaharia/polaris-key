@@ -6,7 +6,7 @@ sidebar:
 ---
 
 The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node
-conformance runner. Python, Swift and Godot are standalone toolchains under `sdks/`, with their
+conformance runner. Python, Swift, Godot and Kotlin are standalone toolchains under `sdks/`, with their
 own package managers and their own place in CI.
 
 ## The map
@@ -28,6 +28,7 @@ sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
   godot/             Godot addon               pure-GDScript verify and a headless runner
+  kotlin/            Gradle build              :core (JVM) + the :conformance runner; :platform (Android)
 conformance/          corpus/v2 ONLY (one signer's golden vectors) + the Node runner
 tools/                sign-corpus.ts · gen-mirrors.ts
 products/             per-product data (catalog.json + product.json) + gen-seed
@@ -103,15 +104,16 @@ token and icon, and the docs path. Core is not a service and has no row.
 `pnpm gen:services` (`tools/gen-services.ts`) writes every language's constants from it, each
 file carrying a GENERATED banner:
 
-| Generated file                                                  | Read by                           |
-| --------------------------------------------------------------- | --------------------------------- |
-| `packages/shared-manifest/src/services.generated.ts`            | the manifest package, Worker, CLI |
-| `packages/admin/src/services.generated.ts`                      | the console                       |
-| `packages/sdk-node/src/services.generated.ts`                   | the Node SDK                      |
-| `packages/sdk-react/src/core/services.generated.ts`             | the React SDK                     |
-| `sdks/python/src/polaris_key/_services.py`                      | the Python SDK                    |
-| `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift` | the Swift SDK                     |
-| `sdks/godot/addons/polaris_key/core/services_generated.gd`      | the Godot SDK                     |
+| Generated file                                                               | Read by                           |
+| ---------------------------------------------------------------------------- | --------------------------------- |
+| `packages/shared-manifest/src/services.generated.ts`                         | the manifest package, Worker, CLI |
+| `packages/admin/src/services.generated.ts`                                   | the console                       |
+| `packages/sdk-node/src/services.generated.ts`                                | the Node SDK                      |
+| `packages/sdk-react/src/core/services.generated.ts`                          | the React SDK                     |
+| `sdks/python/src/polaris_key/_services.py`                                   | the Python SDK                    |
+| `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift`              | the Swift SDK                     |
+| `sdks/godot/addons/polaris_key/core/services_generated.gd`                   | the Godot SDK                     |
+| `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt` | the Kotlin SDK                    |
 
 `pnpm gen:services -- --check` regenerates in memory and fails on any difference; it runs in the
 green gate, in CI and in the pre-commit hook. The console and the SDKs get their own generated

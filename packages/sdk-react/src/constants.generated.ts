@@ -645,6 +645,7 @@ export const SdkId = {
   python: "python",
   swift: "swift",
   godot: "godot",
+  kotlin: "kotlin",
 } as const;
 export type SdkId = (typeof SdkId)[keyof typeof SdkId];
 
@@ -655,6 +656,7 @@ export const SDK_ID_VALUES: readonly SdkId[] = [
   "python",
   "swift",
   "godot",
+  "kotlin",
 ];
 
 /** Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal. */

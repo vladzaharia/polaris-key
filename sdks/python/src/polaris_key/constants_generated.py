@@ -773,6 +773,7 @@ class SdkId:
     PYTHON: Final = "python"
     SWIFT: Final = "swift"
     GODOT: Final = "godot"
+    KOTLIN: Final = "kotlin"
 
 
 #: Every ``SdkId`` value, in source order.
@@ -782,6 +783,7 @@ SDK_ID_VALUES: Tuple[str, ...] = (
     "python",
     "swift",
     "godot",
+    "kotlin",
 )
 
 

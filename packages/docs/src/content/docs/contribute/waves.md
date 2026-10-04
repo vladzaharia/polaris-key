@@ -26,8 +26,8 @@ always the same: **contract → catalog → corpus → SDKs.**
 3. **Corpus regen** (`pnpm gen:corpus`). Re-sign the golden vectors so every runner has
    something new to verify against — see [The conformance corpus](/docs/contribute/corpus/).
 4. **SDKs verify against the corpus.** Implement the change in each SDK and prove parity by
-   running its conformance runner. A feature is not "done" until all six implementations pass (client-core,
-   Node, React, Python, Swift and Godot).
+   running its conformance runner. A feature is not "done" until every implementation passes (client-core,
+   Node, React, Python, Swift and Godot, and Kotlin for the rows its parity manifest has implemented).
 
 Because behavior is centralized — each SDK's CLI has a single **core** command that the
 argparse/click/typer or commander/yargs front end wraps — a behavior change happens in one

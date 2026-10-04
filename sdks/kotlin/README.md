@@ -1,19 +1,62 @@
-# Polaris Key — Kotlin (Android platform backend)
+# Polaris Key — Kotlin
 
-`polaris-key-platform` is the shared Android backend for Polaris Key (P5-06): the Godot SDK
-reaches it through the `PolarisKeyAndroid` plugin now, and the Kotlin SDK proper (P6-05), Unity
-and MAUI build on it later. Pure Kotlin, no NDK. Proposed Maven coordinates:
-`im.plrs.key:polaris-key-platform` (not published yet).
+The Kotlin SDK for native Android apps and JVM desktop apps (P6-05), and the shared Android
+backend that the Godot SDK, and later Unity and MAUI, bind. It is built in slices: P6-06 landed the
+verified core and the conformance runner; licence, config, identity and release (P6-07), update and
+packs (P6-08), the platform module's stable API (P6-09), the Compose UI kit (P6-11) and the
+Android glue (P6-12) follow. `parity.json` says which features are implemented today; the
+docs' parity page renders it.
 
-| Module      | Where                      | What                                                                                   |
-| ----------- | -------------------------- | -------------------------------------------------------------------------------------- |
-| `:platform` | `platform/`                | the AAR, flavours `play` and `direct`                                                  |
-| `:godot`    | `../godot/native/android/` | the Godot Android plugin (v2) over it, singleton `PolarisKeyAndroid`                   |
-| `:boundary` | `boundary/`                | an empty app per flavour; `tools/check_flavours.sh` proves the boundary on its release |
+| Module         | Kind                  | What                                                                                                                                                                      |
+| -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `:core`        | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants |
+| `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
+| `:platform`    | Android library (AAR) | install source, Keystore, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`)                                           |
+| `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform`, singleton `PolarisKeyAndroid` (`../godot/native/android/`)                                                                |
+| `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
+
+Planned modules: `:license`, `:config`, `:identity`, `:release`, `:update`, `:packs` and the
+umbrella `:sdk` (JVM), `:android` (the only module that sees both `:core` and `:platform`) and
+`:ui` (Compose). `:core` has no Android dependency and `:platform` depends on no SDK module:
+`./gradlew checkModuleBoundaries` fails otherwise, in CI.
+
+Coordinates are proposed (`im.plrs.key:polaris-key-<module>`). Kotlin artifacts reach adopters
+only through Polaris Key's own Maven feed (F-07, F-10); there is no Maven Central publication, no
+signing configuration and no remote repository in this build. `maven-publish` writes to
+`build/repo` only (`./gradlew :core:publishCorePublicationToLocalRepository`).
 
 Versions follow Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
 compile and target SDK 36, min SDK 24, Java 17 bytecode), so the AARs drop into a Godot Gradle
-export unchanged. Play Core: `app-update` 2.1.0, `asset-delivery` 2.3.0, `integrity` 1.6.0.
+export unchanged. Play Core: `app-update` 2.1.0, `asset-delivery` 2.3.0, `integrity` 1.6.0. The
+JVM modules use kotlinx-coroutines 1.10.2 (`suspend` calls, `Flow` streams),
+kotlinx-serialization-json 1.8.1 (the `JsonElement` tree; parsing is the SDK's own strict scanner),
+OkHttp 4.12.0 (the one HTTP client on Android API 24 and the JVM) and, below Android API 33, Tink
+for Ed25519 (`compileOnly` in `:core`; the JCA's Ed25519 serves JDK 15+ and Android API 33+).
+
+## :core
+
+- **Verification.** `JwsVerifier.verify` is WIRE-CONTRACT-V4 §1 in order; `verifyLicenseDoc`,
+  `verifyConfigDoc`, `verifyTrustManifest`, `mergeTrust` and `inspectBundle` (§7, naming the
+  refusing step) sit on it. `StrictJson.validate` is the V4 §1.2 scanner (duplicate names by
+  scalar value, U+0000, depth, digit-judged numbers) and reports the non-wire-integer pointers
+  every integer claim is decided from. `Ed25519.verifier` is the JCA or Tink backend behind one
+  port, with the §1.1 prechecks before either.
+- **State.** `CoreContext` holds the device id, the token, the trust set, the verified cache and
+  the clock floor; `start()` re-verifies the stored record and derives every counter from it;
+  `sync()` refreshes trust on Core's cadence, fetches the enabled documents in parallel with their
+  ETags, takes at most one shared re-acquire, escalates a 304 past the half-life, writes the cache
+  once and reports. `discover()` installs the product's capability map (fail closed).
+- **Stores.** `InMemoryStore` and the 0600 `FileStore`. On the JVM there is no OS keyring without
+  a native library, so `FileStore.status()` reports `file` / `keyring-unavailable`; the Android
+  Keystore store is P6-12's.
+- **Capabilities.** `Capabilities.sdk().supports(feature, services)` answers from the generated
+  table (`Constants.generated.kt`, from `parity.json`), with typed reasons.
+- **Pure functions.** `bootTransition` (the boot stage machine), `licenseState`,
+  `Fingerprint.hashComponents` and the source rules, `DeviceId.fromRaw`, `detectOutlet`,
+  `effectiveCapabilities`, `canonicalPlatform` / `canonicalArch`, `Semver`.
+
+`Constants.generated.kt` and `ServiceSlug.generated.kt` are written by `pnpm gen:constants` and
+`pnpm gen:services`; never edit them by hand.
 
 ## The flavours are a policy boundary
 
@@ -30,7 +73,7 @@ Neither AAR declares a permission: a direct app adds `REQUEST_INSTALL_PACKAGES` 
 `asset-delivery` brings `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and WorkManager's
 permissions into play builds (notes/S-10 §2).
 
-## API
+## :platform API
 
 - **`InstallSource.read(context)`**: raw `getInstallSourceInfo` facts (API 30+, the
   `getInstallerPackageName` fallback below): installer, initiator, the initiator's
@@ -75,15 +118,27 @@ permissions into play builds (notes/S-10 §2).
 
 ```sh
 cd sdks/kotlin
+# JVM modules (JDK 17; no Android SDK needed with -Ppkey.jvmOnly=true)
+./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test checkModuleBoundaries
+# Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
 ./gradlew :platform:assembleRelease :godot:assembleRelease :boundary:assembleRelease
 tools/check_flavours.sh        # the boundary on the release AARs and APKs
 ```
 
-JDK 17 or later and the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`) with
-`platforms;android-36` and `build-tools;36.1.0`. The unit tests run on Robolectric 4.14 with Play
-Core's `FakeAppUpdateManager`, a fake `PackManager`, fake `PackageFacts` and Robolectric's
+`:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository
+in place. Its `test` task depends on `testTink`, so every suite runs on the JCA Ed25519 backend
+and again with Tink forced: `cases.json` (the JWS, licence, config, trust, clock-floor and bundle
+families and their pointer sets), `headers.json`, `fingerprint.json`, `stage-matrix.json`,
+`outlet-matrix.json`, and every transcript `parity.json` makes applicable (replayed by
+`TranscriptReplay.kt`, a port of the Node engine). The `kotlin` job in `.github/workflows/ci.yml`
+runs the JVM line.
+
+The Android modules need the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`) with
+`platforms;android-36` and `build-tools;36.1.0`; `settings.gradle.kts` includes them only when an
+SDK is configured. The unit tests run on Robolectric 4.14 with Play Core's
+`FakeAppUpdateManager`, a fake `PackManager`, fake `PackageFacts` and Robolectric's
 PackageInstaller; AndroidKeyStore is replaced by a software `KeyProvider` (Robolectric has none).
 The `android` job in `.github/workflows/ci.yml` runs all of it. The real Keystore, a real silent
 self-update and Play Asset Delivery under `bundletool --local-testing` run on an emulator through
