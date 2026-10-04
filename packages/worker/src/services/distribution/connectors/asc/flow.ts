@@ -6,7 +6,7 @@
  *   - `distributeControl` / `distributeRead`: the `Idempotency-Key` (writes), then P5-02's pinned
  *     run (`withRun`: a missing or mismatched pin refuses before any token is minted), then the
  *     flow; a `Refused` raised anywhere inside answers its result.
- *   - `step`: one ledger step (`core/asc/ledger.ts`) keyed by the product, the op, the natural key
+ *   - `step`: one ledger step (`core/storefront/ledger.ts`) keyed by the product, the op, the natural key
  *     and the console's key; a reused key with another body is 409 `idempotency_conflict`.
  *   - `proveOwned`: one resource re-read with `include=app`, refused unless it is the pinned app's.
  */

@@ -246,7 +246,7 @@ export async function listPlatformAscApps(
         );
         throw new PlatformStoreUnavailable("app-store", status, message);
       } finally {
-        // The team key's budget is shared with every product's poller (core/asc/budget.ts).
+        // The team key's budget is shared with every product's poller (core/storefront/budget.ts).
         await recordTeamRate(o.env, "app-store", client.lastRate, o.now);
       }
     },

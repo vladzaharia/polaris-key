@@ -39,7 +39,7 @@
  *     the pinned app before anything is written (`unknown_build`, `unknown_beta_group`,
  *     `unknown_version`, `unknown_submission`).
  *   - **Idempotent and resumable.** Every write requires the console's `Idempotency-Key` header
- *     (one per user intent) and runs as a ledger step (`core/asc/ledger.ts`): a natural-key read
+ *     (one per user intent) and runs as a ledger step (`core/storefront/ledger.ts`): a natural-key read
  *     first (S-14 §7.3's table), nothing sent when Apple already has it, a replay of a done step
  *     answered from the row, the same key with another body a 409 `idempotency_conflict`. A
  *     multi-step handler (groups, submit) is a sequence of such steps under the one key, so a

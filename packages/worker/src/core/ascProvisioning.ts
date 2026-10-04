@@ -37,7 +37,10 @@ import {
   type AscClient,
   type AscResource,
 } from "./asc/client.js";
-import { performStoreWrite, type StoreWriteResult } from "./storefront/ledger.js";
+import {
+  performStoreWrite,
+  type StoreWriteResult,
+} from "./storefront/ledger.js";
 import { GATE_CAPABILITY_TYPES } from "./storefront/rules/appStore.js";
 
 // ── The wizard's capability list ─────────────────────────────────────────────────────────────

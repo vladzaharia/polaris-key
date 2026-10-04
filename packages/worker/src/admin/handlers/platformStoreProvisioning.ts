@@ -21,7 +21,7 @@
  *        The app record with that bundle id, or `found: false` (the wizard polls it while the
  *        operator creates the record in the portal: `POST /v1/apps` does not exist). `poll=1` is
  *        background spending: refused with 429 `asc_budget_low` below 20 % of the team key's
- *        hourly budget, which the P5-02 poller shares (core/asc/budget.ts).
+ *        hourly budget, which the P5-02 poller shares (core/storefront/budget.ts).
  *   GET  …/signing
  *        Certificates and profiles with their expiry: READ only (no create, revoke or delete
  *        exists on this surface, and the write gate refuses them all).
@@ -470,7 +470,13 @@ async function lookup(c: ProvisioningContext): Promise<Response> {
     });
   // The wizard's every-10-seconds detection is background spending: it yields to the pollers.
   if (/^(1|true)$/.test(q.get("poll") ?? "")) {
-    const rate = await readRate(c.env, "app-store", "", { source: "platform" }, c.now);
+    const rate = await readRate(
+      c.env,
+      "app-store",
+      "",
+      { source: "platform" },
+      c.now,
+    );
     if (!budgetAllows(rate, "background"))
       return err(
         429,

@@ -107,7 +107,7 @@ describe("every write operation is classified", () => {
     }
     expect(
       unclassified,
-      "classify these in writeGate.ts or writeGateDenied.ts",
+      "classify these in rules/appStore.ts or rules/appStoreDenied.ts",
     ).toEqual([]);
     expect(twice).toEqual([]);
   });
