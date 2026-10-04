@@ -2702,7 +2702,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-07-maven-feed.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-08",
