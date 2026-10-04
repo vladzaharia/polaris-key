@@ -408,6 +408,43 @@ a wrapper element, so two providers can carry different brands without leaking i
 and on `:root`, so anything React portals (a dialog, a toast) still inherits them. You can also
 override any `--pk-*` var from your own stylesheet.
 
+The defaults are the Polaris Key design system (`@polaris-key/brand`, see
+`docs/design/BRAND.md`): the violet accent and focus ring, the brand's surfaces and text, Rubik
+when the page loads it (the system stack otherwise). You do not need to load the brand's
+`tokens.css`; the Provider sets every value itself.
+
+```tsx
+<PolarisKeyProvider
+  productSlug="acme"
+  colorScheme="system" // "system" (default) | "dark" | "light"
+  theme={{
+    tokens: { accent: "#ff5c00", accentText: "#000000" }, // both schemes
+    lightTokens: { background: "#fbfaf7" }, // one scheme only
+    logo: <AcmeLogo />, // null hides the default mark
+    poweredBy: true, // "Powered by Polaris Key" on the sign-in card and device list
+  }}
+>
+```
+
+- **Scheme.** "system" follows `prefers-color-scheme` live and is dark when the OS states no
+  preference. The wrapper carries `data-theme="dark|light"` and the matching `color-scheme`, so
+  form controls follow. Persisting a user's choice is yours: store it and pass it back.
+- **Tokens.** `darkTokens`, `lightTokens`, `defaultTheme` (dark), `lightTheme` and
+  `highContrastTheme` (AAA text) are exported. Every token maps to one `--pk-*` variable
+  (`themeVars`). If you change a colour, keep text at 4.5:1 and control borders and the focus
+  ring at 3:1 against the surfaces.
+- **Marks.** With no `logo`, the gate, activation and sign-in screens show the Polaris Key mark
+  (the Pinned K, without the terminal bit) and update dialogs show the Polaris Key Delivery mark,
+  picked for a dark or light ground from your `background` token.
+- **"Powered by Polaris Key".** Off by default. `poweredBy: true` (or `"horizontal"` /
+  `"stacked"`) adds it to the sign-in card and the device list; `<PoweredByPolarisKey>` places it
+  on your about or credits screen. It never renders below its minimum size (compact 232 × 88,
+  horizontal 376 × 144, stacked 288 × 336).
+- **Focus and CSP.** Keyboard focus draws a 2 px `--pk-ring` outline on `:focus-visible`. The
+  components style through React's `style` prop, which the browser applies through the CSSOM, and
+  render no `<style>` or `<script>` element, so they need no `'unsafe-inline'` in your
+  Content-Security-Policy.
+
 ## Develop
 
 ```sh

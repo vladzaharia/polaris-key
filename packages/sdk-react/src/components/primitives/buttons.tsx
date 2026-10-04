@@ -3,23 +3,26 @@
 //   * `aria-busy` is always the caller's `busy`, so an in-flight action is announced;
 //   * `aria-label` always carries the button's TEXT, so a button whose label is swapped for a
 //     busy glyph ("…") keeps its accessible name — this is the a11y contract the suite pins;
-//   * the focus ring is `--pk-ring` with a 2px offset, so keyboard focus stays visible on
-//     every surface (WCAG 2.4.7).
+//   * the focus ring is 2px solid `--pk-ring` with a 2px offset on `:focus-visible`
+//     (`./focus.ts`, BRAND.md §7.4), so keyboard focus stays visible on every surface
+//     (WCAG 2.4.7);
+//   * the brand ships two weights (BRAND.md §1.6), so labels are 700 or 400, never 600;
+//   * a control's boundary is `--pk-border-strong` (>= 3:1, WCAG 1.4.11).
 //
 // Extracted from the copies in PolarisLogin / LicenseGate / PolarisLogout.
 
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
+import { useFocusRing } from "./focus.js";
 
 const base: CSSProperties = {
   appearance: "none",
   cursor: "pointer",
   padding: "12px 16px",
-  borderRadius: "var(--pk-radius)",
-  fontWeight: 600,
+  borderRadius: "var(--pk-control-radius, var(--pk-radius))",
+  fontWeight: 700,
   fontSize: "15px",
+  lineHeight: "20px",
   fontFamily: "var(--pk-font-family)",
-  outlineColor: "var(--pk-ring)",
-  outlineOffset: "2px",
 };
 
 export const primaryStyle: CSSProperties = {
@@ -32,8 +35,8 @@ export const primaryStyle: CSSProperties = {
 export const secondaryStyle: CSSProperties = {
   ...base,
   background: "transparent",
-  color: "var(--pk-text)",
-  border: "1px solid var(--pk-border)",
+  color: "var(--pk-text-strong, var(--pk-text))",
+  border: "1px solid var(--pk-border-strong, var(--pk-border))",
 };
 
 /** The smaller, quieter button a message screen's retry uses. */
@@ -86,6 +89,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ...rest
     } = props;
     const name = label ?? (typeof children === "string" ? children : undefined);
+    const ring = useFocusRing();
     return (
       <button
         ref={ref}
@@ -94,8 +98,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         style={{
           ...styles[variant],
           ...(busy ? { opacity: 0.7 } : null),
+          ...(disabled ? { cursor: "not-allowed" } : null),
           ...style,
+          ...ring.style,
         }}
+        onFocus={ring.onFocus}
+        onBlur={ring.onBlur}
         disabled={disabled}
         aria-busy={busy}
         // Keep an accessible name even while a busy glyph replaces the label.

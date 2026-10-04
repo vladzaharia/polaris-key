@@ -328,6 +328,9 @@ importers:
 
   packages/sdk-react:
     dependencies:
+      '@polaris-key/brand':
+        specifier: workspace:*
+        version: link:../brand
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../shared-catalog

@@ -2,31 +2,78 @@
 // is a small token bag + copy overrides; the Provider serializes the tokens to `--pk-*`
 // custom properties on a wrapper element, and the drop-in components read them. Consumers
 // can theme entirely from JS (tokens) OR by setting `--pk-*` vars in their own stylesheet.
+//
+// TWO BRANDINGS (owner decision 2026-10-04). Polaris Key branding is OPTIONAL:
+//
+//   "neutral" (default)  a quiet, host-friendly greyscale theme that inherits the app's font
+//                        (`font-family: inherit`) and shows no Polaris Key mark or badge. An
+//                        integrator points any token at their own colours (`var(--app-x)`).
+//   "polaris-key"        the Polaris Key design system (docs/design/BRAND.md): every colour read
+//                        from `@polaris-key/brand`'s generated `THEME_TOKENS`, Rubik when the
+//                        page loads it, the violet accent and focus ring, and the Pinned K / Star
+//                        Cut marks on the screens BRAND.md §7.1 assigns them. The SDK never
+//                        requires the host to load `tokens.css` (BRAND.md §2).
+//
+// Choose with one option: `theme={{ branding: "polaris-key" }}` (or the `polarisKeyTheme`
+// preset, or `<PolarisKeyProvider branding="polaris-key">`). The "Powered by Polaris Key" badge
+// is a separate opt-in (`poweredBy`), off by default under both brandings.
+//
+// Both brandings are dark and light, following the system (BRAND.md §3):
+// `<PolarisKeyProvider colorScheme>` takes "system" (the default), "dark" or "light"; the
+// integrator's partial theme merges over the resolved base, and `darkTokens` / `lightTokens`
+// override one scheme only.
+
+import { FONT, RADIUS, THEME_TOKENS } from "@polaris-key/brand";
+
+/** The persisted theme choice (BRAND.md §3). "system" follows `prefers-color-scheme`. */
+export type PolarisColorScheme = "system" | "dark" | "light";
+
+/** Which look the built-in screens wear: neutral (default) or the Polaris Key brand. */
+export type PolarisBranding = "neutral" | "polaris-key";
+
+/** The scheme a theme resolved to. */
+export type PolarisResolvedScheme = "dark" | "light";
 
 /** The visual tokens. Each maps to a `--pk-<token>` CSS custom property. */
 export interface PolarisThemeTokens {
   /** Brand accent (primary button bg). */
   accent: string;
-  /** Brand accent, hover/active state (deeper indigo). */
+  /** Brand accent, hover/active state. */
   accentHover: string;
   /** Text colour on the accent. */
   accentText: string;
-  /** Focus-ring colour (keyboard focus visibility — WCAG 2.4.7). */
+  /** Focus-ring colour (keyboard focus visibility — WCAG 2.4.7). Violet in the brand. */
   ring: string;
   /** Page/gate background. */
   background: string;
   /** Card/surface background. */
   surface: string;
-  /** Primary text colour. */
+  /** Wells and inputs on a card. */
+  surfaceSunken: string;
+  /** Headings and key figures. */
+  textStrong: string;
+  /** Primary (body) text colour. */
   text: string;
   /** Muted/secondary text. */
   textMuted: string;
-  /** Border colour for cards/inputs. */
+  /** Decorative borders: card edges, row dividers. No contrast requirement. */
   border: string;
-  /** Danger/error accent. */
+  /** Borders that bound a control (inputs, secondary buttons): >= 3:1 on every surface. */
+  borderStrong: string;
+  /** Danger/error text. */
   danger: string;
-  /** Corner radius for cards/buttons. */
+  /** Warning text and the warning callout's border. */
+  warning: string;
+  /** The warning callout's background. */
+  warningSubtle: string;
+  /** Success text. */
+  success: string;
+  /** Informational text. */
+  info: string;
+  /** Corner radius for cards. */
   radius: string;
+  /** Corner radius for controls (buttons, inputs). */
+  controlRadius: string;
   /** Base font stack. */
   fontFamily: string;
 }
@@ -40,6 +87,8 @@ export interface PolarisThemeCopy {
   keyEntryLabel: string;
   keyEntryPlaceholder: string;
   keySubmitLabel: string;
+  /** The divider between the sign-in button and the key form when both appear. */
+  orDivider: string;
   graceTitle: string;
   graceBody: string;
   expiredTitle: string;
@@ -101,36 +150,137 @@ export interface PolarisThemeCopy {
   devicesUnsupportedBody: string;
 }
 
+/** Which "Powered by Polaris Key" badge layout a licence/account screen shows (BRAND.md §7.2):
+ *  compact for app UI (the default when `true`), horizontal for footers and credits, stacked
+ *  for square placements. */
+export type PoweredByLayout = "compact" | "horizontal" | "stacked";
+
 export interface PolarisTheme {
   tokens: PolarisThemeTokens;
   copy: PolarisThemeCopy;
-  /** Optional brand logo node rendered atop the login/gate screens. */
+  /**
+   * The brand node rendered atop the login/gate screens. `null` renders none. `undefined`
+   * renders nothing under the neutral branding and, under "polaris-key", the mark the design
+   * system assigns to the screen (BRAND.md §7.1: the Pinned K on the gate and sign-in, the
+   * Star Cut on update screens).
+   */
   logo?: import("react").ReactNode;
+  /** Which look these tokens are. Absent means "neutral". */
+  branding?: PolarisBranding;
+  /** The scheme these tokens are for. Set by `mergeTheme`; absent on a hand-built theme. */
+  scheme?: PolarisResolvedScheme;
+  /**
+   * Show the "Powered by Polaris Key" badge on the licence and account screens (the sign-in
+   * card and the device list). Off by default: it is the integrator's choice (BRAND.md §7.2).
+   */
+  poweredBy?: boolean | PoweredByLayout;
 }
 
-/** A neutral default theme — overridden shallowly by what the Provider receives.
- *  Aligned with the Polaris Key admin palette: deep-slate surfaces + an indigo accent.
- *  Contrast (sRGB, WCAG 2.x) on this dark theme:
- *    text `#e6e9f2` on bg `#0c0f17`   → ~14.6:1 (AA & AAA body)
- *    textMuted `#9aa3bd` on bg        → ~7.0:1  (AA & AAA body)
- *    accentText `#0b1020` on accent `#7d97ff` → ~7.9:1 (AA & AAA)
- *    danger text `#fca5a5` on surface `#11141d` → ~7.3:1 (AA) */
+type BrandTheme = (typeof THEME_TOKENS)["dark" | "light"];
+
+/** The SDK's tokens for one brand scheme, read from the generated brand tokens. */
+function brandTokens(t: BrandTheme): PolarisThemeTokens {
+  const violet = t.accent.violet;
+  return {
+    accent: violet.solid,
+    // The brand defines no hover colour; a fill keeps its accent and the focus ring carries
+    // the interaction state.
+    accentHover: violet.solid,
+    accentText: violet.on,
+    ring: t.focus,
+    background: t.surface.page,
+    surface: t.surface.raised,
+    surfaceSunken: t.surface.sunken,
+    textStrong: t.text.strong,
+    text: t.text.default,
+    textMuted: t.text.muted,
+    border: t.border.subtle,
+    borderStrong: t.border.strong,
+    danger: t.status.danger.fg,
+    warning: t.status.warning.fg,
+    warningSubtle: t.status.warning.subtle,
+    success: t.status.success.fg,
+    info: t.status.info.fg,
+    radius: RADIUS.lg,
+    controlRadius: RADIUS.md,
+    fontFamily: FONT.sans,
+  };
+}
+
+/** The Polaris Key brand's dark tokens (BRAND.md §3 is dark first). */
+export const polarisKeyDarkTokens: PolarisThemeTokens = brandTokens(
+  THEME_TOKENS.dark,
+);
+
+/** The Polaris Key brand's light tokens (full light parity, BRAND.md §3). */
+export const polarisKeyLightTokens: PolarisThemeTokens = brandTokens(
+  THEME_TOKENS.light,
+);
+
+/** The neutral dark tokens: greyscale, the host's font. Contrast is pinned by
+ *  `test/theme.test.tsx` (text >= 4.5:1, control borders and ring >= 3:1 on every surface). */
+export const neutralDarkTokens: PolarisThemeTokens = {
+  accent: "#f4f4f5",
+  accentHover: "#f4f4f5",
+  accentText: "#18181b",
+  ring: "#d4d4d8",
+  background: "#18181b",
+  surface: "#202024",
+  surfaceSunken: "#141416",
+  textStrong: "#fafafa",
+  text: "#e4e4e7",
+  textMuted: "#a1a1aa",
+  border: "#2e2e33",
+  borderStrong: "#71717a",
+  danger: "#f87171",
+  warning: "#fbbf24",
+  warningSubtle: "#29230f",
+  success: "#4ade80",
+  info: "#d4d4d8",
+  radius: "0.75rem",
+  controlRadius: "0.5rem",
+  fontFamily: "inherit",
+};
+
+/** The neutral light tokens. */
+export const neutralLightTokens: PolarisThemeTokens = {
+  accent: "#18181b",
+  accentHover: "#18181b",
+  accentText: "#ffffff",
+  ring: "#3f3f46",
+  background: "#f4f4f5",
+  surface: "#ffffff",
+  surfaceSunken: "#f4f4f5",
+  textStrong: "#09090b",
+  text: "#27272a",
+  textMuted: "#52525b",
+  border: "#e4e4e7",
+  borderStrong: "#71717a",
+  danger: "#b91c1c",
+  warning: "#92400e",
+  warningSubtle: "#fef3c7",
+  success: "#15803d",
+  info: "#3f3f46",
+  radius: "0.75rem",
+  controlRadius: "0.5rem",
+  fontFamily: "inherit",
+};
+
+/** The base tokens for a branding and scheme. */
+export function baseTokens(
+  branding: PolarisBranding,
+  scheme: PolarisResolvedScheme,
+): PolarisThemeTokens {
+  if (branding === "polaris-key")
+    return scheme === "light" ? polarisKeyLightTokens : polarisKeyDarkTokens;
+  return scheme === "light" ? neutralLightTokens : neutralDarkTokens;
+}
+
+/** The default theme: neutral, dark, no Polaris Key branding. */
 export const defaultTheme: PolarisTheme = {
-  tokens: {
-    accent: "#5b7cfa", // indigo — matches admin --pk-primary
-    accentHover: "#7d97ff", // lighter indigo for hover/active
-    accentText: "#0b1020", // near-black on the light accent → AA
-    ring: "#93a8ff", // bright indigo focus ring → visible on dark surfaces
-    background: "#0c0f17", // deep slate page (admin --pk-background)
-    surface: "#11141d", // raised card panel
-    text: "#e6e9f2", // near-white body text
-    textMuted: "#9aa3bd", // AA muted text
-    border: "#262c3b", // hairline card/input border
-    danger: "#fca5a5", // soft red — AA on the dark surface
-    radius: "12px",
-    fontFamily:
-      "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  },
+  branding: "neutral",
+  scheme: "dark",
+  tokens: neutralDarkTokens,
   copy: {
     productName: "Polaris Key",
     signInTitle: "Sign in",
@@ -139,6 +289,7 @@ export const defaultTheme: PolarisTheme = {
     keyEntryLabel: "Have a license key?",
     keyEntryPlaceholder: "Paste your key",
     keySubmitLabel: "Activate",
+    orDivider: "or",
     graceTitle: "Offline grace",
     graceBody:
       "The licensing service is offline. You can keep working until grace ends.",
@@ -205,20 +356,57 @@ export const defaultTheme: PolarisTheme = {
   },
 };
 
-/** Shallow-merge a partial theme over the default (tokens + copy merged per-field). */
-export function mergeTheme(partial?: PartialTheme): PolarisTheme {
-  if (!partial) return defaultTheme;
-  return {
-    tokens: { ...defaultTheme.tokens, ...partial.tokens },
-    copy: { ...defaultTheme.copy, ...partial.copy },
-    logo: partial.logo ?? defaultTheme.logo,
-  };
-}
+/** The neutral light theme. */
+export const lightTheme: PolarisTheme = {
+  ...defaultTheme,
+  scheme: "light",
+  tokens: neutralLightTokens,
+};
 
 export interface PartialTheme {
+  /** "neutral" (default) or "polaris-key": the one switch for the Polaris Key brand. */
+  branding?: PolarisBranding;
+  /** Overrides for both schemes. */
   tokens?: Partial<PolarisThemeTokens>;
+  /** Overrides for the dark scheme only, applied after `tokens`. */
+  darkTokens?: Partial<PolarisThemeTokens>;
+  /** Overrides for the light scheme only, applied after `tokens`. */
+  lightTokens?: Partial<PolarisThemeTokens>;
   copy?: Partial<PolarisThemeCopy>;
+  /** See `PolarisTheme.logo`: `null` hides the default mark. */
   logo?: import("react").ReactNode;
+  poweredBy?: boolean | PoweredByLayout;
+}
+
+/** The one-option preset for the Polaris Key brand: `theme={polarisKeyTheme}`. */
+export const polarisKeyTheme: PartialTheme = { branding: "polaris-key" };
+
+/**
+ * Merge a partial theme over the base theme for its branding and `scheme` (tokens + copy merged
+ * per-field). `scheme` defaults to "dark", so `mergeTheme(partial)` keeps its old meaning.
+ */
+export function mergeTheme(
+  partial?: PartialTheme,
+  scheme: PolarisResolvedScheme = "dark",
+): PolarisTheme {
+  const branding = partial?.branding ?? "neutral";
+  const base: PolarisTheme = {
+    ...defaultTheme,
+    branding,
+    scheme,
+    tokens: baseTokens(branding, scheme),
+  };
+  if (!partial) return base;
+  const perScheme =
+    scheme === "light" ? partial.lightTokens : partial.darkTokens;
+  return {
+    branding,
+    scheme,
+    tokens: { ...base.tokens, ...partial.tokens, ...perScheme },
+    copy: { ...base.copy, ...partial.copy },
+    logo: partial.logo,
+    poweredBy: partial.poweredBy ?? base.poweredBy,
+  };
 }
 
 /** Serialize tokens to a `--pk-*` CSS custom-property style object. */
@@ -231,30 +419,47 @@ export function themeVars(theme: PolarisTheme): Record<string, string> {
     "--pk-ring": t.ring,
     "--pk-background": t.background,
     "--pk-surface": t.surface,
+    "--pk-surface-sunken": t.surfaceSunken,
+    "--pk-text-strong": t.textStrong,
     "--pk-text": t.text,
     "--pk-text-muted": t.textMuted,
     "--pk-border": t.border,
+    "--pk-border-strong": t.borderStrong,
     "--pk-danger": t.danger,
+    "--pk-warning": t.warning,
+    "--pk-warning-subtle": t.warningSubtle,
+    "--pk-success": t.success,
+    "--pk-info": t.info,
     "--pk-radius": t.radius,
+    "--pk-control-radius": t.controlRadius,
     "--pk-font-family": t.fontFamily,
   };
 }
 
 /** A maximum-contrast variant for users who need it (WCAG 1.4.6 AAA / `prefers-contrast`).
- *  Pure-white text and a vivid accent on true-black surfaces; every pairing clears AAA.
- *  Consumers opt in via `<PolarisKeyProvider theme={highContrastTheme}>` or by merging
+ *  Pure-white text and a light violet accent (never blue or indigo) on
+ *  true-black surfaces; every text pairing clears AAA (`test/theme.test.tsx`). Consumers opt
+ *  in via `<PolarisKeyProvider theme={highContrastTheme} colorScheme="dark">` or by merging
  *  `highContrastTheme.tokens`. */
 export const highContrastTheme: PartialTheme = {
   tokens: {
-    accent: "#aebfff", // light indigo
-    accentHover: "#c7d2ff",
-    accentText: "#000000", // ~10.9:1 on the light accent → AAA
-    ring: "#ffffff", // maximum-visibility focus ring
+    fontFamily: "inherit",
+    accent: "#c9a8ff",
+    accentHover: "#c9a8ff",
+    accentText: "#000000",
+    ring: "#ffffff",
     background: "#000000",
     surface: "#0a0a0a",
-    text: "#ffffff", // 21:1 on black → AAA
-    textMuted: "#e0e0e0", // ~16:1 on black → AAA
+    surfaceSunken: "#000000",
+    textStrong: "#ffffff",
+    text: "#ffffff",
+    textMuted: "#e0e0e0",
     border: "#5a5a5a",
-    danger: "#ff8a8a", // ~9.4:1 on black → AAA
+    borderStrong: "#a0a0a0",
+    danger: "#ff8a8a",
+    warning: "#ffbe5c",
+    warningSubtle: "#1a1206",
+    success: "#7ee69a",
+    info: "#d4bcff",
   },
 };

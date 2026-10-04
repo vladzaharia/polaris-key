@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, waitFor, within } from "@testing-library/react";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
+import { defaultTheme } from "../src/components/theme.js";
 import { useCapabilities, usePolarisKey } from "../src/react/hooks.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import { SERVICE_SLUGS } from "../src/core/services.js";
@@ -151,7 +152,7 @@ describe("PolarisKeyProvider — theme variables reach portalled UI", () => {
       ).toBe("rgb(1, 2, 3)"),
     );
     expect(document.documentElement.style.getPropertyValue("--pk-radius")).toBe(
-      "12px",
+      defaultTheme.tokens.radius,
     );
 
     // Only the keys this provider set are removed, so a host stylesheet is left alone.

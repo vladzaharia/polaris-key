@@ -29,7 +29,7 @@ import {
   type ReactNode,
 } from "react";
 import { Button } from "./buttons.js";
-import { fullWindow, messageCard, mutedText } from "./card.js";
+import { fullWindow, messageCard, mutedText, titleText } from "./card.js";
 
 export interface MessageScreenProps {
   title: string;
@@ -91,8 +91,18 @@ export function MessageScreen(props: MessageScreenProps): JSX.Element {
         aria-describedby={hasBody ? bodyId : undefined}
         tabIndex={transient ? undefined : -1}
       >
-        {logo ? <div style={{ marginBottom: "12px" }}>{logo}</div> : null}
-        <h2 id={titleId} style={{ margin: "0 0 8px", fontSize: "20px" }}>
+        {logo ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: "12px",
+            }}
+          >
+            {logo}
+          </div>
+        ) : null}
+        <h2 id={titleId} style={{ ...titleText, margin: "0 0 8px" }}>
           {title}
         </h2>
         {hasBody ? (
