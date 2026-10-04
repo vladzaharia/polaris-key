@@ -1,0 +1,128 @@
+# A-18j Console: Add to storefronts flow, Listing editor and Set up from Store connections
+
+| Field       | Value                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | A: Admin: store provisioning (storefronts)                                                                                                           |
+| Size        | 2–3 engineer-weeks                                                                                                                                   |
+| Depends on  | [A-18a](A-18a-storefront-adapter-layer.md), [A-18b](A-18b-listing-model.md), [F-11](F-11-console-feeds.md)                                           |
+| Unblocks    | none                                                                                                                                                 |
+| Role        | `pkey-implementer`                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                   |
+| Gates       | docs help-link drift gate; console CSP parity (`adminCspParity`, the CSP e2e); rule 10 (narrative-only admin routes); THREAT-MODEL (admin mutations) |
+| Human input | none                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                            |
+
+## Goal
+
+One console flow provisions a product onto any storefront. Product → Distribution → Storefronts →
+**Add to storefronts** (T6) chooses stores, checks prerequisites, edits the listing, accepts
+assets, shows the plan and runs it, resumably from the ledger. Product → Distribution → **Listing**
+(T3) edits the model outside the flow and pushes listings per store. A-16's Store connections page
+gains **Set up** on assigned apps, which opens the flow pre-scoped to that store. Every
+capability shown is rendered from adapter declarations, for storefronts and feeds alike.
+
+## Why
+
+The owner asked for provisioning on every storefront to be easy
+([S-15 §8](../../notes/S-15-storefront-provisioning.md#8-the-provisioning-ux)). The adapters
+declare what each store allows; one flow renders those declarations, so a new adapter needs no
+console code.
+
+## Read first
+
+- [notes/S-15](../../notes/S-15-storefront-provisioning.md) **§8**, §6.1 (capabilities the
+  console renders), §6.4, §6.5, §7.3, §11 (A-18j, the A-17f change, the F-11 note, the ADMIN.md
+  amendment).
+- `docs/design/ADMIN.md`: §2.3 (Platform section, the no-"coming soon" rule), T3, T4, T6, §5.1,
+  §5.2, §5.8 (copy), §5.10.
+- The shared kit: `packages/admin/src/ui/*` (`Stepper`, `StatusPill`, `SaveBar`, `DataTable`,
+  `CopyButton`, `Callout`, `ConfirmDialog`, `DiffViewer`, `EmptyState`, `Timeline`),
+  `packages/admin/src/console/{components,templates}/`, and F-11's feeds area
+  (`console/areas/feeds/`).
+- A-16's page (`console/pages/platformStores.tsx`); the A-17f brief.
+
+## Scope
+
+**In:**
+
+- **Add to storefronts** (T6, platform admin): the seven steps of S-15 §8.1 (choose storefronts,
+  prerequisites, listing with imports and diff, assets slot board with crop acceptance, plan,
+  run, submit and release). `?step=`, review step listing every external write, unsaved guard;
+  progress is the ledger, so it resumes anywhere; read-only with an explanation when a store has
+  no connection.
+- **Listing** (T3, product): locale switcher, fit report, slot board, per-release notes, and "Push
+  listing" per store (plain confirm; Play "stage only"; Microsoft keeps the pending submission
+  uncommitted).
+- **Set up** on A-16's Store connections app list.
+- **Capability strips and badges** rendered from `Support` declarations (API, CI, PR, link,
+  unsupported). One badge and tile component, **shared with F-11's feed pages**, which are switched
+  to it here (F-11 has landed, so this package owns the shared component).
+- Deep-link copy cards with values from the model and live verifiers (every 10 s for up to 15
+  minutes while open, plus Check now).
+- **Typed confirmation dialogs** for submit, release and price changes, with the store-reported
+  app name as the phrase.
+- **A-17f:** if A-17f has not started, absorb it: the New app wizard becomes the Apple adapter's
+  `plan()` inside this flow, and the lead marks A-17f `dropped`. If it has started, wrap it.
+- Admin routes the flow needs that A-18a and A-18b do not already serve (narrative-only), with
+  audit rows.
+- `docs/design/ADMIN.md` amendment: §2.3 Distribution gains "Storefronts (Add to storefronts, T6)"
+  and "Listing (T3)"; the Platform → Store connections row gains "Set up". Admin narrative docs
+  pages and help links in both tables.
+
+**Out:**
+
+- Any adapter logic (→ A-18e–i, A-18m). The listing model's API (→ A-18b).
+
+## Design notes
+
+**Reuse the console's shared components.** Build from the kit (`packages/admin/src/ui/*`) and the
+console templates; add a component only when no kit component fits, and put it in the kit, not in
+the area. The capability badge is one component used by storefront tiles and feed tiles.
+
+**The owner's console rules:**
+
+- **No "coming soon" copy** and no implementation-status copy anywhere ("Available when…",
+  "Not built yet"). A store or step that is not possible states what applies and why, in the
+  ADMIN.md §5.8 voice, or is absent. A step whose adapter has not landed is not shown.
+- **CSP-safe.** No inline scripts or styles, no `style` attributes that need `unsafe-inline`, no
+  remote assets; overlays use the kit's CSP-safe scroll lock. `adminCspParity` and the CSP e2e
+  cover every new page, drawer and dialog.
+- **Settings controls are right-aligned:** T4's two-column layout, label and help on the left,
+  control on the right at ≥ 1024 px, stacking below.
+- **No redundant subtitles.** A page or section header does not restate its title or the
+  breadcrumb in a subtitle; a description appears only when it adds information.
+
+**Other constraints:**
+
+- Every step's result is the vendor's re-read, never the request's intent.
+- No delete control anywhere (owner rule). Replacing Play images shows a deep link to remove the
+  old ones (decision 6).
+- Imported listing text renders escaped, never as HTML.
+- A pending step survives a closed tab as a `pending` ledger row.
+
+## Acceptance criteria
+
+- [ ] The flow, the Listing editor and Set up work against fakes for every adapter that has
+      landed; a new adapter registered in a test appears with no console change.
+- [ ] F-11's feed pages and the storefront tiles render capabilities through the same component.
+- [ ] Submit, release and price steps require the typed phrase; there is no delete control.
+- [ ] No "coming soon" or implementation-status copy (reviewer greps the new strings); no
+      redundant subtitles; settings controls right-aligned per T4.
+- [ ] `adminCspParity`, the CSP e2e and `check:links` pass; ADMIN.md amended; the green gate passes
+      (`AGENTS.md`).
+
+## Verify
+
+```sh
+mise exec node@22 -- pnpm --filter @polaris-key/admin test
+mise exec node@22 -- pnpm --filter @polaris-key/admin build && mise exec node@22 -- pnpm --filter @polaris-key/worker test adminCspParity
+mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
+```
+
+## Hand-off
+
+Later adapters add tiles by registering; nothing here changes. A-18m's Apple listing push appears
+as Apple's "Push listing" once it lands.
+
+The role agent sets `--set A-18j in-review` when it hands off. After review, the lead adds the last
+commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set A-18j done`.
