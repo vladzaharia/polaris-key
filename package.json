@@ -24,8 +24,6 @@
     "parity:check": "tsx tools/parity-check.ts",
     "prepare": "husky",
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
     "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "clean": "turbo run clean && rm -rf node_modules"
@@ -38,7 +36,6 @@
     ]
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.0",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

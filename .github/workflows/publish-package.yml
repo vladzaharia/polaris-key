@@ -1,25 +1,27 @@
 name: Publish a package to its feed
 
-# The one publishing step for every SDK this repository ships (F-10, plans/F-01.md §5.1). Each
-# release workflow (release.yml, release-python.yml, release-swift.yml, release-kotlin.yml,
-# release-godot.yml, release-image.yml) builds and packs its files, uploads them as a workflow
-# artifact, and calls this workflow, which publishes them with `pkey release publish` (the
-# committed polaris-key/publish Action at the commit being released) to the system product
-# `polaris-key`. The feeds serve them on pkg.plrs.im, and NOWHERE else: no npmjs, GitHub Packages,
-# PyPI, Maven Central, Swift Package Index, Docker Hub or Godot store (owner decision 2026-10-04,
-# feeds only).
+# The one publishing step for every SDK this repository ships (F-10, plans/F-01.md §5.1).
+# publish-sdks.yml builds, version-stamps and packs each SDK, uploads its files as a workflow
+# artifact, and calls this workflow once per package deliverable, which publishes them with
+# `pkey release publish` (the committed polaris-key/publish Action at the commit being published)
+# to the system product `polaris-key`. The feeds serve them on pkg.plrs.im, and NOWHERE else: no
+# npmjs, GitHub Packages, PyPI, Maven Central, Swift Package Index, Docker Hub or Godot store
+# (owner decision 2026-10-04, feeds only).
 #
 # Trusted publishing (P2-02): this file is the polaris-key product's one trusted publisher
 # (.pkey/release `publishing.trustedPublisher`). GitHub names a called workflow in the OIDC
 # token's job_workflow_ref, so every caller publishes through this one policy, and the job runs in
-# the `package-registry` environment, whose deployment policy admits tags only. The job exchanges
-# its OIDC token for a short-lived pkeyci_ token; the repository stores no publishing secret.
+# the `package-registry` environment. The job exchanges its OIDC token for a short-lived pkeyci_
+# token; the repository stores no publishing secret. The trusted publisher itself is registered
+# automatically: deploy.yml's "Register the platform packages" step applies the root .pkey/ on
+# every production deploy (the deploy hook, packages/worker/src/platformDeploy.ts).
 #
-# Owner setup (DEPLOYMENT §3, "Registry host and feeds"): the `package-registry` environment with
-# a tag deployment policy (`@polaris-key/*@*`, `python-v*`, `swift-v*`, `kotlin-v*`, `godot-v*`),
-# a tag ruleset protecting those tags (the publisher requires ref_protected), and the trusted
-# publisher registered for polaris-key in each environment (link the monorepo to the bootstrapped
-# system product, or claim the policy in the console).
+# Publishes happen from two refs only (owner decision 2026-10-04): a push to main (a prerelease of
+# the next version on the `main` channel) and a v* release tag (that version, on `stable`, or
+# `beta` for a prerelease tag). Owner setup (DEPLOYMENT §3, "Registry host and feeds"): the
+# `package-registry` environment with a deployment policy admitting the `main` branch and `v*`
+# tags, and branch protection on main plus a tag ruleset on v* (the publisher requires
+# ref_protected).
 
 on:
   workflow_call:
@@ -32,8 +34,17 @@ on:
         description: The workflow artifact holding the packed files (uploaded by the caller in the same run).
         required: true
         type: string
+      dir:
+        description: The subdirectory of the artifact that holds this package's files (empty = the artifact root).
+        required: false
+        type: string
+        default: ""
       version:
-        description: The version the files carry (required for swift and oci, checked against the files otherwise).
+        description: The version the files carry, in the ecosystem's own spelling (PEP 440 for PyPI).
+        required: true
+        type: string
+      channel:
+        description: The channel (stable, beta or main), from tools/sdk-version.mjs.
         required: true
         type: string
       base-url:
@@ -56,17 +67,34 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # The environment's deployment policy admits tags only; this refuses anything else even if
-      # that policy is ever loosened.
-      - name: A tag, on main
-        if: github.ref_type != 'tag'
+      # The environment's deployment policy admits main and v* tags; this refuses anything else
+      # even if that policy is ever loosened, and a channel that does not fit the version.
+      - name: Main or a release tag, and a channel that fits the version
+        env:
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
         run: |
-          echo "::error::Packages are published from release tags only (got ${GITHUB_REF})." >&2
-          exit 1
+          case "$GITHUB_REF" in
+            refs/heads/main) want=main ;;
+            refs/tags/v*)
+              case "$VERSION" in
+                *-* | *a[0-9]* | *b[0-9]* | *rc[0-9]*) want=beta ;;
+                *) want=stable ;;
+              esac
+              ;;
+            *)
+              echo "::error::Packages are published from main and from v* release tags only (got ${GITHUB_REF})." >&2
+              exit 1
+              ;;
+          esac
+          if [ "$CHANNEL" != "$want" ]; then
+            echo "::error::$VERSION on $GITHUB_REF belongs on the $want channel, not $CHANNEL." >&2
+            exit 1
+          fi
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # As deploy.yml (R7-04): only a tag on a commit that landed on main may publish.
+      # As deploy.yml (R7-04): only a commit that landed on main may publish.
       - name: The commit is on main
         run: |
           git fetch --no-tags origin main
@@ -74,17 +102,6 @@ jobs:
             echo "Refusing to publish: $GITHUB_SHA is not an ancestor of origin/main." >&2
             exit 1
           fi
-      - name: Channel
-        id: channel
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          # A pre-release (semver `-…`, or PEP 440 letters such as 1.1.0b1) goes to beta, so it
-          # never becomes npm's `latest`, Maven's RELEASE or the image's `latest`.
-          case "$VERSION" in
-            *[-A-Za-z]*) echo "channel=beta" >> "$GITHUB_OUTPUT" ;;
-            *) echo "channel=stable" >> "$GITHUB_OUTPUT" ;;
-          esac
       - uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact }}
@@ -96,13 +113,13 @@ jobs:
           product: polaris-key
           deliverable: ${{ inputs.deliverable }}
           version: ${{ inputs.version }}
-          channel: ${{ steps.channel.outputs.channel }}
-          dir: dist-feed
+          channel: ${{ inputs.channel }}
+          dir: dist-feed/${{ inputs.dir }}
           base-url: ${{ inputs.base-url }}
       - name: Summary
         env:
           DELIVERABLE: ${{ inputs.deliverable }}
           VERSION: ${{ inputs.version }}
-          CHANNEL: ${{ steps.channel.outputs.channel }}
+          CHANNEL: ${{ inputs.channel }}
           OUTCOME: ${{ steps.publish.outputs.outcome }}
         run: echo "Published $DELIVERABLE $VERSION to the $CHANNEL channel ($OUTCOME)." >> "$GITHUB_STEP_SUMMARY"

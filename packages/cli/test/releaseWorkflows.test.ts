@@ -1,20 +1,28 @@
 /**
- * F-10 — our SDKs onto our own feeds (plans/F-01.md §5). A static check of the properties the
- * release pipeline promises, so a later edit cannot quietly undo one:
+ * F-10 — our SDKs onto our own feeds (plans/F-01.md §5), automated (owner decision 2026-10-04). A
+ * static check of the properties the publish pipeline promises, so a later edit cannot quietly
+ * undo one:
  *
  *   - the root `.pkey/` (the system product `polaris-key`) is valid and declares one package
- *     deliverable per SDK artifact this repository ships, every one of which a release workflow
+ *     deliverable per SDK artifact this repository ships, every one of which publish-sdks.yml
  *     publishes;
+ *   - publishing is automatic and in lockstep: every push to main and every v* tag (deploy.yml
+ *     calls publish-sdks.yml after the deploy and the registration), with the version derived by
+ *     tools/sdk-version.mjs and stamped after each SDK's tests; nothing else publishes, and the
+ *     legacy release workflows and Changesets are gone;
  *   - every publish goes through `publish-package.yml`, the one trusted publisher, in the
- *     `package-registry` environment, with the committed `./actions/publish` Action;
+ *     `package-registry` environment, with the committed `./actions/publish` Action, from main or
+ *     a v* tag only, on the channel the version belongs to;
+ *   - deploy.yml registers the platform packages (the deploy hook) on every deploy, and a drift job
+ *     reads every feed back after a publish;
  *   - no workflow publishes anywhere else (npmjs, GitHub Packages, PyPI, Maven Central, Docker
- *     Hub, GHCR), and merging never publishes (the Changesets action has no publish step);
+ *     Hub, GHCR);
  *   - the Swift job is signed or nothing: it fails with plans/F-01.md §5.3's message when a secret
  *     is missing, and deletes the key files in an always() step.
  */
 
 import { execFile } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -41,6 +49,7 @@ interface Step {
 interface Job {
   uses?: string;
   if?: string;
+  name?: string;
   needs?: string | string[];
   environment?: string | { name: string };
   permissions?: Record<string, string>;
@@ -58,7 +67,8 @@ const workflow = (file: string) => parseYaml(raw(file)) as Workflow;
 const workflowFiles = readdirSync(WORKFLOWS).filter((f) => /\.ya?ml$/.test(f));
 
 const PUBLISHER = "./.github/workflows/publish-package.yml";
-const RELEASE_WORKFLOWS = [
+const PUBLISH_SDKS = "publish-sdks.yml";
+const LEGACY = [
   "release.yml",
   "release-python.yml",
   "release-swift.yml",
@@ -78,13 +88,13 @@ function publishCalls(): { file: string; id: string; job: Job }[] {
   return out;
 }
 
-/** The deliverable ids a publish call can name (expanding `maven.${{ matrix.artifact }}`). */
+/** The deliverable ids a publish call can name (expanding its matrix). */
 function calledDeliverables(job: Job): string[] {
   const d = String(job.with?.deliverable ?? "");
-  const m = /^maven\.\$\{\{ matrix\.artifact \}\}$/.exec(d);
+  const m = /^([a-z]+)\.\$\{\{ matrix\.([a-z]+) \}\}$/.exec(d);
   if (m) {
-    const artifacts = job.strategy?.matrix?.artifact;
-    return (Array.isArray(artifacts) ? artifacts : []).map((a) => `maven.${a}`);
+    const values = job.strategy?.matrix?.[m[2]!];
+    return (Array.isArray(values) ? values : []).map((a) => `${m[1]}.${a}`);
   }
   return [d];
 }
@@ -131,7 +141,7 @@ describe("the root .pkey/ (the system product)", () => {
     });
   });
 
-  it("declares a package for every SDK artifact, and a workflow publishes each one", async () => {
+  it("declares a package for every SDK artifact, and publish-sdks.yml publishes each one", async () => {
     const loaded = await loadManifest(ROOT);
     const deliverables = (
       loaded.release as {
@@ -154,21 +164,14 @@ describe("the root .pkey/ (the system product)", () => {
     for (const n of npm)
       expect(deliverables[`npm.${n}`]!.name).toBe(`@polaris-key/${n}`);
 
-    // Everything a release workflow names is declared, and everything declared is named. npm is
-    // published per tag (release.yml derives `npm.<name>` from `@polaris-key/<name>@<version>`).
+    // Everything publish-sdks.yml names is declared, and everything declared is named.
     const named = new Set<string>();
     for (const call of publishCalls())
       for (const d of calledDeliverables(call.job)) named.add(d);
-    expect(named.has("${{ needs.pack.outputs.deliverable }}")).toBe(true);
-    expect(raw("release.yml")).toContain(
-      'echo "deliverable=npm.${name#@polaris-key/}"',
-    );
-    named.delete("${{ needs.pack.outputs.deliverable }}");
-    for (const n of npm) named.add(`npm.${n}`);
     expect([...named].sort()).toEqual(ids);
   });
 
-  it("names the Maven coordinates per flavour, and release-kotlin.yml checks build/repo against them", async () => {
+  it("names the Maven coordinates per flavour, and the Kotlin build checks build/repo against them", async () => {
     const loaded = await loadManifest(ROOT);
     const deliverables = (
       loaded.release as {
@@ -189,8 +192,145 @@ describe("the root .pkey/ (the system product)", () => {
         "godot-direct",
       ]),
     );
-    const expected = /expected="([^"]+)"/.exec(raw("release-kotlin.yml"))?.[1];
+    const expected = /expected="([^"]+)"/.exec(raw(PUBLISH_SDKS))?.[1];
     expect(expected?.split(" ")).toEqual(artifacts);
+  });
+});
+
+describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", () => {
+  const wf = workflow(PUBLISH_SDKS);
+
+  it("runs on every push to main, and on every v* tag through deploy.yml, and nothing else", () => {
+    expect(Object.keys(wf.on).sort()).toEqual(["push", "workflow_call"]);
+    const push = wf.on.push as { branches?: string[]; tags?: string[] };
+    expect(push.branches).toEqual(["main"]);
+    expect(push.tags).toBeUndefined();
+    // The tag path: deploy.yml calls it after the Worker is live and the packages registered.
+    const deploy = workflow("deploy.yml");
+    expect((deploy.on.push as { tags: string[] }).tags).toEqual(["v*"]);
+    expect(deploy.jobs["publish-sdks"]).toMatchObject({
+      needs: "deploy-worker",
+      uses: "./.github/workflows/publish-sdks.yml",
+      permissions: { contents: "read", "id-token": "write" },
+    });
+    // Only publish-sdks.yml and deploy.yml start a publish.
+    for (const file of workflowFiles)
+      for (const job of Object.values(workflow(file).jobs ?? {}))
+        if (job.uses === "./.github/workflows/publish-sdks.yml")
+          expect(file).toBe("deploy.yml");
+  });
+
+  it("derives the version from git, never from a hand-edited file or Changesets", () => {
+    const version = wf.jobs.version!;
+    const derive = (version.steps ?? []).find((s) =>
+      s.run?.includes("tools/sdk-version.mjs derive"),
+    );
+    expect(derive?.run).toContain("--github-output");
+    const checkout = (version.steps ?? []).find((s) =>
+      s.uses?.startsWith("actions/checkout@"),
+    );
+    // The whole history: the version counts commits since the newest v* tag.
+    expect(checkout?.with?.["fetch-depth"]).toBe(0);
+    for (const file of workflowFiles)
+      expect(raw(file), file).not.toMatch(/changeset/i);
+  });
+
+  it("stamps every SDK after its tests, with the derived version", () => {
+    const stamped: string[] = [];
+    for (const [id, job] of Object.entries(wf.jobs)) {
+      const steps = job.steps ?? [];
+      const stamp = steps.findIndex((s) =>
+        s.run?.includes("tools/sdk-version.mjs stamp"),
+      );
+      if (stamp === -1) continue;
+      stamped.push(id);
+      expect(steps[stamp]!.env).toEqual({
+        VERSION: "${{ needs.version.outputs.version }}",
+        PEP440: "${{ needs.version.outputs.pep440 }}",
+      });
+      const tests = steps.findIndex((s) =>
+        /pytest|turbo run test|gradlew[^\n]*:core:test/.test(s.run ?? ""),
+      );
+      if (tests !== -1) expect(tests, id).toBeLessThan(stamp);
+    }
+    expect(stamped.sort()).toEqual([
+      "godot-package",
+      "kotlin-build",
+      "npm-pack",
+      "python-build",
+      "swift-sign",
+    ]);
+  });
+
+  it("publishes each package at the lockstep version, on its channel", () => {
+    for (const c of publishCalls()) {
+      expect(c.file).toBe(PUBLISH_SDKS);
+      expect(c.job.with?.channel, c.id).toBe(
+        "${{ needs.version.outputs.channel }}",
+      );
+      expect(c.job.with?.version, c.id).toBe(
+        c.id === "python"
+          ? "${{ needs.version.outputs.pep440 }}"
+          : "${{ needs.version.outputs.version }}",
+      );
+    }
+  });
+
+  it("reads every feed back after publishing (the drift check)", () => {
+    const drift = wf.jobs.drift!;
+    expect([...(drift.needs as string[])].sort()).toEqual(
+      ["godot", "image", "maven", "npm", "python", "swift", "version"].sort(),
+    );
+    const check = (drift.steps ?? []).find((s) =>
+      s.run?.includes("tools/feed-drift.mjs"),
+    );
+    expect(check?.run).toContain("--origin https://pkg.plrs.im");
+    expect(check?.env).toMatchObject({
+      VERSION: "${{ needs.version.outputs.version }}",
+      PEP440: "${{ needs.version.outputs.pep440 }}",
+      CHANNEL: "${{ needs.version.outputs.channel }}",
+    });
+  });
+
+  it("the legacy release workflows and Changesets are gone", () => {
+    for (const f of LEGACY) expect(workflowFiles).not.toContain(f);
+    expect(existsSync(path.join(ROOT, ".changeset"))).toBe(false);
+    const pkg = JSON.parse(
+      readFileSync(path.join(ROOT, "package.json"), "utf8"),
+    ) as {
+      scripts: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+    expect(pkg.scripts.changeset).toBeUndefined();
+    expect(pkg.scripts["version-packages"]).toBeUndefined();
+    expect(
+      Object.keys(pkg.devDependencies).filter((d) =>
+        d.startsWith("@changesets/"),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("deploy.yml registers the platform packages on every deploy", () => {
+  const deploy = workflow("deploy.yml");
+  const job = deploy.jobs["deploy-worker"]!;
+  const steps = (job.steps ?? []) as (Step & { name?: string })[];
+  const index = (name: string) => steps.findIndex((s) => s.name === name);
+
+  it("calls the deploy hook after the smoke check, before the deploy is recorded", () => {
+    const register = index("Register the platform packages");
+    expect(register).toBeGreaterThan(index("Smoke check"));
+    expect(register).toBeLessThan(index("Record deploy"));
+    expect(steps[register]!.run).toContain(
+      "node scripts/register-platform.mjs",
+    );
+    expect(steps[register]!.env).toEqual({ ORIGIN: "https://key.plrs.im" });
+    // The OIDC token is the credential: no secret reaches the step.
+    expect(JSON.stringify(steps[register])).not.toContain("secrets.");
+  });
+
+  it("the deploy job may mint its OIDC token", () => {
+    expect(job.permissions).toEqual({ contents: "read", "id-token": "write" });
   });
 });
 
@@ -198,28 +338,29 @@ describe("publish-package.yml (the trusted publisher)", () => {
   const wf = workflow("publish-package.yml");
   const job = wf.jobs.publish!;
 
-  it("is reusable only, runs in package-registry on tags, and uses the committed Action", () => {
+  it("is reusable only, runs in package-registry from main or a v* tag, and uses the committed Action", () => {
     expect(Object.keys(wf.on)).toEqual(["workflow_call"]);
     expect(job.environment).toMatchObject({ name: "package-registry" });
     expect(job.permissions).toEqual({ contents: "read", "id-token": "write" });
     const steps = job.steps ?? [];
-    const guard = steps.find((s) => s.if === "github.ref_type != 'tag'");
-    expect(guard?.run).toContain("exit 1");
+    const guard = steps[0]!;
+    expect(guard.run).toContain("refs/heads/main) want=main");
+    expect(guard.run).toContain("refs/tags/v*)");
+    expect(guard.run).toContain("exit 1");
     const publish = steps.find((s) => s.uses === "./actions/publish");
     expect(publish?.with).toMatchObject({
       product: "polaris-key",
-      dir: "dist-feed",
+      dir: "dist-feed/${{ inputs.dir }}",
+      channel: "${{ inputs.channel }}",
     });
     expect(raw("publish-package.yml")).toContain(
       'git merge-base --is-ancestor "$GITHUB_SHA" origin/main',
     );
   });
 
-  it("is called by every release workflow, with id-token: write", () => {
+  it("is called by publish-sdks.yml only, with id-token: write", () => {
     const calls = publishCalls();
-    expect([...new Set(calls.map((c) => c.file))].sort()).toEqual(
-      [...RELEASE_WORKFLOWS].sort(),
-    );
+    expect([...new Set(calls.map((c) => c.file))]).toEqual([PUBLISH_SDKS]);
     for (const c of calls)
       expect(c.job.permissions, `${c.file} ${c.id}`).toEqual({
         contents: "read",
@@ -252,6 +393,7 @@ describe("no publishing anywhere else (owner decision 2026-10-04, feeds only)", 
       /docker push|ghcr\.io|docker\.io\/|docker\/login-action/,
       "a container registry",
     ],
+    [/gh release (create|upload)/, "a GitHub Release"],
     [/packages: write/, "the packages permission"],
   ];
 
@@ -278,43 +420,11 @@ describe("no publishing anywhere else (owner decision 2026-10-04, feeds only)", 
     for (const [re, what] of FORBIDDEN)
       expect(re.test(npmrc), `.npmrc names ${what}`).toBe(false);
   });
-
-  it("merging the Version Packages PR publishes nothing", () => {
-    const wf = workflow("release.yml");
-    const versionPr = wf.jobs["version-pr"]!;
-    expect(versionPr.if).toContain("github.ref == 'refs/heads/main'");
-    const changesets = (versionPr.steps ?? []).find((s) =>
-      s.uses?.startsWith("changesets/action@"),
-    );
-    expect(changesets).toBeDefined();
-    expect(changesets?.with?.publish).toBeUndefined();
-    // Publishing jobs run on release tags only.
-    expect(wf.jobs.pack!.if).toContain(
-      "startsWith(github.ref, 'refs/tags/@polaris-key/')",
-    );
-    expect((wf.on.push as { tags: string[] }).tags).toEqual([
-      "@polaris-key/*@*",
-    ]);
-  });
-
-  it("every other release workflow publishes from tags only (or a dispatch that publishes nothing)", () => {
-    for (const file of RELEASE_WORKFLOWS.filter((f) => f !== "release.yml")) {
-      const wf = workflow(file);
-      const push = wf.on.push as { tags?: string[]; branches?: string[] };
-      expect(push.branches, file).toBeUndefined();
-      expect(push.tags?.length, file).toBeGreaterThan(0);
-      if ("workflow_dispatch" in wf.on)
-        for (const c of publishCalls().filter((x) => x.file === file))
-          expect(c.job.if, `${file} ${c.id}`).toBe(
-            "github.event_name == 'push'",
-          );
-    }
-  });
 });
 
 describe("Swift releases are signed or not published (plans/F-01.md §5.3)", () => {
-  const wf = workflow("release-swift.yml");
-  const sign = wf.jobs.sign!;
+  const wf = workflow(PUBLISH_SDKS);
+  const sign = wf.jobs["swift-sign"]!;
   const script = path.join(
     ROOT,
     "sdks",
@@ -341,7 +451,7 @@ describe("Swift releases are signed or not published (plans/F-01.md §5.3)", () 
     }
     const cleanup = steps.find((s) => s.if === "always()");
     expect(cleanup?.run).toContain('rm -rf "$RUNNER_TEMP/swift-registry-keys"');
-    expect(wf.jobs.publish!.needs).toEqual(["validate", "sign"]);
+    expect(wf.jobs.swift!.needs).toEqual(["version", "swift-sign"]);
   });
 
   it("runs SwiftPM's signer in dry-run mode only, never unsigned", () => {

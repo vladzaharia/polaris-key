@@ -1,0 +1,560 @@
+name: Publish SDKs
+
+# Every SDK this repository ships, published automatically to Polaris Key's own feeds on
+# pkg.plrs.im, in LOCKSTEP with the server (F-10 automation, owner decision 2026-10-04):
+#
+#   a push to main   a prerelease of the next version of every SDK, on the `main` channel:
+#                    semver `<next>-main.<N>` (npm under the `main` dist-tag, never `latest`;
+#                    Swift, Maven, Godot and the pkey image) and PEP 440 `<next>.dev<N>` (PyPI)
+#   a v* tag         every SDK at exactly the tag's version, on `stable` (`beta` for a prerelease
+#                    tag). deploy.yml calls this workflow after the Worker is deployed and the
+#                    platform packages are registered, so a release never publishes against an
+#                    older Worker or an older root .pkey/.
+#
+# The version comes from git (tools/sdk-version.mjs derive) and CI stamps it into every SDK's
+# version file (tools/sdk-version.mjs stamp) after that SDK's tests have run on the committed
+# tree; nothing is versioned by hand and nothing is committed back. Each SDK is built and packed
+# here, then published through publish-package.yml, the system product's one trusted publisher
+# (`package-registry` environment, OIDC, no stored secret). The drift job then reads every feed back
+# and fails unless each package's newest version of its kind is this build's.
+#
+# Feeds only: never npmjs, GitHub Packages, PyPI, Maven Central, the Swift Package Index, Docker
+# Hub, GHCR or a Godot store. Install: /docs/build/install-from-feeds/.
+
+on:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+# One publish at a time per ref: a later main push waits for the one before it (a skipped pending
+# run only skips a prerelease number).
+concurrency:
+  group: publish-sdks-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Lockstep version
+    runs-on: ubuntu-latest
+    if: github.repository == 'vladzaharia/polaris-key'
+    outputs:
+      kind: ${{ steps.v.outputs.kind }}
+      version: ${{ steps.v.outputs.version }}
+      pep440: ${{ steps.v.outputs.pep440 }}
+      channel: ${{ steps.v.outputs.channel }}
+    steps:
+      # The whole history and every tag: the version is counted from the newest v* tag.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - id: v
+        name: Derive the version from git
+        run: node tools/sdk-version.mjs derive --github-output
+      # As deploy.yml (R7-04): only a commit that landed on main may publish.
+      - name: The commit is on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Refusing to publish: $GITHUB_SHA is not an ancestor of origin/main." >&2
+            exit 1
+          fi
+      - name: Summary
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          PEP440: ${{ steps.v.outputs.pep440 }}
+          CHANNEL: ${{ steps.v.outputs.channel }}
+        run: echo "Publishing every SDK at $VERSION (PyPI $PEP440) on the $CHANNEL channel." >> "$GITHUB_STEP_SUMMARY"
+
+  # ── npm: the public @polaris-key packages ────────────────────────────────────────────────────
+  npm-pack:
+    name: Pack the npm packages
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # No `version:` here: the action reads `packageManager` from package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Test the public packages
+        run: |
+          read -r -a filters <<<"$(node -e 'import("./tools/sdk-version.mjs").then((m) => console.log(m.publicPackageJsons(".").map((f) => "--filter=./" + f.replace("/package.json", "")).join(" ")))')"
+          pnpm exec turbo run test "${filters[@]}"
+      - run: pnpm --filter @polaris-key/cli bundle:action -- --check
+      - name: Stamp the version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PEP440: ${{ needs.version.outputs.pep440 }}
+        run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
+      # `pnpm pack` rewrites each `workspace:*` range to the stamped version, so the packages
+      # depend on each other at exactly this version.
+      - name: Pack each package into dist-pkg/<name>/
+        run: |
+          for f in $(node -e 'import("./tools/sdk-version.mjs").then((m) => console.log(m.publicPackageJsons(".").join(" ")))'); do
+            name="$(node -p "require('./$f').name")"
+            short="${name#@polaris-key/}"
+            pnpm --filter "$name" pack --pack-destination "$GITHUB_WORKSPACE/dist-pkg/$short"
+          done
+          ls -R dist-pkg
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-packages
+          path: dist-pkg/
+          if-no-files-found: error
+
+  npm:
+    name: npm feed
+    needs: [version, npm-pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - brand
+          - catalog
+          - cli
+          - client-core
+          - jws
+          - manifest
+          - node
+          - protocol
+          - react
+          - zstd-wasm
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: npm.${{ matrix.package }}
+      artifact: npm-packages
+      dir: ${{ matrix.package }}
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  # ── PyPI: polaris-key (wheel and sdist) ────────────────────────────────────────────────────
+  python-build:
+    name: Build the Python SDK
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Test
+        working-directory: sdks/python
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -e ".[dev]"
+          .venv/bin/python -m pytest -q
+      - name: Stamp the version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PEP440: ${{ needs.version.outputs.pep440 }}
+        run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
+      - name: Build
+        working-directory: sdks/python
+        run: |
+          python -m pip install --upgrade build
+          rm -rf dist
+          python -m build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: sdks/python/dist/
+          if-no-files-found: error
+
+  python:
+    name: PyPI feed
+    needs: [version, python-build]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: pypi.polaris-key
+      artifact: python-dist
+      version: ${{ needs.version.outputs.pep440 }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  # ── Swift: polaris-key.PolarisKey, signed (plans/F-01.md §5.3) ─────────────────────────────
+  swift-test:
+    name: Test the Swift SDK
+    needs: version
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - run: swift test --package-path sdks/swift
+
+  # In `package-registry`, which holds the signing secrets: sdks/swift/tools/sign-registry-release.sh
+  # checks SWIFT_REGISTRY_SIGNING_KEY, SWIFT_REGISTRY_SIGNING_CERT and SWIFT_REGISTRY_CERT_CHAIN
+  # (and stops with the error §5.3 fixes when one is missing: it NEVER falls back to unsigned),
+  # writes the key files to the runner's temp directory, runs `swift package-registry publish
+  # --dry-run` with the signing flags (the zip, its cms-1.0.0 signature and the signed
+  # Package.swift, no registry contacted), and an always() step deletes the key files. The secrets
+  # reach the script through the environment only and are never echoed.
+  swift-sign:
+    name: Sign the Swift registry release
+    needs: [version, swift-test]
+    runs-on: macos-14
+    environment: package-registry
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Stamp the version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PEP440: ${{ needs.version.outputs.pep440 }}
+        run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
+      - name: Sign (swift package-registry publish --dry-run)
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          SWIFT_REGISTRY_SIGNING_KEY: ${{ secrets.SWIFT_REGISTRY_SIGNING_KEY }}
+          SWIFT_REGISTRY_SIGNING_CERT: ${{ secrets.SWIFT_REGISTRY_SIGNING_CERT }}
+          SWIFT_REGISTRY_CERT_CHAIN: ${{ secrets.SWIFT_REGISTRY_CERT_CHAIN }}
+        run: >-
+          sdks/swift/tools/sign-registry-release.sh "$VERSION"
+          "$GITHUB_WORKSPACE/build/swift-registry" "$RUNNER_TEMP/swift-registry-keys"
+      - name: Delete the key files
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/swift-registry-keys"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: swift-registry
+          path: build/swift-registry/
+          if-no-files-found: error
+
+  swift:
+    name: Swift registry
+    needs: [version, swift-sign]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: swift.polariskey
+      artifact: swift-registry
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  # ── Maven: the Kotlin SDK and the Godot Android binding ────────────────────────────────────
+  # `publishAllPublicationsToLocalRepository` writes each module's POM, Gradle .module, jar or
+  # AAR and sources jar into sdks/kotlin/build/repo (group im.plrs.key, the stamped version), and
+  # each artifact is published as its own `maven.*` deliverable; the feed derives
+  # maven-metadata.xml and the checksums. A module that gains a publication (the P6-05
+  # amendment: :android, :ui) must be added to .pkey/release and to both lists below; the build
+  # fails until it is. No Maven Central, no Sonatype, no signing plugin (owner decision).
+  kotlin-build:
+    name: Build, test and publish the Kotlin SDK locally
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # `yes` dies of SIGPIPE when sdkmanager stops reading, which pipefail would report.
+          set +o pipefail
+          yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
+          "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
+      - name: Tests and boundaries
+        working-directory: sdks/kotlin
+        run: >-
+          ./gradlew --no-daemon :core:test :license:test :config:test :identity:test :release:test
+          :update:test :packs:test :sdk:test :conformance:test :platform:testPlayDebugUnitTest
+          :platform:testDirectDebugUnitTest :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
+          checkModuleBoundaries :platform:checkStandalone :godot:checkPlatformOnly
+      - name: Stamp the version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PEP440: ${{ needs.version.outputs.pep440 }}
+        run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
+      - name: The local publication
+        working-directory: sdks/kotlin
+        run: ./gradlew --no-daemon publishAllPublicationsToLocalRepository
+      - name: The publications are the ones the feed publishes
+        working-directory: sdks/kotlin
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          tools/check_publication.sh
+          expected="config core godot-direct godot-play identity license packs platform-direct platform-play release sdk update"
+          repo=build/repo/im/plrs/key
+          actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::build/repo holds [$actual], the release publishes [$expected]: add each new artifact to .pkey/release and this workflow's lists." >&2
+            exit 1
+          fi
+          read -r -a artifacts <<<"$expected"
+          for a in "${artifacts[@]}"; do
+            versions="$(find "$repo/polaris-key-$a" -mindepth 1 -maxdepth 1 -type d -printf '%f\n')"
+            if [ "$versions" != "$VERSION" ]; then
+              echo "::error::polaris-key-$a was published as [$versions], not $VERSION." >&2
+              exit 1
+            fi
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maven-repo
+          path: sdks/kotlin/build/repo/
+          if-no-files-found: error
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-reports
+          path: |
+            sdks/kotlin/*/build/reports/
+            sdks/godot/native/android/build/reports/
+
+  maven:
+    name: Maven feed
+    needs: [version, kotlin-build]
+    strategy:
+      fail-fast: false
+      matrix:
+        artifact:
+          - core
+          - license
+          - config
+          - identity
+          - release
+          - update
+          - packs
+          - sdk
+          - platform-play
+          - platform-direct
+          - godot-play
+          - godot-direct
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: maven.${{ matrix.artifact }}
+      artifact: maven-repo
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  # ── Godot: the polaris_key addon ────────────────────────────────────────────────────────────
+  godot-test:
+    name: Test the Godot SDK (4.7.2 editor + release template)
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkey-godot/4.7.2
+          key: pkey-godot-4.7.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      - run: sdks/godot/tools/fetch_godot.sh 4.7.2 "$HOME/.cache/pkey-godot/4.7.2" --template
+      - run: |
+          D="$HOME/.cache/pkey-godot/4.7.2"
+          GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" sdks/godot/tools/run_tests.sh
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: godot-test-logs
+          path: sdks/godot/build/logs/
+
+  godot-package:
+    name: Package the Godot addon
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Stamp the version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PEP440: ${{ needs.version.outputs.pep440 }}
+        run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
+      # --allow-dirty: the stamp is the only change, and it is the point.
+      - name: Build the zip (twice, to prove it is reproducible)
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          python3 sdks/godot/tools/package.py --tag "godot-v$VERSION" --allow-dirty --out build/a
+          python3 sdks/godot/tools/package.py --tag "godot-v$VERSION" --allow-dirty --out build/b
+          cmp build/a/SHA256SUMS build/b/SHA256SUMS
+      - name: The zip holds addons/polaris_key/** only
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          zip="build/a/polaris-key-godot-v$VERSION.zip"
+          # The listing is read once into a variable: no `unzip | grep -q` pipeline that pipefail
+          # can fail when grep exits early and unzip takes SIGPIPE.
+          listing="$(unzip -Z1 "$zip")"
+          outside="$(printf '%s\n' "$listing" | grep -vE '^addons/(polaris_key/.*)?$' || true)"
+          [ -z "$outside" ] || { echo "entries outside addons/polaris_key/: $outside" >&2; exit 1; }
+          for f in plugin.cfg LICENSE README.md polaris_key.gd polaris_key.gd.uid; do
+            case $'\n'"$listing"$'\n' in *$'\n'"addons/polaris_key/$f"$'\n'*) ;; *) echo "missing $f" >&2; exit 1 ;; esac
+          done
+          while IFS= read -r gd; do
+            case $'\n'"$listing"$'\n' in *$'\n'"$gd.uid"$'\n'*) ;; *) echo "missing $gd.uid" >&2; exit 1 ;; esac
+          done < <(printf '%s\n' "$listing" | grep '\.gd$' || true)
+          bad="$(printf '%s\n' "$listing" | grep -E '(^|/)(tests|\.godot|build)/' || true)"
+          [ -z "$bad" ] || { echo "test or build files in the zip: $bad" >&2; exit 1; }
+          echo "$(printf '%s\n' "$listing" | grep -vc '/$') files"
+          mkdir -p build/feed
+          cp "$zip" build/feed/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: godot-feed
+          path: build/feed/
+          if-no-files-found: error
+
+  godot-smoke:
+    name: Clean install (${{ matrix.godot }})
+    needs: [version, godot-package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        godot: ["4.4.1", "4.7.2"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: godot-feed
+          path: release
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkey-godot/${{ matrix.godot }}
+          key: pkey-godot-${{ matrix.godot }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      - run: sdks/godot/tools/fetch_godot.sh "${{ matrix.godot }}" "$HOME/.cache/pkey-godot/${{ matrix.godot }}"
+      - name: Install the zip into an empty project, enable the plugin, run it
+        run: |
+          export GODOT_BIN="$HOME/.cache/pkey-godot/${{ matrix.godot }}/godot"
+          for zip in release/*.zip; do sdks/godot/tools/smoke_install.sh "$zip"; done
+
+  godot:
+    name: Godot feed
+    needs: [version, godot-test, godot-smoke]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: godot.polaris-key
+      artifact: godot-feed
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  # ── OCI: the pkey image ─────────────────────────────────────────────────────────────────────
+  # packages/cli/image/Dockerfile (node:22-slim plus the committed CLI bundle,
+  # actions/publish/dist/index.js) for linux/amd64 and linux/arm64, into an OCI image layout:
+  #   docker pull pkg.plrs.im/polaris-key/pkey:<version>
+  image-build:
+    name: Build the pkey image layout
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "@polaris-key/cli..." build
+      # The image carries the committed bundle; it must be what this commit's CLI builds.
+      - run: pnpm --filter @polaris-key/cli bundle:action -- --check
+      - name: Build linux/amd64 and linux/arm64 into an OCI image layout
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          # The default docker driver cannot export a multi-platform OCI layout; a
+          # docker-container builder can. The Dockerfile has no RUN step, so no emulation.
+          docker buildx create --name pkey-image --driver docker-container --use
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-context action=actions/publish \
+            --build-arg VERSION="$VERSION" \
+            --provenance=false --sbom=false \
+            --output type=oci,dest=build/pkey-image,tar=false,rewrite-timestamp=true \
+            packages/cli/image
+          rm -rf build/pkey-image/ingest
+          test -f build/pkey-image/oci-layout
+      - name: Smoke-test the amd64 image
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          docker buildx build --platform linux/amd64 --build-context action=actions/publish \
+            --build-arg VERSION="$VERSION" --load -t pkey-smoke packages/cli/image
+          docker run --rm -v "$PWD:/work" pkey-smoke validate
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pkey-image
+          path: build/pkey-image/
+          if-no-files-found: error
+
+  image:
+    name: OCI feed
+    needs: [version, image-build]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: oci.pkey
+      artifact: pkey-image
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  # ── Drift: every feed shows this build's version ──────────────────────────────────────────
+  drift:
+    name: Feed drift check
+    needs: [version, npm, python, swift, maven, godot, image]
+    if: ${{ !cancelled() && needs.version.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @polaris-key/tools --ignore-scripts
+      # Reads each package's version listing from its feed, as a client would, and fails loudly
+      # unless the newest version of this build's kind is this build's (retrying while the
+      # render queue catches up). It runs even when a publish job failed, so the report names
+      # every package that is behind.
+      - name: Every package is at the lockstep version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PEP440: ${{ needs.version.outputs.pep440 }}
+          CHANNEL: ${{ needs.version.outputs.channel }}
+        run: >-
+          node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
+          --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
