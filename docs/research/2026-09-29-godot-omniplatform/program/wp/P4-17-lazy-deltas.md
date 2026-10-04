@@ -1,16 +1,16 @@
 # P4-17 Lazy hot-pair delta generation from install telemetry
 
-| Field       | Value                                                                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v3)                                                                                                                                            |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                      |
-| Depends on  | [P4-22](P4-22-ci-chunk-indexes.md), [P3-03](P3-03-feed-composition.md), [S-08](S-08-cloudflare-async-compute.md)                                          |
-| Unblocks    | [P4-29](P4-29-feed-delta-menu.md)                                                                                                                         |
-| Role        | `pkey-implementer`                                                                                                                                        |
-| Plan mode   | no: lazy deltas use the existing `pkey-patch/1` descriptor and the feed's delta menu                                                                      |
-| Gates       | none in the graph; in practice a migration (`TABLE_OWNERS`), new `wrangler.toml` bindings (workerd smoke job) and a threat-model note                     |
-| Human input | none in the graph; in practice Cloudflare Queues, Workflows and Containers enabled per environment, plus an R2 event-notification rule (see Design notes) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v3)                                                                                                                                                                          |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                    |
+| Depends on  | [P4-22](P4-22-ci-chunk-indexes.md), [P3-03](P3-03-feed-composition.md), [S-08](S-08-cloudflare-async-compute.md)                                                                        |
+| Unblocks    | [P4-29](P4-29-feed-delta-menu.md)                                                                                                                                                       |
+| Role        | `pkey-implementer`                                                                                                                                                                      |
+| Plan mode   | no: generation only; offering lazy deltas in the feed's delta menu is a wire change, done under the approved [`plans/P4-29.md`](../plans/P4-29.md) by [P4-29](P4-29-feed-delta-menu.md) |
+| Gates       | none in the graph; in practice a migration (`TABLE_OWNERS`), new `wrangler.toml` bindings (workerd smoke job) and a threat-model note                                                   |
+| Human input | none in the graph; in practice Cloudflare Queues, Workflows and Containers enabled per environment, plus an R2 event-notification rule (see Design notes)                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                               |
 
 ## Goal
 
@@ -137,7 +137,7 @@ pipeline as R2 events → Queue → Workflow → Container ([CONTENT §16](../..
 3. Queue consumer and Workflow with injected R2, D1 and Container fakes.
 4. The Container image and its entrypoint; a test that runs it against A7's v1/v2 payloads when
    Docker and zstd are available in CI.
-5. Descriptor storage and the delta menu in the feed composer; cold marking for GC.
+5. Descriptor storage and cold marking for GC. The delta menu in the feed composer is [P4-29](P4-29-feed-delta-menu.md)'s (approved `plans/P4-29.md` §6.1).
 6. Bindings, docs, threat-model note, the green gate.
 
 ## Acceptance criteria
@@ -150,8 +150,7 @@ pipeline as R2 events → Queue → Workflow → Container ([CONTENT §16](../..
 - [ ] Workflow tests with fakes: a hot pair produces one upload at `deltas/<from>/<to>.zstd-patch-from`
       and one descriptor; a duplicate event does nothing; a Container result whose decoded hash
       is not `to` is discarded.
-- [ ] The composed feed's delta menu lists the lazy delta for devices on `from`, and `client-core`'s
-      planner picks it on the A7 `plan-real-v1-v2` inputs.
+- [ ] Moved to [P4-29](P4-29-feed-delta-menu.md): the composed feed's delta menu lists the lazy delta for devices on `from`, and `client-core`'s planner picks it on the content set's v1 → v2 inputs (`plans/P4-29.md` §4.3 `feed-delta-real-v1-v2`). This package stores the descriptor `readyDeltasTo()` and P4-29's `ReleaseCatalog.lazyDeltas` hook read.
 - [ ] No Worker request handler decodes, encodes or diffs payload bytes (reviewer check; a test
       asserts the report handler only touches D1 and the Queue).
 - [ ] Bindings exist for every environment in `wrangler.toml`; `test:workerd` passes.

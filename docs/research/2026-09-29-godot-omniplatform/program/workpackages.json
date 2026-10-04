@@ -1530,7 +1530,7 @@
       "optional": false,
       "refs": ["CONTENT §8.1 telemetry", "notes/E5"],
       "brief": "wp/P4-17-lazy-deltas.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-18",
