@@ -45,10 +45,12 @@ gate-matrix-only runner); the ones a contributor touches most:
   `sdks/godot/tools/run_tests.sh` on an editor and an exported release template.
 - **Kotlin** — `sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/`: `CorpusV2Test.kt`
   (the JWS, document, trust, clock-floor and bundle families and their pointer sets),
+  `ReleaseRecordTest.kt` (`releaseRecordCases`), `GateMatrixTest.kt`, `ConfigMatrixTest.kt`,
   `HeadersTest.kt`, `FingerprintTest.kt`, `StageMatrixTest.kt` and `OutletMatrixTest.kt`, reading
   `conformance/corpus/v2/` in place (no mirror). `( cd sdks/kotlin && ./gradlew :conformance:test )`
-  runs every suite on the JCA Ed25519 backend and again with Tink forced; the later slices of
-  P6-05 add their families to the same module.
+  runs every suite on the JCA Ed25519 backend and again with Tink forced (each suite extends
+  `ConformanceSuite`, which installs the backend first); P6-08 adds the update and pack families
+  to the same module.
 - **The Worker** — three slices. `packages/worker/test/headersCorpus.test.ts` runs every
   `headers.json` row through the normaliser that stores the client metadata headers. `packages/worker/test/fingerprintCorpus.test.ts` covers the
   fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
