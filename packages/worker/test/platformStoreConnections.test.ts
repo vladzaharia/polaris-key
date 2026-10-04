@@ -380,12 +380,23 @@ describe("platform store connections: the App Store apps listing", () => {
     await platform(w, "GET", "/app-store/apps?refresh=1");
     expect(w.fake.requests.length).toBeGreaterThan(n);
 
-    // The team-wide open is in the platform trail (the log fallback until A-12), not a product's.
+    // The team-wide open is in the platform trail, on behalf of the admin, not in a product's.
     expect(
       (await audits(w.db)).filter(
         (a) => a.action === "platform_credential.use",
       ),
     ).toEqual([]);
+    expect(
+      await w.db.all(
+        "SELECT action, actor_sub, target_id FROM platform_audit WHERE action = 'platform_credential.use'",
+      ),
+    ).toEqual([
+      {
+        action: "platform_credential.use",
+        actor_sub: "u1",
+        target_id: "app-store.api-key",
+      },
+    ]);
   });
 
   it("refuses the listing without a usable team key (409), and relays an Apple refusal as 502 with no body", async () => {
@@ -1067,39 +1078,55 @@ describe("platform store connections: custody", () => {
     ).toMatchObject({ source: "console", value: { keyId: "TEAMKEY123" } });
   });
 
-  it("platform events go to platform_audit once the table exists, and to the log until then", async () => {
+  it("every platform write is a platform_audit row with the session's actor and metadata only", async () => {
     const w = await teamWorld();
-    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const event = {
-      actor: { sub: "u1", name: "Ada", email: null },
-      at: NOW,
-      action: "platform_credential.set",
-      target: { kind: "platform_credential", id: "app-store.api-key" },
-      summary: "Set",
-      after: { keyId: "K" },
-    };
-    expect(await appendPlatformEvent(w.db, event)).toBe("log");
-    expect(String(log.mock.calls[0]![0])).toContain('"event":"platform_audit"');
-    log.mockRestore();
-    await w.db.run(
-      `CREATE TABLE platform_audit (id TEXT PRIMARY KEY, at INTEGER NOT NULL, actor_sub TEXT, actor_name TEXT,
-        actor_email TEXT, action TEXT NOT NULL, target_kind TEXT, target_id TEXT, summary TEXT,
-        before_json TEXT, after_json TEXT)`,
-    );
-    expect(await appendPlatformEvent(w.db, event)).toBe("platform_audit");
     await platform(w, "PUT", "/app-store", { value: ascKey() });
+    await platform(w, "PUT", "/app-store/settings/teamId", {
+      value: "48H7CLBV8Y",
+    });
+    await platform(w, "PUT", `/app-store/apps/${APPLE_ID}/product`, {
+      product: SLUG,
+    });
+    await platform(w, "DELETE", `/app-store/apps/${APPLE_ID}/product`);
+    await platform(w, "DELETE", "/app-store");
     const rows = await w.db.all<{
       action: string;
       actor_sub: string;
-      after_json: string;
+      target_id: string;
+      before_json: string | null;
+      after_json: string | null;
     }>(
-      "SELECT action, actor_sub, after_json FROM platform_audit ORDER BY rowid",
+      "SELECT action, actor_sub, target_id, before_json, after_json FROM platform_audit ORDER BY rowid",
     );
     expect(rows.map((r) => r.action)).toEqual([
       "platform_credential.set",
-      "platform_credential.set",
+      "platform_store_setting.set",
+      "platform_credential.use", // the listing the assignment checks against
+      "store_connection.assign",
+      "store_connection.unassign",
+      "platform_credential.delete",
     ]);
-    expect(rows[1]!.actor_sub).toBe("u1");
-    expect(rows[1]!.after_json).not.toContain("PRIVATE");
+    expect(rows.every((r) => r.actor_sub === "u1")).toBe(true);
+    expect(JSON.parse(rows[0]!.after_json!)).toEqual({
+      keyId: "TEAMKEY123",
+      issuerId: ISSUER,
+    });
+    for (const r of rows) {
+      expect(String(r.after_json)).not.toContain("PRIVATE");
+      expect(String(r.before_json)).not.toContain("PRIVATE");
+    }
+    // A direct append lands in the same table.
+    await appendPlatformEvent(w.db, {
+      actor: { sub: "u2", name: null, email: null },
+      at: NOW,
+      action: "test.event",
+      target: null,
+      summary: "x",
+    });
+    expect(
+      await w.db.first(
+        "SELECT action FROM platform_audit WHERE actor_sub = 'u2'",
+      ),
+    ).toEqual({ action: "test.event" });
   });
 });

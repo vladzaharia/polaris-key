@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS platform_credential_pins (
   pin           TEXT NOT NULL,
   pinned_at     INTEGER NOT NULL,
   pinned_by     TEXT NOT NULL,
-  PRIMARY KEY (credential_id, product),
+  PRIMARY KEY (product, credential_id),
   UNIQUE (credential_id, pin)
 );
 
@@ -62,3 +62,25 @@ CREATE TABLE IF NOT EXISTS platform_store_settings (
   updated_by TEXT NOT NULL,
   PRIMARY KEY (store, key)
 );
+
+-- `platform_audit` — the product-less audit trail every platform-level write and team-wide key
+-- open above lands in (`core/platformEvents.ts`). This is A-12's table (notes/S-13 §6.1; A-12 is
+-- on the unmerged A-11 branch as `0054_b_platform_audit.sql`), created here with the SAME
+-- statement and index so A-16 never loses an event while A-12 is pending: whichever migration
+-- applies first creates it, the other is a no-op (`IF NOT EXISTS`). When A-12 merges, its copy is
+-- the canonical one and this block can be dropped in the merge. A writer must never put a secret,
+-- key material or anything derived from one in any column. Core-owned (`TABLE_OWNERS.core`).
+CREATE TABLE IF NOT EXISTS platform_audit (
+  id          TEXT PRIMARY KEY,
+  at          INTEGER NOT NULL,
+  actor_sub   TEXT,
+  actor_name  TEXT,
+  actor_email TEXT,
+  action      TEXT NOT NULL,
+  target_kind TEXT,
+  target_id   TEXT,
+  summary     TEXT,
+  before_json TEXT,
+  after_json  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_platform_audit_at ON platform_audit(at DESC, id DESC);

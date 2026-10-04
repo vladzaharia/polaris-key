@@ -588,6 +588,13 @@ describe("R11-05 product scoping", () => {
       // (the object was shared), so the row is keyed by an autoincrement id with `product`
       // nullable; it is written only by the nightly collector and read by no tenant route.
       "blob_gc_log",
+      // 0055 (A-16) — the platform's team-level store connection: one credential per store slot
+      // and one setting per store key, belonging to no product. Per-product use is gated by
+      // `platform_credential_pins`, which IS product-first (checked by this loop).
+      "platform_credentials",
+      "platform_store_settings",
+      // A-12's product-less audit twin (created by 0055 too while A-12 is unmerged).
+      "platform_audit",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
