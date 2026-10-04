@@ -14,7 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AscResource } from "../src/core/asc/client.js";
-import { checkAscRequest } from "../src/core/asc/writeGate.js";
+import { checkAscRequest } from "../src/core/storefront/rules/appStore.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { upsertStoreProduct } from "../src/services/distribution/commerce/state.js";
 import { DistributeFake } from "./ascDistributeFake.js";
@@ -227,7 +227,7 @@ describe("A-17e: create a non-consumable IAP", () => {
       { productId: FULL, referenceName: "Full", localizations: LOCS },
       null,
     );
-    expect(noKey.status).toBe(422);
+    expect(noKey.status).toBe(428);
     expect(noKey.json.reason).toBe("idempotency_key_required");
     const unmapped = await post(w, "iap/create", {
       productId: "gg.acme.djdl.unmapped",

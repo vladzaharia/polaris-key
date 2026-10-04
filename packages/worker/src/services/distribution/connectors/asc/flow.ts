@@ -6,7 +6,7 @@
  *   - `distributeControl` / `distributeRead`: the `Idempotency-Key` (writes), then P5-02's pinned
  *     run (`withRun`: a missing or mismatched pin refuses before any token is minted), then the
  *     flow; a `Refused` raised anywhere inside answers its result.
- *   - `step`: one ledger step (`core/asc/ledger.ts`) keyed by the product, the op, the natural key
+ *   - `step`: one ledger step (`core/storefront/ledger.ts`) keyed by the product, the op, the natural key
  *     and the console's key; a reused key with another body is 409 `idempotency_conflict`.
  *   - `proveOwned`: one resource re-read with `include=app`, refused unless it is the pinned app's.
  */
@@ -20,9 +20,9 @@ import {
 } from "../../../../core/asc/client.js";
 import {
   isIdempotencyKey,
-  performAscWrite,
-} from "../../../../core/asc/ledger.js";
-import type { AscWriteStep } from "../../../../core/asc/ledger.js";
+  performStoreWrite,
+} from "../../../../core/storefront/ledger.js";
+import type { StoreWriteStep } from "../../../../core/storefront/ledger.js";
 import type { AscRun } from "./apply.js";
 import {
   refuse,
@@ -69,7 +69,7 @@ export function distributeControl(
     if (!isIdempotencyKey(key))
       return Promise.resolve(
         refuse(
-          422,
+          428,
           "idempotency_key_required",
           "send an Idempotency-Key header (a UUID per operator intent)",
         ),
@@ -113,11 +113,12 @@ export async function step<T extends AscResource>(
   f: Flow,
   op: string,
   naturalKey: string,
-  s: Omit<AscWriteStep<T>, "key" | "session" | "now">,
+  s: Omit<StoreWriteStep<T>, "key" | "session" | "now">,
 ): Promise<StepResult> {
-  const r = await performAscWrite(f.c.db, {
+  const r = await performStoreWrite(f.c.db, {
     ...s,
     key: {
+      store: "app-store",
       scope: "product",
       product: f.c.product,
       op,

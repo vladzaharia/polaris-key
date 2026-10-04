@@ -39,7 +39,7 @@
  *     the pinned app before anything is written (`unknown_build`, `unknown_beta_group`,
  *     `unknown_version`, `unknown_submission`).
  *   - **Idempotent and resumable.** Every write requires the console's `Idempotency-Key` header
- *     (one per user intent) and runs as a ledger step (`core/asc/ledger.ts`): a natural-key read
+ *     (one per user intent) and runs as a ledger step (`core/storefront/ledger.ts`): a natural-key read
  *     first (S-14 §7.3's table), nothing sent when Apple already has it, a replay of a done step
  *     answered from the row, the same key with another body a 409 `idempotency_conflict`. A
  *     multi-step handler (groups, submit) is a sequence of such steps under the one key, so a
@@ -957,19 +957,27 @@ const releaseType: ConnectorControl = distributeControl(async (f, body) => {
       const current = attr(v, "earliestReleaseDate");
       return current !== null && Date.parse(current) === Date.parse(date);
     },
-    write: async () =>
-      single(
-        await f.run.client.patch(path, {
-          data: {
-            type: "appStoreVersions",
-            id: versionId,
-            attributes: {
-              releaseType: type,
-              ...(date ? { earliestReleaseDate: date } : {}),
+    // The gate types a release type that auto-releases a version in or after review (A-18a); it
+    // is told the state of the pre-read this step just made (always a submittable one here).
+    write: async (existing) => {
+      const state = versionState(existing);
+      return single(
+        await f.run.client.patch(
+          path,
+          {
+            data: {
+              type: "appStoreVersions",
+              id: versionId,
+              attributes: {
+                releaseType: type,
+                ...(date ? { earliestReleaseDate: date } : {}),
+              },
             },
           },
-        }),
-      ),
+          state ? { resourceState: state } : {},
+        ),
+      );
+    },
     reread: async () => single(await f.run.client.get(path)),
     resultIds: () => ({ versionId }),
     summary: () =>

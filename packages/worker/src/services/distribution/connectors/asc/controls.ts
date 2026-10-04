@@ -27,7 +27,7 @@
  * same way.
  *
  * **The write gate (A-17a).** Every request goes through Core's client, whose deny-by-default gate
- * (`core/asc/writeGate.ts`) admits exactly these writes and refuses the release request unless the
+ * (`core/storefront/rules/appStore.ts`) admits exactly these writes and refuses the release request unless the
  * control asserts the typed confirmation it checked (`confirm` = the app's name).
  *
  * Every control sends exactly the documented request, writes ONE audit row with the session's
@@ -43,6 +43,11 @@
  * test). The secret is opened here (audited `asc:register-webhook`) and sent to Apple once.
  */
 
+import {
+  confirmationMissing,
+  typedConfirmationRefusal,
+} from "../../../../core/storefront/confirm.js";
+import { APP_STORE_ADAPTER } from "../../../../core/storefront/stores/appStore.js";
 import type { Db, Env } from "../../../../core/platform.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
 import { audit, type AdminSession } from "../../../../core/adminApi.js";
@@ -90,7 +95,7 @@ export type ControlResult =
   | { ok: true; [k: string]: unknown }
   | {
       ok: false;
-      status: 404 | 409 | 422 | 502;
+      status: 404 | 409 | 422 | 428 | 502;
       reason: string;
       message: string;
       fields?: string[];
@@ -110,7 +115,7 @@ export type ConnectorRead = (
 ) => Promise<ControlResult>;
 
 export const refuse = (
-  status: 404 | 409 | 422 | 502,
+  status: 404 | 409 | 422 | 428 | 502,
   reason: string,
   message: string,
   fields?: string[],
@@ -156,7 +161,7 @@ export async function withRun(
     return await fn(run, setup);
   } catch (e) {
     error = e;
-    // The write gate refused before anything was minted or sent (core/asc/writeGate.ts).
+    // The write gate refused before anything was minted or sent (core/storefront/rules/appStore.ts).
     if (e instanceof AscWriteDenied)
       return refuse(409, "write_denied", e.message);
     if (e instanceof AscError) {
@@ -336,7 +341,8 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
  * 2026-10-04; ADMIN.md §5.2): the body's `confirm` must equal the app's name as App Store Connect
  * reports it now. Only after that comparison does the control assert `typedConfirmation` to the
  * write gate, which refuses the release request without it. A-17d's submit for review uses the
- * same check (`action` names what is being confirmed in the refusal).
+ * same check (`action` names what is being confirmed in the refusal). The comparison is the shared
+ * one every store uses (`core/storefront/confirm.ts`), with the Apple adapter's phrase.
  */
 export async function checkTypedConfirmation(
   run: AscRun,
@@ -344,27 +350,27 @@ export async function checkTypedConfirmation(
   typed: unknown,
   action = "release",
 ): Promise<ControlResult | null> {
-  if (typeof typed !== "string" || typed.trim() === "")
-    return refuse(
-      422,
-      "confirmation_required",
-      `type the app's name in confirm to ${action}`,
-      ["confirm"],
-    );
+  const missing = confirmationMissing(typed, action);
+  if (missing)
+    return refuse(missing.status, missing.reason, missing.message, [
+      ...missing.fields,
+    ]);
   const app = single(
     await run.client.get(ascPath("apps", setup.appleId), {
       "fields[apps]": "name",
     }),
   );
-  const name = attr(app, "name");
-  if (!name || typed.trim() !== name.trim())
-    return refuse(
-      422,
-      "confirmation_mismatch",
-      "confirm does not match the app's name in App Store Connect",
-      ["confirm"],
-    );
-  return null;
+  const refusal = typedConfirmationRefusal(
+    typed,
+    attr(app, "name"),
+    action,
+    APP_STORE_ADAPTER.confirmation,
+  );
+  return refusal
+    ? refuse(refusal.status, refusal.reason, refusal.message, [
+        ...refusal.fields,
+      ])
+    : null;
 }
 
 const releaseHeld: ConnectorControl = (c, body) =>
