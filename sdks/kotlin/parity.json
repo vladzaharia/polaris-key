@@ -8,37 +8,86 @@
     "sdks/kotlin/config/src/test",
     "sdks/kotlin/identity/src/test",
     "sdks/kotlin/release/src/test",
+    "sdks/kotlin/update/src/test",
+    "sdks/kotlin/packs/src/test",
     "sdks/kotlin/sdk/src/test",
     "sdks/kotlin/conformance/src/test"
   ],
   "features": {
-    "core.verify": { "status": "implemented" },
-    "core.cache": { "status": "implemented" },
-    "core.bundle": { "status": "implemented" },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
-    "core.local": { "status": "implemented" },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.verify": {
+      "status": "implemented"
+    },
+    "core.cache": {
+      "status": "implemented"
+    },
+    "core.bundle": {
+      "status": "implemented"
+    },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
+    "core.local": {
+      "status": "implemented"
+    },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "planned",
       "wp": "P6-12",
-      "except": [{ "runtime": "jvm", "reason": "dependency" }],
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "dependency"
+        }
+      ],
       "note": "P6-06 ships InMemoryStore and the 0600 FileStore (the JVM's store, which supports() reports as dependency); P6-12 adds the Android Keystore store over :platform's SecureStore."
     },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
-    "license.enroll": { "status": "implemented" },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
-    "license.reregister": { "status": "implemented" },
-    "config.resolve": { "status": "implemented" },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
+    "license.enroll": {
+      "status": "implemented"
+    },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
+    "license.reregister": {
+      "status": "implemented"
+    },
+    "config.resolve": {
+      "status": "implemented"
+    },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
     "config.mirror": {
       "status": "implemented",
       "note": "The Kotlin mirror is rendered by tools/gen-mirrors.ts (--lang kotlin); the :config tests compile the committed sample."
@@ -52,13 +101,24 @@
       "status": "implemented",
       "note": "JvmDeviceFactsSource reads a JVM desktop; Android's inputs (Build, package-manager probes) arrive through the same DeviceFactsSource port from P6-12."
     },
-    "devices.register": { "status": "implemented" },
-    "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "devices.register": {
+      "status": "implemented"
+    },
+    "devices.manage": {
+      "status": "implemented"
+    },
+    "devices.report": {
+      "status": "implemented"
+    },
     "devices.attest": {
       "status": "planned",
       "unowned": true,
-      "except": [{ "runtime": "jvm", "reason": "runtime" }],
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ],
       "note": "P6-09 brings the standard Play Integrity API into :platform for native hosts; as in Swift (App Attest in PolarisKeyPlatform), no work package wires attestation into the Kotlin SDK client."
     },
     "identity.oidc": {
@@ -66,56 +126,144 @@
       "unowned": true,
       "note": "Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07)."
     },
-    "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
-    "release.record": { "status": "implemented" },
-    "update.check": { "status": "planned", "wp": "P6-08" },
-    "update.feed": { "status": "planned", "wp": "P6-08" },
-    "update.decide": { "status": "planned", "wp": "P6-08" },
-    "update.content": { "status": "planned", "wp": "P6-08" },
+    "identity.devicecode": {
+      "status": "implemented"
+    },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
+    "release.record": {
+      "status": "implemented"
+    },
+    "update.check": {
+      "status": "implemented",
+      "note": ":update's UpdateClient.check(): GET /<p>/update/version with the token when held, a 403's wire code, updateAvailable by Core's Semver (UpdateClientTest)."
+    },
+    "update.feed": {
+      "status": "implemented",
+      "note": ":core's verifyFeed, feedClaims, reloadFeeds and commitFeed (every feedCases vector, FeedCasesTest); UpdateClient.channelFeed() and decide() run them through runUpdateCheck, and Core keeps the feeds slice and its seq floors (the update-feed-rollback transcript)."
+    },
+    "update.decide": {
+      "status": "implemented",
+      "note": ":core's decideUpdate, bootDecision, resolveUpdateOutlet, rolloutBucket and runUpdateCheck (every update-matrix.json row and case, UpdateMatrixTest); UpdateClient.decide() over discovery's feed and record templates, the record fetched by hash and verified against pinnedReleaseKeys only (both update transcripts)."
+    },
+    "update.content": {
+      "status": "implemented",
+      "note": ":core's feedContent, holdsOf (stampHolds), selectPackRows and decideUpdate with UpdateContentInput; runUpdateCheck runs P4-13 §2.5 steps 10–14 with the packs facet as the UpdateContentHost (every feedContentCases vector and contentRows row, ContentDecisionTest)."
+    },
     "update.driver": {
       "status": "planned",
       "wp": "P6-12",
-      "except": [{ "runtime": "jvm", "reason": "runtime" }]
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ],
+      "note": "The InstallDriver port is :update's (UpdateClient.install); Play In-App Updates and PackageInstaller are P6-12's. A JVM desktop build has none: JvmInstallDriver throws the typed runtime N/A."
     },
-    "update.bootguard": { "status": "planned", "wp": "P6-08" },
+    "update.bootguard": {
+      "status": "implemented",
+      "note": ":update's BootGuard over the host's UpdateSlots port (Godot P3-10's semantics: apply-staged and roll-back with skipVersion, failedBoots counted while an applied update is active, the stage-matrix v2 confirmation rows; BootGuardTest); the launch decision is stage-matrix.json's guard and confirm rows (StageMatrixTest). With no slots (a platform-installed Android app, a JVM desktop build) nothing is counted."
+    },
     "outlet.detect": {
       "status": "planned",
       "wp": "P6-12",
       "note": "P6-06's :core holds detectOutlet and passes every outlet-matrix.json row in :conformance; P6-12 adds the readers over :platform's install source."
     },
-    "packs.record": { "status": "planned", "wp": "P6-08" },
-    "packs.revoke": { "status": "planned", "wp": "P6-08" },
-    "packs.delegation": { "status": "planned", "wp": "P6-08" },
-    "packs.delta.feed": { "status": "planned", "wp": "P6-08" },
-    "packs.plan": { "status": "planned", "wp": "P6-08" },
-    "packs.index.files": { "status": "planned", "wp": "P6-08" },
-    "packs.index.chunks": { "status": "planned", "wp": "P6-08" },
-    "packs.apply.full": { "status": "planned", "wp": "P6-08" },
-    "packs.apply.file": { "status": "planned", "wp": "P6-08" },
-    "packs.apply.chunk": { "status": "planned", "wp": "P6-08" },
-    "packs.apply.delta": { "status": "planned", "wp": "P6-08" },
-    "packs.state": { "status": "planned", "wp": "P6-08" },
-    "packs.handlers": { "status": "planned", "wp": "P6-08" },
+    "packs.record": {
+      "status": "implemented",
+      "note": ":core's verifyReleaseRecord with pin.kind and :packs' verifyMarker and matchEmbedded (every packRecordCases and markerCases vector, PackRecordTest)."
+    },
+    "packs.revoke": {
+      "status": "implemented",
+      "note": ":core's revocationOf, verifyRevocation and newerRevocation (every revocationCases vector); PackEngine keeps the sibling revocations.json (revocationsStored first, never created empty, re-verified per entry on load, relearn, the 256-target cap, torn and unreadable rules) and refuses and unmounts revoked releases (PackEngineTest)."
+    },
+    "packs.delegation": {
+      "status": "implemented",
+      "note": ":core's delegated verifyReleaseRecord path (steps 13 and 16), verifyDelegation and recordRevoked; :packs' dataOnlyRefusal (every delegationCases and dataOnlyCases vector, DelegationTest); the engine fetches delegations within MAX_DELEGATIONS_PER_CHECK, refuses non-data-only delegated installs and keeps PackInstall.delegation (PackEngineTest)."
+    },
+    "packs.delta.feed": {
+      "status": "implemented",
+      "note": ":core's feedContent reads the feed's deltas menu; :packs' withFeedDeltas merges it before planTarget, and PackEngine tries at most one feed-offered delta per install, falling back on a failed fetch or any delta verdict and journalling it as feedDelta; the update client hands each committed feed's menu to the packs facet (feedContentCases, feedDeltaCases, feedDeltaApplyCases, PackEngineTest)."
+    },
+    "packs.plan": {
+      "status": "implemented",
+      "note": ":packs' plan, selectVariant and planTarget (every plan-matrix.json row, variant case and target case, PlanMatrixTest)."
+    },
+    "packs.index.files": {
+      "status": "implemented",
+      "note": ":packs' parseFilesIndex, checkPaths and treeDigest (filesIndexCases and pathCases, ContentCorpusTest)."
+    },
+    "packs.index.chunks": {
+      "status": "implemented",
+      "note": ":packs' parseChunkIndex and parseChunkIndexBytes (u64 from two little-endian u32 reads composed byte by byte, saturated at 2^53; chunkIndexCases under both zstd paths, ContentCorpusTest)."
+    },
+    "packs.apply.full": {
+      "status": "implemented",
+      "note": "applyFull, streamed through zstd-jni's ZstdInputStream (and one-shot without it); applyCases under both paths."
+    },
+    "packs.apply.file": {
+      "status": "implemented",
+      "note": "applyFile with the type-neutral container rebuild; applyCases under both paths."
+    },
+    "packs.apply.chunk": {
+      "status": "implemented",
+      "note": "applyChunk (seed map, chunkRuns, repair pass, run journal resume) over chunkRangeFetch: one bounded Range per run with If-Range and Accept-Encoding identity, an exact Content-Range and ETag, never multi-range; seed indexes under <packs root>/index/ (applyCases, ContentCorpusTest)."
+    },
+    "packs.apply.delta": {
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "dependency",
+          "note": "Where zstd-jni's native libzstd cannot load (an Android build without the AAR's natives, P6-12 links the AAR); supports() reports dependency."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "dependency",
+          "note": "Where zstd-jni ships no native binary for the OS or arch; supports() reports dependency."
+        }
+      ],
+      "note": "zstd-jni (libzstd 1.5.7): the base as a raw-content dictionary (ZSTD_DCtx_loadDictionary; §2.7 rule 5's magic refusal runs first) with ZSTD_d_windowLogMax, the window check in the applier before every prefix decode; a start-up probe gates zstd-patch-from (applyCases, feedDeltaApplyCases, PackZstdTest)."
+    },
+    "packs.state": {
+      "status": "implemented",
+      "note": "PackEngine over DirPackStorage in the store's data directory (never a cache directory): journal, resume with Range/If-Range, atomic pointer swap (fsync before rename), confirm, rollback, GC roots, embedded baselines, a torn state.json held aside, an unreadable one refusing every write; packSetId on devices/report (packSetIdCases, PackEngineTest)."
+    },
+    "packs.handlers": {
+      "status": "implemented",
+      "note": "PackHandler (supports, check over a newly staged payload before the state commit -> pack-type-check-failed, activate with the installed payload, deactivate); files.tree, data.json and l10n.table built in; registerHandler for custom types (PackEngineTest, PackTypeHandlersTest)."
+    },
     "packs.type.godot.zip": {
       "status": "na",
       "runtime": ["android", "jvm"],
       "reason": "runtime"
     },
-    "packs.type.l10n.table": { "status": "planned", "wp": "P6-08" },
-    "packs.type.data.json": { "status": "planned", "wp": "P6-08" },
+    "packs.type.l10n.table": {
+      "status": "implemented",
+      "note": "L10nTableHandler (built in): PO, CSV and JSON tables by plain parsers scanned as code points, the BCP-47 locale matched to the variant; tables(packId), onActivate/onDeactivate (pack-type-cases.json, PackTypeHandlersTest)."
+    },
+    "packs.type.data.json": {
+      "status": "implemented",
+      "note": "DataJsonHandler (built in): every file strict JSON, formatVersions listed by the host; documents(packId) (pack-type-cases.json, PackTypeHandlersTest)."
+    },
     "packs.type.audio.bank": {
       "status": "na",
       "runtime": ["android", "jvm"],
       "reason": "runtime"
     },
     "packs.type.ml.model": {
-      "status": "planned",
-      "wp": "P6-08",
-      "note": "No Kotlin N/A: as in Swift, a host-registered handler loads the model with the host's own runtime (TensorFlow Lite, ONNX Runtime)."
+      "status": "implemented",
+      "note": "MlModelHandler (host-registered, as in Swift): model.json runtime, quantisation and RAM/VRAM needs against the host budget, then the host load test (TensorFlow Lite, ONNX Runtime) before model(packId) swaps (pack-type-cases.json, PackTypeHandlersTest)."
     },
-    "packs.provides": { "status": "planned", "wp": "P6-08" },
+    "packs.provides": {
+      "status": "implemented",
+      "note": "PackEngine.isAvailable over the running set and packFor over the targets, from each verified record's provides (unentitled packs never answer; PackEngineTest)."
+    },
     "packs.transport.apple": {
       "status": "na",
       "runtime": ["android", "jvm"],
@@ -124,12 +272,22 @@
     "packs.transport.play": {
       "status": "planned",
       "wp": "P6-12",
-      "except": [{ "runtime": "jvm", "reason": "runtime" }]
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ]
     },
     "packs.transport.steam": {
       "status": "planned",
       "unowned": true,
-      "except": [{ "runtime": "android", "reason": "runtime" }],
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        }
+      ],
       "note": "As in Swift, no work package builds a Steam-depot transport for a JVM desktop app (P5-08 covers Godot only)."
     },
     "packs.transport.msix": {
@@ -146,7 +304,10 @@
       "status": "implemented",
       "note": ":core's bootTransition; every stage-matrix.json row, probe, guard and confirm case in :conformance."
     },
-    "ui.kit": { "status": "planned", "wp": "P6-11" },
+    "ui.kit": {
+      "status": "planned",
+      "wp": "P6-11"
+    },
     "commerce.receipt": {
       "status": "planned",
       "unowned": true,

@@ -1,4 +1,4 @@
-// @pkey-feature ui.stages
+// @pkey-feature ui.stages update.bootguard packs.state
 //
 // The Kotlin runner for conformance/corpus/v2/stage-matrix.json (version 3), mirroring the Node
 // runner (conformance/runners/node/stageMatrix.test.ts): every row's emits (as values), the stage

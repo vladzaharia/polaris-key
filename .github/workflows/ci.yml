@@ -384,14 +384,16 @@ jobs:
             sdks/godot/build/ios_export_check/logs/
             sdks/godot/build/logs/
 
-  # The Kotlin SDK's JVM modules (sdks/kotlin, P6-06, P6-07): the unit suites of :core, the service
-  # modules (:license, :config, :identity, :release) and the umbrella :sdk, and the :conformance
+  # The Kotlin SDK's JVM modules (sdks/kotlin, P6-06, P6-07, P6-08): the unit suites of :core, the service
+  # modules (:license, :config, :identity, :release, :update, :packs) and the umbrella :sdk, and the :conformance
   # runner, which reads conformance/corpus/v2/ and conformance/transcripts/ in place and runs every
   # suite on the JCA Ed25519 backend and again with Tink forced. JDK 17 only: -Ppkey.jvmOnly leaves
   # the Android modules out, so no Android SDK is needed. checkModuleBoundaries proves no JVM module
   # has an Android dependency and each service module sees :core only (the android job proves
   # :platform depends on no SDK module), and the local maven-publish step writes build/repo only
-  # (no signing, no remote repository).
+  # (no signing, no remote repository). P6-08: :packs decodes zstd through zstd-jni, whose Android
+  # natives must be 16 KB page aligned; tools/check_16k_alignment.py reads every ELF PT_LOAD of the
+  # pinned zstd-jni AAR's .so files (arm64-v8a and x86_64 must align; 32-bit ABIs are reported).
   kotlin:
     name: Kotlin SDK (JVM modules + conformance runner)
     runs-on: ubuntu-latest
@@ -412,10 +414,14 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
-          :release:test :sdk:test :conformance:test checkModuleBoundaries
+          :release:test :update:test :packs:test :sdk:test :conformance:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
-          :release:publishReleasePublicationToLocalRepository :sdk:publishSdkPublicationToLocalRepository
+          :release:publishReleasePublicationToLocalRepository :update:publishUpdatePublicationToLocalRepository
+          :packs:publishPacksPublicationToLocalRepository :sdk:publishSdkPublicationToLocalRepository
+      - name: zstd-jni's Android natives are 16 KB page aligned
+        working-directory: sdks/kotlin
+        run: python3 tools/check_16k_alignment.py
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
