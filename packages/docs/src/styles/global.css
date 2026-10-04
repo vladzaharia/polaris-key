@@ -1,7 +1,20 @@
 /**
- * Docs-site theme: brand tokens ported from the console (packages/admin/src/styles.css) —
- * dark-default #0c0f17 surfaces on the 225° slate ramp, #5b7cfa indigo accent. No dependency
- * on the (private) brand package: the values are compiled in, per docs-plan D6.
+ * The docs site on the Polaris Key design system (docs/design/BRAND.md; the package is
+ * @polaris-key/brand).
+ *
+ * astro.config.mjs loads the brand's tokens.css and fonts.css (self-hosted Rubik) before this
+ * file. Here Starlight's --sl-* variables are pointed at the --pk-* tokens, so the site is dark
+ * first, follows the system through Starlight's "Auto" theme, honours its persisted dark/light
+ * choice (both set data-theme on <html>, which tokens.css keys on) and has full light parity.
+ * Nothing in this file is a colour of its own: every value is a token.
+ *
+ * Sections: src/components/PageFrame.astro puts data-service="<slug>" around every page, and
+ * service pages (services/<slug>/) take that service's accent. The accent mapping below is
+ * declared on [data-service] as well as :root, because a custom property that references another
+ * one is resolved where it is declared.
+ *
+ * The rules are unlayered on purpose: Starlight's own styles live in cascade layers, so these
+ * win without !important.
  */
 
 @layer base, starlight, theme, components, utilities;
@@ -9,42 +22,348 @@
 @import "@astrojs/starlight-tailwind";
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
+@import "@polaris-key/brand/theme.css";
 
 @theme {
-  /* Accent — the console's indigo (hsl(232 92% 68%) ≈ #5b7cfa) as a Tailwind-style scale. */
-  --color-accent-50: oklch(97% 0.013 275);
-  --color-accent-100: oklch(94% 0.027 275);
-  --color-accent-200: oklch(88% 0.055 275);
-  --color-accent-300: oklch(80% 0.096 275);
-  --color-accent-400: oklch(71% 0.143 275);
-  --color-accent-500: oklch(64% 0.175 275);
-  --color-accent-600: oklch(58% 0.191 275);
-  --color-accent-700: oklch(51% 0.185 275);
-  --color-accent-800: oklch(44% 0.155 275);
-  --color-accent-900: oklch(38% 0.121 275);
-  --color-accent-950: oklch(26% 0.078 275);
-
-  /* Grays — the console's 225° slate, darkest step matching the #0c0f17 page. */
-  --color-gray-50: oklch(97% 0.004 260);
-  --color-gray-100: oklch(93% 0.007 260);
-  --color-gray-200: oklch(86% 0.011 260);
-  --color-gray-300: oklch(76% 0.015 260);
-  --color-gray-400: oklch(62% 0.018 260);
-  --color-gray-500: oklch(50% 0.019 260);
-  --color-gray-600: oklch(41% 0.019 260);
-  --color-gray-700: oklch(33% 0.018 260);
-  --color-gray-800: oklch(25% 0.016 260);
-  --color-gray-900: oklch(19% 0.014 260);
-  --color-gray-950: oklch(15% 0.013 260);
+  --font-sans: var(--pk-font-sans);
+  --font-mono: var(--pk-font-mono);
 }
 
-/* Per-service accents, mirroring the console's [data-service] contract — service landing
- * pages set `data-service` on their hero via component markup (Wave 1 content). */
+/* ---- Neutrals, type and the status families (theme-aware through the tokens) ---------------- */
+
 :root {
-  --pk-service-core: var(--color-gray-300);
-  --pk-service-license: var(--color-accent-400);
-  --pk-service-config: oklch(75% 0.13 165); /* teal */
-  --pk-service-release: oklch(76% 0.14 85); /* amber */
-  --pk-service-update: oklch(74% 0.12 45); /* orange */
-  --pk-service-identity: oklch(74% 0.14 330); /* magenta */
+  --sl-font: var(--pk-font-sans);
+  --sl-font-mono: var(--pk-font-mono);
+
+  --sl-color-white: var(--pk-text-strong);
+  --sl-color-gray-1: var(--pk-text-default);
+  --sl-color-gray-2: var(--pk-text-default);
+  --sl-color-gray-3: var(--pk-text-muted);
+  --sl-color-gray-4: var(--pk-border-strong);
+  --sl-color-gray-5: var(--pk-border-subtle);
+  --sl-color-gray-6: var(--pk-surface-raised);
+  --sl-color-gray-7: var(--pk-surface-raised);
+  --sl-color-black: var(--pk-surface-page);
+
+  --sl-color-text: var(--pk-text-default);
+  --sl-color-bg: var(--pk-surface-page);
+  --sl-color-bg-nav: var(--pk-surface-raised);
+  --sl-color-bg-sidebar: var(--pk-surface-page);
+  --sl-color-bg-inline-code: var(--pkd-inline-code-bg);
+  --sl-color-hairline-light: var(--pk-border-subtle);
+  --sl-color-hairline: var(--pk-border-subtle);
+  --sl-color-hairline-shade: var(--pk-border-subtle);
+  --sl-color-backdrop-overlay: color-mix(
+    in srgb,
+    var(--pk-surface-page) 72%,
+    transparent
+  );
+
+  --sl-shadow-sm: var(--pk-elevation-1);
+  --sl-shadow-md: var(--pk-elevation-2);
+  --sl-shadow-lg: var(--pk-elevation-3);
+
+  /*
+   * Starlight's named colour families (asides, badges, file trees) become the brand statuses:
+   * low = the status's subtle surface, base = its border, high = its text colour. Blue and
+   * purple both become info, which is violet: the brand has no blue (BRAND.md §4.4).
+   */
+  --sl-color-blue-low: var(--pk-info-subtle);
+  --sl-color-blue: var(--pk-info-border);
+  --sl-color-blue-high: var(--pk-info);
+  --sl-color-purple-low: var(--pk-info-subtle);
+  --sl-color-purple: var(--pk-info-border);
+  --sl-color-purple-high: var(--pk-info);
+  --sl-color-green-low: var(--pk-success-subtle);
+  --sl-color-green: var(--pk-success-border);
+  --sl-color-green-high: var(--pk-success);
+  --sl-color-orange-low: var(--pk-warning-subtle);
+  --sl-color-orange: var(--pk-warning-border);
+  --sl-color-orange-high: var(--pk-warning);
+  --sl-color-red-low: var(--pk-danger-subtle);
+  --sl-color-red: var(--pk-danger-border);
+  --sl-color-red-high: var(--pk-danger);
+
+  /* Inline code: a raised chip on the page in dark, a sunken one in light. */
+  --pkd-inline-code-bg: var(--pk-surface-overlay);
+  /* Text on an accent-fg fill (the file tree's highlight, Starlight's filled buttons). */
+  --pkd-on-accent-fg: var(--pk-surface-page);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pkd-inline-code-bg: var(--pk-surface-sunken);
+    --pkd-on-accent-fg: var(--pk-surface-raised);
+  }
+}
+
+:root[data-theme="light"] {
+  --pkd-inline-code-bg: var(--pk-surface-sunken);
+  --pkd-on-accent-fg: var(--pk-surface-raised);
+}
+
+/* ---- The section accent ---------------------------------------------------------------------- */
+
+:root,
+[data-service] {
+  --sl-color-accent-low: var(--pk-accent-subtle);
+  --sl-color-accent: var(--pk-accent);
+  --sl-color-accent-high: var(--pk-accent-fg);
+  --sl-color-text-accent: var(--pk-accent-fg);
+  --sl-color-text-invert: var(--pkd-on-accent-fg);
+  --sl-color-bg-accent: var(--pk-accent);
+}
+
+.pk-section {
+  display: contents;
+}
+
+/* ---- Base ------------------------------------------------------------------------------------ */
+
+body {
+  background-color: var(--pk-surface-page);
+  color: var(--pk-text-default);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: var(--pk-font-weight-bold);
+  letter-spacing: var(--pk-tracking-tight);
+  color: var(--pk-text-strong);
+}
+
+/* Rubik has 400 and 700 only; Starlight's 600s use the bold face explicitly. */
+.site-title,
+.starlight-aside__title,
+.sidebar-content .large,
+.sidebar-content [aria-current="page"] {
+  font-weight: var(--pk-font-weight-bold);
+}
+
+:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+}
+
+.sl-markdown-content a {
+  color: var(--pk-accent-fg);
+  text-underline-offset: 0.18em;
+}
+
+.sl-markdown-content a:hover {
+  color: var(--pk-text-strong);
+}
+
+.sl-markdown-content :not(pre) > code {
+  background-color: var(--pkd-inline-code-bg);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-sm);
+  color: var(--pk-text-strong);
+}
+
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) code {
+  background-color: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+
+.sl-markdown-content table th {
+  background-color: var(--pk-surface-raised);
+  color: var(--pk-text-strong);
+}
+
+.sl-markdown-content table :is(th, td) {
+  border-color: var(--pk-border-subtle);
+}
+
+.sl-markdown-content hr {
+  border-color: var(--pk-border-subtle);
+}
+
+.sl-markdown-content blockquote {
+  border-inline-start-color: var(--pk-accent);
+  color: var(--pk-text-muted);
+}
+
+/* ---- Header ---------------------------------------------------------------------------------- */
+
+.header {
+  border-bottom-color: var(--pk-border-subtle);
+}
+
+/* The default SiteTitle's own (scoped) rules do not reach this override, so they are restated. */
+.pk-site-title {
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
+  text-decoration: none;
+  gap: var(--pk-space-3);
+  color: var(--pk-text-strong);
+  font-size: var(--pk-font-size-xl);
+  letter-spacing: var(--pk-tracking-tight);
+}
+
+.pk-site-title span {
+  overflow: hidden;
+}
+
+.pk-site-title img.pk-site-mark {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+/* ---- Sidebar --------------------------------------------------------------------------------- */
+
+/* The current page: the section's subtle surface and a solid marker (BRAND.md §5.4). */
+.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"]:hover,
+.sidebar-content a[aria-current="page"]:focus {
+  background-color: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+
+.sidebar-content a:hover {
+  color: var(--pk-text-strong);
+}
+
+/* Each service's group in the "Services" list carries its accent as a marker beside its name. */
+.sidebar-content
+  details:has(> ul > li > a[href*="/docs/services/"])
+  > summary
+  .large::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-end: var(--pk-space-2);
+  border-radius: var(--pk-radius-xs);
+  background-color: var(--pkd-group-accent, transparent);
+  vertical-align: 0.08em;
+}
+
+.sidebar-content details:has(> ul > li > a[href*="/docs/services/core/"]) {
+  --pkd-group-accent: var(--pk-service-core);
+}
+.sidebar-content details:has(> ul > li > a[href*="/docs/services/license/"]) {
+  --pkd-group-accent: var(--pk-service-license);
+}
+.sidebar-content details:has(> ul > li > a[href*="/docs/services/config/"]) {
+  --pkd-group-accent: var(--pk-service-config);
+}
+.sidebar-content details:has(> ul > li > a[href*="/docs/services/release/"]) {
+  --pkd-group-accent: var(--pk-service-release);
+}
+.sidebar-content
+  details:has(> ul > li > a[href*="/docs/services/distribution/"]) {
+  --pkd-group-accent: var(--pk-service-distribution);
+}
+.sidebar-content details:has(> ul > li > a[href*="/docs/services/update/"]) {
+  --pkd-group-accent: var(--pk-service-update);
+}
+.sidebar-content details:has(> ul > li > a[href*="/docs/services/identity/"]) {
+  --pkd-group-accent: var(--pk-service-identity);
+}
+
+/* ---- Page title: the section eyebrow and rule on service pages ------------------------------- */
+
+.pk-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  margin: 0 0 var(--pk-space-2);
+  font-size: var(--pk-font-size-sm);
+  line-height: var(--pk-line-height-sm);
+  font-weight: var(--pk-font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pk-accent-fg);
+}
+
+.pk-eyebrow__marker {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: var(--pk-radius-xs);
+  background-color: var(--pk-accent);
+}
+
+.pk-section:not([data-service="core"]) h1#_top {
+  padding-bottom: var(--pk-space-3);
+  border-bottom: 3px solid var(--pk-accent);
+}
+
+/* ---- Callouts (asides): the brand statuses, each with its icon and title word ---------------- */
+
+.starlight-aside {
+  border: 1px solid var(--sl-color-asides-border);
+  border-inline-start-width: 0.25rem;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-default);
+}
+
+.starlight-aside--note {
+  --sl-color-asides-text-accent: var(--pk-info);
+  --sl-color-asides-border: var(--pk-info-border);
+  background-color: var(--pk-info-subtle);
+}
+
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--pk-success);
+  --sl-color-asides-border: var(--pk-success-border);
+  background-color: var(--pk-success-subtle);
+}
+
+.starlight-aside--caution {
+  --sl-color-asides-text-accent: var(--pk-warning);
+  --sl-color-asides-border: var(--pk-warning-border);
+  background-color: var(--pk-warning-subtle);
+}
+
+.starlight-aside--danger {
+  --sl-color-asides-text-accent: var(--pk-danger);
+  --sl-color-asides-border: var(--pk-danger-border);
+  background-color: var(--pk-danger-subtle);
+}
+
+/* ---- Home (splash) --------------------------------------------------------------------------- */
+
+.hero .pk-hero-mark {
+  width: min(12rem, 40vw);
+  height: auto;
+}
+
+.sl-link-card {
+  border-color: var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  background-color: var(--pk-surface-raised);
+  box-shadow: none;
+}
+
+.sl-link-card:hover {
+  border-color: var(--pk-accent);
+  background-color: var(--pk-surface-overlay);
+}
+
+.sl-link-card .title {
+  color: var(--pk-text-strong);
+}
+
+.sl-link-card .description {
+  color: var(--pk-text-muted);
+}
+
+.sl-link-card .icon {
+  color: var(--pk-accent-fg);
 }

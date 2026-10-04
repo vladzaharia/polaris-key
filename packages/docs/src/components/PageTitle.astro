@@ -1,0 +1,21 @@
+---
+/**
+ * The page title, preceded on service pages by the section's name with its accent marker
+ * (BRAND.md §5.4: section chrome only). The marker is decorative; the word names the section,
+ * so the section is never told by colour alone (BRAND.md §9).
+ */
+import Default from "@astrojs/starlight/components/PageTitle.astro";
+import { isServiceSection, sectionFor } from "../lib/section";
+
+const section = sectionFor(Astro.locals.starlightRoute.id);
+---
+
+{
+  isServiceSection(section) && (
+    <p class="pk-eyebrow">
+      <span class="pk-eyebrow__marker" aria-hidden="true" />
+      {section.label}
+    </p>
+  )
+}
+<Default />
