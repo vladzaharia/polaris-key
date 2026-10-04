@@ -94,8 +94,7 @@ function populated(): Database.Database {
 }
 
 const count = (raw: Database.Database, table: string) =>
-  (raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number })
-    .n;
+  (raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
 
 const snapshot = (raw: Database.Database) => ({
   deliverables: raw

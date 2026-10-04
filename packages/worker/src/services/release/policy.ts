@@ -82,10 +82,7 @@ import { parseManifestPackDeliverable } from "@polaris-key/manifest";
 export { knownChannels };
 import type { ReleaseMetadataRow } from "./store.js";
 import { stmtEnqueuePackageRender } from "../../core/registryQueue.js";
-import {
-  packageReleaseOf,
-  packageStateStatements,
-} from "./packages/state.js";
+import { packageReleaseOf, packageStateStatements } from "./packages/state.js";
 
 // ── Actors and results ───────────────────────────────────────────────────────────────────────
 
@@ -764,18 +761,24 @@ export async function revertChannelPolicy(
   const deliverable = d.deliverable.deliverable_id;
   const key = { product, deliverableId: deliverable, channel: ch.channel };
   if (
-    (await writeAndInvalidate(db, product, now, {
-      sql: `UPDATE release_channel_policy
+    (await writeAndInvalidate(
+      db,
+      product,
+      now,
+      {
+        sql: `UPDATE release_channel_policy
                SET source = 'manifest', modified_at = ?, modified_by = ?
              WHERE product = ? AND deliverable_id = ? AND channel = ?`,
-      params: [
-        now,
-        actorId(actor),
-        key.product,
-        key.deliverableId,
-        key.channel,
-      ],
-    }, channelRender(d.deliverable, now))) === 0
+        params: [
+          now,
+          actorId(actor),
+          key.product,
+          key.deliverableId,
+          key.channel,
+        ],
+      },
+      channelRender(d.deliverable, now),
+    )) === 0
   )
     return refuse(404, "no_policy", "this channel has no policy to revert");
   await auditChange(
@@ -837,7 +840,14 @@ export async function yank(
     now,
     stmtYankRelease(product, releaseId, reason.trim(), by, now),
     // A package version's yank is its feed state too (PEP 592 reason, npm and others hide it).
-    await packageStateStatements(db, product, releaseId, "yank", reason.trim(), now),
+    await packageStateStatements(
+      db,
+      product,
+      releaseId,
+      "yank",
+      reason.trim(),
+      now,
+    ),
   );
   await auditChange(
     db,

@@ -37,9 +37,21 @@ import {
 /** The platform feeds' namespaces and extensions (plans/F-01.md §6.7, §5.3). */
 export const SYSTEM_FEEDS = [
   { ecosystem: "npm", namespace: { scope: "@polaris-key" }, ext: {} },
-  { ecosystem: "pypi", namespace: { names: ["polaris-key"], prefixes: [] }, ext: { htmlFallback: true } },
-  { ecosystem: "swift", namespace: { scope: "polaris-key" }, ext: { requireSigned: true } },
-  { ecosystem: "maven", namespace: { groupPrefixes: ["im.plrs.key"] }, ext: {} },
+  {
+    ecosystem: "pypi",
+    namespace: { names: ["polaris-key"], prefixes: [] },
+    ext: { htmlFallback: true },
+  },
+  {
+    ecosystem: "swift",
+    namespace: { scope: "polaris-key" },
+    ext: { requireSigned: true },
+  },
+  {
+    ecosystem: "maven",
+    namespace: { groupPrefixes: ["im.plrs.key"] },
+    ext: {},
+  },
   { ecosystem: "oci", namespace: {}, ext: {} },
   { ecosystem: "godot", namespace: { publisher: "polaris-key" }, ext: {} },
 ] as const;

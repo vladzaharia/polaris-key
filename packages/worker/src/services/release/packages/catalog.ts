@@ -159,8 +159,7 @@ export function packageCatalog({
         const c = canonicalChannel(p.channel, manual);
         if (c) channels.add(c);
       }
-      const out: { channel: string; releaseId: string; version: string }[] =
-        [];
+      const out: { channel: string; releaseId: string; version: string }[] = [];
       for (const channel of [...channels].sort()) {
         const res = await resolveChannelReleases(
           db,

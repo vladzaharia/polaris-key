@@ -55,7 +55,8 @@ export function Products(): React.ReactElement {
     qk.products(),
     fetchProducts,
   );
-  const products = data ?? [];
+  // The system product (F-03) is the platform's own, not a registered product.
+  const products = (data ?? []).filter((p) => !p.system);
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [active, setActive] = React.useState<ProductDetail | null>(null);

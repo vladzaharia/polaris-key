@@ -349,6 +349,9 @@ export interface ProductOnboarding {
 export interface ProductDetail {
   slug: string;
   name: string;
+  /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
+   *  product switcher and the Products registry. */
+  system?: boolean;
   signingKid: string;
   releaseSource?: ProductReleaseSource;
   signing?: ProductSigningBundle | null;
@@ -842,9 +845,9 @@ export interface AppPinDto {
 /** One row of `GET …/release/deliverables`: the app or a pack. */
 export interface DeliverableDto {
   id: string;
-  /** `app` or `pack`. */
+  /** `app`, `pack` or (F-03) `package`. */
   kind: string;
-  /** The pack type; `null` for the app. */
+  /** The pack type, or a package's ecosystem; `null` for the app. */
   type: string | null;
   /** False for a pack whose stored declaration does not read back (a resync rewrites it). */
   declared: boolean;

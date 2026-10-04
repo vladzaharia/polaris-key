@@ -64,9 +64,7 @@ export async function packageFeedOf(
     policyEnabled: row.policy_enabled === 1,
     namespace: parseObject(row.namespace_json),
     maxPackageBytes:
-      row.ceiling === null
-        ? 0
-        : Math.min(row.max_package_bytes, row.ceiling),
+      row.ceiling === null ? 0 : Math.min(row.max_package_bytes, row.ceiling),
     ext: parseObject(row.ext_json),
   };
 }
@@ -85,7 +83,11 @@ export async function packageFeedsOf(
     product,
   );
   return row
-    ? { enabled: row.enabled === 1, version: row.version, updatedAt: row.updated_at }
+    ? {
+        enabled: row.enabled === 1,
+        version: row.version,
+        updatedAt: row.updated_at,
+      }
     : { enabled: false, version: 0, updatedAt: null };
 }
 

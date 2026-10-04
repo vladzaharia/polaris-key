@@ -202,7 +202,10 @@ export async function readPackageDeliverables(
   db: Db,
   product: string,
 ): Promise<{ id: string; ecosystem: PackageEcosystem; name: string }[]> {
-  const rows = await db.all<{ deliverable_id: string; def_json: string | null }>(
+  const rows = await db.all<{
+    deliverable_id: string;
+    def_json: string | null;
+  }>(
     `SELECT deliverable_id, def_json FROM release_deliverables
       WHERE product = ? AND kind = 'package' ORDER BY deliverable_id`,
     product,
@@ -366,11 +369,9 @@ export async function ingestPackageDescriptor(
     d.version,
   );
   if (existing)
-    return refuse(
-      "release_exists",
-      `${existing.release_id} already exists.`,
-      { status: 409 },
-    );
+    return refuse("release_exists", `${existing.release_id} already exists.`, {
+      status: 409,
+    });
 
   // 4. seq.
   const maxRow = await db.first<{ m: number | null }>(
@@ -462,8 +463,7 @@ export async function ingestPackageDescriptor(
     ? Math.floor(Date.parse(d.publishedAt) / 1000)
     : now;
   const seqSql = d.seq === undefined ? NEXT_SEQ_SQL : "?";
-  const seqParams =
-    d.seq === undefined ? [product, d.deliverable] : [d.seq];
+  const seqParams = d.seq === undefined ? [product, d.deliverable] : [d.seq];
   // The head: the release row, only while nothing holds this version or id (and an explicit
   // seq is still above the maximum). If the store changed since the read, it writes nothing,
   // and neither does the tail, which is guarded on this descriptor's marker.

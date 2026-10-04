@@ -58,7 +58,7 @@ export function DeliverableDetail({
     api.packReleases(slug, id),
   );
   const decl =
-    list.data?.deliverables.find((d) => d.id === id && d.kind !== "app") ??
+    list.data?.deliverables.find((d) => d.id === id && d.kind === "pack") ??
     null;
   const back = (): void => {
     navigate(r.deliverables(slug));

@@ -1014,9 +1014,8 @@ async function finishPackageSubmit(
 ): Promise<Response> {
   const { db, env, product, now } = ctx;
   const descriptor = s.descriptor;
-  const eco = (
-    descriptor as { package?: { ecosystem?: unknown } } | null
-  )?.package?.ecosystem;
+  const eco = (descriptor as { package?: { ecosystem?: unknown } } | null)
+    ?.package?.ecosystem;
   const delivery = ctx.hooks.delivery();
   const feed = delivery
     ? typeof eco === "string"
@@ -1027,17 +1026,25 @@ async function finishPackageSubmit(
     kind: s.holder.kind,
     ...(s.holder.kind === "oidc" ? { publisher: ciActor(s.holder) } : {}),
     tokenId: s.holder.tokenId,
-    ...(provenanceRun(descriptor) ? { runUrl: provenanceRun(descriptor)! } : {}),
+    ...(provenanceRun(descriptor)
+      ? { runUrl: provenanceRun(descriptor)! }
+      : {}),
   };
-  const plan = await ingestPackageDescriptor(db, env, product.slug, descriptor, {
-    now,
-    dryRun: true,
-    pendingPromotion: new Map(
-      [...s.needed].map(([k, n]) => [k, { sha256: n.sha256, size: n.size }]),
-    ),
-    feed,
-    source,
-  });
+  const plan = await ingestPackageDescriptor(
+    db,
+    env,
+    product.slug,
+    descriptor,
+    {
+      now,
+      dryRun: true,
+      pendingPromotion: new Map(
+        [...s.needed].map(([k, n]) => [k, { sha256: n.sha256, size: n.size }]),
+      ),
+      feed,
+      source,
+    },
+  );
   if (!plan.ok) return packageRefusal(plan);
   if (s.dryRun)
     return json({
