@@ -115,6 +115,7 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
     private var step: JsonObject? = null
     private var stepIndex = -1
     private var served = BooleanArray(0)
+    private var discoveryLoaded = false
 
     init {
         bindings["deviceId"] = transcript.initial["deviceId"].stringValue!!
@@ -212,6 +213,35 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
         }
     }
 
+    /**
+     * The Worker's standard discovery document, for a transcript that loads discovery nowhere itself
+     * (P3-03's update transcripts): served once, to a request for the discovery path that the current
+     * step does not record. Null for every other request (as Swift's and Node's replayers).
+     */
+    private fun standardDiscovery(path: String, s: JsonObject): String? {
+        val discoveryPath = "/${transcript.product}/.well-known/polaris.json"
+        if (path != discoveryPath || discoveryLoaded) return null
+        if (transcript.steps.any { it["action"].stringValue == "discover" }) return null
+        if (items(s).any { it["request"]!!.obj["path"].stringValue == discoveryPath }) return null
+        discoveryLoaded = true
+        val base = "${transcript.baseUrl}/${transcript.product}"
+        fun service(endpoints: Map<String, String>) = JsonObject(
+            mapOf("enabled" to JsonPrimitive(true), "endpoints" to JsonObject(endpoints.mapValues { JsonPrimitive(it.value) })),
+        )
+        return JsonObject(
+            mapOf(
+                "product" to JsonPrimitive(transcript.product),
+                "services" to JsonObject(
+                    mapOf(
+                        "release" to service(mapOf("record" to "$base/release/records/{sha256}")),
+                        "distribution" to service(mapOf("builds" to "$base/distribution/builds/{selector}/{buildId}")),
+                        "update" to service(mapOf("feed" to "$base/update/{channel}/feed.jws")),
+                    ),
+                ),
+            ),
+        ).toString()
+    }
+
     override suspend fun send(request: PolarisRequest): PolarisResponse = lock.withLock {
         val uri = URI(request.url)
         val origin = URI(transcript.baseUrl)
@@ -228,6 +258,7 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
             failures += "unexpected request outside a step: $label"
             return@withLock PolarisResponse(599, "replay: no step".toByteArray())
         }
+        standardDiscovery(path, s)?.let { return@withLock PolarisResponse(200, it.toByteArray(Charsets.UTF_8), mapOf("content-type" to "application/json")) }
         val all = items(s)
         var candidates = all.withIndex().filter { (i, item) ->
             val r = item["request"]!!.obj

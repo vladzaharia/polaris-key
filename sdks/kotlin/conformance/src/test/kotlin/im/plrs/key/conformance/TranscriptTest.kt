@@ -2,6 +2,8 @@
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
+// @pkey-feature update.feed release.record update.decide
+// @pkey-feature packs.apply.chunk
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -17,6 +19,20 @@
 // Registration and activation send a FIXED hashed fingerprint (`replayFingerprint`), so a replay
 // does not depend on what this host can read; the report's software facts are this host's own
 // (the transcripts match them by shape).
+//
+// `updateDecide` (plans/P3-01.md §5, §6; P6-08) is `client.update.decide(channel, staged,
+// skipVersion)`, and its `expect` keys are the `UpdateCheck`'s own (`channel`, `decision`, `feed`,
+// `record`, `errors`). `initial.update` is the host's configuration: `pinnedReleaseKeys`, `outlet`,
+// `platform`, `arch`, `installed` and `methods` become `UpdateClientOptions`, the installed version
+// is the client's version, and `cache` seeds the store's `feeds` and `releaseRecords`. A transcript
+// with `initial.update` and no `initial.services` runs with Release, Distribution and Update
+// expected; one that loads no discovery itself is served the Worker's standard document.
+//
+// `chunkRange` (P4-32, plans/P4-32.md §5) is `chunkRangeFetch` over the packs facet's own object
+// fetch (`client.packs`'s private `fetchObject`, reached by reflection as the Node replayer reaches
+// its own through a cast: no public API changes), against the blobs template the last discover
+// returned, with the replay server behind the `PackObjectTransport` seam
+// (`ReplayPackObjectTransport`, as `ReplayServer` is behind `PolarisTransport`).
 
 package im.plrs.key.conformance
 
@@ -44,6 +60,25 @@ import im.plrs.key.core.JsonText
 import im.plrs.key.release.ChangelogEntry
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.PolarisKeyClientOptions
+import im.plrs.key.core.BinaryMethod
+import im.plrs.key.core.CacheRecord
+import im.plrs.key.core.HostOutlet
+import im.plrs.key.core.StagedUpdate
+import im.plrs.key.core.objectValue
+import im.plrs.key.update.UpdateClientOptions
+import im.plrs.key.core.PolarisRequest
+import im.plrs.key.packs.ByteStream
+import im.plrs.key.packs.ChunkRangeRequest
+import im.plrs.key.packs.ChunkRangeResponse
+import im.plrs.key.packs.ObjectFetch
+import im.plrs.key.packs.ObjectRequest
+import im.plrs.key.packs.ObjectResponse
+import im.plrs.key.packs.PackObjectTransport
+import im.plrs.key.packs.PacksClient
+import im.plrs.key.packs.chunkRangeFetch
+import java.lang.reflect.InvocationTargetException
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -60,6 +95,37 @@ val replayFingerprint: FingerprintSource = FingerprintSource {
     HardwareFingerprint(mapOf("machineUuid" to "REPLAYmachineUuid00000"), "REPLAYhwid0000000000000000000000")
 }
 
+/**
+ * The pack object transport a `chunkRange` step hands the packs facet's `fetchObject` (P4-32): the
+ * replay server behind the `PackObjectTransport` seam. It reports bounded ranges (as
+ * `OkHttpPackObjectTransport` does), and the recorded `Content-Range` and `ETag`.
+ */
+class ReplayPackObjectTransport(private val server: ReplayServer) : PackObjectTransport {
+    override val supportsRange: Boolean get() = true
+
+    override suspend fun get(url: String, headers: Map<String, String>, timeoutSeconds: Double): ObjectResponse {
+        val r = server.send(PolarisRequest(url, "GET", headers, null, timeoutSeconds))
+        val lower = r.headers.mapKeys { it.key.lowercase() }
+        return ObjectResponse(r.status, lower["content-range"], lower["etag"], if (r.body.isEmpty()) ByteStream.empty else ByteStream.of(r.body))
+    }
+}
+
+/** The packs facet's private `fetchObject(transport, req)` over [transport], by reflection. */
+fun packsObjectFetch(packs: PacksClient, transport: PackObjectTransport): ObjectFetch {
+    val m = PacksClient::class.java.getDeclaredMethod(
+        "fetchObject", PackObjectTransport::class.java, ObjectRequest::class.java, Continuation::class.java,
+    ).apply { isAccessible = true }
+    return { req ->
+        suspendCoroutineUninterceptedOrReturn<ObjectResponse> { cont ->
+            try {
+                m.invoke(packs, transport, req, cont)
+            } catch (e: InvocationTargetException) {
+                throw e.targetException
+            }
+        }
+    }
+}
+
 /** The replay's memory between steps: the prompt the last `beginSignIn` returned. */
 class ReplaySession {
     var prompt: SignInPrompt? = null
@@ -67,10 +133,47 @@ class ReplaySession {
 
 object KotlinReplay {
     /** THE mapping from transcript verbs and `expect` keys onto the Kotlin SDK. */
-    suspend fun act(client: PolarisKeyClient, store: InMemoryStore, step: JsonObject, session: ReplaySession): Map<String, JsonElement> {
+    suspend fun act(
+        client: PolarisKeyClient,
+        store: InMemoryStore,
+        step: JsonObject,
+        session: ReplaySession,
+        objects: PackObjectTransport? = null,
+    ): Map<String, JsonElement> {
         val out = LinkedHashMap<String, JsonElement>()
         val args = step["args"]!!.obj
         when (val action = step["action"].stringValue) {
+            "chunkRange" -> {
+                val transport = objects ?: throw AssertionError("chunkRange without a pack object transport")
+                val fetchRange = chunkRangeFetch(packsObjectFetch(client.packs, transport))
+                val r = fetchRange(
+                    ChunkRangeRequest(args["bundle"].stringValue ?: "", args["offset"].longValue ?: 0, args["length"].longValue ?: 0),
+                )
+                when (r) {
+                    ChunkRangeResponse.Refused -> out["range"] = JsonPrimitive("refused")
+                    is ChunkRangeResponse.Ok -> {
+                        val bytes = java.io.ByteArrayOutputStream()
+                        while (true) bytes.write(r.body.next() ?: break)
+                        out["range"] = JsonPrimitive("ok")
+                        out["bytes"] = JsonPrimitive(bytes.toByteArray().toString(Charsets.ISO_8859_1))
+                    }
+                }
+            }
+            "updateDecide" -> {
+                val staged = args["staged"].objectValue?.let { st ->
+                    val v = st["version"].stringValue
+                    val c = st["channel"].stringValue
+                    if (v != null && c != null) StagedUpdate(v, c) else null
+                }
+                try {
+                    val check = client.update.decide(args["channel"].stringValue, staged, args["skipVersion"].stringValue)
+                    out.putAll(check.json)
+                    out["result"] = JsonPrimitive("ok")
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
+                }
+            }
             "discover" -> out["result"] = JsonPrimitive(
                 when (client.discover()) {
                     is DiscoveryResult.Ok -> "ok"
@@ -182,6 +285,14 @@ object KotlinReplay {
         return out
     }
 
+    /** `initial.update.outlet`: a kind, or `{id, kind, subkind?}`. */
+    private fun hostOutlet(v: JsonElement?): HostOutlet? = when {
+        v == null || v is JsonNull -> null
+        v is JsonPrimitive && v.isString -> HostOutlet.Kind(v.content)
+        v is JsonObject -> HostOutlet.Outlet(v["id"].stringValue!!, v["kind"].stringValue!!, v["subkind"].stringValue)
+        else -> throw AssertionError("initial.update.outlet is not an outlet")
+    }
+
     /** A changelog entry in the transcript's JSON vocabulary (null ⇒ `null`). */
     private fun entryValue(e: ChangelogEntry): JsonElement = JsonObject(
         mapOf(
@@ -208,15 +319,36 @@ object KotlinReplay {
         var clock = t.now
         val store = InMemoryStore(t.product, t.initial["deviceId"].stringValue!!)
         t.initial["token"].stringValue?.let { store.setToken(it) }
-        val services = t.initial["services"]?.arrayValue?.mapNotNull { ServiceSlug.of(it.stringValue) }
+        val u = t.initial["update"].objectValue
+        u?.get("cache").objectValue?.let { cache ->
+            fun strings(k: String) = cache[k].objectValue?.mapValues { it.value.stringValue!! } ?: emptyMap()
+            store.writeCache(CacheRecord(feeds = strings("feeds"), releaseRecords = strings("releaseRecords")))
+        }
+        val services = (t.initial["services"]?.arrayValue?.map { it.stringValue!! } ?: if (u != null) listOf("release", "distribution", "update") else null)
+            ?.mapNotNull { ServiceSlug.of(it) }
+        val installed = u?.get("installed").objectValue
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
                 core = CoreOptions(
-                    productSlug = t.product, baseUrl = t.baseUrl, version = t.initial["version"].stringValue!!,
+                    productSlug = t.product, baseUrl = t.baseUrl,
+                    version = installed?.get("version").stringValue ?: t.initial["version"].stringValue!!,
                     pinnedKeys = t.trust, store = store, transport = server, requestTimeoutSeconds = 0.0,
                     expectedServices = services, clock = { clock },
                 ),
                 license = LicenseClientOptions(fingerprintSource = replayFingerprint),
+                update = u?.let {
+                    UpdateClientOptions(
+                        pinnedReleaseKeys = it["pinnedReleaseKeys"]!!.obj.mapValues { e -> e.value.stringValue!! },
+                        outlet = hostOutlet(it["outlet"]),
+                        buildNumber = installed?.get("buildNumber").stringValue,
+                        format = installed?.get("format").stringValue,
+                        methods = it["methods"]?.arrayValue?.map { m -> m.stringValue!! } ?: listOf(BinaryMethod.download),
+                        binaryVersion = installed?.get("binaryVersion").stringValue,
+                        engine = installed?.get("engine").stringValue,
+                        platform = it["platform"].stringValue,
+                        arch = it["arch"].stringValue,
+                    )
+                },
             ),
         )
         val session = ReplaySession()
@@ -224,7 +356,7 @@ object KotlinReplay {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
                 clock = step["now"].longValue ?: t.now
-                val observed = act(client, store, step, session)
+                val observed = act(client, store, step, session, ReplayPackObjectTransport(server))
                 server.endStep()
                 for ((key, want) in step["expect"]!!.obj.entries.sortedBy { it.key }) {
                     val got = observed[key]
@@ -323,9 +455,34 @@ class TranscriptTest : ConformanceSuite() {
     @Test
     fun aTranscriptForAPlannedFeatureDoesNotApply() {
         val statuses = Transcript.manifestStatuses()
-        // commerce.receipt stays planned and unowned (as in Swift); the update transcripts are P6-08's.
+        // commerce.receipt stays planned and unowned (as in Swift).
         assertFalse(Transcript.applies(transcripts.first { it.id == "commerce-claim" }, statuses))
-        assertFalse(Transcript.applies(transcripts.first { it.id == "update-record-by-hash" }, statuses))
+        // P6-08 implemented update.decide and update.feed: the update transcripts now apply.
+        assertTrue(Transcript.applies(transcripts.first { it.id == "update-record-by-hash" }, statuses))
+        assertTrue(Transcript.applies(transcripts.first { it.id == "update-feed-rollback" }, statuses))
+    }
+
+    /** The update transcripts are held as tightly: an `UpdateCheck` member that disagrees fails. */
+    @Test
+    fun aDoctoredUpdateDecisionFails() {
+        assertReplayFails(transcripts.first { it.id == "update-feed-rollback" }.withExpect(0, "channel", JsonPrimitive("latest")), "step 0 (updateDecide): channel")
+        assertReplayFails(transcripts.first { it.id == "update-record-by-hash" }.withExpect(1, "record", JsonPrimitive("network")), "step 1 (updateDecide): record")
+    }
+
+    /** `packs-chunk-range` passes only when the SDK reads the exact run: a recorded `Content-Range`
+     *  altered to another range must be refused, so the step fails (keys are compared in sorted
+     *  order, so the first to fail is `bytes`: a refused fetch returns none). */
+    @Test
+    fun aChunkRangeWithAnotherContentRangeFails() {
+        val t = transcripts.first { it.id == "packs-chunk-range" }.doctor(1) { items ->
+            for (i in items.indices) {
+                val item = items[i].obj
+                val response = item["response"]!!.obj
+                val headers = JsonObject(response["headers"]!!.obj + ("content-range" to JsonPrimitive("bytes 17-40/64")))
+                items[i] = JsonObject(item + ("response" to JsonObject(response + ("headers" to headers))))
+            }
+        }
+        assertReplayFails(t, "step 1 (chunkRange): bytes: expected \"ghijklmnopqrstuvwxyzABCD\", got null")
     }
 
     @Test
@@ -360,12 +517,16 @@ class TranscriptTest : ConformanceSuite() {
     }
 
     companion object {
-        /** Every transcript this SDK's implemented rows make applicable (P6-06 and P6-07). */
+        /** Every transcript this SDK's implemented rows make applicable (P6-06, P6-07 and P6-08). */
         val REQUIRED = listOf(
             "discovery-capabilities", "discovery-failure", "sync-etag-304", "sync-errors",
             "activate-enroll-deactivate", "config-schema-fetch", "devicecode-expired", "devicecode-happy",
             "edge-mint", "register-open", "register-reregister-401", "release-changelog",
             "release-changelog-entitled", "telemetry-report",
+            // P6-08: the v4 update decision.
+            "update-feed-rollback", "update-record-by-hash",
+            // P4-32: the chunk-bundle Range + If-Range fetch.
+            "packs-chunk-range",
         )
     }
 }

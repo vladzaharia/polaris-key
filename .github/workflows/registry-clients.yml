@@ -6,7 +6,7 @@ name: Registry clients
 # packages/worker/scripts/registry-clients/run.mjs. F-02 ships the smoke client (curl), which pins
 # the host's isolation contract over real HTTP; F-04 to F-09 add their ecosystem's clients as
 # matrix rows (npm, pnpm, Yarn, Bun; pip, uv, Poetry; SwiftPM on macOS; Gradle and Maven; docker,
-# podman and crane; GodotEnv).
+# podman and crane; GodotEnv). `workflow_dispatch -f ecosystem=<name>` runs one ecosystem's rows.
 #
 # Making it a required check on pull requests that touch these paths is a branch-protection
 # setting (DEPLOYMENT §7).
@@ -23,6 +23,11 @@ on:
       - "packages/cli/src/package/**"
       - ".github/workflows/registry-clients.yml"
   workflow_dispatch:
+    inputs:
+      ecosystem:
+        description: "Run only this ecosystem's clients (curl, npm, pypi, swift, maven, oci, godot); empty runs every job."
+        required: false
+        default: ""
 
 # Least privilege: the jobs only read the checkout.
 permissions:
@@ -30,23 +35,152 @@ permissions:
 
 jobs:
   client:
-    name: Registry client (${{ matrix.client }})
+    name: Registry client (${{ matrix.name || matrix.client }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - client: curl
+            ecosystem: curl
             os: ubuntu-latest
+          # F-04: the npm feed (plans/F-01.md §6.8). Each row pins its client's major release.
+          - client: npm
+            name: npm 10
+            ecosystem: npm
+            os: ubuntu-latest
+            env: NPM_VERSION=10
+          - client: npm
+            name: npm 11
+            ecosystem: npm
+            os: ubuntu-latest
+            env: NPM_VERSION=11
+          - client: pnpm
+            name: pnpm 9
+            ecosystem: npm
+            os: ubuntu-latest
+            env: PNPM_VERSION=9
+          - client: pnpm
+            name: pnpm 10
+            ecosystem: npm
+            os: ubuntu-latest
+            env: PNPM_VERSION=10
+          - client: yarn
+            name: Yarn 4
+            ecosystem: npm
+            os: ubuntu-latest
+            env: YARN_VERSION=4
+          - client: bun
+            name: Bun
+            ecosystem: npm
+            os: ubuntu-latest
+            bun: true
+          # F-05: pip current and 22.2, uv (explicit index), Poetry 2. Each bootstraps its tool
+          # (and, for pip 22.2, a Python 3.11 through uv) from PyPI into a throwaway environment.
+          - client: pip
+            ecosystem: pypi
+            os: ubuntu-latest
+          - client: uv
+            ecosystem: pypi
+            os: ubuntu-latest
+          - client: poetry
+            ecosystem: pypi
+            os: ubuntu-latest
+          # F-06: SwiftPM on macOS (signing enforced), the swiftlang compatibility suite, and a
+          # Linux build in the official Swift container. The seed signs the fixtures with the
+          # runner's own `swift` (Xcode on macOS, the image's toolchain on Ubuntu).
+          - client: swift
+            ecosystem: swift
+            os: macos-latest
+          - client: swift-compat
+            ecosystem: swift
+            os: macos-latest
+          - client: swift-linux
+            ecosystem: swift
+            os: ubuntu-latest
+          # F-07: Gradle 8.x and 9.x through exclusiveContent, Maven 3.9 with checksum policy
+          # fail. Each runs in its official container (Docker on the runner).
+          - client: gradle8
+            ecosystem: maven
+            os: ubuntu-latest
+          - client: gradle9
+            ecosystem: maven
+            os: ubuntu-latest
+          - client: maven
+            ecosystem: maven
+            os: ubuntu-latest
+          # F-08: OCI pull. `oci` is the curl contract; then the OCI conformance suite (pull
+          # workflow, built from distribution-spec v1.1.1), crane, docker and podman, each pulling
+          # both platforms of the seeded multi-arch image. The runner image ships docker and
+          # podman; crane and the suite need Go.
+          - client: oci
+            ecosystem: oci
+            os: ubuntu-latest
+          - client: oci-conformance
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
+          - client: oci-crane
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
+          - client: oci-docker
+            ecosystem: oci
+            os: ubuntu-latest
+          - client: oci-podman
+            ecosystem: oci
+            os: ubuntu-latest
+          # F-09: the Godot feed. GodotEnv ("source": "zip") plus HTTP contract checks of both
+          # editor API shapes; the manual editor installs are recorded on the PR.
+          - client: godot
+            ecosystem: godot
+            os: ubuntu-latest
+    # A dispatch with `ecosystem` set runs only that ecosystem's rows; the others pass, empty. (A
+    # job-level `if:` cannot read `matrix`, so the filter is a step condition.)
+    env:
+      # A client whose tool is missing fails rather than skipping (clients/oci.inc `need`).
+      REGISTRY_CLIENTS_REQUIRE: "1"
+      PICKED: ${{ github.event_name != 'workflow_dispatch' || inputs.ecosystem == '' || inputs.ecosystem == matrix.ecosystem }}
     steps:
       - uses: actions/checkout@v7
+        if: env.PICKED == 'true'
       # No `version:` here: the action reads `packageManager` from package.json.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: env.PICKED == 'true'
       - uses: actions/setup-node@v7
+        if: env.PICKED == 'true'
         with:
           node-version: 22
           cache: pnpm
+      - if: ${{ env.PICKED == 'true' && matrix.bun }}
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/setup-go@v6
+        if: env.PICKED == 'true' && matrix.go
+        with:
+          go-version: stable
+          cache: false
+      - name: Install crane
+        if: env.PICKED == 'true' && matrix.client == 'oci-crane'
+        run: |
+          go install github.com/google/go-containerregistry/cmd/crane@v0.20.6
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
+        if: env.PICKED == 'true'
       # The Worker imports the built workspace packages (brand, manifest, protocol, …).
       - run: pnpm build
-      - run: pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}
+        if: env.PICKED == 'true'
+      # F-09: GodotEnv is a .NET tool; the godot client fails rather than skips without it here.
+      - if: env.PICKED == 'true' && matrix.client == 'godot'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - if: env.PICKED == 'true' && matrix.client == 'godot'
+        run: |
+          dotnet tool install --global Chickensoft.GodotEnv
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          echo "REQUIRE_GODOTENV=1" >> "$GITHUB_ENV"
+      - name: Run the client
+        if: env.PICKED == 'true'
+        run: |
+          if [ -n "${{ matrix.env }}" ]; then export ${{ matrix.env }}; fi
+          pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}

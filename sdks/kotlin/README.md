@@ -3,7 +3,7 @@
 The Kotlin SDK for native Android apps and JVM desktop apps (P6-05), and the shared Android
 backend that the Godot SDK, and later Unity and MAUI, bind. It is built in slices: P6-06 landed the
 verified core and the conformance runner, P6-07 the licence, config, devices, identity and release
-services and the umbrella client; update and packs (P6-08), the platform module's stable API (P6-09), the Compose UI kit (P6-11) and the
+services and the umbrella client, P6-08 the update client and the pack engine; the platform module's stable API (P6-09), the Compose UI kit (P6-11) and the
 Android glue (P6-12) follow. `parity.json` says which features are implemented today; the
 docs' parity page renders it.
 
@@ -14,14 +14,16 @@ docs' parity page renders it.
 | `:config`      | JVM library (JAR)     | layered config resolution, the user-visible list, secrets, the catalog fetch, edge-mint                                                                                   |
 | `:identity`    | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure)                                                                                            |
 | `:release`     | JVM library (JAR)     | the changelog, download and install URLs, release-record verification                                                                                                     |
+| `:update`      | JVM library (JAR)     | the version check, the signed channel feed and the v4 update decision (content included), the boot guard, the `InstallDriver` port                                        |
+| `:packs`       | JVM library (JAR)     | the pack engine: planner, full / file / chunk / delta appliers (zstd-jni), install state, `DirPackStorage`, revocations, delegation, handlers, provides, feed deltas      |
 | `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                     |
 | `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
 | `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                      |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
 
-Planned modules: `:update` and `:packs` (JVM, P6-08), `:android` (the only module that sees both
-`:core` and `:platform`, P6-12) and `:ui` (Compose, P6-11). No JVM module has an Android
+Planned modules: `:android` (the only module that sees both `:core` and `:platform`, P6-12) and
+`:ui` (Compose, P6-11). No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
 place they meet) and `:platform` depends on no SDK module: `./gradlew checkModuleBoundaries` fails
 otherwise, in CI.
@@ -111,6 +113,53 @@ client.identity.waitForSignIn(prompt)
 - **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
   update engine shares).
+
+## Update and packs
+
+`client.update` is the update client and `client.packs` the pack facet (P6-08). The facade hands
+the packs facet to the update client as its content host, so `decide()` sees the running pack set
+and the engine sees each committed feed's delta menu; `:update` and `:packs` never depend on each
+other.
+
+```kotlin
+val client = PolarisKeyClient.create(
+    PolarisKeyClientOptions(
+        core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
+        update = UpdateClientOptions(pinnedReleaseKeys = RELEASE_KEYS, outlet = HostOutlet.Kind("play")),
+        packs = PacksOptions(contentStamp = PackStampSource.FromFile(stampFile), axes = mapOf("locale" to listOf("fr", "en"))),
+    ),
+)
+val check = client.update.decide()           // the signed feed, the record by hash, the decision
+when (val d = check.decision) {
+    is UpdateDecision.Packs -> client.packs.ensureReleases(d.install)
+    is UpdateDecision.Store -> openListing(d.listingUrl)
+    else -> {}
+}
+client.packs.ensure(listOf("djdl.levels"))   // the stamp's pinned release, by the cheapest strategy
+```
+
+- **`:update`**: `check()` (`update/version`), `channelFeed()`, `decide(channel, staged,
+skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(check)` through the
+  `InstallDriver` port (Play In-App Updates and PackageInstaller are P6-12's; a JVM desktop build has
+  none, `JvmInstallDriver` throws the typed `runtime` N/A). The decision logic is `:core`'s
+  (`verifyFeed`, `decideUpdate`, `runUpdateCheck`, the content decision), as in Swift's
+  `PolarisKeyCore`. `BootGuard` is the GUARD stage over a host's `UpdateSlots` (apply a staged update,
+  count unconfirmed launches, roll back after two with `skipVersion`, the confirmation rows); outlet
+  signals come through `OutletSignalReader` (Android's readers are P6-12's).
+- **`:packs`**: `PackEngine` (`load`, `ensure`, `ensureReleases`, `estimate`, `state`, `rollback`,
+  `confirm`, `recoverState`, `revocations`, `isAvailable`, `packFor`, `registerHandler`, progress
+  events) over the `PackStorage` port (`DirPackStorage` under the store's data directory, never a
+  cache directory; `MemoryPackStorage` for tests), the object transport port
+  (`OkHttpPackObjectTransport`, bounded single ranges for chunk sync) and the `ZstdPort` (`LibZstd`
+  over zstd-jni 1.5.7: streamed `full` payloads, `--patch-from` deltas with the base as a raw-content
+  dictionary after the dictionary-magic refusal and the window check). Built-in handlers:
+  `files.tree`, `data.json`, `l10n.table`; `MlModelHandler` is host-registered. `PacksClient` is the
+  facet: the content stamp, embedded baselines, `bootFetch` for the stage machine, and the device
+  report's `content.packSetId`.
+- **Native code.** zstd-jni is the SDK's only native library. The JAR carries the desktop natives;
+  on Android the `:android` glue links the zstd-jni AAR of the same version, whose `.so` files are
+  16 KB page aligned (`tools/check_16k_alignment.py`, in the `kotlin` CI job). Where the native
+  library cannot load, `supports(packs.apply.delta)` answers `dependency`.
 
 **Typed catalog mirror.** `pnpm gen:mirrors --catalog catalog.json --out-dir <dir> --lang kotlin
 --kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
@@ -212,7 +261,8 @@ permissions into play builds (notes/S-10 §2).
 cd sdks/kotlin
 # JVM modules (JDK 17; no Android SDK needed with -Ppkey.jvmOnly=true)
 ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test \
-          :sdk:test :conformance:test checkModuleBoundaries
+          :update:test :packs:test :sdk:test :conformance:test checkModuleBoundaries
+python3 tools/check_16k_alignment.py   # zstd-jni's Android natives are 16 KB page aligned
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
@@ -226,8 +276,10 @@ tools/check_publication.sh     # both flavours of both in build/repo with POM, s
 `:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository
 in place. Its `test` task depends on `testTink`, so every suite runs on the JCA Ed25519 backend
 and again with Tink forced: `cases.json` (the JWS, licence, config, trust, clock-floor and bundle
-families and their pointer sets, and `releaseRecordCases`), `gate-matrix.json`, `config-matrix.json`,
-`headers.json`, `fingerprint.json`, `stage-matrix.json`,
+families and their pointer sets, `releaseRecordCases`, `feedCases`, `feedContentCases`,
+`revocationCases`, `packRecordCases`, `markerCases` and `delegationCases`), `gate-matrix.json`,
+`config-matrix.json`, `update-matrix.json`, `plan-matrix.json`, every `content/` section (under
+both zstd paths), `headers.json`, `fingerprint.json`, `stage-matrix.json`,
 `outlet-matrix.json`, and every transcript `parity.json` makes applicable (replayed by
 `TranscriptReplay.kt`, a port of the Node engine, driving `PolarisKeyClient`). Every suite extends
 `ConformanceSuite`, which installs the backend the task names before the suite runs. The `kotlin` job in `.github/workflows/ci.yml`

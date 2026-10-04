@@ -195,8 +195,20 @@ export interface RegistryRouteContext {
   readonly waitUntil?: (p: Promise<unknown>) => void;
 }
 
+/**
+ * The mark `feedRoute` (`services/distribution/registry/serve.ts`) puts on every route it builds.
+ * A route so marked answers a read only through `serveFeedRead`, the access ladder (`authorize`
+ * then cache). `test/registryHost.test.ts` requires it on every `REGISTRY_ROUTES` entry, so no
+ * registry route can skip the ladder.
+ */
+export const FEED_READ_ROUTE: unique symbol = Symbol.for(
+  "polaris-key.registry.feedRead",
+) as never;
+
 /** One route that may answer on the registry host. */
 export interface RegistryRoute {
+  /** Set by `feedRoute` only (see {@link FEED_READ_ROUTE}). */
+  readonly [FEED_READ_ROUTE]?: true;
   /** For logs, tests and `routeCoverage`'s `REGISTRY_PATHS`. */
   readonly name: string;
   /** Every registry route is Distribution's; with it off for the owner the route never runs. */
@@ -237,24 +249,51 @@ export function registryNotFound(
           },
         ],
       },
-      { status: 404 },
+      // F-08: every answer under `/v2/` names the distribution API version.
+      {
+        status: 404,
+        headers: { "docker-distribution-api-version": "registry/2.0" },
+      },
     );
   if (ecosystem === "swift")
     return json(
       { detail: "not found" },
-      {
-        status: 404,
-        headers: { "content-type": "application/problem+json" },
-      },
+      { status: 404, headers: SWIFT_PROBLEM_HEADERS },
     );
   return notFound();
 }
 
-/** 405 for any method but GET and HEAD on a registry path (OCI's error JSON under `/v2/`). */
+/** Swift's problem answers carry `Content-Version: 1` like every Swift answer (F-06,
+ *  `Registry.md` §3.3 and §3.5). */
+const SWIFT_PROBLEM_HEADERS = {
+  "content-type": "application/problem+json",
+  "content-version": "1",
+} as const;
+
+/** `POST /swift/<owner>/login` (`Registry.md` §3.2, SwiftPM's `package-registry login`). */
+const SWIFT_LOGIN = /^\/swift\/[^/]+\/login$/;
+
+/** 405 for any method but GET and HEAD on a registry path (OCI's error JSON under `/v2/`,
+ *  Swift's `problem+json` under `/swift/`), and Swift's `POST …/login` 501 (F-06). */
 export function registryMethodNotAllowed(
   ecosystem: RegistryEcosystem | null,
+  method: string = "",
+  pathname: string = "",
 ): Response {
   const allow = { allow: "GET, HEAD" };
+  if (ecosystem === "swift") {
+    // F-06: SwiftPM's login answers 501 until registry credentials exist (F-21). Decided from
+    // the path's shape alone, before any owner is loaded, so it can never probe an owner.
+    if (method === "POST" && SWIFT_LOGIN.test(pathname))
+      return json(
+        { detail: "registry login is not supported yet" },
+        { status: 501, headers: SWIFT_PROBLEM_HEADERS },
+      );
+    return json(
+      { detail: "method not allowed" },
+      { status: 405, headers: { ...SWIFT_PROBLEM_HEADERS, ...allow } },
+    );
+  }
   if (ecosystem === "oci")
     return json(
       {
@@ -262,7 +301,13 @@ export function registryMethodNotAllowed(
           { code: "UNSUPPORTED", message: "The operation is unsupported." },
         ],
       },
-      { status: 405, headers: allow },
+      {
+        status: 405,
+        headers: {
+          ...allow,
+          "docker-distribution-api-version": "registry/2.0",
+        },
+      },
     );
   const res = errorResponse(405, "method_not_allowed");
   res.headers.set("allow", allow.allow);
@@ -464,7 +509,8 @@ async function answer(
   }
   // GET and HEAD only, decided from the path's ecosystem alone (the list is public), before any
   // owner is loaded, so a 405 can never probe an owner.
-  if (!readOnly) return plain(registryMethodNotAllowed(ecosystem));
+  if (!readOnly)
+    return plain(registryMethodNotAllowed(ecosystem, req.method, pathname));
   if (ecosystem === "oci" && (pathname === "/v2" || pathname === "/v2/"))
     return plain(ociBase(req));
   if (RESERVED_ECOSYSTEMS.has(ecosystem))

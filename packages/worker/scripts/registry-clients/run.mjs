@@ -6,26 +6,45 @@
  *   node scripts/registry-clients/run.mjs [--client <name>]... [--port <n>]
  *
  *   1. a fresh local state directory (D1, R2, KV) under the OS temp dir;
- *   2. `seed.mjs`: every migration, then the fixture owner;
+ *   2. `seed.mjs`: every migration, the fixture owner, then each `fixtures/<ecosystem>.mjs`
+ *      (`seedFixture(ctx)` from seed.mjs, `seedWithBindings(env, ctx)` from `fixtures.mjs`), every
+ *      `seeds/*.ts`, and each selected client's own seed (see below);
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
  *      request the clients make arrives on the registry host (`core/registryHost.ts`);
- *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin)
- *      and OWNER (the fixture owner) in its environment; a non-zero exit fails the run.
+ *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin),
+ *      OWNER (the fixture owner) and STATE in its environment; a non-zero exit fails the run.
+ *      A client's `clients/<name>.seed.mjs` (or its family's, `swift-linux` → `swift`) runs
+ *      after step 2, before the Worker starts, to publish that ecosystem's fixtures.
  *
- * F-02 ships one smoke client, `curl`. F-04 to F-09 add their ecosystem's clients (npm, pip,
- * SwiftPM, Gradle, docker, GodotEnv) as further `clients/*.sh` and matrix rows in
- * `.github/workflows/registry-clients.yml`. Nothing here reaches a deployed environment.
+ * A client may bring its ecosystem's fixture as `clients/<name>.seed.mjs` (or its family's,
+ * `swift-compat` → `swift.seed.mjs`), a script run with STATE and OWNER in its environment after
+ * step 2 and before `wrangler dev` opens the state (F-05's PyPI clients share `pypi-fixture.mjs`,
+ * which seeds once per state directory).
+ *
+ * F-02 ships one smoke client, `curl`; F-04 to F-09 add their ecosystem's clients (npm, pnpm,
+ * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv) as further
+ * `clients/*.sh` and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here
+ * reaches a deployed environment.
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
+import { pathToFileURL } from "node:url";
+import { TSX, WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
+import { seedFixtures } from "./fixtures.mjs";
 import { FIXTURE_OWNER, seed } from "./seed.mjs";
 
 const CLIENTS = join(WORKER, "scripts", "registry-clients", "clients");
+const SEEDS = join(WORKER, "scripts", "registry-clients", "seeds");
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -72,7 +91,48 @@ mkdirSync(assets);
 let dev = null;
 let failed = 0;
 try {
-  seed(state);
+  await seed(state);
+  await seedFixtures(state, FIXTURE_OWNER);
+  // Per-ecosystem seeds (F-08 onward): every `seeds/*.ts`, run with tsx against the same state
+  // directory before the Worker starts, so it serves what they published.
+  for (const file of readdirSync(SEEDS)
+    .filter((f) => f.endsWith(".ts"))
+    .sort()) {
+    const r = spawnSync(TSX, [join(SEEDS, file), "--persist-to", state], {
+      cwd: WORKER,
+      stdio: "inherit",
+      env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" },
+    });
+    if (r.status !== 0)
+      throw new Error(`seed ${file} failed (exit ${r.status})`);
+  }
+  // Per-client fixtures (F-05 onwards): `clients/<client>.seed.{mjs,ts}`, or the seed of the
+  // client's family (`swift-compat` → `swift.seed.mjs`), each run once before the Worker starts,
+  // so it has the local D1 and R2 to itself. A `.mjs` seed is a script with STATE (the state
+  // directory) and OWNER in its environment; a `.ts` seed runs under tsx with `--persist-to` and
+  // `--origin` (it imports the Worker's TypeScript sources).
+  const seeded = new Set();
+  for (const client of clients) {
+    const seedFile = [client, client.split("-")[0]]
+      .flatMap((n) => [`${n}.seed.mjs`, `${n}.seed.ts`])
+      .map((f) => join(CLIENTS, f))
+      .find((f) => existsSync(f));
+    if (!seedFile || seeded.has(seedFile)) continue;
+    seeded.add(seedFile);
+    console.log(`\n── registry client seed: ${client} ──`);
+    const r = seedFile.endsWith(".ts")
+      ? spawnSync(TSX, [seedFile, "--persist-to", state, "--origin", origin], {
+          cwd: WORKER,
+          stdio: "inherit",
+        })
+      : spawnSync(process.execPath, [seedFile], {
+          cwd: WORKER,
+          stdio: "inherit",
+          env: { ...process.env, STATE: state, OWNER: FIXTURE_OWNER },
+        });
+    if (r.status !== 0)
+      throw new Error(`seed ${seedFile} failed (exit ${r.status})`);
+  }
   dev = spawn(
     WRANGLER,
     [
@@ -105,7 +165,12 @@ try {
     console.log(`\n── registry client: ${client} ──`);
     const r = spawnSync("bash", [join(CLIENTS, `${client}.sh`)], {
       stdio: "inherit",
-      env: { ...process.env, REGISTRY: origin, OWNER: FIXTURE_OWNER },
+      env: {
+        ...process.env,
+        REGISTRY: origin,
+        OWNER: FIXTURE_OWNER,
+        STATE: state,
+      },
     });
     if (r.status !== 0) {
       failed++;

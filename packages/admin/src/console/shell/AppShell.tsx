@@ -16,6 +16,7 @@ import {
   PRODUCT_PAGES,
   sectionOf,
   type GlobalPageId,
+  type NavFeatures,
   type ProductPageId,
   type ServiceState,
 } from "../nav.js";
@@ -65,7 +66,10 @@ export const NAV_BUTTON_ID = "console-nav-button";
 export function pageTitle(route: Route): string {
   if (route.kind === "not-found") return "Page not found";
   const page = pageOf(route.page);
-  if (route.kind === "product" && route.id !== undefined && page.record) {
+  if (route.child && page.record?.child) {
+    return `${page.record.child.noun} ${route.child.ids[route.child.ids.length - 1]}`;
+  }
+  if (route.id !== undefined && page.record) {
     return `${page.record.noun} ${route.id}`;
   }
   return page.label;
@@ -172,6 +176,9 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const productQuery = useProduct(slug);
   const products = useProducts();
   const services: ServiceState = productQuery.data?.services ?? null;
+  const features: NavFeatures = productQuery.data
+    ? { packageFeeds: productQuery.data.packageFeeds === true }
+    : null;
   const productRef = slug
     ? (me.products.find((p) => p.slug === slug) ?? null)
     : null;
@@ -266,13 +273,14 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   };
 
   const paletteItems = [
-    ...navigationSource(slug, productName, services),
+    ...navigationSource(slug, productName, services, features),
     ...productSource(productList),
   ];
 
   const sidebarProps = {
     slug,
     services,
+    features,
     activePage: page,
     activeSection: group,
     expanded,
@@ -406,11 +414,14 @@ function PageLoading(): React.ReactElement {
 }
 
 /** A global page: Home, Products, the new-product wizard, or a Platform section page. */
-function globalPageFor(page: GlobalPageId): React.ReactElement {
+function globalPageFor(
+  route: Extract<Route, { kind: "global" }>,
+): React.ReactElement {
+  const page = route.page;
   if (isPlatformPage(page)) {
     return (
       <React.Suspense fallback={<PageLoading />}>
-        <PlatformPages page={page} />
+        <PlatformPages page={page} route={route} />
       </React.Suspense>
     );
   }
@@ -449,7 +460,7 @@ function PageContent({
     );
   }
   if (route.kind === "global") {
-    return <PageErrorBoundary>{globalPageFor(route.page)}</PageErrorBoundary>;
+    return <PageErrorBoundary>{globalPageFor(route)}</PageErrorBoundary>;
   }
   // `/me` lists every product the session administers (authority is platform-wide), so a slug
   // outside it does not exist; it is not an authorization failure.
