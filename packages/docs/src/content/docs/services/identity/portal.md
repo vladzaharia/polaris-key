@@ -25,6 +25,15 @@ same shape manifest ingest already takes elsewhere: a platform-owned pipeline di
 service-owned rows. What moved into `services/identity/portal/` is the code; the routes stayed
 exactly where they were.
 
+## The Identity flag does not gate the portal
+
+The portal is a platform concern: it runs for every product, whether or not that product has the
+Identity service turned on. A product with Identity off has no `/identity/*` routes, but its
+customers still see its licenses in the portal, can claim them by key and can manage their
+devices. What decides that is the product's portal settings (below), never `services_json`'s
+`identity` flag. The one service flag the portal does read is Release's: release downloads need
+both `releasesEnabled` and the Release service on.
+
 ## Signing in
 
 | Route                   | What it does                                                                |
@@ -37,15 +46,18 @@ exactly where they were.
 
 **OIDC.** `/login` uses the same `platformOidcConfig` a `platform`-provider product uses (see
 [Product OIDC](/docs/services/identity/oidc/)) — the portal and every platform-issuer product
-share one IdP client and one trust boundary. Rate-limited to 20 requests per minute per IP; PKCE,
+share one IdP client and one trust boundary. The console has its own client (`ADMIN_OIDC_*`),
+so operators and customers do not share one. Rate-limited to 20 requests per minute per IP; PKCE,
 `state`, and `nonce` follow the same shape as the product flow, with the redirect URI fixed to
 `<origin>/callback` rather than a product-scoped path.
 
 **Magic links.** `POST /api/magic/start` takes `{ "email": "…" }`, rate-limited to 8 per minute
 per IP, and — only if the platform has an `EMAIL` binding configured — sends a link to
-`/magic/verify?token=…`. The token is single-use and expires in **10 minutes**: the KV record
-behind it is deleted the moment `/magic/verify` reads it, before the token is even checked
-against anything else, so a link can never be redeemed twice. The email is explicit about the
+`/magic/verify?token=…`. The token is single-use and expires in **10 minutes**: the record
+behind it lives in the Worker's atomic single-use store (a sharded Durable Object) and
+`/magic/verify` consumes it in one operation — read and delete together, before anything else is
+checked — so a link can never be redeemed twice, not even by two clicks that arrive at once. The
+portal OIDC `state` is held the same way. The email is explicit about the
 window: "This link expires in 10 minutes."
 
 Both paths accept an optional `returnTo`, which must be same-origin and additionally may not
@@ -150,6 +162,13 @@ the portal itself proved (a magic link it sent, or an `email_verified: true` cla
 **platform** issuer specifically) can drive a link at all, and only a platform-issuer subject may
 match a license's `sub`, so subjects minted by mutually untrusted custom IdPs can never collide
 across products (the R5 audit findings, `R5-01` and `R5-02`).
+
+A portal account's OIDC identities are keyed by the issuer that minted the subject (the
+configured platform issuer URL, without a trailing slash), not by a provider kind, so a second issuer's subjects can never
+land in the platform issuer's namespace. Rows written before migration `0059` carried the literal
+`oidc`; the Worker re-keys them to the platform issuer at the next portal OIDC sign-in. The
+migration still accepts that literal on insert, so a Worker version from before it (still serving
+mid-deploy, or rolled back to) keeps signing new users in; those rows are re-keyed the same way.
 
 **In the console**, these settings are **Identity → Portal**. The sign-in methods and modules
 are read-only while the portal switch is off, and **Release downloads** is read-only while the

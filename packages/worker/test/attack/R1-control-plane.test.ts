@@ -40,6 +40,8 @@ import {
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
 } from "../../src/services/identity/oidc.js";
+import { artefacts, singleUseMock } from "../singleUseMock.js";
+import { adminFlowKey } from "../../src/admin/auth.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -105,23 +107,23 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
       { now: NOW },
     );
     expect(res.status).toBe(302);
-    // The ONLY per-flow artefact is a KV row keyed by `state`. Nothing is planted in the
-    // requesting browser, so /manage/callback cannot tell "the browser that started this
-    // flow" from "any other browser".
+    // The ONLY per-flow artefact is a single-use store row keyed by `state` (I-02 moved it out
+    // of KV). Nothing is planted in the requesting browser, so /manage/callback cannot tell
+    // "the browser that started this flow" from "any other browser".
     expect(res.headers.get("set-cookie")).toBeNull();
     const location = new URL(res.headers.get("location")!);
     const state = location.searchParams.get("state")!;
     expect(state).toBeTruthy();
-    // FIXED (R12-04): the key name is the HASHED state, so a KV listing is not a dump of live
+    // FIXED (R12-04): the key name is the HASHED state, so a listing is not a dump of live
     // OIDC `state` values. The flow record itself is unchanged.
-    const flowKey = `admin:flow:${await hashKey(state, env.KEY_HASH_PEPPER)}`;
-    expect(kv.keys()).toEqual([flowKey]);
-    expect(kv.keys()[0]).not.toContain(state);
+    const flowKey = `admin-flow:${await hashKey(state, env.KEY_HASH_PEPPER)}`;
+    expect(kv.keys()).toEqual([]);
+    expect(singleUseMock(env).keys()).toEqual([flowKey]);
+    expect(singleUseMock(env).keys()[0]).not.toContain(state);
     // The stored flow holds only PKCE + nonce + redirect_uri — nothing browser-specific.
-    const flow = JSON.parse((await kv.get(flowKey))!) as Record<
-      string,
-      unknown
-    >;
+    const flow = JSON.parse(
+      (await artefacts(env).get(await adminFlowKey(state, env)))!,
+    ) as Record<string, unknown>;
     expect(Object.keys(flow).sort()).toEqual([
       "nonce",
       "redirectUri",
@@ -726,7 +728,7 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
     expect(confirmed.status).toBe(200);
     expect(confirmed.headers.get("location")).toBeNull();
     const stored = JSON.parse(
-      (await kv.get(await deviceFlowKey(env, "djdl", deviceCode)))!,
+      (await artefacts(env).get(await deviceFlowKey(env, "djdl", deviceCode)))!,
     ) as { confirmedAt?: number; deviceId: string };
     // The state-mutating half is gone: a GET cannot mark the flow confirmed.
     expect(stored.confirmedAt).toBeFalsy();
@@ -740,7 +742,7 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
     env.HOT = asKv(kv);
     await seedProduct(db, "djdl");
     const product = (await loadProduct(env, db, "djdl"))!;
-    await kv.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, "djdl", "dc"),
       JSON.stringify({
         state: "s",

@@ -635,7 +635,7 @@ describe("portal account erasure (DELETE /api/me)", () => {
     const session = await portalSession(env, db);
     await db.run(
       `INSERT INTO portal_account_identities (provider, subject, account_id, email, created_at, last_seen_at)
-       VALUES ('oidc', 'sub-1', ?, 'ada@example.com', ?, ?)`,
+       VALUES ('https://id.example', 'sub-1', ?, 'ada@example.com', ?, ?)`,
       session.accountId,
       NOW,
       NOW,
