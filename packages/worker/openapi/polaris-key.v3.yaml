@@ -7446,6 +7446,167 @@ paths:
           headers:
             Docker-Distribution-API-Version:
               schema: { type: string, const: registry/2.0 }
+  # ── Maven (F-07) ──
+  /maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: mavenMetadata
+      tags: [registry]
+      summary: Maven artifact metadata, maven-metadata.xml (registry host only)
+      description: >
+        F-07. The artifact-level `maven-metadata.xml` of the Maven repository layout
+        (https://maven.apache.org/repository/layout.html,
+        https://maven.apache.org/ref/current/maven-repository-metadata/repository-metadata.html),
+        rendered from Release's package state, never uploaded. `versions` lists every version
+        that is not yanked, oldest publication first; `release` is the `stable` channel's head
+        (Maven's `RELEASE`), omitted when it serves nothing; `latest` the newest listed version of
+        any channel (`LATEST`); `lastUpdated` the newest listed version's publication time. A
+        yanked version leaves the index but its files stay downloadable by exact coordinates; a
+        deprecated one stays listed (Maven has neither state). Sent as
+        `application/octet-stream` with `Content-Disposition: attachment`, never as XML.
+        `Cache-Control: public, max-age=60, stale-while-revalidate=60` with a strong ETag of the
+        body's SHA-256 (`If-None-Match` answers 304); a feed that is not public answers 401 with
+        `WWW-Authenticate: Basic` and `private, no-store`. An unknown owner, artifact or a feed
+        that is off answers the plain not-found.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+      responses:
+        "200":
+          description: The metadata document.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304": { description: Not modified (the ETag matched). }
+        "401":
+          {
+            description: The feed is not public (tier 1 has no credentials yet).,
+          }
+        "404": { description: No such owner, feed or artifact. }
+    head:
+      operationId: mavenMetadataHead
+      tags: [registry]
+      summary: Maven artifact metadata, headers only (registry host only)
+      description: F-07. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+      responses:
+        "200": { description: The metadata document's headers. }
+        "404": { description: No such owner, feed or artifact. }
+  /maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: mavenMetadataChecksum
+      tags: [registry]
+      summary: A checksum sidecar of maven-metadata.xml (registry host only)
+      description: >
+        F-07. The lowercase hex digest of the artifact's current `maven-metadata.xml`, rendered
+        with it (https://maven.apache.org/repository/layout.html). `md5`, `sha1`, `sha256` and
+        `sha512`; anything else is the not-found. Same caching as the metadata.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - $ref: "#/components/parameters/MavenChecksum"
+      responses:
+        "200":
+          description: The hex digest.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, artifact or algorithm. }
+    head:
+      operationId: mavenMetadataChecksumHead
+      tags: [registry]
+      summary: A checksum sidecar of maven-metadata.xml, headers only (registry host only)
+      description: F-07. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - $ref: "#/components/parameters/MavenChecksum"
+      responses:
+        "200": { description: The sidecar's headers. }
+        "404": { description: No such owner, feed, artifact or algorithm. }
+  /maven/{owner}/{groupPath}/{artifactId}/{version}/{file}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: mavenFile
+      tags: [registry]
+      summary: A file of a Maven publication, or its checksum sidecar (registry host only)
+      description: >
+        F-07. One file of a published version, at the path the Maven repository layout fixes
+        (`<artifactId>-<version>[-<classifier>].<extension>`,
+        https://maven.apache.org/repository/layout.html): the POM, the Gradle module metadata
+        (`.module`, https://github.com/gradle/gradle/blob/master/platforms/documentation/docs/src/docs/design/gradle-module-metadata-latest-specification.md),
+        the jar or AAR and any classified file the publication carried. The bytes come from the
+        blob store by SHA-256: `ETag: "<sha256>"`, `Range` (206), and
+        `Cache-Control: public, max-age=31536000, immutable, no-transform` (a version is never
+        republished). `<file>.md5`, `.sha1`, `.sha256` and `.sha512` answer the file's digest as
+        lowercase hex, from the digests Release computed at ingest (immutable, ETag of the
+        body's SHA-256). Every answer is `application/octet-stream` with
+        `Content-Disposition: attachment`: a POM or `.module` is never served as XML or JSON.
+        A yanked version's files stay downloadable. Signatures (`.asc`), version-level metadata
+        and directory listings are not served.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - name: file
+          in: path
+          required: true
+          description: The file name, optionally followed by `.md5`, `.sha1`, `.sha256` or `.sha512`.
+          schema: { type: string }
+      responses:
+        "200":
+          description: The file's bytes, or its hex digest.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: The requested range of the file. }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404":
+          {
+            description: No such owner,
+            feed,
+            artifact,
+            version,
+            file or digest.,
+          }
+        "416": { description: The range cannot be satisfied. }
+    head:
+      operationId: mavenFileHead
+      tags: [registry]
+      summary: A file of a Maven publication, headers only (registry host only)
+      description: F-07. As the GET, with no body (`Content-Length` is the file's size).
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - { name: file, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: The file's headers. }
+        "404":
+          {
+            description: No such owner,
+            feed,
+            artifact,
+            version,
+            file or digest.,
+          }
 components:
   securitySchemes:
     ciToken:
@@ -7615,6 +7776,31 @@ components:
       in: header
       description: Forwarded to the artifact origin; a satisfiable range yields 206.
       schema: { type: string }
+    # Maven feed (F-07)
+    MavenOwner:
+      name: owner
+      in: path
+      required: true
+      description: The feed's owner, a product slug (`polaris-key` for the platform's own packages).
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    MavenGroupPath:
+      name: groupPath
+      in: path
+      required: true
+      description: >
+        The groupId with each `.` as a `/` (`im/plrs/key`): one or more path segments, matched
+        case-sensitively against the declared `groupId:artifactId`.
+      schema: { type: string }
+    MavenArtifactId:
+      name: artifactId
+      in: path
+      required: true
+      schema: { type: string }
+    MavenChecksum:
+      name: checksum
+      in: path
+      required: true
+      schema: { type: string, enum: [md5, sha1, sha256, sha512] }
   headers:
     ETag:
       description: >

@@ -192,6 +192,22 @@ const REGISTRY_SERVER = "https://pkg.plrs.im";
 const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
+  // Maven (F-07)
+  [
+    "/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml",
+    ["get", "head"],
+    "mavenMetadata",
+  ],
+  [
+    "/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}",
+    ["get", "head"],
+    "mavenMetadata",
+  ],
+  [
+    "/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}",
+    ["get", "head"],
+    "mavenFile",
+  ],
 ];
 
 function specMethods(path: string): string[] {
