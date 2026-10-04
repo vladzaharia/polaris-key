@@ -360,12 +360,15 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   >({});
   const [allMatching, setAllMatching] = React.useState(false);
 
-  const sorting: SortingState = state.sort.map((s) => ({
-    id: s.id,
-    desc: s.desc,
-  }));
-  const columnVisibility: VisibilityState = Object.fromEntries(
-    hidden.map((h) => [h, false]),
+  // Stable references: react-table memoizes its row models on these, and a fresh array every
+  // render would recompute the sorted model on every render.
+  const sorting: SortingState = React.useMemo(
+    () => state.sort.map((s) => ({ id: s.id, desc: s.desc })),
+    [state.sort],
+  );
+  const columnVisibility: VisibilityState = React.useMemo(
+    () => Object.fromEntries(hidden.map((h) => [h, false])),
+    [hidden],
   );
 
   const table = useReactTable<T>({
@@ -379,6 +382,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     },
     enableRowSelection: Boolean(selection),
     manualSorting: serverSide,
+    // The table pages itself (state.offset/cursor), never through react-table's pagination. Its
+    // auto-reset queues resetPageIndex() after every row-model recompute: a state change that
+    // re-renders, recomputes and queues again, an endless render loop.
+    autoResetAll: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });

@@ -24,6 +24,16 @@
 /* sonner's base toast layout, bundled (vite.config.ts stops its inline <style> injection). */
 @import "sonner/dist/styles.css";
 
+/* Radix Select's viewport rules, bundled (vite.config.ts drops its inline <style>). */
+[data-radix-select-viewport] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+[data-radix-select-viewport]::-webkit-scrollbar {
+  display: none;
+}
+
 /*
  * A neutral fill that stands off BOTH the page and a raised card in either theme: one step up
  * (overlay) on dark, one step down (sunken) on light, where raised and overlay are both white.

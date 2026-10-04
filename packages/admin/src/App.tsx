@@ -16,7 +16,7 @@ export function App(): React.ReactElement {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Toaster>{import.meta.env.DEV ? <DevKitOr /> : <Boot />}</Toaster>
+        <Toaster>{KIT_ENABLED ? <DevKitOr /> : <Boot />}</Toaster>
       </ThemeProvider>
     </QueryClientProvider>
   );
