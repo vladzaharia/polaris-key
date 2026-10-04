@@ -1,7 +1,7 @@
 # Contributing to Polaris Key
 
-Polaris Key is a **contract-first, six-language** monorepo: one Cloudflare Worker plus SDKs
-for Node, React, Python, Swift and Godot, all agreeing on a single frozen wire format. The most
+Polaris Key is a **contract-first, seven-language** monorepo: one Cloudflare Worker plus SDKs
+for Node, React, Python, Swift, Godot and Kotlin, all agreeing on a single frozen wire format. The most
 important rule follows from that: **the wire contract is the source of truth, and every
 language must verify it identically.** Read the canonical glossary —
 `packages/docs/src/content/docs/start/concepts.md`, served at `/docs/start/concepts/` — for
@@ -15,6 +15,8 @@ pnpm install                                   # JS workspace (Node 22 — see b
   .venv/bin/pip install -e ".[dev]" )          # Python SDK (add ",keyring" for the extra)
 # Swift uses the system toolchain (macOS 14+, Swift 6); no install step.
 # Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/CONTRIBUTING.md); no install step.
+# Kotlin: JDK 17 (the Gradle wrapper fetches the rest); the Android modules also need an Android
+# SDK (sdks/kotlin/README.md), which -Ppkey.jvmOnly=true skips.
 ```
 
 **Use Node 22.** `engines` pins `>=22` and CI runs 22, but the constraint is sharper than that:
@@ -54,6 +56,7 @@ pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=w
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
+( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test )   # Kotlin
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
@@ -61,7 +64,7 @@ pnpm format                      # prettier check over md/json too (format:fix t
 Or run the whole cross-language suite in one shot:
 
 ```sh
-pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner
+pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner + Kotlin
 ```
 
 ## Pre-commit hooks

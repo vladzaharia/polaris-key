@@ -1,13 +1,13 @@
 ---
 title: "Setup"
-description: "Install the JS workspace, the Python SDK, and the Swift and Godot toolchains, then run the green gate before opening a PR."
+description: "Install the JS workspace, the Python SDK, and the Swift, Godot and Kotlin toolchains, then run the green gate before opening a PR."
 sidebar:
   order: 2
 ---
 
 Several toolchains, one repo. The JS workspace (`pnpm` + `turbo`) covers `packages/*`, `tools`,
-`products`, and the Node conformance runner; Python, Swift and Godot are standalone toolchains
-under `sdks/`, installed separately.
+`products`, and the Node conformance runner; Python, Swift, Godot and Kotlin are standalone
+toolchains under `sdks/`, installed separately.
 
 ## Install
 
@@ -17,6 +17,8 @@ pnpm install                                   # JS workspace (Node 22 — see b
   .venv/bin/pip install -e ".[dev]" )          # Python SDK (add ",keyring" for the extra)
 # Swift uses the system toolchain (macOS 14+, Swift 6); no install step.
 # Godot: Godot 4.4+ on PATH, or set GODOT_BIN (sdks/godot/CONTRIBUTING.md); no install step.
+# Kotlin: JDK 17 (the Gradle wrapper fetches the rest); the Android modules also need an
+# Android SDK, which -Ppkey.jvmOnly=true skips.
 ```
 
 ## Node must be 22
@@ -59,6 +61,7 @@ pnpm --filter @polaris-key/worker test:workerd
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
+( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test )   # Kotlin
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
@@ -66,7 +69,7 @@ pnpm format                      # prettier check over md/json too (format:fix t
 Or run the whole cross-language suite in one shot:
 
 ```sh
-pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner
+pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner + Kotlin
 ```
 
 The Godot runner needs an editor binary and exits 2 without one; it never skips. CI runs it on

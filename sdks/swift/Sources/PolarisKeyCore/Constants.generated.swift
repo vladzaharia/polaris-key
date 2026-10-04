@@ -640,6 +640,7 @@ public enum SdkId {
     public static let python = "python"
     public static let swift = "swift"
     public static let godot = "godot"
+    public static let kotlin = "kotlin"
 }
 
 /// Every `SdkId` value, in source order.
@@ -649,6 +650,7 @@ public let SDK_ID_VALUES: [String] = [
     "python",
     "swift",
     "godot",
+    "kotlin",
 ]
 
 /// The 17 outlet kinds, in `OUTLET_KINDS` order (README §3.1, plans/P3-01.md §2.9). `unknown` is a detection result, not a kind, and is not listed.

@@ -40,6 +40,9 @@ __pycache__/
 .gradle/
 sdks/kotlin/local.properties
 sdks/kotlin/*/build/
+# P6-06/P6-09: the root build directory, where maven-publish writes the local Maven repository
+# (build/repo; local only, never a public registry).
+sdks/kotlin/build/
 sdks/godot/native/android/build/
 sdks/godot/addons/polaris_key/native/android/
 !sdks/kotlin/gradle/wrapper/gradle-wrapper.jar
