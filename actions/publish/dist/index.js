@@ -1224,7 +1224,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   ],
   "$defs": {
     "slug": {
-      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known).",
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, activate).",
       "type": "string",
       "pattern": "^[a-z0-9-]{1,64}$",
       "not": {
@@ -1239,7 +1239,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "magic",
           "download",
           "webhooks",
-          "well-known"
+          "well-known",
+          "activate"
         ]
       }
     },
@@ -14304,7 +14305,8 @@ var RESERVED_PRODUCT_SLUGS = [
   "magic",
   "download",
   "webhooks",
-  "well-known"
+  "well-known",
+  "activate"
 ];
 var SECRET_DELIVERY_VALUES = [
   "serverOnly",
