@@ -1,16 +1,16 @@
 # P6-06 Kotlin SDK core module, conformance runner, constants and parity manifest
 
-| Field       | Value |
-| ----------- | ----- |
-| Phase       | P6: Commerce, ops, web |
-| Size | 1.5–2 engineer-weeks |
-| Depends on | [P1b-01](P1b-01-parity-registry.md), [P1b-02](P1b-02-sdk-constants.md), [P1b-03](P1b-03-http-transcripts.md), [P3-02](P3-02-wire-v4-contract-corpus.md), [P5-06](P5-06-kotlin-aar.md) |
-| Unblocks | [P6-05](P6-05-kotlin-sdk.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md) |
-| Role | `pkey-sdk-porter` |
-| Plan mode   | no (it adds no corpus rows; a missing corpus case goes to `pkey-wire-planner` as its own package) |
-| Gates       | `parity:check` (rules 3 and 4, the `sdks` list), `pnpm gen:constants -- --check`, a registry pass over `features.json`, the language lists, and a new `kotlin` CI job |
-| Human input | none |
-| Repo        | `vladzaharia/polaris-key` |
+| Field       | Value                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web                                                                                                                                                                |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                  |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P1b-02](P1b-02-sdk-constants.md), [P1b-03](P1b-03-http-transcripts.md), [P3-02](P3-02-wire-v4-contract-corpus.md), [P5-06](P5-06-kotlin-aar.md) |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md)                       |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                     |
+| Plan mode   | no (it adds no corpus rows; a missing corpus case goes to `pkey-wire-planner` as its own package)                                                                                     |
+| Gates       | `parity:check` (rules 3 and 4, the `sdks` list), `pnpm gen:constants -- --check`, a registry pass over `features.json`, the language lists, and a new `kotlin` CI job                 |
+| Human input | none                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
 
 Slice a of [P6-05](P6-05-kotlin-sdk.md).
 

@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v2)                                                                                                                                                                                             |
 | Size        | 1.5–2 engineer-weeks                                                                                                                                                                                       |
 | Depends on  | [P4-10](P4-10-chunk-indexes.md), [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [S-02](S-02-r2-range.md), [P4-05](P4-05-pack-transports-cdn.md) |
-| Unblocks | [P4-18](P4-18-web-dcz.md), [P6-08](P6-08-kotlin-update-packs.md), [X-01](X-01-dotnet-sdk.md) |
+| Unblocks    | [P4-18](P4-18-web-dcz.md), [P6-08](P6-08-kotlin-update-packs.md), [X-01](X-01-dotnet-sdk.md)                                                                                                               |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                          |
 | Plan mode   | no: the format and vectors were approved in P4-10's plan                                                                                                                                                   |
 | Gates       | corpus (content corpus v2 chunk sections in every runner); all SDKs                                                                                                                                        |
