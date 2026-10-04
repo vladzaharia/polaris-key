@@ -129,7 +129,7 @@ function FunnelCard({ data }: { data: UpdateHealthResponse }) {
         {!data.counting ? (
           <p role="note" className="text-sm text-muted-foreground">
             This deployment has no update-health counters bound, so nothing is
-            counted yet.
+            counted.
           </p>
         ) : null}
         {data.rollouts.length === 0 ? (

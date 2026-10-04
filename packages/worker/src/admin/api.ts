@@ -6,6 +6,8 @@
  *   /api/me                                  — the signed-in identity + CSRF + grants
  *   /api/products                            — PLATFORM registry CRUD (platform admins only)
  *   /api/products/<slug>/...                 — per-product admin (platform admins only)
+ *   /api/platform/{version,deployment,activity} — instance-wide, product-less (platform admins
+ *                                              only; A-11/A-12, `handlers/platform.ts`)
  *   /api/platform/store-connections/...      — team-level store connections (platform admins
  *                                              only; A-16, `handlers/platformStoreConnections.ts`)
  *
@@ -64,6 +66,7 @@ import {
 } from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
+import { handlePlatform } from "./handlers/platform.js";
 import {
   handleProducts,
   handleProductScopedResource,
@@ -71,6 +74,7 @@ import {
 import { handleActivity } from "./handlers/activity.js";
 import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
+import { handleTrustPolicy } from "./handlers/trustPolicy.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { handleBlobGcAdmin } from "../core/blobGc.js";
@@ -205,6 +209,12 @@ async function handleProductScoped(
   if (resource === "ci-tokens")
     return handleCiTokens(req, env, db, session, slug, id, now);
 
+  // The device-trust policy (P6-02): which operations require an attested device, enforced or
+  // log-only, and the App Attest / Play Integrity settings. CORE, like the device trust level.
+  //   GET|PUT|DELETE /products/<slug>/trust-policy
+  if (resource === "trust-policy")
+    return handleTrustPolicy(req, env, db, session, slug, id, now);
+
   // Which Polaris Key services this product runs (plan §R4). A CORE resource, not a per-service
   // one: a service cannot own its own off switch, because it would have to be running to be
   // turned off. `id` carries the single sub-action (`revert`).
@@ -315,6 +325,7 @@ export async function handleAdminApi(
       rest.slice(1),
       now,
     );
+  if (head === "platform") return handlePlatform(req, env, db, session, rest);
   if (head === "logout") {
     // R1-03: logout clears the session, so it is a mutation and must go through the CSRF
     // check above — which `isMutation` only applies to non-GET methods. As a GET it was a

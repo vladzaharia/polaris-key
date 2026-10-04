@@ -49,6 +49,10 @@ import { listOutlets, parseJsonColumn } from "./outlets.js";
 import { selectFeedWith } from "./feeds/select.js";
 import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
+import { resolvePlaySetup } from "./connectors/play/setup.js";
+
+/** A reverse-DNS bundle id, re-checked before it becomes part of an App Attest RP ID. */
+const APPLE_BUNDLE_ID = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 
 /** The origin byte URLs are minted on: the bytes host when there is one, else none (a path). */
 function bytesOrigin(env: Env): string {
@@ -136,6 +140,41 @@ export function delivery(ctx: HookContext): Delivery {
     },
 
     accessMode: (deliverable: string) => accessModeOf(db, slug, deliverable),
+
+    // P6-02: the store identities Core's attest route verifies against. Apple: the bundle id of
+    // every live App Store and TestFlight outlet (a sideload outlet's build is re-signed under
+    // another team and cannot attest as this app). Play: the package and credential the Play
+    // connector would use, under the SAME pin check — an unpinned or mispinned credential is never
+    // used to decode a device's integrity token either.
+    async attestationTargets() {
+      const appleBundleIds = [
+        ...new Set(
+          (await listOutlets(db, slug))
+            .filter(
+              (o) =>
+                o.removed_at === null &&
+                (o.kind === "app-store" || o.kind === "testflight"),
+            )
+            .map((o) => {
+              const id = parseJsonColumn(o.identity_json) as {
+                bundleId?: unknown;
+              } | null;
+              return id && typeof id.bundleId === "string" ? id.bundleId : null;
+            })
+            .filter((b): b is string => b !== null && APPLE_BUNDLE_ID.test(b)),
+        ),
+      ];
+      const play = await resolvePlaySetup(ctx.env, db, slug);
+      return {
+        appleBundleIds,
+        play: play.setup
+          ? {
+              packageName: play.setup.packageName,
+              credentialId: play.setup.credentialId,
+            }
+          : { packageName: null, credentialId: null, inert: play.inert.reason },
+      };
+    },
 
     entitlement: (deliverable: string) => entitlementOf(db, slug, deliverable),
 

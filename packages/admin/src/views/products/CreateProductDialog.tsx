@@ -96,9 +96,9 @@ function KeyReminder({
         </p>
         {!bundle.publicKey && !trustSet ? (
           <p className="text-xs text-muted-foreground">
-            This response did not include a public key yet. Use the product
-            overview/JWKS once the backend exposes it, or rotate the key to
-            retrieve fresh public key material.
+            This response did not include a public key. Read it from the product
+            overview or its JWKS, or rotate the key to retrieve fresh public key
+            material.
           </p>
         ) : null}
       </CardContent>

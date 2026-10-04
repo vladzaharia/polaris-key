@@ -83,7 +83,8 @@ Times render relative ("3 hours ago") with the absolute timestamp in a tooltip.
 
 ## Scope and retention
 
-Audit rows are product-scoped — there is no cross-product activity view — and they **survive** a
+Audit rows are product-scoped — there is no cross-product activity view (platform-level
+actions have [their own trail](#the-platform-trail)) — and they **survive** a
 product being disabled: [deleting a product](/docs/admin/products/#what-deleting-a-product-actually-does)
 tombstones the row and scrubs license PII, but never touches `audit`. A scheduled sweep prunes
 rows older than **180 days**, the same cutoff applied to the customer portal's own audit table.
@@ -92,6 +93,25 @@ The blob collector's trail, `blob_gc_log` (every ref it dropped or restored and 
 deleted), follows the same **180-day** cutoff. It is platform-wide, not product-scoped: it has no
 foreign key to `products` (an object's deletion belongs to no single product; a `ref-dropped` row
 names the product whose ref it dropped), and it carries storage keys, never personal data.
+
+## The platform trail
+
+Actions on the platform as a whole, which belong to no product, are recorded in a separate
+table, `platform_audit` (A-12). The KEK re-seal sweep writes one row there per run, with the
+remaining-row counts before and after as JSON; it still writes its per-product `kek.reseal` row
+into each product it touched, so a product's own log keeps showing it. The runtime platform
+settings (A-13) will write there too. Each row has the same actor, action, target and summary
+fields as `audit`, plus `before` and `after` values, which never hold a secret. The same
+**180-day** sweep prunes it.
+
+```http
+GET /manage/api/platform/activity?limit=50&beforeAt=<epoch>&beforeId=<id>
+```
+
+The endpoint is for platform admins only (403 otherwise). It pages newest first, with the same
+`(at, id)` cursor as the product feed, and returns
+`{ items: [{ id, at, actor, action, target, summary, before, after }], nextCursor }`. The
+console's Platform section will show it; until then, call it directly.
 
 ## Reference
 

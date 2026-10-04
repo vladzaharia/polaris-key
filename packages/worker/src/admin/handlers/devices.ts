@@ -37,6 +37,21 @@ export const DEVICE_PAGE_DEFAULT = 50;
 export const DEVICE_PAGE_MAX = 200;
 const MAX_FILTER_LEN = 64;
 
+/** The stored verdict summary, or null when absent or unreadable. */
+function parseVerdict(
+  json: string | null | undefined,
+): Record<string, unknown> | null {
+  if (!json) return null;
+  try {
+    const v = JSON.parse(json) as unknown;
+    return v && typeof v === "object" && !Array.isArray(v)
+      ? (v as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The list-row shape: the license view's, minus fingerprint and facts, plus license + seat. */
 function shapeSummary(d: DeviceRow): Record<string, unknown> {
   return {
@@ -54,6 +69,10 @@ function shapeSummary(d: DeviceRow): Record<string, unknown> {
     // `''` is the stored sentinel for "no license" (NO_LICENSE_ID); on the wire it is null.
     licenseId: d.license_id === "" ? null : d.license_id,
     seatNo: d.seat_no ?? null,
+    // P6-02: the trust level and the last attestation verdict (a summary; never a raw token).
+    trustLevel: d.trust_level === "attested" ? "attested" : "basic",
+    attestedAt: d.attested_at ?? null,
+    lastVerdict: parseVerdict(d.attestation_json),
   };
 }
 

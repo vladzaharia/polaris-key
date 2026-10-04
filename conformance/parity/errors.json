@@ -28,6 +28,24 @@
       "description": "The caller is authenticated but not allowed to do this."
     },
     {
+      "code": "attestation_required",
+      "kind": "wire",
+      "service": "core",
+      "description": "403: the product's device-trust policy requires an attested device for this operation (edge-mint, gated delivery, a commerce claim) and enforces it; this device is at the basic trust level. Only answered with `enforce: true` — in log-only mode the request proceeds and the would-be refusal is audited."
+    },
+    {
+      "code": "attestation_rejected",
+      "kind": "wire",
+      "service": "core",
+      "description": "422 from POST /<p>/devices/attest: the challenge was unknown, used, expired or another device's, or the App Attest object or Play Integrity verdict failed a check. The device's trust level is unchanged."
+    },
+    {
+      "code": "attestation_unavailable",
+      "kind": "wire",
+      "service": "core",
+      "description": "From POST /<p>/devices/attest: 409 when the product is not set up for that attestation kind (no App Attest Team ID or App Store/TestFlight outlet; no Play outlet with a pinned google-service-account credential), 503 when Google's Play Integrity service could not be reached with the product's credential."
+    },
+    {
       "code": "rate_limited",
       "kind": "wire",
       "service": "core",

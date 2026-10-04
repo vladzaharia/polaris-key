@@ -65,6 +65,7 @@ type PackCatalog = Pick<
   | "packChunks"
   | "packPayload"
   | "lazyDeltas"
+  | "lazyDeltaDevices"
   | "pins"
   | "pinnedBy"
   | "embeds"
@@ -483,22 +484,6 @@ export function packCatalog(ctx: {
         if (list) list.push(r);
         else byTo.set(r.to, [r]);
       }
-      const devicesOf = new Map<string, Promise<Map<string, number>>>();
-      const devices = async (deliverable: string, from: string) => {
-        let m = devicesOf.get(deliverable);
-        if (!m) {
-          m = installedBase(
-            db,
-            slug,
-            deliverable,
-            1,
-            now() - HOT_WINDOW_SECONDS,
-            MENU_BASE_SCAN,
-          ).then((rows) => new Map(rows.map((x) => [x.payload, x.devices])));
-          devicesOf.set(deliverable, m);
-        }
-        return (await m).get(from) ?? 0;
-      };
       const out: CatalogLazyDelta[] = [];
       for (const ids of chunked(recordSha256s)) {
         const rows = await db.all<PackRecordRow>(
@@ -532,7 +517,6 @@ export function packCatalog(ctx: {
                 deliverableId: deliverable,
                 to,
                 entry,
-                devices: await devices(deliverable, entry.from),
                 createdAt: r.createdAt,
               });
             }
@@ -540,6 +524,19 @@ export function packCatalog(ctx: {
         }
       }
       return out;
+    },
+
+    async lazyDeltaDevices(bases): Promise<number[]> {
+      // P4-29: the menu's rank, read only on the feed's sign path (the seq hash ignores it).
+      const since = now() - HOT_WINDOW_SECONDS;
+      const byDeliverable = new Map<string, Map<string, number>>();
+      for (const d of new Set(bases.map((b) => b.deliverableId))) {
+        const rows = await installedBase(db, slug, d, 1, since, MENU_BASE_SCAN);
+        byDeliverable.set(d, new Map(rows.map((x) => [x.payload, x.devices])));
+      }
+      return bases.map(
+        (b) => byDeliverable.get(b.deliverableId)?.get(b.from) ?? 0,
+      );
     },
 
     async pins(appReleaseId) {

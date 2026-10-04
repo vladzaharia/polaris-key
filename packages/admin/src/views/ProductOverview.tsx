@@ -405,7 +405,7 @@ function SigningCard({
         </dl>
         <pre className="overflow-x-auto rounded-md border border-border bg-muted p-3 text-xs">
           <code>
-            {trustJson === "{}" ? "// public key not available yet" : trustJson}
+            {trustJson === "{}" ? "// public key not available" : trustJson}
           </code>
         </pre>
       </CardContent>

@@ -240,7 +240,7 @@ packs included: a deliverable's own entry, else `transports.packs` for a pack, e
 default. v1 acts on three: `pkey-cdn` and `web` (the blob route above) and `embedded` (a
 baseline inside the app build). Any other transport (`apple-ba`, `play-pad`, `steam-depot`,
 `msix-optional`, `flatpak-ext`) is stored and listed with `supported: false` — the console's
-outlet list and matrix say "not supported yet" — and nothing is derived or served for it; a
+matrix labels it "not delivered by Polaris Key" — and nothing is derived or served for it; a
 device whose outlet names one plans nothing for that pack (`plan.transport_unsupported`),
 never a silent CDN fallback. [Availability](/docs/services/distribution/availability/) has
 when each is live.

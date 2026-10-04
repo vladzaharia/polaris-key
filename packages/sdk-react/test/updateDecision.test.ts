@@ -451,6 +451,64 @@ describe("BrowserAdapter.decideUpdate() — the feed's delta menu (plans/P4-29.m
     }
     expect(got).toEqual([menu, null]);
   });
+
+  it("seeds the pack facet at construction with the most recently committed feed's menu (P4-29 follow-up)", async () => {
+    const menu = {
+      ["b".repeat(64)]: [
+        {
+          from: "c".repeat(64),
+          method: "zstd-patch-from",
+          scope: "payload" as const,
+          memBytes: 2048,
+          artifact: { sha256: "d".repeat(64), bytes: 512 },
+        },
+      ],
+    };
+    const loaders: (() => Promise<unknown>)[] = [];
+    const packs = {
+      contentInput: async () => null,
+      recordRevocations: async () => undefined,
+      recordFeedDeltas: () => undefined,
+      seedFeedDeltas: (load: () => Promise<unknown>) => void loaders.push(load),
+    };
+    const older = (
+      await signedPair({ issuedAt: 1_699_999_000, expiresAt: 1_699_999_900 })
+    ).feedJws;
+    const newer = (
+      await signedPair({
+        channel: "beta",
+        deltas: menu,
+      } as Partial<ChannelFeedDoc>)
+    ).feedJws;
+    const cases: [Record<string, string> | undefined, unknown][] = [
+      // The newest committed feed's menu, stale or not, whatever its channel.
+      [{ stable: older, beta: newer }, menu],
+      // A newest feed without a menu: none.
+      [{ stable: older }, null],
+      // A stored feed that does not verify (here: filed under the wrong channel) is skipped.
+      [{ stable: newer }, null],
+      // No cache: none.
+      [undefined, null],
+    ];
+    for (const [feeds, want] of cases) {
+      loaders.length = 0;
+      adapterFor(
+        server(),
+        memoryStore({
+          deviceId: "dev_1",
+          ...(feeds ? { cache: { v: 3, feeds } } : {}),
+        }),
+        {
+          update: {
+            pinnedReleaseKeys: { [releaseKey.kid]: releaseKey.raw },
+            packs,
+          },
+        },
+      );
+      expect(loaders).toHaveLength(1);
+      expect(await loaders[0]!()).toEqual(want);
+    }
+  });
 });
 
 describe("BrowserAdapter.decideUpdate() — the effective clock", () => {

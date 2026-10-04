@@ -2425,6 +2425,38 @@ Residuals, stated rather than defended:
   128 MB (JS heap, the runtime, the index reads before the encode) is an inference, not a
   measurement, until the live check at the cap (RUNBOOK "Lazy deltas").
 
+### Platform deploy identity and the platform audit trail (A-11, A-12)
+
+The console's Platform section (notes/S-13) starts with two read surfaces, both behind the
+existing admin dispatcher (session, `PLATFORM_ADMIN_GROUP`, the per-subject limiter, CSRF on
+mutations) and a second platform-admin check in `admin/handlers/platform.ts`:
+`GET /manage/api/platform/{version,deployment}` (A-11) and `/activity` (A-12). There is no new
+privilege level.
+
+- **Deploy metadata is not secret.** The release tag, commit, Actions run URL, Cloudflare version
+  ids, the applied-migration list, missing required indexes and binding presence are visible to
+  anyone who can read the repository's Actions tab or the Cloudflare dashboard, and the binding
+  list reports presence as a boolean, never a resource id. They help an operator, not an
+  attacker. `PKEY_RELEASE_TAG` and `PKEY_GIT_SHA` are plain `--var`s, so a hand deploy can set
+  anything; the Worker validates both against a strict pattern and answers `null` rather than
+  echo a malformed value, and the unforgeable half is the `CF_VERSION_METADATA` binding.
+- **`platform_deploys` has one writer, outside the Worker.** The final `deploy.yml` step inserts
+  one row with the deploy token, which already holds D1 edit because it applies the migrations:
+  no new credential, no new permission. `wrangler d1 execute --command` takes no bind
+  parameters, so `scripts/record-deploy.mjs` checks every value against a strict pattern before
+  quoting it and writes nothing when one fails. The step is `continue-on-error` and runs last, so
+  it cannot fail or reorder a deploy. No Worker path writes the table, and a forged row (which
+  needs the D1-edit token) misleads only the history view, never what is deployed or served.
+- **Audit integrity.** `platform_audit` is append-only from the Worker's side: one writer,
+  `platformAudit()`, whose actor comes from the verified session and whose `at` is server time,
+  and no route that updates or deletes a row. The only delete is the nightly retention step
+  (180 days, the same as `audit`). As with `audit`, anyone holding the D1-edit deploy token or
+  the dashboard can rewrite it; the trail is evidence against a console session, not against
+  the account. `before_json` / `after_json` must never hold a secret: the KEK re-seal sweep
+  records row counts only (a test asserts no KEK value appears), and A-13's settings registry
+  holds no secret by construction. The per-product `kek.reseal` rows stay, so each product's own
+  log still shows the sweep.
+
 ### The compatibility matrix and the device simulator (P4-15)
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
@@ -2435,8 +2467,10 @@ P4-15 adds two read-only routes to the console's admin API: `GET …/release/com
   `simulate` must hand the device a signed feed. It signs the document `documentFor` composes with
   an **ephemeral** Ed25519 key generated per request (WebCrypto), and the simulated device trusts
   that ephemeral public key for the feed. The module never reads the product's signing key: the
-  admin handler passes it only the product's slug and no `env`, so nothing on this path can unseal
-  a key, and a test asserts no other product field is read. The console therefore cannot be used as
+  admin handler passes it only the product's slug and no `env` (since the P4-29 follow-up, also the
+  `LAZY_DELTAS` switch's string value, so the simulated document lists the delta menu; a string,
+  never a binding), so nothing on this path can unseal a key, and a test asserts no other product
+  field is read. The console therefore cannot be used as
   a product-key signing oracle, and the product key is not exercised on every console click. The
   ephemeral key is dropped with the request; the JWS is never stored, returned or served, and the
   channel's `seq` does not move.
@@ -3059,6 +3093,79 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### Device trust levels: App Attest and Play Integrity (P6-02)
+
+A device is `basic` or `attested` (`devices.trust_level`). `attested` means the device passed Apple
+App Attest or Google Play Integrity against a challenge the Worker issued to it
+(`core/attestation.ts`); an operator's trust policy can require it for edge-mint, gated delivery
+and the commerce claim (`core/deviceTrust.ts`). What it buys: under open registration a script can
+mint any number of device tokens, but it cannot cheaply produce a Secure-Enclave-backed attestation
+for the product's App ID or a Play verdict for its package on a device meeting device integrity.
+What it does not buy: protection of the client itself (report §12), or anything on web, desktop or
+sideloaded builds, which cannot attest and stay `basic` by design.
+
+- **Fail closed on verification, fail open on policy.** Only a verdict that passed every check
+  raises a device; a refused one is recorded (`attestation_json`) and changes nothing, so a bad
+  attestation can neither raise nor lower a level. Policy defaults to `basic` everywhere, a corrupt
+  policy reads as the default, and a policy requiring `attested` only audits
+  (`device.trust.would_refuse`, deduplicated per device and operation per hour through a KV marker)
+  until the operator sets `enforce: true`. An outage of Google's decode endpoint is `503`, never
+  a rejection and never an attestation.
+- **Who chooses what is verified.** The App Attest RP ID is `<TeamID>.<bundleId>`: the Team ID is
+  operator-owned (the trust policy, written only by the platform-admin `trust-policy` resource, never
+  by a manifest), the bundle ids come from the live `app-store`/`testflight` outlets' identities
+  (manifest-owned). A repo writer can therefore name another bundle id, but an attestation for it
+  still needs a genuine install of an app of the operator's own team. The Play package and the
+  credential come from Distribution's own pin check (`resolvePlaySetup` through
+  `Delivery.attestationTargets`): an unpinned or mispinned `google-service-account` credential is
+  never used, and nothing is sent to Google. The root of trust for App Attest is the pinned Apple
+  App Attestation Root CA in source (fingerprint pinned by a test); test roots enter only through a
+  handler argument production dispatch never passes.
+- **Binding.** The client feeds the platform API
+  `requestHash = base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`, recomputed by
+  the Worker from the stored binding, so a challenge or a verdict obtained for one device or product
+  cannot be redeemed for another. The challenge is consumed before verification (pass or fail) and
+  expires after five minutes (checked in code, not only by the KV TTL).
+- **A new token is a new install.** The device id is client-chosen. A keyless re-registration or a
+  licence (re)bind of an existing id mints a token without the old one, so it resets the level to
+  `basic` (`resetDeviceTrust`); otherwise anyone who learned an attested, licence-free device's id
+  could re-register it and inherit `attested`. A token rotation, which presents the old token,
+  keeps the level.
+- **Custody.** `core/attestation.ts` is the one Core file on the token-helper allowlist
+  (`test/outletCredentialReach.test.ts`, `TOKENS_IMPORT_ALLOW_FILES`): it calls `googleAccessToken`
+  at the Play Integrity scope for the pinned credential, never `openOutletCredential`, and only after
+  the device token and the per-device limit (`attest`, 4/hour, fail-closed) have passed, so an
+  unauthenticated caller cannot make it open (and audit) a credential. Raw attestation objects and
+  integrity tokens are never stored or logged; `attestation_json` keeps a verdict summary and the App
+  Attest public key (for future assertions).
+- **Parser surface.** The attestation object is attacker-supplied CBOR wrapping DER certificates.
+  `core/cbor.ts` (definite lengths, bounded depth, item count and sizes) and the Worker's one X.509 verifier, P6-01's `core/x509.ts` (strict DER, ECDSA P-256/P-384 only, the root pinned by bytes, an unknown critical extension fails the chain beyond the App Attest nonce OID, validity checked at the request time, the leaf's keyUsage allowing digitalSignature when present) are strict subsets, run identically in workerd
+  (`test-workerd/attest.test.ts`), and evaluate no code.
+- **Residuals.** (1) KV has no compare-and-delete, so two simultaneous redemptions of one challenge
+  can both read it; both still need a genuine attestation bound to the same device and challenge,
+  so the effect is a duplicated verdict, not a forged one. (2) There is no revocation for Apple's
+  attestation chain and no re-attestation schedule: a device attested once stays `attested` until a
+  new token resets it, even if it is later rooted or jailbroken. Assertions on sensitive requests
+  (`generateAssertion`, counter checks) are the planned answer and are out of this package. (3) Play
+  Integrity's default quota (10,000 decodes a day per app) is shared by every device of the product;
+  the per-device budget bounds one device, not a botnet of registered devices, whose exhaustion of
+  the quota degrades attestation to `503` (devices stay `basic`; log-only policies are unaffected).
+  (4) `basic` is not suspicious: enforcing `attested` for an operation removes it from every web,
+  desktop and sideloaded install.
+  (5) `attested` rides on a bearer token. The level is bound to the device row, which is reached
+  with the `pkeyt_` token; anyone who lifts an attested device's token (from its store, a backup
+  of a rooted device, or a debugger) presents an attested device from anywhere, until the token is
+  rotated away or the device re-registered. Per-request App Attest assertions (and a Play request
+  per sensitive call) are the fix; they are out of this package. (6) One handset can attest many
+  device ids. The id is client-chosen and the `attest` budget (4/hour) is per device id, so a
+  genuine handset can register and attest any number of ids in turn; attestation proves "a
+  genuine install exists", not "one device per id". Bounding attestations per App Attest key or per
+  Play device would need state this package does not keep.
+- **Play testing responses.** A verdict Google marks `testingDetails.isTestingResponse` is a license
+  tester's configured answer, not a check of the device, and is refused (`testing_response`)
+  unless the operator sets `playIntegrity.allowTestingResponses: true` for internal testing; the
+  flag is recorded in the verdict summary either way.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -3364,7 +3471,7 @@ allowlist in `test/outletCredentialReach.test.ts` (it must say why that file nee
 credential, and the open must stay audited); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
-file outside its allowlists; or a new way to obtain a device token or licence without an
+file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for
@@ -3377,4 +3484,9 @@ pack-type handlers (P4-16), a handler starts evaluating what it reads (a script 
 reviver, a resource loader, a plural-formula evaluator) or resolves a path from payload contents
 other than by exact index match, a type joins `MOUNTED_PACK_TYPES`, or a rule of the `godot.zip`
 reader is relaxed in the CLI or on a device; or, for the client updater plugins (P5-07), a new
-updater backend, or a change to Disable Library Validation or the signing defaults.
+updater backend, or a change to Disable Library Validation or the signing defaults; or, for the
+Platform section (A-11, A-12), a Worker path starts writing `platform_deploys`, the deploy record
+step gains a credential or a permission beyond the deploy token's D1 edit, a platform route starts
+reporting a binding's resource id or any secret-derived value, a route updates or deletes a
+`platform_audit` row, or a writer puts a secret (or a hash or length of one) in `before_json` or
+`after_json`.

@@ -57,7 +57,11 @@ import {
 } from "@polaris-key/client-core/version";
 import { base64UrlDecode } from "@polaris-key/jws";
 import type { Db, Env } from "../../core/platform.js";
-import { composeFeedDeltas, type ComposedFeedDeltas } from "./feedDeltas.js";
+import {
+  composeFeedDeltas,
+  type ComposedFeedDeltas,
+  type RankedFeedDeltas,
+} from "./feedDeltas.js";
 import type {
   AvailabilityRecord,
   DeliveryOutlet,
@@ -112,8 +116,12 @@ export interface ComposedFeed {
   versionScheme: FeedVersionScheme;
   targets: FeedTarget[];
   content: ComposedPackParts;
-  /** The delta menu's candidates (P4-29, `feedDeltas.ts`); absent or null: no menu. */
+  /** The delta menu's candidate set (P4-29, `feedDeltas.ts`), which the seq hash covers; absent
+   *  or null: no menu. */
   deltas?: ComposedFeedDeltas | null;
+  /** The ranked menu `documentFor` lists (`rankFeedDeltas`), set only on the sign path; absent
+   *  or null: the document lists no menu. */
+  menu?: RankedFeedDeltas | null;
 }
 
 export interface ComposeContext {

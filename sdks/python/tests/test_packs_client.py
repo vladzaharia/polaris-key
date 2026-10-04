@@ -1,4 +1,4 @@
-# @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.delegation packs.provides
+# @pkey-feature packs.state packs.handlers packs.record packs.revoke update.content packs.delegation packs.provides packs.delta.feed
 """``client.update.packs`` end to end against a fake byte server (P4-07 acceptance; a port of
 ``@polaris-key/node``'s ``test/packs.test.ts``): a ``files.tree`` pack installed from its pinned
 record into the platform data directory, updated by the file strategy, resumed after a dropped
@@ -15,7 +15,7 @@ import os
 import re
 import sys
 import time
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import httpx
 import pytest
@@ -23,6 +23,9 @@ import pytest
 from helpers import BASE_URL, TOKEN, make_client
 from pack_fixtures import (
     PRODUCT,
+    PROBE_BASE,
+    PROBE_FRAME,
+    PROBE_TARGET,
     content_key_pair,
     delegation_for,
     PRODUCT_TRUST,
@@ -32,12 +35,13 @@ from pack_fixtures import (
     revocation_for,
     sign_feed_doc,
     sign_release_doc,
+    sha,
     stamp_for,
     tree_pack,
 )
 from polaris_key.devices.store import InMemoryStore
 from polaris_key.update import UpdateClientOptions
-from polaris_key.update.packs import PackError, pack_set_id
+from polaris_key.update.packs import PackError, PackHandler, pack_set_id
 from polaris_key.update.packs.client import EmbeddedPack, PacksOptions
 from polaris_key.update.packs.storage import DirPackStorage, measure_file
 
@@ -167,11 +171,14 @@ def client(
     embedded: Optional[List[Any]] = None,
     token: bool = True,
     stamp_doc: Optional[Dict[str, Any]] = None,
+    store: Optional[InMemoryStore] = None,
+    handlers: Optional[List[Any]] = None,
 ) -> Any:
     stamp_path = work / f"stamp-{'-'.join(p.version for p in stamp)}.json"
     body = stamp_doc if stamp_doc is not None else stamp_for(*stamp)
     stamp_path.write_text(json.dumps({"format": "pkey-content/1", **body}))
-    store = InMemoryStore(PRODUCT)
+    if store is None:
+        store = InMemoryStore(PRODUCT)
     if token:
         store.set_token(TOKEN)
     c = make_client(
@@ -184,7 +191,10 @@ def client(
             pinned_release_keys=RELEASE_KEYS,
             outlet="direct",
             packs=PacksOptions(
-                content_stamp=str(stamp_path), embedded=embedded or (), exclude_from_backup=False
+                content_stamp=str(stamp_path),
+                embedded=embedded or (),
+                exclude_from_backup=False,
+                handlers=handlers or (),
             ),
         ),
     )
@@ -620,3 +630,169 @@ def test_a_held_release_signed_under_a_delegation_is_refused_through_the_packs_c
     (install,) = c.update.packs.ensure_releases([target])
     assert install["delegation"] == d["jws"]
     c.close()
+
+
+# ── plans/P4-29.md §2.4: the feed's delta menu through the client ───────────────────────────
+
+_FD_PACK = "djdl.levels"
+_BLOB = PackHandler(type="custom.blob", layout="container", activation="hot", supports=lambda fv: fv == 1)
+
+
+class _Container:
+    """A one-file container release over ``payload``, with no record delta (``FakeServer``
+    serves it like a ``TreePack``)."""
+
+    def __init__(self, version: str, seq: int, payload: bytes) -> None:
+        def h(b: bytes) -> str:
+            return hashlib.sha256(b).hexdigest()
+
+        index = json.dumps(
+            {
+                "format": "pkey-files/1",
+                "layout": "container",
+                "payload": {"size": len(payload), "sha256": h(payload)},
+                "files": [
+                    {
+                        "path": "data.bin",
+                        "offset": 0,
+                        "size": len(payload),
+                        "sha256": h(payload),
+                        "blob": {"sha256": h(payload), "bytes": len(payload), "codec": "none"},
+                    }
+                ],
+            },
+            separators=(",", ":"),
+        ).encode()
+        gaps = b""
+        self.pack_id, self.version, self.seq = _FD_PACK, version, seq
+        self.jws = sign_release_doc(
+            {
+                "schemaVersion": 1,
+                "aud": PRODUCT,
+                "deliverable": _FD_PACK,
+                "kind": "pack",
+                "version": version,
+                "seq": seq,
+                "issuedAt": 1759300000 + seq,
+                "type": "custom.blob",
+                "formatVersion": 1,
+                "handler": {"activation": "hot"},
+                "variants": [
+                    {
+                        "variant": {},
+                        "payload": {"size": len(payload), "sha256": h(payload)},
+                        "full": {
+                            "sha256": h(payload),
+                            "bytes": len(payload),
+                            "size": len(payload),
+                            "codec": "none",
+                        },
+                        "files": {
+                            "format": "pkey-files/1",
+                            "layout": "container",
+                            "sha256": h(index),
+                            "bytes": len(index),
+                            "size": len(index),
+                            "codec": "none",
+                            "gaps": {"sha256": h(gaps), "bytes": 0, "size": 0, "codec": "none"},
+                        },
+                    }
+                ],
+            }
+        )
+        self.record_sha256 = h(self.jws.encode())
+        self.objects = {h(payload): payload, h(index): index, h(gaps): gaps}
+
+
+def _feed_with_menu() -> str:
+    now = int(time.time())
+    platform = {"darwin": "macos", "win32": "windows"}.get(sys.platform, "linux")
+    return sign_feed_doc(
+        {
+            "schemaVersion": 1,
+            "iss": "key.plrs.im",
+            "aud": PRODUCT,
+            "channel": "stable",
+            "selector": {},
+            "seq": 1,
+            "issuedAt": now - 10,
+            "expiresAt": now + 800,
+            "app": {
+                "deliverable": "app",
+                "versionScheme": "semver",
+                "targets": [
+                    {
+                        "platform": platform,
+                        "release": {"sha256": "a" * 64, "seq": 10, "version": "1.0.0"},
+                        "floor": None,
+                        "critical": False,
+                        "outlets": {
+                            "direct": {"kind": "direct", "live": {"version": "1.0.0", "seq": 10}, "halted": False}
+                        },
+                    }
+                ],
+            },
+            "deltas": {
+                sha(PROBE_TARGET): [
+                    {
+                        "from": sha(PROBE_BASE),
+                        "method": "zstd-patch-from",
+                        "scope": "payload",
+                        "memBytes": len(PROBE_BASE) + len(PROBE_TARGET),
+                        "artifact": {"sha256": sha(PROBE_FRAME), "bytes": len(PROBE_FRAME)},
+                    }
+                ]
+            },
+        }
+    )
+
+
+def _feed_delta_setup(srv: FakeServer) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    v1 = _Container("1.0.0", 1, PROBE_BASE)
+    v2 = _Container("1.1.0", 2, PROBE_TARGET)
+    v2.objects[sha(PROBE_FRAME)] = PROBE_FRAME
+    srv.packs = [v1, v2]  # type: ignore[list-item]
+    srv.feed = _feed_with_menu()
+    stamp_doc = {
+        "contentApi": 1,
+        "pins": [{"pack": _FD_PACK, "release": {"sha256": v1.record_sha256, "seq": 1, "version": "1.0.0"}}],
+        "expects": [{"pack": _FD_PACK, "required": True, "delivery": "essential"}],
+    }
+    v2_target = {"pack": _FD_PACK, "release": {"sha256": v2.record_sha256, "seq": 2, "version": "1.1.0"}}
+    return stamp_doc, v2_target
+
+
+def _blob_paths(srv: FakeServer) -> List[str]:
+    return [s["path"].rsplit("/", 1)[-1] for s in srv.blob_requests()]
+
+
+def test_plans_the_committed_feeds_lazy_delta_after_update_feed(srv: FakeServer, tmp_path: Any) -> None:
+    stamp_doc, v2_target = _feed_delta_setup(srv)
+    c = client(srv, tmp_path, [], stamp_doc=stamp_doc, handlers=[_BLOB])
+    c.update.packs.ensure([_FD_PACK])
+    c.update.feed()
+    srv.seen = []
+    (install,) = c.update.packs.ensure_releases([v2_target])
+    assert install["payloadSha256"] == sha(PROBE_TARGET)
+    assert _blob_paths(srv) == [sha(PROBE_FRAME)]
+    c.close()
+
+
+def test_reads_the_committed_feeds_menu_from_the_cache_when_the_engine_starts(
+    srv: FakeServer, tmp_path: Any
+) -> None:
+    # Before any check (offline).
+    stamp_doc, v2_target = _feed_delta_setup(srv)
+    store = InMemoryStore(PRODUCT)
+    first = client(srv, tmp_path, [], stamp_doc=stamp_doc, handlers=[_BLOB], store=store)
+    first.update.packs.ensure([_FD_PACK])
+    first.update.feed()
+    first.close()
+    # The Worker's feed is gone; the next process has only the committed feed.
+    srv.feed = None
+    srv.seen = []
+    again = client(srv, tmp_path, [], stamp_doc=stamp_doc, handlers=[_BLOB], store=store)
+    (install,) = again.update.packs.ensure_releases([v2_target])
+    assert install["payloadSha256"] == sha(PROBE_TARGET)
+    assert _blob_paths(srv) == [sha(PROBE_FRAME)]
+    again.close()

@@ -1,11 +1,11 @@
 extends RefCounted
-# @pkey-feature devices.fingerprint devices.facts devices.register devices.manage devices.report
+# @pkey-feature devices.fingerprint devices.facts devices.register devices.manage devices.report devices.attest
 # The devices suite (P1-05): the fingerprint readers over committed captures, the facts, and
 # PolarisKey.devices against PKeyFakeServer. Each group is a file under res://tests/devices/
 # with `func run(t: PKeyTestContext) -> void` (it may await); the suite ends with a coverage
 # check that every group ran. This machine's own hardware is the `platform` suite's.
 
-const GROUPS := ["parsers", "facts", "service"]
+const GROUPS := ["parsers", "facts", "service", "attest"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

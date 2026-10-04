@@ -92,6 +92,10 @@ const CONFIG_ENV_NEVER := 2
 ## {id, label?, macos?, windows?, linux?} naming a path to test on that OS. Nothing else is ever
 ## enumerated.
 @export var probes: Array[Dictionary] = []
+## The Google Cloud project number Play Integrity tokens are requested for
+## (PolarisKey.devices.attest() on a Play install). Empty: the one the Worker's attestation
+## challenge carries (`play.cloudProjectNumber`, set by the operator). Digits only.
+@export var play_cloud_project_number := ""
 
 @export_group("Config")
 ## The config environment layer (`PKEY_CONFIG_*` variables and `--pkey-config key=value`

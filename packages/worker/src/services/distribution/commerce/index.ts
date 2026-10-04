@@ -34,6 +34,8 @@ import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, json, wireError } from "../../../core/errors.js";
 import { bearer } from "../../../core/platform.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
+import { trustRefusal } from "../../../core/deviceTrust.js";
+import type { DeviceRow } from "../../../core/data.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { isStore, type Store } from "../../../core/storeGrants.js";
@@ -219,6 +221,8 @@ function claimed(
 
 interface DeviceLicence {
   licenseId: string;
+  /** The calling device, for the trust policy's `commerceClaim` gate (P6-02). */
+  device: DeviceRow;
 }
 
 /** The caller's usable licence, or the refusal: 401 for a bad token or an unusable licence,
@@ -237,7 +241,7 @@ async function callerLicence(
   if (valid.license === null) return refusal("no_license");
   if (!licenseUsable(valid.license, ctx.now))
     return wireError(401, "unauthorized");
-  return { licenseId: valid.license.id };
+  return { licenseId: valid.license.id, device: valid.device };
 }
 
 // ── binding ──────────────────────────────────────────────────────────────────────────────────
@@ -379,6 +383,18 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
     ))
   )
     return errorResponse(429, "rate_limited", "too many claims");
+  // P6-02 — the operator's device-trust policy. Log-only unless enforced: a basic device the
+  // policy would refuse is audited and its claim proceeds (`core/deviceTrust.ts`).
+  const untrusted = await trustRefusal(
+    env,
+    db,
+    product,
+    who.device,
+    "commerceClaim",
+    now,
+    "wire",
+  );
+  if (untrusted) return untrusted;
   const body = jsonObject(raw);
   if (!body || !isStore(body.store))
     return bad(

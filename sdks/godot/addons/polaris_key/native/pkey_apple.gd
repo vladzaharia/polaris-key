@@ -23,6 +23,7 @@ extends Node
 ##   r = await apple.finish(r.detail.transaction.id)
 ##   apple.transaction_updated.connect(func(jws, t): …)   # refunds, Ask to Buy, other devices
 ##   r = await apple.ensure_packs([{"id": "foes-c3", "path": "foes/content.pck"}])
+##   r = await apple.app_attest(request_hash, stored_key_id)   # P6-02; via PolarisKey.devices.attest()
 ##
 ## `finish()` is called only after the server has recorded the purchase. A purchase is confirmed
 ## by its own result: `entitlements()` lags it by about a second (S-09). Transaction ids are
@@ -248,7 +249,7 @@ func _process(_delta: float) -> void:
 # ── Typed calls (each a PKeyResult; the native reply is `detail`) ─────────────────────────────
 
 ## The plugin's view of this process: {protocol, platform, appDistributor, appDistributorWeb,
-## managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID}.
+## managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID, appAttest}.
 func capabilities() -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.OUTLET_DETECT, call_sync({"op": "capabilities"}))
 
@@ -345,6 +346,32 @@ func watch_pack(id: String) -> PKeyResult:
 
 func unwatch_pack(id: String) -> PKeyResult:
 	return await _async(PKeyConstants.Feature.PACKS_TRANSPORT_APPLE, {"op": "packs_unwatch", "id": id})
+
+
+# ── App Attest (P6-02; PolarisKey.devices.attest() drives these) ───────────────────────────────
+
+## Whether App Attest runs here: success with detail.supported, or unsupported `runtime` (off iOS,
+## the simulator, an app extension) or `dependency` (no GDExtension).
+func app_attest_supported() -> PKeyResult:
+	return _wrap(PKeyConstants.Feature.DEVICES_ATTEST, call_sync({"op": "app_attest_supported"}))
+
+
+## Attest `key_id` ("" generates a key first) with clientDataHash = SHA-256(UTF-8(request_hash)):
+## detail {keyId, attestation (standard base64), generated, ms}. A failure is `platform-error` with
+## detail.error `invalid_key` (the key died with a reinstall, migration or restore: drop it and
+## attest again with ""), `server_unavailable` (retry later with the SAME key; detail.keyId holds a
+## generated one), `invalid_input`, `system_failure` or `timeout`.
+func app_attest(request_hash: String, key_id := "") -> PKeyResult:
+	var q := {"op": "app_attest_attest", "requestHash": request_hash}
+	if key_id != "":
+		q["keyId"] = key_id
+	return await _async(PKeyConstants.Feature.DEVICES_ATTEST, q, 45.0)
+
+
+## An assertion by an attested key over SHA-256(UTF-8(client_data)): detail {keyId, assertion}.
+## Stored for later use; the Worker does not ask for assertions yet.
+func app_attest_assert(key_id: String, client_data: String) -> PKeyResult:
+	return await _async(PKeyConstants.Feature.DEVICES_ATTEST, {"op": "app_attest_assert", "keyId": key_id, "clientData": client_data}, 45.0)
 
 
 func _async(feature: String, q: Dictionary, wait_s := -1.0) -> PKeyResult:
