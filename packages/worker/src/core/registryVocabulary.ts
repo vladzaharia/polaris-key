@@ -23,9 +23,7 @@ export const REGISTRY_TOKEN_SCOPES = ["read", "publish"] as const;
 export type RegistryTokenScope = (typeof REGISTRY_TOKEN_SCOPES)[number];
 
 /** The scopes a mint accepts today. */
-export const MINTABLE_REGISTRY_SCOPES: readonly RegistryTokenScope[] = [
-  "read",
-];
+export const MINTABLE_REGISTRY_SCOPES: readonly RegistryTokenScope[] = ["read"];
 
 /** How a token is presented: in `Authorization` (every client), or in the Godot editor's URL. */
 export type RegistryTokenPresentation = "header" | "url";

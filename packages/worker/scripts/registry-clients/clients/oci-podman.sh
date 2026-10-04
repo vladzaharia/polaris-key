@@ -7,6 +7,13 @@ need podman
 store="$(mktemp -d)"
 p() { podman --root "$store/root" --runroot "$store/run" "$@"; }
 trap 'p rmi -af >/dev/null 2>&1 || true; rm -rf "$store" 2>/dev/null || true' EXIT
+# F-21: against an authenticated feed, log in with the registry token (a throwaway auth file).
+if [ -n "${REGISTRY_AUTH:-}" ]; then
+  export REGISTRY_AUTH_FILE="$store/auth.json"
+  if echo "$PKEY_REGISTRY_TOKEN" | p login --tls-verify=false -u __token__ --password-stdin "$HOSTPORT" >/dev/null; then
+    ok "podman login with the registry token"
+  else bad "podman login"; fi
+fi
 
 for platform in linux/amd64 linux/arm64; do
   p rmi -af >/dev/null 2>&1 || true

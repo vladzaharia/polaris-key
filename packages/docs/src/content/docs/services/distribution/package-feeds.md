@@ -25,8 +25,10 @@ the owner.
 | OCI       | `https://pkg.plrs.im/v2/<owner>/…`         | docker, podman, crane                      |
 | Godot     | `https://pkg.plrs.im/godot/<owner>/`       | the Godot editor's asset library, GodotEnv |
 
-`GET /` is a static page naming the host, and `GET /v2/` is OCI's base answer (`200`,
-`Docker-Distribution-API-Version: registry/2.0`). Cargo, Go and NuGet names are reserved and
+`GET /` is a static page naming the host, and `GET /v2/` is OCI's base answer
+(`Docker-Distribution-API-Version: registry/2.0`): `200` to a request bearing a valid pull token,
+and the standard `401` Bearer challenge naming `/v2/token` to any other once the deployment has its
+registry token key set (before that, always `200`). Cargo, Go and NuGet names are reserved and
 answer the not-found.
 
 ## What the host promises
@@ -57,11 +59,35 @@ Every read runs one access check before the edge cache is consulted:
 3. the access mode: the stricter of the feed's mode and the package's delivery access
    (`public`, `authenticated`, `licensed`, `entitled`).
 
-`public` feeds are open to everyone. Any other mode answers the client's native `401`
-(`WWW-Authenticate: Basic` for npm, PyPI, Maven, Swift and Godot; OCI's `Bearer` challenge),
-because registry credentials are not issued yet. Settings are held for 30 seconds per isolate,
-so turning a feed off or tightening its mode reaches every answer within that window, even one
-the edge has cached as immutable.
+`public` feeds are open to everyone, and no credential is ever looked up for them. Every other
+mode reads the request's **registry token** (`pkeyr_…`) and judges who it belongs to:
+
+| The token is                                                                             | `authenticated`, `licensed` | `entitled`                                  |
+| ---------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------- |
+| absent, malformed, unknown, expired, revoked, another owner's, or outside its feeds      | `401`, native challenge     | `401`, native challenge                     |
+| bound to the owner (minted in the console), or one of the owner's CI tokens (`pkeyci_…`) | admitted                    | admitted                                    |
+| bound to a licence (minted in the portal, or by an operator for a licensee)              | admitted while it is active | also needs the package's delivery gate flag |
+
+A refused licence token is `403` (`forbidden`; OCI `DENIED`; Swift `problem+json`). The native
+challenge is `WWW-Authenticate: Basic realm="pkg.plrs.im"` for npm, PyPI, Maven, Swift and Godot,
+and OCI's `Bearer realm="https://pkg.plrs.im/v2/token",service=…,scope=…`. Device tokens
+(`pkeyt_…`) and licence keys (`pkey_…`) are never registry credentials.
+
+Each client sends the token its own way: Bearer for npm, pnpm, Yarn, Bun and SwiftPM (after
+`swift package-registry login`); Basic `__token__:<token>` for pip, uv, Poetry, Gradle and Maven;
+OCI clients run `docker login pkg.plrs.im -u __token__` and trade it at `/v2/token` for a
+five-minute pull token. The Godot editor sends no credentials, so a **Godot editor URL** token
+(read-only, Godot only) goes in its URL: `https://pkg.plrs.im/godot/<owner>/t/<token>/…`. The
+setup for each client is on [Installing from the feeds](/docs/build/install-from-feeds/#private-feeds).
+
+Every token expires (at most a year), is bound to one owner and is stored only as a hash. A
+revoked token, a disabled licence, a tightened feed and a deleted product all take effect within
+30 seconds. A credentialed answer is always `private, no-store` and never enters the edge cache.
+docker, SwiftPM and netrc keep one credential per registry host, so one machine can hold a token
+for only one owner on `pkg.plrs.im` for those clients.
+
+Settings are held for 30 seconds per isolate, so turning a feed off or tightening its mode
+reaches every answer within that window, even one the edge has cached as immutable.
 
 ## Caching
 
@@ -179,7 +205,7 @@ Each snippet uses a strict router, so the feed is the only index asked for its n
 | uv            | `[[tool.uv.index]]` with `explicit = true`, plus a `[tool.uv.sources]` entry per project                                                  |
 | Poetry        | `[[tool.poetry.source]]` with `priority = "explicit"`, plus `source = "<name>"` per dependency                                            |
 | pip           | `--index-url` (or `pip.conf` `index-url`); never `--extra-index-url`, which has no routing and lets a public package of the same name win |
-| Credentials   | none while feeds are public; tokens come with registry credentials (F-21)                                                                 |
+| Credentials   | none for a public feed; for any other, Basic `__token__:<token>` (`authenticate = "always"` for uv; `http-basic` for Poetry)              |
 
 ## Swift (SwiftPM)
 
@@ -198,7 +224,8 @@ case-insensitive.
 
 Every answer carries `Content-Version: 1`, and every error is `application/problem+json`. An
 `Accept` header naming an invalid registry version is 400 and an unsupported one 415.
-`swift package-registry login` answers 501 until registry credentials exist, and publishing with
+`POST …/login` (`swift package-registry login --token`) answers `200` for a registry token valid
+for this owner and `401` otherwise, and publishing with
 `swift package-registry publish` is not accepted: releases arrive through
 `pkey release publish`.
 
@@ -310,13 +337,13 @@ crane pull --platform linux/arm64 pkg.plrs.im/polaris-key/tools/pkey:beta pkey.t
 
 **What it answers.** Pulls only, anonymous while the feed is public:
 
-| Request                                                    | Answer                                                                                                                                           |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`/`HEAD /v2/<owner>/<repository>/manifests/<tag>`      | the manifest or image index the tag points to, with its own media type and `Docker-Content-Digest`; cached for 60 s                              |
-| `GET`/`HEAD /v2/<owner>/<repository>/manifests/sha256:<…>` | the same bytes by digest, immutable                                                                                                              |
-| `GET`/`HEAD /v2/<owner>/<repository>/blobs/sha256:<…>`     | a config or layer, immutable, with `Range` (206) and `If-Range`; only digests this repository published                                          |
-| `GET /v2/<owner>/<repository>/tags/list[?n=&last=]`        | the tags in lexical order; with `n`, a `Link: …; rel="next"` header names the next page                                                          |
-| anything else under `/v2/`                                 | OCI's error JSON (`NAME_UNKNOWN`, `MANIFEST_UNKNOWN`, `BLOB_UNKNOWN`); push methods are 405 `UNSUPPORTED`; `/v2/token` is 404 until tokens exist |
+| Request                                                    | Answer                                                                                                                                                         |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/<tag>`      | the manifest or image index the tag points to, with its own media type and `Docker-Content-Digest`; cached for 60 s                                            |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/sha256:<…>` | the same bytes by digest, immutable                                                                                                                            |
+| `GET`/`HEAD /v2/<owner>/<repository>/blobs/sha256:<…>`     | a config or layer, immutable, with `Range` (206) and `If-Range`; only digests this repository published                                                        |
+| `GET /v2/<owner>/<repository>/tags/list[?n=&last=]`        | the tags in lexical order; with `n`, a `Link: …; rel="next"` header names the next page                                                                        |
+| anything else under `/v2/`                                 | OCI's error JSON (`NAME_UNKNOWN`, `MANIFEST_UNKNOWN`, `BLOB_UNKNOWN`); push methods are 405 `UNSUPPORTED`; `/v2/token` is the token service (see Who may read) |
 
 Every answer carries `Docker-Distribution-API-Version: registry/2.0`. A feed that is not public
 answers 401 with OCI's `Bearer` challenge; registry credentials are not issued yet.

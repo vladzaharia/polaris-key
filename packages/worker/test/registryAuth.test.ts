@@ -437,7 +437,7 @@ describe("the credential ladder (§6.2), through the registry host", () => {
     expect(res.headers.get("etag")).toBeNull();
     // A credentialed answer never reaches the Cache API.
     expect(put).not.toHaveBeenCalled();
-    // The raw token is not a bearer credential for OCI routes, only for /v2/token.
+    // The raw registry token is a Bearer credential on the OCI routes too (curl, scripts).
     expect(
       (await get(manifest, { headers: { authorization: `Bearer ${t}` } }))
         .status,

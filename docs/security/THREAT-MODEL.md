@@ -1029,9 +1029,10 @@ per-isolate settings cache, so turning a feed off or tightening a mode stops eve
 answer cached at the edge for a year within 30 seconds. Client-side caches (a browser, a package
 manager's local store, a proxy the client runs) that already hold an immutable object are outside
 the kill switch's reach: the server cannot recall bytes it has already served. A missing settings
-table or row fails closed. Tier 1 admits only `public`; every other mode answers the client's native 401
-(`Basic`, or OCI's `Bearer` challenge naming a token endpoint that 404s until F-21). The
-credential extractor parses every `Authorization` shape and never logs, stores or echoes it.
+table or row fails closed. `public` admits anyone without looking any credential up; every other
+mode resolves the request's registry credential (F-21, below) and answers a client without a valid
+one with its native 401 (`Basic`, or OCI's `Bearer` challenge naming `/v2/token`). The credential
+extractor parses every `Authorization` shape and never logs, stores or echoes it.
 
 **Cache poisoning.** Only a `public` decision reaches the Cache API, and only a 200 with a public
 `Cache-Control` answering a GET is stored; a HEAD may read the GET entry but never writes it. The key is the normalised path, the query names the route reads and,
@@ -1250,14 +1251,93 @@ is no per-product admin). Every write is audited with the verified actor: `feed.
 product, `feed.policy.update` and `feed.bootstrap` in `platform_audit`. Settings and policy
 writes are optimistic (`expectedVersion`, 409 on a stale version) and validated per ecosystem:
 unknown fields, a malformed namespace or extension key, a size above the platform ceiling and
-any upstream but `none` are refused, a feed cannot be enabled with an empty namespace, and only
-`public` access can be set until registry credentials exist (`access_mode_unavailable`), so no
-console save can turn a feed into one that refuses every client. A version verb the protocol
+any upstream but `none` are refused, and a feed cannot be enabled with an empty namespace. Since
+F-21 every access mode can be set: leaving `public` is an L1 confirmation that names the 401 its
+clients will get, and the system product's feeds change only from the platform scope. A version verb the protocol
 has no state for is refused (`unsupported_by_ecosystem`) rather than recorded as a console-only
 fiction; the verbs that apply run Release's own yank, unyank and deprecation (the same batch,
 render enqueue and pack-set invalidation as Release's routes). There is no delete. A write drops
 its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
 `test/adminFeeds.test.ts`.
+
+### Registry credentials (F-20, F-21)
+
+**What it is.** Registry tokens (`pkeyr_`, `core/registryTokens.ts`) are the credential a client of
+a non-public package feed presents on `pkg.plrs.im` (plans/F-20.md, approved 2026-10-04). They
+are minted by an operator in the console (owner-bound, or bound to one licence) or by a licensee
+in the portal (licence-bound, read-only, Q3), and judged by the feed access ladder
+(`services/distribution/registry/authorize.ts`). OCI clients exchange one for a 300-second pull
+token at `GET /v2/token`; SwiftPM checks one at `POST /swift/<owner>/login`; the Godot editor,
+which sends no credentials, carries a narrow URL token in its configured URL. Tests:
+`test/registryAuth.test.ts`, `test/registry/godot.test.ts` (URL tokens), `test/adminFeeds.test.ts`,
+`test/portalRegistryTokens.test.ts`, and the authenticated rows of `registry-clients.yml`.
+
+**A new bearer asset.** A token is 256 random bits, stored only as an HMAC under
+`KEY_HASH_PEPPER` (a global unique index), shown once, never logged or echoed; the list shows the
+last four characters. Every token expires, at most 365 days out (default 90, 30 for a URL token,
+Q6), and is bound to one owner. Scope is `read`; `publish` is refused until F-22 and F-23. At most
+10 live tokens per licence and 500 per owner. A deleted product's tokens stop at once (the lookup
+joins `products.status`, and the deletion batch revokes them); an erased portal account's tokens
+are revoked in the erasure batch (`account_deleted`); a disabled or expired licence's tokens stop
+at the next check without a write (`licenseUsable`), and work again if it is re-enabled. The cron
+purges rows 90 days after expiry or revocation. No licence-delete path or portal link-removal
+path exists today, so those plan-named cascades have nothing to hook (a correction recorded in the
+F-21 brief); the licence status covers them.
+
+**The ladder decides; a token only identifies.** A credential is resolved only where the mode is
+not `public`, so a public read never touches `registry_tokens`. A token for another owner, outside
+its ecosystems, a URL token in a header, a header token in a URL, or anything malformed, unknown,
+expired or revoked is no credential (the native 401). Owner-bound and CI (`pkeyci_`) principals of
+the owner pass every mode (Q4); a licence-bound one needs `licenseUsable` for `authenticated` and
+`licensed`, and for `entitled` the package's `dist_access.entitlement` flag held by the licence
+(`licenseHoldsFlags`, the licence-only twin of `entitlementFlagRefusal`); no gate fails closed. A
+valid credential the mode refuses is a 403 (`forbidden`, OCI `DENIED`). Neither device tokens
+(`pkeyt_`) nor licence keys (`pkey_`) are registry credentials (Q5): a licence key would end up in
+plain text in `.npmrc` and `gradle.properties`.
+
+**Licence-bound tokens extend a licence to a string that can be shared.** A licensee can paste a
+token into a team's CI as easily as they could share a licence key; the residual risk is the same
+as sharing the key, bounded by expiry, the per-licence cap, the licence's own status and the
+operator's revoke (per token, per licence, or every token of the owner). Device trust (P6-02)
+does not apply, because a token has no device; this is the portal download's rule.
+
+**Godot URL tokens.** The editor sends no `Authorization`, so a URL token rides in the path
+(`/godot/<owner>/t/<token>/…`): it appears in Cloudflare's own request logs and in the editor's
+settings file on disk. That is why the class is narrow (read, Godot only, enforced by a table
+CHECK) and short-lived (30 days by default), and why only a URL token satisfies the segment and a
+URL token is never a header credential. The Worker never logs the path. Answers to a tokenised
+request are `private, no-store` with no ETag, the Cache API key never includes the segment, and
+absolute URLs into the owner's feed are rewritten at serve time to carry the segment, so no
+rendered or stored object ever holds a token.
+
+**The OCI pull token.** `v1.<claims>.<HMAC-SHA256>` under the secret `REGISTRY_TOKEN_KEY`
+(`REGISTRY_TOKEN_KEY_PREVIOUS` also verifies, for a rotation; pull tokens live 300 s, so the old
+key can go five minutes after the new one is live). It carries identity only (subject, owner,
+granted repositories): every OCI request re-resolves the subject through the 30-second cache and
+re-runs the ladder, so a revoked token or a tightened feed stops it within 30 s although `exp` is
+300 s. It is opaque to clients, is not a JWS, and no SDK or corpus file sees it (no wire change).
+`/v2/token` grants a scope only when the ladder admits the caller for that repository; anonymous
+callers get anonymous tokens for public repositories only; refusals are 401 for anyone without a
+valid credential, whether the owner exists, is disabled or is private, so the endpoint is no
+oracle. `push`, `delete` and `registry:catalog:*` are refused. With `REGISTRY_TOKEN_KEY` unset,
+`/v2/token` is 503 and `/v2/` stays the plain 200; once set, `/v2/` challenges a request without a
+valid pull token (Q1).
+
+**Revocation within 30 seconds; no credentialed answer is shared-cached.** The same per-isolate
+window bounds token revocation, licence status, feed tightening and product deletion. A
+credentialed answer is `private, no-store`, has no ETag and never enters the Cache API (pinned by
+a test that `cache.put` is never called). A stream already in flight when a token is revoked
+finishes. Tightening a feed does not recall bytes already served publicly, nor anything held in
+client caches.
+
+**Budgets.** `registryOciToken` (per IP), `registryLogin` (per IP), `registryCredentialMiss`
+(per IP, only lookups that missed the cache and D1, so only bad tokens spend it) and
+`portalRegistryToken` (per account) fail closed; `registryPrivateRead` (per token, the cost of
+reads that bypass the Cache API) fails open. A refusal is a native 429.
+
+**One credential per host.** docker, SwiftPM and netrc hold one credential per registry host, so
+one machine can hold a token for only one owner on `pkg.plrs.im` (Q2, accepted and documented).
+Platform feeds stay public, so they never take the slot.
 
 ### App-updater feeds (P3-09)
 
@@ -4126,8 +4206,11 @@ than the `app` delivery-access row (it runs whatever the service's enablement); 
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
-under a looser policy, a registry route answers CORS or a method other than GET and HEAD, or
-`authorizeFeedRead` moves after the cache lookup (F-02); the bucket-lock duration
+under a looser policy, a registry route answers CORS or a method other than GET, HEAD and
+Swift's `POST …/login`, or `authorizeFeedRead` moves after the cache lookup (F-02); a new registry
+principal kind, a registry token accepted in a URL outside Godot, any increase of
+`REGISTRY_TOKEN_TTL_SECONDS` or of the OCI pull token's lifetime, or a credentialed registry
+answer reaching the Cache API (F-21); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);

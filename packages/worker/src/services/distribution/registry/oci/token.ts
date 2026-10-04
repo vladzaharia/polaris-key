@@ -127,7 +127,11 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
         "retry-after": "60",
       });
     if (!registryTokenKeyConfigured(ctx.env))
-      return ociRefusal(503, "UNAVAILABLE", "the token service is not configured");
+      return ociRefusal(
+        503,
+        "UNAVAILABLE",
+        "the token service is not configured",
+      );
     const url = new URL(req.url);
     const service = url.searchParams.get("service");
     if (service !== null && service !== host) return unauthorized();
@@ -165,7 +169,10 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
           "retry-after": "60",
         });
       // A URL token (Godot's) is never an OCI credential.
-      if (resolved === null || (resolved.kind !== "ci" && resolved.presentation !== "header"))
+      if (
+        resolved === null ||
+        (resolved.kind !== "ci" && resolved.presentation !== "header")
+      )
         return unauthorized();
       principal = principalOf(resolved);
       if (principal.kind === "anonymous") return unauthorized();
@@ -222,7 +229,11 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
       ctx.now,
     );
     if (!signed)
-      return ociRefusal(503, "UNAVAILABLE", "the token service is not configured");
+      return ociRefusal(
+        503,
+        "UNAVAILABLE",
+        "the token service is not configured",
+      );
     const body = JSON.stringify({
       token: signed.token,
       access_token: signed.token,

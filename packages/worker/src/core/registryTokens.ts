@@ -244,9 +244,7 @@ export async function mintRegistryToken(
     const list = [...new Set(input.ecosystems)];
     if (
       list.length === 0 ||
-      list.some(
-        (e) => !(PACKAGE_ECOSYSTEMS as readonly string[]).includes(e),
-      )
+      list.some((e) => !(PACKAGE_ECOSYSTEMS as readonly string[]).includes(e))
     )
       fields.push("ecosystems");
     else ecosystems = [...list].sort();
@@ -268,9 +266,7 @@ export async function mintRegistryToken(
   if (binding === "license") {
     const license = await getLicense(db, input.product, licenseId!);
     if (!license)
-      return refuse(404, "license_not_found", "no such licence", [
-        "licenseId",
-      ]);
+      return refuse(404, "license_not_found", "no such licence", ["licenseId"]);
   }
   const owned = await db.first<{ n: number }>(
     `SELECT COUNT(*) AS n FROM registry_tokens
@@ -491,7 +487,10 @@ export function stmtRevokeProductRegistryTokens(
 }
 
 /** Retention (the nightly cron): rows 90 days past their expiry or revocation go. */
-export async function purgeRegistryTokens(db: Db, now: number): Promise<number> {
+export async function purgeRegistryTokens(
+  db: Db,
+  now: number,
+): Promise<number> {
   const cutoff = now - REGISTRY_TOKEN_RETENTION_SECONDS;
   try {
     return await db.runChanges(
@@ -582,7 +581,10 @@ async function resolveRow(
   now: number,
   opts: LookupOptions,
 ): Promise<ResolvedRegistryToken> {
-  if (row.last_used_at === null || row.last_used_at < now - LAST_USED_GRANULARITY) {
+  if (
+    row.last_used_at === null ||
+    row.last_used_at < now - LAST_USED_GRANULARITY
+  ) {
     const write = db
       .run(
         "UPDATE registry_tokens SET last_used_at = ? WHERE product = ? AND token_id = ?",
@@ -755,8 +757,7 @@ function b64urlDecode(s: string): Uint8Array | null {
   if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
   try {
     const bin = atob(
-      s.replace(/-/g, "+").replace(/_/g, "/") +
-        "===".slice((s.length + 3) % 4),
+      s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4),
     );
     return Uint8Array.from(bin, (c) => c.charCodeAt(0));
   } catch {
@@ -765,7 +766,10 @@ function b64urlDecode(s: string): Uint8Array | null {
 }
 
 function toBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  return b.buffer.slice(
+    b.byteOffset,
+    b.byteOffset + b.byteLength,
+  ) as ArrayBuffer;
 }
 
 async function hmacKey(material: string): Promise<CryptoKey> {

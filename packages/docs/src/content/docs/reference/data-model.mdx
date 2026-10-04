@@ -40,6 +40,7 @@ this page or fails the freshness gate.
 | `platform_store_settings` | 0055_platform_store_connections.sql | `store`, `key`, `value`, `updated_at`, `updated_by` |
 | `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
 | `registry_render_queue` | 0058_d_registry.sql | `product`, `deliverable_id`, `reason`, `enqueued_at`, `generation`, `attempts (0060)` |
+| `registry_tokens` | 0062_registry_tokens.sql | `product`, `token_id`, `token_hash`, `hint`, `label`, `scopes_json`, `ecosystems_json`, `binding`, `license_id`, `presentation`, `created_by`, `portal_account_id`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, `revoked_by`, `revoke_reason` |
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |

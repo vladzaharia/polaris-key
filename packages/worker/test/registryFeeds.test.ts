@@ -420,13 +420,7 @@ describe("d1RegistrySettings", () => {
       feed: null,
     });
     expect(
-      await authorizeFeedRead(
-        { db, services: ON },
-        null,
-        "djdl",
-        "npm",
-        null,
-      ),
+      await authorizeFeedRead({ db, services: ON }, null, "djdl", "npm", null),
     ).toEqual({ ok: false, challenge: "not-found" });
   });
 
@@ -443,13 +437,7 @@ describe("d1RegistrySettings", () => {
       feed: null,
     });
     expect(
-      await authorizeFeedRead(
-        { db, services: ON },
-        null,
-        "djdl",
-        "npm",
-        null,
-      ),
+      await authorizeFeedRead({ db, services: ON }, null, "djdl", "npm", null),
     ).toEqual({ ok: false, challenge: "not-found" });
   });
 
@@ -505,13 +493,7 @@ describe("d1RegistrySettings", () => {
        VALUES ('djdl', 'npm', 1, 'public', '{"scope":"@djdl"}', 1000, '{}', 1, 0)`,
     );
     const read = () =>
-      authorizeFeedRead(
-        { db, services: ON },
-        null,
-        "djdl",
-        "npm",
-        null,
-      );
+      authorizeFeedRead({ db, services: ON }, null, "djdl", "npm", null);
     forgetRegistrySettings();
     expect(await read()).toEqual({ ok: true, cache: "public" });
     await deleteProduct(db, "djdl", 5);

@@ -154,7 +154,10 @@ async function create(
     )
   )
     fields.push("ecosystems");
-  if (body.expiresInDays !== undefined && typeof body.expiresInDays !== "number")
+  if (
+    body.expiresInDays !== undefined &&
+    typeof body.expiresInDays !== "number"
+  )
     fields.push("expiresInDays");
   if (body.binding !== "owner" && body.binding !== "license")
     fields.push("binding");
@@ -180,7 +183,8 @@ async function create(
         : {}),
       binding: body.binding as "owner" | "license",
       licenseId: (body.licenseId as string | undefined) ?? null,
-      presentation: (body.presentation as "header" | "url" | undefined) ?? "header",
+      presentation:
+        (body.presentation as "header" | "url" | undefined) ?? "header",
       createdBy: `admin:${session.email || session.sub}`,
     },
     now,

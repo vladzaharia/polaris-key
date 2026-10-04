@@ -225,7 +225,7 @@ companion apps. See `docs/PRIVACY.md`.
 
 **8. The naming is Polaris Key.** Packages `@polaris-key/*`, PyPI `polaris-key`, SwiftPM
 `PolarisKey`, CLI bin `pkey`, manifest dir `.pkey/`, license keys `pkey_`, device tokens `pkeyt_`,
-headers `X-PKey-*`, env `PKEY_CONFIG_*`, issuer `key.plrs.im`. The `@plrs` / `polaris-suite` /
+CI tokens `pkeyci_`, registry tokens `pkeyr_`, headers `X-PKey-*`, env `PKEY_CONFIG_*`, issuer `key.plrs.im`. The `@plrs` / `polaris-suite` /
 `plrs` / `.polaris/` states that appear in mid-branch history and in
 `docs/superpowers/plans/2026-08-26-polaris-suite-services.md` are **dead** — Amendment A1 reverted
 the naming layer. Read the spec's closeout, not that plan, for final state.

@@ -3559,10 +3559,13 @@ const rawApi = {
       { method: "POST" },
     ),
   revokeAllRegistryTokens: (scope: FeedScope, licenseId?: string) =>
-    call<{ ok: true; revoked: number }>(`${feedsBase(scope)}/tokens/revoke-all`, {
-      method: "POST",
-      body: JSON.stringify(licenseId ? { licenseId } : {}),
-    }),
+    call<{ ok: true; revoked: number }>(
+      `${feedsBase(scope)}/tokens/revoke-all`,
+      {
+        method: "POST",
+        body: JSON.stringify(licenseId ? { licenseId } : {}),
+      },
+    ),
   /** Create (or re-assert) the system product that owns the platform's feeds (F-03). */
   bootstrapPlatformFeeds: () =>
     call<{ ok: true; slug: string; created: boolean }>(

@@ -201,7 +201,10 @@ type Resolution = FeedPrincipal | "rate-limited";
 
 /** Per credential object: one resolution per (owner, ecosystem, repository), so a list document
  *  judging many packages resolves its credential once. */
-const resolutions = new WeakMap<FeedCredential, Map<string, Promise<Resolution>>>();
+const resolutions = new WeakMap<
+  FeedCredential,
+  Map<string, Promise<Resolution>>
+>();
 
 /** `registryCredentialMiss` (plans/F-20.md §6.6): lookups that missed the cache AND D1. */
 const CREDENTIAL_MISS_LIMIT = { limit: 30, windowSec: 60 };
@@ -230,7 +233,12 @@ async function resolveUncached(
     if (!claims || claims.sub === "anonymous" || claims.own !== owner)
       return ANONYMOUS;
     if (!claims.repos.includes(`${owner}/${ctx.repository}`)) return ANONYMOUS;
-    const resolved = await lookupRegistrySubject(ctx.db, owner, claims.sub, opts);
+    const resolved = await lookupRegistrySubject(
+      ctx.db,
+      owner,
+      claims.sub,
+      opts,
+    );
     return resolved && headerPresented(resolved)
       ? principalOf(resolved)
       : ANONYMOUS;
@@ -372,7 +380,12 @@ export async function authorizeFeedRead(
     ok: false,
     challenge: challengeFor(ecosystem),
   };
-  const principal = await resolveFeedPrincipal(ctx, credential, owner, ecosystem);
+  const principal = await resolveFeedPrincipal(
+    ctx,
+    credential,
+    owner,
+    ecosystem,
+  );
   if (principal === "rate-limited")
     return { ok: false, challenge: "rate-limited" };
   if (principal.kind === "anonymous") return challenge;
@@ -448,7 +461,14 @@ export function feedRefusal(
   if (challenge === "forbidden") {
     if (oci)
       return json(
-        { errors: [{ code: "DENIED", message: "requested access to the resource is denied" }] },
+        {
+          errors: [
+            {
+              code: "DENIED",
+              message: "requested access to the resource is denied",
+            },
+          ],
+        },
         { status: 403, headers: ociHeaders },
       );
     if (swift)

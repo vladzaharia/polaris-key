@@ -13,6 +13,12 @@ LAST_PROJECT=""
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
+# F-21: an authenticated feed (run.mjs --auth): the token for the feed's path, as `.npmrc` keys it.
+npmrc_auth() {
+  [ -n "${PKEY_REGISTRY_TOKEN:-}" ] || return 0
+  printf '%s:_authToken=%s\n' "${FEED#http:}" "$PKEY_REGISTRY_TOKEN" >> "$1"
+}
+
 ok() { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 

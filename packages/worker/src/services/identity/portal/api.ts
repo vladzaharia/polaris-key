@@ -728,7 +728,11 @@ async function handleRegistryTokens(
   if (!licenseUsable(license, now))
     return err(403, ErrorCode.Forbidden, "this licence is not active");
   if (feeds.length === 0)
-    return err(409, ErrorCode.BadRequest, "this product has no private package feed");
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "this product has no private package feed",
+    );
   const body = await readBody(req);
   const presentation = body.presentation === "url" ? "url" : "header";
   const ecosystem =
@@ -741,7 +745,11 @@ async function handleRegistryTokens(
       (typeof ecosystem !== "string" || !offered.includes(ecosystem))) ||
     (presentation === "url" && !offered.includes("godot"))
   )
-    return err(422, ErrorCode.BadRequest, "choose one of the product's private feeds");
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "choose one of the product's private feeds",
+    );
   const res = await mintRegistryToken(
     env,
     db,

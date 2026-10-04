@@ -237,7 +237,10 @@ function TokensTable({
   useLoadingAnnouncement("registry tokens", query.isPending);
   const [minted, setMinted] = React.useState<MintedRegistryToken | null>(null);
   const [revoking, setRevoking] = React.useState<RegistryTokenDto | null>(null);
-  const cols = React.useMemo(() => columns(licenseId === undefined), [licenseId]);
+  const cols = React.useMemo(
+    () => columns(licenseId === undefined),
+    [licenseId],
+  );
   const live = (query.data?.tokens ?? []).filter((t) => t.status === "active");
   return (
     <>
@@ -469,11 +472,15 @@ function MintDialog({
   const [everyFeed, setEveryFeed] = React.useState(true);
   const [picked, setPicked] = React.useState<FeedEcosystem[]>([]);
   const [godotUrl, setGodotUrl] = React.useState(false);
-  const [days, setDays] = React.useState<number | null>(data.limits.defaultDays);
+  const [days, setDays] = React.useState<number | null>(
+    data.limits.defaultDays,
+  );
   const [binding, setBinding] = React.useState<"owner" | "license">(
     licenseId ? "license" : "owner",
   );
-  const [license, setLicense] = React.useState<string | null>(licenseId ?? null);
+  const [license, setLicense] = React.useState<string | null>(
+    licenseId ?? null,
+  );
   const [saving, setSaving] = React.useState(false);
   const [failure, setFailure] = React.useState<unknown>(null);
   React.useEffect(() => {
@@ -569,7 +576,8 @@ function MintDialog({
                     {
                       value: "owner",
                       label: "This product",
-                      description: "Passes every access mode, entitled included.",
+                      description:
+                        "Passes every access mode, entitled included.",
                       icon: <Building2 aria-hidden className="size-4" />,
                     },
                     {
@@ -601,7 +609,9 @@ function MintDialog({
           />
           {!godotUrl ? (
             <fieldset className="space-y-2">
-              <legend className="text-sm font-bold text-fg-strong">Feeds</legend>
+              <legend className="text-sm font-bold text-fg-strong">
+                Feeds
+              </legend>
               <Checkbox
                 label="Every feed"
                 description="Today's and any this owner enables later."
@@ -624,9 +634,7 @@ function MintDialog({
                         checked={picked.includes(e)}
                         onCheckedChange={(on) =>
                           setPicked(
-                            on
-                              ? [...picked, e]
-                              : picked.filter((x) => x !== e),
+                            on ? [...picked, e] : picked.filter((x) => x !== e),
                           )
                         }
                       />

@@ -300,7 +300,10 @@ function AccessSection({
         ) : null}
         {chosen === "entitled" && ungated.length > 0 ? (
           <SettingsRow label="Packages without a gate" align="block">
-            <Callout tone="warning" title="Licence tokens are refused these packages">
+            <Callout
+              tone="warning"
+              title="Licence tokens are refused these packages"
+            >
               <p>
                 Entitled admits a licence-bound token only for a package whose
                 delivery access names an entitlement flag the licence holds.

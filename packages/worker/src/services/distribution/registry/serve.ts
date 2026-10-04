@@ -59,7 +59,9 @@ export function requestCredential(
   if (credentials.has(req)) return credentials.get(req)!;
   const segment = ctx.params[PATH_TOKEN_PARAM];
   const credential =
-    segment !== undefined ? pathCredential(segment) : extractFeedCredential(req);
+    segment !== undefined
+      ? pathCredential(segment)
+      : extractFeedCredential(req);
   credentials.set(req, credential);
   return credential;
 }
@@ -119,7 +121,9 @@ export async function serveFeedRead(
       ...(opts.settings ? { settings: opts.settings } : {}),
       ...(opts.repository !== undefined ? { repository: opts.repository } : {}),
     }),
-    opts.credential !== undefined ? opts.credential : requestCredential(req, ctx),
+    opts.credential !== undefined
+      ? opts.credential
+      : requestCredential(req, ctx),
     ctx.product.slug,
     ctx.ecosystem,
     opts.deliverableId,

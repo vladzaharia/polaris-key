@@ -121,6 +121,7 @@ ADMIN_OIDC_CLIENT_SECRET
 GITHUB_APP_ID
 GITHUB_APP_PRIVATE_KEY
 GITHUB_WEBHOOK_SECRET
+REGISTRY_TOKEN_KEY           # F-21: the OCI pull-token HMAC key (32 random bytes, base64)
 ```
 
 Rotate or set a Worker secret:
@@ -400,7 +401,9 @@ Worker on a third custom domain (DEPLOYMENT §3, "Registry host and feeds"). Che
 a deploy:
 
 ```sh
-curl -sI https://pkg.plrs.im/v2/ | grep -i docker-distribution-api-version   # registry/2.0
+curl -sI https://pkg.plrs.im/v2/ | grep -iE '^(HTTP|docker-distribution-api-version|www-authenticate)'
+# HTTP/2 401, registry/2.0, Bearer realm=".../v2/token" (200 if REGISTRY_TOKEN_KEY is unset)
+curl -s 'https://pkg.plrs.im/v2/token?service=pkg.plrs.im' | head -c 60      # {"token":"v1.…
 curl -sI https://pkg.plrs.im/manage | head -1                                 # 404
 ```
 
@@ -413,9 +416,9 @@ bytes the edge has cached for a year, because the access check runs before the c
 3. the feed's `enabled`;
 4. Distribution itself for the owner.
 
-Tightening a feed's or a deliverable's access mode away from `public` answers clients `401`
-with their native challenge within the same window; tier 1 has no registry credentials, so
-such a feed is closed to everyone until F-21.
+Tightening a feed's or a deliverable's access mode away from `public` answers clients without a
+registry token `401` with their native challenge within the same window (see "Registry tokens
+(F-21)" below).
 
 **A missing or stale index object** heals itself: a read that misses renders the package from
 D1, writes it back under `registry/` and counts `registry.render_miss`. The cron's self-check
@@ -425,6 +428,42 @@ lock or lifecycle rule on `registry/`.
 Bootstrapping the system product, turning an owner's feeds on, yanks and deprecations, feed
 rebuilds, the Swift signing-certificate rotation and the forward-only migration note follow with
 F-03, F-06 and F-11.
+
+### Registry tokens (F-21)
+
+Clients of a non-public feed present a registry token (`pkeyr_…`): minted in the console
+(**Distribution → Package feeds → Tokens**, or a licence's **Keys** tab) or by a licensee in the
+portal. Every token expires (at most 365 days). The store is `registry_tokens` (Core's).
+
+**Switching a feed's mode.** In the feed's **Settings → Access**. Leaving `public` answers every
+client without a token `401` within 30 seconds, so mint the tokens and hand out the authenticated
+setup (the Tokens page's shown-once dialog, or `/docs/build/install-from-feeds/#private-feeds`)
+first. Switching back to `public` reopens the feed within 30 seconds. A rollback to a Worker older
+than F-21 with a non-public feed refuses every read of that feed (it fails closed); switch the
+feed back to `public` to reopen it. The platform's own feeds stay `public`.
+
+**A leaked token.** Revoke it on the Tokens page (or the licence's panel); it stops within 30
+seconds on every isolate. If you cannot tell which token leaked, **Revoke all** on the Tokens page
+revokes every active token of the product, including licensee-minted ones; tell licensees to mint
+new ones in the portal. Revocations are audited (`registry_token.revoke`,
+`registry_token.revoke_all`; `portal.registry_token.revoke` for a licensee's own).
+
+**Rotating `REGISTRY_TOKEN_KEY`** (the OCI pull-token HMAC key). Pull tokens live five minutes, so
+a rotation is two deploys apart by at least that long:
+
+```sh
+cd packages/worker
+openssl rand -base64 32 > /tmp/new-key
+npx wrangler secret bulk --env prod <<EOF
+{"REGISTRY_TOKEN_KEY_PREVIOUS": "<the current key>", "REGISTRY_TOKEN_KEY": "$(cat /tmp/new-key)"}
+EOF
+# wait at least 5 minutes, then:
+npx wrangler secret delete REGISTRY_TOKEN_KEY_PREVIOUS --env prod
+rm /tmp/new-key
+```
+
+Without `REGISTRY_TOKEN_KEY`, `/v2/token` answers 503 and `/v2/` stays a plain 200, so OCI clients
+can pull public images but no non-public OCI feed can be reached.
 
 ### Recovering the update feeds after a signer compromise
 

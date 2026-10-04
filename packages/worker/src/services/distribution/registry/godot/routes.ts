@@ -236,7 +236,9 @@ const TOKENISED = /^\/godot\/([a-z0-9-]{1,64})\/t\/([^/]+)(\/.*)$/;
 /** `pathname` without a `/t/<token>` segment, and the token when there was one. */
 function untokenised(pathname: string): { path: string; token?: string } {
   const t = TOKENISED.exec(pathname);
-  return t ? { path: `/godot/${t[1]}${t[3]}`, token: t[2]! } : { path: pathname };
+  return t
+    ? { path: `/godot/${t[1]}${t[3]}`, token: t[2]! }
+    : { path: pathname };
 }
 
 /** The request without its `/t/<token>` segment: what the Cache API keys on, never a token. */

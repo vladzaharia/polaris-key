@@ -27,8 +27,13 @@ dependencyResolutionManagement {
         exclusiveContent {
             forRepository {
                 maven {
+                    name = "fixture"
                     url = uri(System.getenv("FEED"))
                     isAllowInsecureProtocol = true // the harness's Worker is plain HTTP on loopback
+                    // F-21: an authenticated feed (run.mjs --auth): fixtureUsername/fixturePassword.
+                    if (System.getenv("PKEY_REGISTRY_TOKEN") != null) {
+                        credentials(PasswordCredentials::class)
+                    }
                 }
             }
             filter { includeGroupAndSubgroups("im.plrs.fixture") }
@@ -73,10 +78,16 @@ tasks.register("feed") {
 }
 KTS
 
+# F-21: the credentials the repository named `fixture` reads, in the container's Gradle home.
+if [ -n "${PKEY_REGISTRY_TOKEN:-}" ]; then
+  mkdir -p "$work/.gradle"
+  printf 'fixtureUsername=__token__\nfixturePassword=%s\n' "$PKEY_REGISTRY_TOKEN" > "$work/.gradle/gradle.properties"
+fi
 out="$work/out.txt"
 docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/work \
   -e JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true \
-  -e GRADLE_USER_HOME=/work/.gradle -e FEED="$feed" -v "$work:/work" -w /work "$image" \
+  -e GRADLE_USER_HOME=/work/.gradle -e FEED="$feed" ${PKEY_REGISTRY_TOKEN:+-e PKEY_REGISTRY_TOKEN} \
+  -v "$work:/work" -w /work "$image" \
   gradle --no-daemon --no-configuration-cache -q feed | tee "$out"
 
 fail=0

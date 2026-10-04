@@ -8,6 +8,10 @@ name: Registry clients
 # matrix rows (npm, pnpm, Yarn, Bun; pip, uv, Poetry; SwiftPM on macOS; Gradle and Maven; docker,
 # podman and crane; GodotEnv). `workflow_dispatch -f ecosystem=<name>` runs one ecosystem's rows.
 #
+# F-21 (plans/F-20.md §9): every job runs its client twice, against public feeds and then against
+# authenticated ones (`--auth`: the owner's feeds switched to `authenticated`, registry tokens
+# minted into the local D1, and a 401 checked for every ecosystem without a token first).
+#
 # Making it a required check on pull requests that touch these paths is a branch-protection
 # setting (DEPLOYMENT §7).
 
@@ -18,6 +22,7 @@ on:
       - "packages/worker/src/core/registryHost.ts"
       - "packages/worker/src/core/registryHostname.ts"
       - "packages/worker/src/core/registryLanding.ts"
+      - "packages/worker/src/core/registryTokens.ts"
       - "packages/worker/scripts/registry-clients/**"
       - "packages/worker/wrangler.toml"
       - "packages/cli/src/package/**"
@@ -179,8 +184,13 @@ jobs:
           dotnet tool install --global Chickensoft.GodotEnv
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           echo "REQUIRE_GODOTENV=1" >> "$GITHUB_ENV"
-      - name: Run the client
+      - name: Run the client (public feeds)
         if: env.PICKED == 'true'
         run: |
           if [ -n "${{ matrix.env }}" ]; then export ${{ matrix.env }}; fi
           pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}
+      - name: Run the client (authenticated feeds, F-21)
+        if: env.PICKED == 'true'
+        run: |
+          if [ -n "${{ matrix.env }}" ]; then export ${{ matrix.env }}; fi
+          pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }} --auth

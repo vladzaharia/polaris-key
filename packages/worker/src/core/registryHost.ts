@@ -593,8 +593,7 @@ async function answer(
           (r.methods as readonly string[] | undefined)?.includes(req.method) &&
           r.match(pathname) !== null,
       );
-  if (!readOnly && !declared)
-    return plain(registryMethodNotAllowed(ecosystem));
+  if (!readOnly && !declared) return plain(registryMethodNotAllowed(ecosystem));
   if (ecosystem === "oci" && (pathname === "/v2" || pathname === "/v2/"))
     return plain(await ociBase(req, env));
   if (RESERVED_ECOSYSTEMS.has(ecosystem))

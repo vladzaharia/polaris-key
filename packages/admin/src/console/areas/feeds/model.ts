@@ -321,7 +321,6 @@ function anonymousSnippets(eco: FeedEcosystem, ctx: SnippetContext): Snippet[] {
   }
 }
 
-
 /** How a token is written in each format: the env reference, or the value itself. */
 function secretIn(
   credential: Exclude<FeedCredential, { kind: "none" }>,

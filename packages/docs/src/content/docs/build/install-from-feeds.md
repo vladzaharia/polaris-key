@@ -21,9 +21,9 @@ dependency confusion: an attacker's package with the same name on a public regis
 | Godot addon                                  | Godot     | `polaris_key`                  | `https://pkg.plrs.im/godot/polaris-key/`       |
 | The `pkey` CLI as an image                   | OCI       | `pkg.plrs.im/polaris-key/pkey` | `https://pkg.plrs.im/v2/`                      |
 
-The feeds are public: no account and no token. Registry credentials come later (F-21), and these
-snippets will gain a token line then. How each feed behaves (tags, yanks, caching) is on
-[Package feeds](/docs/services/distribution/package-feeds/).
+The platform's feeds are public: no account and no token. A product's own feeds can be private;
+[Private feeds](#private-feeds) below has the authenticated setup for every client. How each feed
+behaves (tags, yanks, caching) is on [Package feeds](/docs/services/distribution/package-feeds/).
 
 **Versions.** Every SDK carries the server's version, in lockstep: a `v0.9.0` release of Polaris Key
 publishes every SDK at `0.9.0`. Each push to the monorepo's `main` also publishes a pre-release of
@@ -245,6 +245,97 @@ podman pull pkg.plrs.im/polaris-key/pkey:0.1.0
 
 `latest` is the newest stable release, `beta` the newest tagged pre-release, `main` the newest
 build of `main`, and each version is a tag that never moves.
+
+## Private feeds
+
+A product can make its feeds require a **registry token** (`pkeyr_…`). An operator mints one under
+**Distribution → Package feeds → Tokens**; a licensee mints their own under **Package access** in
+the portal. Keep it in an environment variable, `PKEY_REGISTRY_TOKEN` below, or a secret store.
+The examples use the owner `acme` and its scope `@acme`.
+
+**npm and pnpm** (`.npmrc`):
+
+```ini
+@acme:registry=https://pkg.plrs.im/npm/acme/
+//pkg.plrs.im/npm/acme/:_authToken=${PKEY_REGISTRY_TOKEN}
+```
+
+**Yarn Berry** (`.yarnrc.yml`) and **Bun** (`bunfig.toml`):
+
+```yaml
+npmScopes:
+  acme:
+    npmRegistryServer: "https://pkg.plrs.im/npm/acme/"
+    npmAuthToken: "${PKEY_REGISTRY_TOKEN}"
+    npmAlwaysAuth: true
+```
+
+```toml
+[install.scopes]
+acme = { url = "https://pkg.plrs.im/npm/acme/", token = "$PKEY_REGISTRY_TOKEN" }
+```
+
+**uv** (`pyproject.toml`, then the credentials in the environment), **Poetry** and **pip**:
+
+```toml
+[[tool.uv.index]]
+name = "acme"
+url = "https://pkg.plrs.im/pypi/acme/simple/"
+explicit = true
+authenticate = "always"
+```
+
+```sh
+export UV_INDEX_ACME_USERNAME=__token__
+export UV_INDEX_ACME_PASSWORD="$PKEY_REGISTRY_TOKEN"
+poetry config http-basic.acme __token__ "$PKEY_REGISTRY_TOKEN"
+pip install --index-url "https://__token__:${PKEY_REGISTRY_TOKEN}@pkg.plrs.im/pypi/acme/simple/" acme-sdk
+```
+
+pip also reads `~/.netrc` (`machine pkg.plrs.im login __token__ password <token>`).
+
+**SwiftPM**: log in once; SwiftPM keeps the token in the keychain (`~/.netrc` on Linux).
+
+```sh
+swift package-registry set --scope acme https://pkg.plrs.im/swift/acme
+swift package-registry login https://pkg.plrs.im/swift/acme --token "$PKEY_REGISTRY_TOKEN" --no-confirm
+```
+
+**Gradle** (`settings.gradle.kts`, with `acmeUsername=__token__` and `acmePassword=<token>` in
+`~/.gradle/gradle.properties`) and **Maven** (`~/.m2/settings.xml`, the `<server>` id matching the
+`<repository>` id):
+
+```kotlin
+maven {
+  name = "acme"
+  url = uri("https://pkg.plrs.im/maven/acme/")
+  credentials(PasswordCredentials::class)
+}
+```
+
+```xml
+<server>
+  <id>acme</id>
+  <username>__token__</username>
+  <password>${env.PKEY_REGISTRY_TOKEN}</password>
+</server>
+```
+
+**docker, podman, crane and oras**:
+
+```sh
+echo "$PKEY_REGISTRY_TOKEN" | docker login pkg.plrs.im -u __token__ --password-stdin
+```
+
+**Godot**: the editor sends no credentials, so mint a token with **Godot editor URL** on (read-only,
+Godot only, 30 days by default) and put it in the editor's URL, `https://pkg.plrs.im/godot/acme/t/<token>/asset-library/api`
+(4.6 and earlier) or `…/t/<token>/store/api/v1` (4.7 and later). GodotEnv takes the same
+tokenised URL.
+
+docker, SwiftPM and netrc hold **one credential per registry host**: one machine can hold a token
+for only one product on `pkg.plrs.im` for them. npm, uv, Gradle and Maven keep credentials per URL
+or repository, so they have no such limit. The platform's own feeds stay public and never take the
+slot.
 
 ## How the SDKs get there
 
