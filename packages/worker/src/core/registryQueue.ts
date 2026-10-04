@@ -16,7 +16,12 @@
  * leaves the row for the next drain.
  */
 
+import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
+import { buildHooks } from "./hooks.js";
+import { loadProductPublic, type ProductPublic } from "./products.js";
+import type { RegistryMaterialiser, ServiceRegistry } from "./registry.js";
+import { SERVICE_SLUGS } from "./services.js";
 
 /** The `deliverable_id` of a full render: every package of the owner. */
 export const RENDER_ALL = "*";
@@ -108,4 +113,162 @@ export function stmtConsumeRender(q: QueuedRender): DbStatement {
            WHERE product = ? AND deliverable_id = ? AND generation = ?`,
     params: [q.product, q.deliverableId, q.generation],
   };
+}
+
+// ── The drain (feed-adapter contract: the consumer F-02 and F-03 each left to the other) ──────
+
+/** The most rows one drain reads (one request's `waitUntil`, or one cron tick). */
+export const DRAIN_BATCH = 100;
+
+/** The most packages one cron tick's self-check re-renders across every owner (§6.5). */
+export const SELF_CHECK_BUDGET = 50;
+
+/** The one enabled service that renders the feeds for `product`, or `null`. */
+function materialiserFor(
+  registry: ServiceRegistry,
+  product: ProductPublic,
+): RegistryMaterialiser | null {
+  for (const slug of SERVICE_SLUGS) {
+    const d = registry.get(slug);
+    if (d?.registryMaterialiser && product.services[slug]?.enabled)
+      return d.registryMaterialiser;
+  }
+  return null;
+}
+
+/** What a drain reports: rows rendered, products that failed, rows dropped (nothing to render). */
+export interface RenderDrainReport {
+  rendered: number;
+  failed: number;
+  dropped: number;
+}
+
+/**
+ * Drain the render queue: read up to `limit` rows, oldest first, and hand each owner's rows to
+ * the enabled service's `registryMaterialiser` (Distribution's). A row whose owner is gone, or
+ * has no renderer enabled, renders nothing and is dropped (a later `packageFeeds` or settings
+ * write enqueues again). A product whose render throws keeps its rows for the next drain; the
+ * others still run. Idempotent and safe to run concurrently: a row is deleted only while its
+ * `generation` is the one read (`stmtConsumeRender`).
+ */
+export async function drainRenderQueue(
+  registry: ServiceRegistry,
+  ctx: { env: Env; db: Db; now: number },
+  opts: { limit?: number } = {},
+): Promise<RenderDrainReport> {
+  const report: RenderDrainReport = { rendered: 0, failed: 0, dropped: 0 };
+  const rows = await readRenderQueue(ctx.db, opts.limit ?? DRAIN_BATCH);
+  const byProduct = new Map<string, QueuedRender[]>();
+  for (const r of rows) {
+    const list = byProduct.get(r.product);
+    if (list) list.push(r);
+    else byProduct.set(r.product, [r]);
+  }
+  const consume = async (row: QueuedRender): Promise<void> => {
+    const s = stmtConsumeRender(row);
+    await ctx.db.run(s.sql, ...s.params);
+  };
+  for (const [slug, list] of byProduct) {
+    try {
+      const product = await loadProductPublic(ctx.db, slug);
+      const materialiser = product ? materialiserFor(registry, product) : null;
+      if (!product || !materialiser) {
+        for (const row of list) await consume(row);
+        report.dropped += list.length;
+        continue;
+      }
+      const hooks = buildHooks(registry, product.services, {
+        env: ctx.env,
+        db: ctx.db,
+        product,
+        now: ctx.now,
+      });
+      const out = await materialiser.drain(
+        { env: ctx.env, db: ctx.db, product, now: ctx.now, hooks },
+        list,
+        consume,
+      );
+      report.rendered += out.rendered;
+      report.failed += out.failed;
+    } catch {
+      report.failed += 1;
+    }
+  }
+  return report;
+}
+
+/**
+ * The cron's self-check (§6.5): for each of `slugs`, ask the enabled renderer to re-render the
+ * packages whose stored stamp differs from D1, `budget` packages at most across all of them.
+ * Fault-isolated per product. Answers how many it re-rendered and which products failed.
+ */
+export async function selfCheckRenders(
+  registry: ServiceRegistry,
+  ctx: { env: Env; db: Db; now: number },
+  slugs: readonly string[],
+  budget: number = SELF_CHECK_BUDGET,
+): Promise<{ rerendered: number; failures: Record<string, string> }> {
+  let left = budget;
+  const failures: Record<string, string> = {};
+  for (const slug of slugs) {
+    if (left <= 0) break;
+    try {
+      const product = await loadProductPublic(ctx.db, slug);
+      const materialiser = product ? materialiserFor(registry, product) : null;
+      if (!product || !materialiser) continue;
+      const hooks = buildHooks(registry, product.services, {
+        env: ctx.env,
+        db: ctx.db,
+        product,
+        now: ctx.now,
+      });
+      left -= await materialiser.selfCheck(
+        { env: ctx.env, db: ctx.db, product, now: ctx.now, hooks },
+        left,
+      );
+    } catch (e) {
+      failures[slug] = e instanceof Error ? e.message : String(e);
+    }
+  }
+  return { rerendered: budget - left, failures };
+}
+
+const ENQUEUE_SQL = /^\s*INSERT\s+INTO\s+registry_render_queue\b/i;
+
+/**
+ * `db`, watched for render enqueues: `enqueued()` answers whether any statement run through it
+ * wrote `registry_render_queue` (`stmtEnqueuePackageRender`). `dispatch.ts` wraps the request's
+ * database with it so a drain runs after exactly the requests that enqueued, and costs the rest
+ * nothing.
+ */
+export function watchRenderEnqueues(db: Db): { db: Db; enqueued(): boolean } {
+  let seen = false;
+  const look = (sql: string) => {
+    if (!seen && ENQUEUE_SQL.test(sql)) seen = true;
+  };
+  const watched: Db = {
+    all: (sql, ...params) => db.all(sql, ...params),
+    first: (sql, ...params) => db.first(sql, ...params),
+    run: (sql, ...params) => {
+      look(sql);
+      return db.run(sql, ...params);
+    },
+    runChanges: (sql, ...params) => {
+      look(sql);
+      return db.runChanges(sql, ...params);
+    },
+    batch: (statements) => {
+      for (const s of statements) look(s.sql);
+      return db.batch(statements);
+    },
+    ...(db.batchChanges
+      ? {
+          batchChanges: (statements: DbStatement[]) => {
+            for (const s of statements) look(s.sql);
+            return db.batchChanges!(statements);
+          },
+        }
+      : {}),
+  };
+  return { db: watched, enqueued: () => seen };
 }

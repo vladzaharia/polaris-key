@@ -30,6 +30,7 @@ import {
   type DescriptorHooks,
   type ServiceHooks,
 } from "./hooks.js";
+import type { QueuedRender } from "./registryQueue.js";
 import type {
   StoreGrantChange,
   StoreGrantContext,
@@ -249,9 +250,37 @@ export interface ServiceDescriptor extends DescriptorHooks {
    * contain, and a throw is recorded as that product's failure only.
    */
   scheduled?(ctx: ScheduledServiceContext): Promise<Record<string, unknown>>;
+  /**
+   * The package-feed render queue's consumer (plans/F-01.md §6.5; `core/registryQueue.ts`).
+   * Release and the feed settings enqueue into the Core-owned `registry_render_queue`; Core reads
+   * it (`drainRenderQueue`, after a request that enqueued and on every cron tick) and hands each
+   * owner's rows to the one ENABLED service implementing this — Distribution, whose renderers
+   * turn them into R2 documents. Core never learns what a render is.
+   */
+  registryMaterialiser?: RegistryMaterialiser;
   // The descriptor hooks — `releaseCatalog?`, `delivery?`, `outletCapabilities?` — come from
   // `DescriptorHooks` (`core/hooks.ts`): read-only views one service offers the others, through
   // Core, under the same fail-closed enablement gate as `authorizeRegistration`.
+}
+
+/**
+ * What a service that renders the package feeds offers Core (`ServiceDescriptor.registryMaterialiser`).
+ * Both members run outside any request, for one product, with that product's hooks.
+ */
+export interface RegistryMaterialiser {
+  /**
+   * Render the queued rows of one product (`rows`, oldest first), calling `consume(row)` for each
+   * one only once everything it names is written. A row left unconsumed is retried by the next
+   * drain; a throw leaves every unconsumed row queued.
+   */
+  drain(
+    ctx: ScheduledServiceContext,
+    rows: readonly QueuedRender[],
+    consume: (row: QueuedRender) => Promise<void>,
+  ): Promise<{ rendered: number; failed: number }>;
+  /** Re-render up to `limit` of the product's packages whose stored render is stale (the cron's
+   *  self-check). Answers how many it re-rendered. */
+  selfCheck(ctx: ScheduledServiceContext, limit: number): Promise<number>;
 }
 
 export type ServiceRegistry = Map<ServiceSlug, ServiceDescriptor>;

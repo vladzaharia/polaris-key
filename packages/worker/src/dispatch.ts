@@ -34,6 +34,7 @@ import { handleRegister } from "./core/register.js";
 import { handleAttest, handleAttestChallenge } from "./core/attestation.js";
 import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 import { dispatchRegistryHost, isRegistryHost } from "./core/registryHost.js";
+import { drainRenderQueue, watchRenderEnqueues } from "./core/registryQueue.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "discovery",
@@ -58,7 +59,20 @@ export async function dispatch(
   db: Db,
   exec?: DispatchExecution,
 ): Promise<Response> {
-  return dispatchWith(req, env, db, Math.floor(Date.now() / 1000), exec);
+  const now = Math.floor(Date.now() / 1000);
+  if (!exec) return dispatchWith(req, env, db, now, exec);
+  // The package-feed render queue (plans/F-01.md §6.5): a request whose writes enqueued a render
+  // (a package publish, yank or channel move; a feed settings write) drains the queue once it has
+  // answered, so the feed's documents are re-rendered within the request's `waitUntil`. Every
+  // other request costs nothing. The cron drains too (`scheduled.ts`), and the stamp-checked read
+  // path covers the moment in between.
+  const watched = watchRenderEnqueues(db);
+  const res = await dispatchWith(req, env, watched.db, now, exec);
+  if (watched.enqueued())
+    exec.waitUntil(
+      drainRenderQueue(SERVICES, { env, db, now }).catch(() => undefined),
+    );
+  return res;
 }
 
 /**

@@ -189,7 +189,7 @@ export function FeedPage({
 
 function packageColumns(
   scope: FeedScope,
-  eco: FeedEcosystem,
+  capabilities: FeedDetailDto["capabilities"],
 ): DataColumn<FeedPackageRow>[] {
   const cols: DataColumn<FeedPackageRow>[] = [
     {
@@ -219,7 +219,8 @@ function packageColumns(
     },
     {
       id: "tags",
-      header: eco === "npm" ? "Dist-tags" : "Tags",
+      // The feed adapter's declaration: npm calls its channel pointers dist-tags.
+      header: capabilities.channels === "dist-tags" ? "Dist-tags" : "Tags",
       accessorFn: (p) => p.tags.map((t) => t.tag).join(" "),
       enableSorting: false,
       meta: { priority: 2, label: "Tags" },
@@ -280,7 +281,11 @@ function PackagesTab({
       ? SYSTEM_PRODUCT_SLUG
       : "";
   const query = useFeedPackages(scope, eco, "", owner);
-  const columns = React.useMemo(() => packageColumns(scope, eco), [scope, eco]);
+  const capabilities = detail.capabilities;
+  const columns = React.useMemo(
+    () => packageColumns(scope, capabilities),
+    [scope, capabilities],
+  );
   const rows = query.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <DataTable<FeedPackageRow>

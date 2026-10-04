@@ -15,11 +15,12 @@
  *     stale object is rendered from those rows, answered at once and written back (the whole
  *     package, through `materialise`), and counted as a render miss.
  *
- * WHY THE STAMP CHECK ON READ. The render queue's drain (`drainRegistry`, the composition root's
- * `registryMaterialiser`) is not wired yet, so nothing re-renders a package after a publish, a
- * yank or a channel move; without the check a feed would serve its first render forever. The
- * cost is the package's rows per Cache API miss (at most one per minute per edge and document,
- * §6.7). Once the drain runs, a stamp match is simply the common case.
+ * WHY THE STAMP CHECK ON READ. The render queue's drain (`drainRegistry`, through Distribution's
+ * `registryMaterialiser`) re-renders a package after a publish, a yank or a channel move, but
+ * only once the request that enqueued has answered (or on the next cron tick). The check keeps a
+ * read between the write and the drain from serving the previous render, and heals a lost or
+ * failed render. The cost is the package's rows per Cache API miss (at most one per minute per
+ * edge and document, §6.7); with the drain running, a stamp match is the common case.
  */
 
 import type {
@@ -162,6 +163,17 @@ export function catalogPackageSource(
     async package(owner, deliverableId) {
       if (owner !== product) return null;
       return loadRegistryPackage(catalog, product, deliverableId, ecosystem);
+    },
+    async deliverables(owner) {
+      if (owner !== product) return [];
+      return (await catalog.packageDeliverables())
+        .filter(
+          (d) =>
+            isRegistryEcosystem(d.ecosystem) &&
+            (ecosystem === undefined || d.ecosystem === ecosystem),
+        )
+        .map((d) => d.id)
+        .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     },
   };
 }

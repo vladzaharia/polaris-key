@@ -11805,6 +11805,174 @@ function normalizeReleaseKeys(raw) {
   }
   return out;
 }
+var GODOT_PACKAGE_RULES = {
+  ecosystem: "godot",
+  name: {
+    // A Godot addon id.
+    pattern: /^[a-z0-9_]{1,64}$/,
+    maxLength: 64,
+    // The grammar is lower case already.
+    norm: (name) => name
+  },
+  fileTypes: ["godot-zip", "godot-icon"],
+  maxFiles: 64,
+  metadataKeys: ["displayName", "author", "description", "script"],
+  namespace: {
+    fields: {
+      publisher: { kind: "string", pattern: /^[a-z0-9][a-z0-9_-]{0,63}$/ }
+    },
+    problem: (_name, ns) => typeof ns.publisher === "string" && ns.publisher !== "" ? null : "the Godot feed has no publisher set"
+  }
+};
+function namespaceStrings(v) {
+  return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
+}
+var MAVEN_PACKAGE_RULES = {
+  ecosystem: "maven",
+  name: {
+    // Maven `groupId:artifactId`.
+    pattern: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*:[A-Za-z0-9_][A-Za-z0-9_.-]*$/,
+    maxLength: 255,
+    // Repositories compare case-insensitively.
+    norm: (name) => name.toLowerCase()
+  },
+  fileTypes: ["maven-file"],
+  maxFiles: 64,
+  metadataKeys: ["groupId", "artifactId", "packaging"],
+  namespace: {
+    fields: {
+      groupPrefixes: {
+        kind: "list",
+        pattern: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/
+      }
+    },
+    problem(name, ns) {
+      const prefixes = namespaceStrings(ns.groupPrefixes).map(
+        (p) => p.toLowerCase()
+      );
+      if (prefixes.length === 0) return "the Maven feed has no group prefixes";
+      const group = name.split(":")[0].toLowerCase();
+      return prefixes.some((p) => group === p || group.startsWith(`${p}.`)) ? null : `${name}'s groupId is not under ${prefixes.join(", ")}`;
+    }
+  }
+};
+function npmScope(name) {
+  const m = /^(@[^/]+)\//.exec(name);
+  return m ? m[1] : null;
+}
+var NPM_PACKAGE_RULES = {
+  ecosystem: "npm",
+  name: {
+    // A scoped npm name, lower case (unscoped names are refused: the scope is the namespace).
+    pattern: /^@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*$/,
+    maxLength: 214,
+    // npm compares case-insensitively.
+    norm: (name) => name.toLowerCase()
+  },
+  fileTypes: ["npm-tarball"],
+  maxFiles: 64,
+  metadataKeys: [
+    "description",
+    "license",
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+    "engines",
+    "bin",
+    "exports",
+    "main",
+    "types",
+    "os",
+    "cpu",
+    "keywords",
+    "homepage",
+    "repository"
+  ],
+  namespace: {
+    fields: {
+      scope: { kind: "string", pattern: /^@[a-z0-9][a-z0-9._~-]{0,213}$/ }
+    },
+    problem(name, ns) {
+      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
+      if (!scope) return "the npm feed has no scope set";
+      return npmScope(name.toLowerCase()) === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    }
+  }
+};
+var OCI_PACKAGE_RULES = {
+  ecosystem: "oci",
+  name: {
+    // An OCI repository path under the owner: lower-case components joined by `/`.
+    pattern: /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/,
+    maxLength: 255,
+    // The grammar is lower case already.
+    norm: (name) => name
+  },
+  fileTypes: ["oci-blob", "oci-manifest", "oci-index"],
+  // An image's blobs.
+  maxFiles: 4096,
+  // `root`: the digest of the manifest or index the version's tag points to.
+  metadataKeys: ["mediaType", "platforms", "root"],
+  namespace: {
+    fields: {},
+    problem: () => null
+  }
+};
+function pep503(name) {
+  return name.toLowerCase().replace(/[-_.]+/g, "-");
+}
+var PYPI_NAME = /^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/;
+var PYPI_PACKAGE_RULES = {
+  ecosystem: "pypi",
+  name: {
+    // PEP 508: letters, digits, `.`, `_` and `-`, starting and ending with a letter or digit.
+    pattern: PYPI_NAME,
+    maxLength: 128,
+    norm: pep503
+  },
+  fileTypes: ["wheel", "sdist", "core-metadata"],
+  maxFiles: 64,
+  metadataKeys: ["summary", "requiresPython", "license"],
+  namespace: {
+    fields: {
+      prefixes: { kind: "list", pattern: PYPI_NAME },
+      names: { kind: "list", pattern: PYPI_NAME }
+    },
+    problem(name, ns) {
+      const norm = pep503(name);
+      const names = namespaceStrings(ns.names).map(pep503);
+      const prefixes = namespaceStrings(ns.prefixes).map(pep503);
+      if (names.length === 0 && prefixes.length === 0)
+        return "the PyPI feed has no names or prefixes";
+      return names.includes(norm) || prefixes.some((p) => norm.startsWith(p)) ? null : `${name} is not one of the feed's names or prefixes`;
+    }
+  }
+};
+var SWIFT_PACKAGE_RULES = {
+  ecosystem: "swift",
+  name: {
+    // SE-0292: `scope.Name`, scope 1-39 of [A-Za-z0-9-], name 1-100 of [A-Za-z0-9_-], each
+    // starting with a letter or digit.
+    pattern: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\.[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/,
+    maxLength: 140,
+    // The registry compares case-insensitively.
+    norm: (name) => name.toLowerCase()
+  },
+  fileTypes: ["source-archive", "manifest", "source-archive-signature"],
+  maxFiles: 64,
+  metadataKeys: ["toolsVersions", "signatureFormat"],
+  namespace: {
+    fields: {
+      scope: { kind: "string", pattern: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/ }
+    },
+    problem(name, ns) {
+      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
+      if (!scope) return "the Swift feed has no scope set";
+      return name.split(".")[0].toLowerCase() === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    }
+  }
+};
 var PACKAGE_ECOSYSTEMS = [
   "npm",
   "pypi",
@@ -11824,29 +11992,21 @@ var PACKAGE_REFUSED_FIELDS = [
   "type",
   "packType"
 ];
-var PACKAGE_NAME_PATTERNS = {
-  // A scoped npm name, lower case (unscoped names are refused: the scope is the namespace).
-  npm: /^@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*$/,
-  // PEP 508: letters, digits, `.`, `_` and `-`, starting and ending with a letter or digit.
-  pypi: /^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/,
-  // SE-0292: `scope.Name`, scope 1-39 of [A-Za-z0-9-], name 1-100 of [A-Za-z0-9_-], each
-  // starting with a letter or digit.
-  swift: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\.[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/,
-  // Maven `groupId:artifactId`.
-  maven: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*:[A-Za-z0-9_][A-Za-z0-9_.-]*$/,
-  // An OCI repository path under the owner: lower-case components joined by `/`.
-  oci: /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/,
-  // A Godot addon id.
-  godot: /^[a-z0-9_]{1,64}$/
+var PACKAGE_ECOSYSTEM_RULES = {
+  npm: NPM_PACKAGE_RULES,
+  pypi: PYPI_PACKAGE_RULES,
+  swift: SWIFT_PACKAGE_RULES,
+  maven: MAVEN_PACKAGE_RULES,
+  oci: OCI_PACKAGE_RULES,
+  godot: GODOT_PACKAGE_RULES
 };
-var PACKAGE_NAME_MAX_LENGTH = {
-  npm: 214,
-  pypi: 128,
-  swift: 140,
-  maven: 255,
-  oci: 255,
-  godot: 64
-};
+function perEcosystem(pick) {
+  return Object.fromEntries(
+    PACKAGE_ECOSYSTEMS.map((e) => [e, pick(PACKAGE_ECOSYSTEM_RULES[e])])
+  );
+}
+var PACKAGE_NAME_PATTERNS = perEcosystem((r) => r.name.pattern);
+var PACKAGE_NAME_MAX_LENGTH = perEcosystem((r) => r.name.maxLength);
 function isPackageEcosystem(value) {
   return typeof value === "string" && PACKAGE_ECOSYSTEMS.includes(value);
 }
@@ -11854,55 +12014,14 @@ function isPackageName(ecosystem, name) {
   return typeof name === "string" && name.length <= PACKAGE_NAME_MAX_LENGTH[ecosystem] && PACKAGE_NAME_PATTERNS[ecosystem].test(name);
 }
 function packageNameNorm(ecosystem, name) {
-  switch (ecosystem) {
-    case "pypi":
-      return name.toLowerCase().replace(/[-_.]+/g, "-");
-    case "npm":
-    case "swift":
-    case "maven":
-      return name.toLowerCase();
-    default:
-      return name;
-  }
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].name.norm(name);
 }
-var PACKAGE_FILE_TYPES = {
-  npm: ["npm-tarball"],
-  pypi: ["wheel", "sdist", "core-metadata"],
-  swift: ["source-archive", "manifest", "source-archive-signature"],
-  maven: ["maven-file"],
-  oci: ["oci-blob", "oci-manifest", "oci-index"],
-  godot: ["godot-zip", "godot-icon"]
-};
+var PACKAGE_FILE_TYPES = perEcosystem((r) => r.fileTypes);
 function maxPackageFiles(ecosystem) {
-  return ecosystem === "oci" ? 4096 : 64;
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].maxFiles;
 }
 var MAX_PACKAGE_METADATA_BYTES = 16 * 1024;
-var PACKAGE_METADATA_KEYS = {
-  npm: [
-    "description",
-    "license",
-    "dependencies",
-    "devDependencies",
-    "peerDependencies",
-    "optionalDependencies",
-    "engines",
-    "bin",
-    "exports",
-    "main",
-    "types",
-    "os",
-    "cpu",
-    "keywords",
-    "homepage",
-    "repository"
-  ],
-  pypi: ["summary", "requiresPython", "license"],
-  swift: ["toolsVersions", "signatureFormat"],
-  maven: ["groupId", "artifactId", "packaging"],
-  // `root`: the digest of the manifest or index the version's tag points to.
-  oci: ["mediaType", "platforms", "root"],
-  godot: ["displayName", "author", "description", "script"]
-};
+var PACKAGE_METADATA_KEYS = perEcosystem((r) => r.metadataKeys);
 var SERVICE_SLUGS = [
   "license",
   "config",
