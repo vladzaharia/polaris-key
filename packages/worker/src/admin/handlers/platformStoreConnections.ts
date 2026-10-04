@@ -511,6 +511,25 @@ async function assignment(
         `Pinned the platform ${PLATFORM_CREDENTIALS[id].label} to ${PLATFORM_CREDENTIALS[id].pinField} ${pin} for this product (was ${r.before ?? "unpinned"})`,
       );
   }
+  // A pin on another credential of the store that this app does not name (an App Store app the
+  // listing shows without a bundle id) would still point at the product's PREVIOUS app: release it.
+  const set = new Set(pins.map(([id]) => id));
+  const released: Array<{ credential: PlatformCredentialId; pin: string }> = [];
+  for (const id of platformCredentialsOf(store)) {
+    if (set.has(id)) continue;
+    const before = await clearPlatformPin(db, id, slug);
+    if (before === null) continue;
+    released.push({ credential: id, pin: before });
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "outlet_credential.pin",
+      { kind: "platform_credential", id },
+      `Released the platform ${PLATFORM_CREDENTIALS[id].label} pin ${PLATFORM_CREDENTIALS[id].pinField} ${before} for this product (the assigned app names none)`,
+    );
+  }
   // The product's own keys take precedence over the team key: pin them to the same app through
   // the existing audited path, so the assignment means the same thing whichever key is used.
   const repinned: string[] = [];
@@ -525,15 +544,25 @@ async function assignment(
         pin,
       )),
     );
-  if (results.some((r) => r.changed) || repinned.length > 0)
+  if (
+    results.some((r) => r.changed) ||
+    released.length > 0 ||
+    repinned.length > 0
+  )
     await appendPlatformEvent(db, {
       actor: actorOf(session),
       at: now,
       action: "store_connection.assign",
       target: { kind: "store_app", id: `${store}:${appId}` },
       summary: `Assigned ${STORE_LABELS[store]} app ${appId}${app.name ? ` (${app.name})` : ""} to product ${slug}`,
-      before: Object.fromEntries(results.map((r) => [r.credential, r.before])),
-      after: Object.fromEntries(results.map((r) => [r.credential, r.pin])),
+      before: Object.fromEntries([
+        ...results.map((r) => [r.credential, r.before]),
+        ...released.map((r) => [r.credential, r.pin]),
+      ]),
+      after: Object.fromEntries([
+        ...results.map((r) => [r.credential, r.pin]),
+        ...released.map((r) => [r.credential, null]),
+      ]),
     });
   return adminJson({
     ok: true,
@@ -545,6 +574,7 @@ async function assignment(
       pin,
       changed,
     })),
+    released,
     ownCredentialsRepinned: repinned,
   });
 }

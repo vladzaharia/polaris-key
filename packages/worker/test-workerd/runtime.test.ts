@@ -459,7 +459,7 @@ describe("Google Play connector on workerd (P5-03)", () => {
       now: NOW,
     });
     expect(put.ok).toBe(true);
-    const setup = await playSetup(db, "djdl6");
+    const setup = await playSetup(workerEnv, db, "djdl6");
     expect(setup?.packageName).toBe("gg.acme.djdl");
     const fake = new PlayFake(
       { publisher: playPublisher, reporting: playReporting },
@@ -535,7 +535,7 @@ describe("Microsoft Store connector on workerd (P5-04)", () => {
       now: NOW,
     });
     expect(put.ok).toBe(true);
-    const { setup } = await resolveMsStoreSetup(db, "djdl7");
+    const { setup } = await resolveMsStoreSetup(workerEnv, db, "djdl7");
     expect(setup?.productId).toBe(STORE_ID);
     const fake = new MsStoreFake(msStoreFixtures as unknown as StoreFixtures);
     const hooks: ServiceHooks = {

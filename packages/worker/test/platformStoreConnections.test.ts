@@ -843,6 +843,61 @@ describe("platform store connections: a product's connector falls back to the te
     });
   });
 
+  it("an own key bound to other outlets is inert on its own terms, never a fall-through", async () => {
+    const w = await teamWorld();
+    await setPlatformPin(w.db, {
+      id: "app-store.api-key",
+      product: SLUG,
+      pin: APPLE_ID,
+      actor: "x",
+      now: NOW,
+    });
+    const r = await putOutletCredential(w.env, w.db, {
+      product: SLUG,
+      credentialId: "asc-elsewhere",
+      kind: "asc-api-key",
+      outletId: "some-other-outlet",
+      value: ascKey("OWNKEY1234"),
+      pin: APPLE_ID,
+      expiresAt: null,
+      actor: "x",
+      now: NOW,
+    });
+    expect(r.ok).toBe(true);
+    expect((await resolveAscSetup(w.env, w.db, SLUG)).inert).toMatchObject({
+      reason: "no_api_key",
+      credentialSource: "product",
+    });
+    await poll(w);
+    expect(w.fake.requests).toEqual([]);
+  });
+
+  it("re-assigning to an app with no bundle id releases the old In-App Purchase pin", async () => {
+    const w = await teamWorld();
+    w.fake.put({
+      type: "apps",
+      id: "6666666666",
+      attributes: { name: "No Bundle", sku: "NB" },
+    });
+    await platform(w, "PUT", `/app-store/apps/${APPLE_ID}/product`, {
+      product: SLUG,
+    });
+    const res = await platform(w, "PUT", "/app-store/apps/6666666666/product", {
+      product: SLUG,
+    });
+    expect(await json(res)).toMatchObject({
+      released: [
+        { credential: "app-store.in-app-purchase-key", pin: "gg.acme.djdl" },
+      ],
+    });
+    expect(
+      await platformPin(w.db, "app-store.in-app-purchase-key", SLUG),
+    ).toBeNull();
+    expect(await platformPin(w.db, "app-store.api-key", SLUG)).toBe(
+      "6666666666",
+    );
+  });
+
   it("a console team key wins over the secret for the connector too, and deleting the product frees its app", async () => {
     const w = await teamWorld();
     await putPlatformCredential(w.env, w.db, {

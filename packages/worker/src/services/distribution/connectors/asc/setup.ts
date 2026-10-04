@@ -198,6 +198,14 @@ export async function resolveAscSetup(
     },
     inert: null,
   });
+  if (!apiKey && creds.some((c) => c.kind === "asc-api-key"))
+    // The product holds keys of its own, just none for this app's outlets: inert on its own
+    // terms — never a fall-through to the team key.
+    return inert(
+      "no_api_key",
+      "the product's asc-api-key credentials are bound to other outlets: a platform admin must store an asc-api-key credential for this app's outlets (or unbound) pinned to this app",
+      { manifestAppleId: appleId, credentialSource: "product" },
+    );
   if (!apiKey) {
     // A-16: no key of the product's own — fall back to the platform team key, pin required.
     const platform = await resolvePlatformCredential(
