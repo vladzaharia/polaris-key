@@ -241,16 +241,12 @@ export async function ingestPackageDescriptor(
     },
   });
   if (!v.ok)
+    // The validator's own codes (`unsupported_deliverable_kind` when the descriptor's kind and
+    // the deliverable's disagree, …) stay in `errors`; the answer's code is the descriptor's.
     return refuse(
       "package-shape",
       v.errors.map((e) => `${e.path}: ${e.message}`).join("; "),
-      {
-        errors: v.errors,
-        // The kind/deliverable mismatches keep their own codes.
-        ...(v.errors.some((e) => e.code === "unsupported_deliverable_kind")
-          ? { code: "unsupported_deliverable_kind" }
-          : {}),
-      },
+      { errors: v.errors },
     );
   if (v.descriptor.kind !== "package")
     return refuse("package-shape", "kind must be package.");

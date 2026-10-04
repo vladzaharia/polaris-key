@@ -5010,7 +5010,7 @@ paths:
         submit carrying a `record` with it is refused `release_record_rejected`, reason
         `package-unsigned` (400), and so is `contentInterface` (`bad_body`). It is refused
         `invalid_descriptor` with reason `package-shape` (the validator's findings in
-        `errors`; `unsupported_deliverable_kind` when the descriptor's kind and the
+        `errors`, `unsupported_deliverable_kind` among them when the descriptor's kind and the
         deliverable's disagree), `maven-snapshot` (a Maven `-SNAPSHOT` version),
         `package-namespace` (no feed of the ecosystem is configured for the product, or the
         name is outside the feed's namespace), `package-too-large` (over the feed's size
