@@ -46,7 +46,8 @@ import {
 } from "../update/useUpdateDecision.js";
 import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
-import { mutedText } from "./primitives/card.js";
+import { bannerStyle, mutedText } from "./primitives/card.js";
+import { screenLogo } from "./brand.js";
 
 export interface UpdatePromptSlots {
   /** Replace the whole prompt. Receives the live check plus a dismiss callback. */
@@ -124,7 +125,7 @@ function VersionPrompt(
         className={className}
         role="status"
         aria-live="polite"
-        style={{ ...mutedText, fontSize: "13px", padding: "8px 16px" }}
+        style={{ ...mutedText, padding: "8px 16px" }}
         data-polaris-update="current"
       >
         {theme.copy.updateUpToDateLabel}
@@ -152,19 +153,14 @@ function VersionPrompt(
         className={className}
         title={theme.copy.updateTitle}
         body={body}
-        logo={theme.logo}
+        logo={screenLogo(theme, "delivery")}
         onRetry={act}
         retryLabel={theme.copy.updateActionLabel}
-        extra={
-          <div style={{ marginTop: "8px" }}>
-            <Button
-              variant="ghost"
-              style={{ fontSize: "13px" }}
-              onClick={dismiss}
-            >
-              {theme.copy.updateDismissLabel}
-            </Button>
-          </div>
+        retryVariant="primary"
+        secondaryAction={
+          <Button variant="ghost" onClick={dismiss}>
+            {theme.copy.updateDismissLabel}
+          </Button>
         }
         data-polaris-update="dialog"
       />
@@ -177,17 +173,7 @@ function VersionPrompt(
       role="status"
       aria-live="polite"
       aria-label={theme.copy.updateTitle}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        padding: "8px 16px",
-        background: "var(--pk-surface)",
-        borderBottom: "1px solid var(--pk-border)",
-        color: "var(--pk-text-muted)",
-        fontFamily: "var(--pk-font-family)",
-        fontSize: "13px",
-      }}
+      style={bannerStyle()}
       data-polaris-update="banner"
     >
       <span>
@@ -195,7 +181,7 @@ function VersionPrompt(
       </span>
       <Button
         variant="secondary"
-        style={{ padding: "6px 12px", fontSize: "13px" }}
+        style={{ padding: "6px 12px", fontSize: "14px" }}
         onClick={act}
         data-polaris-update-action=""
       >
@@ -203,7 +189,7 @@ function VersionPrompt(
       </Button>
       <Button
         variant="ghost"
-        style={{ padding: "6px 12px", fontSize: "13px" }}
+        style={{ padding: "6px 12px", fontSize: "14px" }}
         onClick={dismiss}
         data-polaris-update-dismiss=""
       >
@@ -260,7 +246,7 @@ function DecisionPrompt(
         className={className}
         role="status"
         aria-live="polite"
-        style={{ ...mutedText, fontSize: "13px", padding: "8px 16px" }}
+        style={{ ...mutedText, padding: "8px 16px" }}
         data-polaris-update="current"
       >
         {theme.copy.updateUpToDateLabel}
@@ -342,7 +328,7 @@ function DecisionPrompt(
         className={className}
         title={c.updateRevokedContentTitle}
         body={c.updateRevokedContentBody}
-        logo={theme.logo}
+        logo={screenLogo(theme, "delivery")}
         {...(offer ? { onRetry: act, retryLabel: label } : {})}
         data-polaris-update={decision.action}
         data-polaris-update-required=""
@@ -356,19 +342,17 @@ function DecisionPrompt(
         className={className}
         title={title}
         body={body}
-        logo={theme.logo}
+        logo={screenLogo(theme, "delivery")}
         {...(act ? { onRetry: act, retryLabel: label } : {})}
-        extra={
-          <div style={{ marginTop: "8px" }}>
-            <Button
-              variant="ghost"
-              style={{ fontSize: "13px" }}
-              onClick={dismiss}
-              data-polaris-update-dismiss=""
-            >
-              {c.updateDismissLabel}
-            </Button>
-          </div>
+        retryVariant="primary"
+        secondaryAction={
+          <Button
+            variant="ghost"
+            onClick={dismiss}
+            data-polaris-update-dismiss=""
+          >
+            {c.updateDismissLabel}
+          </Button>
         }
         data-polaris-update={decision.action}
       />
@@ -384,17 +368,7 @@ function DecisionPrompt(
         ? { role: "alert", "data-polaris-update-mandatory": "" }
         : { role: "status", "aria-live": "polite" as const })}
       aria-label={title}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        padding: "8px 16px",
-        background: "var(--pk-surface)",
-        borderBottom: "1px solid var(--pk-border)",
-        color: "var(--pk-text-muted)",
-        fontFamily: "var(--pk-font-family)",
-        fontSize: "13px",
-      }}
+      style={bannerStyle(locked ? "warning" : "neutral")}
       data-polaris-update={decision.action}
     >
       <span>
@@ -403,7 +377,7 @@ function DecisionPrompt(
       {act ? (
         <Button
           variant="secondary"
-          style={{ padding: "6px 12px", fontSize: "13px" }}
+          style={{ padding: "6px 12px", fontSize: "14px" }}
           onClick={act}
           data-polaris-update-action=""
         >
@@ -413,7 +387,7 @@ function DecisionPrompt(
       {locked ? null : (
         <Button
           variant="ghost"
-          style={{ padding: "6px 12px", fontSize: "13px" }}
+          style={{ padding: "6px 12px", fontSize: "14px" }}
           onClick={dismiss}
           data-polaris-update-dismiss=""
         >

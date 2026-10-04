@@ -16,7 +16,8 @@ import {
 } from "../react/hooks.js";
 import { PolarisLogin } from "./PolarisLogin.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
-import { fullWindow } from "./primitives/card.js";
+import { bannerStyle, fullWindow } from "./primitives/card.js";
+import { screenLogo } from "./brand.js";
 import type { PolarisTheme } from "./theme.js";
 
 /** Render-prop slots — each receives the headless gate context so a product can fully
@@ -104,14 +105,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
             role="status"
             aria-live="polite"
             aria-label={theme.copy.graceTitle}
-            style={{
-              padding: "8px 16px",
-              background: "var(--pk-surface)",
-              borderBottom: "1px solid var(--pk-border)",
-              color: "var(--pk-text-muted)",
-              fontFamily: "var(--pk-font-family)",
-              fontSize: "13px",
-            }}
+            style={bannerStyle()}
           >
             {theme.copy.graceTitle} — {theme.copy.graceBody}
           </div>
@@ -157,7 +151,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
         <MessageScreen
           title={theme.copy.revokedTitle}
           body={theme.copy.revokedBody}
-          logo={theme.logo}
+          logo={screenLogo(theme)}
         />
       );
       break;
@@ -168,11 +162,11 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
         <MessageScreen
           title={theme.copy.expiredTitle}
           body={theme.copy.expiredBody}
-          logo={theme.logo}
+          logo={screenLogo(theme)}
           // The dialog manages focus → don't let the embedded login card steal it.
           extra={
-            <div style={{ marginTop: "16px" }}>
-              <PolarisLogin autoFocus={false} />
+            <div style={{ marginTop: "24px" }}>
+              <PolarisLogin autoFocus={false} logo={null} bare />
             </div>
           }
         />
@@ -191,7 +185,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
               ? `${body} (allowed: ${range?.min ?? "*"} – ${range?.max ?? "*"})`
               : body
           }
-          logo={theme.logo}
+          logo={screenLogo(theme)}
           onRetry={() => void ctx.retry()}
           retryLabel={theme.copy.retryLabel}
         />
@@ -206,7 +200,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
         <MessageScreen
           title="Something went wrong"
           body={describeGateError(ctx.error)}
-          logo={theme.logo}
+          logo={screenLogo(theme)}
           onRetry={() => void ctx.retry()}
           retryLabel={theme.copy.retryLabel}
         />
