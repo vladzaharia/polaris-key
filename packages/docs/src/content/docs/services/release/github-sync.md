@@ -108,7 +108,7 @@ The same endpoint also accepts GitHub's `release` event, and treats every action
 `published`, `unpublished`, `created`, `edited`, `deleted`, `prereleased`, `released` — the
 same way: for each product linked to the delivery's repository, it re-runs the
 [truth-store](/docs/services/release/truth-store/) half of a resync and nothing else. Publishing
-a build therefore shows up in the console's Releases view and the customer portal within one
+a build therefore shows up in the console's Releases page and the customer portal within one
 delivery, without a push to `.pkey/` and without anyone pressing **Resync from repo**.
 
 The guards are the push path's, in the same order: the signature is verified over the raw body
@@ -200,9 +200,9 @@ Every resync attempt — manual or webhook-triggered — writes one row recordin
 happened: its source (`manual` from the console button, or `webhook` from a push), whether
 it succeeded, when it was last checked and last actually synced, the commit SHA the push
 named, the changed paths that triggered it, which sections were updated, and any validation
-errors. The console's **Manifest sync** card on the Releases view is a direct read of that
-row — it is how an operator confirms that a push actually landed, and reads the validation
-errors verbatim when it didn't. A `release` delivery never writes this row; its trace is the
+errors. The **Last sync** section of the Releases page's **Repo sync** drawer is a direct
+read of that row, every list in full — it is how an operator confirms that a push actually
+landed, and reads the validation errors verbatim when it didn't. A `release` delivery never writes this row; its trace is the
 `checked_at` of the product's `release_health` rows.
 
 ## The manual resync action
@@ -210,7 +210,10 @@ errors verbatim when it didn't. A `release` delivery never writes this row; its 
 **Resync from repo** in the console calls the same `resyncRepo` path the webhook does,
 synchronously, and is only enabled for a product whose `release_source` is actually
 `github` — a manually-created product has nothing to resync from and the endpoint answers
-with a clear `422` rather than a confusing failure. Use it after linking a repo whose
+with a clear `422` rather than a confusing failure; the console shows the button disabled
+with that reason. When the resync finishes, the **Repo sync** drawer lists what it updated,
+any part of the manifest it refused (with the manifest path), and the pack-set
+re-resolution it triggered. Use it after linking a repo whose
 `.pkey/` predates the App installation, or any time an operator wants to confirm a change
 landed without waiting on a webhook delivery.
 

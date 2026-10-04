@@ -34,6 +34,8 @@ const exact = (key: QueryKey): Target => ({ key, exact: true });
 /** The API methods that write. Kept in step with `api.ts` by `test/mutations.test.ts`. */
 export type WriteMethod =
   | "logout"
+  | "patchPlatformSetting"
+  | "revertPlatformSetting"
   | "createManualProduct"
   | "linkRepo"
   | "updateProduct"
@@ -49,6 +51,12 @@ export type WriteMethod =
   | "putOutletCredential"
   | "deleteOutletCredential"
   | "rotateProductKey"
+  | "activateProductKey"
+  | "retireProductKey"
+  | "revokeProductKey"
+  | "putCiPublisher"
+  | "issueCiToken"
+  | "revokeCiToken"
   | "updateServices"
   | "revertServices"
   | "saveUpdateSettings"
@@ -56,6 +64,15 @@ export type WriteMethod =
   | "saveDeliveryAccess"
   | "revertDeliveryAccess"
   | "rolloutAction"
+  | "setRollout"
+  | "refreshReadiness"
+  | "overrideReadiness"
+  | "clearReadinessOverride"
+  | "narrowOutletCapabilities"
+  | "revertOutletCapabilities"
+  | "putDistributionKey"
+  | "deleteDistributionKey"
+  | "connectorControl"
   | "saveAutoHalt"
   | "decideCandidate"
   | "publishSchema"
@@ -75,11 +92,14 @@ export type WriteMethod =
   | "updateFingerprintPolicy"
   | "revertFingerprintPolicy"
   | "createProfile"
+  | "patchProfile"
   | "putProfilePayload"
   | "deleteProfile"
   | "createTier"
   | "patchTier"
-  | "deleteTier";
+  | "deleteTier"
+  | "assignPlatformStoreApp"
+  | "releasePlatformStoreApp";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -113,6 +133,13 @@ const rollout = (slug: string): Target[] => [
   prefix(qk.compat(slug)),
 ];
 
+/** §5.4 "readiness refresh / override / clear". */
+const readiness = (slug: string): Target[] => [
+  prefix(qk.readiness(slug)),
+  prefix(qk.matrix(slug)),
+  prefix(qk.compat(slug)),
+];
+
 /** §5.4 "license create / patch / enable / disable / overrides". */
 const license = (slug: string): Target[] => [
   prefix(qk.licenses(slug)),
@@ -143,6 +170,22 @@ export const MUTATIONS: MutationTable = {
     label: "sign out",
     invalidates: () => [],
     why: "The page leaves for the sign-in screen; nothing cached is shown again.",
+  },
+  patchPlatformSetting: {
+    label: "platform setting set",
+    // The settings list (effective value, source, version) and the platform trail, which the
+    // write appends to (Settings → History, Deployment → Platform activity).
+    invalidates: () => [
+      exact(qk.platformSettings()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  revertPlatformSetting: {
+    label: "platform setting revert",
+    invalidates: () => [
+      exact(qk.platformSettings()),
+      prefix(qk.platformActivity()),
+    ],
   },
   createManualProduct: {
     label: "product create (manual)",
@@ -222,6 +265,31 @@ export const MUTATIONS: MutationTable = {
     label: "signing key prepare",
     invalidates: (slug) => [exact(qk.product(slug)), prefix(qk.keys(slug))],
   },
+  activateProductKey: {
+    label: "signing key activate",
+    // The product row carries the active key (Overview's Trust & SDK, the JWKS link).
+    invalidates: (slug) => [exact(qk.product(slug)), prefix(qk.keys(slug))],
+  },
+  retireProductKey: {
+    label: "signing key retire",
+    invalidates: (slug) => [prefix(qk.keys(slug))],
+  },
+  revokeProductKey: {
+    label: "signing key revoke",
+    invalidates: (slug) => [prefix(qk.keys(slug))],
+  },
+  putCiPublisher: {
+    label: "trusted publisher claim",
+    invalidates: (slug) => [prefix(qk.ciPublisher(slug))],
+  },
+  issueCiToken: {
+    label: "CI token issue",
+    invalidates: (slug) => [prefix(qk.ciTokens(slug))],
+  },
+  revokeCiToken: {
+    label: "CI token revoke",
+    invalidates: (slug) => [prefix(qk.ciTokens(slug))],
+  },
   updateServices: {
     label: "services update",
     // Enablement changes which sections and queries exist at all: refresh the whole product, and
@@ -257,6 +325,44 @@ export const MUTATIONS: MutationTable = {
   rolloutAction: {
     label: "rollout verb (pause, resume, halt, complete)",
     invalidates: (slug) => rollout(slug),
+  },
+  setRollout: {
+    label: "rollout start or set percentage",
+    invalidates: (slug) => rollout(slug),
+  },
+  refreshReadiness: {
+    label: "readiness refresh",
+    invalidates: (slug) => readiness(slug),
+  },
+  overrideReadiness: {
+    label: "readiness override",
+    invalidates: (slug) => readiness(slug),
+  },
+  clearReadinessOverride: {
+    label: "readiness override clear",
+    invalidates: (slug) => readiness(slug),
+  },
+  narrowOutletCapabilities: {
+    label: "outlet capabilities narrow",
+    invalidates: (slug) => [prefix(qk.outlets(slug))],
+  },
+  revertOutletCapabilities: {
+    label: "outlet capabilities revert to the kind default",
+    invalidates: (slug) => [prefix(qk.outlets(slug))],
+  },
+  putDistributionKey: {
+    label: "distribution key add or update",
+    invalidates: (slug) => [prefix(qk.distributionKeys(slug))],
+  },
+  deleteDistributionKey: {
+    label: "distribution key remove or dismiss",
+    invalidates: (slug) => [prefix(qk.distributionKeys(slug))],
+  },
+  connectorControl: {
+    label: "store connector control",
+    // A store control moves a store rollout (mirrored into the matrix and the rollouts) or the
+    // connector's own settings (its vitals auto-halt reads into health).
+    invalidates: (slug) => [prefix(qk.connectors(slug)), ...rollout(slug)],
   },
   saveAutoHalt: {
     label: "auto-halt settings",
@@ -349,6 +455,15 @@ export const MUTATIONS: MutationTable = {
     label: "profile create",
     invalidates: (slug) => [prefix(qk.profiles(slug))],
   },
+  patchProfile: {
+    label: "profile details",
+    // Tier and license pages show profile names.
+    invalidates: (slug) => [
+      prefix(qk.profiles(slug)),
+      prefix(qk.tiers(slug)),
+      prefix(qk.licenses(slug)),
+    ],
+  },
   putProfilePayload: {
     label: "profile payload",
     // A license's resolved stack includes its profiles' payloads.
@@ -376,6 +491,24 @@ export const MUTATIONS: MutationTable = {
   deleteTier: {
     label: "tier delete",
     invalidates: (slug) => [prefix(qk.tiers(slug)), prefix(qk.licenses(slug))],
+  },
+  assignPlatformStoreApp: {
+    label: "store app assign",
+    // The connection list (assignments, pin counts), every store's apps listing (who holds what),
+    // and the product's outlet credentials and connector health (pins, credential source).
+    invalidates: (_store, _appId, product) => [
+      prefix(qk.platformStores()),
+      prefix(qk.credentials(product)),
+      prefix(qk.health(product)),
+    ],
+  },
+  releasePlatformStoreApp: {
+    label: "store app release",
+    invalidates: (_store, _appId, heldBy) => [
+      prefix(qk.platformStores()),
+      prefix(qk.credentials(heldBy)),
+      prefix(qk.health(heldBy)),
+    ],
   },
 };
 

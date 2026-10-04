@@ -1,30 +1,34 @@
 /**
- * P4-15 — the Release section's Compatibility tab over a mocked admin API: the matrix renders
- * every cell state (pinned, held, compatible, incompatible, revoked) with the current set member
- * ringed, yanked as a modifier, the live contentApi levels and the unsatisfied markers; the
- * liveness overlay joins Distribution's matrix (live outlets, a readiness hold, a store outlet that
- * is not ready); and the simulator sends the chosen selector and renders the worker's answer.
+ * Release → Compatibility over a mocked admin API (ADMIN.md §6.3.5): the matrix on the `Grid`
+ * renders every cell state (pinned, held, compatible, incompatible, revoked) with the current set
+ * member marked in words, yanked as a modifier, the live contentApi levels and the unsatisfied
+ * markers; a cell opens a drawer with its reason and links; the overlay joins Distribution's
+ * matrix; and the simulator sends the chosen selector from URL-held inputs and renders the
+ * worker's full answer.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   CompatResponse,
+  DeliverablesResponse,
   DistributionMatrix,
   MatrixCellDto,
+  ProductDetail,
+  ReleaseChannelsResponse,
+  ReleaseStoreResponse,
   SimulateParams,
   SimulateResponse,
 } from "../src/api.js";
 import { ApiError } from "../src/api.js";
-import { resetCache } from "../src/context.js";
 import { sha } from "./releaseFixture.js";
+import {
+  expectNoAxeViolations,
+  hashQuery,
+  mountAt,
+  pending,
+} from "./releaseHarness.js";
 
 const releaseCompat =
   vi.fn<
@@ -37,6 +41,11 @@ const distributionMatrix =
   vi.fn<(slug: string, opts?: unknown) => Promise<DistributionMatrix>>();
 const simulateUpdate =
   vi.fn<(slug: string, params: SimulateParams) => Promise<SimulateResponse>>();
+const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
+const releases = vi.fn<(slug: string) => Promise<ReleaseStoreResponse>>();
+const releaseChannels =
+  vi.fn<(slug: string) => Promise<ReleaseChannelsResponse>>();
+const deliverables = vi.fn<(slug: string) => Promise<DeliverablesResponse>>();
 
 vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
@@ -47,11 +56,17 @@ vi.mock("../src/api.js", async (importOriginal) => ({
       distributionMatrix(slug, opts),
     simulateUpdate: (slug: string, params: SimulateParams) =>
       simulateUpdate(slug, params),
+    product: (slug: string) => product(slug),
+    releases: (slug: string) => releases(slug),
+    releaseChannels: (slug: string) => releaseChannels(slug),
+    deliverables: (slug: string) => deliverables(slug),
   },
 }));
 
-const { Compatibility } =
-  await import("../src/views/releases/Compatibility.js");
+const { CompatibilityPage } =
+  await import("../src/console/pages/release/CompatibilityPage.js");
+const { SimulatorPage } =
+  await import("../src/console/pages/release/SimulatorPage.js");
 
 const SLUG = "diceroll";
 const FOES = "diceroll.foes";
@@ -390,25 +405,133 @@ const RESULT: SimulateResponse = {
   notes: [],
 };
 
+const PRODUCT = {
+  slug: SLUG,
+  name: "Diceroll",
+  services: {
+    license: { enabled: true },
+    config: { enabled: true },
+    release: { enabled: true },
+    distribution: { enabled: true },
+    update: { enabled: true },
+    identity: { enabled: true },
+  },
+} as unknown as ProductDetail;
+
+const app = (releaseId: string, version: string, seq: number) => ({
+  releaseId,
+  deliverable: "app",
+  version,
+  seq,
+  channel: "stable",
+  title: null,
+  publishedAt: 1_720_000_000 + seq,
+  sourceUrl: null,
+  status: "ok",
+  yank: null,
+  builds: [
+    {
+      buildId: "android",
+      platform: "android",
+      arch: "arm64",
+      format: "aab",
+      buildNumber: null,
+      minOs: null,
+    },
+    {
+      buildId: "ios",
+      platform: "ios",
+      arch: "arm64",
+      format: "ipa",
+      buildNumber: null,
+      minOs: null,
+    },
+  ],
+  artifacts: [],
+});
+
+/** Every app release, newest first: more than the matrix page shows (CMP-8). */
+const STORE: ReleaseStoreResponse = {
+  releases: [
+    app("app@1.5.0", "1.5.0", 15),
+    app("app@1.4.0", "1.4.0", 14),
+    app("app@1.3.0", "1.3.0", 13),
+    app("app@1.2.0", "1.2.0", 12),
+  ],
+  channels: [],
+  floors: [],
+};
+
+const CHANNELS: ReleaseChannelsResponse = {
+  deliverables: [
+    {
+      deliverable: "app",
+      kind: "app",
+      platforms: ["android", "ios"],
+      channels: ["stable", "beta"].map((channel) => ({
+        deliverable: "app",
+        channel,
+        pointer: null,
+        pinned: false,
+        includes: null,
+        minSupported: null,
+        critical: false,
+        source: "manifest" as const,
+        modifiedAt: null,
+        modifiedBy: null,
+        resolved: "app@1.5.0",
+        byPlatform: {},
+      })),
+    },
+  ],
+};
+
+const DELIVERABLES = {
+  gateKnown: true,
+  deliverables: [
+    { id: FOES, kind: "pack", variantKeys: ["texture=etc2", "texture=s3tc"] },
+    { id: SKINS, kind: "pack", variantKeys: [""] },
+  ],
+} as unknown as DeliverablesResponse;
+
 beforeEach(() => {
-  resetCache();
   releaseCompat.mockReset().mockResolvedValue(COMPAT);
   distributionMatrix.mockReset().mockResolvedValue(MATRIX);
   simulateUpdate.mockReset().mockResolvedValue(RESULT);
+  product.mockReset().mockResolvedValue({ product: PRODUCT });
+  releases.mockReset().mockResolvedValue(STORE);
+  releaseChannels.mockReset().mockResolvedValue(CHANNELS);
+  deliverables.mockReset().mockResolvedValue(DELIVERABLES);
 });
+afterEach(cleanup);
 
-afterEach(() => {
-  cleanup();
-});
+const MATRIX_HASH = `#/p/${SLUG}/release/compatibility`;
+const SIM_HASH = `#/p/${SLUG}/release/compatibility/simulator`;
 
-describe("Compatibility tab (P4-15)", () => {
-  it("renders every cell state, the current member, yanked, live levels and unsatisfied markers", async () => {
-    render(<Compatibility slug={SLUG} />);
-    const row15 = await screen.findByTestId("compat-row-app@1.5.0");
-    const row14 = screen.getByTestId("compat-row-app@1.4.0");
+function mountMatrix(query = "") {
+  return mountAt(`${MATRIX_HASH}${query}`, <CompatibilityPage slug={SLUG} />);
+}
 
-    const states = (row: HTMLElement) =>
-      [...row.querySelectorAll("[data-state]")].map((e) => [
+function mountSimulator(query = "") {
+  return mountAt(`${SIM_HASH}${query}`, <SimulatorPage slug={SLUG} />);
+}
+
+/** The grid row of an app release (its header links to the release record). */
+async function row(version: string): Promise<HTMLElement> {
+  const grid = await screen.findByRole("grid");
+  return within(grid).getByRole("link", { name: version }).closest("tr")!;
+}
+
+describe("Compatibility matrix (T5, CMP-1 to CMP-7, CMP-11)", () => {
+  it("heads the page and renders every cell state with words, the current member and yanked", async () => {
+    mountMatrix();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Compatibility" }),
+    ).toBeTruthy();
+    const row15 = await row("1.5.0");
+    const row14 = await row("1.4.0");
+    const states = (r: HTMLElement) =>
+      [...r.querySelectorAll("[data-state]")].map((e) => [
         e.getAttribute("data-state"),
         e.getAttribute("data-current"),
       ]);
@@ -424,21 +547,65 @@ describe("Compatibility tab (P4-15)", () => {
       ["held", "true"],
       ["incompatible", "false"],
     ]);
-    // The reason is the cell's title; a yanked release is struck through.
-    const revoked = row15.querySelector('[data-state="revoked"]')!;
-    expect(revoked.getAttribute("title")).toBe("revoked (Exploit)");
-    expect(revoked.className).toMatch(/line-through/);
-    expect(within(revoked as HTMLElement).getByText("(yanked)")).toBeTruthy();
-
+    // "Current" is a word, not a ring alone; each cell's name is a sentence (CMP-2).
+    const cells = within(row15).getAllByRole("gridcell");
+    expect(cells[0]!.getAttribute("aria-label")).toBe(
+      "1.5.0 with diceroll.foes 2.0.0: Compatible, the current set member.",
+    );
+    expect(cells[1]!.getAttribute("aria-label")).toBe(
+      "1.5.0 with diceroll.foes 1.0.1: Revoked, yanked.",
+    );
+    expect(cells[0]!.textContent).toMatch(/Current/);
+    // Never a title (CMP-2).
+    expect(row15.querySelector("[title]")).toBeNull();
     const levels = screen.getByLabelText("Live contentApi levels");
-    expect(within(levels).getByText("contentApi 3")).toBeTruthy();
-    expect(within(levels).getByText("contentApi 4")).toBeTruthy();
+    expect(levels.textContent).toMatch(/stable 3, 4/);
     expect(within(row15).getByText("1 unsatisfied")).toBeTruthy();
-    expect(screen.getByText(/3 older app releases/)).toBeTruthy();
     expect(releaseCompat).toHaveBeenCalledWith(SLUG, { limit: 10, offset: 0 });
   });
 
-  it("pages through older releases with an offset, and back", async () => {
+  it("opens a cell drawer with the reason, the unsatisfied requirement and links (CMP-11)", async () => {
+    mountMatrix();
+    const row15 = await row("1.5.0");
+    await userEvent.click(within(row15).getAllByRole("gridcell")[0]!);
+    const drawer = await screen.findByRole("dialog");
+    expect(hashQuery().get("cell")).toBe("app@1.5.0:foes@2.0.0");
+    expect(
+      within(drawer).getByText("contentApi >=4 holds level 4"),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByText(/at or above the floor 2\.1\.0/),
+    ).toBeTruthy();
+    expect(
+      within(drawer)
+        .getByRole("link", { name: "Open app release" })
+        .getAttribute("href"),
+    ).toBe(`#/p/${SLUG}/release/releases/${encodeURIComponent("app@1.5.0")}`);
+    expect(
+      within(drawer)
+        .getByRole("link", { name: "Open pack release" })
+        .getAttribute("href"),
+    ).toBe(
+      `#/p/${SLUG}/release/deliverables/${encodeURIComponent(FOES)}/releases?release=${encodeURIComponent("foes@2.0.0")}`,
+    );
+    expect(
+      within(drawer)
+        .getByRole("link", { name: "Simulate this device" })
+        .getAttribute("href"),
+    ).toBe(`${SIM_HASH}?app=app%401.5.0&platform=android&channel=stable`);
+  });
+
+  it("opens a cell from the keyboard: one tab stop, arrows, Enter (CMP-2)", async () => {
+    mountMatrix();
+    await row("1.5.0");
+    const first = screen.getAllByRole("gridcell")[0]!;
+    first.focus();
+    await userEvent.keyboard("{ArrowRight}{Enter}");
+    await screen.findByRole("dialog");
+    expect(hashQuery().get("cell")).toBe("app@1.5.0:foes@1.0.1");
+  });
+
+  it("pages through older releases with an offset in the URL, and back (CMP-5)", async () => {
     releaseCompat.mockImplementation(async (_slug, opts) => ({
       ...COMPAT,
       offset: opts?.offset ?? 0,
@@ -447,64 +614,72 @@ describe("Compatibility tab (P4-15)", () => {
           ? COMPAT.older
           : { appReleases: 0, packReleases: 0 },
     }));
-    render(<Compatibility slug={SLUG} />);
-    await screen.findByTestId("compat-row-app@1.5.0");
-    expect(screen.queryByRole("button", { name: "Newer releases" })).toBeNull();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Older releases" }),
-    );
+    mountMatrix();
+    await row("1.5.0");
+    expect(
+      screen.getByText(/releases 1–10 of each channel, of 5/),
+    ).toBeTruthy();
+    const newer = screen.getByRole("button", { name: "‹ Newer" });
+    expect(newer.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "Older ›" }));
     await waitFor(() =>
       expect(releaseCompat).toHaveBeenLastCalledWith(SLUG, {
         limit: 10,
         offset: 10,
       }),
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Newer releases" }),
-    );
-    // Back on the first page (served from the console's cache): older pages are offered again.
-    expect(
-      await screen.findByRole("button", { name: "Older releases" }),
-    ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Newer releases" })).toBeNull();
+    expect(hashQuery().get("offset")).toBe("10");
+    await userEvent.click(screen.getByRole("button", { name: "‹ Newer" }));
+    await waitFor(() => expect(hashQuery().get("offset")).toBeNull());
   });
 
-  it("says a release outside Distribution's newest 50 is unknown, not unserved", async () => {
+  it("filters by pack, channel and live through the URL, with a no-results state", async () => {
+    mountMatrix(`?pack=${encodeURIComponent(SKINS)}`);
+    const row15 = await row("1.5.0");
+    expect(within(row15).getAllByRole("gridcell")).toHaveLength(1);
+    cleanup();
+    mountMatrix("?channel=beta");
+    expect(
+      await screen.findByText("No releases match these filters"),
+    ).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
+    await waitFor(() => expect(hashQuery().get("channel")).toBeNull());
+    expect(await row("1.5.0")).toBeTruthy();
+  });
+
+  it("says a release outside Distribution's newest 50 is not tracked, not unserved (CMP-6)", async () => {
     distributionMatrix.mockReset().mockResolvedValue({
       ...MATRIX,
       releases: MATRIX.releases.filter((r) => r.releaseId === "app@1.5.0"),
     });
-    render(<Compatibility slug={SLUG} />);
-    const row14 = await screen.findByTestId("compat-row-app@1.4.0");
-    await waitFor(() =>
-      expect(
-        within(row14).getByText("unknown (outside Distribution's newest 50)"),
-      ).toBeTruthy(),
-    );
-  });
-
-  it("marks a capped page", async () => {
-    releaseCompat.mockReset().mockResolvedValue({ ...COMPAT, capped: true });
-    render(<Compatibility slug={SLUG} />);
-    expect(await screen.findByText("capped at 200 app releases")).toBeTruthy();
-  });
-
-  it("overlays per-outlet liveness and readiness from Distribution's matrix", async () => {
-    render(<Compatibility slug={SLUG} />);
-    const row15 = await screen.findByTestId("compat-row-app@1.5.0");
-    await waitFor(() => expect(within(row15).getByText("direct")).toBeTruthy());
-    const overlay = within(row15).getByLabelText("Outlets serving it");
-    expect(within(overlay).getByText("play")).toBeTruthy();
+    mountMatrix();
+    const row14 = await row("1.4.0");
     expect(
-      within(overlay).getByText("web: held").getAttribute("title"),
-    ).toMatch(/not live on web/);
-    expect(within(overlay).getByText("app-store: not ready")).toBeTruthy();
-    const row14 = screen.getByTestId("compat-row-app@1.4.0");
-    expect(
-      within(within(row14).getByLabelText("Outlets serving it")).getByText(
-        "app-store",
+      await within(row14).findByText(
+        "Not in the newest 50 releases tracked by Distribution",
       ),
     ).toBeTruthy();
+  });
+
+  it("marks a capped page without implementation detail", async () => {
+    releaseCompat.mockReset().mockResolvedValue({ ...COMPAT, capped: true });
+    mountMatrix();
+    expect(
+      await screen.findByText(/Showing the newest 200 app releases/),
+    ).toBeTruthy();
+  });
+
+  it("overlays per-outlet liveness and holds from Distribution's shared matrix query (CMP-4)", async () => {
+    mountMatrix();
+    const row15 = await row("1.5.0");
+    expect(
+      await within(row15).findByText(/Outlets: direct, play/),
+    ).toBeTruthy();
+    expect(within(row15).getByText(/held on web/)).toBeTruthy();
+    const row14 = await row("1.4.0");
+    expect(within(row14).getByText("Outlets: app-store")).toBeTruthy();
     expect(distributionMatrix).toHaveBeenCalledWith(SLUG, {
       deliverable: "app",
       limit: 50,
@@ -515,97 +690,172 @@ describe("Compatibility tab (P4-15)", () => {
     distributionMatrix
       .mockReset()
       .mockRejectedValue(new ApiError(404, undefined, "not_found"));
-    render(<Compatibility slug={SLUG} />);
-    await screen.findByTestId("compat-row-app@1.5.0");
-    expect(
-      await screen.findByText(/Per-outlet liveness is unavailable/),
-    ).toBeTruthy();
+    mountMatrix();
+    await row("1.5.0");
+    expect(await screen.findByText("Outlet liveness unavailable")).toBeTruthy();
   });
 
-  it("the simulator sends the selector and renders the decision, packSetId and bindings", async () => {
-    render(<Compatibility slug={SLUG} />);
-    await screen.findByTestId("compat-row-app@1.5.0");
-    const form = screen.getByRole("form", { name: "Simulator" });
-    await userEvent.selectOptions(
-      within(form).getByLabelText("App release"),
-      "app@1.5.0",
+  it("shows a skeleton, then the error with Retry (CMP-3), and first-run states", async () => {
+    releaseCompat.mockReturnValueOnce(pending());
+    const { container } = mountMatrix();
+    await screen.findByRole("heading", { level: 1, name: "Compatibility" });
+    expect(container.querySelector("[data-skeleton=matrix]")).toBeTruthy();
+    cleanup();
+    releaseCompat
+      .mockReset()
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce({ ...COMPAT, appReleases: [], cells: [] });
+    mountMatrix();
+    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("No app releases yet")).toBeTruthy();
+  });
+
+  it("passes axe", async () => {
+    const { container } = mountMatrix();
+    await row("1.5.0");
+    await expectNoAxeViolations(container);
+  });
+});
+
+describe("Update simulator (T6, CMP-8 to CMP-10)", () => {
+  it("lists every app release, platforms from its builds, and sends the selector from the URL", async () => {
+    mountSimulator();
+    await userEvent.click(
+      await screen.findByRole("button", { name: /App release/ }),
     );
-    await userEvent.selectOptions(
-      within(form).getByLabelText("Platform"),
-      "android",
-    );
-    await waitFor(() =>
-      expect(
-        within(form).getByRole("option", { name: "play (play)" }),
-      ).toBeTruthy(),
-    );
-    await userEvent.selectOptions(
-      within(form).getByLabelText("Outlet"),
-      "play",
-    );
+    // Every release in the store, not just the matrix page (CMP-8).
+    expect(
+      await screen.findByRole("option", { name: /^1\.2\.0/ }),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("option", { name: /^1\.5\.0/ }));
+    await userEvent.click(screen.getByRole("combobox", { name: /Platform/ }));
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Android",
+      "iOS / iPadOS",
+    ]);
+    await userEvent.click(screen.getByRole("option", { name: "Android" }));
+    await userEvent.click(screen.getByRole("combobox", { name: /Outlet/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /^play/ }));
+    await userEvent.click(screen.getByRole("combobox", { name: /Channel/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "beta" }));
+    // Variant per axis, from the packs' declarations.
+    await userEvent.click(screen.getByRole("combobox", { name: "texture" }));
+    await userEvent.click(await screen.findByRole("option", { name: "etc2" }));
     await userEvent.type(
-      within(form).getByLabelText("Variant"),
-      "texture=etc2",
-    );
-    await userEvent.type(
-      within(form).getByLabelText("Device id (rollout buckets)"),
+      screen.getByRole("textbox", { name: /Device id/ }),
       "dev-1",
     );
     await userEvent.type(
-      within(form).getByLabelText("Reported packSetId"),
+      screen.getByRole("textbox", { name: /Reported pack set/ }),
       RESULT.packSetId!,
     );
-    await userEvent.click(
-      within(form).getByRole("button", { name: "Simulate" }),
-    );
-
+    expect(simulateUpdate).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Simulate" }));
     await waitFor(() => expect(simulateUpdate).toHaveBeenCalledTimes(1));
     expect(simulateUpdate).toHaveBeenCalledWith(SLUG, {
       appRelease: "app@1.5.0",
       platform: "android",
       outlet: "play",
+      channel: "beta",
       variant: "texture=etc2",
       device: "dev-1",
       packSetId: RESULT.packSetId,
     });
+    // The inputs are in the URL, so the result is shareable.
+    expect(hashQuery().get("app")).toBe("app@1.5.0");
+    expect(hashQuery().get("variant")).toBe("texture=etc2");
+  });
+
+  it("renders the full answer: decision and reason, feed, pack set, per-pack bindings (CMP-10)", async () => {
+    mountSimulator(
+      `?app=${encodeURIComponent("app@1.5.0")}&platform=android&packSet=${RESULT.packSetId}`,
+    );
     const result = await screen.findByRole("region", {
       name: "Simulation result",
     });
     expect(within(result).getByTestId("sim-decision").textContent).toMatch(
-      /none \(up-to-date\)/,
+      /None/,
     );
-    expect(within(result).getByTestId("sim-packsetid").textContent).toBe(
-      RESULT.packSetId,
-    );
-    expect(within(result).getByText("matches")).toBeTruthy();
-    const foes = within(result).getByTestId(`sim-pack-${FOES}`);
+    expect(within(result).getByText("Because: up-to-date")).toBeTruthy();
+    expect(within(result).getByText(/target 1\.5\.0/)).toBeTruthy();
+    expect(within(result).getByText("Matches reported")).toBeTruthy();
+    expect(
+      within(result).getByText(/Build android \(arm64, aab\)/),
+    ).toBeTruthy();
+    const foes = result.querySelector(`[data-pack="${FOES}"]`) as HTMLElement;
     expect(within(foes).getByText("compatible → pinned")).toBeTruthy();
     expect(within(foes).getByText(/pinned by play-pad on play/)).toBeTruthy();
     expect(within(foes).getByText("≥ 2.0.0")).toBeTruthy();
+    expect(
+      within(result).getByRole("button", { name: "Copy result as JSON" }),
+    ).toBeTruthy();
   });
 
   it("shows the simulated feed's delta menu (P4-29)", async () => {
     simulateUpdate
       .mockReset()
       .mockResolvedValue({ ...RESULT, feed: { ...RESULT.feed, deltas: 3 } });
-    render(<Compatibility slug={SLUG} />);
-    await screen.findByTestId("compat-row-app@1.5.0");
-    await userEvent.click(screen.getByRole("button", { name: "Simulate" }));
+    mountSimulator(`?app=${encodeURIComponent("app@1.5.0")}&platform=android`);
     const result = await screen.findByRole("region", {
       name: "Simulation result",
     });
     expect(within(result).getByText(/delta menu: 3 entries/)).toBeTruthy();
   });
 
+  it("clears a stale result when the inputs change (CMP-9)", async () => {
+    mountSimulator(`?app=${encodeURIComponent("app@1.5.0")}&platform=android`);
+    await screen.findByRole("region", { name: "Simulation result" });
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /Device id/ }),
+      "x",
+    );
+    expect(
+      screen.queryByRole("region", { name: "Simulation result" }),
+    ).toBeNull();
+    expect(screen.getByText(/The inputs changed/)).toBeTruthy();
+  });
+
+  it("validates a reported pack set before sending", async () => {
+    mountSimulator(`?app=${encodeURIComponent("app@1.5.0")}&platform=android`);
+    await screen.findByRole("region", { name: "Simulation result" });
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /Reported pack set/ }),
+      "nothex",
+    );
+    expect(
+      screen.getByText("A pack set id is 64 lowercase hex characters."),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Simulate" }));
+    expect(simulateUpdate).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the worker's refusal when a simulation fails", async () => {
     const refusal = new ApiError(404, undefined, "not_found");
     refusal.message = "nowhere is no live outlet of this product";
     simulateUpdate.mockReset().mockRejectedValue(refusal);
-    render(<Compatibility slug={SLUG} />);
-    await screen.findByTestId("compat-row-app@1.5.0");
-    await userEvent.click(screen.getByRole("button", { name: "Simulate" }));
+    mountSimulator(`?app=${encodeURIComponent("app@1.5.0")}&platform=android`);
     expect((await screen.findByRole("alert")).textContent).toMatch(
       /no live outlet/,
     );
+  });
+
+  it("asks for an app release first", async () => {
+    mountSimulator();
+    expect(
+      await screen.findByText(/Choose an app release and a platform/),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "Simulate" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+
+  it("passes axe", async () => {
+    const { container } = mountSimulator(
+      `?app=${encodeURIComponent("app@1.5.0")}&platform=android`,
+    );
+    await screen.findByRole("region", { name: "Simulation result" });
+    await expectNoAxeViolations(container);
   });
 });

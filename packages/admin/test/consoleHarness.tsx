@@ -67,16 +67,33 @@ export function productRow(
 }
 
 export interface FetchLog {
-  calls: { path: string; method: string; query: string; body?: string }[];
+  /**
+   * Every request: its query string, and the body it sent as raw text (`body`) and parsed as JSON
+   * when it parses (`json`).
+   */
+  calls: {
+    path: string;
+    method: string;
+    query: string;
+    body?: string;
+    json?: unknown;
+  }[];
 }
 
 /** A route body that never answers: the page stays in its loading state. */
 export const PENDING = Symbol("pending");
 
+/** A scripted route as a function of the request: keyset pages, or a write's answer. */
+export type RouteFn = (
+  query: URLSearchParams,
+  req: { method: string; path: string; body?: string; json?: unknown },
+) => unknown;
+
 /**
- * A scripted fetch: exact path first, then the longest matching prefix; `{}` otherwise. A body
- * may be a `Response` (status, error shapes), `PENDING`, or a function of the request's query
- * (keyset pages).
+ * A scripted fetch: `"<METHOD> <path>"` first (a write's own response), then the exact path, then
+ * the longest matching prefix; `{}` otherwise. A body may be a `Response` (status, error shapes),
+ * `PENDING`, or a `RouteFn` of the request (its query for keyset pages; its method, path, raw body
+ * and parsed body for writes).
  */
 export function mockFetch(routes: Record<string, unknown>): FetchLog {
   const log: FetchLog = { calls: [] };
@@ -92,23 +109,43 @@ export function mockFetch(routes: Record<string, unknown>): FetchLog {
       const [path = "", query = ""] = url
         .replace("http://localhost", "")
         .split("?");
+      const method = init?.method ?? "GET";
+      let sent: unknown;
+      if (typeof init?.body === "string") {
+        try {
+          sent = JSON.parse(init.body);
+        } catch {
+          sent = init.body;
+        }
+      }
       log.calls.push({
         path,
-        method: init?.method ?? "GET",
+        method,
         query,
-        ...(typeof init?.body === "string" ? { body: init.body } : {}),
+        ...(typeof init?.body === "string"
+          ? { body: init.body, json: sent }
+          : {}),
       });
+      const methodKey = `${method} ${path}`;
       const key =
-        path in routes
-          ? path
-          : (Object.keys(routes)
-              .filter((k) => path.startsWith(k))
-              .sort((a, b) => b.length - a.length)[0] ?? "");
+        methodKey in routes
+          ? methodKey
+          : path in routes
+            ? path
+            : (Object.keys(routes)
+                .filter((k) => !k.includes(" ") && path.startsWith(k))
+                .sort((a, b) => b.length - a.length)[0] ?? "");
       const raw = routes[key];
       if (raw === PENDING) return new Promise<Response>(() => undefined);
       const body =
         typeof raw === "function"
-          ? (raw as (q: URLSearchParams) => unknown)(new URLSearchParams(query))
+          ? (raw as RouteFn)(new URLSearchParams(query), {
+              method,
+              path,
+              ...(typeof init?.body === "string"
+                ? { body: init.body, json: sent }
+                : {}),
+            })
           : raw;
       if (body instanceof Response) return body.clone();
       return new Response(JSON.stringify(body ?? {}), {
@@ -156,6 +193,29 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     "/manage/api/products/djdl/license/tiers": { tiers: [] },
     "/manage/api/products/djdl/config/profiles": { profiles: [] },
     "/manage/api/products/djdl/activity": { items: [], nextCursor: null },
+    // What the product Overview (chunk 5) reads for its tiles and checklist, so a suite that
+    // lands on `#/p/djdl` renders it instead of the product body the prefix match would return.
+    "/manage/api/products/djdl/license/licenses": { licenses: [] },
+    "/manage/api/products/djdl/config/catalog": {
+      schemaVersion: 0,
+      entries: [],
+    },
+    "/manage/api/products/djdl/release/releases": {
+      releases: [],
+      channels: [],
+      floors: [],
+    },
+    "/manage/api/products/djdl/release/health": {
+      health: { healthy: true, status: "healthy", missing: [], checks: [] },
+    },
+    "/manage/api/products/djdl/distribution/rollouts": { rollouts: [] },
+    "/manage/api/products/djdl/identity/portal": {
+      settings: {
+        portalEnabled: false,
+        oidcEnabled: false,
+        magicEnabled: false,
+      },
+    },
     ...opts.extra,
   };
   for (const p of me.products) {

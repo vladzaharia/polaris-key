@@ -1,30 +1,31 @@
 import * as React from "react";
-import { ProductOverview } from "../../views/ProductOverview.js";
-import { Services } from "../../views/Services.js";
-import { Devices } from "../../views/Devices.js";
-import { Secrets } from "../../views/Secrets.js";
-import { Activity } from "../../views/Activity.js";
-import { Settings } from "../../views/Settings.js";
+import { ActivityPage } from "./core/Activity.js";
+import { DevicesPage } from "./core/Devices.js";
+import { KeysPage } from "./core/Keys.js";
+import { OverviewPage } from "./core/Overview.js";
+import { ServicesPage } from "./core/Services.js";
+import { SettingsPage } from "./core/Settings.js";
 import type { SectionPageProps } from "./types.js";
 
-/** Core: the legacy views mounted at their new URLs (ADMIN.md §2.3), unchanged until chunk 5. */
+/** Core: Overview, Services, Devices (with the routed device drawer), Keys & secrets, Activity
+ *  and Settings (ADMIN.md §2.3, §6.2, §6.7–§6.9). */
 export default function CorePages({
   route,
 }: SectionPageProps): React.ReactElement | null {
   const { slug } = route;
   switch (route.page) {
     case "overview":
-      return <ProductOverview slug={slug} />;
+      return <OverviewPage slug={slug} />;
     case "services":
-      return <Services slug={slug} />;
+      return <ServicesPage slug={slug} />;
     case "devices":
-      return <Devices slug={slug} />;
+      return <DevicesPage slug={slug} deviceId={route.id} />;
     case "keys":
-      return <Secrets slug={slug} />;
+      return <KeysPage slug={slug} />;
     case "activity":
-      return <Activity slug={slug} />;
+      return <ActivityPage slug={slug} />;
     case "settings":
-      return <Settings slug={slug} />;
+      return <SettingsPage slug={slug} />;
     default:
       return null;
   }

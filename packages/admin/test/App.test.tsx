@@ -77,7 +77,7 @@ describe("admin SPA", () => {
   it("renders a product page at its new URL", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Overview" }),
+      await screen.findByRole("heading", { level: 1, name: "DJDL" }),
     ).toBeTruthy();
   });
 
@@ -90,7 +90,7 @@ describe("admin SPA", () => {
 
   it("refreshes the session after a product is created, so the switcher sees it (SH-1, CC-1)", async () => {
     boot("#/p/djdl", { services: ALL_ON });
-    await screen.findByRole("heading", { level: 1, name: "Overview" });
+    await screen.findByRole("heading", { level: 1, name: "DJDL" });
     const { mutate } = await import("../src/console/data/mutations.js");
     const log = mockFetch({
       "/manage/api/me": {

@@ -1,39 +1,39 @@
 /**
- * P2-07 — the Channels panel and the release policy actions in the Releases view.
+ * Release → Channels (ADMIN.md §6.3.3): the lane view and every channel policy action.
  *
- * The panel renders the admin model as it is: what each channel serves on each platform comes
- * from the server's `byPlatform`, never from a rule the console re-implements. Every action opens
- * a confirmation stating its effect, sends exactly one request to P2-05's admin route, and
- * refreshes the store and the channels on success.
+ * Each lane renders the admin model as it is: what a channel serves per platform is the server's
+ * `byPlatform`, never a rule the console re-implements. Every action opens a confirmation at its
+ * §5.2 level stating its effect, sends exactly one request, and refreshes the store and the
+ * channels on success.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   ChannelPolicyBody,
+  PackReleasesResponse,
   ProductDetail,
   ReleaseChannelsResponse,
-  ReleaseHealth,
   ReleaseStoreResponse,
 } from "../src/api.js";
 import { ApiError } from "../src/api.js";
-import { resetCache } from "../src/context.js";
-import { Toaster } from "../src/components/ui/index.js";
+import { confirmFor } from "../src/lib/actions.js";
+import { actionIdOf } from "../src/console/pages/release/PolicyDialog.js";
 import { CHANNELS, SLUG, STORE } from "./releaseFixture.js";
+import {
+  expectNoAxeViolations,
+  hashQuery,
+  mountAt,
+  pending,
+} from "./releaseHarness.js";
 
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
-const releaseHealth =
-  vi.fn<(slug: string) => Promise<{ health: ReleaseHealth }>>();
 const releases = vi.fn<(slug: string) => Promise<ReleaseStoreResponse>>();
 const releaseChannels =
   vi.fn<(slug: string) => Promise<ReleaseChannelsResponse>>();
+const packReleases =
+  vi.fn<(slug: string, id: string) => Promise<PackReleasesResponse>>();
 const updateReleaseChannel =
   vi.fn<
     (slug: string, channel: string, body: ChannelPolicyBody) => Promise<unknown>
@@ -44,34 +44,25 @@ const revertReleaseChannel =
   >();
 const setChannelFloor =
   vi.fn<(slug: string, channel: string, body: unknown) => Promise<unknown>>();
-const yankRelease =
-  vi.fn<
-    (slug: string, releaseId: string, reason: string) => Promise<unknown>
-  >();
-const unyankRelease =
-  vi.fn<(slug: string, releaseId: string) => Promise<unknown>>();
 
 vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
     product: (slug: string) => product(slug),
-    resyncProduct: vi.fn(),
-    releaseHealth: (slug: string) => releaseHealth(slug),
     releases: (slug: string) => releases(slug),
     releaseChannels: (slug: string) => releaseChannels(slug),
+    packReleases: (s: string, id: string) => packReleases(s, id),
     updateReleaseChannel: (s: string, c: string, b: ChannelPolicyBody) =>
       updateReleaseChannel(s, c, b),
     revertReleaseChannel: (s: string, c: string, d?: string) =>
       revertReleaseChannel(s, c, d),
     setChannelFloor: (s: string, c: string, b: unknown) =>
       setChannelFloor(s, c, b),
-    yankRelease: (s: string, r: string, reason: string) =>
-      yankRelease(s, r, reason),
-    unyankRelease: (s: string, r: string) => unyankRelease(s, r),
   },
 }));
 
-const { Releases } = await import("../src/views/Releases.js");
+const { ChannelsPage } =
+  await import("../src/console/pages/release/ChannelsPage.js");
 
 const PRODUCT: ProductDetail = {
   slug: SLUG,
@@ -87,80 +78,113 @@ const PRODUCT: ProductDetail = {
   modifiedAt: 1_710_000_000,
 };
 
-const HEALTH: ReleaseHealth = {
-  status: "healthy",
-  healthy: true,
-  missing: [],
-  checks: [],
+/** The fixture's app channels plus one pack, `textures`, with a contentApi floor. */
+const WITH_PACK: ReleaseChannelsResponse = {
+  deliverables: [
+    ...CHANNELS.deliverables,
+    {
+      deliverable: "textures",
+      kind: "pack",
+      platforms: [],
+      channels: [
+        {
+          deliverable: "textures",
+          channel: "stable",
+          pointer: null,
+          pinned: false,
+          includes: null,
+          minSupported: null,
+          critical: false,
+          source: "manifest",
+          modifiedAt: null,
+          modifiedBy: null,
+          resolved: "textures@1.3.0",
+          byPlatform: {},
+          packFloors: [
+            {
+              contentApi: 3,
+              minSupported: "1.2.0",
+              modifiedAt: 1_728_000_000,
+              modifiedBy: "admin:u1",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const PACK_RELEASES: PackReleasesResponse = {
+  deliverable: "textures",
+  releases: [
+    {
+      releaseId: "textures@1.3.0",
+      version: "1.3.0",
+      seq: 2,
+      channel: "stable",
+      publishedAt: 1_728_000_000,
+      yank: null,
+      recordSha256: null,
+      formatVersion: 1,
+      entitlement: null,
+      variants: [],
+      pinnedBy: [],
+    },
+  ],
 };
 
 beforeEach(() => {
-  resetCache();
   for (const m of [
     product,
-    releaseHealth,
     releases,
     releaseChannels,
+    packReleases,
     updateReleaseChannel,
     revertReleaseChannel,
     setChannelFloor,
-    yankRelease,
-    unyankRelease,
   ])
     m.mockReset();
   product.mockResolvedValue({ product: PRODUCT });
-  releaseHealth.mockResolvedValue({ health: HEALTH });
   releases.mockResolvedValue(STORE);
   releaseChannels.mockResolvedValue(CHANNELS);
-  for (const m of [
-    updateReleaseChannel,
-    revertReleaseChannel,
-    setChannelFloor,
-    yankRelease,
-    unyankRelease,
-  ])
+  packReleases.mockResolvedValue(PACK_RELEASES);
+  for (const m of [updateReleaseChannel, revertReleaseChannel, setChannelFloor])
     m.mockResolvedValue({ ok: true });
-  // jsdom lacks these Radix-needed APIs.
-  (
-    Element.prototype as unknown as { hasPointerCapture: () => boolean }
-  ).hasPointerCapture = () => false;
-  (
-    Element.prototype as unknown as { scrollIntoView: () => void }
-  ).scrollIntoView = () => undefined;
 });
 afterEach(cleanup);
 
-function renderView() {
-  return render(
-    <Toaster>
-      <Releases slug={SLUG} />
-    </Toaster>,
-  );
+const HASH = `#/p/${SLUG}/release/channels`;
+
+function mountPage(hash = HASH) {
+  return mountAt(hash, <ChannelsPage slug={SLUG} />);
 }
 
-/** The channels panel's row for `channel`, once the model has loaded. */
-async function channelRow(channel: string): Promise<HTMLElement> {
-  const list = await screen.findByRole("list", {
-    name: `${channel} per platform`,
-  });
-  return list.closest("tr")!;
+/** The lane for `channel`, once the model has loaded. */
+async function lane(channel: string): Promise<HTMLElement> {
+  return screen.findByRole("region", { name: channel });
 }
 
 async function openMenu(channel: string, item: string): Promise<HTMLElement> {
-  await channelRow(channel);
+  const l = await lane(channel);
   await userEvent.click(
-    screen.getByRole("button", { name: `Actions for ${channel}` }),
+    within(l).getByRole("button", { name: `More actions for ${channel}` }),
   );
   await userEvent.click(await screen.findByRole("menuitem", { name: item }));
   return screen.findByRole("alertdialog");
 }
 
-async function pickRelease(dialog: HTMLElement, version: string) {
-  await userEvent.click(within(dialog).getByRole("combobox"));
-  await userEvent.click(await screen.findByRole("option", { name: version }));
+async function pickRelease(dialog: HTMLElement, version: string | RegExp) {
+  await userEvent.click(
+    within(dialog).getByRole("button", { name: /Release/ }),
+  );
+  await userEvent.click(
+    await screen.findByRole("option", {
+      name: typeof version === "string" ? new RegExp(`^${version}`) : version,
+    }),
+  );
 }
 
-/** Both readers of the store were asked again: the view refreshed after the change. */
+/** Both readers of the store were asked again: the page refreshed after the change. */
 async function expectRefreshed(): Promise<void> {
   await waitFor(() => {
     expect(releases.mock.calls.length).toBeGreaterThan(1);
@@ -168,86 +192,234 @@ async function expectRefreshed(): Promise<void> {
   });
 }
 
-describe("Channels panel — what each channel serves", () => {
-  it("renders a per-platform resolved release that differs where the newest release lacks a build", async () => {
-    renderView();
-    const stable = await channelRow("stable");
+describe("Channels lanes — what each channel serves (CHN-2, CHN-4)", () => {
+  it("renders the per-platform resolution, and says why a platform gets an older release", async () => {
+    mountPage();
+    const stable = await lane("stable");
+    // Versions, not ids, once the store has loaded.
+    await within(stable).findByText("Android 0.4.2");
     const perPlatform = within(stable).getByRole("list", {
-      name: "stable per platform",
+      name: "What stable serves per platform",
     });
     const items = within(perPlatform)
       .getAllByRole("listitem")
       .map((li) => li.textContent);
-    // v0.4.2 has no iOS build, so iOS stays on v0.4.1 — the server's answer, rendered as is.
+    // v0.4.2 has no iOS build, so iOS stays on v0.4.1: the server's answer, with the reason.
     expect(items).toEqual([
-      "Android→0.4.2",
-      "iOS / iPadOS→0.4.1",
-      "Linux→0.4.2",
-      "macOS→0.4.2",
-      "Web→0.4.2",
-      "Windows→0.4.2",
+      "Android 0.4.2",
+      "iOS 0.4.1no iOS build in 0.4.2",
+      "Linux 0.4.2",
+      "macOS 0.4.2",
+      "Web 0.4.2",
+      "Windows 0.4.2",
     ]);
     expect(releaseChannels).toHaveBeenCalledWith(SLUG);
   });
 
-  it("shows pointer, pin, includes, minimum, critical, rollback floor, source and last change", async () => {
-    renderView();
-    const beta = await channelRow("beta");
-    expect(within(beta).getByText("pinned")).toBeTruthy();
+  it("spells out pointer, pin, includes, policy, floor, source and last change", async () => {
+    mountPage();
+    const beta = await lane("beta");
+    expect(within(beta).getByText("Pinned")).toBeTruthy();
     expect(within(beta).getByText("stable")).toBeTruthy();
     expect(within(beta).getByText("0.4.0")).toBeTruthy();
-    expect(within(beta).getByText("critical")).toBeTruthy();
-    expect(within(beta).getByText("admin")).toBeTruthy();
-    expect(within(beta).getByText(/admin:u1/)).toBeTruthy();
+    expect(within(beta).getByText("Critical")).toBeTruthy();
+    expect(within(beta).getByText("Set in console")).toBeTruthy();
+    expect(within(beta).getByText(/by u1/)).toBeTruthy();
 
-    const stable = await channelRow("stable");
-    expect(within(stable).getByText("newest")).toBeTruthy();
-    expect(within(stable).getByText("default")).toBeTruthy();
-    expect(within(stable).getByText("manifest")).toBeTruthy();
-    // The anti-rollback floor (P0-02) sits on the stable row.
-    expect(within(stable).getAllByText("0.4.2").length).toBeGreaterThan(0);
+    const stable = await lane("stable");
+    expect(within(stable).getByText(/Newest eligible release/)).toBeTruthy();
+    expect(
+      within(stable).getByText("No other channel (the default)"),
+    ).toBeTruthy();
+    expect(within(stable).getByText("From manifest")).toBeTruthy();
+    // The anti-rollback floor (P0-02), with when it was raised (CHN-5).
+    expect(within(stable).getByText(/Rollback floor/)).toBeTruthy();
+    expect(within(stable).getByText(/raised/)).toBeTruthy();
+    // Each lane links to Compatibility and the Matrix (CHN-6).
+    expect(
+      within(stable)
+        .getByRole("link", { name: "Compatibility" })
+        .getAttribute("href"),
+    ).toBe(`#/p/${SLUG}/release/compatibility`);
   });
 
-  it("offers Revert to manifest only on an operator-owned row", async () => {
-    renderView();
-    await channelRow("stable");
+  it("offers Revert to manifest only on an operator-owned lane, and floor actions only with a floor", async () => {
+    mountPage();
+    const stable = await lane("stable");
     await userEvent.click(
-      screen.getByRole("button", { name: "Actions for stable" }),
+      within(stable).getByRole("button", { name: "More actions for stable" }),
     );
-    await screen.findByRole("menuitem", { name: "Promote a release…" });
+    await screen.findByRole("menuitem", { name: "Pin to a release…" });
     expect(
-      screen.queryByRole("menuitem", { name: "Revert to manifest" }),
+      screen.queryByRole("menuitem", { name: "Revert to manifest…" }),
     ).toBeNull();
-    expect(screen.queryByRole("menuitem", { name: "Unpin" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Unpin…" })).toBeNull();
+    expect(
+      screen.getByRole("menuitem", { name: "Lower rollback floor…" }),
+    ).toBeTruthy();
     await userEvent.keyboard("{Escape}");
 
+    const beta = await lane("beta");
     await userEvent.click(
-      screen.getByRole("button", { name: "Actions for beta" }),
+      within(beta).getByRole("button", { name: "More actions for beta" }),
     );
     expect(
-      await screen.findByRole("menuitem", { name: "Revert to manifest" }),
+      await screen.findByRole("menuitem", { name: "Revert to manifest…" }),
     ).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Unpin" })).toBeTruthy();
-    // beta has no rollback floor, so the floor actions are not offered on it.
+    expect(screen.getByRole("menuitem", { name: "Unpin…" })).toBeTruthy();
     expect(
       screen.queryByRole("menuitem", { name: "Lower rollback floor…" }),
     ).toBeNull();
   });
+
+  it("shows skeletons while loading, then an error with Retry", async () => {
+    releaseChannels.mockReturnValueOnce(pending());
+    const { container } = mountPage();
+    await screen.findByRole("heading", { level: 1, name: "Channels" });
+    expect(container.querySelector("[data-skeleton]")).toBeTruthy();
+    cleanup();
+    releaseChannels.mockReset();
+    releaseChannels
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce(CHANNELS);
+    mountPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(await lane("stable")).toBeTruthy();
+  });
+
+  it("says what a channel is when there is none yet", async () => {
+    releaseChannels.mockResolvedValue({ deliverables: [] });
+    mountPage();
+    expect(await screen.findByText("No channels yet")).toBeTruthy();
+  });
+
+  it("switches deliverables through the URL and shows a pack's floors per contentApi line (CHN-1)", async () => {
+    releaseChannels.mockResolvedValue(WITH_PACK);
+    mountPage();
+    await lane("beta");
+    await userEvent.click(screen.getByRole("radio", { name: "textures" }));
+    await waitFor(() =>
+      expect(hashQuery().get("deliverable")).toBe("textures"),
+    );
+    const stable = await lane("stable");
+    expect(within(stable).getByText(/contentApi 3: ≥/)).toBeTruthy();
+    expect(within(stable).getByText("1.2.0")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "beta" })).toBeNull();
+    // Promote on a pack lane offers the pack's releases.
+    await userEvent.click(
+      within(stable).getByRole("button", { name: "Promote…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await pickRelease(dialog, "1.3.0");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Promote 1.3.0" }),
+    );
+    await waitFor(() =>
+      expect(updateReleaseChannel).toHaveBeenCalledWith(SLUG, "stable", {
+        deliverable: "textures",
+        pointer: "textures@1.3.0",
+      }),
+    );
+  });
+
+  it("changes and clears a pack floor for one contentApi line", async () => {
+    releaseChannels.mockResolvedValue(WITH_PACK);
+    mountPage(`${HASH}?deliverable=textures`);
+    const stable = await lane("stable");
+    await userEvent.click(
+      within(stable).getAllByRole("button", { name: "Change…" }).at(-1)!,
+    );
+    let dialog = await screen.findByRole("alertdialog");
+    const v = within(dialog).getByRole("textbox", {
+      name: /Minimum pack version/,
+    });
+    expect((v as HTMLInputElement).value).toBe("1.2.0");
+    await userEvent.clear(v);
+    await userEvent.type(v, "1.2.5");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Set floor" }),
+    );
+    await waitFor(() =>
+      expect(updateReleaseChannel).toHaveBeenCalledWith(SLUG, "stable", {
+        deliverable: "textures",
+        contentApi: 3,
+        minSupported: "1.2.5",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await userEvent.click(
+      within(stable).getAllByRole("button", { name: "Change…" }).at(-1)!,
+    );
+    dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: "Clear this line's floor" }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Clear floor" }),
+    );
+    await waitFor(() =>
+      expect(updateReleaseChannel).toHaveBeenLastCalledWith(SLUG, "stable", {
+        deliverable: "textures",
+        contentApi: 3,
+        minSupported: null,
+      }),
+    );
+  });
+
+  it("passes axe", async () => {
+    const { container } = mountPage();
+    await lane("stable");
+    await expectNoAxeViolations(container);
+  });
 });
 
-describe("Channel actions — one confirmed request each", () => {
-  it("promote sends the chosen release as the pointer and refreshes", async () => {
-    renderView();
-    const dialog = await openMenu("stable", "Promote a release…");
-    // A yanked release is not offered for promotion.
-    await userEvent.click(within(dialog).getByRole("combobox"));
-    expect(screen.queryByRole("option", { name: /0\.4\.0/ })).toBeNull();
-    await userEvent.click(await screen.findByRole("option", { name: "0.4.1" }));
+describe("Channel actions — one confirmed request each (CHN-3, PAD-1 to PAD-5)", () => {
+  it("each action carries its §5.2 level", () => {
+    const c = CHANNELS.deliverables[0]!.channels[0]!;
     expect(
-      within(dialog).getByText(/0\.4\.1 becomes a member of stable/),
+      confirmFor(actionIdOf({ kind: "promote", deliverable: "app" })).intent,
+    ).toBe("caution");
+    expect(
+      confirmFor(actionIdOf({ kind: "critical", channel: c })).intent,
+    ).toBe("caution");
+    expect(
+      confirmFor(
+        actionIdOf({ kind: "critical", channel: { ...c, critical: true } }),
+      ).intent,
+    ).toBe("caution");
+    const floor = STORE.floors[0]!;
+    expect(
+      confirmFor(actionIdOf({ kind: "clearFloor", channel: "stable", floor }))
+        .intent,
+    ).toBe("danger");
+    expect(
+      confirmFor(actionIdOf({ kind: "lowerFloor", channel: "stable", floor }))
+        .intent,
+    ).toBe("danger");
+  });
+
+  it("promote, visible on the lane, sends the chosen release as the pointer and refreshes", async () => {
+    mountPage();
+    const stable = await lane("stable");
+    await userEvent.click(
+      within(stable).getByRole("button", { name: "Promote…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    // A yanked release is not offered for promotion; the picker shows channel and date (PAD-2).
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Release/ }),
+    );
+    expect(screen.queryByRole("option", { name: /^0\.4\.0/ })).toBeNull();
+    await userEvent.click(
+      await screen.findByRole("option", { name: /^0\.4\.1/ }),
+    );
+    expect(
+      within(dialog).getByText(
+        /Promote moves the pointer; newer releases still flow/,
+      ),
     ).toBeTruthy();
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Promote" }),
+      within(dialog).getByRole("button", { name: "Promote 0.4.1" }),
     );
     await waitFor(() =>
       expect(updateReleaseChannel).toHaveBeenCalledWith(SLUG, "stable", {
@@ -258,16 +430,16 @@ describe("Channel actions — one confirmed request each", () => {
     await expectRefreshed();
   });
 
-  it("pin states its effect and sends pointer + pinned; a yanked release may be pinned", async () => {
-    renderView();
+  it("pin states a different effect from promote (PAD-3); a yanked release may be pinned", async () => {
+    mountPage();
     const dialog = await openMenu("stable", "Pin to a release…");
-    await pickRelease(dialog, "0.4.0 (yanked)");
+    await pickRelease(dialog, /^0\.4\.0/);
     expect(
-      within(dialog).getByText(
-        /stable will serve 0\.4\.0 on every platform that has a build; newer releases are ignored until you unpin/,
-      ),
+      within(dialog).getByText("Pin freezes the channel at this release."),
     ).toBeTruthy();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Pin" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Pin stable" }),
+    );
     await waitFor(() =>
       expect(updateReleaseChannel).toHaveBeenCalledWith(SLUG, "stable", {
         deliverable: "app",
@@ -279,10 +451,10 @@ describe("Channel actions — one confirmed request each", () => {
   });
 
   it("unpin sends pinned: false", async () => {
-    renderView();
-    const dialog = await openMenu("beta", "Unpin");
+    mountPage();
+    const dialog = await openMenu("beta", "Unpin…");
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Unpin" }),
+      within(dialog).getByRole("button", { name: "Unpin beta" }),
     );
     await waitFor(() =>
       expect(updateReleaseChannel).toHaveBeenCalledWith(SLUG, "beta", {
@@ -293,16 +465,25 @@ describe("Channel actions — one confirmed request each", () => {
     await expectRefreshed();
   });
 
-  it("set minimum supported sends the version, and an emptied field removes it", async () => {
-    renderView();
+  it("set minimum supported validates the version, and removing it is explicit (PAD-4)", async () => {
+    mountPage();
     let dialog = await openMenu("stable", "Set minimum supported…");
-    const input = within(dialog).getByLabelText("Minimum supported version");
-    // Unchanged (empty → empty) is not a change.
+    const input = within(dialog).getByRole("textbox", {
+      name: /Minimum supported version/,
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Set minimum" }),
+    );
+    expect(await within(dialog).findByText("Enter a version.")).toBeTruthy();
+    await userEvent.type(input, "not-a-version");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Set minimum" }),
+    );
     expect(
-      within(dialog)
-        .getByRole("button", { name: "Remove minimum" })
-        .hasAttribute("disabled"),
-    ).toBe(true);
+      await within(dialog).findByText("Use a version such as 2.0.0."),
+    ).toBeTruthy();
+    expect(updateReleaseChannel).not.toHaveBeenCalled();
+    await userEvent.clear(input);
     await userEvent.type(input, "0.4.1");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Set minimum" }),
@@ -316,11 +497,15 @@ describe("Channel actions — one confirmed request each", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
 
     dialog = await openMenu("beta", "Set minimum supported…");
-    const prefilled = within(dialog).getByLabelText(
-      "Minimum supported version",
-    ) as HTMLInputElement;
+    const prefilled = within(dialog).getByRole("textbox", {
+      name: /Minimum supported version/,
+    }) as HTMLInputElement;
     expect(prefilled.value).toBe("0.4.0");
-    await userEvent.clear(prefilled);
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", {
+        name: "Remove the minimum supported version",
+      }),
+    );
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Remove minimum" }),
     );
@@ -332,12 +517,22 @@ describe("Channel actions — one confirmed request each", () => {
     );
   });
 
-  it("toggling critical sends the flipped flag", async () => {
-    renderView();
-    let dialog = await openMenu("stable", "Mark critical");
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Mark critical" }),
-    );
+  it("the inline affordances open the same dialogs (CHN-3)", async () => {
+    mountPage();
+    const stable = await lane("stable");
+    await userEvent.click(within(stable).getByRole("button", { name: "Set…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Set stable's minimum supported version"),
+    ).toBeTruthy();
+  });
+
+  it("toggling critical sends the flipped flag, as a caution, not destructive (PAD-5)", async () => {
+    mountPage();
+    let dialog = await openMenu("stable", "Mark critical…");
+    const mark = within(dialog).getByRole("button", { name: "Mark critical" });
+    expect(mark.className).not.toMatch(/bg-danger/);
+    await userEvent.click(mark);
     await waitFor(() =>
       expect(updateReleaseChannel).toHaveBeenCalledWith(SLUG, "stable", {
         deliverable: "app",
@@ -345,7 +540,7 @@ describe("Channel actions — one confirmed request each", () => {
       }),
     );
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    dialog = await openMenu("beta", "Clear critical");
+    dialog = await openMenu("beta", "Clear critical…");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Clear critical" }),
     );
@@ -358,10 +553,10 @@ describe("Channel actions — one confirmed request each", () => {
   });
 
   it("revert explains the next-resync semantics and posts the deliverable", async () => {
-    renderView();
-    const dialog = await openMenu("beta", "Revert to manifest");
+    mountPage();
+    const dialog = await openMenu("beta", "Revert to manifest…");
     expect(
-      within(dialog).getByText(/re-applies on the\s+next resync/),
+      within(dialog).getByText(/re-applies on the next resync/),
     ).toBeTruthy();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Revert to manifest" }),
@@ -372,13 +567,15 @@ describe("Channel actions — one confirmed request each", () => {
     await expectRefreshed();
   });
 
-  it("lowers and clears the rollback floor through the floor route", async () => {
-    renderView();
+  it("lowers and clears the rollback floor through the floor route, as danger confirms", async () => {
+    mountPage();
     let dialog = await openMenu("stable", "Lower rollback floor…");
     const lower = within(dialog).getByRole("button", { name: "Lower floor" });
-    expect(lower.hasAttribute("disabled")).toBe(true);
+    expect(lower.className).toMatch(/bg-danger/);
+    await userEvent.click(lower);
+    expect(setChannelFloor).not.toHaveBeenCalled();
     await userEvent.type(
-      within(dialog).getByLabelText("Lower the floor to"),
+      within(dialog).getByRole("textbox", { name: /Lower the floor to/ }),
       "0.4.1",
     );
     await userEvent.click(lower);
@@ -389,7 +586,7 @@ describe("Channel actions — one confirmed request each", () => {
     );
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
 
-    dialog = await openMenu("stable", "Clear rollback floor");
+    dialog = await openMenu("stable", "Clear rollback floor…");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Clear floor" }),
     );
@@ -416,9 +613,9 @@ describe("Channel actions — one confirmed request each", () => {
         },
       ],
     });
-    renderView();
+    mountPage();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Clear nightly floor" }),
+      await screen.findByRole("button", { name: "Clear nightly floor…" }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await userEvent.click(
@@ -430,56 +627,8 @@ describe("Channel actions — one confirmed request each", () => {
       }),
     );
   });
-});
 
-describe("Release actions — yank and unyank", () => {
-  it("yank refuses an empty reason, then sends the reason and refreshes", async () => {
-    renderView();
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Yank 0.4.2" }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    expect(
-      within(dialog).getByText(/resolves only through an explicit pin/),
-    ).toBeTruthy();
-    const confirm = within(dialog).getByRole("button", { name: "Yank" });
-    expect(confirm.hasAttribute("disabled")).toBe(true);
-    // Whitespace is not a reason.
-    const reason = within(dialog).getByLabelText("Reason (required)");
-    await userEvent.type(reason, "   ");
-    expect(confirm.hasAttribute("disabled")).toBe(true);
-    await userEvent.click(confirm);
-    expect(yankRelease).not.toHaveBeenCalled();
-
-    await userEvent.type(reason, "crashes on launch");
-    expect(confirm.hasAttribute("disabled")).toBe(false);
-    await userEvent.click(confirm);
-    await waitFor(() =>
-      expect(yankRelease).toHaveBeenCalledWith(
-        SLUG,
-        "v0.4.2",
-        "crashes on launch",
-      ),
-    );
-    await expectRefreshed();
-  });
-
-  it("unyank sends DELETE for a yanked release", async () => {
-    renderView();
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Unyank 0.4.0" }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Unyank" }),
-    );
-    await waitFor(() =>
-      expect(unyankRelease).toHaveBeenCalledWith(SLUG, "v0.4.0"),
-    );
-    await expectRefreshed();
-  });
-
-  it("a refusal keeps the dialog open and toasts the console's wording for its reason", async () => {
+  it("a refusal keeps the dialog open with the console's wording for its reason", async () => {
     updateReleaseChannel.mockRejectedValue(
       new ApiError(
         409,
@@ -489,14 +638,18 @@ describe("Release actions — yank and unyank", () => {
         "release_yanked",
       ),
     );
-    renderView();
-    const dialog = await openMenu("stable", "Promote a release…");
+    mountPage();
+    const stable = await lane("stable");
+    await userEvent.click(
+      within(stable).getByRole("button", { name: "Promote…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
     await pickRelease(dialog, "0.4.1");
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Promote" }),
+      within(dialog).getByRole("button", { name: "Promote 0.4.1" }),
     );
     expect(
-      await screen.findByText(
+      await within(dialog).findByText(
         "A yanked release cannot be promoted. Unyank it, or pin it explicitly.",
       ),
     ).toBeTruthy();

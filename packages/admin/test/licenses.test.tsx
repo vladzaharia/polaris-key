@@ -1,620 +1,359 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+/**
+ * License → Licenses (ADMIN.md §6.5.1) through the whole console: the computed state (LIC-1),
+ * facet tiles, filters in the URL, bulk enable/disable, the stepped Create license dialog
+ * (LIC-2 to LIC-6, LIC-10) and the channel picker it shares with the license and tier forms.
+ */
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   cleanup,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
+import { resetConsole } from "./consoleHarness.js";
+import { API, axe, bootLicense, failing, writes } from "./licenseFixture.js";
+import { endOfLocalDay } from "../src/lib/format.js";
 
-// The licenses views talk to the typed `api` client; mock the CLIENT but keep the module's real
-// exports (`ApiError` in particular — the override editor branches on it to place a 422 on the
-// row that caused it). `vi.mock` is hoisted, so the factory must not close over outer `let`s.
-vi.mock("../src/api.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/api.js")>();
-  return {
-    ...actual,
-    api: {
-      licenses: vi.fn(),
-      license: vi.fn(),
-      schema: vi.fn(),
-      createLicense: vi.fn(),
-      tiers: vi.fn(),
-      profiles: vi.fn(),
-      profile: vi.fn(),
-      patchLicense: vi.fn(),
-      setLicenseEnabled: vi.fn(),
-      putLicenseOverrides: vi.fn(),
-      mintKey: vi.fn(),
-      revokeKey: vi.fn(),
-      deauthorizeDevice: vi.fn(),
-      services: vi.fn(),
-      mintBundle: vi.fn(),
-      releases: vi.fn(),
-    },
-  };
-});
-
-import {
-  api,
-  ApiError,
-  type LicenseDetail as LicenseDetailDto,
-  type LicenseSummary,
-  type ProductCatalog,
-  type ServicesResponse,
-} from "../src/api.js";
-import { AdminProvider, resetCache } from "../src/context.js";
-import { Toaster } from "../src/components/ui/index.js";
-import { Licenses } from "../src/views/Licenses.js";
-import { LicenseDetail } from "../src/views/LicenseDetail.js";
-
-const mockApi = api as unknown as Record<
-  keyof typeof api,
-  ReturnType<typeof vi.fn>
->;
-
-const ME = {
-  sub: "u1",
-  name: "Ada Lovelace",
-  email: "ada@x.io",
-  csrf: "csrf",
-  platformAdmin: true,
-  products: [{ slug: "djdl", name: "DJDL", schemaVersion: 2 }],
-};
-
-function withProviders(node: ReactElement) {
-  return render(
-    <AdminProvider
-      value={{ me: ME, product: "djdl", setProduct: () => undefined }}
-    >
-      <Toaster>{node}</Toaster>
-    </AdminProvider>,
-  );
-}
-
-const SUMMARY: LicenseSummary = {
-  id: "lic_1",
-  name: "Ada Lovelace",
-  email: "ada@x.io",
-  status: "active",
-  activatedAt: 1_700_000_000,
-  expiresAt: null,
-  keyCount: 2,
-  activeKeyCount: 1,
-  deviceCount: 1,
-  profile: null,
-  tier: "pro",
-  channels: ["stable", "beta"],
-  minVersion: null,
-  maxVersion: null,
-  identityProvider: "manual",
-};
-
-const DETAIL: LicenseDetailDto = {
-  ...SUMMARY,
-  maxOfflineDays: 14,
-  overrides: {
-    config: {
-      "feature.timeout": {
-        state: "default",
-        value: 30,
-        updatedAt: 1_700_000_000,
-      },
-    },
-    secrets: {
-      "api.token": {
-        state: "enforced",
-        configured: true,
-        updatedAt: 1_700_000_000,
-      },
-    },
-    entitlements: {
-      "flag.pro": { state: "hidden", value: true, updatedAt: 1_700_000_000 },
-    },
-  },
-  keys: [
-    {
-      hash: "abcdef0123456789abcdef",
-      status: "active",
-      label: "laptop",
-      createdAt: 1_700_000_000,
-      createdBy: "ada@x.io",
-    },
-    {
-      hash: "deadbeef0000111122223333",
-      status: "revoked",
-      createdAt: 1_699_000_000,
-      createdBy: "ada@x.io",
-    },
-  ],
-  devices: [
-    {
-      deviceId: "dev_1",
-      status: "active",
-      firstSeen: 1_699_000_000,
-      lastSeen: 1_700_000_000,
-      ua: "Mozilla/5.0",
-    },
-  ],
-};
-
-const CATALOG: ProductCatalog = {
-  schemaVersion: 2,
-  entries: [
-    {
-      key: "feature.timeout",
-      kind: "config",
-      category: "general",
-      label: "Timeout",
-      description: "Request timeout in seconds.",
-      schema: { type: "integer", minimum: 1, maximum: 120 },
-    },
-    {
-      key: "api.token",
-      kind: "secret",
-      category: "secrets",
-      label: "API token",
-      description: "Upstream API token.",
-      schema: { type: "string" },
-    },
-    {
-      key: "flag.pro",
-      kind: "flag",
-      category: "entitlements",
-      label: "Pro features",
-      description: "Unlocks pro features.",
-      schema: { type: "boolean" },
-    },
-  ],
-};
-
-/** Both bundle-carrying services on — the default shape a product ships with. */
-const SERVICES: ServicesResponse = {
-  services: {
-    license: { enabled: true },
-    config: { enabled: true },
-    release: { enabled: false },
-    distribution: { enabled: false },
-    update: { enabled: false },
-    identity: { enabled: false },
-  },
-  registration: null,
-  effectiveRegistration: "requires-license",
-  source: "manifest",
-};
-
-/** A well-formed request code: 32 base64url characters, as the app's offline screen shows it. */
-const DEVICE_REQUEST_CODE = "AbCdEfGhIjKlMnOpQrStUvWxYz012345";
-
-beforeEach(() => {
-  resetCache();
-  for (const fn of Object.values(mockApi)) fn.mockReset();
-  mockApi.licenses.mockResolvedValue({ licenses: [SUMMARY] });
-  mockApi.license.mockResolvedValue(DETAIL);
-  mockApi.schema.mockResolvedValue(CATALOG);
-  mockApi.tiers.mockResolvedValue({ tiers: [] });
-  mockApi.profiles.mockResolvedValue({ profiles: [] });
-  mockApi.createLicense.mockResolvedValue({
-    licenseId: "lic_2",
-    key: "PK-NEWKEY-ONESHOT",
-    license: SUMMARY,
-  });
-  mockApi.patchLicense.mockResolvedValue({ ok: true, id: "lic_1" });
-  mockApi.setLicenseEnabled.mockResolvedValue({
-    ok: true,
-    id: "lic_1",
-    status: "disabled",
-  });
-  mockApi.putLicenseOverrides.mockResolvedValue({ ok: true, id: "lic_1" });
-  mockApi.mintKey.mockResolvedValue({
-    key: "PK-MINTED-ONESHOT",
-    hash: "newhash",
-    record: DETAIL.keys[0]!,
-  });
-  mockApi.revokeKey.mockResolvedValue({
-    ok: true,
-    hash: "abcdef",
-    status: "revoked",
-  });
-  mockApi.deauthorizeDevice.mockResolvedValue({
-    ok: true,
-    deviceId: "dev_1",
-  });
-  mockApi.services.mockResolvedValue(SERVICES);
-  mockApi.releases.mockResolvedValue({ releases: [], channels: [] });
-  mockApi.mintBundle.mockResolvedValue({
-    bundleId: "01JBUNDLEID0000000000000A",
-    bundle: "eyJhbGciOiJFZERTQSJ9.e30.sig",
-  });
-  // jsdom lacks these Radix-needed APIs.
-  (
-    Element.prototype as unknown as { hasPointerCapture: () => boolean }
-  ).hasPointerCapture = () => false;
-  (
-    Element.prototype as unknown as { scrollIntoView: () => void }
-  ).scrollIntoView = () => undefined;
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
-    class {
-      observe(): void {}
-      unobserve(): void {}
-      disconnect(): void {}
-    };
-});
+beforeEach(resetConsole);
 afterEach(cleanup);
 
+const table = () => screen.findByRole("table", { name: "Licenses" });
+const rowNames = (t: HTMLElement) =>
+  within(t)
+    .getAllByRole("row")
+    .slice(1)
+    .map(
+      (r) =>
+        within(r).queryAllByRole("link")[0]?.querySelector(".truncate")
+          ?.textContent ?? "",
+    );
+const row = (t: HTMLElement, name: string) =>
+  within(t).getByText(name).closest("tr")!;
+
 describe("Licenses list", () => {
-  it("loads and renders the license rows", async () => {
-    withProviders(<Licenses slug="djdl" />);
-    expect(await screen.findByText("ada@x.io")).toBeTruthy();
-    expect(screen.getByText("lic_1")).toBeTruthy();
-    // Status + tier + identity are surfaced.
-    expect(screen.getByText("active")).toBeTruthy();
-    expect(screen.getByText("pro")).toBeTruthy();
-    expect(mockApi.licenses).toHaveBeenCalledWith("djdl");
+  it("shows every license with its computed state, tier, expiry and seats", async () => {
+    bootLicense("#/p/djdl/license/licenses");
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Licenses" }),
+    ).toBeTruthy();
+    // LIC-1: an expired license no longer reads as active.
+    expect(within(row(t, "Old seat")).getByText("Expired")).toBeTruthy();
+    expect(within(row(t, "Lab 3")).getByText(/Expires in 4 days/)).toBeTruthy();
+    expect(within(row(t, "Chargeback Ltd")).getByText("Disabled")).toBeTruthy();
+    // The tier's label, not its id; seats against the tier's limit.
+    const ada = row(t, "Ada Lovelace");
+    expect(within(ada).getByText("Pro")).toBeTruthy();
+    expect(within(ada).getByRole("meter", { name: "Seats" })).toBeTruthy();
+    expect(within(ada).getByText("2 of 5")).toBeTruthy();
+    // The id moved to the record header; the holder links to the record.
+    expect(within(t).queryByText("lic_1")).toBeNull();
+    expect(
+      within(t)
+        .getByRole("link", { name: /Ada Lovelace/ })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/license/licenses/lic_1");
   });
 
-  it("shows the empty state when there are no licenses", async () => {
-    mockApi.licenses.mockResolvedValue({ licenses: [] });
-    withProviders(<Licenses slug="djdl" />);
-    expect(await screen.findByText("No licenses yet")).toBeTruthy();
+  it("counts each state on a facet tile, and a tile filters the table through the URL", async () => {
+    bootLicense("#/p/djdl/license/licenses");
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    const expired = screen.getByRole("button", { name: /^Expired\s*1$/ });
+    expect(expired.getAttribute("aria-pressed")).toBe("false");
+    await userEvent.click(expired);
+    await waitFor(() =>
+      expect(window.location.hash).toContain("status=expired"),
+    );
+    await waitFor(() => expect(rowNames(t)).toEqual(["Old seat"]));
+    expect(
+      screen
+        .getByRole("button", { name: /^Expired\s*1$/ })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Expired\s*1$/ }),
+    );
+    await waitFor(() => expect(window.location.hash).not.toContain("status="));
   });
 
-  it("surfaces an error with a retry", async () => {
-    mockApi.licenses.mockRejectedValue(new Error("boom"));
-    withProviders(<Licenses slug="djdl" />);
-    expect(await screen.findByText("Could not load licenses")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  it("restores search and facets from the URL", async () => {
+    bootLicense("#/p/djdl/license/licenses?status=active,disabled&q=charge");
+    const t = await table();
+    await waitFor(() => expect(rowNames(t)).toEqual(["Chargeback Ltd"]));
+    expect(
+      (screen.getByPlaceholderText(/Search name/) as HTMLInputElement).value,
+    ).toBe("charge");
   });
 
-  it("creates a license and reveals the minted key exactly once", async () => {
-    const user = userEvent.setup();
-    withProviders(<Licenses slug="djdl" />);
-    await screen.findByText("ada@x.io");
+  it("searches the email and the id, not only the name", async () => {
+    bootLicense("#/p/djdl/license/licenses?q=lic_3");
+    const t = await table();
+    await waitFor(() => expect(rowNames(t)).toEqual(["Old seat"]));
+  });
 
-    await user.click(screen.getByRole("button", { name: "Create license" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("tab", { name: "Holder" })).toBeTruthy();
-    expect(within(dialog).getByRole("tab", { name: "Policy" })).toBeTruthy();
-    expect(within(dialog).getByRole("tab", { name: "Profiles" })).toBeTruthy();
-    await user.type(within(dialog).getByLabelText(/Name/), "Grace Hopper");
-    await user.type(within(dialog).getByLabelText(/Email/), "grace@x.io");
-    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
-    fireEvent.change(within(dialog).getByLabelText(/Expires/), {
-      target: { value: "2026-12-31" },
+  it("says no license matches, and clears the filters", async () => {
+    bootLicense("#/p/djdl/license/licenses?q=nobody");
+    expect(
+      await screen.findByText("No licenses match these filters"),
+    ).toBeTruthy();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /Clear filters/ })[0]!,
+    );
+    await waitFor(() => expect(window.location.hash).not.toContain("q="));
+  });
+
+  it("shows the first-run state when there are no licenses", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/licenses`]: { licenses: [] } },
     });
-    await user.type(within(dialog).getByLabelText(/Max offline days/), "21");
-    await user.click(within(dialog).getByLabelText("stable"));
-    await user.type(within(dialog).getByLabelText(/Minimum version/), "1.2.0");
-    await user.type(within(dialog).getByLabelText(/Maximum version/), "2.0.0");
-    expect(within(dialog).getByText("Effective policy summary")).toBeTruthy();
-    expect(within(dialog).getByText("21 days")).toBeTruthy();
-    await user.click(
+    expect(await screen.findByText("No licenses yet")).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: "Create license" }).length,
+    ).toBe(2);
+    expect(screen.queryByRole("button", { name: /^Expired/ })).toBeNull();
+  });
+
+  it("shows the error with a working retry", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/licenses`]: failing(500) },
+    });
+    const retry = await screen.findByRole("button", { name: /Retry/ });
+    const reads = () =>
+      log.calls.filter((c) => c.path === `${API}/license/licenses`).length;
+    const before = reads();
+    await userEvent.click(retry);
+    await waitFor(() => expect(reads()).toBeGreaterThan(before));
+  });
+
+  it("disables the selected licenses after a caution confirm that lists the effect", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses");
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(within(row(t, "Ada Lovelace")).getByRole("checkbox"));
+    await userEvent.click(within(row(t, "Lab 3")).getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("button", { name: "Disable…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Disable 2 licenses?")).toBeTruthy();
+    expect(
+      within(dialog).getByText(/stop authenticating right away/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Disable 2 licenses" }),
+    );
+    await waitFor(() =>
+      expect(writes(log).map((c) => c.path)).toEqual([
+        `${API}/license/licenses/lic_1/disable`,
+        `${API}/license/licenses/lic_2/disable`,
+      ]),
+    );
+    // The declared invalidation refetches the list.
+    await waitFor(() =>
+      expect(
+        log.calls.filter(
+          (c) => c.method === "GET" && c.path === `${API}/license/licenses`,
+        ).length,
+      ).toBeGreaterThan(1),
+    );
+  });
+
+  it("passes axe", async () => {
+    bootLicense("#/p/djdl/license/licenses");
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    const results = await axe(document.body);
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
+describe("Create license", () => {
+  async function open(routes: Record<string, unknown> = {}) {
+    const log = bootLicense("#/p/djdl/license/licenses", { routes });
+    await table();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Create license" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Create license",
+    });
+    return { log, dialog };
+  }
+
+  async function toTerms(dialog: HTMLElement) {
+    await userEvent.type(
+      within(dialog).getByLabelText(/^Name/),
+      "Grace Hopper",
+    );
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "grace@x.io");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await within(dialog).findByText("Effective policy");
+  }
+
+  async function pick(dialog: HTMLElement, field: string, option: RegExp) {
+    await userEvent.click(within(dialog).getByLabelText(field));
+    await userEvent.click(await screen.findByRole("option", { name: option }));
+  }
+
+  it("shows every holder error on Next, so none is unreachable (LIC-10)", async () => {
+    const { log, dialog } = await open();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    expect(
+      await within(dialog).findByText("Enter the holder's name."),
+    ).toBeTruthy();
+    expect(within(dialog).getByText("Enter the holder's email.")).toBeTruthy();
+    await userEvent.type(within(dialog).getByLabelText(/^Name/), "Grace");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "bad-email");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    expect(
+      await within(dialog).findByText("Enter a valid email address."),
+    ).toBeTruthy();
+    expect(writes(log)).toEqual([]);
+  });
+
+  it("creates with every term and profiles in order, and shows the key once (LIC-2, LIC-3, LIC-5)", async () => {
+    const { log, dialog } = await open();
+    await toTerms(dialog);
+    await pick(dialog, "Expiry", /On a date/);
+    fireEvent.change(within(dialog).getByLabelText(/^Expires/), {
+      target: { value: "2027-12-31" },
+    });
+    await userEvent.type(
+      within(dialog).getByLabelText(/Max offline days/),
+      "21",
+    );
+    await userEvent.click(within(dialog).getByLabelText("stable"));
+    await userEvent.type(
+      within(dialog).getByLabelText(/Minimum version/),
+      "1.2.0",
+    );
+    await userEvent.type(
+      within(dialog).getByLabelText(/Maximum version/),
+      "2.0.0",
+    );
+    await pick(dialog, "Add profile", /Studio/);
+    await pick(dialog, "Add profile", /Base/);
+    expect(within(dialog).getByText("21 d")).toBeTruthy();
+
+    await userEvent.click(
       within(dialog).getByRole("button", { name: "Create license" }),
     );
-
-    // The one-time key is shown in a copyable panel that warns it is shown only once.
-    const panel = await within(dialog).findByRole("status");
-    expect(within(panel).getByText("PK-NEWKEY-ONESHOT")).toBeTruthy();
-    expect(within(panel).getByText("License key minted")).toBeTruthy();
-    expect(within(panel).getByText(/shown only once/i)).toBeTruthy();
-    expect(mockApi.createLicense).toHaveBeenCalledWith("djdl", {
+    expect(await within(dialog).findByText("PK-NEWKEY-ONESHOT")).toBeTruthy();
+    expect(writes(log)[0]!.body).toEqual({
       name: "Grace Hopper",
       email: "grace@x.io",
-      expiresAt: Math.floor(Date.parse("2026-12-31T00:00:00Z") / 1000),
+      // The end of that LOCAL day (LIC-5), not UTC midnight.
+      expiresAt: Math.floor(endOfLocalDay("2027-12-31")! / 1000),
       maxOfflineDays: 21,
       channels: ["stable"],
       minVersion: "1.2.0",
       maxVersion: "2.0.0",
+      profiles: ["studio", "base"],
     });
-    // There is a copy button with an accessible name.
+
+    // The key panel won't close uncopied: Escape asks first.
+    fireEvent.keyDown(dialog, { key: "Escape" });
     expect(
-      within(panel).getByRole("button", { name: "Copy key" }),
+      await within(dialog).findByText(/Close without copying\?/),
     ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Keep it open" }),
+    );
+    await userEvent.click(within(dialog).getByLabelText(/I've stored this/));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Open license" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/license/licenses/lic_new"),
+    );
   });
 
-  it("validates license creation before submitting", async () => {
-    const user = userEvent.setup();
-    withProviders(<Licenses slug="djdl" />);
-    await screen.findByText("ada@x.io");
-
-    await user.click(screen.getByRole("button", { name: "Create license" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText(/Name/), "Grace Hopper");
-    await user.type(within(dialog).getByLabelText(/Email/), "bad-email");
-    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
-    await user.type(within(dialog).getByLabelText(/Max offline days/), "-1");
-    await user.click(
+  it("omits the expiry with a tier so its term applies, and names the tier's device limit (LIC-4)", async () => {
+    const { log, dialog } = await open();
+    await toTerms(dialog);
+    await pick(dialog, "Tier", /Edu/);
+    expect(within(dialog).getByText("180 days from today")).toBeTruthy();
+    const policy = within(dialog).getByRole("region", {
+      name: "Effective policy",
+    });
+    expect(within(policy).getByText("Device limit")).toBeTruthy();
+    expect(within(policy).getAllByText(/\(tier “Edu”\)/).length).toBe(1);
+    await userEvent.click(
       within(dialog).getByRole("button", { name: "Create license" }),
     );
-
-    expect(
-      await within(dialog).findByText("Enter a valid email address."),
-    ).toBeTruthy();
-    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
-    expect(
-      within(dialog).getByText("Enter a whole number of days, 0 or higher."),
-    ).toBeTruthy();
-    expect(mockApi.createLicense).not.toHaveBeenCalled();
-  });
-});
-
-describe("License detail", () => {
-  async function renderDetail() {
-    const user = userEvent.setup();
-    withProviders(<LicenseDetail slug="djdl" id="lic_1" />);
-    await screen.findByRole("heading", { name: "Ada Lovelace" });
-    return user;
-  }
-
-  it("renders the header, status, and metadata", async () => {
-    await renderDetail();
-    expect(screen.getAllByText("active").length).toBeGreaterThan(0);
-    expect(screen.getByText("14")).toBeTruthy(); // max offline days
-    expect(screen.getByText("Effective update policy")).toBeTruthy();
-    expect(screen.getByText("stable, beta")).toBeTruthy();
-    expect(mockApi.license).toHaveBeenCalledWith("djdl", "lic_1");
-  });
-
-  it("confirms before disabling and calls setLicenseEnabled(false)", async () => {
-    const user = await renderDetail();
-    await user.click(screen.getByRole("switch", { name: "Disable license" }));
-    const confirm = await screen.findByRole("alertdialog");
-    await user.click(within(confirm).getByRole("button", { name: "Disable" }));
-    await waitFor(() =>
-      expect(mockApi.setLicenseEnabled).toHaveBeenCalledWith(
-        "djdl",
-        "lic_1",
-        false,
-      ),
-    );
-  });
-
-  it("mints a key and reveals it once", async () => {
-    const user = await renderDetail();
-    await user.click(screen.getByRole("tab", { name: /Keys/ }));
-    await user.click(screen.getByRole("button", { name: "Mint key" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Mint key" }));
-    expect(await within(dialog).findByText("PK-MINTED-ONESHOT")).toBeTruthy();
-    expect(mockApi.mintKey).toHaveBeenCalledWith("djdl", "lic_1", undefined);
-  });
-
-  it("confirms before revoking a key", async () => {
-    const user = await renderDetail();
-    await user.click(screen.getByRole("tab", { name: /Keys/ }));
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
-    const confirm = await screen.findByRole("alertdialog");
-    await user.click(
-      within(confirm).getByRole("button", { name: "Revoke key" }),
-    );
-    await waitFor(() =>
-      expect(mockApi.revokeKey).toHaveBeenCalledWith(
-        "djdl",
-        "lic_1",
-        "abcdef0123456789abcdef",
-      ),
-    );
-  });
-
-  it("confirms before deauthorizing a device", async () => {
-    const user = await renderDetail();
-    await user.click(screen.getByRole("tab", { name: /Devices/ }));
-    await user.click(screen.getByRole("button", { name: "Deauthorize" }));
-    const confirm = await screen.findByRole("alertdialog");
-    await user.click(
-      within(confirm).getByRole("button", { name: "Deauthorize" }),
-    );
-    await waitFor(() =>
-      expect(mockApi.deauthorizeDevice).toHaveBeenCalledWith(
-        "djdl",
-        "lic_1",
-        "dev_1",
-      ),
-    );
-  });
-
-  it("surfaces enforced/hidden override state and submits a batch via putLicenseOverrides", async () => {
-    const user = await renderDetail();
-    await user.click(screen.getByRole("tab", { name: "Overrides" }));
-
-    // The catalog-driven editor leads with the label and carries the dotted key beside it.
-    expect(await screen.findByText("feature.timeout")).toBeTruthy();
-    expect(screen.getByText("enforced")).toBeTruthy(); // the secret's state
-    expect(screen.getByText("hidden")).toBeTruthy(); // the flag's state
-
-    // Nothing pending ⇒ no action bar at all; a permanently-parked footer stops being read.
-    expect(screen.queryByRole("button", { name: /Save overrides/ })).toBeNull();
-
-    // Change the config value; that makes the form dirty and submits a batch.
-    const timeout = screen.getByLabelText("Timeout");
-    await user.clear(timeout);
-    await user.type(timeout, "60");
-    const save = await screen.findByRole("button", { name: /Save overrides/ });
-    expect((save as HTMLButtonElement).disabled).toBe(false);
-    await user.click(save);
-
-    await waitFor(() => expect(mockApi.putLicenseOverrides).toHaveBeenCalled());
-    const [, , updates] = mockApi.putLicenseOverrides.mock.calls.at(-1)!;
-    // The state rides along: `applyOverrides` deletes a value-less update whose state is
-    // `default`, so a set row must never send its state without its value.
-    expect(updates).toEqual([
-      { key: "feature.timeout", state: "default", value: 60 },
-    ]);
-  });
-
-  it("refuses to save a value the catalog rejects, with the server's own wording", async () => {
-    const user = await renderDetail();
-    await user.click(screen.getByRole("tab", { name: "Overrides" }));
-    const timeout = await screen.findByLabelText("Timeout");
-    await user.clear(timeout);
-    await user.type(timeout, "500"); // maximum is 120
-
-    expect(await screen.findByText(/must be <= 120/)).toBeTruthy();
-    const save = (await screen.findByRole("button", {
-      name: /Save overrides/,
-    })) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
-    expect(mockApi.putLicenseOverrides).not.toHaveBeenCalled();
-  });
-
-  it("places a 422's catalog-validated fields on the rows that caused them", async () => {
-    mockApi.putLicenseOverrides.mockRejectedValue(
-      new ApiError(422, ["feature.timeout must be <= 120"]),
-    );
-    const user = await renderDetail();
-    await user.click(screen.getByRole("tab", { name: "Overrides" }));
-    const timeout = await screen.findByLabelText("Timeout");
-    await user.clear(timeout);
-    await user.type(timeout, "60");
-    await user.click(
-      await screen.findByRole("button", { name: /Save overrides/ }),
-    );
-    expect(await screen.findByText("must be <= 120")).toBeTruthy();
-  });
-
-  it("shows what the profile layer below contributes to a key this license does not override", async () => {
-    // The admin API returns only the license's OWN overrides — no merged view exists — so the
-    // console rebuilds the layers below from the tier's profile and the license's profiles.
-    mockApi.license.mockResolvedValue({ ...DETAIL, profiles: ["base"] });
-    mockApi.profile.mockResolvedValue({
-      id: "base",
-      name: "Base",
-      payload: {
-        config: {},
-        secrets: {},
-        entitlements: {},
-      },
+    await within(dialog).findByText("PK-NEWKEY-ONESHOT");
+    expect(writes(log)[0]!.body).toEqual({
+      name: "Grace Hopper",
+      email: "grace@x.io",
+      tier: "edu",
     });
-    // Give the profile a value for a key the license leaves alone.
-    mockApi.profile.mockResolvedValue({
-      id: "base",
-      name: "Base",
-      payload: {
-        config: {
-          "feature.retries": { state: "default", value: 3, updatedAt: 1 },
-        },
-        secrets: {},
-        entitlements: {},
-      },
-    });
-    mockApi.schema.mockResolvedValue({
-      ...CATALOG,
-      entries: [
-        ...CATALOG.entries,
-        {
-          key: "feature.retries",
-          kind: "config",
-          category: "general",
-          label: "Retries",
-          description: "How many times to retry.",
-          schema: { type: "integer", minimum: 0 },
-        },
-      ],
-    });
-
-    const user = await renderDetail();
-    await user.click(screen.getByRole("tab", { name: "Overrides" }));
-    expect(
-      await screen.findByText(/inherits 3 from profile “Base”/),
-    ).toBeTruthy();
-    await waitFor(() =>
-      expect(mockApi.profile).toHaveBeenCalledWith("djdl", "base"),
-    );
   });
 
-  // ── offline bundles ─────────────────────────────────────────────────────────
-  async function openBundleDialog(): Promise<{
-    user: Awaited<ReturnType<typeof renderDetail>>;
-    dialog: HTMLElement;
-  }> {
-    const user = await renderDetail();
-    await user.click(screen.getByRole("button", { name: "Offline bundle" }));
-    const dialog = await screen.findByRole("dialog");
-    return { user, dialog };
-  }
-
-  it("opens the offline bundle dialog from the header", async () => {
-    const { dialog } = await openBundleDialog();
-    expect(within(dialog).getByText("Mint offline bundle")).toBeTruthy();
-    expect(within(dialog).getByLabelText(/Device ID/)).toBeTruthy();
-    // The grace window defaults to the ceiling.
-    const grace = within(dialog).getByLabelText(
-      /Grace days/,
-    ) as HTMLInputElement;
-    expect(grace.value).toBe("365");
-    // Config is enabled for this product, so the include control is offered.
-    expect(
-      await within(dialog).findByLabelText(/Include configuration/),
-    ).toBeTruthy();
-  });
-
-  it("mints a bundle and shows the bundle id with a download", async () => {
-    const { user, dialog } = await openBundleDialog();
-    await user.type(
-      within(dialog).getByLabelText(/Device ID/),
-      DEVICE_REQUEST_CODE,
+  it("sends an explicit null for No expiry", async () => {
+    const { log, dialog } = await open();
+    await toTerms(dialog);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create license" }),
     );
-    await user.clear(within(dialog).getByLabelText(/Grace days/));
-    await user.type(within(dialog).getByLabelText(/Grace days/), "30");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Mint bundle" }),
-    );
-
-    expect(
-      await within(dialog).findByText("01JBUNDLEID0000000000000A"),
-    ).toBeTruthy();
-    expect(mockApi.mintBundle).toHaveBeenCalledWith("djdl", {
-      deviceId: DEVICE_REQUEST_CODE,
-      graceDays: 30,
-      includeConfig: true,
-      licenseId: "lic_1",
+    await within(dialog).findByText("PK-NEWKEY-ONESHOT");
+    expect(writes(log)[0]!.body).toEqual({
+      name: "Grace Hopper",
+      email: "grace@x.io",
+      expiresAt: null,
     });
-    expect(
-      within(dialog).getByRole("button", { name: "Copy ID" }),
-    ).toBeTruthy();
-    // jsdom has no `URL.createObjectURL`; the download degrades to a no-op rather than throwing.
-    const download = within(dialog).getByRole("button", { name: /Download/ });
-    expect(() => download.click()).not.toThrow();
   });
 
-  it("refuses a request code that is not 32 characters", async () => {
-    const { user, dialog } = await openBundleDialog();
-    await user.type(within(dialog).getByLabelText(/Device ID/), "too-short");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Mint bundle" }),
+  it("refuses an out-of-range offline window and an inverted version window", async () => {
+    const { log, dialog } = await open();
+    await toTerms(dialog);
+    await userEvent.type(
+      within(dialog).getByLabelText(/Max offline days/),
+      "0",
+    );
+    await userEvent.type(
+      within(dialog).getByLabelText(/Minimum version/),
+      "2.0.0",
+    );
+    await userEvent.type(
+      within(dialog).getByLabelText(/Maximum version/),
+      "1.0.0",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create license" }),
     );
     expect(
-      await within(dialog).findByText(/exactly 32 characters/),
+      await within(dialog).findByText(/whole number of days from 1 to 365/),
     ).toBeTruthy();
-    expect(mockApi.mintBundle).not.toHaveBeenCalled();
+    expect(within(dialog).getByText(/maximum version must be/)).toBeTruthy();
+    expect(writes(log)).toEqual([]);
   });
 
-  it("hides the config control when the Config service is disabled", async () => {
-    mockApi.services.mockResolvedValue({
-      ...SERVICES,
-      services: { ...SERVICES.services, config: { enabled: false } },
+  it("says a failed tier or profile lookup inline, not 'none defined' (LIC-6)", async () => {
+    const { dialog } = await open({
+      [`${API}/license/tiers`]: failing(500),
+      [`${API}/config/profiles`]: failing(500),
     });
-    const { user, dialog } = await openBundleDialog();
-    expect(within(dialog).queryByLabelText(/Include configuration/)).toBeNull();
+    await toTerms(dialog);
+    expect(await within(dialog).findByText("Couldn't load tiers")).toBeTruthy();
+    expect(within(dialog).getByText("Couldn't load profiles")).toBeTruthy();
+    expect(within(dialog).queryByText(/has no profiles/)).toBeNull();
+  });
 
-    // …and no config preference is asserted on the wire either — enablement decides.
-    await user.type(
-      within(dialog).getByLabelText(/Device ID/),
-      DEVICE_REQUEST_CODE,
+  it("keeps the dialog open with the error when the create fails", async () => {
+    const { dialog } = await open({
+      [`POST ${API}/license/licenses`]: failing(500),
+    });
+    await toTerms(dialog);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create license" }),
     );
-    await user.click(
-      within(dialog).getByRole("button", { name: "Mint bundle" }),
-    );
-    await waitFor(() =>
-      expect(mockApi.mintBundle).toHaveBeenCalledWith("djdl", {
-        deviceId: DEVICE_REQUEST_CODE,
-        graceDays: 365,
-        licenseId: "lic_1",
-      }),
-    );
+    expect(
+      await within(dialog).findByText("The license wasn't created"),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText("PK-NEWKEY-ONESHOT")).toBeNull();
   });
 });
 
@@ -629,21 +368,27 @@ describe("license channel picker", () => {
     })),
   });
 
-  async function openCreatePolicy() {
-    const user = userEvent.setup();
-    withProviders(<Licenses slug="djdl" />);
-    await screen.findByText("ada@x.io");
-    await user.click(screen.getByRole("button", { name: "Create license" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("tab", { name: "Policy" }));
-    return { user, dialog };
+  async function openTerms(routes: Record<string, unknown> = {}) {
+    bootLicense("#/p/djdl/license/licenses", { routes });
+    await table();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Create license" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Create license",
+    });
+    await userEvent.type(within(dialog).getByLabelText(/^Name/), "G");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    // The field's group wraps the picker's own group; both carry the label.
+    await within(dialog).findAllByRole("group", { name: "Release channels" });
+    return within(dialog)
+      .getAllByRole("group", { name: "Release channels" })
+      .at(-1)!;
   }
 
   it("offers neither dev nor staging on create for a product with no manual channels", async () => {
-    const { dialog } = await openCreatePolicy();
-    const group = within(dialog).getByRole("group", {
-      name: "Release channels",
-    });
+    const group = await openTerms();
     for (const name of ["stable", "beta", "pr"])
       expect(within(group).getByLabelText(name)).toBeTruthy();
     expect(within(group).queryByLabelText("dev")).toBeNull();
@@ -651,12 +396,15 @@ describe("license channel picker", () => {
   });
 
   it("drops reserved and non-canonical manual names; a manual staging is listed once", async () => {
-    mockApi.releases.mockResolvedValue(
-      channelRows(["stable", "beta", "dev", "pr", "Nightly", "staging"]),
-    );
-    const { dialog } = await openCreatePolicy();
-    const group = within(dialog).getByRole("group", {
-      name: "Release channels",
+    const group = await openTerms({
+      [`${API}/release/releases`]: channelRows([
+        "stable",
+        "beta",
+        "dev",
+        "pr",
+        "Nightly",
+        "staging",
+      ]),
     });
     await waitFor(() =>
       expect(within(group).getAllByLabelText("staging")).toHaveLength(1),
@@ -664,48 +412,9 @@ describe("license channel picker", () => {
     expect(within(group).queryByLabelText("dev")).toBeNull();
     expect(within(group).queryByLabelText("Nightly")).toBeNull();
     expect(within(group).getAllByLabelText("pr")).toHaveLength(1);
-    expect(
-      within(group).getByLabelText("pr").getAttribute("aria-describedby"),
-    ).toBeTruthy();
     expect(within(group).getByText("every PR build")).toBeTruthy();
     expect(
       within(group).getByText("manual; the grant also covers beta"),
     ).toBeTruthy();
-  });
-
-  it("shows a held dev grant with its label, and can remove it", async () => {
-    mockApi.license.mockResolvedValue({
-      ...DETAIL,
-      channels: ["stable", "dev"],
-    });
-    const user = userEvent.setup();
-    withProviders(<LicenseDetail slug="djdl" id="lic_1" />);
-    await screen.findByRole("heading", { name: "Ada Lovelace" });
-    const dev = screen.getByLabelText("dev") as HTMLInputElement;
-    expect(dev.checked).toBe(true);
-    expect(screen.getByText(/skips the version window/)).toBeTruthy();
-    await user.click(dev);
-    await user.click(screen.getByRole("button", { name: /Save/ }));
-    await waitFor(() => expect(mockApi.patchLicense).toHaveBeenCalledTimes(1));
-    expect(mockApi.patchLicense.mock.calls[0]![2].channels).toEqual(["stable"]);
-  });
-
-  it("keeps a held value the picker does not offer through a save", async () => {
-    mockApi.license.mockResolvedValue({
-      ...DETAIL,
-      channels: ["stable", "Legacy.X"],
-    });
-    const user = userEvent.setup();
-    withProviders(<LicenseDetail slug="djdl" id="lic_1" />);
-    await screen.findByRole("heading", { name: "Ada Lovelace" });
-    expect(screen.getByText("not offered")).toBeTruthy();
-    await user.click(screen.getByLabelText("beta"));
-    await user.click(screen.getByRole("button", { name: /Save/ }));
-    await waitFor(() => expect(mockApi.patchLicense).toHaveBeenCalledTimes(1));
-    expect(mockApi.patchLicense.mock.calls[0]![2].channels).toEqual([
-      "stable",
-      "beta",
-      "Legacy.X",
-    ]);
   });
 });

@@ -205,6 +205,16 @@ for local development), and the `{claim}` placeholder may not appear in the **ho
 the path or query — so a claim value can retarget where in a service a secret points, but never
 which service receives the request.
 
+## In the console
+
+**Identity → Sign-in** shows what this page describes for one product, read-only: the provider
+(`platform` or `custom`), the issuer and client id (where the product stores none, the page says the
+platform's own apply: the `PLATFORM_OIDC_*` secrets), the `groupRoleMap` as a
+group → role → tier table with each tier linked to its record, and whether a signed-in account in
+no mapped group gets the `oidcDefault` tier or is refused. The values are the same ones an
+edge-mint approval records. To change any of them, edit `.pkey/product`, commit, and use
+**Resync from repo** on the page (a confirmed action).
+
 ## See also
 
 - [The device-code flow](/docs/services/identity/device-flow/) — the same mint step, reached by
