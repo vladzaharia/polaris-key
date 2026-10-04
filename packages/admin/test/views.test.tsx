@@ -22,7 +22,8 @@ import {
 } from "../src/components/ui/index.js";
 import { ThemeProvider, useTheme } from "../src/components/theme.js";
 import { Logo } from "../src/components/brand/Logo.js";
-import { Dashboard } from "../src/views/Dashboard.js";
+import { Home } from "../src/console/pages/global/Home.js";
+import { resetConsole, mockFetch, productRow } from "./consoleHarness.js";
 
 // Foundation-level smoke tests: the primitive layer and brand compile, render, and behave.
 // View-specific behavior lives with each view test suite.
@@ -229,9 +230,17 @@ describe("brand + dashboard views", () => {
     expect(screen.getByText("admin")).toBeTruthy();
   });
 
-  it("Dashboard greets the operator and lists products", () => {
-    withAdmin(<Dashboard />);
-    expect(screen.getByText(/Welcome, Ada/)).toBeTruthy();
-    expect(screen.getByText("DJDL")).toBeTruthy();
+  it("Home lists the operator's products under its page heading", async () => {
+    resetConsole();
+    mockFetch({
+      "/manage/api/me": ME,
+      "/manage/api/products": { products: [productRow("djdl", "DJDL", {})] },
+    });
+    withAdmin(<Home />);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Home" }),
+    ).toBeTruthy();
+    expect(await screen.findByRole("link", { name: "DJDL" })).toBeTruthy();
+    vi.unstubAllGlobals();
   });
 });

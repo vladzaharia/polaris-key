@@ -67,10 +67,17 @@ export function productRow(
 }
 
 export interface FetchLog {
-  calls: { path: string; method: string }[];
+  calls: { path: string; method: string; query: string; body?: string }[];
 }
 
-/** A scripted fetch: exact path first, then the longest matching prefix; `{}` otherwise. */
+/** A route body that never answers: the page stays in its loading state. */
+export const PENDING = Symbol("pending");
+
+/**
+ * A scripted fetch: exact path first, then the longest matching prefix; `{}` otherwise. A body
+ * may be a `Response` (status, error shapes), `PENDING`, or a function of the request's query
+ * (keyset pages).
+ */
 export function mockFetch(routes: Record<string, unknown>): FetchLog {
   const log: FetchLog = { calls: [] };
   vi.stubGlobal(
@@ -82,15 +89,27 @@ export function mockFetch(routes: Record<string, unknown>): FetchLog {
           : input instanceof URL
             ? input.toString()
             : input.url;
-      const path = url.replace("http://localhost", "").split("?")[0]!;
-      log.calls.push({ path, method: init?.method ?? "GET" });
+      const [path = "", query = ""] = url
+        .replace("http://localhost", "")
+        .split("?");
+      log.calls.push({
+        path,
+        method: init?.method ?? "GET",
+        query,
+        ...(typeof init?.body === "string" ? { body: init.body } : {}),
+      });
       const key =
         path in routes
           ? path
           : (Object.keys(routes)
               .filter((k) => path.startsWith(k))
               .sort((a, b) => b.length - a.length)[0] ?? "");
-      const body = routes[key];
+      const raw = routes[key];
+      if (raw === PENDING) return new Promise<Response>(() => undefined);
+      const body =
+        typeof raw === "function"
+          ? (raw as (q: URLSearchParams) => unknown)(new URLSearchParams(query))
+          : raw;
       if (body instanceof Response) return body.clone();
       return new Response(JSON.stringify(body ?? {}), {
         status: 200,
@@ -140,6 +159,8 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     ...opts.extra,
   };
   for (const p of me.products) {
+    // A test's own route for the product wins (an error response, say).
+    if (opts.extra && `/manage/api/products/${p.slug}` in opts.extra) continue;
     routes[`/manage/api/products/${p.slug}`] = {
       product: productRow(
         p.slug,

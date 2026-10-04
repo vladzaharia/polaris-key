@@ -60,6 +60,8 @@ describe("the sources", () => {
     expect(navigationSource(null, null, null).map((i) => i.label)).toEqual([
       "Home",
       "Products",
+      // The Platform section's built pages (notes/S-13 §9.1).
+      "Deployment",
     ]);
   });
 

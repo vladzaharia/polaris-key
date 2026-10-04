@@ -1,393 +1,301 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ProductDetail } from "../src/api.js";
-import { resetCache } from "../src/context.js";
-import { Toaster } from "../src/components/ui/index.js";
-import { Products } from "../src/views/Products.js";
-import { ProductOverview } from "../src/views/ProductOverview.js";
+import { configureAxe } from "vitest-axe";
+import {
+  ALL_ON,
+  PENDING,
+  boot,
+  productRow,
+  resetConsole,
+  type FetchLog,
+} from "./consoleHarness.js";
 
-// The Products view is the only unit under test; the `api` module is fully mocked so the
-// component's behavior (rendering + which methods each flow calls) is asserted in isolation.
-vi.mock("../src/api.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/api.js")>();
-  return {
-    ...actual,
-    api: {
-      product: vi.fn(),
-      products: vi.fn(),
-      createManualProduct: vi.fn(),
-      linkRepo: vi.fn(),
-      updateProduct: vi.fn(),
-      deleteProduct: vi.fn(),
-      resyncProduct: vi.fn(),
-      putProductSecret: vi.fn(),
-      rotateProductKey: vi.fn(),
-    },
-  };
+/**
+ * Products (ADMIN.md §2.3, T2; replaces `views/Products.tsx` and `products/*`). Closes PRD-1 to
+ * PRD-5 and PRD-10 to PRD-12; the create flow is the wizard's (productNew.test.tsx).
+ */
+
+const axe = configureAxe({
+  rules: { "color-contrast": { enabled: false } },
 });
 
-// Imported AFTER the mock factory above so we get the mocked instance.
-import { api } from "../src/api.js";
+beforeEach(resetConsole);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
-const mockApi = api as unknown as {
-  product: ReturnType<typeof vi.fn>;
-  products: ReturnType<typeof vi.fn>;
-  createManualProduct: ReturnType<typeof vi.fn>;
-  linkRepo: ReturnType<typeof vi.fn>;
-  updateProduct: ReturnType<typeof vi.fn>;
-  deleteProduct: ReturnType<typeof vi.fn>;
-  resyncProduct: ReturnType<typeof vi.fn>;
-  putProductSecret: ReturnType<typeof vi.fn>;
-  rotateProductKey: ReturnType<typeof vi.fn>;
-};
+const main = (): HTMLElement => screen.getByRole("main");
 
-const MANUAL: ProductDetail = {
-  slug: "djdl",
-  name: "DJDL",
-  signingKid: "manual:1",
-  compatMin: "1.0.0",
-  compatMax: "2.0.0",
-  defaultMaxOfflineDays: 14,
-  defaultDeviceLimit: 3,
-  adminGroup: "pkey-djdl-admins",
-  createdAt: 1_700_000_000,
-  modifiedAt: 1_700_100_000,
-};
+function registry(): Record<string, unknown> {
+  return {
+    "/manage/api/products": {
+      products: [
+        productRow("djdl", "DJDL", ALL_ON),
+        {
+          ...productRow("acme", "Acme", ALL_ON),
+          releaseSource: "github",
+          setup: {
+            healthy: false,
+            nextActions: [{ id: "secret:WEBHOOK_SECRET", label: "x" }],
+          },
+        },
+      ],
+    },
+  };
+}
 
-const GITHUB: ProductDetail = {
-  ...MANUAL,
-  slug: "acme",
-  name: "Acme",
-  signingKid: "gh:abc123",
-  releaseSource: "github",
-  adminGroup: null,
-};
+async function page(): Promise<HTMLElement> {
+  await screen.findByRole("heading", { level: 1, name: /Products/ });
+  return main();
+}
 
-function renderProducts() {
-  return render(
-    <Toaster>
-      <Products />
-    </Toaster>,
+/** The table's body rows (skipping the header row). */
+const rows = (): HTMLElement[] =>
+  within(within(main()).getByRole("table"))
+    .getAllByRole("row")
+    .filter((r) => r.querySelector("td"));
+
+async function openRowMenu(name: string): Promise<void> {
+  await userEvent.click(
+    within(main()).getByRole("button", { name: `Actions for ${name}` }),
   );
 }
 
-beforeEach(() => {
-  resetCache();
-  vi.clearAllMocks();
-  mockApi.product.mockResolvedValue({ product: MANUAL });
-  mockApi.products.mockResolvedValue({ products: [MANUAL, GITHUB] });
-  // jsdom lacks these Radix-needed APIs.
-  (
-    Element.prototype as unknown as { hasPointerCapture: () => boolean }
-  ).hasPointerCapture = () => false;
-  (
-    Element.prototype as unknown as { scrollIntoView: () => void }
-  ).scrollIntoView = () => undefined;
-});
+describe("Products", () => {
+  it("lists every product with its slug, source, services and setup (PRD-11)", async () => {
+    boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    const acme = rows().find((r) => r.textContent?.includes("acme"))!;
+    expect(within(acme).getByText("GitHub")).toBeTruthy();
+    expect(within(acme).getByText("1 needs attention")).toBeTruthy();
+    expect(
+      within(acme).getByText(
+        "Runs License, Config, Release, Distribution, Update and Identity",
+      ),
+    ).toBeTruthy();
+    const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
+    expect(within(djdl).getByText("Manual")).toBeTruthy();
+    expect(within(djdl).getByText("Setup complete")).toBeTruthy();
+  });
 
-afterEach(cleanup);
-
-describe("Products view", () => {
-  it("renders the product list with slug, name, and inferred release source", async () => {
-    renderProducts();
-    expect(await screen.findByText("djdl")).toBeTruthy();
-    expect(screen.getByText("Acme")).toBeTruthy();
-    // The GitHub-sourced product gets a GitHub badge; the manual one a Manual badge.
-    expect(screen.getByText("GitHub")).toBeTruthy();
-    expect(screen.getByText("Manual")).toBeTruthy();
+  it("the product name links to its Overview, never a service page (PRD-1)", async () => {
+    boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(
+      within(main()).getByRole("link", { name: "DJDL" }).getAttribute("href"),
+    ).toBe("#/p/djdl");
   });
 
   it("opens a product's Overview when its row is clicked (owner, 2026-10-03)", async () => {
-    window.location.hash = "#/products";
-    renderProducts();
-    await userEvent.click(await screen.findByText("djdl"));
+    boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await userEvent.click(within(main()).getByText("djdl"));
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl"));
   });
 
-  it("shows the empty state when there are no products", async () => {
-    mockApi.products.mockResolvedValue({ products: [] });
-    renderProducts();
-    expect(await screen.findByText("No products yet")).toBeTruthy();
+  it("is not a role=button row wrapping its menu (PRD-2)", async () => {
+    boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(main().querySelector("tr[role=button]")).toBeNull();
   });
 
-  it("surfaces an error state with a retry affordance", async () => {
-    mockApi.products.mockRejectedValue(new Error("boom"));
-    renderProducts();
-    expect(await screen.findByText("Couldn’t load products")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Retry/ })).toBeTruthy();
+  it("keeps search and facets in the URL", async () => {
+    boot("#/products?source=github", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(rows()[0]!.textContent).toContain("acme");
+    await userEvent.type(
+      within(main()).getByRole("searchbox", { name: /Search/ }),
+      "zz",
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/products?source=github&q=zz"),
+    );
   });
 
-  it("renders setup as an actionable checklist", async () => {
-    mockApi.product.mockResolvedValue({
-      product: {
-        ...MANUAL,
-        setup: {
-          healthy: false,
-          missingSecrets: ["WEBHOOK_SECRET"],
-          warnings: ["GitHub app is not installed"],
-          nextActions: [
-            { id: "releases", label: "Configure releases", route: "releases" },
-          ],
-        },
-      },
-    });
-    render(
-      <Toaster>
-        <ProductOverview slug="djdl" />
-      </Toaster>,
-    );
+  it("says when filters match nothing, with Clear filters", async () => {
+    boot("#/products?q=nothing-here", { extra: registry() });
+    await page();
+    expect(await within(main()).findByText(/No products match/)).toBeTruthy();
+  });
 
-    expect(await screen.findByText("Guided checklist")).toBeTruthy();
-    expect(screen.getByText("Required secrets")).toBeTruthy();
-    // The missing secret legitimately renders twice since the metric card and the
-    // checklist both report missingSecrets (it previously appeared once only because
-    // the metric card was reading the wrong field).
-    expect(screen.getAllByText(/WEBHOOK_SECRET/).length).toBeGreaterThanOrEqual(
-      2,
-    );
-    expect(screen.getByText("Review setup warning")).toBeTruthy();
+  it("first run: the empty state opens the wizard", async () => {
+    boot("#/products", { me: { products: [] } });
+    await page();
+    expect(await within(main()).findByText("No products yet")).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: /Set secrets/ }).getAttribute("href"),
-    ).toBe("#/p/djdl/keys");
-    expect(
-      screen
-        .getByRole("link", { name: /Create test license/ })
+      within(main())
+        .getByRole("link", { name: "Link a repository" })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/license/licenses");
+    ).toBe("#/products/new?via=github");
   });
 
-  it("omits the License checklist items when License is disabled", async () => {
-    mockApi.product.mockResolvedValue({
-      product: {
-        ...MANUAL,
-        services: {
-          license: { enabled: false },
-          config: { enabled: true },
-          release: { enabled: true },
-          update: { enabled: false },
-          identity: { enabled: false },
-        },
-        setup: { healthy: true, nextActions: [] },
+  it("shows skeleton rows while loading", async () => {
+    boot("#/products", { extra: { "/manage/api/products": PENDING } });
+    await page();
+    // Five skeleton rows, hidden from assistive tech (the live region announces the load).
+    expect(main().querySelectorAll("tbody tr[aria-hidden]")).toHaveLength(5);
+  });
+
+  it("words a failed load and offers Retry (PRD-12)", async () => {
+    boot("#/products", {
+      extra: {
+        "/manage/api/products": new Response("{}", { status: 500 }),
       },
     });
-    render(
-      <Toaster>
-        <ProductOverview slug="djdl" />
-      </Toaster>,
-    );
-
-    expect(await screen.findByText("Guided checklist")).toBeTruthy();
-    expect(screen.getByText("Required secrets")).toBeTruthy();
-    expect(screen.queryByText("Issue a license")).toBeNull();
-    expect(screen.queryByText("License defaults")).toBeNull();
+    await page();
+    const alert = await within(main()).findByRole("alert");
+    expect(alert.textContent).not.toMatch(/api 500/);
+    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 
-  it("creates a manual product via createManualProduct and shows the returned kid", async () => {
-    mockApi.createManualProduct.mockResolvedValue({
-      ok: true,
-      slug: "newp",
-      kid: "manual:42",
-      product: null,
-    });
-    renderProducts();
-    await screen.findByText("djdl");
-
-    await userEvent.click(screen.getByRole("button", { name: /New product/ }));
-    const dialog = await screen.findByRole("dialog");
-
-    // The Manual tab is the default; fill the required slug and submit.
-    expect(within(dialog).getByRole("tab", { name: /Manual/ })).toBeTruthy();
+  it("New product opens the wizard page", async () => {
+    boot("#/products", { extra: registry() });
+    await page();
     expect(
-      within(dialog).getByRole("tab", { name: /From GitHub/ }),
-    ).toBeTruthy();
-    expect(within(dialog).getByRole("tab", { name: "Basics" })).toBeTruthy();
-    expect(within(dialog).getByRole("tab", { name: "Catalog" })).toBeTruthy();
-    expect(within(dialog).getByRole("tab", { name: "Defaults" })).toBeTruthy();
-    await userEvent.type(within(dialog).getByLabelText(/Slug/), "newp");
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Create product" }),
-    );
-
-    await waitFor(() =>
-      expect(mockApi.createManualProduct).toHaveBeenCalledTimes(1),
-    );
-    expect(mockApi.createManualProduct.mock.calls[0]![0]).toMatchObject({
-      slug: "newp",
-    });
-    // The success panel surfaces the returned kid.
-    expect(await screen.findByText("manual:42")).toBeTruthy();
+      within(main())
+        .getByRole("link", { name: /New product/ })
+        .getAttribute("href"),
+    ).toBe("#/products/new");
   });
 
-  it("links a repo via linkRepo and lists the remaining secrets", async () => {
-    mockApi.linkRepo.mockResolvedValue({
-      ok: true,
-      slug: "linked",
-      kid: "gh:99",
-      remainingSecrets: ["GITHUB_APP_PRIVATE_KEY", "WEBHOOK_SECRET"],
-    });
-    renderProducts();
-    await screen.findByText("djdl");
-
-    await userEvent.click(screen.getByRole("button", { name: /New product/ }));
-    const dialog = await screen.findByRole("dialog");
-
-    // Switch to the GitHub tab.
-    await userEvent.click(
-      within(dialog).getByRole("tab", { name: /From GitHub/ }),
-    );
-    await userEvent.type(
-      within(dialog).getByLabelText(/Repository URL/),
-      "https://github.com/acme/linked",
-    );
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Link repository" }),
-    );
-
-    await waitFor(() => expect(mockApi.linkRepo).toHaveBeenCalledTimes(1));
-    expect(mockApi.linkRepo).toHaveBeenCalledWith(
-      "https://github.com/acme/linked",
-    );
-    expect(await screen.findByText("GITHUB_APP_PRIVATE_KEY")).toBeTruthy();
-    expect(screen.getByText("WEBHOOK_SECRET")).toBeTruthy();
-  });
-
-  it("surfaces an aggregated manifest error from link-repo", async () => {
-    const err = Object.assign(new Error("manifest invalid"), {
-      fields: ["name missing", "bad schema"],
-    });
-    mockApi.linkRepo.mockRejectedValue(err);
-    renderProducts();
-    await screen.findByText("djdl");
-
-    await userEvent.click(screen.getByRole("button", { name: /New product/ }));
-    const dialog = await screen.findByRole("dialog");
-    await userEvent.click(
-      within(dialog).getByRole("tab", { name: /From GitHub/ }),
-    );
-    await userEvent.type(
-      within(dialog).getByLabelText(/Repository URL/),
-      "https://github.com/acme/bad",
-    );
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Link repository" }),
-    );
-
-    expect(await screen.findByText(/manifest invalid/)).toBeTruthy();
-    expect(screen.getByText(/name missing/)).toBeTruthy();
-  });
-
-  it("confirms before deleting and calls deleteProduct on confirm", async () => {
-    mockApi.deleteProduct.mockResolvedValue({ ok: true, slug: "djdl" });
-    renderProducts();
-    await screen.findByText("djdl");
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for djdl" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Delete/ }),
-    );
-
-    // A confirm dialog gates the destructive call.
-    const confirmDialog = await screen.findByRole("alertdialog");
-    expect(within(confirmDialog).getByText(/Disable “djdl”\?/)).toBeTruthy();
-    expect(mockApi.deleteProduct).not.toHaveBeenCalled();
-
-    await userEvent.click(
-      within(confirmDialog).getByRole("button", { name: "Disable product" }),
-    );
-    await waitFor(() =>
-      expect(mockApi.deleteProduct).toHaveBeenCalledWith("djdl"),
-    );
-  });
-
-  it("prepares the signing key and shows the new public key", async () => {
-    mockApi.rotateProductKey.mockResolvedValue({
-      ok: true,
-      kid: "manual:2",
-      publicKey: "PUBKEY-XYZ",
-    });
-    renderProducts();
-    await screen.findByText("djdl");
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for djdl" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Prepare signing key/ }),
-    );
-
-    const confirmDialog = await screen.findByRole("alertdialog");
-    await userEvent.click(
-      within(confirmDialog).getByRole("button", { name: "Prepare key" }),
-    );
-
-    await waitFor(() =>
-      expect(mockApi.rotateProductKey).toHaveBeenCalledWith("djdl"),
-    );
-    expect(await screen.findByText("PUBKEY-XYZ")).toBeTruthy();
-  });
-
-  it("sets a write-only secret via putProductSecret", async () => {
-    mockApi.putProductSecret.mockResolvedValue({ ok: true, name: "TOKEN" });
-    renderProducts();
-    await screen.findByText("djdl");
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for djdl" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Set secret/ }),
-    );
-
-    const dialog = await screen.findByRole("dialog");
-    await userEvent.type(within(dialog).getByLabelText(/Secret name/), "TOKEN");
-    await userEvent.type(
-      within(dialog).getByLabelText(/Secret value/),
-      "s3cr3t",
-    );
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Set secret" }),
-    );
-
-    await waitFor(() =>
-      // No usage chosen: none is sent, so an existing secret keeps its usage (P0-12).
-      expect(mockApi.putProductSecret).toHaveBeenCalledWith(
-        "djdl",
-        "TOKEN",
-        "s3cr3t",
-        undefined,
-      ),
-    );
-  });
-
-  it("offers resync only for GitHub-sourced products", async () => {
-    renderProducts();
-    await screen.findByText("djdl");
-
-    // GitHub-sourced "acme" exposes resync...
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for acme" }),
-    );
+  it("links to the product's own forms instead of copying them (PRD-5)", async () => {
+    boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await openRowMenu("DJDL");
     expect(
-      await screen.findByRole("menuitem", { name: /Resync from GitHub/ }),
+      await screen.findByRole("menuitem", { name: "Open settings" }),
     ).toBeTruthy();
+    expect(
+      screen.getByRole("menuitem", { name: "Open keys & secrets" }),
+    ).toBeTruthy();
+    // No second Edit, Set secret or Prepare signing key form in the registry.
+    expect(screen.queryByRole("menuitem", { name: /^Edit/ })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: /Set secret/ })).toBeNull();
+    expect(
+      screen.queryByRole("menuitem", { name: /Prepare signing key/ }),
+    ).toBeNull();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Open settings" }),
+    );
+    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/settings"));
+  });
+
+  it("deletes only after the slug is typed, and sends the typed slug (PRD-3, PRD-4, L3)", async () => {
+    const log: FetchLog = boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await openRowMenu("DJDL");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete product…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Delete DJDL?")).toBeTruthy();
+    const confirm = within(dialog).getByRole("button", {
+      name: "Delete product",
+    });
+    // L3: confirm stays unavailable until the slug is typed exactly.
+    await userEvent.click(confirm);
+    expect(log.calls.some((c) => c.method === "DELETE")).toBe(false);
+    await userEvent.type(
+      within(dialog).getByLabelText(/Type the product slug/),
+      "djdl",
+    );
+    const productsReads = log.calls.filter(
+      (c) => c.path === "/manage/api/products" && c.method === "GET",
+    ).length;
+    // The button re-renders once it is usable (its disabled reason goes away): query it again.
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete product" }),
+    );
+    await waitFor(() =>
+      expect(
+        log.calls.find(
+          (c) =>
+            c.method === "DELETE" && c.path === "/manage/api/products/djdl",
+        )?.body,
+      ).toBe(JSON.stringify({ confirmSlug: "djdl" })),
+    );
+    // Invalidation: the registry (and the session's product list) refetch.
+    await waitFor(() =>
+      expect(
+        log.calls.filter(
+          (c) => c.path === "/manage/api/products" && c.method === "GET",
+        ).length,
+      ).toBeGreaterThan(productsReads),
+    );
+  });
+
+  it("keeps the delete dialog open with the worded error when the server refuses (PRD-12)", async () => {
+    boot("#/products", {
+      extra: {
+        ...registry(),
+        "/manage/api/products/djdl": new Response(
+          JSON.stringify({ error: "forbidden", message: "nope" }),
+          { status: 403, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await openRowMenu("DJDL");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete product…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.type(
+      within(dialog).getByLabelText(/Type the product slug/),
+      "djdl",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete product" }),
+    );
+    expect(await within(dialog).findByRole("alert")).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBe(dialog);
+  });
+
+  it("offers Resync from repo only for repository-linked products, behind a caution confirm", async () => {
+    const log = boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await openRowMenu("DJDL");
+    await screen.findByRole("menuitem", { name: "Open settings" });
+    expect(
+      screen.queryByRole("menuitem", { name: /Resync from repo/ }),
+    ).toBeNull();
     await userEvent.keyboard("{Escape}");
 
-    // ...the manual "djdl" does not.
+    await openRowMenu("Acme");
     await userEvent.click(
-      screen.getByRole("button", { name: "Actions for djdl" }),
+      await screen.findByRole("menuitem", { name: "Resync from repo…" }),
     );
-    await screen.findByRole("menuitem", { name: /Prepare signing key/ });
-    expect(
-      screen.queryByRole("menuitem", { name: /Resync from GitHub/ }),
-    ).toBeNull();
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Resync from repo" }),
+    );
+    await waitFor(() =>
+      expect(
+        log.calls.some(
+          (c) =>
+            c.method === "POST" &&
+            c.path === "/manage/api/products/acme/release/resync",
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("passes axe", async () => {
+    boot("#/products", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    const results = await axe(main());
+    expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 });

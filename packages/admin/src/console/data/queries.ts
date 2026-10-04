@@ -7,6 +7,7 @@
  *   ["products"]                                 the registry list
  *   ["product", slug]                            one product's detail (exact)
  *   ["product", slug, <area>, <resource>, …]     everything else about that product
+ *   ["platform", <resource>]                     instance-wide, product-less (A-11, A-12)
  *
  * Invalidating `["product", slug]` without `exact` therefore refreshes everything about one
  * product (resync), `["product", slug, "license", "licenses"]` refreshes the list AND every
@@ -29,6 +30,11 @@ const product = (slug: string, ...rest: (string | number)[]): QueryKey => [
 export const qk = {
   me: (): QueryKey => ["me"],
   products: (): QueryKey => ["products"],
+
+  // platform (instance-wide; notes/S-13 §9.2)
+  platformVersion: (): QueryKey => ["platform", "version"],
+  platformDeployment: (): QueryKey => ["platform", "deployment"],
+  platformActivity: (): QueryKey => ["platform", "activity"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
 

@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "../src/components/ui/index.js";
-import { Products } from "../src/views/Products.js";
+import { Products } from "../src/console/pages/global/Products.js";
 import {
   ALL_ON,
   ME,
@@ -22,7 +22,7 @@ import {
 /**
  * Regression: the Products page showed no products, or the whole console went blank.
  *
- * `views/Products.tsx` cached the raw `{ products }` response under `qk.products()`, while the
+ * The old `views/Products.tsx` cached the raw `{ products }` response under `qk.products()`, while the
  * shell's `useProducts` (which feeds the product switcher) cached the bare array under the same
  * key. Whichever fetched first decided the shape and broke the other reader: the page read
  * `array.products` (nothing), or the switcher called `.filter` on an object (a crash outside the
