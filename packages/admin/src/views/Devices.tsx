@@ -31,7 +31,7 @@ import {
   type ColumnDef,
 } from "../components/ui/index.js";
 import { absoluteTime, relativeTime } from "./format.js";
-import { DeviceStatusBadge, formatStamp } from "./licenses/shared.js";
+import { DeviceStatusBadge, formatStamp } from "./legacyBits.js";
 import { qk } from "../console/data/queries.js";
 import { mutate } from "../console/data/mutations.js";
 
