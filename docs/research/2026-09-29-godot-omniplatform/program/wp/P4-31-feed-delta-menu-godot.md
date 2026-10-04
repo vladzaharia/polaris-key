@@ -49,7 +49,30 @@ P4-29's fallback rules, on the GDScript path and the native payload port alike.
 
 ## Acceptance
 
-- [ ] Every new vector in the three sets passes, editor and release template.
-- [ ] Engine tests: fallback after a 404 and after each mismatch, the one-feed-delta rule, resume
-      with `feedDelta`, the native port path.
-- [ ] `pnpm parity:check` and the full green gate pass.
+- [x] Every new vector in the three sets passes, editor and release template.
+- [x] Engine tests: fallback after a 404 and after each mismatch, the one-feed-delta rule, resume
+      with `feedDelta`. The native port path does not apply (see Corrections).
+- [x] `pnpm parity:check` and the full green gate pass.
+
+## Corrections from implementation
+
+- **No native payload port path.** The Godot pack engine has no native payload transport.
+  Client-core's `applyNative` is P4-18's host hook, and Godot never ported it: a `platform`
+  plan is refused with `plan-transport-unsupported`. Every feed delta therefore goes through the
+  engine's own decode (GDDL on 4.6 and 4.7), and the acceptance item about the native port has
+  nothing to test. A platform-bound pack never takes a feed delta, because `plan` answers
+  `platform` before it costs any candidate.
+- **The engine cases are a new packs group, `feed_deltas`** (`tests/packs/test_feed_deltas.gd`).
+  It ports client-core's `packsFeedDelta.test.ts` case for case over `custom.blob` container
+  packs (`F.blob_pack`) built from the probe pair. The suite does not advertise
+  `zstd-patch-from` on 4.4 and 4.5. On those engines the group instead checks that the menu is
+  never planned and the install still completes.
+- **The menu source.** `PKeyPacks.feed_menu()` answers the menu of the feed that the last update
+  check or `fetch_feed` in this process committed, or fell back to (`remember_feed_content`).
+  Before either has run, it reads the cached committed feed of the configured channel and its
+  alias target (`PKeyFeed.bound_channels`), fresh or stale. `PKeyUpdateCheck` gains `content`
+  (client-core's check result `content`), which carries the feed's content members and its
+  menu.
+- **Fallback events.** Godot emitted no P4-18 `fallback` progress event before this package. The
+  engine now emits `{phase: "fallback", strategy, error}` whenever a candidate fails and the next
+  one runs, as client-core does.

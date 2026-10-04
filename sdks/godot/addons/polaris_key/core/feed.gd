@@ -11,7 +11,8 @@ extends RefCounted
 ##   commit_feed(feeds, requested, claim, jws)   step 9's write over the `feeds` slice
 ##   bound_channels(requested)        the requested name and, for an alias, its target
 ##   feed_content(doc, nw)            the content members (plans/P4-13.md §2.2): {packSets,
-##                                    packFloors, revocations}, each parsed or null, beside the
+##                                    packFloors, revocations, deltas (plans/P4-29.md §2.2)},
+##                                    each parsed or null, beside the
 ##                                    claims (a malformed member never refuses the feed)
 ##   with_feed_content(feed, content) the feed as the decision reads it
 ##
@@ -580,15 +581,76 @@ static func _parse_revocations(v: Variant, nw: PKeyJson.PointerSet) -> Variant:
 	return out
 
 
+## The delta menu (plans/P4-29.md §2.2): target payload SHA-256 → `payload`-scope deltas, a port
+## of client-core `parseDeltas`. Both caps (MAX_FEED_DELTAS_PER_TARGET per key, MAX_FEED_DELTAS in
+## all) and both uniqueness rules (`artifact.sha256` across the member, (`from`, `method`) within a
+## key) count every entry, dropped ones too; an entry of another vocabulary `scope` is dropped
+## alone and a key whose entries are all dropped is left out. An unknown `method` is kept for the
+## planner's `caps.patchMethods` to decide. `memBytes` and `artifact.bytes` are integer claims at
+## /deltas/<to>/<i>/memBytes and /deltas/<to>/<i>/artifact/bytes (minimum 1; `to` is 64 hex, so
+## the pointer needs no escaping). Returns the menu, or null when any rule fails.
+static func _parse_deltas(v: Variant, nw: PKeyJson.PointerSet) -> Variant:
+	if not (v is Dictionary):
+		return null
+	var out := {}
+	var artifacts := {}
+	var total := 0
+	for to in v:
+		if not PKeyClaims.matches_whole_re(_sha256_re, to):
+			return null
+		var list = v[to]
+		if not (list is Array) or (list as Array).size() < 1 or (list as Array).size() > PKeyConstants.MAX_FEED_DELTAS_PER_TARGET:
+			return null
+		total += (list as Array).size()
+		if total > PKeyConstants.MAX_FEED_DELTAS:
+			return null
+		var kept: Array = []
+		var pairs := {}
+		for i in (list as Array).size():
+			var d = list[i]
+			if not (d is Dictionary):
+				return null
+			if not PKeyClaims.matches_whole_re(_sha256_re, d.get("from")) or d["from"] == to:
+				return null
+			if not PKeyPackClaims.matches(PKeyPackClaims.VOCAB_TOKEN_PATTERN, d.get("method")):
+				return null
+			if not PKeyPackClaims.matches(PKeyPackClaims.VOCAB_TOKEN_PATTERN, d.get("scope")):
+				return null
+			var at := "/deltas/%s/%d" % [to, i]
+			if not PKeyClaims.is_wire_integer(d.get("memBytes"), at + "/memBytes", 1, nw):
+				return null
+			var a = d.get("artifact")
+			if not (a is Dictionary):
+				return null
+			if not PKeyClaims.matches_whole_re(_sha256_re, a.get("sha256")):
+				return null
+			if not PKeyClaims.is_wire_integer(a.get("bytes"), at + "/artifact/bytes", 1, nw):
+				return null
+			if artifacts.has(a["sha256"]):
+				return null
+			artifacts[a["sha256"]] = true
+			var pair := JSON.stringify([d["from"], d["method"]])
+			if pairs.has(pair):
+				return null
+			pairs[pair] = true
+			# A forward scope makes that entry alone ignored.
+			if d["scope"] != "payload":
+				continue
+			kept.append({"from": d["from"], "method": d["method"], "scope": "payload", "memBytes": d["memBytes"], "artifact": {"sha256": a["sha256"], "bytes": a["bytes"]}})
+		if not kept.is_empty():
+			out[to] = kept
+	return out
+
+
 ## The feed's content members (plans/P4-13.md §2.2): `packSets`, `packFloors` and `revocations`,
-## each parsed, or null when absent or unusable. Integer members follow V4 §3.1's token rule at
+## and the delta menu `deltas` (plans/P4-29.md §2.2), each parsed, or null when absent or unusable. Integer members follow V4 §3.1's token rule at
 ## their RFC 6901 pointers (pass the verified payload's `non_wire_integers`; null when checking an
-## object you built). An unusable member never refuses the feed and never affects the other two.
+## object you built). An unusable member never refuses the feed and never affects the others.
 ## A `packFloors` entry whose `versionScheme` is not a known scheme is dropped alone. Returns
-## {packSets, packFloors, revocations}; nothing here fails by error.
+## {packSets, packFloors, revocations, deltas}; nothing here fails by error.
 static func feed_content(doc: Variant, nw: PKeyJson.PointerSet = null) -> Dictionary:
 	_ready_res()
-	var out := {"packSets": null, "packFloors": null, "revocations": null}
+	var out := {"packSets": null, "packFloors": null, "revocations": null, "deltas": null}
 	if not (doc is Dictionary):
 		return out
 	if doc.has("packSets"):
@@ -597,6 +659,8 @@ static func feed_content(doc: Variant, nw: PKeyJson.PointerSet = null) -> Dictio
 		out["packFloors"] = _parse_pack_floors(doc["packFloors"], nw)
 	if doc.has("revocations"):
 		out["revocations"] = _parse_revocations(doc["revocations"], nw)
+	if doc.has("deltas"):
+		out["deltas"] = _parse_deltas(doc["deltas"], nw)
 	return out
 
 
@@ -606,7 +670,7 @@ static func feed_content(doc: Variant, nw: PKeyJson.PointerSet = null) -> Dictio
 ## Dictionary.
 static func with_feed_content(feed: Dictionary, content: Dictionary) -> Dictionary:
 	var out := feed.duplicate()
-	for key in PackedStringArray(["packSets", "packFloors", "revocations"]):
+	for key in PackedStringArray(["packSets", "packFloors", "revocations", "deltas"]):
 		out.erase(key)
 		if content.get(key) != null:
 			out[key] = content[key]

@@ -1,4 +1,4 @@
-# @pkey-feature update.content packs.revoke
+# @pkey-feature update.content packs.revoke packs.delta.feed
 """P4-13's corpus sections (plans/P4-13.md §4.2, §4.3) through the Python port, as the Node
 runner (``conformance/runners/node/suites.ts``) drives them, against the SAME files and ids:
 
@@ -68,10 +68,17 @@ def test_feed_content_case(case: Dict[str, Any]) -> None:
     )
     assert r.ok, f"{case['id']}: {case['description']} (refused: {r.reason})"
     assert r.content is not None
-    assert r.content.to_dict() == case["expect"]["content"], case["description"]
+    # plans/P4-29.md §4.1: `expect.content` holds P4-13's three members; the delta menu is
+    # compared with `expect.deltas ?? null` on every case.
+    want_deltas = case["expect"].get("deltas")
+    got = r.content.to_dict()
+    assert got.pop("deltas") == want_deltas, case["description"]
+    assert got == case["expect"]["content"], case["description"]
     # The same reading over the decoded payload, and through the decision's copy.
     assert r.feed is not None
-    assert feed_content(r.feed.raw).to_dict() == case["expect"]["content"]
+    again = feed_content(r.feed.raw).to_dict()
+    assert again.pop("deltas") == want_deltas
+    assert again == case["expect"]["content"]
     assert feed_content(with_feed_content(r.feed, r.content).raw) == r.content
 
 

@@ -3,10 +3,11 @@
 //   {"op": "<name>", …}  →  a synchronous result, or {"ok":true,"req":N} now and, later, one
 //                           event {"ev":"<name>","req":N, …result} through the event sink.
 //
-// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete (none of them waits on anything).
-// Asynchronous (each in its own detached task; the caller's thread never blocks): distributor,
-// app_transaction, products, purchase, entitlements, listen, finish, packs_status, packs_ensure,
-// packs_check_updates, packs_remove, packs_url, packs_watch, packs_unwatch. Unsolicited events:
+// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete, app_attest_supported (none of them
+// waits on anything). Asynchronous (each in its own detached task; the caller's thread never
+// blocks): distributor, app_transaction, products, purchase, entitlements, listen, finish,
+// packs_status, packs_ensure, packs_check_updates, packs_remove, packs_url, packs_watch,
+// packs_unwatch, app_attest_attest, app_attest_assert (P6-02, AppAttest.swift). Unsolicited events:
 // transaction_updated, pack_progress, pack_ready, pack_failed, pack_status.
 //
 // Every failure is `{"ok":false,"error":"<code>", …}`; an API this OS or build lacks is
@@ -24,11 +25,13 @@ public struct PlatformServices: Sendable {
     public var store: (any StoreClient)?
     public var keychain: (any KeychainBackendBox)?
     public var assetPacks: any AssetPackClient
+    public var appAttest: any AppAttestClient
 
     public init(
         availability: PlatformAvailability, distributor: any DistributorSource,
         bundleEvidence: @escaping @Sendable () -> BundleEvidence, appTransaction: (any AppTransactionSource)?,
-        store: (any StoreClient)?, keychain: (any KeychainBackendBox)?, assetPacks: any AssetPackClient
+        store: (any StoreClient)?, keychain: (any KeychainBackendBox)?, assetPacks: any AssetPackClient,
+        appAttest: any AppAttestClient = UnavailableAppAttestClient()
     ) {
         self.availability = availability
         self.distributor = distributor
@@ -37,6 +40,7 @@ public struct PlatformServices: Sendable {
         self.store = store
         self.keychain = keychain
         self.assetPacks = assetPacks
+        self.appAttest = appAttest
     }
 
     /// The real system: MarketplaceKit, StoreKit, Security and Background Assets where they exist.
@@ -51,6 +55,9 @@ public struct PlatformServices: Sendable {
         #endif
         #if canImport(Security)
         services.keychain = SystemKeychainBackend()
+        #endif
+        #if os(iOS) && canImport(DeviceCheck)
+        services.appAttest = SystemAppAttestClient()
         #endif
         #if compiler(>=6.3) && canImport(BackgroundAssets) && (os(iOS) || os(macOS))
         if availability.managedAssetPacks, #available(iOS 26.4, macOS 26.4, *) {
@@ -82,6 +89,7 @@ public final class PlatformHost: Sendable {
     public let services: PlatformServices
     let store: StoreService?
     let packs: AssetPackService
+    let appAttest: AppAttestService
     private let reqCounter = PlatformLock(0)
 
     public init(services: PlatformServices, sink: PlatformEventSink = PlatformEventSink()) {
@@ -89,6 +97,7 @@ public final class PlatformHost: Sendable {
         self.sink = sink
         store = services.store.map { StoreService(client: $0, sink: sink) }
         packs = AssetPackService(client: services.assetPacks, availability: services.availability, sink: sink)
+        appAttest = AppAttestService(client: services.appAttest)
     }
 
     /// The JSON-string form of `handle`.
@@ -235,6 +244,28 @@ public final class PlatformHost: Sendable {
             let watch = op == "packs_watch"
             return later(op) { watch ? await packs.watch(id: id) : await packs.unwatch(id: id) }
 
+        case "app_attest_supported":
+            return appAttest.supported()
+
+        case "app_attest_attest":
+            guard let requestHash = str("requestHash"), !requestHash.isEmpty else {
+                return ["ok": false, "error": "missing_request_hash"]
+            }
+            if let keyId = q["keyId"], keyId != .null, keyId.stringValue?.isEmpty ?? true {
+                return ["ok": false, "error": "bad_key_id"]
+            }
+            if let u = appAttest.unsupported() { return u }
+            let service = appAttest
+            let keyId = str("keyId")
+            return later(op) { await service.attest(requestHash: requestHash, keyId: keyId) }
+
+        case "app_attest_assert":
+            guard let keyId = str("keyId"), !keyId.isEmpty else { return ["ok": false, "error": "missing_key_id"] }
+            guard let clientData = str("clientData") else { return ["ok": false, "error": "missing_client_data"] }
+            if let u = appAttest.unsupported() { return u }
+            let service = appAttest
+            return later(op) { await service.assert(keyId: keyId, clientData: clientData) }
+
         default:
             return ["ok": false, "error": "unknown_op", "op": .string(op)]
         }
@@ -256,6 +287,7 @@ public final class PlatformHost: Sendable {
             "backgroundAssetsConfigured": .bool(services.assetPacks.configured()),
             "storeKit": .bool(services.store != nil), "keychain": .bool(services.keychain != nil),
             "entitlementsForID": .bool(a.entitlementsForID),
+            "appAttest": .bool(appAttest.unsupported() == nil),
         ]
     }
 

@@ -15,6 +15,9 @@ public enum ErrorCode {
     public static let notFound = "not_found"
     public static let badRequest = "bad_request"
     public static let forbidden = "forbidden"
+    public static let attestationRequired = "attestation_required"
+    public static let attestationRejected = "attestation_rejected"
+    public static let attestationUnavailable = "attestation_unavailable"
     public static let rateLimited = "rate_limited"
     public static let bodyTooLarge = "body_too_large"
     public static let methodNotAllowed = "method_not_allowed"
@@ -154,6 +157,9 @@ public let ERROR_CODE_VALUES: [String] = [
     "not_found",
     "bad_request",
     "forbidden",
+    "attestation_required",
+    "attestation_rejected",
+    "attestation_unavailable",
     "rate_limited",
     "body_too_large",
     "method_not_allowed",
@@ -293,6 +299,9 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "not_found": "wire",
     "bad_request": "wire",
     "forbidden": "wire",
+    "attestation_required": "wire",
+    "attestation_rejected": "wire",
+    "attestation_unavailable": "wire",
     "rate_limited": "wire",
     "body_too_large": "wire",
     "method_not_allowed": "wire",
@@ -456,6 +465,7 @@ public enum Feature {
     public static let devicesRegister = "devices.register"
     public static let devicesManage = "devices.manage"
     public static let devicesReport = "devices.report"
+    public static let devicesAttest = "devices.attest"
     public static let identityOidc = "identity.oidc"
     public static let identityDevicecode = "identity.devicecode"
     public static let releaseChangelog = "release.changelog"
@@ -527,6 +537,7 @@ public let FEATURE_VALUES: [String] = [
     "devices.register",
     "devices.manage",
     "devices.report",
+    "devices.attest",
     "identity.oidc",
     "identity.devicecode",
     "release.changelog",
@@ -1263,6 +1274,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.manage": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.report": CapabilityRow(status: "implemented", service: "core", na: []),
+    "devices.attest": CapabilityRow(status: "planned", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1278,7 +1290,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.revoke": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.delegation": CapabilityRow(status: "implemented", service: "release", na: []),
-    "packs.delta.feed": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.delta.feed": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.plan": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.files": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.chunks": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1305,4 +1317,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "a01bed922eef8e90abe53f9610bd4c22aef28c7c253d08c6be43a49a8fef8d33"
+public let CAPABILITY_DIGEST = "f6904f8c6654e0055e1f2b307fde9220c3ac62ac7c7712470dc31823822178fe"

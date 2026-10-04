@@ -409,6 +409,70 @@
       ]
     },
     {
+      "id": "devices.attest",
+      "family": "devices",
+      "title": "Device attestation (App Attest, Play Integrity) raising the trust level",
+      "service": "core",
+      "proof": [{ "kind": "unit" }],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "A server or CLI process has no platform attestation service; only iOS App Attest and Android Play Integrity can raise a device to attested."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "A CPython process has no platform attestation service."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no App Attest or Play Integrity; web devices stay at the basic trust level by design."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "A desktop renderer has no platform attestation service."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "App Attest is an iOS and iPadOS service; a desktop build stays basic."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Windows has no attestation service the Worker verifies; a desktop build stays basic."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Linux has no attestation service the Worker verifies; a desktop build stays basic."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A JVM desktop build has no attestation service the Worker verifies."
+        },
+        {
+          "runtime": "dotnet",
+          "reason": "runtime",
+          "why": "A .NET desktop build has no attestation service the Worker verifies."
+        },
+        {
+          "runtime": "tauri",
+          "reason": "runtime",
+          "why": "A Tauri webview has no attestation service the Worker verifies."
+        },
+        {
+          "runtime": "*",
+          "reason": "outlet",
+          "why": "Only a store install can attest: a sideloaded iOS build or an Android build not installed by Google Play cannot, and stays basic."
+        }
+      ]
+    },
+    {
       "id": "identity.oidc",
       "family": "devices",
       "title": "Browser sign-in",
