@@ -4,7 +4,7 @@
  * repository layout's two routes (`routes.ts`).
  */
 
-import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
 import {
   extBoolean,
   rendererOf,
@@ -37,15 +37,7 @@ export const MAVEN_ADAPTER: FeedAdapter<"maven"> = defineFeedAdapter({
     search: false,
     authChallenge: "basic",
   },
-  setup: {
-    clients: ["Gradle", "Maven"],
-    inputs: [
-      "baseUrl",
-      "namespace.groupPrefixes",
-      "package.name",
-      "package.version",
-    ],
-  },
+  setup: FEED_SETUP.maven,
   openapi: [
     [
       "/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml",

@@ -1,0 +1,3 @@
+# Pull by the fully qualified reference
+# podman pull and crane pull take the same reference; it never resolves on another registry.
+docker pull pkg.plrs.im/acme/server:1.2.3

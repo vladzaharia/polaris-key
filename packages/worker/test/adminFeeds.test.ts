@@ -272,6 +272,8 @@ describe("product scope", () => {
       },
       policy: { enabled: true, maxPackageBytesCeiling: 52428800 },
       capabilities: { yank: true, deprecate: false },
+      // F-12: the extension settings the ecosystem panel renders, from the adapter.
+      extensions: ["htmlFallback"],
       accessModes: [
         { mode: "public", available: true },
         { mode: "authenticated", available: false },
@@ -311,6 +313,68 @@ describe("product scope", () => {
     res = await put({ expectedVersion: 0, claims: [] });
     expect(await res.json()).toMatchObject({ error: { fields: ["claims"] } });
     expect(await auditActions(OWNER)).toEqual([]);
+  });
+
+  it("validates each ecosystem panel's extension settings against its adapter (F-12)", async () => {
+    const swift = (ext: unknown) =>
+      admin("PUT", product("/swift/settings"), { expectedVersion: 0, ext });
+    let res = await swift({
+      requireSigned: false,
+      repositoryUrls: {
+        "acme.Kit": [
+          "https://github.com/acme/kit.git",
+          "git@github.com:acme/kit",
+        ],
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      settings: {
+        version: 1,
+        ext: {
+          requireSigned: false,
+          repositoryUrls: {
+            "acme.Kit": [
+              "https://github.com/acme/kit.git",
+              "git@github.com:acme/kit",
+            ],
+          },
+        },
+      },
+    });
+    res = await admin("PUT", product("/swift/settings"), {
+      expectedVersion: 1,
+      ext: { repositoryUrls: { "not an id": ["https://x.test/a"] } },
+    });
+    expect(await res.json()).toMatchObject({
+      error: { fields: ["ext.repositoryUrls"] },
+    });
+    res = await admin("PUT", product("/godot/settings"), {
+      expectedVersion: 0,
+      ext: {
+        categoryId: 3,
+        supportLevel: "testing",
+        license: "MIT",
+        minGodotVersion: "4.4",
+      },
+    });
+    expect(res.status).toBe(200);
+    res = await admin("PUT", product("/godot/settings"), {
+      expectedVersion: 1,
+      ext: { minGodotVersion: "four" },
+    });
+    expect(await res.json()).toMatchObject({
+      error: { fields: ["ext.minGodotVersion"] },
+    });
+    const detail = (await (await admin("GET", product("/godot"))).json()) as {
+      extensions: string[];
+    };
+    expect(detail.extensions).toEqual([
+      "categoryId",
+      "supportLevel",
+      "license",
+      "minGodotVersion",
+    ]);
   });
 
   it("is optimistic: a stale expectedVersion is a 409 with the current settings", async () => {

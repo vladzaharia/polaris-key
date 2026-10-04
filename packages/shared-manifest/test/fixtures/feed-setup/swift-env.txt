@@ -1,0 +1,19 @@
+# Route the scope to this feed
+# Once per project, or per machine with --global.
+swift package-registry set --scope acme https://pkg.plrs.im/swift/acme
+swift package-registry login https://pkg.plrs.im/swift/acme --token "$PKEY_REGISTRY_TOKEN" --no-confirm
+
+# Refuse an unsigned or untrusted release (.swiftpm/configuration/registries.json)
+{
+  "security": {
+    "default": {
+      "signing": {
+        "onUnsigned": "error",
+        "onUntrustedCertificate": "error"
+      }
+    }
+  }
+}
+
+# Depend on the package (Package.swift)
+.package(id: "acme.<Package>", from: "1.0.0")

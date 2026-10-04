@@ -1,0 +1,10 @@
+# Godot 4.6 and earlier: Asset Library → Available URLs
+# Editor Settings, asset_library/available_urls.
+https://pkg.plrs.im/godot/polaris-key/asset-library/api
+
+# Godot 4.7 and later: asset_store/available_urls
+# Editor Settings, asset_store/available_urls.
+https://pkg.plrs.im/godot/polaris-key/store/api/v1
+
+# GodotEnv: copy a version's addons.json entry from the index
+https://pkg.plrs.im/godot/polaris-key/index.json

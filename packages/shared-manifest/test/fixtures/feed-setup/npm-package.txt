@@ -1,0 +1,15 @@
+# npm and pnpm: route the scope to this feed (.npmrc)
+# Only @polaris-key packages are looked up here; every other package stays on its usual registry.
+@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
+
+# Yarn Berry (.yarnrc.yml)
+npmScopes:
+  polaris-key:
+    npmRegistryServer: "https://pkg.plrs.im/npm/polaris-key/"
+
+# Bun (bunfig.toml)
+[install.scopes]
+"@polaris-key" = "https://pkg.plrs.im/npm/polaris-key/"
+
+# Install
+npm install @polaris-key/node@0.9.0
