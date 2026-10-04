@@ -81,8 +81,11 @@ describe("sync-worker-secrets workflow", () => {
     const run = push.run!;
     for (const name of NAMES) expect(run).toContain(name);
     expect(run).toMatch(
-      /printenv "\$NAME" \| npx wrangler secret put "\$NAME" --env "\$TARGET" > \/dev\/null/,
+      /printenv "\$NAME" \| npx wrangler secret put "\$NAME" --env "\$TARGET" > \/dev\/null 2> "\$err_file"/,
     );
+    // stderr goes to a file that is removed, never printed.
+    expect(run).not.toMatch(/\b(cat|head|tail|less)\b[^\n]*err_file/);
+    expect(run).toMatch(/details withheld/);
     expect(run).not.toMatch(/set -[a-z]*x/);
     // Every echo prints a fixed label, the target or the NAME arrays — never `${!NAME}`.
     const echoes = run.split("\n").filter((l) => /\becho\b/.test(l));
@@ -95,12 +98,19 @@ describe("sync-worker-secrets workflow", () => {
     expect(run).toMatch(/-z "\$\{!NAME:-\}"/);
   });
 
-  it("pins actions as deploy.yml does", () => {
-    const deploy = readFileSync(
-      join(HERE, "..", "..", "..", ".github", "workflows", "deploy.yml"),
-      "utf8",
-    );
-    for (const s of job.steps.filter((x) => x.uses))
-      expect(deploy).toContain(`uses: ${s.uses}`);
+  it("pins every action to a full commit SHA", () => {
+    const uses = job.steps.filter((x) => x.uses).map((x) => x.uses!);
+    expect(uses.length).toBe(3);
+    for (const u of uses) expect(u).toMatch(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/);
+  });
+
+  it("installs only the worker's dependency closure, without lifecycle scripts, and checks wrangler", () => {
+    const installs = job.steps.filter((x) => x.run?.includes("pnpm install"));
+    expect(installs.map((x) => x.run!.trim())).toEqual([
+      "pnpm install --frozen-lockfile --filter @polaris-key/worker... --ignore-scripts",
+    ]);
+    expect(
+      job.steps.some((x) => x.run?.trim() === "npx wrangler --version"),
+    ).toBe(true);
   });
 });
