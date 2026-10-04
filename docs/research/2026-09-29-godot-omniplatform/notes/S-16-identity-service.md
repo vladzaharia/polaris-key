@@ -1,4 +1,6 @@
 > Research note for [Godot on Polaris Key](../README.md), 2026-10-04. Spike S-16, commissioned
+
+> **Owner decisions (2026-10-04):** Option C approved. **Scope: everything, phases 0–3 including the per-product issuer** ("Sign in with <Product>", ~86 agent-days). Issuer: decide in I-16's plan, leaning in-house on jose (Ory Hydra stays the alternative). Safety defaults confirmed: a licence carrying an email attaches only to a user with that verified email (no attach-by-key unless the product sets `claimByKey`); a licence with an owner never moves by presenting its key; Polaris runs no recovery desk — beyond a user's remaining links, recovery is the developer's job via the console's audited relink tool (step-up, reason, notice, 72-hour undo); custom auth domains deferred, passkeys enrol on key.plrs.im only. Pocket ID facts (separate console client; exportable email-verified flag): the lead checks and records them here.
 > by the lead on the owner's direction of 2026-10-04: define what a proper Identity service is,
 > whether a proxy to a platform or product IdP, a Polaris-run OIDC/OAuth2 provider, or both. It
 > has no program brief yet; §8 proposes an `I-` work-package namespace. Research and design only:
