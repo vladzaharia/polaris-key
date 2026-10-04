@@ -43,6 +43,7 @@ export const DOCS_STYLE_ATTR_HASHES: readonly string[] = [
   "'sha256-NSGV/iOuf9SBm4bAL3B0+6qgt/yhrnDLVGdzFwm0kwU='",
   "'sha256-Ne7PPoMRWtUeyrgxzeR14e4YIa52zkeYCm/kHcjzUGI='",
   "'sha256-PUOgV+QKPDKsAJBrbzT7lkqleafwCIxXs9fYH3I8aHo='",
+  "'sha256-Qku+nbd7sSP3F5uKNYpMZqPy/8/ggBa6sChS/IC0FrA='",
   "'sha256-QtT9qkG6MVfyweRssRJcAxb1rsanf1kHaJCMJcJJbfk='",
   "'sha256-T0xDF+2lLqoRDi8GMlUbp4bGFHDreJl/vbya0FnaPzE='",
   "'sha256-UyKscHj5P23B6qYfANvZimF3D9vL/9v1uMMgrs8sKjg='",
