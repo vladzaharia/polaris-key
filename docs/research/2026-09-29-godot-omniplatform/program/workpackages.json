@@ -4545,7 +4545,7 @@
       "optional": false,
       "refs": ["notes/S-14 §10 (A-17g)", "notes/S-15 §11 (changes to A-17g)"],
       "brief": "wp/A-17g-console-asc-distribute.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-18a",

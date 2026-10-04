@@ -75,8 +75,8 @@ Where the build departs from S-14 §8.2, §8.3 and §10 and from S-15 §11, the 
   version's build is linked to a release.
 - **Shared badges.** The capability and status badge A-18j and F-11 are to share does not exist
   yet (A-18j owns it); A-17g uses the kit's `StatusPill`.
-- **Deep links.** A-17f's constant table does not exist (A-17f is todo), so the console's links are
-  one table, `ASC_LINKS` in `ascShared.tsx`, for A-17f or A-18j to move into
+- **Deep links.** A-17f's constant table does not exist (A-17f was dropped and folded into A-18j),
+  so the console's links are one table, `ASC_LINKS` in `ascShared.tsx`, for A-18j to move into
   `core/storefront/deeplinks.ts`.
 - **Not in A-17g:** editing the commerce map itself (`PUT`/`DELETE …/distribution/commerce/products`)
   has no console surface; the App Store products table lists what is mapped and its empty state
