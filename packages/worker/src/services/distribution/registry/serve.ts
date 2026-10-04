@@ -97,17 +97,35 @@ export async function serveFeedRead(
   );
 }
 
-/** What a feed route declares; `feedRoute` supplies the ladder around it. */
-export interface FeedRouteDef {
+/**
+ * What a feed route declares; `feedRoute` supplies the ladder around it. `S` is what the route
+ * looks up before the ladder (`resolve`), handed to every other member.
+ *
+ *   1. `resolve` (optional) reads what the request names (a package name to its deliverable, a
+ *      digest to the version holding it). It only reads: it never answers.
+ *   2. `serveFeedRead` with `deliverableId(params, state)` and the route's options: the access
+ *      ladder, then the Cache API, then `serve`.
+ *   3. `finish` (optional) sees every answer, a refusal or a cache hit included: headers the
+ *      protocol puts on each (OCI's API version, Swift's Content-Version), or a check of a cached
+ *      answer against this request (OCI's and Swift's `Accept`). It runs after the ladder, so it
+ *      can never stand in for it.
+ */
+export interface FeedRouteDef<S = undefined> {
   readonly name: string;
   readonly ecosystem: RegistryEcosystem;
   readonly inertDocument?: true;
   match(pathname: string): RegistryRouteMatch | null;
-  /** The deliverable this request reads, or `null` for a list document. */
-  deliverableId(params: Record<string, string>): string | null;
+  /** Before the ladder: what the request names, read from D1 (never an answer). */
+  resolve?(req: Request, ctx: RegistryRouteContext): Promise<S>;
+  /** The deliverable this request reads, or `null` for a list document or an unknown name. */
+  deliverableId(params: Record<string, string>, state: S): string | null;
   readonly queryNames?: readonly string[];
   /** OCI only: the repository under the owner, for the challenge's scope. */
-  repository?(params: Record<string, string>): string | undefined;
+  repository?(params: Record<string, string>, state: S): string | undefined;
+  /** F-08's OCI blobs only: keep a public answer out of the Cache API (`FeedReadOptions`). */
+  readonly cacheApi?: false;
+  /** The request the Cache API keys on, when the route normalises it (Godot's search queries). */
+  cacheRequest?(req: Request): Request;
   /** Tests only: a settings source other than D1. */
   readonly settings?: RegistrySettingsSource;
   /** The answer, computed only once the ladder has admitted the read. */
@@ -115,7 +133,15 @@ export interface FeedRouteDef {
     req: Request,
     ctx: RegistryRouteContext,
     cache: "public" | "private",
+    state: S,
   ): Promise<Response>;
+  /** After the ladder, on every answer (see above). */
+  finish?(
+    res: Response,
+    req: Request,
+    ctx: RegistryRouteContext,
+    state: S,
+  ): Response | Promise<Response>;
 }
 
 /**
@@ -123,8 +149,7 @@ export interface FeedRouteDef {
  * the result carries `FEED_READ_ROUTE`, which the structural test demands of every
  * `REGISTRY_ROUTES` entry. Every ecosystem's routes (F-04 to F-09) are built here.
  */
-export function feedRoute(def: FeedRouteDef): RegistryRoute {
-  const repository = def.repository;
+export function feedRoute<S = undefined>(def: FeedRouteDef<S>): RegistryRoute {
   return {
     [FEED_READ_ROUTE]: true,
     name: def.name,
@@ -132,19 +157,22 @@ export function feedRoute(def: FeedRouteDef): RegistryRoute {
     ecosystem: def.ecosystem,
     ...(def.inertDocument ? { inertDocument: true as const } : {}),
     match: (p) => def.match(p),
-    handle: (req, ctx) => {
-      const repo = repository?.(ctx.params);
-      return serveFeedRead(
-        req,
+    handle: async (req, ctx) => {
+      const state = (def.resolve ? await def.resolve(req, ctx) : undefined) as S;
+      const repo = def.repository?.(ctx.params, state);
+      const res = await serveFeedRead(
+        def.cacheRequest ? def.cacheRequest(req) : req,
         ctx,
         {
-          deliverableId: def.deliverableId(ctx.params),
+          deliverableId: def.deliverableId(ctx.params, state),
           ...(def.queryNames ? { queryNames: def.queryNames } : {}),
           ...(repo !== undefined ? { repository: repo } : {}),
+          ...(def.cacheApi === false ? { cacheApi: false as const } : {}),
           ...(def.settings ? { settings: def.settings } : {}),
         },
-        (cache) => def.serve(req, ctx, cache),
+        (cache) => def.serve(req, ctx, cache, state),
       );
+      return def.finish ? def.finish(res, req, ctx, state) : res;
     },
   };
 }
