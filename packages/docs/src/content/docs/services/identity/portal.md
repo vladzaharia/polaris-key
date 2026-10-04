@@ -151,6 +151,11 @@ the portal itself proved (a magic link it sent, or an `email_verified: true` cla
 match a license's `sub`, so subjects minted by mutually untrusted custom IdPs can never collide
 across products (the R5 audit findings, `R5-01` and `R5-02`).
 
+**In the console**, these settings are **Identity → Portal**. The sign-in methods and modules
+are read-only while the portal switch is off, and **Release downloads** is read-only while the
+product's Release service is off. The page saves the five switches and the linking choice in one
+`PATCH`; it never sends `branding`, which it shows as a read-out.
+
 ## Supported browsers
 
 The portal's UI is built on Tailwind CSS v4, whose generated styles rely on modern CSS

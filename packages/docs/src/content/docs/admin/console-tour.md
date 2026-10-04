@@ -138,10 +138,10 @@ Shown when the product runs **Update**, which requires Distribution.
 
 Shown when the product runs **Identity**.
 
-| Page        | URL                | What it's for                                                                                          |
-| ----------- | ------------------ | ------------------------------------------------------------------------------------------------------ |
-| **Portal**  | `identity/portal`  | The customer portal's module toggles and automatic license linking, plus the read-only OIDC explainer. |
-| **Sign-in** | `identity/sign-in` | Until it becomes its own page, this URL opens Portal.                                                  |
+| Page        | URL                | What it's for                                                                                                                                              |
+| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Portal**  | `identity/portal`  | What the customer portal offers: the portal switch, the sign-in methods, automatic license linking, release downloads, and the branding read-out.          |
+| **Sign-in** | `identity/sign-in` | The OIDC provider, issuer and client this product trusts, and its group → tier map, read from `.pkey/product`. Resync from repo applies a manifest change. |
 
 ## Old URLs
 
