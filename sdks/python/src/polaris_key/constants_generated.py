@@ -135,6 +135,9 @@ class ErrorCode:
     NOT_FOUND: Final = "not_found"
     BAD_REQUEST: Final = "bad_request"
     FORBIDDEN: Final = "forbidden"
+    ATTESTATION_REQUIRED: Final = "attestation_required"
+    ATTESTATION_REJECTED: Final = "attestation_rejected"
+    ATTESTATION_UNAVAILABLE: Final = "attestation_unavailable"
     RATE_LIMITED: Final = "rate_limited"
     BODY_TOO_LARGE: Final = "body_too_large"
     METHOD_NOT_ALLOWED: Final = "method_not_allowed"
@@ -274,6 +277,9 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "not_found",
     "bad_request",
     "forbidden",
+    "attestation_required",
+    "attestation_rejected",
+    "attestation_unavailable",
     "rate_limited",
     "body_too_large",
     "method_not_allowed",
@@ -415,6 +421,9 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "not_found": "wire",
         "bad_request": "wire",
         "forbidden": "wire",
+        "attestation_required": "wire",
+        "attestation_rejected": "wire",
+        "attestation_unavailable": "wire",
         "rate_limited": "wire",
         "body_too_large": "wire",
         "method_not_allowed": "wire",
@@ -581,6 +590,7 @@ class Feature:
     DEVICES_REGISTER: Final = "devices.register"
     DEVICES_MANAGE: Final = "devices.manage"
     DEVICES_REPORT: Final = "devices.report"
+    DEVICES_ATTEST: Final = "devices.attest"
     IDENTITY_OIDC: Final = "identity.oidc"
     IDENTITY_DEVICECODE: Final = "identity.devicecode"
     RELEASE_CHANGELOG: Final = "release.changelog"
@@ -652,6 +662,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "devices.register",
     "devices.manage",
     "devices.report",
+    "devices.attest",
     "identity.oidc",
     "identity.devicecode",
     "release.changelog",
@@ -1549,6 +1560,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "devices.register": CapabilityRow("implemented", "core", ()),
         "devices.manage": CapabilityRow("implemented", "core", ()),
         "devices.report": CapabilityRow("implemented", "core", ()),
+        "devices.attest": CapabilityRow("na", "core", (CapabilityNa("python", "runtime"),)),
         "identity.oidc": CapabilityRow("planned", "identity", ()),
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
@@ -1564,7 +1576,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.record": CapabilityRow("implemented", "release", ()),
         "packs.revoke": CapabilityRow("implemented", "release", ()),
         "packs.delegation": CapabilityRow("implemented", "release", ()),
-        "packs.delta.feed": CapabilityRow("planned", "release", ()),
+        "packs.delta.feed": CapabilityRow("implemented", "release", ()),
         "packs.plan": CapabilityRow("implemented", "release", ()),
         "packs.index.files": CapabilityRow("implemented", "release", ()),
         "packs.index.chunks": CapabilityRow("implemented", "release", ()),
@@ -1592,4 +1604,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "a0208fc3cd330095c61411fb54679ca8c61b7e0eeea33c8c6eb6e94918e8ce97"
+CAPABILITY_DIGEST: Final[str] = "7f1bbda8fe6c6afc09c067a88532900ef065f17ca29d6037dcef95da98799056"

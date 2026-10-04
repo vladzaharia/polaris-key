@@ -23,6 +23,12 @@ var store_kit := true
 var garbage_for := ""
 ## Ops whose result never arrives (tests the facade's timeout).
 var never := PackedStringArray()
+## App Attest (P6-02): whether it runs here, the keys the "system" knows (generated ones are added;
+## clear it to model a reinstall), and a failure code the next attest answers.
+var app_attest_supported := true
+var attest_keys: Array[String] = []
+var attest_fail := ""
+var _key_serial := 0
 
 var keychain := {}
 var calls: Array[Dictionary] = []
@@ -51,7 +57,7 @@ func cmd(json: String) -> String:
 		"ping":
 			return JSON.stringify({"ok": true, "mainThread": true, "protocol": 1})
 		"capabilities":
-			return JSON.stringify({"ok": true, "protocol": 1, "platform": "ios", "appDistributor": true, "appDistributorWeb": true, "managedAssetPacks": packs_supported, "backgroundAssetsConfigured": packs_supported, "storeKit": store_kit, "keychain": true, "entitlementsForID": true})
+			return JSON.stringify({"ok": true, "protocol": 1, "platform": "ios", "appDistributor": true, "appDistributorWeb": true, "managedAssetPacks": packs_supported, "backgroundAssetsConfigured": packs_supported, "storeKit": store_kit, "keychain": true, "entitlementsForID": true, "appAttest": app_attest_supported})
 		"distributor":
 			return _later(op, distributor.duplicate(true))
 		"app_transaction":
@@ -74,6 +80,29 @@ func cmd(json: String) -> String:
 			return _later(op, {"ok": true, "finished": true})
 		"listen":
 			return _later(op, {"ok": true})
+		"app_attest_supported":
+			if not app_attest_supported:
+				return JSON.stringify({"ok": false, "unsupported": true, "reason": "runtime", "detail": "fake: App Attest is not supported"})
+			return JSON.stringify({"ok": true, "supported": true})
+		"app_attest_attest", "app_attest_assert":
+			if not app_attest_supported:
+				return JSON.stringify({"ok": false, "unsupported": true, "reason": "runtime", "detail": "fake: App Attest is not supported"})
+			var key = q.get("keyId")
+			var generated := false
+			if op == "app_attest_attest" and not (key is String):
+				_key_serial += 1
+				key = Marshalls.utf8_to_base64("fake-key-%d" % _key_serial)
+				attest_keys.append(key)
+				generated = true
+			if attest_fail != "":
+				var code := attest_fail
+				attest_fail = ""
+				return _later(op, {"ok": false, "error": code, "message": "fake " + code, "keyId": key, "generated": generated})
+			if not attest_keys.has(key):
+				return _later(op, {"ok": false, "error": "invalid_key", "message": "fake: unknown key", "keyId": key, "generated": generated})
+			if op == "app_attest_assert":
+				return _later(op, {"ok": true, "keyId": key, "assertion": Marshalls.utf8_to_base64("assertion:%s" % key)})
+			return _later(op, {"ok": true, "keyId": key, "attestation": Marshalls.utf8_to_base64("attestation:%s:%s" % [key, q.get("requestHash")]), "generated": generated, "ms": 1})
 		"kc_get":
 			var key := "%s/%s" % [q.get("product"), q.get("account")]
 			if keychain.get("__fail__", false):

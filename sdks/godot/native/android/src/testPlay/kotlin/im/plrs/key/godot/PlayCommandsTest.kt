@@ -6,6 +6,9 @@ import com.google.android.play.core.appupdate.testing.FakeAppUpdateManager
 import com.google.android.play.core.assetpacks.model.AssetPackStatus
 import com.google.android.play.core.assetpacks.model.AssetPackStorageMethod
 import im.plrs.key.platform.play.InAppUpdates
+import im.plrs.key.platform.play.IntegrityBackend
+import im.plrs.key.platform.play.IntegrityError
+import im.plrs.key.platform.play.IntegrityTokenSource
 import im.plrs.key.platform.play.PackLocation
 import im.plrs.key.platform.play.PackManager
 import im.plrs.key.platform.play.PackState
@@ -39,12 +42,32 @@ class OnePackManager : PackManager {
     override fun unlisten(listener: (PackState) -> Unit) { listeners.remove(listener) }
 }
 
+/** A Play Integrity backend that answers at once: `token:<project>:<hash>`, or [failWith]. */
+class InstantIntegrity : IntegrityBackend {
+    val prepared = mutableListOf<Long>()
+    var failWith: Int? = null
+
+    override fun prepare(cloudProjectNumber: Long, callback: (Result<IntegrityTokenSource>) -> Unit) {
+        prepared.add(cloudProjectNumber)
+        callback(
+            Result.success(
+                IntegrityTokenSource { hash, cb ->
+                    val code = failWith
+                    if (code != null) cb(Result.failure(IntegrityError("StandardIntegrityException", "fake", code)))
+                    else cb(Result.success("token:$cloudProjectNumber:$hash"))
+                },
+            ),
+        )
+    }
+}
+
 @RunWith(RobolectricTestRunner::class)
 class PlayCommandsTest {
     private val host = TestHost()
     private val fake = FakeAppUpdateManager(host.appContext)
     private val packs = OnePackManager()
-    private val c = Commands(host) { PlayCommands(it, { fake }, { packs }) }
+    private val integrity = InstantIntegrity()
+    private val c = Commands(host) { PlayCommands(it, { fake }, { packs }, { integrity }) }
 
     private fun op(name: String, extra: JSONObject = JSONObject()) = c.json(extra.put("op", name))
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
@@ -133,8 +156,41 @@ class PlayCommandsTest {
     }
 
     @Test
+    fun integrityTokensCarryTheRequestHashVerbatim() {
+        val hash = "q8Jm3rJ0b1x2Vd4n6Q9sT0uW1yZ2aB3cD4eF5gH6iJ7"
+        val prep = c.awaitResult(op("integrity_prepare", JSONObject().put("cloudProjectNumber", "123456789012")).getInt("req"))
+        assertTrue(prep.getBoolean("ok"))
+        assertTrue(prep.getBoolean("prepared"))
+        val t = c.awaitResult(
+            op("integrity_token", JSONObject().put("cloudProjectNumber", "123456789012").put("requestHash", hash)).getInt("req"),
+        )
+        assertTrue(t.getBoolean("ok"))
+        assertEquals("token:123456789012:$hash", t.getString("token"))
+        assertFalse("the provider prepared above is reused", t.getBoolean("prepared"))
+        // A JSON number works too (GDScript sends numbers as floats).
+        val n = c.awaitResult(op("integrity_token", JSONObject().put("cloudProjectNumber", 42.0).put("requestHash", "h")).getInt("req"))
+        assertEquals("token:42:h", n.getString("token"))
+        assertEquals(listOf(123456789012L, 42L), integrity.prepared)
+    }
+
+    @Test
+    fun integrityFailuresAndBadRequests() {
+        assertEquals("bad_request", op("integrity_token", JSONObject().put("requestHash", "h")).getString("error"))
+        assertEquals("bad_request", op("integrity_token", JSONObject().put("cloudProjectNumber", "12a").put("requestHash", "h")).getString("error"))
+        assertEquals("bad_request", op("integrity_token", JSONObject().put("cloudProjectNumber", 0).put("requestHash", "h")).getString("error"))
+        assertEquals("bad_request", op("integrity_token", JSONObject().put("cloudProjectNumber", 1.5).put("requestHash", "h")).getString("error"))
+        assertEquals("bad_request", op("integrity_token", JSONObject().put("cloudProjectNumber", "7")).getString("error"))
+        integrity.failWith = -8
+        val r = c.awaitResult(op("integrity_token", JSONObject().put("cloudProjectNumber", "7").put("requestHash", "h")).getInt("req"))
+        assertFalse(r.getBoolean("ok"))
+        assertEquals("integrity", r.getString("error"))
+        assertEquals(-8, r.getInt("errorCode"))
+    }
+
+    @Test
     fun capabilitiesAdvertisePlay() {
         val caps = op("capabilities")
+        assertTrue(caps.getBoolean("playIntegrity"))
         assertTrue(caps.getBoolean("inAppUpdates"))
         assertFalse(caps.getBoolean("packageInstaller"))
         assertEquals("outlet", op("pi_verify", JSONObject().put("path", "/x")).getString("reason"))

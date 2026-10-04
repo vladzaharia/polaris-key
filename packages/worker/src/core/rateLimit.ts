@@ -117,6 +117,11 @@ const FAIL_MODE: Record<string, FailMode> = {
   // check; the product buckets above count verified deliveries only.
   appStoreHookIp: "closed",
   playRtdnHookIp: "closed",
+  // P6-02: device attestation, per device. The attest bucket guards Google's Play Integrity
+  // decode quota (10,000 a day per app) and the challenge bucket the KV writes behind it; with
+  // the limiter gone, one device could spend the whole product's daily quota.
+  attestChallenge: "closed",
+  attest: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

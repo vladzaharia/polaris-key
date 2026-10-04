@@ -24,10 +24,12 @@
  *      only by a platform admin" is enforced here, and so is "the pin is the operator's" (P5-02f).
  *   5. **The token helpers.** `core/outletTokens.ts` hands out a cached store bearer token on a
  *      cache hit WITHOUT an audited open, so it is a custody boundary of its own: only the
- *      Distribution service (`src/services/distribution/**`) may import it.
+ *      Distribution service (`src/services/distribution/**`) and Core's device attestation
+ *      (`src/core/attestation.ts`, P6-02) may import it.
  *
  * Adding an entry to any allowlist is a custody decision: it needs a review that says why, and
- * the threat model's review trigger (§9) applies. P6-02 is expected to add one reviewed entry.
+ * the threat model's review trigger (§9) applies. P6-02 added one reviewed entry: see
+ * `TOKENS_IMPORT_ALLOW_FILES`.
  *
  * Like `boundaries.test.ts`, this is a regex over source and errs toward false positives: a
  * match inside a string or comment fails the test rather than slipping through.
@@ -60,6 +62,16 @@ const WRITER_ALLOW_FILES = [
   "src/admin/handlers/outletCredentials.ts",
 ];
 const TOKENS_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
+/**
+ * P6-02 (reviewed): Core's attest route decodes a device's Play Integrity token with Google's
+ * `decodeIntegrityToken`, which needs an OAuth token for the product's `google-service-account`
+ * credential at the Play Integrity scope. It calls `googleAccessToken` ONLY — never
+ * `openOutletCredential` (it is not in `IMPORT_ALLOW_FILES`), so it never sees the key — and only
+ * for the credential Distribution's own pin check chose (`Delivery.attestationTargets`). The
+ * attest route is device-authenticated and rate-limited per device BEFORE the token is asked for,
+ * so an unauthenticated caller cannot make it open (and audit) the credential.
+ */
+const TOKENS_IMPORT_ALLOW_FILES = ["src/core/attestation.ts"];
 const KIND_ALLOW_FILES = [
   "src/keyvault.ts",
   "src/core/outletCredentials.ts",
@@ -145,6 +157,7 @@ function reachViolations(sources: Source[]): string[] {
       out.push(`${src.file} names an outlet-credential writer`);
     const tokensOk =
       TOKENS_IMPORT_ALLOW_PREFIXES.some((p) => src.file.startsWith(p)) ||
+      TOKENS_IMPORT_ALLOW_FILES.includes(src.file) ||
       src.file === `${TOKENS_TARGET}.ts`;
     if (!tokensOk && resolvedImports(src).includes(TOKENS_TARGET))
       out.push(`${src.file} imports core/outletTokens`);
@@ -163,6 +176,7 @@ describe("outlet-credential reach", () => {
       ...TABLE_ALLOW_FILES,
       ...KIND_ALLOW_FILES,
       ...WRITER_ALLOW_FILES,
+      ...TOKENS_IMPORT_ALLOW_FILES,
     ])
       expect(existsSync(join(WORKER_ROOT, f)), f).toBe(true);
   });
@@ -188,6 +202,29 @@ describe("outlet-credential reach", () => {
         },
       ]),
     ).toHaveLength(2);
+  });
+
+  it("the P6-02 entry is narrow: the attestation module may take a token but not open a credential, and its neighbours may do neither", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/core/attestation.ts",
+          text: 'import { openOutletCredential } from "./outletCredentials.js";\n',
+        },
+        {
+          file: "src/core/deviceTrust.ts",
+          text: 'import { googleAccessToken } from "./outletTokens.js";\n',
+        },
+        {
+          file: "src/services/config/mint.ts",
+          text: 'import { googleAccessToken } from "../../core/outletTokens.js";\n',
+        },
+      ]),
+    ).toEqual([
+      "src/core/attestation.ts imports core/outletCredentials",
+      "src/core/deviceTrust.ts imports core/outletTokens",
+      "src/services/config/mint.ts imports core/outletTokens",
+    ]);
   });
 
   it("the guard fires on a manifest path naming the table or opening with the AAD kind", () => {

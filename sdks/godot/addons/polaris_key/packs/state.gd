@@ -23,7 +23,9 @@ extends RefCounted
 ##
 ## An install or journal of a release a delegated content key signed carries `delegation`, the
 ## delegation's compact JWS verbatim (plans/P4-19.md §2.7), and reloads through it; the member is
-## optional, so the version stays 1.
+## optional, so the version stays 1. A journal installing a feed-offered delta (plans/P4-29.md
+## §2.4 step 6) carries `feedDelta`, the merged menu entry {from, method, scope: "payload",
+## memBytes, artifact: {sha256, bytes}}, so a resume merges it again; optional too.
 ##
 ## The document is NEVER trusted from storage: each install and journal carries its pack record's
 ## compact JWS verbatim, re-verified at every load through the caller's verifier before anything
@@ -64,6 +66,18 @@ static func _install(v: Variant, pack_id: String) -> Variant:
 	return v
 
 
+## A journal's `feedDelta`: the shape of a feed menu entry (plans/P4-29.md §2.2; client-core
+## `isFeedDelta`).
+static func _feed_delta(v: Variant) -> bool:
+	if not (v is Dictionary) or not (v.get("artifact") is Dictionary):
+		return false
+	var a: Dictionary = v["artifact"]
+	return PKeyPackClaims.is_sha256(v.get("from")) and v.get("method") is String \
+			and PKeyPackClaims.same(v.get("scope"), "payload") \
+			and _nat(v.get("memBytes")) and float(v["memBytes"]) >= 1.0 \
+			and PKeyPackClaims.is_sha256(a.get("sha256")) and _nat(a.get("bytes")) and float(a["bytes"]) >= 1.0
+
+
 static func _journal(v: Variant, pack_id: String) -> Variant:
 	if not (v is Dictionary) or not PKeyPackClaims.same(v.get("packId"), pack_id) or not PKeyPackClaims.is_pack_id(pack_id):
 		return null
@@ -73,6 +87,8 @@ static func _journal(v: Variant, pack_id: String) -> Variant:
 	if not PKeyPackClaims.is_sha256(v.get("recordSha256")):
 		return null
 	if v.has("delta") and not (v["delta"] is String):
+		return null
+	if v.has("feedDelta") and not _feed_delta(v["feedDelta"]):
 		return null
 	if v.has("delegation") and not (v["delegation"] is String):
 		return null

@@ -209,3 +209,21 @@ struct ExplodingTransport: PolarisTransport {
         throw PolarisError(code: "transport", message: "no network in this test")
     }
 }
+
+/// A corpus case's delta menu (`deltas`, already in the reader's output shape) as `FeedDeltas`,
+/// without re-validating it; `null` is nil.
+func rawFeedDeltas(_ v: JSONValue?) -> FeedDeltas? {
+    guard let menu = v?.objectValue else { return nil }
+    var out: FeedDeltas = [:]
+    for (to, list) in menu {
+        out[to] = (list.arrayValue ?? []).compactMap { e -> FeedDelta? in
+            guard let d = e.objectValue, let a = d["artifact"]?.objectValue,
+                let from = d["from"]?.stringValue, let method = d["method"]?.stringValue,
+                let mem = d["memBytes"]?.intValue, let sha = a["sha256"]?.stringValue,
+                let bytes = a["bytes"]?.intValue
+            else { return nil }
+            return FeedDelta(from: from, method: method, memBytes: mem, artifactSha256: sha, artifactBytes: bytes)
+        }
+    }
+    return out
+}
