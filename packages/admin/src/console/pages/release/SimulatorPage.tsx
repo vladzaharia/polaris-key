@@ -468,6 +468,9 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
         .filter((p): p is string => !!p),
     ),
   ];
+  // A platform from a shared link stays visible even when this release has no build for it.
+  if (draft.platform && platforms.length && !platforms.includes(draft.platform))
+    platforms.push(draft.platform);
   const appChannels =
     channels.data?.deliverables.find((d) => d.deliverable === APP)?.channels ??
     [];
@@ -518,8 +521,15 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
         >
           <FormField
             name="sim-app"
-            label="App release"
-            help="Required. The version the device runs; every release in the store is listed."
+            label={
+              <>
+                App release
+                <span className="text-xs font-normal text-fg-subtle">
+                  Required
+                </span>
+              </>
+            }
+            help="The version the device runs. Every release in the store is listed."
             value={draft.app || null}
             onChange={(v: string | null) =>
               setDraft((d) => ({ ...d, app: v ?? "", platform: "" }))

@@ -322,6 +322,23 @@ describe("DataTable", () => {
     render(<Harness />);
     expect(screen.queryByRole("columnheader", { name: /Seats/ })).toBeNull();
   });
+
+  it("starts a defaultHidden column hidden at any width, shown from Columns", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        columns={COLUMNS.map((c) =>
+          c.id === "seats"
+            ? { ...c, meta: { ...c.meta, defaultHidden: true } }
+            : c,
+        )}
+      />,
+    );
+    expect(screen.queryByRole("columnheader", { name: /Seats/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Seats" }));
+    expect(screen.getByRole("columnheader", { name: /Seats/ })).toBeTruthy();
+  });
 });
 
 describe("CSV", () => {

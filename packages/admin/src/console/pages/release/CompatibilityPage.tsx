@@ -593,11 +593,13 @@ export function CompatibilityPage({
                 onChange={(v) => setChannel(v ?? "")}
               />
             </div>
-            <Checkbox
-              checked={liveOnly === "1"}
-              onCheckedChange={(v) => setLiveOnly(v ? "1" : "")}
-              label="Live only"
-            />
+            <div className="flex h-9 items-center">
+              <Checkbox
+                checked={liveOnly === "1"}
+                onCheckedChange={(v) => setLiveOnly(v ? "1" : "")}
+                label="Live only"
+              />
+            </div>
             <div className="space-y-1">
               <span id="compat-jump" className="text-xs text-fg-muted">
                 Jump to a version

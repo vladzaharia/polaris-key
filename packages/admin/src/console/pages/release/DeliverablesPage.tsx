@@ -213,7 +213,7 @@ export function DeliverablesPage({
       id: "type",
       header: "Type",
       accessorFn: (d) => d.type ?? "",
-      meta: { priority: 3, label: "Type" },
+      meta: { priority: 3, label: "Type", defaultHidden: true },
       cell: ({ row }) => text(row.original.type, true),
     },
     {
@@ -221,7 +221,7 @@ export function DeliverablesPage({
       header: "Required",
       accessorFn: (d) =>
         d.required === null ? "" : d.required ? "required" : "optional",
-      meta: { priority: 3, label: "Required" },
+      meta: { priority: 3, label: "Required", defaultHidden: true },
       cell: ({ row }) =>
         row.original.required === null
           ? text(null)
@@ -233,14 +233,14 @@ export function DeliverablesPage({
       id: "baseline",
       header: "Baseline",
       accessorFn: (d) => d.baseline ?? "",
-      meta: { priority: 3, label: "Baseline" },
+      meta: { priority: 3, label: "Baseline", defaultHidden: true },
       cell: ({ row }) => text(row.original.baseline),
     },
     {
       id: "delivery",
       header: "Delivery",
       accessorFn: (d) => d.delivery ?? "",
-      meta: { priority: 3, label: "Delivery" },
+      meta: { priority: 3, label: "Delivery", defaultHidden: true },
       cell: ({ row }) => text(row.original.delivery),
     },
   ];

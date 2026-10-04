@@ -22,6 +22,8 @@ declare module "@tanstack/react-table" {
     csv?: (row: TData) => string;
     /** The column cannot be hidden from the Columns menu. */
     alwaysVisible?: boolean;
+    /** Hidden until the operator shows it from "Columns", at every width (low-value detail). */
+    defaultHidden?: boolean;
   }
 }
 

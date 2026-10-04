@@ -347,33 +347,20 @@ describe("Deliverables (T2, DLV-1 to DLV-5)", () => {
     ).toBeTruthy();
   });
 
-  it("keeps the low-value columns available in Columns (DLV-2)", async () => {
-    // A 1024 px window: below 1280 px the low-value (priority 3) columns start hidden.
-    vi.stubGlobal(
-      "matchMedia",
-      (q: string) =>
-        ({
-          matches: false,
-          media: q,
-          addEventListener: () => undefined,
-          removeEventListener: () => undefined,
-        }) as unknown as MediaQueryList,
-    );
+  it("starts the low-value columns hidden, one tick away in Columns (DLV-2)", async () => {
     window.localStorage.clear();
     mountList();
     await deliverableRow(CORE);
+    expect(screen.queryByRole("columnheader", { name: /Type/ })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: /Columns/ }));
-    // Hidden by default below 1280 px (jsdom is 1024 px wide), one tick away.
     for (const c of ["Type", "Required", "Baseline", "Delivery"]) {
       const box = (await screen.findByRole("checkbox", {
         name: c,
       })) as HTMLInputElement;
       expect(box.checked).toBe(false);
     }
-    expect(screen.queryByRole("columnheader", { name: "Type" })).toBeNull();
     await userEvent.click(screen.getByRole("checkbox", { name: "Type" }));
     expect(screen.getByRole("columnheader", { name: /Type/ })).toBeTruthy();
-    vi.unstubAllGlobals();
     window.localStorage.clear();
   });
 

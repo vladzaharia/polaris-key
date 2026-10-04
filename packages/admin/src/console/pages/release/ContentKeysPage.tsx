@@ -94,7 +94,7 @@ export function ContentKeysPage({
         const d = row.original;
         const s = STATUS[d.status] ?? { label: d.status, tone: "neutral" };
         return (
-          <span className="flex flex-col gap-0.5">
+          <span className="flex flex-col items-start gap-0.5">
             <StatusPill tone={s.tone}>{s.label}</StatusPill>
             {d.revocation ? (
               <span className="text-xs text-fg-muted">
@@ -125,7 +125,7 @@ export function ContentKeysPage({
           d.types.length !== d.effectiveTypes.length ||
           d.types.some((t) => !d.effectiveTypes.includes(t));
         return (
-          <span className="flex flex-col gap-0.5">
+          <span className="flex flex-col items-start gap-0.5">
             <span className="inline-flex flex-wrap gap-1">
               {d.effectiveTypes.map((t) => (
                 <span
@@ -168,7 +168,11 @@ export function ContentKeysPage({
       enableSorting: false,
       meta: { priority: 2, label: "Content key" },
       cell: ({ row }) => (
-        <Hash value={row.original.keyFingerprint} label="key fingerprint" />
+        <Hash
+          value={row.original.keyFingerprint}
+          label="key fingerprint"
+          className="whitespace-nowrap"
+        />
       ),
     },
     {
@@ -198,13 +202,19 @@ export function ContentKeysPage({
       id: "seq",
       header: "Seq",
       accessorKey: "seq",
-      meta: { priority: 3, numeric: true, mono: true, label: "Seq" },
+      meta: {
+        priority: 3,
+        numeric: true,
+        mono: true,
+        label: "Seq",
+        defaultHidden: true,
+      },
     },
     {
       id: "origin",
       header: "Origin",
       accessorKey: "origin",
-      meta: { priority: 3, label: "Origin" },
+      meta: { priority: 3, label: "Origin", defaultHidden: true },
       cell: ({ row }) => ORIGIN[row.original.origin] ?? row.original.origin,
     },
   ];

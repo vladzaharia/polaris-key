@@ -307,7 +307,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     props.onDensityChange?.(d);
   };
 
-  // Column visibility: persisted per table id; priority 3 hidden by default below 1280 px.
+  // Column visibility: persisted per table id; priority 3 hidden by default below 1280 px, and
+  // `defaultHidden` columns at every width.
   const hasMatchMedia =
     typeof window !== "undefined" && typeof window.matchMedia === "function";
   const [hidden, setHidden] = React.useState<string[]>(() => {
@@ -322,9 +323,11 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     }
     const narrow =
       hasMatchMedia && !window.matchMedia("(min-width: 1280px)").matches;
-    return narrow
-      ? columns.filter((c) => c.meta?.priority === 3).map(columnId)
-      : [];
+    return columns
+      .filter(
+        (c) => c.meta?.defaultHidden || (narrow && c.meta?.priority === 3),
+      )
+      .map(columnId);
   });
   const setColumnHidden = (colId: string, hide: boolean): void => {
     const next = hide
