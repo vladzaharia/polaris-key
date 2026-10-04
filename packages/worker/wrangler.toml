@@ -101,6 +101,12 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # deviates from the separate-registrable-domain rule — see docs/security/THREAT-MODEL.md §3);
 # the compensating headers and the cookie rules are test-pinned in test/bytesHost.test.ts.
 # `vars` is NOT inheritable, so each environment carries its own BLOB_ORIGIN.
+#
+# The registry host (F-02; docs/DEPLOYMENT.md "Registry host and feeds") is the same Worker on a
+# THIRD custom domain, pkg*.plrs.im, with PKG_ORIGIN naming it so src/core/registryHost.ts can
+# confine that host to the package-feed routes, its landing page and OCI's /v2/ root. It keeps
+# every bytes-host compensation (test/registryHost.test.ts). Its rendered index documents live
+# under registry/ in the same bucket, a prefix that gets NO age lock and NO lifecycle rule.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -128,6 +134,9 @@ custom_domain = true
 [[env.prod.routes]]
 pattern = "dl.plrs.im"
 custom_domain = true
+[[env.prod.routes]]
+pattern = "pkg.plrs.im"
+custom_domain = true
 [[env.prod.durable_objects.bindings]]
 name = "RL"
 class_name = "RateLimitDO"
@@ -153,6 +162,8 @@ queue = "pkey-deltas-prod"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "prod"
 BLOB_ORIGIN = "https://dl.plrs.im"
+# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+PKG_ORIGIN = "https://pkg.plrs.im"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -171,6 +182,9 @@ pattern = "key-staging.plrs.im"
 custom_domain = true
 [[env.staging.routes]]
 pattern = "dl-staging.plrs.im"
+custom_domain = true
+[[env.staging.routes]]
+pattern = "pkg-staging.plrs.im"
 custom_domain = true
 [[env.staging.durable_objects.bindings]]
 name = "RL"
@@ -197,6 +211,8 @@ queue = "pkey-deltas-staging"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "staging"
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
+# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+PKG_ORIGIN = "https://pkg-staging.plrs.im"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-staging.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -212,6 +228,9 @@ pattern = "key-dev.plrs.im"
 custom_domain = true
 [[env.dev.routes]]
 pattern = "dl-dev.plrs.im"
+custom_domain = true
+[[env.dev.routes]]
+pattern = "pkg-dev.plrs.im"
 custom_domain = true
 [[env.dev.durable_objects.bindings]]
 name = "RL"
@@ -238,6 +257,8 @@ queue = "pkey-deltas-dev"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "dev"
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
+# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+PKG_ORIGIN = "https://pkg-dev.plrs.im"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-dev.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the

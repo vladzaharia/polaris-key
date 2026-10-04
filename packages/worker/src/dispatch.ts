@@ -20,7 +20,7 @@ import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { dispatchService } from "./core/registry.js";
-import { BYTE_ROUTES, SERVICES } from "./mount.js";
+import { BYTE_ROUTES, REGISTRY_ROUTES, SERVICES } from "./mount.js";
 import { handleAdmin } from "./admin/index.js";
 import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
@@ -32,6 +32,7 @@ import { notFound } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
 import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
+import { dispatchRegistryHost, isRegistryHost } from "./core/registryHost.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "discovery",
@@ -79,6 +80,11 @@ export async function dispatchWith(
   // everything below runs exactly as it did before the bytes host existed.
   if (isBytesHost(url, env))
     return dispatchBytesHost(req, env, db, BYTE_ROUTES, SERVICES);
+  // The registry host (F-02) reaches ONLY its registry routes, its landing page and OCI's `/v2/`
+  // root. With `PKG_ORIGIN` unset (or equal to the bytes host, checked above) this is always
+  // false, and routing is exactly what it was before the registry host existed.
+  if (isRegistryHost(url, env))
+    return dispatchRegistryHost(req, env, db, REGISTRY_ROUTES, SERVICES, exec);
   const route = matchRoute(url.pathname);
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
