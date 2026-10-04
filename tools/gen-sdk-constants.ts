@@ -598,6 +598,9 @@ export const WIRE_LIMIT_EXPORTS = [
   "MAX_RECORD_JWS_BYTES",
   "MAX_FEED_REVOCATIONS",
   "REVOCATION_REASON_MAX_BYTES",
+  // plans/P4-29.md §2.2: the feed's delta menu.
+  "MAX_FEED_DELTAS",
+  "MAX_FEED_DELTAS_PER_TARGET",
   // plans/P4-19.md §2.8: content-key delegation.
   "MAX_DELEGATION_TTL_SECONDS",
   "MAX_DELEGATION_TYPES",

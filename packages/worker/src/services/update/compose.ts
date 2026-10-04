@@ -56,7 +56,8 @@ import {
   parseVersion,
 } from "@polaris-key/client-core/version";
 import { base64UrlDecode } from "@polaris-key/jws";
-import type { Db } from "../../core/platform.js";
+import type { Db, Env } from "../../core/platform.js";
+import { composeFeedDeltas, type ComposedFeedDeltas } from "./feedDeltas.js";
 import type {
   AvailabilityRecord,
   DeliveryOutlet,
@@ -111,6 +112,8 @@ export interface ComposedFeed {
   versionScheme: FeedVersionScheme;
   targets: FeedTarget[];
   content: ComposedPackParts;
+  /** The delta menu's candidates (P4-29, `feedDeltas.ts`); absent or null: no menu. */
+  deltas?: ComposedFeedDeltas | null;
 }
 
 export interface ComposeContext {
@@ -118,6 +121,8 @@ export interface ComposeContext {
   product: string;
   hooks: ServiceHooks;
   cfg: ReleaseConfigRow;
+  /** P4-29: the deployment's `LAZY_DELTAS` switch; absent, no delta menu is read. */
+  env?: Pick<Env, "LAZY_DELTAS">;
 }
 
 /** The `minSupportedSeq` a stored record carries, read from its verified-at-ingest payload. */
@@ -396,6 +401,7 @@ export async function composeChannelFeed(
   const reads = outletReads(ctx.hooks, channel, APP_DELIVERABLE_ID);
 
   const targets: FeedTarget[] = [];
+  const apps: { platform: string; appReleaseId: string }[] = [];
   for (const platform of RELEASE_PLATFORMS) {
     const res = resolveInState(state, { selector: channel, platform });
     if (!res) continue;
@@ -426,6 +432,7 @@ export async function composeChannelFeed(
         reads,
       );
     }
+    apps.push({ platform, appReleaseId: release.release_id });
     targets.push({
       platform,
       release: pin,
@@ -446,5 +453,33 @@ export async function composeChannelFeed(
   }
   const content =
     targets.length > 0 ? await composePackParts(ctx, channel) : NO_PACK_PARTS;
-  return { channel, versionScheme: scheme, targets, content };
+  // P4-29: the delta menu's candidates. A failure lists no menu, audited; it never fails a feed.
+  let deltas: ComposedFeedDeltas | null = null;
+  let parts = content;
+  if (targets.length > 0)
+    try {
+      deltas = await composeFeedDeltas(ctx, apps, content.packSets);
+    } catch (e) {
+      parts = {
+        ...content,
+        audits: [
+          ...content.audits,
+          {
+            action: "update.feed.deltas_omitted",
+            summary:
+              `The ${channel} feed's delta menu could not be composed and was left out: ${e instanceof Error ? e.message : String(e)}`.slice(
+                0,
+                1000,
+              ),
+          },
+        ],
+      };
+    }
+  return {
+    channel,
+    versionScheme: scheme,
+    targets,
+    content: parts,
+    ...(deltas ? { deltas } : {}),
+  };
 }

@@ -273,6 +273,22 @@ delegation: {sha256, deliverable, types, issuedAt, expiresAt} | null, revoked?}`
   paths that are not already normalised, and the text rule (script markers, backslash-split
   markers, ASCII or malformed `\u`/`\U` escapes, invalid UTF-8; non-ASCII escapes and a marker in a `.png` pass).
 
+P4-29 (`plans/P4-29.md` §4) appends three sets for the feed's delta menu; no version moves:
+
+- `cases.json` gains 28 `feedContentCases` (48 → 76), each the P4-13 base feed plus one `deltas`
+  mutation. `expect.content` keeps the three P4-13 members, so every older runner passes them
+  unchanged, and the menu goes in a sibling `expect.deltas`. A runner that reads the menu compares
+  `content.deltas` with `expect.deltas ?? null` on every case, so the 48 older cases pin `null`.
+- `plan-matrix.json` gains `feedDeltaCases` (13), after `targetCases`:
+  `{id, description, variant, recordSha256, filesIndex, chunkIndex, deltas, installed, caps,
+expect: {feedIds, target, plan}}`. A runner computes `withFeedDeltas(variant, deltas)`, then
+  `planTarget` over the merged variant and `plan`, and compares by canonical JSON.
+- `content/cases.json` gains `feedDeltaApplyCases` (4), after `dataOnlyCases`: the payload-delta
+  shape plus `deltas`, over the committed v1 → v2 frame. A runner merges, then runs `applyDelta`
+  on the merged variant's delta whose id is `feedIds[0]`.
+
+The only edit outside the new sections is the `feedContentCases` count, 48 → 76, in every runner.
+
 ## HTTP transcripts
 
 Registration, activation and sync are conversations, not pure functions, so the corpus cannot

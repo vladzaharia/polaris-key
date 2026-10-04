@@ -58,6 +58,15 @@ platform at once:
 Nothing in the feed is device-specific: rollout buckets are computed on the device, and the
 feed carries no device, licence or bucket.
 
+The feed can also carry **content members** (`packSets`, `packFloors`, `revocations`, P4-13) and
+a **delta menu** (`deltas`, P4-29): per target pack payload, the lazy deltas the Worker generated
+for devices on an older payload. Each is read beside the claims, so a malformed one is unusable
+and never refuses the feed. The menu is added last, into whatever room is left under the
+65,536-byte cap, and is trimmed first; it never turns the channel-wide document into a
+per-platform one. A delta turning ready or cold moves `seq`. See
+[Content in the feed and revocations](/docs/build/wire/packs/#content-in-the-feed-and-revocations)
+and [the delta menu](/docs/build/wire/packs/#the-feeds-delta-menu).
+
 ## Which outlet an install is
 
 The decision reads the feed entry of the install's own outlet, so every SDK first works out

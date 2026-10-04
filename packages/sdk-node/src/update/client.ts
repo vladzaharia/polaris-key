@@ -54,12 +54,14 @@ import {
   BINARY_METHODS,
   type BinaryMethod,
   type ChannelFeedDoc,
+  type FeedDeltas,
   type InstalledBuild,
   type StagedUpdate,
   type UpdateCheck,
 } from "@polaris-key/protocol/update";
 import {
   PolarisError,
+  boundChannels,
   canonicalArch,
   canonicalPlatform,
   compareSemver,
@@ -448,6 +450,9 @@ export class UpdateClient {
   private readonly configured: Configured | null;
   /** The v4 calls run one at a time: each is a read-modify-write of the cache slices. */
   private queue: Promise<unknown> = Promise.resolve();
+  /** plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed, fresh or
+   *  stale (undefined until a check ran or the cache was read). */
+  private feedMenu: FeedDeltas | null | undefined = undefined;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -471,6 +476,8 @@ export class UpdateClient {
         ...(wiring.cache ? { cache: wiring.cache } : {}),
         ...(wiring.trust ? { trust: wiring.trust } : {}),
         releaseKeys: () => this.configured?.releaseKeys ?? {},
+        feedDeltas: () => this.feedMenu ?? null,
+        loadFeedDeltas: () => this.loadFeedMenu(),
       },
       wiring.options?.packs ?? {},
     );
@@ -664,6 +671,33 @@ export class UpdateClient {
     return c;
   }
 
+  /**
+   * plans/P4-29.md §2.4 step 1: before any check this process, the menu of the committed feed of
+   * the configured channel, re-verified on the reload path (no freshness: a stale menu only
+   * falls back). Never throws; no cache or no committed feed is no menu.
+   */
+  private async loadFeedMenu(): Promise<void> {
+    if (this.feedMenu !== undefined) return;
+    try {
+      const { cache, trust } = this.requireCustody();
+      const platform = this.platformValue();
+      if (platform === null) return;
+      const committed = await reloadFeeds(cache.updateSlices().feeds, {
+        trust: trust.effective,
+        expectedAud: this.ctx.product,
+        platform,
+      });
+      if (this.feedMenu !== undefined) return;
+      for (const k of boundChannels(this.ctx.channel))
+        if (Object.prototype.hasOwnProperty.call(committed.feeds, k)) {
+          this.feedMenu = committed.feeds[k]!.content.deltas;
+          return;
+        }
+    } catch {
+      // No menu: the record's deltas only.
+    }
+  }
+
   private requireCustody(): { cache: CacheManager; trust: TrustManager } {
     if (!this.cache || !this.trust)
       throw new UpdateError(
@@ -829,6 +863,7 @@ export class UpdateClient {
       feeds: r.cache.feeds,
       releaseRecords: r.cache.releaseRecords,
     });
+    this.feedMenu = r.content.deltas;
     if (r.revocations) await this.packs.recordRevocations(r.revocations);
     return r.check;
   }
@@ -859,6 +894,7 @@ export class UpdateClient {
     });
     if (!r.ok) throw this.raise(r.error);
     await cache.patch({ feeds: r.cache.feeds });
+    this.feedMenu = r.content.deltas;
     return {
       channel: r.check.channel,
       feed: r.feed,

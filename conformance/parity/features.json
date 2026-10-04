@@ -616,6 +616,34 @@
       "allowedNa": []
     },
     {
+      "id": "packs.delta.feed",
+      "family": "packs",
+      "title": "Feed-offered deltas: the menu, the merge, one feed delta per install",
+      "service": "release",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "feedContentCases",
+          "wp": "P4-29"
+        },
+        {
+          "kind": "corpus",
+          "file": "plan-matrix.json",
+          "family": "feedDeltaCases",
+          "wp": "P4-29"
+        },
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "family": "feedDeltaApplyCases",
+          "wp": "P4-29"
+        },
+        { "kind": "unit" }
+      ],
+      "allowedNa": []
+    },
+    {
       "id": "packs.plan",
       "family": "packs",
       "title": "The install planner",

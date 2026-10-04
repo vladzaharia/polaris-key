@@ -422,7 +422,12 @@ const discovery = {
 /** A server over the releases: records, the blob route, and the payload URL with dcz decided by
  *  `dictionary` (the base the browser would offer, or null). Answers are DECODED, as `fetch`
  *  returns them. */
-function server(releases: Release[], dictionary: { base: string | null }) {
+function server(
+  releases: Release[],
+  dictionary: { base: string | null },
+  /** plans/P4-29.md §6.3: target payload → the base of a lazy delta the Worker holds. */
+  lazy: Record<string, string> = {},
+) {
   const records = new Map(releases.map((r) => [r.recordSha256, r.jws]));
   const objects = new Map<string, Uint8Array>();
   for (const r of releases) for (const [h, b] of r.objects) objects.set(h, b);
@@ -451,8 +456,9 @@ function server(releases: Release[], dictionary: { base: string | null }) {
     if (pay) {
       const r = payloads.get(pay[1]!)!;
       const guard = url.searchParams.get("via") === "dcz";
-      const from = (r.variant.deltas?.[0] as { from?: string } | undefined)
-        ?.from;
+      const from =
+        (r.variant.deltas?.[0] as { from?: string } | undefined)?.from ??
+        lazy[pay[1]!];
       if (guard && (dictionary.base === null || dictionary.base !== from)) {
         log.push(`payload ${pay[1]!.slice(0, 8)} 409`);
         return new Response(null, { status: 409 });
@@ -689,5 +695,83 @@ describe("the OPFS worker client (P4-18)", () => {
       /did not start/,
     );
     expect(silent.w.terminated).toBe(true);
+  });
+});
+
+// @pkey-feature packs.delta.feed
+describe("createBrowserPacks and the feed's delta menu (plans/P4-29.md §2.4, §6.3)", () => {
+  async function chain() {
+    const v1 = await release({ version: "1.0.0", seq: 1, payload: PROBE_BASE });
+    // v2's record carries no delta; the feed offers the lazy one, whose frame the blob route
+    // holds and whose base the payload URL answers dcz from.
+    const v2 = await release({
+      version: "1.1.0",
+      seq: 2,
+      payload: PROBE_TARGET,
+    });
+    v2.objects.set(sha(PROBE_FRAME), PROBE_FRAME);
+    const menu = {
+      [sha(PROBE_TARGET)]: [
+        {
+          from: sha(PROBE_BASE),
+          method: "zstd-patch-from",
+          scope: "payload" as const,
+          memBytes: PROBE_BASE.byteLength + PROBE_TARGET.byteLength,
+          artifact: { sha256: sha(PROBE_FRAME), bytes: PROBE_FRAME.byteLength },
+        },
+      ],
+    };
+    return { v1, v2, menu };
+  }
+
+  it("takes a lazy delta over dcz on the payload URL once a decision recorded the menu", async () => {
+    const { v1, v2, menu } = await chain();
+    const srv = server(
+      [v1, v2],
+      { base: sha(PROBE_BASE) },
+      {
+        [sha(PROBE_TARGET)]: sha(PROBE_BASE),
+      },
+    );
+    const { p, events, native } = browserPacks(srv, v1);
+    await p.ensure([PACK]);
+    p.recordFeedDeltas(menu);
+    const [i] = await p.ensureReleases([target(v2)]);
+    expect(i!.payloadSha256).toBe(sha(PROBE_TARGET));
+    expect(srv.log.filter((l) => !l.startsWith("record"))).toEqual([
+      `payload ${sha(PROBE_BASE).slice(0, 8)} zstd`,
+      `payload ${sha(PROBE_TARGET).slice(0, 8)} dcz`,
+    ]);
+    expect(native.map((e) => `${e.kind} ${e.outcome}`)).toEqual([
+      "zstd used",
+      "dcz used",
+    ]);
+    expect(events.some((e) => e.phase === "fallback")).toBe(false);
+  });
+
+  it("without the dictionary (409), runs the lazy delta's frame from the blob route in WASM", async () => {
+    const { v1, v2, menu } = await chain();
+    const srv = server([v1, v2], { base: null });
+    const { p } = browserPacks(srv, v1, { feedDeltas: () => menu });
+    await p.ensure([PACK]);
+    const [i] = await p.ensureReleases([target(v2)]);
+    expect(i!.payloadSha256).toBe(sha(PROBE_TARGET));
+    expect(srv.log.filter((l) => !l.startsWith("record"))).toEqual([
+      `payload ${sha(PROBE_BASE).slice(0, 8)} zstd`,
+      `payload ${sha(PROBE_TARGET).slice(0, 8)} 409`,
+      `blob ${sha(PROBE_FRAME).slice(0, 8)}`,
+    ]);
+  });
+
+  it("with no menu, installs v2 whole: the record offers no delta", async () => {
+    const { v1, v2 } = await chain();
+    const srv = server([v1, v2], { base: sha(PROBE_BASE) });
+    const { p } = browserPacks(srv, v1);
+    await p.ensure([PACK]);
+    await p.ensureReleases([target(v2)]);
+    expect(srv.log.filter((l) => !l.startsWith("record"))).toEqual([
+      `payload ${sha(PROBE_BASE).slice(0, 8)} zstd`,
+      `payload ${sha(PROBE_TARGET).slice(0, 8)} zstd`,
+    ]);
   });
 });

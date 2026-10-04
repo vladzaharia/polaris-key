@@ -26,7 +26,11 @@ import { createSHA256, type IHasher } from "hash-wasm";
 type TrustSet = Record<string, string>;
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { AppContent, ContentHold } from "@polaris-key/protocol/packs";
-import type { PackTarget, ReleasePin } from "@polaris-key/protocol/update";
+import type {
+  FeedDeltas,
+  PackTarget,
+  ReleasePin,
+} from "@polaris-key/protocol/update";
 import {
   PackEngine,
   PackError,
@@ -217,6 +221,11 @@ export interface BrowserPacksOptions {
   sha256?: Sha256Port;
   /** Epoch seconds. */
   now?: () => number;
+  /**
+   * plans/P4-29.md §2.4 step 1: the committed feed's delta menu, or null. Default: the menu the
+   * browser adapter's last `decideUpdate()` handed to `recordFeedDeltas` (null until one ran).
+   */
+  feedDeltas?: () => FeedDeltas | null;
 }
 
 /** The facet a page holds. Errors are client-core's `PackError` (a registered code, `detail`,
@@ -264,6 +273,9 @@ export interface BrowserPacks {
   }): Promise<void>;
   /** Ask the browser to keep the store through storage pressure (after engagement). */
   requestPersistence(): Promise<boolean>;
+  /** plans/P4-29.md §2.4 step 1: keep the delta menu of the feed an update check used; the
+   *  next installs offer its entries beside the records' own deltas. */
+  recordFeedDeltas(deltas: FeedDeltas | null): void;
 }
 
 /** The stamp's holds (`holdsOf`, plans/P4-13.md §2.4): from the original bytes or text, with
@@ -317,6 +329,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   let engine: PackEngine | null = null;
   let building: PackEngine | null = null;
   let starting: Promise<PackEngine> | null = null;
+  let feedMenu: FeedDeltas | null = null;
 
   const discovery = (): DiscoveryDocument | null =>
     typeof opts.discovery === "function" ? opts.discovery() : opts.discovery;
@@ -392,6 +405,7 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
         // The WASM decoder cannot stream: a `full` frame plus its payload must fit the same
         // budget, or the candidate is dropped and the plan refuses cleanly.
         oneShotBudget: budget,
+        feedDeltas: () => (opts.feedDeltas ? opts.feedDeltas() : feedMenu),
         storage: store.storage,
         state: store.state,
         ...(store.revocations ? { revocations: store.revocations } : {}),
@@ -568,6 +582,9 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
       (await start()).recordRevocations(r.learned, {
         relearnCleared: r.relearnCleared,
       }),
+    recordFeedDeltas(deltas) {
+      feedMenu = deltas;
+    },
     async requestPersistence() {
       const nav = (
         globalThis as {

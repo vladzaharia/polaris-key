@@ -200,6 +200,7 @@ export {
   type PlanChunkIndex,
   usableCodec,
   variantUsable,
+  withFeedDeltas,
   type PlanDelta,
   type PlanTarget,
   type VariantPrefs,

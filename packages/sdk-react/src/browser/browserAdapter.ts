@@ -70,6 +70,7 @@ import {
 import type { CapabilityContext } from "@polaris-key/client-core";
 import type {
   BinaryMethod,
+  FeedDeltas,
   InstalledBuild,
   UpdateCheck,
 } from "@polaris-key/protocol/update";
@@ -186,6 +187,8 @@ export interface BrowserUpdateConfig {
       learned: { revocation: VerifiedRevocation; jws: string }[];
       relearnCleared: string[];
     }): Promise<void>;
+    /** plans/P4-29.md §2.4 step 1: the decided feed's delta menu, for the next installs. */
+    recordFeedDeltas?(deltas: FeedDeltas | null): void;
   };
 }
 
@@ -959,6 +962,7 @@ export class BrowserAdapter implements PolarisAdapter {
       await this.writeSlices(result.cache);
       if (result.revocations && u.packs)
         await u.packs.recordRevocations(result.revocations);
+      u.packs?.recordFeedDeltas?.(result.feedDeltas);
       this.patch((prev) => ({
         busy: withBusy(prev.busy, "update", false),
         error: withError(prev.error, "update", null),
