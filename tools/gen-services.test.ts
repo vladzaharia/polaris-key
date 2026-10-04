@@ -10,6 +10,8 @@ import {
   renderAdminTs,
   renderAll,
   renderGdscript,
+  renderKotlin,
+  kotlinCase,
   renderManifestTs,
   renderPython,
   renderSwift,
@@ -129,6 +131,9 @@ describe("renderers", () => {
     expect(renderGdscript(table)).toContain(
       'const SLUGS := ["license", "config", "release", "distribution", "update", "identity", "telemetry"]',
     );
+    expect(renderKotlin(table)).toContain(
+      '    telemetry("telemetry", false),\n',
+    );
   });
 
   it("the real table renders distribution between release and update (P2b-01)", () => {
@@ -152,6 +157,21 @@ describe("renderers", () => {
     expect(renderGdscript(TABLE)).toContain(
       'const DEFAULT_ENABLED := ["license", "config"]',
     );
+    expect(renderKotlin(TABLE)).toContain('    license("license", true),\n');
+    expect(renderKotlin(TABLE)).toContain('    release("release", false),\n');
+  });
+
+  it("names a hyphenated or keyword slug as a valid Kotlin enum entry (P6-06)", () => {
+    expect(kotlinCase("content-packs")).toBe("contentPacks");
+    expect(kotlinCase("object")).toBe("`object`");
+    expect(
+      renderKotlin(
+        withRow({
+          slug: "content-packs",
+          docs: "/docs/services/content-packs/",
+        }),
+      ),
+    ).toContain('    contentPacks("content-packs", false),');
   });
 
   it("names a hyphenated or keyword slug as a valid Swift case", () => {

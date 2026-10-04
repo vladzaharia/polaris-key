@@ -8,14 +8,16 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+val jvmTarget: String = libs.versions.jvmTarget.get()
+
 android {
     namespace = "im.plrs.key.boundary"
-    compileSdk = 36
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "im.plrs.key.boundary"
-        minSdk = 24
-        targetSdk = 36
+        minSdk = libs.versions.androidMinSdk.get().toInt()
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -35,13 +37,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.toVersion(jvmTarget)
+        targetCompatibility = JavaVersion.toVersion(jvmTarget)
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(jvmTarget.toInt())
 }
 
 dependencies {

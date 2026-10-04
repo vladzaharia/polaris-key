@@ -133,16 +133,16 @@ Kotlin `parity.json` (every row `planned`, each with an owner), its entry in
 
 ## Acceptance criteria
 
-- [ ] `./gradlew :core:test :conformance:test` passes every `cases.json`, `headers.json`,
+- [x] `./gradlew :core:test :conformance:test` passes every `cases.json`, `headers.json`,
       `fingerprint.json`, `stage-matrix.json` and `outlet-matrix.json` decision case, and the
       `core.*` transcripts, on both Ed25519 implementations.
-- [ ] `pnpm gen:constants -- --check` is green and covers the Kotlin file.
-- [ ] `sdks/kotlin/parity.json` exists, is registered in `features.json`, lists every feature, and
+- [x] `pnpm gen:constants -- --check` is green and covers the Kotlin file.
+- [x] `sdks/kotlin/parity.json` exists, is registered in `features.json`, lists every feature, and
       `parity:check` is green; the core rows this package proves are `implemented`.
-- [ ] Every registry addition for `android` and `jvm` is listed in the PR with its `why`.
-- [ ] `:core` has no Android dependency and `:platform` has no dependency on `:core` (a CI check);
+- [x] Every registry addition for `android` and `jvm` is listed in the PR with its `why`.
+- [x] `:core` has no Android dependency and `:platform` has no dependency on `:core` (a CI check);
       P5-06's `check_flavours.sh` still passes.
-- [ ] No Central, Sonatype or `signing` configuration exists in the build.
+- [x] No Central, Sonatype or `signing` configuration exists in the build.
 - [ ] The green gate passes (`AGENTS.md`), the new `kotlin` job and P5-06's `android` job are green.
 
 ## Verify
@@ -162,3 +162,75 @@ mise exec node@22 -- pnpm parity:check -- --check
 - The role agent sets `--set P6-06 in-review` when it hands off. After review, the lead adds the last
   commit of the PR:
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-06 done`.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-04. The code is the fact where this brief and the code
+disagree.
+
+- **Module layout, as built.** `:core` and `:conformance` are plain Kotlin/JVM modules
+  (`org.jetbrains.kotlin.jvm` 2.1.21, `jvmToolchain(17)`); `:core` is `explicitApi()`, package
+  `im.plrs.key.core`, `maven-publish` to `sdks/kotlin/build/repo` only (sources jar, POM, Gradle
+  module metadata; `:core:publishCorePublicationToLocalRepository`). `settings.gradle.kts` carries
+  the whole proposed module map as a comment and includes the Android modules (`:platform`,
+  `:godot`, `:boundary`) only when an Android SDK is configured (`ANDROID_HOME`,
+  `ANDROID_SDK_ROOT` or `sdk.dir`) and `-Ppkey.jvmOnly=true` is not set; the `kotlin` CI job passes
+  that flag, so it needs a JDK only. The module-boundary rule is a Gradle task,
+  `checkModuleBoundaries` (no `com.android` plugin on `:core`, no `androidx` / `com.android` /
+  `com.google.android` artifact on its compile or runtime classpath, no `android.` / `androidx.`
+  import in its sources, no project dependency of `:platform` other than itself), run by the
+  `kotlin` job and, with `:platform` included, by the `android` job.
+- **Versions and dependencies.** kotlinx-coroutines 1.10.2 and kotlinx-serialization-json 1.8.1
+  (the last releases built with Kotlin 2.1), OkHttp 4.12.0, Tink 1.17.0. **Tink decision:** Tink is
+  `compileOnly` in `:core`, not a dependency. A JVM desktop always has the JCA's Ed25519 (JDK 15+),
+  and Android API 33+ has it too, so only Android API 24–32 needs Tink; the `:android` glue
+  (P6-12) brings `tink-android` (same `com.google.crypto.tink.subtle.Ed25519Verify` class). With
+  neither backend present `Ed25519.verifier` is `UnavailableEd25519Verifier`, which refuses every
+  signature (fail closed). **HTTP client decision:** OkHttp, with redirects followed by the
+  transport itself (`followRedirects(false)`): `Authorization` is dropped on every redirect, even to
+  the same host, https → http is refused (`insecure-redirect`), at most five hops
+  (`too-many-redirects`).
+- **JSON.** kotlinx-serialization-json supplies the `JsonElement` tree only; no serialization
+  plugin. Parsing is `:core`'s own: `StrictJson.validate` (the V4 §1.2 scanner, ported from Swift's
+  `StrictScanner`, building the tree with each number's source token as a `JsonUnquotedLiteral`)
+  and `JsonText.parse` (RFC 8259, last duplicate wins, for discovery documents, HTTP bodies and
+  corpus files).
+- **`licenseState` is in `:core`.** Two core proofs need the licence STATE function: the
+  `clockFloorCases` (each vector pins the status the floor yields) and the sync transcripts (each
+  step's `licenseStatus`). It lives in `:core/Gate.kt`, as it lives in `@polaris-key/client-core`;
+  `CoreContext.licenseStatus()` applies it to the client's state. The licence service, the build
+  gate and `gate-matrix.json` (`license.gate`) stay with P6-07.
+- **The transcript harness composes the facade's two closures.** Until the umbrella client lands
+  (P6-07), `TranscriptTest.kt` passes `CoreContext.sync` the §5 re-acquire as `POST /license/token`
+  through `CoreContext.request` (the route `chooseReacquireRoute` picks for these transcripts) and
+  the device report as `{config, entitlements}` through `CoreContext.reportSnapshot`. P6-07 moves
+  both into `:license` / `:sdk` and the harness then calls the client.
+- **Rows.** Implemented: `core.verify`, `core.cache`, `core.bundle`, `core.discover`, `core.sync`,
+  `core.local`, `core.headers`, `core.errors`, `core.caps`, `ui.stages`. `devices.fingerprint` and
+  `outlet.detect` stay `planned` with `wp: P6-12` (as P6-12's brief lists them), although
+  `:conformance` already passes every `fingerprint.json` section and every `outlet-matrix.json`
+  row: the Android inputs and readers are P6-12's. `core.store` is `planned` (P6-12) with
+  `except jvm: dependency`. `update.bootguard` is P6-08's (the guard cases already run in
+  `StageMatrixTest`). Unowned, each with a note, where Swift is unowned too: `identity.oidc`,
+  `commerce.receipt`, `packs.transport.steam` and also `devices.attest` (Swift's is unowned as well).
+- **The registry pass (features.json).** Added: `core.store` jvm `dependency`; `update.driver` jvm
+  `runtime`; `packs.type.godot.zip` and `packs.type.audio.bank` android and jvm `runtime`;
+  `packs.transport.msix` and `packs.transport.flatpak` jvm `runtime`. Decided without a change:
+  `packs.type.ml.model` (a host-registered handler, as in Swift; the registry's android row is
+  Godot's), `packs.transport.steam` (android was already allowed; a JVM desktop app can ship on
+  Steam), `packs.transport.apple` and `packs.transport.play` (android/jvm rows already present),
+  `devices.attest` (jvm already allowed; Android attests through Play Integrity).
+- **`enums.json` `sdkId` gains `kotlin`** ("an SDK adds its id when it lands"); `X-PKey-SDK` is
+  `SdkId.kotlin`, and every SDK's generated constants change by that one value.
+- **`gen:services` has a Kotlin target too** (`ServiceSlug.generated.kt`, an enum with
+  `isDefaultEnabled`), which the Kotlin constants module leaves out as Swift's does.
+- **`tools/gen-mirrors.ts` is not touched here:** its Kotlin catalog-mirror emitter is P6-07's
+  scope (`config.mirror`), named in that brief's gates and acceptance criteria.
+- **The client's reload path bounds one artifact's forward drag** (as Swift's `verifyCached`): a
+  cached document stamped more than `MAX_GRACE_SECONDS` past the current floor is dropped. The
+  pure-data `clockFloorCases` runner does not apply that bound (as every runner), so `CacheTest`
+  pins the client's behaviour on `floor-max-over-three-artifacts` separately.
+- **The umbrella's grep.** `grep -rniE "maven ?central|sonatype|signing" sdks/kotlin …` still
+  matches two pre-existing P5-06 lines that are not publication config: `mavenCentral()` (the
+  dependency repository in `settings.gradle.kts`) and the `:boundary` probe app's debug
+  `signingConfig`. Nothing in this package adds a publication repository or artifact signing.
