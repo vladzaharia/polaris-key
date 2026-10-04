@@ -116,6 +116,8 @@ const PLATFORM_OPENER_ALLOW_FILES = [
   // Reviewed (A-16): the Entra exchange lives beside P5-04's own token code; it checks the
   // product's pin before its cache, and the open checks it again.
   "src/services/distribution/connectors/msstore/token.ts",
+  // Reviewed (A-16): Steam uses the raw key per call (no token); the open checks the pin.
+  "src/services/distribution/commerce/steam.ts",
 ];
 
 interface Source {

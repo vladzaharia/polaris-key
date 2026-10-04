@@ -39,6 +39,9 @@ export interface PlatformAppsListing {
   cached: boolean;
   /** More apps (or more detail) existed than the bounded read fetched. */
   truncated: boolean;
+  /** `false` when the store could not list its apps and only operator-entered ones are shown
+   *  (Steam, for a key without the listing permission). Absent otherwise. */
+  listed?: boolean;
   apps: PlatformStoreApp[];
 }
 

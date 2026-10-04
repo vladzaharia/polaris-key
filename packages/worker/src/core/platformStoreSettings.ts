@@ -91,6 +91,17 @@ export const PLATFORM_STORE_SETTINGS = {
     usedBy:
       "Play Integrity (a trust policy's playIntegrity.cloudProjectNumber falls back to it; an explicit one wins)",
   },
+  "steam.appIds": {
+    store: "steam",
+    key: "appIds",
+    label: "Steam app ids (operator-entered)",
+    pattern: /^[1-9][0-9]{0,9}(?:,[1-9][0-9]{0,9}){0,199}$/,
+    message:
+      "appIds must be Steam app ids separated by commas (digits, such as 480,1234560)",
+    envName: null,
+    usedBy:
+      "the Steam apps list, added to what the publisher key lists (and used alone when the key cannot list its apps)",
+  },
 } as const satisfies Record<string, PlatformStoreSettingSpec>;
 
 export type PlatformStoreSettingId = keyof typeof PLATFORM_STORE_SETTINGS;

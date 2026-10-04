@@ -98,7 +98,7 @@ async function setupOf(
     ),
     steam: await one(
       settings.steam !== null,
-      () => steamCredential(ctx.db, slug, settings.steam!.appId),
+      () => steamCredential(ctx.env, ctx.db, slug, settings.steam!.appId),
       "steam-publisher-key",
     ),
   };

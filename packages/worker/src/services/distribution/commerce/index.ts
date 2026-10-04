@@ -339,6 +339,7 @@ export async function steamContext(
 ): Promise<SteamContext | null> {
   if (!settings.steam) return null;
   const credentialId = await steamCredential(
+    ctx.env,
     ctx.db,
     ctx.product.slug,
     settings.steam.appId,
