@@ -68,6 +68,7 @@ import {
 import { handleMe } from "./handlers/me.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
+import { handleFeedsAdmin } from "./handlers/feeds.js";
 import {
   handleProducts,
   handleProductScopedResource,
@@ -150,6 +151,22 @@ async function handleProductScoped(
   // reach a service's settings in order to configure it before turning it on, and the console is
   // already behind the platform-admin gate above; hiding a disabled service from an authenticated
   // platform admin would protect nothing and would make "enable then configure" impossible.
+  // F-11: the Feeds admin API in product scope, `…/distribution/feeds/…`. Spelled under
+  // Distribution (its sidebar section), but composed in the admin layer, because a yank writes
+  // Release's package rows and the settings are Distribution's (`handlers/feeds.ts` explains).
+  if (resource === "distribution" && rest[1] === "feeds") {
+    if (!(await getProduct(db, slug))) return notFound();
+    return handleFeedsAdmin(
+      req,
+      env,
+      db,
+      session,
+      { kind: "product", slug },
+      rest.slice(2),
+      now,
+    );
+  }
+
   if (resource && SERVICES.has(resource as ServiceSlug)) {
     const descriptor = SERVICES.get(resource as ServiceSlug)!;
     if (descriptor.adminHandle) {
