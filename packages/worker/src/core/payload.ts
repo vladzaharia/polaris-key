@@ -9,7 +9,7 @@
  * they are assembled from the SAME stack of stored layers:
  *
  *     catalog defaults  →  tier's profile  →  the license's profiles (in order)
- *                       →  license overrides  →  device overrides
+ *                       →  store grants (P6-01)  →  license overrides  →  device overrides
  *
  * and that stack is jointly owned: the catalog and the profiles are Config's rows, the tier and
  * the license are License's, the device is Core's. Duplicating the walk in both services would
@@ -35,6 +35,7 @@ import { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../db/types.js";
 import { mergePayloads } from "../merge.js";
+import { storeGrantLayer } from "./storeGrants.js";
 import {
   getActiveSchema,
   getProfile,
@@ -134,6 +135,10 @@ export async function resolveMergedPayload(
       const p = await getProfile(db, product, ref.profile_id);
       layers.push(p?.payload_json ?? null);
     }
+    // P6-01: the licence's active store grants (a verified purchase's flag), after the profiles
+    // and BEFORE the licence's own overrides, so an operator's override of the same flag wins
+    // (`core/storeGrants.ts`).
+    layers.push(await storeGrantLayer(db, product, license.id));
     layers.push(license.overrides_json);
   }
 

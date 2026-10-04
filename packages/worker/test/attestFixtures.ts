@@ -9,8 +9,6 @@
  * Every knob produces one specific defect the verifier must catch.
  */
 
-import { parseCertificate, type X509Certificate } from "../src/core/x509.js";
-
 // ── DER ───────────────────────────────────────────────────────────────────────────────────────
 
 function concat(...parts: Uint8Array[]): Uint8Array {
@@ -201,7 +199,8 @@ export function b64(bytes: Uint8Array): string {
 }
 
 export interface TestChain {
-  root: X509Certificate;
+  /** The root, DER (what the verifier's test-only `roots` takes). */
+  root: Uint8Array;
   rootKey: KeyPair;
   intermediateDer: Uint8Array;
   intermediateKey: KeyPair;
@@ -230,7 +229,7 @@ export async function makeTestChain(now: number): Promise<TestChain> {
     notAfter: now + 10 * 365 * 86400,
   });
   return {
-    root: parseCertificate(rootDer),
+    root: rootDer,
     rootKey,
     intermediateDer,
     intermediateKey,

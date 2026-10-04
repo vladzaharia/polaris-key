@@ -17,6 +17,7 @@
 
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
+import { pairDemand } from "../src/core/deltaDemand.js";
 import { KvMock } from "./kvMock.js";
 import {
   makeEnv,
@@ -746,6 +747,109 @@ describe("Core surfaces accept a registered device when License is disabled", ()
     expect((await reported()).content).toEqual({ packSetId: SET_ID });
     expect((await send({ content: { packSetId: "short" } })).status).toBe(200);
     expect(Object.hasOwn(await reported(), "content")).toBe(false);
+  });
+
+  it("POST /devices/report counts packInstalls once per device and pair, never a delta install, and drops what does not fit (P4-17)", async () => {
+    const w = await world(SET.configOnly);
+    const { token } = await register(w);
+    const second = await register(w, { "x-pkey-device": DEVICE_2 });
+    // The request path may touch D1 and, at most, the queue: a blob store that throws on any use
+    // and a queue that records sends prove it reads no payload and enqueues nothing.
+    const sends: unknown[] = [];
+    w.env.LAZY_DELTAS = "on";
+    w.env.DELTA_QUEUE = {
+      send: async (m: unknown) => void sends.push(m),
+      sendBatch: async (m: unknown[]) => void sends.push(...m),
+    } as unknown as Queue<unknown>;
+    w.env.BLOBS = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error("the report handler touched the blob store");
+        },
+      },
+    ) as R2Bucket;
+    await w.db.run(
+      "INSERT INTO lazy_delta_settings (product, enabled, updated_at) VALUES ('djdl', 1, ?)",
+      NOW,
+    );
+    const FROM = "1".repeat(64);
+    const TO = "2".repeat(64);
+    const send = (tok: string, body: unknown) =>
+      handleReport(
+        mkReq("POST", { authorization: `Bearer ${tok}` }, body),
+        w.env,
+        w.db,
+        w.product,
+        NOW,
+      );
+    const entry = {
+      pack: "djdl.levels",
+      from: FROM,
+      to: TO,
+      strategy: "chunk",
+    };
+    for (const tok of [token, token, second.token])
+      expect(
+        (
+          await send(tok, {
+            packInstalls: [
+              {
+                ...entry,
+                bytes: 1200,
+                extra: "dropped",
+                failureStage: "x".repeat(200),
+              },
+              { ...entry, from: "not-a-hash" },
+            ],
+          })
+        ).status,
+      ).toBe(200);
+    // A delta install is stored (it keeps a generated delta warm) but is not demand.
+    expect(
+      (
+        await send(token, {
+          packInstalls: [{ ...entry, to: "3".repeat(64), strategy: "delta" }],
+        })
+      ).status,
+    ).toBe(200);
+    const rows = await w.db.all<{
+      device_id: string;
+      to_sha256: string;
+      strategy: string;
+    }>(
+      "SELECT device_id, to_sha256, strategy FROM delta_demand_devices ORDER BY to_sha256, device_id",
+    );
+    expect(rows).toEqual([
+      { device_id: DEVICE, to_sha256: TO, strategy: "chunk" },
+      { device_id: DEVICE_2, to_sha256: TO, strategy: "chunk" },
+      { device_id: DEVICE, to_sha256: "3".repeat(64), strategy: "delta" },
+    ]);
+    expect(
+      await pairDemand(w.db, "djdl", "djdl.levels", FROM, "3".repeat(64), 0),
+    ).toBe(0);
+    expect(await pairDemand(w.db, "djdl", "djdl.levels", FROM, TO, 0)).toBe(2);
+    expect(sends).toEqual([]);
+    // The stored snapshot keeps only the bounded entry.
+    const stored = JSON.parse(
+      (await w.db.first<{ reported_json: string }>(
+        "SELECT reported_json FROM devices WHERE product = ? AND device_id = ?",
+        "djdl",
+        DEVICE_2,
+      ))!.reported_json,
+    ) as Record<string, unknown>;
+    expect(stored.packInstalls).toEqual([
+      { ...entry, bytes: 1200, failureStage: "x".repeat(128) },
+    ]);
+    // Without the product's opt-in (or with the kill switch off), nothing is counted.
+    w.env.LAZY_DELTAS = "off";
+    await send(token, { packInstalls: [{ ...entry, to: "4".repeat(64) }] });
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM delta_demand_devices WHERE to_sha256 = ?",
+        "4".repeat(64),
+      ),
+    ).toBe(null);
   });
 
   it("edge-mint signs for a registered device", async () => {

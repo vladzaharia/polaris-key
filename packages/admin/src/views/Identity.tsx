@@ -38,6 +38,7 @@ import {
 } from "../components/ui/index.js";
 import { releaseSourceOf } from "./products/util.js";
 import { qk } from "../console/data/queries.js";
+import { fetchProduct } from "../console/data/hooks.js";
 import { mutate } from "../console/data/mutations.js";
 
 /**
@@ -385,7 +386,7 @@ function PortalCard({ slug }: { slug: string }): React.ReactElement {
 function OidcCard({ slug }: { slug: string }): React.ReactElement {
   const toast = useToast();
   const { data, loading, error, reload } = useResource(qk.product(slug), () =>
-    api.product(slug).then((r) => r.product),
+    fetchProduct(slug),
   );
   const [resyncing, setResyncing] = React.useState(false);
   // `release/resync.ts` refuses ("product is not linked to a repo" -> 422) for anything whose

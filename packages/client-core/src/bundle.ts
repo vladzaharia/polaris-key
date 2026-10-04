@@ -21,7 +21,7 @@
 // union instead of a bare `null`: "the bundle was addressed to another device" (step 2) and
 // "the license document inside it was addressed to another device" (step 4) are different
 // failures with different operator remedies, and a verifier that collapsed them would pass a
-// weaker test than the one the four SDKs have to agree on.
+// weaker test than the one the five SDKs have to agree on.
 //
 // `verifyBundle` — the plain `VerifiedBundle | null` shape — is the ergonomic call for hosts
 // that only need yes/no. `inspectBundle` is the same walk with the step attributed.
@@ -65,7 +65,7 @@ export interface VerifiedBundle {
 
 /**
  * Which numbered step of §7 refused. Named for the step, not for the symptom, because the
- * corpus asserts the attribution and the four SDKs must agree on it.
+ * corpus asserts the attribution and the five SDKs must agree on it.
  *
  *   `bundle-jws-rejected`     step 1 — signature, `typ`, or the 262 144-byte cap.
  *   `bundle-claims-rejected`  step 2 — `aud`/`deviceId`/import window/vacuous `docs`.

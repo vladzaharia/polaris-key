@@ -21,7 +21,7 @@
 // bare `nil`: "the bundle was addressed to another device" (step 2) and "the license document
 // inside it was addressed to another device" (step 4) are different failures with different
 // operator remedies, and a verifier that collapsed them would pass a weaker test than the one
-// the four SDKs have to agree on.
+// the five SDKs have to agree on.
 
 import Foundation
 
@@ -59,7 +59,7 @@ public struct VerifiedBundle: Sendable, Equatable {
 }
 
 /// Which numbered step of §7 refused. Named for the STEP, not for the symptom, because the
-/// corpus asserts the attribution and the four SDKs must agree on it.
+/// corpus asserts the attribution and the five SDKs must agree on it.
 public enum BundleRefusalReason: String, Sendable, Equatable, CaseIterable {
     /// Step 1 — signature, `typ`, or the 262 144-byte cap.
     case bundleJwsRejected = "bundle-jws-rejected"

@@ -92,8 +92,10 @@ function defaultRail(): boolean {
 }
 
 /**
- * Move focus to the page's `<h1>` after a navigation and announce "{title}, page loaded"
- * (ADMIN.md §5.6). The first render is left alone, so the skip link stays the first stop.
+ * After a navigation: scroll back to the top (owner, 2026-10-03), move focus to the page's `<h1>`
+ * and announce "{title}, page loaded" (ADMIN.md §5.6). `key` changes with the page or record,
+ * not with its query string, so filtering a list never jumps. The first render is left alone,
+ * so the skip link stays the first stop.
  * A page whose heading renders late (after its data) is waited for, briefly.
  */
 function useRouteFocus(key: string, title: string): string {
@@ -106,12 +108,16 @@ function useRouteFocus(key: string, title: string): string {
     }
     setMessage(`${title}, page loaded`);
     const main = document.getElementById("content");
+    // The page scrolls inside <main>; reset it and the window, in case a layout scrolls the body.
+    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
     if (!main) return;
+    main.scrollTop = 0;
     const find = (): HTMLElement | null =>
       main.querySelector<HTMLElement>("h1, [aria-level='1']");
     const focus = (el: HTMLElement): void => {
       if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
-      el.focus({ preventScroll: false });
+      // The heading is at the top already; don't let focusing it move the reset scroll.
+      el.focus({ preventScroll: true });
     };
     const now = find();
     if (now) {
@@ -200,7 +206,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
-  const { collapsed, toggle } = useNavCollapse(me.sub, section?.key ?? null);
+  const { expanded, toggle } = useNavCollapse(section?.key ?? null);
 
   const key = viewKey(route);
   React.useEffect(() => {
@@ -222,6 +228,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
   useGlobalShortcuts({
     openPalette: () => setPaletteOpen(true),
+    togglePalette: () => setPaletteOpen((o) => !o),
     openSheet: () => setSheetOpen(true),
     toggleSidebar: toggleRail,
     go: (k) => {
@@ -255,7 +262,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     services,
     activePage: page,
     activeSection: section?.key ?? null,
-    collapsed,
+    expanded,
     onToggleSection: toggle,
     onPrefetch: prefetchSection,
   };

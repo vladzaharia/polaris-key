@@ -35,8 +35,10 @@ export function isModKey(e: KeyboardEvent): boolean {
 }
 
 export interface ShortcutHandlers {
-  /** `⌘K` / `Ctrl+K`, or `/` outside a field. */
+  /** `/` outside a field opens the palette. */
   openPalette: () => void;
+  /** `⌘K` / `Ctrl+K` toggles it: pressed again while the palette is open, it closes (owner, 2026-10-03). */
+  togglePalette: () => void;
   /** `?` */
   openSheet: () => void;
   /** `⌘\` / `Ctrl+\` */
@@ -51,15 +53,19 @@ export function useGlobalShortcuts(handlers: ShortcutHandlers): void {
   ref.current = handlers;
   React.useEffect(() => {
     let armedUntil = 0;
+    // ⌘K works everywhere, including from a field (it is how you leave one for the palette), and
+    // from inside the open palette, where it closes it again. It listens in the capture phase so
+    // no focused widget (the palette's own input included) can swallow it first.
+    const onModK = (e: KeyboardEvent): void => {
+      if (isModKey(e) && !e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        e.stopPropagation();
+        ref.current.togglePalette();
+      }
+    };
     const onKey = (e: KeyboardEvent): void => {
       if (e.defaultPrevented) return;
       const h = ref.current;
-      // ⌘K works everywhere, including from a field: it is how you leave one for the palette.
-      if (isModKey(e) && !e.altKey && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        h.openPalette();
-        return;
-      }
       if (isModKey(e) && e.key === "\\") {
         e.preventDefault();
         h.toggleSidebar();
@@ -87,8 +93,12 @@ export function useGlobalShortcuts(handlers: ShortcutHandlers): void {
         h.openSheet();
       }
     };
+    window.addEventListener("keydown", onModK, true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onModK, true);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 }
 

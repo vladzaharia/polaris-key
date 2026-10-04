@@ -45,6 +45,8 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
 | HEAD | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Size, ETag and Repr-Digest of a content-addressed object |
 | GET | `/{product}/distribution/builds/{selector}/{buildId}` | distribution | Download the payload of a declared build |
+| GET | `/{product}/distribution/commerce/binding` | distribution | The licence's purchase binding and the store products on sale (device token) |
+| POST | `/{product}/distribution/commerce/claim` | distribution | Claim a store purchase as a licence flag (device token) |
 | GET | `/{product}/distribution/dl/{version}/{asset}` | distribution | Download a release artifact |
 | GET | `/{product}/distribution/download.json` | distribution | The public download page's model |
 | GET | `/{product}/distribution/download` | distribution | The public download page (bytes host only) |
@@ -53,7 +55,9 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | POST | `/{product}/distribution/feeds/fdroid/{channel}` | distribution | Register the F-Droid repository files CI signed and uploaded (CI) |
 | GET | `/{product}/distribution/files/{releaseId}/{name}` | distribution | Download one exact file of one release |
 | GET | `/{product}/distribution/flathub/{channel}.json` | distribution | Flathub x-checker-data JSON for one channel |
+| POST | `/{product}/distribution/hooks/app-store` | distribution | App Store Server Notifications V2 (Apple → Worker) |
 | POST | `/{product}/distribution/hooks/asc` | distribution | App Store Connect webhook notifications (Apple → Worker) |
+| POST | `/{product}/distribution/hooks/play-rtdn` | distribution | Google Play real-time developer notifications over Pub/Sub push (Google → Worker) |
 | POST | `/{product}/distribution/hooks/sentry` | distribution | Sentry alert webhook — opens a halt candidate (Sentry → Worker) |
 | GET | `/{product}/distribution/install.sh` | distribution | The curl-pipe install script |
 | GET | `/{product}/distribution/obtainium/{channel}.json` | distribution | Obtainium app config for one channel |

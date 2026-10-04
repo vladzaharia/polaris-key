@@ -19,16 +19,27 @@
  * service, which is not used here. The credential public key is returned so the caller can keep
  * it for later assertions (the brief's "stored for later").
  *
+ * The chain is verified by P6-01's `core/x509.ts` (one X.509 parser for the Worker): the `x5c`
+ * certificates plus the pinned root, which `verifyChain` requires byte for byte at the end. The
+ * nonce extension is the one critical OID App Attest adds to that verifier's understood set, and
+ * the credential certificate's keyUsage is checked `ifPresent`: its key is the credential key that
+ * later signs assertions, so a keyUsage that is present must allow digitalSignature, while a
+ * certificate without keyUsage is not refused (Apple documents no keyUsage requirement for the
+ * credential certificate, and no real attestation is available offline to prove one is always
+ * present; `require` could refuse genuine devices for no security gain, since the key's use is
+ * bound by the nonce and the RP ID anyway).
+ *
  * `roots` is injectable for tests only: the route handler's production caller passes nothing and
  * gets the pinned Apple root. Pure apart from `crypto.subtle`; runs in Node and workerd.
  */
 
 import { CborError, decodeCbor, type CborValue } from "./cbor.js";
 import {
+  base64ToBytes,
   derChildren,
+  getExtension,
   parseCertificate,
-  parseDer,
-  pemToDer,
+  readDerExact,
   verifyChain,
   X509Error,
   type X509Certificate,
@@ -111,15 +122,42 @@ export interface AppAttestInput {
   appIds: readonly string[];
   environment: AppAttestEnvironment;
   now: number;
-  /** Trust anchors. TESTS ONLY: production passes nothing and gets the pinned Apple root. */
-  roots?: readonly X509Certificate[];
+  /** Trust anchors, DER. TESTS ONLY: production passes nothing and gets the pinned Apple root. */
+  roots?: readonly Uint8Array[];
 }
 
-let pinnedRoot: X509Certificate | null = null;
+/** A PEM `CERTIFICATE` block as DER. */
+export function pemToDer(pem: string): Uint8Array {
+  return base64ToBytes(
+    pem
+      .replace(/-----BEGIN CERTIFICATE-----/, "")
+      .replace(/-----END CERTIFICATE-----/, "")
+      .replace(/\s+/g, ""),
+  );
+}
 
-/** The pinned Apple App Attestation Root CA, parsed once per isolate. */
+let pinnedRootDer: Uint8Array | null = null;
+
+/** The pinned Apple App Attestation Root CA, DER, decoded once per isolate. */
+export function appleAppAttestRootDer(): Uint8Array {
+  return (pinnedRootDer ??= pemToDer(APPLE_APP_ATTEST_ROOT_PEM));
+}
+
+/** The pinned root, parsed. */
 export function appleAppAttestRoot(): X509Certificate {
-  return (pinnedRoot ??= parseCertificate(pemToDer(APPLE_APP_ATTEST_ROOT_PEM)));
+  return parseCertificate(appleAppAttestRootDer());
+}
+
+/** The certificate's public key as an uncompressed SEC1 point (the SPKI's BIT STRING). */
+function publicKeyPoint(cert: X509Certificate): Uint8Array {
+  const parts = derChildren(readDerExact(cert.spki));
+  const bits = parts[1];
+  if (!bits || bits.tag !== 0x03 || bits.value[0] !== 0)
+    throw new X509Error("bad public key");
+  const point = bits.value.subarray(1);
+  if (point.length !== 65 || point[0] !== 0x04)
+    throw new X509Error("public key is not an uncompressed P-256 point");
+  return point;
 }
 
 async function sha256(...parts: Uint8Array[]): Promise<Uint8Array> {
@@ -167,10 +205,10 @@ function field(m: Map<CborValue, CborValue>, k: string): CborValue {
 
 /** The nonce inside extension 1.2.840.113635.100.8.2: SEQUENCE { [1] EXPLICIT OCTET STRING }. */
 function nonceOf(cert: X509Certificate): Uint8Array | null {
-  const ext = cert.extensions.get(APP_ATTEST_NONCE_OID);
+  const ext = getExtension(cert, APP_ATTEST_NONCE_OID);
   if (!ext) return null;
   try {
-    const seq = parseDer(ext.value);
+    const seq = readDerExact(ext.value);
     if (seq.tag !== 0x30) return null;
     const tagged = derChildren(seq).find((n) => n.tag === 0xa1);
     if (!tagged) return null;
@@ -213,26 +251,40 @@ export async function verifyAppAttestation(
   )
     return { ok: false, reason: "malformed", detail: "x5c" };
 
-  // 1. The chain.
-  let chain: X509Certificate[];
+  // 1. The chain: the x5c certificates, then the trusted root that issued the last of them
+  // (P6-01's verifier requires the root itself, byte for byte, at the end of the chain).
+  const roots = input.roots ?? [appleAppAttestRootDer()];
+  let credCert: X509Certificate;
+  let credentialKey: Uint8Array;
   try {
-    chain = (x5c as Uint8Array[]).map((c) => parseCertificate(c));
+    const top = parseCertificate(x5c[x5c.length - 1] as Uint8Array);
+    const root = roots.find((r) => {
+      try {
+        const sub = parseCertificate(r).subject;
+        return (
+          sub.length === top.issuer.length &&
+          sub.every((b, i) => b === top.issuer[i])
+        );
+      } catch {
+        return false;
+      }
+    });
+    if (!root) return { ok: false, reason: "chain", detail: "untrusted root" };
+    const verified = await verifyChain([...(x5c as Uint8Array[]), root], {
+      roots,
+      at: input.now,
+      understood: [APP_ATTEST_NONCE_OID],
+      leafDigitalSignature: "ifPresent",
+    });
+    credCert = verified.leaf;
+    if (credCert.curve !== "P-256")
+      return { ok: false, reason: "chain", detail: "credential key curve" };
+    credentialKey = publicKeyPoint(credCert);
   } catch (e) {
     if (e instanceof X509Error)
       return { ok: false, reason: "chain", detail: e.message };
     throw e;
   }
-  const verdict = await verifyChain(
-    chain,
-    input.roots ?? [appleAppAttestRoot()],
-    input.now,
-    [APP_ATTEST_NONCE_OID],
-  );
-  if (!verdict.ok)
-    return { ok: false, reason: "chain", detail: verdict.reason };
-  const credCert = chain[0]!;
-  if (credCert.curve !== "P-256")
-    return { ok: false, reason: "chain", detail: "credential key curve" };
 
   // 2–4. The nonce.
   const expected = await sha256(authData, input.clientDataHash);
@@ -240,7 +292,7 @@ export async function verifyAppAttestation(
   if (!nonce || !eq(nonce, expected)) return { ok: false, reason: "nonce" };
 
   // 5. The key id.
-  if (!eq(await sha256(credCert.publicKey), keyIdBytes))
+  if (!eq(await sha256(credentialKey), keyIdBytes))
     return { ok: false, reason: "key_id" };
 
   // authenticatorData: rpIdHash(32) flags(1) signCount(4) aaguid(16) credIdLen(2) credId …
@@ -289,6 +341,6 @@ export async function verifyAppAttestation(
     appId,
     environment: input.environment,
     keyId: input.keyId,
-    publicKey: base64url(credCert.publicKey),
+    publicKey: base64url(credentialKey),
   };
 }

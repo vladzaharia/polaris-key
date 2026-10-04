@@ -495,6 +495,16 @@ describe("the admin API", () => {
         field: "productId",
         label: "Microsoft Store product id (Store ID)",
       },
+      // P6-01 adopted it for the In-App Purchase key and the Steam publisher key
+      // (`commerce.test.ts`).
+      "app-store-server-key": {
+        field: "bundleId",
+        label: "App Store bundle id",
+      },
+      "steam-publisher-key": {
+        field: "appId",
+        label: "Steam app id",
+      },
     });
     expect(body.credentials.find((c) => c.id === "asc")!.meta.appleId).toBe(
       APPLE_ID,

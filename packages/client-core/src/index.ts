@@ -220,6 +220,7 @@ export {
   type PackGcRoots,
   type PackHandler,
   type PackInstall,
+  type PackInstallReport,
   type PackJournal,
   type PackProgress,
   type PacksSnapshot,

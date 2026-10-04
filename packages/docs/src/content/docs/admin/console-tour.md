@@ -47,9 +47,11 @@ nothing else is shown. Inside a product, one section follows per service:
 A service the product does not run has no section at all. The console does not grey it out: a
 dimmed row invites a click that can only fail.
 
-**Collapsing sections.** Each section header is a button: click it, or press Enter or Space on
-it, to collapse or expand the section. Your choice is remembered per account in this browser. The
-section holding the page you are on is always open, and opening a page expands its section.
+**Collapsing sections.** Only the section holding the page you are on is open; every other
+section shows just its header. To look inside a collapsed section, click its header or press Enter
+or Space on it. That peek is temporary: when you open a page in another section, that section
+opens and the rest collapse again. The section holding the current page cannot be collapsed, and
+nothing about this is remembered between visits.
 
 **The rail.** `⌘\` (or `Ctrl+\`), or **Collapse** at the bottom, shrinks the sidebar to icons.
 Narrower than 1280 px it starts that way. Narrower than 1024 px the sidebar is hidden and the menu

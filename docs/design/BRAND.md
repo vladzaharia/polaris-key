@@ -710,7 +710,10 @@ so `data-service` carries the same ids this package keys its accents by.
 - **Godot** (`PKeyBrand`, generated): `PKeyBrand.Dark.SURFACE_PAGE`, `PKeyBrand.Light.TEXT_MUTED`,
   `PKeyBrand.service_accent("config", dark)`, `section_bit()`, `optical_cut(size)`,
   `bit_visible(size)`, the badge minimums and the kit primitives. Use the 16 px editor glyphs from
-  `games/` for editor-scale icons; pick cuts by the control's logical size.
+  `games/` for editor-scale icons; pick cuts by the control's logical size. The addon carries
+  copies in `sdks/godot/addons/polaris_key/brand/` (written by `pnpm gen:brand`, never imported:
+  the bit-less 16 px Pinned K glyphs, which the setup dock's tab shows on 4.6+, and the
+  `games/powered-by-credit-*` screens and compact "Powered by" badges for a game's credits).
 - **SwiftUI** (`PolarisBrand`, generated, in `PolarisKeyUI`): `PolarisBrand.Dark.surfacePage.color`,
   `PolarisBrand.accent(for: "license", dark: true).fg`, `opticalCut(for:)`. Points are CSS-pixel
   equivalents for the optical-cut rule; follow `colorScheme` for the theme.

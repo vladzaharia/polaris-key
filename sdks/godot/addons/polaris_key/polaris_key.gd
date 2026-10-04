@@ -23,9 +23,10 @@ extends Node
 ## device-code sign-in with a QR code; a `ready` stores the token and runs a forced sync),
 ## `update` (PKeyUpdate: the signed decision and acting on it — apply, restart_to_update,
 ## confirm_boot, the boot guard — the version check, its `update_available(check)` signal, the appcast
-## URL) and `release` (PKeyRelease: the changelog, the install and download URLs). `config`,
-## `identity`, `update` and `release` exist before `configure()`, so a signal connected early
-## survives it.
+## URL), `release` (PKeyRelease: the changelog, the install and download URLs) and `commerce`
+## (PKeyCommerce, P6-01: the purchase binding, claiming a store purchase as a licence flag, and
+## the App Store 3.1.3(b) outlet rule). `config`, `identity`, `update`, `release` and `commerce`
+## exist before `configure()`, so a signal connected early survives it.
 
 const SDK_VERSION := "0.1.0"
 
@@ -60,6 +61,8 @@ var update := PKeyUpdate.new()
 ## The changelog and the install and download URLs (services/release.gd). Refuses until
 ## configure().
 var release := PKeyRelease.new()
+## Store purchases as licence flags (services/commerce.gd, P6-01). Refuses until configure().
+var commerce := PKeyCommerce.new()
 
 ## The PKeyBoot view `boot()` made (on a CanvasLayer under this node), or null.
 var boot_view: Node = null
@@ -102,6 +105,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	license.install(core)
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
+	commerce.attach(core, license)
 	identity.attach(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	return PKeyResult.success()

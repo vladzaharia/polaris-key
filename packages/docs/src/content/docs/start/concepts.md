@@ -7,7 +7,7 @@ sidebar:
 
 This is the source of truth for the vocabulary used across the Worker, the SDKs, the admin
 panel, and the docs. When code and this glossary disagree, this glossary wins — open a PR to
-reconcile. Consistent names are a feature: they make the system learnable across five languages.
+reconcile. Consistent names are a feature: they make the system learnable across six languages.
 
 ## The suite: Core and services
 

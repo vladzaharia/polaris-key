@@ -8,15 +8,17 @@ import { describe, expect, it } from "vitest";
 import {
   APPLE_APP_ATTEST_ROOT_PEM,
   appleAppAttestRoot,
+  appleAppAttestRootDer,
+  pemToDer,
   verifyAppAttestation,
   type AppAttestInput,
 } from "../src/core/appAttest.js";
 import { CborError, decodeCbor } from "../src/core/cbor.js";
 import {
+  certificateKey,
+  ecdsaDerToRaw,
   parseCertificate,
-  pemToDer,
   verifyChain,
-  verifyEcdsaSignature,
   X509Error,
 } from "../src/core/x509.js";
 import { checkPlayVerdict } from "../src/core/playIntegrity.js";
@@ -57,12 +59,16 @@ describe("the pinned Apple App Attestation Root CA", () => {
   it("parses, is a self-signed P-384 CA, and has the published fingerprint", async () => {
     const root = appleAppAttestRoot();
     expect(root.curve).toBe("P-384");
-    expect(root.isCa).toBe(true);
+    expect(root.ca).toBe(true);
+    expect(root.keyCertSign).toBe(true);
+    expect(root.pathLen).toBeNull();
+    // The self-signature (ecdsa-with-SHA384 under its own P-384 key).
+    expect(root.signatureAlgorithm).toBe("1.2.840.10045.4.3.3");
     expect(
-      await verifyEcdsaSignature(
-        root,
-        root.signatureAlgorithm,
-        root.signature,
+      await crypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-384" },
+        await certificateKey(root),
+        ecdsaDerToRaw(root.signature, 48),
         root.tbs,
       ),
     ).toBe(true);
@@ -79,19 +85,43 @@ describe("the pinned Apple App Attestation Root CA", () => {
     ).toBe(
       "1C:B9:82:3B:A2:8B:A6:AD:2D:33:A0:06:94:1D:E2:AE:4F:51:3E:F1:D4:E8:31:B9:F7:E0:FA:7B:62:42:C9:32",
     );
-    // Valid 2020-03-18 .. 2045-03-15: a chain to itself verifies today and not after expiry.
-    expect(await verifyChain([root], [root], NOW)).toEqual({ ok: true });
-    expect(await verifyChain([root], [root], 2_400_000_000)).toEqual({
-      ok: false,
-      reason: "expired",
+    // Valid 2020-03-18 .. 2045-03-15.
+    expect(root.notBefore).toBe(1584556373);
+    expect(root.notAfter).toBe(2373148800);
+  });
+
+  it("a P-384 root issuing a P-384 intermediate that signs a P-256 leaf verifies through the shared verifier", async () => {
+    const chain = await makeTestChain(NOW);
+    const { attestation } = await makeAppAttestation(chain, NOW, {
+      appId: APP_ID,
+      clientDataHash: CDH,
     });
+    const att = decodeCbor(attestation) as Map<unknown, unknown>;
+    const x5c = (att.get("attStmt") as Map<unknown, unknown>).get(
+      "x5c",
+    ) as Uint8Array[];
+    const v = await verifyChain([...x5c, chain.root], {
+      roots: [chain.root],
+      at: NOW,
+      understood: ["1.2.840.113635.100.8.2"],
+      leafDigitalSignature: "ifPresent",
+    });
+    expect(v.leaf.curve).toBe("P-256");
+    expect(v.chain.map((c) => c.curve)).toEqual(["P-256", "P-384", "P-384"]);
+    // The pinned Apple root did not issue this chain: the shared verifier refuses it.
+    await expect(
+      verifyChain([...x5c, appleAppAttestRootDer()], {
+        roots: [appleAppAttestRootDer()],
+        at: NOW,
+      }),
+    ).rejects.toThrow(X509Error);
   });
 
   it("is what production verifies against: a generated chain fails without the test root", async () => {
     expect(await attempt({}, { roots: undefined })).toMatchObject({
       ok: false,
       reason: "chain",
-      detail: "unknown_issuer",
+      detail: "untrusted root",
     });
   });
 });
@@ -151,12 +181,12 @@ describe("verifyAppAttestation", () => {
     expect(await attempt({ foreignIssuer: true })).toMatchObject({
       ok: false,
       reason: "chain",
-      detail: "bad_signature",
+      detail: "x509: bad certificate signature",
     });
     expect(await attempt({ leafNotAfterOffset: -60 })).toMatchObject({
       ok: false,
       reason: "chain",
-      detail: "expired",
+      detail: "x509: certificate not valid now",
     });
   });
 

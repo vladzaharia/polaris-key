@@ -95,6 +95,9 @@ switched on by a migration, so its stored state keeps serving while its manifest
   channel; an opt-in, halt-only **auto-halt** on those numbers; and a Sentry alert hook that
   opens halt candidates you confirm. See
   [Update health](/docs/services/distribution/update-health/).
+- **The commerce bridge**: App Store, Google Play and Steam purchases of products you map become
+  licence flags per deliverable, verified with each store and revoked on refund. See
+  [Commerce bridge](/docs/services/distribution/commerce/).
 - **A console section**, shown only while Distribution is on, with an overview of the chain, the
   outlet rollouts and which hook answers for the product, and the
   [distribution matrix](/docs/admin/distribution-matrix/): releases × outlets with pause, resume,

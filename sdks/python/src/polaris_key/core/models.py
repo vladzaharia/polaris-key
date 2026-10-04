@@ -244,7 +244,7 @@ class ManagedEntry:
 
         ``@polaris-key/client-core`` checks that the managed MAP is an object and stops there;
         it never inspects an entry. Coercing here rather than rejecting is what keeps
-        the accept/reject decision byte-identical across the four SDKs. Nothing security-
+        the accept/reject decision byte-identical across the five SDKs. Nothing security-
         relevant reads ``state``/``updated_at``: the gate reads timestamps off the
         envelope, and config resolution treats an unrecognised state as ``default``.
         """

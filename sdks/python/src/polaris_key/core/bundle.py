@@ -13,7 +13,7 @@ for each vector, not merely that something did. That is why refusals are named f
 step rather than the symptom: "the bundle was addressed to another device" (step 2) and
 "the licence document inside it was addressed to another device" (step 4) are different
 failures with different operator remedies, and a verifier that collapsed them would pass a
-weaker test than the one the four SDKs have to agree on.
+weaker test than the one the five SDKs have to agree on.
 
 :func:`inspect_bundle` is the pure verifier — steps 1–4, no store, no I/O.
 :func:`import_bundle` is step 5, the host's atomic cache write. Keeping the write out of
@@ -63,7 +63,7 @@ __all__ = [
 ]
 
 # Which numbered step of §7 refused. Named for the step, not for the symptom, because the
-# corpus asserts the attribution and the four SDKs must agree on it.
+# corpus asserts the attribution and the five SDKs must agree on it.
 #: step 1 — signature, ``typ``, or the 262 144-byte cap.
 BUNDLE_JWS_REJECTED = "bundle-jws-rejected"
 #: step 2 — ``aud``/``deviceId``/import window/vacuous ``docs``.

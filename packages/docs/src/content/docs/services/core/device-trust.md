@@ -90,7 +90,8 @@ PUT /manage/api/products/<slug>/trust-policy
   `gatedDelivery` covers every surface that answers through a licence: Release's release records
   and artifacts (changelog, record and artifact routes) and Distribution's byte routes, appcasts
   and feeds when their access mode is `licensed` or `entitled`, and pack delivery gates.
-  `commerceClaim` is consulted once the commerce bridge lands.
+  `commerceClaim` is consulted by the commerce bridge's claim route
+  (`POST /<product>/distribution/commerce/claim`).
 - `enforce: false` (the default) is **log-only**: a basic device that the policy would refuse
   proceeds, and one `device.trust.would_refuse` audit row per device and operation per hour
   records it. Watch the activity log, then set `enforce: true` to answer

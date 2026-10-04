@@ -12,7 +12,7 @@ import {
   appleAppAttestRoot,
   verifyAppAttestation,
 } from "../src/core/appAttest.js";
-import { verifyChain, verifyEcdsaSignature } from "../src/core/x509.js";
+import { certificateKey, ecdsaDerToRaw } from "../src/core/x509.js";
 import { checkPlayVerdict } from "../src/core/playIntegrity.js";
 import { makeAppAttestation, makeTestChain } from "../test/attestFixtures.js";
 
@@ -24,14 +24,13 @@ describe("attestation on workerd", () => {
     const root = appleAppAttestRoot();
     expect(root.curve).toBe("P-384");
     expect(
-      await verifyEcdsaSignature(
-        root,
-        root.signatureAlgorithm,
-        root.signature,
+      await crypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-384" },
+        await certificateKey(root),
+        ecdsaDerToRaw(root.signature, 48),
         root.tbs,
       ),
     ).toBe(true);
-    expect(await verifyChain([root], [root], NOW)).toEqual({ ok: true });
   });
 
   it("verifies a generated App Attest object and refuses a tampered one", async () => {

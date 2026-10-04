@@ -285,7 +285,7 @@ The bounds, in order:
 - **Unparseable JSON** is `400 bad_request`; an empty body is treated as an empty report.
 - **The key allowlist.** Exactly these survive: `os`, `hardware`, `runtime`, `locale`,
   `timezone`, `probes`, `sdk`, `sdkVersion`, `appVersion`, `platform`, `arch`, `gate`, `config`,
-  `entitlements`, `timestamp`, `engine`, `outlet`, `content`, `updates`, `caps`. Anything else is dropped **silently** — a new
+  `entitlements`, `timestamp`, `engine`, `outlet`, `content`, `updates`, `caps`, `packInstalls`. Anything else is dropped **silently** — a new
   client field that is not added to the list vanishes without an error anywhere.
 - **Engine and outlet.** `engine` is a game engine's build facts (the Godot SDK sends it). Only
   its known fields survive — `id` (such as `godot-4.7`), `version`, `renderer`, `videoAdapter`,
@@ -302,6 +302,13 @@ The bounds, in order:
   against the registry, so a newer SDK's features survive. A non-array `caps` is dropped. The
   SDKs send it with every report, because each report overwrites the last. It is stored on
   `devices.reported_json` only.
+- **Pack installs.** `packInstalls` (P4-17) lists recent content-pack installs: at most 8
+  entries `{pack, from, to, strategy, bytes?, durationMs?, fallbackUsed?, failureStage?}`, where
+  `from` and `to` are payload SHA-256s. A malformed entry is dropped, unknown fields are stripped
+  and `failureStage` is cut to 128 characters. For a product whose operator opted into
+  [lazy deltas](/docs/services/release/packs/#lazy-deltas), each (pack, from, to) is counted once
+  per device as demand; an entry whose strategy is `delta` is not demand. Counting touches D1
+  only and fails open.
 - **Probes.** At most **32** entries. Each must be an object with a boolean `present`; anything
   else is skipped. Probe ids are truncated to 64 characters and the optional `version` string to 64. `probes` is the one open-ended map a client controls, so it carries its own bound on top of
   the body cap: a truncated inventory must not be able to ride in under 16 KiB.

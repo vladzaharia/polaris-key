@@ -1,6 +1,6 @@
 // The trust set: how a verifier decides WHICH key may sign a Polaris Key document. Normative rules
 // in docs/security/WIRE-CONTRACT-V3.md §1; pinned by `conformance/corpus/v2`'s `trustCases`,
-// which the Node/Python/Swift runners all drive through this same shape.
+// which the Node/Python/Swift/Godot runners all drive through this same shape.
 //
 // Two tiers, in strictly decreasing authority:
 //

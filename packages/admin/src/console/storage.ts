@@ -37,8 +37,6 @@ export function stringArray(raw: unknown): string[] | undefined {
 
 /** The storage keys, in one place. */
 export const PREF_KEYS = {
-  /** Collapsed sidebar sections, per signed-in operator. */
-  navCollapsed: (sub: string) => `pk-admin-nav-collapsed:${sub}`,
   /** The sidebar rail (icons only), per viewer. */
   sidebarRail: "pk-admin-sidebar-rail",
   /** The product switcher's recent products. */

@@ -61,6 +61,27 @@ describe("generator drift", () => {
     expect(gd.startsWith("# GENERATED FILE")).toBe(true);
     expect(swift.startsWith("// GENERATED FILE")).toBe(true);
   });
+
+  it("the Godot addon's brand folder is the kit's files, bit-less and never imported", () => {
+    const dir = join(PKG, "../../sdks/godot/addons/polaris_key/brand");
+    expect(readFileSync(join(dir, ".gdignore"), "utf8")).toContain("GENERATED");
+    const copies: [string, string][] = [
+      ["polaris_key-dark.svg", "06-games/key/dark/key-16.svg"],
+      ["powered-by-credit-light.svg", "06-games/powered-by-credit-light.svg"],
+    ];
+    for (const [name, kit] of copies) {
+      const svg = readFileSync(join(dir, name), "utf8");
+      expect(svg.startsWith("<!--\n  GENERATED FILE")).toBe(true);
+      const original = readFileSync(join(PKG, "kit", kit), "utf8").trimEnd();
+      expect(svg.trimEnd().endsWith(original)).toBe(true);
+    }
+    // The default Pinned K has no terminal bit (BRAND.md owner decisions, 2026-10-03).
+    for (const name of ["polaris_key-dark.svg", "polaris_key-light.svg"]) {
+      const svg = readFileSync(join(dir, name), "utf8").toLowerCase();
+      expect(svg).not.toContain("#ffc24d");
+      expect(svg).not.toContain("#d07a00");
+    }
+  });
 });
 
 describe("tokens.css", () => {

@@ -159,8 +159,7 @@ disagree.
   the reach-test token allowlist); the pure verifiers are `core/appAttest.ts` (pinned Apple root),
   `core/playIntegrity.ts`, `core/cbor.ts` and `core/x509.ts`; the policy and the accessor the
   enforcement points call are `core/deviceTrust.ts` (`trustRefusal(env, db, product, device, op,
-now, shape)`). P6-01 had not landed, so `core/x509.ts` was written here: ECDSA P-256/P-384 only,
-  which covers Apple Root CA - G3 chains too.
+now, shape)`). App Attest verifies its chain with P6-01's `core/x509.ts` (one X.509 parser for the Worker; P6-02's interim copy was deleted when P6-01 landed): the `x5c` certificates plus the pinned root, the nonce OID in `policy.understood`, and `leafDigitalSignature: "ifPresent"` (the credential key signs assertions, so a keyUsage that is present must allow it; Apple documents no keyUsage requirement for the credential certificate, so `require` could refuse genuine devices). P6-01's verifier already handled P-384 issuers, so it needed no change.
 - **Play credential and pin.** No new outlet-credential kind or pin: the existing
   `google-service-account` kind with its `packageName` pin (P5-03) is reused, chosen by
   Distribution's own `resolvePlaySetup` through a new optional descriptor-hook method,
@@ -177,9 +176,7 @@ base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`; App Attes
 - **Enforcement points.** Edge-mint (`services/config/mint.ts`, after the per-device budget) and
   gated delivery: `core/entitledAccess.ts`'s `accessRefusal` (the `licensed`/`authenticated` and
   `entitled` modes, after the existing checks pass) and `entitlementFlagRefusal` (the pack gate,
-  after the flag is held). The commerce claim is defined in the policy (`commerceClaim`) but has no
-  call site: P6-01 has not landed and must call `trustRefusal(…, "commerceClaim", …)` from its claim
-  route.
+  after the flag is held). The commerce claim: P6-01's `POST …/distribution/commerce/claim` calls `trustRefusal(…, "commerceClaim", …)` after authentication and its per-licence budget, before any store setup is read.
 - **Not in the brief: resets.** A keyless re-registration or a licence (re)bind of an existing
   device id resets the level to `basic` (`resetDeviceTrust`), because the id is client-chosen and a
   new token minted without the old one is not proof of the attested install. A token rotation keeps
@@ -206,5 +203,4 @@ base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`; App Attes
 true`; the flag is recorded in the verdict summary. The threat model also records that
   `attested` rides on a liftable bearer token and that one handset can attest many client-chosen
   device ids. The operator page and the Godot README say to attest after licence activation, and
-  that a rare 422 from KV propagation is retried. The switch to P6-01's `core/x509.ts` and the
-  commerce-claim call site follow once P6-01 is on main.
+  that a rare 422 from KV propagation is retried. After P6-01 landed: App Attest moved onto P6-01's `core/x509.ts`, the commerce claim got its trust gate, and the migrations sit after P6-01's (0051 lazy deltas, 0052 commerce, 0053_a–e trust).

@@ -5,8 +5,8 @@ if a tool-specific file (`CLAUDE.md`, `.opencode/`, …) disagrees with this one
 Human-facing prose lives in `CONTRIBUTING.md` and on the docs site; this file is the short,
 enforceable version.
 
-Polaris Key is a **contract-first, five-language monorepo**: one Cloudflare Worker plus SDKs for
-Node, Python, Swift and React, all agreeing on a single frozen wire format. Everything below
+Polaris Key is a **contract-first, six-language monorepo**: one Cloudflare Worker plus SDKs for
+Node, React, Python, Swift and Godot, all agreeing on a single frozen wire format. Everything below
 follows from that one fact — **the wire contract is the source of truth, and every language must
 verify it identically.**
 
@@ -165,18 +165,19 @@ envelope (`iss` + `aud` + `deviceId` + `issuedAt` / `expiresAt` / `graceUntil`).
 manifest and the feed are device-less. A release record is signed by a CI-held release key,
 never a product key, and verified only against the keys the app pins. Changing the encoding is
 a deliberate, all-languages event: contract → catalog → corpus → SDKs, in that order, and a
-feature is not done until all five implementations pass.
+feature is not done until all six implementations pass (client-core, Node, React, Python, Swift
+and Godot).
 
 **3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Six families:
 
-| File(s)                                                                                                                                 | Written by                                                                                                                    |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`                                                                                              | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                             |
-| `packages/docs/src/content/docs/reference/*.mdx`                                                                                        | `pnpm --filter @polaris-key/docs gen`                                                                                         |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`                                        | `pnpm gen:services` from `tools/services.json`                                                                                |
-| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`                               | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
-| `actions/publish/dist/index.js`                                                                                                         | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports  |
-| `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift` | `pnpm gen:brand` from `packages/brand/src/tokens/` and the launch-kit copy in `packages/brand/kit/`                           |
+| File(s)                                                                                                                                                                          | Written by                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                                                                                                                                       | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                             |
+| `packages/docs/src/content/docs/reference/*.mdx`                                                                                                                                 | `pnpm --filter @polaris-key/docs gen`                                                                                         |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`                                                                                 | `pnpm gen:services` from `tools/services.json`                                                                                |
+| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`                                                                        | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
+| `actions/publish/dist/index.js`                                                                                                                                                  | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports  |
+| `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*` | `pnpm gen:brand` from `packages/brand/src/tokens/` and the launch-kit copy in `packages/brand/kit/`                           |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service

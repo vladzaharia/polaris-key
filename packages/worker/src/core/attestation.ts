@@ -71,7 +71,6 @@ import {
   decodeBase64Any,
   verifyAppAttestation,
 } from "./appAttest.js";
-import type { X509Certificate } from "./x509.js";
 import { checkPlayVerdict, PLAY_INTEGRITY_SCOPE } from "./playIntegrity.js";
 import { googleAccessToken, type FetchImpl } from "./outletTokens.js";
 import { isRedirect, readCappedText } from "./readCapped.js";
@@ -92,7 +91,7 @@ export const ATTEST_LIMITS = {
 export interface AttestDeps {
   fetchImpl?: FetchImpl;
   /** Trust anchors for App Attest instead of the pinned Apple root. */
-  appAttestRoots?: readonly X509Certificate[];
+  appAttestRoots?: readonly Uint8Array[];
 }
 
 interface ChallengeRecord {

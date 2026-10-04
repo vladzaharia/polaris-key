@@ -1,497 +1,558 @@
+/// <reference types="@cloudflare/workers-types" />
+
 /**
- * A small X.509 reader and chain verifier over WebCrypto (P6-02; shared with P6-01's App Store
- * receipts, which `wp/P6-01-*.md` says reuse this module).
+ * A small X.509 chain verifier for workerd (P6-01; P6-02 reuses it for App Attest).
  *
- * The Worker verifies exactly one kind of chain today — an Apple-issued `x5c` chain ending at a
- * PINNED Apple root — and this module is sized for that job, not for the web PKI:
+ * There is no Workers-native App Store Server Library (notes/E1 §F1), and workerd forbids runtime
+ * code generation, so this is a plain interpreter over DER with WebCrypto doing every signature
+ * check. It verifies exactly what a pinned-root chain needs and nothing more:
  *
- *   - DER only (an indefinite length, a high tag number or a long length over 4 bytes is refused);
- *   - ECDSA only: `id-ecPublicKey` keys on P-256 or P-384, signatures `ecdsa-with-SHA256` or
- *     `ecdsa-with-SHA384` (Apple's App Attestation Root CA and Apple Root CA - G3 are both P-384;
- *     their leaves are P-256). An RSA chain is refused, not mis-verified;
- *   - trust comes ONLY from the anchors the caller passes. There is no system store, no AIA
- *     fetching, no revocation (Apple's App Attest and App Store chains carry no CRL distribution
- *     point the Worker could act on — THREAT-MODEL.md records that), and no name constraints;
- *   - every certificate's validity window is checked against the caller's `now`; every issuer
- *     (intermediate or anchor) must assert `cA` in its basic constraints; an unrecognised
- *     CRITICAL extension fails the chain (RFC 5280 §4.2), so a certificate is never accepted for
- *     a purpose it restricts in a way this reader cannot see.
+ *   - **DER only, strictly.** Definite lengths, minimal length encodings, no trailing bytes at any
+ *     level we read; the optional TBS fields at most once and in order, exactly one SEQUENCE in
+ *     `[3]`, no element after an Extension's extnValue; BOOLEANs one byte (0x00/0xff) and DEFAULT
+ *     FALSE never encoded (an Extension's `critical`, basicConstraints' `cA`); every time field in
+ *     range. A malformed certificate is a refusal, never a best effort.
+ *   - **The root is pinned by bytes.** The last certificate of the chain must be byte-identical to
+ *     one of the caller's roots; a self-signed look-alike with the same name is just another
+ *     certificate. Roots are passed in by the caller (Apple Root CA - G3 for the App Store), never
+ *     read from the chain.
+ *   - **Each link** — certificate `i`'s issuer name equals certificate `i+1`'s subject name (raw
+ *     DER), `i+1` is a CA (basicConstraints `cA`, its `pathLenConstraint` respected, `keyCertSign`
+ *     when keyUsage is present), and `i`'s signature verifies under `i+1`'s key with the algorithm
+ *     `i` names (inner and outer algorithm identifiers must agree).
+ *   - **Validity** — every certificate is within `notBefore`…`notAfter` at the instant given.
+ *   - **Critical extensions** — any critical extension other than basicConstraints and keyUsage
+ *     refuses the chain (RFC 5280 §4.2), unless the caller lists it as understood.
+ *   - **Required OIDs** — the caller may require extension OIDs on the leaf and on the
+ *     intermediates (Apple's App Store receipt-signing marker `1.2.840.113635.100.6.11.1` on the
+ *     leaf and the WWDR marker `1.2.840.113635.100.6.2.1` on the intermediate).
  *
- * Pure apart from `crypto.subtle`, so the same code runs in the Node lane and in workerd
- * (`test-workerd/attest.test.ts`), which forbids runtime code generation — no dependency here
- * evaluates code.
+ * API (P6-02 reuses it): `parseCertificate` (every field above, keyUsage's `keyCertSign` and
+ * `digitalSignature`, all extensions by OID), `getExtension(cert, oid)`, and `verifyChain(chain,
+ * policy)` answering the leaf, its key and the whole parsed chain — `policy.understood` lists the
+ * caller's known critical extension OIDs, `policy.leafDigitalSignature` the leaf's signing use.
+ *
+ * Algorithms: ECDSA on P-256 and P-384 with SHA-256 or SHA-384 — what Apple's App Store and App
+ * Attest chains use. RSA is not supported (no caller needs it); a certificate using it refuses.
+ * No revocation check is made (Apple's library makes OCSP optional too); a revoked Apple
+ * intermediate is an Apple-side emergency handled by re-pinning (THREAT-MODEL.md, the commerce
+ * section).
  */
 
-// ── DER ───────────────────────────────────────────────────────────────────────────────────────
+// ── DER ──────────────────────────────────────────────────────────────────────────────────────
+
+/** One DER TLV. `der` is the whole element (tag, length and value); `value` the contents. */
+export interface DerNode {
+  tag: number;
+  der: Uint8Array;
+  value: Uint8Array;
+}
 
 export class X509Error extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(readonly reason: string) {
+    super(`x509: ${reason}`);
     this.name = "X509Error";
   }
 }
 
-/** One DER TLV: its tag byte, where its content sits, and its full encoding. */
-export interface DerNode {
-  /** The identifier octet (class, constructed bit and low tag number). */
-  tag: number;
-  /** The content octets. */
-  value: Uint8Array;
-  /** The whole TLV, header included — what a signature covers. */
-  raw: Uint8Array;
-}
+const fail = (reason: string): never => {
+  throw new X509Error(reason);
+};
 
-const MAX_DER = 64 * 1024;
-
-/** Read one TLV at `offset`; returns the node and the offset after it. */
-export function readDer(
-  buf: Uint8Array,
-  offset = 0,
-): { node: DerNode; next: number } {
-  if (buf.length > MAX_DER) throw new X509Error("DER input too large");
-  if (offset + 2 > buf.length) throw new X509Error("truncated DER");
+/** Read the TLV starting at `offset`. Multi-byte tags and indefinite lengths are refused. */
+export function readDer(buf: Uint8Array, offset = 0): DerNode {
+  if (offset + 2 > buf.length) fail("truncated");
   const tag = buf[offset]!;
-  if ((tag & 0x1f) === 0x1f)
-    throw new X509Error("high tag numbers unsupported");
-  let pos = offset + 1;
-  const first = buf[pos++]!;
-  let len: number;
-  if (first < 0x80) len = first;
-  else {
-    const n = first & 0x7f;
-    if (n === 0) throw new X509Error("indefinite length");
-    if (n > 4) throw new X509Error("length too long");
-    if (pos + n > buf.length) throw new X509Error("truncated DER length");
+  if ((tag & 0x1f) === 0x1f) fail("multi-byte tag");
+  let len = buf[offset + 1]!;
+  let header = 2;
+  if (len & 0x80) {
+    const n = len & 0x7f;
+    if (n === 0 || n > 4) fail("bad length");
+    if (offset + 2 + n > buf.length) fail("truncated");
     len = 0;
-    for (let i = 0; i < n; i++) len = len * 256 + buf[pos++]!;
-    // DER: the shortest form. A long form for a length under 128, or a leading zero, is BER.
-    if (len < 0x80 || buf[pos - n] === 0)
-      throw new X509Error("non-minimal DER length");
+    for (let i = 0; i < n; i++) len = len * 256 + buf[offset + 2 + i]!;
+    // Minimal encoding: the long form only for >= 128, and no leading zero byte.
+    if (len < 0x80 || buf[offset + 2] === 0) fail("non-minimal length");
+    header = 2 + n;
   }
-  if (pos + len > buf.length) throw new X509Error("truncated DER value");
+  const end = offset + header + len;
+  if (end > buf.length) fail("truncated");
   return {
-    node: {
-      tag,
-      value: buf.subarray(pos, pos + len),
-      raw: buf.subarray(offset, pos + len),
-    },
-    next: pos + len,
+    tag,
+    der: buf.subarray(offset, end),
+    value: buf.subarray(offset + header, end),
   };
 }
 
-/** Parse exactly one TLV spanning all of `buf`. */
-export function parseDer(buf: Uint8Array): DerNode {
-  const { node, next } = readDer(buf, 0);
-  if (next !== buf.length) throw new X509Error("trailing bytes after DER");
+/** The whole buffer as exactly one TLV. */
+export function readDerExact(buf: Uint8Array): DerNode {
+  const node = readDer(buf, 0);
+  if (node.der.length !== buf.length) fail("trailing bytes");
   return node;
 }
 
-/** The children of a constructed node. */
+/** The elements of a constructed node, which must consume its value exactly. */
 export function derChildren(node: DerNode): DerNode[] {
-  if ((node.tag & 0x20) === 0) throw new X509Error("not a constructed node");
+  if (!(node.tag & 0x20)) fail("not constructed");
   const out: DerNode[] = [];
-  let pos = 0;
-  while (pos < node.value.length) {
-    const { node: child, next } = readDer(node.value, pos);
+  let at = 0;
+  while (at < node.value.length) {
+    const child = readDer(node.value, at);
     out.push(child);
-    pos = next;
+    at += child.der.length;
   }
   return out;
 }
 
-const TAG = {
-  BOOLEAN: 0x01,
-  INTEGER: 0x02,
-  BIT_STRING: 0x03,
-  OCTET_STRING: 0x04,
-  OID: 0x06,
-  UTC_TIME: 0x17,
-  GENERALIZED_TIME: 0x18,
-  SEQUENCE: 0x30,
-} as const;
+const TAG_BOOLEAN = 0x01;
+const TAG_INTEGER = 0x02;
+const TAG_BIT_STRING = 0x03;
+const TAG_OCTET_STRING = 0x04;
+const TAG_OID = 0x06;
+const TAG_UTC_TIME = 0x17;
+const TAG_GENERALIZED_TIME = 0x18;
+const TAG_SEQUENCE = 0x30;
 
-function expectTag(
-  node: DerNode | undefined,
-  tag: number,
-  what: string,
-): DerNode {
-  if (!node || node.tag !== tag) throw new X509Error(`expected ${what}`);
-  return node;
+/** A DER BOOLEAN: exactly one byte, 0x00 or 0xff. */
+function derBoolean(node: DerNode): boolean {
+  if (node.tag !== TAG_BOOLEAN || node.value.length !== 1) fail("bad boolean");
+  const v = node.value[0];
+  if (v !== 0x00 && v !== 0xff) fail("bad boolean");
+  return v === 0xff;
 }
 
-/** A DER OBJECT IDENTIFIER's content as dotted decimal. */
+function expect(node: DerNode | undefined, tag: number, what: string): DerNode {
+  if (!node || node.tag !== tag) fail(`expected ${what}`);
+  return node!;
+}
+
+/** Dotted-decimal OID from its DER contents. */
 export function decodeOid(value: Uint8Array): string {
-  if (value.length === 0) throw new X509Error("empty OID");
+  if (value.length === 0) fail("empty oid");
   const parts: number[] = [];
   let acc = 0;
   for (let i = 0; i < value.length; i++) {
     const b = value[i]!;
-    if (acc === 0 && b === 0x80) throw new X509Error("non-minimal OID");
+    if (acc === 0 && b === 0x80) fail("non-minimal oid");
     acc = acc * 128 + (b & 0x7f);
-    if (acc > Number.MAX_SAFE_INTEGER) throw new X509Error("OID arc too large");
-    if ((b & 0x80) === 0) {
+    if (acc > Number.MAX_SAFE_INTEGER / 128) fail("oid arc too large");
+    if (!(b & 0x80)) {
       parts.push(acc);
       acc = 0;
-    } else if (i === value.length - 1) throw new X509Error("truncated OID");
+    }
   }
-  const first = parts[0]!;
+  if (value[value.length - 1]! & 0x80) fail("truncated oid");
+  const first = parts.shift()!;
   const head =
     first < 40 ? [0, first] : first < 80 ? [1, first - 40] : [2, first - 80];
-  return [...head, ...parts.slice(1)].join(".");
+  return [...head, ...parts].join(".");
 }
 
-/** The content of a BIT STRING with no unused bits (keys and signatures always are). */
-function bitStringBytes(node: DerNode): Uint8Array {
-  expectTag(node, TAG.BIT_STRING, "BIT STRING");
-  if (node.value.length < 1 || node.value[0] !== 0)
-    throw new X509Error("BIT STRING with unused bits");
-  return node.value.subarray(1);
+/** A BIT STRING's bytes; only whole-byte strings (no unused bits) are accepted where a key or a
+ *  signature is expected. */
+function bitStringBytes(
+  node: DerNode,
+  allowUnused = false,
+): { bytes: Uint8Array; unused: number } {
+  if (node.tag !== TAG_BIT_STRING || node.value.length === 0)
+    fail("expected bit string");
+  const unused = node.value[0]!;
+  if (unused > 7 || (!allowUnused && unused !== 0))
+    fail("bit string with unused bits");
+  return { bytes: node.value.subarray(1), unused };
 }
 
 function parseTime(node: DerNode): number {
   const s = new TextDecoder().decode(node.value);
   let m: RegExpMatchArray | null;
   let year: number;
-  if (node.tag === TAG.UTC_TIME) {
+  if (node.tag === TAG_UTC_TIME) {
     m = s.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/);
-    if (!m) throw new X509Error("bad UTCTime");
+    if (!m) return fail("bad UTCTime");
     const yy = Number(m[1]);
-    // RFC 5280 §4.1.2.5.1: YY >= 50 is 19YY, else 20YY.
     year = yy >= 50 ? 1900 + yy : 2000 + yy;
-  } else if (node.tag === TAG.GENERALIZED_TIME) {
+  } else if (node.tag === TAG_GENERALIZED_TIME) {
     m = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/);
-    if (!m) throw new X509Error("bad GeneralizedTime");
+    if (!m) return fail("bad GeneralizedTime");
     year = Number(m[1]);
-  } else throw new X509Error("expected a time");
-  const ms = Date.UTC(
-    year,
-    Number(m[2]) - 1,
-    Number(m[3]),
-    Number(m[4]),
-    Number(m[5]),
-    Number(m[6]),
-  );
+  } else return fail("expected time");
+  const [month, day, hour, minute, second] = [2, 3, 4, 5, 6].map((k) =>
+    Number(m![k]),
+  ) as [number, number, number, number, number];
+  // Every field in range: Date.UTC would silently roll month 13 or second 60 into the next unit.
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  )
+    fail("time out of range");
+  const ms = Date.UTC(year, month - 1, day, hour, minute, second);
+  if (!Number.isFinite(ms)) fail("bad time");
   return Math.floor(ms / 1000);
 }
 
-// ── certificates ──────────────────────────────────────────────────────────────────────────────
+// ── Certificates ─────────────────────────────────────────────────────────────────────────────
 
 export const OID = {
-  EC_PUBLIC_KEY: "1.2.840.10045.2.1",
-  P256: "1.2.840.10045.3.1.7",
-  P384: "1.3.132.0.34",
-  ECDSA_SHA256: "1.2.840.10045.4.3.2",
-  ECDSA_SHA384: "1.2.840.10045.4.3.3",
-  BASIC_CONSTRAINTS: "2.5.29.19",
-  KEY_USAGE: "2.5.29.15",
-  EXT_KEY_USAGE: "2.5.29.37",
+  ecPublicKey: "1.2.840.10045.2.1",
+  p256: "1.2.840.10045.3.1.7",
+  p384: "1.3.132.0.34",
+  ecdsaSha256: "1.2.840.10045.4.3.2",
+  ecdsaSha384: "1.2.840.10045.4.3.3",
+  basicConstraints: "2.5.29.19",
+  keyUsage: "2.5.29.15",
 } as const;
 
 export interface X509Extension {
   critical: boolean;
-  /** The extension's `extnValue` content (itself DER). */
+  /** The extnValue OCTET STRING's contents. */
   value: Uint8Array;
 }
 
 export interface X509Certificate {
-  /** The whole certificate, DER. */
-  raw: Uint8Array;
-  /** The `tbsCertificate`, DER — what the issuer signed. */
+  der: Uint8Array;
   tbs: Uint8Array;
-  /** The issuer and subject Names, DER, compared byte for byte when chaining. */
+  /** The outer signature algorithm OID. */
+  signatureAlgorithm: string;
+  /** The DER ECDSA-Sig-Value from the signature BIT STRING. */
+  signature: Uint8Array;
   issuer: Uint8Array;
   subject: Uint8Array;
   notBefore: number;
   notAfter: number;
-  /** The signature algorithm OID (outer, equal to the inner one by construction). */
-  signatureAlgorithm: string;
-  /** The ECDSA-Sig-Value, DER. */
-  signature: Uint8Array;
-  /** The SubjectPublicKeyInfo, DER — WebCrypto imports it as `spki`. */
+  /** The whole SubjectPublicKeyInfo, as WebCrypto imports it. */
   spki: Uint8Array;
-  /** `P-256` or `P-384`. */
   curve: "P-256" | "P-384";
-  /** The public key as an uncompressed SEC1 point (`04 ‖ X ‖ Y`). */
-  publicKey: Uint8Array;
-  /** Extensions by OID. */
   extensions: Map<string, X509Extension>;
-  /** `cA` from basic constraints (false when absent). */
-  isCa: boolean;
+  /** basicConstraints: `ca` and `pathLen` (null = unlimited / absent). */
+  ca: boolean;
+  pathLen: number | null;
+  /** keyUsage bit 5 (keyCertSign); `null` when the extension is absent. */
+  keyCertSign: boolean | null;
+  /** keyUsage bit 0 (digitalSignature); `null` when the extension is absent. */
+  digitalSignature: boolean | null;
 }
 
-const MAX_CERT = 16 * 1024;
+function algorithmOid(node: DerNode): string {
+  const parts = derChildren(expect(node, TAG_SEQUENCE, "algorithm"));
+  const oid = decodeOid(expect(parts[0], TAG_OID, "algorithm oid").value);
+  // ECDSA identifiers carry no parameters (RFC 5758 §3.2).
+  if (
+    (oid === OID.ecdsaSha256 || oid === OID.ecdsaSha384) &&
+    parts.length !== 1
+  )
+    fail("ecdsa algorithm with parameters");
+  return oid;
+}
 
-/** Parse one DER certificate. Throws `X509Error` on anything outside the supported subset. */
+/** Parse one DER certificate. Throws `X509Error` on anything it does not accept. */
 export function parseCertificate(der: Uint8Array): X509Certificate {
-  if (der.length > MAX_CERT) throw new X509Error("certificate too large");
-  const cert = expectTag(parseDer(der), TAG.SEQUENCE, "Certificate");
-  const [tbsNode, sigAlgNode, sigNode, ...rest] = derChildren(cert);
-  if (rest.length) throw new X509Error("extra Certificate fields");
-  const tbs = expectTag(tbsNode, TAG.SEQUENCE, "TBSCertificate");
-  const outerAlg = algorithmOid(
-    expectTag(sigAlgNode, TAG.SEQUENCE, "AlgorithmIdentifier"),
+  const cert = derChildren(
+    expect(readDerExact(der), TAG_SEQUENCE, "certificate"),
   );
-  const signature = bitStringBytes(
-    expectTag(sigNode, TAG.BIT_STRING, "signature"),
-  );
+  if (cert.length !== 3) fail("certificate shape");
+  const tbsNode = expect(cert[0], TAG_SEQUENCE, "tbsCertificate");
+  const signatureAlgorithm = algorithmOid(cert[1]!);
+  const signature = bitStringBytes(cert[2]!).bytes;
 
-  const f = derChildren(tbs);
+  const tbs = derChildren(tbsNode);
   let i = 0;
-  // version [0] EXPLICIT — v3 is required: everything below relies on extensions.
-  const versionNode = f[i];
-  if (!versionNode || versionNode.tag !== 0xa0)
-    throw new X509Error("not a v3 certificate");
-  const version = expectTag(
-    derChildren(versionNode)[0],
-    TAG.INTEGER,
-    "version",
-  );
+  // [0] EXPLICIT Version — v3 is required (extensions carry everything we check).
+  const versionNode = tbs[i];
+  if (!versionNode || versionNode.tag !== 0xa0) fail("not a v3 certificate");
+  const versionParts = derChildren(versionNode!);
+  if (versionParts.length !== 1) fail("version wrapper shape");
+  const version = expect(versionParts[0], TAG_INTEGER, "version");
   if (version.value.length !== 1 || version.value[0] !== 2)
-    throw new X509Error("not a v3 certificate");
+    fail("not a v3 certificate");
   i++;
-  expectTag(f[i++], TAG.INTEGER, "serialNumber");
-  const innerAlg = algorithmOid(expectTag(f[i++], TAG.SEQUENCE, "signature"));
-  if (innerAlg !== outerAlg)
-    throw new X509Error("signature algorithm mismatch");
-  const issuer = expectTag(f[i++], TAG.SEQUENCE, "issuer");
-  const validity = derChildren(expectTag(f[i++], TAG.SEQUENCE, "validity"));
-  if (validity.length !== 2) throw new X509Error("bad validity");
-  const subject = expectTag(f[i++], TAG.SEQUENCE, "subject");
-  const spkiNode = expectTag(f[i++], TAG.SEQUENCE, "subjectPublicKeyInfo");
-  const [spkiAlg, spkiKey, ...spkiRest] = derChildren(spkiNode);
-  if (spkiRest.length) throw new X509Error("bad subjectPublicKeyInfo");
-  const algParts = derChildren(
-    expectTag(spkiAlg, TAG.SEQUENCE, "key algorithm"),
+  expect(tbs[i++], TAG_INTEGER, "serial");
+  const innerAlg = algorithmOid(tbs[i++]!);
+  if (innerAlg !== signatureAlgorithm) fail("signature algorithm mismatch");
+  const issuer = expect(tbs[i++], TAG_SEQUENCE, "issuer").der;
+  const validity = derChildren(expect(tbs[i++], TAG_SEQUENCE, "validity"));
+  if (validity.length !== 2) fail("validity shape");
+  const notBefore = parseTime(validity[0]!);
+  const notAfter = parseTime(validity[1]!);
+  const subject = expect(tbs[i++], TAG_SEQUENCE, "subject").der;
+  const spkiNode = expect(tbs[i++], TAG_SEQUENCE, "subjectPublicKeyInfo");
+  const spkiParts = derChildren(spkiNode);
+  if (spkiParts.length !== 2) fail("spki shape");
+  const keyAlg = derChildren(
+    expect(spkiParts[0], TAG_SEQUENCE, "key algorithm"),
   );
   if (
-    decodeOid(expectTag(algParts[0], TAG.OID, "key OID").value) !==
-    OID.EC_PUBLIC_KEY
+    decodeOid(expect(keyAlg[0], TAG_OID, "key oid").value) !== OID.ecPublicKey
   )
-    throw new X509Error("not an EC public key");
-  const curveOid = decodeOid(
-    expectTag(algParts[1], TAG.OID, "curve OID").value,
-  );
+    fail("unsupported key type");
+  const curveOid = decodeOid(expect(keyAlg[1], TAG_OID, "curve").value);
   const curve =
-    curveOid === OID.P256 ? "P-256" : curveOid === OID.P384 ? "P-384" : null;
-  if (!curve) throw new X509Error("unsupported curve");
-  const publicKey = bitStringBytes(
-    expectTag(spkiKey, TAG.BIT_STRING, "public key"),
-  );
-  const coord = curve === "P-256" ? 32 : 48;
-  if (publicKey.length !== 1 + 2 * coord || publicKey[0] !== 0x04)
-    throw new X509Error("public key is not an uncompressed point");
+    curveOid === OID.p256
+      ? "P-256"
+      : curveOid === OID.p384
+        ? "P-384"
+        : fail("unsupported curve");
+  bitStringBytes(spkiParts[1]!);
 
   const extensions = new Map<string, X509Extension>();
-  for (; i < f.length; i++) {
-    const n = f[i]!;
-    if (n.tag === 0x81 || n.tag === 0x82) continue; // issuer/subject unique ids
-    if (n.tag !== 0xa3) throw new X509Error("unexpected TBSCertificate field");
-    const list = expectTag(derChildren(n)[0], TAG.SEQUENCE, "Extensions");
-    for (const ext of derChildren(list)) {
-      const parts = derChildren(expectTag(ext, TAG.SEQUENCE, "Extension"));
-      const oid = decodeOid(expectTag(parts[0], TAG.OID, "extnID").value);
+  // The optional trailing fields, each at most once and in order: [1] issuerUniqueID, [2]
+  // subjectUniqueID, [3] extensions (EXPLICIT, exactly one SEQUENCE inside). Anything else, a
+  // repeat or a field out of order refuses the certificate.
+  const order = [0x81, 0x82, 0xa3];
+  let last = -1;
+  for (; i < tbs.length; i++) {
+    const node = tbs[i]!;
+    const at = order.indexOf(node.tag);
+    if (at < 0) fail("unexpected tbs field");
+    if (at <= last) fail("repeated or misordered tbs field");
+    last = at;
+    if (node.tag !== 0xa3) continue; // issuer/subject unique ids
+    const wrapped = derChildren(node);
+    if (wrapped.length !== 1) fail("extensions wrapper shape");
+    const list = derChildren(expect(wrapped[0], TAG_SEQUENCE, "extensions"));
+    if (list.length === 0) fail("empty extensions");
+    for (const ext of list) {
+      const parts = derChildren(expect(ext, TAG_SEQUENCE, "extension"));
+      const oid = decodeOid(expect(parts[0], TAG_OID, "extension oid").value);
       let critical = false;
-      let valueNode = parts[1];
-      if (valueNode?.tag === TAG.BOOLEAN) {
-        critical = valueNode.value.length === 1 && valueNode.value[0] !== 0;
-        valueNode = parts[2];
+      let k = 1;
+      if (parts[k]?.tag === TAG_BOOLEAN) {
+        critical = derBoolean(parts[k]!);
+        // DER: DEFAULT FALSE is never encoded.
+        if (!critical) fail("encoded default");
+        k++;
       }
-      const value = expectTag(valueNode, TAG.OCTET_STRING, "extnValue").value;
-      if (extensions.has(oid)) throw new X509Error("duplicate extension");
+      const value = expect(parts[k], TAG_OCTET_STRING, "extnValue").value;
+      if (k + 1 !== parts.length) fail("trailing extension element");
+      if (extensions.has(oid)) fail("duplicate extension");
       extensions.set(oid, { critical, value });
     }
   }
 
-  let isCa = false;
-  const bc = extensions.get(OID.BASIC_CONSTRAINTS);
+  let ca = false;
+  let pathLen: number | null = null;
+  const bc = extensions.get(OID.basicConstraints);
   if (bc) {
-    const seq = derChildren(
-      expectTag(parseDer(bc.value), TAG.SEQUENCE, "BasicConstraints"),
+    const parts = derChildren(
+      expect(readDerExact(bc.value), TAG_SEQUENCE, "basicConstraints"),
     );
-    const first = seq[0];
-    isCa =
-      first?.tag === TAG.BOOLEAN &&
-      first.value.length === 1 &&
-      first.value[0] !== 0;
+    let j = 0;
+    if (parts[j]?.tag === TAG_BOOLEAN) {
+      ca = derBoolean(parts[j]!);
+      // DER: cA DEFAULT FALSE is never encoded.
+      if (!ca) fail("encoded default");
+      j++;
+    }
+    if (parts[j]?.tag === TAG_INTEGER) {
+      const v = parts[j]!.value;
+      if (v.length !== 1 || v[0]! > 0x7f) fail("bad pathLen");
+      pathLen = v[0]!;
+      j++;
+    }
+    if (j !== parts.length) fail("basicConstraints shape");
+  }
+  let keyCertSign: boolean | null = null;
+  let digitalSignature: boolean | null = null;
+  const ku = extensions.get(OID.keyUsage);
+  if (ku) {
+    const { bytes } = bitStringBytes(readDerExact(ku.value), true);
+    keyCertSign = bytes.length > 0 && (bytes[0]! & 0x04) !== 0;
+    digitalSignature = bytes.length > 0 && (bytes[0]! & 0x80) !== 0;
   }
 
-  if (outerAlg !== OID.ECDSA_SHA256 && outerAlg !== OID.ECDSA_SHA384)
-    throw new X509Error("unsupported signature algorithm");
-
   return {
-    raw: der,
-    tbs: tbs.raw,
-    issuer: issuer.raw,
-    subject: subject.raw,
-    notBefore: parseTime(validity[0]!),
-    notAfter: parseTime(validity[1]!),
-    signatureAlgorithm: outerAlg,
+    der,
+    tbs: tbsNode.der,
+    signatureAlgorithm,
     signature,
-    spki: spkiNode.raw,
+    issuer,
+    subject,
+    notBefore,
+    notAfter,
+    spki: spkiNode.der,
     curve,
-    publicKey,
     extensions,
-    isCa,
+    ca,
+    pathLen,
+    keyCertSign,
+    digitalSignature,
   };
 }
 
-function algorithmOid(node: DerNode): string {
-  return decodeOid(
-    expectTag(derChildren(node)[0], TAG.OID, "algorithm OID").value,
-  );
-}
+// ── Signatures ───────────────────────────────────────────────────────────────────────────────
 
-/** Decode a PEM `CERTIFICATE` block to DER. */
-export function pemToDer(pem: string): Uint8Array {
-  const body = pem
-    .replace(/-----BEGIN CERTIFICATE-----/, "")
-    .replace(/-----END CERTIFICATE-----/, "")
-    .replace(/\s+/g, "");
-  const bin = atob(body);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-// ── signatures ────────────────────────────────────────────────────────────────────────────────
-
-/** An ECDSA-Sig-Value (DER SEQUENCE of r, s) as the fixed-width `r ‖ s` WebCrypto verifies. */
-export function ecdsaDerToRaw(sig: Uint8Array, coord: number): Uint8Array {
+/** A DER ECDSA-Sig-Value as the raw `r || s` WebCrypto verifies, each half `size` bytes. */
+export function ecdsaDerToRaw(der: Uint8Array, size: number): Uint8Array {
   const parts = derChildren(
-    expectTag(parseDer(sig), TAG.SEQUENCE, "ECDSA-Sig-Value"),
+    expect(readDerExact(der), TAG_SEQUENCE, "ecdsa signature"),
   );
-  if (parts.length !== 2) throw new X509Error("bad ECDSA signature");
-  const out = new Uint8Array(coord * 2);
+  if (parts.length !== 2) fail("ecdsa signature shape");
+  const out = new Uint8Array(size * 2);
   parts.forEach((p, k) => {
-    let v = expectTag(p, TAG.INTEGER, "ECDSA integer").value;
-    // A positive INTEGER may carry one leading zero; anything longer than the field is invalid.
-    while (v.length > coord && v[0] === 0) v = v.subarray(1);
-    if (v.length > coord || v.length === 0)
-      throw new X509Error("bad ECDSA integer");
-    out.set(v, k * coord + (coord - v.length));
+    let v = expect(p, TAG_INTEGER, "ecdsa integer").value;
+    if (v.length === 0 || v[0]! & 0x80) fail("negative ecdsa integer");
+    if (v.length > 1 && v[0] === 0 && !(v[1]! & 0x80))
+      fail("non-minimal ecdsa integer");
+    if (v[0] === 0) v = v.subarray(1);
+    if (v.length > size) fail("ecdsa integer too large");
+    out.set(v, k * size + (size - v.length));
   });
   return out;
 }
 
-/** Verify `signature` (DER ECDSA) over `data` with `signer`'s key and `algorithm`'s hash. */
-export async function verifyEcdsaSignature(
-  signer: X509Certificate,
-  algorithm: string,
-  signature: Uint8Array,
-  data: Uint8Array,
+const toBuffer = (b: Uint8Array): ArrayBuffer =>
+  b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+
+/** The certificate's public key as a WebCrypto ECDSA verify key. */
+export function certificateKey(cert: X509Certificate): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "spki",
+    toBuffer(cert.spki),
+    { name: "ECDSA", namedCurve: cert.curve },
+    false,
+    ["verify"],
+  );
+}
+
+async function signedBy(
+  child: X509Certificate,
+  issuer: X509Certificate,
 ): Promise<boolean> {
   const hash =
-    algorithm === OID.ECDSA_SHA256
+    child.signatureAlgorithm === OID.ecdsaSha256
       ? "SHA-256"
-      : algorithm === OID.ECDSA_SHA384
+      : child.signatureAlgorithm === OID.ecdsaSha384
         ? "SHA-384"
-        : null;
-  if (!hash) return false;
-  try {
-    const key = await crypto.subtle.importKey(
-      "spki",
-      signer.spki,
-      { name: "ECDSA", namedCurve: signer.curve },
-      false,
-      ["verify"],
-    );
-    return await crypto.subtle.verify(
-      { name: "ECDSA", hash },
-      key,
-      ecdsaDerToRaw(signature, signer.curve === "P-256" ? 32 : 48),
-      data,
-    );
-  } catch {
-    return false;
-  }
+        : fail("unsupported signature algorithm");
+  const raw = ecdsaDerToRaw(
+    child.signature,
+    issuer.curve === "P-256" ? 32 : 48,
+  );
+  return crypto.subtle.verify(
+    { name: "ECDSA", hash },
+    await certificateKey(issuer),
+    toBuffer(raw),
+    toBuffer(child.tbs),
+  );
 }
 
-// ── chains ────────────────────────────────────────────────────────────────────────────────────
+// ── Chains ───────────────────────────────────────────────────────────────────────────────────
 
-export type ChainFailure =
-  | "empty"
-  | "too_long"
-  | "expired"
-  | "not_yet_valid"
-  | "unknown_issuer"
-  | "issuer_not_ca"
-  | "bad_signature"
-  | "critical_extension";
+const equalBytes = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && a.every((v, k) => v === b[k]);
 
-export type ChainResult = { ok: true } | { ok: false; reason: ChainFailure };
-
-const MAX_CHAIN = 4;
-
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let d = 0;
-  for (let i = 0; i < a.length; i++) d |= a[i]! ^ b[i]!;
-  return d === 0;
+export interface ChainPolicy {
+  /** DER of every trusted root. The chain's last certificate must equal one byte for byte. */
+  roots: readonly Uint8Array[];
+  /** Epoch seconds every certificate must be valid at. */
+  at: number;
+  /** Extension OIDs the leaf must carry. */
+  leafOids?: readonly string[];
+  /** Extension OIDs every intermediate (between leaf and root) must carry. */
+  intermediateOids?: readonly string[];
+  /** Exact chain length (Apple: 3). */
+  length?: number;
+  /** Critical extension OIDs the caller understands beyond basicConstraints and keyUsage (any
+   *  other critical extension refuses the chain). */
+  understood?: readonly string[];
+  /**
+   * The leaf signs (a JWS, an attestation): when `"require"`, its keyUsage must be present and
+   * include digitalSignature; when `"ifPresent"`, a keyUsage that is present must include it.
+   * Absent = not checked.
+   */
+  leafDigitalSignature?: "require" | "ifPresent";
 }
 
-function timeOk(c: X509Certificate, now: number): ChainResult {
-  if (now < c.notBefore) return { ok: false, reason: "not_yet_valid" };
-  if (now > c.notAfter) return { ok: false, reason: "expired" };
-  return { ok: true };
+/** One extension's DER value (the extnValue contents) and criticality, or `null`. */
+export function getExtension(
+  cert: X509Certificate,
+  oid: string,
+): X509Extension | null {
+  return cert.extensions.get(oid) ?? null;
 }
 
 /**
- * Verify `chain` (leaf first, each element issued by the next) up to one of `anchors`.
- *
- * The chain may end with a copy of the anchor itself or stop below it. Each certificate must be
- * within its validity window at `now`; each issuer must be a CA; each signature must verify under
- * its issuer's key; and a certificate carrying a critical extension outside `knownCritical` (plus
- * basic constraints, key usage and extended key usage, which every Apple certificate marks
- * critical) fails. Extended key usage values are NOT interpreted — a caller that needs a purpose
- * checks the leaf's own extensions.
+ * Verify `chain` (leaf first, root last, DER each) under `policy`. Answers the parsed leaf and
+ * its public key; throws `X509Error` with the first failing check's reason.
  */
 export async function verifyChain(
-  chain: readonly X509Certificate[],
-  anchors: readonly X509Certificate[],
-  now: number,
-  knownCritical: readonly string[] = [],
-): Promise<ChainResult> {
-  if (chain.length === 0) return { ok: false, reason: "empty" };
-  if (chain.length > MAX_CHAIN) return { ok: false, reason: "too_long" };
-  const allowed = new Set<string>([
-    OID.BASIC_CONSTRAINTS,
-    OID.KEY_USAGE,
-    OID.EXT_KEY_USAGE,
-    ...knownCritical,
+  chain: readonly Uint8Array[],
+  policy: ChainPolicy,
+): Promise<{
+  leaf: X509Certificate;
+  key: CryptoKey;
+  /** Every certificate, parsed, leaf first. */
+  chain: X509Certificate[];
+}> {
+  if (chain.length < 2) fail("chain too short");
+  if (chain.length > 5) fail("chain too long");
+  if (policy.length !== undefined && chain.length !== policy.length)
+    fail("chain length");
+  const last = chain[chain.length - 1]!;
+  if (!policy.roots.some((r) => equalBytes(r, last))) fail("untrusted root");
+  const certs = chain.map(parseCertificate);
+  const understood = new Set([
+    OID.basicConstraints,
+    OID.keyUsage,
+    ...(policy.understood ?? []),
   ]);
-  for (let i = 0; i < chain.length; i++) {
-    const cert = chain[i]!;
-    for (const [oid, ext] of cert.extensions)
-      if (ext.critical && !allowed.has(oid))
-        return { ok: false, reason: "critical_extension" };
-    const t = timeOk(cert, now);
-    if (!t.ok) return t;
-    // A chain that carries the anchor itself stops there: it is trusted by identity.
-    if (anchors.some((a) => bytesEqual(a.raw, cert.raw))) return { ok: true };
-    const next = chain[i + 1];
-    const issuer =
-      next && bytesEqual(next.subject, cert.issuer)
-        ? next
-        : !next
-          ? anchors.find((a) => bytesEqual(a.subject, cert.issuer))
-          : undefined;
-    if (!issuer) return { ok: false, reason: "unknown_issuer" };
-    if (!issuer.isCa) return { ok: false, reason: "issuer_not_ca" };
-    if (
-      !(await verifyEcdsaSignature(
-        issuer,
-        cert.signatureAlgorithm,
-        cert.signature,
-        cert.tbs,
-      ))
-    )
-      return { ok: false, reason: "bad_signature" };
-    if (!next) {
-      // `issuer` is an anchor: its own window still applies.
-      const at = timeOk(issuer, now);
-      return at.ok ? { ok: true } : at;
-    }
+  for (const [k, c] of certs.entries()) {
+    if (policy.at < c.notBefore || policy.at > c.notAfter)
+      fail("certificate not valid now");
+    for (const [oid, ext] of c.extensions)
+      if (ext.critical && !understood.has(oid))
+        fail("unknown critical extension");
+    if (k > 0 && k < certs.length - 1)
+      for (const oid of policy.intermediateOids ?? [])
+        if (!c.extensions.has(oid)) fail("intermediate oid missing");
   }
-  // Every element verified against the next, but the last one is not an anchor.
-  return { ok: false, reason: "unknown_issuer" };
+  for (const oid of policy.leafOids ?? [])
+    if (!certs[0]!.extensions.has(oid)) fail("leaf oid missing");
+  const leafDs = certs[0]!.digitalSignature;
+  if (
+    (policy.leafDigitalSignature === "require" && leafDs !== true) ||
+    (policy.leafDigitalSignature === "ifPresent" && leafDs === false)
+  )
+    fail("leaf may not sign");
+  for (let k = 0; k < certs.length - 1; k++) {
+    const child = certs[k]!;
+    const issuer = certs[k + 1]!;
+    if (!equalBytes(child.issuer, issuer.subject)) fail("issuer mismatch");
+    if (!issuer.ca) fail("issuer is not a CA");
+    if (issuer.keyCertSign === false) fail("issuer may not sign certificates");
+    // pathLen counts the CA certificates BELOW the issuer (not the leaf).
+    if (issuer.pathLen !== null && k > issuer.pathLen)
+      fail("path length exceeded");
+    if (!(await signedBy(child, issuer))) fail("bad certificate signature");
+  }
+  // The root is trusted by bytes, but it must still be the self-issued anchor it claims to be.
+  const root = certs[certs.length - 1]!;
+  if (!equalBytes(root.issuer, root.subject)) fail("root is not self-issued");
+  if (certs[0]!.ca && certs.length > 1) fail("leaf is a CA");
+  return {
+    leaf: certs[0]!,
+    key: await certificateKey(certs[0]!),
+    chain: certs,
+  };
+}
+
+/** Standard (not URL-safe) base64 — `x5c` entries — to bytes; throws `X509Error` on bad input. */
+export function base64ToBytes(s: string): Uint8Array {
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(s) || s.length % 4 !== 0)
+    fail("bad base64");
+  let bin: string;
+  try {
+    bin = atob(s);
+  } catch {
+    return fail("bad base64");
+  }
+  const out = new Uint8Array(bin.length);
+  for (let k = 0; k < bin.length; k++) out[k] = bin.charCodeAt(k);
+  return out;
 }

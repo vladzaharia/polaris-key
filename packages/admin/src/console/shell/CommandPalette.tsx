@@ -181,7 +181,13 @@ export function CommandPalette({
           <DialogPrimitive.Title className="sr-only">
             Command palette
           </DialogPrimitive.Title>
-          <Command label="Search or jump to" shouldFilter={false} loop>
+          <Command
+            label="Search or jump to"
+            shouldFilter={false}
+            loop
+            // Ctrl+K is the palette toggle here, not cmdk's vim "previous item".
+            vimBindings={false}
+          >
             <div className="flex items-center gap-2 border-b border-border px-3">
               <Search aria-hidden className="size-4 shrink-0 text-fg-muted" />
               <Command.Input

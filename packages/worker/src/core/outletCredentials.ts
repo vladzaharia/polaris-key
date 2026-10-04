@@ -86,8 +86,28 @@ export interface SentryIntegration {
   clientSecret: string;
 }
 
+/** An App Store Server API key — App Store Connect → Users and Access → Integrations → In-App
+ *  Purchase (P6-01). Not the App Store Connect API key (`asc-api-key`): Apple issues these
+ *  separately, and this one reaches only the App Store Server API (transaction history, refund
+ *  lookup) of every app of the team — so it carries a pin, the bundle id it may be used for. */
+export interface AppStoreServerKey {
+  keyId: string;
+  issuerId: string;
+  /** The `.p8` file's contents: a P-256 PKCS#8 PEM. */
+  p8: string;
+}
+
+/** A Steamworks Web API publisher key (P6-01): the `partner.steam-api.com` key that can call
+ *  `ISteamUserAuth/AuthenticateUserTicket` and `ISteamUser/CheckAppOwnership` for every app of
+ *  the publisher — so it carries a pin, the app id it may be used for. */
+export interface SteamPublisherKey {
+  key: string;
+}
+
 export interface OutletCredentialValues {
   "asc-api-key": AscApiKey;
+  "app-store-server-key": AppStoreServerKey;
+  "steam-publisher-key": SteamPublisherKey;
   "asc-webhook-secret": AscWebhookSecret;
   "google-service-account": GoogleServiceAccount;
   "ms-partner-center": MsPartnerCenter;
@@ -98,6 +118,8 @@ export type OutletCredentialKind = keyof OutletCredentialValues;
 
 export const OUTLET_CREDENTIAL_KINDS: readonly OutletCredentialKind[] = [
   "asc-api-key",
+  "app-store-server-key",
+  "steam-publisher-key",
   "asc-webhook-secret",
   "google-service-account",
   "ms-partner-center",
@@ -162,6 +184,26 @@ async function validateAscApiKey(
     value: { keyId, issuerId, p8 },
     meta: { keyId, issuerId },
   };
+}
+
+async function validateAppStoreServerKey(
+  o: Record<string, unknown>,
+): Promise<Validation<"app-store-server-key">> {
+  // The same shape as an App Store Connect API key, and the same checks.
+  const r = await validateAscApiKey(o);
+  return r.ok ? { ok: true, value: r.value, meta: r.meta } : r;
+}
+
+async function validateSteamPublisherKey(
+  o: Record<string, unknown>,
+): Promise<Validation<"steam-publisher-key">> {
+  const key = str(o, "key", 64);
+  if (!key || !/^[0-9A-Fa-f]{32}$/.test(key))
+    return fail(
+      "key",
+      "key must be the 32-hex-digit Steamworks Web API publisher key",
+    );
+  return { ok: true, value: { key: key.toUpperCase() }, meta: {} };
 }
 
 async function validateAscWebhookSecret(
@@ -238,6 +280,8 @@ const VALIDATORS: {
   ) => Promise<Validation<K>>;
 } = {
   "asc-api-key": validateAscApiKey,
+  "app-store-server-key": validateAppStoreServerKey,
+  "steam-publisher-key": validateSteamPublisherKey,
   "asc-webhook-secret": validateAscWebhookSecret,
   "google-service-account": validateGoogleServiceAccount,
   "ms-partner-center": validateMsPartnerCenter,
@@ -311,6 +355,23 @@ export const OUTLET_CREDENTIAL_PINS: Readonly<
     label: "App Store Connect app id (Apple ID)",
     message:
       "pin must be the App Store Connect app id (the app's numeric Apple ID)",
+  },
+  // P6-01: an In-App Purchase key reaches the App Store Server API of every app of the team; the
+  // commerce bridge uses it only for the bundle id the operator pinned, compared with the
+  // commerce settings' `bundleId`.
+  "app-store-server-key": {
+    field: "bundleId",
+    pattern: /^[A-Za-z0-9][A-Za-z0-9.-]{0,154}$/,
+    label: "App Store bundle id",
+    message: "pin must be the app's bundle id (such as gg.vlad.diceroll)",
+  },
+  // P6-01: a Steamworks publisher key reaches every app of the publisher; the commerce bridge uses
+  // it only for the app id the operator pinned, compared with the commerce settings' `appId`.
+  "steam-publisher-key": {
+    field: "appId",
+    pattern: /^[1-9][0-9]{0,9}$/,
+    label: "Steam app id",
+    message: "pin must be the game's Steam app id (digits, such as 480)",
   },
   // A Google Play service account can be invited to every app of a developer account (P5-03).
   // The Android package-name rule, with the 255-character cap the manifest and the Play setup

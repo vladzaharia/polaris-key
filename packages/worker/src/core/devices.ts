@@ -101,6 +101,7 @@ import {
   updateScope,
 } from "./updateHealth.js";
 import type { ServiceHooks } from "./hooks.js";
+import { boundedPackInstalls, recordPackInstalls } from "./deltaDemand.js";
 
 /**
  * What a valid device token proves, at CORE's level of authority: this token belongs to this
@@ -879,7 +880,9 @@ export async function handleDevices(
 // engine's build facts and where the install came from (the stamped outlet refined by on-device
 // detection, P3-11; an outlet id or kind only), each with its own bound below; `content` (P4-02,
 // plans/P4-01.md §2.11) carries the active pack set's id; `updates` (P6-03) carries update
-// outcome events, validated strictly and counted by `core/updateHealth.ts`.
+// outcome events, validated strictly and counted by `core/updateHealth.ts`; `packInstalls`
+// (P4-17) carries recent pack installs (pair, strategy, size), bounded and counted as lazy-delta
+// demand by `core/deltaDemand.ts` for products that opted in.
 // `caps` (P1b-10) is the SDK's capability list: the parity feature ids its `supports()` answers
 // Supported for right now (PARITY §2.2), bounded below.
 export const REPORT_KEYS = [
@@ -903,6 +906,7 @@ export const REPORT_KEYS = [
   "content",
   "updates",
   "caps",
+  "packInstalls",
 ] as const;
 
 /** At most this many `caps` entries are kept; the registry has ~60 feature ids. */
@@ -1019,6 +1023,13 @@ function boundedReport(input: unknown): Record<string, unknown> {
     const caps = boundedCaps(out.caps);
     if (caps === undefined) delete out.caps;
     else out.caps = caps;
+  }
+  // `packInstalls` (P4-17): at most 8 validated entries; malformed ones dropped, unknown fields
+  // stripped (`core/deltaDemand.ts` `boundedPackInstalls`).
+  if (out.packInstalls !== undefined) {
+    const installs = boundedPackInstalls(out.packInstalls);
+    if (installs === undefined) delete out.packInstalls;
+    else out.packInstalls = installs;
   }
   return out;
 }
@@ -1147,6 +1158,20 @@ export async function handleReport(
       hooks
         ? await updateScope(hooks)
         : staticScope({ outlets: [], channels: [], releases: [] }),
+    );
+  // Lazy-delta demand (P4-17): D1 counters only, for a product that opted in; never a byte of a
+  // payload, never the queue. Fails open, like the update counters.
+  const installs = report.packInstalls as
+    | Parameters<typeof recordPackInstalls>[4]
+    | undefined;
+  if (installs && installs.length > 0)
+    await recordPackInstalls(
+      env,
+      db,
+      product.slug,
+      valid.device.device_id,
+      installs,
+      now,
     );
   return json({ ok: true });
 }

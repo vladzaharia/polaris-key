@@ -42,6 +42,7 @@ import {
 } from "./releases/PolicyActionDialog.js";
 import { releaseSourceOf } from "./products/util.js";
 import { qk } from "../console/data/queries.js";
+import { fetchProduct } from "../console/data/hooks.js";
 
 /**
  * Releases view: the release TRUTH STORE, the channels that serve from it, and the
@@ -66,7 +67,7 @@ import { qk } from "../console/data/queries.js";
  */
 export function Releases({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(qk.product(slug), () =>
-    api.product(slug).then((r) => r.product),
+    fetchProduct(slug),
   );
   const health = useResource(qk.releaseHealth(slug), () =>
     api.releaseHealth(slug).then((r) => r.health),

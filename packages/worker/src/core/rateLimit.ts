@@ -106,6 +106,17 @@ const FAIL_MODE: Record<string, FailMode> = {
   // P6-03: the Sentry alert webhook, for the same reason — the limiter runs before the
   // `sentry-integration` credential is opened, and every open is an audit row.
   sentryWebhook: "closed",
+  // P6-01: the commerce bridge. A claim (per licence) and each store hook (per product) can open
+  // an outlet credential and call a store API, so a limiter outage refuses rather than letting a
+  // flood through to the vault and the store's quota. A refused store delivery is retried by the
+  // store (App Store Server Notifications and Pub/Sub push both redeliver on a non-2xx).
+  commerceClaim: "closed",
+  appStoreHook: "closed",
+  playRtdnHook: "closed",
+  // …and the per-client-IP buckets that bound UNVERIFIED hook traffic before any signature
+  // check; the product buckets above count verified deliveries only.
+  appStoreHookIp: "closed",
+  playRtdnHookIp: "closed",
   // P6-02: device attestation, per device. The attest bucket guards Google's Play Integrity
   // decode quota (10,000 a day per app) and the challenge bucket the KV writes behind it; with
   // the limiter gone, one device could spend the whole product's daily quota.

@@ -1,31 +1,76 @@
-# Polaris Key — Godot SDK (contributors)
+# Polaris Key — Godot SDK
 
-A Godot 4 project holding the Polaris Key addon and its headless test runner. The addon is pure
-GDScript: the engine has no Ed25519 and no SHA-512, so `addons/polaris_key/core/crypto/` carries
-its own. Godot is the sixth language of the conformance corpus. Licence: MIT, like the rest of the
-repository.
+The Polaris Key addon for Godot 4: licensing, managed config, devices, device-code sign-in,
+updates by outlet and downloadable packs, every document verified offline against keys the game
+pins. It is pure GDScript. The engine has no Ed25519 and no SHA-512, so the addon carries its own,
+and it runs on every platform Godot exports to, web included, with no GDExtension. Godot is the
+sixth language of the conformance corpus: the addon reaches the same verdict as the Node, React,
+Python and Swift SDKs on every vector, in the editor and on an exported release template.
 
-The addon's Core (P1-02) is offline-capable: strict base64url and JSON, the 13-step JWS verify,
-licence and config claims, the trust manifest, the clock floor, the verified cache, the file
-store, bundle import, discovery and capabilities, an HTTP transport that never leaks the bearer,
-and `sync()`, behind the `PolarisKey` autoload. The service clients build on `PolarisKey.core`;
-`PolarisKey.config` (P1-04), `license` (P1-03), `devices` (P1-05), `update` and `release` (P1-08)
-are in, and `identity` (P1-07). Wire v4 (P3-08) adds the signed channel feed and release record,
-verified in pure GDScript, and the conformance-tested update decision behind
-`PolarisKey.update.decide()`. P1-10 adds the boot stage machine (`PKeyStages`), the drop-in boot
-scene (`PKeyBoot`, `PolarisKey.boot()`) and the UI kit v1 under `addons/polaris_key/ui/`. P3-10
-acts on the decision: one adapter per outlet, the native-updater hooks, the sidecar-PCK swap and
-the boot guard (see "Updates by outlet"). P4-08 adds packs, `PolarisKey.update.packs`: a GDScript
-port of client-core's pack core and pipeline, the `godot.pck` and `files.tree` handlers, the delta
-bake through the engine's own decoder, the device-side directory check, and PKeyBoot's FETCH,
-MOUNT and BACKGROUND stages (see "Packs"). P4-24 adds the content decision (the feed's
-`packSets`, `packFloors` and `revocations`, CI-signed revocation records, the `packs` answer,
-`content-floor` and `revoked-content`) and the device's revocations (see "Revocations"). P4-26
-adds content-key delegation: data-only pack releases signed by a delegated content key, and the
-data-only rule (see "Content-key delegation").
+- **Package:** the `addons/polaris_key/` folder, released as `polaris-key-godot-vX.Y.Z.zip`.
+- **Engines:** Godot 4.4 or later; 4.6 or later recommended (see
+  [Supported engines](#supported-engines)).
+- **Licence:** MIT, like the rest of the repository. Changes: `sdks/godot/CHANGELOG.md`.
+- **Contributing** (layout, the test runner, GDScript rules, the measured engine pitfalls,
+  releasing): `sdks/godot/CONTRIBUTING.md`.
 
-## Layout
+## Install
 
+Pick one. Each puts the addon at `res://addons/polaris_key/`.
+
+- **Release zip** (canonical). Download `polaris-key-godot-vX.Y.Z.zip` from the repository's
+  GitHub Releases (tags `godot-v*`) and unzip it at your project's root; it holds only
+  `addons/polaris_key/`. Up to 4.6, the editor's **AssetLib → Import…** takes the same zip
+  (leave **Ignore asset root** unticked).
+- **Godot Asset Store** (Godot 4.7's in-editor store, or the website): search for
+  "Polaris Key" and install the addon.
+- **Asset Library** (the legacy library, for editors up to 4.6): search for "Polaris Key". Its
+  download is the `-assetlib` zip, which wraps the same files in one directory that the installer
+  drops, so keep **Ignore asset root** ticked.
+
+Then open **Project → Project Settings → Plugins** and enable **Polaris Key**. That registers the
+`PolarisKey` autoload (`res://addons/polaris_key/polaris_key.gd`), the export plugin and the
+**Polaris Key** setup dock. To update, replace the folder: your settings live outside it.
+
+The zip is pure GDScript. The optional native halves (the iOS xcframework, the Android AARs and
+the desktop updater GDExtensions; see [Apple plugin](#apple-plugin-pkeyapple-p5-05),
+[Android plugin](#android-plugin-pkeyandroid-p5-06) and "Native desktop plugins" under
+[Updates by outlet](#updates-by-outlet-p3-10)) are built from the repository and are not in it;
+without them every native call answers a typed "unsupported" and the rest works.
+
+## Set up: the dock and `res://polaris_key.tres`
+
+The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` resource, outside
+`addons/` so an addon update never overwrites it:
+
+1. **Product**: your product slug, and the **Base URL** (default `https://key.plrs.im`).
+2. **Pinned trust keys**: paste the Godot line `pkey trust` prints
+   (`const PINNED_TRUST_KEYS := {...}`) or copy the keys from the console. Pins are compiled in
+   and never learned: **Fill from discovery** only pre-fills candidates.
+3. **Check** fetches the live trust manifest, verifies it against the pins and lists each key id
+   with a SHA-256 fingerprint. Compare them with `pkey trust` or the console, tick the
+   confirmation box, then **Save**.
+4. **Editor channel**: the channel editor runs use (`dev` by default). Exports take theirs from
+   the build stamp (see [Export presets and CI](#export-presets-and-ci)).
+
+Everything else is a `PKeyOptions` property you can set in the inspector or in code: `version`
+(defaults to `application/config/version`, which must be SemVer), `pinned_release_keys` (the CI
+release keys update records and packs verify against), `expected_services`, `default_channel`,
+`refresh_interval_seconds`, `request_timeout_seconds`, `store_root`, `fingerprint_enabled`,
+`probes`, the `Update`, `Config` and `Packs` groups, and `local_only`. `PolarisKey.configure()`
+refuses an insecure base URL, a malformed product slug, a non-SemVer version, malformed pins and
+unknown services, before touching the disk or the network.
+
+## Boot
+
+````gdscript
+func _ready() -> void:
+	var boot := await PolarisKey.boot({allow_offline = true})
+	if boot.outcome == PKeyBoot.READY:
+		get_tree().change_scene_to_file("res://game/title.tscn")
+	# BLOCKED, OFFLINE and ERROR stay on the PKeyBoot card with Retry; a later stop arrives as
+	# PolarisKey.boot_finished(result).
+||||||| e833c885
 ```text
 sdks/godot/
   project.godot               main loop = PKeyTestRunner; flush_stdout_on_print
@@ -34,9 +79,6 @@ sdks/godot/
   polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product
                               pkey-harness, editor channel dev)
   parity.json                 the Godot parity manifest (conformance/parity/)
-  native/                     the native plugins' sources: ios/ (P5-05), and P5-07's macos/,
-                              windows/, build and signing scripts and e2e/ runs
-                              (native/README.md); .gdignore'd, never in a release
   addons/polaris_key/         the addon (the only directory a release ships)
     plugin.cfg, plugin.gd     editor shell: the autoload, the export plugin, the setup dock
     export/export_plugin.gd   PKeyExportPlugin: the build stamp and the pkey_* feature tags
@@ -67,13 +109,7 @@ sdks/godot/
     distribution/outlets/     PKeyOutletAdapter and one adapter per outlet kind (direct.gd,
                               app_store.gd, steam.gd, web.gd, …; adapters.gd maps kinds to them);
                               the native-updater bridges PKeyNativeBridge, PKeySparkleBridge,
-                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyStoreContextBridge,
-                              PKeyAppImageBridge
-    native/                   P5-07's facades over the optional desktop GDExtensions:
-                              PKeyNativeFacade, PKeySparkle, PKeyVelopack, PKeyWinSparkle,
-                              PKeyStoreContext; native/bin/ is where a game installs the binaries
-                              (git-ignored here)
-    export/native_export.gd   PKeyNativeExport: the macOS export's Sparkle switches
+                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyAppImageBridge
     updater/                  PKeyUpdater (PolarisKey.update.updater: the adapters' context,
                               methods, boot confirmation), PKeySlots (staged/current/previous),
                               PKeyBootGuard, PKeySidecarSwap, PKeyUpdaterEnv (every side effect),
@@ -203,7 +239,201 @@ sdks/godot/
     godot.sha512              upstream SHA-512 pins for those downloads
     gen_theme.gd              writes ui/theme/pkey_theme.tres (`--script`, editor only)
     ui_screenshots.gd         one PNG per pinned UI state, for review (needs a display)
+````
+
+`PolarisKey.boot()` configures from `res://polaris_key.tres` when nothing has configured yet,
+starts offline from the verified cache, syncs, gates on the licence, checks for an update and
+drives packs, showing the `PKeyBoot` screen on a layer above the game until READY. Put a
+`PKeyBoot` in your own boot scene and pass it as `view` to style it yourself. The full stage list
+and options are in [Boot and UI kit](#boot-and-ui-kit-polariskeyboot-pkeyboot-p1-10).
+
+Without the boot scene, the same steps are calls:
+
+```gdscript
+PolarisKey.configure(load("res://polaris_key.tres"))  # a PKeyResult; nothing touches the network
+await PolarisKey.start()                              # device id, token, verified cache
+var r := await PolarisKey.sync()                      # trust, then licence and config
+if PolarisKey.is_licensed():
+	pass
 ```
+
+Every call that can wait is a coroutine returning a `PKeyResult` (`ok`, `code`, `detail`) or a
+richer result class; nothing throws. The autoload's signals are `state_changed(state)`,
+`sync_finished(result)`, `store_error(err)`, `boot_finished(result)` and
+`verify_progress(fraction)`.
+
+## A tour
+
+One `PolarisKey` autoload, one sub-object per service, in the same shape as every other SDK
+(see [SDKs](/docs/build/sdks/)). A sub-object whose service the product does not run answers
+`service-unavailable` without a request.
+
+### License
+
+```gdscript
+var r := await PolarisKey.license.activate_with_key(key)    # a PKeyActivationResult
+if not r.ok: show_error(r.kind)                             # device-limit, unauthorized, …
+await PolarisKey.license.enroll()                           # keyless: the device's free licence
+if PolarisKey.license.is_entitled("soundtrack"): unlock_soundtrack()
+PolarisKey.license.get_entitlements()                       # {name: value}
+await PolarisKey.license.deactivate()
+PolarisKey.state_changed.connect(func(s): print(s["status"]))
+```
+
+`PolarisKey.status()` is the gate's state: `status` is `ok`, `grace`, `expired`, `revoked`,
+`needs-activation` or a block reason, or `not-applicable` for a product without License, where
+`is_licensed()` is true. A 401 during a
+sync re-acquires the token once. The client gate is a user-experience gate, not DRM: see
+[Platform caveats](#platform-caveats).
+
+### Config
+
+```gdscript
+var speed: float = PolarisKey.config.get_value("dice.animSpeed", 1.0)
+PolarisKey.config.config_changed.connect(func(keys): if "dice.animSpeed" in keys: _restyle())
+PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
+var minted := await PolarisKey.config.mint_token("leaderboard")   # edge-mint for third-party APIs
+```
+
+Precedence, the player's saved values, the `PKEY_CONFIG_*` environment layer and secrets are in
+[Config](#config-polariskeyconfig).
+
+### Devices
+
+```gdscript
+var roster := await PolarisKey.devices.list()        # this licence's devices
+await PolarisKey.devices.rename("Living-room PC")
+await PolarisKey.devices.register()                  # keyless registration, for a product without License
+```
+
+The device id is derived on the device; hardware values are hashed on the device and never sent
+(`fingerprint_enabled`, `probes`). A device report follows every sync.
+
+### Identity
+
+Device-code sign-in (RFC 8628) with a QR code: `begin_sign_in()`, then `sign_in_pending(prompt)`
+gives the code and the URL to show, and `sign_in_finished(result)` the outcome. `PKeySignInDialog`
+is the drop-in screen. Details in [Identity](#identity-polariskeyidentity).
+
+### Update and release
+
+```gdscript
+var check := await PolarisKey.update.decide()        # the signed feed and release record
+if check.ok and check.decision["action"] != "none":
+	await PolarisKey.update.apply(check)             # what the outlet allows: a store link, a download, a swap
+var notes := await PolarisKey.release.changelog()
+```
+
+The decision is verified against `pinned_release_keys` only, and the install's outlet (Steam,
+itch, a store, a direct download, …) decides what can be done about it: a store or Steam build is
+never talked into updating its own code. `PKeyBoot` and `PKeyUpdatePrompt` do this for you. See
+[Update and release](#update-and-release-polariskeyupdate-polariskeyrelease) and
+[Updates by outlet](#updates-by-outlet-p3-10).
+
+### Packs
+
+Downloadable content as `godot.pck` and `files.tree` releases, fetched, verified, checked and
+mounted at a boot. A build needs a content stamp at `res://pkey_packs/pkey-content.json` (written
+by CI) to have packs at all. See [Packs](#packs-polariskeyupdatepacks-p4-08).
+
+### What works here
+
+`PolarisKey.supports(PKeyConstants.Feature.LICENSE_ENROLL)` says, offline, whether a feature works
+on this platform and build, and if not, why. See
+[supports() and capabilities](#supports-and-capabilities-polariskeysupports-p1b-10).
+
+## Export presets and CI
+
+Every export carries a build stamp (`res://.polaris_key/build.json`) and `pkey_*` feature tags,
+from per-preset `polaris_key/*` options in the export dialog that CI overrides with environment
+variables, so a headless export stamps exactly what the pipeline says:
+
+```sh
+PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
+  godot --headless --export-release "Linux" build/game.x86_64
+```
+
+The options, their variables and defaults are in [Build stamp and setup dock](#build-stamp-and-setup-dock-p1-11).
+A build with packs also ships `pkey_packs/*` (add it to the preset's "Filters to export non-resource
+files"). The `polaris-key/publish` GitHub Action publishes the release after your export and
+signing steps.
+
+## UI kit and theming
+
+Drop-in scenes under `addons/polaris_key/ui/`, each a `.tscn` with a view script and a headless
+controller: `PKeyBoot`, `PKeyGate` (class `PKeyGateView`), `PKeyActivationPanel`,
+`PKeySignInDialog`, `PKeyOfflineDialog`, `PKeySettingsPanel`, `PKeyStatusBanner`,
+`PKeyUpdatePrompt`, `PKeyEntitlementBadge`, `PKeyDevMenuSection` and the `PKeyQrRect` control.
+Every one is operable with ui_up, ui_down, ui_accept and ui_cancel alone, so it works on a
+gamepad or a TV remote.
+
+- **Theme.** The scenes use `addons/polaris_key/ui/theme/pkey_theme.tres`. Assign your own Theme
+  to a scene or any ancestor to restyle it, or style the type variations `PKeyTitle`, `PKeyMuted`,
+  `PKeyCode`, `PKeyError`, `PKeyBadge`, `PKeyBanner`, `PKeyCard` and `PKeyPrimary`. `PKeyQrRect`
+  reads the colours `dark` and `light`. `PKeyBoot`'s `theme` option applies a Theme a mounted pack
+  provides. `PKeyBrand` (generated from the Polaris Key design system) has the brand's colours
+  if you want to match them.
+- **Copy.** Every string goes through `PKeyUiCopy` and `tr()`: translate the English defaults with
+  an ordinary Translation, or rename anything with `overrides`
+  (`copy.overrides = {"activation_title": "Unlock Diceroll"}`) without forking a scene.
+- **Credits.** `addons/polaris_key/brand/` holds the "Powered by Polaris Key" credit screens
+  (1920×1080, dark and light) and compact badges for your credits or about screen. The folder is
+  never imported (`.gdignore`); copy the file you need into your project.
+
+## Supported engines
+
+| Engine      | Status                              | How it is tested                                                                                     |
+| ----------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 4.4 (4.4.1) | supported floor (source-compatible) | Linux editor; the clean-install smoke test                                                           |
+| 4.5 (4.5.2) | supported                           | Linux editor and official release template                                                           |
+| 4.6 (4.6.3) | supported, recommended              | Linux editor and official release template                                                           |
+| 4.7 (4.7.2) | supported, recommended              | Linux editor and release template; Windows and macOS editor smoke legs; the clean-install smoke test |
+
+The addon is written to 4.4 syntax and feature-detects newer engine APIs:
+
+- **Delta pack updates** (`zstd-patch-from`) need 4.6+, whose pack format carries the engine's
+  delta entries; on 4.4 and 4.5 the planner falls back to chunk, file or full downloads.
+- **The setup dock** uses `add_dock` on 4.6+ (with the Polaris Key tab icon) and
+  `add_control_to_dock` before.
+- **iOS Info.plist entries** go through `add_apple_embedded_platform_plist_content` on 4.5+ and
+  the older iOS hook before.
+- **Localisation packs** use the engine's own plural rules on 4.6+.
+- **Data packs exported by 4.4 or 4.5** carry a uid cache naming the whole project, which the
+  device check and `pkey release publish` refuse; export data packs with 4.6+.
+- **Godot 4.5.x** crashes when a read reaches a mounted pack whose file has been removed (the
+  engine's pack reader seeks before its null check; 4.4 and 4.6+ log an error instead). The addon
+  never removes or overwrites a mounted pack; a game that mounts its own packs must not either.
+- The official 4.6+ export templates ignore `--path`, `--script` and `--main-pack`; nothing in
+  the addon relies on them.
+
+Every engine above runs the full test runner in the `godot` CI job (the corpus, every service
+suite, packs, the UI kit), on the editor and, from 4.5, on the official Linux release template;
+the release workflow adds the clean-install smoke test (unzip into an empty project, enable the
+plugin, run it) on 4.4.1 and 4.7.2. The Asset Store version entry declares 4.4 as its minimum.
+
+## Platform caveats
+
+- **Web** needs the product's origin in the Worker's CORS allowlist. A web build has no
+  fingerprint, no keyless enrolment and no `strict` tiers. `user://` is IndexedDB in memory,
+  which the browser may clear: that mints a new device id. Keep large packs out of `user://`.
+- **Device-code sign-in sends no fingerprint**, so a `strict` tier refuses that path.
+- **Secrets are not secret in a game.** A `clientScoped` secret is readable by anyone with the
+  build (and on web by any same-origin script); use edge-mint (`mint_token`) for third-party API
+  keys.
+- **iOS** resets the device id when every app from your team is uninstalled, and enrolling again
+  then mints a new free licence; the client does not work around it.
+- **iOS and Android stores**: unlocking paid digital content with a key bought outside the store
+  conflicts with App Store 3.1.1 and Play's payments policy. Signing in is fine. The client does
+  not enforce this.
+- **The client gate is a user-experience gate, not DRM.** Anything in a `.pck` can be extracted
+  and a GDScript check can be patched out; the signed documents stop forged licences and
+  tampered config, not a determined cracker. Gate valuable content on the server (entitled
+  downloads, edge-minted tokens).
+
+## Reference
+
+The sections below are the addon's detailed behaviour, service by service: what each call sends,
+when it refuses, and what it stores.
 
 ## supports() and capabilities (`PolarisKey.supports`, P1b-10)
 
@@ -286,6 +516,138 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   discovery" only pre-fills candidates; "Save" needs the box confirming the pins match
   `pkey trust` or the console.
 
+## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`, P1-10)
+
+```gdscript
+func _ready() -> void:
+	var boot := await PolarisKey.boot({allow_offline = true})   # or {view = $PKeyBoot, …}
+	if boot.outcome == PKeyBoot.READY:
+		get_tree().change_scene_to_file("res://game/title.tscn")
+	# BLOCKED, OFFLINE, ERROR: PKeyBoot shows the card with Retry; a later stop arrives as
+	# PolarisKey.boot_finished(result).
+```
+
+- **One machine, many views.** `PKeyStages` (core/stages.gd) is the port of client-core's
+  `stages.ts`; the `stage_matrix` suite (`--pkey-test stage-matrix` works too) replays every row,
+  probe, guard case and confirm case of `stage-matrix.json`, compares `failedBoots` numerically,
+  and holds the port to the ignore rule (malformed events, identity, purity). PKeyBoot never
+  decides a transition: it does a stage's work each time the machine enters that stage, sends the
+  result, and renders what the machine says. Its signals are the machine's emits:
+  `stage_changed(stage, previous)`, `waiting(status)`, `update_available()`, `blocked(reason)`,
+  `offline(can_play_offline)`, `error(code)`, `boot_rolled_back()`, `boot_ready()` (a Control
+  cannot redeclare `ready`), plus `boot_finished(result)` at every stop.
+- **What PKeyBoot sends** is plans/P1-09.md §2.2, in PKeyBootHost: shell configures from
+  `res://polaris_key.tres` when needed and starts (offline); guard runs the boot guard (`PolarisKey.update.run_guard()`: `ok`, `applied` or
+  `rolled-back`; nothing at all when it swapped or rolled back a pack and restarted); sync runs
+  discovery (not counted), registers first when a product without License has an `open`
+  registration policy and no token, then `PolarisKey.sync()`, classified from
+  `PKeySyncResult.classify()` (answered 200/304/401/403/429 is `ok`, no answer is `offline`,
+  unusable is `error`; `PKeySyncResult.errors` keeps each failed document's status, 0 for no
+  answer); gate sends `PolarisKey.status()` and sends it again while it waits whenever the
+  licence state changes; decide is `optional` when `PolarisKey.update.decide()` has something to
+  show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
+  Floors never stop play; a CI-signed revocation of a REQUIRED pack does (plans/P4-13.md
+  decision 4): decide is then `required` and the boot stops at a confirmed BLOCKED
+  `update-required` with the revoked-content copy ("Content withdrawn": "Some of this game's
+  content was withdrawn by its developer and can't be used. Update the app to keep playing."),
+  with the update button when the answer is an offer and none for `blocked`. A `packs` answer is
+  `none`; fetch and mount drive packs (P4-08, see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
+  cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or
+  45 s on a build without threads where a bundle verify runs in frame slices), after which the
+  machine gets `sync.timeout` and a late answer is dropped.
+- **Scenes** (each a `.tscn` with the default theme, a view script and a headless controller):
+  `PKeyBoot`, `PKeyGate` (class `PKeyGateView`: the licence-gate logic already owns the name
+  `PKeyGate`), `PKeyActivationPanel`, `PKeySignInDialog`, `PKeyOfflineDialog`,
+  `PKeySettingsPanel`, `PKeyStatusBanner`, `PKeyUpdatePrompt`, `PKeyEntitlementBadge`,
+  `PKeyDevMenuSection` (a Control, and `rows()` for a data-driven dev menu). Every string goes
+  through `PKeyUiCopy` and `tr()`; every interactive control is in one wrapping focus chain, so
+  ui_up / ui_down / ui_accept / ui_cancel operate every screen on a gamepad or a TV remote.
+- **Update answers never cover the game.** A mandatory or blocked decision is a persistent banner
+  with no dismiss in `PKeyUpdatePrompt`, whatever its `modal` setting; only a dismissable answer
+  may use the modal card. The banner is a strip at the top in any parent: PKeyBoot hosts it on a
+  plain full-rect overlay that takes no input, and inside a game's own Container it asks for its
+  own height only. `PolarisKey.boot()` without a view keeps a visible prompt past READY: the boot
+  view is freed and the prompt stays on its CanvasLayer as `PolarisKey.boot_prompt` (a locked
+  answer for good, a dismissable one until dismissed); pass `keep_update_prompt = false` when the
+  game shows its own prompt, which replays `PolarisKey.update.last_available`. Grace in
+  `PKeyGate` is the same: only the status strip, and no full-rect control takes the game's input.
+  The prompt's action is the outlet adapter's (see "Updates by outlet").
+- **Sliced verifies report progress**: `PolarisKey.verify_progress(fraction)` (web builds without
+  threads), which PKeyBoot's progress bar follows; the bar shows once a stage passes 250 ms.
+- **Tests.** `boot` drives every stage-matrix row through `PolarisKey.boot()` with a scripted
+  host, and the sync classes and keyless registration through the fake server; `ui` pins every
+  scene state as a structural snapshot (`tests/ui/snapshots/`), walks focus with ui_down alone,
+  and checks every visible string is PKeyUiCopy text under a pseudo-locale. Headless runs have no
+  renderer; `tools/ui_screenshots.gd` renders the same states to PNGs for review.
+- Timings (M-series Mac, 4.7.2): `stage_matrix` 15 ms in the editor and 13 ms on the release
+  template (56 rows, 6,594 probe transitions); `boot` about 6.3 s on both (five deliberate 1 s
+  request deadlines); `ui` about 12 s on both (67 states, three passes each).
+
+## Config (`PolarisKey.config`)
+
+```gdscript
+var speed: float = PolarisKey.config.get_value("dice.animSpeed", 1.0)
+PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cfg"))
+PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))
+PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
+var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token, minted.expires_at
+```
+
+- Precedence is client-core's: enforced or hidden (remote) > local override > environment >
+  remote default > fallback. An enforced or hidden key ignores the player's saved value without
+  deleting it from `settings.cfg`.
+- The local layer is read at call time. `PKeyConfigFileStore` finds a key at its catalog
+  `accessor` (`section.key` -> `[section] key`), then in an explicit table, then at the key
+  itself.
+- The environment layer is `PKEY_CONFIG_<key with . as __>` plus `--pkey-config key=value` user
+  arguments. `PKeyOptions.config_env_layer` controls it: Auto (on in debug builds and on desktop,
+  off in release builds on mobile and web), Always or Never.
+- `config_changed(keys)` fires after `start()`, each sync and each bundle import, and when the
+  store changes. It fires once per event and carries exactly the keys whose effective value
+  changed.
+- **Secrets are not secret in a game.** A `clientScoped` secret sits in `managed.json` (IndexedDB
+  on web, which any same-origin script can read) and anything in a `.pck` can be extracted. Use
+  edge-mint for third-party API keys. Minted tokens are kept in memory only and never printed.
+- Edge-mint sends nothing in four cases: Config is off, this session's discovery says
+  `config.mint.available` is false, the recipe id fails `^[a-z0-9-]+$`, or no device token is
+  held. A 401 gets one re-acquire, then the call fails. 401, 404, 429 and 5xx come back as
+  distinct `PKeyMintResult.kind` values.
+
+## Identity (`PolarisKey.identity`)
+
+```gdscript
+PolarisKey.identity.sign_in_pending.connect(func(p: PKeySignInPrompt):
+	$Code.text = p.user_code                      # show it large
+	$Qr.text = p.verification_uri_complete        # a PKeyQrRect
+	$Url.text = p.verification_uri)               # the short URL to type
+PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
+	if r.ok: $Who.text = "Signed in as %s" % r.identity.get("email", r.identity.get("name", "")))
+await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
+```
+
+- Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
+  `begin_sign_in` refuses with `service-unavailable` before any request when Identity is off or,
+  per this session's discovery, not configured.
+- Polling follows the server's cadence: at least `interval` between polls (never under one
+  second, never past the code's lifetime), a `slow_down` uses the returned interval or adds five
+  seconds to the current one, a poll that got no answer or a 5xx is retried at the same
+  interval, and nothing is sent after `expires_at`. Every poll carries the `X-PKey-Device` id.
+- `ready` stores the device token (source `signin`) and runs one forced `sync(true)`, so the
+  licence and config documents arrive at once. Show `PKeySignInResult.identity` afterwards: it
+  is how a player notices a stranger confirmed the code and signed the device in to their
+  account.
+- **Opt-in licence attach.** `begin_sign_in(name, true)` holds the flow at the signed-in identity:
+  `sign_in_confirm({identity, attachable})` fires and polling stops until the game calls
+  `accept_sign_in(attach)` or `cancel()`. With `attachable`, `accept_sign_in(true)` attaches the
+  device's anonymous enrolled licence to the account (`attached` is `claimed` or `migrated`).
+  Nothing is minted or merged before the player accepts on the device, and only the device,
+  which holds the device code, can ask.
+- Device-code sign-in sends no fingerprint, so a `strict` tier refuses it.
+- `PKeyQrRect` renders `verification_uri_complete` at any size: one texel per module, NEAREST
+  filtering, a four-module quiet zone, theme colours `dark` / `light` for the type `PKeyQrRect`.
+  The encoder is pure GDScript, held to fixtures from Nayuki's qrcodegen (`tests/qr/`); about
+  8 ms per encode on a release template (11 ms in the editor) on an M-series Mac.
+
 ## Licence notes
 
 - `X-PKey-Channel` is always a canonical §5.1 name: `dev` for `0.0.0-dev*` builds, `pr` for PR
@@ -297,124 +659,6 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   token came from `devices.register()` in this process; otherwise it asks `POST /license/token`.
   The token's source is held in memory only, so after a restart a licensed product's device asks
   `license/token`. One attempt per sync pass, whichever route.
-- `enroll()` is unsupported on web (no machine anchor). On iOS, enrolling again after every one of
-  the vendor's apps was uninstalled mints a new free licence; the client does not work around it.
-- Unlocking paid digital content on iOS or Android with an externally bought key conflicts with
-  App Store 3.1.1 and Play's payments policy. The client does not enforce this.
-
-## Running the tests
-
-```sh
-sdks/godot/tools/run_tests.sh                                   # godot on PATH, the ci suites
-GODOT_BIN=/path/to/godot sdks/godot/tools/run_tests.sh          # a specific editor
-GODOT_TEMPLATE=/path/to/linux_release.x86_64 sdks/godot/tools/run_tests.sh   # + exported pack
-PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, with suite args
-```
-
-- `GODOT_BIN` defaults to `godot` on `PATH`. Without an editor the script exits 2; it never skips.
-- `GODOT_TEMPLATE` is optional. When set, the project is exported with
-  `--export-pack "Conformance (Linux)"`, the template is copied beside the pack as
-  `build/pkey_conformance.x86_64`, and the same suites run from the pack. On macOS, a template
-  binary extracted from `macos.zip` (`godot_macos_release.universal`) works the same way.
-- `PKEY_TEST_SUITES` defaults to `ci`; `PKEY_TEST_TIMEOUT` is per step, default 300 s.
-- The packs suite reads the content corpus from the checkout (`PKEY_CONTENT_CORPUS`, defaulting to
-  `conformance/corpus/v2/content`; `content/` is not mirrored) and the f_uid data packs that
-  run_tests.sh exports into `build/uid_packs/` (`PKEY_UID_PACKS`). Run directly, export both.
-- Logs land in `build/logs/<step>.log` (`build/` is git-ignored).
-
-CI (`.github/workflows/ci.yml`, job `godot`) runs two Linux legs: the 4.7.2 editor plus the
-official 4.7.2 `linux_release.x86_64` template, and the 4.4.1 editor (the floor). Both must print
-the same corpus SHA-256. Two editor smoke legs on `windows-latest` and `macos-14` run the
-`platform` and `devices` suites, so the Windows and macOS readers find their anchor on a real
-machine.
-
-## The runner protocol
-
-The runner is the project's main loop, so the editor and an exported template use the same
-invocation. Official 4.6+ templates ignore `--path`, `--script` and `--main-pack`, so nothing may
-depend on them.
-
-```sh
-godot --headless --path sdks/godot -- --pkey-test ci
-build/pkey_conformance.x86_64 --headless -- --pkey-test ci
-godot --headless --path sdks/godot -- --pkey-test ed25519 bench 20   # args after the list go to every suite
-```
-
-- `--pkey-test <suite>[,<suite>]` selects suites; `ci` expands to the CI set (`SETS` in
-  `tests/runner.gd`). Without `--pkey-test` the project is a plain `SceneTree`.
-- Output: one `PKEY-TEST engine=… build=… target=editor|template …` header, then
-  `PASS|FAIL <suite> <name>` and `INFO` lines, then `PKEY-TEST SUMMARY suites=N checks=N failed=N`.
-  The exit code is 1 on any failure.
-- A suite is `tests/suite_<name>.gd`, `extends RefCounted`, with
-  `func run(t: PKeyTestContext, args: PackedStringArray) -> bool`. It may `await`. It fails if it
-  does not load, returns anything but `true`, or reports zero checks. A new work package adds its
-  suite to `SETS["ci"]`; `run_tests.sh` and CI stay the only entry points.
-
-**Suites never use `assert` and never rely on a runtime error.** A release template skips GDScript
-runtime checks: a method call on null, a missing key or index read (which returns null) and
-`assert(false)` all continue silently, where the editor aborts the function. Report only through
-`t.check(name, ok, detail)` and `t.info(text)`, and end every suite with a coverage check (vectors
-evaluated equals vectors loaded, with a floor). Timing is `INFO`, never a check.
-
-## The corpus mirror
-
-`tests/corpus/v2/` is written by `pnpm gen:corpus` (`tools/sign-corpus.ts`, `CORPUS_TARGETS`) and
-guarded by `pnpm gen:corpus -- --check`, exactly like the Swift mirror. **Never edit it**: change
-the generator and regenerate. A JSON file there that the generator does not write fails the gate.
-An exported pack can read only `res://`, which is why the mirror exists.
-
-`PKeyJson` (the strict pre-validation every signed payload passes through) decodes the escape
-`\u0000` as U+FFFD on every engine (WIRE-CONTRACT-V3 §10), and the conformance suite compares
-those strings against the generator's `expect.docNulReplaced`.
-
-## Writing GDScript here
-
-- **4.4 syntax is the floor.** Typed dictionaries are fine; `@abstract` and variadic arguments are
-  not. Do not add `config/features` to `project.godot`, which would pin the project to one engine.
-- **Scripts the editor runs are `@tool`.** In the editor a non-tool script's static variables
-  and `_static_init` never run (a `static var` reads null) and a loaded non-tool Resource is a
-  placeholder whose methods fail. The export plugin and the dock reach `PKeyChannel`,
-  `PKeySemver`, `PKeyJson`, `PKeyB64Url`, `PKeyTransport`, `PKeyJws`, `PKeyEd25519` and
-  `PKeyOptions`, so those carry `@tool`; a new static-state script on that path needs it too.
-- **Thread-reachable code never indexes or iterates a `const` Array.** On 4.4.1 a read-only
-  Array hands each element out through one shared slot, so two threads reading the same constant
-  get each other's values (a two-thread loop over a 16-element constant: about 1 read in 40,000
-  wrong; 4.7.2: none). It made offloaded document verifies fail about one time in 70 (the
-  scalar reduction reads the constant `L`), which surfaced as a flaky `ci` set on the 4.4 floor.
-  Convert first (`PackedInt64Array(L)`, `PackedStringArray(PATHS)`): the conversion is safe.
-  The `ed25519` suite runs the crypto on two threads to keep it that way.
-- **Commit every `.uid` with its script.** The first import writes it; `run_tests.sh` fails on an
-  untracked one.
-- **Never reformat the crypto files.** A negative shift in a constant expression is a parse error in
-  debug builds.
-- Godot's own JSON parser is lenient (trailing commas, leading zeros, raw control characters, the
-  last duplicate key wins) and turns every number into a float. Signed bytes go through
-  `PKeyJson`, never `JSON.parse_string`; integer claims are `v == floor(v)`, never `TYPE_INT`.
-- `HTTPRequest` forwards `Authorization` across hosts on a redirect. Use `PKeyTransport` (or
-  `PolarisKey.core.request`), which follows redirects itself and drops the bearer once the origin
-  changes.
-
-## Measured pitfalls
-
-| Behaviour                             | 4.7.2                                                                      | 4.4.1                                                        | Consequence                                                                 |
-| ------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `--import` with a parse error         | exit 0, prints nothing                                                     | exit 0, prints the error                                     | watch the log; never `\|\| true`                                            |
-| runner fails to load                  | macOS: modal alert, the run hangs; Linux: exit 1 (`Invalid MainLoop`)      | macOS: SIGABRT, exit 134; Linux: exit 1 (`Invalid MainLoop`) | watchdog and timeout                                                        |
-| runtime error in a suite              | editor aborts it; template continues silently                              | editor aborts it                                             | explicit and coverage checks                                                |
-| `\u0000` in JSON                      | U+FFFD, plus a "Unicode parsing error" line                                | dropped                                                      | the §10 rule in `PKeyJson`                                                  |
-| `--export-pack`                       | works with no templates installed                                          | same                                                         | CI needs only the template binary                                           |
-| redirect with `max_redirects = 0`     | `RESULT_REDIRECT_LIMIT_REACHED`                                            | 303 and 307 come back as `RESULT_SUCCESS`                    | follow any 3xx with a `Location`                                            |
-| lone surrogate `\ud800` in JSON       | rejected                                                                   | rejected                                                     | JS accepts it: divergence for P3-02                                         |
-| slim container without fontconfig     | `ERROR: Unable to load fontconfig` on every run                            | same                                                         | the watchdog ignores generic errors                                         |
-| non-tool script in the editor         | static vars and `_static_init` skipped; a loaded Resource is a placeholder | not measured (the `@tool` fix is green there)                | `@tool` on what the export plugin and dock reach                            |
-| two threads reading one `const` Array | correct                                                                    | wrong values now and then (shared read slot)                 | convert to a packed array first; never index a constant off the main thread |
-| `HTTPRequest.timeout`                 | a Timer on process delta: a long frame before the request spends it        | same                                                         | `PKeyTransport` times out on the wall clock, one budget per request         |
-| `--export-pack`'s `uid_cache.bin`     | names only the files it exports                                            | names the whole project's UIDs, excluded files included      | a 4.4 data pack must not share a UID with the main project (packs suite)    |
-| `PACK_FILE_DELTA` (GDDL) entries      | decoded by the engine on read                                              | absent (pack format v2)                                      | `zstd-patch-from` advertised on 4.6+ only (`PATCH_FROM_ENGINES`)            |
-
-So every `run_tests.sh` step fails on `SCRIPT ERROR`, `Parse Error`, `Failed to load script`,
-`Cannot get class` or `Invalid MainLoop` in its log, on its timeout, on a non-zero exit, and (for
-runs) without a final `PKEY-TEST SUMMARY … failed=0`.
 
 ## Update and release (`PolarisKey.update`, `PolarisKey.release`)
 
@@ -1138,135 +1382,3 @@ challenge's `play.cloudProjectNumber`, else `PKeyOptions.play_cloud_project_numb
   `platform-error` with the plugin's reply as `detail` (Play's `errorCode`, App Attest's `error`).
 - **Tests.** `tests/devices/test_attest.gd` (the `devices` suite) over the fake Worker and the two
   fake plugins; `suite_native_apple` and `suite_native_android` cover the facade calls.
-
-## Config (`PolarisKey.config`)
-
-```gdscript
-var speed: float = PolarisKey.config.get_value("dice.animSpeed", 1.0)
-PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cfg"))
-PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))
-PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
-var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token, minted.expires_at
-```
-
-- Precedence is client-core's: enforced or hidden (remote) > local override > environment >
-  remote default > fallback. An enforced or hidden key ignores the player's saved value without
-  deleting it from `settings.cfg`.
-- The local layer is read at call time. `PKeyConfigFileStore` finds a key at its catalog
-  `accessor` (`section.key` -> `[section] key`), then in an explicit table, then at the key
-  itself.
-- The environment layer is `PKEY_CONFIG_<key with . as __>` plus `--pkey-config key=value` user
-  arguments. `PKeyOptions.config_env_layer` controls it: Auto (on in debug builds and on desktop,
-  off in release builds on mobile and web), Always or Never.
-- `config_changed(keys)` fires after `start()`, each sync and each bundle import, and when the
-  store changes. It fires once per event and carries exactly the keys whose effective value
-  changed.
-- **Secrets are not secret in a game.** A `clientScoped` secret sits in `managed.json` (IndexedDB
-  on web, which any same-origin script can read) and anything in a `.pck` can be extracted. Use
-  edge-mint for third-party API keys. Minted tokens are kept in memory only and never printed.
-- Edge-mint sends nothing in four cases: Config is off, this session's discovery says
-  `config.mint.available` is false, the recipe id fails `^[a-z0-9-]+$`, or no device token is
-  held. A 401 gets one re-acquire, then the call fails. 401, 404, 429 and 5xx come back as
-  distinct `PKeyMintResult.kind` values.
-
-## Identity (`PolarisKey.identity`)
-
-```gdscript
-PolarisKey.identity.sign_in_pending.connect(func(p: PKeySignInPrompt):
-	$Code.text = p.user_code                      # show it large
-	$Qr.text = p.verification_uri_complete        # a PKeyQrRect
-	$Url.text = p.verification_uri)               # the short URL to type
-PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
-	if r.ok: $Who.text = "Signed in as %s" % r.identity.get("email", r.identity.get("name", "")))
-await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
-```
-
-- Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
-  `begin_sign_in` refuses with `service-unavailable` before any request when Identity is off or,
-  per this session's discovery, not configured.
-- Polling follows the server's cadence: at least `interval` between polls (never under one
-  second, never past the code's lifetime), a `slow_down` uses the returned interval or adds five
-  seconds to the current one, a poll that got no answer or a 5xx is retried at the same
-  interval, and nothing is sent after `expires_at`. Every poll carries the `X-PKey-Device` id.
-- `ready` stores the device token (source `signin`) and runs one forced `sync(true)`, so the
-  licence and config documents arrive at once. Show `PKeySignInResult.identity` afterwards: it
-  is how a player notices a stranger confirmed the code and signed the device in to their
-  account.
-- **Opt-in licence attach.** `begin_sign_in(name, true)` holds the flow at the signed-in identity:
-  `sign_in_confirm({identity, attachable})` fires and polling stops until the game calls
-  `accept_sign_in(attach)` or `cancel()`. With `attachable`, `accept_sign_in(true)` attaches the
-  device's anonymous enrolled licence to the account (`attached` is `claimed` or `migrated`).
-  Nothing is minted or merged before the player accepts on the device, and only the device,
-  which holds the device code, can ask.
-- Device-code sign-in sends no fingerprint, so a `strict` tier refuses it.
-- `PKeyQrRect` renders `verification_uri_complete` at any size: one texel per module, NEAREST
-  filtering, a four-module quiet zone, theme colours `dark` / `light` for the type `PKeyQrRect`.
-  The encoder is pure GDScript, held to fixtures from Nayuki's qrcodegen (`tests/qr/`); about
-  8 ms per encode on a release template (11 ms in the editor) on an M-series Mac.
-
-## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`, P1-10)
-
-```gdscript
-func _ready() -> void:
-	var boot := await PolarisKey.boot({allow_offline = true})   # or {view = $PKeyBoot, …}
-	if boot.outcome == PKeyBoot.READY:
-		get_tree().change_scene_to_file("res://game/title.tscn")
-	# BLOCKED, OFFLINE, ERROR: PKeyBoot shows the card with Retry; a later stop arrives as
-	# PolarisKey.boot_finished(result).
-```
-
-- **One machine, many views.** `PKeyStages` (core/stages.gd) is the port of client-core's
-  `stages.ts`; the `stage_matrix` suite (`--pkey-test stage-matrix` works too) replays every row,
-  probe, guard case and confirm case of `stage-matrix.json`, compares `failedBoots` numerically,
-  and holds the port to the ignore rule (malformed events, identity, purity). PKeyBoot never
-  decides a transition: it does a stage's work each time the machine enters that stage, sends the
-  result, and renders what the machine says. Its signals are the machine's emits:
-  `stage_changed(stage, previous)`, `waiting(status)`, `update_available()`, `blocked(reason)`,
-  `offline(can_play_offline)`, `error(code)`, `boot_rolled_back()`, `boot_ready()` (a Control
-  cannot redeclare `ready`), plus `boot_finished(result)` at every stop.
-- **What PKeyBoot sends** is plans/P1-09.md §2.2, in PKeyBootHost: shell configures from
-  `res://polaris_key.tres` when needed and starts (offline); guard runs the boot guard (`PolarisKey.update.run_guard()`: `ok`, `applied` or
-  `rolled-back`; nothing at all when it swapped or rolled back a pack and restarted); sync runs
-  discovery (not counted), registers first when a product without License has an `open`
-  registration policy and no token, then `PolarisKey.sync()`, classified from
-  `PKeySyncResult.classify()` (answered 200/304/401/403/429 is `ok`, no answer is `offline`,
-  unusable is `error`; `PKeySyncResult.errors` keeps each failed document's status, 0 for no
-  answer); gate sends `PolarisKey.status()` and sends it again while it waits whenever the
-  licence state changes; decide is `optional` when `PolarisKey.update.decide()` has something to
-  show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
-  Floors never stop play; a CI-signed revocation of a REQUIRED pack does (plans/P4-13.md
-  decision 4): decide is then `required` and the boot stops at a confirmed BLOCKED
-  `update-required` with the revoked-content copy ("Content withdrawn": "Some of this game's
-  content was withdrawn by its developer and can't be used. Update the app to keep playing."),
-  with the update button when the answer is an offer and none for `blocked`. A `packs` answer is
-  `none`; fetch and mount drive packs (P4-08, see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
-  cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or
-  45 s on a build without threads where a bundle verify runs in frame slices), after which the
-  machine gets `sync.timeout` and a late answer is dropped.
-- **Scenes** (each a `.tscn` with the default theme, a view script and a headless controller):
-  `PKeyBoot`, `PKeyGate` (class `PKeyGateView`: the licence-gate logic already owns the name
-  `PKeyGate`), `PKeyActivationPanel`, `PKeySignInDialog`, `PKeyOfflineDialog`,
-  `PKeySettingsPanel`, `PKeyStatusBanner`, `PKeyUpdatePrompt`, `PKeyEntitlementBadge`,
-  `PKeyDevMenuSection` (a Control, and `rows()` for a data-driven dev menu). Every string goes
-  through `PKeyUiCopy` and `tr()`; every interactive control is in one wrapping focus chain, so
-  ui_up / ui_down / ui_accept / ui_cancel operate every screen on a gamepad or a TV remote.
-- **Update answers never cover the game.** A mandatory or blocked decision is a persistent banner
-  with no dismiss in `PKeyUpdatePrompt`, whatever its `modal` setting; only a dismissable answer
-  may use the modal card. The banner is a strip at the top in any parent: PKeyBoot hosts it on a
-  plain full-rect overlay that takes no input, and inside a game's own Container it asks for its
-  own height only. `PolarisKey.boot()` without a view keeps a visible prompt past READY: the boot
-  view is freed and the prompt stays on its CanvasLayer as `PolarisKey.boot_prompt` (a locked
-  answer for good, a dismissable one until dismissed); pass `keep_update_prompt = false` when the
-  game shows its own prompt, which replays `PolarisKey.update.last_available`. Grace in
-  `PKeyGate` is the same: only the status strip, and no full-rect control takes the game's input.
-  The prompt's action is the outlet adapter's (see "Updates by outlet").
-- **Sliced verifies report progress**: `PolarisKey.verify_progress(fraction)` (web builds without
-  threads), which PKeyBoot's progress bar follows; the bar shows once a stage passes 250 ms.
-- **Tests.** `boot` drives every stage-matrix row through `PolarisKey.boot()` with a scripted
-  host, and the sync classes and keyless registration through the fake server; `ui` pins every
-  scene state as a structural snapshot (`tests/ui/snapshots/`), walks focus with ui_down alone,
-  and checks every visible string is PKeyUiCopy text under a pseudo-locale. Headless runs have no
-  renderer; `tools/ui_screenshots.gd` renders the same states to PNGs for review.
-- Timings (M-series Mac, 4.7.2): `stage_matrix` 15 ms in the editor and 13 ms on the release
-  template (56 rows, 6,594 probe transitions); `boot` about 6.3 s on both (five deliberate 1 s
-  request deadlines); `ui` about 12 s on both (67 states, three passes each).
