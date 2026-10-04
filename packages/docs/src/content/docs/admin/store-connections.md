@@ -84,7 +84,12 @@ store again.
 on the store's team credential — the one app that product may use the team key for. For the App
 Store it also pins the In-App Purchase key to the app's bundle id. If the product holds keys of
 its own, they are re-pinned to the same app through the usual audited pin path, so the assignment
-means the same thing whichever key is used.
+means the same thing whichever key is used — but only keys of the same store account as the team
+key (App Store: the same issuer id; Microsoft Store: the same seller id). A key of another account
+refuses the whole assignment (**409 `own_credential_other_account`**, naming the keys); a key whose
+account cannot be told from its metadata (a Google service account with another email, a Steam
+key) is left as it is and listed in `ownCredentialsSkipped`. The assignment is written as one
+batch: every pin, re-pin and audit row, or none.
 
 The assignment is refused with **409 `app_assigned_elsewhere`** while another product holds the
 app, whether by its platform pin or by its own credential's pin; release it first with `DELETE

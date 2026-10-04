@@ -522,7 +522,7 @@ describe("platform store connections: assigning an app to a product", () => {
       `INSERT INTO outlet_credentials (product, credential_id, kind, outlet_id, enc_value_json, meta_json, status, created_at, created_by)
        VALUES (?, 'own', 'asc-api-key', NULL, '{}', ?, 'active', ?, 'x')`,
       OTHER,
-      JSON.stringify({ keyId: "K", issuerId: "I", appleId: OTHER_APP }),
+      JSON.stringify({ keyId: "K", issuerId: ISSUER, appleId: OTHER_APP }),
       NOW,
     );
     const owned = await platform(
@@ -605,6 +605,79 @@ describe("platform store connections: assigning an app to a product", () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]!.summary).toContain(APPLE_ID);
+  });
+
+  it("refuses to re-pin a product's own key from another App Store account, writing nothing", async () => {
+    const w = await teamWorld();
+    await putCredential(
+      w,
+      "asc",
+      "asc-api-key",
+      {
+        ...ascKey("OWNKEY1234"),
+        issuerId: "11111111-2222-3333-4444-555555555555",
+      },
+      OTHER_APP,
+    );
+    const res = await platform(
+      w,
+      "PUT",
+      `/app-store/apps/${APPLE_ID}/product`,
+      {
+        product: SLUG,
+      },
+    );
+    expect(res.status).toBe(409);
+    expect(await json(res)).toMatchObject({
+      code: "own_credential_other_account",
+      credentials: ["asc"],
+    });
+    expect(await platformPin(w.db, "app-store.api-key", SLUG)).toBeNull();
+    expect(
+      (await audits(w.db)).filter((a) => a.action === "outlet_credential.pin"),
+    ).toEqual([]);
+  });
+
+  it("writes the assignment as one batch: a failing batch leaves no pin and no audit row", async () => {
+    const w = await teamWorld();
+    await putCredential(
+      w,
+      "asc",
+      "asc-api-key",
+      ascKey("OWNKEY1234"),
+      OTHER_APP,
+    );
+    const failing = {
+      ...w,
+      db: {
+        ...w.db,
+        all: w.db.all.bind(w.db),
+        first: w.db.first.bind(w.db),
+        run: w.db.run.bind(w.db),
+        runChanges: w.db.runChanges.bind(w.db),
+        batch: async () => {
+          throw new Error("UNIQUE constraint failed: platform_credential_pins");
+        },
+      },
+    };
+    const res = await platform(
+      failing,
+      "PUT",
+      `/app-store/apps/${APPLE_ID}/product`,
+      {
+        product: SLUG,
+      },
+    );
+    expect(res.status).toBe(409);
+    expect(await platformPin(w.db, "app-store.api-key", SLUG)).toBeNull();
+    const own = await w.db.first<{ meta_json: string }>(
+      "SELECT meta_json FROM outlet_credentials WHERE product = ? AND credential_id = 'asc'",
+      SLUG,
+    );
+    expect(JSON.parse(own!.meta_json).appleId).toBe(OTHER_APP);
+    expect(
+      (await audits(w.db)).filter((a) => a.action === "outlet_credential.pin"),
+    ).toEqual([]);
   });
 
   it("a product's own key cannot be pinned to an app the platform serves to another product", async () => {

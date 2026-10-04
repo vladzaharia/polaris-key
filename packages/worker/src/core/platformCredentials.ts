@@ -44,7 +44,7 @@
  */
 
 import type { Env } from "../env.js";
-import type { Db } from "../db/types.js";
+import type { Db, DbStatement } from "../db/types.js";
 import { open, seal, type SealContext } from "../keyvault.js";
 import { appendAudit } from "../repo.js";
 import { randomId, sha256Hex } from "../crypto.js";
@@ -607,7 +607,7 @@ export async function setPlatformPin(
     await db.run(
       `INSERT INTO platform_credential_pins (credential_id, product, pin, pinned_at, pinned_by)
        VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (credential_id, product)
+       ON CONFLICT (product, credential_id)
        DO UPDATE SET pin = excluded.pin, pinned_at = excluded.pinned_at, pinned_by = excluded.pinned_by`,
       input.id,
       input.product,
@@ -626,6 +626,38 @@ export async function setPlatformPin(
     throw e;
   }
   return { ok: true, before, changed: true };
+}
+
+/**
+ * The writes that set (`pin` a string) or release (`pin: null`) products' pins, as statements for
+ * ONE atomic batch with the audit rows that record them (A-16's assignment). The caller has
+ * already validated each pin and checked holders; the table's `UNIQUE (credential_id, pin)` still
+ * fails the whole batch if a racing assignment took an app in between. Named only by this module
+ * and the Core admin handler (the reach test's writer allowlist).
+ */
+export function platformPinWrites(
+  ops: Array<{
+    id: PlatformCredentialId;
+    product: string;
+    pin: string | null;
+    actor: string;
+    now: number;
+  }>,
+): DbStatement[] {
+  return ops.map((o) =>
+    o.pin === null
+      ? {
+          sql: "DELETE FROM platform_credential_pins WHERE credential_id = ? AND product = ?",
+          params: [o.id, o.product],
+        }
+      : {
+          sql: `INSERT INTO platform_credential_pins (credential_id, product, pin, pinned_at, pinned_by)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (product, credential_id)
+       DO UPDATE SET pin = excluded.pin, pinned_at = excluded.pinned_at, pinned_by = excluded.pinned_by`,
+          params: [o.id, o.product, o.pin, o.now, o.actor],
+        },
+  );
 }
 
 /** Remove a product's pin on a platform credential; answers the pin removed, or `null`. Called

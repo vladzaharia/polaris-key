@@ -212,7 +212,7 @@ function reachViolations(sources: Source[]): string[] {
       out.push(`${src.file} spells the "outlet-credential" seal kind`);
     if (
       !WRITER_ALLOW_FILES.includes(src.file) &&
-      /\b(?:putOutletCredential|pinOutletCredential|deleteOutletCredential)\b/.test(
+      /\b(?:putOutletCredential|pinOutletCredential|deleteOutletCredential|planOutletCredentialRepin)\b/.test(
         body,
       )
     )
@@ -242,7 +242,7 @@ function reachViolations(sources: Source[]): string[] {
       out.push(`${src.file} spells the "platform-credential" seal kind`);
     if (
       !PLATFORM_WRITER_ALLOW_FILES.includes(src.file) &&
-      /\b(?:putPlatformCredential|deletePlatformCredential|setPlatformPin|clearPlatformPin)\b/.test(
+      /\b(?:putPlatformCredential|deletePlatformCredential|setPlatformPin|clearPlatformPin|platformPinWrites)\b/.test(
         body,
       )
     )

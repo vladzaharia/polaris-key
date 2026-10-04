@@ -37,26 +37,32 @@
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import { getProduct } from "../../repo.js";
+import {
+  auditStatement,
+  getProduct,
+  platformAuditStatement,
+} from "../../repo.js";
+import { randomId } from "../../crypto.js";
+import type { DbStatement } from "../../db/types.js";
 import {
   listOutletCredentialPins,
   validateOutletCredentialPin,
 } from "../../core/outletCredentials.js";
 import {
-  clearPlatformPin,
   deletePlatformCredential,
   isPlatformStore,
   listPlatformPins,
   platformCredentialBySlot,
   platformCredentialsOf,
   platformCredentialStatus,
+  platformPin,
   platformPinHolder,
+  platformPinWrites,
   PLATFORM_CREDENTIALS,
   PLATFORM_STORES,
   primaryPlatformCredential,
   putPlatformCredential,
   resolvePlatformCredential,
-  setPlatformPin,
   type PlatformCredentialId,
   type PlatformStore,
 } from "../../core/platformCredentials.js";
@@ -79,7 +85,6 @@ import { listPlatformAscApps } from "../../services/distribution/connectors/asc/
 import { listPlatformPlayApps } from "../../services/distribution/connectors/play/platform.js";
 import { listPlatformMsStoreApps } from "../../services/distribution/connectors/msstore/platform.js";
 import { listPlatformSteamApps } from "../../services/distribution/commerce/steam.js";
-import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
 import {
@@ -90,7 +95,7 @@ import {
   notFound,
   readBody,
 } from "../lib/respond.js";
-import { repinOwnCredentials } from "./outletCredentials.js";
+import { planOwnRepins } from "./outletCredentials.js";
 
 const STORE_LABELS: Record<PlatformStore, string> = {
   "app-store": "App Store",
@@ -489,6 +494,8 @@ async function assignment(
       );
   }
 
+  // Plan everything first, write it as ONE batch: the pins, the release of a pin the new app does
+  // not name, the re-pin of the product's own keys and every audit row — all or nothing.
   const results: Array<{
     credential: PlatformCredentialId;
     pin: string;
@@ -496,31 +503,8 @@ async function assignment(
     changed: boolean;
   }> = [];
   for (const [id, pin] of pins) {
-    const r = await setPlatformPin(db, {
-      id,
-      product: slug,
-      pin,
-      actor: session.sub,
-      now,
-    });
-    if (!r.ok)
-      return err(
-        r.status,
-        r.status === 409 ? "app_assigned_elsewhere" : ErrorCode.BadRequest,
-        r.message,
-        r.status === 409 ? { product: r.holder } : undefined,
-      );
-    results.push({ credential: id, pin, before: r.before, changed: r.changed });
-    if (r.changed)
-      await audit(
-        db,
-        slug,
-        session,
-        now,
-        "outlet_credential.pin",
-        { kind: "platform_credential", id },
-        `Pinned the platform ${PLATFORM_CREDENTIALS[id].label} to ${PLATFORM_CREDENTIALS[id].pinField} ${pin} for this product (was ${r.before ?? "unpinned"})`,
-      );
+    const before = await platformPin(db, id, slug);
+    results.push({ credential: id, pin, before, changed: before !== pin });
   }
   // A pin on another credential of the store that this app does not name (an App Store app the
   // listing shows without a bundle id) would still point at the product's PREVIOUS app: release it.
@@ -528,53 +512,127 @@ async function assignment(
   const released: Array<{ credential: PlatformCredentialId; pin: string }> = [];
   for (const id of platformCredentialsOf(store)) {
     if (set.has(id)) continue;
-    const before = await clearPlatformPin(db, id, slug);
-    if (before === null) continue;
-    released.push({ credential: id, pin: before });
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "outlet_credential.pin",
-      { kind: "platform_credential", id },
-      `Released the platform ${PLATFORM_CREDENTIALS[id].label} pin ${PLATFORM_CREDENTIALS[id].pinField} ${before} for this product (the assigned app names none)`,
-    );
+    const before = await platformPin(db, id, slug);
+    if (before !== null) released.push({ credential: id, pin: before });
   }
   // The product's own keys take precedence over the team key: pin them to the same app through
-  // the existing audited path, so the assignment means the same thing whichever key is used.
-  const repinned: string[] = [];
-  for (const [id, pin] of pins)
-    repinned.push(
-      ...(await repinOwnCredentials(
-        db,
-        slug,
-        session,
-        now,
-        PLATFORM_CREDENTIALS[id].kind,
-        pin,
-      )),
+  // the audited pin path — but only keys of the same store account as the team key.
+  const team = (await resolvePlatformCredential(env, db, primary))?.meta ?? {};
+  const own = { writes: [] as DbStatement[], repinned: [] as string[] };
+  const skipped: Array<{ id: string; reason: string }> = [];
+  const refused: Array<{ id: string; reason: string }> = [];
+  for (const [id, pin] of pins) {
+    const kind = PLATFORM_CREDENTIALS[id].kind;
+    const plan = await planOwnRepins(db, slug, session, now, kind, pin, (m) =>
+      sameAccount(kind, m, team),
     );
-  if (
+    own.writes.push(...plan.writes);
+    own.repinned.push(...plan.repinned);
+    skipped.push(...plan.skipped);
+    refused.push(...plan.refused);
+  }
+  if (refused.length > 0)
+    return err(
+      409,
+      "own_credential_other_account",
+      `the product's own credential${refused.length > 1 ? "s" : ""} ${refused.map((r) => r.id).join(", ")} belong${refused.length > 1 ? "" : "s"} to another ${STORE_LABELS[store]} account than the platform's: re-pin or delete ${refused.length > 1 ? "them" : "it"} on the product first`,
+      { credentials: refused.map((r) => r.id) },
+    );
+
+  const changed =
     results.some((r) => r.changed) ||
     released.length > 0 ||
-    repinned.length > 0
-  )
-    await appendPlatformEvent(db, {
-      actor: actorOf(session),
+    own.repinned.length > 0;
+  const actorRow = {
+    actor_sub: session.sub,
+    actor_name: session.name,
+    actor_email: session.email,
+  };
+  const productAudit = (id: PlatformCredentialId, summary: string) =>
+    auditStatement({
+      product: slug,
+      id: randomId("aud"),
       at: now,
-      action: "store_connection.assign",
-      target: { kind: "store_app", id: `${store}:${appId}` },
-      summary: `Assigned ${STORE_LABELS[store]} app ${appId}${app.name ? ` (${app.name})` : ""} to product ${slug}`,
-      before: Object.fromEntries([
-        ...results.map((r) => [r.credential, r.before]),
-        ...released.map((r) => [r.credential, r.pin]),
-      ]),
-      after: Object.fromEntries([
-        ...results.map((r) => [r.credential, r.pin]),
-        ...released.map((r) => [r.credential, null]),
-      ]),
+      ...actorRow,
+      action: "outlet_credential.pin",
+      target_kind: "platform_credential",
+      target_id: id,
+      parent_id: null,
+      summary,
     });
+  const writes: DbStatement[] = [
+    ...platformPinWrites([
+      ...results
+        .filter((r) => r.changed)
+        .map((r) => ({
+          id: r.credential,
+          product: slug,
+          pin: r.pin,
+          actor: session.sub,
+          now,
+        })),
+      ...released.map((r) => ({
+        id: r.credential,
+        product: slug,
+        pin: null,
+        actor: session.sub,
+        now,
+      })),
+    ]),
+    ...results
+      .filter((r) => r.changed)
+      .map((r) =>
+        productAudit(
+          r.credential,
+          `Pinned the platform ${PLATFORM_CREDENTIALS[r.credential].label} to ${PLATFORM_CREDENTIALS[r.credential].pinField} ${r.pin} for this product (was ${r.before ?? "unpinned"})`,
+        ),
+      ),
+    ...released.map((r) =>
+      productAudit(
+        r.credential,
+        `Released the platform ${PLATFORM_CREDENTIALS[r.credential].label} pin ${PLATFORM_CREDENTIALS[r.credential].pinField} ${r.pin} for this product (the assigned app names none)`,
+      ),
+    ),
+    ...own.writes,
+  ];
+  if (changed)
+    writes.push(
+      platformAuditStatement({
+        id: randomId("paud"),
+        at: now,
+        ...actorRow,
+        action: "store_connection.assign",
+        target_kind: "store_app",
+        target_id: `${store}:${appId}`,
+        summary: `Assigned ${STORE_LABELS[store]} app ${appId}${app.name ? ` (${app.name})` : ""} to product ${slug}`,
+        before_json: JSON.stringify(
+          Object.fromEntries([
+            ...results.map((r) => [r.credential, r.before]),
+            ...released.map((r) => [r.credential, r.pin]),
+          ]),
+        ),
+        after_json: JSON.stringify(
+          Object.fromEntries([
+            ...results.map((r) => [r.credential, r.pin]),
+            ...released.map((r) => [r.credential, null]),
+          ]),
+        ),
+      }),
+    );
+  if (writes.length > 0) {
+    try {
+      await db.batch(writes);
+    } catch (e) {
+      // A racing assignment took the app between the checks and the batch: nothing was written.
+      if (/UNIQUE/i.test(e instanceof Error ? e.message : ""))
+        return err(
+          409,
+          "app_assigned_elsewhere",
+          `${appId} was just assigned to another product; nothing was changed`,
+        );
+      throw e;
+    }
+  }
   return adminJson({
     ok: true,
     store,
@@ -586,8 +644,43 @@ async function assignment(
       changed,
     })),
     released,
-    ownCredentialsRepinned: repinned,
+    ownCredentialsRepinned: own.repinned,
+    // Own keys left alone because their store account cannot be told from their metadata (a
+    // Google service account with another email, a Steam key): re-pin them on the product.
+    ownCredentialsSkipped: skipped,
   });
+}
+
+/**
+ * Whether an own credential's key belongs to the same store account as the platform's team key,
+ * from non-secret metadata only: App Store keys by issuer id (the team), Partner Center by seller
+ * id. A Google service account is `same` only with the same email (another one may or may not be
+ * in the developer account: `unknown`); a Steam key carries no account id (`unknown`).
+ */
+function sameAccount(
+  kind: string,
+  own: Record<string, string>,
+  team: Record<string, string>,
+): "same" | "different" | "unknown" {
+  const by = (field: string, unknownIfDifferent = false) =>
+    !own[field] || !team[field]
+      ? "unknown"
+      : own[field] === team[field]
+        ? "same"
+        : unknownIfDifferent
+          ? "unknown"
+          : "different";
+  switch (kind) {
+    case "asc-api-key":
+    case "app-store-server-key":
+      return by("issuerId");
+    case "ms-partner-center":
+      return by("sellerId");
+    case "google-service-account":
+      return by("clientEmail", true);
+    default:
+      return "unknown";
+  }
 }
 
 async function unassign(
@@ -602,27 +695,52 @@ async function unassign(
   if (slug === null) return notFound();
   const cleared: Array<{ credential: PlatformCredentialId; pin: string }> = [];
   for (const id of platformCredentialsOf(store)) {
-    const pin = await clearPlatformPin(db, id, slug);
-    if (pin === null) continue;
-    cleared.push({ credential: id, pin });
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "outlet_credential.pin",
-      { kind: "platform_credential", id },
-      `Released the platform ${PLATFORM_CREDENTIALS[id].label} pin ${PLATFORM_CREDENTIALS[id].pinField} ${pin} for this product`,
-    );
+    const pin = await platformPin(db, id, slug);
+    if (pin !== null) cleared.push({ credential: id, pin });
   }
-  await appendPlatformEvent(db, {
-    actor: actorOf(session),
-    at: now,
-    action: "store_connection.unassign",
-    target: { kind: "store_app", id: `${store}:${appId}` },
-    summary: `Released ${STORE_LABELS[store]} app ${appId} from product ${slug}`,
-    before: Object.fromEntries(cleared.map((c) => [c.credential, c.pin])),
-  });
+  const actorRow = {
+    actor_sub: session.sub,
+    actor_name: session.name,
+    actor_email: session.email,
+  };
+  // One batch: the releases and their audit rows, all or nothing.
+  await db.batch([
+    ...platformPinWrites(
+      cleared.map((c) => ({
+        id: c.credential,
+        product: slug,
+        pin: null,
+        actor: session.sub,
+        now,
+      })),
+    ),
+    ...cleared.map((c) =>
+      auditStatement({
+        product: slug,
+        id: randomId("aud"),
+        at: now,
+        ...actorRow,
+        action: "outlet_credential.pin",
+        target_kind: "platform_credential",
+        target_id: c.credential,
+        parent_id: null,
+        summary: `Released the platform ${PLATFORM_CREDENTIALS[c.credential].label} pin ${PLATFORM_CREDENTIALS[c.credential].pinField} ${c.pin} for this product`,
+      }),
+    ),
+    platformAuditStatement({
+      id: randomId("paud"),
+      at: now,
+      ...actorRow,
+      action: "store_connection.unassign",
+      target_kind: "store_app",
+      target_id: `${store}:${appId}`,
+      summary: `Released ${STORE_LABELS[store]} app ${appId} from product ${slug}`,
+      before_json: JSON.stringify(
+        Object.fromEntries(cleared.map((c) => [c.credential, c.pin])),
+      ),
+      after_json: null,
+    }),
+  ]);
   // A key the product holds of its own keeps its pin: re-pin or delete it per product.
   return adminJson({ ok: true, store, appId, product: slug, cleared });
 }
