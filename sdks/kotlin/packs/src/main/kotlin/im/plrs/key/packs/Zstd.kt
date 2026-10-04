@@ -2,7 +2,9 @@
 // behind the same port as Swift's `Zstd.swift` (P6-08).
 //
 // zstd-jni (libzstd 1.5.7 through JNI) decodes every frame as a STREAM, so libzstd's own
-// `ZSTD_d_windowLogMax` is enforced and no output is allocated before its bytes arrive:
+// `ZSTD_d_windowLogMax` is enforced and nothing is sized from a frame header. A non-streamed decode
+// (`decode`, `decodeWithPrefix`) allocates its output up front at the SIGNED size from the record or
+// index, never the frame's declared content size; only `decodeStream` allocates as bytes arrive:
 //
 //   * plain frames: `ZstdInputStreamNoFinalizer` with `setLongMax(windowLogMax(size))`, read until the
 //     frame ends; exactly `size` bytes or a refusal. A whole `full` payload streams to its sink

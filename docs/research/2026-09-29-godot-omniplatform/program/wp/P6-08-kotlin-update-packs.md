@@ -177,7 +177,8 @@ disagree.
   (as Node's `node:zlib` path), so every admitted frame decodes as with a prefix; libzstd copies the
   dictionary, so a delta holds its base twice. Every frame decodes as a STREAM
   (`ZstdInputStreamNoFinalizer` with `setLongMax`), which enforces `windowLogMax` and never
-  allocates a frame's declared size up front; `full` payloads stream to their sink. The start-up
+  sizes a buffer from a frame header: a non-streamed decode allocates the SIGNED size from the
+  record or index up front, and `full` payloads stream to their sink. The start-up
   probe gates `zstd-patch-from`.
 - **16 KB alignment.** The repository had no alignment check, so `sdks/kotlin/tools/check_16k_alignment.py`
   reads every ELF `PT_LOAD` of the pinned zstd-jni AAR's `.so` files (64-bit ABIs must have
