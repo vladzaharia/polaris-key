@@ -14,8 +14,6 @@ packages/cli/test/fixtures/feeds/
 packages/worker/test/fixtures/registry/
 # P3-09's app-updater feed goldens: byte-compared against the rendered feed bodies.
 packages/worker/test/fixtures/updater-feeds/
-# F-05's PyPI feed goldens (PEP 691 JSON, PEP 503 HTML): byte-compared against the rendered pages.
-packages/worker/test/fixtures/registry/pypi/
 # P5-08's transport goldens (Manifest.json, Gradle, VDF) and Godot's Gradle template, byte-compared.
 packages/cli/test/fixtures/transport/
 
