@@ -62,6 +62,7 @@ describe("the sources", () => {
       "Products",
       // The Platform section's built pages (notes/S-13 §9.1).
       "Deployment",
+      "Store connections",
     ]);
   });
 
