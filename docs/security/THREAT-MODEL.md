@@ -1000,6 +1000,18 @@ JPEG and the archive types. Reviewed once, here:
   `default-src 'none'`, no forms, no base, no framing). It is rendered from the same data as the
   JSON with every value escaped, and has no `<script>`, `<form>`, `<style>` or `on*`
   attribute. The feed setting `htmlFallback` turns it off.
+  - **As built (F-05).** Two routes carry the flag, the project list and the project page
+    (`registry/pypi/routes.ts`); the files route does not, so a wheel or sdist can never be
+    admitted as HTML. Both send exactly `sandbox; default-src 'none'; frame-ancestors 'none';
+base-uri 'none'; form-action 'none'` and `Vary: Accept`, and give HTML only when `Accept`
+    lists no PEP 691 JSON type (pip and uv always list it first). Every tenant value on the page
+    (the project name, file names, `Requires-Python`, the yank reason) is escaped, and
+    `test/registry/pypi.test.ts` pins the page against golden files and against any script,
+    form, style, image, base, `on*` attribute or `javascript:`. File URLs are relative and embed
+    the SHA-256; a file is served only when its name and hash both match a file of the owner's
+    package and the owner holds the blob's ref (`hasRef`). A path naming no project or file
+    still runs the feed-level check first, so an unknown name answers exactly what a disabled
+    or non-public feed answers for a known one.
 - Any other type, or a body without one, becomes the not-found.
 
 **Tenant-supplied text.** Package names, descriptions, `package.json`-derived fields, POMs and

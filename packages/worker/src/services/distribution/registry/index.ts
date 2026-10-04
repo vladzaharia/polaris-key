@@ -4,7 +4,8 @@
  * Each ecosystem package (F-04 npm, F-05 PyPI, F-06 Swift, F-07 Maven, F-08 OCI, F-09 Godot)
  * adds one `RegistryRenderer` from its own `registry/<ecosystem>/` directory to `RENDERERS`;
  * its routes reach the host through `DISTRIBUTION_REGISTRY_ROUTES`, which `mount.ts` spreads
- * into `REGISTRY_ROUTES`. F-02 ships the framework; F-04 adds npm.
+ * into `REGISTRY_ROUTES`. F-02 shipped the framework and no ecosystem; each feed package adds
+ * its own line below.
  */
 
 import type {
@@ -13,11 +14,13 @@ import type {
 } from "../../../core/registryHost.js";
 import type { RegistryRenderer } from "./materialise.js";
 import { NPM_RENDERER } from "./npm/index.js";
+import { PYPI_RENDERER } from "./pypi/index.js";
 
 /** Every renderer this build carries, one per ecosystem. */
 export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
   new Map<RegistryEcosystem, RegistryRenderer>([
     ["npm", NPM_RENDERER], // F-04
+    ["pypi", PYPI_RENDERER], // F-05
   ]);
 
 /** Every registry route, in renderer order. */

@@ -881,13 +881,16 @@ function deps(source: Map<string, RegistryPackage>): TestDeps {
 }
 
 describe("the materialiser", () => {
-  it("every renderer's routes are its own ecosystem's", () => {
+  it("every registry route belongs to a registered renderer of its own ecosystem", () => {
+    // F-02 shipped none; each feed package (F-04 to F-09) registers one renderer.
+    expect(DISTRIBUTION_REGISTRY_ROUTES).toEqual(
+      [...RENDERERS.values()].flatMap((r) => r.routes),
+    );
     for (const [ecosystem, renderer] of RENDERERS) {
       expect(renderer.ecosystem).toBe(ecosystem);
-      for (const r of renderer.routes) {
-        expect(r.ecosystem).toBe(ecosystem);
-        expect(r.service).toBe("distribution");
-        expect(DISTRIBUTION_REGISTRY_ROUTES).toContain(r);
+      for (const route of renderer.routes) {
+        expect(route.ecosystem, route.name).toBe(ecosystem);
+        expect(route.service, route.name).toBe("distribution");
       }
     }
   });

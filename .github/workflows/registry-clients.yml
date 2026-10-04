@@ -76,6 +76,17 @@ jobs:
             ecosystem: npm
             os: ubuntu-latest
             bun: true
+          # F-05: pip current and 22.2, uv (explicit index), Poetry 2. Each bootstraps its tool
+          # (and, for pip 22.2, a Python 3.11 through uv) from PyPI into a throwaway environment.
+          - client: pip
+            ecosystem: pypi
+            os: ubuntu-latest
+          - client: uv
+            ecosystem: pypi
+            os: ubuntu-latest
+          - client: poetry
+            ecosystem: pypi
+            os: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       # No `version:` here: the action reads `packageManager` from package.json.

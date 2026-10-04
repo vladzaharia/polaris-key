@@ -136,6 +136,50 @@ The snippets take three inputs: the registry host's origin, the owner (the produ
 the feed's scope (`dist_registry_feeds.namespace_json` `{scope}`). The console's setup tab and
 `pkey feeds setup` render them from those alone.
 
+## PyPI
+
+The PyPI feed speaks the
+[Simple Repository API](https://packaging.python.org/en/latest/specifications/simple-repository-api/)
+at API version 1.1, so pip, uv and Poetry install from it unchanged.
+
+| Path                                            | What it answers                     |
+| ----------------------------------------------- | ----------------------------------- |
+| `/pypi/<owner>/simple/`                         | the project list                    |
+| `/pypi/<owner>/simple/<project>/`               | one project's page                  |
+| `/pypi/<owner>/files/<sha256>/<filename>`       | a wheel or an sdist                 |
+| `/pypi/<owner>/files/<sha256>/<wheel>.metadata` | the wheel's core metadata (PEP 658) |
+
+- **JSON first.** A client whose `Accept` lists `application/vnd.pypi.simple.v1+json` (pip 22.2
+  and later, uv, Poetry) gets PEP 691 JSON with that exact type. Any other client gets the same
+  page as inert HTML (`application/vnd.pypi.simple.v1+html`): every value escaped, no script,
+  form or style. With the feed's `htmlFallback` setting off, a client that cannot take JSON gets
+  `406`. pip before 22.2 asks only for `text/html`, which the host never serves.
+- **Names.** Project names compare after PEP 503 normalisation. `/simple/Acme_SDK`, or any
+  spelling without the trailing slash, answers `301` to `/simple/acme-sdk/`.
+- **Files.** Each file lists `hashes.sha256` (and a `#sha256=` fragment in HTML), `size`,
+  `upload-time`, `requires-python` and, for a wheel published with its `METADATA`,
+  `core-metadata` (PEP 714). The hash protects against corruption only; it says nothing about who
+  published the file. File URLs embed the SHA-256, so they never change.
+- **Yank, deprecate, channels.** A yanked version keeps its files listed with PEP 592's `yanked`
+  and the reason: installers skip it for a range but still install it for an exact `==` pin. PyPI
+  has no deprecation, so a deprecated version is listed as live. PyPI has no tags either: publish
+  pre-releases with a PEP 440 version (`1.1.0b1`), and pip `--pre` or a pre-release specifier
+  selects them, whatever channel the release was published to.
+
+### Setup snippet inputs
+
+The console's Setup tab and `pkey feeds setup` (F-12) render the PyPI snippets from these inputs.
+Each snippet uses a strict router, so the feed is the only index asked for its names:
+
+| Input         | Value                                                                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Index URL     | `https://pkg.plrs.im/pypi/<owner>/simple/`                                                                                                |
+| Project names | the feed's namespace: its `names` and `prefixes`                                                                                          |
+| uv            | `[[tool.uv.index]]` with `explicit = true`, plus a `[tool.uv.sources]` entry per project                                                  |
+| Poetry        | `[[tool.poetry.source]]` with `priority = "explicit"`, plus `source = "<name>"` per dependency                                            |
+| pip           | `--index-url` (or `pip.conf` `index-url`); never `--extra-index-url`, which has no routing and lets a public package of the same name win |
+| Credentials   | none while feeds are public; tokens come with registry credentials (F-21)                                                                 |
+
 ## Local testing
 
 `pnpm --filter @polaris-key/worker registry:clients` stands up a seeded local Worker on the

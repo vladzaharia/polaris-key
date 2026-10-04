@@ -385,7 +385,7 @@ describe("registry host: isolation", () => {
       // No D1 here, so only paths no route matches: F-04's npm routes load the owner for a
       // scoped name (test/registry/npm.test.ts pins their not-found with a database).
       "/npm/djdl/sdk",
-      "/pypi/djdl/simple/",
+      // `/pypi/…` has routes since F-05 (its unknown owners: test/registry/pypi.test.ts).
       "/maven/djdl/im/plrs/key/sdk/maven-metadata.xml",
       "/godot/djdl/index.json",
     ]) {

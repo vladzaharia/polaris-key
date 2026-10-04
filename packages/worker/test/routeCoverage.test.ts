@@ -197,6 +197,10 @@ const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ["/npm/{owner}/{scope}/{name}", ["get", "head"], "npm.packument"],
   ["/npm/{owner}/{escapedName}/-/{tarball}", ["get", "head"], "npm.tarball"],
   ["/npm/{owner}/{scope}/{name}/-/{tarball}", ["get", "head"], "npm.tarball"],
+  // F-05 (PyPI)
+  ["/pypi/{owner}/simple/", ["get", "head"], "pypi.simple.index"],
+  ["/pypi/{owner}/simple/{project}/", ["get", "head"], "pypi.simple.project"],
+  ["/pypi/{owner}/files/{sha256}/{filename}", ["get", "head"], "pypi.files"],
 ];
 
 function specMethods(path: string): string[] {

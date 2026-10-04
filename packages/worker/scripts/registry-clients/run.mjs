@@ -12,16 +12,28 @@
  *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin)
  *      and OWNER (the fixture owner) in its environment; a non-zero exit fails the run.
  *
- * F-02 ships one smoke client, `curl`; F-04 adds npm, pnpm, yarn and bun. F-05 to F-09 add
- * their ecosystem's clients (pip, SwiftPM, Gradle, docker, GodotEnv) as further `clients/*.sh`
- * and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here reaches a deployed environment.
+ * A client may bring its ecosystem's fixture as `clients/<name>.seed.mjs`, exporting
+ * `seed(persistTo)`; it runs after step 2 and before `wrangler dev` opens the state (F-05's PyPI
+ * clients share `pypi-fixture.mjs`, which seeds once per run).
+ *
+ * F-02 ships one smoke client, `curl`; F-04 to F-09 add their ecosystem's clients (npm, pnpm,
+ * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv) as further
+ * `clients/*.sh` and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here
+ * reaches a deployed environment.
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
 import { FIXTURE_OWNER, seed } from "./seed.mjs";
 
@@ -73,6 +85,11 @@ let dev = null;
 let failed = 0;
 try {
   await seed(state);
+  for (const client of clients) {
+    const fixture = join(CLIENTS, `${client}.seed.mjs`);
+    if (existsSync(fixture))
+      await (await import(pathToFileURL(fixture).href)).seed(state);
+  }
   dev = spawn(
     WRANGLER,
     [
