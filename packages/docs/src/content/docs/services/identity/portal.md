@@ -134,6 +134,24 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   therefore needs a signed-in account **and** a license for the product linked to it (a usable
   one for `licensed` access); there is no anonymous path, and the redirect target is always a
   GitHub-storage host.
+- **`GET /api/products/<product>/downloads[?channel=<channel>]`** — one product's downloads and
+  store links, shaped for the product page's "Get it" section. Answered only for an account with
+  a license for the product linked to it, behind the same three gates as `GET /api/releases`
+  (every refusal is `404`), and rate-limited per account in the product's own shard. It returns
+  the visitor's `detected` platform (from the User-Agent and the low-entropy client hints only),
+  the `recommended` files for that platform, every platform's files in its newest release, the
+  platform-free `extras`, and every store outlet (`kind`, `platforms`, `label`, `url`,
+  `deepLink`, `command`, `activateUrl`, `live`, `version`; `activateUrl` is Steam's key-activation
+  page, for a held Steam key). A universal build is recommended alone and flagged `universal`; otherwise
+  every arch is, Apple silicon first on a Mac and the detected arch first when the browser said.
+  Each file carries `canDownload` and, when false, a `reason`: `license_inactive` (no usable
+  license), `not_entitled` (the license's channels or update window do not reach the release) or
+  `not_hosted` (covered, but not yet served to a browser). When the newest release is not
+  covered, the recommendation falls back to the newest one that is (`latest: false`). The
+  product facts come from Distribution's `customerDownloads` hook, read through Core; whether the
+  account may download is the same decision the token mint makes, so every file marked
+  `canDownload` is one the mint answers. A product with Distribution off answers
+  `available: false` with empty lists; `?channel=` names another channel (default `stable`).
 - **`GET /download/<token>`** — redeems a minted token. Every one of those checks is run again
   here, at redemption, not assumed to still hold from mint time — portal enabled, releases
   enabled, account active, license still linked, licensed access still held — and the token is

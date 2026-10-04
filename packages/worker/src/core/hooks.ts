@@ -44,9 +44,11 @@
  * `Delivery` and the optional `packChunks` hook point to `ReleaseCatalog` (P4-22 implements it);
  * P4-18 added the optional `packPayload` (Distribution's payload URL). F-03 added the package
  * readers to `ReleaseCatalog` (`packageDeliverables`, `packageVersions`, `packageChannelHeads`) and
- * `packageFeed` to `Delivery`.
+ * `packageFeed` to `Delivery`. PX-W2 added the optional `customerDownloads` to `Delivery` (the
+ * customer portal's per-platform files and store links, portal gaps G2 and G4).
  * P2b-05, P2b-06, P3-03, P4-02 (Release's publish routes read `delivery.entitlement`), P4-05,
- * P4-09, P4-14 (Core's blob collector reads both hooks) and P6-03 consume.
+ * P4-09, P4-14 (Core's blob collector reads both hooks), P6-03 and PX-W2 (Identity's portal)
+ * consume.
  */
 
 /// <reference types="@cloudflare/workers-types" />

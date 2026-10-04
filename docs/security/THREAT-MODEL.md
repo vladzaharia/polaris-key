@@ -609,6 +609,17 @@ the old column.
   than the byte routes' fixed-release check, which still reads a fixed release as the stable
   channel (the residual in §5 stands for them). With Distribution off the portal offers and
   mints nothing.
+- **The product page's downloads read the same predicates (PX-W2).**
+  `GET /api/products/<p>/downloads` lists the app's files per platform, the recommended picks and
+  the store links from Distribution's account-free `customerDownloads` hook, then marks each file with the token
+  mint's own answers (`accountMayDownload` per release, `downloadTarget` per file), so it cannot
+  advertise a file the mint would refuse. It mints no URL and redirects nowhere. It answers only
+  an account with a linked licence for the product, behind the release listing's three gates, and
+  every refusal is the same 404. Store links are built by the Worker from re-validated outlet
+  identities (`page/model.ts` `storeLink`), never taken from the manifest verbatim; the Steam
+  activation link is a fixed `https://store.steampowered.com/account/registerkey`. Detection reads
+  only the User-Agent and the low-entropy client hints (`core/platformDetect.ts`); no high-entropy
+  hint is requested. Tests: `test/portalDownloads.test.ts`.
 - **R6-12, extended deliberately.** The portal's redirect may now also target this deployment's
   bytes host (`isAllowedDownloadRedirectHost`, separate from the fetch-side
   `isAllowedStorageHost`, which still allows only GitHub's storage hosts): only for a PUBLIC

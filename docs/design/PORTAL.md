@@ -1292,6 +1292,14 @@ Notes:
   rows and the product identity card depend on it.
 - **Rule 6.** Identity (where the portal lives) may not import Distribution, Update or License
   internals. G2, G4, G8, G24 and G25 go through descriptor hooks in `src/core/hooks.ts`.
+- **G2 and G4 as built (PX-W2).** `GET /api/products/:p/downloads[?channel=]` reads Distribution's
+  `customerDownloads` hook (account-free: files per platform and release, recommended picks, store
+  links) and Core's `detectPlatform` (moved from `page/detect.ts` to `core/platformDetect.ts`), then
+  marks each file `canDownload` with a `reason` (`license_inactive`, `not_entitled`, `not_hosted`)
+  from the token mint's own predicates. A store row is `{id, kind, outletId, platforms[], label,
+url, deepLink, command, activateUrl, live, version}`: `platforms` is a list, not one `platform`,
+  because Steam and itch serve three desktop platforms from one outlet; `activateUrl` is Steam's
+  `registerkey` page, to which the client appends the held key once G8 supplies it.
 - **One library call.** `GET /api/library` returns, per product: presentation, status and reason,
   best license summary with seats, quick-action inputs and support links, plus the Discover count.
   `GET /api/products/:p` adds licenses, devices, downloads, stores, feeds and `services`.
