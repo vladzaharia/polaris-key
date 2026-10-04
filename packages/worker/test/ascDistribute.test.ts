@@ -1053,6 +1053,10 @@ describe("the connector lists the Distribute surface", () => {
       "distribute/beta-groups",
       "distribute/versions",
       "distribute/preflight",
+      // A-17e's IAP reads share the connector's read table.
+      "iap/products",
+      "iap/price-points",
+      "distribute/submission-items",
     ]);
     expect((await admin(w, "GET", `${BASE}/distribute/submit`)).status).toBe(
       405,

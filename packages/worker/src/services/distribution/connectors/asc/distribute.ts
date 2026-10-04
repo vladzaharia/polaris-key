@@ -25,7 +25,9 @@
  *   POST distribute/version/release-type     { versionId, releaseType, earliestReleaseDate? }
  *   POST distribute/version/phased-release   { versionId }
  *   POST distribute/version-localization     { versionId, locale, whatsNew?, promotionalText? }
- *   POST distribute/submit                   { versionId, confirm }        TYPED
+ *   POST distribute/submit                   { versionId, confirm,         TYPED
+ *                                              inAppPurchaseVersionIds?,
+ *                                              backgroundAssetVersionIds? }
  *   POST distribute/submission/cancel        { submissionId }
  *
  * The write discipline is S-14 §7's, through A-17a's substrate:
@@ -51,8 +53,12 @@
  *     assert `typedConfirmation` to the write gate, which refuses `submitted: true` without it.
  *     Cancelling a submission is a plain confirm.
  *
- * Out of this file: IAP and Background Asset versions as submission items (A-17e adds them through
- * `addSubmissionItem`), the console (A-17g), and a manual release (P5-02's `release`).
+ * A-17e: `distribute/submit` also adds the IAP and Background Asset versions it is given (listed by
+ * `GET distribute/submission-items`), each proven the pinned app's by `commerce/appleCatalog.ts`
+ * before the submission is opened, and the preflight carries the first-IAP portal note. The shared
+ * plumbing (`distributeControl`, `step`, `proveOwned`) lives in `flow.ts`.
+ *
+ * Out of this file: the console (A-17g) and a manual release (P5-02's `release`).
  */
 
 import {
@@ -61,145 +67,38 @@ import {
   findIncluded,
   relId,
   single,
-  type AscDocument,
   type AscResource,
 } from "../../../../core/asc/client.js";
-import {
-  isIdempotencyKey,
-  performAscWrite,
-} from "../../../../core/asc/ledger.js";
-import type { AscWriteStep } from "../../../../core/asc/ledger.js";
 import { getObject } from "../state.js";
-import { syncAppStoreVersion, type AscRun } from "./apply.js";
+import { syncAppStoreVersion } from "./apply.js";
 import {
   checkTypedConfirmation,
-  refuse,
-  withRun,
   type ConnectorControl,
   type ConnectorRead,
-  type ControlContext,
-  type ControlResult,
 } from "./controls.js";
-import { ASC_CONNECTOR, type AscSetup } from "./setup.js";
-
-// ── Plumbing ─────────────────────────────────────────────────────────────────────────────────
-
-/** A refusal raised from inside a flow; `distributeControl` answers its result. */
-class Refused extends Error {
-  constructor(readonly result: ControlResult) {
-    super("refused");
-  }
-}
-
-function stop(
-  status: 404 | 409 | 422 | 502,
-  reason: string,
-  message: string,
-  fields?: string[],
-): never {
-  throw new Refused(refuse(status, reason, message, fields));
-}
-
-interface Flow {
-  c: ControlContext;
-  run: AscRun;
-  setup: AscSetup;
-  /** The validated `Idempotency-Key` (writes only). */
-  key: string;
-}
-
-/** A Distribute write: the Idempotency-Key, then the pinned run, then `fn`. */
-function distributeControl(
-  fn: (f: Flow, body: Record<string, unknown>) => Promise<ControlResult>,
-): ConnectorControl {
-  return (c, body) => {
-    const key = c.idempotencyKey;
-    if (!isIdempotencyKey(key))
-      return Promise.resolve(
-        refuse(
-          422,
-          "idempotency_key_required",
-          "send an Idempotency-Key header (a UUID per operator intent)",
-        ),
-      );
-    return withRun(c, async (run, setup) => {
-      try {
-        return await fn({ c, run, setup, key }, body);
-      } catch (e) {
-        if (e instanceof Refused) return e.result;
-        throw e;
-      }
-    });
-  };
-}
-
-/** A Distribute read: the pinned run, then `fn`. */
-function distributeRead(
-  fn: (f: Omit<Flow, "key">, q: URLSearchParams) => Promise<ControlResult>,
-): ConnectorRead {
-  return (c, q) =>
-    withRun(c, async (run, setup) => {
-      try {
-        return await fn({ c, run, setup }, q);
-      } catch (e) {
-        if (e instanceof Refused) return e.result;
-        throw e;
-      }
-    });
-}
-
-type StepOutcome = "written" | "existing" | "replayed";
-
-interface StepResult {
-  outcome: StepOutcome;
-  opId: string;
-  ids: Record<string, string>;
-}
-
-/** One ledger step of a product-scope Distribute write. */
-async function step<T extends AscResource>(
-  f: Flow,
-  op: string,
-  naturalKey: string,
-  s: Omit<AscWriteStep<T>, "key" | "session" | "now">,
-): Promise<StepResult> {
-  const r = await performAscWrite(f.c.db, {
-    ...s,
-    key: {
-      scope: "product",
-      product: f.c.product,
-      op,
-      naturalKey,
-      idempotencyKey: f.key,
-    },
-    session: f.c.session,
-    now: f.c.now,
-  });
-  if (r.outcome === "conflict")
-    stop(
-      409,
-      "idempotency_conflict",
-      "this Idempotency-Key was already used for a different request",
-    );
-  if (r.outcome === "replayed") {
-    let ids: Record<string, string> = {};
-    try {
-      ids = JSON.parse(r.row.result_ids_json ?? "{}") as Record<string, string>;
-    } catch {
-      /* an unreadable row answers no ids */
-    }
-    return { outcome: "replayed", opId: r.row.op_id, ids };
-  }
-  return { outcome: r.outcome, opId: r.opId, ids: r.resultIds };
-}
-
-const stepView = (r: StepResult) => ({ outcome: r.outcome, opId: r.opId });
+import {
+  ID,
+  distributeControl,
+  distributeRead,
+  idField,
+  localeField,
+  proveOwned,
+  step,
+  stepView,
+  stop,
+  textField,
+  type Flow,
+  type StepResult,
+} from "./flow.js";
+import { ASC_CONNECTOR } from "./setup.js";
+import {
+  firstIapCheck,
+  proveSubmissionExtras,
+  submissionExtras,
+} from "../../commerce/appleCatalog.js";
 
 // ── Validation ───────────────────────────────────────────────────────────────────────────────
 
-/** An Apple resource id as a request may name it (ascPath re-checks every segment). */
-const ID = /^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/;
-const LOCALE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/;
 const VERSION_STRING = /^\d{1,5}(\.\d{1,5}){0,3}$/;
 const PLATFORMS = ["IOS", "MAC_OS", "TV_OS", "VISION_OS"] as const;
 const RELEASE_TYPES = ["MANUAL", "AFTER_APPROVAL", "SCHEDULED"] as const;
@@ -207,39 +106,6 @@ const RELEASE_TYPES = ["MANUAL", "AFTER_APPROVAL", "SCHEDULED"] as const;
 const WHATS_NEW_MAX = 4000;
 const PROMO_MAX = 170;
 const MAX_GROUPS = 20;
-
-function idField(body: Record<string, unknown>, name: string): string {
-  const v = body[name];
-  if (typeof v !== "string" || !ID.test(v))
-    stop(422, "invalid_body", `${name} is required`, [name]);
-  return v;
-}
-
-function textField(
-  body: Record<string, unknown>,
-  name: string,
-  max: number,
-): string | undefined {
-  const v = body[name];
-  if (v === undefined) return undefined;
-  if (typeof v !== "string" || v.length > max)
-    stop(
-      422,
-      "invalid_body",
-      `${name} must be text of at most ${max} characters`,
-      [name],
-    );
-  return v;
-}
-
-function localeField(body: Record<string, unknown>): string {
-  const v = body.locale;
-  if (typeof v !== "string" || !LOCALE.test(v))
-    stop(422, "invalid_body", "locale must be a locale code such as en-US", [
-      "locale",
-    ]);
-  return v;
-}
 
 // ── Ownership proofs ─────────────────────────────────────────────────────────────────────────
 
@@ -270,24 +136,6 @@ const PHASED_VERSION_STATES = new Set([
 /** A version's state: Apple's newer `appVersionState`, else `appStoreState`. */
 function versionState(v: AscResource | null): string | null {
   return attr(v, "appVersionState") ?? attr(v, "appStoreState");
-}
-
-/** One resource re-read with `include=app` (plus `include`), proven to be the pinned app's. */
-async function proveOwned(
-  f: Pick<Flow, "run" | "setup">,
-  type: string,
-  id: string,
-  include: string[],
-  reason: string,
-  noun: string,
-): Promise<{ resource: AscResource; doc: AscDocument }> {
-  const doc = await f.run.client.getOrNull(ascPath(type, id), {
-    include: ["app", ...include].join(","),
-  });
-  const resource = single(doc);
-  if (!doc || !resource || relId(resource, "app") !== f.setup.appleId)
-    stop(404, reason, `no ${noun} ${id} on this app`);
-  return { resource, doc };
 }
 
 function proveBuild(f: Pick<Flow, "run" | "setup">, buildId: string) {
@@ -706,6 +554,9 @@ const preflight: ConnectorRead = distributeRead(async (f, q) => {
     ok: Array.isArray(betaLocs?.data) && betaLocs.data.length > 0,
     detail: "needed for external TestFlight groups only",
   });
+  // A-17e: an app's first In-App Purchase is submitted in the portal, with an app version.
+  const firstIap = await firstIapCheck(f);
+  if (firstIap) checks.push(firstIap);
   checks.push({
     id: "appPrivacy",
     ok: null,
@@ -1362,6 +1213,8 @@ export async function addSubmissionItem(
 
 const submit: ConnectorControl = distributeControl(async (f, body) => {
   const versionId = idField(body, "versionId");
+  // A-17e: IAP and Background Asset versions that ride the same submission (optional).
+  const extras = submissionExtras(body);
   if (typeof body.confirm !== "string" || body.confirm.trim() === "")
     stop(
       422,
@@ -1396,6 +1249,8 @@ const submit: ConnectorControl = distributeControl(async (f, body) => {
     "submit for review",
   );
   if (unconfirmed) return unconfirmed;
+  // Every extra item is proven the pinned app's (and ready) before the submission is touched.
+  await proveSubmissionExtras(f, platform, extras);
 
   const open = await openSubmission(f, platform);
   const item = await addSubmissionItem(
@@ -1405,11 +1260,38 @@ const submit: ConnectorControl = distributeControl(async (f, body) => {
     "appStoreVersions",
     versionId,
   );
+  const items = [];
+  for (const id of extras.inAppPurchaseVersionIds)
+    items.push({
+      inAppPurchaseVersionId: id,
+      ...stepView(
+        await addSubmissionItem(
+          f,
+          open.id,
+          "inAppPurchaseVersion",
+          "inAppPurchaseVersions",
+          id,
+        ),
+      ),
+    });
+  for (const id of extras.backgroundAssetVersionIds)
+    items.push({
+      backgroundAssetVersionId: id,
+      ...stepView(
+        await addSubmissionItem(
+          f,
+          open.id,
+          "backgroundAssetVersion",
+          "backgroundAssetVersions",
+          id,
+        ),
+      ),
+    });
   const path = ascPath("reviewSubmissions", open.id);
   const read = async () =>
     single(await f.run.client.get(path, { include: "app" }));
   const sent = await step(f, "review_submission.submit", open.id, {
-    request: { submissionId: open.id, versionId },
+    request: { submissionId: open.id, versionId, ...extras },
     find: read,
     satisfied: (s) => SUBMITTED_STATES.has(attr(s, "state") ?? ""),
     write: async () =>
@@ -1442,6 +1324,7 @@ const submit: ConnectorControl = distributeControl(async (f, body) => {
     steps: {
       open: stepView(open.step),
       item: stepView(item),
+      items,
       submit: stepView(sent),
     },
   };

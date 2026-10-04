@@ -1,8 +1,8 @@
 /**
  * The App Store Connect connector (P5-02) as a `DistributionConnector`: the poller, the webhook
  * route and the controls. See `client.ts` (the API), `webhook.ts`, `map.ts` (the vocabulary),
- * `apply.ts` (read one object, write its state), `poll.ts`, `controls.ts` and `distribute.ts`
- * (A-17d's Distribute flow).
+ * `apply.ts` (read one object, write its state), `poll.ts`, `controls.ts`, `distribute.ts`
+ * (A-17d's Distribute flow) and `../../commerce/appleCatalog.ts` (A-17e's in-app purchases).
  */
 
 import type { DistributionConnector } from "../index.js";
@@ -10,6 +10,10 @@ import { eventView, listEvents, listObjects, objectView } from "../state.js";
 import { ASC_CONTROLS } from "./controls.js";
 import { ASC_SETUP_CONTROLS, provisioningView } from "./provision.js";
 import { ASC_DISTRIBUTE_CONTROLS, ASC_DISTRIBUTE_READS } from "./distribute.js";
+import {
+  ASC_CATALOG_CONTROLS,
+  ASC_CATALOG_READS,
+} from "../../commerce/appleCatalog.js";
 import { pollAsc } from "./poll.js";
 import { readRate } from "../../../../core/asc/budget.js";
 import { platformPin } from "../../../../core/platformCredentials.js";
@@ -22,12 +26,18 @@ import {
 } from "./setup.js";
 import { handleAscWebhook } from "./webhook.js";
 
-/** P5-02's controls, A-17c's setup controls and A-17d's Distribute writes, one table. */
+/**
+ * P5-02's controls, A-17c's setup controls, A-17d's Distribute writes and A-17e's IAP writes, one
+ * table.
+ */
 const CONTROLS = {
   ...ASC_CONTROLS,
   ...ASC_SETUP_CONTROLS,
   ...ASC_DISTRIBUTE_CONTROLS,
+  ...ASC_CATALOG_CONTROLS,
 };
+/** A-17d's Distribute reads and A-17e's IAP reads. */
+const READS = { ...ASC_DISTRIBUTE_READS, ...ASC_CATALOG_READS };
 
 export const ascConnector: DistributionConnector = {
   kind: ASC_CONNECTOR,
@@ -36,7 +46,7 @@ export const ascConnector: DistributionConnector = {
   poll: pollAsc,
   webhook: handleAscWebhook,
   controls: CONTROLS,
-  reads: ASC_DISTRIBUTE_READS,
+  reads: READS,
   async status({ env, db, product, now }) {
     const { setup, inert } = await resolveAscSetup(env, db, product);
     const objects = await listObjects(db, product, ASC_CONNECTOR);
@@ -79,7 +89,7 @@ export const ascConnector: DistributionConnector = {
         setup?.appleId ??
           (await platformPin(db, ASC_PLATFORM_CREDENTIAL, product)),
       ),
-      reads: Object.keys(ASC_DISTRIBUTE_READS),
+      reads: Object.keys(READS),
     };
   },
 };

@@ -1529,7 +1529,8 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
 `api.storekit(-sandbox).apple.com` (P6-01's hosts).
 
 **Controls**, each enforced by a test (`test/ascWriteGate.test.ts`, `test/ascLedger.test.ts`,
-`test/ascControls.test.ts`, `test/ascWriteReach.test.ts`, `test/ascDistribute.test.ts`):
+`test/ascControls.test.ts`, `test/ascWriteReach.test.ts`, `test/ascDistribute.test.ts`,
+`test/ascCatalog.test.ts`):
 
 - **(a) Deny by default, before the token.** `AscClient` calls `checkAscRequest` before its token
   thunk: a write passes only when an `ASC_WRITE_ALLOW` rule matches its method and path template
@@ -1561,6 +1562,11 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   relationship they create is the pinned app, and every build, beta group, App Store version or
   review submission a request names is re-read with `include=app` and must be the pinned app's,
   all of them before the first write (a request listing one foreign group sends nothing).
+  A-17e's in-app purchase handlers (`commerce/appleCatalog.ts`) never take an IAP id: a product
+  id must be an `app-store` row of the product's commerce map (operator rows, rule 5) and the IAP
+  is found under the pinned app by `filter[productId]`; an IAP version or Background Asset version
+  offered to a submission is walked back to the pinned app (version → IAP → mapped product id →
+  the pinned app's IAP; version → asset → `include=app`) before the submission is touched.
 - **(d) Typed confirmation.** Release, submit for review and price changes require the operator to
   type the app's name; the handler compares it with Apple's current value and only then asserts
   `typedConfirmation` to the gate, which refuses those operations without it. A first price
@@ -1568,7 +1574,10 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   P5-02's `release` control takes `confirm` since A-17a, and the console's **Release this
   version** is an L3 action whose dialog asks for the app's name. A-17d's `distribute/submit`
   uses the same server-side comparison before it opens or touches a review submission;
-  cancelling a submission is a plain confirm.
+  cancelling a submission is a plain confirm. A-17e's `iap/price` decides "first price" from
+  Apple's own schedule read (never the request): a first price asserts `initial`, any change needs
+  the typed app name and asserts `typedConfirmation`, and a price that appears between the check
+  and the write is refused by the gate (neither assertion holds).
 - **(e) Ledger and audit.** Every A-17 step is an `asc_operations` row keyed by
   `sha256(scope, product, op, natural key, Idempotency-Key)`: a replay returns the stored result
   without calling Apple, a reused key with another body is refused, a 5xx or timeout after a write

@@ -13,6 +13,14 @@
  *   PATCH /v1/appStoreVersions/{id}/relationships/build 204, the version names the build
  *   PATCH /v1/reviewSubmissions/{id}   `submitted` → WAITING_FOR_REVIEW, `canceled` → CANCELING
  *
+ * A-17e adds the in-app purchase family (`/v1/apps/{id}/inAppPurchasesV2` filtered by
+ * `filter[productId|state|inAppPurchaseType]`, `/v2/inAppPurchases/{id}/{versions,pricePoints,
+ * iapPriceSchedule,inAppPurchaseAvailability}`, version localizations, a schedule's manual prices,
+ * `/v1/territories`): a created IAP is `MISSING_METADATA` with three price tiers per territory,
+ * a duplicate product id answers 409, a new price schedule replaces the old one with its included
+ * prices, and an IAP with a localization, a price and an availability becomes `READY_TO_SUBMIT`.
+ * Background Assets are listed per app and their versions per asset.
+ *
  * `failOnce(method, path, status, { applied })` makes the next matching request answer `status`
  * (with Apple's error shape), after performing the write when `applied` (a timeout or 5xx after
  * the write landed: an ambiguous outcome) or without it.
@@ -36,6 +44,21 @@ const CHILDREN: Readonly<Record<string, [string, string]>> = {
     "appStoreVersionLocalization",
   ],
   "reviewSubmissions/items": ["reviewSubmissionItems", "reviewSubmission"],
+  // A-17e: in-app purchases (`/v1/apps/…/inAppPurchasesV2` and the `/v2/inAppPurchases/…` set)
+  // and Background Assets.
+  "apps/inAppPurchasesV2": ["inAppPurchases", "app"],
+  "inAppPurchases/versions": ["inAppPurchaseVersions", "inAppPurchase"],
+  "inAppPurchases/pricePoints": ["inAppPurchasePricePoints", "inAppPurchase"],
+  "inAppPurchaseVersions/localizations": [
+    "inAppPurchaseLocalizations",
+    "version",
+  ],
+  "inAppPurchasePriceSchedules/manualPrices": [
+    "inAppPurchasePrices",
+    "schedule",
+  ],
+  "apps/backgroundAssets": ["backgroundAssets", "app"],
+  "backgroundAssets/versions": ["backgroundAssetVersions", "backgroundAsset"],
 };
 
 const COLLECTIONS = new Set([
@@ -43,6 +66,7 @@ const COLLECTIONS = new Set([
   "betaBuildLocalizations",
   "betaAppReviewSubmissions",
   "reviewSubmissions",
+  "territories",
 ]);
 
 /** P5-02's fake answers these creates itself. */
@@ -61,7 +85,14 @@ const INITIAL: Readonly<Record<string, Record<string, unknown>>> = {
   reviewSubmissions: { state: "READY_FOR_REVIEW" },
   reviewSubmissionItems: { state: "READY_FOR_REVIEW" },
   betaAppReviewSubmissions: { betaReviewState: "WAITING_FOR_REVIEW" },
+  inAppPurchases: { state: "MISSING_METADATA" },
+  inAppPurchaseVersions: { state: "PREPARE_FOR_SUBMISSION", version: 1 },
+  inAppPurchaseLocalizations: { state: "PREPARE_FOR_SUBMISSION" },
 };
+
+/** The territories the fake knows, and the price tiers it offers each new IAP in each. */
+export const FAKE_TERRITORIES = ["USA", "GBR", "CAN"];
+export const FAKE_TIERS = ["0.99", "1.99", "4.99"];
 
 type Routed = { status: number; body: unknown };
 
@@ -155,7 +186,40 @@ export class DistributeFake extends AscFake {
     r.relationships[name] = { data: list };
   }
 
-  private create(type: string, data: Record<string, unknown>): Routed {
+  constructor() {
+    super();
+    for (const t of FAKE_TERRITORIES)
+      this.store.set(`territories/${t}`, {
+        type: "territories",
+        id: t,
+        attributes: {
+          currency: t === "GBR" ? "GBP" : t === "CAN" ? "CAD" : "USD",
+        },
+      });
+  }
+
+  /** A-17e: an IAP with a localization, a price and an availability is READY_TO_SUBMIT. */
+  private recomputeIap(iapId: string | undefined): void {
+    const iap = iapId ? this.store.get(`inAppPurchases/${iapId}`) : undefined;
+    if (!iap || iap.attributes?.state !== "MISSING_METADATA") return;
+    const versions = this.all("inAppPurchaseVersions")
+      .filter((v) => idsOf(v.relationships?.inAppPurchase)[0] === iap.id)
+      .map((v) => v.id);
+    const localized = this.all("inAppPurchaseLocalizations").some((l) =>
+      versions.includes(idsOf(l.relationships?.version)[0] ?? ""),
+    );
+    const priced = idsOf(iap.relationships?.iapPriceSchedule).length > 0;
+    const available =
+      idsOf(iap.relationships?.inAppPurchaseAvailability).length > 0;
+    if (localized && priced && available)
+      iap.attributes = { ...iap.attributes, state: "READY_TO_SUBMIT" };
+  }
+
+  private create(
+    type: string,
+    data: Record<string, unknown>,
+    included: unknown = undefined,
+  ): Routed {
     const attributes = {
       ...(INITIAL[type] ?? {}),
       ...((data.attributes as Record<string, unknown> | undefined) ?? {}),
@@ -183,6 +247,13 @@ export class DistributeFake extends AscFake {
       );
       if (open) return conflict("STATE_ERROR");
     }
+    if (type === "inAppPurchases") {
+      // Product ids are unique across the team, and never reusable.
+      const dup = this.all("inAppPurchases").some(
+        (i) => i.attributes?.productId === attributes.productId,
+      );
+      if (dup) return conflict();
+    }
     const id = `${type}-new-${this.nextId++}`;
     const created: AscResource = {
       type,
@@ -204,7 +275,92 @@ export class DistributeFake extends AscFake {
       );
       if (v) this.relate(v, "appStoreVersionLocalizations", ident, true);
     }
+    this.createIap(type, created, included);
     return { status: 201, body: { data: created } };
+  }
+
+  /** A-17e's side effects of an IAP-family create. */
+  private createIap(type: string, created: AscResource, included: unknown) {
+    const ident = { type, id: created.id };
+    const rels = created.relationships ?? {};
+    if (type === "inAppPurchases") {
+      this.relate(created, "iapPriceSchedule", null);
+      this.relate(created, "inAppPurchaseAvailability", null);
+      for (const t of FAKE_TERRITORIES)
+        FAKE_TIERS.forEach((price, i) =>
+          this.store.set(
+            `inAppPurchasePricePoints/pp-${created.id}-${t}-${i}`,
+            {
+              type: "inAppPurchasePricePoints",
+              id: `pp-${created.id}-${t}-${i}`,
+              attributes: {
+                customerPrice: price,
+                proceeds: (Number(price) * 0.85).toFixed(2),
+              },
+              relationships: {
+                inAppPurchase: {
+                  data: { type: "inAppPurchases", id: created.id },
+                },
+                territory: { data: { type: "territories", id: t } },
+              },
+            },
+          ),
+        );
+    }
+    if (type === "inAppPurchaseLocalizations") {
+      const v = this.store.get(
+        `inAppPurchaseVersions/${idsOf(rels.version)[0]}`,
+      );
+      this.recomputeIap(idsOf(v?.relationships?.inAppPurchase)[0]);
+    }
+    if (type === "inAppPurchasePriceSchedules") {
+      const iapId = idsOf(rels.inAppPurchase)[0];
+      const iap = this.store.get(`inAppPurchases/${iapId}`);
+      // A new schedule replaces the old one and all of its prices.
+      const old = idsOf(iap?.relationships?.iapPriceSchedule)[0];
+      for (const p of this.all("inAppPurchasePrices"))
+        if (idsOf(p.relationships?.schedule)[0] === old)
+          this.store.delete(`inAppPurchasePrices/${p.id}`);
+      if (old) this.store.delete(`inAppPurchasePriceSchedules/${old}`);
+      const list = Array.isArray(included) ? included : [];
+      list.forEach((inc: Record<string, unknown>, i) => {
+        if (inc.type !== "inAppPurchasePrices") return;
+        const r = (inc.relationships ?? {}) as Record<string, unknown>;
+        const pointId = idsOf(r.inAppPurchasePricePoint)[0];
+        const point = this.store.get(`inAppPurchasePricePoints/${pointId}`);
+        this.store.set(`inAppPurchasePrices/${created.id}-p${i}`, {
+          type: "inAppPurchasePrices",
+          id: `${created.id}-p${i}`,
+          attributes: {
+            startDate:
+              (inc.attributes as Record<string, unknown> | undefined)
+                ?.startDate ?? null,
+            endDate: null,
+            manual: true,
+          },
+          relationships: {
+            schedule: { data: ident },
+            inAppPurchasePricePoint: {
+              data: { type: "inAppPurchasePricePoints", id: pointId ?? "" },
+            },
+            territory: {
+              data: {
+                type: "territories",
+                id: idsOf(point?.relationships?.territory)[0] ?? "",
+              },
+            },
+          },
+        });
+      });
+      if (iap) this.relate(iap, "iapPriceSchedule", ident);
+      this.recomputeIap(iapId);
+    }
+    if (type === "inAppPurchaseAvailabilities") {
+      const iapId = idsOf(rels.inAppPurchase)[0];
+      const iap = this.store.get(`inAppPurchases/${iapId}`);
+      if (iap) this.relate(iap, "inAppPurchaseAvailability", ident);
+      this.recomputeIap(iapId);
+    }
   }
 
   protected override route(method: string, url: URL, body: unknown): Routed {
@@ -318,6 +474,20 @@ export class DistributeFake extends AscFake {
                 appVersionState: "WAITING_FOR_REVIEW",
                 appStoreState: "WAITING_FOR_REVIEW",
               };
+            const iv = this.store.get(
+              `inAppPurchaseVersions/${idsOf(item.relationships?.inAppPurchaseVersion)[0]}`,
+            );
+            if (iv) {
+              iv.attributes = { ...iv.attributes, state: "WAITING_FOR_REVIEW" };
+              const iap = this.store.get(
+                `inAppPurchases/${idsOf(iv.relationships?.inAppPurchase)[0]}`,
+              );
+              if (iap)
+                iap.attributes = {
+                  ...iap.attributes,
+                  state: "WAITING_FOR_REVIEW",
+                };
+            }
           }
       }
       if (attrs.canceled === true)
@@ -325,7 +495,11 @@ export class DistributeFake extends AscFake {
       return { status: 200, body: { data: s } };
     }
     if (method === "POST" && parts.length === 2 && !BASE_CREATES.has(parts[1]!))
-      return this.create(parts[1]!, data as Record<string, unknown>);
+      return this.create(
+        parts[1]!,
+        data as Record<string, unknown>,
+        (body as { included?: unknown } | undefined)?.included,
+      );
     return super.route(method, url, body);
   }
 }
