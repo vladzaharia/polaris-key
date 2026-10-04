@@ -243,7 +243,8 @@ and `steam-depot` (P5-08): the store moves the bytes, CI reports and the App Sto
 connector give their availability, readiness gates on it, and the Godot SDK plans the
 `platform` strategy through the store's plugin ([Platform pack transports](/docs/build/pack-transports/));
 nothing is derived or served for them. Any other transport (`msix-optional`, `flatpak-ext`) is
-stored and listed with `supported: false`, and nothing is derived or served for it. A device that
+stored and listed with `supported: false` — the console's matrix labels it "not delivered by
+Polaris Key" — and nothing is derived or served for it. A device that
 has no transport for a pack's binding (an unsupported transport, or a store plugin the build does
 not carry) plans nothing for that pack (`plan.transport_unsupported`), never a silent CDN
 fallback. [Availability](/docs/services/distribution/availability/) has

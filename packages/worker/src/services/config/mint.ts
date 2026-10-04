@@ -41,6 +41,7 @@ import { errorResponse } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws, StrictJsonError } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
+import { trustRefusal } from "../../core/deviceTrust.js";
 import { signJwtEs256, signJwtRs256 } from "../../core/jwt.js";
 
 export interface EdgeMintRow {
@@ -219,6 +220,19 @@ export async function handleMintToken(
   ) {
     return errorResponse(429, "rate_limited", "too many mint requests");
   }
+
+  // P6-02 — the operator's device-trust policy. Log-only unless the policy enforces: a basic
+  // device that the policy would refuse is audited and still mints (`core/deviceTrust.ts`).
+  const untrusted = await trustRefusal(
+    env,
+    db,
+    product,
+    valid.device,
+    "mint",
+    now,
+    "flat",
+  );
+  if (untrusted) return untrusted;
 
   // Unknown, never approved, and approved-but-since-changed are ONE answer: the device-facing
   // contract says 404 means "not available", and an unapproved recipe must not be

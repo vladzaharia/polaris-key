@@ -394,6 +394,28 @@ func _planner(t: PKeyTestContext) -> void:
 	t.check("plan: platform progress reaches the engine's progress", progress.size() == 1 and progress[0]["phase"] == "download" and progress[0]["packId"] == PACK, S.canon(progress))
 	S.remove_tree(root)
 
+	# P4-31: a platform-bound container never takes a CDN feed delta, even when the feed offers one
+	# for its payload.
+	root = S.scratch("transports-plan-feed-delta")
+	made = _apple_transport(root.path_join("staging"))
+	var c1 := _container()
+	e = _engine(root, [c1], [c1], made[0])
+	var menu := {String(c1["record"]["variants"][0]["payload"]["sha256"]): [{
+		"from": "a".repeat(64), "method": "zstd-patch-from", "scope": "payload", "memBytes": 64,
+		"artifact": {"sha256": "b".repeat(64), "bytes": 16},
+	}]}
+	e.feed_deltas = func() -> Variant: return menu
+	await e.load_state([], [])
+	_write_container(_apple_dir(root.path_join("staging")), c1)
+	r = await e.ensure([PACK])
+	fake_cdn = e.transport as F.FakeTransport
+	var asked_delta := false
+	for c in fake_cdn.calls:
+		if c.get("sha256") == "b".repeat(64):
+			asked_delta = true
+	t.check("plan: a platform-bound pack ignores the feed's delta menu (platform strategy, the delta never fetched)", r.ok and not asked_delta and made[1].ensured == ["djdl-foes-c3"] and e.running.get(PACK, {}).get("recordSha256") == c1["recordSha256"], "%s calls=%s" % [str(r), S.canon(fake_cdn.calls)])
+	S.remove_tree(root)
+
 	# The platform delivers an OLDER release than the stamp's pin: record-mismatch (fail closed).
 	root = S.scratch("transports-plan-mismatch")
 	made = _apple_transport(root.path_join("staging"))

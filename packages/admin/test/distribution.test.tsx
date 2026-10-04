@@ -18,10 +18,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const EMPTY_ROLLOUTS: RolloutsResponse = {
-  rollouts: [],
-  effect: { reachesDevices: false, note: "" },
-};
+const EMPTY_ROLLOUTS: RolloutsResponse = { rollouts: [] };
 
 const { Distribution } = await import("../src/views/Distribution.js");
 
@@ -43,8 +40,7 @@ function state(on: Partial<Record<string, boolean>>): ServicesResponse {
 
 /**
  * The Distribution overview: the release ← distribution ← update chain, which Core descriptor
- * hook answers for this product, and (P2b-04) the outlet rollouts, read-only, with the caveat
- * that a halt does not reach devices until the signed feed carries it.
+ * hook answers for this product, and (P2b-04) the outlet rollouts, read-only.
  */
 describe("Distribution — overview", () => {
   beforeEach(() => {
@@ -80,7 +76,7 @@ describe("Distribution — overview", () => {
     expect(within(delivery).getByText("answering")).toBeTruthy();
   });
 
-  it("lists outlet rollouts and says a halt does not stop devices yet (P2b-04)", async () => {
+  it("lists outlet rollouts without an implementation-status caveat (P2b-04)", async () => {
     services.mockResolvedValue(
       state({ release: true, distribution: true, update: true }),
     );
@@ -100,15 +96,13 @@ describe("Distribution — overview", () => {
           updatedBy: "ci:static:tok",
         },
       ],
-      effect: { reachesDevices: false, note: "" },
     });
     render(<Distribution slug="djdl" />);
     const row = (await screen.findByText("v1.4.0")).closest("tr")!;
     expect(within(row).getByText("25%")).toBeTruthy();
     expect(within(row).getByText("halted")).toBeTruthy();
-    expect(
-      screen.getByText(/does not stop devices yet/, { selector: "p" }),
-    ).toBeTruthy();
-    expect(screen.getByText(/yank it or pin the channel/)).toBeTruthy();
+    // The signed feed carries halts (P3-03), so no "not yet" warning sits above the list.
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(screen.queryByText(/legacy feeds|yank it or pin/)).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature packs.type.l10n.table packs.type.data.json packs.type.audio.bank packs.type.godot.zip packs.record packs.plan packs.index.files packs.index.chunks packs.apply.full packs.apply.chunk packs.apply.file packs.apply.delta packs.state packs.handlers packs.revoke packs.delegation
+# @pkey-feature packs.type.l10n.table packs.type.data.json packs.type.audio.bank packs.type.godot.zip packs.record packs.plan packs.index.files packs.index.chunks packs.apply.full packs.apply.chunk packs.apply.file packs.apply.delta packs.state packs.handlers packs.revoke packs.delegation packs.delta.feed
 # The packs suite (P4-08): the content corpus and plan-matrix.json through the addon's pack core
 # (content, plan, records), the device-side PCK checks over P4-03's fixture PCKs (pck), the
 # engine's GDDL decoder and the trailer bake over a mounted base (bake), the install state and
@@ -8,11 +8,11 @@ extends RefCounted
 # revocations: the sibling revocations.json, pack-revoked and the update check's content steps
 # (revocations), P4-26's content-key delegation on the device (delegation) and P4-16's pack
 # types: data.json, l10n.table, audio.bank, custom.* and godot.zip (types) and P4-11's chunk sync
-# in the engine and over HTTP (chunks). Each group
+# in the engine and over HTTP (chunks) and P4-29's feed-offered deltas (feed_deltas). Each group
 # is a file under res://tests/packs/ with `func run(t: PKeyTestContext) -> void` (it may await);
 # the suite ends with a coverage check that every group ran.
 
-const GROUPS := ["content", "plan", "records", "pck", "bake", "engine", "state", "http", "boot", "guard", "uid", "revocations", "delegation", "types", "chunks"]
+const GROUPS := ["content", "plan", "records", "pck", "bake", "engine", "state", "http", "boot", "guard", "uid", "revocations", "delegation", "types", "chunks", "feed_deltas"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

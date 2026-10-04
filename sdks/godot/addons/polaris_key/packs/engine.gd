@@ -141,6 +141,12 @@ var checkpoint_bytes := 8 << 20
 var one_shot_budget := -1
 ## Record verifies run off the main thread (PKeyJws.verify_async).
 var offload := true
+## plans/P4-29.md §2.4 step 1: () -> Dictionary or null, the delta menu of the most recently
+## committed feed of the canonical channel (PKeyFeed.feed_content's `deltas`), fresh or stale.
+## Each entry for the selected container variant's payload joins the record's deltas as one more
+## candidate (PKeyPackSelect.with_feed_deltas); at most one feed-offered delta is tried per
+## install. Unset (or answering anything but a Dictionary) and only the record's deltas are planned.
+var feed_deltas := Callable()
 
 var handlers := {}
 ## The pack releases activated in this process, by pack id.
@@ -237,6 +243,12 @@ static func _result(e: Dictionary) -> PKeyResult:
 
 func _emit(e: Dictionary) -> void:
 	progress.emit(e)
+
+
+## plans/P4-29.md §2.4 step 5 (client-core's P4-18 event): a candidate failed and the plan's next
+## one runs, so a host sees the failure a later candidate recovers from.
+func _emit_fallback(pack_id: String, total: int, strategy: String, error: String) -> void:
+	_emit({"packId": pack_id, "phase": "fallback", "done": 0, "total": total, "strategy": strategy, "error": error})
 
 
 func _refuse_unreadable() -> Variant:
@@ -1102,10 +1114,14 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 		if p is Dictionary:
 			seeds[i["location"]] = p
 			installs.append(i)
+	# plans/P4-29.md §2.4 step 6: a journal whose delta neither the record nor its own `feedDelta`
+	# names is abandoned and re-planned.
 	var prior = doc["inflight"].get(pack_id)
+	var prior_usable: bool = prior is Dictionary and prior["recordSha256"] == pin_sha \
+			and prior["variant"] == PKeyPackClaims.variant_key(variant["variant"]) and _journal_delta_known(prior, variant)
 	var early = _preflight_plans.get(pack_id)
 	var plan_id := ""
-	if prior is Dictionary and prior["recordSha256"] == pin_sha and prior["variant"] == PKeyPackClaims.variant_key(variant["variant"]):
+	if prior_usable:
 		plan_id = prior["planId"]
 	elif early is Dictionary and early["recordSha256"] == pin_sha:
 		plan_id = early["planId"]
@@ -1144,6 +1160,18 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 	var chunk = null
 	if delegated == null:
 		chunk = await _chunk_context(pack_id, plan_id, variant, installs, seeds)
+	# plans/P4-29.md §2.4 steps 1–2 and 6: the committed feed's menu, plus a resumed journal's own
+	# feed delta, join the record's deltas (a record delta wins a shared id).
+	var merged := PKeyPackSelect.with_feed_deltas(variant, _feed_menu())
+	var feed_ids := {}
+	for h in merged["feedIds"]:
+		feed_ids[h] = true
+	if prior_usable and prior["strategy"] == "delta" and prior.get("feedDelta") is Dictionary:
+		var again := PKeyPackSelect.with_feed_deltas(merged["variant"], {String(variant["payload"]["sha256"]): [prior["feedDelta"]]})
+		for h in again["feedIds"]:
+			feed_ids[h] = true
+		merged = {"variant": again["variant"], "feedIds": feed_ids.keys()}
+	variant = merged["variant"]
 	var target := PKeyPackSelect.plan_target(variant, pin_sha, index, chunk["index"] if chunk is Dictionary else null)
 	if one_shot_budget >= 0 and target["full"] != null and float(variant["full"]["bytes"]) + float(variant["full"]["size"]) > float(one_shot_budget):
 		target["full"] = null
@@ -1185,7 +1213,7 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 	return {
 		"kind": "plan", "body": body_text, "recordSha256": pin_sha, "record": record, "variant": variant,
 		"installs": installs, "seeds": seeds, "planId": plan_id, "index": index, "plan": p, "delegation": delegated,
-		"chunk": chunk,
+		"chunk": chunk, "feedIds": feed_ids,
 	}
 
 
@@ -1254,6 +1282,41 @@ func _ensure_platform(pack_id: String, record_sha256: String, is_pin := false) -
 	elif h != null and h.has_method("can_activate_now") and h.can_activate_now(install):
 		await _activate(install)
 	return {"install": install}
+
+
+## The committed feed's delta menu, or null (a source answering anything but a Dictionary is no
+## menu).
+func _feed_menu() -> Variant:
+	if not feed_deltas.is_valid():
+		return null
+	var m = feed_deltas.call()
+	return m if m is Dictionary else null
+
+
+## plans/P4-29.md §2.4 step 6: whether a journal's `delta` is one the record or the journal's own
+## `feedDelta` names (always true for a journal of another strategy).
+static func _journal_delta_known(j: Dictionary, variant: Dictionary) -> bool:
+	if j.get("strategy") != "delta" or not j.has("delta"):
+		return true
+	var ds = variant.get("deltas", [])
+	if ds is Array:
+		for d in ds:
+			if PKeyPackSelect.delta_id(d) == j["delta"]:
+				return true
+	var fd = j.get("feedDelta")
+	return fd is Dictionary and fd["artifact"]["sha256"] == j["delta"]
+
+
+## The merged feed entry of a planned feed delta, as the journal keeps it; null when the variant
+## holds no `payload` delta with that id.
+static func _feed_entry_of(variant: Dictionary, id: String) -> Variant:
+	var ds = variant.get("deltas", [])
+	if not (ds is Array):
+		return null
+	for d in ds:
+		if PKeyPackClaims.same(d.get("scope"), "payload") and PKeyPackSelect.delta_id(d) == id:
+			return {"from": d["from"], "method": d["method"], "scope": "payload", "memBytes": d["memBytes"], "artifact": {"sha256": d["artifact"]["sha256"], "bytes": d["artifact"]["bytes"]}}
+	return null
 
 
 ## Step 2 for one release ({sha256, seq, version}) of `pack_id`: the record fetched by hash and
@@ -1409,11 +1472,22 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 			return _err(PKeyConstants.ErrorCode.PLAN_TRANSPORT_UNSUPPORTED, "%s is platform-bound." % pack_id, pack_id)
 		return await _ensure_platform(pack_id, pre["recordSha256"], not (target is Dictionary))
 
-	# 5–6. Each candidate in turn: journal, fetch, apply.
+	# 5–6. Each candidate in turn: journal, fetch, apply. plans/P4-29.md §2.4 step 5: at most one
+	# feed-offered delta per install; once it fails the rest of the menu is skipped.
 	var first_failure = null
 	var candidates: Array = [p]
 	candidates.append_array(p["fallbacks"])
+	var feed_ids: Dictionary = pre.get("feedIds", {})
+	var feed_tried := false
 	for cand in candidates:
+		var from_feed: bool = cand["strategy"] == "delta" and cand.get("delta") is String and feed_ids.has(cand["delta"])
+		if from_feed and feed_tried:
+			continue
+		var feed_delta = _feed_entry_of(variant, cand["delta"]) if from_feed else null
+		if from_feed and feed_delta == null:
+			continue
+		if from_feed:
+			feed_tried = true
 		var objects = _objects_for(cand["strategy"], cand.get("delta"), variant, index, seeds, pre.get("chunk"))
 		if objects == null:
 			continue
@@ -1429,6 +1503,8 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 		}
 		if cand.has("delta"):
 			journal["delta"] = cand["delta"]
+		if feed_delta != null:
+			journal["feedDelta"] = feed_delta
 		if delegation != null:
 			journal["delegation"] = delegation
 		doc = PKeyPackState.begin_install(doc, journal)
@@ -1437,10 +1513,22 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 			return _err(code, "The pack state could not be written.", pack_id)
 		var prog := {"done": 0, "total": total}
 		_emit({"packId": pack_id, "phase": "download", "done": 0, "total": total})
+		var fetched := true
 		for o in objects:
 			if not await _download(plan_id, pack_id, o, prog):
+				# plans/P4-29.md §2.4 step 5: a feed delta that cannot be fetched (a cold delta's
+				# 404, say) falls back like any other failure of that candidate.
+				if from_feed:
+					fetched = false
+					break
 				# The journal and what is staged stay for the next ensure, which resumes them.
 				return _err(_fetch_code(), "Fetching %s's objects failed; the next ensure resumes." % pack_id, pack_id)
+		if not fetched:
+			if first_failure == null:
+				first_failure = _err(String(PKeyErrors.NETWORK), "Installing %s by delta failed: %s." % [pack_id, PKeyErrors.NETWORK], pack_id, {"path": "", "step": "delta"})
+			_emit_fallback(pack_id, total, cand["strategy"], String(PKeyErrors.NETWORK))
+			storage.remove_staging(plan_id)
+			continue
 		_emit({"packId": pack_id, "phase": "apply", "done": total, "total": total})
 		# plans/P4-19.md §2.5: every file a delegated install writes passes the data-only rule.
 		var gate: PKeyDataOnly.DataOnlySink = null
@@ -1501,6 +1589,7 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 		var f: Dictionary = result["verdict"]
 		if first_failure == null:
 			first_failure = _err(f["error"], "Installing %s by %s failed: %s." % [pack_id, cand["strategy"], f["error"]], pack_id, {"path": f.get("path", ""), "step": cand["strategy"]})
+		_emit_fallback(pack_id, total, cand["strategy"], String(f["error"]))
 		storage.remove_staging(plan_id)
 	doc = PKeyPackState.abandon_install(doc, pack_id)
 	_persist()

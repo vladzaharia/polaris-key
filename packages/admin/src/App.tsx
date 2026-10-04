@@ -16,12 +16,38 @@ export function App(): React.ReactElement {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Toaster>
-          <Boot />
-        </Toaster>
+        <Toaster>{KIT_ENABLED ? <DevKitOr /> : <Boot />}</Toaster>
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+/**
+ * Development only: `#/__kit` is the component gallery (ADMIN.md §4), which needs no session.
+ * `import.meta.env.DEV` is false in a production build, so this branch, and the gallery chunk
+ * behind it, are dropped from the bundle. The one exception is the CSP browser check
+ * (`e2e/kit.e2e.test.ts`), which builds a separate bundle with `VITE_PK_KIT=1` into `dist-kit/`
+ * to open every overlay under the Worker's policy; the shipped `dist/` never sets it.
+ */
+const KIT_ENABLED = import.meta.env.DEV || import.meta.env.VITE_PK_KIT === "1";
+const Kit = KIT_ENABLED ? React.lazy(() => import("./kit/Kit.js")) : null;
+
+function DevKitOr(): React.ReactElement {
+  const hash = React.useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("hashchange", cb);
+      return () => window.removeEventListener("hashchange", cb);
+    },
+    () => window.location.hash,
+  );
+  if (Kit && hash.startsWith("#/__kit")) {
+    return (
+      <React.Suspense fallback={null}>
+        <Kit />
+      </React.Suspense>
+    );
+  }
+  return <Boot />;
 }
 
 function Boot(): React.ReactElement {

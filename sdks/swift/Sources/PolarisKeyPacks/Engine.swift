@@ -367,6 +367,11 @@ public struct PackEngineOptions: Sendable {
     /// The most one buffered decode may hold (the stored `full` frame plus its payload). When set
     /// and the zstd port cannot stream, a larger `full` candidate is dropped before planning.
     public var oneShotBudget: Int?
+    /// plans/P4-29.md §2.4: the delta menu of the most recently committed feed of the canonical
+    /// channel (`feedContent`'s `deltas`), fresh or stale, or nil. Each entry for the selected
+    /// container variant's payload joins the record's deltas as one more candidate; at most one
+    /// feed-offered delta is tried per install. Nil (the default): only the record's deltas.
+    public var feedDeltas: (@Sendable () -> FeedDeltas?)?
 
     public init(
         product: String, releaseKeys: TrustSet, productTrust: @escaping @Sendable () async -> TrustSet,
@@ -381,8 +386,9 @@ public struct PackEngineOptions: Sendable {
             UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         },
         handlers: [any PackHandler] = [], checkpointBytes: Int = 8 << 20, oneShotBudget: Int? = nil,
-        holds: [ContentHold] = []
+        holds: [ContentHold] = [], feedDeltas: (@Sendable () -> FeedDeltas?)? = nil
     ) {
+        self.feedDeltas = feedDeltas
         self.holds = holds
         self.product = product
         self.releaseKeys = releaseKeys
@@ -516,6 +522,8 @@ private struct Planned {
     var delegation: String?
     /// P4-11: the parsed target chunk index and the seeds, when the fetch rule ran.
     var chunk: ChunkContext?
+    /// plans/P4-29.md §2.4: the delta ids the feed's menu added to `variant` (merged).
+    var feedIds: Set<String> = []
 }
 
 /// One chunk seed and where it came from (P4-11).
@@ -1424,10 +1432,17 @@ public actor PackEngine {
                 installs.append(i)
             }
         }
+        // plans/P4-29.md §2.4 step 6: a journal whose delta neither the record nor its own
+        // `feedDelta` names is abandoned and re-planned.
         let prior = doc.inflight[packId]
         let early = preflightPlans[packId]
         let planId: String
-        if let prior, prior.recordSha256 == pin.sha256, prior.variant == variantKey(variant.variant) {
+        let priorUsable =
+            prior.map {
+                $0.recordSha256 == pin.sha256 && $0.variant == variantKey(variant.variant)
+                    && journalDeltaKnown($0, variant)
+            } ?? false
+        if let prior, priorUsable {
             planId = prior.planId
         } else if let early, early.recordSha256 == pin.sha256 {
             planId = early.planId
@@ -1505,8 +1520,17 @@ public actor PackEngine {
                 }
             }
         }
+        // plans/P4-29.md §2.4 steps 1–2 and 6: the committed feed's menu, plus a resumed journal's
+        // own feed delta, join the record's deltas (a record delta wins a shared id).
+        var merged = withFeedDeltas(variant, feedMenu())
+        var feedIds = Set(merged.feedIds)
+        if let prior, priorUsable, prior.strategy == "delta", let fd = prior.feedDelta {
+            let again = withFeedDeltas(merged.variant, [variant.payload.sha256: [fd]])
+            feedIds.formUnion(again.feedIds)
+            merged = (again.variant, Array(feedIds))
+        }
         var target = planTarget(
-            variant, recordSha256: pin.sha256, filesIndex: index, chunkIndex: chunk?.index.planIndex)
+            merged.variant, recordSha256: pin.sha256, filesIndex: index, chunkIndex: chunk?.index.planIndex)
         if let budget = opts.oneShotBudget, target.full != nil, let full = variant.full,
             !(full.codec == "zstd" && opts.zstd.canStream), full.bytes + full.size > budget
         {
@@ -1537,10 +1561,13 @@ public actor PackEngine {
         }
         return .plan(
             Planned(
-                body: body, recordSha256: pin.sha256, record: record, variant: variant,
+                body: body, recordSha256: pin.sha256, record: record, variant: merged.variant,
                 installs: installs, seeds: seeds, planId: planId, index: index, plan: p,
-                delegation: delegated, chunk: chunk))
+                delegation: delegated, chunk: chunk, feedIds: feedIds))
     }
+
+    /// The committed feed's delta menu, or nil.
+    private func feedMenu() -> FeedDeltas? { opts.feedDeltas?() }
 
     /// The chunk seeds for a pack (P4-11), deduplicated by payload, in this order: the pack's own
     /// readable installs, every other pack's active then previous install (by pack id), then the
@@ -1787,9 +1814,16 @@ public actor PackEngine {
             throw PackError(e, "No way to install \(packId): \(e).", packId: packId)
         }
 
-        // 5–6. Each candidate in turn: journal, fetch, apply.
+        // 5–6. Each candidate in turn: journal, fetch, apply. plans/P4-29.md §2.4 step 5: at most
+        // one feed-offered delta per install; once it fails the rest of the menu is skipped.
         var firstFailure: PackError?
+        var feedTried = false
         for cand in candidates {
+            let fromFeed = cand.strategy == "delta" && cand.delta.map { pre.feedIds.contains($0) } == true
+            if fromFeed && feedTried { continue }
+            let feedDelta = fromFeed ? feedEntryOf(variant, cand.delta!) : nil
+            if fromFeed && feedDelta == nil { continue }
+            if fromFeed { feedTried = true }
             let listed: [(sha256: String, bytes: Int)]?
             if cand.strategy == "chunk" {
                 // The index only (staged by the fetch rule); the runs are fetched by the applier.
@@ -1805,7 +1839,7 @@ public actor PackEngine {
                 planId: pre.planId, packId: packId, record: pre.body, recordSha256: pre.recordSha256,
                 variant: variantKey(variant.variant), strategy: cand.strategy, delta: cand.delta,
                 objects: objects.map { JournalObject(sha256: $0.sha256, bytes: $0.bytes, done: 0) },
-                startedAt: await opts.now(), delegation: pre.delegation)
+                startedAt: await opts.now(), delegation: pre.delegation, feedDelta: feedDelta)
             doc = beginInstall(try requireLoaded(), journal)
             try persist()
             // A chunk plan's total is the planner's (the index and every fetched run).
@@ -1814,9 +1848,16 @@ public actor PackEngine {
                 ? Swift.max(cand.bytes, objects.first?.bytes ?? 0) : objects.reduce(0) { $0 + $1.bytes }
             var progress = (done: 0, total: total)
             emit(PackProgress(packId: packId, phase: "download", done: 0, total: total))
+            var fetched = true
             for o in objects {
                 let ok = await download(pre.planId, packId, o, progress: &progress)
                 if !ok {
+                    // plans/P4-29.md §2.4 step 5: a feed delta that cannot be fetched (a cold
+                    // delta's 404, say) falls back like any other failure of that candidate.
+                    if fromFeed {
+                        fetched = false
+                        break
+                    }
                     // The journal and what is staged stay for the next `ensure`, which resumes.
                     throw PackError(
                         ErrorCode.networkError,
@@ -1825,7 +1866,10 @@ public actor PackEngine {
             }
             let result: ApplyResult
             let refusal: DataOnlyRefusalSeen?
-            if cand.strategy == "chunk", let chunk = pre.chunk {
+            if !fetched {
+                result = ApplyResult(verdict: .failed(error: ErrorCode.networkError, path: nil), index: nil)
+                refusal = nil
+            } else if cand.strategy == "chunk", let chunk = pre.chunk {
                 let v = try await applyChunkPlan(pre.planId, packId, variant, chunk, total: total)
                 emit(PackProgress(packId: packId, phase: "apply", done: total, total: total))
                 refusal = nil
@@ -2209,6 +2253,25 @@ public actor PackEngine {
         do { try save() } catch { return .interrupted }
         return have == ref.bytes && hasher.digest() == ref.sha256 ? .ok : .mismatch
     }
+}
+
+/// plans/P4-29.md §2.4 step 6: whether a journal's `delta` is one the record or the journal's own
+/// `feedDelta` names (always true for a journal of another strategy).
+private func journalDeltaKnown(_ j: PackJournal, _ variant: PackVariant) -> Bool {
+    guard j.strategy == "delta", let delta = j.delta else { return true }
+    if variant.deltas.contains(where: { $0.id == delta }) { return true }
+    return j.feedDelta?.artifactSha256 == delta
+}
+
+/// The merged feed entry of a planned feed delta, as the journal keeps it.
+private func feedEntryOf(_ variant: PackVariant, _ id: String) -> FeedDelta? {
+    for d in variant.deltas {
+        if case .payload(let method, let from, let mem, let a) = d, a.sha256 == id {
+            return FeedDelta(
+                from: from, method: method, memBytes: mem, artifactSha256: a.sha256, artifactBytes: a.bytes)
+        }
+    }
+    return nil
 }
 
 private func rangeStartsAt(_ contentRange: String?, _ offset: Int) -> Bool {

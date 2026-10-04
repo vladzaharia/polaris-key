@@ -877,8 +877,9 @@ export class UpdateClient {
     // The same steps as `decide()`, by the same function, with the record fetch withheld: the
     // order, the floors and the fallback cannot differ between the two. The decision it makes
     // over no record is discarded, and only the `feeds` slice is written.
+    const channel = opts.channel ?? this.ctx.channel;
     const r = await runUpdateCheck({
-      channel: opts.channel ?? this.ctx.channel,
+      channel,
       expectedAud: this.ctx.product,
       trust: trust.effective,
       releaseKeys: this.configured?.releaseKeys ?? {},
@@ -894,7 +895,10 @@ export class UpdateClient {
     });
     if (!r.ok) throw this.raise(r.error);
     await cache.patch({ feeds: r.cache.feeds });
-    this.feedMenu = r.content.deltas;
+    // plans/P4-29.md §2.4 step 1: the menu is the configured channel's. A look at another
+    // channel's feed leaves it as it is (`loadFeedMenu` reads the configured one's from the cache).
+    if (boundChannels(this.ctx.channel).includes(channel))
+      this.feedMenu = r.content.deltas;
     return {
       channel: r.check.channel,
       feed: r.feed,

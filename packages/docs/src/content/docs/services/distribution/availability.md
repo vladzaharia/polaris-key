@@ -69,7 +69,7 @@ A **pack release** derives by its own rule, per its transport on the outlet:
 - `apple-ba`, `play-pad`, `steam-depot`: nothing derived; the store moves the bytes, so only CI
   reports (`pkey transport …`) and the App Store Connect connector say where a pack release
   stands ([Platform pack transports](/docs/build/pack-transports/)).
-- any other transport: nothing; it is stored and listed as unsupported.
+- any other transport: nothing; it is stored and shown "not delivered by Polaris Key".
 
 Every other kind — `app-store`, `testflight`, `play`, `steam`, `itch`, … — shows **nothing until
 it is reported**, whatever its transport: every outlet's default transport is `pkey-cdn`, so the

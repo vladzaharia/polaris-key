@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 55 | 5 | 0 | 7 |
-| React | `web`, `desktop-bridge` | 47 | 14 | 0 | 6 |
-| Python | `python` | 54 | 5 | 1 | 7 |
-| Swift | `macos`, `ios` | 55 | 5 | 1 | 6 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 61 | 1 | 1 | 4 |
+| Node | `node` | 55 | 6 | 0 | 7 |
+| React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
+| Python | `python` | 55 | 6 | 0 | 7 |
+| Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
 
 ## Core
 
@@ -72,6 +72,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
 | `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
+| `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned); N/A (macos: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | web: runtime |
 
@@ -97,7 +98,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.revoke` | Revocation records: verify, supersede, persist, refuse revoked mounts | `cases.json` `revocationCases` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.delegation` | Content-key delegation: delegated pack records, the data-only rule, delegation revocations | `cases.json` `delegationCases` + `content/` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `packs.delta.feed` | Feed-offered deltas: the menu, the merge, one feed delta per install | `cases.json` `feedContentCases` + `plan-matrix.json` `feedDeltaCases` + `content/` `feedDeltaApplyCases` (P4-29) + unit | ✓ | ✓ | planned (P4-30) | planned (P4-30) | planned (P4-31) | — |
+| `packs.delta.feed` | Feed-offered deltas: the menu, the merge, one feed delta per install | `cases.json` `feedContentCases` + `plan-matrix.json` `feedDeltaCases` + `content/` `feedDeltaApplyCases` (P4-29) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.index.chunks` | Chunk index parsing | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
@@ -153,6 +154,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Python | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Python | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
 | Python | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
+| Swift | `devices.attest` | P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client. |
 | Swift | `identity.oidc` | Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in. |
 | Swift | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Swift | `packs.transport.apple` | P5-05's PolarisKeyPlatform target carries the AssetPackManager client (iOS / macOS 26.4, behind #if compiler(\>=6.3)) behind its C surface; P5-08 wires the transport for Godot only, and no package adopts it as a Swift SDK pack transport. |

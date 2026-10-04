@@ -15,8 +15,10 @@
 //
 // 1. PRODUCT-SCOPED. Every delete names one product (or, for the platform-level `portal_audit`
 //    rows that name no product, `product IS NULL` explicitly). The sweep never issues a
-//    statement whose blast radius is "the table". The one shared table, `blob_objects` (P4-14's
-//    collector), belongs to no product: its sweep deletes only rows that NO product references
+//    statement whose blast radius is "the table". The shared tables are named exceptions:
+//    `platform_audit` (A-12) has no product column at all, so its pass is by age alone, bounded
+//    per pass like every other prune; and `blob_objects` (P4-14's collector) belongs to no
+//    product: its sweep deletes only rows that NO product references
 //    (the `NOT EXISTS` on `blob_refs` is in every statement), bounded per tick.
 // 2. IDEMPOTENT. Every step is a delete-what-is-already-past or a null-what-is-already-dormant,
 //    so a second run on the same clock removes nothing and changes nothing. Cron delivery is
@@ -37,6 +39,7 @@ import {
   listAllProductSlugs,
   listProducts,
   pruneAudit,
+  prunePlatformAudit,
   releaseDormantSeats,
 } from "./repo.js";
 import {
@@ -326,6 +329,11 @@ export async function runScheduledMaintenance(
   // this pass those rows would be the one part of the table that still grew forever.
   await step(report, "portalAudit:_platform", () =>
     drain((limit) => prunePortalAudit(db, null, cutoff, limit)),
+  );
+
+  // A-12: the product-less admin trail, under the same 180-day retention as `audit`.
+  await step(report, "platformAudit", () =>
+    drain((limit) => prunePlatformAudit(db, cutoff, limit)),
   );
 
   // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before

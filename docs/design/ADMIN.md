@@ -2099,6 +2099,67 @@ in jsdom, in both themes. Specifically:
   fan out.
 - Bundle size: CodeMirror is lazy; check the main bundle stays under 250 KB gzip.
 
+**Notes (chunk 3 as built, 2026-10-04).** Where the build differs from the text above:
+
+- **Where things live.** Components are in `src/ui/` (data table under `src/ui/data-table/`,
+  charts under `src/ui/charts/`), the form layer in `src/ui/form.tsx`, the console-aware pieces
+  (`PageHeader`, `PageTabs`, `Breadcrumbs`, `EntityLink`, `DeviceTable`) in
+  `src/console/components/`, the templates in `src/console/templates/` (T1 `Dashboard`, T2
+  `Collection`, T4 `Settings`), and `useTableUrlState` in `src/console/`. The templates are shaped
+  so the S-13 Platform pages (Settings on T4 with a per-row `SourceBadge` and `SaveBar`;
+  Deployment and Operations on T1 with full-width table panels) and the S-12 package Feeds pages
+  (T2) can be built on them without new primitives; the gallery's template stories use those
+  shapes with fixture data. No page was built here.
+- **The old `components/ui/*`.** `Button`, `Spinner`, `Tooltip`, `Skeleton`, `Dialog`,
+  `ConfirmDialog` and `Toaster` are thin re-exports of `src/ui` (`ConfirmDialog` keeps the legacy
+  defaults: destructive confirm, no close on success). `Badge`, `Card`, `Checkbox`, `DataTable`
+  (v1), `DropdownMenu`, `EmptyState`, `Field`, `Input`, `Label`, `Select`, `Switch`, `Tabs`,
+  `Textarea` and `Toast` keep their own code: their props differ from the new components', so a
+  re-export would change every legacy view. Each area chunk moves its views to `src/ui`; chunk 11
+  deletes whatever is left.
+- **UI-5** is closed by the header slots of the template cards (`Panel.action`,
+  `SettingsSection.actions`, `SettingsRow.source`) and `DataTable`'s density; there is no
+  stand-alone `Card` component. **UI-8**: `PageTabs` is the underline style, route tabs (`to`) or
+  panel tabs, and `TabPanel` keeps a dirty panel mounted (the `forceMount` case, LDT-4).
+- **CSP, proved in a browser.** `e2e/kit.e2e.test.ts` (part of `pnpm --filter @polaris-key/admin
+test:e2e`) builds the gallery with `VITE_PK_KIT=1` into `dist-kit/` (git-ignored; the shipped
+  `dist/` never contains the gallery) and opens every dialog size, each confirm level, a confirm
+  with its inline error, both drawers, the one-time secret and its close guard, the action menu,
+  `Select`, `Combobox`, a `SourceBadge` popover, a facet popover, a tooltip, toasts and the lazy
+  CodeMirror editor in Chromium under the Worker's exact policy: zero violations, a real scroll
+  lock on every modal overlay (through the `react-style-singleton` shim), released on close, and
+  a phone-width bottom-sheet dialog. It also fails on any console error at load. It found, and
+  this chunk fixes, two more inline `<style>` sources besides sonner's: CodeMirror's `style-mod`
+  (a Vite transform lets it adopt a constructable sheet on the document, not only in shadow
+  roots) and Radix Select's viewport (the transform drops the element; `styles.css` carries its
+  two rules). Each transform fails the build if the library's code changes shape.
+- **A DataTable render loop, fixed.** `react-table` queues `resetPageIndex()` after every
+  row-model recompute, and the table fed it a fresh `sorting` array every render, so any second
+  render (a theme change; the virtualizer's first measure on a phone) re-rendered every table
+  forever and froze the page. `sorting` and `columnVisibility` are memoized and `autoResetAll` is
+  off (the table pages itself through `state.offset`/`cursor`). jsdom does not reproduce it; the
+  e2e suite checks the gallery is quiet at 390 px and 1440 px, before and after a theme change.
+- **Accessibility tests.** `test/kit.test.tsx` renders all 64 stories in both themes and
+  runs `vitest-axe` on each: zero violations. `color-contrast` is off there (jsdom computes no
+  colour; the brand package's contrast suite covers the tokens) and so is `region` (a story is a
+  fragment). `Grid` cells carry an explicit `role="gridcell"`.
+- **Tests added** (per the list above): `test/ui/confirmDialog`, `oneTimeSecret`, `dataTable`
+  (facets, selection, j/k/x, cursor and offset paging, virtualized rows, CSV),
+  `tableUrlState` (round trip, namespacing, a hash change restoring filters), `forms`
+  (`useAdminForm` never re-seeds while dirty; `keepMine`, `acceptServer`, server field errors;
+  `DateInput` stores the end of the local day across zones and a DST change, LIC-5), `grid`
+  (roving tab stop, arrows, Home/End, Ctrl+Home/End, activation, return to the last cell),
+  `test/lib/errorCopy` (table-driven over every §5.9 code and reason), `actions` (every action
+  has a level), `status`, `labels`, `diff`, `highlight`, plus the value, badge, feedback, chart,
+  copy, menu and dialog suites. The admin package runs 986 unit tests.
+- **Small departures.** The release policy copy moved from `api.ts` to
+  `lib/releasePolicyMessages.ts` (re-exported by `api.ts`) so a test that mocks `api.js` can still
+  load `errorCopy`. `ConfirmDialog.confirmVariant` accepts `null`, the value a cva variant prop
+  can carry in the legacy views.
+- **Bundle.** The console's first load (`manage.html`'s scripts and stylesheet) is 226 KB gzip.
+  CodeMirror is a separate chunk loaded on first use and is not in the shipped build until a page
+  uses `CodeEditor`.
+
 #### Chunks 4–10 · Area chunks
 
 Each area chunk follows the same recipe:

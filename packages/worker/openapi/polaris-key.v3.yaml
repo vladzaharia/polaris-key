@@ -839,6 +839,149 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/devices/attest/challenge:
+    post:
+      operationId: attestChallenge
+      tags: [core]
+      summary: A single-use device attestation challenge (P6-02)
+      description: >
+        Issues a challenge for `POST /{product}/devices/attest`: 32 random bytes, base64url,
+        single-use, valid five minutes and bound to the calling device. `requestHash` is the
+        only value the client hands the platform API —
+        `base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`. App Attest
+        passes `SHA-256(UTF-8(requestHash))` as the client data hash; a standard Play Integrity
+        request passes `requestHash` verbatim. `play.cloudProjectNumber` is present when the
+        operator's trust policy names the Google Cloud project the app's integrity requests use.
+        10 challenges per device per hour, fail-closed. Auth requires a usable license only
+        when the product enables the License service. NESTED errors.
+      security: [{ deviceToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: "A challenge. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttestChallenge" }
+              examples:
+                issued:
+                  summary: test/attest.test.ts
+                  value:
+                    challenge: q1Wm2dS7oP0b9xYzA4cVfGhJkLnR3tU6wE8iQ5rT2yU
+                    requestHash: Hs3n0bM2cV5xZ8aQ1wE4rT7yU0iO3pL6kJ9hG2fD5sA
+                    expiresAt: 1767225900
+                    play: { cloudProjectNumber: "123456789012" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 10 challenges per device per hour, fail-closed — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+
+  /{product}/devices/attest:
+    post:
+      operationId: attestDevice
+      tags: [core]
+      summary: Raise the device's trust level with App Attest or Play Integrity (P6-02)
+      description: >
+        Verifies an attestation against a challenge from `/devices/attest/challenge` and, on
+        success, records the device at trust level `attested` (on the device row only: no signed
+        document and no device token changes). The challenge is spent before verification, pass
+        or fail. `app-attest`: the CBOR attestation object's `x5c` chain to the pinned Apple App
+        Attestation Root CA, the nonce extension, the key id, the RP ID hash of
+        `<TeamID>.<bundleId>` (the Team ID from the operator's trust policy, the bundle ids from
+        the live App Store and TestFlight outlets), counter 0, and the aaguid of the policy's
+        environment. `play-integrity`: the token decoded by Google with the product's pinned
+        `google-service-account` credential, then the package, `requestHash`, a timestamp within
+        five minutes, `PLAY_RECOGNIZED` and `MEETS_DEVICE_INTEGRITY`; the licensing verdict is
+        recorded, not required. A refused verdict is recorded on the device and never changes
+        its level. 4 attempts per device per hour, fail-closed. NESTED errors.
+      security: [{ deviceToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AttestRequest" }
+            examples:
+              playIntegrity:
+                summary: test/attest.test.ts
+                value:
+                  kind: play-integrity
+                  token: eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.example
+                  challenge: q1Wm2dS7oP0b9xYzA4cVfGhJkLnR3tU6wE8iQ5rT2yU
+      responses:
+        "200":
+          description: "The device is attested. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttestResult" }
+              examples:
+                attested:
+                  summary: test/attest.test.ts
+                  value:
+                    {
+                      trustLevel: attested,
+                      kind: play-integrity,
+                      attestedAt: 1767225700,
+                    }
+        "400":
+          description: A malformed body — NESTED, with `message` beside `error`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badKind:
+                  value:
+                    error: { code: bad_request }
+                    message: kind must be "app-attest" or "play-integrity"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            The product is not set up for this kind: no App Attest Team ID in the trust policy
+            or no App Store/TestFlight outlet; no Play outlet with a pinned
+            `google-service-account` credential.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                unavailable:
+                  value:
+                    error: { code: attestation_unavailable }
+                    message: Play Integrity is not set up for this product (a play outlet with a google-service-account credential pinned to its package)
+        "422":
+          description: >
+            A used, expired or foreign challenge, or a verdict that failed a check. One code
+            for every cause; the reason is kept in the audit trail and on the device row.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                rejected:
+                  value:
+                    error: { code: attestation_rejected }
+                    message: the attestation did not verify
+        "429":
+          description: 4 attempts per device per hour, fail-closed — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+        "503":
+          description: Google's Play Integrity service could not be reached with the product's credential.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                upstream:
+                  value:
+                    error: { code: attestation_unavailable }
+                    message: Play Integrity answered 500
+
   # ── license ───────────────────────────────────────────────────────────────────
   /{product}/license/activate:
     post:
@@ -2493,9 +2636,9 @@ paths:
         `invalid_transition`). The bucket is evaluated ON THE DEVICE,
         `u32(sha256(salt ‖ installId)[0..4]) mod 10000`, so the Worker never evaluates it. A
         yanked release is refused (409 `release_yanked`); a row a store connector mirrors refuses
-        every direct edit (409 `rollout_mirrored`). Until P3-03 composes the signed feed, a
-        rollout and a halt are recorded, audited and shown, but legacy feeds keep serving; a yank
-        or a channel pin is today's emergency stop. Requires a `pkeyci_` token with the opt-in
+        every direct edit (409 `rollout_mirrored`). The signed channel feed, the app-updater feeds,
+        the storefront feeds and the download page read the row, so a pause or halt stops offering
+        the release there at once. Requires a `pkeyci_` token with the opt-in
         `distribution:rollout` scope; audited as `ci:<subject>`. No CORS. Errors are LEGACY FLAT
         with a machine-readable `reason` (`unknown_outlet`, `unknown_channel`,
         `unknown_deliverable`, `unknown_release`, `no_rollout`, `invalid_body`).
@@ -2783,7 +2926,7 @@ paths:
       tags: [distribution]
       summary: Halt an outlet rollout (CI)
       description: >
-        P2b-04. `active` or `paused` → `halted`. Recorded, audited and shown; until P3-03 composes the signed feed, legacy feeds keep serving — yank or pin to stop downloads now. Same token, scope, audit and error shape as `ciSetRollout`; an optional
+        P2b-04. `active` or `paused` → `halted`: the signed channel feed, the app-updater feeds, the storefront feeds and the download page stop offering the release on that outlet. Same token, scope, audit and error shape as `ciSetRollout`; an optional
         `releaseId` must match the rollout's release (409 `stale_release`).
       security: [{ ciToken: [] }]
       parameters:
@@ -8640,6 +8783,56 @@ components:
           type: string
           pattern: "^[A-Za-z0-9._:-]{1,64}$"
           description: A short machine-readable reason (`pack_failed`, `update_reverted`).
+    AttestChallenge:
+      type: object
+      required: [challenge, requestHash, expiresAt]
+      additionalProperties: false
+      properties:
+        challenge: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        requestHash:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{43}$"
+          description: base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))
+        expiresAt: { type: integer, description: Epoch seconds. }
+        play:
+          type: object
+          required: [cloudProjectNumber]
+          additionalProperties: false
+          properties:
+            cloudProjectNumber: { type: string, pattern: "^[0-9]{1,20}$" }
+    AttestRequest:
+      oneOf:
+        - type: object
+          required: [kind, keyId, attestation, challenge]
+          additionalProperties: false
+          properties:
+            kind: { type: string, enum: [app-attest] }
+            keyId:
+              type: string
+              maxLength: 64
+              description: The key id exactly as DCAppAttestService returned it (base64).
+            attestation:
+              type: string
+              description: The attestation object (CBOR), base64.
+            challenge: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        - type: object
+          required: [kind, token, challenge]
+          additionalProperties: false
+          properties:
+            kind: { type: string, enum: [play-integrity] }
+            token:
+              type: string
+              maxLength: 16384
+              description: The token from a STANDARD Play Integrity request made with `requestHash`.
+            challenge: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+    AttestResult:
+      type: object
+      required: [trustLevel, kind, attestedAt]
+      additionalProperties: false
+      properties:
+        trustLevel: { type: string, enum: [attested] }
+        kind: { type: string, enum: [app-attest, play-integrity] }
+        attestedAt: { type: integer, description: Epoch seconds. }
     RegistrationResult:
       type: object
       description: Keyless registration's answer — the token and the device id it is bound to.

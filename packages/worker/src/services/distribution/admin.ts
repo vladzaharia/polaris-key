@@ -268,17 +268,6 @@ export async function handleDistributionAdmin(
 
 // ── Rollouts (P2b-04) ────────────────────────────────────────────────────────────────────────
 
-/**
- * What a halt does TODAY, carried in every rollout answer so the console can say it next to
- * the control: until P3-03 composes the signed feed from these rows, a halt (and a percentage)
- * is recorded, audited and shown, but the legacy feeds keep serving. A yank or a channel pin
- * (Release) is today's emergency stop.
- */
-const ROLLOUT_EFFECT = {
-  reachesDevices: false,
-  note: "Rollouts and halts are recorded and audited, but the legacy feeds (appcast, /update/version, downloads) keep serving until the signed feed carries them (P3-03). To stop a release reaching devices now, yank it or pin the channel.",
-} as const;
-
 async function handleRolloutsAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
@@ -288,7 +277,6 @@ async function handleRolloutsAdmin(
       return err(405, ErrorCode.BadRequest, "method not allowed");
     return adminJson({
       rollouts: (await listRollouts(db, product.slug)).map(rolloutRecord),
-      effect: ROLLOUT_EFFECT,
     });
   }
   const verb: RolloutVerb | null =
@@ -320,7 +308,7 @@ async function handleRolloutsAdmin(
       ...(result.fields ? { fields: result.fields } : {}),
     });
   }
-  return adminJson({ rollout: result.rollout, effect: ROLLOUT_EFFECT });
+  return adminJson({ rollout: result.rollout });
 }
 
 // ── Delivery access (P2b-04) ─────────────────────────────────────────────────────────────────

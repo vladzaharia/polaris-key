@@ -8,7 +8,7 @@ A Godot Android plugin (v2) over `polaris-key-platform` (sdks/kotlin). Godot ins
 | Path              | What                                                                                        |
 | ----------------- | ------------------------------------------------------------------------------------------- |
 | `src/main/`       | the plugin class, `Commands` (the JSON surface), the event queue, the v2 manifest entry     |
-| `src/play/`       | `PlayCommands`: In-App Updates and Play Asset Delivery                                      |
+| `src/play/`       | `PlayCommands`: In-App Updates, Play Asset Delivery and Play Integrity                      |
 | `src/direct/`     | `DirectCommands`: the verified PackageInstaller self-update                                 |
 | `src/test*/`      | Robolectric tests of the command surface per flavour                                        |
 | `build.sh`        | builds both flavours and installs the AARs into `addons/polaris_key/native/android/bin/`    |
@@ -26,13 +26,18 @@ queued `{ev: "result", req, …}`. Unsolicited events: `update_state`, `update_r
 on Godot's main thread and emits its own signals, as PKeyApple does (P5-05), so no signal crosses
 JNI.
 
-| Ops                                                                                                                           | Flavour |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `capabilities`, `install_source`, `ks_get`, `ks_set`, `ks_delete`, `ks_info`, `poll`                                          | both    |
-| `iau_check`, `iau_start`, `iau_complete`, `pad_state`, `pad_fetch`, `pad_location`, `pad_remove`, `pad_cancel`, `pad_confirm` | play    |
-| `pi_can_install`, `pi_open_settings`, `pi_verify`, `pi_install`, `pi_last`, `pi_abandon_stale`, `pi_constraints`              | direct  |
+| Ops                                                                                                                                                                   | Flavour |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `capabilities`, `install_source`, `ks_get`, `ks_set`, `ks_delete`, `ks_info`, `poll`                                                                                  | both    |
+| `iau_check`, `iau_start`, `iau_complete`, `pad_state`, `pad_fetch`, `pad_location`, `pad_remove`, `pad_cancel`, `pad_confirm`, `integrity_prepare`, `integrity_token` | play    |
+| `pi_can_install`, `pi_open_settings`, `pi_verify`, `pi_install`, `pi_last`, `pi_abandon_stale`, `pi_constraints`                                                      | direct  |
 
 The other flavour's ops answer `{ok: false, unsupported: true, reason: "outlet"}`.
+
+`integrity_prepare {cloudProjectNumber}` and `integrity_token {cloudProjectNumber, requestHash}`
+(P6-02) run the standard Play Integrity API; the token result is `{token, prepared, reprepared}`
+and a failure `{error: "integrity", errorCode, exception, message}`. `PolarisKey.devices.attest()`
+posts the token to `POST /<product>/devices/attest`.
 
 ## Building into a game
 

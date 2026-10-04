@@ -37,6 +37,10 @@ export interface ProductRow {
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
   // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
   web_origins_json?: string | null;
+  // The device-trust policy (migrations/0053_d/e, P6-02): operator-owned, never written by an
+  // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
+  trust_policy_json?: string | null;
+  trust_policy_source?: string;
   created_at: number;
   modified_at: number;
 }
@@ -135,6 +139,12 @@ export interface DeviceRow {
   /** R11-02 — the seat ordinal this device holds. NULL = holds no seat. Written only by
    *  `claimDeviceSeat`/`releaseDeviceSeat`; `upsertDevice` deliberately preserves it. */
   seat_no?: number | null;
+  /** P6-02 — `basic` or `attested` (migrations/0053_a). Written only by `setDeviceTrust` and
+   *  `resetDeviceTrust`; `upsertDevice` deliberately preserves it, like `seat_no`. */
+  trust_level?: string;
+  attested_at?: number | null;
+  /** The last attestation verdict summary (never a raw token or attestation object). */
+  attestation_json?: string | null;
 }
 
 export interface ProfileRow {
@@ -1255,6 +1265,69 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
   );
 }
 
+/**
+ * P6-02 — record an attestation outcome on a device row. `level` is written only when the
+ * verdict raised the device (`attested`); a refused attempt records its verdict and leaves the
+ * level alone, so a bad attestation can never lower or raise anything.
+ */
+export async function setDeviceTrust(
+  db: Db,
+  product: string,
+  deviceId: string,
+  t: { attested: boolean; at: number; json: string },
+): Promise<void> {
+  if (t.attested) {
+    await db.run(
+      "UPDATE devices SET trust_level = 'attested', attested_at = ?, attestation_json = ? WHERE product = ? AND device_id = ?",
+      t.at,
+      t.json,
+      product,
+      deviceId,
+    );
+    return;
+  }
+  await db.run(
+    "UPDATE devices SET attestation_json = ? WHERE product = ? AND device_id = ?",
+    t.json,
+    product,
+    deviceId,
+  );
+}
+
+/**
+ * P6-02 — drop a device back to `basic`. Called whenever a NEW credential is minted for a device
+ * id without proof of the old one (keyless re-registration, a licence bind or rebind): the device
+ * id is client-chosen, so whoever holds the new token has not shown they are the attested
+ * install. A token rotation, which presents the old token, keeps the level.
+ */
+export async function resetDeviceTrust(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<void> {
+  await db.run(
+    "UPDATE devices SET trust_level = 'basic', attested_at = NULL WHERE product = ? AND device_id = ? AND trust_level != 'basic'",
+    product,
+    deviceId,
+  );
+}
+
+/** P6-02 — write the operator's device-trust policy (`trust_policy_source = 'admin'`). */
+export async function setTrustPolicy(
+  db: Db,
+  product: string,
+  json: string | null,
+  now: number,
+): Promise<void> {
+  await db.run(
+    "UPDATE products SET trust_policy_json = ?, trust_policy_source = ?, modified_at = ? WHERE slug = ?",
+    json,
+    json === null ? "default" : "admin",
+    now,
+    product,
+  );
+}
+
 export async function setDeviceStatus(
   db: Db,
   product: string,
@@ -1681,6 +1754,117 @@ export async function listAudit(
   return db.all<AuditRow>(
     "SELECT * FROM audit WHERE product = ? ORDER BY at DESC, id DESC LIMIT ?",
     product,
+    limit,
+  );
+}
+
+// ── Platform audit (A-12; product-less twin of `audit`, keyset on (at DESC, id DESC)) ──────
+export interface PlatformAuditRow {
+  id: string;
+  at: number;
+  actor_sub: string | null;
+  actor_name: string | null;
+  actor_email: string | null;
+  action: string;
+  target_kind: string | null;
+  target_id: string | null;
+  summary: string | null;
+  before_json: string | null;
+  after_json: string | null;
+}
+
+export async function appendPlatformAudit(
+  db: Db,
+  row: PlatformAuditRow,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO platform_audit (id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, summary, before_json, after_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    row.id,
+    row.at,
+    row.actor_sub,
+    row.actor_name,
+    row.actor_email,
+    row.action,
+    row.target_kind,
+    row.target_id,
+    row.summary,
+    row.before_json,
+    row.after_json,
+  );
+}
+
+export async function listPlatformAudit(
+  db: Db,
+  opts: { beforeAt?: number; beforeId?: string; limit?: number } = {},
+): Promise<PlatformAuditRow[]> {
+  const limit = Math.min(opts.limit ?? 50, 200);
+  if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {
+    return db.all<PlatformAuditRow>(
+      `SELECT * FROM platform_audit WHERE (at < ? OR (at = ? AND id < ?))
+       ORDER BY at DESC, id DESC LIMIT ?`,
+      opts.beforeAt,
+      opts.beforeAt,
+      opts.beforeId,
+      limit,
+    );
+  }
+  return db.all<PlatformAuditRow>(
+    "SELECT * FROM platform_audit ORDER BY at DESC, id DESC LIMIT ?",
+    limit,
+  );
+}
+
+/**
+ * Delete `platform_audit` rows older than `cutoff`, at most `limit` per call (the nightly sweep
+ * drains it like `pruneAudit`). The table has no product column: it is platform-level by
+ * construction, which `scheduled.ts`'s "product-scoped" property names explicitly.
+ */
+export async function prunePlatformAudit(
+  db: Db,
+  cutoff: number,
+  limit: number,
+): Promise<number> {
+  return db.runChanges(
+    `DELETE FROM platform_audit
+      WHERE rowid IN (SELECT rowid FROM platform_audit WHERE at < ? LIMIT ?)`,
+    cutoff,
+    limit,
+  );
+}
+
+// ── Platform deploys (A-11; written only by deploy.yml, read here) ─────────────────────────
+export interface PlatformDeployRow {
+  id: string;
+  at: number;
+  environment: string;
+  tag: string;
+  git_sha: string;
+  run_url: string | null;
+  scripts: string;
+  latest_migration: string | null;
+  cf_version_id: string | null;
+  deltas_version_id: string | null;
+  smoke: string | null;
+}
+
+export async function listPlatformDeploys(
+  db: Db,
+  opts: { beforeAt?: number; beforeId?: string; limit?: number } = {},
+): Promise<PlatformDeployRow[]> {
+  const limit = Math.min(opts.limit ?? 20, 100);
+  if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {
+    return db.all<PlatformDeployRow>(
+      `SELECT * FROM platform_deploys WHERE (at < ? OR (at = ? AND id < ?))
+       ORDER BY at DESC, id DESC LIMIT ?`,
+      opts.beforeAt,
+      opts.beforeAt,
+      opts.beforeId,
+      limit,
+    );
+  }
+  return db.all<PlatformDeployRow>(
+    "SELECT * FROM platform_deploys ORDER BY at DESC, id DESC LIMIT ?",
     limit,
   );
 }

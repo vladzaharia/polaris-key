@@ -187,8 +187,8 @@ that outlet's kind can carry (`transport_not_allowed`). The resolved pairs are s
 Polaris Key delivers by `pkey-cdn`, `web` and `embedded`, and tracks the store transports
 `apple-ba`, `play-pad` and `steam-depot` through reports
 ([Platform pack transports](/docs/build/pack-transports/)); any other transport
-(`msix-optional`, `flatpak-ext`) is stored and listed as unsupported, and nothing is served or
-derived for it ([Pack transports](/docs/services/distribution/delivery/#pack-transports)).
+(`msix-optional`, `flatpak-ext`) is stored and shown "not delivered by Polaris Key", and nothing
+is served or derived for it ([Pack transports](/docs/services/distribution/delivery/#pack-transports)).
 
 ## Listing
 

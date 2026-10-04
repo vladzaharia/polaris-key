@@ -90,6 +90,13 @@ class DirectCommandsTest {
         assertFalse(caps.getBoolean("inAppUpdates"))
         assertEquals("outlet", c.json(JSONObject().put("op", "iau_check")).getString("reason"))
         assertEquals("outlet", c.json(JSONObject().put("op", "pad_fetch")).getString("reason"))
+        // P6-02: no Play Integrity in the direct build (an install Play did not make cannot attest).
+        assertFalse(caps.getBoolean("playIntegrity"))
+        for (op in listOf("integrity_prepare", "integrity_token")) {
+            val r = c.json(JSONObject().put("op", op).put("cloudProjectNumber", "1").put("requestHash", "h"))
+            assertEquals(true, r.getBoolean("unsupported"))
+            assertEquals("outlet", r.getString("reason"))
+        }
         assertNotNull(c.json(JSONObject().put("op", "pi_can_install")).get("canInstall"))
         assertEquals(0, c.json(JSONObject().put("op", "pi_abandon_stale")).getInt("abandoned"))
     }

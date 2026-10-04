@@ -77,16 +77,6 @@ import {
 export const MATRIX_DEFAULT_LIMIT = 20;
 export const MATRIX_MAX_LIMIT = 50;
 
-/**
- * What a halt does, said next to every control (P2b-04's caveat, as it stands after P3-03): the
- * signed feed carries rollouts and halts, and the storefront feeds and the download page drop a
- * held release at once, but the legacy surfaces keep serving.
- */
-export const MATRIX_EFFECT = {
-  reachesDevices: "signed-feed",
-  note: "A pause or halt reaches devices through the signed feed (wire v4 SDKs), and the storefront feeds and the public download page stop listing the held release at once. The legacy feeds (appcast, /update/version) and direct download URLs keep serving it: to stop a release everywhere now, yank it or pin the channel under Releases.",
-} as const;
-
 /** The order a cell's availability summary prefers, best first. */
 const AVAILABILITY_RANK: readonly string[] = [
   "live",
@@ -106,7 +96,8 @@ export interface MatrixOutlet {
   /** Self-hosted on a transport we serve: `live` is derived without a report. */
   derives: boolean;
   /** Whether Polaris Key acts on the transport (`SUPPORTED_TRANSPORTS`: the transports it delivers,
-   *  and P5-08's store transports it tracks through reports); an unsupported one is stored only. */
+   *  P4-05, and P5-08's store transports it tracks through reports); an unsupported one is stored
+   *  only and shown "not delivered by Polaris Key". */
   supported: boolean;
 }
 
@@ -153,7 +144,6 @@ export interface Matrix {
     submission: readonly string[];
     rollout: readonly string[];
   };
-  effect: typeof MATRIX_EFFECT;
 }
 
 function objectOf(raw: string | null): Record<string, unknown> {
@@ -397,6 +387,5 @@ export async function buildMatrix(
       submission: SUBMISSION_STATES,
       rollout: ROLLOUT_STATES,
     },
-    effect: MATRIX_EFFECT,
   };
 }
