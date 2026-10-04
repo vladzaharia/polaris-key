@@ -8,8 +8,7 @@
  *   behind a disclosure, L3, with the trust-cache risk stated (SET-1, OVR-3).
  * - **Secrets**: the union of what is stored (A-5) and what the configuration requires (SEC-2).
  * - **CI publishing**: the trusted publisher and static CI tokens.
- * - Store credentials keep a section at the end until their own page exists under Distribution;
- *   it shows only while Distribution is on. Edge mint has its own page under Config.
+ * - Edge mint and store credentials have their own pages, under Config and Distribution.
  */
 
 import * as React from "react";
@@ -37,7 +36,6 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
-import { OutletCredentials } from "../../../views/OutletCredentials.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
@@ -85,7 +83,6 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
     );
   }
   const p = product.data;
-  const distributionOn = p.services?.distribution?.enabled ?? false;
   return (
     <SettingsTemplate
       header={header}
@@ -93,36 +90,11 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
         { id: "keys-signing", title: "Signing keys" },
         { id: "keys-secrets", title: "Secrets" },
         { id: "keys-ci", title: "CI publishing" },
-        ...(distributionOn
-          ? [{ id: "keys-services", title: "Store credentials" }]
-          : []),
       ]}
     >
       <SigningKeysSection slug={slug} product={p} />
       <SecretsSection slug={slug} product={p} />
       <CiPublishingSection slug={slug} />
-      {distributionOn ? (
-        <section
-          id="keys-services"
-          tabIndex={-1}
-          aria-labelledby="keys-services-heading"
-          className="scroll-mt-20 space-y-4 outline-hidden"
-        >
-          <div className="space-y-1">
-            <h2
-              id="keys-services-heading"
-              className="text-base font-bold text-fg-strong"
-            >
-              Store credentials
-            </h2>
-            <p className="text-sm text-fg-muted">
-              Store credentials are how Distribution reaches each store on this
-              product&apos;s behalf.
-            </p>
-          </div>
-          <OutletCredentials slug={slug} />
-        </section>
-      ) : null}
     </SettingsTemplate>
   );
 }

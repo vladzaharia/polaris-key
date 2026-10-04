@@ -225,6 +225,12 @@ describe("errorCopy: distribution reasons", () => {
     "unknown_beta_group",
     "no_webhook_secret",
     "unknown_track",
+    // A-9 (chunk 9): the distribution 404s keep their reason.
+    "unknown_outlet",
+    "unknown_channel",
+    "unknown_release",
+    "unknown_deliverable",
+    "unknown_candidate",
   ];
 
   it("has copy for every code in ADMIN.md §5.9", () => {

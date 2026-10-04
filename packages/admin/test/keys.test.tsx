@@ -18,8 +18,6 @@ const fns = vi.hoisted(() => ({
   ciTokens: vi.fn(),
   issueCiToken: vi.fn(),
   revokeCiToken: vi.fn(),
-  edgeMintRecipes: vi.fn(),
-  outletCredentials: vi.fn(),
 }));
 
 vi.mock("../src/api.js", async () => {
@@ -146,12 +144,6 @@ beforeEach(() => {
   });
   fns.ciPublisher.mockResolvedValue({ ok: true, policy: null });
   fns.ciTokens.mockResolvedValue({ ok: true, tokens: [] });
-  fns.edgeMintRecipes.mockResolvedValue({ recipes: [] });
-  fns.outletCredentials.mockResolvedValue({
-    ok: true,
-    kinds: [],
-    credentials: [],
-  });
 });
 afterEach(cleanup);
 
@@ -459,25 +451,23 @@ describe("Keys & secrets → CI publishing", () => {
 });
 
 describe("Keys & secrets → the page", () => {
-  it("mounts store credentials only while Distribution is on, and no edge mint (SEC-1)", async () => {
-    mount();
-    await screen.findByText("djdl-a");
-    expect(screen.queryByText("Store credentials")).toBeNull();
-    expect(screen.queryByText("Edge-mint recipes")).toBeNull();
-    cleanup();
-    resetCore();
+  it("holds signing keys, secrets and CI only: edge mint and store credentials have their own pages (SEC-1)", async () => {
     fns.product.mockResolvedValue({
       product: product({
-        services: { ...product().services!, distribution: { enabled: true } },
+        services: {
+          ...product().services!,
+          config: { enabled: true },
+          distribution: { enabled: true },
+        },
       }),
     });
     mount();
+    await screen.findByText("djdl-a");
     expect(
-      await screen.findByRole("heading", {
-        name: "Store credentials",
-      }),
-    ).toBeTruthy();
-    expect(await screen.findByText("Outlet credentials")).toBeTruthy();
+      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
+    ).toEqual(["Signing keys", "Secrets", "CI publishing"]);
+    expect(screen.queryByText("Edge-mint recipes")).toBeNull();
+    expect(screen.queryByText("Outlet credentials")).toBeNull();
   });
 
   it("shows an error state when the product cannot load", async () => {

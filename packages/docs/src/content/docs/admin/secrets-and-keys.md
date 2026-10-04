@@ -78,8 +78,8 @@ value: the sealed column is not even selected.
 
 ## Outlet credentials
 
-While Distribution is on, the page's last section has an **Outlet credentials** card: the keys the
-Distribution service uses to reach a store on the product's behalf. They are **not** product
+**Distribution → Outlet credentials** holds the keys the Distribution service uses to reach a store
+on the product's behalf, and the Sentry integration secret. They are **not** product
 secrets, and the difference is the point. Edge-mint can sign with any product secret an operator
 marks _edge-mint_, for any device of the product — and under open registration anyone can be a
 device — so a store key stored as a product secret would be one approval away from a public
@@ -136,7 +136,7 @@ The rules, all enforced by the Worker rather than by the console:
   of the one app it may be used for in this product, and its connector runs only while the
   product's `.pkey/distribution` names that same app. Send it as `pin` with the key (the form asks
   for it), or alone — `{"kind": "asc-api-key", "pin": "1234567890"}`, no `value` — to re-pin a
-  stored key without pasting the `.p8` again (the pin icon on a row). A rotation that leaves `pin`
+  stored key without pasting the `.p8` again (**Pin…** in a row's menu). A rotation that leaves `pin`
   out keeps the old pin. Each change of a pin is audited as `outlet_credential.pin` with the old
   and the new app id. A key with no pin, or a pin naming another app than the manifest does, is
   stored but unused: see
@@ -153,8 +153,12 @@ The rules, all enforced by the Worker rather than by the console:
 - **Deleted with the product,** and re-sealed by the KEK rotation sweep like everything else on
   this page (its own `outletCredentials` bucket in `GET /manage/api/products/kek`).
 
-**Delete** (the bin icon on a row, `DELETE …/outlet-credentials/<id>`) removes the value for good;
-connectors that used it stop working until a new one is set.
+**Delete…** (in a row's menu, `DELETE …/outlet-credentials/<id>`) removes the value for good;
+connectors that used it stop working until a new one is set. In the console, **Set credential…**
+asks for the kind first, then its fields and its pin; **Rotate…** in a row's menu replaces a stored
+value, and typing an existing id in Set credential warns that saving rotates it. Each row shows
+the last result a connector reported, as text. Below the table, **Store connectors** shows each
+connector's state and its configuration actions.
 
 ## Signing keys
 

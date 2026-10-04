@@ -98,11 +98,12 @@ switched on by a migration, so its stored state keeps serving while its manifest
 - **The commerce bridge**: App Store, Google Play and Steam purchases of products you map become
   licence flags per deliverable, verified with each store and revoked on refund. See
   [Commerce bridge](/docs/services/distribution/commerce/).
-- **A console section**, shown only while Distribution is on, with an overview of the chain, the
-  outlet rollouts and which hook answers for the product, and the
-  [distribution matrix](/docs/admin/distribution-matrix/): releases × outlets with pause, resume,
-  halt and complete controls, and the **Update health** tab (the funnel, the auto-halt and the
-  Sentry candidates).
+- **A console section**, shown only while Distribution is on: the
+  [Matrix](/docs/admin/distribution-matrix/) (releases × outlets, with a drawer per cell holding
+  its readiness and rollout controls), **Rollouts**, **Outlets & feeds** (capabilities, storefront
+  feed URLs and the distribution keys), **Access** (delivery access per deliverable), **Health**
+  (the funnel, the auto-halt and the Sentry candidates) and **Outlet credentials**. The
+  Release → Distribution → Update chain is shown on **Core → Services**.
 
 With Distribution off, a product serves no downloads at all: every byte route and alias answers
 not-found.
@@ -194,7 +195,7 @@ in Core, in their own sealed table, and Distribution is the only service that ca
 (`core/outletCredentials.ts`, held to that by a test); every open is audited. The JWTs and access
 tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, and keyed by a
 non-secret version of the credential, so the cache is checked first and a credential is opened
-only when a fresh token is needed. Operators set them on the Secrets tab — see
+only when a fresh token is needed. Operators set them in **Distribution → Outlet credentials** — see
 [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). The first connector is
 the [App Store Connect connector](/docs/services/distribution/app-store-connect/), then the
 [Google Play connector](/docs/services/distribution/google-play/) and the read-only

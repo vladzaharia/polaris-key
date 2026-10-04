@@ -127,10 +127,17 @@ export const qk = {
   matrixOverlay: (slug: string) =>
     product(slug, "distribution", "matrix", "overlay"),
   rollouts: (slug: string) => product(slug, "distribution", "rollouts"),
-  health: (slug: string) => product(slug, "distribution", "health"),
+  /** Update health; with `windowHours`, one window's reading (the prefix is every window). */
+  health: (slug: string, windowHours?: number) =>
+    windowHours === undefined
+      ? product(slug, "distribution", "health")
+      : product(slug, "distribution", "health", windowHours),
   access: (slug: string) => product(slug, "distribution", "access"),
   credentials: (slug: string) => product(slug, "distribution", "credentials"),
   readiness: (slug: string) => product(slug, "distribution", "readiness"),
+  outlets: (slug: string) => product(slug, "distribution", "outlets"),
+  distributionKeys: (slug: string) => product(slug, "distribution", "keys"),
+  connectors: (slug: string) => product(slug, "distribution", "connectors"),
 
   // update
   feed: (slug: string) => product(slug, "update", "feed"),

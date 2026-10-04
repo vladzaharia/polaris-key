@@ -301,13 +301,18 @@ async function handleRolloutsAdmin(
     },
     { kind: "admin", session },
   );
-  if (!result.ok) {
-    if (result.status === 404) return adminNotFound();
-    return err(result.status, ErrorCode.BadRequest, result.message, {
-      reason: result.reason,
-      ...(result.fields ? { fields: result.fields } : {}),
-    });
-  }
+  // A-9: a 404 keeps its `reason` (`unknown_outlet`, `unknown_channel`, `unknown_release`,
+  // `unknown_deliverable`, `no_rollout`), so the console can say which thing is missing.
+  if (!result.ok)
+    return err(
+      result.status,
+      result.status === 404 ? ErrorCode.NotFound : ErrorCode.BadRequest,
+      result.message,
+      {
+        reason: result.reason,
+        ...(result.fields ? { fields: result.fields } : {}),
+      },
+    );
   return adminJson({ rollout: result.rollout });
 }
 
@@ -654,12 +659,14 @@ async function handleReadinessAdmin(
     outletId,
     reason,
   );
-  if (!result.ok) {
-    if (result.status === 404) return adminNotFound();
-    return err(result.status, ErrorCode.BadRequest, result.message, {
-      reason: result.reason,
-    });
-  }
+  // A-9: a 404 keeps its `reason` (`unknown_release`, `unknown_outlet`, `not_found`).
+  if (!result.ok)
+    return err(
+      result.status,
+      result.status === 404 ? ErrorCode.NotFound : ErrorCode.BadRequest,
+      result.message,
+      { reason: result.reason },
+    );
   await audit(
     db,
     slug,

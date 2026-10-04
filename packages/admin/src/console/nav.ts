@@ -16,8 +16,8 @@
  * ── Pages that are not built yet ──────────────────────────────────────────────────────────────
  * The table declares the whole §2.3 page set so URLs and typed builders exist from chunk 2 on. A
  * page whose redesign lands in a later area chunk carries `ready: false` and a `host`: the page
- * that holds the capability today (Outlet credentials still live inside Keys & secrets until
- * chunk 9, for example). The router redirects a not-ready page to its host, and the sidebar and palette list
+ * that holds the capability today (the Platform section's Settings opens Deployment, for
+ * example). The router redirects a not-ready page to its host, and the sidebar and palette list
  * only ready pages, so every capability stays reachable and no URL is a dead end. An area chunk
  * flips `ready` and deletes `host` when it builds the page.
  *
@@ -457,7 +457,6 @@ export const SECTIONS: NavSection[] = [
         icon: TrendingUp,
         docs: "/docs/services/distribution/rollouts/",
         inNav: true,
-        // Today's Distribution overview (chain, rollouts, hooks) until chunk 9 rebuilds it.
         ready: true,
       },
       {
@@ -467,9 +466,7 @@ export const SECTIONS: NavSection[] = [
         icon: Store,
         docs: "/docs/services/distribution/feeds/",
         inNav: true,
-        // A capability with no console UI yet (chunk 9).
-        ready: false,
-        host: "matrix",
+        ready: true,
       },
       {
         page: "access",
@@ -478,9 +475,7 @@ export const SECTIONS: NavSection[] = [
         icon: ShieldCheck,
         docs: "/docs/services/distribution/delivery/",
         inNav: true,
-        // Delivery access lives in Update → Feed until chunk 9 moves it.
-        ready: false,
-        host: "feed",
+        ready: true,
       },
       {
         page: "health",
@@ -498,9 +493,7 @@ export const SECTIONS: NavSection[] = [
         icon: Plug,
         docs: "/docs/admin/secrets-and-keys/",
         inNav: true,
-        // Mounted inside Keys & secrets until chunk 9 moves it.
-        ready: false,
-        host: "keys",
+        ready: true,
       },
     ],
   },

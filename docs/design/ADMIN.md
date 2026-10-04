@@ -770,6 +770,9 @@ Declared in `mutations.ts`. A unit test enumerates every mutation and fails if o
 | readiness refresh / override / clear                  | `distribution.readiness`, `distribution.matrix.*`, `release.compat.*`                                                                                                          |
 | Sentry confirm / dismiss, auto-halt settings          | `distribution.health`, and on confirm also `distribution.rollouts` and `distribution.matrix.*`                                                                                 |
 | delivery access save / revert                         | `distribution.access`, `release.deliverables`                                                                                                                                  |
+| outlet capabilities narrow / revert (chunk 9)         | `distribution.outlets`                                                                                                                                                         |
+| distribution key put / delete (chunk 9)               | `distribution.keys`                                                                                                                                                            |
+| store connector control (chunk 9)                     | `distribution.connectors`, plus everything "rollout start / set / verb" invalidates                                                                                            |
 | catalog publish                                       | `config.catalog`, `config.profiles.*`, every `license(id)` (overrides re-validate)                                                                                             |
 | profile payload / create / delete                     | `config.profiles`, `config.profile(id)`, `license.licenses` (on delete)                                                                                                        |
 | tier create / patch / delete                          | `license.tiers`, `license.licenses`                                                                                                                                            |
@@ -1385,6 +1388,52 @@ Cell drawer (2.4.0 × Google Play) ───────────────
   its configuration actions: App Store Connect **Release this version**, **TestFlight public link**
   and **Webhook setup**; Google Play **Update priority** and **Settings**. Rollout-shaped
   connector verbs stay in the matrix cell drawer.
+
+**Notes (chunk 9 as built, 2026-10-04).** Where the build differs from the text above:
+
+- **Where things live.** The pages are in `src/console/areas/distribution/` (Matrix with its
+  `CellDrawer`, Rollouts, Outlets & feeds, Access, Health, Outlet credentials, the shared
+  `RolloutDialogs` and `StoreControls`) and `src/console/areas/update/FeedPage.tsx`; their reads
+  are one fetcher per key family in `areas/distribution/data.ts`. The matrix key is
+  `qk.matrix(slug, "<deliverable>:<limit>")`; `qk.health(slug, windowHours)` gained the window;
+  `qk.outlets`, `qk.distributionKeys` and `qk.connectors` are new, with their writes in
+  `mutations.ts` (`setRollout`, the three readiness writes, capability narrow and revert, key put
+  and delete, `connectorControl`).
+- **No server effect note.** The matrix response carries no `effect` (inventory MTX-10 described
+  one that `services/distribution/matrix.ts` does not return), so the header states the effect in
+  its own words and links the docs; nothing is repeated in the dialogs. The hard-coded caveat is
+  gone with `Distribution.tsx` (DOV-1).
+- **No History section yet.** The cell drawer's History needs A-2 (activity filters, chunk 5);
+  per T3 it is hidden rather than faked until A-2 lands.
+- **Paging.** The matrix API takes a `limit` (20 or 50) and no offset, so there is no
+  Newer/Older pager; a full matrix says "Showing the newest N releases" and offers 50.
+- **Health defaults to 24 h** and always sends `windowHours`; the auto-halt rates are `percent`
+  `NumberInput`s, required and strictly between 0 and 100 % (the server refuses `null`, so they
+  are not nullable). The Auto-halt panel shows the last reading's time; the per-rollout reading is
+  in each funnel's rates line.
+- **Outlet credentials.** Delete stays L2 (§5.2) with the confirm repeating the verb; OUT-7's
+  "typed confirmation" is not added. The `asc-webhook-secret` kind offers **Generate the secret**
+  (`generate: true`). A 409 `app_assigned_elsewhere` (the platform store connection, A-16) is
+  worded in the pin and set forms; the App Store Connect card shows whose key it uses
+  (`setup.credentialSource`, `platformSource`) and the connectors section links the store
+  connections docs. The platform Store connections page itself is A-16's (the Platform section).
+- **Access.** A pack's gate is a catalog-flag `Combobox` while Config is on, a text field
+  otherwise; the app's `entitled` describes Release's channel and version window (the app row's
+  `entitlement` is stored, not enforced, so it is not offered). `?deliverable=<pack>` focuses that
+  pack's section (DLV-3).
+- **Update → Feed** saves metadata access, the compatibility window and the artifact policy as
+  three forms (each its own PATCH with only its fields) and lists the endpoint URLs per channel;
+  artifact access is shown read-only with a link to Access.
+- **A-9** shipped: the rollout, readiness-override and Sentry-candidate 404s carry `reason`, and
+  `DISTRIBUTION_ERROR_MESSAGES` words the five new reasons.
+- **Tests.** The admin suite went from 987 to 1037. Dropped with
+  their behaviour: `distribution.test.tsx`'s three (the chain card moved to Services, the
+  descriptor hooks card is removed, the read-only rollouts list became Rollouts). Rewritten:
+  `distributionMatrix` (5 → 15), `updateHealth` → `distributionHealth` (4 → 12), `updateSettings`
+  → `updateFeed` (22 → 18; the delivery-access cases moved to `distributionAccess`, 9) and the
+  eight outlet-credential cases of `secrets.test.tsx` → `outletCredentials` (16); new
+  `distributionRollouts` (8) and `distributionOutlets` (11). `e2e/distribution.e2e.test.ts` opens
+  every page, drawer and dialog under the Worker's CSP.
 
 ### 6.5 Licenses
 
