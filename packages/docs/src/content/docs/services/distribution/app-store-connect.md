@@ -278,6 +278,59 @@ setup controls act on. This needs the platform team key and no `asc-api-key` of 
 Once the manifest names an app, the manifest's app must be the pinned one, as for every other
 control.
 
+## Distribute
+
+The Distribute flow takes a build of the pinned app through TestFlight and App Review from the
+console API, under the same `/manage/api/products/<slug>/distribution/connectors/asc/` prefix.
+Uploading the build stays in CI; everything after the upload is here.
+
+| `GET`                                 | Answers                                                                                                                                                                          |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `distribute/builds[?limit=]`          | the app's unexpired builds, newest first: build number, version, processing state, export compliance, TestFlight states, the upload's state with Apple's warning and error codes |
+| `distribute/beta-groups`              | the app's TestFlight groups, internal or external                                                                                                                                |
+| `distribute/versions[?platform=]`     | the app's App Store versions (state, whether still editable, build, release type, phased release) and its live review submissions                                                |
+| `distribute/preflight?versionId=<id>` | a readiness checklist: build, export compliance, screenshots per locale, age rating, App Review contact, price, availability, beta review details, App Privacy (portal-only)     |
+
+| `POST`                              | Body                                                 | Sends to App Store Connect                                                                   |
+| ----------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `distribute/export-compliance`      | `{ buildId, usesNonExemptEncryption }`               | `PATCH /v1/builds/{id}` (an unanswered build only)                                           |
+| `distribute/beta-localization`      | `{ buildId, locale, whatsNew }`                      | TestFlight's What to Test: `POST` or `PATCH /v1/betaBuildLocalizations`                      |
+| `distribute/testflight/groups`      | `{ buildId, betaGroupIds }`                          | `POST /v1/betaGroups/{id}/relationships/builds` per group not yet holding the build          |
+| `distribute/testflight/beta-review` | `{ buildId }`                                        | `POST /v1/betaAppReviewSubmissions` (external groups see the build after review)             |
+| `distribute/version`                | `{ platform, versionString }`                        | reuses the editable version with that string, or `POST /v1/appStoreVersions`                 |
+| `distribute/version/build`          | `{ versionId, buildId }`                             | `PATCH /v1/appStoreVersions/{id}/relationships/build`                                        |
+| `distribute/version/release-type`   | `{ versionId, releaseType, earliestReleaseDate? }`   | `PATCH /v1/appStoreVersions/{id}`: `MANUAL`, `AFTER_APPROVAL` or `SCHEDULED` (a future date) |
+| `distribute/version/phased-release` | `{ versionId }`                                      | `POST /v1/appStoreVersionPhasedReleases`; the phased-release controls above manage it later  |
+| `distribute/version-localization`   | `{ versionId, locale, whatsNew?, promotionalText? }` | `POST` or `PATCH /v1/appStoreVersionLocalizations` (release notes only)                      |
+| `distribute/submit`                 | `{ versionId, confirm }`                             | the open review submission or a new one, the version as an item, then `submitted: true`      |
+| `distribute/submission/cancel`      | `{ submissionId }`                                   | `PATCH /v1/reviewSubmissions/{id}` `canceled: true`                                          |
+
+**Each write needs an `Idempotency-Key` header**, a fresh UUID per thing you mean to do; without
+one the answer is 422 `idempotency_key_required`. Sending the same request again with the same key
+answers what happened the first time without calling Apple (`outcome: "replayed"`); the same key
+with a different body is 409 `idempotency_conflict`. Before any write the handler looks the object
+up the way Apple allows (the version by its string, the build in the group, the open submission),
+and when Apple already has it nothing is sent (`outcome: "existing"`). If Apple fails part-way, or a
+request times out, send the same request with the same key: it re-reads first and carries on from
+the step that did not finish. `submit` runs three such steps and answers each one's outcome.
+
+**Submitting is typed.** `confirm` must be the app's name exactly as App Store Connect shows it,
+compared by the Worker before anything is opened; otherwise 422 `confirmation_required` or
+`confirmation_mismatch`. Cancelling a submission is not typed.
+
+**Only the pinned app's objects.** A build, group, version or submission named in a request is
+re-read from Apple first and must belong to the pinned app (`unknown_build`,
+`unknown_beta_group`, `unknown_version`, `unknown_submission`); a groups request that names one
+foreign group sends nothing at all. A shipped version is never reused or edited
+(`version_not_editable`), a build must be `VALID` and unexpired before it goes to testers or a
+version (`build_not_ready`, `build_expired`), and a version needs a build before it is submitted
+(`no_build`). When Apple refuses, the answer is `store_refused` with Apple's status and its error
+code (`appleCode`, such as `ENTITY_ERROR.ATTRIBUTE.INVALID`), never its message. Each write is
+audited as `distribution.asc.<step>` with Apple's state before and after kept on the operation.
+
+The preflight reads presence only: it never returns the App Review contact, the demo account or its
+password. It cannot check App Privacy, which has no API.
+
 ## Security
 
 - The webhook secret is per product and checked in constant time; a missing or malformed

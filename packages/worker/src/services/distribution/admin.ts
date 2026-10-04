@@ -41,7 +41,12 @@
  *                                                              tracked objects, recent events (P5-02)
  *     GET  …/distribution/connectors/<kind>                    one connector
  *     POST …/distribution/connectors/<kind>/<control…>         a connector control
- *                                                              (`connectors/asc/controls.ts`)
+ *                                                              (`connectors/asc/controls.ts`;
+ *                                                              A-17d's `distribute/…` writes,
+ *                                                              which take `Idempotency-Key`)
+ *     GET  …/distribution/connectors/<kind>/<read…>            a connector read (A-17d's
+ *                                                              `distribute/{builds,beta-groups,
+ *                                                              versions,preflight}`)
  *     GET  …/distribution/update-health[?windowHours=N]        the update funnel per rollout,
  *                                                              the auto-halt state and the
  *                                                              Sentry candidates (P6-03)
@@ -742,24 +747,28 @@ async function handleConnectorsAdmin(
       ...(await connector.status({ env, db, product: slug, now })),
     });
   }
-  const control = connector.controls[rest.slice(2).join("/")];
-  if (!control) return adminNotFound();
-  if (req.method !== "POST")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
-  const body = await readBody(req);
-  const result = await control(
-    {
-      env,
-      db,
-      product: slug,
-      hooks,
-      now,
-      session,
-      origin: new URL(req.url).origin,
-      idempotencyKey: req.headers.get("Idempotency-Key"),
-    },
-    body,
-  );
+  const path = rest.slice(2).join("/");
+  const url = new URL(req.url);
+  const controlContext = {
+    env,
+    db,
+    product: slug,
+    hooks,
+    now,
+    session,
+    origin: url.origin,
+    idempotencyKey: req.headers.get("Idempotency-Key"),
+  };
+  const read = connector.reads?.[path];
+  const control = connector.controls[path];
+  if (!read && !control) return adminNotFound();
+  const result =
+    req.method === "GET" && read
+      ? await read(controlContext, url.searchParams)
+      : req.method === "POST" && control
+        ? await control(controlContext, await readBody(req))
+        : null;
+  if (!result) return err(405, ErrorCode.BadRequest, "method not allowed");
   if (!result.ok)
     return err(
       result.status,
@@ -768,6 +777,7 @@ async function handleConnectorsAdmin(
       {
         reason: result.reason,
         ...(result.fields ? { fields: result.fields } : {}),
+        ...(result.appleCode ? { appleCode: result.appleCode } : {}),
       },
     );
   return adminJson(result);

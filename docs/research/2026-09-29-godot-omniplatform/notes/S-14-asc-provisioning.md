@@ -977,3 +977,37 @@ the build departs from §7 and §8.1, the code is the fact:
   table.
 - **`Idempotency-Key`** reaches a control through `ControlContext.idempotencyKey`, from the request
   header, in Distribution's admin dispatcher.
+
+## Corrections (A-17d as built, 2026-10-04)
+
+A-17d landed the Distribute API in `packages/worker/src/services/distribution/connectors/asc/distribute.ts`
+beside `controls.ts`. Where the build departs from §7 and §8.2 above, the code is the fact:
+
+- **Reads are connector reads.** P5-02's connector controls were `POST`-only, so the connector
+  interface gained an optional `reads` table, answered on `GET …/connectors/<kind>/<path>`:
+  `distribute/{builds,beta-groups,versions,preflight}`. A `GET` on a write path stays 405.
+- **The `Idempotency-Key` header reaches the controls** (`ControlContext.idempotencyKey`). Every
+  Distribute write requires it (422 `idempotency_key_required`); P5-02's older controls do not.
+- **The release retrofit was already A-17a's.** P5-02's `release` control has required `confirm`
+  (the app's name, compared with Apple's) since A-17a; A-17d shares the same server-side check
+  (`checkTypedConfirmation`) for `distribute/submit`, before any submission step.
+- **Submission items are the version only.** IAP and Background Asset versions join the
+  submission in A-17e through the exported `addSubmissionItem` step (the gate already admits both
+  relationships); their ownership proofs belong there.
+- **`store_refused` now carries Apple's code** (`appleCode`, the `errors[0].code` token, never the
+  text) for every ASC control, as §5.5 proposed.
+- **A phased release is created `INACTIVE`**; it starts with the release, and P5-02's pause,
+  resume and complete manage it afterwards.
+- **The build upload's state is an object** in the 4.5 spec (`{ state, warnings, errors, infos }`,
+  each note `{ code, description }`); the builds read accepts that and the bare string older
+  answers carry.
+- **States.** A version's state is `appVersionState`, falling back to `appStoreState`. Editable
+  (reuse, build, notes, release type): `PREPARE_FOR_SUBMISSION`, `DEVELOPER_REJECTED`, `REJECTED`,
+  `METADATA_REJECTED`, `INVALID_BINARY`; submitting also accepts `READY_FOR_REVIEW`. A submission
+  can be cancelled while `WAITING_FOR_REVIEW`, `IN_REVIEW` or `UNRESOLVED_ISSUES` (§8.2 named the
+  first only; Apple decides the rest).
+- **Preflight scope.** It reads the build, export compliance, screenshot sets (up to ten
+  localizations), the age-rating declaration (unanswered questions by key), App Review contact and
+  demo account as booleans only, price, availability, and the beta review detail and
+  localizations. The first-IAP "portal" flag is A-17e's; App Privacy is reported as unverifiable
+  (`ok: null`), the operator's tick being A-17c's portal checklist.

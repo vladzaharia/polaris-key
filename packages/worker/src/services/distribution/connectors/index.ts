@@ -13,6 +13,8 @@
  *     service not-found shape) when the product is not set up for it.
  *   - `controls` — operator actions under `…/distribution/connectors/<kind>/<control>` in the
  *     console API; each audited and followed by a re-read.
+ *   - `reads` — optional: `GET …/distribution/connectors/<kind>/<path>`, a live read of the store
+ *     for an operator flow (A-17d's Distribute: builds, versions, preflight).
  *   - `status(ctx)` — what the console shows: setup, tracked objects (unresolved ones flagged),
  *     recent events.
  *
@@ -25,7 +27,7 @@ import type { ProductPublic } from "../../../core/products.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { ServiceContext } from "../../../core/registry.js";
 import type { FetchImpl } from "../../../core/asc/client.js";
-import type { ConnectorControl } from "./asc/controls.js";
+import type { ConnectorControl, ConnectorRead } from "./asc/controls.js";
 import { ascConnector } from "./asc/index.js";
 import { msStoreConnector } from "./msstore/index.js";
 import { playConnector } from "./play/index.js";
@@ -64,6 +66,7 @@ export interface DistributionConnector {
   poll(ctx: ConnectorContext): Promise<PollOutcome>;
   webhook?(ctx: ServiceContext): Promise<Response | null>;
   controls: Readonly<Record<string, ConnectorControl>>;
+  reads?: Readonly<Record<string, ConnectorRead>>;
   status(ctx: {
     env: Env;
     db: Db;
