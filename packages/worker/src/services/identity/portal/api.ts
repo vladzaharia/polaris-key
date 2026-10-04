@@ -64,8 +64,9 @@ import { libraryView, productView } from "./library.js";
 import { portalEmailConfigured, sendPortalNotice } from "./email.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
+import { handleProductDownloads } from "./downloads.js";
 
-function portalJson(
+export function portalJson(
   body: unknown,
   status = 200,
   extra?: Record<string, string>,
@@ -82,7 +83,7 @@ function portalJson(
   });
 }
 
-function err(status: number, code: string, message?: string): Response {
+export function err(status: number, code: string, message?: string): Response {
   return portalJson({ error: code, ...(message ? { message } : {}) }, status);
 }
 
@@ -94,7 +95,7 @@ function forbidden(message?: string): Response {
   return err(403, ErrorCode.Forbidden, message);
 }
 
-function notFound(): Response {
+export function notFound(): Response {
   return err(404, ErrorCode.NotFound);
 }
 
@@ -207,7 +208,7 @@ async function requireSession(
   return { session };
 }
 
-async function hasLinkedProductLicense(
+export async function hasLinkedProductLicense(
   db: Db,
   accountId: string,
   product: string,
@@ -236,7 +237,7 @@ export type PortalHooksFor = (
   now: number,
 ) => ServiceHooks;
 
-interface DeliveryGate {
+export interface DeliveryGate {
   product: ProductPublic;
   delivery: Delivery;
 }
@@ -246,7 +247,7 @@ interface DeliveryGate {
  * the product is gone, or Distribution is off for it (byte delivery is Distribution's, and a
  * product with it off serves no downloads anywhere).
  */
-async function deliveryGate(
+export async function deliveryGate(
   db: Db,
   hooksFor: PortalHooksFor | undefined,
   product: string,
@@ -259,13 +260,13 @@ async function deliveryGate(
   return delivery ? { product: loaded, delivery } : null;
 }
 
-type ReleaseFacts = Pick<
+export type ReleaseFacts = Pick<
   PortalReleaseRow,
   "deliverable_id" | "version" | "channel"
 >;
 
 /** May this account download a release under `mode`? (A linked licence is checked by callers.) */
-async function accountMayDownload(
+export async function accountMayDownload(
   db: Db,
   accountId: string,
   gate: DeliveryGate,
@@ -298,7 +299,7 @@ async function accountMayDownload(
  * non-public deliverable is never redirected to the bytes host: the browser holds no device
  * token, so the redirect could only end in a refusal.
  */
-async function downloadTarget(
+export async function downloadTarget(
   env: Env,
   artifact: PortalArtifactRow,
   gate: DeliveryGate,
@@ -378,7 +379,7 @@ function redirectableSourceUrl(artifact: PortalArtifactRow): string | null {
  * — pass `undefined` and keep the account-wide budget, which for a brute-force guard on the
  * caller's OWN account is strictly the stronger choice.
  */
-async function requireActionRateLimit(
+export async function requireActionRateLimit(
   req: Request,
   env: Env,
   session: PortalSession,
@@ -915,6 +916,17 @@ export async function handlePortalApi(
     );
     return view ? portalJson(view) : notFound();
   }
+  // PX-W2 (G2, G4): one product's downloads and store links, per platform (`downloads.ts`).
+  if (head === "products" && rest.length === 2 && rest[1] === "downloads")
+    return handleProductDownloads(
+      req,
+      env,
+      db,
+      session,
+      rest[0]!,
+      now,
+      hooksFor,
+    );
   return notFound();
 }
 
