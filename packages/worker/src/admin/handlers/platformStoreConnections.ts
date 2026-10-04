@@ -29,7 +29,7 @@
  *          its own credential's pin.
  *
  * Every write is audited: platform-level events through `core/platformEvents.ts` (A-12's
- * `platform_audit` once it exists), and an assignment also in the product's own trail
+ * `platform_audit`), and an assignment also in the product's own trail
  * (`outlet_credential.pin`). Admin API routes are narrative-only under AGENTS.md rule 10
  * (`adminApi` in `routeCoverage.test.ts`), so there is no OpenAPI entry.
  */
