@@ -141,7 +141,10 @@ describe("renderFeedSetup", () => {
       all("maven", { namespace: { groupPrefixes: ["gg.acme"] } }),
     ).toContain("exclusiveContent");
     expect(all("swift", { namespace: { scope: "acme" } })).toContain(
-      "--scope acme",
+      '"acme": {',
+    );
+    expect(all("swift", { namespace: { scope: "acme" } })).toContain(
+      '"version": 1',
     );
     expect(all("oci", { package: { name: "server" } })).toContain(
       "docker pull pkg.plrs.im/acme/server:latest",

@@ -14021,24 +14021,16 @@ var SWIFT_SETUP = {
     const secret = shSecret(v.credential);
     return [
       {
-        id: "registry",
-        clients: "SwiftPM",
-        title: "Route the scope to this feed",
-        description: "Once per project, or per machine with --global.",
-        language: "sh",
-        code: lines(
-          `swift package-registry set --scope ${scope} ${url}`,
-          secret !== null && `swift package-registry login ${url} --token ${secret} --no-confirm`
-        )
-      },
-      {
         id: "registries-json",
         clients: "SwiftPM",
-        title: "Refuse an unsigned or untrusted release",
+        title: "Route the scope to this feed and refuse an unsigned release",
+        description: "The whole file, in place of swift package-registry set: SwiftPM needs version and registries beside security. For every project on the machine, ~/.swiftpm/configuration/registries.json. Unless the signer chains to a root SwiftPM already trusts, add trustedRootCertificatesPath under signing.",
         filename: ".swiftpm/configuration/registries.json",
         language: "json",
         code: JSON.stringify(
           {
+            version: 1,
+            registries: { [scope]: { url } },
             security: {
               default: {
                 signing: {
@@ -14052,6 +14044,16 @@ var SWIFT_SETUP = {
           2
         )
       },
+      ...secret !== null ? [
+        {
+          id: "registry-login",
+          clients: "SwiftPM",
+          title: "Sign in to the feed",
+          description: "After the file above: login adds its authentication entry to it.",
+          language: "sh",
+          code: `swift package-registry login ${url} --token ${secret} --no-confirm`
+        }
+      ] : [],
       {
         id: "package-swift",
         clients: "SwiftPM",
@@ -29896,6 +29898,10 @@ ${FEEDS_SETUP_USAGE}`);
   if (opts.tokenEnv !== void 0 && !isFeedTokenEnvName(opts.tokenEnv))
     throw new Error(
       `--token-env takes an environment variable's name (like PKEY_REGISTRY_TOKEN), never the token itself.`
+    );
+  if (opts.tokenEnv !== void 0 && ecosystem === "godot")
+    throw new Error(
+      `--token-env does not apply to godot: the editor and GodotEnv authenticate by a token in the feed's URL, which only the console shows.`
     );
   const fields = PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.fields;
   const namespace = {};

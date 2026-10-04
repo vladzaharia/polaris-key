@@ -164,6 +164,19 @@ describe("pkey feeds setup", () => {
       "pkeyr_secret-value",
     ]);
     expect(token.err).toContain("never the token itself");
+    const godot = await run([
+      "feeds",
+      "setup",
+      "--ecosystem",
+      "godot",
+      "--owner",
+      "acme",
+      "--token-env",
+      "PKEY_REGISTRY_TOKEN",
+    ]);
+    expect(godot.code).not.toBe(0);
+    expect(godot.out).toBe("");
+    expect(godot.err).toContain("does not apply to godot");
     const name = await run([
       "feeds",
       "setup",

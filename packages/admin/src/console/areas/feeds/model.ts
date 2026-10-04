@@ -234,7 +234,7 @@ export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
   },
   retainUntaggedDays: {
     label: "Untagged manifests",
-    help: "How many days an image manifest no tag points at is kept. Empty keeps them; a published version is never removed.",
+    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed.",
     input: { kind: "number", min: 0, max: 3650, unit: "days" },
   },
   categoryId: {

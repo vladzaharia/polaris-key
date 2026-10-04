@@ -1,9 +1,12 @@
-# Route the scope to this feed
-# Once per project, or per machine with --global.
-swift package-registry set --scope polaris-key https://pkg.plrs.im/swift/polaris-key
-
-# Refuse an unsigned or untrusted release (.swiftpm/configuration/registries.json)
+# Route the scope to this feed and refuse an unsigned release (.swiftpm/configuration/registries.json)
+# The whole file, in place of swift package-registry set: SwiftPM needs version and registries beside security. For every project on the machine, ~/.swiftpm/configuration/registries.json. Unless the signer chains to a root SwiftPM already trusts, add trustedRootCertificatesPath under signing.
 {
+  "version": 1,
+  "registries": {
+    "polaris-key": {
+      "url": "https://pkg.plrs.im/swift/polaris-key"
+    }
+  },
   "security": {
     "default": {
       "signing": {

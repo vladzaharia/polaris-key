@@ -120,7 +120,18 @@ shape, corpus, migration, route or `PROTOCOL_VERSION` changes.
    rule, the current page filled, bold and underlined. Not a dropdown in the title.
 6. **OCI retention is a setting only.** `retainUntaggedDays` is stored and edited, but nothing
    removes untagged manifests yet (no job reads it). Proposed follow-up for the OCI feed's owner
-   (F-08 lineage): a retention sweep.
+   (F-08 lineage): a retention sweep. The console help and `admin/feeds.md` say so (review
+   round 1): the console states the behaviour ("nothing removes an untagged image manifest"),
+   without roadmap copy; the docs say it is stored only.
+7. **SwiftPM's setup is the whole `registries.json` (review round 1).** A file holding only
+   `security` fails to load (`keyNotFound: version`), so pasting it over the file
+   `swift package-registry set` wrote broke resolution. The snippet is now the complete file
+   (`version`, `registries` with the scope, `security`) in place of `set`, then
+   `swift package-registry login` when a credential is given, which adds its `authentication`
+   entry to that file. Its description names `trustedRootCertificatesPath` for a signer SwiftPM
+   does not already trust. `build/install-from-feeds.md` had the same fragment and now shows the
+   merged file. `pkey feeds setup --ecosystem godot --token-env` is refused (Godot authenticates
+   by URL token) instead of printing setup with no credential.
 
 ## Hand-off
 

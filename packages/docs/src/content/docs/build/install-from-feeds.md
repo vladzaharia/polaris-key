@@ -138,11 +138,16 @@ targets: [
 ```
 
 Releases are signed with SwiftPM's `cms-1.0.0` format, and the feed refuses an unsigned one. To
-make SwiftPM refuse an unsigned or untrusted release as well, set the security policy in
-`.swiftpm/configuration/registries.json`:
+make SwiftPM refuse an unsigned or untrusted release as well, add a `security` key to
+`.swiftpm/configuration/registries.json`, beside the `version` and `registries` keys that
+`swift package-registry set` wrote there (a file holding only `security` fails to load):
 
 ```json
 {
+  "version": 1,
+  "registries": {
+    "polaris-key": { "url": "https://pkg.plrs.im/swift/polaris-key" }
+  },
   "security": {
     "default": {
       "signing": { "onUnsigned": "error", "onUntrustedCertificate": "error" }
@@ -150,6 +155,9 @@ make SwiftPM refuse an unsigned or untrusted release as well, set the security p
   }
 }
 ```
+
+Unless the signer chains to a root SwiftPM already trusts, also set
+`trustedRootCertificatesPath` under `signing`.
 
 The registry archive has `Package.swift` at its root, so Xcode and SwiftPM resolve it like any
 package. The registry is the one supported path: the monorepo publishes no per-SDK git tags, and

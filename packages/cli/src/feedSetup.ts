@@ -56,6 +56,10 @@ export function feedsSetup(opts: FeedsSetupOptions): string {
     throw new Error(
       `--token-env takes an environment variable's name (like PKEY_REGISTRY_TOKEN), never the token itself.`,
     );
+  if (opts.tokenEnv !== undefined && ecosystem === "godot")
+    throw new Error(
+      `--token-env does not apply to godot: the editor and GodotEnv authenticate by a token in the feed's URL, which only the console shows.`,
+    );
   const fields = PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.fields;
   const namespace: Record<string, unknown> = {};
   for (const pair of opts.namespace ?? []) {

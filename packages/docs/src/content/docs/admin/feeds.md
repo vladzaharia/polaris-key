@@ -55,8 +55,8 @@ More actions, which queues a fresh render of the feed's index documents.
   platform's packages; **All owners** lists every product's, with an Owner column.
 - **Setup**: what a client needs, copy-paste ready, for the feed's own URL and namespace: the
   `.npmrc`, `.yarnrc.yml` and `bunfig.toml` scope lines; a uv explicit index, a Poetry explicit
-  source and a pip command (with the warning never to use `--extra-index-url`); `swift
-package-registry set` and the `registries.json` signing policy; a Gradle `exclusiveContent`
+  source and a pip command (with the warning never to use `--extra-index-url`); SwiftPM's whole
+  `registries.json` (the scope's registry and the signing policy); a Gradle `exclusiveContent`
   block and a Maven `<repository>`; `docker pull` by the fully qualified reference; or the Godot
   editor's URLs per editor version and the GodotEnv index. Every snippet routes only the feed's
   own names to it. The same snippets come from `pkey feeds setup` (below), byte for byte.
@@ -80,7 +80,7 @@ settings; nothing is overwritten. A feed with no settings yet gets them on its f
 | Upstream                | None, the only option: a feed never proxies or mirrors another registry, so a name it does not hold answers not-found.                                                                                                                                                             |
 | Simple API              | PyPI only: **HTML pages**, whether a client that cannot take PEP 691 JSON gets the inert PEP 503 HTML page (on) or 406 (off).                                                                                                                                                      |
 | Signing and identifiers | Swift only: **Require signed releases** (ingest refuses an unsigned release; always on for the platform's own packages) and **Repository URLs**, one `identity url` per line, which `GET /identifiers?url=` answers from.                                                          |
-| Retention               | OCI only: how many days an image manifest no tag points at is kept. A published version is never removed.                                                                                                                                                                          |
+| Retention               | OCI only: **Untagged manifests**, the days an image manifest no tag points at may be kept. It is stored only: nothing removes untagged manifests yet, so every one is kept whatever it holds. A published version is never removed.                                                |
 | Asset listing           | Godot only: the asset library category, support level, license and oldest editor every addon of the feed is listed with.                                                                                                                                                           |
 | Platform policy         | Platform scope only: whether the ecosystem is served at all, and its size ceiling, for every product. Switching an ecosystem off is a danger confirmation.                                                                                                                         |
 
@@ -125,6 +125,9 @@ pkey feeds setup --ecosystem pypi --owner acme --package acme-sdk --token-env PK
 `groupPrefixes`, `publisher`; a list takes commas). `--origin` points at another registry host
 (default `https://pkg.plrs.im`). `--token-env NAME` adds each client's credential lines, reading
 the registry token from that environment variable; the token itself is never an argument.
+The registry issues no tokens yet (see Access above), and Swift's `/login` answers 501, so
+`--token-env` output cannot authenticate until registry tokens arrive. Godot takes no
+`--token-env`: the editor and GodotEnv authenticate by a token in the feed's URL.
 `--json` prints the snippets as JSON.
 
 ## The admin API
