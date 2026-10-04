@@ -54,7 +54,7 @@
     {
       "slug": "identity",
       "label": "Identity",
-      "summary": "OIDC sign-in, browser sessions, and the customer portal for this product.",
+      "summary": "OIDC sign-in and browser sessions for this product. The customer portal is platform-wide and runs either way.",
       "defaultEnabled": false,
       "requires": [],
       "legacyModules": ["oidc"],

@@ -492,32 +492,41 @@ describe("GET /manage/api/platform/settings", () => {
       expect(Object.keys(s).sort()).toEqual(["name", "set"]);
   });
 
-  it("warns on legacy ADMIN_OIDC_* names, a set PLATFORM_KEK_ID and an unset PORTAL_SESSION_SECRET", async () => {
+  it("warns while the console borrows the platform client, on a set PLATFORM_KEK_ID and on an unset PORTAL_SESSION_SECRET", async () => {
     const env = adminEnv({
-      ADMIN_OIDC_ISSUER: "https://old-id.example",
-      ADMIN_OIDC_CLIENT_ID: "old-client",
+      PLATFORM_OIDC_ISSUER: "https://id.example",
+      PLATFORM_OIDC_CLIENT_ID: "platform-client",
+      ADMIN_OIDC_ISSUER: "https://id.example",
       PLATFORM_KEK_ID: "default",
     });
     const { body } = await call(env, makeTestDb(), "/api/platform/settings");
     expect((body.warnings as any[]).map((w) => w.code).sort()).toEqual([
+      "console_oidc_shared",
       "kek_id_set",
-      "legacy_oidc_names",
       "portal_session_secret_unset",
     ]);
-    const legacy = (body.warnings as any[]).find(
-      (w) => w.code === "legacy_oidc_names",
+    // I-03: a half-set admin trio is not a console client; the warning names what is missing.
+    const shared = (body.warnings as any[]).find(
+      (w) => w.code === "console_oidc_shared",
     );
-    expect(legacy.names).toEqual(["ADMIN_OIDC_ISSUER", "ADMIN_OIDC_CLIENT_ID"]);
-    const issuer = (body.deployTime as any[]).find(
-      (v) => v.name === "PLATFORM_OIDC_ISSUER",
+    expect(shared.names).toEqual(["ADMIN_OIDC_CLIENT_ID"]);
+    const deploy = Object.fromEntries(
+      (body.deployTime as any[]).map((v) => [v.name, v]),
     );
-    expect(issuer).toMatchObject({
-      value: "https://old-id.example",
-      legacyName: "ADMIN_OIDC_ISSUER",
+    // Each trio reports its own value; nothing is attributed across names any more.
+    expect(deploy.ADMIN_OIDC_ISSUER).toEqual({
+      name: "ADMIN_OIDC_ISSUER",
+      area: "identity",
+      value: "https://id.example",
     });
+    expect(deploy.ADMIN_OIDC_CLIENT_ID.value).toBeNull();
+    expect(deploy.PLATFORM_OIDC_CLIENT_ID.value).toBe("platform-client");
 
     const clean = adminEnv({
       PLATFORM_OIDC_ISSUER: "https://id.example",
+      PLATFORM_OIDC_CLIENT_ID: "platform-client",
+      ADMIN_OIDC_ISSUER: "https://id.example",
+      ADMIN_OIDC_CLIENT_ID: "console-client",
       PORTAL_SESSION_SECRET: "portal-secret",
     });
     const ok = await call(clean, makeTestDb(), "/api/platform/settings");

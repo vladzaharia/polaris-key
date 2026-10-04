@@ -32,6 +32,7 @@ import {
 import { getLicense, getLicenseBySub } from "../src/repo.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
+import { artefacts, singleUseMock } from "./singleUseMock.js";
 
 // Holder for the IdP public key the mocked `createRemoteJWKSet` should resolve to. jose's
 // remote JWKS fetch bypasses globalThis.fetch (uses its own client), so we swap ONLY the
@@ -266,7 +267,7 @@ describe("handleAuthPoll states", () => {
     state: string,
     flow: Record<string, unknown>,
   ): Promise<void> {
-    await env.HOT.put(
+    await artefacts(env).put(
       await flowKey(env, "djdl", state),
       JSON.stringify({
         verifier: "v",
@@ -370,7 +371,9 @@ describe("handleAuthPoll states", () => {
     expect(body.expiresIn).toBe(600);
     expect(body.interval).toBeGreaterThan(0);
     expect(
-      await env.HOT.get(await deviceFlowKey(env, "djdl", body.deviceCode)),
+      await artefacts(env).get(
+        await deviceFlowKey(env, "djdl", body.deviceCode),
+      ),
     ).toBeTruthy();
   });
 
@@ -381,7 +384,7 @@ describe("handleAuthPoll states", () => {
       licenseId: r.licenseId,
       deviceId: "dev-json",
     });
-    await env.HOT.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({
         state: "oauth-state",
@@ -412,7 +415,7 @@ describe("handleAuthPoll states", () => {
 
   it("renders and confirms the JSON device verification page", async () => {
     await putFlow("oauth-state", { deviceId: "dev-json" });
-    await env.HOT.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({
         state: "oauth-state",
@@ -455,12 +458,14 @@ describe("handleAuthPoll states", () => {
       "https://id.example/authorize",
     );
     const stored = JSON.parse(
-      (await env.HOT.get(await deviceFlowKey(env, "djdl", "device-code")))!,
+      (await artefacts(env).get(
+        await deviceFlowKey(env, "djdl", "device-code"),
+      ))!,
     ) as { confirmedAt?: number };
     expect(stored.confirmedAt).toBeTruthy();
     // …and the confirmation is recorded on the flow the poll surfaces actually read.
     const flow = JSON.parse(
-      (await env.HOT.get(await flowKey(env, "djdl", "oauth-state")))!,
+      (await artefacts(env).get(await flowKey(env, "djdl", "oauth-state")))!,
     ) as {
       confirmedAt?: number;
     };
@@ -469,7 +474,7 @@ describe("handleAuthPoll states", () => {
 
   it("rejects JSON device polls from a different device id", async () => {
     await putFlow("oauth-state", {});
-    await env.HOT.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({ state: "oauth-state", deviceId: "dev-json" }),
     );
@@ -641,10 +646,10 @@ describe("the RFC 8628 user-code page", () => {
     // flow's lifetime.
     const normalised = body.userCode.replace("-", "");
     const indexKey = await deviceUserKey(env, "djdl", normalised);
-    expect(await kv.get(indexKey)).toBe(body.deviceCode);
-    expect(kv.ttlOf(indexKey)).toBe(600);
-    // R12-04: no KV key NAME carries the user code (in either spelling) or the device code.
-    for (const key of kv.keys()) {
+    expect(await artefacts(env).get(indexKey)).toBe(body.deviceCode);
+    expect(singleUseMock(env).ttlOf(indexKey)).toBe(600);
+    // R12-04: no stored key NAME carries the user code (in either spelling) or the device code.
+    for (const key of [...kv.keys(), ...singleUseMock(env).keys()]) {
       expect(key).not.toContain(normalised);
       expect(key).not.toContain(body.userCode);
       expect(key).not.toContain(body.deviceCode);
@@ -698,7 +703,9 @@ describe("the RFC 8628 user-code page", () => {
       `<input type="hidden" name="user_code" value="${body.userCode}">`,
     );
     const stored = JSON.parse(
-      (await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)))!,
+      (await artefacts(env).get(
+        await deviceFlowKey(env, "djdl", body.deviceCode),
+      ))!,
     ) as { csrf?: string; confirmedAt?: number };
     expect(stored.csrf).toBe(csrfOf(html));
     // Rendering is side-effect free as far as the flow is concerned.
@@ -732,7 +739,7 @@ describe("the RFC 8628 user-code page", () => {
     // confirmedAt is stamped on BOTH records — the flow the pollers read, and the device one.
     const state = location.searchParams.get("state")!;
     const flow = JSON.parse(
-      (await kv.get(await flowKey(env, "djdl", state)))!,
+      (await artefacts(env).get(await flowKey(env, "djdl", state)))!,
     ) as {
       confirmedAt?: number;
       deviceId?: string;
@@ -740,7 +747,9 @@ describe("the RFC 8628 user-code page", () => {
     expect(flow.confirmedAt).toBeTruthy();
     expect(flow.deviceId).toBe("steamdeck-1");
     const device = JSON.parse(
-      (await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)))!,
+      (await artefacts(env).get(
+        await deviceFlowKey(env, "djdl", body.deviceCode),
+      ))!,
     ) as { confirmedAt?: number; csrf?: string };
     expect(device.confirmedAt).toBeTruthy();
     expect(device.csrf).toBeUndefined(); // single-use
@@ -752,7 +761,7 @@ describe("the RFC 8628 user-code page", () => {
       "djdl",
       body.userCode.replace("-", ""),
     );
-    expect(await kv.get(indexKey)).toBeNull();
+    expect(await artefacts(env).get(indexKey)).toBeNull();
     expect((await entry(`${ENTRY}?user_code=${body.userCode}`)).status).toBe(
       404,
     );
@@ -765,7 +774,7 @@ describe("the RFC 8628 user-code page", () => {
     // The IdP callback lands and binds a licence to the flow (what handleAuthCallback writes).
     const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
-    await kv.put(
+    await artefacts(env).put(
       await flowKey(env, "djdl", state),
       JSON.stringify({ ...flow, licenseId: r.licenseId }),
     );
@@ -777,9 +786,11 @@ describe("the RFC 8628 user-code page", () => {
     expect(ready.token?.startsWith("pkeyt_")).toBe(true);
 
     // Ready deletes the flow; the user-code index stays gone.
-    expect(await kv.get(indexKey)).toBeNull();
+    expect(await artefacts(env).get(indexKey)).toBeNull();
     expect(
-      await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)),
+      await artefacts(env).get(
+        await deviceFlowKey(env, "djdl", body.deviceCode),
+      ),
     ).toBeNull();
     expect((await entry(`${ENTRY}?user_code=${body.userCode}`)).status).toBe(
       404,
@@ -820,7 +831,9 @@ describe("the RFC 8628 user-code page", () => {
     ).toBe(403);
     // None of that confirmed anything.
     const before = JSON.parse(
-      (await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)))!,
+      (await artefacts(env).get(
+        await deviceFlowKey(env, "djdl", body.deviceCode),
+      ))!,
     ) as { confirmedAt?: number };
     expect(before.confirmedAt).toBeUndefined();
 
@@ -965,7 +978,9 @@ describe("the RFC 8628 user-code page", () => {
     const unknown = await entry(`${ENTRY}?user_code=BCDF-GHJK`);
     const malformed = await entry(`${ENTRY}?user_code=ZK8L-QR8N`);
     // Expired: the index outlived the flow record (or vice versa) — still just "not valid".
-    await kv.delete(await deviceFlowKey(env, "djdl", body.deviceCode));
+    await artefacts(env).delete(
+      await deviceFlowKey(env, "djdl", body.deviceCode),
+    );
     const expired = await entry(`${ENTRY}?user_code=${body.userCode}`);
     const posted = await postForm({ user_code: "BCDF-GHJK" });
 
@@ -1056,25 +1071,27 @@ describe("the RFC 8628 user-code page", () => {
       "state",
     )!;
     // The OIDC flow record expires first (it is what a timeout means to the poller).
-    await kv.delete(await flowKey(env, "djdl", state));
+    await artefacts(env).delete(await flowKey(env, "djdl", state));
     expect(
       ((await (await poll(body.deviceCode, NOW)).json()) as { status: string })
         .status,
     ).toBe("timeout");
     expect(
-      await kv.get(
+      await artefacts(env).get(
         await deviceUserKey(env, "djdl", body.userCode.replace("-", "")),
       ),
     ).toBeNull();
     expect(
-      await kv.get(await deviceFlowKey(env, "djdl", body.deviceCode)),
+      await artefacts(env).get(
+        await deviceFlowKey(env, "djdl", body.deviceCode),
+      ),
     ).toBeNull();
   });
 
   it("still completes a flow started before the user code existed (prefix-style code, no index)", async () => {
     const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
-    await kv.put(
+    await artefacts(env).put(
       await flowKey(env, "djdl", "legacy-state"),
       JSON.stringify({
         verifier: "v",
@@ -1085,7 +1102,7 @@ describe("the RFC 8628 user-code page", () => {
         licenseId: r.licenseId,
       }),
     );
-    await kv.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, "djdl", "legacy-code"),
       JSON.stringify({
         state: "legacy-state",
@@ -1277,7 +1294,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   /** Seed a flow record the way handleAuthDeviceStart + confirmation would: known nonce and
    *  redirect URI, bound to `dev-1` and confirmed, so `poll()` below can complete it. */
   async function seedFlow(state: string, nonce: string): Promise<void> {
-    await env.HOT.put(
+    await artefacts(env).put(
       await flowKey(env, "djdl", state),
       JSON.stringify({
         verifier: "v",

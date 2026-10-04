@@ -18,6 +18,8 @@ import {
   SignJWT,
 } from "jose";
 import { makeTestDb } from "../helpers.js";
+import { artefacts, singleUseMock } from "../singleUseMock.js";
+import { portalMagicKey } from "../../src/services/identity/portal/auth.js";
 import { KvMock, asKv } from "../kvMock.js";
 import {
   makeEnv,
@@ -697,13 +699,16 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     return env;
   }
 
-  /** Assert no touched key name contains any of the given credentials. */
+  /** Assert no touched key name, in KV or in the single-use store that holds the flows since
+   *  I-02, contains any of the given credentials. */
   function expectNoCredentialInKeys(
     kv: RecordingKv,
     credentials: Record<string, string>,
+    env: Env,
   ): void {
-    expect(kv.touched.size).toBeGreaterThan(0);
-    for (const key of kv.touched) {
+    const touched = [...kv.touched, ...singleUseMock(env).touched];
+    expect(singleUseMock(env).touched.size).toBeGreaterThan(0);
+    for (const key of touched) {
       for (const [name, value] of Object.entries(credentials)) {
         expect(value.length, `${name} is empty`).toBeGreaterThan(0);
         expect(key, `${name} appears in KV key ${key}`).not.toContain(value);
@@ -726,8 +731,8 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const authorize = new URL(start.headers.get("location")!);
     const state = authorize.searchParams.get("state")!;
     const nonce = authorize.searchParams.get("nonce")!;
-    expect(kv.keys()).toContain(
-      `p:${SIGN_IN_SLUG}:flow:${await hashKey(state, PEPPER)}`,
+    expect(singleUseMock(env).keys()).toContain(
+      `oidc-flow:${SIGN_IN_SLUG}:${await hashKey(state, PEPPER)}`,
     );
 
     installIdpFetch(await signInIdToken(priv, { sub: "r12-user", nonce }));
@@ -742,7 +747,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     );
     expect(callback.status).toBe(200);
 
-    expectNoCredentialInKeys(kv, { state, nonce });
+    expectNoCredentialInKeys(kv, { state, nonce }, env);
   });
 
   it("FIXED: a device-code sign-in never writes its device code or state into a KV key name", async () => {
@@ -768,8 +773,8 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
       deviceCode: string;
       userCode: string;
     };
-    expect(kv.keys()).toContain(
-      `p:${SIGN_IN_SLUG}:device-flow:${await hashKey(deviceCode, PEPPER)}`,
+    expect(singleUseMock(env).keys()).toContain(
+      `device-flow:${SIGN_IN_SLUG}:${await hashKey(deviceCode, PEPPER)}`,
     );
 
     // Confirm the way the rendered page does: GET mints the CSRF token, POST sends it back.
@@ -825,7 +830,11 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     );
     expect(((await poll.json()) as { status: string }).status).toBe("ready");
 
-    expectNoCredentialInKeys(kv, { deviceCode, state, nonce, csrf, userCode });
+    expectNoCredentialInKeys(
+      kv,
+      { deviceCode, state, nonce, csrf, userCode },
+      env,
+    );
   });
 
   it("FIXED: a portal OIDC sign-in never writes its state into a KV key name", async () => {
@@ -859,7 +868,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     );
     expect(callback.status).toBe(302);
 
-    expectNoCredentialInKeys(kv, { state, nonce });
+    expectNoCredentialInKeys(kv, { state, nonce }, env);
   });
 
   it("FIXED: the magic-link token is not a KV key name (the value still names the recipient)", async () => {
@@ -896,11 +905,15 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const token = link ? new URL(link).searchParams.get("token") : null;
     expect(token).toMatch(/^magic_[A-Za-z0-9_-]+$/);
 
-    const keys = kv.keys().filter((k) => k.startsWith("portal:magic:"));
-    expect(keys).toEqual([`portal:magic:${await hashKey(token!, PEPPER)}`]);
+    const keys = singleUseMock(env)
+      .keys()
+      .filter((k) => k.startsWith("portal-magic:"));
+    expect(keys).toEqual([`portal-magic:${await hashKey(token!, PEPPER)}`]);
     // The record shape is unchanged (out of scope for R12-04): the value still names the
     // recipient, but a listing no longer yields a token that opens it.
-    expect(await asKv(kv).get(keys[0]!)).toContain("victim@example.com");
+    expect(
+      await artefacts(env).get(await portalMagicKey(env, token!)),
+    ).toContain("victim@example.com");
 
     const verified = await handleMagicVerify(
       new Request(
@@ -912,7 +925,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     );
     expect(verified.status).toBe(302);
 
-    expectNoCredentialInKeys(kv, { token: token! });
+    expectNoCredentialInKeys(kv, { token: token! }, env);
   });
 
   it("CONFIRMED: the magic token carries only 72 bits of entropy (randomId = 9 bytes)", () => {

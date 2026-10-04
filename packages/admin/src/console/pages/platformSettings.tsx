@@ -215,7 +215,7 @@ const SECTIONS = [
 ];
 
 const WARNING_TITLES: Record<string, string> = {
-  legacy_oidc_names: "Legacy identity provider names in use",
+  console_oidc_shared: "The console shares the customer sign-in client",
   kek_id_set: "PLATFORM_KEK_ID is set",
   portal_session_secret_unset: "Portal sessions share the admin secret",
 };
@@ -980,6 +980,8 @@ function IntegerSettingRow({
 
 const IDENTITY_VARS = [
   "PLATFORM_ADMIN_GROUP",
+  "ADMIN_OIDC_ISSUER",
+  "ADMIN_OIDC_CLIENT_ID",
   "PLATFORM_OIDC_ISSUER",
   "PLATFORM_OIDC_CLIENT_ID",
   "OIDC_ISSUER_ALLOWLIST",
@@ -1007,14 +1009,24 @@ const DEPLOY_LABELS: Record<
     help: "Membership of this identity-provider group is console access.",
     unset: "Not set: nobody is a platform admin",
   },
+  ADMIN_OIDC_ISSUER: {
+    label: "Console identity provider issuer",
+    help: "The OIDC issuer of the console's own sign-in client.",
+    unset: "Not set: the console uses the platform client",
+  },
+  ADMIN_OIDC_CLIENT_ID: {
+    label: "Console identity provider client",
+    help: "The console's own OIDC client id. Operators only; customers never sign in through it.",
+    unset: "Not set: the console uses the platform client",
+  },
   PLATFORM_OIDC_ISSUER: {
-    label: "Identity provider issuer",
-    help: "",
+    label: "Platform identity provider issuer",
+    help: "The OIDC issuer the customer portal and platform-provider products sign in against.",
     unset: "Not set",
   },
   PLATFORM_OIDC_CLIENT_ID: {
-    label: "Identity provider client",
-    help: "",
+    label: "Platform identity provider client",
+    help: "The OIDC client id the customer portal and platform-provider products use.",
     unset: "Not set",
   },
   OIDC_ISSUER_ALLOWLIST: {
@@ -1099,11 +1111,6 @@ function DeployRow({
             {value}
           </span>
         )}
-        {item.legacyName ? (
-          <StatusPill tone="warning" size="sm">
-            From legacy {item.legacyName}
-          </StatusPill>
-        ) : null}
       </div>
     </SettingsRow>
   );
@@ -1422,9 +1429,12 @@ const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
     unset: "Falls back to ADMIN_SESSION_SECRET",
   },
   PLATFORM_OIDC_CLIENT_SECRET: {
-    what: "Console identity provider client secret",
+    what: "Platform identity provider client secret",
   },
-  ADMIN_OIDC_CLIENT_SECRET: { what: "Legacy name of the client secret" },
+  ADMIN_OIDC_CLIENT_SECRET: {
+    what: "Console identity provider client secret",
+    unset: "Not needed while the console uses the platform client",
+  },
   GITHUB_APP_PRIVATE_KEY: { what: "GitHub App private key" },
   GITHUB_WEBHOOK_SECRET: { what: "GitHub webhook signature secret" },
   R2_PARENT_ACCESS_KEY_ID: {
