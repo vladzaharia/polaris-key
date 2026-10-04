@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v3)                                                                                                                                   |
 | Size        | 1–1.5 engineer-weeks                                                                                                                             |
 | Depends on  | [P4-17](P4-17-lazy-deltas.md), [P4-13](P4-13-revocation-floors-decision.md), [P4-18](P4-18-web-dcz.md)                                           |
-| Unblocks    | none                                                                                                                                             |
+| Unblocks    | [P4-30](P4-30-feed-delta-menu-python-swift.md), [P4-31](P4-31-feed-delta-menu-godot.md)                                                          |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                            |
 | Plan mode   | yes: `program/plans/P4-29.md` is written and approved before any code                                                                            |
 | Gates       | plan mode; corpus (`feedContentCases`, a new `plan-matrix.json` section, mirrors); drift gates; every SDK; threat model; generated docs; workerd |
@@ -68,8 +68,7 @@ what it produces, then the client falls back") are the design.
 
 **Out** (and where it belongs instead):
 
-- The Python and Swift readers (→ P4-30), and the Godot reader (→ P4-31), proposed in the plan's
-  graph edits.
+- The Python and Swift readers (→ P4-30), and the Godot reader (→ P4-31).
 - The Kotlin SDK (→ P6-05, which inherits the parity row). There is no C# SDK.
 - Generating deltas (→ P4-17); collecting cold ones (→ P4-14); console views of the menu.
 
