@@ -1407,12 +1407,12 @@ Cell drawer (2.4.0 × Google Play) ───────────────
   artifact access is shown read-only with a link to Access.
 - **A-9** shipped: the rollout, readiness-override and Sentry-candidate 404s carry `reason`, and
   `DISTRIBUTION_ERROR_MESSAGES` words the five new reasons.
-- **Tests.** The admin suite went from 987 to 1036 (more after the latest merge). Dropped with
+- **Tests.** The admin suite went from 987 to 1037. Dropped with
   their behaviour: `distribution.test.tsx`'s three (the chain card moved to Services, the
   descriptor hooks card is removed, the read-only rollouts list became Rollouts). Rewritten:
   `distributionMatrix` (5 → 15), `updateHealth` → `distributionHealth` (4 → 12), `updateSettings`
   → `updateFeed` (22 → 18; the delivery-access cases moved to `distributionAccess`, 9) and the
-  eight outlet-credential cases of `secrets.test.tsx` → `outletCredentials` (15); new
+  eight outlet-credential cases of `secrets.test.tsx` → `outletCredentials` (16); new
   `distributionRollouts` (8) and `distributionOutlets` (11). `e2e/distribution.e2e.test.ts` opens
   every page, drawer and dialog under the Worker's CSP.
 
