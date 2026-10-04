@@ -50,7 +50,7 @@ import {
   type PackageFile,
   type RegistryPackage,
 } from "../materialise.js";
-import { serveFeedRead } from "../serve.js";
+import { feedRoute } from "../serve.js";
 import { cachedRegistrySettings, d1RegistrySettings } from "../settings.js";
 import {
   LEGACY_QUERY_NAMES,
@@ -77,7 +77,10 @@ import {
   storeAssetKey,
   storeReleasesKey,
 } from "./render.js";
-import { catalogPackageSource, loadPackages } from "./source.js";
+import {
+  catalogPackageSource,
+  loadRegistryPackages,
+} from "../catalogSource.js";
 
 const ECO = "godot" as const;
 const OWNER = "([a-z0-9-]{1,64})";
@@ -166,7 +169,7 @@ async function listedPackages(
   g: GodotRead,
   cache: "public" | "private",
 ): Promise<ListedPackage[]> {
-  const pkgs = await loadPackages(g.catalog, ctx.product.slug, ECO);
+  const pkgs = await loadRegistryPackages(g.catalog, ctx.product.slug, ECO);
   const ids = assetIdsOf(pkgs.map((p) => p.deliverableId));
   const out: ListedPackage[] = [];
   for (const pkg of pkgs) {
@@ -215,19 +218,26 @@ function keyRequest(
 
 // ── Route builders ───────────────────────────────────────────────────────────────────────────
 
-function route(
+/** One Godot route: the pattern's groups after the owner become `params`, in order. */
+function route<S = undefined>(
   name: string,
   pattern: RegExp,
   params: readonly string[],
-  handle: (
-    req: Request,
-    ctx: RegistryRouteContext,
-    params: Record<string, string>,
-  ) => Promise<Response>,
+  def: {
+    resolve?: (req: Request, ctx: RegistryRouteContext) => Promise<S>;
+    deliverableId: (p: Record<string, string>, state: S) => string | null;
+    queryNames?: readonly string[];
+    cacheRequest?: (req: Request) => Request;
+    serve: (
+      req: Request,
+      ctx: RegistryRouteContext,
+      cache: "public" | "private",
+      state: S,
+    ) => Promise<Response>;
+  },
 ): RegistryRoute {
-  return {
+  return feedRoute<S>({
     name,
-    service: "distribution",
     ecosystem: ECO,
     match(pathname) {
       const m = pattern.exec(pathname);
@@ -236,8 +246,12 @@ function route(
       params.forEach((p, i) => (out[p] = m[i + 2]!));
       return { owner: m[1]!, params: out };
     },
-    handle: (req, ctx) => handle(req, ctx, ctx.params),
-  };
+    ...(def.resolve ? { resolve: def.resolve } : {}),
+    deliverableId: def.deliverableId,
+    ...(def.queryNames ? { queryNames: def.queryNames } : {}),
+    ...(def.cacheRequest ? { cacheRequest: def.cacheRequest } : {}),
+    serve: def.serve,
+  });
 }
 
 /** A list-level (owner-wide) document: the ladder with `deliverableId: null`. */
@@ -251,20 +265,47 @@ function listRoute(
     g: GodotRead,
     cache: "public" | "private",
   ) => Promise<unknown>,
-  key: (req: Request) => Request = (r) => r,
+  key?: (req: Request) => Request,
 ): RegistryRoute {
-  return route(name, pattern, [], async (req, ctx) =>
-    serveFeedRead(
-      key(req),
-      ctx,
-      { deliverableId: null, queryNames },
-      async (cache) => {
-        const g = await godotRead(req, ctx);
-        if (!g) return notFound();
-        return jsonAnswer(await build(req, ctx, g, cache), cache);
-      },
-    ),
-  );
+  return route(name, pattern, [], {
+    deliverableId: () => null,
+    queryNames,
+    ...(key ? { cacheRequest: key } : {}),
+    async serve(req, ctx, cache) {
+      const g = await godotRead(req, ctx);
+      if (!g) return notFound();
+      return jsonAnswer(await build(req, ctx, g, cache), cache);
+    },
+  });
+}
+
+/**
+ * A per-package document route: the deliverable a predicate picks is found before the ladder
+ * (an unknown one is `null`, judged by the feed's mode, then the not-found), and its rendered
+ * document is read after it.
+ */
+function assetRoute(
+  name: string,
+  pattern: RegExp,
+  params: readonly string[],
+  pick: (
+    p: Record<string, string>,
+  ) => (d: { id: string; name: string }, ids: Map<string, string>) => boolean,
+  answer: (
+    req: Request,
+    ctx: RegistryRouteContext,
+    deliverableId: string,
+    cache: "public" | "private",
+  ) => Promise<Response>,
+  queryNames?: readonly string[],
+): RegistryRoute {
+  return route<string | null>(name, pattern, params, {
+    resolve: (_req, ctx) => findDeliverable(ctx, pick(ctx.params)),
+    deliverableId: (_p, id) => id,
+    ...(queryNames ? { queryNames } : {}),
+    serve: (req, ctx, cache, id) =>
+      id === null ? Promise.resolve(notFound()) : answer(req, ctx, id, cache),
+  });
 }
 
 /** The Godot package deliverable a predicate picks, by its declaration (no version rows read). */
@@ -317,7 +358,7 @@ async function fileOwner(
 ): Promise<{ pkg: RegistryPackage; file: PackageFile } | null> {
   const catalog = ctx.hooks.releaseCatalog();
   if (!catalog) return null;
-  for (const pkg of await loadPackages(catalog, ctx.product.slug, ECO))
+  for (const pkg of await loadRegistryPackages(catalog, ctx.product.slug, ECO))
     for (const v of pkg.versions)
       for (const file of v.files)
         if (
@@ -336,38 +377,38 @@ function byteRoute(
   type: "godot-zip" | "godot-icon",
   contentType: string,
 ): RegistryRoute {
-  return route(name, pattern, params, async (req, ctx, p) => {
-    let fileName: string | null = null;
-    if (p.file !== undefined) {
-      try {
-        fileName = decodeURIComponent(p.file);
-      } catch {
-        return notFound();
+  type Owned = { pkg: RegistryPackage; file: PackageFile } | null;
+  return route<Owned>(name, pattern, params, {
+    async resolve(_req, ctx) {
+      const p = ctx.params;
+      let fileName: string | null = null;
+      if (p.file !== undefined) {
+        try {
+          fileName = decodeURIComponent(p.file);
+        } catch {
+          return null;
+        }
       }
-    }
-    const owned = await fileOwner(ctx, type, p.sha256!, fileName);
-    if (!owned) return notFound();
-    return serveFeedRead(
-      req,
-      ctx,
-      { deliverableId: owned.pkg.deliverableId },
-      async () => {
-        const bucket = ctx.env.BLOBS;
-        const key = blobKey(owned.file.sha256);
-        if (!bucket || !(await hasRef(ctx.db, ctx.product.slug, key)))
-          return notFound();
-        const res = await blobResponse(req, bucket, key, {
-          sha256: owned.file.sha256,
-          gated: false,
-          env: ctx.env,
-          filename: owned.file.name,
-        });
-        if (res.status !== 200 && res.status !== 206) return res;
-        const headers = new Headers(res.headers);
-        headers.set("content-type", contentType);
-        return new Response(res.body, { status: res.status, headers });
-      },
-    );
+      return fileOwner(ctx, type, p.sha256!, fileName);
+    },
+    deliverableId: (_p, owned) => owned?.pkg.deliverableId ?? null,
+    async serve(req, ctx, _cache, owned) {
+      if (!owned) return notFound();
+      const bucket = ctx.env.BLOBS;
+      const key = blobKey(owned.file.sha256);
+      if (!bucket || !(await hasRef(ctx.db, ctx.product.slug, key)))
+        return notFound();
+      const res = await blobResponse(req, bucket, key, {
+        sha256: owned.file.sha256,
+        gated: false,
+        env: ctx.env,
+        filename: owned.file.name,
+      });
+      if (res.status !== 200 && res.status !== 206) return res;
+      const headers = new Headers(res.headers);
+      headers.set("content-type", contentType);
+      return new Response(res.body, { status: res.status, headers });
+    },
   });
 }
 
@@ -397,27 +438,19 @@ export const GODOT_ROUTES: readonly RegistryRoute[] = [
       ),
     (req) => keyRequest(req, [], ["reverse"]),
   ),
-  route(
+  assetRoute(
     "godotLegacyAsset",
     legacy("asset/([0-9]{1,10})"),
     ["id"],
-    async (req, ctx, p) => {
-      const id = p.id!;
-      const deliverableId = await findDeliverable(
+    (p) => (d, ids) => ids.get(d.id) === p.id,
+    (req, ctx, deliverableId, cache) =>
+      renderedAnswer(
+        req,
         ctx,
-        (d, ids) => ids.get(d.id) === id,
-      );
-      if (!deliverableId) return notFound();
-      return serveFeedRead(req, ctx, { deliverableId }, (cache) =>
-        renderedAnswer(
-          req,
-          ctx,
-          deliverableId,
-          () => legacyAssetKey(id),
-          cache,
-        ),
-      );
-    },
+        deliverableId,
+        () => legacyAssetKey(ctx.params.id!),
+        cache,
+      ),
   ),
   listRoute("godotStoreOverview", store("?"), [], async () => storeOverview()),
   listRoute("godotStoreTags", store("tags/?"), [], async () => []),
@@ -440,70 +473,57 @@ export const GODOT_ROUTES: readonly RegistryRoute[] = [
       ),
     (req) => keyRequest(req, ["licenses"], []),
   ),
-  route(
+  assetRoute(
     "godotStoreAsset",
     store(`assets/${SLUG}/${SLUG}/?`),
     ["publisher", "asset"],
-    async (req, ctx, p) => {
-      const deliverableId = await findDeliverable(
+    (p) => (d) => d.name === p.asset,
+    (req, ctx, deliverableId, cache) => {
+      const p = ctx.params;
+      return renderedAnswer(
+        req,
         ctx,
-        (d) => d.name === p.asset,
-      );
-      if (!deliverableId) return notFound();
-      return serveFeedRead(req, ctx, { deliverableId }, (cache) =>
-        renderedAnswer(
-          req,
-          ctx,
-          deliverableId,
-          (g) =>
-            g.view.publisher === p.publisher
-              ? storeAssetKey(g.view.publisher, p.asset!)
-              : null,
-          cache,
-        ),
+        deliverableId,
+        (g) =>
+          g.view.publisher === p.publisher
+            ? storeAssetKey(g.view.publisher, p.asset!)
+            : null,
+        cache,
       );
     },
   ),
-  route(
+  assetRoute(
     "godotStoreReleases",
     store(`releases/${SLUG}/${SLUG}/?`),
     ["publisher", "asset"],
-    async (req, ctx, p) => {
-      const deliverableId = await findDeliverable(
-        ctx,
-        (d) => d.name === p.asset,
-      );
-      if (!deliverableId) return notFound();
+    (p) => (d) => d.name === p.asset,
+    (req, ctx, deliverableId, cache) => {
+      const p = ctx.params;
       const q = new URL(req.url).searchParams;
       const stableOnly = queryFlag(q.get("stable_only"), false);
       const compatibility = q.get("compatibility");
       const filtered = stableOnly || compatibility !== null;
-      return serveFeedRead(
+      return renderedAnswer(
         req,
         ctx,
-        { deliverableId, queryNames: ["stable_only", "compatibility"] },
-        (cache) =>
-          renderedAnswer(
-            req,
-            ctx,
-            deliverableId,
-            (g) =>
-              g.view.publisher === p.publisher
-                ? storeReleasesKey(g.view.publisher, p.asset!)
-                : null,
-            cache,
-            filtered
-              ? (body, g) =>
-                  filterReleases(
-                    Array.isArray(body) ? body : [],
-                    g.view,
-                    stableOnly,
-                    compatibility,
-                  )
-              : undefined,
-          ),
+        deliverableId,
+        (g) =>
+          g.view.publisher === p.publisher
+            ? storeReleasesKey(g.view.publisher, p.asset!)
+            : null,
+        cache,
+        filtered
+          ? (body, g) =>
+              filterReleases(
+                Array.isArray(body) ? body : [],
+                g.view,
+                stableOnly,
+                compatibility,
+              )
+          : undefined,
       );
     },
+    ["stable_only", "compatibility"],
   ),
   listRoute(
     "godotIndex",

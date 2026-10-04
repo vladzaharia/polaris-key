@@ -1,11 +1,13 @@
 /// <reference types="@cloudflare/workers-types" />
 /**
  * Release's package state as the renderers see it, and a rendered object read that is never
- * stale (F-04, plans/F-01.md §6.5). Shared by every ecosystem's routes; nothing here is
- * npm-specific.
+ * stale (F-04, plans/F-01.md §6.5). The one copy every ecosystem's routes (F-04 to F-09) share;
+ * nothing here is specific to one ecosystem. Distribution never reads Release's tables itself
+ * (rule 6): everything goes through the read-only `releaseCatalog` hook.
  *
- *   - `catalogPackageSource` is the `PackageSource` over Release's read-only `releaseCatalog`
- *     hook (`packageDeliverables`, `packageVersions`, `packageChannelHeads`). Channels become
+ *   - `registryPackageOf` turns the hook's rows into a `RegistryPackage`; `loadRegistryPackage`,
+ *     `loadRegistryPackages` and `catalogPackageSource` (the materialiser's `PackageSource`) read
+ *     them (`packageDeliverables`, `packageVersions`, `packageChannelHeads`). Channels become
  *     tags here, once for every ecosystem: `stable` → `latest`, any other channel → a tag of its
  *     own name. A head that names a version the package does not list is dropped.
  *   - `freshRegistryObject` answers one rendered object. It compares the stored object's render
@@ -22,6 +24,7 @@
 
 import type {
   CatalogPackageDeliverable,
+  CatalogPackageVersion,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
 import {
@@ -37,6 +40,7 @@ import {
   renderStamp,
   renderedObjectResponse,
   type PackageSource,
+  type PackageVersion,
   type RegistryPackage,
   type RegistryRenderer,
 } from "./materialise.js";
@@ -48,7 +52,7 @@ export function channelTag(channel: string): string {
 
 /** One package deliverable of `ecosystem` by name, compared case-insensitively, or `null`. */
 export async function findPackageDeliverable(
-  catalog: ReleaseCatalog,
+  catalog: Pick<ReleaseCatalog, "packageDeliverables">,
   ecosystem: RegistryEcosystem,
   name: string,
 ): Promise<CatalogPackageDeliverable | null> {
@@ -60,40 +64,104 @@ export async function findPackageDeliverable(
   );
 }
 
-/** Release's package state for `product`, read through its catalog hook. */
-export function catalogPackageSource(
-  catalog: ReleaseCatalog,
+/** The catalog readers a package source needs. */
+export type PackageCatalog = Pick<
+  ReleaseCatalog,
+  "packageDeliverables" | "packageVersions" | "packageChannelHeads"
+>;
+
+/**
+ * Release's state of one package as a renderer sees it: every version in every state, oldest
+ * publication first, and the channel heads as tags (`channelTag`). A head that names a version
+ * the package does not list is dropped. `nameNorm` defaults to the ingest's normalised name.
+ */
+export function registryPackageOf(
+  owner: string,
+  ecosystem: RegistryEcosystem,
+  deliverable: { readonly id: string; readonly name: string },
+  rows: readonly CatalogPackageVersion[],
+  heads: ReadonlyArray<{ readonly channel: string; readonly version: string }>,
+  nameNorm: string = rows[0]?.nameNorm ?? deliverable.name.toLowerCase(),
+): RegistryPackage {
+  const listed = new Set(rows.map((r) => r.version));
+  const tags: Record<string, string> = {};
+  for (const h of heads)
+    if (listed.has(h.version)) tags[channelTag(h.channel)] = h.version;
+  return {
+    product: owner,
+    ecosystem,
+    deliverableId: deliverable.id,
+    name: deliverable.name,
+    nameNorm,
+    versions: rows.map(
+      (r): PackageVersion => ({
+        version: r.version,
+        state: r.state,
+        stateMessage: r.stateMessage,
+        files: r.files,
+        metadata: r.metadata,
+        publishedAt: r.publishedAt,
+      }),
+    ),
+    tags,
+  };
+}
+
+/**
+ * One package deliverable of `product` as a `RegistryPackage`, or `null` when it is not a
+ * package (of `ecosystem`, when given). `declared` skips the declaration lookup.
+ */
+export async function loadRegistryPackage(
+  catalog: PackageCatalog,
   product: string,
+  deliverableId: string,
+  ecosystem?: RegistryEcosystem,
+  declared?: CatalogPackageDeliverable,
+): Promise<RegistryPackage | null> {
+  const decl =
+    declared ??
+    (await catalog.packageDeliverables()).find((d) => d.id === deliverableId);
+  if (!decl || !isRegistryEcosystem(decl.ecosystem)) return null;
+  if (ecosystem !== undefined && decl.ecosystem !== ecosystem) return null;
+  return registryPackageOf(
+    product,
+    decl.ecosystem,
+    decl,
+    await catalog.packageVersions(deliverableId),
+    await catalog.packageChannelHeads(deliverableId),
+  );
+}
+
+/** Every package of `ecosystem` the product declares, loaded, in deliverable-id order. */
+export async function loadRegistryPackages(
+  catalog: PackageCatalog,
+  product: string,
+  ecosystem: RegistryEcosystem,
+): Promise<RegistryPackage[]> {
+  const out: RegistryPackage[] = [];
+  const decls = (await catalog.packageDeliverables())
+    .filter((d) => d.ecosystem === ecosystem)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const d of decls) {
+    const pkg = await loadRegistryPackage(catalog, product, d.id, ecosystem, d);
+    if (pkg) out.push(pkg);
+  }
+  return out;
+}
+
+/**
+ * Release's package state for `product`, read through its catalog hook (limited to `ecosystem`'s
+ * packages when given). Another owner reads as absent.
+ */
+export function catalogPackageSource(
+  catalog: PackageCatalog,
+  product: string,
+  ecosystem?: RegistryEcosystem,
 ): PackageSource {
   return {
     async package(owner, deliverableId) {
       if (owner !== product) return null;
-      const decl = (await catalog.packageDeliverables()).find(
-        (d) => d.id === deliverableId,
-      );
-      if (!decl || !isRegistryEcosystem(decl.ecosystem)) return null;
-      const rows = await catalog.packageVersions(deliverableId);
-      const heads = await catalog.packageChannelHeads(deliverableId);
-      const listed = new Set(rows.map((r) => r.version));
-      const tags: Record<string, string> = {};
-      for (const h of heads)
-        if (listed.has(h.version)) tags[channelTag(h.channel)] = h.version;
-      return {
-        product,
-        ecosystem: decl.ecosystem,
-        deliverableId,
-        name: decl.name,
-        nameNorm: rows[0]?.nameNorm ?? decl.name.toLowerCase(),
-        versions: rows.map((r) => ({
-          version: r.version,
-          state: r.state,
-          stateMessage: r.stateMessage,
-          files: r.files,
-          metadata: r.metadata,
-          publishedAt: r.publishedAt,
-        })),
-        tags,
-      };
+      return loadRegistryPackage(catalog, product, deliverableId, ecosystem);
     },
   };
 }

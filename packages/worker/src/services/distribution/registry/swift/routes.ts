@@ -17,8 +17,9 @@
  * EVERY READ GOES THROUGH `serveFeedRead`: the access ladder first, then the Cache API, then the
  * work here. The answers:
  *   - `Content-Version: 1` on every one, a refusal, a not-found or a 304 included (§3.5);
- *   - `Accept` checked before anything else: 400 for an invalid version or media type, 415 for
- *     an unsupported one (`protocol.ts`);
+ *   - `Accept` checked on every answer (after the ladder, so a cached answer too), and its
+ *     refusal stands in for any other: 400 for an invalid version or media type, 415 for an
+ *     unsupported one (`protocol.ts`);
  *   - errors as `application/problem+json`; an unknown package, version or owner, a disabled
  *     feed and a missing object all answer the host's one not-found;
  *   - documents from the renders (`render.ts`), read through `readRegistryObject`, so a lost
@@ -48,7 +49,7 @@ import {
   type MaterialiseDeps,
   type RegistryRenderer,
 } from "../materialise.js";
-import { serveFeedRead } from "../serve.js";
+import { feedRoute, type FeedRouteDef } from "../serve.js";
 import { cachedRegistrySettings, d1RegistrySettings } from "../settings.js";
 import {
   SWIFT_NAME,
@@ -62,12 +63,13 @@ import {
   type SwiftMediaType,
 } from "./protocol.js";
 import { renderSwift, swiftKeys, type SwiftRouting } from "./render.js";
-import { catalogPackageSource, findPackageDeliverable } from "./source.js";
+import {
+  catalogPackageSource,
+  findPackageDeliverable,
+} from "../catalogSource.js";
 
 const OWNER = "[a-z0-9-]{1,64}";
 const SEG = "[^/]+";
-
-const lower = (name: string): string => name.toLowerCase();
 
 /** The renderer the read path renders a miss with (only Swift packages reach these routes). */
 const SWIFT_ONLY: ReadonlyMap<"swift", RegistryRenderer> = new Map([
@@ -127,51 +129,84 @@ interface PackageRead {
   readonly identity: string;
 }
 
+/** What a package endpoint looks up before the ladder: the target and its deliverable. */
+interface SwiftState {
+  readonly t: SwiftTarget | null;
+  readonly catalog: ReleaseCatalog | null;
+  readonly deliverableId: string | null;
+}
+
+/** The members a route adds to the shared package-endpoint shape (`packageRoute`). */
+type SwiftEndpoint = Pick<
+  FeedRouteDef<SwiftState>,
+  "resolve" | "deliverableId" | "queryNames" | "serve" | "finish"
+>;
+
 /**
- * The shared shape of every package endpoint: `Accept` first, then the deliverable the path
- * names, then `serveFeedRead`, then `work`. A package that does not exist still goes through
- * `serveFeedRead` (as a list read) and answers the same not-found as a feed that is off.
+ * `Accept` refused (400/415), else `Content-Version` on whatever answered: after the ladder, on
+ * every answer, a cached one and a refusal included. An `Accept` refusal stands in for any answer.
  */
-async function packageRead(
+async function finishSwift(
+  res: Response,
   req: Request,
-  ctx: RegistryRouteContext,
+  want: SwiftMediaType,
+): Promise<Response> {
+  const refusal = swiftAcceptRefusal(req, want);
+  if (refusal) {
+    await res.body?.cancel().catch(() => undefined);
+    return refusal;
+  }
+  return withContentVersion(res);
+}
+
+/**
+ * The shared shape of every package endpoint: the deliverable the path names (`resolve`), then
+ * `serveFeedRead`, then `work`, then `Accept` and `Content-Version` (`finishSwift`). A package
+ * that does not exist still goes through `serveFeedRead` (as a list read) and answers the same
+ * not-found as a feed that is off.
+ */
+function packageRoute(
   want: SwiftMediaType,
   queryNames: readonly string[],
   work: (
+    req: Request,
+    ctx: RegistryRouteContext,
     read: PackageRead,
     t: SwiftTarget,
     cache: "public" | "private",
   ) => Promise<Response>,
-): Promise<Response> {
-  const refusal = swiftAcceptRefusal(req, want);
-  if (refusal) return refusal;
-  const t = target(ctx.params);
-  const catalog = ctx.hooks.releaseCatalog();
-  const decl =
-    t && catalog
-      ? await findPackageDeliverable(
-          catalog,
-          "swift",
-          swiftIdentity(t.scope, t.name),
-          lower,
-        )
-      : null;
-  const res = await serveFeedRead(
-    req,
-    ctx,
-    { deliverableId: decl?.id ?? null, queryNames },
-    async (cache) => {
+): SwiftEndpoint {
+  return {
+    queryNames,
+    async resolve(_req, ctx) {
+      const t = target(ctx.params);
+      const catalog = ctx.hooks.releaseCatalog();
+      const decl =
+        t && catalog
+          ? await findPackageDeliverable(
+              catalog,
+              "swift",
+              swiftIdentity(t.scope, t.name),
+            )
+          : null;
+      return { t, catalog, deliverableId: decl?.id ?? null };
+    },
+    deliverableId: (_params, state) => state.deliverableId,
+    async serve(req, ctx, cache, { t, catalog, deliverableId }) {
       const bucket = ctx.env.BLOBS;
-      if (!t || !catalog || !decl || !bucket) return registryNotFound("swift");
+      if (!t || !catalog || !deliverableId || !bucket)
+        return registryNotFound("swift");
       return work(
+        req,
+        ctx,
         {
           catalog,
-          deliverableId: decl.id,
+          deliverableId,
           identity: swiftIdentity(t.scope, t.name),
           deps: {
             bucket,
             renderers: SWIFT_ONLY,
-            source: catalogPackageSource(catalog, "swift", lower),
+            source: catalogPackageSource(catalog, ctx.product.slug, "swift"),
             origin: registryOrigin(ctx.env) ?? new URL(req.url).origin,
           },
         },
@@ -179,8 +214,8 @@ async function packageRead(
         cache,
       );
     },
-  );
-  return withContentVersion(res);
+    finish: (res, req) => finishSwift(res, req, want),
+  };
 }
 
 /** One rendered object of the package, or `null`. */
@@ -236,11 +271,10 @@ function resolveVersion(
 
 // ── The endpoints ────────────────────────────────────────────────────────────────────────────
 
-async function listReleases(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
-  return packageRead(req, ctx, "json", [], async (read, _t, cache) => {
+const listReleases = packageRoute(
+  "json",
+  [],
+  async (req, ctx, read, _t, cache) => {
     const routing = await readRouting(read, ctx);
     const obj = await readObject(read, ctx, swiftKeys(read.identity).releases);
     // A declared package with nothing published is not found: the declaration is not public.
@@ -254,14 +288,13 @@ async function listReleases(
         ? link(`${base}/${routing.latest}`, "latest-version")
         : null,
     });
-  });
-}
+  },
+);
 
-async function releaseInfo(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
-  return packageRead(req, ctx, "json", [], async (read, t, cache) => {
+const releaseInfo = packageRoute(
+  "json",
+  [],
+  async (req, ctx, read, t, cache) => {
     const routing = await readRouting(read, ctx);
     const version = routing && resolveVersion(routing, t.version, true);
     if (!routing || !version) return registryNotFound("swift");
@@ -283,66 +316,59 @@ async function releaseInfo(
     return withHeaders(renderedObjectResponse(obj, cache), {
       link: links.join(", "),
     });
-  });
-}
+  },
+);
 
-async function manifest(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
-  return packageRead(
-    req,
-    ctx,
-    "swift",
-    ["swift-version"],
-    async (read, t, cache) => {
-      const routing = await readRouting(read, ctx);
-      const version = routing && resolveVersion(routing, t.version);
-      if (!routing || !version) return registryNotFound("swift");
-      const route = routing.versions[version]!;
-      const unqualified = route.manifests[""];
-      if (!unqualified) return registryNotFound("swift");
-      const base = `${baseUrl(req, ctx)}/${t.scope}/${t.name}/${version}/Package.swift`;
-      const wanted = new URL(req.url).searchParams.get("swift-version");
-      if (wanted !== null) {
-        const specific = Object.hasOwn(route.manifests, wanted)
-          ? route.manifests[wanted]
-          : undefined;
-        if (!specific || wanted === "")
-          // §4.3.1: no such version-specific manifest → 303 to the unqualified one.
-          return new Response(null, {
-            status: 303,
-            headers: {
-              location: base,
-              "cache-control": registryCacheHeaders(cache, "index", "")[
-                "cache-control"
-              ]!,
-            },
-          });
-        return manifestBlob(req, ctx, read, specific.sha256, specific.filename);
-      }
-      const alternates = Object.entries(route.manifests)
-        .filter(([k]) => k !== "")
-        .map(([k, m]) =>
-          link(
-            `${base}?swift-version=${k}`,
-            "alternate",
-            `; filename="${m.filename}"; swift-tools-version="${m.toolsVersion ?? k}"`,
-          ),
-        );
-      return withHeaders(
-        await manifestBlob(
-          req,
-          ctx,
-          read,
-          unqualified.sha256,
-          unqualified.filename,
+const manifest = packageRoute(
+  "swift",
+  ["swift-version"],
+  async (req, ctx, read, t, cache) => {
+    const routing = await readRouting(read, ctx);
+    const version = routing && resolveVersion(routing, t.version);
+    if (!routing || !version) return registryNotFound("swift");
+    const route = routing.versions[version]!;
+    const unqualified = route.manifests[""];
+    if (!unqualified) return registryNotFound("swift");
+    const base = `${baseUrl(req, ctx)}/${t.scope}/${t.name}/${version}/Package.swift`;
+    const wanted = new URL(req.url).searchParams.get("swift-version");
+    if (wanted !== null) {
+      const specific = Object.hasOwn(route.manifests, wanted)
+        ? route.manifests[wanted]
+        : undefined;
+      if (!specific || wanted === "")
+        // §4.3.1: no such version-specific manifest → 303 to the unqualified one.
+        return new Response(null, {
+          status: 303,
+          headers: {
+            location: base,
+            "cache-control": registryCacheHeaders(cache, "index", "")[
+              "cache-control"
+            ]!,
+          },
+        });
+      return manifestBlob(req, ctx, read, specific.sha256, specific.filename);
+    }
+    const alternates = Object.entries(route.manifests)
+      .filter(([k]) => k !== "")
+      .map(([k, m]) =>
+        link(
+          `${base}?swift-version=${k}`,
+          "alternate",
+          `; filename="${m.filename}"; swift-tools-version="${m.toolsVersion ?? k}"`,
         ),
-        { link: alternates.join(", ") },
       );
-    },
-  );
-}
+    return withHeaders(
+      await manifestBlob(
+        req,
+        ctx,
+        read,
+        unqualified.sha256,
+        unqualified.filename,
+      ),
+      { link: alternates.join(", ") },
+    );
+  },
+);
 
 /** A signed manifest from the blob store, as `text/x-swift` with its filename. */
 async function manifestBlob(
@@ -369,11 +395,10 @@ async function manifestBlob(
   });
 }
 
-async function sourceArchive(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
-  return packageRead(req, ctx, "zip", [], async (read, t, _cache) => {
+const sourceArchive = packageRoute(
+  "zip",
+  [],
+  async (req, ctx, read, t, _cache) => {
     const routing = await readRouting(read, ctx);
     const version = routing && resolveVersion(routing, t.version);
     const route = version ? routing!.versions[version]! : null;
@@ -407,82 +432,85 @@ async function sourceArchive(
       "content-disposition": `attachment; filename="${filename}"`,
       ...signed,
     });
-  });
-}
+  },
+);
 
 /**
  * §4.5: the identifiers the feed's `ext_json.repositoryUrls` (`{"scope.Name": [url, …]}`, an
  * operator setting) maps `url` to, compared without scheme, user, `.git` or case. Only packages
  * the feed holds, and that an anonymous reader may read, are listed; none is the not-found.
  */
-async function identifiers(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
-  const refusal = swiftAcceptRefusal(req, "json");
-  if (refusal) return refusal;
+function wantedRepository(req: Request): string | null {
   const raw = new URL(req.url).searchParams.get("url");
-  const wanted = raw === null ? null : normaliseRepositoryUrl(raw);
-  if (wanted === null)
-    return swiftProblem(400, "the url query parameter is required");
-  const res = await serveFeedRead(
-    req,
-    ctx,
-    { deliverableId: null, queryNames: ["url"] },
-    async (cache) => {
-      const catalog = ctx.hooks.releaseCatalog();
-      if (!catalog) return registryNotFound("swift");
-      const source = d1RegistrySettings(ctx.db);
-      const { feed } = await cachedRegistrySettings(
-        source,
+  return raw === null ? null : normaliseRepositoryUrl(raw);
+}
+
+const identifiers: SwiftEndpoint = {
+  deliverableId: () => null,
+  queryNames: ["url"],
+  async serve(req, ctx, cache) {
+    const wanted = wantedRepository(req);
+    // `finish` answers the 400 for a missing `url`; nothing here is ever sent then.
+    if (wanted === null) return registryNotFound("swift");
+    const catalog = ctx.hooks.releaseCatalog();
+    if (!catalog) return registryNotFound("swift");
+    const source = d1RegistrySettings(ctx.db);
+    const { feed } = await cachedRegistrySettings(
+      source,
+      ctx.product.slug,
+      "swift",
+    );
+    const map = feed?.ext.repositoryUrls;
+    const claimed = new Set<string>();
+    if (map && typeof map === "object" && !Array.isArray(map))
+      for (const [id, urls] of Object.entries(map))
+        if (
+          Array.isArray(urls) &&
+          urls.some(
+            (u) =>
+              typeof u === "string" && normaliseRepositoryUrl(u) === wanted,
+          )
+        )
+          claimed.add(id.toLowerCase());
+    const found: string[] = [];
+    for (const d of await catalog.packageDeliverables()) {
+      if (d.ecosystem !== "swift" || !claimed.has(d.name.toLowerCase()))
+        continue;
+      const decision = await authorizeFeedRead(
+        { db: ctx.db, services: ctx.product.services, settings: source },
+        feedPrincipal(req),
         ctx.product.slug,
         "swift",
+        d.id,
       );
-      const map = feed?.ext.repositoryUrls;
-      const claimed = new Set<string>();
-      if (map && typeof map === "object" && !Array.isArray(map))
-        for (const [id, urls] of Object.entries(map))
-          if (
-            Array.isArray(urls) &&
-            urls.some(
-              (u) =>
-                typeof u === "string" && normaliseRepositoryUrl(u) === wanted,
-            )
-          )
-            claimed.add(id.toLowerCase());
-      const found: string[] = [];
-      for (const d of await catalog.packageDeliverables()) {
-        if (d.ecosystem !== "swift" || !claimed.has(d.name.toLowerCase()))
-          continue;
-        const decision = await authorizeFeedRead(
-          { db: ctx.db, services: ctx.product.services, settings: source },
-          feedPrincipal(req),
-          ctx.product.slug,
-          "swift",
-          d.id,
-        );
-        if (decision.ok) found.push(d.name);
-      }
-      if (found.length === 0) return registryNotFound("swift");
-      const body = JSON.stringify({ identifiers: found.sort() });
-      const digest = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(body),
-      );
-      const sha256 = [...new Uint8Array(digest)]
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      return new Response(req.method === "HEAD" ? null : body, {
-        status: 200,
-        headers: {
-          "content-type": "application/json",
-          ...registryCacheHeaders(cache, "index", sha256),
-        },
-      });
-    },
-  );
-  return withContentVersion(res);
-}
+      if (decision.ok) found.push(d.name);
+    }
+    if (found.length === 0) return registryNotFound("swift");
+    const body = JSON.stringify({ identifiers: found.sort() });
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(body),
+    );
+    const sha256 = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return new Response(req.method === "HEAD" ? null : body, {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        ...registryCacheHeaders(cache, "index", sha256),
+      },
+    });
+  },
+  // `Accept` first, then the `url` 400, as before the ladder; then `Content-Version`.
+  async finish(res, req) {
+    if (!swiftAcceptRefusal(req, "json") && wantedRepository(req) === null) {
+      await res.body?.cancel().catch(() => undefined);
+      return swiftProblem(400, "the url query parameter is required");
+    }
+    return finishSwift(res, req, "json");
+  },
+};
 
 // ── Matching ─────────────────────────────────────────────────────────────────────────────────
 
@@ -501,16 +529,14 @@ function matcher(re: RegExp, names: readonly string[]): RegistryRoute["match"] {
 
 /** The Swift registry's routes, most specific first. */
 export const SWIFT_ROUTES: readonly RegistryRoute[] = [
-  {
+  feedRoute<SwiftState>({
     name: "swift.identifiers",
-    service: "distribution",
     ecosystem: "swift",
     match: matcher(new RegExp(`^/swift/(${OWNER})/identifiers$`), []),
-    handle: identifiers,
-  },
-  {
+    ...identifiers,
+  }),
+  feedRoute<SwiftState>({
     name: "swift.manifest",
-    service: "distribution",
     ecosystem: "swift",
     match: matcher(
       new RegExp(
@@ -518,31 +544,28 @@ export const SWIFT_ROUTES: readonly RegistryRoute[] = [
       ),
       ["scope", "name", "version"],
     ),
-    handle: manifest,
-  },
-  {
+    ...manifest,
+  }),
+  feedRoute<SwiftState>({
     name: "swift.archive",
-    service: "distribution",
     ecosystem: "swift",
     match: matcher(
       new RegExp(`^/swift/(${OWNER})/(${SEG})/(${SEG})/(${SEG})\\.zip$`),
       ["scope", "name", "version"],
     ),
-    handle: sourceArchive,
-  },
-  {
+    ...sourceArchive,
+  }),
+  feedRoute<SwiftState>({
     name: "swift.release",
-    service: "distribution",
     ecosystem: "swift",
     match: matcher(
       new RegExp(`^/swift/(${OWNER})/(${SEG})/(${SEG})/(${SEG})$`),
       ["scope", "name", "version"],
     ),
-    handle: releaseInfo,
-  },
-  {
+    ...releaseInfo,
+  }),
+  feedRoute<SwiftState>({
     name: "swift.releases",
-    service: "distribution",
     ecosystem: "swift",
     match: (pathname) => {
       const m = new RegExp(`^/swift/(${OWNER})/(${SEG})/(${SEG})$`).exec(
@@ -552,6 +575,6 @@ export const SWIFT_ROUTES: readonly RegistryRoute[] = [
       const name = m[3]!.endsWith(".json") ? m[3]!.slice(0, -5) : m[3]!;
       return { owner: m[1]!, params: { scope: m[2]!, name } };
     },
-    handle: listReleases,
-  },
+    ...listReleases,
+  }),
 ];

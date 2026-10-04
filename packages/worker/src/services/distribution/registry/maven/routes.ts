@@ -19,7 +19,7 @@
  *     under `registry/maven/<owner>/`, `public, max-age=60, stale-while-revalidate=60` with a
  *     strong ETag of the body's SHA-256 (§6.7). Before answering, the stored object's render
  *     stamp is compared with the package's current state, and a missing or stale object is
- *     rendered again first (`freshRenderedObject`), so a publish, yank or channel move shows up
+ *     rendered again first (`readFreshRegistryObject`), so a publish, yank or channel move shows up
  *     on the next uncached read even before a queue drain has run.
  *   - A version's files are the publication's own bytes, from the blob store by SHA-256
  *     (`blobs/sha256/<hex>`, as F-03 addresses every package file), through `blobResponse`:
@@ -32,10 +32,7 @@
  * unknown version or file and a digest the file does not carry included, is the not-found.
  */
 
-import type {
-  CatalogPackageVersion,
-  ReleaseCatalog,
-} from "../../../../core/hooks.js";
+import type { ReleaseCatalog } from "../../../../core/hooks.js";
 import {
   registryNotFound,
   registryOrigin,
@@ -44,18 +41,13 @@ import {
 } from "../../../../core/registryHost.js";
 import { blobKey, blobResponse } from "../../../../core/blobs.js";
 import { registryCacheHeaders } from "../cache.js";
+import { registryPackageOf } from "../catalogSource.js";
 import {
-  RENDER_STAMP_META,
   SHA256_META,
-  materialise,
-  registryCounters,
-  registryObjectKey,
-  renderStamp,
-  type PackageVersion,
-  type RegistryPackage,
+  readFreshRegistryObject,
   type RegistryRenderer,
 } from "../materialise.js";
-import { serveFeedRead } from "../serve.js";
+import { feedRoute } from "../serve.js";
 import {
   MAVEN_CONTENT_TYPE,
   MAVEN_METADATA,
@@ -133,67 +125,6 @@ async function mavenDeliverable(
   return found ? { id: found.id, name: found.name } : null;
 }
 
-/** Release's state of one package, as a renderer sees it (channel heads → tags). */
-export function registryPackageOf(
-  owner: string,
-  deliverable: { id: string; name: string },
-  versions: readonly CatalogPackageVersion[],
-  heads: ReadonlyArray<{ channel: string; version: string }>,
-): RegistryPackage {
-  const tags: Record<string, string> = {};
-  for (const h of heads)
-    tags[h.channel === "stable" ? "latest" : h.channel] = h.version;
-  return {
-    product: owner,
-    ecosystem: "maven",
-    deliverableId: deliverable.id,
-    name: deliverable.name,
-    nameNorm: deliverable.name.toLowerCase(),
-    versions: versions.map(
-      (v): PackageVersion => ({
-        version: v.version,
-        state: v.state,
-        stateMessage: v.stateMessage,
-        files: v.files,
-        metadata: v.metadata,
-        publishedAt: v.publishedAt,
-      }),
-    ),
-    tags,
-  };
-}
-
-/**
- * One rendered object of `pkg`, from R2, rendered again first when it is missing (counted as a
- * render miss) or carries another state's stamp. `null` when the render does not produce it.
- */
-export async function freshRenderedObject(
-  bucket: R2Bucket,
-  renderer: RegistryRenderer,
-  pkg: RegistryPackage,
-  key: string,
-  origin: string,
-): Promise<R2ObjectBody | null> {
-  const full = registryObjectKey(pkg.ecosystem, pkg.product, key);
-  const stamp = await renderStamp(pkg);
-  const hit = await bucket.get(full);
-  if (hit && hit.customMetadata?.[RENDER_STAMP_META] === stamp) return hit;
-  if (hit) await hit.body.cancel().catch(() => undefined);
-  else registryCounters.renderMiss++;
-  const result = await materialise(
-    {
-      bucket,
-      renderers: new Map([[pkg.ecosystem, renderer]]),
-      source: { package: async () => pkg },
-      origin,
-    },
-    pkg.product,
-    pkg.deliverableId,
-  );
-  if (result.status !== "rendered" || !result.keys.includes(full)) return null;
-  return bucket.get(full);
-}
-
 /** A Maven answer's headers: opaque bytes, an attachment named after the file. */
 function mavenHeaders(file: string, extra: Record<string, string>): Headers {
   return new Headers({
@@ -212,130 +143,121 @@ function forCache(req: Request): Request {
   return new Request(req.url, { method: req.method, headers });
 }
 
+/** The catalog and the deliverable a request names, looked up before the ladder. */
+interface MavenRead {
+  readonly catalog: ReturnType<RegistryRouteContext["hooks"]["releaseCatalog"]>;
+  readonly deliverable: Awaited<ReturnType<typeof mavenDeliverable>>;
+}
+
+async function resolveMaven(
+  _req: Request,
+  ctx: RegistryRouteContext,
+): Promise<MavenRead> {
+  const catalog = ctx.hooks.releaseCatalog();
+  const deliverable = await mavenDeliverable(
+    catalog,
+    ctx.params.groupId!,
+    ctx.params.artifactId!,
+  );
+  return { catalog, deliverable };
+}
+
 export function mavenRoutes(renderer: () => RegistryRenderer): RegistryRoute[] {
-  const metadata: RegistryRoute = {
+  const metadata = feedRoute<MavenRead>({
     name: "mavenMetadata",
-    service: "distribution",
     ecosystem: "maven",
     match: matchMavenMetadata,
-    async handle(req: Request, ctx: RegistryRouteContext): Promise<Response> {
+    resolve: resolveMaven,
+    deliverableId: (_params, { deliverable }) => deliverable?.id ?? null,
+    async serve(_req, ctx, cache, { catalog, deliverable }) {
       const { groupId, artifactId, checksum } = ctx.params as Record<
         string,
         string
       >;
-      const catalog = ctx.hooks.releaseCatalog();
-      const deliverable = await mavenDeliverable(
-        catalog,
-        groupId!,
-        artifactId!,
+      const bucket = ctx.env.BLOBS;
+      if (!deliverable || !catalog || !bucket) return registryNotFound("maven");
+      const pkg = registryPackageOf(
+        ctx.product.slug,
+        "maven",
+        deliverable,
+        await catalog.packageVersions(deliverable.id),
+        await catalog.packageChannelHeads(deliverable.id),
+        deliverable.name.toLowerCase(),
       );
-      return serveFeedRead(
-        req,
-        ctx,
-        { deliverableId: deliverable?.id ?? null },
-        async (cache) => {
-          const bucket = ctx.env.BLOBS;
-          if (!deliverable || !catalog || !bucket)
-            return registryNotFound("maven");
-          const pkg = registryPackageOf(
-            ctx.product.slug,
-            deliverable,
-            await catalog.packageVersions(deliverable.id),
-            await catalog.packageChannelHeads(deliverable.id),
-          );
-          const file = checksum
-            ? `${MAVEN_METADATA}.${checksum}`
-            : MAVEN_METADATA;
-          const obj = await freshRenderedObject(
-            bucket,
-            renderer(),
-            pkg,
-            `${artifactDirectory(groupId!, artifactId!)}/${file}`,
-            registryOrigin(ctx.env) ?? "",
-          );
-          if (!obj) return registryNotFound("maven");
-          const sha256 = obj.customMetadata?.[SHA256_META] ?? "";
-          return new Response(obj.body, {
-            status: 200,
-            headers: mavenHeaders(
-              file,
-              registryCacheHeaders(cache, "index", sha256),
-            ),
-          });
+      const file = checksum ? `${MAVEN_METADATA}.${checksum}` : MAVEN_METADATA;
+      const obj = await readFreshRegistryObject(
+        {
+          bucket,
+          renderers: new Map([["maven", renderer()]]),
+          source: { package: async () => pkg },
+          origin: registryOrigin(ctx.env) ?? "",
+        },
+        {
+          ecosystem: "maven",
+          owner: ctx.product.slug,
+          key: `${artifactDirectory(groupId!, artifactId!)}/${file}`,
+          deliverableId: deliverable.id,
         },
       );
+      if (!obj) return registryNotFound("maven");
+      const sha256 = obj.customMetadata?.[SHA256_META] ?? "";
+      return new Response(obj.body, {
+        status: 200,
+        headers: mavenHeaders(
+          file,
+          registryCacheHeaders(cache, "index", sha256),
+        ),
+      });
     },
-  };
+  });
 
-  const file: RegistryRoute = {
+  const file = feedRoute<MavenRead>({
     name: "mavenFile",
-    service: "distribution",
     ecosystem: "maven",
     match: matchMavenFile,
-    async handle(req: Request, ctx: RegistryRouteContext): Promise<Response> {
-      const {
-        groupId,
-        artifactId,
-        version,
-        file: name,
-      } = ctx.params as Record<string, string>;
-      const catalog = ctx.hooks.releaseCatalog();
-      const deliverable = await mavenDeliverable(
-        catalog,
-        groupId!,
-        artifactId!,
+    resolve: resolveMaven,
+    deliverableId: (_params, { deliverable }) => deliverable?.id ?? null,
+    async serve(req, ctx, cache, { catalog, deliverable }) {
+      const { version, file: name } = ctx.params as Record<string, string>;
+      const bucket = ctx.env.BLOBS;
+      if (!deliverable || !catalog || !bucket) return registryNotFound("maven");
+      const v = (await catalog.packageVersions(deliverable.id)).find(
+        (x) => x.version === version,
       );
-      return serveFeedRead(
-        req,
-        ctx,
-        { deliverableId: deliverable?.id ?? null },
-        async (cache) => {
-          const bucket = ctx.env.BLOBS;
-          if (!deliverable || !catalog || !bucket)
-            return registryNotFound("maven");
-          const v = (await catalog.packageVersions(deliverable.id)).find(
-            (x) => x.version === version,
-          );
-          if (!v) return registryNotFound("maven");
-          const files = v.files.filter((f) => f.type === "maven-file");
-          const exact = files.find((f) => f.name === name);
-          // A digest that cannot name a blob (a hand-edited row) is the not-found, not a throw.
-          if (exact && !/^[0-9a-f]{64}$/.test(exact.sha256))
-            return registryNotFound("maven");
-          if (exact)
-            return blobResponse(
-              cache === "public" ? forCache(req) : req,
-              bucket,
-              blobKey(exact.sha256),
-              {
-                sha256: exact.sha256,
-                gated: cache === "private",
-                env: ctx.env,
-                filename: exact.name,
-              },
-            );
-          const side = SIDECAR.exec(name!);
-          const of = side ? files.find((f) => f.name === side[1]) : undefined;
-          const algo = side?.[2];
-          if (!of || !algo || !isMavenChecksum(algo))
-            return registryNotFound("maven");
-          const body = checksumBody(of, algo as MavenChecksum);
-          if (body === null) return registryNotFound("maven");
-          return new Response(body, {
-            status: 200,
-            headers: mavenHeaders(
-              name!,
-              registryCacheHeaders(
-                cache,
-                "immutable",
-                digestHex("sha256", body),
-              ),
-            ),
-          });
-        },
-      );
+      if (!v) return registryNotFound("maven");
+      const files = v.files.filter((f) => f.type === "maven-file");
+      const exact = files.find((f) => f.name === name);
+      // A digest that cannot name a blob (a hand-edited row) is the not-found, not a throw.
+      if (exact && !/^[0-9a-f]{64}$/.test(exact.sha256))
+        return registryNotFound("maven");
+      if (exact)
+        return blobResponse(
+          cache === "public" ? forCache(req) : req,
+          bucket,
+          blobKey(exact.sha256),
+          {
+            sha256: exact.sha256,
+            gated: cache === "private",
+            env: ctx.env,
+            filename: exact.name,
+          },
+        );
+      const side = SIDECAR.exec(name!);
+      const of = side ? files.find((f) => f.name === side[1]) : undefined;
+      const algo = side?.[2];
+      if (!of || !algo || !isMavenChecksum(algo))
+        return registryNotFound("maven");
+      const body = checksumBody(of, algo as MavenChecksum);
+      if (body === null) return registryNotFound("maven");
+      return new Response(body, {
+        status: 200,
+        headers: mavenHeaders(
+          name!,
+          registryCacheHeaders(cache, "immutable", digestHex("sha256", body)),
+        ),
+      });
     },
-  };
+  });
 
   return [metadata, file];
 }

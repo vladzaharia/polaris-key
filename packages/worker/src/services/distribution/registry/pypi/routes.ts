@@ -31,12 +31,13 @@ import type {
   RegistryRoute,
   RegistryRouteContext,
 } from "../../../../core/registryHost.js";
+import type { CatalogPackageDeliverable } from "../../../../core/hooks.js";
 import { registryNotFound } from "../../../../core/registryHost.js";
 import { blobKey, blobResponse, hasRef } from "../../../../core/blobs.js";
 import { ErrorCode, errorResponse } from "../../../../core/errors.js";
 import { authorizeFeedRead, feedPrincipal } from "../authorize.js";
 import { registryCacheHeaders } from "../cache.js";
-import { serveFeedRead } from "../serve.js";
+import { feedRoute } from "../serve.js";
 import { cachedRegistrySettings, d1RegistrySettings } from "../settings.js";
 import type { PackageFile, RegistryPackage } from "../materialise.js";
 import {
@@ -154,11 +155,18 @@ function redirect(location: string): Response {
   });
 }
 
-/** The feed-level check, then the not-found: what any unknown name answers. */
-function absent(req: Request, ctx: RegistryRouteContext): Promise<Response> {
-  return serveFeedRead(req, ctx, { deliverableId: null }, async () =>
-    registryNotFound("pypi"),
-  );
+/** What a path names, read before the ladder: an unknown name and a redirect read as a list
+ *  document (`deliverableId: null`), so only the feed-level check decides them. */
+type Named<T> =
+  | { readonly kind: "absent" }
+  | { readonly kind: "redirect"; readonly location: string }
+  | ({ readonly kind: "found" } & T);
+
+function namedId<T extends { project: { id: string } }>(
+  _params: Record<string, string>,
+  state: Named<T>,
+): string | null {
+  return state.kind === "found" ? state.project.id : null;
 }
 
 async function sha256Hex(body: string): Promise<string> {
@@ -173,103 +181,101 @@ async function sha256Hex(body: string): Promise<string> {
 
 // ── The project list ──────────────────────────────────────────────────────────────────────────
 
-const simpleIndex: RegistryRoute = {
+const simpleIndex: RegistryRoute = feedRoute({
   name: "pypi.simple.index",
-  service: "distribution",
   ecosystem: "pypi",
   inertDocument: true,
   match(pathname) {
     const m = new RegExp(`^/pypi/${OWNER}/simple(/?)$`).exec(pathname);
     return m ? { owner: m[1]!, params: { slash: m[2]! } } : null;
   },
-  handle(req, ctx) {
+  // A list document: only the feed's mode decides (§6.6 step 3). A project whose own delivery
+  // access is stricter than the list's is omitted from it.
+  deliverableId: () => null,
+  async serve(req, ctx, cache) {
     const owner = ctx.product.slug;
-    if (ctx.params.slash !== "/")
-      return serveFeedRead(req, ctx, { deliverableId: null }, async () =>
-        redirect(`/pypi/${owner}/simple/`),
+    if (ctx.params.slash !== "/") return redirect(`/pypi/${owner}/simple/`);
+    const form = await chosenForm(req, ctx);
+    if (form === "not-acceptable") return notAcceptable();
+    const listed = [];
+    for (const project of await pypiProjects(ctx)) {
+      const decision = await authorizeFeedRead(
+        { db: ctx.db, services: ctx.product.services },
+        feedPrincipal(req),
+        owner,
+        "pypi",
+        project.id,
       );
-    // A list document: only the feed's mode decides (§6.6 step 3). A project whose own delivery
-    // access is stricter than the list's is omitted from it.
-    return serveFeedRead(req, ctx, { deliverableId: null }, async (cache) => {
-      const form = await chosenForm(req, ctx);
-      if (form === "not-acceptable") return notAcceptable();
-      const listed = [];
-      for (const project of await pypiProjects(ctx)) {
-        const decision = await authorizeFeedRead(
-          { db: ctx.db, services: ctx.product.services },
-          feedPrincipal(req),
-          owner,
-          "pypi",
-          project.id,
-        );
-        if (!decision.ok || decision.cache !== cache) continue;
-        if (!(await loadPypiPackage(ctx, project))) continue;
-        listed.push({
-          name: project.name,
-          nameNorm: normalizeProjectName(project.name),
-        });
-      }
-      const body = form === "json" ? indexJson(listed) : indexHtml(listed);
-      return simpleHeaders(
-        new Response(body, {
-          status: 200,
-          headers: {
-            "content-type": form === "json" ? PYPI_JSON_TYPE : PYPI_HTML_TYPE,
-            ...registryCacheHeaders(cache, "index", await sha256Hex(body)),
-          },
-        }),
-        form,
-      );
-    });
+      if (!decision.ok || decision.cache !== cache) continue;
+      if (!(await loadPypiPackage(ctx, project))) continue;
+      listed.push({
+        name: project.name,
+        nameNorm: normalizeProjectName(project.name),
+      });
+    }
+    const body = form === "json" ? indexJson(listed) : indexHtml(listed);
+    return simpleHeaders(
+      new Response(body, {
+        status: 200,
+        headers: {
+          "content-type": form === "json" ? PYPI_JSON_TYPE : PYPI_HTML_TYPE,
+          ...registryCacheHeaders(cache, "index", await sha256Hex(body)),
+        },
+      }),
+      form,
+    );
   },
-};
+});
 
 // ── One project page ──────────────────────────────────────────────────────────────────────────
 
-const simpleProject: RegistryRoute = {
+type ProjectState = Named<{
+  readonly project: CatalogPackageDeliverable;
+  readonly norm: string;
+}>;
+
+const simpleProject: RegistryRoute = feedRoute<ProjectState>({
   name: "pypi.simple.project",
-  service: "distribution",
   ecosystem: "pypi",
   inertDocument: true,
   match(pathname) {
     const m = new RegExp(`^/pypi/${OWNER}/simple/([^/]+)(/?)$`).exec(pathname);
     return m ? { owner: m[1]!, params: { name: m[2]!, slash: m[3]! } } : null;
   },
-  async handle(req, ctx) {
+  async resolve(_req, ctx): Promise<ProjectState> {
     let name: string;
     try {
       name = decodeURIComponent(ctx.params.name!);
     } catch {
-      return absent(req, ctx);
+      return { kind: "absent" };
     }
-    if (!isProjectName(name)) return absent(req, ctx);
+    if (!isProjectName(name)) return { kind: "absent" };
     const norm = normalizeProjectName(name);
     if (name !== norm || ctx.params.slash !== "/")
-      return serveFeedRead(req, ctx, { deliverableId: null }, async () =>
-        redirect(`/pypi/${ctx.product.slug}/simple/${norm}/`),
-      );
+      return {
+        kind: "redirect",
+        location: `/pypi/${ctx.product.slug}/simple/${norm}/`,
+      };
     const project = await findProject(ctx, norm);
-    if (!project) return absent(req, ctx);
-    return serveFeedRead(
-      req,
-      ctx,
-      { deliverableId: project.id },
-      async (cache) => {
-        const form = await chosenForm(req, ctx);
-        if (form === "not-acceptable") return notAcceptable();
-        const pkg = await loadPypiPackage(ctx, project);
-        if (!pkg) return registryNotFound("pypi");
-        const res = await freshPageResponse(
-          ctx,
-          pkg,
-          projectPageKey(norm, form),
-          cache,
-        );
-        return res ? simpleHeaders(res, form) : registryNotFound("pypi");
-      },
-    );
+    return project ? { kind: "found", project, norm } : { kind: "absent" };
   },
-};
+  deliverableId: namedId,
+  async serve(req, ctx, cache, state) {
+    if (state.kind === "absent") return registryNotFound("pypi");
+    if (state.kind === "redirect") return redirect(state.location);
+    const form = await chosenForm(req, ctx);
+    if (form === "not-acceptable") return notAcceptable();
+    const pkg = await loadPypiPackage(ctx, state.project);
+    if (!pkg) return registryNotFound("pypi");
+    const res = await freshPageResponse(
+      ctx,
+      pkg,
+      projectPageKey(state.norm, form),
+      cache,
+    );
+    return res ? simpleHeaders(res, form) : registryNotFound("pypi");
+  },
+});
 
 // ── Files and their PEP 658 metadata ─────────────────────────────────────────────────────────
 
@@ -316,9 +322,13 @@ async function candidateProjects(ctx: RegistryRouteContext, filename: string) {
     .sort((a, b) => b.name.length - a.name.length);
 }
 
-const files: RegistryRoute = {
+type FileState = Named<{
+  readonly project: CatalogPackageDeliverable;
+  readonly hit: FileHit;
+}>;
+
+const files: RegistryRoute = feedRoute<FileState>({
   name: "pypi.files",
-  service: "distribution",
   ecosystem: "pypi",
   match(pathname) {
     const m = new RegExp(`^/pypi/${OWNER}/files/([0-9a-f]{64})/([^/]+)$`).exec(
@@ -326,46 +336,44 @@ const files: RegistryRoute = {
     );
     return m ? { owner: m[1]!, params: { sha256: m[2]!, file: m[3]! } } : null;
   },
-  async handle(req, ctx) {
+  async resolve(_req, ctx): Promise<FileState> {
     let filename: string;
     try {
       filename = decodeURIComponent(ctx.params.file!);
     } catch {
-      return absent(req, ctx);
+      return { kind: "absent" };
     }
     const sha256 = ctx.params.sha256!;
     for (const project of await candidateProjects(ctx, filename)) {
       const pkg = await loadPypiPackage(ctx, project);
       const hit = pkg ? fileIn(pkg, sha256, filename) : null;
-      if (!hit) continue;
-      return serveFeedRead(
-        req,
-        ctx,
-        { deliverableId: project.id },
-        async (cache) => {
-          const bucket = ctx.env.BLOBS;
-          if (!bucket) return registryNotFound("pypi");
-          // The bytes are this owner's: the package names them, and the owner must hold the
-          // ref too (`hasRef`), so no feed can serve an object it never published.
-          for (const gated of [false, true]) {
-            const key = blobKey(hit.file.sha256, { gated });
-            if (!(await hasRef(ctx.db, ctx.product.slug, key))) continue;
-            const res = await blobResponse(req, bucket, key, {
-              sha256: hit.file.sha256,
-              gated: gated || cache !== "public",
-              env: ctx.env,
-              host: "console",
-              filename: hit.file.name,
-            });
-            return res.status === 404 ? registryNotFound("pypi") : res;
-          }
-          return registryNotFound("pypi");
-        },
-      );
+      if (hit) return { kind: "found", project, hit };
     }
-    return absent(req, ctx);
+    return { kind: "absent" };
   },
-};
+  deliverableId: namedId,
+  async serve(req, ctx, cache, state) {
+    if (state.kind !== "found") return registryNotFound("pypi");
+    const { hit } = state;
+    const bucket = ctx.env.BLOBS;
+    if (!bucket) return registryNotFound("pypi");
+    // The bytes are this owner's: the package names them, and the owner must hold the
+    // ref too (`hasRef`), so no feed can serve an object it never published.
+    for (const gated of [false, true]) {
+      const key = blobKey(hit.file.sha256, { gated });
+      if (!(await hasRef(ctx.db, ctx.product.slug, key))) continue;
+      const res = await blobResponse(req, bucket, key, {
+        sha256: hit.file.sha256,
+        gated: gated || cache !== "public",
+        env: ctx.env,
+        host: "console",
+        filename: hit.file.name,
+      });
+      return res.status === 404 ? registryNotFound("pypi") : res;
+    }
+    return registryNotFound("pypi");
+  },
+});
 
 /** Every PyPI route, in match order. */
 export const PYPI_ROUTES: readonly RegistryRoute[] = [

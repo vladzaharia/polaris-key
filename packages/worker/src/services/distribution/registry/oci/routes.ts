@@ -45,7 +45,7 @@ import {
   renderStamp,
   type RegistryPackage,
 } from "../materialise.js";
-import { serveFeedRead } from "../serve.js";
+import { feedRoute } from "../serve.js";
 import {
   OCI_DIGEST_RE,
   OCI_MANIFEST_FILE_TYPES,
@@ -143,29 +143,40 @@ async function locate(ctx: RegistryRouteContext): Promise<Located | null> {
   return deliverable ? { catalog, deliverable } : null;
 }
 
-/** One read: locate, then `serveFeedRead`, then the API version header on whatever answered. */
-async function read(
+type Compute = (
   req: Request,
   ctx: RegistryRouteContext,
+  loc: Located,
+  cache: "public" | "private",
+) => Promise<Response>;
+
+/**
+ * One OCI route: locate (before the ladder), then `serveFeedRead` (`feedRoute`), then the API
+ * version header on whatever answered, a refusal or a cache hit included, after `check`.
+ */
+function ociRoute(
+  name: string,
+  re: RegExp,
   opts: { queryNames?: readonly string[]; cacheApi?: false },
-  compute: (loc: Located, cache: "public" | "private") => Promise<Response>,
-): Promise<Response> {
-  const loc = await locate(ctx);
-  const res = await serveFeedRead(
-    req,
-    ctx,
-    {
-      deliverableId: loc?.deliverable.id ?? null,
-      repository: ctx.params.repository!,
-      ...(opts.queryNames ? { queryNames: opts.queryNames } : {}),
-      ...(opts.cacheApi === false ? { cacheApi: false as const } : {}),
-    },
-    (cache) =>
+  compute: Compute,
+  check?: (res: Response, req: Request) => Promise<Response>,
+): RegistryRoute {
+  return feedRoute<Located | null>({
+    name,
+    ecosystem: "oci",
+    match: (p) => matchRepository(re, p),
+    resolve: (_req, ctx) => locate(ctx),
+    deliverableId: (_params, loc) => loc?.deliverable.id ?? null,
+    repository: (params) => params.repository!,
+    ...(opts.queryNames ? { queryNames: opts.queryNames } : {}),
+    ...(opts.cacheApi === false ? { cacheApi: false as const } : {}),
+    serve: (req, ctx, cache, loc) =>
       loc
-        ? compute(loc, cache)
+        ? compute(req, ctx, loc, cache)
         : Promise.resolve(ociError(404, "NAME_UNKNOWN")),
-  );
-  return withApiVersion(res);
+    finish: async (res, req) =>
+      withApiVersion(check ? await check(res, req) : res),
+  });
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -282,37 +293,39 @@ async function manifestTarget(
   return ref && hex !== undefined ? { hex, ref, byDigest: false } : null;
 }
 
-async function handleManifest(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
+const serveManifest: Compute = async (req, ctx, loc, cache) => {
   const reference = ctx.params.last!;
-  const res = await read(req, ctx, {}, async (loc, cache) => {
-    const bucket = ctx.env.BLOBS;
-    const target = await manifestTarget(ctx, loc, reference);
-    if (!target || !bucket) return ociError(404, "MANIFEST_UNKNOWN");
-    const key = blobKey(target.hex);
-    const obj =
-      req.method === "HEAD" ? await bucket.head(key) : await bucket.get(key);
-    const body = (obj as Partial<R2ObjectBody> | null)?.body ?? null;
-    if (!obj || checksumHex(obj) !== target.hex) {
-      await body?.cancel().catch(() => undefined);
-      return ociError(404, "MANIFEST_UNKNOWN");
-    }
-    return new Response(body, {
-      status: 200,
-      headers: {
-        "content-type": target.ref.mediaType,
-        "content-length": String(obj.size),
-        "docker-content-digest": `sha256:${target.hex}`,
-        ...registryCacheHeaders(
-          cache,
-          target.byDigest ? "immutable" : "index",
-          target.hex,
-        ),
-      },
-    });
+  const bucket = ctx.env.BLOBS;
+  const target = await manifestTarget(ctx, loc, reference);
+  if (!target || !bucket) return ociError(404, "MANIFEST_UNKNOWN");
+  const key = blobKey(target.hex);
+  const obj =
+    req.method === "HEAD" ? await bucket.head(key) : await bucket.get(key);
+  const body = (obj as Partial<R2ObjectBody> | null)?.body ?? null;
+  if (!obj || checksumHex(obj) !== target.hex) {
+    await body?.cancel().catch(() => undefined);
+    return ociError(404, "MANIFEST_UNKNOWN");
+  }
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": target.ref.mediaType,
+      "content-length": String(obj.size),
+      "docker-content-digest": `sha256:${target.hex}`,
+      ...registryCacheHeaders(
+        cache,
+        target.byDigest ? "immutable" : "index",
+        target.hex,
+      ),
+    },
   });
+};
+
+/** A cached or fresh manifest the client's `Accept` cannot take is `MANIFEST_UNKNOWN`. */
+async function checkManifestAccept(
+  res: Response,
+  req: Request,
+): Promise<Response> {
   if (res.status === 200) {
     const type = (res.headers.get("content-type") ?? "").toLowerCase();
     if (!acceptsManifest(req, type)) {
@@ -325,33 +338,28 @@ async function handleManifest(
 
 // ── blobs ────────────────────────────────────────────────────────────────────────────────────
 
-async function handleBlob(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
-  return read(req, ctx, { cacheApi: false }, async (loc, cache) => {
-    const hex = OCI_DIGEST_RE.exec(ctx.params.last!)?.[1];
-    const bucket = ctx.env.BLOBS;
-    if (hex === undefined || !bucket) return ociError(404, "BLOB_UNKNOWN");
-    const versions = await loc.catalog.packageVersions(loc.deliverable.id);
-    if (!versions.some((v) => v.files.some((f) => f.sha256 === hex)))
-      return ociError(404, "BLOB_UNKNOWN");
-    const res = await blobResponse(req, bucket, blobKey(hex), {
-      sha256: hex,
-      gated: cache === "private",
-      env: ctx.env,
-      filename: hex,
-    });
-    if (res.status === 404) {
-      await res.body?.cancel().catch(() => undefined);
-      return ociError(404, "BLOB_UNKNOWN");
-    }
-    const headers = new Headers(res.headers);
-    if (res.status === 200 || res.status === 206 || res.status === 304)
-      headers.set("docker-content-digest", `sha256:${hex}`);
-    return new Response(res.body, { status: res.status, headers });
+const serveBlob: Compute = async (req, ctx, loc, cache) => {
+  const hex = OCI_DIGEST_RE.exec(ctx.params.last!)?.[1];
+  const bucket = ctx.env.BLOBS;
+  if (hex === undefined || !bucket) return ociError(404, "BLOB_UNKNOWN");
+  const versions = await loc.catalog.packageVersions(loc.deliverable.id);
+  if (!versions.some((v) => v.files.some((f) => f.sha256 === hex)))
+    return ociError(404, "BLOB_UNKNOWN");
+  const res = await blobResponse(req, bucket, blobKey(hex), {
+    sha256: hex,
+    gated: cache === "private",
+    env: ctx.env,
+    filename: hex,
   });
-}
+  if (res.status === 404) {
+    await res.body?.cancel().catch(() => undefined);
+    return ociError(404, "BLOB_UNKNOWN");
+  }
+  const headers = new Headers(res.headers);
+  if (res.status === 200 || res.status === 206 || res.status === 304)
+    headers.set("docker-content-digest", `sha256:${hex}`);
+  return new Response(res.body, { status: res.status, headers });
+};
 
 // ── tags/list ────────────────────────────────────────────────────────────────────────────────
 
@@ -361,76 +369,48 @@ function pageSize(raw: string | null): number | null {
   return Math.min(Number(raw), MAX_TAGS_PAGE);
 }
 
-async function handleTags(
-  req: Request,
-  ctx: RegistryRouteContext,
-): Promise<Response> {
-  return read(req, ctx, { queryNames: ["n", "last"] }, async (loc, cache) => {
-    const pkg = await ociPackage(
-      loc.catalog,
-      ctx.product.slug,
-      loc.deliverable,
-    );
-    const stored = await renderedBody(ctx, pkg, tagsKey(pkg.name));
-    const url = new URL(req.url);
-    const n = pageSize(url.searchParams.get("n"));
-    const last = url.searchParams.get("last");
-    let body = stored;
-    const headers: Record<string, string> = {
-      "content-type": "application/json",
-    };
-    if (n !== null || last !== null) {
-      let list: OciTagList;
-      try {
-        list = JSON.parse(stored) as OciTagList;
-      } catch {
-        list = { name: ociName(pkg), tags: [] };
-      }
-      const after =
-        last === null ? list.tags : list.tags.filter((t) => t > last);
-      const page = n === null ? after : after.slice(0, n);
-      if (n !== null && n > 0 && after.length > n) {
-        const next = new URLSearchParams({
-          n: String(n),
-          last: page[page.length - 1]!,
-        });
-        headers.link = `<${url.pathname}?${next.toString()}>; rel="next"`;
-      }
-      body = `${JSON.stringify({ name: list.name, tags: page })}\n`;
+const serveTags: Compute = async (req, ctx, loc, cache) => {
+  const pkg = await ociPackage(loc.catalog, ctx.product.slug, loc.deliverable);
+  const stored = await renderedBody(ctx, pkg, tagsKey(pkg.name));
+  const url = new URL(req.url);
+  const n = pageSize(url.searchParams.get("n"));
+  const last = url.searchParams.get("last");
+  let body = stored;
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (n !== null || last !== null) {
+    let list: OciTagList;
+    try {
+      list = JSON.parse(stored) as OciTagList;
+    } catch {
+      list = { name: ociName(pkg), tags: [] };
     }
-    return new Response(req.method === "HEAD" ? null : body, {
-      status: 200,
-      headers: {
-        ...headers,
-        "content-length": String(new TextEncoder().encode(body).length),
-        ...registryCacheHeaders(cache, "index", await sha256Hex(body)),
-      },
-    });
+    const after = last === null ? list.tags : list.tags.filter((t) => t > last);
+    const page = n === null ? after : after.slice(0, n);
+    if (n !== null && n > 0 && after.length > n) {
+      const next = new URLSearchParams({
+        n: String(n),
+        last: page[page.length - 1]!,
+      });
+      headers.link = `<${url.pathname}?${next.toString()}>; rel="next"`;
+    }
+    body = `${JSON.stringify({ name: list.name, tags: page })}\n`;
+  }
+  return new Response(req.method === "HEAD" ? null : body, {
+    status: 200,
+    headers: {
+      ...headers,
+      "content-length": String(new TextEncoder().encode(body).length),
+      ...registryCacheHeaders(cache, "index", await sha256Hex(body)),
+    },
   });
-}
+};
 
 // ── The routes ───────────────────────────────────────────────────────────────────────────────
 
 export const OCI_ROUTES: readonly RegistryRoute[] = [
-  {
-    name: "oci.manifests",
-    service: "distribution",
-    ecosystem: "oci",
-    match: (p) => matchRepository(MANIFESTS, p),
-    handle: handleManifest,
-  },
-  {
-    name: "oci.blobs",
-    service: "distribution",
-    ecosystem: "oci",
-    match: (p) => matchRepository(BLOBS, p),
-    handle: handleBlob,
-  },
-  {
-    name: "oci.tags",
-    service: "distribution",
-    ecosystem: "oci",
-    match: (p) => matchRepository(TAGS, p),
-    handle: handleTags,
-  },
+  ociRoute("oci.manifests", MANIFESTS, {}, serveManifest, checkManifestAccept),
+  ociRoute("oci.blobs", BLOBS, { cacheApi: false }, serveBlob),
+  ociRoute("oci.tags", TAGS, { queryNames: ["n", "last"] }, serveTags),
 ];

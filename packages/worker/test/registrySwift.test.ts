@@ -53,7 +53,7 @@ import {
   normaliseRepositoryUrl,
   swiftAcceptRefusal,
 } from "../src/services/distribution/registry/swift/protocol.js";
-import { catalogPackageSource } from "../src/services/distribution/registry/swift/source.js";
+import { catalogPackageSource } from "../src/services/distribution/registry/catalogSource.js";
 import { SWIFT_RENDERER } from "../src/services/distribution/registry/swift/index.js";
 import { forgetRegistrySettings } from "../src/services/distribution/registry/settings.js";
 
@@ -498,7 +498,7 @@ async function rerender(): Promise<void> {
     {
       bucket: env.BLOBS!,
       renderers: new Map([["swift", SWIFT_RENDERER]]),
-      source: catalogPackageSource(catalog, "swift", (n) => n.toLowerCase()),
+      source: catalogPackageSource(catalog, SLUG, "swift"),
       origin: PKG,
     },
     SLUG,

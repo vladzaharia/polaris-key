@@ -11,7 +11,7 @@
  * route; a name under another scope, an unknown name, an unknown version and a missing object
  * all answer the host's one not-found.
  *
- * EVERY READ GOES THROUGH `serveFeedRead`, so the access ladder runs before the Cache API and a
+ * EVERY READ GOES THROUGH `serveFeedRead` (each route is built by `feedRoute`), so the access ladder runs before the Cache API and a
  * refusal is the not-found or npm's native `401` with `WWW-Authenticate: Basic` (tier 1).
  *
  * NEGOTIATION. The packument is the abbreviated document (`application/vnd.npm.install-v1+json`)
@@ -43,7 +43,7 @@ import {
   freshRegistryObject,
 } from "../catalogSource.js";
 import type { RegistryRenderer } from "../materialise.js";
-import { serveFeedRead } from "../serve.js";
+import { feedRoute } from "../serve.js";
 import { cachedRegistrySettings, d1RegistrySettings } from "../settings.js";
 import {
   NPM_ABBREVIATED_TYPE,
@@ -143,101 +143,84 @@ async function lookup(
   return decl ? { catalog, deliverableId: decl.id } : null;
 }
 
+/** What a packument or tarball request names, looked up before the ladder. */
+type NpmRead = { catalog: ReleaseCatalog; deliverableId: string } | null;
+
 /** The packument route, given the renderer whose documents it serves. */
 function packumentRoute(renderer: () => RegistryRenderer): RegistryRoute {
-  return {
+  return feedRoute<NpmRead>({
     name: "npm.packument",
-    service: "distribution",
     ecosystem: "npm",
     match: matchPackument,
-    async handle(req, ctx) {
+    resolve: (_req, ctx) => lookup(ctx, ctx.params.name!),
+    deliverableId: (_params, found) => found?.deliverableId ?? null,
+    async serve(req, ctx, cache, found) {
       const name = ctx.params.name!;
-      const found = await lookup(ctx, name);
-      return serveFeedRead(
-        req,
-        ctx,
-        { deliverableId: found?.deliverableId ?? null },
-        async (cache) => {
-          const origin = registryOrigin(ctx.env);
-          if (!found || origin === null || !(await inFeedScope(ctx, name)))
-            return registryNotFound("npm");
-          const pkg = await catalogPackageSource(
-            found.catalog,
-            ctx.product.slug,
-          ).package(ctx.product.slug, found.deliverableId);
-          if (!pkg || pkg.ecosystem !== "npm") return registryNotFound("npm");
-          const res = await freshRegistryObject(
-            {
-              bucket: ctx.env.BLOBS,
-              renderer: renderer(),
-              origin,
-              ...(ctx.waitUntil ? { waitUntil: ctx.waitUntil } : {}),
-            },
-            pkg,
-            packumentKey(
-              pkg.nameNorm,
-              wantsAbbreviated(req.headers.get("accept")),
-            ),
-            cache,
-          );
-          if (!res) return registryNotFound("npm");
-          res.headers.set("vary", "Accept");
-          return res;
+      const origin = registryOrigin(ctx.env);
+      if (!found || origin === null || !(await inFeedScope(ctx, name)))
+        return registryNotFound("npm");
+      const pkg = await catalogPackageSource(
+        found.catalog,
+        ctx.product.slug,
+      ).package(ctx.product.slug, found.deliverableId);
+      if (!pkg || pkg.ecosystem !== "npm") return registryNotFound("npm");
+      const res = await freshRegistryObject(
+        {
+          bucket: ctx.env.BLOBS,
+          renderer: renderer(),
+          origin,
+          ...(ctx.waitUntil ? { waitUntil: ctx.waitUntil } : {}),
         },
+        pkg,
+        packumentKey(pkg.nameNorm, wantsAbbreviated(req.headers.get("accept"))),
+        cache,
       );
+      if (!res) return registryNotFound("npm");
+      res.headers.set("vary", "Accept");
+      return res;
     },
-  };
+  });
 }
 
 /** The tarball route. */
-const tarballRoute: RegistryRoute = {
+const tarballRoute: RegistryRoute = feedRoute<NpmRead>({
   name: "npm.tarball",
-  service: "distribution",
   ecosystem: "npm",
   match: matchTarball,
-  async handle(req, ctx) {
+  resolve: (_req, ctx) => lookup(ctx, ctx.params.name!),
+  deliverableId: (_params, found) => found?.deliverableId ?? null,
+  async serve(req, ctx, cache, found) {
     const name = ctx.params.name!;
     const file = ctx.params.file!;
-    const found = await lookup(ctx, name);
-    return serveFeedRead(
-      req,
-      ctx,
-      { deliverableId: found?.deliverableId ?? null },
-      async (cache) => {
-        const bucket = ctx.env.BLOBS;
-        if (!found || !bucket || !(await inFeedScope(ctx, name)))
-          return registryNotFound("npm");
-        const versions = await found.catalog.packageVersions(
-          found.deliverableId,
-        );
-        const version = versions.find(
-          (v) =>
-            v.ecosystem === "npm" &&
-            tarballFileName(v.name, v.version) === file,
-        );
-        const tarball = version && tarballOf(version);
-        if (!tarball) return registryNotFound("npm");
-        const key = blobKey(tarball.sha256);
-        const headers = {
-          "content-type": "application/octet-stream",
-          "content-disposition": `attachment; filename="${file.replace(/["\\]/g, "")}"`,
-          ...registryCacheHeaders(cache, "immutable", tarball.sha256),
-        };
-        if (req.method === "HEAD") {
-          const head = await bucket.head(key);
-          if (!head) return registryNotFound("npm");
-          return new Response(null, {
-            status: 200,
-            headers: { ...headers, "content-length": String(head.size) },
-          });
-        }
-        const obj = await bucket.get(key);
-        if (!obj) return registryNotFound("npm");
-        return new Response(obj.body, { status: 200, headers });
-      },
+    const bucket = ctx.env.BLOBS;
+    if (!found || !bucket || !(await inFeedScope(ctx, name)))
+      return registryNotFound("npm");
+    const versions = await found.catalog.packageVersions(found.deliverableId);
+    const version = versions.find(
+      (v) =>
+        v.ecosystem === "npm" && tarballFileName(v.name, v.version) === file,
     );
+    const tarball = version && tarballOf(version);
+    if (!tarball) return registryNotFound("npm");
+    const key = blobKey(tarball.sha256);
+    const headers = {
+      "content-type": "application/octet-stream",
+      "content-disposition": `attachment; filename="${file.replace(/["\\]/g, "")}"`,
+      ...registryCacheHeaders(cache, "immutable", tarball.sha256),
+    };
+    if (req.method === "HEAD") {
+      const head = await bucket.head(key);
+      if (!head) return registryNotFound("npm");
+      return new Response(null, {
+        status: 200,
+        headers: { ...headers, "content-length": String(head.size) },
+      });
+    }
+    const obj = await bucket.get(key);
+    if (!obj) return registryNotFound("npm");
+    return new Response(obj.body, { status: 200, headers });
   },
-};
+});
 
 /** The npm feed's routes, given its renderer (late-bound: the renderer lists these routes). */
 export function npmRoutes(renderer: () => RegistryRenderer): RegistryRoute[] {

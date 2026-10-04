@@ -158,7 +158,9 @@ export function feedRoute<S = undefined>(def: FeedRouteDef<S>): RegistryRoute {
     ...(def.inertDocument ? { inertDocument: true as const } : {}),
     match: (p) => def.match(p),
     handle: async (req, ctx) => {
-      const state = (def.resolve ? await def.resolve(req, ctx) : undefined) as S;
+      const state = (
+        def.resolve ? await def.resolve(req, ctx) : undefined
+      ) as S;
       const repo = def.repository?.(ctx.params, state);
       const res = await serveFeedRead(
         def.cacheRequest ? def.cacheRequest(req) : req,
