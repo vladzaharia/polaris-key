@@ -4273,7 +4273,7 @@
       "optional": false,
       "refs": ["notes/S-12 §10.1", "plans/F-01.md §6.9"],
       "brief": "wp/F-12-console-feed-settings.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-20",

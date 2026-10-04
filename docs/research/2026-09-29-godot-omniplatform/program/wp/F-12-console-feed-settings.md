@@ -73,7 +73,7 @@ use the client's strict router ([S-12 §8.3](../../notes/S-12-package-feeds.md#8
 
 - [x] The CLI and console snippets are byte-identical for the same input (one shared test).
 - [x] Each panel saves its own `ext_json` or `namespace_json` with `expectedVersion`.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
@@ -96,7 +96,8 @@ shape, corpus, migration, route or `PROTOCOL_VERSION` changes.
    `test/feedAdapters.test.ts` checks the identity, the feed path and the base URL against the
    adapter. A template reads its inputs only through the declared list (an undeclared read
    throws), so the declaration still drives the render. Maven gained `owner` as an input (its
-   Gradle repository name and Maven server id).
+   Gradle repository name and Maven server id), and PyPI `namespace.names` (a feed with exactly
+   one project name shows it instead of `<package>`).
 2. **The namespace "panels" were already F-11's Namespace section.** npm scope, PyPI names and
    prefixes, Maven group prefixes and the Godot publisher are `namespace_json`, edited by F-11's
    common Namespace section. F-12 did not duplicate them in `FEED_PANELS`; it rewrote that section
