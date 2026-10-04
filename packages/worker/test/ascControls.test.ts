@@ -167,6 +167,7 @@ describe("release a held version", () => {
     const w = await seeded();
     const res = await admin(w, "POST", "/distribution/connectors/asc/release", {
       releaseId: "v1.1.0",
+      confirm: "djdl",
     });
     expect(res.status).toBe(200);
     expect(
@@ -211,10 +212,44 @@ describe("release a held version", () => {
     const w = await seeded();
     const res = await admin(w, "POST", "/distribution/connectors/asc/release", {
       releaseId: "v1.0.0",
+      confirm: "djdl",
     });
     expect(res.status).toBe(409);
     expect(((await res.json()) as { reason: string }).reason).toBe("not_held");
     expect(w.fake.writes()).toEqual([]);
+  });
+});
+
+describe("release takes a typed confirmation (A-17a)", () => {
+  it("refuses without confirm, before any request to Apple", async () => {
+    const w = await seeded();
+    const res = await admin(w, "POST", "/distribution/connectors/asc/release", {
+      releaseId: "v1.1.0",
+    });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({
+      reason: "confirmation_required",
+      fields: ["confirm"],
+    });
+    expect(w.fake.requests).toEqual([]);
+    expect(await controlAudits(w)).toEqual([]);
+  });
+
+  it("refuses a confirm that is not the app's name in App Store Connect, sending no write", async () => {
+    const w = await seeded();
+    const res = await admin(w, "POST", "/distribution/connectors/asc/release", {
+      releaseId: "v1.1.0",
+      confirm: "DJDL!",
+    });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { reason: string }).reason).toBe(
+      "confirmation_mismatch",
+    );
+    expect(w.fake.writes()).toEqual([]);
+    expect(w.fake.requests.some((r) => r.path === "/v1/apps/1234567890")).toBe(
+      true,
+    );
+    expect(await controlAudits(w)).toEqual([]);
   });
 });
 
@@ -504,7 +539,7 @@ describe("version controls prove the version is this app's before writing", () =
         w,
         "POST",
         `/distribution/connectors/asc/${control}`,
-        { releaseId: "v1.1.0" },
+        { releaseId: "v1.1.0", confirm: "djdl" },
       );
       expect(res.status).toBe(404);
       expect(((await res.json()) as { reason: string }).reason).toBe(
@@ -537,7 +572,7 @@ describe("version controls prove the version is this app's before writing", () =
         w,
         "POST",
         `/distribution/connectors/asc/${control}`,
-        { releaseId: "v1.1.0" },
+        { releaseId: "v1.1.0", confirm: "djdl" },
       );
       expect(res.status).toBe(404);
       expect(((await res.json()) as { reason: string }).reason).toBe(

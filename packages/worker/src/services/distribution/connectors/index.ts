@@ -24,7 +24,7 @@ import type { Db, Env } from "../../../core/platform.js";
 import type { ProductPublic } from "../../../core/products.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { ServiceContext } from "../../../core/registry.js";
-import type { FetchImpl } from "./asc/client.js";
+import type { FetchImpl } from "../../../core/asc/client.js";
 import type { ConnectorControl } from "./asc/controls.js";
 import { ascConnector } from "./asc/index.js";
 import { msStoreConnector } from "./msstore/index.js";

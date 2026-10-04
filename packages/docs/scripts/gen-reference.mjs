@@ -345,6 +345,7 @@ const TABLE_OWNERS = {
     "platform_settings",
     "platform_job_runs",
     "platform_heartbeats",
+    "asc_operations",
   ],
   license: [
     "licenses",

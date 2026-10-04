@@ -33,8 +33,8 @@ import {
   ascPath,
   backoffMillis,
   parseRateLimit,
-} from "../src/services/distribution/connectors/asc/client.js";
-import { pollBudget } from "../src/services/distribution/connectors/asc/run.js";
+} from "../src/core/asc/client.js";
+import { pollBudget } from "../src/core/asc/budget.js";
 
 describe("app version states", () => {
   it("READY_FOR_SALE (legacy) and READY_FOR_DISTRIBUTION both yield live", () => {

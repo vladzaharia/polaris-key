@@ -30,7 +30,7 @@ import {
   AscError,
   ascPath,
   MAX_RESPONSE_BYTES as ASC_MAX,
-} from "../src/services/distribution/connectors/asc/client.js";
+} from "../src/core/asc/client.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
   GoogleApiClient,
@@ -155,8 +155,16 @@ describe("App Store Connect client", () => {
     const seen: RequestInit[] = [];
     const c = asc(loopback(seen));
     await c.get(ascPath("apps", "a1"));
-    await c.patch(ascPath("apps", "a1"), { data: {} });
-    await c.post(ascPath("apps"), { data: {} });
+    // Writes the gate admits (core/asc/writeGate.ts); a refused one never reaches fetch.
+    await c.patch(ascPath("betaGroups", "g1"), {
+      data: { type: "betaGroups", id: "g1", attributes: { name: "QA" } },
+    });
+    await c.post(ascPath("webhookPings"), {
+      data: {
+        type: "webhookPings",
+        relationships: { webhook: { data: { type: "webhooks", id: "w1" } } },
+      },
+    });
     expect(seen.map((i) => i.redirect)).toEqual(["manual", "manual", "manual"]);
   });
 
