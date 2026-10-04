@@ -24,11 +24,11 @@ import {
   checkAscRequest,
   GATE_CAPABILITY_TYPES,
   type AscGateContext,
-} from "../src/core/asc/writeGate.js";
+} from "../src/core/storefront/rules/appStore.js";
 import {
   ASC_DENY_REASONS,
   ASC_WRITE_DENIED,
-} from "../src/core/asc/writeGateDenied.js";
+} from "../src/core/storefront/rules/appStoreDenied.js";
 import {
   AscClient,
   AscError,
@@ -107,7 +107,7 @@ describe("every write operation is classified", () => {
     }
     expect(
       unclassified,
-      "classify these in writeGate.ts or writeGateDenied.ts",
+      "classify these in rules/appStore.ts or rules/appStoreDenied.ts",
     ).toEqual([]);
     expect(twice).toEqual([]);
   });
@@ -623,6 +623,96 @@ describe("confirmation levels", () => {
     expect(
       denial("PATCH", p, phased("INACTIVE"), { typedConfirmation: true }),
     ).toBe("value_not_allowed");
+  });
+
+  it("creating a phased release ACTIVE is typed; INACTIVE or unset is not (A-18a)", () => {
+    const p = "/v1/appStoreVersionPhasedReleases";
+    const create = (attributes: Record<string, unknown>) => ({
+      data: {
+        type: "appStoreVersionPhasedReleases",
+        attributes,
+        relationships: {
+          appStoreVersion: { data: { type: "appStoreVersions", id: "V1" } },
+        },
+      },
+    });
+    expect(denial("POST", p, create({ phasedReleaseState: "ACTIVE" }))).toBe(
+      "typed_confirmation_required",
+    );
+    expect(
+      denial("POST", p, create({ phasedReleaseState: "ACTIVE" }), {
+        initial: true,
+      }),
+    ).toBe("typed_confirmation_required");
+    expect(
+      denial("POST", p, create({ phasedReleaseState: "ACTIVE" }), {
+        typedConfirmation: true,
+      }),
+    ).toBeNull();
+    expect(
+      denial("POST", p, create({ phasedReleaseState: "INACTIVE" })),
+    ).toBeNull();
+    expect(denial("POST", p, create({ phasedReleaseState: null }))).toBeNull();
+    expect(denial("POST", p, create({}))).toBeNull();
+    expect(
+      denial("POST", p, create({ phasedReleaseState: "COMPLETE" }), {
+        typedConfirmation: true,
+      }),
+    ).toBe("value_not_allowed");
+  });
+
+  it("a release type that auto-releases is typed once the version is in or after review (A-18a)", () => {
+    const p = "/v1/appStoreVersions/V1";
+    const patch = (attributes: Record<string, unknown>) => ({
+      data: { type: "appStoreVersions", id: "V1", attributes },
+    });
+    const auto = [
+      { releaseType: "AFTER_APPROVAL" },
+      { releaseType: "SCHEDULED", earliestReleaseDate: "2026-11-01T10:00:00Z" },
+      { earliestReleaseDate: "2026-11-01T10:00:00Z" },
+      { releaseType: "SOMETHING_NEW" },
+    ];
+    for (const state of [
+      "WAITING_FOR_REVIEW",
+      "IN_REVIEW",
+      "PENDING_DEVELOPER_RELEASE",
+      "READY_FOR_SALE",
+      undefined, // no state asserted: treated as in review
+    ])
+      for (const attributes of auto) {
+        const ctx = state === undefined ? {} : { resourceState: state };
+        expect(denial("PATCH", p, patch(attributes), ctx)).toBe(
+          "typed_confirmation_required",
+        );
+        expect(
+          denial("PATCH", p, patch(attributes), {
+            ...ctx,
+            typedConfirmation: true,
+          }),
+        ).toBeNull();
+      }
+    // Before review it is a setting: plain.
+    for (const state of [
+      "PREPARE_FOR_SUBMISSION",
+      "READY_FOR_REVIEW",
+      "DEVELOPER_REJECTED",
+      "REJECTED",
+      "METADATA_REJECTED",
+      "INVALID_BINARY",
+    ])
+      for (const attributes of auto)
+        expect(
+          denial("PATCH", p, patch(attributes), { resourceState: state }),
+        ).toBeNull();
+    // MANUAL, and edits that carry no release type, stay plain in any state.
+    for (const attributes of [
+      { releaseType: "MANUAL" },
+      { releaseType: "MANUAL", earliestReleaseDate: null },
+      { copyright: "2026 Acme" },
+    ])
+      expect(
+        denial("PATCH", p, patch(attributes), { resourceState: "IN_REVIEW" }),
+      ).toBeNull();
   });
 
   it("every IAP availability write is typed, an empty territory list included (owner decision (c))", () => {

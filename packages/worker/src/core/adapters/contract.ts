@@ -6,11 +6,12 @@
  *   - `FeedAdapter` (`services/distribution/registry/adapter.ts`): one per package ecosystem on
  *     the registry host. The gate is the access ladder (`feedRoute`), the ledger the render queue
  *     and its stamps;
- *   - `StorefrontAdapter` (A-18a, planned): one per store. The gate is the store-agnostic write
- *     gate, the ledger `store_operations`.
+ *   - `StorefrontAdapter` (`core/storefront/adapter.ts`, A-18a): one per store. The gate is the
+ *     store-agnostic write gate (`core/storefront/gate.ts`), the ledger `store_operations`.
  *
  * Types only: no behaviour lives here, so Core and every service can share it (rule 6 allows
- * service → core). A-18a extends the storefront side; the shapes below are S-15's sketch.
+ * service → core). The shapes below are S-15's sketch; `test/storefront/conformance.test.ts` holds
+ * every adapter of either family to them.
  */
 
 /** Where an operation runs. */

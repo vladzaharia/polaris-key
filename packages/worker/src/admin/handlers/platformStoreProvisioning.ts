@@ -21,7 +21,7 @@
  *        The app record with that bundle id, or `found: false` (the wizard polls it while the
  *        operator creates the record in the portal: `POST /v1/apps` does not exist). `poll=1` is
  *        background spending: refused with 429 `asc_budget_low` below 20 % of the team key's
- *        hourly budget, which the P5-02 poller shares (core/asc/budget.ts).
+ *        hourly budget, which the P5-02 poller shares (core/storefront/budget.ts).
  *   GET  …/signing
  *        Certificates and profiles with their expiry: READ only (no create, revoke or delete
  *        exists on this surface, and the write gate refuses them all).
@@ -46,13 +46,13 @@ import {
 import {
   isIdempotencyKey,
   listStoreOperations,
-  type AscWriteResult,
-} from "../../core/asc/ledger.js";
+  type StoreWriteResult,
+} from "../../core/storefront/ledger.js";
 import {
   budgetAllows,
   readRate,
   recordTeamRate,
-} from "../../core/asc/budget.js";
+} from "../../core/storefront/budget.js";
 import {
   appView,
   BUNDLE_PLATFORMS,
@@ -173,13 +173,13 @@ async function withClient(
     if (mapped) return mapped;
     throw e;
   } finally {
-    await recordTeamRate(c.env, client.lastRate, c.now);
+    await recordTeamRate(c.env, "app-store", client.lastRate, c.now);
   }
 }
 
 /** Apple's or the gate's refusal as an admin response (a status line and Apple's code only). */
 function ascFailure(e: unknown, extra: Record<string, unknown> = {}) {
-  // The write gate refused before anything was minted or sent (core/asc/writeGate.ts).
+  // The write gate refused before anything was minted or sent (core/storefront/rules/appStore.ts).
   if (e instanceof AscWriteDenied)
     return err(409, "write_denied", e.message, { reason: e.reason, ...extra });
   if (e instanceof AscError) {
@@ -206,7 +206,7 @@ function idempotencyKeyOf(req: Request): string | Response {
 }
 
 /** One step's result in the shape every write answers. */
-function stepView(r: Exclude<AscWriteResult, { outcome: "conflict" }>) {
+function stepView(r: Exclude<StoreWriteResult, { outcome: "conflict" }>) {
   if (r.outcome === "replayed")
     return {
       outcome: "replayed" as const,
@@ -470,7 +470,13 @@ async function lookup(c: ProvisioningContext): Promise<Response> {
     });
   // The wizard's every-10-seconds detection is background spending: it yields to the pollers.
   if (/^(1|true)$/.test(q.get("poll") ?? "")) {
-    const rate = await readRate(c.env, "", { source: "platform" }, c.now);
+    const rate = await readRate(
+      c.env,
+      "app-store",
+      "",
+      { source: "platform" },
+      c.now,
+    );
     if (!budgetAllows(rate, "background"))
       return err(
         429,

@@ -759,8 +759,12 @@ async function handleConnectorsAdmin(
     origin: url.origin,
     idempotencyKey: req.headers.get("Idempotency-Key"),
   };
-  const read = connector.reads?.[path];
-  const control = connector.controls[path];
+  // Own keys only: a path such as `constructor` or `__proto__` must not reach a prototype member.
+  const reads = connector.reads;
+  const read = reads && Object.hasOwn(reads, path) ? reads[path] : undefined;
+  const control = Object.hasOwn(connector.controls, path)
+    ? connector.controls[path]
+    : undefined;
   if (!read && !control) return adminNotFound();
   const result =
     req.method === "GET" && read
