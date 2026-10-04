@@ -111,7 +111,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## P4: Packs
 
-28 work packages, 33.25–44.25 weeks.
+31 work packages, 35.25–47.25 weeks.
 
 | Id                                                   | Title                                                                                                                                                   | Depends on                               | Role           | Weeks     | Status |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | --------- | ------ |
@@ -143,6 +143,9 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-26](wp/P4-26-delegation-godot.md) ⚑              | Content-key delegation in Godot                                                                                                                         | P4-19, P4-24                             | godot-engineer | 0.5–0.75  | done   |
 | [P4-27](wp/P4-27-rscc-scan.md)                       | Scan compressed (RSCC) resources in packs so imported models are admitted                                                                               | P4-08, P4-22                             | godot-engineer | 0.5–0.75  | done   |
 | [P4-28](wp/P4-28-script-attach-allowlist.md)         | Script attachment allow-list and publish script-kind settings                                                                                           | P4-08                                    | godot-engineer | 0.5–1     | done   |
+| [P4-29](wp/P4-29-feed-delta-menu.md) ⚑               | The feed's delta menu: offer lazy deltas in the signed feed, read them in every SDK's planner                                                           | P4-17, P4-13, P4-18                      | implementer    | 1–1.5     | todo   |
+| [P4-30](wp/P4-30-feed-delta-menu-python-swift.md) ⚑  | Feed delta menu in Python and Swift                                                                                                                     | P4-29                                    | sdk-porter     | 0.5–0.75  | todo   |
+| [P4-31](wp/P4-31-feed-delta-menu-godot.md) ⚑         | Feed delta menu in Godot                                                                                                                                | P4-29                                    | godot-engineer | 0.5–0.75  | todo   |
 
 ## P5: Distribution connectors and native plugins
 
@@ -235,6 +238,9 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [P4-24](wp/P4-24-content-decision-godot.md)        | `plans/P4-13.md` (shared with P4-13) | godot-engineer |
 | [P4-25](wp/P4-25-delegation-python-swift.md)       | `plans/P4-19.md` (shared with P4-19) | sdk-porter     |
 | [P4-26](wp/P4-26-delegation-godot.md)              | `plans/P4-19.md` (shared with P4-19) | godot-engineer |
+| [P4-29](wp/P4-29-feed-delta-menu.md)               | `plans/P4-29.md`                     | implementer    |
+| [P4-30](wp/P4-30-feed-delta-menu-python-swift.md)  | `plans/P4-29.md` (shared with P4-29) | sdk-porter     |
+| [P4-31](wp/P4-31-feed-delta-menu-godot.md)         | `plans/P4-29.md` (shared with P4-29) | godot-engineer |
 
 ## Human inputs
 

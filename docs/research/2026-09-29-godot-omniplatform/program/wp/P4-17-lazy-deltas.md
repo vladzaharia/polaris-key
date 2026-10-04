@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v3)                                                                                                                                            |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                      |
 | Depends on  | [P4-22](P4-22-ci-chunk-indexes.md), [P3-03](P3-03-feed-composition.md), [S-08](S-08-cloudflare-async-compute.md)                                          |
-| Unblocks    | none                                                                                                                                                      |
+| Unblocks    | [P4-29](P4-29-feed-delta-menu.md)                                                                                                                         |
 | Role        | `pkey-implementer`                                                                                                                                        |
 | Plan mode   | no: lazy deltas use the existing `pkey-patch/1` descriptor and the feed's delta menu                                                                      |
 | Gates       | none in the graph; in practice a migration (`TABLE_OWNERS`), new `wrangler.toml` bindings (workerd smoke job) and a threat-model note                     |

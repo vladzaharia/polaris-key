@@ -111,3 +111,7 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-19.md`](../plans/P4-19.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Plan amendments (P4-29)
+
+The approved [`plans/P4-29.md`](../plans/P4-29.md) adds the parity feature `packs.delta.feed` (the feed's delta menu: `feedContent`'s `deltas`, `withFeedDeltas`, at most one feed-offered delta per install, journal `feedDelta`), proved by `cases.json#feedContentCases`, `plan-matrix.json#feedDeltaCases` and `content/cases.json#feedDeltaApplyCases`. The Kotlin `parity.json` lists it like every other feature; its §2.4 and §5 override this brief where they differ.
