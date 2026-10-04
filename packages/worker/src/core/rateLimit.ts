@@ -96,6 +96,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // signature, audience and publisher policy, so no outsider can spend it).
   ciPublishToken: "closed",
   ciPublishTokenProduct: "closed",
+  // F-10 automation: the deploy hook (`POST /webhooks/deploy`), per client IP, before the OIDC
+  // token is checked. A refused call fails the deploy job's registration step, which is rerun.
+  deployHook: "closed",
   // P5-02: App Store Connect webhook deliveries, per product, counted BEFORE the webhook secret
   // is opened. Every open is an audit row and a D1 write (P5-01), so with the limiter gone an
   // unsigned flood would become a write amplifier. A refused delivery is lost (Apple does not

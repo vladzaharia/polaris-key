@@ -49,6 +49,7 @@ const NARRATIVE_ONLY = new Set([
   "portalDownload",
   "products",
   "githubWebhook",
+  "deployHook",
   "docs",
   "notFound",
 ]);

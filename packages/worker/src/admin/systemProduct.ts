@@ -14,11 +14,22 @@
  * operator's later settings alone (a service or `packageFeeds` switched off stays off); it
  * fills in any missing feed row and queues a full render.
  *
+ * `linkSystemProduct` is the other half (F-10 automation, owner decision 2026-10-04): it links the
+ * system product to the monorepo that ships the platform's SDKs and applies that repository's
+ * root `.pkey/` (its package deliverables and its trusted publisher), which `linkRepo` refuses
+ * for the reserved slug and `resyncRepo` cannot reach (it needs `release_source = 'github'`, which
+ * the bootstrap never set). Without it every package publish is refused as `invalid_descriptor`.
+ * The deploy hook (`src/platformDeploy.ts`, `POST /webhooks/deploy`) runs both on every production
+ * deploy; both are idempotent.
+ *
  * This lives in the admin layer, beside the manual create it mirrors: it writes Core's product
  * rows and Distribution's feed rows in one batch, which Core itself may not (rule 6).
  */
 
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import {
+  SYSTEM_PRODUCT_SLUG,
+  type ParsedManifest,
+} from "@polaris-key/manifest";
 import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../keyvault.js";
@@ -29,6 +40,16 @@ import {
   stmtInsertSchema,
 } from "../repo.js";
 import { parseServices, serializeServices } from "../core/services.js";
+import type { ManifestIngest } from "../core/registry.js";
+import {
+  getPublisherPolicy,
+  manifestPublisherChanged,
+  stmtDeleteManifestPublisher,
+  stmtUpsertManifestPublisher,
+} from "../core/publisher.js";
+import { stmtInsertReleaseConfig } from "../repo.js";
+import { manifestDeliverableStatements } from "../services/release/deliverables.js";
+import { isSafeBinaryName } from "../services/release/install.js";
 import { stmtEnqueuePackageRender, RENDER_ALL } from "../core/registryQueue.js";
 import {
   stmtEnsureFeed,
@@ -143,4 +164,175 @@ export async function ensureSystemProduct(
   );
   await db.batch(stmts);
   return { ok: true, created: !existing, slug };
+}
+
+/** The repository the system product is linked to: the platform's own monorepo. */
+export interface SystemRepository {
+  /** `owner/repo` as GitHub spells it. */
+  repository: string;
+  /** GitHub's NUMERIC ids, pinned against name recycling (as `ci_publishers` pins them). */
+  repositoryId: number;
+  repositoryOwnerId: number;
+}
+
+export type LinkSystemProduct =
+  | {
+      ok: true;
+      slug: string;
+      /** The package deliverable ids the manifest declares, now in `release_deliverables`. */
+      packages: string[];
+      /** What the manifest-owned trusted publisher now is (`null`: none declared). */
+      publisher: { workflow: string; environment: string } | null;
+      /** An operator claimed the publisher (`source = 'admin'`): it was left exactly as set. */
+      publisherClaimed: boolean;
+      /** Whether this run changed the manifest-owned publisher. */
+      publisherChanged: boolean;
+    }
+  | {
+      ok: false;
+      reason: "not_bootstrapped" | "wrong_manifest";
+      message: string;
+    };
+
+/**
+ * Why `manifest` is not the system product's root `.pkey/` for `repo`, or `null` when it is: the
+ * slug must be the system product's, and `.pkey/release` must exist and name `repo` as its GitHub
+ * provider. Checked by the deploy hook before anything is written, and again by the link.
+ */
+export function systemManifestProblem(
+  manifest: ParsedManifest,
+  repo: Pick<SystemRepository, "repository">,
+): string | null {
+  const slug = SYSTEM_PRODUCT_SLUG;
+  if (manifest.product.slug !== slug)
+    return `the manifest is ${manifest.product.slug}'s, not the system product's (${slug})`;
+  const rel = manifest.release;
+  if (!rel) return "the manifest has no .pkey/release";
+  const [owner, name] = repo.repository.split("/");
+  if (
+    !owner ||
+    !name ||
+    rel.ghOwner.toLowerCase() !== owner.toLowerCase() ||
+    rel.ghRepo.toLowerCase() !== name.toLowerCase()
+  )
+    return `.pkey/release names ${rel.ghOwner}/${rel.ghRepo}, not the platform repository ${repo.repository}`;
+  if (!isSafeBinaryName(rel.binaryName || name))
+    return `unsafe binary name ${JSON.stringify(rel.binaryName || name)}`;
+  return null;
+}
+
+/**
+ * Link the system product to `repo` and apply its root `.pkey/` (already parsed and validated by
+ * the caller). Idempotent, one batch:
+ *
+ *   - `release_source = 'github'` and `release_config`'s GitHub coordinates (an existing row keeps
+ *     its installation id and every other column: only the coordinates are re-asserted);
+ *   - the declared deliverables (`manifestDeliverableStatements`, the same rows link and resync
+ *     write; a package with releases is never dropped);
+ *   - the manifest-owned trusted publisher, with the repository's numeric ids from `repo` (never
+ *     from the manifest), and never over an operator's claim;
+ *   - every ENABLED service's own manifest rows (`ingest`), by the product's STORED enablement, so
+ *     a service an operator switched off is not rewritten.
+ *
+ * It never touches the services, `packageFeeds`, the feeds, the signing key or the catalog:
+ * those are the bootstrap's (and then the operator's).
+ */
+export async function linkSystemProduct(
+  db: Db,
+  manifest: ParsedManifest,
+  repo: SystemRepository,
+  now: number,
+  ingest?: ManifestIngest,
+): Promise<LinkSystemProduct> {
+  const slug = SYSTEM_PRODUCT_SLUG;
+  const product = await getProduct(db, slug);
+  if (!product || product.system !== 1)
+    return {
+      ok: false,
+      reason: "not_bootstrapped",
+      message: `${slug} is not the system product yet; run the package-feeds bootstrap first`,
+    };
+  const problem = systemManifestProblem(manifest, repo);
+  if (problem) return { ok: false, reason: "wrong_manifest", message: problem };
+  const rel = manifest.release!;
+  const [owner, name] = repo.repository.split("/") as [string, string];
+  const binaryName = rel.binaryName || name;
+
+  const stmts: DbStatement[] = [
+    {
+      sql: `UPDATE products SET release_source = 'github', modified_at = ?
+             WHERE slug = ? AND system = 1`,
+      params: [now, slug],
+    },
+  ];
+  const config = stmtInsertReleaseConfig({
+    product: slug,
+    ghOwner: owner,
+    ghRepo: name,
+    ghInstallationId: null,
+    channelWorkflow: rel.channelWorkflow || null,
+    betaBranch: rel.betaBranch || "main",
+    binaryName,
+    sparkleEd25519Pub: rel.sparkleEd25519Pub || null,
+    summaryMarker: rel.summaryMarker || "pkey:summary",
+    metadataAccess: rel.access.metadata,
+    artifactsAccess: rel.access.artifacts,
+    accessSource: "manifest",
+    stableTagPattern: rel.stableTagPattern,
+    ignoreTagsJson: rel.ignoreTags.length
+      ? JSON.stringify(rel.ignoreTags)
+      : null,
+  });
+  stmts.push({
+    sql: `${config.sql}
+          ON CONFLICT(product) DO UPDATE SET
+            gh_owner = excluded.gh_owner,
+            gh_repo = excluded.gh_repo`,
+    params: config.params,
+  });
+  stmts.push(
+    ...manifestDeliverableStatements(
+      slug,
+      rel.app,
+      now,
+      rel.packDeliverables,
+      rel.packageDeliverables,
+    ),
+  );
+
+  const current = await getPublisherPolicy(db, slug);
+  const claimed = current?.source === "admin";
+  const declared = rel.trustedPublisher ?? null;
+  const next = declared
+    ? {
+        repositoryId: repo.repositoryId,
+        repositoryOwnerId: repo.repositoryOwnerId,
+        repository: repo.repository,
+        workflow: declared.workflow,
+        environment: declared.environment,
+      }
+    : null;
+  const publisherChanged = !claimed && manifestPublisherChanged(current, next);
+  if (!claimed)
+    stmts.push(
+      next
+        ? stmtUpsertManifestPublisher({ product: slug, ...next, now })
+        : stmtDeleteManifestPublisher(slug),
+    );
+
+  if (ingest) {
+    const services = parseServices(product.services_json).services;
+    stmts.push(...ingest(manifest, slug, services, now).statements);
+  }
+  await db.batch(stmts);
+  return {
+    ok: true,
+    slug,
+    packages: rel.packageDeliverables.map((p) => p.id).sort(),
+    publisher: declared
+      ? { workflow: declared.workflow, environment: declared.environment }
+      : null,
+    publisherClaimed: claimed,
+    publisherChanged,
+  };
 }

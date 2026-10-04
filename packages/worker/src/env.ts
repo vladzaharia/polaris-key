@@ -103,6 +103,17 @@ export interface Env {
   PKEY_RELEASE_TAG?: string;
   PKEY_GIT_SHA?: string;
   /**
+   * The deploy hook's policy (F-10 automation, `src/platformDeploy.ts`): the platform monorepo
+   * (`owner/repo`) and GitHub's NUMERIC ids for it and its owner, whose
+   * `.github/workflows/deploy.yml` may call `POST /webhooks/deploy` with its OIDC token, from the
+   * `PLATFORM_DEPLOY_ENVIRONMENT` environment (default `production`). Public `[vars]`, not
+   * secrets: the token is what authenticates. Any of the three unset ⇒ there is no deploy hook.
+   */
+  PLATFORM_REPOSITORY?: string;
+  PLATFORM_REPOSITORY_ID?: string;
+  PLATFORM_REPOSITORY_OWNER_ID?: string;
+  PLATFORM_DEPLOY_ENVIRONMENT?: string;
+  /**
    * The version metadata binding (A-11; `[env.*.version_metadata]` in both wrangler configs, NOT
    * inherited from the top level): Cloudflare's own `{ id, tag, timestamp }` for the running
    * version. Configuration cannot forge it. OPTIONAL: absent in the Node test lane.

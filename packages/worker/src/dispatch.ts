@@ -28,6 +28,7 @@ import { handleDocs } from "./docs.js";
 // stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
 import { handlePortal } from "./services/identity/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
+import { handleDeployHook } from "./platformDeploy.js";
 import { notFound } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
@@ -135,6 +136,9 @@ export async function dispatchWith(
   switch (route.kind) {
     case "githubWebhook":
       return handleGithubWebhook(req, env, db, now);
+    // F-10 automation: deploy.yml's registration of the platform's own packages.
+    case "deployHook":
+      return handleDeployHook(req, env, db, now);
     // The gated docs site: session-checked inside the handler (docs.ts), for every path
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
