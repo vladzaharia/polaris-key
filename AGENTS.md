@@ -34,8 +34,10 @@ sdks/
   kotlin/            Gradle build              :core (JVM: verify, cache, sync, stages, devices),
                                                the :license :config :identity :release services,
                                                :update and :packs, the umbrella :sdk + the
-                                               :conformance runner;
-                                               :platform Android backend
+                                               :conformance runner; Android: the standalone
+                                               :platform backend, the :android glue, the
+                                               Compose :ui kit and :godot (the Godot binding,
+                                               in sdks/godot/native/android, on :platform only)
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and browser runners
                      + parity/ (features.json registry, errors.json + enums.json; each SDK
                        keeps its own parity.json)
@@ -136,7 +138,8 @@ pnpm format                      # prettier check over md/json too (format:fix t
 ```
 
 `pnpm test:all` runs turbo test + Python pytest + Swift `swift test` + the Godot runner + the
-Kotlin `:core` and `:conformance` tests in one shot. Note that
+Kotlin JVM module and `:conformance` tests in one shot (the Android modules need an Android SDK;
+see `sdks/kotlin/README.md`). Note that
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 

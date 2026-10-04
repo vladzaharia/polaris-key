@@ -88,14 +88,14 @@ Multiplatform for Apple targets (notes/E9), a Kotlin desktop UI kit, any Maven C
 
 ## Acceptance criteria
 
-- [ ] P6-06 to P6-12 are all `done`.
-- [ ] `sdks/kotlin/parity.json` has no `planned` row except the Swift-matching unowned rows, each
+- [x] P6-06 to P6-12 are all `done`.
+- [x] `sdks/kotlin/parity.json` has no `planned` row except the Swift-matching unowned rows, each
       with a note; every `na` is allowed by the registry; `parity:check` is green.
-- [ ] The Kotlin runner passes every file in `conformance/corpus/v2/` and every transcript in
+- [x] The Kotlin runner passes every file in `conformance/corpus/v2/` and every transcript in
       `conformance/transcripts/` that exists when the last child closes.
-- [ ] The Godot AAR's dependency graph contains `:platform` and no other SDK module.
-- [ ] No Maven Central, Sonatype or `signing` configuration exists in `sdks/kotlin`.
-- [ ] Every place that lists the SDK languages (AGENTS.md, READMEs, docs pages, `test:all`) names Kotlin.
+- [x] The Godot AAR's dependency graph contains `:platform` and no other SDK module.
+- [x] No Maven Central, Sonatype or `signing` configuration exists in `sdks/kotlin`.
+- [x] Every place that lists the SDK languages (AGENTS.md, READMEs, docs pages, `test:all`) names Kotlin.
 
 ## Verify
 
@@ -116,3 +116,35 @@ grep -rniE "maven ?central|sonatype|signing" sdks/kotlin --include=*.kts --inclu
 
 The approved plans' amendments for the Kotlin SDK moved to [P6-08](P6-08-kotlin-update-packs.md),
 which owns the pack engine they change.
+
+## Corrections from closing
+
+Recorded at the close-out on 2026-10-04 (branch `wp/P6-05-closeout`). The code is the fact where
+this brief and the code disagree.
+
+- **Four unowned planned rows, not three.** Besides `identity.oidc`, `commerce.receipt` and
+  `packs.transport.steam`, `devices.attest` stays `planned` and unowned. Swift leaves the same row
+  planned and unowned (App Attest is in `PolarisKeyPlatform`, unwired to the client), as Kotlin
+  does for Play Integrity in `:platform`; each row carries a note, and `parity:check -- --check` is
+  green.
+- **Transcripts.** The runner replays 17 of the 18 transcripts on both Ed25519 backends (JCA and
+  Tink forced, 98 tests each). `commerce-claim.json` proves `commerce.receipt`, which is planned
+  and unowned in Kotlin as in Swift, so `parity.json` makes it not applicable.
+- **The `signing` grep has three benign hits**, none of them a publishing configuration:
+  `mavenCentral()` as a dependency-resolution repository in `settings.gradle.kts`, comments that
+  say "no signing, no Maven Central", and the `:boundary` probe app's release build signed with
+  the debug key so `tools/check_flavours.sh` can inspect its APK. `check_publication.sh` passes
+  ("no signing, Sonatype or Central configuration").
+- **`./gradlew build` failed on `:ui` until the close-out fixed two build-file defects** that
+  P6-11's CI line (`:ui:testDebugUnitTest`, `:ui:lintRelease`) never ran into.
+  `:ui:testReleaseUnitTest` could not launch `ComponentActivity`, which only the debug manifest
+  declares, so the release unit-test variant is no longer created. `:ui:lintDebug` flagged the
+  debug-only partial `values-fr` fixture as `MissingTranslation`, so that check is now disabled:
+  the kit ships English only and supports partial translations by design.
+- **A Kotlin docs page.** The SDK index now links a new `build/sdks/kotlin.mdx`, which renders
+  `sdks/kotlin/README.md` the way the other SDK pages render theirs. The Compose kit page moves
+  to sidebar order 7.
+- **Language lists.** Kotlin is now named in `SECURITY.md` (six client SDKs, Maven packages) and
+  `docs/PRIVACY.md` (the fingerprint sources on a JVM desktop and on Android). The repo maps in
+  `AGENTS.md` and `README.md` now list the final module set. `test:all` already ran every Kotlin
+  JVM module.
