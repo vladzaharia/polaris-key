@@ -455,8 +455,8 @@ export function themeVars(theme: PolarisTheme): Record<string, string> {
 export const highContrastTheme: PartialTheme = {
   tokens: {
     fontFamily: "inherit",
-    accent: "#c9a8ff",
-    accentHover: "#c9a8ff",
+    accent: "#ffffff",
+    accentHover: "#e0e0e0",
     accentText: "#000000",
     ring: "#ffffff",
     background: "#000000",
@@ -471,6 +471,6 @@ export const highContrastTheme: PartialTheme = {
     warning: "#ffbe5c",
     warningSubtle: "#1a1206",
     success: "#7ee69a",
-    info: "#d4bcff",
+    info: "#e0e0e0",
   },
 };

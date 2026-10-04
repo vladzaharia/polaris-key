@@ -29,6 +29,7 @@ import {
   type ReactNode,
 } from "react";
 import { Button, type ButtonVariant } from "./buttons.js";
+import { fullWindow, messageCard, mutedText, titleText } from "./card.js";
 
 /** The centred, wrapping row a screen's actions sit in. */
 const actionRow: CSSProperties = {
@@ -38,7 +39,6 @@ const actionRow: CSSProperties = {
   gap: "8px",
   marginTop: "20px",
 };
-import { fullWindow, messageCard, mutedText, titleText } from "./card.js";
 
 export interface MessageScreenProps {
   title: string;

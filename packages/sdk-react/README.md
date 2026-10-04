@@ -410,6 +410,10 @@ a wrapper element, so two providers can carry different brands without leaking i
 and on `:root`, so anything React portals (a dialog, a toast) still inherits them. You can also
 override any `--pk-*` var from your own stylesheet.
 
+The neutral default sets `font-family: inherit`, so the SDK uses your app's font. A bare webview
+that never sets a body font shows the browser's serif default; pass
+`theme={{ tokens: { fontFamily: "system-ui, sans-serif" } }}` there.
+
 **Two brandings.** Polaris Key branding is optional:
 
 - **Neutral (the default).** A quiet greyscale theme that inherits your app's font
