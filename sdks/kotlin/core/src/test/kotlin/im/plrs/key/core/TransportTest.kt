@@ -7,7 +7,12 @@
 
 package im.plrs.key.core
 
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import okhttp3.ConnectionPool
+import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -46,6 +51,42 @@ class TransportTest {
         assertNull(second.getHeader("Authorization"))
         assertEquals("d", second.getHeader("X-PKey-Device"))
         assertEquals("/next", second.path)
+    }
+
+    @Test
+    fun repeatedResponseHeadersAreKept() = runBlocking {
+        server.enqueue(MockResponse().addHeader("Link", "<a>").addHeader("Link", "<b>").setBody("ok"))
+        val response = transport.send(PolarisRequest(server.url("/h").toString()))
+        assertEquals(listOf("<a>", "<b>"), response.headerValues("link"))
+        // The single-value view keeps one of them, as before.
+        assertTrue(response.header("LINK") in listOf("<a>", "<b>"))
+    }
+
+    /**
+     * A caller that cancels while the response is in flight gets CancellationException, and the
+     * response that lands afterwards is CLOSED (its connection returns to the pool), not leaked.
+     */
+    @Test
+    fun aResponseLandingAfterCancellationIsClosed() = runBlocking {
+        val pool = ConnectionPool(5, 1, TimeUnit.MINUTES)
+        val client = OkHttpTransport(OkHttpClient.Builder().connectionPool(pool).build())
+        server.enqueue(MockResponse().setHeadersDelay(300, TimeUnit.MILLISECONDS).setBody("late"))
+        server.enqueue(MockResponse().setBody("next"))
+        val call = async { client.send(PolarisRequest(server.url("/slow").toString(), timeoutSeconds = 0.0)) }
+        delay(100)
+        call.cancel()
+        try {
+            call.await()
+            fail("a cancelled call returned")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // expected
+        }
+        // The cancelled call's connection is released, so the next request is served normally
+        // and nothing is left holding a body open.
+        delay(500)
+        val next = client.send(PolarisRequest(server.url("/next").toString()))
+        assertEquals("next", next.text)
+        assertEquals(0, pool.connectionCount() - pool.idleConnectionCount())
     }
 
     @Test
