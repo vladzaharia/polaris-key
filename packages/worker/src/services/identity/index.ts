@@ -25,6 +25,11 @@
  * `/login`, `/callback`, `/api/*`, `/download/<token>` are ROOT paths — one account spans every
  * tenant, so there is no product to scope them under. They stay platform routes dispatched from
  * `index.ts`; only their implementation lives here (`portal/`). See `portal/index.ts`.
+ *
+ * For the same reason the `identity` flag does NOT gate the portal (S-16 G10, owner decision D7):
+ * the portal is a platform concern that runs for every product, governed by
+ * `portal_product_settings`, never by `services_json`. "No `/identity/*` surface" above means
+ * the product-scoped routes only.
  */
 
 import type {
@@ -57,6 +62,10 @@ export const identityService: ServiceDescriptor = {
    *
    * `/auth/login` is not advertised, and no longer exists: §R1 removes it as a redundant alias
    * of `/auth/start`.
+   *
+   * `/auth/poll` is not advertised either (I-01, S-16 §5.3): no SDK reads it, and it completes
+   * only device-bound flows that nothing starts any more. The route keeps answering until I-13
+   * replaces it with the native redirect token route.
    */
   discoveryFragment: async ({ db, product, base }: DiscoveryContext) => {
     const row = await db.first<{ product: string }>(
@@ -71,7 +80,6 @@ export const identityService: ServiceDescriptor = {
         sessionLicense: `${base}/identity/session/license`,
         authStart: `${base}/identity/auth/start`,
         authCallback: `${base}/identity/auth/callback`,
-        authPoll: `${base}/identity/auth/poll`,
         authLogout: `${base}/identity/auth/logout`,
         authDeviceStart: `${base}/identity/auth/device/start`,
         authDeviceEntry: `${base}/identity/auth/device`,

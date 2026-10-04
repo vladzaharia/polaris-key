@@ -838,6 +838,8 @@ export async function activateFromIdentity(
     channels_json: null,
     min_version: null,
     max_version: null,
+    // S-16 G14: without this the column defaults to 'admin' (migrations/0011).
+    origin: "oidc",
     modified_by: "oidc",
     modified_at: now,
   });

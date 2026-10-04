@@ -23,6 +23,9 @@
  * delegate` requires it).
  * P3-03 added Update's `endpoints.feed`, and P3-09 the four app-updater feed templates after it
  * (`winsparkle`, `velopack`, `appInstaller`, `zsync`): additive keys a client ignores.
+ * I-01 removed Identity's `endpoints.authPoll` (S-16 §5.3: discovery response only, no SDK reads
+ * it, owner decision D10). The `/identity/auth/poll` route still answers until I-13 retires it;
+ * only its advertisement went.
  */
 
 import { readFileSync } from "node:fs";

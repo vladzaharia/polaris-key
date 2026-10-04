@@ -313,7 +313,7 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
 // `licenses.sub` is minted by each tenant's own (possibly custom) IdP. One flat namespace.
 // ───────────────────────────────────────────────────────────────────────────────
 // FIXED (R5-02): the left side of this join is ALWAYS a platform-IdP subject (portal/auth.ts
-// hardcodes provider "oidc" with the issuer from platformOidcConfig), so the right side is now
+// keys it by the issuer from platformOidcConfig, migrations/0059), so the right side is now
 // restricted to licenses whose product also authenticates against the PLATFORM issuer. The
 // qualifier is derived from oidc_config rather than a new denormalised column, so the
 // product-OIDC lane needs no change. A tenant that mints `sub = "1000"` in its own namespace
@@ -330,7 +330,7 @@ describe("R5-02 cross-issuer OIDC subject collision", () => {
     const victim = await getOrCreateAccountByIdentity(
       db,
       {
-        provider: "oidc",
+        provider: "https://id.plrs.example",
         subject: "1000",
         email: "victim@corp.example",
         displayName: "Victim",
