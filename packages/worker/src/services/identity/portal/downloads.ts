@@ -204,13 +204,16 @@ export async function productDownloads(
   if (!shaped) return emptyDownloads(productName, q.channel, detected);
   const mode = await gate.delivery.accessMode(APP_DELIVERABLE_ID);
 
-  // Per release: is it covered for this account, and which files can be served?
-  const annotated: Array<{
+  // Per release, LAZILY (each costs an artifact read and, for a public deliverable, a delivery
+  // URL per file): is it covered for this account, and which files can be served? Most pages
+  // need only the newest release; an older one is read only when a platform falls back to it.
+  interface Annotated {
     release: CustomerRelease;
     files: PortalFile[];
     byId: Map<string, PortalFile>;
-  }> = [];
-  for (const release of shaped.releases) {
+  }
+  const memo = new Map<number, Promise<Annotated>>();
+  const annotateNow = async (release: CustomerRelease): Promise<Annotated> => {
     const covered = await accountMayDownload(
       db,
       q.accountId,
@@ -242,22 +245,41 @@ export async function productDownloads(
         reason = "not_hosted";
       files.push({ ...f, canDownload: reason === null, reason });
     }
-    annotated.push({
+    return {
       release,
       files,
       byId: new Map(files.map((f) => [f.artifactId, f])),
-    });
-  }
+    };
+  };
+  const annotate = (i: number): Promise<Annotated> => {
+    let p = memo.get(i);
+    if (!p) {
+      p = annotateNow(shaped.releases[i]!);
+      memo.set(i, p);
+    }
+    return p;
+  };
+  /** The newest release with a file matching `has`, annotated; `null` when none has one. A
+   *  release is annotated only when its unannotated files already match. */
+  const newestWith = async (
+    has: (f: CustomerFile) => boolean,
+  ): Promise<Annotated | null> => {
+    for (let i = 0; i < shaped.releases.length; i++) {
+      if (!shaped.releases[i]!.files.some(has)) continue;
+      const a = await annotate(i);
+      if (a.files.some(has)) return a;
+    }
+    return null;
+  };
 
-  const recommendationFor = (
+  const recommendationFor = async (
     platform: PagePlatform,
-  ): PortalRecommendation | null => {
-    const newest = annotated.find((a) =>
-      a.files.some((f) => f.platform === platform),
-    );
-    for (const a of annotated) {
-      const pick = a.release.picks[platform];
+    newest: Annotated,
+  ): Promise<PortalRecommendation | null> => {
+    for (let i = 0; i < shaped.releases.length; i++) {
+      const pick = shaped.releases[i]!.picks[platform];
       if (!pick) continue;
+      const a = await annotate(i);
       let files = pick.artifactIds
         .map((id) => a.byId.get(id))
         .filter((f): f is PortalFile => f !== undefined && f.canDownload);
@@ -274,7 +296,7 @@ export async function productDownloads(
         releaseId: a.release.releaseId,
         version: a.release.version,
         universal,
-        latest: newest?.release.releaseId === a.release.releaseId,
+        latest: newest.release.releaseId === a.release.releaseId,
         files: universal ? [files[0]!] : files,
       };
     }
@@ -283,20 +305,16 @@ export async function productDownloads(
 
   const platforms: PortalPlatformDownloads[] = [];
   for (const platform of PAGE_PLATFORMS) {
-    const newest = annotated.find((a) =>
-      a.files.some((f) => f.platform === platform),
-    );
+    const newest = await newestWith((f) => f.platform === platform);
     if (!newest) continue;
     platforms.push({
       platform,
       label: PLATFORM_LABELS[platform],
-      recommended: recommendationFor(platform),
+      recommended: await recommendationFor(platform, newest),
       files: newest.files.filter((f) => f.platform === platform),
     });
   }
-  const withExtras = annotated.find((a) =>
-    a.files.some((f) => f.platform === null),
-  );
+  const withExtras = await newestWith((f) => f.platform === null);
   const head = shaped.releases[0];
   return {
     product: productName,
