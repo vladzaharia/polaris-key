@@ -127,9 +127,14 @@ through a Core-mediated seam, enforced by a boundary test that refuses cross-ser
 `GET`/`PATCH /manage/api/products/<slug>/identity/portal` — the customer-portal module settings
 described in [Customer portal](/docs/services/identity/portal/).
 
-Product OIDC has no admin editor yet: `oidc_config` and `provisioning_config` are manifest-fed
-only, written by `.pkey/product`'s `oidc:` and `provisioning:` blocks through repo link and
-resync. Adding a live editor is one more branch in `services/identity/admin.ts`, not a redesign.
+Product OIDC is manifest-fed: `oidc_config` and `provisioning_config` are written by
+`.pkey/product`'s `oidc:` and `provisioning:` blocks through repo link and resync, never by an
+admin route.
+
+In the console, the **Identity** section has two pages: **Portal** (`#/p/<slug>/identity/portal`)
+edits the customer-portal settings above, and **Sign-in** (`#/p/<slug>/identity/sign-in`) shows
+the product's provider, issuer, client and group → tier map read-only, with **Resync from repo**
+to apply a manifest change. See [The console](/docs/admin/console-tour/).
 
 :::note[Terminology]
 This section follows [Concepts & terminology](/docs/start/concepts/), which wins over code when the two disagree. In

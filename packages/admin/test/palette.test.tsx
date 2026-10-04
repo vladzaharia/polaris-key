@@ -48,8 +48,9 @@ describe("the sources", () => {
     expect(labels).toContain("Licenses");
     expect(labels).toContain("Matrix");
     expect(labels).not.toContain("Releases");
-    // Not-built pages are not offered: they would only redirect.
-    expect(labels).not.toContain("Sign-in");
+    // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
+    expect(labels).toContain("Sign-in");
+    expect(labels).not.toContain("Operations");
     expect(items.find((i) => i.label === "Licenses")!.href).toBe(
       "#/p/djdl/license/licenses",
     );

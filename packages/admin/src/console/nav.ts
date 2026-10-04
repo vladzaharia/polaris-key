@@ -540,9 +540,7 @@ export const SECTIONS: NavSection[] = [
         icon: LogIn,
         docs: "/docs/services/identity/oidc/",
         inNav: true,
-        // The OIDC card is part of Portal until the Identity chunk (10) splits it.
-        ready: false,
-        host: "portal",
+        ready: true,
       },
     ],
   },

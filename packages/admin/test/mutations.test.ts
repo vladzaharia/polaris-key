@@ -200,7 +200,8 @@ describe("no view writes around mutate()", () => {
   });
 
   it("the check catches the shapes a regex would miss", () => {
-    const probe = join(src, "views", "__probe__.ts");
+    // Any directory one level under src/ (src/views/ is gone since the area chunks).
+    const probe = join(src, "lib", "__probe__.ts");
     const cases: [string, string][] = [
       [
         'import { api } from "../api.js";\napi\n  .createTier("s", {} as never);',
