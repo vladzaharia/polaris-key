@@ -13,10 +13,14 @@ import type {
   RegistryRoute,
 } from "../../../core/registryHost.js";
 import type { RegistryRenderer } from "./materialise.js";
+import { OCI_RENDERER } from "./oci/index.js";
 
 /** Every renderer this build carries, one per ecosystem. */
 export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
-  new Map<RegistryEcosystem, RegistryRenderer>([]);
+  new Map<RegistryEcosystem, RegistryRenderer>([
+    // F-08: OCI pull at /v2/.
+    ["oci", OCI_RENDERER],
+  ]);
 
 /** Every registry route, in renderer order. */
 export const DISTRIBUTION_REGISTRY_ROUTES: readonly RegistryRoute[] = [

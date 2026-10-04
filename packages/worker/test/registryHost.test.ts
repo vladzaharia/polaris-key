@@ -19,6 +19,7 @@ import {
   REGISTRY_CSP,
   REGISTRY_ECOSYSTEMS,
   REGISTRY_HOST_TYPES,
+  RESERVED_ECOSYSTEMS,
   dispatchRegistryHost,
   isRegistryHost,
   refusedRegistryType,
@@ -220,9 +221,14 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("registers no ecosystem routes yet; every route is Distribution's and names a known ecosystem", () => {
+  it("every route is Distribution's and names a known, unreserved ecosystem", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
-    expect(REGISTRY_ROUTES).toEqual([]);
+    expect(REGISTRY_ROUTES.length).toBeGreaterThan(0);
+    for (const r of REGISTRY_ROUTES) {
+      expect(r.service).toBe("distribution");
+      expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
+      expect(RESERVED_ECOSYSTEMS.has(r.ecosystem), r.name).toBe(false);
+    }
     for (const r of REGISTRY_ROUTES) {
       expect(r.service).toBe("distribution");
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
@@ -398,7 +404,9 @@ describe("registry host: isolation", () => {
     expect(swift.status).toBe(404);
     expect(swift.headers.get("content-type")).toBe("application/problem+json");
     const oci = await worker.fetch(
-      new Request(`${PKG}/v2/djdl/app/manifests/1.0.0`),
+      // F-08's routes answer repository paths (with a database: test/registryOci.test.ts); a
+      // path no OCI route matches, like the catalog (not served in tier 1), is the not-found.
+      new Request(`${PKG}/v2/_catalog`),
       env(PKG),
     );
     expect(oci.status).toBe(404);

@@ -7446,6 +7446,218 @@ paths:
           headers:
             Docker-Distribution-API-Version:
               schema: { type: string, const: registry/2.0 }
+  # F-08: OCI pull (the read side of the OCI Distribution Specification). `{repository}` is a
+  # path of one or more `/`-separated components under the owner, so these templates stand for
+  # every depth (`/v2/acme/tools/app/manifests/latest`).
+  /v2/token:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: ociToken
+      tags: [registry]
+      summary: OCI token endpoint, reserved (registry host only)
+      description: >
+        F-08. The realm a non-public OCI feed's Bearer challenge names
+        (`WWW-Authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im",scope="repository:<owner>/<repository>:pull"`,
+        https://distribution.github.io/distribution/spec/auth/token/). Tier 1 issues no
+        registry credentials, so it always answers OCI's not-found (`NAME_UNKNOWN`), `no-store`,
+        until F-21.
+      responses:
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociTokenHead
+      tags: [registry]
+      summary: OCI token endpoint, reserved, headers only (registry host only)
+      description: F-08. As `GET /v2/token`, with no body.
+      responses:
+        "404":
+          description: Not issued until F-21.
+  /v2/{owner}/{repository}/manifests/{reference}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: reference
+        in: path
+        required: true
+        description: A tag (a version, `latest`, or a channel name) or a `sha256:` digest.
+        schema:
+          {
+            type: string,
+            pattern: "^([A-Za-z0-9_][A-Za-z0-9._-]{0,127}|sha256:[0-9a-f]{64})$",
+          }
+    get:
+      operationId: ociManifest
+      tags: [registry]
+      summary: OCI manifest or image index by tag or digest (registry host only)
+      description: >
+        F-08. Pulling manifests
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
+        The body is the stored manifest or image index, byte for byte, with its own media type
+        (`application/vnd.oci.image.manifest.v1+json`, `…index.v1+json`, or Docker's schema 2
+        manifest and manifest list) and `Docker-Content-Digest`. Version tags never move; `latest`
+        (the stable channel) and other channel tags do; a yanked version has no tag but still
+        pulls by digest; a deprecated version is served as live. By digest the answer is
+        immutable (`public, max-age=31536000, immutable`); by tag it is an index document
+        (`public, max-age=60, stale-while-revalidate=60`). An `Accept` that lists only other
+        manifest types answers `MANIFEST_UNKNOWN`. A non-public feed answers 401 with the Bearer
+        challenge (no credentials until F-21).
+      responses:
+        "200":
+          description: The manifest.
+          headers:
+            Docker-Content-Digest: { schema: { type: string } }
+            Docker-Distribution-API-Version:
+              schema: { type: string, const: registry/2.0 }
+          content:
+            application/vnd.oci.image.manifest.v1+json:
+              schema: { type: object }
+            application/vnd.oci.image.index.v1+json:
+              schema: { type: object }
+            application/vnd.docker.distribution.manifest.v2+json:
+              schema: { type: object }
+            application/vnd.docker.distribution.manifest.list.v2+json:
+              schema: { type: object }
+        "304":
+          description: "`If-None-Match` named the manifest's digest."
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociManifestHead
+      tags: [registry]
+      summary: OCI manifest existence check (registry host only)
+      description: >
+        F-08. As `GET`, with no body: `Content-Type`, `Content-Length` and
+        `Docker-Content-Digest` only.
+      responses:
+        "200":
+          description: The manifest exists.
+          headers:
+            Docker-Content-Digest: { schema: { type: string } }
+        "401":
+          description: The feed is not public.
+        "404":
+          description: Unknown manifest, repository or owner.
+  /v2/{owner}/{repository}/blobs/{digest}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: digest
+        in: path
+        required: true
+        description: The blob's `sha256:` digest, one of the repository's published files.
+        schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+    get:
+      operationId: ociBlob
+      tags: [registry]
+      summary: OCI blob by digest, with Range (registry host only)
+      description: >
+        F-08. Pulling blobs
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-blobs).
+        `application/octet-stream` as an attachment, `Docker-Content-Digest`, a strong ETag of
+        the SHA-256 and `public, max-age=31536000, immutable, no-transform`. A single `Range`
+        answers 206 with `Content-Range`; one that selects nothing answers 416. `If-Range` and
+        `If-None-Match` are honoured. Only a digest the repository published is served
+        (`BLOB_UNKNOWN` otherwise). Blobs are up to 5 GiB and bypass the Cache API.
+      responses:
+        "200":
+          description: The blob.
+          headers:
+            Docker-Content-Digest: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: The requested range.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304":
+          description: "`If-None-Match` named the blob's digest."
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "416":
+          description: "The range selects nothing (`Content-Range: bytes */<size>`)."
+    head:
+      operationId: ociBlobHead
+      tags: [registry]
+      summary: OCI blob existence and size (registry host only)
+      description: F-08. As `GET`, with no body; `Content-Length` is the blob's size.
+      responses:
+        "200":
+          description: The blob exists.
+        "401":
+          description: The feed is not public.
+        "404":
+          description: Unknown blob, repository or owner.
+  /v2/{owner}/{repository}/tags/list:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: "n"
+        in: query
+        required: false
+        description: At most this many tags (capped at 1000).
+        schema: { type: integer, minimum: 0 }
+      - name: last
+        in: query
+        required: false
+        description: Only tags lexically after this one.
+        schema: { type: string }
+    get:
+      operationId: ociTags
+      tags: [registry]
+      summary: OCI tag list, paginated (registry host only)
+      description: >
+        F-08. Listing tags
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-tags):
+        `{"name": "<owner>/<repository>", "tags": [...]}` in lexical order, rendered from the
+        package's state (every version that is not yanked, `latest` and each channel tag). With
+        `n`, a `Link: <…?n=&last=>; rel="next"` header names the next page. An index document
+        (`public, max-age=60, stale-while-revalidate=60`).
+      responses:
+        "200":
+          description: The tags.
+          headers:
+            Link:
+              description: The next page, when there is one.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, tags]
+                properties:
+                  name: { type: string }
+                  tags: { type: array, items: { type: string } }
+              examples:
+                tags:
+                  value:
+                    {
+                      name: acme/tools/app,
+                      tags: ["1.0.0", "1.1.0-beta.1", beta, latest],
+                    }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociTagsHead
+      tags: [registry]
+      summary: OCI tag list, headers only (registry host only)
+      description: F-08. As `GET`, with no body.
+      responses:
+        "200":
+          description: The repository exists.
+        "404":
+          description: Unknown repository or owner.
 components:
   securitySchemes:
     ciToken:
@@ -7487,6 +7699,20 @@ components:
         The value is an opaque base64url token with no prefix — unlike `pkeyt_` device
         tokens.
   parameters:
+    OciOwner:
+      name: owner
+      in: path
+      required: true
+      description: F-08. The feed's owner (a product slug), the first component of the repository name.
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    OciRepository:
+      name: repository
+      in: path
+      required: true
+      description: >
+        F-08. The repository path under the owner: one or more lower-case components joined by
+        `/` (the OCI name grammar), at most 255 characters with the owner.
+      schema: { type: string }
     PolicyChannel:
       name: channel
       in: path
@@ -7633,6 +7859,25 @@ components:
       schema: { type: string }
       example: pkey_djdl_session=; Path=/djdl; Max-Age=0; HttpOnly; Secure; SameSite=Lax
   responses:
+    OciError:
+      description: >
+        OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
+        `BLOB_UNKNOWN`, `UNAUTHORIZED` (401, with the Bearer challenge) or `UNSUPPORTED` (405),
+        `no-store`, with `Docker-Distribution-API-Version: registry/2.0`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [errors]
+            properties:
+              errors:
+                type: array
+                items:
+                  type: object
+                  required: [code, message]
+                  properties:
+                    code: { type: string }
+                    message: { type: string }
     ChannelPolicyChanged:
       description: The channel's policy after the change.
       content:
