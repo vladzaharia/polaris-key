@@ -22,7 +22,11 @@ import { join } from "node:path";
 import type { TrustSet } from "@polaris-key/jws";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { AppContent } from "@polaris-key/protocol/packs";
-import type { PackTarget, ReleasePin } from "@polaris-key/protocol/update";
+import type {
+  FeedDeltas,
+  PackTarget,
+  ReleasePin,
+} from "@polaris-key/protocol/update";
 import {
   PackEngine,
   PackError,
@@ -155,6 +159,10 @@ export interface PacksWiring {
   trust?: TrustManager;
   /** `update.pinnedReleaseKeys`: the only keys a pack record verifies against. */
   releaseKeys: () => TrustSet;
+  /** plans/P4-29.md §2.4 step 1: the committed feed's delta menu (fresh or stale), or null. */
+  feedDeltas?: () => FeedDeltas | null;
+  /** Reads the committed feed's menu from the cache before the engine first plans. */
+  loadFeedDeltas?: () => Promise<void>;
 }
 
 export class PacksClient {
@@ -403,7 +411,9 @@ export class PacksClient {
       now: () => ctx.now(),
       newPlanId: () => randomBytes(12).toString("hex"),
       handlers: [...(this.opts.handlers ?? []), ...this.pendingHandlers],
+      ...(this.w.feedDeltas ? { feedDeltas: this.w.feedDeltas } : {}),
     });
+    await this.w.loadFeedDeltas?.().catch(() => undefined);
     engine.on((e) => {
       for (const l of this.listeners) {
         try {

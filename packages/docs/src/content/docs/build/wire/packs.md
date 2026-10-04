@@ -131,6 +131,40 @@ withholds a revocation cannot bring the target back.
 `cases.json` pins the members in `feedContentCases` and the record in `revocationCases`;
 `update-matrix.json` pins the decision in `contentRows`.
 
+## The feed's delta menu
+
+P4-29 (spec §2.4.2, §11.4) gives the feed's reserved `deltas` member a shape, inside wire v4 and
+with no new claim. It is an object keyed by a target **payload** SHA-256; each value lists 1–4
+`payload`-scope deltas to that payload, at most 64 in the member:
+
+```jsonc
+"deltas": {
+  "<target payload sha256>": [
+    { "from": "<base payload sha256>", "method": "zstd-patch-from", "scope": "payload",
+      "memBytes": 1048576, "artifact": { "sha256": "<frame sha256>", "bytes": 325258 } }
+  ]
+}
+```
+
+`feedContent` returns it as a fourth member, `deltas`, or `null` when it is absent or unusable (a
+bad key, an empty or over-long list, a malformed entry, a duplicate artifact or a duplicate
+(`from`, `method`) on one key; dropped entries count). An entry of another scope is dropped alone,
+and an unknown `method` is kept for the planner to refuse.
+
+| Step     | What happens                                                                                                                                                                       |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source   | The menu of the most recently committed feed, fresh or stale: a stale entry that 404s only falls back                                                                              |
+| Merge    | `withFeedDeltas(variant, deltas)` appends the entries for the selected `container` variant's payload after the record's own deltas; an entry naming a record delta's id is skipped |
+| Plan     | `planTarget` and `plan` are unchanged: the method must be in `patchMethods`, the base installed, `memBytes` within the budget; a record delta wins a cost tie                      |
+| Apply    | `applyDelta` is unchanged: the artifact against the entry, the base against `from`, the window against `memBytes`, and the output against the **record's** `payload`               |
+| Fallback | A fetch error, a 404 or any failure moves to the next candidate, and at most one feed-offered delta is tried per install                                                           |
+| Resume   | The install journal keeps the entry (`feedDelta`), so a resume plans it again                                                                                                      |
+
+The menu carries the Worker's authority (the product key), never CI's, which is why every result is
+checked against the record. `cases.json` pins the reader in 28 appended `feedContentCases` (each
+with a sibling `expect.deltas`), `plan-matrix.json` the merge and the plan in `feedDeltaCases`,
+and `content/cases.json` the target-hash check in `feedDeltaApplyCases`.
+
 ## Delegated content keys and the data-only rule
 
 P4-19 (spec §1, §2.5.4, §2.8, §3.5 steps 13 and 16) lets a product's release key delegate a

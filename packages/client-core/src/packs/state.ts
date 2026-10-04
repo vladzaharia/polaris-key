@@ -18,6 +18,7 @@
 //
 // Pure functions over the document: each returns a new document and changes nothing in place.
 
+import type { FeedDelta } from "@polaris-key/protocol/update";
 import { isObject, isPackId, SHA256_RE } from "./claims.js";
 
 export const PACK_STATE_VERSION = 1;
@@ -69,6 +70,12 @@ export interface PackJournal {
   variant: string;
   strategy: string;
   delta?: string;
+  /**
+   * plans/P4-29.md §2.4 step 6: the feed-offered delta being installed (the merged menu entry),
+   * when `delta` names one. A resume merges it again, so the plan survives a newer feed that
+   * no longer lists it. Optional, so `PACK_STATE_VERSION` stays 1.
+   */
+  feedDelta?: FeedDelta;
   objects: JournalObject[];
   startedAt: number;
   /** The delegation's compact JWS for a delegated record (as `PackInstall.delegation`). */
@@ -159,6 +166,23 @@ function asInstall(v: unknown, packId: string): PackInstall | null {
   return v as unknown as PackInstall;
 }
 
+/** A journal's `feedDelta`: the shape of a feed menu entry (plans/P4-29.md §2.2). */
+function isFeedDelta(v: unknown): boolean {
+  if (!isObject(v) || !isObject(v.artifact)) return false;
+  return (
+    typeof v.from === "string" &&
+    SHA256_RE.test(v.from) &&
+    typeof v.method === "string" &&
+    v.scope === "payload" &&
+    nat(v.memBytes) &&
+    (v.memBytes as number) >= 1 &&
+    typeof v.artifact.sha256 === "string" &&
+    SHA256_RE.test(v.artifact.sha256) &&
+    nat(v.artifact.bytes) &&
+    (v.artifact.bytes as number) >= 1
+  );
+}
+
 function asJournal(v: unknown, packId: string): PackJournal | null {
   if (!isObject(v) || v.packId !== packId || !isPackId(packId)) return null;
   for (const k of ["planId", "record", "variant", "strategy"])
@@ -166,6 +190,7 @@ function asJournal(v: unknown, packId: string): PackJournal | null {
   if (typeof v.recordSha256 !== "string" || !SHA256_RE.test(v.recordSha256))
     return null;
   if (v.delta !== undefined && typeof v.delta !== "string") return null;
+  if (v.feedDelta !== undefined && !isFeedDelta(v.feedDelta)) return null;
   if (v.delegation !== undefined && typeof v.delegation !== "string")
     return null;
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(v.planId as string)) return null;

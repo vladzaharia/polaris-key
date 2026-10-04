@@ -411,3 +411,207 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
     expect(feedContent(d.doc).revocations).toEqual([delegation]);
   });
 });
+
+// ── P4-29: the delta menu is added last and trimmed first (plans/P4-29.md §6.2) ──────────────
+
+/** `n` ranked candidates over `records` (cycled), up to 4 per target. */
+function candidates(
+  n: number,
+  records: readonly string[],
+): NonNullable<ComposedFeed["deltas"]>["candidates"] {
+  return Array.from({ length: n }, (_, i) => ({
+    recordSha256: records[i % records.length]!,
+    deliverableId: "pk000",
+    to: hex(`to:${Math.floor(i / 4)}`),
+    entry: {
+      from: hex(`from:${i}`),
+      method: "zstd-patch-from",
+      scope: "payload" as const,
+      memBytes: 10_000_000 + i,
+      artifact: { sha256: hex(`frame:${i}`), bytes: 300_000 + i },
+    },
+    devices: 1000 - i,
+    createdAt: NOW,
+  }));
+}
+
+describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
+  it("lists every candidate when it fits, keyed by target in rank order, readable by feedContent", async () => {
+    const c = await composed({
+      packs: 4,
+      longIds: false,
+      levels: 1,
+      platforms: ["android"],
+      engines: [""],
+      groups: 0,
+      values: 0,
+      floors: 4,
+      revocations: 4,
+    });
+    const recs = Object.keys(c.content.packSets!.releases);
+    const d = sign(
+      { ...c, deltas: { candidates: candidates(6, recs), pinnedBy: {} } },
+      "android",
+    );
+    expect(d.ok).toBe(true);
+    expect(d.platform).toBeNull();
+    expect(Object.keys(d.doc.deltas!)).toEqual([hex("to:0"), hex("to:1")]);
+    expect(d.doc.deltas![hex("to:0")]!.length).toBe(4);
+    expect(feedContent(d.doc).deltas).toEqual(d.doc.deltas);
+    expect(d.audits).toEqual([]);
+  });
+
+  it("lists only the records the document names: its packSets and its own target's pins", async () => {
+    const c = await composed({
+      packs: 4,
+      longIds: false,
+      levels: 1,
+      platforms: ["android"],
+      engines: [""],
+      groups: 0,
+      values: 0,
+      floors: 0,
+      revocations: 0,
+    });
+    const pinned = hex("pinned-record");
+    const other = hex("ios-record");
+    const cands = [
+      ...candidates(1, [pinned]),
+      ...candidates(2, [other]).slice(1),
+    ];
+    const d = sign(
+      {
+        ...c,
+        deltas: {
+          candidates: cands,
+          pinnedBy: { android: [pinned], ios: [other] },
+        },
+      },
+      "android",
+    );
+    // The channel-wide document names every target's pins.
+    expect(Object.values(d.doc.deltas!).flat().length).toBe(2);
+    const narrow = documentFor(
+      "djdl",
+      {
+        ...c,
+        deltas: { candidates: cands, pinnedBy: { android: [pinned] } },
+      },
+      "android",
+      7,
+      NOW,
+    );
+    expect(Object.values(narrow.doc.deltas!).flat().length).toBe(1);
+  });
+
+  it("the cap guard: a menu that makes the payload exactly 65,536 bytes is listed; one byte more trims it", async () => {
+    const c = await composed({
+      packs: 2,
+      longIds: false,
+      levels: 1,
+      platforms: ["android"],
+      engines: [""],
+      groups: 0,
+      values: 0,
+      floors: 0,
+      revocations: 0,
+    });
+    const recs = Object.keys(c.content.packSets!.releases);
+    const withMenu = (pad: number): ComposedFeed => {
+      const t = target("android", 0);
+      (t.outlets["app-store"] as { listingUrl: string }).listingUrl =
+        `https://apps.apple.com/app/${"a".repeat(pad)}`;
+      return {
+        ...c,
+        targets: [t],
+        deltas: { candidates: candidates(1, recs), pinnedBy: {} },
+      };
+    };
+    // Grow the app part until the menu's one entry lands on the cap exactly (listing URLs are
+    // capped at 2,048 bytes, so mirrors make up the rest).
+    const menuBytes = (k: ComposedFeed) => bytes(sign(k, "android").doc);
+    let mirrors = 0;
+    const sized = (pad: number): ComposedFeed => {
+      const k = withMenu(pad);
+      k.targets = [
+        {
+          ...k.targets[0]!,
+          outlets: {
+            ...target("android", mirrors).outlets,
+            "app-store": k.targets[0]!.outlets["app-store"]!,
+          },
+        },
+      ];
+      return k;
+    };
+    while (menuBytes(sized(0)) + 2000 < MAX_FEED_PAYLOAD_BYTES) mirrors++;
+    let pad = 0;
+    while (
+      menuBytes(sized(pad)) < MAX_FEED_PAYLOAD_BYTES &&
+      sign(sized(pad), "android").doc.deltas
+    )
+      pad++;
+    const exact = sign(sized(pad), "android");
+    expect(exact.size).toBe(MAX_FEED_PAYLOAD_BYTES);
+    expect(exact.doc.deltas).toBeDefined();
+    expect(exact.ok).toBe(true);
+    const over = sign(sized(pad + 1), "android");
+    expect(over.doc.deltas).toBeUndefined();
+    expect(over.size).toBeLessThanOrEqual(MAX_FEED_PAYLOAD_BYTES);
+    expect(over.audits.map((a) => a.action)).toEqual([
+      "update.feed.deltas_omitted",
+    ]);
+    expect(over.ok).toBe(true);
+  });
+
+  it("appTargetNearCap with a full menu: the menu is trimmed, never the document choice or a P4-13 member", async () => {
+    const base = await composed({
+      packs: 8,
+      longIds: true,
+      levels: 1,
+      platforms: ["android"],
+      engines: [""],
+      groups: 0,
+      values: 0,
+      floors: 8,
+      revocations: 8,
+    });
+    // An app part that leaves room for some, not all, of 64 entries (about 16 KB).
+    let extra = 0;
+    while (
+      bytes(
+        sign({ ...base, targets: [target("android", extra + 1)] }, "android")
+          .doc,
+      ) <= 56_000
+    )
+      extra++;
+    const nearCap: ComposedFeed = {
+      ...base,
+      targets: [target("android", extra)],
+    };
+    const before = sign(nearCap, "android");
+    const recs = Object.keys(base.content.packSets!.releases);
+    const d = sign(
+      {
+        ...nearCap,
+        deltas: { candidates: candidates(64, recs), pinnedBy: {} },
+      },
+      "android",
+    );
+    expect(d.ok).toBe(true);
+    expect(d.platform).toBe(before.platform);
+    expect(d.doc.packSets).toEqual(before.doc.packSets);
+    expect(d.doc.packFloors).toEqual(before.doc.packFloors);
+    expect(d.doc.revocations).toEqual(before.doc.revocations);
+    const listed = Object.values(d.doc.deltas!).flat();
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.length).toBeLessThan(64);
+    // The highest-ranked entries survive.
+    expect(listed[0]!.artifact.sha256).toBe(hex("frame:0"));
+    expect(d.audits.map((a) => a.action)).toEqual([
+      ...before.audits.map((a) => a.action),
+      "update.feed.deltas_trimmed",
+    ]);
+    expect(d.size).toBeLessThanOrEqual(MAX_FEED_PAYLOAD_BYTES);
+  });
+});
