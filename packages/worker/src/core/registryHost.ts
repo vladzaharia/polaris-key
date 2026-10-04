@@ -242,19 +242,42 @@ export function registryNotFound(
   if (ecosystem === "swift")
     return json(
       { detail: "not found" },
-      {
-        status: 404,
-        headers: { "content-type": "application/problem+json" },
-      },
+      { status: 404, headers: SWIFT_PROBLEM_HEADERS },
     );
   return notFound();
 }
 
-/** 405 for any method but GET and HEAD on a registry path (OCI's error JSON under `/v2/`). */
+/** Swift's problem answers carry `Content-Version: 1` like every Swift answer (F-06,
+ *  `Registry.md` §3.3 and §3.5). */
+const SWIFT_PROBLEM_HEADERS = {
+  "content-type": "application/problem+json",
+  "content-version": "1",
+} as const;
+
+/** `POST /swift/<owner>/login` (`Registry.md` §3.2, SwiftPM's `package-registry login`). */
+const SWIFT_LOGIN = /^\/swift\/[^/]+\/login$/;
+
+/** 405 for any method but GET and HEAD on a registry path (OCI's error JSON under `/v2/`,
+ *  Swift's `problem+json` under `/swift/`), and Swift's `POST …/login` 501 (F-06). */
 export function registryMethodNotAllowed(
   ecosystem: RegistryEcosystem | null,
+  method: string = "",
+  pathname: string = "",
 ): Response {
   const allow = { allow: "GET, HEAD" };
+  if (ecosystem === "swift") {
+    // F-06: SwiftPM's login answers 501 until registry credentials exist (F-21). Decided from
+    // the path's shape alone, before any owner is loaded, so it can never probe an owner.
+    if (method === "POST" && SWIFT_LOGIN.test(pathname))
+      return json(
+        { detail: "registry login is not supported yet" },
+        { status: 501, headers: SWIFT_PROBLEM_HEADERS },
+      );
+    return json(
+      { detail: "method not allowed" },
+      { status: 405, headers: { ...SWIFT_PROBLEM_HEADERS, ...allow } },
+    );
+  }
   if (ecosystem === "oci")
     return json(
       {
@@ -464,7 +487,8 @@ async function answer(
   }
   // GET and HEAD only, decided from the path's ecosystem alone (the list is public), before any
   // owner is loaded, so a 405 can never probe an owner.
-  if (!readOnly) return plain(registryMethodNotAllowed(ecosystem));
+  if (!readOnly)
+    return plain(registryMethodNotAllowed(ecosystem, req.method, pathname));
   if (ecosystem === "oci" && (pathname === "/v2" || pathname === "/v2/"))
     return plain(ociBase(req));
   if (RESERVED_ECOSYSTEMS.has(ecosystem))

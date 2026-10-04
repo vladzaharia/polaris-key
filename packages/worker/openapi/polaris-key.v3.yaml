@@ -7446,6 +7446,272 @@ paths:
           headers:
             Docker-Distribution-API-Version:
               schema: { type: string, const: registry/2.0 }
+  # ── Swift package registry (F-06) ─────────────────────────────────────────────────────────
+  #
+  # SwiftPM's registry protocol (SE-0292, https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/PackageRegistry/Registry.md)
+  # under `/swift/<owner>/`, the URL `swift package-registry set --scope <scope>` takes. Every
+  # answer carries `Content-Version: 1`; errors are `application/problem+json`; `Accept` naming
+  # an invalid registry version or media type is 400, an unsupported one 415. The not-found is
+  # the same for an unknown owner, package or version and a feed that is off.
+  /swift/{owner}/{scope}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: The owner (product slug).,
+        }
+      - {
+          name: scope,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: The package scope (case-insensitive).,
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The package name (case-insensitive); a `.json` suffix is accepted.",
+        }
+    get:
+      operationId: swiftListReleases
+      tags: [registry]
+      summary: List a Swift package's releases (registry host only)
+      description: >
+        F-06, Registry.md §4.1. Every version in precedence order; a yanked one carries a
+        `problem` (410 Gone), so SwiftPM never resolves it. No `url` is listed: a client expands
+        `/{scope}/{name}/{version}` on this host. `Link: <…>; rel="latest-version"` names the
+        `latest` tag (the stable channel's head) when it is available, else the highest stable
+        version. Index caching: `public, max-age=60, stale-while-revalidate=60` and a strong
+        ETag.
+      responses:
+        "200":
+          description: The release list.
+          headers:
+            Content-Version: { schema: { type: string, const: "1" } }
+            Link: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [releases]
+                properties:
+                  releases:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        problem: { type: object }
+        "400":
+          { description: "Invalid API version in `Accept` (problem+json)." }
+        "401":
+          {
+            description: "A non-public feed (tier 1): `WWW-Authenticate: Basic` (problem+json).",
+          }
+        "404": { description: "Not found (problem+json)." }
+        "415":
+          {
+            description: "Unsupported API version or media type in `Accept` (problem+json).",
+          }
+    head:
+      operationId: swiftListReleasesHead
+      tags: [registry]
+      summary: List a Swift package's releases, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The release list's headers. }
+  /swift/{owner}/{scope}/{name}/{version}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: scope, in: path, required: true, schema: { type: string } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - {
+          name: version,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The semver version; a `.json` suffix is accepted.",
+        }
+    get:
+      operationId: swiftReleaseInfo
+      tags: [registry]
+      summary: A Swift package release's metadata (registry host only)
+      description: >
+        F-06, Registry.md §4.2. `id`, `version`, the `source-archive` resource with its SHA-256
+        `checksum` and, for a signed release, `signing {signatureBase64Encoded,
+        signatureFormat: cms-1.0.0}`, `metadata` and `publishedAt`. `Link` carries
+        `latest-version`, `predecessor-version` and `successor-version`. A yanked version's
+        metadata stays served (an archive never changes after publish). Index caching.
+      responses:
+        "200":
+          description: The release metadata.
+          headers:
+            Content-Version: { schema: { type: string, const: "1" } }
+            Link: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, version, resources, metadata]
+                properties:
+                  id: { type: string }
+                  version: { type: string }
+                  resources: { type: array, items: { type: object } }
+                  metadata: { type: object }
+                  publishedAt: { type: string, format: date-time }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftReleaseInfoHead
+      tags: [registry]
+      summary: A Swift package release's metadata, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The release metadata's headers. }
+  /swift/{owner}/{scope}/{name}/{version}/Package.swift:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: scope, in: path, required: true, schema: { type: string } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: version, in: path, required: true, schema: { type: string } }
+      - {
+          name: swift-version,
+          in: query,
+          required: false,
+          schema: { type: string },
+          description: "Selects `Package@swift-<v>.swift`.",
+        }
+    get:
+      operationId: swiftManifest
+      tags: [registry]
+      summary: A Swift package release's manifest (registry host only)
+      description: >
+        F-06, Registry.md §4.3. The SIGNED manifest copy the publisher uploaded (never one taken
+        from the archive), `text/x-swift` as an attachment, immutable. The unqualified manifest
+        lists every `Package@swift-*.swift` as `Link: <…?swift-version=X>; rel="alternate";
+        filename=…; swift-tools-version=…`. A `swift-version` with no such manifest is 303 to
+        the unqualified one.
+      responses:
+        "200":
+          description: The manifest.
+          content:
+            text/x-swift:
+              schema: { type: string }
+        "303":
+          {
+            description: No manifest for that swift-version; `Location` is the unqualified manifest.,
+          }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftManifestHead
+      tags: [registry]
+      summary: A Swift package release's manifest, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The manifest's headers. }
+  /swift/{owner}/{scope}/{name}/{version}.zip:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: scope, in: path, required: true, schema: { type: string } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: version, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: swiftSourceArchive
+      tags: [registry]
+      summary: A Swift package release's source archive (registry host only)
+      description: >
+        F-06, Registry.md §4.4. The zip by its SHA-256 (ETag, `Repr-Digest`), `application/zip`
+        as `attachment; filename="<Name>-<version>.zip"`, immutable for a year, with `Range`
+        support. A signed release adds `X-Swift-Package-Signature-Format: cms-1.0.0` and
+        `X-Swift-Package-Signature` (base64 CMS).
+      responses:
+        "200":
+          description: The source archive.
+          headers:
+            X-Swift-Package-Signature-Format: { schema: { type: string } }
+            X-Swift-Package-Signature: { schema: { type: string } }
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "206": { description: A byte range of the archive. }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftSourceArchiveHead
+      tags: [registry]
+      summary: A Swift package release's source archive, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The archive's headers. }
+  /swift/{owner}/identifiers:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - {
+          name: url,
+          in: query,
+          required: true,
+          schema: { type: string },
+          description: A source repository URL.,
+        }
+    get:
+      operationId: swiftIdentifiers
+      tags: [registry]
+      summary: Swift package identifiers for a repository URL (registry host only)
+      description: >
+        F-06, Registry.md §4.5. The packages the feed's `repositoryUrls` setting maps the URL to
+        (compared without scheme, user, `.git` or case), limited to packages the feed holds and
+        the reader may read. None is 404; a missing `url` is 400.
+      responses:
+        "200":
+          description: The identifiers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [identifiers]
+                properties:
+                  identifiers: { type: array, items: { type: string } }
+        "400": { description: "Missing `url` (problem+json)." }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftIdentifiersHead
+      tags: [registry]
+      summary: Swift package identifiers for a repository URL, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The identifiers' headers. }
+  /swift/{owner}/login:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: swiftLogin
+      tags: [registry]
+      summary: SwiftPM registry login, not supported yet (registry host only)
+      description: >
+        F-06. `swift package-registry login` posts here. Registry credentials arrive with F-21;
+        until then the host answers 501 (problem+json, `Content-Version: 1`) for every owner,
+        decided from the path alone. Publishing (`PUT`, Registry.md §4.6) is 405 until F-22.
+      responses:
+        "501": { description: "Login is not supported yet (problem+json)." }
 components:
   securitySchemes:
     ciToken:

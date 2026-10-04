@@ -192,6 +192,21 @@ const REGISTRY_SERVER = "https://pkg.plrs.im";
 const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
+  // F-06: the Swift registry (SwiftPM Registry.md §4); login is the host dispatcher's 501.
+  ["/swift/{owner}/{scope}/{name}", ["get", "head"], "swift.releases"],
+  ["/swift/{owner}/{scope}/{name}/{version}", ["get", "head"], "swift.release"],
+  [
+    "/swift/{owner}/{scope}/{name}/{version}/Package.swift",
+    ["get", "head"],
+    "swift.manifest",
+  ],
+  [
+    "/swift/{owner}/{scope}/{name}/{version}.zip",
+    ["get", "head"],
+    "swift.archive",
+  ],
+  ["/swift/{owner}/identifiers", ["get", "head"], "swift.identifiers"],
+  ["/swift/{owner}/login", ["post"], "host"],
 ];
 
 function specMethods(path: string): string[] {

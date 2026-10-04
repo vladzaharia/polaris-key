@@ -1,0 +1,17 @@
+{
+  "id": "acme.AcmeKit",
+  "version": "1.0.0",
+  "resources": [
+    {
+      "name": "source-archive",
+      "type": "application/zip",
+      "checksum": "a25fd85dbdedd9b5b326ab7024ae30b13bac7fb1de8da332ed8f471a8869bd57",
+      "signing": {
+        "signatureBase64Encoded": "Q01TIHNpZ25hdHVyZSBieXRlcyBmb3IgMS4wLjA=",
+        "signatureFormat": "cms-1.0.0"
+      }
+    }
+  ],
+  "metadata": {},
+  "publishedAt": "2026-09-21T14:13:20Z"
+}

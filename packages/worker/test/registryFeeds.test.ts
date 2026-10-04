@@ -823,8 +823,10 @@ function deps(source: Map<string, RegistryPackage>): TestDeps {
 }
 
 describe("the materialiser", () => {
-  it("ships no renderer and no route in F-02", () => {
-    expect(DISTRIBUTION_REGISTRY_ROUTES).toEqual([]);
+  it("every route comes from a renderer, and is Distribution's", () => {
+    // F-02 shipped none; F-04 to F-09 each add one renderer and its routes.
+    for (const r of DISTRIBUTION_REGISTRY_ROUTES)
+      expect(r.service, r.name).toBe("distribution");
   });
 
   it("writes every object under registry/<ecosystem>/<owner>/ with its stamp, type and hash, then the render record", async () => {

@@ -220,9 +220,8 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("registers no ecosystem routes yet; every route is Distribution's and names a known ecosystem", () => {
+  it("every route is Distribution's and names a known ecosystem", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
-    expect(REGISTRY_ROUTES).toEqual([]);
     for (const r of REGISTRY_ROUTES) {
       expect(r.service).toBe("distribution");
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
@@ -391,8 +390,9 @@ describe("registry host: isolation", () => {
       expect(await res.json(), path).toEqual({ error: "not_found" });
       expectHardened(res, path);
     }
+    // A path no Swift route matches (F-06's routes read D1, which this env does not seed).
     const swift = await worker.fetch(
-      new Request(`${PKG}/swift/djdl/acme/sdk`),
+      new Request(`${PKG}/swift/djdl/acme`),
       env(PKG),
     );
     expect(swift.status).toBe(404);
