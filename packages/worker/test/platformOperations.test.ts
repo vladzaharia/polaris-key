@@ -7,7 +7,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Env } from "../src/env.js";
-import type { Db } from "../src/db/types.js";
+import type { Db, DbStatement } from "../src/db/types.js";
 import { handleAdmin } from "../src/admin/index.js";
 import {
   ADMIN_COOKIE,
@@ -15,6 +15,7 @@ import {
   issueSession,
 } from "../src/admin/session.js";
 import {
+  D1_MAX_BOUND_PARAMS,
   ERROR_SUMMARY_MAX,
   JOB_RUN_RETENTION_SECONDS,
   jobRunRows,
@@ -163,6 +164,43 @@ describe("job-run rows", () => {
     expect(n).toBe(32);
     expect(await count(db, "SELECT COUNT(*) AS n FROM platform_job_runs")).toBe(
       32,
+    );
+  });
+
+  it("never binds more than D1's 100 parameters in one statement", async () => {
+    const db = makeTestDb();
+    const seen: DbStatement[] = [];
+    const spy: Db = {
+      ...db,
+      all: db.all.bind(db),
+      first: db.first.bind(db),
+      run: db.run.bind(db),
+      runChanges: db.runChanges.bind(db),
+      batch: async (statements) => {
+        seen.push(...statements);
+        await db.batch(statements);
+      },
+    };
+    const failures: Record<string, string> = {};
+    for (let i = 0; i < 40; i++) failures[`seats:p${i}`] = `fail ${i}`;
+    const n = await recordJobRun(spy, {
+      runId: "big",
+      job: "maintenance",
+      cron: MAINTENANCE_CRON,
+      startedAtMs: 5_000,
+      endedAtMs: 6_000,
+      report: { counts: { indexes: 0, products: 0 }, failures },
+    });
+    expect(n).toBeGreaterThan(30);
+    expect(seen.length).toBeGreaterThan(1);
+    for (const st of seen) {
+      const params = st.params;
+      expect(params.length).toBeLessThanOrEqual(D1_MAX_BOUND_PARAMS);
+      expect((st.sql.match(/\?/g) ?? []).length).toBe(params.length);
+    }
+    expect(seen.reduce((a, st) => a + st.params.length, 0)).toBe(n * 11);
+    expect(await count(db, "SELECT COUNT(*) AS n FROM platform_job_runs")).toBe(
+      n,
     );
   });
 

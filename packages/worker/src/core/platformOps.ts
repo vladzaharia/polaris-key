@@ -137,8 +137,27 @@ export function jobRunRows(
   return rows;
 }
 
-/** D1 binds at most 100 parameters per statement: 9 columns × 10 rows stays under it. */
-const ROWS_PER_INSERT = 10;
+/** D1 binds at most 100 parameters per statement. */
+export const D1_MAX_BOUND_PARAMS = 100;
+/** Every job-run row binds one parameter per column of the INSERT below. */
+const JOB_RUN_COLUMNS = [
+  "id",
+  "run_id",
+  "job",
+  "cron",
+  "step",
+  "started_at",
+  "duration_ms",
+  "outcome",
+  "items",
+  "rows_affected",
+  "error_summary",
+] as const;
+/** 11 columns × 9 rows = 99 parameters, under D1's limit. */
+const ROWS_PER_INSERT = Math.floor(
+  D1_MAX_BOUND_PARAMS / JOB_RUN_COLUMNS.length,
+);
+const ROW_PLACEHOLDERS = `(${JOB_RUN_COLUMNS.map(() => "?").join(", ")})`;
 
 /** Persist one tick. Callers treat a throw here as a failure of the recording, not the job. */
 export async function recordJobRun(
@@ -162,10 +181,8 @@ export async function recordJobRun(
   for (let i = 0; i < rows.length; i += ROWS_PER_INSERT) {
     const chunk = rows.slice(i, i + ROWS_PER_INSERT);
     statements.push({
-      sql: `INSERT OR IGNORE INTO platform_job_runs
-              (id, run_id, job, cron, step, started_at, duration_ms, outcome, items,
-               rows_affected, error_summary)
-            VALUES ${chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}`,
+      sql: `INSERT OR IGNORE INTO platform_job_runs (${JOB_RUN_COLUMNS.join(", ")})
+            VALUES ${chunk.map(() => ROW_PLACEHOLDERS).join(", ")}`,
       params: chunk.flatMap((r) => [
         r.id,
         opts.runId,
