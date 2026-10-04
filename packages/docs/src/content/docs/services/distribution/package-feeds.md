@@ -76,6 +76,66 @@ A new version shows up within about a minute. Index documents are rendered when 
 changes and kept in the blob bucket under `registry/`; a document that goes missing is rendered
 again on the next read.
 
+## npm
+
+The npm feed serves scoped packages only, and the scope must be the feed's own (`@polaris-key`
+for the platform's packages). It speaks the npm registry's read protocol, so npm, pnpm, Yarn
+Berry and Bun install from it unchanged.
+
+| Request                                             | Answer                                               |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| `GET /npm/<owner>/@scope%2fname` (or `@scope/name`) | the packument; `%2f` and `%2F` are the same document |
+| `GET /npm/<owner>/@scope/name/-/name-<version>.tgz` | the version's tarball, as `dist.tarball` names it    |
+
+- **Full or abbreviated.** An installer's `Accept` lists `application/vnd.npm.install-v1+json`
+  first and gets the abbreviated packument; anything else (`npm view`, a browser) gets the full
+  one as `application/json`. Answers carry `Vary: Accept`.
+- **Integrity.** `dist.integrity` is the tarball's SHA-512 as an SRI string and `dist.shasum` its
+  SHA-1, both computed when the version was published; `dist.tarball` is an absolute URL on this
+  host. npm, pnpm and Bun check the bytes against them; Yarn Berry instead pins its own checksum
+  in `yarn.lock` on the first install and checks that afterwards.
+- **Tags.** `dist-tags` come from the release channels: `stable` is `latest`, and any other
+  channel is a tag of its own name (`beta`, `pr-12`). Promoting or pinning a channel moves its
+  tag.
+- **Yank and deprecate.** npm has no yank. A yanked version stays in the packument and installs
+  by exact version, so existing lockfiles keep working, but it leaves every tag and carries
+  `deprecated` with the yank reason, so clients warn and range resolution prefers another
+  version where the client supports that (npm does). A deprecated version carries its message.
+- Names outside the feed's scope, unscoped names and unknown versions answer the same not-found
+  as a feed that does not exist.
+
+### Setup
+
+Route only the feed's scope to it, so no other name can resolve here (and none of the feed's
+names can resolve anywhere else). For an owner `acme` with the scope `@acme`:
+
+```ini
+# .npmrc (npm, pnpm)
+@acme:registry=https://pkg.plrs.im/npm/acme/
+```
+
+```yaml
+# .yarnrc.yml (Yarn Berry)
+npmScopes:
+  acme:
+    npmRegistryServer: "https://pkg.plrs.im/npm/acme/"
+```
+
+```toml
+# bunfig.toml (Bun)
+[install.scopes]
+"@acme" = "https://pkg.plrs.im/npm/acme/"
+```
+
+Recent Yarn releases refuse versions younger than their `npmMinimalAgeGate` setting by
+default ("quarantined"), reading each version's publication time from the packument; a version
+just published installs with Yarn once that window has passed, or at once with
+`npmMinimalAgeGate: 0` in `.yarnrc.yml`.
+
+The snippets take three inputs: the registry host's origin, the owner (the product slug), and
+the feed's scope (`dist_registry_feeds.namespace_json` `{scope}`). The console's setup tab and
+`pkey feeds setup` render them from those alone.
+
 ## Local testing
 
 `pnpm --filter @polaris-key/worker registry:clients` stands up a seeded local Worker on the
