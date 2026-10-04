@@ -68,6 +68,31 @@ These are gaps G10 and G14 and threat-model item 11 in S-16. They are wrong toda
 - [ ] `authPoll` is absent from discovery; `gen:transcripts -- --check` passes; the PR lists the SDK grep showing no reader.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
+## Corrections from the implementation
+
+Recorded by I-01 where the code made this brief's text inexact:
+
+- **The backfill cannot live in the migration.** The platform issuer is a Worker secret
+  (`PLATFORM_OIDC_ISSUER`), which D1 SQL cannot read. Migration `0059_portal_identity_issuer.sql`
+  therefore adds only a data-layer guard (an insert trigger that refuses a `provider` that is not
+  an http(s) issuer URL) and leaves existing rows untouched; the Worker re-keys the legacy
+  `provider = 'oidc'` rows to the configured issuer (`rekeyLegacyPortalIdentities`, an idempotent
+  `UPDATE OR IGNORE`) before every portal OIDC sign-in, ahead of the identity lookup. The column
+  keeps its name (`provider`), so the change is additive for a Worker deployed before the
+  migration. The rollback statements are in the migration header and are exercised by a test.
+  No table changes owner, so `TABLE_OWNERS` is unchanged.
+- **Transcripts did not move.** `conformance/transcripts/discovery-capabilities.json` records a
+  product with Identity off (`"identity": { "enabled": false }`), so it never carried `authPoll`;
+  `gen:transcripts` rewrote nothing. The advertisement was pinned instead by
+  `test/fixtures/discovery-golden.json` (a sanctioned edit, noted in `discoveryGolden.test.ts`),
+  `test/surfaces.test.ts` and the OpenAPI discovery example, all updated.
+- **The "service summary"** is `tools/services.json`'s `identity.summary`, regenerated into
+  `packages/admin/src/services.generated.ts` with `gen:services`.
+- **SDK grep** (no reader of `authPoll`):
+  `grep -rniE "authPoll|auth_poll|identity/auth/poll" packages/*/src sdks` outside
+  `packages/worker` and `packages/docs` returns nothing (covers `sdks/{godot,kotlin,python,swift}`,
+  `sdk-node`, `sdk-react`, `client-core`, `cli`, `admin`).
+
 ## Verify
 
 ```sh
