@@ -101,6 +101,56 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- feed blobAccess p
 mise exec node@22 -- pnpm test:browser
 ```
 
+## Corrections from implementation
+
+- **`feed-delta-platform-target` became `feed-delta-no-delta-strategy`.** `planTarget` always
+  maps `platform` to null, so the runner's pipeline (`withFeedDeltas` → `planTarget` → `plan`)
+  cannot express a platform target. The 13th `feedDeltaCases` case covers §2.4 step 3's other
+  untested rule instead: a host without `delta` in `caps.strategies` merges the entry and never
+  plans it.
+- **Unusable `feedContentCases`.** Plan §4.2's list counts 16 only when "`artifact` missing or
+  with a bad `sha256`" is one case; it is `feed-deltas-bad-artifact` (an upper-case
+  `artifact.sha256`). A missing `artifact` fails the same rule in every reader.
+- **Corpus size.** Plan §4.1 estimated about 60 KB of source. The real growth is `cases.json`
+  +405 KB, `plan-matrix.json` +260 KB and `content/cases.json` +8 KB, or about 1.3 MB with the
+  two mirrors. Each appended feed case is a full signed copy of P4-13's base feed (about 13 KB).
+  `feed-delta-real-v1-v2` carries the content set's files index, chunk index and target inline,
+  as the `plan-real-*` rows do. Every pre-existing case is byte-identical by canonical JSON (610
+  in `cases.json`, 61 in `plan-matrix.json`, 188 in `content/cases.json`); only the two
+  generated `description` strings changed.
+- **`runUpdateCheck` returns `content`.** Plan §2.5 names only the engine option. The Node and
+  React wiring needs the verified `FeedContent` of the feed the decision used (the menu read with
+  its own `nonWireIntegers`), so the check result gains `content`.
+  - Node: `UpdateClient` keeps the menu after `decide()` and `feed()`. It also reads the
+    committed feed from the cache, through `reloadFeeds` and with no freshness check, when the
+    pack engine starts.
+  - React: `decideBrowserUpdate` returns `feedDeltas`. The adapter hands them to
+    `BrowserPacks.recordFeedDeltas`, and `BrowserPacksOptions.feedDeltas` lets a host supply its
+    own.
+  - The desktop bridge needs nothing: its host runs `@polaris-key/node`.
+- **A runner line outside the new sections.** In the Node runner, `delegationCases`' `feed` mode
+  compared `r.content` with an `expect.content` of three members. It now compares the three and
+  asserts `deltas` is null. `FeedContent` gained a member, and those feeds carry no menu. The
+  Python, Swift and Godot runners compare `expect.content` only, so they changed only in the count
+  (48 → 76).
+- **The resume rule.** The engine never resumes a candidate from the journal; it always
+  re-plans, reusing the plan id. A journal's `feedDelta` is merged again before planning. A
+  journal whose `delta` neither the record nor its own `feedDelta` names gets a fresh plan id
+  (abandoned and re-planned). A feed delta whose fetch fails falls back, as plan §2.4 step 5
+  says, instead of raising the record path's "the next ensure resumes".
+- **Worker.**
+  - The hook returns the ready rows. The composer ranks and caps them (`feedDeltas.ts`).
+  - The `seq` hash covers the set of candidates, not their rank. A delta turning `ready` or
+    `cold` bumps `seq`, but a change in device counts alone does not, because otherwise the seq
+    would move on almost every report. V4 §2.4.2 says so.
+  - Serving through the blob route and the payload URL also requires both P4-17 switches
+    (decision 9).
+  - The feed response's OpenAPI schema is a plain string, so only descriptions changed.
+  - No `test:workerd` CPU test at 64 packs × 3 levels was added (risk 3). The existing Node CPU
+    budget test and `test:workerd` pass.
+  - The simulation route (`simulate.ts`) passes no `env`, so the console's simulation shows no
+    menu.
+
 ## Hand-off
 
 - **P4-30 and P4-31** port the reader, the merge and the fallback rules from the approved plan.
