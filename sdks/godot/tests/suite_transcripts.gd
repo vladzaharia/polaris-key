@@ -3,6 +3,7 @@ extends RefCounted
 # @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
+# @pkey-feature packs.apply.chunk
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -29,6 +30,12 @@ extends RefCounted
 # or `result: "error"` and `code`. P3-03's `update-feed-rollback` and `update-record-by-hash`
 # replay through it; the synthetic transcripts at the end of this file (corpus-signed: the SDK has
 # no signer) add an alias request and prove the mapping fails on a doctored recording.
+#
+# `chunkRange` (P4-32, plans/P4-32.md §5) is PKeyPackChunks.chunk_range_fetch over
+# PKeyPackCdnTransport's public open_range (PKeyPackHttp.open_range on HTTPClient, the body
+# pulled from PKeyFakeServer), against the blobs template the last discover returned, rebased
+# onto the loopback server (the recording names the transcript's base). `range` is the fetch's
+# status; `bytes` the body it returned, as a string.
 
 const FLOOR := 4
 
@@ -93,6 +100,10 @@ static func replay(tr: Dictionary) -> Array:
 			if step["action"] == "updateDecide" and sdk.core.discovery_manifest == null:
 				# The transcript ran no discovery: the Worker's standard templates, as React's replayer.
 				sdk.core.discovery_manifest = _standard_discovery(server.base_url(), tr["product"])
+			if step["action"] == "chunkRange" and sdk.core.discovery_manifest is Dictionary:
+				# The discovered blobs template names the transcript's base; the bytes come from the
+				# loopback server.
+				sdk.core.discovery_manifest = _rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
 			var observed := await _act(sdk, store, step)
 			# A built URL names the loopback server; the recording names the transcript's base.
 			if observed.get("url") is String and String(observed["url"]).begins_with(server.base_url() + "/"):
@@ -206,6 +217,20 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				out["granted"] = r.detail.get("granted")
 			else:
 				out["reason"] = _refusal_reason(r)
+		"chunkRange":
+			var a: Dictionary = step["args"]
+			var cdn := PKeyPackCdnTransport.new(sdk.core)
+			var fetch_range := PKeyPackChunks.chunk_range_fetch(cdn.open_range)
+			var r: Dictionary = await fetch_range.call(String(a["bundle"]), int(a["offset"]), int(a["length"]))
+			out["range"] = r["status"]
+			if r["status"] == "ok":
+				var bytes := PackedByteArray()
+				while true:
+					var got = await r["body"].take(4096)
+					if not (got is PackedByteArray) or (got as PackedByteArray).is_empty():
+						break
+					bytes.append_array(got)
+				out["bytes"] = bytes.get_string_from_ascii()
 		_:
 			out["unsupported"] = step["action"]
 	var services := {}
@@ -280,6 +305,18 @@ static func _standard_discovery(base: String, product: String) -> Dictionary:
 	}
 
 
+## `manifest` with its distribution blobs template moved from `from` (the recorded base) to `to`
+## (the loopback server).
+static func _rebased(manifest: Dictionary, from: String, to: String) -> Dictionary:
+	var m: Dictionary = manifest.duplicate(true)
+	var dist = m.get("services", {}).get("distribution")
+	if dist is Dictionary and dist.get("endpoints") is Dictionary:
+		var t = dist["endpoints"].get("blobs")
+		if t is String and (t as String).begins_with(from + "/"):
+			dist["endpoints"]["blobs"] = to + (t as String).substr(from.length())
+	return m
+
+
 ## The transcripts' sign-in vocabulary (sdk-node `SignInPoll`): the server's `timeout` and the
 ## client's expiry are both `expired`, and its `error` state is `error`.
 static func _sign_in_status(status: String) -> String:
@@ -319,6 +356,16 @@ func _negative(t: PKeyTestContext) -> void:
 	outcome["steps"][1]["expect"]["documents"] = {"license": "applied", "config": "applied"}
 	f = await replay(outcome)
 	t.check("negative: a different outcome fails", _mentions(f, "step 1 (sync): documents"), "\n  ".join(f))
+
+	# packs-chunk-range passes only when the SDK reads the exact run: a recorded Content-Range
+	# altered to another range must be refused, so the step's `range` fails.
+	var chunk = PKeyTestFixtures.transcript("packs-chunk-range")
+	if t.check("negative: packs-chunk-range present", chunk is Dictionary):
+		var doctored: Dictionary = chunk.duplicate(true)
+		for x in doctored["steps"][1]["exchanges"]["items"]:
+			x["response"]["headers"]["content-range"] = "bytes 17-40/64"
+		f = await replay(doctored)
+		t.check("negative: a chunk range with another Content-Range fails", _mentions(f, "step 1 (chunkRange): range"), "\n  ".join(f))
 
 
 ## JSON equality without GDScript's cross-type `==` errors (a String compared with a bool), and
