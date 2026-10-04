@@ -156,6 +156,29 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     "/manage/api/products/djdl/license/tiers": { tiers: [] },
     "/manage/api/products/djdl/config/profiles": { profiles: [] },
     "/manage/api/products/djdl/activity": { items: [], nextCursor: null },
+    // What the product Overview (chunk 5) reads for its tiles and checklist, so a suite that
+    // lands on `#/p/djdl` renders it instead of the product body the prefix match would return.
+    "/manage/api/products/djdl/license/licenses": { licenses: [] },
+    "/manage/api/products/djdl/config/catalog": {
+      schemaVersion: 0,
+      entries: [],
+    },
+    "/manage/api/products/djdl/release/releases": {
+      releases: [],
+      channels: [],
+      floors: [],
+    },
+    "/manage/api/products/djdl/release/health": {
+      health: { healthy: true, status: "healthy", missing: [], checks: [] },
+    },
+    "/manage/api/products/djdl/distribution/rollouts": { rollouts: [] },
+    "/manage/api/products/djdl/identity/portal": {
+      settings: {
+        portalEnabled: false,
+        oidcEnabled: false,
+        magicEnabled: false,
+      },
+    },
     ...opts.extra,
   };
   for (const p of me.products) {

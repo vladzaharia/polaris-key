@@ -51,6 +51,7 @@ export const ACTION_LEVELS = {
   "repo.resync": 1,
   "sentry.dismiss": 1,
   "rollout.setPercentage": 1,
+  "device.resetBinding": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,

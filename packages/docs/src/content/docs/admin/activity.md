@@ -5,7 +5,7 @@ sidebar:
   order: 10
 ---
 
-The Activity tab is a per-product audit log: every admin-console mutation appends one row, and a
+**Core → Activity** (`#/p/<slug>/activity`) is a per-product audit log: every admin-console mutation appends one row, and a
 handful of security-relevant runtime events append one too, even though nobody clicked anything
 in the console to cause them.
 
@@ -44,7 +44,8 @@ them: a license key's target id is its opaque hash, a signing key's is its `kid`
 ### Rows with no actor
 
 Four actions are written by the runtime itself, from a device's own request, with no admin
-session behind them at all — they render with a blank actor column:
+session behind them at all. The console shows them as **Polaris Key**, with a server glyph in
+place of initials:
 
 - `device.fingerprint.drift` — a check-in changed some hardware components but stayed within
   the policy's tolerance; the binding stands.
@@ -74,12 +75,36 @@ one portal-related action that _does_ show up here is `portal.settings.update` �
 changing the module toggles on [Identity](/docs/admin/console-tour/#identity), which is a console
 mutation like any other.
 
-## Keyset pagination
+## Reading the log
 
-`GET /manage/api/products/<slug>/activity?limit=50&beforeAt=…&beforeId=…` returns newest-first.
-The console loads the first page on mount; **Load more** re-issues the same call with the last
-row's `(at, id)` as the cursor, so paging is stable even while new rows are still being written.
-Times render relative ("3 hours ago") with the absolute timestamp in a tooltip.
+The page groups rows by day (Today, Yesterday, then dates) and phrases each action as a verb:
+`license.disable` reads "disabled license", followed by a link to the target when the console
+has a page for it (a license, tier, profile or device; secrets, signing keys and CI tokens link to
+**Keys & secrets**). Expanding a row shows its summary and the raw action code. **Table** switches
+to a When / Actor / Action / Target / Summary table; **Export loaded (CSV)** saves the entries
+loaded so far.
+
+### Filters
+
+Every filter is applied by the server and kept in the page URL, so a filtered view is a link you
+can share:
+
+| Filter | Query key        | Sent as                                                                                          |
+| ------ | ---------------- | ------------------------------------------------------------------------------------------------ |
+| Actor  | `actor`          | `actor`: a session subject or email, exactly; `system` for the runtime rows above.               |
+| Action | `action`         | `action`: a prefix, by area (`license.` matches `license.create` and `license.tier.change`).     |
+| Target | `kind`, `target` | `targetKind` and `targetId`, exactly.                                                            |
+| When   | `range`          | `since`: the last 24 hours, 7, 30 or 90 days, measured from when you chose it or last refreshed. |
+
+**Search** narrows the entries already loaded by their text; **Load older** fetches more.
+
+### The API
+
+`GET /manage/api/products/<slug>/activity?limit=50&beforeAt=…&beforeId=…` returns newest-first,
+and accepts the filters above as `action`, `actor`, `targetKind`, `targetId`, `since` and
+`until` (epoch seconds, inclusive). A malformed filter is refused with `422` naming the field.
+**Load older** re-issues the same call, with the same filters, and the last row's `(at, id)` as
+the cursor, so paging is stable even while new rows are still being written.
 
 ## Scope and retention
 
@@ -118,4 +143,4 @@ console's Platform section will show it; until then, call it directly.
 ## Reference
 
 - [D1 data model](/docs/reference/data-model/) — the `audit` table's columns, under `core`.
-- [Console tour](/docs/admin/console-tour/) — where the Activity tab sits in the nav.
+- [Console tour](/docs/admin/console-tour/) — where Activity sits in the nav.
