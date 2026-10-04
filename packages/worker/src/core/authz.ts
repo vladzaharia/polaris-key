@@ -236,7 +236,9 @@ function resolveDeviceLimit(
  *  not move more devices onto a licence than this allows. */
 export async function licenseDeviceLimit(
   db: Db,
-  product: Product,
+  // Only the slug and the product default are read, so a caller holding the public projection
+  // (`ProductPublic`, no signing key — the portal's activate preview, PX-W5) can ask too.
+  product: Pick<Product, "slug" | "defaultDeviceLimit">,
   license: LicenseRow,
   now: number,
 ): Promise<number> {

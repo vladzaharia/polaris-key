@@ -16,7 +16,10 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";
-import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import {
+  getOrCreateAccountByEmail,
+  upsertPortalProductSettings,
+} from "../src/services/identity/portal/repo.js";
 import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
@@ -161,6 +164,9 @@ describe("customer portal", () => {
     const env = portalEnv();
     await seedProduct(db, "djdl");
     const { licenseId, key } = await seedLicenseWithKey(db, "djdl");
+    // The seeded licence carries ada@example.com and this account signed in as someone else, so
+    // the S-16 email rule (PX-W5) would refuse it; this product opts into claim by key.
+    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
     const session = await portalSession(env, db, "someone@example.com");
 
     const claimed = await handlePortalApi(

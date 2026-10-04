@@ -17,6 +17,9 @@ export interface PortalSession {
   email: string;
   csrf: string;
   exp: number;
+  /** When the person signed in (unix seconds). Absent on sessions issued before PX-W5; see
+   *  `portalSessionAuthenticatedAt`, which derives it from `exp` for those. */
+  iat?: number;
 }
 
 export interface PortalSessionIdentity {
@@ -108,6 +111,7 @@ export async function issuePortalSession(
     email: identity.email ?? "",
     csrf: randomToken(16),
     exp: now + SESSION_TTL_SECONDS,
+    iat: now,
   };
   const body = base64UrlEncodeString(JSON.stringify(session));
   const key = await sessionKey(env);
@@ -190,4 +194,19 @@ export async function portalSessionFromRequest(
     readSessionCookie(req.headers.get("cookie")),
     now,
   );
+}
+
+/**
+ * When this session's holder last proved who they are: the sign-in that minted the cookie.
+ *
+ * PX-W5 uses it as the portal's step-up for the one action that hands out a new credential
+ * (G7, "Get a new key"): the portal has no passkeys or re-prompt yet (S-16 I-14/I-15), so a
+ * RECENT sign-in is the strongest proof of presence it can ask for, and a stolen 14-day cookie
+ * that is days old cannot mint a key. A session issued before `iat` existed is dated from its
+ * `exp`, which is exact because every session is issued with the same TTL.
+ */
+export function portalSessionAuthenticatedAt(session: PortalSession): number {
+  return typeof session.iat === "number"
+    ? session.iat
+    : session.exp - SESSION_TTL_SECONDS;
 }
