@@ -253,11 +253,10 @@ ascVersion, contentApi}`. `play-pad modules` reports `pending` with `{padPack, d
     and caps list that transport only while the platform is available. The result is `noop`,
     `platform` or `plan-transport-unsupported`, never a CDN fallback.
   - **Delivery.** The `platform` strategy asks the transport to deliver, re-reads the copy and
-    accepts only the exact target (`record-mismatch` otherwise; a bad marker or payload is
+    accepts it under the float rule above (`record-mismatch` otherwise; a bad marker or payload is
     `marker-rejected` with the step).
-  - **Known edge, left alone.** A `noop` whose installed copy is a platform copy with the same
-    payload but another record would commit a platform path to the state document. It needs an
-    identical payload signed again.
+  - **`noop` onto a platform copy** returns early and commits nothing to the state document
+    (fixed in review round 1).
 - **Distribution.** `connectors/asc/apply.ts` `resolveBackgroundAssetRelease` links a Background
   Asset object to a pack release. It looks, in order, at the upload report's
   `ascBackgroundAssetVersionId`, then at an already-linked object with that version, then at

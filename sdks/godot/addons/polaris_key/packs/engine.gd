@@ -1245,7 +1245,8 @@ func _platform_preflight(pack_id: String, pin_sha: String, body_text: String, re
 
 
 ## P5-08: the `platform` strategy. The transport delivers the pack, its copy is read again and
-## accepted only as exactly the target release, registered as this pack's baseline and activated
+## accepted under the float rule (the exact target for a decision; for the pin, the pinned release
+## or, where the transport floats, a higher unrevoked `seq` of the same pack), registered as this pack's baseline and activated
 ## (hot now; restart when its id is not mounted yet in this process). Nothing is committed to the
 ## state document: the copy's path is the platform's and is re-read at every boot. A coroutine.
 func _ensure_platform(pack_id: String, record_sha256: String, is_pin := false) -> Dictionary:

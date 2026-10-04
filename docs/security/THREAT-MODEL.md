@@ -3038,7 +3038,10 @@ Key never served. The store is a byte mover, not a trust anchor.
   delegated release can never arrive this way (see "Release-key surfaces" above). A platform copy
   is never written to the pack state document, so a store-side swap is re-verified at every boot.
   A pack bound to a platform transport is never silently fetched from the CDN instead
-  (`plan-transport-unsupported` when the plugin is missing).
+  (`plan-transport-unsupported` when the plugin is missing). The one CDN request a platform copy
+  can cause is P4-11's best-effort chunk-index backfill: a single GET per index per process of
+  that copy's chunk index, hash-verified before use and dropped on any failure, so it can only
+  make the copy a chunk seed for CDN packs. It never fetches the payload or a feed delta.
 - **CI's App Store Connect key.** `pkey transport apple-ba upload` signs its ES256 tokens with
   CI's own key from the environment only (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY` or
   `ASC_KEY_PATH`). It is never logged, never sent to the pre-signed part-upload URLs, and never the
