@@ -607,12 +607,17 @@ export function storeAsset(
   };
 }
 
-/** `ReleaseData` for every listed version, newest first. */
+/**
+ * `ReleaseData` for every listed version: the stable releases newest first, then the pre-releases
+ * newest first. The 4.7 editor preselects the FIRST release of the list in its install dialog (F-09's
+ * editor check: with a beta newest, "Download" installed `1.2.0-beta.1` and labelled it Unstable
+ * only in the dropdown), so a stable release leads whenever one is listed.
+ */
 export function storeReleases(
   pkg: RegistryPackage,
   view: GodotFeedView,
 ): Array<Record<string, unknown>> {
-  return listedVersions(pkg).map((v) => {
+  const releases = listedVersions(pkg).map((v) => {
     const zip = zipOf(v)!;
     return {
       id: ordinal(pkg, v),
@@ -628,6 +633,10 @@ export function storeReleases(
       download_url: zipUrl(view, zip),
     };
   });
+  return [
+    ...releases.filter((r) => r.stable),
+    ...releases.filter((r) => !r.stable),
+  ];
 }
 
 /** `releases/…?stable_only=&compatibility=`, filtered from the rendered list. */

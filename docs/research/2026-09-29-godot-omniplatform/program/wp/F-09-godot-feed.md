@@ -156,6 +156,45 @@ were the fact. None of these changes a wire shape of the device protocol, the co
 - **Fix `seed.mjs`'s missing `product_keys` row** for every client (F-02's harness).
 - **Manual editor installs**, one per shape (4.6 and 4.7), by `pkey-godot-engineer`, on the PR.
 
+## Verification (manual editor installs, 2026-10-04)
+
+Done in real editors, headless, by driving the editors' own AssetLib UI (not a re-scripted HTTP
+flow): `clients/godot-editor.sh` runs `clients/godot-editor/`, a project whose editor plugin presses
+the buttons a person presses. Run: `GODOT_EDITOR_46=<bin> GODOT_EDITOR_47=<bin> pnpm --filter
+@polaris-key/worker registry:clients -- --client godot-editor` against the seeded harness Worker
+(skips with a notice when neither variable is set; not in CI, which has no editor). Each editor has
+a fresh HOME, so its own settings (the feed URL in `asset_library/available_urls` or
+`asset_store/available_urls`) are the only configuration.
+
+| Editor                                                     | Setting                                                                     | Flow exercised (all through the editor's own code)                                                                                                                       | Result |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| Godot 4.6.2 stable (official macOS universal, from GitHub) | `asset_library/available_urls` = `<origin>/godot/<owner>/asset-library/api` | Go Online, `configure`, `asset?…`, icon, open the addon (`asset/<id>`), Download (the editor compares `download_hash`), installer, Install, files on disk, plugin enable | pass   |
+| Godot 4.7.2 stable (official, `/Applications/Godot.app`)   | `asset_store/available_urls` = `<origin>/godot/<owner>/store/api/v1`        | Go Online, `/`, `tags/`, `licenses/`, `search/query/`, icon, `assets/…`, `releases/…`, Download, installer, Install, files on disk, plugin enable                        | pass   |
+
+Both editors list `Smoke Addon`, install it and enable `smoke_addon` as a plugin at version 1.1.0.
+Not exercised: a real (public) store, TLS (the harness is plain HTTP on 127.0.0.1), a hash
+mismatch (4.6's negative path), the editor's own `Import...` of a local zip, and GodotEnv here
+(`godotenv` needs a .NET runtime this machine lacks; it is covered by the CI row, correction 9).
+The macOS editors only; the install path is platform-independent GDScript/C++ code.
+
+Findings, each fixed with its test:
+
+1. **The fixture icon was a corrupt PNG** (`godot.seed.ts`: the hand-typed IDAT had a bad CRC), so
+   the 4.6 editor logged "IDAT: CRC error" and showed no icon. The feed served the bytes correctly;
+   the fixture was wrong. The seed's PNG is valid now, and `godot.sh` checks every chunk CRC of
+   `icon_url`'s answer (what the editor's PNG loader enforces).
+2. **The 4.7 editor preselects the first release** of `releases/…`, labelling a pre-release
+   "(Unstable)" only in the dropdown. With a beta newest, Download installed `1.2.0-beta.1`.
+   `storeReleases` now lists the stable releases first (newest first), then the pre-releases, so
+   a stable release is the default; `stable_only` and the golden `store-releases.json` follow. A
+   stored `releases/…` object rendered before this change keeps its old order until its package
+   re-renders (the stamp covers package data, not renderer code); nothing is deployed yet.
+3. **Documented, no code change: 4.4 to 4.6's "Ignore asset root" is ticked by default** and strips
+   the zip's first folder, so a zip laid out `addons/<name>/…` (what GodotEnv's `subfolder` needs)
+   installs at `res://<name>/`; unticked it installs at `res://addons/<name>/` and enables. 4.7's
+   installer has no such option and installs at `res://addons/<name>/`. Both outcomes are asserted
+   by the driver and described in the Godot section of `package-feeds.md`.
+
 ## Hand-off
 
 - F-10 publishes our Godot packages to this feed.
