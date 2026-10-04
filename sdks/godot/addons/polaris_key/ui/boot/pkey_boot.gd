@@ -113,6 +113,7 @@ var _background_running := false
 
 var _center: CenterContainer
 var _logo: TextureRect
+var _shell: VBoxContainer
 var _status: Label
 var _progress: ProgressBar
 var _card: PanelContainer
@@ -130,6 +131,14 @@ var prompt: PKeyUpdatePrompt
 var _overlay: Control
 
 
+## The boot shell's width on a viewport wide enough for it (narrower ones keep a gutter).
+const SHELL_WIDTH := 480.0
+
+
+func _apply_width(_width: float) -> void:
+	_shell.custom_minimum_size.x = card_width(SHELL_WIDTH)
+
+
 func _build() -> void:
 	name = "PKeyBoot"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -137,7 +146,8 @@ func _build() -> void:
 	_center.name = "Center"
 	add_child(_center)
 	var box := vbox(_center, "Shell", 16)
-	box.custom_minimum_size = Vector2(420, 0)
+	box.custom_minimum_size = Vector2(SHELL_WIDTH, 0)
+	_shell = box
 	_logo = TextureRect.new()
 	_logo.name = "Logo"
 	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -160,6 +170,7 @@ func _build() -> void:
 	_title = label(cb, "Title", "PKeyTitle")
 	_body = label(cb, "Message", "PKeyMuted")
 	var actions := hbox(cb, "Actions")
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	_update_action = button(actions, "UpdateAction", _on_update_action, "PKeyPrimary")
 	_retry = button(actions, "Retry", retry, "PKeyPrimary")
 	_play_offline = button(actions, "PlayOffline", play_offline)
@@ -561,8 +572,11 @@ func _render() -> void:
 	self_modulate.a = 1.0 if show_default_view and not _background_running else 0.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if _background_running else Control.MOUSE_FILTER_STOP
 	_center.visible = show_default_view and not waiting_gate and not _background_running
-	_logo.texture = logo
-	_logo.visible = logo != null
+	var shown: Texture2D = logo
+	if shown == null and PKeyUiTheme.branded():
+		shown = PKeyUiTheme.mark_texture(PKeyUiTheme.is_dark(self), 96)
+	_logo.texture = shown
+	_logo.visible = shown != null
 	show_text(_status, t.text(_status_key(stage)) if not stopped and _status_key(stage) != "" else "")
 	_progress.visible = not stopped and (_show_progress() or verify_progress >= 0.0)
 	if verify_progress >= 0.0:

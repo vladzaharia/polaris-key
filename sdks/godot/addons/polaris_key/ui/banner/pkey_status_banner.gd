@@ -25,6 +25,8 @@ func _build() -> void:
 	theme_type_variation = "PKeyBanner"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lines = vbox(self, "Lines", 2)
+	# A strip: its lines centred across whatever width the game gives it.
+	max_content_width = 0.0
 
 
 func _ready() -> void:
@@ -56,6 +58,7 @@ func _render() -> void:
 	var labels := _lines.get_children()
 	while labels.size() < lines.size():
 		var l := label(_lines, "Line%d" % labels.size(), "PKeyMuted")
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		labels.append(l)
 	for i in labels.size():
 		var l: Label = labels[i]

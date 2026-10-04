@@ -30,6 +30,9 @@
 //                                       each kit TTF (kit/source/fonts/) unchanged, base64 in a
 //                                       text FontFile resource (no importer, so no per-engine
 //                                       `.import` file), with the kit's OFL.txt and notice
+//   sdks/godot/addons/polaris_key/ui/theme/brand_marks_generated.gd      the kit SVGs the UI kit
+//                                       rasterises at run time when branding is on (the bit-less
+//                                       display-cut Pinned K, the compact "Powered by" badge)
 //
 // `--check` is the drift gate (CI, AGENTS.md's green gate). Like gen:constants, the TypeScript,
 // JSON and CSS outputs are prettier-formatted here so `pnpm lint` and `pnpm format` agree.
@@ -904,6 +907,44 @@ export function godotFontTres(ttf: string): string {
   return `[gd_resource type="FontFile" format=4]\n\n${comment}\n\n[resource]\ndata = PackedByteArray("${data}")\n`;
 }
 
+/** The kit SVGs the Godot UI kit draws (PKeyBrandMarks), as GDScript string constants. */
+const GODOT_MARKS: [string, string][] = [
+  ["PINNED_K_DARK", "01-marks/key/svg/key-display-dark.svg"],
+  ["PINNED_K_LIGHT", "01-marks/key/svg/key-display-light.svg"],
+  [
+    "POWERED_BY_COMPACT_DARK",
+    "03-powered-by/transparent/powered-by-compact-dark.svg",
+  ],
+  [
+    "POWERED_BY_COMPACT_LIGHT",
+    "03-powered-by/transparent/powered-by-compact-light.svg",
+  ],
+];
+
+export function godotMarks(): string {
+  const consts = GODOT_MARKS.map(([name, kitPath]) => {
+    const svg = readFileSync(join(PKG, "kit", kitPath), "utf8").trim();
+    return `## kit/${kitPath}, verbatim.\nconst ${name} := ${JSON.stringify(svg)}`;
+  }).join("\n");
+  const compact = readFileSync(
+    join(PKG, "kit", "03-powered-by/transparent/powered-by-compact-dark.svg"),
+    "utf8",
+  );
+  const width = /<svg[^>]* width="(\d+)"/.exec(compact)?.[1];
+  if (!width) throw new Error("gen: the compact badge SVG has no width");
+  return `${banner("#")}
+class_name PKeyBrandMarks
+extends RefCounted
+## The kit artwork the UI kit rasterises when Polaris Key branding is on (PKeyUiTheme.branded()):
+## the Pinned K's display cut without the terminal bit (BRAND.md owner decisions, 2026-10-03) and
+## the compact "Powered by Polaris Key" badge, transparent treatment, for dark and light grounds.
+
+## The compact badge's SVG width (its minimum, BADGE_MIN_COMPACT.x).
+const POWERED_BY_COMPACT_WIDTH := ${width}.0
+${consts}
+`;
+}
+
 const TARGETS: Target[] = [
   { path: "packages/brand/css/tokens.css", render: tokensCss, parser: "css" },
   { path: "packages/brand/css/theme.css", render: themeCss, parser: "css" },
@@ -946,6 +987,10 @@ const TARGETS: Target[] = [
     path: `${GODOT_BRAND_DIR}/${name}`,
     render: () => godotBrandSvg(kitPath),
   })),
+  {
+    path: "sdks/godot/addons/polaris_key/ui/theme/brand_marks_generated.gd",
+    render: godotMarks,
+  },
   ...GODOT_FONTS.map(([name, ttf]) => ({
     path: `${GODOT_FONT_DIR}/${name}`,
     render: () => godotFontTres(ttf),

@@ -56,6 +56,14 @@ var _bound := false
 var _was_usable := false
 
 
+## The card's width on a viewport wide enough for it (narrower ones keep a gutter).
+const CARD_WIDTH := 480.0
+
+
+func _apply_width(_width: float) -> void:
+	_card.custom_minimum_size.x = card_width(CARD_WIDTH)
+
+
 func _build() -> void:
 	name = "PKeyGate"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -66,9 +74,10 @@ func _build() -> void:
 	_card = PanelContainer.new()
 	_card.name = "Card"
 	_card.theme_type_variation = "PKeyCard"
-	_card.custom_minimum_size = Vector2(420, 0)
+	_card.custom_minimum_size = Vector2(CARD_WIDTH, 0)
 	center.add_child(_card)
 	var box := vbox(_card, "Body", 12)
+	brand_node(box, "Mark", BRAND_MARK, Control.SIZE_SHRINK_BEGIN)
 	_title = label(box, "Title", "PKeyTitle")
 	_body = label(box, "Message", "PKeyMuted")
 	_detail = label(box, "Detail", "PKeyMuted")
@@ -81,6 +90,7 @@ func _build() -> void:
 	var actions := hbox(box, "Actions")
 	_update = button(actions, "UpdateAction", _on_update, "PKeyPrimary")
 	_retry = button(actions, "Retry", _on_retry)
+	brand_node(box, "PoweredBy", BRAND_POWERED_BY)
 	_banner_slot = MarginContainer.new()
 	_banner_slot.name = "BannerSlot"
 	_banner_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE

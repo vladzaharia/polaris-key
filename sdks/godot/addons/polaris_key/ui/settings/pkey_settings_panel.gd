@@ -34,6 +34,7 @@ var _writing := false
 
 func _build() -> void:
 	name = "PKeySettingsPanel"
+	max_content_width = 640.0
 	var box := vbox(self, "Body", 12)
 	_title = label(box, "Title", "PKeyTitle")
 	_empty = label(box, "Empty", "PKeyMuted")
@@ -46,6 +47,7 @@ func _build() -> void:
 		show_advanced = on
 		refresh_view())
 	box.add_child(_advanced)
+	brand_node(box, "PoweredBy", BRAND_POWERED_BY)
 
 
 func _config() -> PKeyConfig:

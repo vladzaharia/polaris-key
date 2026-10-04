@@ -36,6 +36,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _focus(t, all)
 	await _copy(t, all)
 	await _behaviour(t)
+	await _layout(t, all)
 	t.check("coverage: states", all.size() >= 60, str(all.size()))
 	return true
 
@@ -94,6 +95,75 @@ static func _first_diff(want: String, got: String) -> String:
 		if x != y:
 			return "line %d: want [%s] got [%s]" % [i + 1, x, y]
 	return ""
+
+
+# ── Layout ───────────────────────────────────────────────────────────────────────────────
+
+## Owner requirement (2026-10-04): every panel is centred, at a comfortable width, from a phone in
+## portrait to 4K. Each scene's first state is laid out full-screen at each size; its centred
+## node must sit in the middle of the view (horizontally, and vertically when it fits), no wider
+## than its max width, and inside the viewport with the gutter.
+const LAYOUT_SIZES := [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(3840, 2160), Vector2i(720, 1280), Vector2i(480, 854)]
+
+
+func _layout(t: PKeyTestContext, all: Array) -> void:
+	var root := _tree().root
+	var before := root.size
+	var seen := {}
+	var checked := 0
+	for c in all:
+		if seen.has(c[0]) or c[0] in ["badge", "banner"]:
+			continue
+		var probe: PKeyUiView = await _build(c)
+		var visible := probe.visible and _centred(probe) != null and _centred(probe).is_visible_in_tree()
+		_free(probe)
+		if not visible:
+			continue
+		seen[c[0]] = true
+		for sz in LAYOUT_SIZES:
+			root.size = sz
+			var v: PKeyUiView = await _build(c)
+			v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			v.refresh_view()
+			for i in 3:
+				await _tree().process_frame
+			var node := _centred(v)
+			var r := node.get_global_rect()
+			var vr := v.get_global_rect()
+			var dx := absf(r.get_center().x - vr.get_center().x)
+			var fits_v := r.size.y <= vr.size.y
+			var dy := absf(r.get_center().y - vr.get_center().y) if fits_v else 0.0
+			var maxw: float = maxf(v.max_content_width, 480.0)
+			var ok: bool = dx <= 1.5 and dy <= 1.5 and r.size.x <= maxw + 1.0 and r.position.x >= PKeyUiView.GUTTER - 1.0 and r.end.x <= sz.x - PKeyUiView.GUTTER + 1.0
+			if t.check("layout: %s centred at %dx%d" % [c[0], sz.x, sz.y], ok, "rect %s in %s" % [r, vr]):
+				checked += 1
+			_free(v)
+	root.size = before
+	# The strips: the badge's chips and the banner's lines are centred across the given width.
+	for c in all:
+		if c[0] == "badge" and c[1] == "two grants":
+			var b: PKeyUiView = await _build(c)
+			var chips := b.find_child("Chips", true, false)
+			t.check("layout: badge chips centred", chips != null and int(chips.get("alignment")) == 1)
+			_free(b)
+		elif c[0] == "banner" and c[1] == "grace":
+			var b: PKeyUiView = await _build(c)
+			var line := b.find_child("Line0", true, false) as Label
+			t.check("layout: banner lines centred", line != null and line.horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER)
+			_free(b)
+	t.check("layout: coverage", seen.size() >= 8 and checked == seen.size() * LAYOUT_SIZES.size(), "%d checks over %s" % [checked, seen.keys()])
+
+
+## The node a scene centres: the card of a full-screen scene, else its `_content()`.
+static func _centred(v: PKeyUiView) -> Control:
+	if v is PKeyGateView:
+		return v.find_child("Card", true, false) as Control
+	if v is PKeyBoot:
+		var shell := v.find_child("Shell", true, false) as Control
+		if shell != null and shell.is_visible_in_tree():
+			return shell
+		return v.find_child("Card", true, false) as Control
+	return v._content()
 
 
 # ── Focus ────────────────────────────────────────────────────────────────────────────────

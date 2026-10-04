@@ -1,24 +1,26 @@
 extends SceneTree
-## Writes the UI kit's committed themes from `PKeyUiTheme.build()` (the Polaris Key design system's
-## tokens, `PKeyBrand`, and the bundled Rubik): addons/polaris_key/ui/theme/pkey_theme.tres (dark,
-## the default every scene file uses) and pkey_theme_light.tres. Editor only:
+## Writes the UI kit's committed themes from PKeyUiTheme, in addons/polaris_key/ui/theme/:
+## pkey_theme.tres (the neutral stock theme every scene file references, built over the engine's
+## default theme by `neutral_default()`), and pkey_brand_dark.tres / pkey_brand_light.tres (the
+## opt-in Polaris Key theme from `build()`: PKeyBrand tokens and the bundled Rubik). Editor only:
 ##
 ##   godot --headless --path sdks/godot --script tools/gen_theme.gd
 ##
 ## The .tres files are committed; regenerate them after changing PKeyUiTheme or the tokens. The
-## `brand` suite fails when either drifts from `build()`. UIDs are left out of the files (the
+## `brand` suite fails when any of them drifts. UIDs are left out of the files (the
 ## fonts are referenced by path), so every supported engine reads the same bytes.
 
-const OUT := {
-	PKeyUiTheme.DARK_PATH: true,
-	PKeyUiTheme.LIGHT_PATH: false,
-}
 
 
 func _initialize() -> void:
 	var ok := true
-	for path in OUT:
-		var t := PKeyUiTheme.build(OUT[path])
+	var out := {
+		PKeyUiTheme.NEUTRAL_PATH: PKeyUiTheme.neutral_default(),
+		PKeyUiTheme.DARK_PATH: PKeyUiTheme.build(true),
+		PKeyUiTheme.LIGHT_PATH: PKeyUiTheme.build(false),
+	}
+	for path in out:
+		var t: Theme = out[path]
 		var err := ResourceSaver.save(t, path)
 		if err == OK:
 			err = _strip_uids(path)

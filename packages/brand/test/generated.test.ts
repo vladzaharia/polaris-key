@@ -107,6 +107,37 @@ describe("generator drift", () => {
         readFileSync(join(kit, f), "utf8"),
       );
   });
+
+  it("the Godot UI kit's marks are the kit SVGs, verbatim, and the Pinned K has no bit", () => {
+    const gd = readFileSync(
+      join(
+        PKG,
+        "../../sdks/godot/addons/polaris_key/ui/theme/brand_marks_generated.gd",
+      ),
+      "utf8",
+    );
+    expect(gd.startsWith("# GENERATED FILE")).toBe(true);
+    expect(gd).toContain("class_name PKeyBrandMarks");
+    const marks: [string, string][] = [
+      ["PINNED_K_DARK", "01-marks/key/svg/key-display-dark.svg"],
+      ["PINNED_K_LIGHT", "01-marks/key/svg/key-display-light.svg"],
+      [
+        "POWERED_BY_COMPACT_DARK",
+        "03-powered-by/transparent/powered-by-compact-dark.svg",
+      ],
+    ];
+    for (const [name, kitPath] of marks) {
+      const m = new RegExp(`const ${name} := (".*")$`, "m").exec(gd);
+      expect(m, name).not.toBeNull();
+      expect(JSON.parse(m![1]!)).toBe(
+        readFileSync(join(PKG, "kit", kitPath), "utf8").trim(),
+      );
+    }
+    for (const line of gd.match(/const PINNED_K_(DARK|LIGHT) := .*/g) ?? []) {
+      expect(line.toLowerCase()).not.toContain("#ffc24d");
+      expect(line.toLowerCase()).not.toContain("#d07a00");
+    }
+  });
 });
 
 describe("tokens.css", () => {
