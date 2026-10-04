@@ -157,6 +157,8 @@ export interface PutOutletCredentialBody {
   pin?: string;
   outletId?: string | null;
   expiresAt?: number | null;
+  /** `asc-webhook-secret` only: the Worker generates the secret and never returns it. */
+  generate?: boolean;
 }
 
 /** The security-relevant recipe fields, exactly as the approve call must echo them. */
@@ -641,17 +643,24 @@ export interface MatrixCellDto {
 
 /** The fields of `OutletReadiness` the console renders. */
 export interface MatrixReadinessDto {
+  /** `pending`, `blocked`, `ready` or `overridden` (an operator released the hold). */
   state: string;
+  /** The computed state, whatever the override (absent from an older worker). */
+  computed?: string;
   holds: boolean;
   holdable: boolean;
   warning: string | null;
   blockers: {
     pack: string;
+    /** The pack release that blocks, when one exists (`null` for `unsatisfied`). */
+    packReleaseId?: string | null;
     version: string | null;
     reason: string;
     detail: string;
   }[];
   pendingReason: string | null;
+  /** The operator's override, when one is in force. */
+  override?: { by: string; at: number; reason: string | null } | null;
 }
 
 /** `GET …/distribution/matrix` (worker `services/distribution/matrix.ts`). */
@@ -675,6 +684,120 @@ export interface DistributionMatrix {
   }>;
   cells: MatrixCellDto[];
   states: { availability: string[]; submission: string[]; rollout: string[] };
+}
+
+// ── distribution: outlets, keys, readiness and connectors (admin chunk 9) ─────
+/** The capability keys an outlet carries (worker `services/distribution/capabilities.ts`). */
+export type CapabilityKey =
+  | "binaryUpdates"
+  | "codeUpdates"
+  | "dataUpdates"
+  | "channelSwitch"
+  | "commerce"
+  | "downloadedScripts";
+
+/** What an outlet permits: `binaryUpdates` self > store > none; `commerce` own, store-iap or none. */
+export interface OutletCapabilitiesDto {
+  binaryUpdates: string;
+  codeUpdates: boolean;
+  dataUpdates: boolean;
+  channelSwitch: boolean;
+  commerce: string;
+  downloadedScripts: boolean;
+}
+
+/** One outlet as the admin API lists it (worker `distribution/admin.ts` `outletView`). */
+export interface OutletDto {
+  outletId: string;
+  kind: string;
+  identity: Record<string, unknown>;
+  listing: unknown;
+  /** The capabilities in force; `null` for a kind this build has no defaults for. */
+  capabilities: OutletCapabilitiesDto | null;
+  defaultCapabilities: OutletCapabilitiesDto | null;
+  /** `manifest`, or `admin` once an operator narrowed it. */
+  capabilitiesSource: string;
+  capabilityOverride: Partial<OutletCapabilitiesDto> | null;
+  transports: Array<{
+    deliverableId: string;
+    transport: string;
+    supported: boolean;
+  }>;
+  removedAt: number | null;
+  createdAt: number;
+  modifiedAt: number;
+}
+
+export interface OutletsResponse {
+  capabilityKeys: CapabilityKey[];
+  outlets: OutletDto[];
+}
+
+/** One distribution signing-key inventory entry (worker `availability.ts` `keyRecord`). */
+export interface DistributionKeyDto {
+  purpose: string;
+  sha256: string;
+  outletId: string | null;
+  notes: string | null;
+  registered: boolean;
+  registeredAt: number | null;
+  observed: Record<string, unknown> | null;
+  /** CI observed a key of this purpose that matches no entry. */
+  flagged: boolean;
+}
+
+/** A key CI observed that matches no inventory entry. */
+export interface DistributionKeyObservationDto {
+  purpose: string;
+  sha256: string;
+  outletId: string | null;
+  observed: Record<string, unknown> | null;
+  firstSeenAt: number;
+}
+
+export interface DistributionKeysResponse {
+  purposes: string[];
+  keys: DistributionKeyDto[];
+  observations: DistributionKeyObservationDto[];
+}
+
+export interface PutDistributionKeyBody {
+  purpose: string;
+  sha256: string;
+  outlet?: string | null;
+  notes?: string | null;
+  registered?: boolean;
+}
+
+/** A store connector's status (worker `distribution/connectors/*` `status`). */
+export interface ConnectorStatusDto {
+  /** `asc`, `play` or `ms-store`. */
+  kind: string;
+  label: string;
+  outletKinds: string[];
+  configured: boolean;
+  /** Why it does not run, when it does not. */
+  inert?: { reason: string; message: string } | null;
+  setup?: Record<string, unknown> | null;
+  /** The control paths it answers (`phased-release/pause`, `rollout/fraction`, …). */
+  controls: string[];
+  notes?: string[];
+  /** Google Play: the operator's settings. */
+  settings?: {
+    priority?: { default?: number };
+    vitals?: Record<string, unknown>;
+  };
+  /** Where its key comes from: the product's own, or the platform's team key (A-16). */
+  credentialSource?: string;
+}
+
+export interface ConnectorsResponse {
+  connectors: ConnectorStatusDto[];
+}
+
+/** A readiness refresh: how many rows it recomputed. */
+export interface ReadinessRefreshResult {
+  refreshed: number;
 }
 
 // ── distribution: update health (P6-03) ───────────────────────────────────────
@@ -1874,7 +1997,12 @@ const rawApi = {
     call<DeliveryAccess>(`${p(slug)}/distribution/access`),
   saveDeliveryAccess: (
     slug: string,
-    body: { mode: ReleaseAccess; deliverable?: string },
+    body: {
+      mode: ReleaseAccess;
+      deliverable?: string;
+      /** For `entitled`: the catalog flag a license must grant (`null` clears it). */
+      entitlement?: string | null;
+    },
   ) =>
     call<DeliveryAccess>(`${p(slug)}/distribution/access`, {
       method: "PUT",
@@ -1912,6 +2040,100 @@ const rawApi = {
   ) =>
     call<{ rollout: Rollout }>(
       `${p(slug)}/distribution/rollouts/${encodeURIComponent(outlet)}/${encodeURIComponent(channel)}/${verb}`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  /** Start a rollout, or set its percentage (`bp`, 0–10 000) — the admin rollout route. */
+  setRollout: (
+    slug: string,
+    outlet: string,
+    channel: string,
+    body: { deliverable: string; releaseId: string; bp: number },
+  ) =>
+    call<{ rollout: Rollout }>(
+      `${p(slug)}/distribution/rollouts/${encodeURIComponent(outlet)}/${encodeURIComponent(channel)}`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  // ── distribution: readiness (P4-14) ─────────────────────────────────────────
+  /** Recompute every app release's readiness on every outlet. */
+  refreshReadiness: (slug: string) =>
+    call<ReadinessRefreshResult>(`${p(slug)}/distribution/readiness/refresh`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  /** Release a readiness hold on one outlet, with the reason (audited). */
+  overrideReadiness: (
+    slug: string,
+    appReleaseId: string,
+    outletId: string,
+    reason: string,
+  ) =>
+    call<{ appReleaseId: string; readiness: MatrixReadinessDto | null }>(
+      `${p(slug)}/distribution/readiness/${enc(appReleaseId)}/${enc(outletId)}/override`,
+      { method: "POST", body: JSON.stringify({ reason }) },
+    ),
+  /** Clear an override: the hold is computed again. */
+  clearReadinessOverride: (
+    slug: string,
+    appReleaseId: string,
+    outletId: string,
+  ) =>
+    call<{ appReleaseId: string; readiness: MatrixReadinessDto | null }>(
+      `${p(slug)}/distribution/readiness/${enc(appReleaseId)}/${enc(outletId)}/clear`,
+      { method: "POST", body: JSON.stringify({}) },
+    ),
+
+  // ── distribution: outlets and capabilities (P2b-02) ─────────────────────────
+  distributionOutlets: (slug: string) =>
+    call<OutletsResponse>(`${p(slug)}/distribution/outlets`),
+  /** Narrow an outlet's capabilities below its kind's default (never wider). */
+  narrowOutletCapabilities: (
+    slug: string,
+    outletId: string,
+    capabilities: Partial<OutletCapabilitiesDto>,
+  ) =>
+    call<{ outlet: OutletDto }>(
+      `${p(slug)}/distribution/outlets/${enc(outletId)}/capabilities`,
+      { method: "PUT", body: JSON.stringify({ capabilities }) },
+    ),
+  /** Return an outlet's capabilities to its kind's default. */
+  revertOutletCapabilities: (slug: string, outletId: string) =>
+    call<{ outlet: OutletDto }>(
+      `${p(slug)}/distribution/outlets/${enc(outletId)}/capabilities/revert`,
+      { method: "POST", body: JSON.stringify({}) },
+    ),
+
+  // ── distribution: the signing-key inventory (P2b-03) ────────────────────────
+  distributionKeys: (slug: string) =>
+    call<DistributionKeysResponse>(`${p(slug)}/distribution/keys`),
+  putDistributionKey: (slug: string, body: PutDistributionKeyBody) =>
+    call<DistributionKeysResponse & { key: DistributionKeyDto }>(
+      `${p(slug)}/distribution/keys`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  /** Remove an inventory entry, or dismiss a CI observation. */
+  deleteDistributionKey: (slug: string, purpose: string, sha256: string) =>
+    call<DistributionKeysResponse>(
+      `${p(slug)}/distribution/keys/${enc(purpose)}/${enc(sha256)}`,
+      { method: "DELETE" },
+    ),
+
+  // ── distribution: store connectors (P5-02 to P5-04) ─────────────────────────
+  connectors: (slug: string) =>
+    call<ConnectorsResponse>(`${p(slug)}/distribution/connectors`),
+  /** One connector control (`phased-release/pause`, `rollout/fraction`, `settings`, …). */
+  connectorControl: (
+    slug: string,
+    connector: string,
+    control: string,
+    body: Record<string, unknown>,
+  ) =>
+    call<Record<string, unknown> & { ok: true }>(
+      `${p(slug)}/distribution/connectors/${enc(connector)}/${control
+        .split("/")
+        .map(enc)
+        .join("/")}`,
       { method: "POST", body: JSON.stringify(body) },
     ),
 

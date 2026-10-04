@@ -56,6 +56,15 @@ export type WriteMethod =
   | "saveDeliveryAccess"
   | "revertDeliveryAccess"
   | "rolloutAction"
+  | "setRollout"
+  | "refreshReadiness"
+  | "overrideReadiness"
+  | "clearReadinessOverride"
+  | "narrowOutletCapabilities"
+  | "revertOutletCapabilities"
+  | "putDistributionKey"
+  | "deleteDistributionKey"
+  | "connectorControl"
   | "saveAutoHalt"
   | "decideCandidate"
   | "publishSchema"
@@ -110,6 +119,13 @@ const rollout = (slug: string): Target[] => [
   prefix(qk.matrix(slug)),
   prefix(qk.rollouts(slug)),
   prefix(qk.health(slug)),
+  prefix(qk.compat(slug)),
+];
+
+/** §5.4 "readiness refresh / override / clear". */
+const readiness = (slug: string): Target[] => [
+  prefix(qk.readiness(slug)),
+  prefix(qk.matrix(slug)),
   prefix(qk.compat(slug)),
 ];
 
@@ -257,6 +273,44 @@ export const MUTATIONS: MutationTable = {
   rolloutAction: {
     label: "rollout verb (pause, resume, halt, complete)",
     invalidates: (slug) => rollout(slug),
+  },
+  setRollout: {
+    label: "rollout start or set percentage",
+    invalidates: (slug) => rollout(slug),
+  },
+  refreshReadiness: {
+    label: "readiness refresh",
+    invalidates: (slug) => readiness(slug),
+  },
+  overrideReadiness: {
+    label: "readiness override",
+    invalidates: (slug) => readiness(slug),
+  },
+  clearReadinessOverride: {
+    label: "readiness override clear",
+    invalidates: (slug) => readiness(slug),
+  },
+  narrowOutletCapabilities: {
+    label: "outlet capabilities narrow",
+    invalidates: (slug) => [prefix(qk.outlets(slug))],
+  },
+  revertOutletCapabilities: {
+    label: "outlet capabilities revert to the kind default",
+    invalidates: (slug) => [prefix(qk.outlets(slug))],
+  },
+  putDistributionKey: {
+    label: "distribution key add or update",
+    invalidates: (slug) => [prefix(qk.distributionKeys(slug))],
+  },
+  deleteDistributionKey: {
+    label: "distribution key remove or dismiss",
+    invalidates: (slug) => [prefix(qk.distributionKeys(slug))],
+  },
+  connectorControl: {
+    label: "store connector control",
+    // A store control moves a store rollout (mirrored into the matrix and the rollouts) or the
+    // connector's own settings (its vitals auto-halt reads into health).
+    invalidates: (slug) => [prefix(qk.connectors(slug)), ...rollout(slug)],
   },
   saveAutoHalt: {
     label: "auto-halt settings",

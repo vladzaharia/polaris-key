@@ -2,7 +2,6 @@ import * as React from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { SecretUsage } from "../api.js";
 import { EdgeMintRecipes } from "./EdgeMintRecipes.js";
-import { OutletCredentials } from "./OutletCredentials.js";
 import { useResource } from "../context.js";
 import {
   Badge,
@@ -39,8 +38,8 @@ import { mutate } from "../console/data/mutations.js";
  * edge-mint recipe but can never make it signable. "Keep current" sends no usage, so
  * re-uploading a rotated key never silently changes what it may sign (a new secret is general).
  *
- * P5-01: store credentials are NOT product secrets. They have their own card below
- * (`OutletCredentials`), their own table and their own AAD kind, so edge-mint can never reach one.
+ * P5-01: store credentials are NOT product secrets. They have their own page (Distribution →
+ * Outlet credentials), their own table and their own AAD kind, so edge-mint can never reach one.
  */
 
 export type UsageChoice = "keep" | SecretUsage;
@@ -238,7 +237,6 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
         </Card>
       ) : null}
       {data ? <EdgeMintRecipes slug={slug} /> : null}
-      {data ? <OutletCredentials slug={slug} /> : null}
     </section>
   );
 }

@@ -443,7 +443,6 @@ export const SECTIONS: NavSection[] = [
         icon: TrendingUp,
         docs: "/docs/services/distribution/rollouts/",
         inNav: true,
-        // Today's Distribution overview (chain, rollouts, hooks) until chunk 9 rebuilds it.
         ready: true,
       },
       {
@@ -453,9 +452,7 @@ export const SECTIONS: NavSection[] = [
         icon: Store,
         docs: "/docs/services/distribution/feeds/",
         inNav: true,
-        // A capability with no console UI yet (chunk 9).
-        ready: false,
-        host: "matrix",
+        ready: true,
       },
       {
         page: "access",
@@ -464,9 +461,7 @@ export const SECTIONS: NavSection[] = [
         icon: ShieldCheck,
         docs: "/docs/services/distribution/delivery/",
         inNav: true,
-        // Delivery access lives in Update → Feed until chunk 9 moves it.
-        ready: false,
-        host: "feed",
+        ready: true,
       },
       {
         page: "health",
@@ -484,9 +479,7 @@ export const SECTIONS: NavSection[] = [
         icon: Plug,
         docs: "/docs/admin/secrets-and-keys/",
         inNav: true,
-        // Mounted inside Keys & secrets until chunk 9 moves it.
-        ready: false,
-        host: "keys",
+        ready: true,
       },
     ],
   },
