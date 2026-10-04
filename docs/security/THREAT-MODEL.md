@@ -2348,6 +2348,38 @@ Residuals, stated rather than defended:
   128 MB (JS heap, the runtime, the index reads before the encode) is an inference, not a
   measurement, until the live check at the cap (RUNBOOK "Lazy deltas").
 
+### Platform deploy identity and the platform audit trail (A-11, A-12)
+
+The console's Platform section (notes/S-13) starts with two read surfaces, both behind the
+existing admin dispatcher (session, `PLATFORM_ADMIN_GROUP`, the per-subject limiter, CSRF on
+mutations) and a second platform-admin check in `admin/handlers/platform.ts`:
+`GET /manage/api/platform/{version,deployment}` (A-11) and `/activity` (A-12). There is no new
+privilege level.
+
+- **Deploy metadata is not secret.** The release tag, commit, Actions run URL, Cloudflare version
+  ids, the applied-migration list, missing required indexes and binding presence are visible to
+  anyone who can read the repository's Actions tab or the Cloudflare dashboard, and the binding
+  list reports presence as a boolean, never a resource id. They help an operator, not an
+  attacker. `PKEY_RELEASE_TAG` and `PKEY_GIT_SHA` are plain `--var`s, so a hand deploy can set
+  anything; the Worker validates both against a strict pattern and answers `null` rather than
+  echo a malformed value, and the unforgeable half is the `CF_VERSION_METADATA` binding.
+- **`platform_deploys` has one writer, outside the Worker.** The final `deploy.yml` step inserts
+  one row with the deploy token, which already holds D1 edit because it applies the migrations:
+  no new credential, no new permission. `wrangler d1 execute --command` takes no bind
+  parameters, so `scripts/record-deploy.mjs` checks every value against a strict pattern before
+  quoting it and writes nothing when one fails. The step is `continue-on-error` and runs last, so
+  it cannot fail or reorder a deploy. No Worker path writes the table, and a forged row (which
+  needs the D1-edit token) misleads only the history view, never what is deployed or served.
+- **Audit integrity.** `platform_audit` is append-only from the Worker's side: one writer,
+  `platformAudit()`, whose actor comes from the verified session and whose `at` is server time,
+  and no route that updates or deletes a row. The only delete is the nightly retention step
+  (180 days, the same as `audit`). As with `audit`, anyone holding the D1-edit deploy token or
+  the dashboard can rewrite it; the trail is evidence against a console session, not against
+  the account. `before_json` / `after_json` must never hold a secret: the KEK re-seal sweep
+  records row counts only (a test asserts no KEK value appears), and A-13's settings registry
+  holds no secret by construction. The per-product `kek.reseal` rows stay, so each product's own
+  log still shows the sweep.
+
 ### The compatibility matrix and the device simulator (P4-15)
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
@@ -3299,4 +3331,9 @@ pack-type handlers (P4-16), a handler starts evaluating what it reads (a script 
 reviver, a resource loader, a plural-formula evaluator) or resolves a path from payload contents
 other than by exact index match, a type joins `MOUNTED_PACK_TYPES`, or a rule of the `godot.zip`
 reader is relaxed in the CLI or on a device; or, for the client updater plugins (P5-07), a new
-updater backend, or a change to Disable Library Validation or the signing defaults.
+updater backend, or a change to Disable Library Validation or the signing defaults; or, for the
+Platform section (A-11, A-12), a Worker path starts writing `platform_deploys`, the deploy record
+step gains a credential or a permission beyond the deploy token's D1 edit, a platform route starts
+reporting a binding's resource id or any secret-derived value, a route updates or deletes a
+`platform_audit` row, or a writer puts a secret (or a hash or length of one) in `before_json` or
+`after_json`.

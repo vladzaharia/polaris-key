@@ -34,6 +34,8 @@ this page or fails the freshness gate.
 | `lazy_delta_settings` | 0051_lazy_deltas.sql | `product`, `enabled`, `hot_devices`, `daily_cap`, `updated_at` |
 | `delta_demand_devices` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `device_id`, `strategy`, `seen_at` |
 | `delta_demand` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `devices`, `window_start`, `last_seen` |
+| `platform_deploys` | 0054_a_platform_deploys.sql | `id`, `at`, `environment`, `tag`, `git_sha`, `run_url`, `scripts`, `latest_migration`, `cf_version_id`, `deltas_version_id`, `smoke` |
+| `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
 
 ## license
 
