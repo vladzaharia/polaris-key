@@ -1,16 +1,16 @@
 # I-08 App passthrough: the "<App> wants you to sign in" header, Continue-to-App grants, device code onto the card with callback binding, QR sign-in, and the web redirect (authorize plus PKCE code exchange) that gives product web apps a browser device token
 
-| Field       | Value                                                                                                                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                  |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                  |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-07](I-07-login-card-email.md)                                                                                                                                 |
-| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-15](I-15-native-redirect.md), [U-05](U-05-cloud-sync-do.md), [U-20](U-20-sdk-settings-react.md) |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                   |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                       |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`                                                  |
-| Human input | none                                                                                                                                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                        |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                                        |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-07](I-07-login-card-email.md)                                                                                                                                                                       |
+| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-15](I-15-native-redirect.md), [U-05](U-05-cloud-sync-do.md), [U-20](U-20-sdk-settings-react.md), [PX-14](PX-14-passthrough-header.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                         |
+| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                             |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`                                                                                        |
+| Human input | none                                                                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                     |
 
 ## Goal
 
