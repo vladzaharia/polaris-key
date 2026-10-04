@@ -85,7 +85,12 @@ const PROJECTION: Readonly<Record<string, readonly string[]>> = {
   ],
   inAppPurchaseVersions: ["state"],
   inAppPurchaseLocalizations: ["locale", "name", "state"],
-  inAppPurchasePriceSchedules: [],
+  // A-17e: the schedule is projected from its reads (base territory, today's base price).
+  inAppPurchasePriceSchedules: [
+    "baseTerritory",
+    "customerPrice",
+    "pricePointId",
+  ],
   inAppPurchaseAvailabilities: ["availableInNewTerritories"],
   webhooks: ["name", "enabled", "eventTypes", "url"],
   webhookPings: [],
