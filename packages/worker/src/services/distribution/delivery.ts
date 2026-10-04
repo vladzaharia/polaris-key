@@ -22,6 +22,8 @@
  *     publish to (plans/P4-01.md decision 35).
  *   - `outlets` (P3-03): the live outlets with kind, identity and whether an operator narrowed
  *     them — what the signed feed keys its per-outlet entries by.
+ *   - `listing` (PX-W1): the document's root listing (`dist_listing`), never an outlet's merged
+ *     copy — the customer portal's product presentation and support links.
  *   - `feedSelection` / `feedStamp` (P3-09): P2b-05's feed selection and its cache stamp, for
  *     Update's app-updater feeds (WinSparkle, Velopack, App Installer, zsync, the extended
  *     appcast and version check), which may not import this service.
@@ -48,7 +50,7 @@ import type { Env } from "../../core/platform.js";
 import { accessModeOf, entitlementOf } from "./access.js";
 import { getRollout, listRollouts, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
-import { listOutlets, parseJsonColumn } from "./outlets.js";
+import { getListing, listOutlets, parseJsonColumn } from "./outlets.js";
 import { selectFeedWith } from "./feeds/select.js";
 import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
@@ -119,6 +121,8 @@ export function delivery(ctx: HookContext): Delivery {
           };
         });
     },
+
+    listing: () => getListing(db, slug),
 
     async rollout({ deliverable, outlet, channel }) {
       const row = await getRollout(db, slug, deliverable, outlet, channel);
