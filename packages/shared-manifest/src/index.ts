@@ -1179,6 +1179,8 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "download",
   "webhooks",
   "well-known",
+  // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
+  "media",
 ];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",
