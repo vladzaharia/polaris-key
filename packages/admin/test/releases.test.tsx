@@ -1,32 +1,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
+  DistributionMatrix,
   ProductDetail,
   ReleaseChannelsResponse,
   ReleaseHealth,
   ReleaseStoreResponse,
   ResyncResult,
 } from "../src/api.js";
-import { resetCache } from "../src/context.js";
-import { CHANNELS, sha, STORE } from "./releaseFixture.js";
+import { CHANNELS, RELEASE_KID, sha, STORE } from "./releaseFixture.js";
+import {
+  expectNoAxeViolations,
+  hashQuery,
+  mountAt,
+  pending,
+} from "./releaseHarness.js";
 
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
 const releaseHealth =
   vi.fn<(slug: string) => Promise<{ health: ReleaseHealth }>>();
-// P2.T2 gave the truth store a writer, so this view finally has something to read: the card is
-// the PRIMARY one now, which is why every case here has to answer this call.
 const releases = vi.fn<(slug: string) => Promise<ReleaseStoreResponse>>();
-// P2-07: the channels panel reads the policy model beside the store.
 const releaseChannels =
   vi.fn<(slug: string) => Promise<ReleaseChannelsResponse>>();
+const updateReleaseChannel = vi.fn();
+const yankRelease = vi.fn();
+const unyankRelease = vi.fn();
+const distributionMatrix = vi.fn<() => Promise<DistributionMatrix>>();
 vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
@@ -35,10 +36,17 @@ vi.mock("../src/api.js", async (importOriginal) => ({
     releaseHealth: (slug: string) => releaseHealth(slug),
     releases: (slug: string) => releases(slug),
     releaseChannels: (slug: string) => releaseChannels(slug),
+    updateReleaseChannel: (...a: unknown[]) => updateReleaseChannel(...a),
+    yankRelease: (...a: unknown[]) => yankRelease(...a),
+    unyankRelease: (...a: unknown[]) => unyankRelease(...a),
+    distributionMatrix: () => distributionMatrix(),
   },
 }));
 
-const { Releases } = await import("../src/views/Releases.js");
+const { ReleasesPage } =
+  await import("../src/console/pages/release/ReleasesPage.js");
+const { ReleaseRecord } =
+  await import("../src/console/pages/release/ReleaseRecord.js");
 
 const PRODUCT: ProductDetail = {
   slug: "djdl",
@@ -49,16 +57,22 @@ const PRODUCT: ProductDetail = {
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
   adminGroup: "djdl-admins",
-  // Resync is a repo-linked-only action, so the fixture has to say which kind of product
-  // this is; `releaseSourceOf` defaults an absent value to "manual".
   releaseSource: "github",
+  services: {
+    license: { enabled: true },
+    config: { enabled: true },
+    release: { enabled: true },
+    distribution: { enabled: true },
+    update: { enabled: true },
+    identity: { enabled: true },
+  },
   setup: {
     sync: {
       source: "webhook",
       status: "ok",
       lastCheckedAt: 1_720_000_000,
       lastSyncedAt: 1_720_000_000,
-      commitSha: "abc123",
+      commitSha: "abc123def4567890",
       changedPaths: [".pkey/product.yaml"],
       updated: ["product", "release"],
       errors: [],
@@ -96,230 +110,356 @@ const HEALTH: ReleaseHealth = {
   ],
 };
 
+const MATRIX = {
+  deliverableId: "app",
+  limit: 50,
+  outlets: [
+    {
+      outletId: "direct",
+      kind: "direct",
+      transport: "https",
+      derives: true,
+      supported: true,
+    },
+    {
+      outletId: "play",
+      kind: "google-play",
+      transport: "play",
+      derives: false,
+      supported: true,
+    },
+  ],
+  releases: [
+    {
+      releaseId: "v0.4.2",
+      version: "0.4.2",
+      channel: null,
+      publishedAt: 1_728_000_000,
+      yanked: false,
+    },
+  ],
+  cells: [
+    {
+      releaseId: "v0.4.2",
+      outletId: "direct",
+      availability: "live",
+      records: [],
+      submission: null,
+      rollouts: [
+        {
+          deliverableId: "app",
+          outletId: "direct",
+          channel: "stable",
+          releaseId: "v0.4.2",
+          rolloutBp: 2500,
+          state: "active",
+          mirrored: false,
+          source: "admin",
+          startedAt: 1,
+          updatedAt: 1,
+          updatedBy: "admin:u1",
+          controls: ["pause", "halt", "complete"],
+        },
+      ],
+    },
+  ],
+} as unknown as DistributionMatrix;
+
+const HASH = "#/p/djdl/release/releases";
+
+function mountList(hash = HASH) {
+  return mountAt(hash, <ReleasesPage slug="djdl" />);
+}
+
 beforeEach(() => {
-  resetCache();
-  product.mockReset();
-  resyncProduct.mockReset();
-  releaseHealth.mockReset();
-  releases.mockReset();
-  releaseChannels.mockReset();
+  for (const f of [
+    product,
+    resyncProduct,
+    releaseHealth,
+    releases,
+    releaseChannels,
+    updateReleaseChannel,
+    yankRelease,
+    unyankRelease,
+    distributionMatrix,
+  ])
+    f.mockReset();
   product.mockResolvedValue({ product: PRODUCT });
   releaseHealth.mockResolvedValue({ health: HEALTH });
   releases.mockResolvedValue(STORE);
   releaseChannels.mockResolvedValue(CHANNELS);
-  (
-    Element.prototype as unknown as { hasPointerCapture: () => boolean }
-  ).hasPointerCapture = () => false;
-  (
-    Element.prototype as unknown as { scrollIntoView: () => void }
-  ).scrollIntoView = () => undefined;
+  distributionMatrix.mockResolvedValue(MATRIX);
+  updateReleaseChannel.mockResolvedValue({ ok: true });
+  yankRelease.mockResolvedValue({ ok: true });
+  unyankRelease.mockResolvedValue({ ok: true });
 });
 afterEach(cleanup);
 
-describe("Releases view", () => {
-  it("renders the read-only product/release metadata and the manifest note", async () => {
-    render(<Releases slug="djdl" />);
+/** The table row whose primary link is `version`. */
+async function rowOf(version: string): Promise<HTMLElement> {
+  const link = await screen.findByRole("link", {
+    name: new RegExp(`^${version.replace(/\./g, "\\.")}( Yanked)?$`),
+  });
+  return link.closest("tr")!;
+}
 
-    expect(await screen.findByText("DJDL")).toBeTruthy();
-    expect(screen.getByText("kid-2026")).toBeTruthy();
-    // The compatibility window is NOT here any more — spec §8 relocated it to Update settings
-    // (see the dedicated case below); a read-only copy would be the first place an operator
-    // looked to change it.
-    expect(screen.getByText("djdl-admins")).toBeTruthy();
-    expect(await screen.findByText("v1.2.3")).toBeTruthy();
-    expect(screen.getByText("GitHub access")).toBeTruthy();
-    expect(screen.getByText(".pkey/product.yaml")).toBeTruthy();
-    expect(screen.getByText("product")).toBeTruthy();
-    expect(screen.getByText("release")).toBeTruthy();
-
-    // The note explaining release config lives in the repo manifest.
-    expect(screen.getByText(/managed from the repo manifest/i)).toBeTruthy();
+describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
+  it("reads the store: one row per app release with channels, builds and signer", async () => {
+    mountList();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /Releases/ }),
+    ).toBeTruthy();
+    const row = await rowOf("0.4.2");
+    expect(releases).toHaveBeenCalledWith("djdl");
+    // The version links to the release record (REL-10's nested expansion is gone).
+    expect(
+      within(row)
+        .getByRole("link", { name: /^0\.4\.2$/ })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/release/releases/v0.4.2");
+    // Both channels serve 0.4.2 on at least one platform: the server's resolution, once (REL-4).
+    expect(await within(row).findByText("stable · beta")).toBeTruthy();
+    // Builds as platform glyphs, with a labelled list for assistive tech.
+    const builds = within(row).getByRole("list", { name: "Builds of 0.4.2" });
+    expect(within(builds).getAllByRole("listitem")).toHaveLength(5);
+    // Signed by the CI release key, in gold.
+    expect(within(row).getByText(RELEASE_KID)).toBeTruthy();
+    // The GitHub release (REL-9).
+    expect(
+      within(row)
+        .getByRole("link", { name: /0\.4\.2 on GitHub/ })
+        .getAttribute("href"),
+    ).toBe("https://github.com/vladzaharia/diceroll/releases/tag/v0.4.2");
+    // A legacy release lists its files instead of builds, and has no signed record.
+    const legacy = await rowOf("0.3.0");
+    expect(within(legacy).getByText("1 files")).toBeTruthy();
+    expect(within(legacy).getByText("No signed record")).toBeTruthy();
   });
 
-  it("resyncs from the repo via the confirm dialog, calling resyncProduct", async () => {
-    resyncProduct.mockResolvedValue({ ok: true, slug: "djdl" });
-    render(<Releases slug="djdl" />);
-    await screen.findByText("DJDL");
+  it("strikes through and labels a yanked release", async () => {
+    mountList();
+    const row = await rowOf("0.4.0");
+    expect(within(row).getByText("Yanked")).toBeTruthy();
+  });
 
+  it("shows skeleton rows while the store loads", async () => {
+    releases.mockReturnValue(pending());
+    const { container } = mountList();
+    await screen.findByRole("heading", { level: 1, name: /Releases/ });
+    expect(container.querySelectorAll("tbody tr[aria-hidden]")).toHaveLength(5);
+    expect(screen.queryByRole("link", { name: /^0\.4\.2$/ })).toBeNull();
+  });
+
+  it("shows the load error in the table with Retry, and recovers", async () => {
+    releases.mockReset();
+    releases
+      .mockRejectedValueOnce(new Error("nope"))
+      .mockResolvedValueOnce(STORE);
+    mountList();
+    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(await rowOf("0.4.2")).toBeTruthy();
+  });
+
+  it("says what fills the store when it is empty (first run)", async () => {
+    releases.mockResolvedValue({ releases: [], channels: [], floors: [] });
+    mountList();
+    expect(await screen.findByText("No releases yet")).toBeTruthy();
+    expect(
+      screen.getByText(/the linked repository publishes one/),
+    ).toBeTruthy();
+  });
+
+  it("round-trips its filters through the URL, with a no-results state that clears them", async () => {
+    mountList(`${HASH}?yank=yanked`);
+    expect(await rowOf("0.4.0")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /^0\.4\.2$/ })).toBeNull();
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: /Search version or title/ }),
+      "nothing-matches",
+    );
+    await waitFor(() => expect(hashQuery().get("q")).toBe("nothing-matches"));
+    expect(hashQuery().get("yank")).toBe("yanked");
     await userEvent.click(
-      screen.getByRole("button", { name: /Resync from repo/ }),
+      (await screen.findAllByRole("button", { name: "Clear filters" }))[0]!,
+    );
+    await waitFor(() => expect(hashQuery().get("yank")).toBeNull());
+    expect(hashQuery().get("q")).toBeNull();
+    expect(await rowOf("0.4.2")).toBeTruthy();
+  });
+
+  it("resyncs from the repo through a caution confirm, then lists what changed in the Repo sync drawer", async () => {
+    resyncProduct.mockResolvedValue({
+      ok: true,
+      slug: "djdl",
+      updated: ["catalog", "channels"],
+      refused: [
+        {
+          code: "release_key_is_product_key",
+          path: ".pkey/release",
+          message: "the release key is a product key",
+        },
+      ],
+    });
+    mountList();
+    await rowOf("0.4.2");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Resync from repo" }),
     );
     const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/re-applied from the manifest/),
+    ).toBeTruthy();
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Resync" }),
+      within(dialog).getByRole("button", { name: "Resync from repo" }),
     );
-
     await waitFor(() => expect(resyncProduct).toHaveBeenCalledWith("djdl"));
+    // A result panel, not just a toast (RSY-3).
+    const drawer = await screen.findByRole("dialog", { name: "Repo sync" });
+    expect(
+      await within(drawer).findByText("Updated: catalog, channels."),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByText(/the release key is a product key/),
+    ).toBeTruthy();
+    expect(hashQuery().get("panel")).toBe("sync");
+    // Everything under the product refetches (RSY-1).
+    await waitFor(() => expect(releases.mock.calls.length).toBeGreaterThan(1));
   });
 
-  it("disables resync for a product that is not linked to a repo", async () => {
-    // `release/resync.ts` returns "product is not linked to a repo" (422) for any product
-    // whose `release_source` is not `github`, so an enabled button here is an affordance the
-    // server is guaranteed to refuse.
+  it("disables Resync with a visible reason for a product with no repository (RSY-2)", async () => {
     product.mockResolvedValue({
       product: { ...PRODUCT, releaseSource: "manual" },
     });
-    render(<Releases slug="djdl" />);
-    await screen.findByText("DJDL");
-
+    mountList();
+    await rowOf("0.4.2");
     const button = screen.getByRole("button", { name: /Resync from repo/ });
-    expect(button.hasAttribute("disabled")).toBe(true);
+    await waitFor(() =>
+      expect(button.getAttribute("aria-disabled")).toBe("true"),
+    );
+    expect(
+      screen.getAllByText("This product isn't linked to a repository.").length,
+    ).toBeGreaterThan(0);
     await userEvent.click(button);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(resyncProduct).not.toHaveBeenCalled();
   });
 
-  it("shows an error state with retry when the product fails to load", async () => {
-    product.mockReset();
-    product
-      .mockRejectedValueOnce(new Error("nope"))
-      .mockResolvedValueOnce({ product: PRODUCT });
-    render(<Releases slug="djdl" />);
-
-    expect(await screen.findByText("Couldn’t load the product")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("DJDL")).toBeTruthy();
-  });
-});
-
-describe("Releases view — the truth store (P2.T2)", () => {
-  it("reads the store rather than re-deriving releases from health", async () => {
-    render(<Releases slug="djdl" />);
-    // The version, the channel the sync saw pointing at it, and the build and file counts are
-    // what a feed decision turns on, so they are what this pins. The version appears in the
-    // store row, the channel map and the channels panel by design: presence, not cardinality.
-    expect((await screen.findAllByText("0.4.2")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Snake eyes")).toBeTruthy();
-    expect(screen.getAllByText(/stable/).length).toBeGreaterThan(0);
-    expect(releases).toHaveBeenCalledWith("djdl");
-    // The row reports how many builds and files were indexed — what a feed selects from.
-    const row = screen.getByText("Loaded dice").closest("tr")!;
-    expect(within(row).getByText("6")).toBeTruthy();
-    expect(within(row).getByText("9")).toBeTruthy();
-  });
-
-  it("degrades to an empty state when the store has no rows, without hiding health", async () => {
-    releases.mockResolvedValue({ releases: [], channels: [], floors: [] });
-    render(<Releases slug="djdl" />);
-    // Health still renders: an unsynced store is a fact about the sync, not about the product.
-    expect(await screen.findByText("Release health")).toBeTruthy();
-    expect(screen.queryByText("Snake eyes")).toBeNull();
-  });
-
-  it("moves the compatibility window out of this view — it is Update settings' now", async () => {
-    // Spec §8 relocated it. Leaving a read-only copy here would be a second place an operator
-    // could read a value they cannot edit here, and the first place they would look to change it.
-    render(<Releases slug="djdl" />);
-    await screen.findByText("Distribution & compatibility");
-    expect(screen.queryByText(/^min 1\.0\.0$/)).toBeNull();
-    expect(screen.getByText(/Update settings/)).toBeTruthy();
-  });
-});
-
-describe("Releases view — builds and artifacts (P2-07)", () => {
-  async function expand(version: string): Promise<HTMLElement> {
-    render(<Releases slug="djdl" />);
+  it("yanks from the row menu: a danger confirm that needs a reason, then refreshes", async () => {
+    mountList();
+    const row = await rowOf("0.4.2");
     await userEvent.click(
-      await screen.findByRole("button", { name: `Show builds of ${version}` }),
+      within(row).getByRole("button", { name: "Actions for 0.4.2" }),
     );
-    return screen.findByLabelText(`Builds of ${version}`);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Yank…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    // The reason is not marked invalid before an attempt (PAD-6).
+    const reason = within(dialog).getByRole("textbox", { name: /Reason/ });
+    expect(reason.getAttribute("aria-invalid")).toBeNull();
+    const confirm = within(dialog).getByRole("button", { name: "Yank 0.4.2" });
+    expect(confirm.className).toMatch(/bg-danger/);
+    await userEvent.click(confirm);
+    expect(yankRelease).not.toHaveBeenCalled();
+    expect(
+      await within(dialog).findByText("Enter a reason for the yank."),
+    ).toBeTruthy();
+    await userEvent.type(reason, "crashes on launch");
+    await userEvent.click(confirm);
+    await waitFor(() =>
+      expect(yankRelease).toHaveBeenCalledWith(
+        "djdl",
+        "v0.4.2",
+        "crashes on launch",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(releases.mock.calls.length).toBeGreaterThan(1));
+  });
+
+  it("unyanks from the row menu with a caution confirm, weaker than Yank (REL-5)", async () => {
+    mountList();
+    const row = await rowOf("0.4.0");
+    await userEvent.click(
+      within(row).getByRole("button", { name: "Actions for 0.4.0" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Unyank…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    const confirm = within(dialog).getByRole("button", {
+      name: "Unyank 0.4.0",
+    });
+    expect(confirm.className).not.toMatch(/bg-danger/);
+    await userEvent.click(confirm);
+    await waitFor(() =>
+      expect(unyankRelease).toHaveBeenCalledWith("djdl", "v0.4.0"),
+    );
+  });
+
+  it("promotes from the row menu with the release preselected", async () => {
+    mountList();
+    const row = await rowOf("0.4.1");
+    await userEvent.click(
+      within(row).getByRole("button", { name: "Actions for 0.4.1" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Promote to…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        /Promote moves the pointer; newer releases still flow/,
+      ),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Promote 0.4.1" }),
+    );
+    await waitFor(() =>
+      expect(updateReleaseChannel).toHaveBeenCalledWith("djdl", "stable", {
+        deliverable: "app",
+        pointer: "v0.4.1",
+      }),
+    );
+  });
+
+  it("passes axe", async () => {
+    const { container } = mountList();
+    await rowOf("0.4.2");
+    await expectNoAxeViolations(container);
+  });
+});
+
+describe("Repo sync drawer (REL-2, REL-8, REL-9)", () => {
+  async function openDrawer(): Promise<HTMLElement> {
+    mountList(`${HASH}?panel=sync`);
+    return screen.findByRole("dialog", { name: "Repo sync" });
   }
 
-  it("shows each of six builds' platform, arch, format, build number and payload SHA-256", async () => {
-    const builds = await expand("0.4.1");
-    const rows = within(builds)
-      .getAllByRole("row")
-      .filter((r) => within(r).queryAllByRole("cell").length === 7);
-    expect(rows).toHaveLength(6);
-    const want: Array<[string, string, string, string, string, number]> = [
-      // Platform and arch by their display names; the raw arch follows where it differs.
-      ["macos-universal", "macOS", "Universal", "zip", "41", 100],
-      ["windows-x86_64", "Windows", "x64 (x86_64)", "zip", "41", 101],
-      ["linux-x86_64", "Linux", "x86_64", "tar.gz", "41", 102],
-      ["ios-arm64", "iOS / iPadOS", "arm64", "ipa", "1041", 103],
-      ["android-arm64", "Android", "ARM64", "aab", "4041", 104],
-      ["web-wasm32", "Web", "wasm32", "zip", "41", 105],
-    ];
-    for (const [
-      i,
-      [id, platform, arch, format, number, seed],
-    ] of want.entries()) {
-      const cells = within(rows[i]!).getAllByRole("cell");
-      expect(cells.map((c) => c.textContent)).toEqual([
-        id,
-        platform,
-        arch,
-        format,
-        number,
-        expect.any(String),
-        `${sha(seed).slice(0, 12)}…`,
-      ]);
-      // Shortened on screen; the full hash is one copy away and in the title.
-      expect(
-        within(cells[6]!).getByRole("button", {
-          name: `Copy SHA-256 ${sha(seed)}`,
-        }),
-      ).toBeTruthy();
-    }
-    // Minimum OS, where the build declares one.
-    expect(within(rows[0]!).getByText("12.0")).toBeTruthy();
+  it("shows health, the latest tag, and the last sync's lists untruncated", async () => {
+    const paths = Array.from({ length: 15 }, (_, i) => `.pkey/file-${i}.yaml`);
+    product.mockResolvedValue({
+      product: {
+        ...PRODUCT,
+        setup: { sync: { ...PRODUCT.setup!.sync!, changedPaths: paths } },
+      },
+    });
+    const drawer = await openDrawer();
+    expect(await within(drawer).findByText("GitHub access")).toBeTruthy();
+    expect(
+      within(drawer).getByText("v1.2.3").closest("a")?.getAttribute("href"),
+    ).toBe(HEALTH.release!.htmlUrl);
+    expect(await within(drawer).findByText("Changed paths (15)")).toBeTruthy();
+    for (const p of paths) expect(within(drawer).getByText(p)).toBeTruthy();
+    expect(within(drawer).getByText("A push to the repository")).toBeTruthy();
+    expect(within(drawer).getByText("abc123def456")).toBeTruthy();
+    expect(within(drawer).getByText("Updated sections (2)")).toBeTruthy();
   });
 
-  it("groups files under their build, says where the bytes live, and hides sidecars until toggled", async () => {
-    const builds = await expand("0.4.1");
-    expect(
-      within(builds).getByText("diceroll-v0.4.1-macos-universal.zip"),
-    ).toBeTruthy();
-    // R2 and GitHub for a self-hosted payload, Store for the iOS one, External for the web one.
-    expect(within(builds).getAllByText("R2").length).toBeGreaterThan(0);
-    expect(within(builds).getAllByText("Store")).toHaveLength(1);
-    expect(within(builds).getAllByText("External")).toHaveLength(1);
-
-    // Two signatures and a checksum file are sidecars: collapsed by default.
-    expect(
-      within(builds).queryByText("diceroll-v0.4.1-macos-universal.sig"),
-    ).toBeNull();
-    expect(within(builds).queryByText("SHA256SUMS")).toBeNull();
-    await userEvent.click(
-      within(builds).getByRole("button", { name: "Show sidecars (3)" }),
-    );
-    expect(
-      within(builds).getByText("diceroll-v0.4.1-macos-universal.sig"),
-    ).toBeTruthy();
-    // A file no descriptor tied to a build is listed on its own.
-    expect(within(builds).getByText("Files not tied to a build")).toBeTruthy();
-    expect(within(builds).getByText("SHA256SUMS")).toBeTruthy();
-    await userEvent.click(
-      within(builds).getByRole("button", { name: "Hide sidecars" }),
-    );
-    expect(within(builds).queryByText("SHA256SUMS")).toBeNull();
-  });
-
-  it("lists a legacy release's synced files with their bytes on GitHub", async () => {
-    const builds = await expand("0.3.0");
-    expect(within(builds).getByText(/No builds declared/)).toBeTruthy();
-    expect(within(builds).getByText("diceroll-macos.zip")).toBeTruthy();
-    expect(within(builds).getByText("GitHub (synced)")).toBeTruthy();
-    // A file listed on its own carries its platform and arch together, never a bare arch.
-    expect(within(builds).getByText("macOS Universal").title).toBe(
-      "macOS · Universal",
-    );
-  });
-
-  it("badges a yanked release with its reason", async () => {
-    render(<Releases slug="djdl" />);
-    expect(
-      await screen.findByText("Yanked: corrupts saves on Android"),
-    ).toBeTruthy();
-  });
-});
-
-describe("Releases view — floor health (P0-02 wave-1 sync)", () => {
-  it("renders the channel-floor-unverified warning and points at the floor action", async () => {
+  it("points a floor warning at the channel's floor action on Channels", async () => {
     releaseHealth.mockResolvedValue({
       health: {
         ...HEALTH,
-        status: "healthy",
         checks: [
           ...HEALTH.checks,
           {
@@ -327,27 +467,27 @@ describe("Releases view — floor health (P0-02 wave-1 sync)", () => {
             label: "Channel floor (beta)",
             status: "warning",
             message:
-              "beta is floored at 0.5.0, but the releases read so far do not reach it and the follow-up GitHub lookup failed (rate limited), so whether the floor release still exists is unknown.",
+              "beta is floored at 0.5.0, but the releases read so far do not reach it.",
           },
         ],
       },
     });
-    render(<Releases slug="djdl" />);
-    const label = await screen.findByText("Channel floor (beta)");
-    const item = label.closest("li")!;
-    expect(within(item).getByText("warning")).toBeTruthy();
+    const drawer = await openDrawer();
+    const item = (
+      await within(drawer).findByText("Channel floor (beta)")
+    ).closest("li")!;
+    expect(within(item).getByText("Warning")).toBeTruthy();
     expect(within(item).getByText(/beta is floored at 0\.5\.0/)).toBeTruthy();
-    expect(within(item).getByText(/Lower or clear the floor/)).toBeTruthy();
+    expect(
+      within(item).getByRole("link", { name: "Channels" }).getAttribute("href"),
+    ).toBe("#/p/djdl/release/channels");
   });
-});
 
-describe("Releases view — release artifacts in health", () => {
   it("lists the files the latest release carries, with platform and arch where known", async () => {
     releaseHealth.mockResolvedValue({
       health: {
         ...HEALTH,
         checks: [
-          ...HEALTH.checks,
           {
             id: "release-artifacts",
             label: "Release artifacts",
@@ -365,22 +505,17 @@ describe("Releases view — release artifacts in health", () => {
         ],
       },
     });
-    render(<Releases slug="djdl" />);
-    const label = await screen.findByText("Release artifacts");
-    const item = label.closest("li")!;
-    expect(within(item).getByText("v1.2.3 carries 2 files.")).toBeTruthy();
-    const files = within(item).getByRole("list", {
+    const drawer = await openDrawer();
+    const files = await within(drawer).findByRole("list", {
       name: "Release artifacts files",
     });
     expect(within(files).getAllByRole("listitem")).toHaveLength(2);
-    expect(within(files).getByText("game-linux-x86_64.tar.gz")).toBeTruthy();
     expect(within(files).getByText("Linux · x86_64")).toBeTruthy();
     expect(within(files).getByText("notes.txt")).toBeTruthy();
-    // No assumed DMG/CLI rows are rendered: the view shows only the checks it is given.
-    expect(screen.queryByText(/DMG/)).toBeNull();
+    expect(within(drawer).queryByText(/DMG/)).toBeNull();
   });
 
-  it("renders a declared entry's missing state and an ambiguous entry's candidates generically", async () => {
+  it("renders a declared entry's missing state and an ambiguous entry's candidates", async () => {
     releaseHealth.mockResolvedValue({
       health: {
         ...HEALTH,
@@ -388,7 +523,6 @@ describe("Releases view — release artifacts in health", () => {
         healthy: false,
         missing: ["win: file matching Game-*-windows.zip"],
         checks: [
-          ...HEALTH.checks,
           {
             id: "artifact-win",
             label: "win (windows x86_64 zip)",
@@ -420,23 +554,200 @@ describe("Releases view — release artifacts in health", () => {
         ],
       },
     });
-    render(<Releases slug="djdl" />);
-    const win = (await screen.findByText("win (windows x86_64 zip)")).closest(
-      "li",
-    )!;
-    expect(within(win).getByText("missing")).toBeTruthy();
+    const drawer = await openDrawer();
+    expect(
+      (await within(drawer).findAllByText("Needs setup")).length,
+    ).toBeGreaterThan(0);
+    const win = within(drawer)
+      .getByText("win (windows x86_64 zip)")
+      .closest("li")!;
+    expect(within(win).getByText("Missing")).toBeTruthy();
     expect(
       within(win).getByText("Missing: win: file matching Game-*-windows.zip"),
     ).toBeTruthy();
-    const linux = screen
-      .getByText("linux (linux x86_64 tar.gz)")
-      .closest("li")!;
-    const candidates = within(linux).getByRole("list", {
+    const candidates = within(drawer).getByRole("list", {
       name: "linux (linux x86_64 tar.gz) files",
     });
-    expect(within(candidates).getAllByRole("listitem")).toHaveLength(2);
     expect(
       within(candidates).getAllByText("Linux · x86_64 · tar.gz"),
     ).toHaveLength(2);
+  });
+
+  it("shows a health error with Retry inside the drawer", async () => {
+    releaseHealth.mockReset();
+    releaseHealth
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce({ health: HEALTH });
+    const drawer = await openDrawer();
+    await userEvent.click(
+      await within(drawer).findByRole("button", { name: "Retry" }),
+    );
+    expect(await within(drawer).findByText("GitHub access")).toBeTruthy();
+  });
+});
+
+describe("Release record (T3, ADMIN.md §6.3.2)", () => {
+  function mountRecord(id: string, tab?: string) {
+    return mountAt(
+      `#/p/djdl/release/releases/${id}${tab ? `/${tab}` : ""}`,
+      <ReleaseRecord slug="djdl" id={id} tab={tab} />,
+    );
+  }
+
+  it("heads the record with version, where it is live, its signer and the GitHub release", async () => {
+    mountRecord("v0.4.2");
+    const h1 = await screen.findByRole("heading", { level: 1 });
+    expect(h1.textContent).toBe("0.4.2");
+    expect(await screen.findByText("Live on stable, beta")).toBeTruthy();
+    expect(screen.getAllByText(RELEASE_KID).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("link", { name: /GitHub release/ }).getAttribute("href"),
+    ).toBe(STORE.releases[0]!.sourceUrl);
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(
+      within(crumbs)
+        .getByRole("link", { name: "Releases" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/release/releases");
+    // Tabs are route links.
+    expect(
+      screen.getByRole("link", { name: /^Packs/ }).getAttribute("href"),
+    ).toBe("#/p/djdl/release/releases/v0.4.2/packs");
+  });
+
+  it("shows builds as cards: summary, files, hashes and where the bytes live; sidecars on request (RBD-1, RBD-2)", async () => {
+    mountRecord("v0.4.1", "builds");
+    const mac = await screen.findByRole("region", {
+      name: "Build macos-universal",
+    });
+    expect(
+      within(mac).getByText(/macOS · Universal · zip · build 41/),
+    ).toBeTruthy();
+    expect(
+      within(mac).getByText("diceroll-v0.4.1-macos-universal.zip"),
+    ).toBeTruthy();
+    expect(within(mac).getAllByText("R2").length).toBeGreaterThan(0);
+    expect(within(mac).getByText("Access: Licensed")).toBeTruthy();
+    expect(screen.getAllByRole("region", { name: /^Build / })).toHaveLength(6);
+    expect(screen.getAllByText("Store")).toHaveLength(1);
+    expect(screen.getAllByText("External")).toHaveLength(1);
+    // A location badge explains itself in a popover, never a title.
+    await userEvent.click(
+      within(mac).getAllByRole("button", { name: /^R2/ })[0]!,
+    );
+    expect(
+      await screen.findByText(/Stored in Polaris Key's object storage/),
+    ).toBeTruthy();
+    await userEvent.keyboard("{Escape}");
+    // Sidecars collapsed by default.
+    expect(
+      screen.queryByText("diceroll-v0.4.1-macos-universal.sig"),
+    ).toBeNull();
+    expect(screen.queryByText("SHA256SUMS")).toBeNull();
+    await userEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Show signatures and checksums (3)",
+      }),
+    );
+    expect(
+      screen.getByText("diceroll-v0.4.1-macos-universal.sig"),
+    ).toBeTruthy();
+    expect(screen.getByText("Files not tied to a build")).toBeTruthy();
+    expect(screen.getByText("SHA256SUMS")).toBeTruthy();
+    // Each payload's SHA-256 is shortened, with the full value one copy away.
+    expect(
+      screen.getAllByRole("button", { name: "Copy SHA-256" }).length,
+    ).toBeGreaterThanOrEqual(6);
+    expect(sha(100)).toHaveLength(64);
+  });
+
+  it("lists a legacy release's synced files with their bytes on GitHub", async () => {
+    mountRecord("v0.3.0");
+    expect(await screen.findByText(/No builds declared/)).toBeTruthy();
+    expect(screen.getByText("diceroll-macos.zip")).toBeTruthy();
+    expect(screen.getByText("GitHub (synced)")).toBeTruthy();
+  });
+
+  it("lists the packs it pins as links to the pack record (RBD-2)", async () => {
+    releases.mockResolvedValue({
+      ...STORE,
+      releases: [
+        {
+          ...STORE.releases[0]!,
+          contentApi: 3,
+          pins: [
+            {
+              pack: "textures",
+              packReleaseId: "textures@1.3.0",
+              packVersion: "1.3.0",
+              packYank: null,
+              required: true,
+              delivery: "essential",
+              recordSha256: sha(7),
+            },
+          ],
+        },
+        ...STORE.releases.slice(1),
+      ],
+    });
+    mountRecord("v0.4.2", "packs");
+    const link = await screen.findByRole("link", { name: "1.3.0" });
+    expect(link.getAttribute("href")).toBe(
+      "#/p/djdl/release/deliverables/textures/releases?release=textures%401.3.0",
+    );
+    expect(
+      screen.getByRole("link", { name: "textures" }).getAttribute("href"),
+    ).toBe("#/p/djdl/release/deliverables/textures");
+    expect(screen.getByText("Required")).toBeTruthy();
+    expect(screen.getByText("Delivery: essential")).toBeTruthy();
+  });
+
+  it("says where each channel serves it, per platform", async () => {
+    mountRecord("v0.4.1", "channels");
+    expect(await screen.findAllByText("Serves 0.4.1 on iOS.")).toHaveLength(2);
+  });
+
+  it("lists its outlets from Distribution's matrix, with the rollout", async () => {
+    mountRecord("v0.4.2", "distribution");
+    expect(await screen.findByText("Live")).toBeTruthy();
+    expect(screen.getByText(/Rolling out\s+25 %/)).toBeTruthy();
+    expect(screen.getByText("Not available")).toBeTruthy();
+    expect(
+      screen
+        .getAllByRole("link", { name: "Open in matrix" })[0]!
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/matrix?cell=v0.4.2%3Adirect");
+  });
+
+  it("says a release outside Distribution's window is not tracked, not unserved", async () => {
+    mountRecord("v0.4.1", "distribution");
+    expect(
+      await screen.findByText(
+        "Not in the newest 50 releases tracked by Distribution",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("disables Promote on a yanked release with the reason, and names the yank", async () => {
+    mountRecord("v0.4.0");
+    expect(
+      await screen.findByText("Yanked: corrupts saves on Android"),
+    ).toBeTruthy();
+    const promote = screen.getAllByRole("button", { name: "Promote…" })[0]!;
+    expect(promote.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("names a missing release instead of rendering nothing", async () => {
+    mountRecord("v9.9.9");
+    expect(await screen.findByText("No release v9.9.9 in DJDL")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "All releases" }).getAttribute("href"),
+    ).toBe("#/p/djdl/release/releases");
+  });
+
+  it("passes axe", async () => {
+    const { container } = mountRecord("v0.4.1");
+    await screen.findByRole("region", { name: "Build macos-universal" });
+    await expectNoAxeViolations(container);
   });
 });

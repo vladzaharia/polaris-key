@@ -106,8 +106,8 @@ product that had Release on, so such a product keeps serving until its manifest 
 
 `products.services_source` is `manifest` or `admin`, and it is the same machinery as
 `fingerprint_policy_source`, `auto_issue_source`, `compat_source` (the compatibility window) and
-`release_config.access_source` (both release access modes, claimed and reverted together from
-[Update settings](/docs/services/update/eligibility/#the-console-update-settings)):
+`release_config.access_source` (the metadata access mode, claimed and reverted from
+[Update → Feed](/docs/services/update/eligibility/#the-console-feed)):
 
 - A **resync writes only while the column is `manifest`-owned**, and the guard is the `UPDATE`'s
   own `WHERE … = 'manifest'` predicate rather than a read-then-write in the caller. A push cannot

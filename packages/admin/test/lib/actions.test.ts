@@ -26,6 +26,8 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "repo.resync",
     "sentry.dismiss",
     "rollout.setPercentage",
+    "storeApp.assign",
+    "storeApp.release",
   ],
   2: [
     "key.revoke",

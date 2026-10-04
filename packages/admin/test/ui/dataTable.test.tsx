@@ -322,6 +322,40 @@ describe("DataTable", () => {
     render(<Harness />);
     expect(screen.queryByRole("columnheader", { name: /Seats/ })).toBeNull();
   });
+
+  it("starts a defaultHidden column hidden at every width, and Columns shows it", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        columns={[
+          ...COLUMNS.slice(0, 2),
+          { ...COLUMNS[2]!, meta: { numeric: true, defaultHidden: true } },
+        ]}
+      />,
+    );
+    expect(screen.queryByRole("columnheader", { name: /Seats/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Seats" }));
+    expect(screen.getByRole("columnheader", { name: /Seats/ })).toBeTruthy();
+  });
+
+  it("renders no action menu for a row with no valid action", () => {
+    render(
+      <Harness
+        rowActions={(r) =>
+          r.status === "active"
+            ? [{ label: "Disable", onSelect: () => undefined }]
+            : [{ type: "separator" }]
+        }
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Actions for Studio Pro" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Actions for Old seat" }),
+    ).toBeNull();
+  });
 });
 
 describe("CSV", () => {

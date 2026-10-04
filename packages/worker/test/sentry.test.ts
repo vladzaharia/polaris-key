@@ -448,6 +448,11 @@ describe("confirming and dismissing a candidate", () => {
       {},
     );
     expect(res.status).toBe(404);
+    // A-9: the 404 keeps its reason.
+    expect(await res.json()).toMatchObject({
+      code: "not_found",
+      reason: "unknown_candidate",
+    });
   });
 
   it("shows the hook's setup and its candidates in the console view", async () => {

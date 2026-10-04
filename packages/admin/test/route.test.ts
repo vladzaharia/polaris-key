@@ -317,16 +317,42 @@ describe("pages that are not built yet redirect to their host", () => {
     },
   );
 
-  it("a record that is not built yet goes to its collection", () => {
-    expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBe(
-      "#/p/djdl/license/tiers",
-    );
+  it("every record is built: the tier record parses as a record and stays put (chunk 6)", () => {
+    expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBeUndefined();
     expect(
-      parseLocation("#/p/djdl/release/releases/rel_1/builds").redirect,
-    ).toBe("#/p/djdl/release/releases");
-    expect(parseLocation("#/p/djdl/devices/dev_1").redirect).toBe(
-      "#/p/djdl/devices",
-    );
+      parseLocation("#/p/djdl/license/tiers/t1/used-by").route,
+    ).toMatchObject({ page: "tiers", id: "t1", tab: "used-by" });
+  });
+
+  it("the device drawer is a routed record (chunk 5)", () => {
+    const parsed = parseLocation("#/p/djdl/devices/dev_1");
+    expect(parsed.redirect).toBeUndefined();
+    expect(parsed.route).toMatchObject({
+      kind: "product",
+      page: "devices",
+      id: "dev_1",
+    });
+  });
+
+  it("a built record keeps its id and tab (the release record, chunk 8)", () => {
+    const parsed = parseLocation("#/p/djdl/release/releases/rel_1/builds");
+    expect(parsed.redirect).toBeUndefined();
+    expect(parsed.route).toMatchObject({
+      kind: "product",
+      page: "releases",
+      id: "rel_1",
+      tab: "builds",
+    });
+    // The Release section's pages are all built: none redirects to a host any more.
+    for (const path of [
+      "channels",
+      "content-keys",
+      "compatibility/simulator",
+    ]) {
+      expect(
+        parseLocation(`#/p/djdl/release/${path}`).redirect,
+      ).toBeUndefined();
+    }
   });
 
   it("every host chain ends at a built page in the same scope", () => {
@@ -671,11 +697,24 @@ describe("global pages", () => {
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
     expect(platformLinks().map((p) => p.page)).toEqual(["home", "products"]);
-    expect(platformItems().map((p) => p.page)).toEqual(["platform-deployment"]);
+    expect(platformItems().map((p) => p.page)).toEqual([
+      "platform-settings",
+      "platform-deployment",
+      "platform-operations",
+      "platform-stores",
+    ]);
   });
 
-  it("#/platform follows the chain to Deployment in one redirect", () => {
-    expect(parseLocation("#/platform").redirect).toBe("#/platform/deployment");
+  it("#/platform redirects to Settings; a page still to come follows on to Deployment", () => {
+    expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
+    expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
+    expect(parseLocation("#/platform/operations").redirect).toBeUndefined();
+    expect(
+      parseLocation("#/platform/store-connections").redirect,
+    ).toBeUndefined();
+    expect(parseLocation("#/platform/feeds").redirect).toBe(
+      "#/platform/deployment",
+    );
     expect(r.platform()).toBe("#/platform");
     expect(r.platformDeployment()).toBe("#/platform/deployment");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");

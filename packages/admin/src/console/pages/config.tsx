@@ -1,23 +1,29 @@
 import * as React from "react";
-import { Catalog } from "../../views/Catalog.js";
-import { Profiles } from "../../views/Profiles.js";
-import { ProfileDetail } from "../../views/profiles/ProfileDetail.js";
+import { CatalogEditorPage } from "./config/CatalogEditorPage.js";
+import { CatalogPage } from "./config/CatalogPage.js";
+import { EdgeMintPage } from "./config/EdgeMintPage.js";
+import { ProfilePage } from "./config/ProfilePage.js";
+import { ProfilesPage } from "./config/ProfilesPage.js";
 import type { SectionPageProps } from "./types.js";
 
-/** Config: the legacy views at their new URLs, unchanged until chunk 7. */
+/** Config (docs/design/ADMIN.md §6.6): catalog, catalog editor, profiles and edge mint. */
 export default function ConfigPages({
   route,
 }: SectionPageProps): React.ReactElement | null {
   const { slug } = route;
   switch (route.page) {
     case "catalog":
-      return <Catalog slug={slug} />;
+      return <CatalogPage slug={slug} />;
+    case "catalog-edit":
+      return <CatalogEditorPage slug={slug} />;
     case "profiles":
       return route.id !== undefined ? (
-        <ProfileDetail slug={slug} id={route.id} />
+        <ProfilePage slug={slug} id={route.id} tab={route.tab} />
       ) : (
-        <Profiles slug={slug} />
+        <ProfilesPage slug={slug} />
       );
+    case "edge-mint":
+      return <EdgeMintPage slug={slug} />;
     default:
       return null;
   }

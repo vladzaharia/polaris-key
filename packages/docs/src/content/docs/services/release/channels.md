@@ -134,11 +134,11 @@ routes and answer no CORS.
 | Method and path                                                  | Does                                                                                                                           |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `GET channels`                                                   | Every deliverable's channels, policies, sources, and what each resolves to now, overall and per platform.                      |
-| `PUT channels/<channel>`                                         | Set `pointer`, `pinned`, `minSupported`, `critical`.                                                                           |
+| `PUT channels/<channel>`                                         | Set `pointer`, `pinned`, `minSupported`, `critical`; for a pack, a floor per line with `contentApi`.                           |
 | `POST channels/<channel>/revert`                                 | Hand the row back to the manifest.                                                                                             |
-| `POST releases/<releaseId>/yank`                                 | Yank, with `reason`.                                                                                                           |
+| `POST releases/<releaseId>/yank`                                 | Yank an app or pack release, with `reason`.                                                                                    |
 | `DELETE releases/<releaseId>/yank`                               | Lift the yank.                                                                                                                 |
-| `GET releases`                                                   | App releases with their builds, artifact roles, SHA-256s, locations and yank, plus their pack pins.                            |
+| `GET releases`                                                   | App releases with their builds, artifact roles, SHA-256s, locations, yank, pack pins and record `signer` (the release key).    |
 | `GET deliverables`                                               | The app and every pack, with the declaration, gate and latest release ([Packs](/docs/services/release/packs/#in-the-console)). |
 | `GET deliverables/<id>/releases`                                 | A pack's releases and the app releases that pin each.                                                                          |
 | `GET deliverables/<id>/releases/<releaseId>/files?variant=<key>` | One variant's files, read from its files index ([Packs](/docs/services/release/packs/#in-the-console)).                        |

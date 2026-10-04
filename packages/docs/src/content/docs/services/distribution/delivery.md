@@ -129,8 +129,11 @@ it is handed back — the same rule as every other operator-owned setting, and t
 `entitled` mode, which no manifest can express, survives a push. A pack's row has no manifest
 spelling; it is operator-owned from the start.
 
-The console's **Update settings** page edits the app's delivery access as **Artifact access**,
-with its own owner badge and revert. The admin API (narrative-only, not in the wire spec):
+The console's **Distribution → Access** page edits the app's delivery access and each pack's,
+each in its own section with its own Save: a mode for each, and for a pack in `entitled` mode its
+gate (a catalog flag). The app's section carries its owner badge, with **Revert to manifest**
+while the console owns it; a pack has no manifest spelling. The admin API (narrative-only, not in
+the wire spec):
 
 | Method | Path                                                     | Does                                                        |
 | ------ | -------------------------------------------------------- | ----------------------------------------------------------- |
