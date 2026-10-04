@@ -3,7 +3,7 @@
  *
  *   - readiness per transport: `embedded` ready at once; `pkey-cdn` ready only once every object
  *     of the pack release is stored and held; `apple-ba` blocked until a CI report approves the
- *     level's asset pack (`foes-c4`, CONTENT §6.8 row 1); an operator override flips the state
+ *     level's asset pack (`djdl-foes-c4`, CONTENT §6.8 row 1); an operator override flips the state
  *     and is audited; an `entitled` pack with no gate blocks (P4-05 N4);
  *   - while blocked on a self-hosted outlet, the composed feed and the storefront selection do not
  *     offer the app release there; on the App Store outlet the matrix shows the blocker and a
@@ -175,7 +175,7 @@ describe("readiness per transport (CONTENT §6.4)", () => {
     });
   });
 
-  it("apple-ba is blocked until CI reports the level's asset pack (foes-c4) approved", async () => {
+  it("apple-ba is blocked until CI reports the level's asset pack (djdl-foes-c4) approved", async () => {
     const { w, foes } = await world();
     const id = await appReleaseId(w);
     const before = await readiness(w, id, "app-store");
@@ -186,7 +186,7 @@ describe("readiness per transport (CONTENT §6.4)", () => {
     });
     expect(before.blockers[0]).toMatchObject({
       reason: "awaiting-approval",
-      assetPack: "foes-c4",
+      assetPack: "djdl-foes-c4",
       transport: "apple-ba",
     });
     expect(before.warning).toMatch(/cannot hold a release on app-store/);
@@ -198,7 +198,7 @@ describe("readiness per transport (CONTENT §6.4)", () => {
       outlet: "app-store",
       releaseId: foes.releaseId,
       state: "approved",
-      platformRef: '{"assetPackIdentifier":"foes-c3"}',
+      platformRef: '{"assetPackIdentifier":"djdl-foes-c3"}',
     });
     expect((await readiness(w, id, "app-store")).state).toBe("blocked");
 
@@ -208,7 +208,7 @@ describe("readiness per transport (CONTENT §6.4)", () => {
       outlet: "app-store",
       releaseId: foes.releaseId,
       state: "approved",
-      platformRef: '{"assetPackIdentifier":"foes-c4"}',
+      platformRef: '{"assetPackIdentifier":"djdl-foes-c4"}',
     });
     expect(r.ok).toBe(true);
     expect(await readiness(w, id, "app-store")).toMatchObject({

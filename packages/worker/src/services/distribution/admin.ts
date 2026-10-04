@@ -31,6 +31,12 @@
  *     POST …/distribution/readiness/<appReleaseId>/<outletId>/{override,clear}
  *                                                              release the hold (audited, with a
  *                                                              reason) or hand it back
+ *     GET  …/distribution/asset-packs                          Apple-hosted asset packs by id, their
+ *                                                              level, newest version and states,
+ *                                                              retire candidates (levels no longer
+ *                                                              live) and the 200-pack / 200 GB
+ *                                                              quotas (P5-08; list only, never
+ *                                                              archives)
  *     GET  …/distribution/connectors                           every store connector: setup,
  *                                                              tracked objects, recent events (P5-02)
  *     GET  …/distribution/connectors/<kind>                    one connector
@@ -139,6 +145,7 @@ import {
   refreshReadiness,
   setReadinessOverride,
 } from "./readiness.js";
+import { listAssetPacks } from "./assetPacks.js";
 
 /** The console's view of one outlet. */
 export function outletView(
@@ -164,7 +171,7 @@ export function outletView(
       .map((t) => ({
         deliverableId: t.deliverable_id,
         transport: t.transport,
-        // Stored and listed whatever it is; only the v1 transports are acted on (P4-05).
+        // Stored and listed whatever it is; only SUPPORTED_TRANSPORTS are acted on (P4-05, P5-08).
         supported: transportSupported(t.transport),
       })),
     removedAt: row.removed_at,
@@ -186,6 +193,14 @@ export async function handleDistributionAdmin(
   if (rest[0] === "connectors") return handleConnectorsAdmin(ctx);
   if (rest[0] === "matrix") return handleMatrixAdmin(ctx);
   if (rest[0] === "readiness") return handleReadinessAdmin(ctx);
+  if (rest[0] === "asset-packs") {
+    if (rest.length !== 1) return null;
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    return adminJson(
+      await listAssetPacks(db, slug, ctx.hooks.releaseCatalog()),
+    );
+  }
   if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
   if (rest[0] === "commerce") return handleCommerceAdmin(ctx);
   if (rest[0] === "package-feeds") return handlePackageFeedsAdmin(ctx);

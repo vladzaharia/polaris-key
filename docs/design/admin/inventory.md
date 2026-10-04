@@ -73,6 +73,7 @@ From the API sweep (`W/admin/*`, `W/services/*/admin.ts`); `api.ts` makes 77 dis
 | Distribution keys                                 | `GET/PUT/DELETE …/distribution/keys`                                                           | none                                                |
 | Readiness list, refresh, override, clear          | `…/distribution/readiness`, `…/readiness/refresh`, `…/readiness/:app/:outlet/{override,clear}` | read-only inside Compatibility's overlay            |
 | Store connectors (App Store Connect, Google Play) | `…/distribution/connectors/*`                                                                  | none                                                |
+| Asset packs and retire candidates (P5-08)         | `GET …/distribution/asset-packs`                                                               | none                                                |
 | Per-pack delivery access                          | `PUT …/distribution/access {deliverable}`                                                      | app only                                            |
 | Pack channel policy, pack floors (`contentApi`)   | `PUT …/release/channels/:c {deliverable, contentApi}`                                          | app only, no `contentApi`                           |
 | Update-health window                              | `GET …/update-health?windowHours=`                                                             | fixed default                                       |

@@ -26,9 +26,10 @@
  *   apple-ba                          a stored (CI or connector) availability record of the pack
  *                                     release on O in `approved` or `live`; when it names an
  *                                     `assetPackIdentifier`, that must be exactly the level's asset
- *                                     pack (`<pack leaf>-c<contentApi>`), for EVERY level the pack is
+ *                                     pack (`<pack>-c<contentApi>`, dots as hyphens), for EVERY level the pack is
  *                                     required at (one asset pack per level, CONTENT §6.6). Until
- *                                     P5-02/P5-08 feed ASC states, CI reports stand in
+ *                                     P5-08 links P5-02's ASC states to pack releases, CI reports
+ *                                     stand in beside them
  *   msix-optional, flatpak-ext        a stored availability record in `approved` or `live`
  *   anything else                     blocked (fail closed)
  *
@@ -50,7 +51,7 @@
  * effect at once through the computation, and reach the snapshot on the next cron tick.
  */
 
-import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
+import { APP_DELIVERABLE_ID, assetPackId } from "@polaris-key/manifest";
 import { OUTLET_PLATFORMS } from "@polaris-key/protocol/distribution";
 import type { Db } from "../../core/platform.js";
 import { randomId } from "../../core/platform.js";
@@ -134,7 +135,7 @@ export interface ReadinessBlocker {
   transport: string;
   reason: BlockerReason;
   detail: string;
-  /** `apple-ba`: the asset pack the level needs (`<pack leaf>-c<contentApi>`). */
+  /** `apple-ba`: the asset pack the level needs (`<pack>-c<contentApi>`, P5-08). */
   assetPack?: string;
 }
 
@@ -212,12 +213,13 @@ export function outletPlatformsOf(row: DistOutletRow): string[] {
   return [...base];
 }
 
-/** The asset pack an `apple-ba` pack needs at one level: the id's last segment, `-c<level>`. */
+/**
+ * The asset pack an `apple-ba` pack needs at one level: P5-08's convention, `<pack>-c<level>` with
+ * every `.` rewritten to `-` (`diceroll.foes` → `diceroll-foes-c3`; `@polaris-key/manifest`'s
+ * `assetPackId`, the name `pkey transport apple-ba` uploads under).
+ */
 export function assetPackName(pack: string, level: number): string {
-  const leaf = pack.includes(".")
-    ? pack.slice(pack.lastIndexOf(".") + 1)
-    : pack;
-  return `${leaf}-c${level}`;
+  return assetPackId(pack, level);
 }
 
 function memo<K, V>(fn: (k: K) => Promise<V>): (k: K) => Promise<V> {
@@ -336,10 +338,11 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
   const reports = memo(async (releaseId: string) =>
     db.all<{
       outlet_id: string;
+      build_id: string;
       state: string;
       platform_ref_json: string | null;
     }>(
-      `SELECT outlet_id, state, platform_ref_json FROM dist_availability
+      `SELECT outlet_id, build_id, state, platform_ref_json FROM dist_availability
         WHERE product = ? AND release_id = ?`,
       product,
       releaseId,
@@ -404,6 +407,10 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
         if (r.outlet_id !== outlet.outlet_id) return false;
         if (!APPROVED_STATES.includes(r.state)) return false;
         if (t !== "apple-ba" || level === null) return true;
+        // P5-08: apple-ba rows are keyed by their asset pack (`build_id`), one row per level; a
+        // whole-release row (`''`, a hand-made report) counts when it names this asset pack or
+        // none.
+        if (r.build_id !== "") return r.build_id === wanted;
         const named = objectOf(r.platform_ref_json).assetPackIdentifier;
         return typeof named !== "string" || named === wanted;
       });

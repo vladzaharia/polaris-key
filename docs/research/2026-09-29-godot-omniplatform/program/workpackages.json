@@ -1977,7 +1977,7 @@
       "optional": false,
       "refs": ["CONTENT §6.6 §7 §11", "notes/E9 §7"],
       "brief": "wp/P5-08-platform-pack-transports.md",
-      "status": "todo",
+      "status": "done",
       "milestone": "Background Assets packs on iOS; in-app updates on Play"
     },
     {

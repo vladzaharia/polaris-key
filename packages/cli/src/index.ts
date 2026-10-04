@@ -54,6 +54,10 @@ import {
   type RolloutCommand,
 } from "./distribution.js";
 import { writeManifestSchemas } from "./schemas.js";
+import { TRANSPORT_USAGE, type TransportCommon } from "./transport.js";
+import { baPackage, baUpload } from "./transportAppleBa.js";
+import { padModules, type PadDelivery } from "./transportPlayPad.js";
+import { steamVdf } from "./transportSteam.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import {
   generatedKeyText,
@@ -299,6 +303,49 @@ export {
 } from "./bundle.js";
 
 export {
+  contentLevel,
+  loadTransportPack,
+  loadTransportProduct,
+  TRANSPORT_USAGE,
+  type LoadedTransportPack,
+  type TransportCommon,
+  type TransportProduct,
+  type TransportVariant,
+} from "./transport.js";
+export {
+  ASC_API,
+  AscUploadError,
+  assetPackIdFor,
+  baPackage,
+  baUpload,
+  DEFAULT_ASSET_PACK_LOCK,
+  downloadPolicy,
+  type AscUploadErrorCode,
+  type BaPackageOptions,
+  type BaPackageResult,
+  type BaUploadOptions,
+  type BaUploadResult,
+} from "./transportAppleBa.js";
+export {
+  padDirectories,
+  padModuleGradle,
+  padModules,
+  patchAppGradle,
+  patchSettingsGradle,
+  TCF_ALIASES,
+  type PadDelivery,
+  type PadModulesOptions,
+  type PadModulesResult,
+} from "./transportPlayPad.js";
+export {
+  appBuildVdf,
+  depotBuildVdf,
+  steamVdf,
+  STEAM_PACK_DIR,
+  type SteamVdfOptions,
+  type SteamVdfResult,
+} from "./transportSteam.js";
+export {
   findDistributionFile,
   initManifest,
   loadManifest,
@@ -377,6 +424,8 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdManifest(parsed, cwd, stdout);
       case "feeds":
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
+      case "transport":
+        return await cmdTransport(parsed, cwd, stdout, stderr, ci);
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -1146,6 +1195,112 @@ async function cmdManifest(
   return 0;
 }
 
+/**
+ * `pkey transport apple-ba package|upload`, `play-pad modules`, `steam-depot vdf` (P5-08,
+ * `transport*.ts`): package a published pack release for a store transport, then report it.
+ */
+async function cmdTransport(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const [transport, step] = parsed.positional;
+  const deliverable = flagString(parsed, "deliverable");
+  const version = flagString(parsed, "release");
+  if (!deliverable || !version) throw new Error(TRANSPORT_USAGE);
+  const common: TransportCommon = {
+    cwd,
+    deliverable,
+    version,
+    product: flagString(parsed, "product"),
+    baseUrl: flagString(parsed, "base-url"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+    report: !flagBool(parsed, "no-report"),
+  };
+  const from = () => {
+    const f = flagString(parsed, "from");
+    if (!f)
+      throw new Error(
+        `--from is required: the --out directory of pkey release publish --deliverable ${deliverable}.\n${TRANSPORT_USAGE}`,
+      );
+    return f;
+  };
+  const list = (name: string) =>
+    flagString(parsed, name)
+      ?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  switch (`${transport ?? ""} ${step ?? ""}`) {
+    case "apple-ba package":
+      await baPackage({
+        ...common,
+        from: from(),
+        out: flagString(parsed, "out"),
+        contentApi: flagString(parsed, "content-api"),
+        variant: flagString(parsed, "variant"),
+        platforms: list("platforms"),
+        archive: !flagBool(parsed, "no-archive"),
+      });
+      return 0;
+    case "apple-ba upload": {
+      const wait = flagString(parsed, "wait");
+      if (wait !== undefined && !/^[0-9]{1,4}$/.test(wait))
+        throw new Error("--wait takes whole minutes.");
+      await baUpload({
+        ...common,
+        dir: flagString(parsed, "dir"),
+        from: flagString(parsed, "from"),
+        contentApi: flagString(parsed, "content-api"),
+        expectResource: flagString(parsed, "expect-resource"),
+        lock: flagString(parsed, "lock"),
+        ...(wait !== undefined ? { waitMinutes: Number(wait) } : {}),
+      });
+      return 0;
+    }
+    case "play-pad modules": {
+      const project = flagString(parsed, "project");
+      if (!project)
+        throw new Error(
+          `--project is required: the Godot Android Gradle build (android/build).\n${TRANSPORT_USAGE}`,
+        );
+      await padModules({
+        ...common,
+        from: from(),
+        project,
+        delivery: flagString(parsed, "delivery") as PadDelivery | undefined,
+        defaultTexture: flagString(parsed, "default-texture"),
+        variant: flagString(parsed, "variant"),
+      });
+      return 0;
+    }
+    case "steam-depot vdf": {
+      const depot = flagString(parsed, "depot");
+      if (!depot) throw new Error(`--depot is required.\n${TRANSPORT_USAGE}`);
+      await steamVdf({
+        ...common,
+        from: from(),
+        depot,
+        app: flagString(parsed, "app"),
+        branch: flagString(parsed, "branch"),
+        channel: flagString(parsed, "channel"),
+        setlive: flagBool(parsed, "setlive"),
+        out: flagString(parsed, "out"),
+        variant: flagString(parsed, "variant"),
+      });
+      return 0;
+    }
+    default:
+      stderr.write(`${TRANSPORT_USAGE}\n`);
+      return 2;
+  }
+}
+
 function flagString(parsed: ParsedArgs, name: string): string | undefined {
   const value = parsed.flags[name];
   return typeof value === "string" && value.trim() ? value : undefined;
@@ -1224,6 +1379,14 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--release id] [--deliverable id]
   pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
               [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
+  pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
+              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
+  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
+              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]
+  pkey transport play-pad modules --deliverable packId --release v --from dir --project dir
+              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
+  pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id
+              (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -1289,6 +1452,19 @@ pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.
 from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
 password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
 distribution:feeds. Without --keystore it writes the unsigned files and stops.
+
+pkey transport packages a published pack release (the --out cache of pkey release publish
+--deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts
+never reaches a store) for the transport .pkey/distribution routes it through, writes the
+pkey-marker/1 marker beside the payload, and reports the transport's availability:
+apple-ba package writes Manifest.json for asset pack <pack>-c<contentApi> (dots become hyphens;
+every apple-ba pack is mapped at once and a collision, double hyphen or id over 64 characters is
+refused before anything is written) and runs xcrun ba-package (macOS); apple-ba upload sends it
+to App Store Connect with CI's key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH)
+and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a later upload
+into any other resource is refused); play-pad modules writes com.android.asset-pack modules
+(a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it;
+steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only).
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.
