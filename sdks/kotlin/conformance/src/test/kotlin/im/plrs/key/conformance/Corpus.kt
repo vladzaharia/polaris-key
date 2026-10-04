@@ -98,3 +98,16 @@ class Failures(private val suite: String) {
 }
 
 val JsonElement.obj: JsonObject get() = this as JsonObject
+
+/** The checkout's `conformance/corpus/v2/content/` (never mirrored), its `cases.json` and its blobs. */
+object ContentCorpus {
+    val dir: File by lazy { File(Corpus.repoRoot, "conformance/corpus/v2/content") }
+
+    fun load(): JsonObject = JsonText.parse(File(dir, "cases.json").readText()) as JsonObject
+
+    /** Every file under `content/blobs/`, keyed by its path there. */
+    val blobs: Map<String, ByteArray> by lazy {
+        val root = File(dir, "blobs")
+        root.walkTopDown().filter { it.isFile }.associate { it.relativeTo(root).invariantSeparatorsPath to it.readBytes() }
+    }
+}

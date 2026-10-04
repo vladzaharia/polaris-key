@@ -27,6 +27,8 @@ dependencies {
     api(project(":config"))
     api(project(":identity"))
     api(project(":release"))
+    api(project(":update"))
+    api(project(":packs"))
     testImplementation(testFixtures(project(":core")))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
