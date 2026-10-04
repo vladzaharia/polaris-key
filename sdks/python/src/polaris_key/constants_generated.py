@@ -87,6 +87,8 @@ __all__ = [
     "MAX_RECORD_JWS_BYTES",
     "MAX_FEED_REVOCATIONS",
     "REVOCATION_REASON_MAX_BYTES",
+    "MAX_FEED_DELTAS",
+    "MAX_FEED_DELTAS_PER_TARGET",
     "MAX_DELEGATION_TTL_SECONDS",
     "MAX_DELEGATION_TYPES",
     "DATA_ONLY_HEAD_BYTES",
@@ -1326,6 +1328,14 @@ MAX_FEED_REVOCATIONS: Final[int] = 64
 
 #: Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`).
 REVOCATION_REASON_MAX_BYTES: Final[int] = 512
+
+
+#: Wire contract v4 limit `MAX_FEED_DELTAS` (`@polaris-key/protocol/core`).
+MAX_FEED_DELTAS: Final[int] = 64
+
+
+#: Wire contract v4 limit `MAX_FEED_DELTAS_PER_TARGET` (`@polaris-key/protocol/core`).
+MAX_FEED_DELTAS_PER_TARGET: Final[int] = 4
 
 
 #: Wire contract v4 limit `MAX_DELEGATION_TTL_SECONDS` (`@polaris-key/protocol/core`).

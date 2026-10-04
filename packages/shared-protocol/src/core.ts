@@ -68,6 +68,14 @@ export const MAX_FEED_REVOCATIONS = 64;
 /** A revocation record's `reason`: 1–this many UTF-8 bytes, display only (§2.3). */
 export const REVOCATION_REASON_MAX_BYTES = 512;
 
+// ── The feed's delta menu (plans/P4-29.md §2.2) ──────────────────────────────────────────────
+
+/** The feed's `deltas` member holds at most this many entries in total (§2.2); a client finds a
+ *  member with more unusable, and the Worker lists at most this many (§6.1). */
+export const MAX_FEED_DELTAS = 64;
+/** Each target payload's list in `deltas` holds 1–this many entries (§2.2). */
+export const MAX_FEED_DELTAS_PER_TARGET = 4;
+
 // ── Content-key delegation (plans/P4-19.md §2.2, §2.3, §2.5) ─────────────────────────────────
 
 /** A delegation's signing window: `expiresAt − issuedAt` is at most this many seconds (366 days). */

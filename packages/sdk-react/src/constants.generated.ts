@@ -1163,6 +1163,12 @@ export const MAX_FEED_REVOCATIONS = 64;
 /** Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`). */
 export const REVOCATION_REASON_MAX_BYTES = 512;
 
+/** Wire contract v4 limit `MAX_FEED_DELTAS` (`@polaris-key/protocol/core`). */
+export const MAX_FEED_DELTAS = 64;
+
+/** Wire contract v4 limit `MAX_FEED_DELTAS_PER_TARGET` (`@polaris-key/protocol/core`). */
+export const MAX_FEED_DELTAS_PER_TARGET = 4;
+
 /** Wire contract v4 limit `MAX_DELEGATION_TTL_SECONDS` (`@polaris-key/protocol/core`). */
 export const MAX_DELEGATION_TTL_SECONDS = 31622400;
 
