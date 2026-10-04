@@ -73,7 +73,7 @@ value can be a preference list such as `texture=astc,etc2`), a device id and a d
   **unsatisfied** markers for the selector; the **revocations** that name it; and what the device
   installs, unmounts and runs;
 - the feed it decided from: channel-wide or per platform, any content member the size cap left
-  out, and the app rollout on the outlet.
+  out, how many entries its delta menu lists (`feed.deltas`), and the app rollout on the outlet.
 
 There is no second implementation. The Worker composes the document the feed route would sign for
 that channel and platform, signs it with a throwaway key generated for that one request (never the

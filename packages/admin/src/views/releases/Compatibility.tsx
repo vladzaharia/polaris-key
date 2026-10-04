@@ -732,6 +732,9 @@ function SimulateResult({ r }: { r: SimulateResponse }) {
           {r.feed.omitted.length > 0
             ? `; left out: ${r.feed.omitted.join(", ")}`
             : ""}
+          {r.feed.deltas > 0
+            ? `; delta menu: ${r.feed.deltas} ${r.feed.deltas === 1 ? "entry" : "entries"}`
+            : ""}
           {r.feed.appRollout?.rollout
             ? `; app rollout ${r.feed.appRollout.rollout.bp / 100}%${r.feed.appRollout.bucket !== null ? ` (bucket ${r.feed.appRollout.bucket})` : ""}`
             : ""}

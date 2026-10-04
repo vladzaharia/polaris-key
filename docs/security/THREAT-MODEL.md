@@ -2358,8 +2358,10 @@ P4-15 adds two read-only routes to the console's admin API: `GET …/release/com
   `simulate` must hand the device a signed feed. It signs the document `documentFor` composes with
   an **ephemeral** Ed25519 key generated per request (WebCrypto), and the simulated device trusts
   that ephemeral public key for the feed. The module never reads the product's signing key: the
-  admin handler passes it only the product's slug and no `env`, so nothing on this path can unseal
-  a key, and a test asserts no other product field is read. The console therefore cannot be used as
+  admin handler passes it only the product's slug and no `env` (since the P4-29 follow-up, also the
+  `LAZY_DELTAS` switch's string value, so the simulated document lists the delta menu; a string,
+  never a binding), so nothing on this path can unseal a key, and a test asserts no other product
+  field is read. The console therefore cannot be used as
   a product-key signing oracle, and the product key is not exercised on every console click. The
   ephemeral key is dropped with the request; the JWS is never stored, returned or served, and the
   channel's `seq` does not move.

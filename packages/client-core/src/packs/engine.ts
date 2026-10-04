@@ -3041,8 +3041,6 @@ interface SeedEntry {
   seed: ChunkSeed;
 }
 
-/** A variant's `chunks` ref when the chunk strategy could read it (plans/P4-10.md §2.5: the
- *  format, a usable codec, both sizes within `MAX_CHUNK_INDEX_BYTES`), else null. */
 /** A delta's id: a `payload` delta's `artifact.sha256`, a `files` delta's `patch.sha256`. */
 function deltaIdOf(d: unknown): string | undefined {
   const x = d as {
@@ -3082,6 +3080,8 @@ function feedEntryOf(variant: PackVariant, id: string): FeedDelta | null {
   };
 }
 
+/** A variant's `chunks` ref when the chunk strategy could read it (plans/P4-10.md §2.5: the
+ *  format, a usable codec, both sizes within `MAX_CHUNK_INDEX_BYTES`), else null. */
 function usableChunksRef(
   variant: PackVariant,
 ): { sha256: string; bytes: number; size: number; codec: string } | null {
