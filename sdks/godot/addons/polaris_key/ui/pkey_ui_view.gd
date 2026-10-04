@@ -1,8 +1,9 @@
 class_name PKeyUiView
 extends PanelContainer
 ## The base of every UI kit scene: built-in controls only, every visible string from `copy`
-## (PKeyUiCopy, through `tr()`), a Theme taken from the scene file (theme/pkey_theme.tres) or from
-## an ancestor, and a focus chain wired after every render so ui_up / ui_down (and Tab) walk every
+## (PKeyUiCopy, through `tr()`), a Theme taken from the scene file (theme/pkey_theme.tres, the
+## Polaris Key dark theme; `PKeyUiTheme.scheme` and `PKeyUiTheme.override` swap it) or from an
+## ancestor, and a focus chain wired after every render so ui_up / ui_down (and Tab) walk every
 ## interactive control in order, wrapping at the ends, on a keyboard, a gamepad or a TV remote.
 ##
 ## A subclass builds its node tree once in `_build()` (called from `_init`, so `.new()` and the
@@ -43,6 +44,10 @@ func _init() -> void:
 func _ready() -> void:
 	if sdk == null and auto_sdk:
 		sdk = default_sdk()
+	if PKeyUiTheme.is_stock(theme):
+		var t := PKeyUiTheme.current()
+		if t != theme:
+			theme = t
 	refresh_view()
 
 

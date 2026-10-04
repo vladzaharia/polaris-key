@@ -192,7 +192,9 @@ sdks/godot/
                               one scene each (`.tscn` + view script) with a headless controller
                               (PKeyGateController, PKeyActivationController, …)
     ui/copy/pkey_ui_copy.gd   PKeyUiCopy: every string, English defaults, through tr()
-    ui/theme/pkey_theme.tres  the default Theme (written by tools/gen_theme.gd)
+    ui/theme/                 PKeyUiTheme (pkey_ui_theme.gd) builds the Theme from PKeyBrand;
+                              pkey_theme.tres (dark, the default) and pkey_theme_light.tres are
+                              written from it by tools/gen_theme.gd; fonts/ holds Rubik (OFL 1.1)
   tests/
     runner.gd                 PKeyTestRunner
     support/test_context.gd   PKeyTestContext: check() and info()
@@ -237,7 +239,7 @@ sdks/godot/
     fetch_godot.sh            CI: download and hash-check the official editor (Linux, macOS,
                               Windows) and the Linux template
     godot.sha512              upstream SHA-512 pins for those downloads
-    gen_theme.gd              writes ui/theme/pkey_theme.tres (`--script`, editor only)
+    gen_theme.gd              writes ui/theme/pkey_theme{,_light}.tres (`--script`, editor only)
     ui_screenshots.gd         one PNG per pinned UI state, for review (needs a display)
 ````
 
@@ -367,18 +369,39 @@ controller: `PKeyBoot`, `PKeyGate` (class `PKeyGateView`), `PKeyActivationPanel`
 Every one is operable with ui_up, ui_down, ui_accept and ui_cancel alone, so it works on a
 gamepad or a TV remote.
 
-- **Theme.** The scenes use `addons/polaris_key/ui/theme/pkey_theme.tres`. Assign your own Theme
-  to a scene or any ancestor to restyle it, or style the type variations `PKeyTitle`, `PKeyMuted`,
-  `PKeyCode`, `PKeyError`, `PKeyBadge`, `PKeyBanner`, `PKeyCard` and `PKeyPrimary`. `PKeyQrRect`
-  reads the colours `dark` and `light`. `PKeyBoot`'s `theme` option applies a Theme a mounted pack
-  provides. `PKeyBrand` (generated from the Polaris Key design system) has the brand's colours
-  if you want to match them.
+- **Theme.** The scenes use `addons/polaris_key/ui/theme/pkey_theme.tres`, the Polaris Key dark
+  theme built by `PKeyUiTheme` from `PKeyBrand` (the design system's generated tokens): the kit's
+  page ground, the platform violet for the primary action and the entitlement chips, Rubik, and a
+  2 px violet focus ring on every control. A QR code stays black on white. To restyle, from
+  lightest to heaviest (set `scheme` or `override` before the scene enters the tree):
+
+  ```gdscript
+  PKeyUiTheme.scheme = "light"                                    # the kit's light theme
+  PKeyUiTheme.override = PKeyUiTheme.build(true, Color("#39d075")) # your accent, dark
+  PKeyUiTheme.override = preload("res://ui/my_theme.tres")         # your whole Theme
+  $PKeySettingsPanel.theme = my_theme                              # one scene
+  ```
+
+  A scene given a Theme of its own keeps it. A replacement Theme should style the type variations
+  `PKeyTitle`, `PKeyMuted`, `PKeyCode`, `PKeyError`, `PKeyBadge`, `PKeyBanner`, `PKeyCard` and
+  `PKeyPrimary`; `PKeyQrRect` reads the colours `dark` and `light`. `PKeyBoot`'s `theme` option
+  applies a Theme a mounted pack provides.
+
+- **Font.** Rubik (Regular for text, Bold for titles and codes) ships in `ui/theme/fonts/` under
+  the SIL Open Font License 1.1: keep `fonts/OFL.txt` with your game's licences or credits. To use
+  your own face, `PKeyUiTheme.build(true, Color(), my_font, my_bold_font)`; for the engine's
+  default font, `PKeyUiTheme.build_with(true, Color(), null, null)`. Rubik falls back to the
+  system font for scripts it lacks.
 - **Copy.** Every string goes through `PKeyUiCopy` and `tr()`: translate the English defaults with
   an ordinary Translation, or rename anything with `overrides`
   (`copy.overrides = {"activation_title": "Unlock Diceroll"}`) without forking a scene.
 - **Credits.** `addons/polaris_key/brand/` holds the "Powered by Polaris Key" credit screens
   (1920×1080, dark and light) and compact badges for your credits or about screen. The folder is
-  never imported (`.gdignore`); copy the file you need into your project.
+  never imported (`.gdignore`); copy the file you need into your project. The kit scenes show no
+  badge themselves. Where you place one: compact for app UI, the credit screen for credits; the
+  dark file on a dark ground and the light file on a light one; never cropped, never recoloured,
+  and never smaller than the kit minimum (`PKeyUiTheme.powered_by_size("compact", wanted)` raises
+  a smaller size to 232 × 88, keeping the proportions).
 
 ## Supported engines
 

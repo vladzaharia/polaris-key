@@ -1,0 +1,1 @@
+Bundled Rubik font binaries: Copyright (c) 2015 by Hubert & Fischer. Hebrew characters (c) 2016 by Meir Sadan. SIL Open Font License 1.1. Font files are included unchanged. All logo text is outlined in the exported SVGs.

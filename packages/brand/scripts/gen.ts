@@ -26,6 +26,10 @@
 //                                       SVG verbatim after a banner comment, in a `.gdignore`d
 //                                       folder: an imported SVG's `.import` file differs between
 //                                       engine versions, so the addon never imports them
+//   sdks/godot/addons/polaris_key/ui/theme/fonts/*                       the UI kit's Rubik:
+//                                       each kit TTF (kit/source/fonts/) unchanged, base64 in a
+//                                       text FontFile resource (no importer, so no per-engine
+//                                       `.import` file), with the kit's OFL.txt and notice
 //
 // `--check` is the drift gate (CI, AGENTS.md's green gate). Like gen:constants, the TypeScript,
 // JSON and CSS outputs are prettier-formatted here so `pnpm lint` and `pnpm format` agree.
@@ -873,6 +877,33 @@ export function godotBrandSvg(kitPath: string): string {
     : comment + svg;
 }
 
+/**
+ * The Godot UI kit's fonts: the kit's Rubik TTFs, unchanged, as text `FontFile` resources. A
+ * FontFile `.tres` needs no importer (a `.ttf` would get an `.import` file whose parameters differ
+ * between engine versions), loads on 4.4 and later (base64 `PackedByteArray`, format 4), and
+ * exports with the game like any resource. OFL 1.1 lets the font ship bundled with software as
+ * long as its licence travels with it, so OFL.txt and the kit notice sit beside the resources.
+ */
+const GODOT_FONT_DIR = "sdks/godot/addons/polaris_key/ui/theme/fonts";
+const GODOT_FONTS: [string, string][] = [
+  ["rubik_regular.tres", "Rubik-Regular.ttf"],
+  ["rubik_bold.tres", "Rubik-Bold.ttf"],
+];
+
+/** A kit TTF as a Godot text FontFile resource, with the banner as `;` comments. */
+export function godotFontTres(ttf: string): string {
+  const data = readFileSync(join(PKG, "kit", "source", "fonts", ttf)).toString(
+    "base64",
+  );
+  const lines = BANNER_LINES.map((l) =>
+    l.startsWith("packages/brand/src/tokens/")
+      ? `packages/brand/kit/source/fonts/${ttf}, unchanged (SIL OFL 1.1, see OFL.txt).`
+      : l,
+  );
+  const comment = lines.map((l) => (l ? `; ${l}` : ";")).join("\n");
+  return `[gd_resource type="FontFile" format=4]\n\n${comment}\n\n[resource]\ndata = PackedByteArray("${data}")\n`;
+}
+
 const TARGETS: Target[] = [
   { path: "packages/brand/css/tokens.css", render: tokensCss, parser: "css" },
   { path: "packages/brand/css/theme.css", render: themeCss, parser: "css" },
@@ -914,6 +945,15 @@ const TARGETS: Target[] = [
   ...GODOT_BRAND_ASSETS.map(([name, kitPath]) => ({
     path: `${GODOT_BRAND_DIR}/${name}`,
     render: () => godotBrandSvg(kitPath),
+  })),
+  ...GODOT_FONTS.map(([name, ttf]) => ({
+    path: `${GODOT_FONT_DIR}/${name}`,
+    render: () => godotFontTres(ttf),
+  })),
+  ...["OFL.txt", "FONT-NOTICE.txt"].map((name) => ({
+    path: `${GODOT_FONT_DIR}/${name}`,
+    render: () =>
+      readFileSync(join(PKG, "kit", "source", "fonts", name), "utf8"),
   })),
 ];
 

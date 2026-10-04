@@ -27,7 +27,8 @@ The first published version. Requires Godot 4.4 or later (4.6 or later recommend
 - **Boot and UI kit.** `await PolarisKey.boot()` runs the shared boot stage machine with the
   drop-in `PKeyBoot` scene; the gate, activation, sign-in, offline, settings, status-banner,
   update-prompt, entitlement-badge and dev-menu scenes are themeable, translatable and
-  gamepad-navigable.
+  gamepad-navigable. They wear the Polaris Key design system (dark by default, light on request,
+  Rubik under the OFL) through `PKeyUiTheme`, which also takes an integrator's accent or Theme.
 - **Packs.** `PolarisKey.update.packs` installs `godot.pck` and `files.tree` releases (deltas
   through the engine's own decoder on 4.6+, chunk sync, revocations, content-key delegation),
   checks every pack's directory before it is committed or mounted, and mounts packs at a boot.

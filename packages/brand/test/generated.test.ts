@@ -82,6 +82,31 @@ describe("generator drift", () => {
       expect(svg).not.toContain("#d07a00");
     }
   });
+
+  it("the Godot UI kit's Rubik is the kit's TTFs, unchanged, with the OFL beside them", () => {
+    const dir = join(PKG, "../../sdks/godot/addons/polaris_key/ui/theme/fonts");
+    const kit = join(PKG, "kit", "source", "fonts");
+    const fonts: [string, string][] = [
+      ["rubik_regular.tres", "Rubik-Regular.ttf"],
+      ["rubik_bold.tres", "Rubik-Bold.ttf"],
+    ];
+    for (const [name, ttf] of fonts) {
+      const tres = readFileSync(join(dir, name), "utf8");
+      expect(tres.startsWith('[gd_resource type="FontFile" format=4]\n')).toBe(
+        true,
+      );
+      expect(tres).toContain("; GENERATED FILE");
+      const b64 = /data = PackedByteArray\("([A-Za-z0-9+/=]+)"\)/.exec(tres);
+      expect(b64, name).not.toBeNull();
+      expect(
+        Buffer.from(b64![1]!, "base64").equals(readFileSync(join(kit, ttf))),
+      ).toBe(true);
+    }
+    for (const f of ["OFL.txt", "FONT-NOTICE.txt"])
+      expect(readFileSync(join(dir, f), "utf8")).toBe(
+        readFileSync(join(kit, f), "utf8"),
+      );
+  });
 });
 
 describe("tokens.css", () => {

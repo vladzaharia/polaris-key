@@ -1,14 +1,14 @@
 extends SceneTree
-## Renders every UI kit state the `ui` suite pins (tests/ui/scenarios.gd) with the default theme
-## and saves one PNG per state, for review (headless runs have no renderer, so the suite pins
-## structure, not pixels). Needs a display; run it from the editor binary, not headless:
+## Renders every UI kit state the `ui` suite pins (tests/ui/scenarios.gd) with the kit theme
+## (PKeyUiTheme: dark by default, `light` for the light theme) and saves one PNG per state, for
+## review (headless runs have no renderer, so the suite pins structure, not pixels). Needs a
+## display; run it from the editor binary, not headless:
 ##
-##   godot --path sdks/godot --script tools/ui_screenshots.gd -- /tmp/pkey-ui-shots
+##   godot --path sdks/godot --script tools/ui_screenshots.gd -- /tmp/pkey-ui-shots [light]
 ##
 ## Output: <dir>/<scene>__<state>.png at 1152x900.
 
 const SCENARIOS := preload("res://tests/ui/scenarios.gd")
-const THEME := preload("res://addons/polaris_key/ui/theme/pkey_theme.tres")
 
 
 func _initialize() -> void:
@@ -18,14 +18,17 @@ func _initialize() -> void:
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out := args[0] if args.size() > 0 else "user://pkey-ui-shots"
+	var dark := not args.has("light")
+	PKeyUiTheme.scheme = "dark" if dark else "light"
+	var theme := PKeyUiTheme.current()
 	DirAccess.make_dir_recursive_absolute(out)
 	root.size = Vector2i(1152, 900)
-	RenderingServer.set_default_clear_color(Color("#0c0f17"))
+	RenderingServer.set_default_clear_color(PKeyUiTheme.palette(dark)["page"])
 	var sc = SCENARIOS.new()
 	var n := 0
 	for c in sc.all():
 		var v: Control = await c[2].call()
-		v.theme = THEME
+		v.theme = theme
 		if v.anchor_right == v.anchor_left:
 			v.position = Vector2(24, 24)
 			v.size = Vector2(720, 0)
