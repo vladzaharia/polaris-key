@@ -50,6 +50,40 @@ kotlinx-serialization-json 1.8.1 (the `JsonElement` tree; parsing is the SDK's o
 OkHttp 4.12.0 (the one HTTP client on Android API 24 and the JVM) and, below Android API 33, Tink
 for Ed25519 (`compileOnly` in `:core`; the JCA's Ed25519 serves JDK 15+ and Android API 33+).
 
+## Install
+
+Every artifact is published to Polaris Key's Maven feed (a `kotlin-vX.Y.Z` tag runs
+`.github/workflows/release-kotlin.yml`, which publishes everything `publishAllPublicationsToLocalRepository`
+writes). Send the `im.plrs.key` group to the feed alone, so it is never looked up anywhere else:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven { url = uri("https://pkg.plrs.im/maven/polaris-key/") }
+            }
+            filter { includeGroupAndSubgroups("im.plrs.key") }
+        }
+        google()
+        mavenCentral()
+    }
+}
+```
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("im.plrs.key:polaris-key-sdk:0.1.0")
+    // Android: one platform flavour per build
+    implementation("im.plrs.key:polaris-key-platform-play:0.1.0") // or -direct
+}
+```
+
+Maven, the coordinate table and the other SDKs:
+[Installing the SDKs from the feeds](/docs/build/install-from-feeds/).
+
 ## :core
 
 - **Verification.** `JwsVerifier.verify` is WIRE-CONTRACT-V4 §1 in order; `verifyLicenseDoc`,

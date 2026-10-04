@@ -5,9 +5,12 @@ name: Release Godot SDK
 # three before anything else runs); the zips are built reproducibly from the committed
 # addons/polaris_key/ tree; the release is created only after the test runner passed on the
 # 4.7.2 editor and release template and the clean-install smoke test passed on the 4.4.1 floor
-# and 4.7.2. Run it by hand (workflow_dispatch) for a dry run: every step but the release, with
-# the zips kept as a workflow artefact. The Asset Store and the legacy Asset Library have no
-# upload API; their uploads are the owner's (sdks/godot/store/CHECKLIST.md).
+# and 4.7.2. The canonical zip is then published to Polaris Key's Godot feed on pkg.plrs.im
+# (deliverable godot.polaris-key, F-10, plans/F-01.md §5.1) through publish-package.yml, the
+# polaris-key product's trusted publisher, and the GitHub Release follows. Run it by hand
+# (workflow_dispatch) for a dry run: every step but the feed and the release, with the zips kept
+# as a workflow artefact. Nothing is uploaded to the Godot Asset Store or the legacy Asset Library
+# (owner decision 2026-10-04, feeds only). Install: /docs/build/install-from-feeds/.
 
 on:
   push:
@@ -111,6 +114,16 @@ jobs:
           name: polaris-key-godot-${{ needs.validate.outputs.version }}
           path: build/a/
           if-no-files-found: error
+      # The feed gets the canonical zip alone: the -assetlib zip matches the same file-name glob.
+      - name: Stage the canonical zip for the feed
+        run: |
+          mkdir -p build/feed
+          cp "build/a/polaris-key-godot-v${TAG#godot-v}.zip" build/feed/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: godot-feed
+          path: build/feed/
+          if-no-files-found: error
 
   smoke:
     name: Clean install (${{ matrix.godot }})
@@ -137,9 +150,22 @@ jobs:
           export GODOT_BIN="$HOME/.cache/pkey-godot/${{ matrix.godot }}/godot"
           for zip in release/*.zip; do sdks/godot/tools/smoke_install.sh "$zip"; done
 
+  feed:
+    name: Godot feed
+    needs: [validate, test, smoke]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: godot.polaris-key
+      artifact: godot-feed
+      version: ${{ needs.validate.outputs.version }}
+
   release:
     name: Create the GitHub Release
-    needs: [validate, test, smoke]
+    needs: [validate, test, smoke, feed]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

@@ -3381,7 +3381,7 @@
       "optional": false,
       "refs": ["notes/S-12 §6.4", "plans/F-01.md §5"],
       "brief": "wp/F-10-sdks-onto-feeds.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-11",

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../packages/shared-manifest/schemas/v1/product.schema.json
+#
+# The system product (F-03, F-10; plans/F-01.md §5): `polaris-key`, the platform's own product,
+# which owns our SDKs and the pkey image on the package feeds at pkg.plrs.im. It is created only by
+# the bootstrap (POST /manage/api/platform/feeds/bootstrap), never by linking this file; linking
+# the monorepo afterwards syncs this baseline and the trusted publisher in .pkey/release.
+apiVersion: pkey.dev/v1
+product:
+  slug: "polaris-key"
+  name: "Polaris Key"
+modules:
+  license:
+    enabled: false
+  config:
+    enabled: false
+  release:
+    enabled: true
+  distribution:
+    enabled: true
+  update:
+    enabled: false
+  identity:
+    enabled: false

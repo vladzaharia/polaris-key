@@ -1,0 +1,151 @@
+name: Release Kotlin SDK
+
+# A `kotlin-vX.Y.Z` tag publishes every Maven publication of the Kotlin SDK (sdks/kotlin) and the
+# Godot Android binding (sdks/godot/native/android, built as :godot) to Polaris Key's Maven feed
+# on pkg.plrs.im (F-10, plans/F-01.md §5.1): `./gradlew publishAllPublicationsToLocalRepository`
+# writes each module's POM, Gradle .module, jar or AAR and sources jar into sdks/kotlin/build/repo,
+# and publish-package.yml, the polaris-key product's trusted publisher, publishes each artifact
+# from it as its own `maven.*` deliverable. The feed derives maven-metadata.xml and the checksums.
+#
+# Coordinates (group im.plrs.key, one version for the whole build, `version` in
+# sdks/kotlin/build.gradle.kts): polaris-key-{core,license,config,identity,release,update,packs,sdk}
+# and, per flavour, polaris-key-platform-{play,direct} and polaris-key-godot-{play,direct}. A
+# module that gains a publication (the P6-05 amendment: :android, :ui) must be added to
+# .pkey/release and to the matrix below; the build job fails until it is.
+#
+# Kotlin artifacts go ONLY to Polaris Key's Maven feed: no Maven Central, no Sonatype, no signing
+# plugin (owner decision 2026-10-04). Install: /docs/build/install-from-feeds/.
+#
+# Run it by hand (workflow_dispatch) for a dry run: the build, the tests and the local publication,
+# kept as a workflow artefact, and nothing published.
+
+on:
+  push:
+    tags:
+      - "kotlin-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test and publish locally
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Version (and the tag agrees)
+        id: version
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+        run: |
+          version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)"[[:space:]]*$/\1/p' sdks/kotlin/build.gradle.kts | head -1)"
+          if [ -z "$version" ]; then
+            echo "::error::no version = \"…\" in sdks/kotlin/build.gradle.kts." >&2
+            exit 1
+          fi
+          if [ -n "$TAG" ] && [ "$TAG" != "kotlin-v$version" ]; then
+            echo "::error::Tag $TAG does not match the Kotlin build's version $version." >&2
+            exit 1
+          fi
+          case "$version" in *-SNAPSHOT) echo "::error::$version is a snapshot; the feed refuses snapshots." >&2; exit 1 ;; esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # As deploy.yml (R7-04): only a commit that landed on main may publish.
+      - name: The commit is on main
+        run: |
+          git fetch --no-tags --depth=100 origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Refusing to release: $GITHUB_SHA is not an ancestor of origin/main." >&2
+            exit 1
+          fi
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # `yes` dies of SIGPIPE when sdkmanager stops reading, which pipefail would report.
+          set +o pipefail
+          yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
+          "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
+      - name: Tests, boundaries and the local publication
+        working-directory: sdks/kotlin
+        run: >-
+          ./gradlew --no-daemon :core:test :license:test :config:test :identity:test :release:test
+          :update:test :packs:test :sdk:test :conformance:test :platform:testPlayDebugUnitTest
+          :platform:testDirectDebugUnitTest :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
+          checkModuleBoundaries :platform:checkStandalone :godot:checkPlatformOnly
+          publishAllPublicationsToLocalRepository
+      - name: The publications are the ones the feed publishes
+        working-directory: sdks/kotlin
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          tools/check_publication.sh
+          expected="config core godot-direct godot-play identity license packs platform-direct platform-play release sdk update"
+          repo=build/repo/im/plrs/key
+          actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::build/repo holds [$actual], the release publishes [$expected]: add each new artifact to .pkey/release and this workflow's matrix." >&2
+            exit 1
+          fi
+          read -r -a artifacts <<<"$expected"
+          for a in "${artifacts[@]}"; do
+            versions="$(find "$repo/polaris-key-$a" -mindepth 1 -maxdepth 1 -type d -printf '%f\n')"
+            if [ "$versions" != "$VERSION" ]; then
+              echo "::error::polaris-key-$a was published as [$versions], not $VERSION." >&2
+              exit 1
+            fi
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maven-repo
+          path: sdks/kotlin/build/repo/
+          if-no-files-found: error
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-release-reports
+          path: |
+            sdks/kotlin/*/build/reports/
+            sdks/godot/native/android/build/reports/
+
+  publish:
+    name: Maven feed
+    needs: build
+    if: github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        artifact:
+          - core
+          - license
+          - config
+          - identity
+          - release
+          - update
+          - packs
+          - sdk
+          - platform-play
+          - platform-direct
+          - godot-play
+          - godot-direct
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: maven.${{ matrix.artifact }}
+      artifact: maven-repo
+      version: ${{ needs.build.outputs.version }}

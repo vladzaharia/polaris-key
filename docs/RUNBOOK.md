@@ -492,6 +492,44 @@ to F-09) and the console pages (F-11) follow.
 - **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
   first; a Worker older than F-03 is reported as such and nothing is uploaded.
 
+### Releasing our SDKs to the feeds (F-10)
+
+Every SDK this repository ships is a package deliverable of the system product, declared in the
+root `.pkey/release`, and is published only to its feed on `pkg.plrs.im` (owner decision
+2026-10-04: no npmjs, GitHub Packages, PyPI, Maven Central, Swift Package Index, Docker Hub or
+Godot store). Merging never publishes. A release is a tag on a commit that is on main:
+
+| SDK                    | Bump                                        | Tag                             | Workflow             |
+| ---------------------- | ------------------------------------------- | ------------------------------- | -------------------- |
+| npm (`@polaris-key/*`) | merge the Changesets "Version Packages" PR  | `@polaris-key/<name>@<version>` | `release.yml`        |
+| the `pkey` image       | with `@polaris-key/cli`                     | `@polaris-key/cli@<version>`    | `release-image.yml`  |
+| Python                 | `sdks/python/pyproject.toml`                | `python-v<version>`             | `release-python.yml` |
+| Swift                  | none (the tag is the version)               | `swift-v<version>`              | `release-swift.yml`  |
+| Kotlin + Godot Android | `version` in `sdks/kotlin/build.gradle.kts` | `kotlin-v<version>`             | `release-kotlin.yml` |
+| Godot addon            | `plugin.cfg`, `SDK_VERSION`, `CHANGELOG.md` | `godot-v<version>`              | `release-godot.yml`  |
+
+- **npm:** after the version PR merges, `pnpm changeset tag` on main writes a tag per package
+  version. Push them **one at a time** (`git push origin '@polaris-key/node@1.2.0'`): GitHub
+  starts no workflow for a push of more than three tags at once. Push a package's
+  `@polaris-key` dependencies before it, so a dependant never lands before what it needs.
+- **Pre-releases:** a version with a pre-release part goes to the `beta` channel
+  (`publish-package.yml` decides from the version).
+- **Publishing:** each workflow builds, tests and packs, then calls `publish-package.yml`, the one
+  trusted publisher, in the `package-registry` environment (DEPLOYMENT §2). A version is unique
+  forever: a failed publish of a version that never landed can be re-run, a landed one cannot be
+  replaced (yank it and release the next version).
+- **Swift signing:** the Swift job refuses to run without the three `SWIFT_REGISTRY_*` secrets
+  and never publishes unsigned. To rotate the certificate, replace the secrets: new releases are
+  signed with the new certificate, old releases keep their signatures, and adopters who trust
+  the root see no change.
+- **Dry runs:** `release-godot.yml` and `release-kotlin.yml` run by hand (workflow_dispatch) do
+  everything but publish. Locally, `pkey release publish --product polaris-key --deliverable <id>
+--dir <packed files> --dry-run` without a CI credential extracts and validates the package and
+  stops before the server.
+- **Before the first release** in an environment: the feeds bootstrap, the trusted publisher and
+  the system product's package deliverables (DEPLOYMENT §2, "GitHub environment
+  `package-registry`").
+
 ### Do not roll back past 0058_b with package rows
 
 `0058_b_release_deliverables_kind.sql` rebuilds `release_deliverables` to admit `kind = 'package'`
