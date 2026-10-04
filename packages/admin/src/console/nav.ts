@@ -596,11 +596,9 @@ const PLATFORM_PAGES: NavPage[] = [
     label: "Operations",
     path: "platform/operations",
     icon: Gauge,
-    docs: "/docs/admin/deploy/",
+    docs: "/docs/admin/operations/",
     inNav: true,
-    // The operations API (A-14) has landed; its page (4P-3) has not. Until then, Deployment.
-    ready: false,
-    host: "platform-deployment",
+    ready: true,
     group: "platform",
   },
   {

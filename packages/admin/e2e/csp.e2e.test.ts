@@ -91,6 +91,57 @@ const ROUTES: Record<string, unknown> = {
     bindings: { DB: true, HOT: true },
   },
   "/manage/api/platform/activity": { items: [], nextCursor: null },
+  "/manage/api/platform/operations": {
+    generatedAt: 1_790_000_000,
+    probes: {
+      d1: { bound: true, ok: true, latencyMs: 8 },
+      kv: { bound: true, ok: true, latencyMs: 9 },
+      r2: { bound: true, ok: true, latencyMs: 11 },
+      updateHealth: { bound: false },
+      email: { bound: false },
+    },
+    queues: {
+      deltas: {
+        bound: true,
+        ok: true,
+        latencyMs: 4,
+        backlogCount: 0,
+        backlogBytes: 0,
+        oldestMessageAt: null,
+      },
+      deadLetter: {
+        bound: true,
+        ok: true,
+        latencyMs: 4,
+        backlogCount: 0,
+        backlogBytes: 0,
+        oldestMessageAt: null,
+      },
+      consumer: {
+        maxBatchSize: 1,
+        maxBatchTimeoutSeconds: 5,
+        maxRetries: 3,
+        maxConcurrency: 1,
+      },
+    },
+    heartbeats: [],
+    jobs: {
+      latest: { maintenance: null, connectorPoll: null },
+      recent: [],
+      failures: [],
+    },
+    storage: {
+      d1: { sizeBytes: 1_000_000 },
+      r2: { committedBytes: 0, objects: 0, byKind: [] },
+    },
+    indexes: { missing: [] },
+    connectors: {
+      items: [],
+      lastPollFailure: null,
+      commerce: { available: false },
+    },
+    recentErrors: { jobFailures: [], lazyDeltaRefusals: [] },
+  },
 };
 
 let server: PreviewServer;
@@ -222,13 +273,14 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
-  it("Home, Products, the new-product wizard and Deployment load with no violations", async () => {
+  it("Home, Products, the new-product wizard, Operations and Deployment load with no violations", async () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
     for (const [hash, title] of [
       ["#/", "Home"],
       ["#/products", "Products"],
       ["#/products/new?via=manual&step=basics", "New product"],
+      ["#/platform/operations", "Operations"],
       ["#/platform", "Deployment"],
     ] as const) {
       await page.evaluate((h) => {

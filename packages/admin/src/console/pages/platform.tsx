@@ -1,8 +1,9 @@
 /**
  * The Platform section's pages (notes/S-13 §9.1): instance-wide, product-less. One lazy chunk,
  * loaded when the operator opens the section. Deployment is built here (A-11's identity and deploy
- * history, A-12's platform activity); Settings, Operations, Store connections and Package feeds
- * redirect to it until their pages land (`nav.ts`).
+ * history, A-12's platform activity) and Operations beside it (A-14, `platformOperations.tsx`);
+ * Settings, Store connections and Package feeds redirect to Deployment until their pages land
+ * (`nav.ts`).
  */
 
 import * as React from "react";
@@ -37,6 +38,7 @@ import { PageHeader } from "../components/PageHeader.js";
 import { qk } from "../data/queries.js";
 import { queryClient } from "../data/queryClient.js";
 import type { GlobalPageId } from "../nav.js";
+import { Operations } from "./platformOperations.js";
 import {
   AttentionList,
   DashboardTemplate,
@@ -52,13 +54,14 @@ export function fetchPlatformActivity() {
   return api.platformActivity();
 }
 
-/** The section's page for a route. Only Deployment is built; the rest redirect before here. */
+/** The section's page for a route. A page not built yet redirects before here. */
 export default function PlatformPages({
   page,
 }: {
   page: GlobalPageId;
 }): React.ReactElement | null {
   if (page === "platform-deployment") return <Deployment />;
+  if (page === "platform-operations") return <Operations />;
   return null;
 }
 

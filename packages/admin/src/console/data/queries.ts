@@ -35,6 +35,7 @@ export const qk = {
   platformVersion: (): QueryKey => ["platform", "version"],
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
+  platformOperations: (): QueryKey => ["platform", "operations"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
 
