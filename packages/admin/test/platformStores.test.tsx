@@ -403,7 +403,7 @@ describe("Store connections: credentials", () => {
     expect(within(creds).getByText("PLATFORM_ASC_API_KEY")).toBeTruthy();
     expect(within(creds).getByText("69a6de7f-1111")).toBeTruthy();
     expect(within(creds).getByText("ABC123DEFG")).toBeTruthy();
-    expect(within(creds).getByText("Present, not checked")).toBeTruthy();
+    expect(within(creds).getByText("Not checked")).toBeTruthy();
     // The In-App Purchase slot is unset: its secret name says how to add it.
     expect(
       within(creds).getByText("PLATFORM_APP_STORE_SERVER_KEY"),
@@ -487,7 +487,7 @@ describe("Store connections: apps", () => {
     const table = await appsTable();
     expect(await within(table).findByText("Godot Demo")).toBeTruthy();
     expect(
-      within(table).getByText("Ios 1.2.0: Waiting for review"),
+      within(table).getByText("iOS 1.2.0: Waiting for review"),
     ).toBeTruthy();
     expect(within(table).getByText("TestFlight: 1 version(s)")).toBeTruthy();
     expect(

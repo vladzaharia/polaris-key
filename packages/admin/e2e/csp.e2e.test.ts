@@ -91,6 +91,69 @@ const ROUTES: Record<string, unknown> = {
     bindings: { DB: true, HOT: true },
   },
   "/manage/api/platform/activity": { items: [], nextCursor: null },
+  "/manage/api/platform/store-connections": {
+    ok: true,
+    stores: [
+      {
+        store: "app-store",
+        label: "App Store",
+        configured: true,
+        primary: "app-store.api-key",
+        credentials: [
+          {
+            id: "app-store.api-key",
+            store: "app-store",
+            slot: "api-key",
+            kind: "asc-api-key",
+            label: "App Store Connect API key (team)",
+            configured: true,
+            source: "secret",
+            meta: { keyId: "ABC123DEFG", issuerId: "69a6de7f-0000" },
+            console: {
+              present: false,
+              status: null,
+              meta: null,
+              createdAt: null,
+              createdBy: null,
+              rotatedAt: null,
+              lastUsedAt: null,
+              lastOkAt: null,
+              lastError: null,
+            },
+            secret: {
+              name: "PLATFORM_ASC_API_KEY",
+              present: true,
+              valid: true,
+            },
+            pinField: "appleId",
+            pins: 0,
+          },
+        ],
+        settings: [],
+        appsListing: true,
+        assignments: [],
+      },
+    ],
+  },
+  "/manage/api/platform/store-connections/app-store/apps": {
+    ok: true,
+    store: "app-store",
+    source: "secret",
+    fetchedAt: 1_790_000_000,
+    cached: false,
+    truncated: false,
+    apps: [
+      {
+        appId: "1234567890",
+        name: "Godot Demo",
+        pins: {},
+        identifiers: { bundleId: "com.acme.demo", sku: null },
+        status: { appStore: { versions: [], phasedRelease: null } },
+        assignedProduct: null,
+        assignedVia: null,
+      },
+    ],
+  },
 };
 
 let server: PreviewServer;
@@ -222,7 +285,7 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
-  it("Home, Products, the new-product wizard and Deployment load with no violations", async () => {
+  it("Home, Products, the new-product wizard, Deployment and Store connections load with no violations", async () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
     for (const [hash, title] of [
@@ -230,6 +293,7 @@ describe("overlays under the Worker's CSP", () => {
       ["#/products", "Products"],
       ["#/products/new?via=manual&step=basics", "New product"],
       ["#/platform", "Deployment"],
+      ["#/platform/store-connections", "Store connections"],
     ] as const) {
       await page.evaluate((h) => {
         location.hash = h;
@@ -238,9 +302,13 @@ describe("overlays under the Worker's CSP", () => {
       await page.waitForTimeout(200);
       expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
     }
-    expect(await page.evaluate(() => location.hash)).toBe(
-      "#/platform/deployment",
-    );
+    await check(page, "store app assign dialog", async () => {
+      await page
+        .getByRole("button", { name: "Actions for Godot Demo" })
+        .click();
+      await page.getByRole("menuitem", { name: "Assign to product…" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
     await page.context().close();
   });
 

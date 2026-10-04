@@ -163,7 +163,7 @@ const HEALTH: Record<
   { tone: "success" | "warning" | "danger" | "neutral"; label: string }
 > = {
   working: { tone: "success", label: "Working" },
-  unchecked: { tone: "neutral", label: "Present, not checked" },
+  unchecked: { tone: "neutral", label: "Not checked" },
   failing: { tone: "danger", label: "Last check failed" },
   invalid: { tone: "danger", label: "Secret invalid" },
   inactive: { tone: "warning", label: "Inactive" },
@@ -182,6 +182,14 @@ function storeHealth(s: PlatformStoreConnection): {
   if (h === "missing") return { tone: "neutral", label: "Not connected" };
   return HEALTH[h];
 }
+
+/** App Store Connect's platform values, as Apple writes them. */
+const APPLE_PLATFORMS: Record<string, string> = {
+  IOS: "iOS",
+  MAC_OS: "macOS",
+  TV_OS: "tvOS",
+  VISION_OS: "visionOS",
+};
 
 /** `WAITING_FOR_REVIEW` → "Waiting for review"; `inProgress` → "In progress". */
 export function humanize(state: string): string {
@@ -226,7 +234,12 @@ export function appStatusLines(
     const v = appStore?.versions?.[0];
     const lines: string[] = [];
     if (v) {
-      const what = [v.platform ? humanize(v.platform) : null, v.versionString]
+      const what = [
+        v.platform
+          ? (APPLE_PLATFORMS[v.platform] ?? humanize(v.platform))
+          : null,
+        v.versionString,
+      ]
         .filter(Boolean)
         .join(" ");
       lines.push(
@@ -539,7 +552,10 @@ function CredentialsPanel({
       <ul className="divide-y divide-border">
         {s.credentials.map((c) => (
           <li key={c.id} className="space-y-3 py-4 first:pt-0 last:pb-0">
-            <CredentialRow credential={c} primary={c.id === s.primary} />
+            <CredentialRow
+              credential={c}
+              primary={s.credentials.length > 1 && c.id === s.primary}
+            />
           </li>
         ))}
       </ul>

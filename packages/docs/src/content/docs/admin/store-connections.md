@@ -29,7 +29,7 @@ the state of the store's primary credential and how many apps are assigned.
   status line is shown (`Partner Center token: HTTP 401`). The page never shows a key, and has no
   field to enter one.
   - **Working**: the store accepted the console credential at its last use.
-  - **Present, not checked**: present but not checked yet. A Worker secret records no check
+  - **Not checked**: present but not checked yet. A Worker secret records no check
     history; Re-check lists the apps live and shows any error the store returns.
   - **Last check failed**: the store refused it; the status line says how.
   - **Secret invalid**: the Worker secret is set but its JSON did not pass the validator (a wrong
