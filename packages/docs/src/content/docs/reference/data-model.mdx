@@ -35,7 +35,13 @@ this page or fails the freshness gate.
 | `delta_demand_devices` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `device_id`, `strategy`, `seen_at` |
 | `delta_demand` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `devices`, `window_start`, `last_seen` |
 | `platform_deploys` | 0054_a_platform_deploys.sql | `id`, `at`, `environment`, `tag`, `git_sha`, `run_url`, `scripts`, `latest_migration`, `cf_version_id`, `deltas_version_id`, `smoke` |
+| `platform_credentials` | 0055_platform_store_connections.sql | `credential_id`, `store`, `slot`, `kind`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `last_used_at`, `last_ok_at`, `last_error` |
+| `platform_credential_pins` | 0055_platform_store_connections.sql | `credential_id`, `product`, `pin`, `pinned_at`, `pinned_by` |
+| `platform_store_settings` | 0055_platform_store_connections.sql | `store`, `key`, `value`, `updated_at`, `updated_by` |
 | `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
+| `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
+| `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
+| `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
 
 ## license
 

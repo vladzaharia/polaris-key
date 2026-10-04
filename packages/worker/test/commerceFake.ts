@@ -312,12 +312,26 @@ export class SteamFake {
     }
   >();
   requests: FakeRequest[] = [];
+  /** What `ISteamApps/GetPartnerAppListForWebAPIKey/v2` lists (A-16); `null` answers 403, as for
+   *  a key without the permission. */
+  partnerApps: Array<Record<string, unknown>> | null = [
+    {
+      appid: Number(STEAM_APP),
+      app_type: "game",
+      app_name: "djdl",
+      last_update: 1700000000,
+    },
+  ];
 
   handle(req: FakeRequest): Response {
     this.requests.push(req);
     const q = req.url.searchParams;
     if (req.url.hostname !== "partner.steam-api.com") return json(404, null);
     if (q.get("key") !== STEAM_KEY) return json(403, null);
+    if (req.url.pathname === "/ISteamApps/GetPartnerAppListForWebAPIKey/v2/") {
+      if (this.partnerApps === null) return json(403, null);
+      return json(200, { applist: { apps: { app: this.partnerApps } } });
+    }
     if (req.url.pathname === "/ISteamUserAuth/AuthenticateUserTicket/v1/") {
       const t = this.tickets.get(q.get("ticket") ?? "");
       if (

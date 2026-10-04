@@ -15,7 +15,8 @@
  *     store build's (or of the whole release when none matches — then only the NEWEST upload of
  *     the speaking platform writes that row, since TestFlight holds many builds per version).
  *   - Background Asset versions and their three release kinds → a connector object with the
- *     asset pack's ids, UNRESOLVED until P5-08 maps the pack to a pack release; once resolved,
+ *     asset pack's ids, UNRESOLVED until P5-08's mapping (the CI upload report's ids) names the
+ *     pack release; once resolved,
  *     availability on that release with transport `apple-ba`.
  *
  * Store ids go into `platform_ref_json` and the connector object, never into a release record
@@ -32,7 +33,11 @@
  * (`/v1/apps/{appleId}/…`, `/v1/builds?filter[app]=…`) is proven by the endpoint.
  */
 
-import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
+import {
+  APP_DELIVERABLE_ID,
+  assetPackBase,
+  parseAssetPackId,
+} from "@polaris-key/manifest";
 import type { Db, Env } from "../../../../core/platform.js";
 import type { CatalogRelease, ServiceHooks } from "../../../../core/hooks.js";
 import {
@@ -639,9 +644,75 @@ export async function syncBuildBetaDetail(
 // ── Background Assets ────────────────────────────────────────────────────────────────────────
 
 /**
+ * The pack release an asset-pack version carries (P5-08), or null. `pkey transport apple-ba upload`
+ * reports the release's availability with `platformRef` {assetPackIdentifier,
+ * ascBackgroundAssetId, ascBackgroundAssetVersionId, ascVersion, contentApi}; that report (or a
+ * connector object of the same version already linked) names it:
+ *
+ *   1. a stored availability row or connector object whose ref carries this
+ *      `ascBackgroundAssetVersionId`;
+ *   2. else a stored availability row whose ref carries this `assetPackIdentifier` and
+ *      `ascVersion`.
+ *
+ * Fails closed: the release must exist, be a pack release, and its pack id must map to the asset
+ * pack's base (`assetPackBase(packId)` equals the base of `<base>-c<level>`), so a stray or forged
+ * ref can never attach an asset pack to another pack's release.
+ */
+export async function resolveBackgroundAssetRelease(
+  run: Pick<AscRun, "db" | "product" | "hooks">,
+  a: {
+    versionId: string;
+    assetPackIdentifier: string | null;
+    version: string | number | null;
+  },
+): Promise<string | null> {
+  const parsed = a.assetPackIdentifier
+    ? parseAssetPackId(a.assetPackIdentifier)
+    : null;
+  if (!parsed) return null;
+  const catalog = run.hooks.releaseCatalog();
+  if (!catalog) return null;
+  const candidates: string[] = [];
+  const byVersion = await run.db.all<{ release_id: string }>(
+    `SELECT release_id FROM dist_availability
+      WHERE product = ? AND json_extract(platform_ref_json, '$.ascBackgroundAssetVersionId') = ?
+     UNION
+     SELECT release_id FROM dist_connector_objects
+      WHERE product = ? AND connector = ? AND release_id IS NOT NULL
+        AND json_extract(ref_json, '$.ascBackgroundAssetVersionId') = ?`,
+    run.product,
+    a.versionId,
+    run.product,
+    ASC_CONNECTOR,
+    a.versionId,
+  );
+  candidates.push(...byVersion.map((x) => x.release_id));
+  if (candidates.length === 0 && a.version !== null) {
+    const byNumber = await run.db.all<{ release_id: string }>(
+      `SELECT release_id FROM dist_availability
+        WHERE product = ? AND json_extract(platform_ref_json, '$.assetPackIdentifier') = ?
+          AND CAST(json_extract(platform_ref_json, '$.ascVersion') AS TEXT) = ?`,
+      run.product,
+      a.assetPackIdentifier,
+      String(a.version),
+    );
+    candidates.push(...byNumber.map((x) => x.release_id));
+  }
+  const ok = new Set<string>();
+  for (const id of new Set(candidates)) {
+    const release = await catalog.release(id);
+    if (!release || release.deliverableId === APP_DELIVERABLE_ID) continue;
+    if (assetPackBase(release.deliverableId) !== parsed.base) continue;
+    ok.add(id);
+  }
+  // Two different releases claiming one asset-pack version is a contradiction: link neither.
+  return ok.size === 1 ? [...ok][0]! : null;
+}
+
+/**
  * Read one Background Asset version or release and store it as a connector object. Which pack
- * release it belongs to is P5-08's mapping: until then the object is UNRESOLVED (shown, never
- * written as availability). A row P5-08 has resolved writes availability on that release with
+ * release it belongs to is P5-08's mapping (`resolveBackgroundAssetRelease`): until it resolves,
+ * the object is UNRESOLVED (shown, never written as availability). A resolved row writes availability on that release with
  * the outlet's transport for its deliverable (`apple-ba` when declared).
  */
 export async function syncBackgroundAsset(
@@ -686,22 +757,34 @@ export async function syncBackgroundAsset(
   const ctx = writeCtx(run);
 
   const stateDetails = isVersion ? r.attributes?.stateDetails : undefined;
+  const assetPackIdentifier = attr(asset, "assetPackIdentifier");
+  const versionNumber = attr(version, "version") ?? numAttr(version, "version");
+  // P5-08: which pack release this asset-pack version carries. Undefined keeps a link already
+  // made (never unlinks); a found release must be a pack whose id maps to this asset pack.
+  const resolved = await resolveBackgroundAssetRelease(run, {
+    versionId,
+    assetPackIdentifier,
+    version: versionNumber,
+  });
   const { row } = await upsertObject(ctx, ASC_CONNECTOR, {
     type,
     id: r.id,
     outletId: outlet,
-    releaseId: undefined,
-    buildId: "",
+    releaseId: resolved ?? undefined,
+    // P5-08: one availability row per asset pack. A pack release bound at two content levels has
+    // two asset packs on the same outlet (`<pack>-c3`, `<pack>-c4`); keyed by the asset pack, a
+    // reconcile of one never overwrites the other's state.
+    buildId: assetPackIdentifier ?? "",
     storeState,
     state,
     ref: stripNulls({
       ascAppId: run.setup.appleId,
       ascBackgroundAssetId: assetId,
       ascBackgroundAssetVersionId: versionId,
-      assetPackIdentifier: attr(asset, "assetPackIdentifier"),
+      assetPackIdentifier,
     }),
     detail: stripNulls({
-      version: attr(version, "version") ?? numAttr(version, "version"),
+      version: versionNumber,
       platforms: version.attributes?.platforms ?? null,
       stateDetails:
         stateDetails && typeof stateDetails === "object" ? stateDetails : null,

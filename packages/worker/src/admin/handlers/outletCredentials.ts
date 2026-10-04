@@ -22,13 +22,21 @@
  * `deleteOutletCredential` — and this one never opens a value: it seals, lists metadata and
  * deletes.
  *
+ * A-16: a pin naming an app that a platform admin assigned to ANOTHER product through the
+ * platform store connection (`platform_credential_pins`) is refused (409 `app_assigned_elsewhere`),
+ * so a product's own key cannot be aimed at an app the team key serves for another product.
+ * `planOwnRepins` is the same audited pin path, planned as statements for the platform
+ * store-connections handler's atomic assignment when the product holds keys of its own.
+ *
  * The dispatcher has already required a platform-admin session (`canAdminProduct`). The check is
  * repeated here on purpose: "written only by a platform admin" is the custody rule, and it must
  * not quietly widen the day a product-level admin role exists.
  */
 
 import type { Env } from "../../env.js";
-import type { Db } from "../../db/types.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import { auditStatement } from "../../repo.js";
+import { randomId } from "../../crypto.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
   deleteOutletCredential,
@@ -39,9 +47,16 @@ import {
   OUTLET_CREDENTIAL_KINDS,
   OUTLET_CREDENTIAL_PINS,
   pinOutletCredential,
+  planOutletCredentialRepin,
   putOutletCredential,
+  validateOutletCredentialPin,
+  type OutletCredentialKind,
   type OutletCredentialPinChange,
 } from "../../core/outletCredentials.js";
+import {
+  platformCredentialForKind,
+  platformPinHolder,
+} from "../../core/platformCredentials.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
@@ -131,6 +146,21 @@ export async function handleOutletCredentials(
       "expiresAt must be a unix time in seconds",
       { fields: ["expiresAt"] },
     );
+  }
+  // A-16: the app this pin names may already be served to another product by the platform key.
+  if (body.pin !== undefined) {
+    const platformId = platformCredentialForKind(body.kind);
+    const p = validateOutletCredentialPin(body.kind, body.pin);
+    if (platformId && p.ok) {
+      const holder = await platformPinHolder(db, platformId, p.value);
+      if (holder !== null && holder !== slug)
+        return err(
+          409,
+          "app_assigned_elsewhere",
+          `${p.value} is assigned to product ${holder} through the platform store connection; unassign it there first`,
+          { fields: ["pin"], product: holder },
+        );
+    }
   }
   const auditPin = (change: OutletCredentialPinChange | null) =>
     change
@@ -240,4 +270,51 @@ export async function handleOutletCredentials(
   await auditPin(result.pinChange);
   // NEVER echo the value, its metadata or anything derived from it — the id only.
   return adminJson({ ok: true, id });
+}
+
+/**
+ * Plan the re-pin of every active credential of `kind` the product holds of its own to `pin`
+ * (A-16's app assignment): the `outlet_credential.pin` updates and their audit rows, as statements
+ * for the caller's ONE atomic batch, through the same pin field and audit action as a pin-only PUT.
+ * A key from another store account than the platform's (`account` says `different`) is refused,
+ * never silently re-pinned; one whose account cannot be told (`unknown`) is skipped and reported.
+ */
+export async function planOwnRepins(
+  db: Db,
+  slug: string,
+  session: AdminSession,
+  now: number,
+  kind: OutletCredentialKind,
+  pin: string,
+  account: Parameters<typeof planOutletCredentialRepin>[4],
+): Promise<{
+  writes: DbStatement[];
+  repinned: string[];
+  skipped: Array<{ id: string; reason: string }>;
+  refused: Array<{ id: string; reason: string }>;
+}> {
+  const plan = await planOutletCredentialRepin(db, slug, kind, pin, account);
+  const writes = [...plan.writes];
+  for (const c of plan.changes)
+    writes.push(
+      auditStatement({
+        product: slug,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: session.sub,
+        actor_name: session.name,
+        actor_email: session.email,
+        action: "outlet_credential.pin",
+        target_kind: "outlet_credential",
+        target_id: c.id,
+        parent_id: null,
+        summary: `Pinned outlet credential ${c.id} (${kind}) to ${c.field} ${pin} (was ${c.before ?? "unpinned"}) by a platform store-connection assignment`,
+      }),
+    );
+  return {
+    writes,
+    repinned: plan.changes.map((c) => c.id),
+    skipped: plan.skipped,
+    refused: plan.refused,
+  };
 }

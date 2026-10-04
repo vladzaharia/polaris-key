@@ -208,8 +208,15 @@ Navigation has two tiers.
 A section's label is its service label. The glossary rule that "the slug is the console section
 name" holds.
 
-The sidebar shows **platform links** (Home, Products, Platform) when no product is in scope. It
-fixes SH-10: Home and Products no longer draw a product's sections.
+The sidebar shows **platform links** (Home, Products) and the **Platform section** when no product
+is in scope. It fixes SH-10: Home and Products no longer draw a product's sections.
+
+**The Platform section** (owner decision, notes/S-13 §11 item 3, 2026-10-04) is a sidebar group of
+instance-wide pages that belong to no product: Settings, Deployment, Operations, Store connections
+and Package feeds. It follows the product sections' rules: its header has no icon, every item has
+one, only the active group is open (a collapsed group can be peeked into), it takes the `core`
+accent and no section bit, and it is shown whether or not a product is in scope, after the platform
+links and before the product's sections. `#/platform` is not a page: it redirects to Settings.
 
 ### 2.2 Global elements
 
@@ -221,7 +228,7 @@ fixes SH-10: Home and Products no longer draw a product's sections.
 | **Command palette**   | `⌘K` / `Ctrl+K`. Navigation, products, entities of the current product, and safe actions (`components.md` §1.5).                                                                                                                                                                                                                                                                                                                                                         |
 | **Docs**              | "Docs" link to `docsFor(page)`, a labelled link, not a `title`-only icon (SH-13).                                                                                                                                                                                                                                                                                                                                                                                        |
 | **Theme menu**        | System (default) / Dark / Light. Persisted per viewer. System follows `prefers-color-scheme` live, and dark is the fallback when the OS gives no answer.                                                                                                                                                                                                                                                                                                                 |
-| **User menu**         | Name and email; "Session ends 18:40" (from **A-1** `sessionExpiresAt`, else omitted); Keyboard shortcuts (`?`); Docs home; Sign out.                                                                                                                                                                                                                                                                                                                                     |
+| **User menu**         | Name and email; "Session ends 18:40" (from **A-1** `sessionExpiresAt`, else omitted); a **version chip** ("v0.8.6 · prod", from **A-11** `GET /platform/version`; hidden when it cannot be read) linking to Platform → Deployment; Keyboard shortcuts (`?`); Docs home; Sign out.                                                                                                                                                                                        |
 
 ### 2.3 Sections and pages
 
@@ -259,12 +266,24 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 
 **Global pages**:
 
-| Page         | URL                           | Template | Notes                                                                                                                                 |
-| ------------ | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Home         | `#/`                          | T1       | §6.1                                                                                                                                  |
-| Products     | `#/products`                  | T2       | the registry                                                                                                                          |
-| New product  | `#/products/new[?via=github]` | T6       | full-page wizard instead of nested tabs (PRD-7)                                                                                       |
-| **Platform** | `#/platform`                  | T4       | The platform KEK keyring (status, re-seal sweep; `GET/POST /products/kek`, API with no UI today), environment, session, build version |
+| Page        | URL                           | Template | Notes                                                    |
+| ----------- | ----------------------------- | -------- | -------------------------------------------------------- |
+| Home        | `#/`                          | T1       | §6.1                                                     |
+| Products    | `#/products`                  | T2       | the registry                                             |
+| New product | `#/products/new[?via=github]` | T6       | full-page wizard instead of nested tabs (PRD-7)          |
+| Platform    | `#/platform`                  | —        | Not a page: redirects to Platform → Settings (S-13 §9.1) |
+
+**Platform section** (global, instance-wide; notes/S-13 §9.1, owner decision 2026-10-04). A page
+that is not built yet carries `ready: false` in `nav.ts` and redirects to Deployment, with no
+"coming soon" copy:
+
+| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                              |
+| --------------------- | ------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13 |
+| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4               |
+| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data first (A-14: probes, queues, cron runs, storage), Cloudflare analytics optional later (A-15)                                                                                                                                                                                            |
+| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                   |
+| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                        |
 
 **Rejected moves, so they stay rejected:**
 
@@ -279,15 +298,15 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 
 ### 2.4 Accent and mark mapping
 
-| Context                                   | `data-service` | Bit color          | Section glyph                          | Primary buttons and active nav |
-| ----------------------------------------- | -------------- | ------------------ | -------------------------------------- | ------------------------------ |
-| Home, Products, Platform, every Core page | `core`         | none (no bit)      | Pinned K (sidebar group: lucide `Box`) | violet                         |
-| License                                   | `license`      | chartreuse `solid` | lucide `KeyRound`                      | chartreuse                     |
-| Config                                    | `config`       | yellow             | lucide `SlidersHorizontal`             | yellow                         |
-| Release                                   | `release`      | cyan               | lucide `Package`                       | cyan                           |
-| Distribution                              | `distribution` | green              | **Star Cut**                           | green                          |
-| Update                                    | `update`       | tangerine          | **Star Cut**                           | tangerine                      |
-| Identity                                  | `identity`     | orchid             | lucide `UserRound`                     | orchid                         |
+| Context                                               | `data-service` | Bit color          | Section glyph                          | Primary buttons and active nav |
+| ----------------------------------------------------- | -------------- | ------------------ | -------------------------------------- | ------------------------------ |
+| Home, Products, the Platform section, every Core page | `core`         | none (no bit)      | Pinned K (sidebar group: lucide `Box`) | violet                         |
+| License                                               | `license`      | chartreuse `solid` | lucide `KeyRound`                      | chartreuse                     |
+| Config                                                | `config`       | yellow             | lucide `SlidersHorizontal`             | yellow                         |
+| Release                                               | `release`      | cyan               | lucide `Package`                       | cyan                           |
+| Distribution                                          | `distribution` | green              | **Star Cut**                           | green                          |
+| Update                                                | `update`       | tangerine          | **Star Cut**                           | tangerine                      |
+| Identity                                              | `identity`     | orchid             | lucide `UserRound`                     | orchid                         |
 
 **Rules.**
 
@@ -658,7 +677,7 @@ result), create license (in a dialog, as steps).
 | UpdateHealth                                                           | Distribution → Health                                                                                                  | T1                                |
 | UpdateSettings                                                         | Update → Feed; Distribution → Access                                                                                   | T4, T4                            |
 | Identity                                                               | Identity → Portal; Identity → Sign-in                                                                                  | T4; T3                            |
-| (none)                                                                 | Platform; Outlets & feeds                                                                                              | T4; T2                            |
+| (none)                                                                 | Platform section (Settings, Deployment, Operations, Store connections, Package feeds); Outlets & feeds                 | T4, T1, T1, T2, T2; T2            |
 | Portal SignIn, Dashboard, Licenses, License detail, Downloads, Profile | Sign in, Home, License, Downloads, Account                                                                             | portal variants of T1, T3, T2, T4 |
 
 ---
@@ -1881,7 +1900,7 @@ in parallel on disjoint files. Chunk 12 (portal) can start after chunk 3.
 | 1   | Platform migration: React 19, Tailwind v4, brand tokens, fonts, theme                                    | 0          |
 | 2   | App shell, navigation, router, data layer                                                                | 1          |
 | 3   | Component system                                                                                         | 2          |
-| 4   | Home, products registry, new-product wizard, Platform page                                               | 3          |
+| 4   | Home, products registry, new-product wizard, Platform section (scaffold and Deployment)                  | 3          |
 | 5   | Core: overview, services, devices, settings, keys & secrets, activity                                    | 3          |
 | 6   | License: licenses, license record, tiers, enrollment                                                     | 3          |
 | 7   | Config: catalog read and editor, profiles, payload editor, edge mint                                     | 3          |
@@ -2173,7 +2192,7 @@ Each area chunk follows the same recipe:
 
 | Chunk  | Pages                                                                                                                               | Old files removed                                                                                                                               | Inventory IDs closed                                                              | API additions                                 | Docs pages updated                                                                                         |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **4**  | Home, Products, New product wizard, Platform                                                                                        | `Dashboard.tsx`, `Products.tsx`, `products/*`                                                                                                   | DSH-1–7, PRD-1–5, PRD-7–12, SH-10                                                 | A-8 (optional), A-2b (optional)               | `admin/products.md`, `admin/kek.mdx` (Platform pointer)                                                    |
+| **4**  | Home, Products, New product wizard, Platform section (scaffold and Deployment)                                                      | `Dashboard.tsx`, `Products.tsx`, `products/*`                                                                                                   | DSH-1–7, PRD-1–5, PRD-7–12, SH-10                                                 | A-8 (optional), A-2b (optional)               | `admin/products.md`, `admin/kek.mdx` (Platform pointer)                                                    |
 | **5**  | Overview, Services, Devices and device drawer, Settings, Keys & secrets, Activity                                                   | `ProductOverview.tsx`, `Services.tsx`, `services/*`, `Devices.tsx`, `Settings.tsx`, `Secrets.tsx` (see the mount note below), `Activity.tsx`    | OVR-1–8, SVC-1–7, DEV-1–8, SET-1–6, SEC-1–6, ACT-1–6, PRD-6, RSY-3                | A-2, A-3 (product fields), A-4, A-5           | `admin/services-enablement.md`, `admin/secrets-and-keys.md`, `admin/activity.md`                           |
 | **6**  | Licenses, license record (its Devices tab reuses chunk 3's `DeviceTable` and drawer), tiers, tier record, Enrollment                | `Licenses.tsx`, `LicenseDetail.tsx`, `licenses/*`, `Tiers.tsx`, `tiers/*`, `FingerprintPolicy.tsx`                                              | LIC-1–10, LDT-1–17, TIR-1–9, FPP-1–5                                              | A-3 (license/tier nullables), A-3b (optional) | `admin/licenses-and-devices.md`, `admin/bundles.md`                                                        |
 | **7**  | Catalog, catalog editor, profiles, profile record, payload editor, Edge mint                                                        | `Catalog.tsx`, `catalog/*`, `Profiles.tsx`, `profiles/*`, `SchemaForm.tsx` (split), `ManagedPayloadEditor.tsx` (rebuilt), `EdgeMintRecipes.tsx` | CAT-1–10, SCF-1–7, MPE-1–5, PRF-1–8, EMR-1–5                                      | A-6, A-7, A-7b (optional)                     | `services/config/catalog.md`, `services/config/profiles.md` (console sections)                             |
@@ -2208,6 +2227,53 @@ capability reachable, whatever order 5, 7 and 9 merge in.
   reviewers check them.
 - **Cross-area components** (DeviceTable, EntityLink) are built in chunk 3, never inside an area
   chunk, so parallel area chunks touch disjoint files.
+
+#### Chunk 4 as built (2026-10-04)
+
+**IDs closed.** DSH-1 to DSH-7, PRD-1 to PRD-5, PRD-7 to PRD-12, SH-10. PRD-6 stays with chunk 5
+(product Settings, A-3). The `confirmSlug` auto-fill (lead decision, 2026-10-03) is fixed for both
+callers.
+
+**Where things live.** `src/console/pages/global/` holds Home, Products, the wizard
+(`ProductNew`) and the attention model (`attention.ts`); `src/console/pages/platform.tsx` is the
+Platform section's lazy chunk (Deployment and the Platform activity panel);
+`src/console/components/DeleteProductDialog.tsx` is the one L3 product delete, used by Products and
+by the product Settings danger zone. The product helpers moved from `views/products/util.ts` to
+`src/lib/products.ts`. `views/Dashboard.tsx`, `views/Products.tsx` and `views/products/*` are
+deleted.
+
+**Where the build differs from §6.1 and the table above:**
+
+- **Attention on Home** comes from the registry row alone: `GET /products` carries each product's
+  setup state (`nextActions`: missing secrets, signing key, edge-mint approvals and secret usage,
+  release setup), which the worker computes for every product on every read. So Home lists
+  attention for all products with no per-product fetch and no cap of 12. The kinds that need other
+  reads (readiness, rollouts, Sentry, expiring licenses) wait for **A-8**, which this chunk does
+  not add; nothing is guessed meanwhile.
+- **A-2b** (a platform-wide activity feed) is not added, so Home has no recent-activity panel
+  (§6.1: omitted, not faked). Platform activity (`platform_audit`, A-12) is a panel on Deployment.
+- **The registry links instead of duplicating** (PRD-5): Edit, Set secret and Prepare signing key
+  left the row menu for "Open settings" and "Open keys & secrets"; Resync from repo (L1) and
+  Delete product (L3) stay. `api.deleteProduct(slug, confirmSlug)` takes the typed value.
+- **The wizard** keeps Basics, Catalog and Defaults for the manual path and drops the
+  compatibility window (PRD-7). Its result shows the public signing key with copy through
+  `KeyDisplay` (the public key is not one-time material, so it is not a `OneTimeSecretPanel`).
+  `useUnsavedChangesGuard` gained an `allow` option so the wizard's own `?step=` changes pass.
+- **The Platform section** (§2.1, §2.3): `nav.ts` declares `platform-settings`,
+  `platform-deployment`, `platform-operations`, `platform-stores` and `platform-feeds` in a
+  `PLATFORM_GROUP`; only Deployment is `ready`. A redirect now follows a chain in one step
+  (`#/platform` → Settings → Deployment). The deployment endpoint is
+  `GET /manage/api/platform/deployment` (singular, as A-11 shipped it).
+- **Tests.** Admin unit tests: 990 before, 1031 after. Rewritten or moved: `dashboard.test.tsx`
+  (5) became `home.test.tsx` (12); `products.test.tsx` (13) became `products.test.tsx` (15),
+  `productOverview.test.tsx` (the 2 Overview checklist tests, moved unchanged) and
+  `productNew.test.tsx` (10, including the 3 create tests); new `platform.test.tsx` (18). Dropped
+  as deliberately removed behaviour: the Dashboard's greeting, "schema vN" badge and constant
+  Access and Session tiles (DSH-1, DSH-4), and the registry's own Set secret and Prepare signing
+  key dialogs (PRD-5; both remain on Keys & secrets and Settings). Every page
+  has loading, empty, error and no-results tests, its main mutation with its invalidation, its
+  confirm level, a URL round trip and an axe pass. `queryKeyShapes.test.ts` now requires the
+  registry list to have exactly one reader, the shell's `useProducts`.
 
 #### Chunk 11 · Docs, a11y sweep, visual baseline, cleanup
 
@@ -2336,3 +2402,13 @@ does not apply. Each addition still needs:
 - **Q4:** approved: A-1…A-7 land inside their area chunks; A-8…A-10 as the chunks need them.
 - **Q5:** catalog editor v1 ships the structured per-entry form plus JSON and diff.
 - **Bugs found by the audit** (double-submit `Button`, disabled-button tooltips, stale session, auto-filled `confirmSlug`, first catalog publish, refetch wiping edits, non-atomic Update settings save) are fixed in the chunk that owns each view; the `confirmSlug` auto-fill is fixed in chunk 4 at the latest because it defeats a guard.
+
+## Owner decisions (2026-10-04)
+
+- **Platform section** (notes/S-13 §11): the reserved single Platform page becomes a sidebar
+  section with Settings, Deployment, Operations, Store connections and Package feeds; `#/platform`
+  redirects to Settings; a version chip in the account menu links to Deployment. Operations data is
+  hybrid, self-reported first. The first four runtime-editable settings are `LAZY_DELTAS`,
+  `LAZY_DELTA_MAX_BYTES` (lower only), `BLOB_GC_MODE` and `BLOB_GC_GRACE_DAYS`, with ceiling
+  precedence for kill switches, audited in `platform_audit`. Chunk 4 builds the section and
+  Deployment; the other pages land in their own work packages.

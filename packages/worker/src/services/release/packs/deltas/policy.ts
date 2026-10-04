@@ -12,6 +12,7 @@
  */
 
 import { ZSTD_DICTIONARY_MAGIC } from "@polaris-key/protocol/packs";
+import { LAZY_DELTA_MAX_BYTES_CEILING } from "../../../../core/platformSettings.js";
 
 /** The one method v1 generates. */
 export const LAZY_DELTA_METHOD = "zstd-patch-from";
@@ -19,7 +20,7 @@ export const LAZY_DELTA_METHOD = "zstd-patch-from";
  *  on real pack pairs, at a fraction of the memory and time). */
 export const LAZY_DELTA_LEVEL = 9;
 /** The per-side cap: max(from, to) ≤ 32 MiB keeps an encode near 84 MiB of linear memory. */
-export const DEFAULT_LAZY_DELTA_MAX_BYTES = 33_554_432;
+export const DEFAULT_LAZY_DELTA_MAX_BYTES = LAZY_DELTA_MAX_BYTES_CEILING;
 /** A delta must save more than this fraction of the cheapest other strategy… */
 export const MIN_SAVING_FRACTION = 0.3;
 /** …and more than this many bytes. */

@@ -26,17 +26,20 @@ export interface Env {
    */
   BLOBS?: R2Bucket;
   /**
-   * The blob collector's kill switch (P4-14, `core/blobGc.ts`): `off` stops it entirely; anything
-   * else (or unset) runs it on the nightly maintenance cron. A `[vars]` value, never a secret.
+   * The blob collector's kill switch (P4-14, `core/blobGc.ts`). A `[vars]` value, never a secret.
+   * A-13: read only through the platform settings store (`core/platformSettings.ts`, `ceiling`):
+   * `off` here is a hard off; otherwise the console's value, then `on`/unset = on.
    */
   BLOB_GC_MODE?: string;
-  /** The collector's grace period in days (default 30, never under 1). A `[vars]` value. */
+  /** The collector's grace period in days (default 30, never under 1). A `[vars]` value; A-13: a
+   *  console value (1 to 365) wins over it (`runtime` precedence). */
   BLOB_GC_GRACE_DAYS?: string;
   /**
    * Lazy hot-pair deltas (P4-17, `core/deltaDemand.ts`, `services/release/packs/deltas/`): the
-   * deployment's kill switch. Exactly `on` lets an opted-in product (`lazy_delta_settings`)
-   * count demand and generate deltas; anything else (or unset) turns the whole subsystem off.
-   * A `[vars]` value, `off` in every environment until an operator turns it on.
+   * deployment's kill switch. On lets an opted-in product (`lazy_delta_settings`) count demand
+   * and generate deltas. A `[vars]` value, read only through the platform settings store (A-13,
+   * `core/platformSettings.ts`, `ceiling`): `off` is a hard off; `runtime` (committed in every
+   * environment) lets the console decide, default off; `on` means on unless the console says off.
    */
   LAZY_DELTAS?: string;
   /**
@@ -47,8 +50,17 @@ export interface Env {
    */
   DELTA_QUEUE?: Queue<unknown>;
   /**
+   * The lazy-delta dead-letter queue (A-14; `pkey-deltas-dlq-<env>`), bound to the request Worker
+   * as a producer ONLY so `GET /manage/api/platform/operations` can read its backlog through
+   * `metrics()`. Nothing sends to it (the consumer Worker's `dead_letter_queue` setting is what
+   * fills it); `test/platformOperations.test.ts` asserts no source file calls `.send` or
+   * `.sendBatch` on it. OPTIONAL: unbound, the Operations page reports the DLQ as not bound.
+   */
+  DELTA_DLQ?: Queue<unknown>;
+  /**
    * The consumer's per-side cap in bytes (default 33,554,432 = 32 MiB, notes/S-08 §4.2): a pair
-   * with either payload larger is refused as `over-worker-cap`. A `[vars]` value.
+   * with either payload larger is refused as `over-worker-cap`. A `[vars]` value; A-13: a console
+   * value (1 MiB to the 32 MiB ceiling, so it can only lower it) wins over it.
    */
   LAZY_DELTA_MAX_BYTES?: string;
   /**
@@ -151,6 +163,27 @@ export interface Env {
    * Set with: `wrangler secret put OIDC_ISSUER_ALLOWLIST --env prod`
    */
   OIDC_ISSUER_ALLOWLIST?: string;
+  /**
+   * A-16 — the platform's TEAM-level store credentials, for ops bootstrap. Each is JSON of the
+   * same shape as the outlet-credential kind it stands in for, and is consulted only when no
+   * console-managed credential is stored (Platform → Store connections). The API and console show
+   * presence and metadata only. A product uses one only for the app a platform admin assigned to
+   * it (`core/platformCredentials.ts`). Set with `wrangler secret put <NAME> --env prod`.
+   *
+   *   PLATFORM_ASC_API_KEY            {"keyId","issuerId","p8"}            (asc-api-key)
+   *   PLATFORM_APP_STORE_SERVER_KEY   {"keyId","issuerId","p8"}            (app-store-server-key)
+   *   PLATFORM_GOOGLE_SERVICE_ACCOUNT the service account's JSON key file  (google-service-account)
+   *   PLATFORM_MS_PARTNER_CENTER      {"tenantId","clientId","clientSecret","sellerId"}
+   *   PLATFORM_STEAM_PUBLISHER_KEY    {"key"}                              (steam-publisher-key)
+   */
+  PLATFORM_ASC_API_KEY?: string;
+  PLATFORM_APP_STORE_SERVER_KEY?: string;
+  PLATFORM_GOOGLE_SERVICE_ACCOUNT?: string;
+  PLATFORM_MS_PARTNER_CENTER?: string;
+  PLATFORM_STEAM_PUBLISHER_KEY?: string;
+  /** A-16 — the Apple Developer Team ID (10 characters), App Attest's platform default. Not
+   *  secret: a var or a secret. A console value (Platform → Store connections) wins over it. */
+  PLATFORM_APPLE_TEAM_ID?: string;
   EMAIL?: SendEmail;
 
   // additional platform secrets/vars resolved by name

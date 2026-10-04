@@ -40,7 +40,7 @@ import {
   PolicyActionDialog,
   type PolicyAction,
 } from "./releases/PolicyActionDialog.js";
-import { releaseSourceOf } from "./products/util.js";
+import { releaseSourceOf } from "../lib/products.js";
 import { qk } from "../console/data/queries.js";
 import { fetchProduct } from "../console/data/hooks.js";
 

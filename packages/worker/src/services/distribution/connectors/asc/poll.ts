@@ -89,7 +89,7 @@ export const REDRIVE_GRACE_SECONDS = 5 * 60;
 export async function pollAsc(ctx: ConnectorContext): Promise<PollOutcome> {
   const { env, db, product, now } = ctx;
   const out: PollOutcome = { connector: ASC_CONNECTOR, calls: 0, applied: 0 };
-  const { setup, inert } = await resolveAscSetup(db, product.slug);
+  const { setup, inert } = await resolveAscSetup(env, db, product.slug);
   // An unpinned or mismatched key is skipped like a missing one (no call, no open), but says so.
   if (!setup)
     return {
@@ -101,7 +101,7 @@ export async function pollAsc(ctx: ConnectorContext): Promise<PollOutcome> {
     };
 
   const budget = pollBudget(
-    await readRate(env, product.slug, setup.apiKeyId, now),
+    await readRate(env, product.slug, setup.credential, now),
   );
   if (budget === "skip") return { ...out, skipped: "rate-budget" };
 

@@ -237,12 +237,17 @@ a delta itself. What each browser ends up doing is in the
 
 `.pkey/distribution`'s `transports` resolve to one stored transport per (deliverable, outlet),
 packs included: a deliverable's own entry, else `transports.packs` for a pack, else the
-default. v1 acts on three: `pkey-cdn` and `web` (the blob route above) and `embedded` (a
-baseline inside the app build). Any other transport (`apple-ba`, `play-pad`, `steam-depot`,
-`msix-optional`, `flatpak-ext`) is stored and listed with `supported: false` — the console's
-matrix labels it "not delivered by Polaris Key" — and nothing is derived or served for it; a
-device whose outlet names one plans nothing for that pack (`plan.transport_unsupported`),
-never a silent CDN fallback. [Availability](/docs/services/distribution/availability/) has
+default. Polaris Key delivers three: `pkey-cdn` and `web` (the blob route above) and `embedded`
+(a baseline inside the app build). It also acts on the store transports `apple-ba`, `play-pad`
+and `steam-depot` (P5-08): the store moves the bytes, CI reports and the App Store Connect
+connector give their availability, readiness gates on it, and the Godot SDK plans the
+`platform` strategy through the store's plugin ([Platform pack transports](/docs/build/pack-transports/));
+nothing is derived or served for them. Any other transport (`msix-optional`, `flatpak-ext`) is
+stored and listed with `supported: false` — the console's matrix labels it "not delivered by
+Polaris Key" — and nothing is derived or served for it. A device that
+has no transport for a pack's binding (an unsupported transport, or a store plugin the build does
+not carry) plans nothing for that pack (`plan.transport_unsupported`), never a silent CDN
+fallback. [Availability](/docs/services/distribution/availability/) has
 when each is live.
 
 ## Garbage collection

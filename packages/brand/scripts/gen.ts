@@ -791,6 +791,15 @@ public enum PolarisBrand {
     public static let clearSpaceRatio: Double = ${CLEAR_SPACE_RATIO}
     public static let poweredByPhrase = "${POWERED_BY.phrase}"
 
+    /// "Powered by" badge minimum sizes in points (CSS-pixel equivalents): never render smaller.
+${(["horizontal", "compact", "stacked"] as const)
+  .map((layout) => {
+    const { width, height } = POWERED_BY.minimum[layout];
+    const name = layout[0]!.toUpperCase() + layout.slice(1);
+    return `    public static let badgeMin${name}: (width: Double, height: Double) = (${width}, ${height})`;
+  })
+  .join("\n")}
+
     /// Section ids: core plus every service slug.
     public static let serviceIds: [String] = [${SERVICE_IDS.map((s) => `"${s}"`).join(", ")}]
 

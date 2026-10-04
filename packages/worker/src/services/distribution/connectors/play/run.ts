@@ -8,8 +8,15 @@
 
 import type { Db, Env } from "../../../../core/platform.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
-import { googleAccessToken } from "../../../../core/outletTokens.js";
+import {
+  googleAccessToken,
+  platformGoogleAccessToken,
+} from "../../../../core/outletTokens.js";
 import { recordOutletCredentialResult } from "../../../../core/outletCredentials.js";
+import {
+  parsePlatformCredentialHandle,
+  recordPlatformCredentialResult,
+} from "../../../../core/platformCredentials.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
   ANDROID_PUBLISHER_SCOPE,
@@ -55,17 +62,31 @@ export interface PlayRunOptions {
 }
 
 export function playRun(o: PlayRunOptions): PlayRun {
+  const platformId = parsePlatformCredentialHandle(o.setup.credentialId);
+  const fetchImpl = o.fetchImpl ?? ((u, i) => fetch(u, i));
+  // A-16: the platform service account is minted only for the package this product's platform
+  // pin names (re-checked inside, before the sealed cache).
   const token = (scope: string, use: string) => () =>
-    googleAccessToken(
-      o.env,
-      o.db,
-      o.product,
-      o.setup.credentialId,
-      [scope],
-      use,
-      o.now,
-      o.fetchImpl ?? ((u, i) => fetch(u, i)),
-    );
+    platformId
+      ? platformGoogleAccessToken(
+          o.env,
+          o.db,
+          { product: o.product, pin: o.setup.packageName },
+          [scope],
+          use,
+          o.now,
+          fetchImpl,
+        )
+      : googleAccessToken(
+          o.env,
+          o.db,
+          o.product,
+          o.setup.credentialId,
+          [scope],
+          use,
+          o.now,
+          fetchImpl,
+        );
   const common = {
     packageName: o.setup.packageName,
     ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
@@ -113,11 +134,18 @@ export function errorLine(e: unknown): string {
 /** Record a run's outcome on the credential's health columns. */
 export async function finishRun(run: PlayRun, error: unknown): Promise<void> {
   if (run.calls() === 0 && !error) return;
-  await recordOutletCredentialResult(
-    run.db,
-    run.product,
-    run.setup.credentialId,
-    error ? { ok: false, error: errorLine(error) } : { ok: true },
-    run.now,
-  );
+  const result = error
+    ? { ok: false as const, error: errorLine(error) }
+    : { ok: true as const };
+  const platformId = parsePlatformCredentialHandle(run.setup.credentialId);
+  if (platformId)
+    await recordPlatformCredentialResult(run.db, platformId, result, run.now);
+  else
+    await recordOutletCredentialResult(
+      run.db,
+      run.product,
+      run.setup.credentialId,
+      result,
+      run.now,
+    );
 }

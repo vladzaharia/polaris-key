@@ -91,9 +91,15 @@ final class LoginCopyTests: XCTestCase {
         XCTAssertFalse(copy.graceSubtitle.isEmpty)
     }
 
-    func testDefaultThemeUsesBrandIndigoAccent() {
-        // The default theme adopts the Polaris Key brand indigo rather than the system accent.
-        XCTAssertEqual(PolarisTheme().accent, PolarisTheme.brandAccent)
+    func testDefaultThemeIsNativeAndNeutral() {
+        // Owner direction (2026-10-04): no Polaris Key branding unless the integrator opts in.
+        let theme = PolarisTheme()
+        XCTAssertNil(theme.accentOverride)
+        XCTAssertNil(theme.branding)
+        XCTAssertEqual(theme.resolvedBranding(), .native)
+        XCTAssertEqual(theme.resolvedPalette(for: .dark), PolarisPalette.native)
+        XCTAssertEqual(theme.resolvedPalette(for: .light), PolarisPalette.native)
+        XCTAssertEqual(theme.resolvedTypography(), .system)
     }
 
     /// Every status that can reach the view is classified: usable states render `content()`, the

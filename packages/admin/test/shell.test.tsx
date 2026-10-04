@@ -42,11 +42,16 @@ afterEach(() => {
 const nav = (): HTMLElement =>
   screen.getAllByRole("navigation", { name: "Console" })[0]!;
 
-/** The sidebar's section headers, in render order. */
+/**
+ * The sidebar's PRODUCT section headers, in render order. The Platform section's header is there
+ * on every page (platform.test.tsx covers it), so it is left out of these product assertions.
+ */
 function sectionHeaders(): string[] {
-  return [...nav().querySelectorAll("[data-section-header]")].map(
-    (el) => el.textContent ?? "",
-  );
+  return [
+    ...nav().querySelectorAll(
+      "[data-section-header]:not([data-section-header=platform])",
+    ),
+  ].map((el) => el.textContent ?? "");
 }
 
 const header = (label: string): HTMLElement =>
@@ -139,6 +144,10 @@ describe("sections by enablement (D-15)", () => {
     boot("#/products");
     await screen.findByRole("navigation", { name: "Console" });
     expect(sectionHeaders()).toEqual([]);
+    // The Platform section is instance-wide: there with or without a product.
+    expect(
+      within(nav()).getByRole("button", { name: "Platform" }),
+    ).toBeTruthy();
     expect(within(nav()).getByRole("link", { name: "Home" })).toBeTruthy();
     expect(within(nav()).getByRole("link", { name: "Products" })).toBeTruthy();
   });
@@ -406,10 +415,15 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
     expect(
-      [...nav().querySelectorAll("[data-section]")].map((el) =>
+      [...nav().querySelectorAll("[data-section]")].map((el) => [
+        el.getAttribute("data-section"),
         el.getAttribute("data-service"),
-      ),
-    ).toEqual(SECTIONS.map((s) => s.accent));
+      ]),
+    ).toEqual([
+      // The Platform section takes the core accent, like Home and Products.
+      ["platform", "core"],
+      ...SECTIONS.map((s) => [s.key, s.accent]),
+    ]);
   });
 
   it("accents the content and <html> from the current route's section", async () => {

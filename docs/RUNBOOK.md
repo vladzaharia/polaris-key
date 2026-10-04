@@ -135,6 +135,44 @@ from "someone deleted all the products". Read the rotation procedure below befor
 Product secrets are not Worker secrets. Set them through the admin UI/API so they are sealed
 into `product_secrets`; values are write-only and never echoed back.
 
+### Platform store connections (A-16)
+
+The team-level store credentials (App Store Connect API key, In-App Purchase key, Google Play
+service account, Partner Center app, Steam publisher key) and the shared store settings (Apple
+Team ID, Play RTDN push identity, Play Integrity project number) live under
+`/manage/api/platform/store-connections` (platform admins only). DEPLOYMENT.md §4 has the Worker
+secret names and JSON shapes.
+
+- **Which source is in use.** `GET /manage/api/platform/store-connections` → each credential's
+  `source` (`console` or `secret`) and `secret.valid`. A console credential always wins; the
+  Worker secret is read only while none is stored.
+- **Set or rotate a Worker secret without handling the key.** From the machine that holds the
+  file: `gh secret set <NAME> --env production < key.json`, then
+  `gh workflow run sync-worker-secrets.yml -f target=prod`. The workflow pushes every set name
+  through wrangler's stdin and logs names only (DEPLOYMENT.md §4). Never paste a key into a
+  terminal command line or an agent conversation.
+- **Rotate.** Store the new key in the console (`PUT …/<store>` or
+  `…/<store>/credentials/<slot>` with `{"value": …}`). Cached tokens and the apps list are keyed by
+  the credential's version marker, so the old key's tokens stop being served at once. To rotate a
+  secret-only setup: `wrangler secret put` the new JSON (a deploy), then revoke the old key at the
+  store.
+- **Revoke in a hurry.** Revoke the key at the store first (that is what stops an attacker), then
+  `DELETE …/<store>` and `wrangler secret delete <NAME> --env prod`. Every product falling back to
+  it goes inert (`no_credential`) — its own credentials, if any, keep working.
+- **Assign or move an app.** Assign from the list (`GET …/<store>/apps`, then
+  `PUT …/<store>/apps/<appId>/product` with `{"product": "<slug>"}`). An app held by another
+  product — by its platform pin or its own credential's pin — is refused with
+  `app_assigned_elsewhere`; release it first (`DELETE …/<store>/apps/<appId>/product`). A product's
+  own credential pin is not released by that: re-pin or delete it on the product.
+- **A product's connector says `pin_missing` / `pin_mismatch` with `credentialSource:
+"platform"`.** The product has no key of its own and either no app is assigned to it, or the
+  manifest names another app than the assigned one. Check that the manifest's app is the product's
+  before assigning it — the team key reaches every app of the team.
+- **Audit.** Product opens are `platform_credential.use` rows in the product's activity; writes,
+  assignments and team-wide opens are rows of `platform_audit`.
+- **KEK rotation.** The re-seal sweep counts console credentials under `platformCredentials` and
+  re-seals them with the rest; a Worker secret is outside the KEK.
+
 ### The platform KEK keyring
 
 The KEK is configured in one of two shapes. They are equivalent for a single key; only the
@@ -474,10 +512,18 @@ been unreferenced for the grace period **and** are older than the 180-day bucket
 surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep`,
 `blobGcLog`).
 
-- **Stop it:** set `BLOB_GC_MODE = "off"` under the environment's `[vars]` and deploy. Nothing is
-  deleted while it is off; turning it back on resumes where it stopped.
-- **Grace period:** `BLOB_GC_GRACE_DAYS` (default 30, never under 1). The lock age, not the grace,
+- **Stop it:** in the console, Platform → Settings → Blob collector → off
+  (`PATCH /manage/api/platform/settings/BLOB_GC_MODE` with `{"value":"off","expectedVersion":N}`).
+  No deploy: every isolate picks it up within 30 seconds, and the nightly tick reads it fresh.
+  Nothing is deleted while it is off; turning it back on resumes where it stopped. For a stop no
+  console session can undo, set `BLOB_GC_MODE = "off"` under the environment's `[vars]` and
+  deploy: a deploy-time `off` is a hard off (A-13 `ceiling` precedence).
+- **Grace period:** Platform → Settings → Blob collector grace period (`BLOB_GC_GRACE_DAYS`;
+  default 30, a console value from 1 to 365 days). A console value wins over the `[vars]` value;
+  "Revert" (`DELETE …/settings/BLOB_GC_GRACE_DAYS`) returns to it. The lock age, not the grace,
   bounds how soon anything goes.
+- **Who changed it:** every console change is a `platform.setting.set` or
+  `platform.setting.revert` row in Platform activity, with the value before and after.
 - **Before trusting it on a product:** read the dry run, `GET /manage/api/products/<slug>/blob-gc`
   (the live pack releases, the refs the next tick drops, the earliest deletion date).
 - **What happened:** `blob_gc_log` (one row per dropped or restored ref and per deleted object;
@@ -497,8 +543,12 @@ CI delta from that base, the consumer Worker `polaris-key-deltas-<env>` encodes 
 `release_lazy_deltas`. Pairs with a side over 32 MiB are refused as `over-worker-cap` (the
 evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
 
-- **Turn it on.** `LAZY_DELTAS = "on"` in both `wrangler.toml` and `wrangler.deltas.toml` for the
-  environment, deploy both, then opt a product in:
+- **Turn it on.** In the console, Platform → Settings → Lazy deltas → on
+  (`PATCH /manage/api/platform/settings/LAZY_DELTAS` with `{"value":"on","expectedVersion":N}`).
+  No deploy: both scripts read the same `platform_settings` row (the request Worker within 30
+  seconds, the consumer on its next message). It only takes effect while both TOML files carry
+  `LAZY_DELTAS = "runtime"` (the committed value); `"off"` there is a deploy-time hard off. Then
+  opt a product in:
 
   ```sh
   npx wrangler d1 execute polaris_key_<env> --env <env> --remote --command \
@@ -509,8 +559,13 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
   `hot_devices` (default 25) and `daily_cap` (default 20 deltas a day) are optional columns of the
   same row.
 
-- **Turn it off.** `enabled = 0` for one product (counting and generation stop at once), or
-  `LAZY_DELTAS = "off"` and deploy for everything. Stored deltas stay until they go cold.
+- **Turn it off.** `enabled = 0` for one product (counting and generation stop at once), or the
+  console's Lazy deltas switch for everything (within 30 seconds). For an off no console session
+  can undo, set `LAZY_DELTAS = "off"` in both TOML files and deploy both. Stored deltas stay until
+  they go cold.
+- **The size cap.** `LAZY_DELTA_MAX_BYTES` in `wrangler.deltas.toml` (32 MiB) is the deploy-time
+  value; Platform → Settings → Lazy delta size cap may only lower it (1 MiB to 32 MiB, the
+  measured ceiling).
 - **Withdraw the menu (P4-29).** The channel feed lists a product's `ready` lazy deltas in its
   `deltas` member, and the blob route and the payload URL serve them, only while both switches
   are on. Either switch withdraws the menu at the next feed request (the feed's `seq` moves) and

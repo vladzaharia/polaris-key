@@ -82,6 +82,40 @@ inputs:
     description: Upload, sign and write no release. For the app, print the descriptor, the unsigned record and the server's verdict on a dry-run submit; for a pack, print the lint, the gate, the objects (new and already stored), the bytes per strategy and the unsigned record, with no server verdict (nothing is submitted). Either way it still mints upload tickets (for a pack, one per 256 objects), which expire within the hour.
     required: false
     default: "false"
+  transport:
+    description: P5-08, pack only. Instead of publishing, run one store-transport step for the pack release `version` published earlier, whose publish `out` cache is `dir`. One of apple-ba-package (Manifest.json for asset pack <pack>-c<contentApi> and xcrun ba-package; a macOS runner), apple-ba-upload (App Store Connect, with ASC_KEY_ID, ASC_ISSUER_ID and ASC_PRIVATE_KEY from secrets in the step's env; `dir` is then the package step's transport-out; commit the .pkey/asset-packs.json it writes on the first upload), play-pad-modules (Play asset-pack modules into gradle-project) or steam-depot-vdf (a content-only SteamPipe build for steamcmd). Each writes the pack's marker beside the payload and reports the transport's availability to Distribution.
+    required: false
+  content-api:
+    description: P5-08, apple-ba steps. The content level the asset pack is for (its id is <pack>-c<content-api>). Defaults to .pkey/release's deliverables.app.content.contentApi.
+    required: false
+  variant:
+    description: P5-08, transport steps. The published variant to package (its key, e.g. texture=astc) when the pack varies by an axis the transport cannot target (play-pad targets texture itself).
+    required: false
+  transport-out:
+    description: P5-08, apple-ba-package and steam-depot-vdf. Where to write the asset pack or the SteamPipe build (default build/pkey-transport/apple-ba or build/pkey-transport/steam).
+    required: false
+  gradle-project:
+    description: P5-08, play-pad-modules. The Godot Android Gradle build (android/build) the modules are written into and patched.
+    required: false
+  pad-delivery:
+    description: P5-08, play-pad-modules. fast-follow or on-demand (default fast-follow for essential and prefetch packs, on-demand otherwise).
+    required: false
+  steam-depot:
+    description: P5-08, steam-depot-vdf. The pack's depot id (a DLC depot for a paid pack).
+    required: false
+  steam-branch:
+    description: P5-08, steam-depot-vdf. The Steam branch; default the steam outlet's branches[channel].
+    required: false
+  steam-setlive:
+    description: P5-08, steam-depot-vdf. true sets the build live on a named branch (never the default branch, which a person promotes in Steamworks).
+    required: false
+  asc-expect-resource:
+    description: P5-08, apple-ba-upload. The asset pack's App Store Connect resource id, to adopt an asset pack .pkey/asset-packs.json does not record yet.
+    required: false
+  transport-report:
+    description: P5-08, transport steps. false writes everything and reports nothing to Distribution.
+    required: false
+    default: "true"
 outputs:
   release-id:
     description: The release id (the tag, else `<deliverable>@<version>`).

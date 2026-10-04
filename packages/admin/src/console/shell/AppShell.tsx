@@ -4,15 +4,18 @@ import { X } from "lucide-react";
 import { type Me } from "../../api.js";
 import { AdminProvider } from "../../context.js";
 import { Spinner, TooltipProvider } from "../../components/ui/index.js";
-import { useProduct, useProducts } from "../data/hooks.js";
+import { usePlatformVersion, useProduct, useProducts } from "../data/hooks.js";
 import {
   accentOf,
   docsFor,
+  groupOf,
   isPageEnabled,
+  isPlatformPage,
   isProductPage,
   pageOf,
   PRODUCT_PAGES,
   sectionOf,
+  type GlobalPageId,
   type ProductPageId,
   type ServiceState,
 } from "../nav.js";
@@ -28,8 +31,9 @@ import {
 import { PREF_KEYS, readPref, writePref } from "../storage.js";
 import { useGlobalShortcuts } from "../shortcuts.js";
 import { prefetchSection, sectionPages } from "../pages/index.js";
-import { Dashboard } from "../../views/Dashboard.js";
-import { Products } from "../../views/Products.js";
+import { Home } from "../pages/global/Home.js";
+import { ProductNew } from "../pages/global/ProductNew.js";
+import { Products } from "../pages/global/Products.js";
 import { LiveRegion, type ProductLike } from "./bits.js";
 import {
   CommandPalette,
@@ -47,6 +51,9 @@ import {
 } from "./StatePages.js";
 import { TopBar } from "./TopBar.js";
 import { mutate } from "../../console/data/mutations.js";
+
+/** The Platform section's pages: one lazy chunk (notes/S-13 §9.1). */
+const PlatformPages = React.lazy(() => import("../pages/platform.js"));
 
 /** Where the sidebar is part of the layout and the mobile drawer has no place. */
 export const DESKTOP_QUERY = "(min-width: 1024px)";
@@ -173,6 +180,8 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const productName = product?.name ?? null;
 
   const section = page ? sectionOf(page) : null;
+  // The sidebar group holding the page: its product section, or the Platform section.
+  const group = page ? groupOf(page) : null;
   const accent = page ? accentOf(page) : "core";
   const productPageId: ProductPageId | null =
     route.kind === "product" ? route.page : null;
@@ -206,7 +215,8 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
-  const { expanded, toggle } = useNavCollapse(section?.key ?? null);
+  const { expanded, toggle } = useNavCollapse(group);
+  const version = usePlatformVersion();
 
   const key = viewKey(route);
   React.useEffect(() => {
@@ -261,7 +271,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     slug,
     services,
     activePage: page,
-    activeSection: section?.key ?? null,
+    activeSection: group,
     expanded,
     onToggleSection: toggle,
     onPrefetch: prefetchSection,
@@ -307,6 +317,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             onOpenNav={() => setNavOpen(true)}
             onShortcuts={() => setSheetOpen(true)}
             onSignOut={signOut}
+            version={version.data ?? null}
           />
           <aside className="hidden min-h-0 flex-col border-r border-border bg-surface-page lg:flex">
             <Sidebar
@@ -382,6 +393,29 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   );
 }
 
+function PageLoading(): React.ReactElement {
+  return (
+    <div className="flex items-center gap-3 py-12 text-fg-muted" role="status">
+      <Spinner className="size-5 text-fg-subtle" />
+      Loading…
+    </div>
+  );
+}
+
+/** A global page: Home, Products, the new-product wizard, or a Platform section page. */
+function globalPageFor(page: GlobalPageId): React.ReactElement {
+  if (isPlatformPage(page)) {
+    return (
+      <React.Suspense fallback={<PageLoading />}>
+        <PlatformPages page={page} />
+      </React.Suspense>
+    );
+  }
+  if (page === "products") return <Products />;
+  if (page === "product-new") return <ProductNew />;
+  return <Home />;
+}
+
 /** What the main column shows for a route: a state page, a global page or a section page. */
 function PageContent({
   route,
@@ -412,13 +446,7 @@ function PageContent({
     );
   }
   if (route.kind === "global") {
-    return (
-      <PageErrorBoundary>
-        <LegacyPage>
-          {route.page === "products" ? <Products /> : <Dashboard />}
-        </LegacyPage>
-      </PageErrorBoundary>
-    );
+    return <PageErrorBoundary>{globalPageFor(route.page)}</PageErrorBoundary>;
   }
   // `/me` lists every product the session administers (authority is platform-wide), so a slug
   // outside it does not exist; it is not an authorization failure.
@@ -446,17 +474,7 @@ function PageContent({
   }
   const Pages = sectionPages(section.key);
   return (
-    <React.Suspense
-      fallback={
-        <div
-          className="flex items-center gap-3 py-12 text-fg-muted"
-          role="status"
-        >
-          <Spinner className="size-5 text-fg-subtle" />
-          Loading…
-        </div>
-      }
-    >
+    <React.Suspense fallback={<PageLoading />}>
       <PageErrorBoundary>
         <LegacyPage>
           <Pages route={route} />

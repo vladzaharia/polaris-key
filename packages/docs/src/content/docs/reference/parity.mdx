@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
 | Python | `python` | 55 | 6 | 0 | 7 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 60 | 1 | 3 | 4 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
 
 ## Core
 
@@ -114,9 +114,9 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.type.audio.bank` | `audio.bank` packs: the bank descriptor's middleware and version against the host's, hot reload through the host's middleware | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓ | node, python, web, desktop-bridge, macos, ios: runtime |
 | `packs.type.ml.model` | `ml.model` packs: the model descriptor's runtime, quantisation and RAM/VRAM needs against the host's budget, a host load test before the path swaps | unit | ✓ | ✓ | ✓ | ✓ | N/A (linux, macos, windows, android, ios, web: runtime) | linux, macos, windows, android, ios, web: runtime |
 | `packs.provides` | isAvailable(contentId) from provides | unit | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | planned (P5-08); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
-| `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (P5-08); N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
-| `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | planned (P5-08); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, ios, android: runtime |
+| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
+| `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
+| `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | ✓; N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, ios, android: runtime |
 | `packs.transport.msix` | MSIX optional packages | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | planned (unowned); N/A (linux: runtime); N/A (macos: runtime); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, macos, ios, android, linux: runtime; any: outlet |
 | `packs.transport.flatpak` | Flatpak extensions | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | planned (unowned); N/A (macos: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | web, desktop-bridge, macos, ios, android, windows: runtime |
 

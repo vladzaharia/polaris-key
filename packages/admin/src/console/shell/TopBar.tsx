@@ -1,6 +1,6 @@
 import * as React from "react";
 import { BookOpen, Menu, Search } from "lucide-react";
-import type { Me } from "../../api.js";
+import type { Me, PlatformIdentity } from "../../api.js";
 import { Button } from "../../components/ui/index.js";
 import { cn } from "../../lib/cn.js";
 import type { ProductPageId, ServiceAccent } from "../nav.js";
@@ -32,6 +32,7 @@ export function TopBar({
   onOpenNav,
   onShortcuts,
   onSignOut,
+  version,
   className,
 }: {
   me: Me;
@@ -46,6 +47,8 @@ export function TopBar({
   onOpenNav: () => void;
   onShortcuts: () => void;
   onSignOut: () => void;
+  /** The running build, for the account menu's version chip (A-11); absent until known. */
+  version?: PlatformIdentity | null;
   className?: string;
 }): React.ReactElement {
   return (
@@ -104,7 +107,12 @@ export function TopBar({
           </a>
         </Button>
         <ThemeMenu />
-        <UserMenu me={me} onShortcuts={onShortcuts} onSignOut={onSignOut} />
+        <UserMenu
+          me={me}
+          version={version}
+          onShortcuts={onShortcuts}
+          onSignOut={onSignOut}
+        />
       </div>
     </header>
   );

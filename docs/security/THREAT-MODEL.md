@@ -1121,6 +1121,87 @@ attack (next section, Residual). Least privilege per store (App Manager team key
 Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
 verified by the Worker.
 
+### Platform store connections: team-level credentials (A-16)
+
+**What they are.** One credential per store held by the PLATFORM, not by a product (owner
+decision 2026-10-04): the App Store Connect team API key (`app-store.api-key`), the team In-App
+Purchase key (`app-store.in-app-purchase-key`), the Google Play developer account's service
+account (`google-play.service-account`), the seller's Partner Center app
+(`microsoft-store.partner-center`) and the Steam group's publisher key (`steam.publisher-key`).
+Each reaches **every app of the team, account, seller or group** — so its loss is the union of
+every product's outlet credential (A11, ranked with the release channel A3), and the Apple ones
+also every app's transaction history. Beside them, non-secret settings shared by every product:
+the Apple Team ID (App Attest's default), Google Play's RTDN push identity and the Play Integrity
+cloud project number.
+
+**What they are for.** Listing every app the team credential can see (with its release status),
+assigning an app to a product from that list, and a product's connector or commerce context
+falling back to the team credential when the product has no credential of the kind of its own.
+
+**The boundary**, each line enforced by a test (`test/platformStore*.test.ts`,
+`test/outletCredentialReach.test.ts`):
+
+- **Two sources, console first.** (a) `platform_credentials`, sealed under PLATFORM_KEK with the
+  AAD `pkey:v2:_platform:platform-credential:<id>` — `_platform` cannot be a product slug and the
+  kind is its own, so a blob copied into `outlet_credentials` or `product_secrets` opens nowhere;
+  (b) a Worker secret (`PLATFORM_ASC_API_KEY`, `PLATFORM_APP_STORE_SERVER_KEY`,
+  `PLATFORM_GOOGLE_SERVICE_ACCOUNT`, `PLATFORM_MS_PARTNER_CENTER`, `PLATFORM_STEAM_PUBLISHER_KEY`)
+  read only when no active console row exists. Both are validated by the kind's own
+  outlet-credential validator (the Google key must name Google's one token endpoint) on write and
+  again on every open. The KEK sweep counts and re-seals the table.
+- **The pin is the boundary.** A product may use a team credential ONLY for the one app a
+  platform admin assigned to it: its row in `platform_credential_pins` (the `appleId`, bundle id,
+  package name, Store ID or Steam app id) must equal the app the product is about to act on.
+  It is checked three times: by the connector's setup (no pin or a different pin → inert, the same
+  `pin_missing` / `pin_mismatch` reasons and 409s as P5-02f, nothing sent, nothing opened), by the
+  token helper BEFORE its memo or sealed cache (a cached team token is the same bearer for every
+  product, so a cache hit must never stand in for the pin), and by `openPlatformCredential`
+  itself, which refuses a product purpose whose pin does not match and audits the refusal.
+  `UNIQUE (credential_id, pin)` makes "one product per app" a table constraint, the assignment
+  route also refuses an app another product's OWN credential is pinned to, and the
+  outlet-credentials PUT refuses to pin a product's own key to an app the platform serves to
+  another product (409 `app_assigned_elsewhere`). Deleting a product deletes its pins.
+- **Own credentials first, never a fall-through.** A product holding any active credential of the
+  kind uses its own; an own credential that is unpinned or mis-pinned is inert on its own terms
+  and never silently switches to the team key.
+- **Platform-admin writes, metadata out.** `/manage/api/platform/store-connections/…` is
+  platform-admin only (403 otherwise, checked in the handler). Responses carry presence, source
+  (`console` / `secret`) and display metadata (key id, issuer id, client email, tenant, client and
+  seller ids) — never a key; a 422 names the field, never the value. Only the owner and that
+  handler name the writers (`putPlatformCredential`, `deletePlatformCredential`, `setPlatformPin`,
+  `clearPlatformPin`); only the owner, the KEK sweep and `deleteProduct` name the tables; only the
+  owner, `core/outletTokens.ts` and two reviewed Distribution files (the Microsoft Store token, the
+  Steam commerce key, both re-checked by the open) name `openPlatformCredential`.
+- **Every use and write audited.** A product open is a `platform_credential.use` row in that
+  product's trail; a team-wide open (the apps listing), every credential and setting write and
+  every assignment are rows of `platform_audit` (A-12's table, through `appendPlatformAudit`; read
+  by `GET /manage/api/platform/activity`, pruned with it after 180 days); an assignment is also
+  `outlet_credential.pin` in the product's trail. Audit payloads carry metadata and pins, never
+  key material. By design a token served from the per-isolate memo (App Store) or the sealed KV
+  cache (Google, Microsoft) is **not** audited — only the open that minted it is — exactly as for
+  product outlet credentials; the pin is checked before every such hit.
+- **Bounded, redirect-free reads.** The listings use each store's fixed host with
+  `redirect: "manual"` and capped bodies: App Store Connect `GET /v1/apps` (at most 5 pages of 200,
+  versions and TestFlight versions as includes, at most 20 phased-release reads); Play Reporting
+  `apps:search` (at most 3 pages) plus, only on an explicit `?tracks=1` and never from the
+  assignment path, at most 10 short edits that are deleted, never committed;
+  Partner Center `GET /v1.0/my/applications` (at most 5 pages of 100) plus at most 10 submission
+  reads; Steam `GetPartnerAppListForWebAPIKey` on the publisher host (the key in the query string,
+  as every Steam call). Results are cached 60 s in KV, keyed by the credential's version marker;
+  assignments are joined fresh from D1.
+
+**Residual risk.** A team credential is the widest key the platform holds: a `PLATFORM_KEK`
+compromise (A1) or a Worker-secret leak hands an attacker every app of the team, not one product.
+The admin plane (A4) can assign any visible app to any product, which is the intended power of a
+platform admin; the audit trail is the detection. A Worker secret sits in Cloudflare's secret
+store, outside the KEK and the console's rotation; prefer the console credential and keep the
+secret for bootstrap. The Play listing's opt-in track read (`?tracks=1`) opens short edits that share the service account's one-open-edit
+slot with that account's product connectors: a listing can invalidate an edit a poll holds at that
+moment (the poll fails and retries next tick). The Steam publisher key travels in query strings to
+Steam's publisher host by Steam's design. Least privilege per store (App Manager team key, the
+narrowest Play permissions, the Partner Center Manager role, a dedicated Steam publisher key) is
+the operator's to configure and cannot be verified by the Worker.
+
 ### Store connectors: App Store Connect (P5-02)
 
 **What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
@@ -2161,8 +2242,9 @@ The new trust boundary is **content CI ↔ device**, mediated by a release-key s
   cannot re-delegate. Its key bytes must equal no pinned release key and no product key.
 - **Release-key surfaces stay release-key surfaces.** The delegated path is allowed only on a
   compatible or standalone pack's feed target and on the reload of a stored delegated install.
-  App records, stamp and record pins, holds, revocations, replacements, markers and embedded
-  baselines never pass a delegation, so a content-key signature fails there at `jws`. Ingest
+  App records, stamp and record pins, holds, revocations, replacements, markers, embedded
+  baselines and platform-delivered copies (P5-08's `apple-ba`, `play-pad` and `steam-depot`
+  transports) never pass a delegation, so a content-key signature fails there at `jws`. Ingest
   refuses a pin or hold naming a delegated release (`pin-delegated`, `hold-delegated`).
 - **Data only.** A delegated release must be tree layout (a container is never delegable), and
   every file passes the data-only rule: an already-normalised path, an extension allow-list (the
@@ -2379,6 +2461,85 @@ privilege level.
   records row counts only (a test asserts no KEK value appears), and A-13's settings registry
   holds no secret by construction. The per-product `kek.reseal` rows stay, so each product's own
   log still shows the sweep.
+
+### Platform settings and operations: the runtime settings store (A-13)
+
+A-13 makes four deploy settings editable from the console without a deploy, through
+`platform_settings` (migration 0056) and `GET`/`PATCH`/`DELETE /manage/api/platform/settings`
+behind the same gates as the rest of the Platform section (session, `PLATFORM_ADMIN_GROUP`, the
+per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-admin check). There
+is no new privilege level and no outbound call.
+
+- **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
+  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE` and `BLOB_GC_GRACE_DAYS`, and
+  nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
+  is never applied (the resolver falls through to `[vars]` or the code default). Each is a
+  background job's kill switch or tunable. The worst a hostile session can do with them is waste
+  delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
+  only lower), stop the collector (it costs storage), or restart it with a one-day grace (the
+  180-day R2 age lock still bounds every deletion, and the collector deletes only unreferenced
+  objects; see "Readiness holds, pack gates and the blob collector"). None changes what a device
+  is offered or what is signed.
+- **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
+  A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
+  session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
+  different `PLATFORM_ADMIN_GROUP`, another origin, a KEK kid, the admin IdP) would let that
+  session make itself permanent, or move the platform's trust roots, from inside the console.
+  Deploy-time settings need the repository and the deploy token, a separate boundary. So
+  origins, the privilege root, the admin IdP, security gates, key material and kid selection,
+  session lengths, rate limits, retention periods and bucket names stay deploy-time, and
+  `test/platformSettings.test.ts` refuses any of those names (or a `*_SECRET`, `*_KEY*`,
+  `*_TTL*`, `*_ORIGIN` or `*_PEPPER` name) in the registry.
+- **A deploy-time off survives a compromised session.** Kill switches use `ceiling` precedence:
+  `[vars]` = `off` is a hard off that no D1 value overrides, and the resolver answers it without
+  reading the table. The committed value is `"runtime"` (the console decides, default off for
+  lazy deltas, on for the collector). An unreadable store resolves a kill switch to off, never on.
+- **Auditable, race-free writes.** Every `PATCH` and `DELETE` carries `expectedVersion` and is
+  one conditional statement (409 on a mismatch), so two operators cannot silently overwrite each
+  other, and each appends a `platform_audit` row (actor from the verified session) with the stored
+  and effective value before and after. `before_json` / `after_json` are safe because no secret
+  can be in the registry.
+- **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
+  not credentials (the environment, the admin group name, the IdP issuer and client id, the
+  parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
+  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
+  when the legacy `ADMIN_OIDC_*` names are what resolved, when `PLATFORM_KEK_ID` is set, and
+  when `PORTAL_SESSION_SECRET` is unset (the portal then signs with `ADMIN_SESSION_SECRET`).
+- **Propagation.** Each isolate caches the table for 30 s; the cron handler and the lazy-delta
+  consumer re-read it at the start of each invocation. A setting that must take effect instantly
+  does not belong in this store.
+
+### Self-reported operations (A-14)
+
+`GET /manage/api/platform/operations` (A-14, notes/S-13 §7.2 phase 1) sits behind the same
+dispatcher and platform-admin check as the routes above. It reads only what the Worker can see
+itself: binding probes (D1 `SELECT 1`, a KV `get` and an R2 `head` of a fixed absent key), the
+two queues' `metrics()`, D1's `meta.size_after`, `blob_objects` totals, the required-index check,
+the connector tables, and two new Core tables the Worker writes about itself. **Phase 1 adds no
+credential and no outbound host.**
+
+- **`platform_job_runs` holds cron failure reasons.** One run per cron tick, persisted from the
+  `MaintenanceReport` `handleScheduled` already builds: successful per-product steps folded by
+  family, each failed step under its full name with the caught exception's message truncated to
+  300 characters. These are the strings the thrown aggregate already writes to Cloudflare's
+  invocation logs, now admin-readable for 30 days (pruned nightly). No request data reaches a
+  cron step, and the R12 posture keeps exception messages secret-free. This is **not** an
+  unhandled-exception ring: nothing in a request path writes free text to D1.
+- **`platform_heartbeats` holds one row per script.** `main` on every cron tick and `deltas` (the
+  lazy-delta consumer) after every batch: time, the validated release tag, the Cloudflare
+  version id, a truncated outcome label and, for the consumer, the queue backlog after the batch.
+  Nothing in it is secret.
+- **`DELTA_DLQ` is a send-capable binding used only to read.** The request Worker binds the
+  dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
+  `metrics()`; Cloudflare offers no read-only queue binding. A source check
+  (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
+  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`) and the
+  binding-presence list name it. The residual risk, accepted: code running in the request Worker
+  could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
+  It reaches no device and no signed document.
+- **Probes are bounded.** Each binding probe has a 3-second limit and is fault-isolated, so a
+  hung binding degrades one panel, not the admin plane. Error text in the snapshot is truncated
+  and comes from caught exceptions; binding presence is a boolean, never a resource id.
 
 ### The compatibility matrix and the device simulator (P4-15)
 
@@ -3016,6 +3177,51 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### Platform pack transports (P5-08)
+
+Apple-hosted Background Assets, Play Asset Delivery and Steam depots move pack bytes that Polaris
+Key never served. The store is a byte mover, not a trust anchor.
+
+- **Platform-delivered bytes are untrusted input.** The Godot transports (`packs/transport_*.gd`)
+  only locate the store's copy: the path is re-resolved on every call and never persisted, and
+  nothing is ever written into the store's directory. The engine verifies the copy's marker
+  (`pkey-marker/1`, the compact release record, against the pinned release keys only), then
+  hashes the payload, or every file into the treeDigest, against that signed record before
+  anything activates or mounts, exactly as for an embedded baseline. A store's own hashes, version
+  numbers and "installed" answers are never trusted. A marker for another pack is refused
+  (`cross-check`).
+- **Which release a copy may be.** At boot a copy is accepted when it is the stamp's pinned
+  release, or, on a transport whose packs float (`apple-ba`, `steam-depot`, CONTENT §6.6), a later
+  `seq` of the same pack that is not revoked. A Play copy must be exactly the pin, because PAD packs
+  ship with the bundle. When a decision names an exact release, only that release is accepted
+  (`record-mismatch`). Revocation and `relearn` refusals apply as for embedded baselines, and a
+  delegated release can never arrive this way (see "Release-key surfaces" above). A platform copy
+  is never written to the pack state document, so a store-side swap is re-verified at every boot.
+  A pack bound to a platform transport is never silently fetched from the CDN instead
+  (`plan-transport-unsupported` when the plugin is missing). The one CDN request a platform copy
+  can cause is P4-11's best-effort chunk-index backfill: a single GET per index per process of
+  that copy's chunk index, hash-verified before use and dropped on any failure, so it can only
+  make the copy a chunk seed for CDN packs. It never fetches the payload or a feed delta.
+- **CI's App Store Connect key.** `pkey transport apple-ba upload` signs its ES256 tokens with
+  CI's own key from the environment only (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY` or
+  `ASC_KEY_PATH`). It is never logged, never sent to the pre-signed part-upload URLs, and never the
+  key the Worker's connector holds. A token lasts 20 minutes.
+- **Resource pinning.** Asset-pack ids are lossy (`a.b` and `a-b` would collide) and App Store
+  Connect never reuses an archived id, so every apple-ba pack of the product is mapped at once
+  before any request. The first upload records the asset pack's resource id in
+  `.pkey/asset-packs.json` (repository-reviewed). A later upload refuses an asset pack whose
+  resource is not the recorded one, one that exists unrecorded (it is adopted only with an
+  explicit `--expect-resource`), and a recorded one that has vanished. A version can therefore
+  never land in another pack's asset pack, a write that would switch every installed app.
+- **Linking connector objects to releases.** A Background Asset object is linked to a pack release
+  only through the upload report's ids, and only when the asset pack's name maps back to that
+  release's pack id (`assetPackBase`). Two releases claiming one version link neither. A report
+  links only still-unlinked objects, and never unlinks one. Each asset pack keeps its own
+  availability row (`build_id` = the asset-pack id), so one level's state cannot overwrite
+  another's. The connector's ownership proof (P5-02) still decides which objects are this app's.
+- **The asset-pack listing** (`GET …/distribution/asset-packs`) is a console (admin) read behind
+  the console's own session and CSRF rules. It never archives, because archiving is irreversible.
+
 ### Device trust levels: App Attest and Play Integrity (P6-02)
 
 A device is `basic` or `attested` (`devices.trust_level`). `attested` means the device passed Apple
@@ -3391,7 +3597,10 @@ record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
-credential, and the open must stay audited); the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
+credential, and the open must stay audited); a platform store credential (A-16) is added, used
+without the product's platform pin matching at setup, token and open, cached in a way a hit can
+skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
+file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for
@@ -3409,4 +3618,12 @@ Platform section (A-11, A-12), a Worker path starts writing `platform_deploys`, 
 step gains a credential or a permission beyond the deploy token's D1 edit, a platform route starts
 reporting a binding's resource id or any secret-derived value, a route updates or deletes a
 `platform_audit` row, or a writer puts a secret (or a hash or length of one) in `before_json` or
-`after_json`.
+`after_json`; or, for the platform settings store (A-13), a setting is added to
+`PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
+entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
+one day), the settings inventory starts reporting anything about a secret beyond its presence,
+or a path reads one of the four settings from the raw `[vars]` instead of through the resolver;
+or, for self-reported operations (A-14), the `DELTA_DLQ` binding is used for anything but
+`metrics()`, a request path starts persisting free-text error capture, a job-run or heartbeat
+writer stores request data or an untruncated message, or the Operations route gains an outbound
+host or a credential.

@@ -148,9 +148,14 @@ describe("query keys hold one shape (the qk.products() regression)", () => {
         `no reader of qk.${f} found: is the scan broken?`,
       ).toContain(f);
     }
+    // The registry list has exactly one reader: the shell's `useProducts`. Home, Products and the
+    // switcher all call that hook, so no page can cache another shape under the key (chunk 4
+    // replaced the Products page's own reader with the hook).
     expect(
-      readers.filter((r) => r.family === "products").map((r) => r.at),
-    ).toHaveLength(2);
+      readers
+        .filter((r) => r.family === "products")
+        .map((r) => r.at.split(":")[0]),
+    ).toEqual(["console/data/hooks.ts"]);
   });
 
   it("every key is a qk.X(…) call, directly or through a const", () => {

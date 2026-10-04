@@ -331,7 +331,13 @@ const TABLE_OWNERS = {
     "delta_demand_devices",
     "delta_demand",
     "platform_deploys",
+    "platform_credentials",
+    "platform_credential_pins",
+    "platform_store_settings",
     "platform_audit",
+    "platform_settings",
+    "platform_job_runs",
+    "platform_heartbeats",
   ],
   license: [
     "licenses",

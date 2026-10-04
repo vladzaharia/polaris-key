@@ -5,7 +5,13 @@
  */
 
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { api, setCsrf, type Me, type ProductDetail } from "../../api.js";
+import {
+  api,
+  setCsrf,
+  type Me,
+  type PlatformIdentity,
+  type ProductDetail,
+} from "../../api.js";
 import { qk } from "./queries.js";
 import { queryClient } from "./queryClient.js";
 
@@ -54,6 +60,26 @@ export function useProduct(slug: string | null): UseQueryResult<ProductDetail> {
         queryClient
           .getQueryData<ProductDetail[]>(qk.products())
           ?.find((p) => p.slug === slug),
+    },
+    queryClient,
+  );
+}
+
+export function fetchPlatformVersion(): Promise<PlatformIdentity> {
+  return api.platformVersion();
+}
+
+/**
+ * The running build (A-11), for the account menu's version chip. It changes only on a deploy, so
+ * it is not refetched on every focus; a failure hides the chip rather than reporting anything.
+ */
+export function usePlatformVersion(): UseQueryResult<PlatformIdentity> {
+  return useQuery(
+    {
+      queryKey: qk.platformVersion(),
+      queryFn: fetchPlatformVersion,
+      staleTime: 5 * 60_000,
+      retry: false,
     },
     queryClient,
   );

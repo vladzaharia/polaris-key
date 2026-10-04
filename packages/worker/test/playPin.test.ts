@@ -237,7 +237,7 @@ describe("the pin decides whether the Play connector runs", () => {
   it("the manifest changing its packageName after linking: inert until a platform admin re-pins (audited)", async () => {
     const w = await playWorld();
     // Linked and running, with the vitals auto-halt on.
-    expect((await resolvePlaySetup(w.db, SLUG)).setup?.packageName).toBe(
+    expect((await resolvePlaySetup(w.env, w.db, SLUG)).setup?.packageName).toBe(
       PLAY_PACKAGE,
     );
     expect(
@@ -305,7 +305,7 @@ describe("the pin decides whether the Play connector runs", () => {
       now: NOW,
     });
     expect(r.ok).toBe(true);
-    const { setup, inert } = await resolvePlaySetup(w.db, SLUG);
+    const { setup, inert } = await resolvePlaySetup(w.env, w.db, SLUG);
     expect(setup).toBeNull();
     expect(inert).toMatchObject({
       reason: "pin_mismatch",
@@ -380,7 +380,7 @@ describe("the google-service-account pin", () => {
       now: NOW,
     });
     expect(r).toMatchObject({ ok: true, pinChange: null });
-    expect((await resolvePlaySetup(w.db, SLUG)).inert?.reason).toBe(
+    expect((await resolvePlaySetup(w.env, w.db, SLUG)).inert?.reason).toBe(
       "pin_missing",
     );
     const res = await admin(w, "PUT", "/outlet-credentials/play", {
@@ -388,7 +388,7 @@ describe("the google-service-account pin", () => {
       pin: "not a package",
     });
     expect(res.status).toBe(422);
-    expect((await resolvePlaySetup(w.db, SLUG)).inert?.reason).toBe(
+    expect((await resolvePlaySetup(w.env, w.db, SLUG)).inert?.reason).toBe(
       "pin_missing",
     );
   });

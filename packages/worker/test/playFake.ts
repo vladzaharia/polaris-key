@@ -18,6 +18,8 @@
  *   DELETE …/applications/<pkg>/edits/<id>                     edits.delete
  *   GET    https://playdeveloperreporting.googleapis.com/v1beta1/apps/<pkg>/<set>
  *   POST   https://playdeveloperreporting.googleapis.com/v1beta1/apps/<pkg>/<set>:query
+ *   GET    https://playdeveloperreporting.googleapis.com/v1beta1/apps:search   (A-16) every app
+ *          the account may access (`searchApps`; one page)
  *
  * Every API call must carry a bearer token this fake issued FOR THAT API's scope (a publisher
  * token on the Reporting API is a 403), and must name the one package the service account is
@@ -97,6 +99,14 @@ export class PlayFake {
     { tracks: Map<string, Json>; valid: boolean }
   >();
   reporting: Record<string, Json>;
+  /** What `apps:search` answers (A-16's team listing). Only `PLAY_PACKAGE` is editable. */
+  searchApps: Json[] = [
+    {
+      name: `apps/${PLAY_PACKAGE}`,
+      packageName: PLAY_PACKAGE,
+      displayName: "djdl",
+    },
+  ];
   /** When false, a commit succeeds but the live state does not change yet. */
   propagate = true;
   /** When true, a commit answers 400 (a change is in review; ERROR_IF_IN_REVIEW). */
@@ -203,6 +213,12 @@ export class PlayFake {
         "Request had insufficient authentication scopes.",
         "forbidden",
       );
+    if (
+      !publisher &&
+      method === "GET" &&
+      url.pathname === "/v1beta1/apps:search"
+    )
+      return json(200, { apps: structuredClone(this.searchApps) });
     if (pkg !== PLAY_PACKAGE)
       return googleError(
         403,

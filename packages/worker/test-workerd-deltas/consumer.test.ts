@@ -248,4 +248,35 @@ describe("the consumer Worker", () => {
       expect((await env.BLOBS!.head(key))!.uploaded.getTime()).toBe(uploaded);
     },
   );
+
+  // A-14: the consumer has no fetch route to probe, so its heartbeat row is how the Operations
+  // page knows it ran, on which build, and what the queue looked like after the batch.
+  it(
+    "writes its heartbeat after every batch through the real queue handler",
+    LANE,
+    async () => {
+      const db = new D1Db(env.DB);
+      const batch = createMessageBatch("pkey-deltas-test", [
+        {
+          id: crypto.randomUUID(),
+          timestamp: new Date(),
+          attempts: 1,
+          body: { not: "a delta message" },
+        },
+      ]);
+      await worker.queue(batch, env);
+      const row = await db.first<{
+        script: string;
+        at: number;
+        outcome: string;
+        backlog_count: number | null;
+      }>("SELECT * FROM platform_heartbeats WHERE script = 'deltas'");
+      expect(row).not.toBeNull();
+      expect(row!.at).toBeGreaterThan(Math.floor(Date.now() / 1000) - 60);
+      expect(row!.outcome).toMatch(/^(ack|retry):/);
+      expect(
+        row!.backlog_count === null || typeof row!.backlog_count === "number",
+      ).toBe(true);
+    },
+  );
 });

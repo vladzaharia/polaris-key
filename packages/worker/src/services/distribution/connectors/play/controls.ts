@@ -339,7 +339,7 @@ async function withRun(
   c: ControlContext,
   fn: (run: PlayRun) => Promise<ControlResult>,
 ): Promise<ControlResult> {
-  const { setup, inert } = await resolvePlaySetup(c.db, c.product);
+  const { setup, inert } = await resolvePlaySetup(c.env, c.db, c.product);
   if (!setup) {
     // The operator's pin and the manifest disagree (or there is no pin): refuse with the reason,
     // before any token is minted or any request is sent — a halt, a ramp or a completion aimed at
@@ -519,7 +519,7 @@ const priorityControl: ConnectorControl = (c, body) => {
  * until the pin and the manifest agree. With no outlet or credential yet they can be set ahead.
  */
 const settingsControl: ConnectorControl = async (c, body) => {
-  const { inert } = await resolvePlaySetup(c.db, c.product);
+  const { inert } = await resolvePlaySetup(c.env, c.db, c.product);
   if (inert && isPinReason(inert.reason))
     return refuse(409, `credential_${inert.reason}`, inert.message);
   const current = await readPlaySettings(c.db, c.product);

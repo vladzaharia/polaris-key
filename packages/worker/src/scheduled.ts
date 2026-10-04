@@ -16,8 +16,9 @@
 // 1. PRODUCT-SCOPED. Every delete names one product (or, for the platform-level `portal_audit`
 //    rows that name no product, `product IS NULL` explicitly). The sweep never issues a
 //    statement whose blast radius is "the table". The shared tables are named exceptions:
-//    `platform_audit` (A-12) has no product column at all, so its pass is by age alone, bounded
-//    per pass like every other prune; and `blob_objects` (P4-14's collector) belongs to no
+//    `platform_audit` (A-12), `platform_job_runs` and `platform_heartbeats` (A-14) have no
+//    product column at all, so their passes are by age alone, bounded per pass like every other
+//    prune; and `blob_objects` (P4-14's collector) belongs to no
 //    product: its sweep deletes only rows that NO product references
 //    (the `NOT EXISTS` on `blob_refs` is in every statement), bounded per tick.
 // 2. IDEMPOTENT. Every step is a delete-what-is-already-past or a null-what-is-already-dormant,
@@ -48,12 +49,22 @@ import {
 } from "./services/identity/portal/repo.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
+import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
 import {
+  JOB_RUN_RETENTION_SECONDS,
+  pruneHeartbeats,
+  pruneJobRuns,
+  recordJobRun,
+  writeHeartbeat,
+  type JobName,
+  type StepTiming,
+} from "./core/platformOps.js";
+import {
   GC_INDEX_READS_PER_TICK,
   applyProductGc,
-  blobGcSettings,
+  effectiveBlobGcSettings,
   markUnreferenced,
   planProductGc,
   pruneGcLog,
@@ -163,6 +174,12 @@ export interface MaintenanceReport {
   counts: Record<string, number>;
   /** Step name -> message, for every step that threw. */
   failures: Record<string, string>;
+  /**
+   * Step name -> when it started (epoch ms) and how long it ran, for every step `step()` ran
+   * (A-14: persisted into `platform_job_runs` by `handleScheduled`). Optional, so a hand-built
+   * report stays valid.
+   */
+  timings?: Record<string, StepTiming>;
 }
 
 /**
@@ -177,11 +194,16 @@ async function step(
   name: string,
   run: () => Promise<number>,
 ): Promise<void> {
+  const startedAt = Date.now();
   try {
     report.counts[name] = await run();
   } catch (e) {
     report.failures[name] = e instanceof Error ? e.message : String(e);
   }
+  (report.timings ??= {})[name] = {
+    startedAt,
+    durationMs: Date.now() - startedAt,
+  };
 }
 
 /**
@@ -224,8 +246,9 @@ export async function runBlobGc(
   db: Db,
   now: number,
 ): Promise<void> {
-  const settings = blobGcSettings(env);
-  if (!env.BLOBS || !settings.enabled) return;
+  if (!env.BLOBS) return;
+  const settings = await effectiveBlobGcSettings(env, db);
+  if (!settings.enabled) return;
   let slugs: string[] = [];
   try {
     slugs = (await listProducts(db)).map((p) => p.slug).sort();
@@ -336,6 +359,15 @@ export async function runScheduledMaintenance(
     drain((limit) => prunePlatformAudit(db, cutoff, limit)),
   );
 
+  // A-14: the Operations page's own rows, 30 days (`core/platformOps.ts`). Product-less by
+  // construction like `platformAudit`: by age alone, bounded per pass.
+  await step(report, "jobRuns", () =>
+    drain((limit) => pruneJobRuns(db, now - JOB_RUN_RETENTION_SECONDS, limit)),
+  );
+  await step(report, "heartbeats", () =>
+    pruneHeartbeats(db, now - JOB_RUN_RETENTION_SECONDS),
+  );
+
   // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before
   // the collector, so a delta marked cold tonight loses its ref before tonight's mark pass.
   if (env) await runLazyDeltaSweep(report, env, db, now);
@@ -349,7 +381,8 @@ export async function runScheduledMaintenance(
  * The lazy-delta sweep (P4-17, `services/release/packs/deltas/sweep.ts`), one fault-isolated
  * step per opted-in product (`lazyDeltas:<slug>`): refresh the demand aggregate, enqueue the
  * pairs that turned hot (to `DELTA_QUEUE`; the consumer Worker encodes them), and mark cold the
- * deltas no device used for 30 days. Nothing at all while the `LAZY_DELTAS` var is not `on`.
+ * deltas no device used for 30 days. Nothing at all while the `LAZY_DELTAS` switch is off (the
+ * platform settings store, A-13: a `[vars]` `off` is a hard off).
  */
 export async function runLazyDeltaSweep(
   report: MaintenanceReport,
@@ -405,6 +438,7 @@ export async function runConnectorPolls(
     report.failures.products = e instanceof Error ? e.message : String(e);
   }
   for (const slug of slugs) {
+    const startedAt = Date.now();
     try {
       const product = await loadProductPublic(db, slug);
       if (!product) continue;
@@ -422,8 +456,50 @@ export async function runConnectorPolls(
       report.failures[`poll:${slug}`] =
         e instanceof Error ? e.message : String(e);
     }
+    (report.timings ??= {})[`poll:${slug}`] = {
+      startedAt,
+      durationMs: Date.now() - startedAt,
+    };
   }
   return report;
+}
+
+/**
+ * A-14: persist the tick for the Operations page — its `platform_job_runs` rows and the `main`
+ * heartbeat (`core/platformOps.ts`). Recording is not the job: a failure to record is added to
+ * the report as the `opsRecord` step, so it surfaces in the thrown aggregate like any other step,
+ * but it never hides or replaces the tick's own outcome. Exported for the tests.
+ */
+export async function recordTick(
+  env: Env,
+  db: Db,
+  tick: {
+    job: JobName;
+    cron: string | null;
+    startedAtMs: number;
+    report: MaintenanceReport;
+  },
+): Promise<void> {
+  const endedAtMs = Date.now();
+  const outcome =
+    Object.keys(tick.report.failures).length > 0 ? "failed" : "ok";
+  try {
+    await recordJobRun(db, {
+      runId: `${tick.startedAtMs.toString(36)}-${crypto.randomUUID().slice(0, 8)}`,
+      job: tick.job,
+      cron: tick.cron,
+      startedAtMs: tick.startedAtMs,
+      endedAtMs,
+      report: tick.report,
+    });
+    await writeHeartbeat(db, env, {
+      script: "main",
+      at: Math.floor(endedAtMs / 1000),
+      outcome: `${tick.job}:${outcome}`,
+    });
+  } catch (e) {
+    tick.report.failures.opsRecord = e instanceof Error ? e.message : String(e);
+  }
 }
 
 /**
@@ -444,11 +520,21 @@ export async function handleScheduled(
   /** `ScheduledController.cron`: which trigger fired (see `CONNECTOR_POLL_CRON`). */
   cron?: string,
 ): Promise<MaintenanceReport> {
-  const now = Math.floor(Date.now() / 1000);
+  const startedAtMs = Date.now();
+  const now = Math.floor(startedAtMs / 1000);
+  // A-13: each invocation starts from a fresh read of the platform settings store (the 30 s
+  // per-isolate cache would otherwise carry a value across ticks).
+  await refreshPlatformSettings(env, db);
   const poll = cron === CONNECTOR_POLL_CRON;
   const report = poll
     ? await runConnectorPolls(env, db, now)
     : await runScheduledMaintenance(db, now, env);
+  await recordTick(env, db, {
+    job: poll ? "connectorPoll" : "maintenance",
+    cron: cron ?? null,
+    startedAtMs,
+    report,
+  });
   const failed = Object.entries(report.failures);
   if (failed.length > 0) {
     throw new Error(

@@ -588,6 +588,11 @@ describe("R11-05 product scoping", () => {
       // (the object was shared), so the row is keyed by an autoincrement id with `product`
       // nullable; it is written only by the nightly collector and read by no tenant route.
       "blob_gc_log",
+      // 0055 (A-16) — the platform's team-level store connection: one credential per store slot
+      // and one setting per store key, belonging to no product. Per-product use is gated by
+      // `platform_credential_pins`, which IS product-first (checked by this loop).
+      "platform_credentials",
+      "platform_store_settings",
       // 0054_a (A-11) — the deploy history. A row describes the whole deployment, written only
       // by deploy.yml's final step and read only by the platform-admin Deployment endpoint.
       "platform_deploys",
@@ -595,6 +600,16 @@ describe("R11-05 product scoping", () => {
       // product (the KEK sweep, A-13's settings). Read only by the platform-admin activity
       // endpoint; product-scoped actions still go to `audit`, which is product-first.
       "platform_audit",
+      // 0056 (A-13) — the platform settings store: instance-wide runtime values for the keys of
+      // the typed `PLATFORM_SETTINGS` registry (background-job switches and tunables, no tenant
+      // data). Written and read only by the platform-admin settings endpoint and the resolver.
+      "platform_settings",
+      // 0057 (A-14) — self-reported operations: one row per cron step family or failed step
+      // (`platform_job_runs`) and one heartbeat per Worker script (`platform_heartbeats`). Both
+      // describe the deployment's own background work, are written only by the cron and the
+      // lazy-delta consumer, and are read only by the platform-admin Operations endpoint.
+      "platform_job_runs",
+      "platform_heartbeats",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

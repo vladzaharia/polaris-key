@@ -391,8 +391,9 @@ fixed in code. A product opts in from its own `.pkey/release` (`publishing.trust
 
 Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues
 enabled, two queues per environment, a second Worker script and, after its first deploy, two R2
-event-notification rules. The feature ships off (`LAZY_DELTAS = "off"` in both scripts); none of
-this changes behaviour until an operator turns it on.
+event-notification rules. The feature ships off: both scripts carry `LAZY_DELTAS = "runtime"`,
+which hands the switch to the console's platform settings store (A-13), where it defaults to off.
+None of this changes behaviour until an operator turns it on.
 
 1. **Queues** (per environment `<env>` = `prod`, `staging`, `dev`):
 
@@ -437,8 +438,11 @@ this changes behaviour until an operator turns it on.
    acknowledges an object of at most 1 MiB at once, and anything that is not a pack payload of
    an opted-in product after one lookup.
 
-4. **Turn it on** for a product: set `LAZY_DELTAS = "on"` in BOTH scripts' `[env.<env>.vars]`,
-   deploy both, then opt the product in (RUNBOOK "Lazy deltas").
+4. **Turn it on** in the console (Platform → Settings, or
+   `PATCH /manage/api/platform/settings/LAZY_DELTAS`), with no deploy: both scripts read the same
+   `platform_settings` row within 30 seconds. Then opt the product in (RUNBOOK "Lazy deltas").
+   `LAZY_DELTAS = "off"` in a script's `[env.<env>.vars]` is the deploy-time hard off that no
+   console value can override.
 
 ## 4. Worker secrets
 
@@ -481,6 +485,59 @@ Paste the complete GitHub App private key PEM for `GITHUB_APP_PRIVATE_KEY`, incl
 
 `PORTAL_EMAIL_FROM` does not need to be set when using the default sender
 `Polaris Key <noreply@plrs.im>`.
+
+### Platform store connections (A-16, optional)
+
+The platform holds ONE team-level credential per store (Platform → Store connections in the
+console; `/manage/api/platform/store-connections`). A product with no store credential of its own
+falls back to it, but only for the one app a platform admin assigned to that product. Each
+credential can be stored in the console (sealed under `PLATFORM_KEK`; preferred: it can be rotated
+and cleared there) or bootstrapped as a Worker secret, which is read only while no console
+credential is stored. Every secret is one JSON object of exactly the shape the console accepts;
+the console and API show only its presence and metadata (key id, issuer id, client email, …).
+
+| Worker secret                     | JSON shape                                                                                                          | What it is                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `PLATFORM_ASC_API_KEY`            | `{"keyId":"ABC123DEFG","issuerId":"69a6de7f-…","p8":"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----\n"}` | App Store Connect team API key (Users and Access → Integrations → App Store Connect API; App Manager role) |
+| `PLATFORM_APP_STORE_SERVER_KEY`   | `{"keyId":"…","issuerId":"…","p8":"-----BEGIN PRIVATE KEY-----\n…"}`                                                | the team's In-App Purchase key (Users and Access → Integrations → In-App Purchase)                         |
+| `PLATFORM_GOOGLE_SERVICE_ACCOUNT` | the service account's JSON key file as downloaded (`type`, `client_email`, `private_key`, `token_uri`, …)           | a service account invited into Play Console (the narrowest permissions the products need)                  |
+| `PLATFORM_MS_PARTNER_CENTER`      | `{"tenantId":"…","clientId":"…","clientSecret":"…","sellerId":"…"}`                                                 | the Entra app associated with the Partner Center account (Manager role)                                    |
+| `PLATFORM_STEAM_PUBLISHER_KEY`    | `{"key":"0123456789ABCDEF0123456789ABCDEF"}`                                                                        | a Steamworks Web API publisher key of the group                                                            |
+
+`p8` keeps the PEM's line breaks as `\n` inside the JSON string. One non-secret value can also be
+set as a var or a secret:
+
+```text
+PLATFORM_APPLE_TEAM_ID=48H7CLBV8Y   # the Apple Developer Team ID; App Attest's platform default
+```
+
+```sh
+cd packages/worker
+npx wrangler secret put PLATFORM_ASC_API_KEY --env prod   # paste the one-line JSON
+npx wrangler secret put PLATFORM_APPLE_TEAM_ID --env prod
+```
+
+**Preferred: through the `Sync Worker secrets` workflow**, so a private key never passes through
+a shell history, a terminal scrollback or an agent transcript. Store each value as a secret of
+the GitHub `production` environment straight from the local file, then dispatch the workflow:
+
+```sh
+gh secret set PLATFORM_ASC_API_KEY --env production < asc-api-key.json   # one-line JSON file
+gh secret set PLATFORM_APPLE_TEAM_ID --env production --body 48H7CLBV8Y
+gh workflow run sync-worker-secrets.yml -f target=prod                    # or target=staging
+```
+
+`.github/workflows/sync-worker-secrets.yml` (manual dispatch only, `environment: production`,
+read-only `GITHUB_TOKEN`, the environment's `CLOUDFLARE_API_TOKEN`) pushes every one of the six
+names that is set, with `wrangler secret put <NAME> --env <target>` reading the value from stdin,
+and logs only which names it synced or skipped. A static test
+(`packages/worker/test/syncWorkerSecretsWorkflow.test.ts`) keeps values out of argv and the log.
+The `wrangler secret put` lines above are the manual fallback.
+
+None of these is required; a store without one simply has no platform connection. After
+setting one, `GET /manage/api/platform/store-connections` should show that store's credential
+with `"source": "secret"` and `"secret": {"present": true, "valid": true}`; `valid: false` means
+the JSON did not pass the kind's validator (a wrong field name, a PEM without its line breaks).
 
 ## 5. Verify before deploy
 
@@ -586,6 +643,24 @@ After the first deploy that includes A-11, confirm on the Deployment endpoint th
 `migrations.applied` is a list (not `null`): that proves `d1_migrations` is readable through the
 binding on hosted D1, which the workerd lane shows only for local D1. If it is `null`, the page
 reports migrations as unknown and nothing else is affected.
+
+**Self-reported operations (A-14).** `GET /manage/api/platform/operations` (platform admins
+only) returns what the Worker can see about itself, with no Cloudflare token: `probes` (D1, KV and
+R2 answer, with latency), `queues` (the lazy-delta queue and its dead-letter queue: backlog count,
+bytes and oldest message, plus the consumer's fixed settings), `heartbeats` (when the cron and the
+lazy-delta consumer last ran, and on which build), `jobs` (each cron's latest run with its steps,
+recent runs and failed steps), `storage` (D1 size, committed R2 bytes by kind), `indexes`,
+`connectors` (per store connector: products, tracked objects, last poll, last webhook, failed
+webhooks in the last day) and `recentErrors`. A section that cannot be read is `null`; the rest
+still answers. It needs nothing new provisioned. The request Worker binds the existing dead-letter queue `pkey-deltas-dlq-<env>` as a
+producer, `DELTA_DLQ`, used only for `metrics()` (the deploy's queues preflight already checks the
+queue exists, and the token's Queues Edit already covers the binding). After the first deploy that
+includes A-14, confirm on the Operations endpoint that `queues.deadLetter.ok` is `true`: that
+proves `metrics()` answers on a producer-only binding to a queue with no consumer on hosted
+Queues, which the workerd lane shows only for local queues. If it is `false`, the page shows the
+reason and the dead-letter backlog as unknown, and nothing else is affected. The cron and the
+lazy-delta consumer write `platform_job_runs` and `platform_heartbeats`; the nightly sweep prunes
+both after 30 days.
 
 CI does not deploy on `main` pushes. PRs and `main` still run `.github/workflows/ci.yml`.
 

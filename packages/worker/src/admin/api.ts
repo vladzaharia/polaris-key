@@ -6,8 +6,11 @@
  *   /api/me                                  — the signed-in identity + CSRF + grants
  *   /api/products                            — PLATFORM registry CRUD (platform admins only)
  *   /api/products/<slug>/...                 — per-product admin (platform admins only)
- *   /api/platform/{version,deployment,activity} — instance-wide, product-less (platform admins
- *                                              only; A-11/A-12, `handlers/platform.ts`)
+ *   /api/platform/{version,deployment,activity,operations} — instance-wide, product-less
+ *                                              (platform admins only; A-11/A-12/A-14,
+ *                                              `handlers/platform.ts`)
+ *   /api/platform/store-connections/...      — team-level store connections (platform admins
+ *                                              only; A-16, `handlers/platformStoreConnections.ts`)
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
@@ -63,6 +66,7 @@ import {
   unauthorized,
 } from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
+import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
 import {
   handleProducts,
@@ -313,7 +317,17 @@ export async function handleAdminApi(
   const [head, ...rest] = segments;
 
   if (head === "me") return handleMe(env, db, session);
-  if (head === "platform") return handlePlatform(req, env, db, session, rest);
+  if (head === "platform" && rest[0] === "store-connections")
+    return handlePlatformStoreConnections(
+      req,
+      env,
+      db,
+      session,
+      rest.slice(1),
+      now,
+    );
+  if (head === "platform")
+    return handlePlatform(req, env, db, session, rest, now);
   if (head === "logout") {
     // R1-03: logout clears the session, so it is a mutation and must go through the CSRF
     // check above — which `isMutation` only applies to non-GET methods. As a GET it was a

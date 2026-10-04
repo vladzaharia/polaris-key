@@ -17,6 +17,12 @@ var catalog := [
 ## Whether managed asset packs answer (false: unsupported with `packs_reason`).
 var packs_supported := true
 var packs_reason := "outlet"
+## Where downloaded asset packs' files live (`packs_ensure`'s paths, `packs_url`'s answers).
+var staging_root := "/staging"
+## Asset-pack ids `packs_ensure` answers not ready, with this error.
+var not_ready := {}
+## Asset-pack ids made ready by `packs_ensure` in this run.
+var ensured: Array = []
 ## Whether `capabilities` reports StoreKit.
 var store_kit := true
 ## A reply that is not JSON for this op (tests the facade's bad-reply path).
@@ -122,10 +128,19 @@ func cmd(json: String) -> String:
 			if op == "packs_ensure":
 				var results := []
 				for p in q.get("packs", []):
+					var path := staging_root.path_join(str(p["path"]))
+					if not_ready.has(p["id"]):
+						push_event({"ev": "pack_failed", "id": p["id"], "err": str(not_ready[p["id"]])})
+						results.append({"id": p["id"], "ready": false, "error": str(not_ready[p["id"]])})
+						continue
+					ensured.append(p["id"])
 					push_event({"ev": "pack_progress", "id": p["id"], "bytes": 512, "total": 1024})
-					push_event({"ev": "pack_ready", "id": p["id"], "path": "/staging/" + str(p["path"])})
-					results.append({"id": p["id"], "ready": true, "path": "/staging/" + str(p["path"])})
+					push_event({"ev": "pack_ready", "id": p["id"], "path": path})
+					results.append({"id": p["id"], "ready": true, "path": path})
 				return _later(op, {"ok": true, "packs": results})
+			if op == "packs_url":
+				var path := staging_root.path_join(str(q.get("path", "")))
+				return _later(op, {"ok": true, "path": path, "exists": FileAccess.file_exists(path) or DirAccess.dir_exists_absolute(path)})
 			if op == "packs_watch" or op == "packs_unwatch":
 				return _later(op, {"ok": true, "id": q.get("id")})
 			return _later(op, {"ok": true})

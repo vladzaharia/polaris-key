@@ -986,9 +986,9 @@ static func capabilities() -> Dictionary:
 		"packs.type.audio.bank": {"status": "implemented", "service": "release", "na": []},
 		"packs.type.ml.model": {"status": "na", "service": "release", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.provides": {"status": "implemented", "service": "release", "na": []},
-		"packs.transport.apple": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"packs.transport.play": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"packs.transport.steam": {"status": "planned", "service": "distribution", "na": [{"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"packs.transport.apple": {"status": "implemented", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"packs.transport.play": {"status": "implemented", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"packs.transport.steam": {"status": "implemented", "service": "distribution", "na": [{"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.transport.msix": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.transport.flatpak": {"status": "planned", "service": "distribution", "na": [{"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.stages": {"status": "implemented", "service": "sdk", "na": []},
@@ -997,4 +997,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "d2790c5a7779e26ba7dc63d0012333349fddd2a41cf6047329f30c93660feed9"
+const CAPABILITY_DIGEST := "3305611b07ac0e625a384e9be91b97dc6f3394bbc98b27b2f945b6f69b2b876d"
