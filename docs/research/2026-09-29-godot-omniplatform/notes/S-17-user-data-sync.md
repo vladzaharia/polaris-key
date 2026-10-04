@@ -1,22 +1,52 @@
 > Research note for [Godot on Polaris Key](../README.md), 2026-10-04. Spike S-17, commissioned
 > by the lead on the owner's request of 2026-10-04: plan a system for user settings and store
-> sync, built on S-16's users and integrated into the SDKs, as an extension of the managed config
-> layer and flexible per app or game. It also carries the S-16 owner decision of the same day that
-> **removes the licence-level config override layer in favour of user-level managed config** and
-> asks S-17 for its migration path (§5.12). Research and design only: no product code changed,
-> nothing was deployed, no account or credential was used, and no live call was made. File
+> sync, built on S-16's identity layer and integrated into the SDKs, as an extension of the managed
+> config layer and flexible per app or game. It also carries the S-16 owner decision of the same
+> day that **removes the licence-level config override layer in favour of user-level managed
+> config** and asks S-17 for its migration path (§5.12). Research and design only: no product code
+> changed, nothing was deployed, no account or credential was used, and no live call was made. File
 > references are to the tree at `ece22812` (`W/` = `packages/worker/src/`,
 > `M/` = `packages/worker/migrations/`). Prior-art facts were read from primary documentation
 > during the research pass; figures marked [U] were not confirmed against a current primary page.
 > Revised the same day after a critique. The revision fixed the licence-override migration for
-> licence-key devices and licence-only products, and added a quickstart and the zero-sign-in
-> decision. It also specified per-member and OR-set conflict semantics, the exact push and journal
-> rules, and a client scenario corpus. Finally it added a cost and abuse model with per-product
-> ceilings, D1 write coalescing, the browser principal, and a re-cut and re-estimated work-package
-> table. Cloudflare prices and limits were re-read from developers.cloudflare.com during the
-> revision.
+> licence-key devices, added a quickstart, specified per-member and OR-set conflict semantics, the
+> exact push and journal rules and a client scenario corpus, and added a cost and abuse model with
+> per-product ceilings, D1 write coalescing, the browser principal and a re-estimated work-package
+> table. Cloudflare prices and limits were re-read from developers.cloudflare.com during that
+> revision. **Revised a second time the same day** for the owner decisions below and for S-16's
+> restructure around one Polaris Key account (S-16 at `1ee7375a`): the service, the principal, the
+> migration and the work-package table changed; the sync mechanics did not.
 
-# S-17: user data sync (user settings, collections and saves), defined
+> **Owner decisions (2026-10-04), binding. This header governs the note; where older text below
+> seems to say otherwise, this header wins.**
+>
+> 1. **Identity is S-16's two layers.** Layer 1, now: **one Polaris Key account across all
+>    products**, with sign-in methods as links, licences attached to the account, and floating
+>    licences (no account) that keep working but prompt sign-up. Layer 2, later: per-app identity.
+>    Developers only ever see data for their own products, through a **pairwise (per-product)
+>    subject**, never the global account id.
+> 2. **Cloud Sync is its own service**, named "Cloud Sync" (slug `sync`), with its own toggle. It
+>    depends on Config and on Identity layer 1. It is no longer a sub-surface of Config (§4).
+> 3. **The principal is the account × product**, seen by the product as its pairwise subject
+>    (§5.2).
+> 4. **The licence-level config override layer is removed everywhere.** It is replaced by
+>    **user-level managed config** attached to the account per product (the **account override**,
+>    §5.12). There is no "products without Identity keep licence overrides" exception any more.
+> 5. **Floating licences have no such layer**, and are prompted to sign up.
+> 6. **Overrides on licences with no owner are dropped at migration**, with an operator-visible
+>    report. There is no grace period.
+> 7. **No Cloud Sync without signing in, ever.** The zero-sign-in path (the licence-owned settings
+>    backup and U-26) is removed. Before sign-in, settings persist locally only.
+> 8. **Defaults confirmed:**
+>    - the MVP of about 64 agent-days first, then the anonymous-to-signed-in merge and saves,
+>      before collections;
+>    - per-product ceilings of 50 GiB, 100k users holding data and 2,000 pushes per second;
+>    - 1 MiB with saves off for signed-in users who hold no licence for the product;
+>    - the platform pays Cloudflare until per-product billing exists;
+>    - web apps use a device token issued to an origin on the product's `web.origins` allowlist,
+>      which depends on S-16's redirect work package (I-08).
+
+# S-17: Cloud Sync (user settings, collections and saves), defined
 
 Evidence tags, as in the other notes:
 
@@ -27,10 +57,10 @@ Evidence tags, as in the other notes:
 
 ## 1. Summary and recommendation
 
-**Question.** With S-16's product-scoped users approved, what system lets apps and games store a
-user's settings, and whatever else the developer needs, and have it follow the user across devices
-and storefronts? The owner framed it as an extension of Config and asked for flexibility per app
-or game.
+**Question.** With S-16's Polaris Key account approved, what system lets apps and games store a
+person's settings, and whatever else the developer needs, and have it follow them across devices
+and storefronts? The owner framed it as an extension of Config, asked for flexibility per app or
+game, and then decided it is its own service, **Cloud Sync**.
 
 **What exists today.** Every Config value is operator-authored, server-merged, signed with the
 product key and delivered per device. A device can write nothing in Config [V]
@@ -46,68 +76,80 @@ Nothing fills that slot durably:
 - only Godot has a writable, pluggable `PKeyOverrideStore`, and it is local only
   (`sdks/godot/addons/polaris_key/services/config/override_store.gd`) [V].
 
-The other missing piece is that **a device has no link to a user**. A device token resolves to
-`{tokenHash, license|null, device}` (`W/core/devices.ts:136-142`) [V], and S-16 defers any device
-to user column to I-18.
+The other missing piece is that **a device has no link to a person**. A device token resolves to
+`{tokenHash, license|null, device}` (`W/core/devices.ts:136-142`) [V]. S-16 adds accounts and
+pairwise subjects but no device-to-account column (its named-user seats WP, I-24, would add
+`devices.holder_account_id` later).
 
-**Recommendation: Option C, "settings in Config, data beside it, one user authority" [I].**
-User data is three tiers on one principal, all declared as data in `.pkey/schema` (rule 5):
+**Recommendation: Option C, "one catalog, its own service, one principal" [I; the service split is
+the owner's decision].** Cloud Sync data is three tiers on one principal, all declared as data in
+`.pkey/schema` (rule 5):
 
 1. **User settings.** These are catalog `config` keys that opt in with a `user` block. They are
    typed, schema-validated and defaulted by the catalog, and the operator can still enforce them.
-   The user's value fills the existing `local` slot on the client. The precedence order and the
-   `config-matrix.json` corpus are unchanged, and `enforced` and `hidden` still win.
+   The person's value fills the existing `local` slot on the client. The precedence order and the
+   `config-matrix.json` corpus are unchanged, and `enforced` and `hidden` still win. The Config SDK
+   persists the value locally on every product; Cloud Sync carries it across devices.
 2. **Collections.** Developer-declared namespaces of JSON records (progress, unlocks, loadouts,
    UI layout, mod data, wildcards such as `mod.*`). Each declares an access class, a conflict
    policy, an optional schema and limits.
 3. **Saves.** Slot-based blobs in R2 with small listable metadata (playtime, progress, chapter,
    thumbnail), revisions, a format version and metadata-driven conflict policies.
 
-**Operator side.** A **user override** layer, written by the operator per user, replaces the
-licence override layer on products that enable Identity, as the owner decided. It is merged
-server-side into the signed config document at the position the licence overrides hold today
-(§5.12). The document's _content_ changes; its _shape_ does not. Two rules keep existing customers
-whole:
+**Service split.** Cloud Sync (slug `sync`) owns the device routes under `/<p>/sync/`, the
+per-principal Durable Object, R2 save blobs and its console section. It reads the product's
+catalog through `shared-catalog` and Core, never by importing the Config service (rule 6). Config
+keeps the signed document and gains the operator layer below. A product turns Cloud Sync on with
+its own toggle, which requires Config.
 
-- a device on an owned licence that activated by licence key still receives the owning user's
-  overrides, because Core resolves the layer through `licenses.user_id`;
-- a product without Identity has no users, so it keeps its licence overrides unchanged
-  (decisions 3 and 4).
+**Operator side: the account override.** The owner removed the licence-level config override layer
+everywhere. In its place, an operator writes **user-level managed config for one account on one
+product**. Core merges it server-side into the signed config document at the position licence
+overrides hold today (§5.12). The document's _content_ changes; its _shape_ does not. The account
+override is Config's, not Cloud Sync's: it needs no Cloud Sync toggle and no sign-in on the device.
 
-**Principal.** A new Core column, `devices.user_id`, records "the user signed in on this device".
-Identity's `signIn` sets it when it returns the activation response, and `signOut` clears it. It
-is not a seat claim and never enters a signed document, so S-16 decision 9 stands. Licence-key
-activations never set it, which keeps S-16's rule that a licence-key principal never reaches the
-owner's profile. The only exception is the operator override layer above, which is operator data
-and not user data.
+- A device whose licence is **owned** by an account receives that account's overrides, even if it
+  activated by licence key before the licence was attached, because Core resolves the layer through
+  `licenses.account_id`. So existing installs keep their values.
+- A device on a **floating** licence gets no account layer, and the SDK UI kits prompt sign-up.
+- At migration, overrides on owned licences move to the owner's account × product; **overrides on
+  licences with no owner are dropped**, listed in an operator report (§5.12).
 
-**Browser.** A web React app is a browser device. It holds a device token, gets a user bound
-through I-13's web redirect token route or I-08's email code, and calls the user-data routes with
-`Authorization: Bearer`. Those calls pass through the existing per-product `web.origins` CORS
+**Principal.** The principal is the **account × product**, which the product sees as its pairwise
+subject. A new Core column, `devices.account_id`, records "this account signed in on this device".
+Identity's sign-in sets it when it returns the activation response, and sign-out clears it. It is
+not a seat claim and never enters a signed document, so S-16 decision 9 stands. Licence-key
+activations never set it. Cloud Sync storage is keyed by `(product, subject)`, so nothing in it
+carries the global account id or joins across products.
+
+**No Cloud Sync without signing in.** Cross-device sync needs the Cloud Sync toggle on and a
+signed-in account. Before sign-in, settings persist locally and upload at first sign-in, through
+the attach merge (§5.5). A floating-licence device has no Cloud Sync and sees the sign-up prompt.
+§5.16 has the five-minute quickstart.
+
+**Browser.** A web React app is a browser device. It holds a device token issued through S-16
+I-08's web redirect to an origin on the product's `web.origins` allowlist, and calls the Cloud Sync
+routes with `Authorization: Bearer`. Those calls pass through the existing per-product CORS
 allowlist, which never sends `Access-Control-Allow-Credentials` (`W/core/cors.ts:1-33`) [V]. No
 cookie is involved, so there is no CSRF surface (§5.8 item 9).
 
-**Sync needs a signed-in user.** Cross-device sync works once Identity is enabled and the user has
-signed in. Before that, settings persist locally and upload at first sign-in. A licence-owned
-settings backup for licence-only products is decision 18 (default: yes, after the MVP). §5.16 has
-the five-minute quickstart.
-
-**Storage.** One SQLite-backed Durable Object per `(product, user)` serialises that user's writes
-and owns the change sequence. R2 holds save bytes. D1 holds the user override layer (Core reads it
-when it builds documents), a directory row per user for the console, and quota summaries. The DO
-writes the directory row at most once every 15 minutes, from an alarm, so D1 sees about one to
-three writes per daily active user and none per sync operation (§5.2).
+**Storage.** One SQLite-backed Durable Object per `(product, subject)` serialises that principal's
+writes and owns the change sequence. R2 holds save bytes. D1 holds the account override layer (Core
+reads it when it builds documents), a directory row per principal for the console, and quota
+summaries. The DO writes the directory row at most once every 15 minutes, from an alarm, so D1 sees
+about one to three writes per daily active user and none per sync operation (§5.2).
 
 **Cost.** A 100k-DAU game with saves comes to roughly **$850 a month** on Cloudflare list prices.
 R2 storage of save revisions and DO row writes dominate. A free app with 1M registered users and
 settings only comes to about **$6 a month**. Abuse is bounded by per-product ceilings and by lower
-defaults for users without a licence (§5.17).
+defaults for users without a licence (§5.17). The platform pays until per-product billing exists
+(owner).
 
-**Sync.** A Replicache-shaped push and pull over the new device routes under `/<p>/config/user/`,
-with these parts:
+**Sync.** A Replicache-shaped push and pull over the new device routes under `/<p>/sync/`, with
+these parts:
 
 - a per-client `mutationId` for idempotency, which advances past every processed result;
-- a per-user `seq` cursor;
+- a per-principal `seq` cursor;
 - tombstones and a `cursor_expired` reset;
 - per-key last-writer-wins by a clamped hybrid logical clock (HLC) for settings, with per-member
   clocks for object settings;
@@ -117,67 +159,72 @@ with these parts:
 
 Pull is the baseline. A hibernating WebSocket "poke" comes later. The client state machine
 (journal, debounce, clock, rebase, partitioning, attach merge) is pinned by a language-neutral
-scenario corpus, `userdata-scenarios.json`, which every SDK replays against a fake clock and a fake
+scenario corpus, `sync-scenarios.json`, which every SDK replays against a fake clock and a fake
 server (§5.13).
 
 **Wire.** This is **plan mode**: new device-facing routes, new error codes, transcripts and all
-six SDKs. There is **no `PROTOCOL_VERSION` bump** and **no signed-corpus change**, because user
-data is not a signed document and the client resolution order does not change. It is the same
-class of change as S-16 phase 1 (S-16 §5.3).
+six SDKs. There is **no `PROTOCOL_VERSION` bump** and **no signed-corpus change**, because Cloud
+Sync data is not a signed document and the client resolution order does not change. It is the same
+class of change as S-16 layer 1 (S-16 §5.3).
 
-**Effort.** About **115 agent-days** for phases U0 to U3 in §6, plus about 14 for optional later
-packages. The **minimum viable cut** is about **64 agent-days**. It covers settings in all six
-SDKs, the user override layer with the owner's licence-override removal, the scenario corpus, a
-security review, and the settings half of export and deletion. It sits on S-16's I-06, I-07 and
-I-11, and on I-13 for the web. The first draft said 81 and 45; the critique showed the SDK and
-collections packages were undersized against S-16's I-11 (§6).
+**Effort.** About **112 agent-days** for phases U0 to U3 in §6, plus about 14 for optional later
+packages. The **minimum viable cut** is about **65 agent-days** (the owner confirmed about 64; the
+extra day is the portal's Cloud Sync section that S-16's Library now calls for). It covers settings
+in all six SDKs, the account override layer with the platform-wide licence-override migration, the
+scenario corpus, a security review, and the settings half of export and deletion. Next come the
+anonymous-to-signed-in merge and saves, then collections (owner). It sits on S-16's I-05, I-10,
+I-11 and I-12, and on I-08 for the web (§6).
 
 ```mermaid
 flowchart LR
   subgraph Device["Device or browser (six SDKs)"]
     R["Config resolver<br/>enforced|hidden > local > env > remote-default > fallback"]
-    J["User-data journal<br/>(separate from the signed cache)"]
+    J["Cloud Sync journal<br/>(separate from the signed cache)"]
     J -- "user settings fill the local slot" --> R
   end
   subgraph Worker["Worker"]
-    CORE["Core<br/>device token (native or browser bearer) → device → user_id"]
-    CFG["Config service<br/>/config/document (signed)<br/>/config/user/* (unsigned, authenticated)"]
-    UDO["UserData Durable Object<br/>per (product, user)<br/>settings · records · save pointers · seq"]
-    D1[("D1<br/>user_overrides · directory · quotas")]
+    CORE["Core<br/>device token (native or browser bearer)<br/>→ device → account → pairwise subject"]
+    CFG["Config service<br/>/config/document (signed)<br/>account override layer"]
+    SYNC["Cloud Sync service (slug sync)<br/>/sync/* (unsigned, authenticated)"]
+    UDO["Cloud Sync Durable Object<br/>per (product, subject)<br/>settings · records · save pointers · seq"]
+    D1[("D1<br/>account_overrides · directory · quotas")]
     R2[("R2<br/>save blobs")]
-    ID["Identity (S-16)<br/>signIn sets devices.user_id"]
+    ID["Identity layer 1 (S-16)<br/>sign-in sets devices.account_id"]
   end
   ID --> CORE
   R -- "GET /config/document" --> CFG
-  J -- "push ops / pull since cursor" --> CFG
+  J -- "push ops / pull since cursor" --> SYNC
   CFG --> CORE
-  CFG -- "user override layer (operator)" --> D1
-  CFG --> UDO
+  SYNC --> CORE
+  CFG -- "account override layer (operator)" --> D1
+  SYNC --> UDO
   UDO --> R2
   UDO -. "directory, quotas (alarm, ≤ 1 per 15 min)" .-> D1
-  CON["Console Users page (I-07)<br/>Data tab, export, delete"] --> CFG
+  CON["Console Users page (S-16 I-12)<br/>Data tab, export, delete"] --> SYNC
+  CON --> CFG
+  POR["Portal product page (S-16 I-11)<br/>Cloud Sync section"] --> SYNC
 ```
 
-## 2. What user data is for: the jobs
+## 2. What Cloud Sync is for: the jobs
 
-| #   | Job                                                                                                                           | Example                                             | Scope                                                          |
-| --- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
-| U1  | **Settings sync.** A user's choices follow them across devices, with operator enforcement still winning                       | Volume, language, keybinds, accessibility           | **Now** (MVP; cross-device needs a signed-in user, §5.16)      |
-| U2  | **Per-platform and per-device settings.** Some values roam within one platform family; some must never roam                   | Graphics quality on PC vs Switch; window geometry   | **Now** (MVP, through `sync` scopes)                           |
-| U3  | **Operator per-user config.** Support pins a value or grants a key for one person, replacing licence overrides                | "Give this tester the beta endpoint"                | **Now** (MVP; Identity products only, decision 3)              |
-| U4  | **Developer KV and document stores.** Arbitrary JSON the app needs, declared per product                                      | Progress, unlocks, loadouts, notes, mod data        | **Now** (phase 2)                                              |
-| U5  | **Save slots and blobs.** Opaque game saves with metadata, revisions and conflict UI                                          | Five save slots, 32 MiB each                        | **Now** (phase 3)                                              |
-| U6  | **Cross-device and cross-storefront continuity.** One user on Steam, iOS and the web sees the same data                       | Buy on Steam, continue on iPad                      | **Now**; falls out of product-scoped users (S-16)              |
-| U7  | **Anonymous first, signed in later.** Data written before sign-in merges into the user, with a prompt only on a real conflict | Play offline, create an account at level 10         | **Now** (phase 2)                                              |
-| U8  | **Support inspection.** Support sees, edits, resets and restores a user's data, audited                                       | "Why is my volume stuck?"; restore yesterday's save | **Now** (console Data tab)                                     |
-| U9  | **Privacy.** Export and delete as part of S-16's user export and deletion                                                     | GDPR Art. 15, 17, 20                                | **Now** (settings half in the MVP; the rest with each tier)    |
-| U10 | **Server-authoritative data.** Values the player must not edit, written by the developer's backend or the console             | Currency, entitlements mirrors, competitive stats   | **Later** (needs a backend credential; console writes now)     |
-| U11 | **Live cross-device updates.** A change on one device appears on another within seconds                                       | Companion app                                       | **Later** (WebSocket poke)                                     |
-| U12 | **Public data.** Other users of the same product read it                                                                      | Profile cards, ghost runs                           | **Later**                                                      |
-| U13 | **Cross-product (organisation) scope.** A user's data shared by several products of one developer                             | A franchise profile                                 | **Later**, opt-in; conflicts with S-16 decision 2 as it stands |
-| U14 | **Client-side end-to-end encryption.** Polaris cannot read the data                                                           | Private journals                                    | **Later**, as an opaque value type                             |
-| U15 | **Zero-sign-in backup.** Settings roam across one licence's devices with no sign-in, for licence-only products                | A licence-key desktop app on two PCs                | **Phase 2**, settings only (decision 18)                       |
-| —   | Query language, secondary indexes, leaderboards, matchmaking, a general app database, CRDTs in every SDK                      | Firestore-style queries; Yjs documents              | **Never** in this service (store CRDT bytes as opaque values)  |
+| #   | Job                                                                                                                              | Example                                             | Scope                                                                                   |
+| --- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| U1  | **Settings sync.** A person's choices follow them across devices, with operator enforcement still winning                        | Volume, language, keybinds, accessibility           | **Now** (MVP; cross-device needs a signed-in account, §5.16)                            |
+| U2  | **Per-platform and per-device settings.** Some values roam within one platform family; some must never roam                      | Graphics quality on PC vs Switch; window geometry   | **Now** (MVP, through `sync` scopes)                                                    |
+| U3  | **Operator per-account config.** Support pins a value or grants a key for one person, replacing licence overrides                | "Give this tester the beta endpoint"                | **Now** (MVP; every product, decision 3; owned licences only)                           |
+| U4  | **Developer KV and document stores.** Arbitrary JSON the app needs, declared per product                                         | Progress, unlocks, loadouts, notes, mod data        | **Now** (phase U3, after saves)                                                         |
+| U5  | **Save slots and blobs.** Opaque game saves with metadata, revisions and conflict UI                                             | Five save slots, 32 MiB each                        | **Now** (phase U2)                                                                      |
+| U6  | **Cross-device and cross-storefront continuity.** One person on Steam, iOS and the web sees the same data                        | Buy on Steam, continue on iPad                      | **Now**; falls out of the one Polaris Key account (S-16)                                |
+| U7  | **Anonymous first, signed in later.** Data written before sign-in merges into the account, with a prompt only on a real conflict | Play offline, create an account at level 10         | **Now** (phase U2, owner order)                                                         |
+| U8  | **Support inspection.** Support sees, edits, resets and restores a person's data for its product, audited                        | "Why is my volume stuck?"; restore yesterday's save | **Now** (console Data tab, pairwise subject only)                                       |
+| U9  | **Privacy.** Export and delete as part of S-16's account and per-product export and deletion                                     | GDPR Art. 15, 17, 20                                | **Now** (settings half in the MVP; the rest with each tier)                             |
+| U10 | **Server-authoritative data.** Values the player must not edit, written by the developer's backend or the console                | Currency, entitlements mirrors, competitive stats   | **Later** (needs a backend credential; console writes now)                              |
+| U11 | **Live cross-device updates.** A change on one device appears on another within seconds                                          | Companion app                                       | **Later** (WebSocket poke)                                                              |
+| U12 | **Public data.** Other users of the same product read it                                                                         | Profile cards, ghost runs                           | **Later**                                                                               |
+| U13 | **Cross-product (organisation) scope.** A person's data shared by several products of one developer                              | A franchise profile                                 | **Later**, opt-in, its own spike; it would cut across pairwise subjects (owner privacy) |
+| U14 | **Client-side end-to-end encryption.** Polaris cannot read the data                                                              | Private journals                                    | **Later**, as an opaque value type                                                      |
+| —   | Cloud Sync without signing in (a licence- or device-owned backup)                                                                | A licence-key desktop app on two PCs                | **Never** (decision 18); local persistence only                                         |
+| —   | Query language, secondary indexes, leaderboards, matchmaking, a general app database, CRDTs in every SDK                         | Firestore-style queries; Yjs documents              | **Never** in this service (store CRDT bytes as opaque values)                           |
 
 The Godot program needs U1, U5 and U7 most. Desktop and mobile apps need U1, U3, U4 and U8 [I].
 
@@ -221,9 +268,9 @@ The Godot program needs U1, U5 and U7 most. Desktop and mobile apps need U1, U3,
 - **The signed config document** is `pkey-config+jws`, device-token authenticated with no licence
   gate (D-08) and strongly ETagged (`W/services/config/document.ts:58-137`) [V]. It is capped at
   `MAX_DOC_BYTES = 65536` (`packages/shared-jws/src/index.ts:114`) [V]. The cap alone rules out
-  carrying arbitrary user data in it.
+  carrying arbitrary Cloud Sync data in it.
 - **The offline cache holds signed artefacts only.** Unsigned state in it was the R2-01/R4-01
-  vulnerability class (`packages/client-core/src/store.ts:1-25`) [V]. User data needs its own
+  vulnerability class (`packages/client-core/src/store.ts:1-25`) [V]. Cloud Sync needs its own
   journal, and that journal must never feed a gate.
 - **The only device-authored store is telemetry.** `POST /<p>/devices/report` has a 16 KiB cap, a
   bounded allowlist and overwrite semantics (`W/core/devices.ts:1098-1150`) [V]. Its auth, size cap
@@ -249,24 +296,47 @@ Godot's documented rule is the one to adopt everywhere: "the store is never writ
 enforced or hidden key IGNORES the saved value, it does not delete it, so the player's choice comes
 back if the operator relaxes the state" (`override_store.gd:15-16`) [V].
 
-### 3.3 Identity (S-16) as it touches user data
+### 3.3 Identity (S-16) as it touches Cloud Sync
 
-- **Users** are product-scoped (`identity_users (product, id)`), with many links. The portal account
-  is the only cross-product record (S-16 §5.1, `:389-404`) [V].
-- **"Anonymous first, sign in later"** is "attach this device's licence to the signed-in user" with
-  a confirm step (S-16 §5.1) [V].
-- **A licence-key sign-in** is low-assurance (`amr: ["pkey_license"]`) and "never reaches the
-  owner's other licences, links or profile" (S-16 §5.1) [V]. User data must respect that.
-- **Identity without License:** an Identity-only product gets users and device tokens under
-  `requires-identity` (S-16 §5.1, decision 4) [V]. Such devices carry `license_id = ""`
-  (`NO_LICENSE_ID`, `W/core/devices.ts:170-189`) [V], so any licence-based route to the user fails
-  for them.
+Read against S-16 at `1ee7375a`, restructured around the owner's two-layer decision:
+
+- **One global account, pairwise per product.** A person has one Polaris Key account with many
+  sign-in links and one Library of licences from every developer. Each product sees the person only
+  as a stored random **pairwise subject** per `(account, product)` (`account_product_subjects`).
+  "The global account id never leaves the Identity service and the portal"; S-16 §5.6 nonetheless
+  owes S-17 the account id inside the Worker, the pairwise subject at the edge, the merge and
+  deletion hooks, and a web device token (S-16 §5.1, §5.6) [V].
+- **Account × product data** is an S-16 noun: managed config overrides and Cloud Sync data, keyed
+  `(account_id, product)` in its table sketch, "owned by S-17; listed here because deletion and
+  merge must reach it" (S-16 §5.1) [V]. This note keys Cloud Sync storage by the pairwise subject,
+  which names the same pair (§5.2).
+- **Licences attach to accounts.** `licenses.account_id` (nullable) replaces `licenses.sub` and
+  `portal_license_links`; null means floating. The claim rules are first-attach only, and an owned
+  licence never moves by key (S-16 §5.1) [V].
+- **Floating licences** keep working on devices exactly as today, prompt sign-up, and "have no
+  account × product data" (S-16 §5.1) [V].
+- **Key entry is a bounded on-ramp.** Past a product's `keyEntryLimit`, apps refuse the key with
+  `key_entry_limit` and a `portalUrl`; attaching the licence ends key entry for it. Existing
+  installs are never affected (S-16 §5.3) [V]. So a licence-key device on a licence that was later
+  attached keeps running, which is why §5.12's owner fallback exists.
+- **Account merge** needs proof of both accounts. For each product both touched, the surviving
+  pairwise subject wins and the other becomes an alias; colliding account × product data "is never
+  silently overwritten; S-17 owns the conflict UI" (S-16 §5.1) [V]. §5.5 defines it.
+- **Apps never host credential entry** in layer 1. Sign-in is the login card at `key.plrs.im`, by
+  web redirect, native redirect or device code, with the "<App> wants you to sign in" header; the
+  earlier in-app email-code API is dropped (S-16 D17) [V]. Quickstart code here uses that flow.
+- **Identity without License:** signing in gives a product a pairwise subject and a device token
+  without minting a licence, under `requires-identity` (S-16 decision 4) [V]. Such devices carry
+  `license_id = ""` (`NO_LICENSE_ID`, `W/core/devices.ts:170-189`) [V], so any licence-based route
+  to the account fails for them; `devices.account_id` covers them.
 - **The device keeps the licence document as its only gate.** `PROTOCOL_VERSION` stays 4.
-  `DocProfile` has no subject until I-18 (S-16 §5.3, decision 9) [V].
-- **Privacy:** per-user export (I-07), and a deletion cascade with tombstones re-applied after a D1
-  restore (S-16 §5.5) [V]. User data joins both.
-- **Not covered by S-16:** settings. Its only nearby mention is J8 "cloud saves" through the phase 3
-  issuer (S-16 `:140`) [V].
+  `DocProfile` has no subject until named-user seats, I-24 (S-16 §5.3, decision 9) [V].
+- **Privacy:** Polaris is controller for the account and processor for each product's data; full
+  account deletion cascades to every product's account × product data and emits a
+  `subject.deleted` event per product; per-product export and deletion exist in the portal (I-11)
+  and the console (I-12) (S-16 §5.5) [V]. Cloud Sync joins all of these.
+- **The portal is the Library** (I-11), with a Cloud Sync section only on the product pages of
+  products with the service on (S-16 §5.7) [V].
 
 ### 3.4 Extension points
 
@@ -275,11 +345,12 @@ back if the operator relaxes the state" (`override_store.gd:15-16`) [V].
 | Client `local` slot and `ConfigSource`                                                       | User settings fill it; `getConfigSource` keeps answering `local`         |
 | Godot `PKeyOverrideStore`                                                                    | `PKeyUserSettingsStore extends PKeyOverrideStore`                        |
 | `Catalog.validateKeyValue` and representability                                              | Server-side validation of every settings write and schema-bearing record |
-| `applyOverrides` batch semantics and sealing                                                 | The operator user override layer, unchanged                              |
-| `mergePayloads` and the enforced-wins rule                                                   | The user override layer slots in where licence overrides sit             |
-| `ManagedPayloadEditor.tsx`                                                                   | The console editor for user overrides                                    |
+| `applyOverrides` batch semantics and sealing                                                 | The operator account override layer, unchanged                           |
+| `mergePayloads` and the enforced-wins rule                                                   | The account override layer slots in where licence overrides sit          |
+| `ManagedPayloadEditor.tsx`                                                                   | The console editor for account overrides                                 |
 | `RateLimitDO`, `UpdateHealthDO`, R2 `BLOBS` (`packages/worker/wrangler.toml:31-40, 143-157`) | Precedent for a new Durable Object class and the R2 binding [V]          |
 | `devices/report` caps and `coreDeviceAllowed`                                                | Request-size caps and licence scoping on writes                          |
+| `tools/services.json` descriptors and the services checklist                                 | The new `sync` service (Cloud Sync), its toggle and `requires: config`   |
 | `tools/gen-mirrors.ts`                                                                       | Typed setting keys and collection types per language                     |
 | `packages/cli/src/saveCompat.ts` (`provides`, `contentApi`)                                  | Save metadata records the content API a save needs                       |
 
@@ -288,7 +359,7 @@ back if the operator relaxes the state" (`override_store.gd:15-16`) [V].
 ### Option A: a user layer inside the signed config document
 
 The server merges user values as `state: "default"` entries above device overrides and signs them
-into `pkey-config+jws`. User writes go through a small `PATCH /config/user` route.
+into `pkey-config+jws`. User writes go through a small `PATCH /sync` route.
 
 - **Pros.** No document shape change and no new cache slice. Enforcement is automatic through
   `merge.ts`. One read path.
@@ -303,10 +374,10 @@ into `pkey-config+jws`. User writes go through a small `PATCH /config/user` rout
   - There is no conflict model.
 - **Verdict.** Right only for the **operator** user layer (§5.12), wrong for user-authored data.
 
-### Option B: a separate user-data service, catalog-declared
+### Option B: a separate service with its own schema store
 
-A new service slug (for example `userdata`) owns settings, collections and saves behind its own
-routes. Its schemas are declared in `.pkey/schema`. Settings are merged client-side.
+A new service owns settings, collections and saves behind its own routes, and declares its own
+schemas outside the catalog. Settings are merged client-side.
 
 - **Pros.**
   - Clean boundaries.
@@ -314,27 +385,39 @@ routes. Its schemas are declared in `.pkey/schema`. Settings are merged client-s
   - Sync mechanics fit the data, with no document coupling.
 - **Cons.**
   - Settings are config: they share keys, schemas, defaults and enforcement with the catalog. A
-    second service has to import Config's catalog or duplicate it.
-  - The tools/services.json checklist, boundaries test, discovery fragment and console section all
-    double.
-  - It cuts against the owner's "extension of the managed config layer".
+    second schema store duplicates the catalog and drifts from it.
+  - The `tools/services.json` checklist, boundaries test, discovery fragment and console section
+    all double.
 
-### Option C: hybrid, inside Config (recommended)
+### Option C: one catalog, its own service (recommended; the service split is the owner's decision)
 
-Settings are a user-scoped Config layer, merged client-side into the `local` slot. Collections and
-saves are sub-surfaces of the same Config service. Both sit on one per-user Durable Object.
-The operator user override layer is merged server-side into the signed document.
+The first revision put Cloud Sync inside Config. The owner then decided it is **its own service**,
+"Cloud Sync" (slug `sync`), with its own toggle, depending on Config and on Identity layer 1. The
+recommendation keeps what made the hybrid work and adopts the split:
+
+- **One catalog.** Settings are catalog `config` keys with a `user` block; collections and saves
+  are declared in the same `.pkey/schema`. Cloud Sync reads the catalog through `shared-catalog`
+  and a Core accessor, never by importing the Config service (rule 6).
+- **Settings fill the client `local` slot.** The Config SDK persists them locally on every product;
+  Cloud Sync carries them across devices when it is on and the person is signed in.
+- **Its own service.** Routes under `/<p>/sync/`, its own Durable Object class, R2 prefix, discovery
+  fragment, console section and `tools/services.json` entry. Turning it on requires Config.
+- **The operator layer stays in Config.** The account override is managed config, merged by Core
+  into the signed document (§5.12). It does not need Cloud Sync.
 
 - **Pros.**
   - One catalog, one validator and one enforcement rule.
   - The client precedence and the corpus are unchanged.
   - Each tier gets the conflict model it needs.
-  - Config stays one enablement switch.
+  - Config stays read-only on the device wire; the first device-writable data surface is a service
+    of its own, with its own toggle, cost ceilings and security review.
+  - Products that want only managed config pay nothing for Cloud Sync.
 - **Cons.**
-  - Config grows from read-only to read-write.
-  - The Config service now depends on a user principal, which Core must supply so Config never
-    imports Identity (rule 6).
-  - User data needs Identity enabled to be useful across devices.
+  - A new service descriptor, discovery fragment and console section (about one agent-day, in
+    U-04).
+  - Cloud Sync depends on a principal, which Core must supply so it never imports Identity
+    (rule 6).
+  - Cloud Sync is useless without sign-in, by the owner's decision.
 
 ### Option D: a sync engine or CRDT documents (rejected as the default)
 
@@ -351,78 +434,94 @@ guidance goes into the docs (§9).
 
 ### Conflict and offline models considered
 
-| Model                                         | Settings     | Records      | Saves          | Cost                                            |
-| --------------------------------------------- | ------------ | ------------ | -------------- | ----------------------------------------------- |
-| Arrival-order last-writer-wins                | No           | No           | No             | An offline week overwrites newer edits          |
-| **Per-key LWW by clamped HLC edit time**      | **Yes**      | Opt-in       | No             | 64-bit clock per value; server clamps skew      |
-| **Revision compare-and-swap + merge hook**    | No           | **Default**  | Yes (`manual`) | Every SDK surfaces a callback; keep a base copy |
-| **Metadata policy** (playtime, progress)      | No           | No           | **Default**    | Typed metadata on the slot                      |
-| Per-member LWW (object members, own HLC each) | `merge`      | `merge`      | No             | A clock row per member; member ops on the wire  |
-| Observed-remove set (OR-set) on the server    | No           | `union`      | No             | An add tag per element; `remove` names a cursor |
-| Server-applied commutative ops (`inc`, `max`) | `max`, `min` | Opt-in       | No             | Server applies; idempotent by mutation id       |
-| Vector clocks                                 | No           | No           | No             | Not needed with one server authority per user   |
-| Full CRDT state                               | No           | Opaque value | Opaque value   | Not in GDScript                                 |
+| Model                                         | Settings     | Records      | Saves          | Cost                                               |
+| --------------------------------------------- | ------------ | ------------ | -------------- | -------------------------------------------------- |
+| Arrival-order last-writer-wins                | No           | No           | No             | An offline week overwrites newer edits             |
+| **Per-key LWW by clamped HLC edit time**      | **Yes**      | Opt-in       | No             | 64-bit clock per value; server clamps skew         |
+| **Revision compare-and-swap + merge hook**    | No           | **Default**  | Yes (`manual`) | Every SDK surfaces a callback; keep a base copy    |
+| **Metadata policy** (playtime, progress)      | No           | No           | **Default**    | Typed metadata on the slot                         |
+| Per-member LWW (object members, own HLC each) | `merge`      | `merge`      | No             | A clock row per member; member ops on the wire     |
+| Observed-remove set (OR-set) on the server    | No           | `union`      | No             | An add tag per element; `remove` names a cursor    |
+| Server-applied commutative ops (`inc`, `max`) | `max`, `min` | Opt-in       | No             | Server applies; idempotent by mutation id          |
+| Vector clocks                                 | No           | No           | No             | Not needed with one server authority per principal |
+| Full CRDT state                               | No           | Opaque value | Opaque value   | Not in GDScript                                    |
 
 All models are offline-first: the SDK writes to a local journal, reads its own writes at once, and
 flushes later (§5.4).
 
 ### Comparison
 
-| Criterion                                     | A: signed layer       | B: separate service | **C: hybrid in Config** | D: sync engine | E: native only |
-| --------------------------------------------- | --------------------- | ------------------- | ----------------------- | -------------- | -------------- |
-| Settings feel like config                     | Yes                   | Partly              | **Yes**                 | No             | No             |
-| Arbitrary developer data                      | No (64 KiB)           | Yes                 | **Yes**                 | Yes            | Saves only     |
-| Saves and blobs                               | No                    | Yes                 | **Yes**                 | Partly         | Yes            |
-| Conflict model fits each tier                 | No                    | Yes                 | **Yes**                 | Yes            | Platform's     |
-| Client precedence and corpus unchanged        | No (`remote-default`) | Yes                 | **Yes**                 | No             | n/a            |
-| `PROTOCOL_VERSION` bump                       | No                    | No                  | **No**                  | No             | n/a            |
-| Implementable in all six SDKs, incl. GDScript | Yes                   | Yes                 | **Yes**                 | No             | Per platform   |
-| Rule 6 boundaries                             | Core                  | New service         | **Core resolver**       | n/a            | n/a            |
-| Cross-storefront continuity                   | Yes                   | Yes                 | **Yes**                 | Yes            | No             |
-| Effort (agent-days, full)                     | ~20                   | ~130                | **~115**                | 150+           | ~30            |
+| Criterion                                     | A: signed layer       | B: own schema store | **C: one catalog, own service** | D: sync engine | E: native only |
+| --------------------------------------------- | --------------------- | ------------------- | ------------------------------- | -------------- | -------------- |
+| Settings feel like config                     | Yes                   | Partly              | **Yes**                         | No             | No             |
+| Arbitrary developer data                      | No (64 KiB)           | Yes                 | **Yes**                         | Yes            | Saves only     |
+| Saves and blobs                               | No                    | Yes                 | **Yes**                         | Partly         | Yes            |
+| Conflict model fits each tier                 | No                    | Yes                 | **Yes**                         | Yes            | Platform's     |
+| Client precedence and corpus unchanged        | No (`remote-default`) | Yes                 | **Yes**                         | No             | n/a            |
+| `PROTOCOL_VERSION` bump                       | No                    | No                  | **No**                          | No             | n/a            |
+| Implementable in all six SDKs, incl. GDScript | Yes                   | Yes                 | **Yes**                         | No             | Per platform   |
+| Rule 6 boundaries                             | Core                  | New service         | **New service, Core resolver**  | n/a            | n/a            |
+| Cross-storefront continuity                   | Yes                   | Yes                 | **Yes**                         | Yes            | No             |
+| Effort (agent-days, full)                     | ~20                   | ~130                | **~112**                        | 150+           | ~30            |
 
 ## 5. The recommended design, defined
 
 ### 5.1 Concepts (glossary, rule 4)
 
-New nouns for `packages/docs/src/content/docs/start/concepts.md` [I]:
+New nouns for `packages/docs/src/content/docs/start/concepts.md`, alongside S-16's **account**,
+**floating licence**, **pairwise subject** and **account × product data** [I]:
 
-- **user setting**: a catalog `config` key that declares a `user` block. Its user-chosen value is
-  persisted and synced, and the operator can still enforce it.
-- **user override**: an operator-authored managed-payload layer for one user. It replaces the
-  licence override.
-- **collection**: a developer-declared namespace of **records** (JSON values keyed by id) owned by a
-  user.
+- **Cloud Sync**: the service (slug `sync`) that stores and syncs a person's user settings,
+  collections and saves for one product. Product copy and the console say "Cloud Sync".
+- **user setting**: a catalog `config` key that declares a `user` block. Its chosen value is
+  persisted on the device by the Config SDK and, with Cloud Sync, synced; the operator can still
+  enforce it.
+- **account override** (user-level managed config): an operator-authored managed-payload layer
+  for one account on one product. It replaces the licence override everywhere.
+- **collection**: a developer-declared namespace of **records** (JSON values keyed by id) held by
+  the principal.
 - **save**: a named slot holding an opaque blob plus metadata and revisions.
-- **user data**: the umbrella for user settings, collections and saves.
-- **owner**: the principal user data belongs to. It is always a user; device-scoped values are
-  keyed by `(user, device)`.
+- **Cloud Sync data**: the umbrella for user settings, collections and saves held in Cloud Sync.
+  With the account override it makes up S-16's account × product data.
+- **principal**: whose Cloud Sync data it is. It is always one account on one product, named by
+  that product's pairwise subject; device-scoped values are keyed by `(subject, device)`. There is
+  no licence or device principal (decision 18).
 
-The words `sync` and `store` are avoided in API names, because `PolarisKey.sync()`, `sync_finished`,
-`get_sync_state`, credential stores and `PKeyOverrideStore` already use them
-(`sdks/godot/addons/polaris_key/polaris_key.gd:34-44, 185, 220`) [V]. The one exception is the
-catalog's `sync:` scope field, which is a manifest attribute and not an API. The SDK surface is
-`config.setConfig` for settings and `userData` for collections and saves.
+The words `sync` and `store` are avoided in API method names, because `PolarisKey.sync()`,
+`sync_finished`, `get_sync_state`, credential stores and `PKeyOverrideStore` already use them
+(`sdks/godot/addons/polaris_key/polaris_key.gd:34-44, 185, 220`) [V]. The SDK namespace is
+therefore `cloudSync` (`cloud_sync` in Python and GDScript), which does not collide with
+`sync()`. The catalog's `sync:` scope field is a manifest attribute, not an API. The SDK surface
+is `config.setConfig` for settings and `cloudSync` for collections, saves and status.
 
 ### 5.2 Data model
 
 **Principal.**
 
-| Column or table                   | Holds                                                                                                                                                                                                                                                                   |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `devices.user_id` (new, nullable) | The user signed in on this device. Set by Core's activation path when Identity's `signIn` calls it; cleared by sign-out, user deletion, "sign out everywhere" and licence detach. Never set by licence-key activation. Never signed. I-18 may reuse it for seat holders |
+| Column or table                      | Holds                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `devices.account_id` (new, nullable) | The account signed in on this device. Set by Core's activation path when Identity's sign-in calls it; cleared by sign-out, account deletion, per-product data deletion, "sign out everywhere" and licence detach. Never set by licence-key activation. Never signed. I-24 may reuse it for seat holders |
 
 The device token stays the credential. Core's `validateDeviceToken` already returns the device
-row, so the resolver is just `device.user_id`. Config reads it through a Core function, never
-through Identity (rule 6).
+row; a Core resolver, `resolveSyncPrincipal(device)`, maps `device.account_id` and the device's
+product to the pairwise subject through Identity's table, behind a Core function so Cloud Sync and
+Config never import Identity (rule 6). Cloud Sync sees only `(product, subject)`. The account id
+stays in Core and Identity, as S-16 §5.1 asks.
 
-**Operator layer (D1, read by Core during document builds).**
+**Why key by the subject, not the account id [I].** The subject already names exactly one account
+on one product, and S-16 makes it the only identifier developers see. Keying the DO, the R2
+prefix, the directory and `account_overrides` by it means a console export, a DO name or an R2 key
+can never become a cross-product join key. Per-product deletion deletes the data and then the
+subject, so the next contact starts a fresh subject and an empty DO. An account merge is the one
+case where data must be re-keyed (§5.5).
 
-| Table            | Key                  | Holds                                                                                                                           |
-| ---------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `user_overrides` | `(product, user_id)` | `payload_json` (`config`, `secrets` sealed under `PLATFORM_KEK`, and `entitlements` per decision 3), `updated_at`, `updated_by` |
+**Operator layer (D1, read by Core during document builds; a Config table).**
 
-**User-authored data (one Durable Object per `(product, user)`, SQLite).**
+| Table               | Key                  | Holds                                                                                           |
+| ------------------- | -------------------- | ----------------------------------------------------------------------------------------------- |
+| `account_overrides` | `(product, subject)` | `payload_json` (`config` and `secrets` sealed under `PLATFORM_KEK`), `updated_at`, `updated_by` |
+
+**Person-authored data (one Cloud Sync Durable Object per `(product, subject)`, SQLite).**
 
 | Table             | Columns                                                                                                                                                                                                                          |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -437,7 +536,7 @@ through Identity (rule 6).
 | `clients`         | `client_id`, `last_mutation_id`, `device_id` (bound on first use; another device presenting it gets `client_mismatch`), `last_seen`; rows expire after 90 days idle                                                              |
 | `tombstones`      | `target`, `seq`, `deleted_at` (no personal data)                                                                                                                                                                                 |
 
-**D1 directory and quotas, coalesced.** `userdata_directory (product, user_id, bytes, records,
+**D1 directory and quotas, coalesced.** `sync_directory (product, subject, bytes, records,
 saves, last_active_at, updated_at)` backs the console list, the export job and per-product totals.
 Per-write D1 traffic would bring back the single-primary contention that §5.2's choice of DOs
 avoids, so the DO never writes D1 on the request path [I]:
@@ -458,18 +557,18 @@ Workers Paid plan includes, and averages about 3.5 writes per second at the prim
 updates would have needed about 32 rows per user per day and about 19 writes per second on
 average, with peaks several times higher.
 
-**R2 layout.** `u/<product>/<user_id>/<sha256>` holds content-addressed, immutable objects, so
+**R2 layout.** `u/<product>/<subject>/<sha256>` holds content-addressed, immutable objects, so
 concurrent uploads are safe and duplicates collapse. Unreferenced objects are collected by a DO
 alarm.
 
-**Why a Durable Object per user and not D1 rows [I].** One DO serialises a user's writes, so `seq`
+**Why a Durable Object per principal and not D1 rows [I].** One DO serialises a principal's writes, so `seq`
 and compare-and-swap need no cross-request locking. It is also the natural WebSocket hub for live
 updates later. D1 executes on one primary per database, so a hot product's sync traffic would
 queue every product's admin and document queries. The research figures are: D1 about 1,000 queries
 per second at 1 ms per query; a DO 10 GB, 2 MB per row or value and about 1,000 requests per
 second per object, with 30-day point-in-time recovery (developers.cloudflare.com D1 and DO limits
 pages, read by the research pass) [V]. The cost is lazy per-object schema migrations and no
-cross-user SQL. The D1 directory covers the console's needs.
+cross-principal SQL. The D1 directory covers the console's needs.
 
 ### 5.3 Catalog and manifest extension
 
@@ -516,10 +615,10 @@ The `sync` scopes [I]:
 Per VS Code's `machine` scope, a `device`-scoped value is never synced elsewhere [V: research
 landscape §1.17].
 
-**Collections and saves: a `userData` block.**
+**Collections and saves: a `cloudSync` block.**
 
 ```yaml
-userData:
+cloudSync:
   collections:
     - name: progress
       access: owner # owner | ownerRead | server | public (later)
@@ -555,7 +654,7 @@ userData:
     thumbnail: { maxBytes: 131072 }
     format: { refuseNewer: true }
   limits: { totalBytes: 268435456, byTier: {} }
-  unlicensed: # users with no usable licence (and every user of an Identity-only product)
+  unlicensed: # signed-in accounts with no usable licence for this product
     limits: { totalBytes: 1048576 } # defaults in §5.17; saves off unless set here
     saves: { slots: 1, maxBytes: 8388608, keepRevisions: 1 }
   writes: { requireLicense: false, minTrust: null } # licence and device-trust gates (§5.8)
@@ -594,17 +693,19 @@ that it stays a hint and that `user.sync` is the enforced field (decision 9).
 
 ### 5.4 Sync protocol
 
-All routes sit under the Config service. They need Config enabled, the product's user-data switch
-on (§5.16), and a principal that resolves to an owner. The owner is a user; with decision 18, a
-licence is also an owner, for settings only.
+All routes sit under the Cloud Sync service (`/<p>/sync/`). They need Config and the product's
+Cloud Sync toggle on (§5.16), and a device whose `devices.account_id` resolves to a pairwise
+subject. There is no other principal: a device with no signed-in account, including every device on
+a floating licence, gets `401 account_required` (decision 18).
 
 **Authentication.** Every route takes `Authorization: Bearer <device token>`, resolved by Core's
-`validateDeviceToken` to the device row and then to `devices.user_id`:
+`validateDeviceToken` to the device row and then to `devices.account_id`:
 
 - **Native SDKs** send the token they already hold.
 - **A web React app** is a browser device: it registers like any device and holds its token in
-  IndexedDB. Its user binding comes from I-13's web redirect token route or I-08's in-SDK email
-  code, both of which return the activation response. All `/config/user/*` paths join the CORS
+  IndexedDB. Its account binding and token come from S-16 I-08's web redirect, which returns the
+  activation response to an origin on the product's `web.origins` allowlist (the owner's
+  condition; S-16 has no in-app email code any more, D17). All `/sync/*` paths join the CORS
   inclusion list in `W/core/cors.ts` and its `routeCoverage` table, so a page on an origin listed
   under the product's `web.origins` can read them (`cors.ts:1-33`, `:181-211`) [V].
   `Access-Control-Allow-Credentials` is never sent, so the browser attaches no cookie.
@@ -613,17 +714,17 @@ licence is also an owner, for settings only.
   the portal only, would need the same `x-csrf-token` double-submit check the session routes use
   (`browserSession.ts:404-406`) [V] and would stay off the CORS list.
 
-| Route                                                            | Purpose                                                                                                                |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `GET /<p>/config/user?cursor=<seq>&parts=settings,progress`      | Pull changes since a cursor; `If-None-Match` on the cursor gives a cheap `304`                                         |
-| `POST /<p>/config/user/ops`                                      | Push a batch of mutations; the response doubles as a pull                                                              |
-| `GET /<p>/config/user/saves`                                     | List slots (metadata only)                                                                                             |
-| `POST /<p>/config/user/saves/<slot>/begin`                       | Reserve an upload: `{sha256, size, formatVersion, baseVersion, metadata}`; checks quota and version                    |
-| `PUT /<p>/config/user/saves/<slot>/upload/<uploadId>`            | Stream the body through the Worker into R2 with the binding's `sha256` check; multipart only above the 100 MB body cap |
-| `POST /<p>/config/user/saves/<slot>/finalize`                    | Idempotent; flips the slot pointer atomically in the DO; returns the new version                                       |
-| `GET /<p>/config/user/saves/<slot>[?version=]`                   | Stream the blob (or a revision)                                                                                        |
-| `GET /<p>/config/user/saves/<slot>/revisions`, `DELETE …/<slot>` | Revisions and delete                                                                                                   |
-| `GET /<p>/config/user/live` (later)                              | WebSocket upgrade for pokes                                                                                            |
+| Route                                                     | Purpose                                                                                                                |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `GET /<p>/sync?cursor=<seq>&parts=settings,progress`      | Pull changes since a cursor; `If-None-Match` on the cursor gives a cheap `304`                                         |
+| `POST /<p>/sync/ops`                                      | Push a batch of mutations; the response doubles as a pull                                                              |
+| `GET /<p>/sync/saves`                                     | List slots (metadata only)                                                                                             |
+| `POST /<p>/sync/saves/<slot>/begin`                       | Reserve an upload: `{sha256, size, formatVersion, baseVersion, metadata}`; checks quota and version                    |
+| `PUT /<p>/sync/saves/<slot>/upload/<uploadId>`            | Stream the body through the Worker into R2 with the binding's `sha256` check; multipart only above the 100 MB body cap |
+| `POST /<p>/sync/saves/<slot>/finalize`                    | Idempotent; flips the slot pointer atomically in the DO; returns the new version                                       |
+| `GET /<p>/sync/saves/<slot>[?version=]`                   | Stream the blob (or a revision)                                                                                        |
+| `GET /<p>/sync/saves/<slot>/revisions`, `DELETE …/<slot>` | Revisions and delete                                                                                                   |
+| `GET /<p>/sync/live` (later)                              | WebSocket upgrade for pokes                                                                                            |
 
 **Push body.**
 
@@ -707,7 +808,7 @@ Locations:
 | Kotlin         | The app's files directory (DataStore on Android)  |
 | React, browser | IndexedDB, with `BroadcastChannel` for other tabs |
 | React, desktop | The main process (bridge v4)                      |
-| Godot          | `user://pkey/<product>/userdata/<user>.json`      |
+| Godot          | `user://pkey/<product>/sync/<subject>.json`       |
 
 Journal behaviour:
 
@@ -723,7 +824,7 @@ Journal behaviour:
   under user B.
 
 **Push and journal rules.** These rules are normative. Each one has scenarios in
-`userdata-scenarios.json` (§5.13), so six implementations behave the same way [I]:
+`sync-scenarios.json` (§5.13), so six implementations behave the same way [I]:
 
 1. **`last_mutation_id` advances past every processed mutation**, whatever its result: `ok`,
    `conflict`, `rejected`, `duplicate` or `aborted`. Only a request-level failure leaves it
@@ -841,8 +942,8 @@ mechanics angle).
 change elsewhere is never discarded. This improves on PlayFab Game Saves' all-or-nothing choice
 [V: research landscape §1.7]. Losing branches are kept as revisions.
 
-**Anonymous to signed-in (U7).** Before sign-in, an Identity-enabled product's SDK keeps data in a
-user-less local partition (`owner: "local"`). At the first sign-in on that device:
+**Anonymous to signed-in (U7).** Before sign-in, the SDK of a product with Cloud Sync keeps data in an
+account-less local partition (`owner: "local"`). At the first sign-in on that device:
 
 | Situation            | Settings                                                                                                                                                      | Collections               | Saves                                                                        |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------- |
@@ -850,9 +951,24 @@ user-less local partition (`owner: "local"`). At the first sign-in on that devic
 | Both sides have data | Per-key policy (newer edit wins)                                                                                                                              | Per-collection `onAttach` | **Never overwritten.** Local slots fill free slots; with none free, `prompt` |
 | Any `prompt`         | The SDK raises one `MergeRequest` listing the conflicts; the UI kits ship a themable prompt ("Keep this device's progress / Keep cloud progress / Keep both") |                           |                                                                              |
 
-The pull response carries `empty: true` for a user with no data, so the common case needs no
+The pull response carries `empty: true` for a principal with no data, so the common case needs no
 prompt. This mirrors Google Play's guidance to warn when signing into an account that already has
 cloud progress [V: research landscape §1.5].
+
+**Account merge (S-16's link-existing-account).** S-16 lets a person merge two accounts with proof
+of both; for each product both touched, the surviving pairwise subject wins and the other becomes an
+alias, and colliding account × product data "is never silently overwritten" (S-16 §5.1) [V]. Cloud
+Sync applies the attach rules above per product, server-side, through I-05's merge hook [I]:
+
+- only the absorbed subject holds data for a product: its DO content is copied into the surviving
+  subject's DO (a new `seq` range, `updated_by: merge`) and the absorbed DO is deleted after the
+  copy commits;
+- both hold data: settings merge by the per-key policy (newer edit wins); records and saves that
+  collide are **parked** as revisions on the surviving side, and the next sign-in on that product
+  raises the same `MergeRequest` ("Keep this progress / Keep the other / Keep both");
+- account overrides: per key, the surviving account's value wins, and every collision is listed for
+  the operator in the console;
+- a device still bound to the absorbed account re-resolves through the alias, so it keeps syncing.
 
 **Writes to locked keys.** The SDK refuses `setConfig` on a key that is `enforced` or `hidden` in
 its current document, with `setting_locked`, and journals nothing. The server **accepts and keeps**
@@ -890,7 +1006,7 @@ that operators use `enforced` to lock a value. Decision 6 covers this.
 These defaults are anchored on prior art: Apple KVS 1 MB, Unity 5 MiB per access class, and Xbox
 and PlayFab saves 256 MB per user per title [V: research landscape §2]. A developer may tighten
 them, tiers may raise them through `byTier`, and a platform ceiling sits above both [I]. They
-apply to **licensed users**: users with a usable licence on a product that has License enabled.
+apply to **licensed users**: signed-in accounts holding a usable licence for the product.
 
 | Item              | Default                                                                | Platform ceiling         |
 | ----------------- | ---------------------------------------------------------------------- | ------------------------ |
@@ -901,25 +1017,27 @@ apply to **licensed users**: users with a usable licence on a product that has L
 | Save transfers    | ≤ 30 per hour per user                                                 | —                        |
 | Key and id length | ≤ 128 bytes, `[A-Za-z0-9._:-]`                                         | —                        |
 
-**Unlicensed users** get lower defaults: users with no usable licence, and every user of an
-Identity-only product. Sign-up is cheap there, so each account must cost little [I]:
+**Unlicensed users** get lower defaults (owner-confirmed): signed-in accounts holding no usable
+licence for the product, for example on an Identity-only product without auto-issue. Sign-up is
+cheap there, so each account must cost little [I]. Floating-licence devices are not users here at
+all: they have no Cloud Sync.
 
-| Item          | Unlicensed default                                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------------------------------ |
-| User settings | ≤ 64 KiB (as licensed; settings are cheap)                                                                         |
-| Collections   | ≤ 1,000 records; ≤ 512 KiB per user                                                                                |
-| Saves         | **Off** unless the product sets `userData.unlicensed.saves`; at most 1 slot of 8 MiB with 1 revision unless raised |
-| Total         | ≤ 1 MiB per user unless the product raises `unlicensed.limits`                                                     |
+| Item          | Unlicensed default                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| User settings | ≤ 64 KiB (as licensed; settings are cheap)                                                                          |
+| Collections   | ≤ 1,000 records; ≤ 512 KiB per user                                                                                 |
+| Saves         | **Off** unless the product sets `cloudSync.unlicensed.saves`; at most 1 slot of 8 MiB with 1 revision unless raised |
+| Total         | ≤ 1 MiB per user unless the product raises `unlicensed.limits`                                                      |
 
 **Per-product ceilings** sit above every per-user limit. They are set per product by the platform
 operator in the console, not by the product's `.pkey/`, because they are the platform's cost
-control [I]:
+control. The defaults below are owner-confirmed:
 
-| Ceiling                     | Default                     |
-| --------------------------- | --------------------------- |
-| Total user-data bytes       | 50 GiB                      |
-| Users holding any user data | 100,000                     |
-| Pushes per product          | 2,000 per second, sustained |
+| Ceiling                           | Default                     |
+| --------------------------------- | --------------------------- |
+| Total Cloud Sync bytes            | 50 GiB                      |
+| Users holding any Cloud Sync data | 100,000                     |
+| Pushes per product                | 2,000 per second, sustained |
 
 They are enforced from the 15-minute directory aggregate (§5.2):
 
@@ -932,7 +1050,7 @@ The overshoot is bounded by one interval's growth. A product that really needs m
 100k-DAU game in §5.17, has its ceiling raised deliberately, and the console shows a projected
 monthly cost beside the ceiling.
 
-A user's DO is created lazily on the first write. An account that never writes costs nothing in
+A principal's DO is created lazily on the first write. An account that never writes costs nothing in
 DO storage.
 
 Other limit rules:
@@ -950,23 +1068,26 @@ Other limit rules:
 
 ### 5.8 Security
 
-1. **The owner comes from the credential, never from the request.** The DO name is derived
-   server-side as `idFromName("<product>:<user_id>")`, and no route accepts a user id from a
-   device. Support and backends name users only through admin credentials.
+1. **The principal comes from the credential, never from the request.** The DO name is derived
+   server-side as `idFromName("<product>:<subject>")`, and no route accepts a subject or account id
+   from a device. Support and backends name a principal only by pairwise subject, through admin
+   credentials scoped to that product.
 2. **Principal binding.**
-   - `devices.user_id` is set only by a real sign-in through Identity.
-   - It is cleared on sign-out, on user disable or delete, by "sign out everywhere" and on licence
-     detach. All of these go through one Core hook, shared with I-15 and F-21's revocation trigger.
-   - A licence-key activation never binds a user (S-16's low-assurance rule). The operator user
-     override layer still resolves through the licence's owning user for such a device (§5.12).
-     That is operator configuration for the customer, as licence overrides are today. It gives the
-     device no access to the user's settings, records or saves.
-   - A device without a bound user gets `401 user_required` with a hint to sign in. With decision
-     18, a licence-key device instead reaches its licence's settings-only partition.
+   - `devices.account_id` is set only by a real sign-in through Identity.
+   - It is cleared on sign-out, on account disable or deletion, on per-product data deletion, by
+     "sign out everywhere" and on licence detach. All of these go through one Core hook, shared
+     with F-21's revocation trigger ("a licence detached from its account, or an account deleted",
+     S-16 §5.6).
+   - A licence-key activation never binds an account (an owned licence never moves by key, S-16
+     §5.1). The operator account override layer still resolves through the licence's owning account
+     for such a device (§5.12). That is operator configuration for the customer, as licence
+     overrides are today. It gives the device no access to the account's settings, records or saves.
+   - A device without a bound account gets `401 account_required` with a hint to sign in. There is
+     no licence or device partition to fall back to (decision 18).
 3. **Licence and entitlement gating.**
-   - Reads of one's own data are always allowed while the user principal is valid. Users have a
+   - Reads of one's own data are always allowed while the principal is valid. People have a
      right of access anyway.
-   - Writes follow `userData.writes.requireLicense`. When License is enabled and this is true, a
+   - Writes follow `cloudSync.writes.requireLicense`. When License is enabled and this is true, a
      write needs a usable licence on the device, scoped the way `coreDeviceAllowed` scopes
      `/devices/report`.
    - `requiresFlag` gates a collection or the saves tier on an effective flag, for example "cloud
@@ -975,7 +1096,7 @@ Other limit rules:
    or only flag low-trust writers in the console.
 5. **Client data is never a security input.** The journal is a separate store and never feeds a
    gate, entitlement or tier decision; the R2-01/R4-01 lesson (`client-core/src/store.ts:1-25`)
-   [V]. Docs carry a "user data is client-writable" banner, in the style of Godot's "SECRETS ARE
+   [V]. Docs carry a "Cloud Sync data is client-writable" banner, in the style of Godot's "SECRETS ARE
    NOT SECRET IN A GAME" (`config.gd:21-25`) [V].
 6. **Anti-tamper for saves.** The user is the adversary, and a key inside the client can be
    extracted. So:
@@ -990,7 +1111,7 @@ Other limit rules:
    - Godot docs warn never to pass save bytes to `bytes_to_var_with_objects`.
 7. **Encryption.**
    - Cloudflare's platform encryption at rest is the baseline [U: cite in U-24].
-   - **Per-user data keys.** A per-user key, wrapped under a product key derived from
+   - **Per-principal data keys.** A per-principal key, wrapped under a product key derived from
      `PLATFORM_KEK`, encrypts R2 objects (R2 `ssecKey` takes 32-byte customer keys [V: research
      mechanics §11]) and large DO values. Destroying it crypto-shreds backups and point-in-time
      copies. Recommended for saves in v1.
@@ -1006,74 +1127,84 @@ Other limit rules:
    cookie, so cross-site request forgery has nothing ambient to ride on. CORS only decides which
    listed `web.origins` may read responses (`W/core/cors.ts:12-20`) [V]. The residual risk is XSS
    on the developer's page stealing the token (T13). Mitigations:
-   - the docs require a strict CSP for pages that use user data;
+   - the docs require a strict CSP for pages that use Cloud Sync;
    - `signOut` and "sign out everywhere" revoke the token server-side through the Core hook;
-   - the token reaches only that user's data in that product, never the console or the portal.
+   - the token reaches only that principal's data in that product, never the console or the portal.
 
 ### 5.9 Privacy
 
-Polaris is the processor and the developer the controller, as in S-16 §5.5 [V]. Privacy ships
-with each tier, never after it:
+Cloud Sync data and account overrides are account × product data, for which the developer is the
+controller and Polaris the processor (S-16 §5.5) [V]. Developers see them only for their own
+product and only under the pairwise subject (owner). Privacy ships with each tier, never after it:
 
-- **U-12, in the MVP**, covers settings and user overrides: export, delete cascade, soft-delete
-  read-only state, and tombstone re-apply.
-- **U-24** adds records and saves (R2 prefix, save zip, crypto-shredding) before either tier is
-  generally available.
+- **U-12, in the MVP**, covers settings and account overrides: export, the delete cascades, and
+  tombstone re-apply.
+- **U-24** adds saves (in U2) and records (in U3): R2 prefix, save zip, crypto-shredding, before
+  either tier is generally available.
 
-- **Export (Art. 15 and 20).** S-16's per-user JSON export (I-07) and the portal
-  `GET /api/me/export` (I-15) gain:
-  - a `userData` section: settings, records and the user override layer;
-  - a save manifest with short-lived download links, delivered as a zip from the console.
-- **Delete (Art. 17).** S-16's user deletion cascade gains these steps:
-  1. call the user's DO `deleteAll()`;
-  2. delete the R2 prefix `u/<product>/<user>/`;
-  3. remove the directory row and `user_overrides` row;
-  4. destroy the per-user key.
+- **Export (Art. 15 and 20).** S-16's per-product and full account export in the portal (I-11) and
+  per-subject export in the console (I-12) gain:
+  - a `cloudSync` section: settings, records and the account override layer for that product;
+  - a save manifest with short-lived download links, delivered as a zip.
+- **Delete (Art. 17).** Both S-16 cascades reach Cloud Sync: full account deletion (every product
+  the account touched) and per-product "remove my data from <Product>" (one product). For each
+  affected `(product, subject)`:
+  1. call the principal's DO `deleteAll()`;
+  2. delete the R2 prefix `u/<product>/<subject>/`;
+  3. remove the directory row and `account_overrides` row;
+  4. destroy the per-principal key;
+  5. then let Identity delete the subject and emit `subject.deleted` (S-16 §5.5).
 
   DO point-in-time recovery keeps up to 30 days of history, and the deadlines for deleting the
   underlying logs are undocumented (cloudflare-docs issue #33631 [V: research mechanics §11b]).
-  That is why crypto-shredding is the robust answer. S-16's deleted-user tombstone list also covers
-  DO and R2 restores.
+  That is why crypto-shredding is the robust answer. S-16's tombstone list (deleted account ids and
+  hashed emails) is re-applied after a DO or R2 restore as well.
 
-- **Soft delete.** S-16's 14-day soft delete keeps user data intact and read-only until the hard
-  delete.
 - **Retention.** Tombstones and cursors hold no personal data. Pre-sign-in local data never leaves
-  the device. Inactive-user purge follows S-16's policy (default 24 months flagged).
+  the device. Dormant accounts are deleted after S-16's period (36 months with no sign-in and no
+  licence, [I] there), which cascades here; dormant account × product data otherwise follows each
+  developer's retention setting (S-16 §5.5).
 - **Residency.** DO `jurisdiction("eu")` and an EU R2 bucket can be fixed per product at creation,
   because existing objects do not move later [V: research mechanics §11b]. This is optional
   (decision 15).
 
 ### 5.10 Console surfaces
 
-- **Users page, Data tab** (on S-16's I-07 page):
+- **Users page, Data tab** (on S-16 I-12's per-product Users page, which shows pairwise subjects
+  only):
   - **settings:** key, effective value, source, scope, last writer, updated at, invalid flag; edit
     (catalog-validated, `origin: admin`), reset, history and restore;
-  - **user override editor** (the existing `ManagedPayloadEditor`);
-  - **"what the app sees":** pick one of the user's devices and render the resolved config;
+  - **account override editor** (the existing `ManagedPayloadEditor`);
+  - **"what the app sees":** pick one of the principal's devices and render the resolved config;
   - **collections:** a JSON browser and editor with schema validation, revisions and restore;
     `server` collections are editable only here;
   - **saves:** metadata, size, thumbnail, revisions, download, restore and delete;
-  - **quota meters**, plus export and delete-all-user-data.
+  - **quota meters**, plus export and delete this product's data for this subject.
 
   Every write is audited. Destructive actions and bulk restore need step-up, matching S-16's relink
-  posture. An optional product setting notifies the user of support edits.
+  posture. An optional product setting notifies the person of support edits.
 
 - **Catalog editor.** `CatalogEntryForm` gains a "User setting" section (scope, conflict, listed).
   The catalog usage report ("which profiles, tiers and licences set key K",
-  `W/services/config/admin/catalog.ts:209`) gains user-override and user-value counts per key.
-- **New Config page, "User data".** It edits `collections`, `saves`, `limits` and `migrations`, with
-  the existing manifest round-trip and `services_source` rules.
-- **Licence page.** On Identity products the overrides editor becomes read-only for config and
-  secrets after migration (§5.12), with a link to the owning user. On licence-only products it is
-  unchanged (decision 3).
+  `W/services/config/admin/catalog.ts:209`) gains account-override and synced-value counts per key.
+- **Cloud Sync section** (its own service in the console, with its toggle). It edits
+  `collections`, `saves`, `limits` and `migrations`, with the existing manifest round-trip and
+  `services_source` rules, and shows the product's ceilings and projected cost.
+- **Licence page.** On every product, after the migration (§5.12), the overrides editor edits
+  entitlements only; config and secrets show as moved, with a link to the owning subject's Users
+  page. A floating licence shows "No account: managed config for this customer needs an account".
+- **Migration report** (§5.12 step 3): per product, the dropped overrides of unowned licences,
+  downloadable for 90 days.
 
 ### 5.11 SDK API sketches
 
 The naming is consistent across SDKs:
 
-- **settings live on the existing config client**, as the owner's "extension of config";
-- **collections and saves live on `userData`**;
-- **status** is `userData.status()`, never `sync`.
+- **settings live on the existing config client**, as the owner's "extension of config". The
+  Config SDK persists them locally on every product; when the product has Cloud Sync on and the
+  person is signed in, the same calls also sync;
+- **collections and saves live on `cloudSync`**, the Cloud Sync service's namespace;
+- **status** is `cloudSync.status()`, never `sync()`, which already exists.
 
 Untyped string keys work everywhere, and generated typed keys come from `gen-mirrors`.
 
@@ -1087,21 +1218,21 @@ await pk.config.clearConfig("audio.music.volume");
 pk.config.settingState("audio.music.volume"); // { scope, pending, locked, invalid, … }
 pk.config.onChange(({ keys, origin }) => {}); // origin: local | remote | merge | migration | admin
 
-const progress = pk.userData.collection<Progress>("progress");
+const progress = pk.cloudSync.collection<Progress>("progress");
 await progress.put("main", { level: 3 });
 await progress.update("main", (v) => ({ ...v!, level: v!.level + 1 })); // CAS retry loop
 await progress.patch("main", { $inc: { level: 1 } });
 progress.onConflict(({ local, remote, base }) => merge(local, remote, base));
 
-await pk.userData.saves.write("slot-1", bytes, {
+await pk.cloudSync.saves.write("slot-1", bytes, {
   metadata: { chapter: 3 },
   formatVersion: 7,
 });
-const save = await pk.userData.saves.read("slot-1");
-pk.userData.saves.onConflict((c) => c.keep("both"));
-pk.userData.onMerge((m) => m.resolve({ default: "newest", saves: "both" }));
-await pk.userData.flush();
-pk.userData.status(); // { state: idle|pending|flushing|offline|blocked|error, pending }
+const save = await pk.cloudSync.saves.read("slot-1");
+pk.cloudSync.saves.onConflict((c) => c.keep("both"));
+pk.cloudSync.onMerge((m) => m.resolve({ default: "newest", saves: "both" }));
+await pk.cloudSync.flush();
+pk.cloudSync.status(); // { state: idle|pending|flushing|offline|blocked|error, pending }
 ```
 
 **React** (`@polaris-key/react`). Hooks use `useSyncExternalStore`, as the existing hooks do.
@@ -1112,7 +1243,7 @@ const [volume, setVolume, meta] = useSetting("audio.music.volume");
 <Slider value={volume} onChange={setVolume} disabled={meta.locked} />;
 const { value, update } = useRecord<Progress>("progress", "main");
 const { slots, write, conflict } = useSaves();
-const { state, pending } = useUserDataStatus();
+const { state, pending } = useCloudSyncStatus();
 <MergePrompt />; // themable, like the login components
 ```
 
@@ -1121,10 +1252,10 @@ const { state, pending } = useUserDataStatus();
 ```python
 pk.config.set_config("audio.music.volume", 0.6)
 pk.config.setting_state("audio.music.volume")
-progress = pk.user_data.collection("progress")
+progress = pk.cloud_sync.collection("progress")
 progress.update("main", lambda v: {**v, "level": v["level"] + 1})
-pk.user_data.saves.write("slot-1", data, metadata={"chapter": 3}, format_version=7)
-pk.user_data.flush()  # also registered with atexit; start_background_flush(interval=5.0) opt-in
+pk.cloud_sync.saves.write("slot-1", data, metadata={"chapter": 3}, format_version=7)
+pk.cloud_sync.flush()  # also registered with atexit; start_background_flush(interval=5.0) opt-in
 ```
 
 **Swift** (actor API plus SwiftUI; iOS 17 and macOS 14 allow `@Observable`,
@@ -1134,9 +1265,9 @@ pk.user_data.flush()  # also registered with atexit; start_background_flush(inte
 @PolarisSetting(\.musicVolume) var volume        // shaped like @AppStorage
 Slider(value: $volume, in: 0...1).disabled($volume.isLocked)
 try await client.config.set(SettingKeys.musicVolume, 0.6)
-let progress = client.userData.collection("progress", as: Progress.self)
+let progress = client.cloudSync.collection("progress", as: Progress.self)
 try await progress.update(id: "main") { $0.level += 1 }
-try await client.userData.saves.write(slot: "slot-1", data: data, metadata: meta)
+try await client.cloudSync.saves.write(slot: "slot-1", data: data, metadata: meta)
 try await PolarisSettings.importFromUserDefaults([.musicVolume: "musicVolume"])
 ```
 
@@ -1146,10 +1277,10 @@ try await PolarisSettings.importFromUserDefaults([.musicVolume: "musicVolume"])
 val volume: StateFlow<Double> = client.config.setting(Settings.MusicVolume)
 client.config.set(Settings.MusicVolume, 0.6)
 var vol by rememberSetting(Settings.MusicVolume)   // :compose
-val progress = client.userData.collection("progress", Progress.serializer())
+val progress = client.cloudSync.collection("progress", Progress.serializer())
 progress.update("main") { it!!.copy(level = it.level + 1) }
-client.userData.saves.write("slot-1", bytes, SaveMetadata(chapter = 3))
-client.userData.status: StateFlow<UserDataStatus>
+client.cloudSync.saves.write("slot-1", bytes, SaveMetadata(chapter = 3))
+client.cloudSync.status: StateFlow<CloudSyncStatus>
 ```
 
 **Godot** (the synced layer _is_ an override store):
@@ -1161,132 +1292,139 @@ PolarisKey.config.settings_changed.connect(func(keys, origin): pass)
 # Default store becomes PKeyUserSettingsStore; it can mirror to the game's own file:
 PolarisKey.config.set_override_store(
     PKeyUserSettingsStore.new(PKeyConfigFileStore.new("user://settings.cfg")))
-var progress := PolarisKey.user_data.collection("progress")
+var progress := PolarisKey.cloud_sync.collection("progress")
 await progress.update("main", func(v): v.level += 1; return v)
-await PolarisKey.user_data.saves.write("slot1", var_to_bytes(state), {"chapter": 3}, 7)
-PolarisKey.user_data.save_conflict.connect(func(c): c.keep(&"remote"))
-PolarisKey.user_data.merge_requested.connect(func(m): $MergePrompt.open(m))
-PolarisKey.user_data.status_changed.connect(func(s): pass)   # not sync_*: the name is taken
+await PolarisKey.cloud_sync.saves.write("slot1", var_to_bytes(state), {"chapter": 3}, 7)
+PolarisKey.cloud_sync.save_conflict.connect(func(c): c.keep(&"remote"))
+PolarisKey.cloud_sync.merge_requested.connect(func(m): $MergePrompt.open(m))
+PolarisKey.cloud_sync.status_changed.connect(func(s): pass)   # not sync_*: the name is taken
 ```
 
 The autoload wires the flush on close and pause. A `PKeySettingsPanel` scene mirrors React's
 `ConfigPanel`.
 
-### 5.12 The user override layer and the licence-override migration (owner decision)
+### 5.12 The account override layer and the licence-override migration (owner decision)
 
-**Placement.** On a product with Identity enabled, Core's merge becomes [I]:
+**The decision.** The licence-level config override layer is removed **everywhere**. It is
+replaced by user-level managed config attached to the account per product: the **account
+override**. Floating licences have no such layer. Overrides on licences with no owner are dropped
+at migration, with an operator-visible report (owner, 2026-10-04). The first revision's exception,
+"products without Identity keep licence overrides", is gone: with one platform-wide account, any
+product's licence can be attached to an account through the portal's Library, so every product has
+somewhere to move overrides to.
+
+**Placement.** On every product, Core's merge becomes [I]:
 
 ```
-catalog defaults → tier profile → licence profiles → store grants → USER OVERRIDES → device overrides
+catalog defaults → tier profile → licence profiles → store grants → ACCOUNT OVERRIDES → device overrides
 ```
 
-The user override layer replaces `licenses.overrides_json` config and secrets at `payload.ts:142`.
+The account override layer replaces `licenses.overrides_json` config and secrets at `payload.ts:142`.
 Its position after store grants keeps today's property that an operator override beats a store
-grant (`payload.ts:137-141`) [V].
+grant (`payload.ts:137-141`) [V]. It is Config's layer: it needs Config and Identity layer 1, not
+the Cloud Sync toggle, and it reaches every device the rule below picks, signed in or not.
 
-**Whose overrides a device gets.** Core picks the user whose override layer applies:
+**Whose overrides a device gets.** Core picks the principal whose layer applies:
 
 ```
-overrideUser(device) =
-    device.user_id          // a user signed in on this device
- ?? license.user_id         // else the owning user of the device's licence
- ?? none                    // else no user layer (see "licence without a user" below)
+overrideAccount(device) =
+    device.account_id       // an account signed in on this device
+ ?? license.account_id      // else the account that owns the device's licence
+ ?? none                    // a floating licence, or no licence: no account layer
 ```
 
-The second line is what keeps existing customers whole. Today every device of a licence activated
-by licence key, and every one of them gets that licence's overrides. After migration those
-overrides live on the licence's owning user, and `devices.user_id` is never set by a licence-key
-activation (§5.8 item 2). Without the fallback, every such device would silently lose its override
-the moment the migration ran. The fallback does not breach S-16's low-assurance rule, for three
-reasons [I]:
+The second line keeps existing installs whole. A licence activated by key before it was attached
+still has devices that never signed in, and S-16 never touches existing installs. After migration
+their overrides live on the owning account × product, and `devices.account_id` is never set by a
+licence-key activation (§5.8 item 2). Without the fallback, every such device would silently lose
+its override the moment the migration ran. The fallback grants nothing new [I]:
 
-- the rule protects **the user's** data (links, profile, other licences, and here settings,
-  records and saves);
-- a user override is **operator** configuration about that customer, as the licence override was;
+- S-16's rule protects **the account's** data (links, personal details, other licences, and here
+  settings, records and saves), and none of that reaches the device;
+- an account override is **operator** configuration about that customer on that product, as the
+  licence override was;
 - the licence-key device gains nothing it did not already receive before migration.
 
-A device bound to a different user than the licence owner gets its bound user's layer. Seats (I-18)
-behave as licence overrides do today: every device of the licence gets the owner's layer.
+A device signed in to a different account than the licence owner gets its signed-in account's
+layer. Seats (I-24) behave as licence overrides do today: every device of the licence gets the
+owner's layer.
 
-**Products without Identity keep licence overrides.** A licence-only product has no users, so it
-has nowhere to move overrides to. That is the whole installed base today. Removing the layer there
-would end per-customer configuration with no replacement. The options are:
-
-| Option                                                                   | Effect                                                                                                                                                                                |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A. Licence overrides stay on products without Identity** (recommended) | Nothing changes for licence-only products. Enabling Identity on a product starts that product's migration. `payload.ts` reads the licence layer or the user layer, chosen per product |
-| B. Require Identity before the migration, and migrate every product      | Every licence-only product must enable Identity and get users before it can keep overrides; operators are pushed into Identity                                                        |
-| C. Accept the loss                                                       | Licence-only products lose per-customer config at migration (or after the grace period); operators fall back to a profile per customer                                                |
-
-Option A means `licenses.overrides_json` keeps its config and secrets columns for licence-only
-products. The licence page's editor stays writable there, and becomes read-only with a link to the
-owning user on Identity products. This narrows the owner's "remove the licence-level override
-layer" to products that have the replacement. Decisions 3 and 4 put the choice to the owner.
-
-**Wire.** The config document's shape is unchanged, and so is its signing and its ETag. A user
-override change correctly invalidates the ETag of every device whose `overrideUser` is that user.
-No corpus regeneration is needed. Content now depends on `devices.user_id` and
-`licenses.user_id`, and the document is built per device, so per-device caching stays correct.
+**Floating licences.** No account layer, ever (owner). The console's licence page says "No account:
+managed config for this customer needs an account" and offers the sign-up link the portal uses.
+The SDK UI kits' existing "add to your Library" prompt (S-16 I-10) is the device-side prompt; this
+note adds no new one.
 
 **Entitlements.** Licence overrides also carry an `entitlements` bucket, which feeds the licence
-document and gated delivery through `resolveEntitlements`
-(`W/core/authz.ts:140-190`, `W/core/entitledAccess.ts:161`) [V]. Entitlements are what a licence
-sells, so the recommendation is that **entitlement overrides stay on the licence** on every
-product, and only the `config` and `secrets` buckets move to the user (decision 3). This keeps the
-signed licence document user-free (S-16 decision 9).
+document and gated delivery through `resolveEntitlements` (`W/core/authz.ts:140-190`,
+`W/core/entitledAccess.ts:161`) [V]. Entitlements are what a licence sells, not config, and the
+owner's text removes the **config** override layer. So the recommendation, carried from the first
+revision, is that **entitlement overrides stay on the licence** on every product, floating ones
+included, and only the `config` and `secrets` buckets move. This keeps the signed licence document
+account-free (S-16 decision 9). It is the one point §7.3 asks the owner to confirm.
 
-**Migration**, run per product when Identity is enabled on it (inside U-03) [I]:
+**Wire.** The config document's shape is unchanged, and so is its signing and its ETag. An account
+override change correctly invalidates the ETag of every device whose `overrideAccount` is that
+account on that product. No corpus regeneration is needed. Content now depends on
+`devices.account_id` and `licenses.account_id`, and the document is built per device, so
+per-device caching stays correct.
 
-1. **Inventory.** List every licence of the product with non-empty `config` or `secrets`
-   overrides, and show it in the console before anything moves.
-2. **Licence with an owning user.** Merge its overrides into that user's `user_overrides`. If a user
-   owns several licences with conflicting overrides for one key, take the most recently updated
-   one and list the conflict for operator review. Licence-key devices of the licence keep receiving
-   the values through `overrideUser`'s licence-owner fallback.
-3. **Licence without a user.** Keep the overrides **readable and still applied** for a grace
-   period, by default until the licence attaches to a user or 90 days pass, whichever comes first.
-   They are shown in the console as "pending: no user". At attach, step 2 runs. At the end of the
-   grace period they are dropped, with an audit row and a console report.
-4. **Freeze writes.** After the product's migration, `PUT /licenses/<id>/overrides` accepts only
-   `entitlements` for that product, and the console editor follows.
-5. **Retire.** After the grace period, `payload.ts` stops reading the licence layer's config and
-   secrets for that product.
+**Migration**, one platform-wide run, after S-16 I-05 has migrated owner pointers into
+`licenses.account_id` (inside U-03) [I]:
 
-The owner's text says "dropped with operator visibility". The grace period in step 3 is the
-recommended softening, because an override dropped from an unattached, still-active licence
-changes a paying customer's behaviour silently (decision 4).
+1. **Inventory and notice.** For every product, list each licence with non-empty `config` or
+   `secrets` overrides and whether it has an owning account. The console shows the inventory to
+   operators before the run, with the run date and the count that will be dropped, so an operator
+   can ask those customers to add the licence to their Library first. Default notice: 30 days [I].
+   This is visibility before the run, not a grace period after it.
+2. **Owned licence.** Merge its config and secrets overrides into the owner's `account_overrides`
+   row for that product. If an account owns several licences of one product with conflicting
+   overrides for one key, take the most recently updated value and list the conflict in the report.
+   Licence-key devices of the licence keep receiving the values through `overrideAccount`'s owner
+   fallback.
+3. **Licence with no owner.** Drop its config and secrets overrides at the run (owner). Write an
+   audit row per licence and add it to the **migration report**: per product, the licence id, the
+   buyer email if any, the dropped key names, and non-secret values (secret values are listed by
+   name only, never decrypted into the report). The report stays downloadable in the console for
+   90 days, so an operator can re-apply values by hand once the customer has an account.
+4. **Freeze writes.** From the run on, `PUT /licenses/<id>/overrides` accepts only `entitlements`,
+   and the console's licence editor shows config and secrets as moved, with a link to the owning
+   subject's Users page.
+5. **Retire.** `payload.ts` stops reading the licence layer's config and secrets in the same
+   release. The columns are emptied after the report window.
 
 **Tests U-03 must carry:**
 
 - a licence-key device on an owned licence receives the owner's migrated override, byte for byte
   the same signed config content as before migration, apart from timestamps;
-- a signed-in device on a licence owned by someone else receives its own user's layer;
-- a device on an unowned licence keeps the licence override during grace, and loses it with an
-  audit row after;
-- a product without Identity is untouched by the migration, and its licence editor stays writable;
+- a signed-in device on a licence owned by another account receives its own account's layer;
+- a device on a floating licence receives no account layer, and its licence's former overrides are
+  in the report with an audit row;
+- secret values never appear in the report;
+- `PUT /licenses/<id>/overrides` refuses `config` and `secrets` after the run;
 - the signed corpus is unchanged.
 
 ### 5.13 Wire impact
 
-| Change                                                                             | Device wire?                                         | `PROTOCOL_VERSION` / corpus                                                                                                                                                | Who follows                                                                                                                                                                         |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `devices.user_id`; user override layer in Core's merge; licence-override migration | No: document content only                            | Neither                                                                                                                                                                    | Worker, admin console                                                                                                                                                               |
-| Catalog `user` block; `userData` manifest block                                    | Catalog JSON served at `/config/schema` gains fields | Neither; old SDKs ignore unknown catalog fields [U: confirm each SDK's catalog parser tolerates them, in U-01]                                                             | `shared-catalog`, `shared-manifest` (rule 9), `gen-mirrors`, console                                                                                                                |
-| **`/config/user` pull and `/config/user/ops` push** ⚑                              | **Yes**                                              | No bump: additive, feature-detected from the Config discovery fragment (`userData: {settings, collections, saves, limits}`); **transcripts and parity, not signed corpus** | **Plan mode.** Contract (WIRE-CONTRACT-V4 user-data section, `shared-protocol` types) → `errors.json` (rule 3) → transcripts → OpenAPI and `routeCoverage` (rule 10) → all six SDKs |
-| **Save routes** ⚑                                                                  | **Yes**                                              | Same                                                                                                                                                                       | Same chain                                                                                                                                                                          |
-| `/config/user/*` on the CORS inclusion list (browser bearer)                       | Yes (browser)                                        | Neither; `routeCoverage` holds the list, the spec's `options` operations and the router together (`W/core/cors.ts:83-87`) [V]                                              | Worker, React (web)                                                                                                                                                                 |
-| `userdata-scenarios.json` client scenario corpus                                   | No: client behaviour, not wire                       | A new unsigned conformance file with a `--check` drift gate; not the signed corpus                                                                                         | All six SDK test suites (runners), `client-core` (reference)                                                                                                                        |
-| **Live poke WebSocket** ⚑ (later)                                                  | Yes                                                  | Same                                                                                                                                                                       | Same chain                                                                                                                                                                          |
-| Server-signed receipts (later, decision 13)                                        | Yes: a new signed artefact                           | Outside the corpus or a new corpus family; its own plan and keyring                                                                                                        | Plan mode                                                                                                                                                                           |
-| React desktop bridge carries `setConfig` and `userData.*`                          | IPC, not HTTP                                        | Bridge contract v3 → v4 (`packages/sdk-react/src/desktop/bridge.ts:1-30`) [V]                                                                                              | React                                                                                                                                                                               |
+| Change                                                                                   | Device wire?                                         | `PROTOCOL_VERSION` / corpus                                                                                                                                                | Who follows                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `devices.account_id`; account override layer in Core's merge; licence-override migration | No: document content only                            | Neither                                                                                                                                                                    | Worker, admin console                                                                                                                                                                |
+| Catalog `user` block; `cloudSync` manifest block                                         | Catalog JSON served at `/config/schema` gains fields | Neither; old SDKs ignore unknown catalog fields [U: confirm each SDK's catalog parser tolerates them, in U-01]                                                             | `shared-catalog`, `shared-manifest` (rule 9), `gen-mirrors`, console                                                                                                                 |
+| **`/sync` pull and `/sync/ops` push** ⚑                                                  | **Yes**                                              | No bump: additive, feature-detected from the Cloud Sync discovery fragment (`sync: {settings, collections, saves, limits}`); **transcripts and parity, not signed corpus** | **Plan mode.** Contract (WIRE-CONTRACT-V4 Cloud Sync section, `shared-protocol` types) → `errors.json` (rule 3) → transcripts → OpenAPI and `routeCoverage` (rule 10) → all six SDKs |
+| **Save routes** ⚑                                                                        | **Yes**                                              | Same                                                                                                                                                                       | Same chain                                                                                                                                                                           |
+| `/sync/*` on the CORS inclusion list (browser bearer)                                    | Yes (browser)                                        | Neither; `routeCoverage` holds the list, the spec's `options` operations and the router together (`W/core/cors.ts:83-87`) [V]                                              | Worker, React (web)                                                                                                                                                                  |
+| `sync-scenarios.json` client scenario corpus                                             | No: client behaviour, not wire                       | A new unsigned conformance file with a `--check` drift gate; not the signed corpus                                                                                         | All six SDK test suites (runners), `client-core` (reference)                                                                                                                         |
+| **Live poke WebSocket** ⚑ (later)                                                        | Yes                                                  | Same                                                                                                                                                                       | Same chain                                                                                                                                                                           |
+| Server-signed receipts (later, decision 13)                                              | Yes: a new signed artefact                           | Outside the corpus or a new corpus family; its own plan and keyring                                                                                                        | Plan mode                                                                                                                                                                            |
+| React desktop bridge carries `setConfig` and `cloudSync.*`                               | IPC, not HTTP                                        | Bridge contract v3 → v4 (`packages/sdk-react/src/desktop/bridge.ts:1-30`) [V]                                                                                              | React                                                                                                                                                                                |
 
-New error codes: `user_required`, `setting_unknown`, `setting_locked` (SDK-local), `value_invalid`,
+New error codes: `account_required`, `setting_unknown`, `setting_locked` (SDK-local), `value_invalid`,
 `revision_conflict`, `quota_exceeded` (with `scope`), `payload_too_large`, `collection_unknown`,
 `access_denied`, `store_requires_flag`, `cursor_expired`, `upload_mismatch`,
 `op_invalid_for_policy`, `client_mismatch`.
 
-New parity feature ids: `config.user.set`, `config.user.observe`, `userdata.collection`,
-`userdata.saves`, `userdata.offline`, `userdata.merge`, `userdata.live`, `userdata.scenarios`.
+New parity feature ids: `config.user.set` and `config.user.observe` (local persistence, Config),
+and `sync.settings`, `sync.collection`, `sync.saves`, `sync.offline`, `sync.merge`, `sync.live`,
+`sync.scenarios` (Cloud Sync).
 
 Conformance transcripts to add:
 
@@ -1295,7 +1433,7 @@ Conformance transcripts to add:
 - duplicate `mutationId` replay;
 - `cursor_expired` reset;
 - HLC skew clamp;
-- `user_required`;
+- `account_required`;
 - quota rejection;
 - save begin, upload and finalize, including a hash mismatch;
 - anonymous-to-signed-in with an empty and a non-empty cloud;
@@ -1315,7 +1453,7 @@ Conformance transcripts to add:
 requests. The client behaviour is the part most likely to differ six ways: optimistic reads over
 the journal, debounce, HLC folding, rebase after a conflict, user partitioning, the attach merge,
 and `cursor_expired` with pending operations. The fix is a language-neutral scenario corpus,
-`conformance/corpus/v2/userdata-scenarios.json`, next to `config-matrix.json` [V: path], built in
+`conformance/corpus/v2/sync-scenarios.json`, next to `config-matrix.json` [V: path], built in
 U-18 before any SDK work [I]:
 
 - **Format.** Each scenario has an initial state (catalog, document, journal, server state, clock)
@@ -1328,12 +1466,12 @@ U-18 before any SDK work [I]:
   - `assert`, which checks the effective values with sources, the journal contents, the requests
     sent (their body shapes), the events emitted with `origin`, and `status()`.
 - **Generation.** A reference client state machine and an in-memory reference server, both in
-  `client-core`, generate the expected outputs with a `gen:userdata-scenarios` script and a
+  `client-core`, generate the expected outputs with a `gen:sync-scenarios` script and a
   `--check` drift gate, as `gen:transcripts` does. The scenario files are data, so each SDK needs
   only a runner.
 - **Runners.** Each SDK's test suite replays every scenario through a fake clock and a fake
   transport that serves the scripted responses and records requests. Each SDK adds a parity id,
-  `userdata.scenarios`.
+  `sync.scenarios`.
 - **Initial scenario set**, one or more per rule:
   - optimistic read with pending operations;
   - debounce coalescing a slider drag into one mutation;
@@ -1356,11 +1494,11 @@ U-18 before any SDK work [I]:
 | #   | Threat                                                                      | Control                                                                                                                         |
 | --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | T1  | Cross-user read or write by naming another user (IDOR)                      | Owner derived from the credential; DO name server-side; no user id in device routes (§5.8 item 1)                               |
-| T2  | A leaked licence key reads the owner's saves                                | Licence-key activation never binds a user (S-16 low-assurance rule)                                                             |
-| T3  | A stolen device token keeps writing after sign-out or "sign out everywhere" | One Core hook clears `devices.user_id`; DO checks the binding per request                                                       |
+| T2  | A leaked licence key reads the owner's saves                                | Licence-key activation never binds an account; an owned licence never moves by key (S-16 §5.1)                                  |
+| T3  | A stolen device token keeps writing after sign-out or "sign out everywhere" | One Core hook clears `devices.account_id`; DO checks the binding per request                                                    |
 | T4  | Player edits saves or `owner` records to cheat                              | Value lives in `ownerRead`/`server`; schema and monotonic constraints; receipts later; docs banner                              |
 | T5  | Client data reaches a gate (the R2-01/R4-01 class)                          | Separate journal; lint rule in the SDK review checklist; never consulted by licence or entitlement code                         |
-| T6  | Storage or cost abuse from one tenant or user                               | Per-user and per-product quotas and rate limits; device-trust gate option; `requiresFlag`                                       |
+| T6  | Storage or cost abuse from one tenant or account                            | Per-principal and per-product quotas and rate limits; device-trust gate option; `requiresFlag`                                  |
 | T7  | Clock tampering wins LWW forever                                            | HLC with server clamp                                                                                                           |
 | T8  | Account switch on a shared PC leaks or flushes into the wrong user          | Journal and cache partitioned by user id; `onSignOut: clear` by default                                                         |
 | T9  | Hostile JSON or blob (deep nesting, prototype keys, served as HTML)         | Caps before parse; key charset; `octet-stream` + `attachment` on download; no public URLs                                       |
@@ -1369,41 +1507,48 @@ U-18 before any SDK work [I]:
 | T12 | Unsafe deserialisation of save bytes in Godot                               | Docs and SDK sample use `bytes_to_var` without objects                                                                          |
 | T13 | XSS on a web app steals the browser device token                            | Bearer only, never a cookie; strict-CSP guidance; server-side revoke via the Core hook; token scoped to one user in one product |
 | T14 | Scripted mass sign-up fills storage (denial of wallet)                      | Lazy DO creation; unlicensed defaults (saves off); per-product byte and user ceilings (§5.7); S-16 sign-up limits               |
-| T15 | A leaked licence key reads the licence's settings partition (decision 18)   | Settings only, never collections or saves; values are low-value preferences; partition merges into the user on attach           |
-| T16 | Operator overrides reach a licence-key device through the owner fallback    | Intended: same data the licence override delivered before migration; operator data only, no user data (§5.12)                   |
+| T15 | Cloud Sync identifiers become a cross-product join key                      | Keys, DO names, R2 prefixes and exports use the pairwise subject only; no account id leaves Core and Identity (§5.2)            |
+| T16 | Operator overrides reach a licence-key device through the owner fallback    | Intended: same data the licence override delivered before migration; operator data only, no Cloud Sync data (§5.12)             |
 
 ### 5.15 How it composes
 
-- **Config.** User settings are config keys. The operator layer is a merge layer. User data routes
-  live in the Config service, gated on Config being enabled. D-08 still holds for the signed
-  document, which needs no licence.
-- **Identity.** It supplies the user, and sets and clears `devices.user_id` through Core. The
-  deletion, export and soft-delete states cascade into user data. The UI kits' sign-in screens gain
-  the merge prompt. A user-to-user merge (S-16 Transfer or an operator relink) moves a _link_, not
-  data: data stays with the user (decision 10).
+- **Config.** User settings are config keys, and the Config SDK persists them locally on every
+  product. The account override is a Config merge layer, read by Core. D-08 still holds for the
+  signed document, which needs no licence. Config stays read-only on the device wire.
+- **Cloud Sync.** Its own service (slug `sync`) and toggle, requiring Config. It reads the catalog
+  through `shared-catalog` and a Core accessor, and its principal through `resolveSyncPrincipal`,
+  so it imports neither Config nor Identity (rule 6).
+- **Identity (layer 1).** It supplies the account, and sets and clears `devices.account_id`
+  through Core. Account deletion, per-product deletion and export cascade into Cloud Sync data and
+  account overrides. The UI kits' sign-in screens gain the merge prompt.
+  - **Account merge** moves data: for each product, the absorbed subject's Cloud Sync data and
+    account overrides join the surviving subject, and collisions go through the merge prompt and
+    the operator report (§5.5).
+  - **The developer's relink tool** moves a _licence_ between accounts, not data. Cloud Sync data
+    stays with the account it was written by (decision 10).
 - **Licence.** It no longer carries config overrides (§5.12). It optionally gates writes
   (`requireLicense`). Tiers raise quotas through `byTier`. Flags gate stores through
-  `requiresFlag`.
-- **Distribution and commerce.** Store grants stay a merge layer below user overrides. Purchases
-  can raise save quotas through tier flags.
-- **Portal.** "My data" export through `GET /api/me/export` (I-15). Self-service delete stays the
-  developer's choice, as controller.
+  `requiresFlag`. Floating licences get neither Cloud Sync nor an account layer.
+- **Distribution and commerce.** Store grants stay a merge layer below account overrides.
+  Purchases can raise save quotas through tier flags.
+- **Portal (S-16 I-11).** The product page's Cloud Sync section, only for products with the service
+  on: usage, last sync per device, export of that product's data, and "remove my data from this
+  product". It is filled by U-12.
 - **Edge mint.** It remains for developers who prefer PlayFab or Firebase.
 
 ### 5.16 Quickstart: synced settings in five minutes
 
-The promise, stated plainly: **cross-device settings sync needs Identity enabled and a signed-in
-user.** For a product that already has Identity, it takes the steps below. For a product without
-it, add S-16's Identity setup first (a login method and, for email, the sender). Without sign-in,
-settings still persist locally on the device and upload at the user's first sign-in. Decision 18
-adds a licence-owned settings backup for licence-only products.
+The promise, stated plainly: **Cloud Sync needs the Cloud Sync toggle and a signed-in Polaris Key
+account. It never works without sign-in** (owner). Sign-in itself needs no per-product setup in
+layer 1: the account and its sign-in methods are platform-wide (S-16 §5.2). Without sign-in,
+settings still persist locally on the device and upload at the first sign-in.
 
-**1. Manifest** (four lines; the `.pkey/product` field names follow I-04 and are a sketch [I]):
+**1. Manifest** (the `.pkey/product` field names follow S-16 I-04 and this note's U-01, and are a
+sketch [I]):
 
 ```yaml
 # .pkey/product (excerpt)
-services: [license, config, identity]
-identity: { methods: [email] }
+services: [license, config, sync]
 
 # .pkey/schema (on an existing config key)
 - key: audio.music.volume
@@ -1413,36 +1558,35 @@ identity: { methods: [email] }
   user: { sync: user } # the only new line
 ```
 
-**2. Console.** Push or resync as today. Then turn on **Config → User data → Enable user data**.
-The switch is off by default because it creates storage cost, and the page shows the product's
-ceilings (§5.7).
+**2. Console.** Push or resync as today. Then turn on **Cloud Sync**. The toggle is off by default
+because it creates storage cost, and its page shows the product's ceilings (§5.7).
 
-**3. Node:**
+**3. Node** (S-16 I-10's names are a sketch [I]):
 
 ```ts
 const pk = new PolarisKeyClient({ product: "diceroll" }); // activated as today
-if (!pk.identity.user()) {
-  await pk.identity.signInWithEmail("ana@example.com"); // I-11
-  await pk.identity.verifyCode(await askForCode());
+if (!pk.identity.subject()) {
+  await pk.identity.signIn(); // the login card: system browser, or device code with a QR
 }
 await pk.config.setConfig("audio.music.volume", 0.6); // journals, then flushes
 pk.config.getConfig("audio.music.volume", 0.8); // 0.6 here and on Ana's other devices
 ```
 
-**3. Godot** (I-11's GDScript names are a sketch [I]):
+**3. Godot** (GDScript names are a sketch [I]):
 
 ```gdscript
 func _ready() -> void:
-    if PolarisKey.identity.user() == null:
-        await PolarisKey.identity.sign_in_with_email("ana@example.com")
-        await PolarisKey.identity.verify_code(await $CodeDialog.code_entered)
+    if PolarisKey.identity.subject() == "":
+        await PolarisKey.identity.sign_in()   # login card, with the "<App> wants you to sign in" header
     PolarisKey.config.bind_property($Music, "volume_linear", "audio.music.volume", 0.8)
     $VolumeSlider.value_changed.connect(
         func(v): PolarisKey.config.set_value("audio.music.volume", v))
 ```
 
 That is the whole integration: no storage code, no conflict code, and no flush code. The autoload
-flushes on pause and close. `bind_property` already re-applies remote changes.
+flushes on pause and close. `bind_property` already re-applies remote changes. On a floating
+licence, the same code keeps the value on the device, and the UI kit's sign-up prompt explains
+what signing in adds.
 
 ### 5.17 Cost and abuse model
 
@@ -1498,8 +1642,8 @@ batching (fewer pushes means fewer row writes); and putting thumbnails in the sl
 saves a Class A write but costs DO storage at $0.20 per GB-month. This product needs its
 per-product ceilings raised: to about 30 TB of bytes and 1.5M data-holding users.
 
-**Worked estimate 2: a free app with 1M users, settings and small records only** [I]. Identity-only,
-so every user is unlicensed. Assumptions: 5% daily users (50k), 4 pulls and 3 pushes per day, 600k
+**Worked estimate 2: a free app with 1M users, settings and small records only** [I]. Identity-only
+without auto-issue, so every signed-in user is unlicensed. Assumptions: 5% daily users (50k), 4 pulls and 3 pushes per day, 600k
 users who ever wrote, 40 KB each.
 
 | Line              | Monthly volume | Cost            |
@@ -1523,64 +1667,71 @@ storage, paid by the platform. The controls in §5.7 bound it:
 - the per-product ceiling (50 GiB and 100k data-holding users by default) stops growth far
   earlier, at about $10 a month, and alerts the operator at 80%;
 - the DO is created lazily, so accounts that never write cost nothing;
-- S-16's sign-up and email rate limits apply upstream.
+- S-16's sign-up and email rate limits apply upstream, and no Cloud Sync exists without an account.
 
 **Who pays.** The platform account pays Cloudflare. Products are not billed per byte today, so the
 per-product ceilings are the cost control. Raising one is a deliberate operator action, and the
 console shows the projected monthly cost from the directory aggregate. Metered pass-through waits
-until Polaris has plans (decision 11).
+until Polaris has per-product billing (owner-confirmed, decision 11).
 
 ## 6. Phases and work packages
 
-| Phase                                     | Contents                                                                                                                                                               | WPs                                                                      | Agent-days    |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- |
-| **U0. Plan**                              | Decision record, glossary, data model, wire section, browser principal, errors, parity ids, scenario format, threat model, ceilings                                    | U-01                                                                     | 5             |
-| **U1. Settings and user overrides** (MVP) | Principal binding; user override layer and migration; catalog block; DO and routes; scenario corpus; security review; six SDKs; console; privacy (settings half); docs | U-02 … U-07, U-18 … U-21, U-12, and the settings halves of U-11 and U-15 | 59            |
-| **U2. Collections and attach**            | Attach-merge framework; records backend; collections in six SDKs; licence-owned settings backup (decision 18)                                                          | U-08, U-09, U-22, U-23, U-26                                             | 25            |
-| **U3. Saves**                             | R2 blobs, revisions, policies, conflict UI in six SDKs; privacy for records and saves; console and docs rest                                                           | U-10, U-13, U-25, U-24, the rest of U-11 and U-15                        | 26            |
-| **U4. Later**                             | Live poke, developer-backend API, public collections, receipts, end-to-end encryption                                                                                  | U-14, U-16, U-17                                                         | 14 (optional) |
+The owner confirmed the order: the MVP first, then the anonymous-to-signed-in merge and saves,
+then collections. The phases are re-cut to match, and every Identity dependency now names S-16's
+re-cut work packages at `1ee7375a` (I-05 accounts core, I-08 app passthrough and web redirect,
+I-10 SDK identity, I-11 portal Library, I-12 console Users).
 
-**MVP = U0 + U1: about 64 agent-days.** It delivers the owner's licence-override removal on
-Identity products, cross-device settings in all six SDKs, and the settings half of export and
-deletion. That half is needed because settings and user overrides are personal data from day one
-(§5.9). **U3 does not wait for U2's collections.** Saves depend on U-05, U-08 and U-10 only, so
-the Godot program can take U3 straight after U1 and U-08.
+| Phase                                        | Contents                                                                                                                                                                                                                               | WPs                                                                      | Agent-days    |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- |
+| **U0. Plan**                                 | Decision record, glossary, data model, wire section, browser principal, errors, parity ids, scenario format, threat model, ceilings, the `sync` service descriptor                                                                     | U-01                                                                     | 5             |
+| **U1. Settings and account overrides** (MVP) | Principal binding; account override layer and the platform-wide migration; catalog block and the Cloud Sync service; DO and routes; scenario corpus; security review; six SDKs; console; portal section; privacy (settings half); docs | U-02 … U-07, U-18 … U-21, U-12, and the settings halves of U-11 and U-15 | 60            |
+| **U2. Attach merge and saves**               | Attach and account-merge framework; R2 blobs, revisions, policies, conflict UI in six SDKs; privacy for saves; console and docs for saves                                                                                              | U-08, U-10, U-13, U-25, the saves halves of U-24, U-11 and U-15          | 27            |
+| **U3. Collections**                          | Records backend; collections in six SDKs; privacy, console and docs for records                                                                                                                                                        | U-09, U-22, U-23, the records halves of U-24, U-11 and U-15              | 20            |
+| **U4. Later**                                | Live poke, developer-backend API, public collections, receipts, end-to-end encryption                                                                                                                                                  | U-14, U-16, U-17                                                         | 14 (optional) |
+
+**MVP = U0 + U1: about 65 agent-days** (the owner confirmed about 64; U-12 gained a day for the
+portal's Cloud Sync section, and U-04's new service scaffolding is offset by U-03's simpler
+migration). It delivers the owner's licence-override removal on every product, cross-device
+settings in all six SDKs, and the settings half of export and deletion. That half is needed because
+settings and account overrides are personal data from day one (§5.9). **U2 does not wait for
+collections.** Saves depend on U-05, U-08 and U-10 only.
 
 Sizes: S ≤ 1 day, M 2–4 days, L 5+ days. ⚑ = plan mode. Gates are in addition to the green gate.
+Ids are kept from the earlier revisions so cross-references stay valid; U-26 is retired.
 
-| ID     | Phase | Work package                                                                                                                                                                                                                                                                                                                                                                 | Deps                   | Size | Days | Gates and flags                                                                                                           |
-| ------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ---- | ---- | ------------------------------------------------------------------------------------------------------------------------- |
-| U-01 ⚑ | U0    | **Plan.** Decision record (user data in Config; DO per user), glossary nouns (rule 4), data model, WIRE-CONTRACT-V4 user-data section with the op table and push rules, browser principal and CORS list, `shared-protocol` types, error codes, parity ids, manifest schema, scenario-corpus format, ceilings, threat rows T1–T16, catalog-parser tolerance check in each SDK | I-04                   | M    | 5    | Plan approval; rule 2 argument (no bump); rule 4                                                                          |
-| U-02   | U1    | Principal binding: `devices.user_id` migration; Core activation path sets it on Identity `signIn` (native and browser devices); one Core hook clears it; `resolveUserPrincipal` for Config (rule 6)                                                                                                                                                                          | U-01, I-06             | M    | 3    | Boundaries test; test that licence-key activation never binds                                                             |
-| U-03   | U1    | User override layer: `user_overrides`, `overrideUser` with the licence-owner fallback, per-product selection of licence or user layer, sealing through `applyOverrides`, console editor, admin route; **per-product migration** (§5.12 steps 1–5) with the console report                                                                                                    | U-02, I-07             | L    | 6    | The five §5.12 tests; corpus unchanged (assert); migration dry run on a production-shaped copy                            |
-| U-04   | U1    | Catalog and manifest: `user` block (with `merge` members) and `userData` block (with `unlicensed`), validator rules 1–11 with mutation-table entries, `gen-mirrors` typed setting keys, `gen-docs`, console catalog form and User data page with the enable switch                                                                                                           | U-01                   | L    | 5    | Rule 9 mutation table; `gen-mirrors` drift; docs drift                                                                    |
-| U-05 ⚑ | U1    | UserData Durable Object (settings and `setting_members`, `seq`, clients, tombstones, lazy migrations), push rules 1–8 on the server, coalesced directory alarm, unlicensed limits and product ceilings, `RateLimitDO` limits, pull and push routes, browser bearer and CORS inclusion, discovery fragment, `errors.json`, OpenAPI and `routeCoverage`, transcripts           | U-02, U-04             | L    | 9    | Plan-mode chain (rules 3, 10); load test of one DO at the push limit, measuring rows written and billable duration per op |
-| U-19   | U1    | **Security review of U-05** before any production deploy: T1–T3, T13, T14 and T16, cross-tenant and cross-user tests, CORS behaviour, the clamp and quota paths                                                                                                                                                                                                              | U-05                   | M    | 2    | **Gates U-05's production deploy and every U1 SDK release**; findings tracked as R-series                                 |
-| U-18   | U1    | **Scenario corpus**: `userdata-scenarios.json`, reference client state machine and in-memory server in `client-core`, `gen:userdata-scenarios -- --check`, the Node runner as the template                                                                                                                                                                                   | U-01                   | M    | 4    | Drift gate; every push and journal rule has a scenario                                                                    |
-| U-06 ⚑ | U1    | SDK user settings in **Node and Python**: journal, `setConfig`, `clearConfig`, `settingState`, `onChange` with origin, member diffs, flush hooks (`beforeExit`, `atexit`), sign-out rules, scenario runner                                                                                                                                                                   | U-05, U-18, I-11       | L    | 5    | Transcripts; scenarios; parity rows                                                                                       |
-| U-20 ⚑ | U1    | SDK user settings in **React**: web (IndexedDB journal, `BroadcastChannel` with one writer tab, bearer device token, `pagehide` flush) and desktop (main-process journal, bridge v4), `useSetting`, `ConfigPanel` persistence, scenario runner                                                                                                                               | U-05, U-18, I-11, I-13 | L    | 5    | Transcripts incl. CORS; scenarios; parity rows                                                                            |
-| U-07 ⚑ | U1    | SDK user settings in **Swift and Kotlin**: the same, plus `@PolarisSetting`, `rememberSetting` (optional `:compose`), Android WorkManager retry, Swift `scenePhase` flush, scenario runners                                                                                                                                                                                  | U-05, U-18, I-11       | L    | 7    | Transcripts; scenarios; parity rows                                                                                       |
-| U-21 ⚑ | U1    | SDK user settings in **Godot**: `PKeyUserSettingsStore`, journal in `user://` (IndexedDB on web export), autoload flush on pause and close, `PKeySettingsPanel`, scenario runner in GDScript                                                                                                                                                                                 | U-05, U-18, I-11       | L    | 5    | Transcripts; scenarios; parity rows; web export check                                                                     |
-| U-12   | U1    | Privacy, settings half: export section for settings and user overrides, delete cascade (DO `deleteAll`, `user_overrides`, directory), soft-delete read-only state, tombstone re-apply after a restore                                                                                                                                                                        | U-03, U-05, I-07       | M    | 3    | Privacy review; deletion test after a simulated restore                                                                   |
-| U-11   | U1/U3 | Console Data tab. Settings half (MVP, 3 days): settings, user overrides, "what the app sees", quota meters, audit and step-up. Rest (U3, 3 days): collections browser, saves, history and restore                                                                                                                                                                            | U-03, U-05, I-07       | L    | 6    | Accessibility and console tests                                                                                           |
-| U-15   | U1/U3 | Docs. Settings half (MVP, 2 days): concepts, the §5.16 quickstart, client-writable banner, sync-needs-sign-in statement, clock limits. Rest (U3, 2 days): collections and saves guides, Steam Cloud coexistence, Godot save security                                                                                                                                         | U-06, U-21             | M    | 4    | Docs drift                                                                                                                |
-| U-08 ⚑ | U2    | Attach-merge framework: `empty` flag, `MergeRequest` in six SDKs, settings merge rules, merge prompt components in the four UI kits. Records and saves branches live in U-22, U-23, U-13 and U-25                                                                                                                                                                            | U-06, U-07, U-20, U-21 | M    | 4    | Transcripts and scenarios for empty and non-empty clouds                                                                  |
-| U-09 ⚑ | U2    | Collections **backend**: records with CAS and `*`, `inc`, `record_fields` merge, `set_elements` OR-set, wildcard collections, `ownerRead` and `server` classes with console writes, unlicensed limits, transcripts and scenario additions                                                                                                                                    | U-05, U-19             | L    | 6    | Plan-mode chain; transcripts                                                                                              |
-| U-22 ⚑ | U2    | Collections SDK in **Node, React, Python**: `collection`, `put`, `update` with the CAS loop, `add` and `remove`, `onConflict`, records attach merge                                                                                                                                                                                                                          | U-09, U-08             | L    | 5    | Transcripts; scenarios; parity                                                                                            |
-| U-23 ⚑ | U2    | Collections SDK in **Swift, Kotlin, Godot**: the same with `Codable`, `@Serializable` and GDScript dictionaries                                                                                                                                                                                                                                                              | U-09, U-08             | L    | 6    | Transcripts; scenarios; parity                                                                                            |
-| U-26 ⚑ | U2    | Licence-owned settings backup (decision 18): owner kind `license` in the DO name, settings only, licence-key devices reach it, merge into the user at attach through U-08                                                                                                                                                                                                    | U-05, U-08             | M    | 4    | Plan-mode chain; T15 test; transcripts                                                                                    |
-| U-10 ⚑ | U3    | Saves backend: begin, streamed upload with sha256 (multipart only above 100 MB), finalize, revisions, metadata policies, R2 GC alarm, per-user data keys, `requiresFlag`, unlicensed saves limits                                                                                                                                                                            | U-05, U-19             | L    | 7    | Plan-mode chain                                                                                                           |
-| U-13 ⚑ | U3    | Saves SDK in **Node, React, Python**: `saves.list/read/write/revisions`, conflict objects and `keep()`, saves attach merge, React `<SaveConflict/>`, flush-before-exit warnings                                                                                                                                                                                              | U-10, U-08             | L    | 5    | Transcripts; scenarios; parity                                                                                            |
-| U-25 ⚑ | U3    | Saves SDK in **Swift, Kotlin, Godot** (Godot first): the same, plus the SwiftUI and Compose conflict views and the Godot `PKeySaveConflict` scene, `formatVersion` and `saveCompat` metadata                                                                                                                                                                                 | U-10, U-08             | L    | 6    | Transcripts; scenarios; parity                                                                                            |
-| U-24   | U3    | Privacy, records and saves: export section and save zip, R2 prefix delete, crypto-shredding, residency option                                                                                                                                                                                                                                                                | U-12, U-09, U-10       | M    | 3    | Privacy review                                                                                                            |
-| U-14 ⚑ | U4    | Later: live pokes over hibernating WebSockets, all six SDKs (Godot `WebSocketPeer`)                                                                                                                                                                                                                                                                                          | U-05, U-07, U-21       | M    | 4    | Plan-mode chain; reconnect-on-deploy test                                                                                 |
-| U-16 ⚑ | U4    | Later: developer-backend user-data API for `ownerRead` and `server` collections, with the credential chosen in decision 12                                                                                                                                                                                                                                                   | U-09, I-16 or I-19     | M    | 4    | Plan mode (new credential use)                                                                                            |
-| U-17 ⚑ | U4    | Later, optional: server-signed receipts (separate keyring), opaque end-to-end encrypted value type, public collections                                                                                                                                                                                                                                                       | U-09, U-10             | L    | 6+   | Plan mode (new signed artefact)                                                                                           |
+| ID       | Phase    | Work package                                                                                                                                                                                                                                                                                                                                                                                                                                             | Deps                         | Size | Days | Gates and flags                                                                                                           |
+| -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ---- | ---- | ------------------------------------------------------------------------------------------------------------------------- |
+| U-01 ⚑   | U0       | **Plan.** Decision record (Cloud Sync as its own service on Config's catalog; DO per `(product, subject)`; account overrides in Config), glossary nouns (rule 4), data model, WIRE-CONTRACT-V4 Cloud Sync section with the op table and push rules, browser principal and CORS list, `shared-protocol` types, error codes, parity ids, manifest schema, scenario-corpus format, ceilings, threat rows T1–T16, catalog-parser tolerance check in each SDK | I-04                         | M    | 5    | Plan approval; rule 2 argument (no bump); rule 4                                                                          |
+| U-02     | U1       | Principal binding: `devices.account_id` migration; Core activation path sets it on Identity sign-in (native and browser devices); one Core hook clears it; `resolveSyncPrincipal` returning `(product, subject)` for Cloud Sync and the account for Config (rule 6)                                                                                                                                                                                      | U-01, I-05                   | M    | 3    | Boundaries test; test that licence-key activation never binds; no account id in any Cloud Sync key                        |
+| U-03     | U1       | Account override layer: `account_overrides`, `overrideAccount` with the licence-owner fallback, sealing through `applyOverrides`, console editor on the Users page, admin route; **the platform-wide migration** (§5.12 steps 1–5) with the inventory, notice and report                                                                                                                                                                                 | U-02, I-05, I-12             | L    | 5    | The six §5.12 tests; corpus unchanged (assert); migration dry run on a production-shaped copy                             |
+| U-04     | U1       | Catalog, manifest and service: `user` block (with `merge` members) and `cloudSync` block (with `unlicensed`), validator rules 1–11 with mutation-table entries, `gen-mirrors` typed setting keys, `gen-docs`; **the `sync` service** in `tools/services.json` (descriptor, `requires: config`, toggle, discovery fragment, console section and accent); console catalog form and Cloud Sync page                                                         | U-01                         | L    | 6    | Rule 9 mutation table; services checklist and boundaries test; `gen-mirrors` drift; docs drift                            |
+| U-05 ⚑   | U1       | Cloud Sync Durable Object (settings and `setting_members`, `seq`, clients, tombstones, lazy migrations), push rules 1–8 on the server, coalesced directory alarm, unlicensed limits and product ceilings, `RateLimitDO` limits, pull and push routes, browser bearer and CORS inclusion, discovery fragment, `errors.json`, OpenAPI and `routeCoverage`, transcripts                                                                                     | U-02, U-04                   | L    | 9    | Plan-mode chain (rules 3, 10); load test of one DO at the push limit, measuring rows written and billable duration per op |
+| U-19     | U1       | **Security review of U-05** before any production deploy: T1–T3, T13–T16, cross-tenant, cross-product and cross-account tests, CORS behaviour, the clamp and quota paths                                                                                                                                                                                                                                                                                 | U-05                         | M    | 2    | **Gates U-05's production deploy and every U1 SDK release**; findings tracked as R-series                                 |
+| U-18     | U1       | **Scenario corpus**: `sync-scenarios.json`, reference client state machine and in-memory server in `client-core`, `gen:sync-scenarios -- --check`, the Node runner as the template                                                                                                                                                                                                                                                                       | U-01                         | M    | 4    | Drift gate; every push and journal rule has a scenario                                                                    |
+| U-06 ⚑   | U1       | SDK user settings in **Node and Python**: local persistence, journal, `setConfig`, `clearConfig`, `settingState`, `onChange` with origin, member diffs, flush hooks (`beforeExit`, `atexit`), sign-out rules, scenario runner                                                                                                                                                                                                                            | U-05, U-18, I-10             | L    | 5    | Transcripts; scenarios; parity rows                                                                                       |
+| U-20 ⚑   | U1       | SDK user settings in **React**: web (IndexedDB journal, `BroadcastChannel` with one writer tab, bearer device token from I-08's web redirect, `pagehide` flush) and desktop (main-process journal, bridge v4), `useSetting`, `ConfigPanel` persistence, scenario runner                                                                                                                                                                                  | U-05, U-18, I-10, I-08       | L    | 5    | Transcripts incl. CORS; scenarios; parity rows                                                                            |
+| U-07 ⚑   | U1       | SDK user settings in **Swift and Kotlin**: the same, plus `@PolarisSetting`, `rememberSetting` (optional `:compose`), Android WorkManager retry, Swift `scenePhase` flush, scenario runners                                                                                                                                                                                                                                                              | U-05, U-18, I-10             | L    | 7    | Transcripts; scenarios; parity rows                                                                                       |
+| U-21 ⚑   | U1       | SDK user settings in **Godot**: `PKeyUserSettingsStore`, journal in `user://` (IndexedDB on web export), autoload flush on pause and close, `PKeySettingsPanel`, scenario runner in GDScript                                                                                                                                                                                                                                                             | U-05, U-18, I-10             | L    | 5    | Transcripts; scenarios; parity rows; web export check                                                                     |
+| U-12     | U1       | Privacy, settings half, and the **portal Cloud Sync section**: export section for settings and account overrides in I-11's per-product and full export and I-12's per-subject export; delete cascade (DO `deleteAll`, `account_overrides`, directory) on account deletion and per-product deletion; tombstone re-apply after a restore; the product-page section (usage, devices, export, remove my data)                                                | U-03, U-05, I-11, I-12       | M    | 4    | Privacy review; deletion test after a simulated restore; portal suite and CSP parity                                      |
+| U-11     | U1/U2/U3 | Console Data tab on I-12's Users page (pairwise subject only). Settings half (MVP, 3 days): settings, account overrides, "what the app sees", quota meters, audit and step-up. Saves half (U2, 2 days): saves, history and restore. Records half (U3, 1 day): collections browser                                                                                                                                                                        | U-03, U-05, I-12             | L    | 6    | Accessibility and console tests; cross-product visibility test                                                            |
+| U-15     | U1/U2/U3 | Docs. Settings half (MVP, 2 days): concepts, the §5.16 quickstart, client-writable banner, "no Cloud Sync without sign-in" statement, the migration notice for operators, clock limits. Saves half (U2, 1 day): saves guide, Steam Cloud coexistence, Godot save security. Records half (U3, 1 day): collections guide                                                                                                                                   | U-06, U-21                   | M    | 4    | Docs drift                                                                                                                |
+| U-08 ⚑   | U2       | Attach and merge framework: `empty` flag, `MergeRequest` in six SDKs, settings merge rules, merge prompt components in the four UI kits; **account-merge collisions** (S-16 I-05's merge hook re-keys the absorbed subject's data and parks colliding units for the prompt). Saves and records branches live in U-13, U-25, U-22 and U-23                                                                                                                | U-06, U-07, U-20, U-21, I-05 | M    | 4    | Transcripts and scenarios for empty and non-empty clouds and for a merged account                                         |
+| U-10 ⚑   | U2       | Saves backend: begin, streamed upload with sha256 (multipart only above 100 MB), finalize, revisions, metadata policies, R2 GC alarm, per-principal data keys, `requiresFlag`, unlicensed saves limits                                                                                                                                                                                                                                                   | U-05, U-19                   | L    | 7    | Plan-mode chain                                                                                                           |
+| U-13 ⚑   | U2       | Saves SDK in **Node, React, Python**: `saves.list/read/write/revisions`, conflict objects and `keep()`, saves attach merge, React `<SaveConflict/>`, flush-before-exit warnings                                                                                                                                                                                                                                                                          | U-10, U-08                   | L    | 5    | Transcripts; scenarios; parity                                                                                            |
+| U-25 ⚑   | U2       | Saves SDK in **Swift, Kotlin, Godot** (Godot first): the same, plus the SwiftUI and Compose conflict views and the Godot `PKeySaveConflict` scene, `formatVersion` and `saveCompat` metadata                                                                                                                                                                                                                                                             | U-10, U-08                   | L    | 6    | Transcripts; scenarios; parity                                                                                            |
+| U-24     | U2/U3    | Privacy beyond settings. Saves half (U2, 2 days): save manifest and zip in exports, R2 prefix delete, crypto-shredding, residency option. Records half (U3, 1 day): records in exports and deletion                                                                                                                                                                                                                                                      | U-12, U-10; U-09             | M    | 3    | Privacy review                                                                                                            |
+| U-09 ⚑   | U3       | Collections **backend**: records with CAS and `*`, `inc`, `record_fields` merge, `set_elements` OR-set, wildcard collections, `ownerRead` and `server` classes with console writes, unlicensed limits, transcripts and scenario additions                                                                                                                                                                                                                | U-05, U-19                   | L    | 6    | Plan-mode chain; transcripts                                                                                              |
+| U-22 ⚑   | U3       | Collections SDK in **Node, React, Python**: `collection`, `put`, `update` with the CAS loop, `add` and `remove`, `onConflict`, records attach merge                                                                                                                                                                                                                                                                                                      | U-09, U-08                   | L    | 5    | Transcripts; scenarios; parity                                                                                            |
+| U-23 ⚑   | U3       | Collections SDK in **Swift, Kotlin, Godot**: the same with `Codable`, `@Serializable` and GDScript dictionaries                                                                                                                                                                                                                                                                                                                                          | U-09, U-08                   | L    | 6    | Transcripts; scenarios; parity                                                                                            |
+| U-14 ⚑   | U4       | Later: live pokes over hibernating WebSockets, all six SDKs (Godot `WebSocketPeer`)                                                                                                                                                                                                                                                                                                                                                                      | U-05, U-07, U-21             | M    | 4    | Plan-mode chain; reconnect-on-deploy test                                                                                 |
+| U-16 ⚑   | U4       | Later: developer-backend Cloud Sync API for `ownerRead` and `server` collections, addressed by pairwise subject, with the credential chosen in decision 12                                                                                                                                                                                                                                                                                               | U-09, I-21 or I-25           | M    | 4    | Plan mode (new credential use)                                                                                            |
+| U-17 ⚑   | U4       | Later, optional: server-signed receipts (separate keyring), opaque end-to-end encrypted value type, public collections                                                                                                                                                                                                                                                                                                                                   | U-09, U-10                   | L    | 6+   | Plan mode (new signed artefact)                                                                                           |
+| ~~U-26~~ | —        | **Retired** (decision 18): the licence-owned settings backup. No Cloud Sync without sign-in                                                                                                                                                                                                                                                                                                                                                              | —                            | —    | —    | —                                                                                                                         |
 
-**Why the SDK estimates rose** [I]. The nearest comparable is S-16's I-11: 6 days for six SDKs,
-about one day each, for stateless request and response flows. User data needs a persisted journal,
+**Why the SDK estimates are what they are** [I]. S-16's SDK work package, I-10, is 8 days for six
+SDKs plus the UI kits, for request and response flows. Cloud Sync needs a persisted journal,
 debounce, the HLC with the server offset, rebase, partitioning, flush hooks and a scenario runner
-in every SDK. That is a stateful offline state machine, estimated at about 2.5 times I-11's rate:
+in every SDK: a stateful offline state machine, estimated per SDK:
 
 | SDK    | Days | Why                                                                                 |
 | ------ | ---- | ----------------------------------------------------------------------------------- |
@@ -1592,56 +1743,74 @@ in every SDK. That is a stateful offline state machine, estimated at about 2.5 t
 | Godot  | 5    | Store integration, web export storage, settings panel, GDScript runner              |
 
 Collections and saves add about 1.7 to 2 days per SDK each, including the UI components for saves.
-The first draft's U-06 (7 days for Node, React and Python) and U-13 (8 days for saves in six SDKs)
-were below this rate.
 
-**Critical path:** I-04 → U-01 → I-06 → U-02 → U-05 → U-19, then the four settings SDK packages
-(after U-18 and I-11; React also after I-13), then U-08, then U-13 and U-25 (with U-10 run in
-parallel after U-05). U-04 and U-18 start right after U-01. U-03 needs I-07's Users page.
+**Critical path:** I-04 → U-01 → I-05 → U-02 → U-05 → U-19, then the four settings SDK packages
+(after U-18 and I-10; React also after I-08), then U-08, then U-13 and U-25 (with U-10 run in
+parallel after U-05). U-04 and U-18 start right after U-01. U-03 needs I-05's licence owner
+pointers and I-12's Users page; U-12 needs I-11's product pages. S-16's own critical path to I-10
+is about 29 agent-days, so the settings SDKs cannot start before I-10 lands, whatever Cloud Sync's
+own progress.
 
-**The Godot path** to save slots: U-01 → U-02 → U-04 → U-05 → U-19 → U-18 → U-21 → U-08 → U-10 →
-U-25, with Godot first inside U-25. It is about 50 agent-days of work, of which about 36 are on
-the serial chain, and U2 is not on it. U-08's Godot slice can start as soon as U-21 lands, without
-waiting for the other five SDKs.
+**The Godot path** to save slots: U-01 → U-02 → U-04 → U-05 → U-19 → U-21 (after U-18 and I-10) →
+U-08 → U-10 → U-25, with Godot first inside U-25. It is about 50 agent-days of work, of which about
+36 are on the serial chain, and collections are not on it. U-08's Godot slice can start as soon as
+U-21 lands, without waiting for the other five SDKs.
 
-**Changes to S-16 work packages** [I]:
+**Changes to S-16 work packages** [I]. S-16 §8.1 regenerates I-05 to I-23 from its table, so these
+belong in that regeneration:
 
-- **I-04** must reserve the `devices.user_id` binding in its data model, so I-06 and U-02 agree.
-- **I-06** `signIn` passes the user to Core's activation path. Its licence model keeps
-  `licenses.user_id` authoritative, because `overrideUser` reads it.
-- **I-07**'s Users page reserves the Data tab, and its export and deletion include a `userData`
-  hook.
-- **I-13**'s web redirect token route must return the activation response (device token) to a
-  React web app on a `web.origins` origin. That is the browser principal for user data.
-- **I-18** reuses `devices.user_id` rather than adding `holder_user_id`.
+- **I-04** reserves the `devices.account_id` binding and the Core resolver from account to pairwise
+  subject in its data model, so I-05 and U-02 agree.
+- **I-05** sign-in passes the account to Core's activation path; `licenses.account_id` stays
+  authoritative, because `overrideAccount` reads it. Its merge hook enumerates the account ×
+  product data to re-key per product (U-08), and per-product deletion calls Cloud Sync's and
+  Config's deletion before it deletes the subject.
+- **I-08**'s web redirect returns the activation response (a device token) to a web app on a
+  `web.origins` origin. That is the browser principal for Cloud Sync.
+- **I-10**'s `signOut` calls the Cloud Sync flush-before-sign-out rule (§5.4 rule 5) when the
+  service is on.
+- **I-11**'s product page reserves the Cloud Sync section and its per-product export and deletion
+  carry a Cloud Sync and account-override hook (filled by U-12).
+- **I-12**'s Users page reserves the Data tab (U-11) and the account override editor (U-03); its
+  per-subject export and deletion carry the same hook.
+- **I-24** reuses `devices.account_id` rather than adding `holder_account_id`.
 
-These are proposals for the lead; no brief is edited in this branch.
+**Program briefs outside Identity that change.** `wp/P6-01-commerce-bridge.md` places store grants
+"before `license.overrides_json`" (`:77`, `:209`) [V]. After U-03 that layer is the account
+override; the ordering property is unchanged. These are proposals for the lead; no brief is edited
+in this branch.
 
 ## 7. Risks, open questions and owner decisions
 
 ### 7.1 Risks
 
-1. **Config becomes read-write.** It is the first device-writable surface in Config. A design slip
-   here is a cross-tenant data leak. Mitigation: T1 to T3 are tests in U-02 and U-05, and U-19's
+1. **The first device-writable data service.** A design slip in Cloud Sync is a cross-tenant or
+   cross-account data leak. Mitigation: T1 to T3 and T15 are tests in U-02 and U-05, and U-19's
    security review gates U-05's production deploy and every U1 SDK release.
 2. **Six offline state machines.** The journal, cursor, conflict callback and merge prompt are
    implemented six times. Mitigation: most policy runs on the server, transcripts pin the wire, and
-   the `userdata-scenarios.json` corpus (U-18) pins the client state machine against a fake clock
-   and a fake server.
-3. **The dependency on S-16.** Without I-06 and I-11 there is no user. Before Identity ships,
-   settings are local only, which still beats today because they persist.
-4. **Durable Object operations.** Lazy per-object migrations, and no cross-user queries.
+   the `sync-scenarios.json` corpus (U-18) pins the client state machine against a fake clock and
+   a fake server.
+3. **The dependency on S-16 layer 1.** Without I-05 there is no account, and without I-10 no SDK
+   can sign in. Before they ship, settings are local only, which still beats today because they
+   persist.
+4. **Durable Object operations.** Lazy per-object migrations, and no cross-principal queries.
    Mitigation: the D1 directory, and a migration version in `meta`.
 5. **Cost.** A 100k-DAU game costs about $850 a month, mostly R2 revisions and DO row writes
-   (§5.17). The per-operation figures are estimates until U-05's load test measures rows written
-   and billable DO duration. Abuse is bounded by unlicensed defaults and per-product ceilings, and
-   there is no pass-through billing yet (decision 11).
-6. **The licence-override migration** changes live behaviour for unattached licences (§5.12 step 3).
-   Licence-key devices on owned licences and licence-only products are protected (decisions 3 and
-   4), so the change is limited to unowned licences on Identity products.
-7. **Sync needs sign-in.** The owner's "easily usable" holds only once Identity is set up. Licence-only
-   products get local persistence until decision 18's licence-owned backup ships in U2.
-8. **Doc drift found on the way** [V]:
+   (§5.17), paid by the platform until per-product billing (owner). The per-operation figures are
+   estimates until U-05's load test measures rows written and billable DO duration. Abuse is
+   bounded by unlicensed defaults and per-product ceilings.
+6. **The migration drops unowned overrides.** Every floating licence that carries config or secret
+   overrides loses them at the run, on every product (owner). Licence-key devices on owned licences
+   are protected by the owner fallback. The notice window and the report (§5.12 steps 1 and 3) are
+   the mitigation; the size of the loss is unknown until U-03's inventory counts it.
+7. **No Cloud Sync without sign-in.** By the owner's decision, floating-licence and never-signed-in
+   users get local persistence only. Products whose customers will not sign in get no sync; the
+   sign-up prompt and the "what signing in adds" copy carry the value.
+8. **Account merge re-keys data.** A merge is the one operation that moves Cloud Sync data between
+   subjects. A bug there loses or crosses data. U-08 carries merged-account scenarios, and the
+   absorbed subject's data is parked, never deleted, until the prompt resolves.
+9. **Doc drift found on the way** [V]:
    - PARITY marks `config.mint` ✗ (`docs/research/2026-09-29-godot-omniplatform/PARITY.md:337`);
    - the omniplatform README says no SDK implements edge-mint (`README.md:1296`);
    - yet Python (`sdks/python/src/polaris_key/config/mint.py`), Kotlin (`ConfigClient.kt`) and Node
@@ -1651,108 +1820,91 @@ These are proposals for the lead; no brief is edited in this branch.
 
 ### 7.2 Open questions
 
-- Should a device-owned server backup exist (survives a reinstall, no licence and no sign-in)?
-  Recommended: no. It would add a third owner kind for little value; decision 18 covers the
-  licence-owned case that the installed base needs.
-- What happens when a user holds several licences on different tiers: which tier's `byTier` quota
-  applies? Recommended: the highest among the user's usable licences.
+- When an account holds several licences of one product on different tiers, which tier's `byTier`
+  quota applies? Recommended: the highest among the account's usable licences for that product.
 - Should `platform` scope families be fixed (`desktop`, `mobile`, `console`, `web`) or declared
   per product?
 - Are R2 jurisdictional buckets available on the current account plan? [U]
-- The Workers request-body limit is now known: 100 MB on Free and Pro (§5.7) [V]. Which Cloudflare
-  plan the production zone is on still decides whether a raised slot ceiling above 100 MB needs
-  multipart. [U]
+- Which Cloudflare plan the production zone is on still decides whether a raised slot ceiling above
+  100 MB needs multipart (100 MB on Free and Pro, §5.7) [V for the limits; U for the plan].
 - Do SQLite-backed DOs without WebSockets bill any idle tail after a request? The pricing page says
   objects eligible for hibernation are not billed. U-05's load test measures it, and it moves the
   game estimate by up to $30 a month. [U]
+- How many floating licences carry config or secret overrides today, per product? U-03's inventory
+  answers it before the notice goes out. [U: needs production data]
 
 ### 7.3 Owner decisions
 
-Each has a recommended default. Accepting all of them is a coherent plan.
+**Decided (owner, 2026-10-04).** Numbers are kept from the earlier revision so references stay
+valid.
 
-1. **Option.** C: settings as a user-scoped Config layer filling the client `local` slot;
-   collections and saves as Config sub-surfaces; one Durable Object per user. _Default: C._
-2. **Principal.** A new `devices.user_id` set by real sign-in and cleared by sign-out and
-   revocation. It is not in any signed document, it is never set by licence-key activation, and
-   I-18 reuses it. _Default: yes._
-3. **What moves, and on which products.** Only the `config` and `secrets` buckets of licence
-   overrides move to users; entitlement overrides stay on the licence everywhere. The move happens
-   only on products with Identity enabled. **Products without Identity keep licence overrides
-   unchanged**, because they have no users to move them to, and removing the layer would end
-   per-customer config for the whole installed base (§5.12). The alternatives are:
-   - B: require Identity before any product migrates, which forces operators into Identity;
-   - C: accept the loss on licence-only products.
+- **1. Option.** C, with Cloud Sync as **its own service** ("Cloud Sync", slug `sync`, its own
+  toggle) on Config's catalog, depending on Config and Identity layer 1; one Durable Object per
+  principal. _Decided._
+- **2. Principal.** The account × product, named by the pairwise subject; `devices.account_id` set by
+  real sign-in and cleared by sign-out and revocation, never signed, never set by licence-key
+  activation, reused by I-24. _Decided (the binding column is this note's design)._
+- **3. What is removed, and where.** The licence-level config override layer, **everywhere**,
+  replaced by user-level managed config on the account × product. Floating licences have no such
+  layer and are prompted to sign up. _Decided; the first revision's "keep licence overrides on
+  products without Identity" default is withdrawn._
+- **4. Migration.** Overrides on owned licences move to the owner's account × product, with the owner
+  fallback for licence-key devices; overrides on licences with no owner are **dropped at
+  migration** with an operator-visible report. _Decided; the 90-day grace period is withdrawn._
+- **11. Quotas, ceilings and who pays.** Licensed defaults as in §5.7, raisable by tier; 1 MiB with
+  saves off for users with no licence; per-product ceilings of 50 GiB, 100k data-holding users
+  and 2,000 pushes per second, raised deliberately with a projected cost; the platform pays
+  Cloudflare until per-product billing. _Decided; review after U-05's load test and three months
+  of use._
+- **17. Scope and order.** The MVP (about 64, now 65, agent-days) first, then the
+  anonymous-to-signed-in merge and saves, then collections. _Decided._
+- **18. A zero-sign-in path.** None, ever. _Decided; U-26 is retired, and threat T15 now covers the
+  cross-product join key instead of a licence partition._
+- **19. Browser principal.** A web app authenticates as a browser device with a bearer device token
+  issued to an origin on the product's `web.origins` allowlist through I-08's web redirect; CORS
+  without credentials; the first-party session cookie is not accepted on Cloud Sync routes.
+  _Decided; web Cloud Sync depends on I-08._
 
-   _Default: A, licence overrides stay on products without Identity._
+**Carried defaults (the owner's decisions above did not change them; accepting them all is a
+coherent plan) [I]:**
 
-4. **Licence-override migration on Identity products.** Run per product when Identity is enabled.
-   - Overrides move to the licence's owning user.
-   - Core resolves the user layer through the licence's owner for licence-key devices
-     (`overrideUser`'s fallback), so those devices keep their overrides. This is operator data, not
-     user data, so S-16's low-assurance rule holds.
-   - For unattached licences, overrides keep applying for 90 days or until attach, then are dropped
-     with an audit row and a console report.
+- **5. Locked keys.** The SDK refuses writes to keys enforced in its document, and the server keeps
+  values dormant (Godot's rule). _Default: yes._
+- **6. Precedence.** User settings sit in the existing `local` slot (above `env`), with
+  host-supplied `localOverrides` beating synced values. No new `ConfigSource`, so the corpus is
+  unchanged. _Default: yes._
+- **7. Default conflict policies.** Settings: LWW by clamped HLC edit time, per key. Records:
+  compare-and-swap, keeping a revision when no hook resolves. Saves: prompt, with metadata
+  policies available. _Default: as stated._
+- **8. Anonymous to signed-in, and account merge.** Upload when the cloud is empty; otherwise
+  per-tier policy, and saves are never overwritten; prompt only on a real conflict. An account
+  merge uses the same rules per product. _Default: as stated._
+- **9. `ui.scopes` and device overrides.** `ui.scopes` stays a hint (gains `user`); `user.sync` is
+  the enforced field. The dormant `devices.overrides_json` layer stays as an operator-only device
+  layer, gaining a console editor later. _Default: as stated._
+- **10. Data follows the account, not the licence.** The developer's relink tool moves a licence and
+  no data; an account merge moves data (§5.5). _Default: yes._
+- **12. Developer-backend credential** for `ownerRead` and `server` writes, addressed by pairwise
+  subject: layer 2 issuer client credentials with a `pkey:sync` scope (I-21), else an RFC 7523
+  assertion (I-25). The console writes from day one. _Default: I-21 client credentials, in U-16._
+- **13. Server-signed receipts.** Later, on their own keyring, outside the corpus. _Default: later._
+- **14. Client-side end-to-end encryption.** Later, as an opaque value type with developer-held keys.
+  Per-principal server-side keys for saves in v1, for crypto-shredding. _Default: as stated._
+- **15. Residency.** An optional per-product EU placement (DO jurisdiction and EU bucket), chosen at
+  product creation. _Default: offer it in U-24 if the account supports it, otherwise later._
+- **16. Cross-product scope.** None in this plan. It would cut across pairwise subjects and the
+  owner's no-cross-product-visibility rule. _Default: later, opt-in, its own spike._
 
-   _Default: as stated. The alternatives are to drop unattached overrides at migration time, as the
-   owner's text reads, or to omit the owner fallback, which would strip every licence-key device of
-   its overrides._
+**Needs the owner's yes (new in this revision) [I]:**
 
-5. **Locked keys.** The SDK refuses writes to keys enforced in its document, and the server keeps
-   values dormant (Godot's rule). _Default: yes._
-6. **Precedence.** User settings sit in the existing `local` slot (above `env`), with
-   host-supplied `localOverrides` beating synced values. No new `ConfigSource`, so the corpus is
-   unchanged. _Default: yes._
-7. **Default conflict policies.** Settings: LWW by clamped HLC edit time, per key. Records:
-   compare-and-swap, keeping a revision when no hook resolves. Saves: prompt, with metadata
-   policies available. _Default: as stated._
-8. **Anonymous to signed-in.** Upload when the cloud is empty; otherwise per-tier policy, and
-   saves are never overwritten; prompt only on a real conflict. _Default: as stated._
-9. **`ui.scopes` and device overrides.** `ui.scopes` stays a hint (gains `user`); `user.sync` is
-   the enforced field. The dormant `devices.overrides_json` layer stays as an operator-only device
-   layer, gaining a console editor later. _Default: as stated._
-10. **Data follows the user, not the link.** A Transfer or relink moves a link and no data; a
-    user-to-user data merge is a support tool, later. _Default: yes._
-11. **Quotas, ceilings and who pays.**
-    - Licensed defaults as in §5.7, raisable by tier.
-    - **Unlicensed users get 1 MiB with saves off.**
-    - **Per-product ceilings**, set by the platform operator: 50 GiB, 100k data-holding users and
-      2,000 pushes per second. Raising one is deliberate and shows a projected cost.
-    - The platform account pays Cloudflare. There is no per-product billing until Polaris has plans.
-
-    _Default: as stated; review the ceilings and unit costs after U-05's load test and three months
-    of use._
-
-12. **Developer-backend credential** for `ownerRead` and `server` writes: S-16 phase 3
-    client-credentials tokens with a `pkey:userdata` scope (I-16), else an RFC 7523 assertion
-    (I-19). The console writes from day one. _Default: I-16 client credentials, in U-16._
-13. **Server-signed receipts.** Later, on their own keyring, outside the corpus. _Default: later._
-14. **Client-side end-to-end encryption.** Later, as an opaque value type with developer-held keys.
-    Per-user server-side keys for saves in v1, for crypto-shredding. _Default: as stated._
-15. **Residency.** An optional per-product EU placement (DO jurisdiction and EU bucket), chosen at
-    product creation. _Default: offer it in U-24 if the account supports it, otherwise later._
-16. **Cross-product scope.** None in this plan. It would need an exception to S-16 decision 2.
-    _Default: later, opt-in, its own spike._
-17. **Scope to commit now.** The MVP is U0 and U1, about 64 agent-days. It covers U-01 to U-07,
-    U-12, U-18 to U-21, and the settings halves of U-11 and U-15. Then saves (U3) for the Godot
-    program, which does not wait for collections, and collections (U2) on demand.
-    _Default: MVP first, then U-08 and U3._
-18. **A zero-sign-in path.** There are three options:
-    - (a) none: state that sync needs Identity and a signed-in user, with local persistence
-      before that;
-    - (b) a **licence-owned settings backup**: settings only, never collections or saves. They
-      roam across one licence's licence-key devices with no sign-in, and merge into the user at
-      attach (U-26, 4 days). A leaked key exposes only preferences (T15);
-    - (c) a device-owned backup that survives a reinstall.
-
-    _Default: (a) in the MVP, stated plainly in the docs and the quickstart, then (b) in U2. The
-    licence-only installed base is the largest audience, and (b) gives it value without Identity.
-    Not (c)._
-
-19. **Browser principal.** A web React app authenticates as a browser device with a bearer device
-    token. Its user is bound through I-13's web redirect route or I-08's email code, and it is
-    readable only from the product's `web.origins` (CORS without credentials, so no CSRF surface).
-    The first-party session cookie is not accepted on user-data routes in v1. _Default: yes; web
-    user data therefore depends on I-13._
+- **20. Entitlement overrides stay on the licence.** The owner removed the _config_ override layer.
+  The licence override's `entitlements` bucket is what a licence sells and feeds the signed
+  licence document, so it stays on the licence on every product, floating ones included; only
+  `config` and `secrets` move (§5.12). _Default: as stated._ The alternative, moving entitlements
+  to the account too, would put an account into the licence document's inputs and reopen S-16
+  decision 9.
+- **21. Migration notice and report window.** Show the inventory 30 days before the run; keep the
+  report (secret values by name only) for 90 days. _Default: as stated._
 
 ## 8. Sources
 
@@ -1776,9 +1928,11 @@ Repo (tree at `ece22812`):
 - `sdks/godot/addons/polaris_key/services/config.gd`,
   `services/config/{override_store,config_file_store}.gd`, `polaris_key.gd`
 - `packages/docs/src/content/docs/start/concepts.md`; `docs/security/WIRE-CONTRACT-V4.md`
-- `docs/research/2026-09-29-godot-omniplatform/notes/S-16-identity-service.md`, `PARITY.md`,
+- `docs/research/2026-09-29-godot-omniplatform/notes/S-16-identity-service.md` (re-read at `1ee7375a`, the
+  one-account restructure, for this revision), `PARITY.md`,
   `README.md`, `program/INDEX.md`
 - `tools/gen-mirrors.ts`; `packages/cli/src/saveCompat.ts`
+- `tools/services.json` (service descriptors); `docs/research/2026-09-29-godot-omniplatform/program/wp/P6-01-commerce-bridge.md`
 
 External (read by the research pass):
 
