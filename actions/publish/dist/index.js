@@ -25973,7 +25973,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash10 } from "node:crypto";
 import { cp as cp2, mkdir as mkdir4, readFile as readFile10, writeFile as writeFile8 } from "node:fs/promises";
 import path11 from "node:path";
-var TRANSPORT_USAGE = "Usage: pkey transport apple-ba package --deliverable <packId> --release <v> --from <dir> [--content-api n]\n              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]\n       pkey transport apple-ba upload --deliverable <packId> --release <v> --dir <package out> [--content-api n]\n              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]\n       pkey transport play-pad modules --deliverable <packId> --release <v> --from <dir> --project <gradle dir>\n              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]\n       pkey transport steam-depot vdf --deliverable <packId> --release <v> --from <dir> --depot <id>\n              (--branch <name> | --channel <c>) [--setlive] [--app <id>] [--out dir] [--no-report]\n  (each also takes --product slug, --base-url url; reports need distribution:report, the default CI grant)";
+var TRANSPORT_USAGE = "Usage: pkey transport apple-ba package --deliverable <packId> --release <v> --from <dir> [--content-api n]\n              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]\n       pkey transport apple-ba upload --deliverable <packId> --release <v> --dir <package out> [--from <dir>] [--content-api n]\n              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]\n       pkey transport play-pad modules --deliverable <packId> --release <v> --from <dir> --project <gradle dir>\n              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]\n       pkey transport steam-depot vdf --deliverable <packId> --release <v> --from <dir> --depot <id>\n              (--branch <name> | --channel <c>) [--setlive] [--app <id>] [--out dir] [--no-report]\n  (each also takes --product slug, --base-url url; reports need distribution:report, the default CI grant)";
 var sha256Hex5 = (b) => createHash10("sha256").update(b).digest("hex");
 function jwsPayload(jws) {
   const parts = jws.split(".");
@@ -26416,6 +26416,22 @@ async function baUpload(o) {
       `${path12.relative(o.cwd, aar)} is missing: package on macOS (without --no-archive) first.`
     );
   });
+  const content = path12.join(dir, assetPackId, "pkey", assetPackId);
+  const packaged = await packagedPayload(content, assetPackId);
+  if (packaged.sha256 !== inputs.payloadSha256)
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `the packaged content under ${path12.relative(o.cwd, content) || content} hashes to ${packaged.sha256.slice(0, 12)}…, not the payload ${String(inputs.payloadSha256).slice(0, 12)}… the package step recorded: package again.`
+    );
+  if (o.from !== void 0) {
+    const loaded = await loadTransportPack(o, o.from);
+    const variant = loaded.variants.find((v2) => v2.key === inputs.variant);
+    if (inputs.recordSha256 !== loaded.recordSha256 || !variant || variant.payload.sha256 !== packaged.sha256 || packaged.marker !== loaded.marker)
+      throw new AscUploadError(
+        "asset-pack-inputs-mismatch",
+        `the packaged content of ${assetPackId} is not ${product.pack.id}@${o.version}'s signed record in ${o.from} (record, payload or marker differ): package again from that cache.`
+      );
+  }
   const appId = appIdOf(product, outlets, o.env);
   const lockFile = path12.resolve(o.cwd, o.lock ?? DEFAULT_ASSET_PACK_LOCK);
   const lock = await readLock(lockFile);
@@ -26551,6 +26567,32 @@ async function baUpload(o) {
     versionId: version.id,
     ascVersion,
     state
+  };
+}
+async function packagedPayload(content, name) {
+  for (const ext of [".pck", ".zip"]) {
+    const file = path12.join(content, `${name}${ext}`);
+    const bytes = await readFile11(file).catch(() => null);
+    if (bytes)
+      return {
+        sha256: sha256Hex5(bytes),
+        marker: await readFile11(`${file}${MARKER_SUFFIX}`, "utf8").catch(
+          () => null
+        )
+      };
+  }
+  const tree = await readTree(content).catch(() => null);
+  if (!tree || tree.errors.length || !tree.files.length)
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `no packaged payload under ${content}: run pkey transport apple-ba package first.`
+    );
+  return {
+    sha256: await treeDigest(tree.files),
+    marker: await readFile11(
+      path12.join(content, ...TREE_MARKER_PATH.split("/")),
+      "utf8"
+    ).catch(() => null)
   };
 }
 async function uploadFile(api, o, versionId, file, assetType) {
@@ -28159,6 +28201,7 @@ ${TRANSPORT_USAGE}`
       await baUpload({
         ...common,
         dir: flagString(parsed, "dir"),
+        from: flagString(parsed, "from"),
         contentApi: flagString(parsed, "content-api"),
         expectResource: flagString(parsed, "expect-resource"),
         lock: flagString(parsed, "lock"),
@@ -28275,7 +28318,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
   pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
               [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
-  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--content-api n]
+  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
               [--expect-resource id] [--lock file] [--wait minutes] [--no-report]
   pkey transport play-pad modules --deliverable packId --release v --from dir --project dir
               [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
