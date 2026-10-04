@@ -5,7 +5,7 @@
 | Phase       | I: Identity service (S-16) (phase-1, MVI)                                                                              |
 | Size        | 0.6–0.85 engineer-weeks                                                                                                |
 | Depends on  | [I-04](I-04-identity-plan.md)                                                                                          |
-| Unblocks | [I-20](I-20-apple-kind.md) |
+| Unblocks    | [I-20](I-20-apple-kind.md)                                                                                             |
 | Role        | `pkey-implementer`                                                                                                     |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                               |
 | Gates       | rule 9 (validator rule, mutation table, JSON schema); THREAT-MODEL; generated docs pages (regenerate, never hand-edit) |
