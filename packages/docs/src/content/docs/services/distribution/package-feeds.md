@@ -96,7 +96,8 @@ Berry and Bun install from it unchanged.
   in `yarn.lock` on the first install and checks that afterwards.
 - **Tags.** `dist-tags` come from the release channels: `stable` is `latest`, and any other
   channel is a tag of its own name (`beta`, `pr-12`). Promoting or pinning a channel moves its
-  tag.
+  tag. With nothing on `stable`, `latest` is the newest release version, else the newest
+  pre-release that no other channel's tag names: a channel's pre-release is never `latest` too.
 - **Yank and deprecate.** npm has no yank. A yanked version stays in the packument and installs
   by exact version, so existing lockfiles keep working, but it leaves every tag and carries
   `deprecated` with the yank reason, so clients warn and range resolution prefers another
