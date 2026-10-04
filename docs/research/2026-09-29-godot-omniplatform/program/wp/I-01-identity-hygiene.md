@@ -61,12 +61,12 @@ These are gaps G10 and G14 and threat-model item 11 in S-16. They are wrong toda
 
 ## Acceptance criteria
 
-- [ ] A fresh OIDC licence row has `origin = 'oidc'`; a test proves it.
-- [ ] Portal identities are keyed by issuer; existing rows are migrated; the portal suite passes.
-- [ ] THREAT-MODEL A6, the §5 `sub`/`email_verified` rows and T5 are corrected.
-- [ ] Docs and the service summary state that the portal runs regardless of the Identity flag.
-- [ ] `authPoll` is absent from discovery; `gen:transcripts -- --check` passes; the PR lists the SDK grep showing no reader.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] A fresh OIDC licence row has `origin = 'oidc'`; a test proves it.
+- [x] Portal identities are keyed by issuer; existing rows are migrated; the portal suite passes.
+- [x] THREAT-MODEL A6, the §5 `sub`/`email_verified` rows and T5 are corrected.
+- [x] Docs and the service summary state that the portal runs regardless of the Identity flag.
+- [x] `authPoll` is absent from discovery; `gen:transcripts -- --check` passes; the PR lists the SDK grep showing no reader.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Corrections from the implementation
 
