@@ -157,15 +157,11 @@ describe("the pinned Apple Root CA - G3", () => {
     expect(cert.ca).toBe(true);
   });
 
-  it("is the same bytes as the PEM kept beside the docs", () => {
+  it("is the same bytes as Apple's published AppleRootCA-G3.cer, kept as a fixture", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const pem = readFileSync(
-      join(here, "fixtures", "commerce", "AppleRootCA-G3.pem"),
-      "utf8",
+    const der = readFileSync(
+      join(here, "fixtures", "commerce", "AppleRootCA-G3.cer"),
     );
-    const b64 = pem.replace(/-----[A-Z ]+-----/g, "").replace(/\s+/g, "");
-    expect(
-      Buffer.from(b64, "base64").equals(Buffer.from(APPLE_ROOT_CA_G3_DER)),
-    ).toBe(true);
+    expect(der.equals(Buffer.from(APPLE_ROOT_CA_G3_DER))).toBe(true);
   });
 });
