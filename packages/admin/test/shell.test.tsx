@@ -738,6 +738,23 @@ describe("page heading, title and focus", () => {
     );
   });
 
+  it("scrolls back to the top on every page change, but not when only the query changes (owner, 2026-10-03)", async () => {
+    boot("#/p/djdl/license/licenses", { services: ALL_ON });
+    await ready();
+    const main = screen.getByRole("main");
+    main.scrollTop = 640;
+    await userEvent.click(within(nav()).getByRole("link", { name: "Tiers" }));
+    await screen.findByRole("heading", { level: 1, name: "Tiers" });
+    await waitFor(() => expect(main.scrollTop).toBe(0));
+
+    // A query-string change on the same page (a filter, a tab) keeps the reader's place.
+    main.scrollTop = 320;
+    window.location.hash = "#/p/djdl/license/tiers?q=pro";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(main.scrollTop).toBe(320);
+  });
+
   it("the skip link is the first focusable element and targets main", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
