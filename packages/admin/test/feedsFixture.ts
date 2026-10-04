@@ -213,6 +213,16 @@ const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
   },
 };
 
+/** The adapters' extension settings (`settings.ext` keys, less `yankHidesFromIndex`). */
+export const EXTENSIONS: Record<FeedEcosystem, string[]> = {
+  npm: [],
+  pypi: ["htmlFallback"],
+  swift: ["requireSigned", "repositoryUrls"],
+  maven: [],
+  oci: ["retainUntaggedDays"],
+  godot: ["categoryId", "supportLevel", "license", "minGodotVersion"],
+};
+
 export function feedDetail(
   scope: "platform" | "product",
   eco: FeedEcosystem,
@@ -248,6 +258,7 @@ export function feedDetail(
       updatedBy: null,
     },
     capabilities: CAPS[eco],
+    extensions: EXTENSIONS[eco],
     accessModes: [
       { mode: "public", available: true },
       { mode: "authenticated", available: false },

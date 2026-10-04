@@ -43,9 +43,10 @@ import {
   OFF_REASONS,
   SYSTEM_PRODUCT_SLUG,
   feedHref,
+  feedSetupSnippets,
   packageHref,
-  setupSnippets,
   type FeedScope,
+  type FeedSnippet,
 } from "./model.js";
 
 const TAB_LABELS: Record<(typeof FEED_TABS)[number], string> = {
@@ -355,8 +356,8 @@ function SetupTab({
         docs={docsUrl("packageFeedsHost")}
       />
     );
-  const snippets = setupSnippets(eco, {
-    baseUrl: detail.feed.baseUrl,
+  const snippets = feedSetupSnippets(eco, {
+    origin: detail.registryOrigin ?? detail.feed.baseUrl,
     owner: detail.owner,
     namespace: detail.settings.namespace,
   });
@@ -368,9 +369,40 @@ function SetupTab({
           gets not-found.
         </Callout>
       ) : null}
+      <SetupSnippets snippets={snippets} />
+    </div>
+  );
+}
+
+/**
+ * Setup snippets as the console shows them: `renderFeedSetup`'s output (the same bytes
+ * `pkey feeds setup` prints), each under its title, with its warning and description.
+ */
+export function SetupSnippets({
+  snippets,
+}: {
+  snippets: readonly FeedSnippet[] | null;
+}): React.ReactElement {
+  if (snippets === null)
+    return (
+      <EmptyState
+        kind="first-run"
+        title="No setup to show"
+        description="The feed's namespace has a value ingest would refuse. Correct it in Settings, under Namespace."
+      />
+    );
+  return (
+    <div className="space-y-4">
       {snippets.map((s) => (
-        <section key={s.title} className="space-y-2">
-          <h2 className="text-sm font-bold text-fg-strong">{s.title}</h2>
+        <section
+          key={s.id}
+          aria-labelledby={`setup-${s.id}`}
+          className="space-y-2"
+        >
+          <h2 id={`setup-${s.id}`} className="text-sm font-bold text-fg-strong">
+            {s.title}
+          </h2>
+          {s.warning ? <Callout tone="warning">{s.warning}</Callout> : null}
           {s.description ? (
             <p className="text-sm text-fg-muted">{s.description}</p>
           ) : null}

@@ -21,7 +21,9 @@ dependency confusion: an attacker's package with the same name on a public regis
 | Godot addon                                  | Godot     | `polaris_key`                  | `https://pkg.plrs.im/godot/polaris-key/`       |
 | The `pkey` CLI as an image                   | OCI       | `pkg.plrs.im/polaris-key/pkey` | `https://pkg.plrs.im/v2/`                      |
 
-The feeds are public: no account and no token. Registry credentials come later (F-21), and these
+`pkey feeds setup --ecosystem <ecosystem> --owner polaris-key` prints the same snippets for any
+feed, and the console shows them on each feed's Setup tab. The feeds are public: no account and
+no token. Registry credentials come later (F-21), and these
 snippets will gain a token line then. How each feed behaves (tags, yanks, caching) is on
 [Package feeds](/docs/services/distribution/package-feeds/).
 
