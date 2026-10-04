@@ -29,7 +29,15 @@ import {
 
 /** A parsed location. `query` is the hash's query string, always present (maybe empty). */
 export type Route =
-  | { kind: "global"; page: GlobalPageId; query: URLSearchParams }
+  | {
+      kind: "global";
+      page: GlobalPageId;
+      /** The record id, for a global page with records (Platform → Package feeds → a feed). */
+      id?: string;
+      tab?: string;
+      child?: RouteChild;
+      query: URLSearchParams;
+    }
   | {
       kind: "product";
       slug: string;
@@ -38,6 +46,8 @@ export type Route =
       id?: string;
       /** The record tab, when the record page has tabs and the URL names one. */
       tab?: string;
+      /** A record nested under the record (`NavRecord.child`): a package under a feed. */
+      child?: RouteChild;
       query: URLSearchParams;
     }
   | {
@@ -48,6 +58,12 @@ export type Route =
       path: string;
       query: URLSearchParams;
     };
+
+/** A nested record: its id segments (`[name]`, or `[owner, name]`) and its tab. */
+export interface RouteChild {
+  ids: string[];
+  tab?: string;
+}
 
 /** A route plus, when the URL was an old or not-ready one, the canonical hash to replace it with. */
 export interface ParsedLocation {
@@ -125,11 +141,16 @@ function startsWith(segments: string[], prefix: string[]): boolean {
   return prefix.every((p, i) => segments[i] === p);
 }
 
-/** Match the segments after `#/p/<slug>/` against the product pages. */
-function matchProductPath(
-  segments: string[],
-): { page: NavPage; id?: string; tab?: string } | null {
-  for (const page of PRODUCT_BY_PATH) {
+interface PathMatch {
+  page: NavPage;
+  id?: string;
+  tab?: string;
+  child?: RouteChild;
+}
+
+/** Match `segments` against `pages` (longest path first): a page, a record, or a nested record. */
+function matchPath(pages: NavPage[], segments: string[]): PathMatch | null {
+  for (const page of pages) {
     const base = segs(page.path);
     if (!startsWith(segments, base)) continue;
     const rest = segments.slice(base.length);
@@ -141,9 +162,29 @@ function matchProductPath(
     if (rest.length === 2 && page.record.tabs?.includes(rest[1]!)) {
       return { page, id: rest[0], tab: rest[1] };
     }
+    // A nested record: `<path>/:id/<segment>/:childId…[/:childTab]`.
+    const child = page.record.child;
+    if (!child || rest[1] !== child.segment) continue;
+    const after = rest.slice(2 + child.ids);
+    if (rest.length < 2 + child.ids) continue;
+    const ids = rest.slice(2, 2 + child.ids);
+    if (after.length === 0) return { page, id: rest[0], child: { ids } };
+    if (after.length === 1 && child.tabs?.includes(after[0]!)) {
+      return { page, id: rest[0], child: { ids, tab: after[0] } };
+    }
   }
   return null;
 }
+
+/** Match the segments after `#/p/<slug>/` against the product pages. */
+function matchProductPath(segments: string[]): PathMatch | null {
+  return matchPath(PRODUCT_BY_PATH, segments);
+}
+
+/** Global pages by path, longest first; only pages with records match deeper than their path. */
+const GLOBAL_BY_PATH: NavPage[] = [...GLOBAL_PAGES].sort(
+  (a, b) => b.path.split("/").length - a.path.split("/").length,
+);
 
 /** A section key alone (`#/p/x/license`) goes to the section's first page. */
 function sectionDefault(segments: string[]): string | null {
@@ -176,7 +217,7 @@ export function parseLocation(hash: string): ParsedLocation {
     const rest = segments.slice(2);
     const matched = matchProductPath(rest);
     if (matched) {
-      const { page, id, tab } = matched;
+      const { page, id, tab, child } = matched;
       if (!page.ready) {
         return redirectTo(productHref(slug, page.host!, {}, suffix));
       }
@@ -190,6 +231,7 @@ export function parseLocation(hash: string): ParsedLocation {
           page: page.page as ProductPageId,
           ...(id !== undefined ? { id } : {}),
           ...(tab !== undefined ? { tab } : {}),
+          ...(child !== undefined ? { child } : {}),
           query,
         },
       };
@@ -221,6 +263,26 @@ export function parseLocation(hash: string): ParsedLocation {
       route: { kind: "global", page: global.page as GlobalPageId, query },
     };
   }
+  // A record under a global page (Platform → Package feeds → a feed, a package).
+  const deep =
+    segments.length > 0
+      ? matchPath(
+          GLOBAL_BY_PATH.filter((p) => p.record && p.path !== ""),
+          segments,
+        )
+      : null;
+  if (deep && deep.id !== undefined && deep.page.ready) {
+    return {
+      route: {
+        kind: "global",
+        page: deep.page.page as GlobalPageId,
+        id: deep.id,
+        ...(deep.tab !== undefined ? { tab: deep.tab } : {}),
+        ...(deep.child !== undefined ? { child: deep.child } : {}),
+        query,
+      },
+    };
+  }
   return { route: { kind: "not-found", path: rawPath, query } };
 }
 
@@ -248,36 +310,59 @@ function queryString(query?: QueryInit | URLSearchParams): string {
   return s ? `?${s}` : "";
 }
 
-function globalHref(page: PageId, suffix = ""): string {
+interface RecordOpts {
+  id?: string;
+  tab?: string;
+  child?: RouteChild;
+}
+
+/** `/:id[/:tab]` or `/:id/<segment>/:childId…[/:childTab]` for a record of `page`. */
+function recordSuffix(page: NavPage, opts: RecordOpts): string {
+  if (opts.id === undefined) return "";
+  let path = `/${encodeURIComponent(opts.id)}`;
+  const child = page.record?.child;
+  if (opts.child && child) {
+    path += `/${child.segment}`;
+    for (const id of opts.child.ids) path += `/${encodeURIComponent(id)}`;
+    if (opts.child.tab !== undefined)
+      path += `/${encodeURIComponent(opts.child.tab)}`;
+    return path;
+  }
+  if (opts.tab !== undefined) path += `/${encodeURIComponent(opts.tab)}`;
+  return path;
+}
+
+function globalHref(page: PageId, suffix = "", opts: RecordOpts = {}): string {
   const p = pageOf(page);
-  return `#/${p.path}${suffix}`;
+  return `#/${p.path}${recordSuffix(p, opts)}${suffix}`;
 }
 
 function productHref(
   slug: string,
   page: PageId,
-  opts: { id?: string; tab?: string },
+  opts: RecordOpts,
   suffix = "",
 ): string {
   const p = pageOf(page);
   let path = `#/p/${encodeURIComponent(slug)}`;
   if (p.path) path += `/${p.path}`;
-  if (opts.id !== undefined) {
-    path += `/${encodeURIComponent(opts.id)}`;
-    if (opts.tab !== undefined) path += `/${encodeURIComponent(opts.tab)}`;
-  }
-  return `${path}${suffix}`;
+  return `${path}${recordSuffix(p, opts)}${suffix}`;
 }
 
 /** The canonical hash for a route. `parseLocation(hrefFor(r))` round-trips every built route. */
 export function hrefFor(route: Route): string {
   const suffix = queryString(route.query);
-  if (route.kind === "global") return globalHref(route.page, suffix);
+  if (route.kind === "global")
+    return globalHref(route.page, suffix, {
+      id: route.id,
+      tab: route.tab,
+      child: route.child,
+    });
   if (route.kind === "product") {
     return productHref(
       route.slug,
       route.page,
-      { id: route.id, tab: route.tab },
+      { id: route.id, tab: route.tab, child: route.child },
       suffix,
     );
   }
@@ -285,16 +370,20 @@ export function hrefFor(route: Route): string {
   return `${prefix}${route.path}${suffix}`;
 }
 
-/** A global page's hash. */
-export function globalPage(page: GlobalPageId, query?: QueryInit): string {
-  return globalHref(page, queryString(query));
+/** A global page's hash, optionally a record of it. */
+export function globalPage(
+  page: GlobalPageId,
+  query?: QueryInit,
+  opts: RecordOpts = {},
+): string {
+  return globalHref(page, queryString(query), opts);
 }
 
-/** A product page's hash, optionally a record (`id`) and its tab. */
+/** A product page's hash, optionally a record (`id`), its tab, or a nested record. */
 export function productPage(
   slug: string,
   page: ProductPageId,
-  opts: { id?: string; tab?: string; query?: QueryInit } = {},
+  opts: RecordOpts & { query?: QueryInit } = {},
 ): string {
   return productHref(slug, page, opts, queryString(opts.query));
 }
@@ -314,6 +403,18 @@ export const r = {
   platformOperations: () => globalPage("platform-operations"),
   platformStores: () => globalPage("platform-stores"),
   platformFeeds: () => globalPage("platform-feeds"),
+  platformFeed: (eco: string, tab?: string) =>
+    globalPage("platform-feeds", undefined, { id: eco, tab }),
+  platformFeedPackage: (
+    eco: string,
+    owner: string,
+    name: string,
+    tab?: string,
+  ) =>
+    globalPage("platform-feeds", undefined, {
+      id: eco,
+      child: { ids: [owner, name], tab },
+    }),
   page: (slug: string, page: ProductPageId, query?: QueryInit) =>
     productPage(slug, page, { query }),
   overview: (slug: string) => productPage(slug, "overview"),
@@ -360,6 +461,14 @@ export const r = {
   health: (slug: string, query?: QueryInit) =>
     productPage(slug, "health", { query }),
   credentials: (slug: string) => productPage(slug, "credentials"),
+  packageFeeds: (slug: string) => productPage(slug, "package-feeds"),
+  packageFeed: (slug: string, eco: string, tab?: string) =>
+    productPage(slug, "package-feeds", { id: eco, tab }),
+  packageFeedPackage: (slug: string, eco: string, name: string, tab?: string) =>
+    productPage(slug, "package-feeds", {
+      id: eco,
+      child: { ids: [name], tab },
+    }),
   feed: (slug: string) => productPage(slug, "feed"),
   portal: (slug: string) => productPage(slug, "portal"),
   signIn: (slug: string) => productPage(slug, "sign-in"),
@@ -384,10 +493,17 @@ export function slugOfRoute(route: Route): string | null {
  * A query parameter or a record tab does not remount the page, so a filter change keeps its draft.
  */
 export function viewKey(route: Route): string {
+  const child =
+    route.kind !== "not-found" && route.child
+      ? `\u0000${route.child.ids.join("\u0000")}`
+      : "";
   if (route.kind === "product") {
-    return `${route.slug}\u0000${route.page}\u0000${route.id ?? ""}`;
+    return `${route.slug}\u0000${route.page}\u0000${route.id ?? ""}${child}`;
   }
-  if (route.kind === "global") return route.page;
+  if (route.kind === "global")
+    return route.id === undefined
+      ? route.page
+      : `${route.page}\u0000${route.id}${child}`;
   return `not-found\u0000${route.slug ?? ""}\u0000${route.path}`;
 }
 
