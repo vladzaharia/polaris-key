@@ -2184,7 +2184,7 @@
       "optional": false,
       "refs": ["PARITY §1", "notes/E4 §3.1"],
       "brief": "wp/P6-10-godot-android-binding-on-kotlin.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P6-11",
