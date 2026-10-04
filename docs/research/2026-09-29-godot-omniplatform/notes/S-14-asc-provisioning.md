@@ -100,8 +100,9 @@ holds the team's In-App Purchase key and Team ID. This spike answers:
 - **Recommended scope:** a code-level **allow-list** of `(method, path template, attributes)`
   checked before a token is minted. No generic proxy. Never: users, invitations, certificates,
   profile or bundle-id deletes, capability deletes, devices, merchant and pass ids, `apps.bundleId`
-  edits, or IAP and subscription deletes. Owner decision 1 recommends a **separate App Manager
-  team key** for the Worker, with the Admin key kept off it [I].
+  edits, or IAP and subscription deletes. Approved by the owner on 2026-10-04, together with
+  the **existing Admin key** in the Worker. The gate is therefore the only barrier, and its CI
+  classification of every spec write is mandatory (§12).
 - **Budget: 3,600 requests per rolling hour, per key** [M] (`user-hour-lim:3600`; Apple's docs
   give 3,500 as an example [V]). Every product that falls back to the team key shares this one
   bucket with the P5-02 poller. A-17a adds a shared budget meter.
@@ -636,7 +637,10 @@ Proposed for `docs/security/THREAT-MODEL.md`, landing in A-17a. The text is not 
 
    It also reaches **every** app of the team [V]. Proposed row: **A11b, team store key**, sealed
    under A1 with its own AAD (`_platform`, A-16) [V]. Loss: everything A11 lists, for every app,
-   plus team membership and signing identity when Admin.
+   plus team membership and signing identity, because the role in use is Admin (owner
+   decision 1). Rating: **above A3**. The only control between a compromised Worker or console
+   session and those powers is the write gate, so a change to its table is a review trigger
+   (item 5) and its spec-classification test is a required CI check.
 
 2. **§3 trust boundaries: new outbound actions.** The Worker gains write calls to
    `api.appstoreconnect.apple.com` (fixed host, P5-02's SSRF rules [V]) and test-notification
@@ -669,16 +673,16 @@ All are pkey-implementer. **None is plan-mode**: none touches `shared-protocol`,
 `gen:transcripts -- --check` must stay green. Admin routes are narrative-only (rule 10 via
 `NARRATIVE_ONLY`); each needs a worker test, an audit row and a `D/admin/*` narrative.
 
-| ID        | Title                                                                                                                                                                                                                                                                                                                                                                                                          | Deps                                                         | Size | Flags                                                                     |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---- | ------------------------------------------------------------------------- |
-| **A-17a** | **ASC write substrate.** `core/asc/{client,writeGate,ledger,budget}.ts` (client moved by A-16 or here); the allow and deny table with the spec-classification test over a pinned copy of the 4.5 spec's write operations; the `asc_operations` migration and TABLE_OWNERS; the budget meter from `X-Rate-Limit`; before-and-after projection with redaction; THREAT-MODEL edits (§9)                           | A-16 (team client, resolver, pins); A-12 (platform audit)    | M    | migration; threat-model edit; owner decision 1 sets the key role          |
-| **A-17b** | **Team provisioning API.** Bundle id find and register; capability list and enable (the wizard's type list); app lookup by bundle id; certificate and profile expiry read; `platform/store-connections/app-store/…` handlers; platform-trail audit                                                                                                                                                             | A-17a                                                        | S    | —                                                                         |
-| **A-17c** | **Product app setup API.** ASN URL set (four attributes) and the test-notification round trip; internal and external beta group create; tester add (no storage); availability and free price defaults; per-product portal checklist ticks                                                                                                                                                                      | A-17a; A-16 pins; P6-01                                      | S    | —                                                                         |
-| **A-17d** | **Distribute API.** Builds list with upload state; export compliance; beta and App Store localizations; build to groups; beta review submit; version create and reuse, build, release type, phased release create; preflight read; review submission create, items, submit, cancel; extends `connectors/asc/` beside `controls.ts`                                                                             | A-17a; P5-02                                                 | M    | —                                                                         |
-| **A-17e** | **IAP from commerce mappings.** `commerce/appleCatalog.ts`: status by `filter[productId]`; non-consumable create, version, localizations, price-point lookup and schedule, availability; price change with typed confirm; IAP and Background Asset versions offered to A-17d's submission                                                                                                                      | A-17a; A-17d; P6-01                                          | M    | —                                                                         |
-| **A-17f** | **Console: New app wizard** (T6) in A-16's Store connections page, plus **Set up** on assigned apps; the deep-link constant table; polling; resumable progress from the ledger                                                                                                                                                                                                                                 | ADMIN.md chunk 3; A-16's page; A-17b; A-17c                  | M    | docs help-link drift gate                                                 |
-| **A-17g** | **Console: Distribute flow** (T6) in the product's Distribution App Store panel, and **App Store products** (T2) in Commerce                                                                                                                                                                                                                                                                                   | chunk 3; chunk 9 (Distribution area) preferred; A-17d; A-17e | M    | docs help-link drift gate                                                 |
-| **A-17h** | **Live verification** in the owner's account. Owner-approved writes on a throwaway bundle id (`<prefix>.pkey-probe`) and an existing test app: (1) the ASN `PATCH`; (2) App Manager key sufficiency for bundle id and capability; (3) whether App Attest needs anything on the App ID; (4) Apple's error codes for a duplicate bundle id and a second open submission. Results fold into a dated addendum here | A-17a; owner decision 3                                      | S    | human input: owner approval and, if decision 1 = (a), the App Manager key |
+| ID        | Title                                                                                                                                                                                                                                                                                                                                                                                                          | Deps                                                         | Size | Flags                                                                        |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---- | ---------------------------------------------------------------------------- |
+| **A-17a** | **ASC write substrate.** `core/asc/{client,writeGate,ledger,budget}.ts` (client moved by A-16 or here); the allow and deny table with the spec-classification test over a pinned copy of the 4.5 spec's write operations; the `asc_operations` migration and TABLE_OWNERS; the budget meter from `X-Rate-Limit`; before-and-after projection with redaction; THREAT-MODEL edits (§9)                           | A-16 (team client, resolver, pins); A-12 (platform audit)    | M    | migration; threat-model edit; gate CI test mandatory (Admin key, decision 1) |
+| **A-17b** | **Team provisioning API.** Bundle id find and register; capability list and enable (the wizard's type list); app lookup by bundle id; certificate and profile expiry read; `platform/store-connections/app-store/…` handlers; platform-trail audit                                                                                                                                                             | A-17a                                                        | S    | —                                                                            |
+| **A-17c** | **Product app setup API.** ASN URL set (four attributes) and the test-notification round trip; internal and external beta group create; tester add (no storage); availability and free price defaults; per-product portal checklist ticks                                                                                                                                                                      | A-17a; A-16 pins; P6-01                                      | S    | —                                                                            |
+| **A-17d** | **Distribute API.** Builds list with upload state; export compliance; beta and App Store localizations; build to groups; beta review submit; version create and reuse, build, release type, phased release create; preflight read; review submission create, items, submit, cancel; extends `connectors/asc/` beside `controls.ts`                                                                             | A-17a; P5-02                                                 | M    | —                                                                            |
+| **A-17e** | **IAP from commerce mappings.** `commerce/appleCatalog.ts`: status by `filter[productId]`; non-consumable create, version, localizations, price-point lookup and schedule, availability; price change with typed confirm; IAP and Background Asset versions offered to A-17d's submission                                                                                                                      | A-17a; A-17d; P6-01                                          | M    | —                                                                            |
+| **A-17f** | **Console: New app wizard** (T6) in A-16's Store connections page, plus **Set up** on assigned apps; the deep-link constant table; polling; resumable progress from the ledger                                                                                                                                                                                                                                 | ADMIN.md chunk 3; A-16's page; A-17b; A-17c                  | M    | docs help-link drift gate                                                    |
+| **A-17g** | **Console: Distribute flow** (T6) in the product's Distribution App Store panel, and **App Store products** (T2) in Commerce                                                                                                                                                                                                                                                                                   | chunk 3; chunk 9 (Distribution area) preferred; A-17d; A-17e | M    | docs help-link drift gate                                                    |
+| **A-17h** | **Live verification** in the owner's account. Owner-approved writes on a throwaway bundle id (`<prefix>.pkey-probe`) and an existing test app: (1) the ASN `PATCH`; (2) App Manager key sufficiency for bundle id and capability; (3) whether App Attest needs anything on the App ID; (4) Apple's error codes for a duplicate bundle id and a second open submission. Results fold into a dated addendum here | A-17a; owner decision 3                                      | S    | human input: owner approval and, if decision 1 = (a), the App Manager key    |
 
 **Ordering:**
 
@@ -699,6 +703,9 @@ App Store products table.
 
 ## 11. Limits of this spike
 
+A-17h was approved by the owner on 2026-10-04 but not executed from this session (§12), so
+every item below is still open.
+
 - **[U] The ASN `PATCH`.** Proven by schema and read, not by a write (A-17h).
 - **[U] App Attest on the App ID.** Whether it needs anything there (A-17h).
 - **[U] What an App Manager key can do.** Bundle id and capability creation, and the ASN URL
@@ -714,6 +721,35 @@ App Store products table.
 - **Deep links.** None of the deep-link URL shapes is documented by Apple.
 
 ## 12. Owner decisions (three)
+
+**Decided 2026-10-04:**
+
+1. **Key: the existing Admin team key.** The owner declined a separate App Manager key, so
+   A-17a's deny-by-default write gate (§7.5) is the **only** barrier between a console session
+   and user management, certificate creation and revocation, and deletes. As a result:
+   - the gate's CI test that classifies every write operation in the spec as allowed or denied
+     is **mandatory**, not optional;
+   - a spec version bump fails CI until every new write is classified;
+   - the threat-model proposal (§9) rates **A11b above A3**, at the level of team membership and
+     signing identity, because Admin is the role in use;
+   - §9 item 3(g) and the App Manager clauses in §11 no longer apply.
+2. **Write surface:** approved as listed in §7.5.
+3. **A-17h live writes:** approved by the owner. **They were not run in this session:** the
+   session's permission policy refused writes to the external Apple account, and an approval
+   relayed by an agent is not the user's own consent. Every [U] item in §11 stays open until
+   the owner runs A-17h, or grants the permission and asks for it again. The steps planned
+   were:
+   - register a throwaway bundle id (`im.plrs.key.pkeyprobe.<date>`) and enable
+     `IN_APP_PURCHASE` and `PUSH_NOTIFICATIONS` on it, each create repeated once to record
+     Apple's duplicate-conflict codes;
+   - one invalid capability type (`APP_ATTEST` and a nonsense value) to record the error shape
+     and whether App Attest exists;
+   - after checking that the app has no IAPs or subscriptions, set the ASN URL on one app
+     (`https://key.plrs.im/pkey-probe/distribution/hooks/app-store`, `V2`), re-read it, and
+     restore the previous null values, re-reading again. A no-op `PATCH` of the current nulls
+     goes first, to prove the restore path.
+
+The options as originally proposed:
 
 1. **Which key the Worker holds.**
    - **Recommended: (a)** mint a second **team key with the App Manager role** for the Worker
