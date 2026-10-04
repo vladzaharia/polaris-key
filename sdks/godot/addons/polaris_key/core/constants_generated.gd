@@ -962,7 +962,7 @@ static func capabilities() -> Dictionary:
 		"packs.record": {"status": "implemented", "service": "release", "na": []},
 		"packs.revoke": {"status": "implemented", "service": "release", "na": []},
 		"packs.delegation": {"status": "implemented", "service": "release", "na": []},
-		"packs.delta.feed": {"status": "planned", "service": "release", "na": []},
+		"packs.delta.feed": {"status": "implemented", "service": "release", "na": []},
 		"packs.plan": {"status": "implemented", "service": "release", "na": []},
 		"packs.index.files": {"status": "implemented", "service": "release", "na": []},
 		"packs.index.chunks": {"status": "implemented", "service": "release", "na": []},
@@ -989,4 +989,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "5255ff69dc27ea577a110f8af47dbfb73a841d72a81a290433e799e0f337d856"
+const CAPABILITY_DIGEST := "ecfcd32d9707784e081d367528396ee529403090ef11df5d1a8537c625e7bce4"
