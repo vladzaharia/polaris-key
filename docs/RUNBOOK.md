@@ -146,6 +146,11 @@ secret names and JSON shapes.
 - **Which source is in use.** `GET /manage/api/platform/store-connections` → each credential's
   `source` (`console` or `secret`) and `secret.valid`. A console credential always wins; the
   Worker secret is read only while none is stored.
+- **Set or rotate a Worker secret without handling the key.** From the machine that holds the
+  file: `gh secret set <NAME> --env production < key.json`, then
+  `gh workflow run sync-worker-secrets.yml -f target=prod`. The workflow pushes every set name
+  through wrangler's stdin and logs names only (DEPLOYMENT.md §4). Never paste a key into a
+  terminal command line or an agent conversation.
 - **Rotate.** Store the new key in the console (`PUT …/<store>` or
   `…/<store>/credentials/<slot>` with `{"value": …}`). Cached tokens and the apps list are keyed by
   the credential's version marker, so the old key's tokens stop being served at once. To rotate a

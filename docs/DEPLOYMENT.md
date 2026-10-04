@@ -513,6 +513,23 @@ npx wrangler secret put PLATFORM_ASC_API_KEY --env prod   # paste the one-line J
 npx wrangler secret put PLATFORM_APPLE_TEAM_ID --env prod
 ```
 
+**Preferred: through the `Sync Worker secrets` workflow**, so a private key never passes through
+a shell history, a terminal scrollback or an agent transcript. Store each value as a secret of
+the GitHub `production` environment straight from the local file, then dispatch the workflow:
+
+```sh
+gh secret set PLATFORM_ASC_API_KEY --env production < asc-api-key.json   # one-line JSON file
+gh secret set PLATFORM_APPLE_TEAM_ID --env production --body 48H7CLBV8Y
+gh workflow run sync-worker-secrets.yml -f target=prod                    # or target=staging
+```
+
+`.github/workflows/sync-worker-secrets.yml` (manual dispatch only, `environment: production`,
+read-only `GITHUB_TOKEN`, the environment's `CLOUDFLARE_API_TOKEN`) pushes every one of the six
+names that is set, with `wrangler secret put <NAME> --env <target>` reading the value from stdin,
+and logs only which names it synced or skipped. A static test
+(`packages/worker/test/syncWorkerSecretsWorkflow.test.ts`) keeps values out of argv and the log.
+The `wrangler secret put` lines above are the manual fallback.
+
 None of these is required; a store without one simply has no platform connection. After
 setting one, `GET /manage/api/platform/store-connections` should show that store's credential
 with `"source": "secret"` and `"secret": {"present": true, "valid": true}`; `valid: false` means
