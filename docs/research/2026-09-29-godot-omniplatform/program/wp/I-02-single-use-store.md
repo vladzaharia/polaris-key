@@ -80,12 +80,12 @@ KV `get` then `delete` is not atomic across regions (G15), and the `_portal` sha
 
 ## Acceptance criteria
 
-- [ ] Two concurrent `consume` calls for one artefact: exactly one succeeds (test).
-- [ ] Portal magic links, OIDC flows and device codes no longer use KV get-then-delete.
-- [ ] The `_portal` and `_admin` buckets are sharded; the rate-limit and portal suites pass.
-- [ ] The send and verify limits exist with the S-16 default numbers as named constants and are unit-tested.
-- [ ] `test:workerd` passes.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] Two concurrent `consume` calls for one artefact: exactly one succeeds (test).
+- [x] Portal magic links, OIDC flows and device codes no longer use KV get-then-delete.
+- [x] The `_portal` and `_admin` buckets are sharded; the rate-limit and portal suites pass.
+- [x] The send and verify limits exist with the S-16 default numbers as named constants and are unit-tested.
+- [x] `test:workerd` passes.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
