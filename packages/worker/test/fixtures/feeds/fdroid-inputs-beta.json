@@ -37,7 +37,10 @@
         "versionName": "1.2.0-beta.1",
         "minSdk": 24,
         "targetSdk": 35,
-        "nativecode": ["arm64-v8a", "armeabi-v7a"],
+        "nativecode": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
         "signerSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       }
     },
@@ -59,7 +62,10 @@
         "versionName": "1.1.0",
         "minSdk": 24,
         "targetSdk": 35,
-        "nativecode": ["arm64-v8a", "armeabi-v7a"],
+        "nativecode": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
         "signerSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       }
     },
@@ -81,7 +87,10 @@
         "versionName": "1.0.0",
         "minSdk": 24,
         "targetSdk": 35,
-        "nativecode": ["arm64-v8a", "armeabi-v7a"],
+        "nativecode": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
         "signerSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       }
     }

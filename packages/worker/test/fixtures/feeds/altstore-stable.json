@@ -40,7 +40,10 @@
         }
       ],
       "appPermissions": {
-        "entitlements": ["com.apple.developer.game-center", "get-task-allow"],
+        "entitlements": [
+          "com.apple.developer.game-center",
+          "get-task-allow"
+        ],
         "privacy": {
           "NSCameraUsageDescription": "Scan a friend's dice code."
         }
