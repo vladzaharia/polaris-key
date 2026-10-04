@@ -439,7 +439,8 @@ export interface UpdateProductBody {
   name?: string;
   defaultMaxOfflineDays?: number;
   defaultDeviceLimit?: number;
-  adminGroup?: string;
+  /** `null` (or blank) clears the group (A-3). */
+  adminGroup?: string | null;
 }
 
 export interface RotateKeyResult {
@@ -453,7 +454,138 @@ export interface RotateKeyResult {
 export interface ResyncResult {
   ok: true;
   slug: string;
-  updated?: unknown;
+  /** What the resync re-applied ("services", "catalog", "channels"…). */
+  updated?: string[];
+  /** Parts of the manifest it refused while applying the rest (P3-03). */
+  refused?: { code: string; path: string; message: string }[];
+  /** The pack-set re-resolution, when it stored sets or failed (P4-12). */
+  packSets?:
+    | { ok: true; sets: number }
+    | { ok: false; reason: string; message: string };
+}
+
+// ── Core inventories (chunk 5 · A-4, A-5) and CI publishing (P2-02) ─────────────
+export type SigningKeyState = "active" | "staged" | "retired" | "revoked";
+
+/** One signing key (`GET …/keys`, A-4). Public material only. */
+export interface SigningKeyDto {
+  kid: string;
+  status: SigningKeyState | (string & {});
+  alg: string;
+  publicKey: string;
+  createdAt: number;
+  activateAfter: number | null;
+  activatedAt: number | null;
+  retiredAt: number | null;
+  revokedAt: number | null;
+}
+
+export interface SigningKeysResponse {
+  keys: SigningKeyDto[];
+  /** The server's clock, epoch seconds: the staged countdown is measured against it. */
+  now: number;
+}
+
+/** One secret of the inventory (`GET …/secrets`, A-5). Never a value. */
+export interface ProductSecretDto {
+  name: string;
+  configured: boolean;
+  usage: SecretUsage | null;
+  createdAt: number | null;
+  updatedAt: number | null;
+  requiredBy: string[];
+}
+
+export interface PublisherPolicyDto {
+  product: string;
+  provider: "github";
+  repositoryId: number;
+  repositoryOwnerId: number;
+  repository: string;
+  workflow: string;
+  environment: string;
+  scopes: string[];
+  source: "manifest" | "admin";
+  createdAt: number;
+  modifiedAt: number;
+  modifiedBy: string | null;
+}
+
+export interface PublisherClaimBody {
+  workflow?: string;
+  environment?: string;
+  scopes?: string[];
+  repository?: string;
+  repositoryId?: number;
+  repositoryOwnerId?: number;
+}
+
+export interface CiTokenDto {
+  tokenId: string;
+  kind: "oidc" | "static";
+  scopes: string[];
+  subject: string;
+  label: string | null;
+  issuedAt: number;
+  expiresAt: number;
+  revokedAt: number | null;
+  createdBy: string;
+}
+
+export interface IssueCiTokenBody {
+  scopes: string[];
+  expiresInDays: number;
+  label?: string;
+}
+
+export interface IssuedCiToken {
+  ok: true;
+  token: string;
+  tokenId: string;
+  expiresAt: number;
+  scopes: string[];
+}
+
+/** The CI scopes a publisher policy or a static token can hold (worker `core/ciVocabulary.ts`). */
+export const CI_SCOPES = [
+  "release:publish",
+  "release:promote",
+  "release:yank",
+  "distribution:report",
+  "distribution:rollout",
+  "distribution:feeds",
+] as const;
+
+/** The blob collector's dry run for one product (`GET …/blob-gc`, P4-14). */
+export interface BlobGcDryRun {
+  enabled: boolean;
+  graceSeconds: number;
+  lockAgeSeconds: number;
+  skipped?: string | null;
+  complete?: boolean;
+  incomplete?: unknown;
+  liveReleases?: number;
+  drops: {
+    packObject: number;
+    packUpload: number;
+    truncated: boolean;
+    listed: unknown[];
+  };
+  restores: { count: number; listed: unknown[] };
+  earliestDeletion: number | null;
+}
+
+/** The activity feed's server-side filters (A-2). */
+export interface ActivityFilters {
+  /** A prefix: `license.` matches every license action. */
+  action?: string;
+  /** A subject or email; `system` for rows the runtime wrote. */
+  actor?: string;
+  targetKind?: string;
+  targetId?: string;
+  /** Epoch seconds, inclusive. */
+  since?: number;
+  until?: number;
 }
 
 // ── services (per-product enablement) ─────────────────────────────────────────
@@ -1702,10 +1834,11 @@ const rawApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  deleteProduct: (slug: string) =>
+  /** `confirmSlug` is what the operator typed (L3); the server refuses a mismatch. */
+  deleteProduct: (slug: string, confirmSlug: string) =>
     call<{ ok: true; slug: string }>(p(slug), {
       method: "DELETE",
-      body: JSON.stringify({ confirmSlug: slug }),
+      body: JSON.stringify({ confirmSlug }),
     }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
@@ -1840,6 +1973,56 @@ const rawApi = {
     }),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
+  // ── Keys & secrets (chunk 5): inventories and the signing-key lifecycle ─────
+  /** A-4: every signing key with its lifecycle state. */
+  productKeys: (slug: string) => call<SigningKeysResponse>(`${p(slug)}/keys`),
+  /** Promote a staged key. `breakGlass` skips the trust-cache window. */
+  activateProductKey: (slug: string, kid: string, breakGlass = false) =>
+    call<{ ok: true; kid: string; status: "active" }>(
+      `${p(slug)}/keys/activate`,
+      {
+        method: "POST",
+        body: JSON.stringify(breakGlass ? { kid, breakGlass } : { kid }),
+      },
+    ),
+  retireProductKey: (slug: string, kid: string) =>
+    call<{ ok: true; kid: string; status: "retired" }>(
+      `${p(slug)}/keys/retire`,
+      { method: "POST", body: JSON.stringify({ kid }) },
+    ),
+  revokeProductKey: (slug: string, kid: string) =>
+    call<{ ok: true; kid: string; status: "revoked" }>(
+      `${p(slug)}/keys/revoke`,
+      { method: "POST", body: JSON.stringify({ kid }) },
+    ),
+  /** A-5: secret names, usage and what requires each. Never a value. */
+  productSecrets: (slug: string) =>
+    call<{ secrets: ProductSecretDto[] }>(`${p(slug)}/secrets`),
+  ciPublisher: (slug: string) =>
+    call<{ ok: true; policy: PublisherPolicyDto | null }>(
+      `${p(slug)}/ci-publisher`,
+    ),
+  /** Claims the policy from the manifest (`source` becomes `admin`). */
+  putCiPublisher: (slug: string, body: PublisherClaimBody) =>
+    call<{ ok: true; policy: PublisherPolicyDto }>(`${p(slug)}/ci-publisher`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  ciTokens: (slug: string) =>
+    call<{ ok: true; tokens: CiTokenDto[] }>(`${p(slug)}/ci-tokens`),
+  /** The token is in this response once and never again. */
+  issueCiToken: (slug: string, body: IssueCiTokenBody) =>
+    call<IssuedCiToken>(`${p(slug)}/ci-tokens`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  revokeCiToken: (slug: string, tokenId: string) =>
+    call<{ ok: true; tokenId: string; revokedAt: number }>(
+      `${p(slug)}/ci-tokens/${enc(tokenId)}`,
+      { method: "DELETE" },
+    ),
+  /** The blob collector's dry run: what would be dropped, and when. Read-only. */
+  blobGc: (slug: string) => call<BlobGcDryRun>(`${p(slug)}/blob-gc`),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
@@ -2157,11 +2340,19 @@ const rawApi = {
     }),
 
   // ── activity (keyset) ─────────────────────────────────────────────────────────
-  activity: (slug: string, cursor?: ActivityCursor | null, limit = 50) => {
+  activity: (
+    slug: string,
+    cursor?: ActivityCursor | null,
+    limit = 50,
+    filters: ActivityFilters = {},
+  ) => {
     const search = new URLSearchParams({ limit: String(limit) });
     if (cursor) {
       search.set("beforeAt", String(cursor.beforeAt));
       search.set("beforeId", cursor.beforeId);
+    }
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
     }
     return call<ActivityPage>(`${p(slug)}/activity?${search.toString()}`);
   },

@@ -84,7 +84,7 @@ export function Products(): React.ReactElement {
     setBusy(true);
     try {
       if (confirm === "delete") {
-        await mutate("deleteProduct", active.slug);
+        await mutate("deleteProduct", active.slug, active.slug);
         toast.success("Product disabled", `“${active.slug}” was tombstoned.`);
         reload();
       } else if (confirm === "resync") {

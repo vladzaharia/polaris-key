@@ -41,6 +41,9 @@ export const qk = {
   activity: (slug: string) => product(slug, "core", "activity"),
   secrets: (slug: string) => product(slug, "core", "secrets"),
   keys: (slug: string) => product(slug, "core", "keys"),
+  ciPublisher: (slug: string) => product(slug, "core", "ci", "publisher"),
+  ciTokens: (slug: string) => product(slug, "core", "ci", "tokens"),
+  blobGc: (slug: string) => product(slug, "core", "blob-gc"),
 
   // license
   licenses: (slug: string) => product(slug, "license", "licenses"),

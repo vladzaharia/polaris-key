@@ -309,9 +309,16 @@ describe("pages that are not built yet redirect to their host", () => {
     expect(
       parseLocation("#/p/djdl/release/releases/rel_1/builds").redirect,
     ).toBe("#/p/djdl/release/releases");
-    expect(parseLocation("#/p/djdl/devices/dev_1").redirect).toBe(
-      "#/p/djdl/devices",
-    );
+  });
+
+  it("the device drawer is a routed record (chunk 5)", () => {
+    const parsed = parseLocation("#/p/djdl/devices/dev_1");
+    expect(parsed.redirect).toBeUndefined();
+    expect(parsed.route).toMatchObject({
+      kind: "product",
+      page: "devices",
+      id: "dev_1",
+    });
   });
 
   it("every host is a built page in the same scope", () => {

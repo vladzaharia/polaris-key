@@ -16,7 +16,8 @@ import {
 } from "../src/api.js";
 import { resetCache } from "../src/context.js";
 import { Toaster } from "../src/components/ui/index.js";
-import { Secrets } from "../src/views/Secrets.js";
+import { EdgeMintRecipes } from "../src/views/EdgeMintRecipes.js";
+import { OutletCredentials } from "../src/views/OutletCredentials.js";
 
 vi.mock("../src/api.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/api.js")>();
@@ -124,7 +125,8 @@ function recipes(
 function renderSecrets() {
   return render(
     <Toaster>
-      <Secrets slug="djdl" />
+      <EdgeMintRecipes slug="djdl" />
+      <OutletCredentials slug="djdl" />
     </Toaster>,
   );
 }
@@ -161,76 +163,11 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("Secrets view", () => {
-  it("lists required secrets with their configured status", async () => {
-    renderSecrets();
-    expect(await screen.findByText("Required secrets")).toBeTruthy();
-    expect(screen.getByText("EDGE_MINT__DJDL__APPLEMUSIC")).toBeTruthy();
-    expect(screen.getByText("Missing")).toBeTruthy();
-  });
-
-  it("prefills the name when a required secret is clicked", async () => {
-    renderSecrets();
-    await userEvent.click(
-      await screen.findByText("EDGE_MINT__DJDL__APPLEMUSIC"),
-    );
-    expect(
-      (screen.getByLabelText("Secret name") as HTMLInputElement).value,
-    ).toBe("EDGE_MINT__DJDL__APPLEMUSIC");
-  });
-
-  it("sets a write-only secret via putProductSecret, sending no usage by default", async () => {
-    mockApi.putProductSecret.mockResolvedValue({ ok: true, name: "TOKEN" });
-    renderSecrets();
-    await userEvent.type(await screen.findByLabelText("Secret name"), "TOKEN");
-    await userEvent.type(screen.getByLabelText("Value"), "s3cr3t");
-    await userEvent.click(screen.getByRole("button", { name: "Set secret" }));
-    await waitFor(() =>
-      expect(mockApi.putProductSecret).toHaveBeenCalledWith(
-        "djdl",
-        "TOKEN",
-        "s3cr3t",
-        undefined,
-      ),
-    );
-  });
-
-  it("marks a secret edge-mint when that usage is chosen (P0-12)", async () => {
-    mockApi.putProductSecret.mockResolvedValue({
-      ok: true,
-      name: "KEY",
-      usage: "edge-mint",
-    });
-    renderSecrets();
-    await userEvent.type(await screen.findByLabelText("Secret name"), "KEY");
-    await userEvent.type(screen.getByLabelText("Value"), "pem");
-    await pick("Usage", "Edge-mint signing key");
-    await userEvent.click(screen.getByRole("button", { name: "Set secret" }));
-    await waitFor(() =>
-      expect(mockApi.putProductSecret).toHaveBeenCalledWith(
-        "djdl",
-        "KEY",
-        "pem",
-        "edge-mint",
-      ),
-    );
-  });
-
-  it("validates that name and value are required", async () => {
-    renderSecrets();
-    await screen.findByLabelText("Secret name");
-    await userEvent.click(screen.getByRole("button", { name: "Set secret" }));
-    expect(screen.getByText("A secret name is required.")).toBeTruthy();
-    expect(screen.getByText("A value is required.")).toBeTruthy();
-    expect(mockApi.putProductSecret).not.toHaveBeenCalled();
-  });
-});
-
 describe("Edge-mint recipes card (P0-12)", () => {
   it("is absent when the product declares no recipes", async () => {
     renderSecrets();
-    await screen.findByText("Required secrets");
     await waitFor(() => expect(mockApi.edgeMintRecipes).toHaveBeenCalled());
+    await screen.findByText("Outlet credentials");
     expect(screen.queryByText("Edge-mint recipes")).toBeNull();
   });
 

@@ -21,7 +21,7 @@ import {
   useToast,
 } from "../../components/ui/index.js";
 import { errorMessage } from "./util.js";
-import { USAGE_CHOICES, type UsageChoice } from "../Secrets.js";
+import { USAGE_CHOICES, type UsageChoice } from "../../lib/secretUsage.js";
 import { mutate } from "../../console/data/mutations.js";
 
 /**

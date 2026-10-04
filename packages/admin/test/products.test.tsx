@@ -11,7 +11,6 @@ import type { ProductDetail } from "../src/api.js";
 import { resetCache } from "../src/context.js";
 import { Toaster } from "../src/components/ui/index.js";
 import { Products } from "../src/views/Products.js";
-import { ProductOverview } from "../src/views/ProductOverview.js";
 
 // The Products view is the only unit under test; the `api` module is fully mocked so the
 // component's behavior (rendering + which methods each flow calls) is asserted in isolation.
@@ -122,71 +121,6 @@ describe("Products view", () => {
     renderProducts();
     expect(await screen.findByText("Couldn’t load products")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Retry/ })).toBeTruthy();
-  });
-
-  it("renders setup as an actionable checklist", async () => {
-    mockApi.product.mockResolvedValue({
-      product: {
-        ...MANUAL,
-        setup: {
-          healthy: false,
-          missingSecrets: ["WEBHOOK_SECRET"],
-          warnings: ["GitHub app is not installed"],
-          nextActions: [
-            { id: "releases", label: "Configure releases", route: "releases" },
-          ],
-        },
-      },
-    });
-    render(
-      <Toaster>
-        <ProductOverview slug="djdl" />
-      </Toaster>,
-    );
-
-    expect(await screen.findByText("Guided checklist")).toBeTruthy();
-    expect(screen.getByText("Required secrets")).toBeTruthy();
-    // The missing secret legitimately renders twice since the metric card and the
-    // checklist both report missingSecrets (it previously appeared once only because
-    // the metric card was reading the wrong field).
-    expect(screen.getAllByText(/WEBHOOK_SECRET/).length).toBeGreaterThanOrEqual(
-      2,
-    );
-    expect(screen.getByText("Review setup warning")).toBeTruthy();
-    expect(
-      screen.getByRole("link", { name: /Set secrets/ }).getAttribute("href"),
-    ).toBe("#/p/djdl/keys");
-    expect(
-      screen
-        .getByRole("link", { name: /Create test license/ })
-        .getAttribute("href"),
-    ).toBe("#/p/djdl/license/licenses");
-  });
-
-  it("omits the License checklist items when License is disabled", async () => {
-    mockApi.product.mockResolvedValue({
-      product: {
-        ...MANUAL,
-        services: {
-          license: { enabled: false },
-          config: { enabled: true },
-          release: { enabled: true },
-          update: { enabled: false },
-          identity: { enabled: false },
-        },
-        setup: { healthy: true, nextActions: [] },
-      },
-    });
-    render(
-      <Toaster>
-        <ProductOverview slug="djdl" />
-      </Toaster>,
-    );
-
-    expect(await screen.findByText("Guided checklist")).toBeTruthy();
-    expect(screen.getByText("Required secrets")).toBeTruthy();
-    expect(screen.queryByText("Issue a license")).toBeNull();
-    expect(screen.queryByText("License defaults")).toBeNull();
   });
 
   it("creates a manual product via createManualProduct and shows the returned kid", async () => {
@@ -304,7 +238,7 @@ describe("Products view", () => {
       within(confirmDialog).getByRole("button", { name: "Disable product" }),
     );
     await waitFor(() =>
-      expect(mockApi.deleteProduct).toHaveBeenCalledWith("djdl"),
+      expect(mockApi.deleteProduct).toHaveBeenCalledWith("djdl", "djdl"),
     );
   });
 

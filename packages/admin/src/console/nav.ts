@@ -205,8 +205,8 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/admin/licenses-and-devices/",
         inNav: true,
         ready: true,
-        // The routed device drawer arrives with the Devices rebuild (chunk 5).
-        record: { noun: "Device", ready: false },
+        // The routed device drawer (`devices/:deviceId`).
+        record: { noun: "Device", ready: true },
       },
       {
         page: "keys",

@@ -49,6 +49,12 @@ export type WriteMethod =
   | "putOutletCredential"
   | "deleteOutletCredential"
   | "rotateProductKey"
+  | "activateProductKey"
+  | "retireProductKey"
+  | "revokeProductKey"
+  | "putCiPublisher"
+  | "issueCiToken"
+  | "revokeCiToken"
   | "updateServices"
   | "revertServices"
   | "saveUpdateSettings"
@@ -221,6 +227,31 @@ export const MUTATIONS: MutationTable = {
   rotateProductKey: {
     label: "signing key prepare",
     invalidates: (slug) => [exact(qk.product(slug)), prefix(qk.keys(slug))],
+  },
+  activateProductKey: {
+    label: "signing key activate",
+    // The product row carries the active key (Overview's Trust & SDK, the JWKS link).
+    invalidates: (slug) => [exact(qk.product(slug)), prefix(qk.keys(slug))],
+  },
+  retireProductKey: {
+    label: "signing key retire",
+    invalidates: (slug) => [prefix(qk.keys(slug))],
+  },
+  revokeProductKey: {
+    label: "signing key revoke",
+    invalidates: (slug) => [prefix(qk.keys(slug))],
+  },
+  putCiPublisher: {
+    label: "trusted publisher claim",
+    invalidates: (slug) => [prefix(qk.ciPublisher(slug))],
+  },
+  issueCiToken: {
+    label: "CI token issue",
+    invalidates: (slug) => [prefix(qk.ciTokens(slug))],
+  },
+  revokeCiToken: {
+    label: "CI token revoke",
+    invalidates: (slug) => [prefix(qk.ciTokens(slug))],
   },
   updateServices: {
     label: "services update",
