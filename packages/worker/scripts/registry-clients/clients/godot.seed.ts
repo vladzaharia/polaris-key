@@ -98,12 +98,13 @@ export function zip(files: Record<string, string | Uint8Array>): Uint8Array {
   return new Uint8Array(Buffer.concat([...locals, cd, end]));
 }
 
-/** A 1×1 PNG. */
+/**
+ * A 1×1 PNG with valid chunk CRCs. (F-09's manual editor check: Godot's PNG loader rejects an
+ * image whose IDAT CRC is wrong, so the editor showed no icon for the earlier hand-typed bytes.)
+ */
 const PNG = Buffer.from(
-  "89504e470d0a1a0a0000000d4948445200000001000000010806000000" +
-    "1f15c4890000000d49444154789c6360f8cfc0f01f0005000201" +
-    "a5f6ad6d0000000049454e44ae426082",
-  "hex",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=",
+  "base64",
 );
 
 const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");

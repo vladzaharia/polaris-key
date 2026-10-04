@@ -528,7 +528,7 @@ describe("SchemaField — coercion + validation feedback", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("ManagedField — v2 management state + updatedAt", () => {
-  it("renders the value editor, the current state badge, and the updatedAt stamp", () => {
+  it("renders the value editor, the current state, and the updatedAt stamp", () => {
     render(
       <ManagedField
         entry={entry()}
@@ -539,8 +539,8 @@ describe("ManagedField — v2 management state + updatedAt", () => {
         onStateChange={vi.fn()}
       />,
     );
-    // The state badge reflects the v2 ManagementState (badge and selected radio both read it).
-    expect(screen.getAllByText("Enforced").length).toBeGreaterThanOrEqual(2);
+    // The selected radio is the one place the state shows (no badge repeating it).
+    expect(screen.getAllByText("Enforced")).toHaveLength(1);
     // An updatedAt stamp is rendered.
     expect(screen.getByText(/Updated/)).toBeTruthy();
     // The state selector is a segmented radio group, labelled per entry.

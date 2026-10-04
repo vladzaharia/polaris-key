@@ -12,7 +12,6 @@ import type {
 import { r } from "./console/routes.js";
 import { Link } from "./console/router.js";
 import { cn } from "./lib/cn.js";
-import { docsUrl } from "./lib/docsLinks.js";
 import { MANAGEMENT_LABELS } from "./lib/labels.js";
 import { Button } from "./ui/Button.js";
 import { Callout } from "./ui/Callout.js";
@@ -25,6 +24,7 @@ import { StatusPill } from "./ui/StatusPill.js";
 import {
   ManagedField,
   UNCATEGORISED,
+  categoryLabel,
   entryDefault,
   formatValue,
   groupByCategory,
@@ -649,14 +649,6 @@ export function ManagedPayloadEditor({
             ? `${matches.length} of ${entries.length} entries`
             : `${setCount} of ${entries.length} entries set`}
         </p>
-        <a
-          className="text-sm text-fg-muted underline underline-offset-2 hover:text-fg-strong"
-          href={docsUrl("managedPayloads")}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Docs
-        </a>
       </div>
 
       {matches.length === 0 ? (
@@ -703,12 +695,12 @@ export function ManagedPayloadEditor({
                         open ? "" : "-rotate-90",
                       )}
                     />
-                    {group.category}
-                    <StatusPill tone="neutral" icon={null} size="sm">
+                    {categoryLabel(group.category)}
+                    <StatusPill tone="neutral" icon={false} size="sm">
                       {groupSet}/{group.entries.length} set
                     </StatusPill>
                     {groupDirty > 0 ? (
-                      <StatusPill tone="accent" icon={null} size="sm">
+                      <StatusPill tone="accent" icon={false} size="sm">
                         {groupDirty} changed
                       </StatusPill>
                     ) : null}

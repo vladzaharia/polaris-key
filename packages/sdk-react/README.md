@@ -16,6 +16,14 @@ conformance corpus run, clock floor included.
 
 ## Install
 
+The `@polaris-key` packages are published to Polaris Key's npm feed only (not npmjs). Route the
+scope to it once, in the project's `.npmrc` (Yarn, Bun and the rest:
+[Installing the SDKs from the feeds](/docs/build/install-from-feeds/)):
+
+```ini
+@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
+```
+
 ```sh
 pnpm add @polaris-key/react react react-dom
 ```

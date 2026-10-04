@@ -111,10 +111,7 @@ function PackageFeedsOff({
 }): React.ReactElement {
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Package feeds"
-        description={`${name}'s packages on the registry host, for the package managers its users run.`}
-      />
+      <PageHeader title="Package feeds" />
       <EmptyState
         kind="first-run"
         service="distribution"
@@ -319,8 +316,8 @@ export function FeedsOverview({
       title="Package feeds"
       description={
         scope.kind === "platform"
-          ? `The platform's own packages on ${host}: the SDKs and tools Polaris Key ships, and the policy every product's feeds run under.`
-          : `${data?.ownerName ?? "This product"}'s packages on ${host}, for the package managers its users already run.`
+          ? `The SDKs and tools Polaris Key ships, on ${host}. Policy set here applies to every product's feeds.`
+          : `On ${host}.`
       }
       refetching={query.isFetching && !query.isPending}
     />
@@ -418,8 +415,7 @@ function OwnersPanel({
         Owners
       </h2>
       <p className="mt-1 text-sm text-fg-muted">
-        Every product with package feeds, each under its own path on the
-        registry host.
+        Each under its own path on the registry host.
       </p>
       <ul className="mt-3 divide-y divide-border">
         {owners.map((o) => (

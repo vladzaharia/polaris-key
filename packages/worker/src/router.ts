@@ -70,6 +70,7 @@ export type Route =
    *  `docs.ts`, and the slug `docs` is on the reserved list so a product can never take it. */
   | { kind: "docs" }
   | { kind: "githubWebhook" }
+  | { kind: "deployHook" }
   | { kind: "discovery"; product: string }
   | { kind: "jwks"; product: string }
   | { kind: "trustManifest"; product: string }
@@ -116,6 +117,7 @@ export function matchRoute(pathname: string): Route {
   )
     return { kind: "products" };
   if (path === "/webhooks/github") return { kind: "githubWebhook" };
+  if (path === "/webhooks/deploy") return { kind: "deployHook" };
   if (path === "/manage/login") return { kind: "adminLogin" };
   if (path === "/manage/callback") return { kind: "adminCallback" };
   if (path === "/manage/api" || path.startsWith("/manage/api/"))

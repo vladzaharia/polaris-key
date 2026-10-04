@@ -105,21 +105,6 @@ export function LicenseKeys({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-fg-muted">
-          A key activates devices on this license. Polaris Key keeps only its
-          hash.
-        </p>
-        {license.keys.length > 0 ? (
-          <Button
-            variant="outline"
-            iconStart={<KeyRound />}
-            onClick={() => setMintOpen(true)}
-          >
-            Mint key
-          </Button>
-        ) : null}
-      </div>
       <DataTable<KeyDto>
         id="license-keys"
         caption="Keys"
@@ -252,7 +237,7 @@ export function MintKeyDialog({
       description={
         minted
           ? "Copy it now. It is shown only once."
-          : "A new key for this license. Existing keys keep working."
+          : "Existing keys keep working."
       }
       dismissible={!busy}
       onOpenChange={(o) => {

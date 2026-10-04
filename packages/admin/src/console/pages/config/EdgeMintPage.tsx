@@ -96,7 +96,7 @@ function changedLabel(field: EdgeMintRecipe["changedFields"][number]): string {
 function publicReasons(data: EdgeMintRecipesResponse): string {
   const reasons = [
     ...(data.registration === "open" ? ["registration is open"] : []),
-    ...(data.anonymousEnroll ? ["anonymous enrolment is on"] : []),
+    ...(data.anonymousEnroll ? ["anonymous enrollment is on"] : []),
     ...(data.oidcDefault
       ? ["every account that can sign in gets a default tier"]
       : []),
@@ -147,7 +147,7 @@ function IdentityList({
       items={IDENTITY_ROWS.map(([term, key]) => ({
         term,
         detail: (
-          <span className="break-all font-mono text-xs">
+          <span className="font-mono text-xs [overflow-wrap:anywhere]">
             {show(identity[key])}
           </span>
         ),
@@ -196,6 +196,14 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
         header: "Recipe",
         accessorKey: "id",
         meta: { priority: 1, primary: true, mono: true, alwaysVisible: true },
+        cell: ({ getValue }) => (
+          <span
+            className="block max-w-[12rem] truncate"
+            title={getValue() as string}
+          >
+            {getValue() as string}
+          </span>
+        ),
       },
       {
         id: "status",
@@ -219,7 +227,8 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
           <span className="flex flex-col items-start gap-1">
             <Link
               to={r.keys(slug)}
-              className="font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
+              title={row.original.signingKeySecret}
+              className="block max-w-[14rem] truncate font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
             >
               {row.original.signingKeySecret}
             </Link>
@@ -235,11 +244,13 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2 },
         cell: ({ row }) =>
           row.original.changedFields.length ? (
-            <ul className="space-y-0.5 text-xs">
-              {row.original.changedFields.map((f) => (
-                <li key={f}>{changedLabel(f)}</li>
-              ))}
-            </ul>
+            // One line per row: the count, with the reasons on hover and for AT.
+            <span
+              className="block max-w-[11rem] truncate text-xs"
+              title={row.original.changedFields.map(changedLabel).join(", ")}
+            >
+              {row.original.changedFields.map(changedLabel).join(", ")}
+            </span>
           ) : (
             <span className="text-fg-muted">—</span>
           ),
@@ -254,11 +265,15 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
         },
         cell: ({ row }) =>
           row.original.approval ? (
-            <span className="text-xs">
-              <Timestamp at={fromSeconds(row.original.approval.approvedAt)} />
-              <span className="text-fg-muted">
-                {" "}
-                · {row.original.approval.approvedBy}
+            <span className="flex flex-col text-xs">
+              <span className="whitespace-nowrap">
+                <Timestamp at={fromSeconds(row.original.approval.approvedAt)} />
+              </span>
+              <span
+                className="block max-w-[12rem] truncate text-fg-muted"
+                title={row.original.approval.approvedBy}
+              >
+                {row.original.approval.approvedBy}
               </span>
             </span>
           ) : (
@@ -296,12 +311,6 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
           <span className="text-sm text-fg-muted">{recipes.length}</span>
         ) : null
       }
-      description={
-        <>
-          Third-party tokens minted at the edge from recipes in{" "}
-          <code className="font-mono text-xs">.pkey/release</code>.
-        </>
-      }
       refetching={mint.isFetching && !mint.isPending}
     />
   );
@@ -325,43 +334,29 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
     <CollectionTemplate header={header}>
       {recipes.length > 0 ? (
         <div className="space-y-3">
-          {data.publicMint ? (
-            <Callout tone="warning" title="The mint is public">
-              Because {publicReasons(data)}, anyone who installs this product
-              (or can sign in to it) can hold a device token. An approved recipe
-              is a public token mint, and approving one needs your
-              acknowledgement.
-            </Callout>
-          ) : null}
-          {!data.licenseEnabled ? (
-            <Callout tone="warning" title="License is off">
-              <span data-testid="edge-mint-license-off">
-                The mint does not check device licences, so a disabled or
-                expired licence can mint. An approval given now records that;
-                turning License on later only narrows it.
-              </span>
-            </Callout>
-          ) : null}
-          {data.identity ? (
+          {data.publicMint || !data.licenseEnabled ? (
+            // One warning, however many reasons: the reasons are its bullets.
             <Callout
-              tone="info"
-              title="Signing in also hands out device tokens"
+              tone="warning"
+              title={data.publicMint ? "The mint is public" : "License is off"}
             >
-              <div className="space-y-3">
-                <p>
-                  An approval covers this identity provider and group map. When
-                  they change, every recipe stops minting until it is approved
-                  again. They are set in{" "}
-                  <Link
-                    to={r.portal(slug)}
-                    className="text-accent-fg underline-offset-4 hover:underline"
-                  >
-                    Identity
-                  </Link>
-                  .
-                </p>
-                <IdentityList identity={data.identity} />
-              </div>
+              <ul className="list-disc space-y-1 pl-5">
+                {data.publicMint ? (
+                  <li>
+                    Because {publicReasons(data)}, anyone who installs this
+                    product (or can sign in to it) can hold a device token, so
+                    an approved recipe is a public token mint. Approving one
+                    needs your acknowledgement.
+                  </li>
+                ) : null}
+                {!data.licenseEnabled ? (
+                  <li data-testid="edge-mint-license-off">
+                    The mint does not check device licenses, so a disabled or
+                    expired license can mint. An approval given now records
+                    that; turning License on later only narrows it.
+                  </li>
+                ) : null}
+              </ul>
             </Callout>
           ) : null}
         </div>
@@ -370,6 +365,7 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
       <DataTable<EdgeMintRecipe>
         id="edge-mint"
         caption="Edge-mint recipes"
+        mobile="cards"
         data={recipes}
         columns={columns}
         getRowId={(e) => e.id}
@@ -406,11 +402,34 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
           <EmptyState
             kind="first-run"
             title="No edge-mint recipes"
-            description="An edge-mint recipe turns a device token into a short-lived third-party token (a MusicKit developer token, a signed JWT) without the app ever holding the signing key. Recipes are declared in the product's .pkey/release and appear here for approval."
+            description="Recipes declared in the product's .pkey/release appear here for approval."
             docs="/docs/services/config/edge-mint/"
           />
         }
       />
+
+      {recipes.length > 0 && data.identity ? (
+        <details className="rounded-lg border border-border bg-surface-raised px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-bold text-fg-strong">
+            Signing in also hands out device tokens
+          </summary>
+          <div className="mt-3 space-y-3">
+            <p className="text-fg-muted">
+              An approval covers this identity provider and group map; when they
+              change, every recipe stops minting until it is approved again. Set
+              them in{" "}
+              <Link
+                to={r.portal(slug)}
+                className="text-accent-fg underline-offset-4 hover:underline"
+              >
+                Identity
+              </Link>
+              .
+            </p>
+            <IdentityList identity={data.identity} />
+          </div>
+        </details>
+      ) : null}
 
       <ApproveDrawer
         slug={slug}
@@ -675,7 +694,10 @@ function ApproveDrawer({
               <section className="space-y-2" aria-label="Sign-in trust changes">
                 <p className="text-sm text-fg">
                   Sign-in now trusts a different identity provider or group map
-                  than when this recipe was approved.
+                  than when this recipe was approved
+                  {recipe.approval?.identity === null
+                    ? ", which was approved while Identity was off."
+                    : "."}
                 </p>
                 <DescriptionList
                   columns={2}
@@ -684,18 +706,16 @@ function ApproveDrawer({
                     return {
                       term,
                       detail: (
-                        <span className="break-all font-mono text-xs">
+                        <span className="font-mono text-xs [overflow-wrap:anywhere]">
                           {show(identity[key])}
                         </span>
                       ),
                       help:
-                        was === undefined
+                        was === undefined || was === null
                           ? undefined
-                          : was === null
-                            ? "Approved with Identity off"
-                            : was[key] !== identity[key]
-                              ? `Approved as ${show(was[key])}`
-                              : undefined,
+                          : was[key] !== identity[key]
+                            ? `Approved as ${show(was[key])}`
+                            : undefined,
                     };
                   })}
                 />
@@ -704,8 +724,8 @@ function ApproveDrawer({
             {changed.has("license") ? (
               <p className="text-sm text-fg">
                 License was turned off after this recipe was approved, so the
-                mint no longer checks each device&apos;s licence: a disabled or
-                expired licence would mint again.
+                mint no longer checks each device&apos;s license: a disabled or
+                expired license would mint again.
               </p>
             ) : null}
             {changed.has("registration") ? (
@@ -719,8 +739,8 @@ function ApproveDrawer({
                 data-testid="edge-mint-approve-license-off"
                 className="text-sm text-warning"
               >
-                License is off: this mint does not check device licences; a
-                disabled or expired licence can mint.
+                License is off: this mint does not check device licenses; a
+                disabled or expired license can mint.
               </p>
             ) : null}
             {!approved && publicMint ? (
@@ -747,8 +767,10 @@ function ApproveDrawer({
           {approved || !recipe ? "Close" : "Cancel"}
         </Button>
         {recipe?.approval ? (
+          // The escape hatch sits apart from the primary action, on the far side.
           <Button
-            variant="outline"
+            variant="ghost"
+            className="text-danger sm:mr-auto sm:order-first"
             disabled={busy}
             onClick={() => onRevoke(recipe.id)}
           >
@@ -760,7 +782,7 @@ function ApproveDrawer({
             loading={busy}
             disabledReason={
               publicMint && !ack
-                ? "Acknowledge that the mint is public first."
+                ? "Tick the acknowledgement above first."
                 : undefined
             }
             onClick={() => void approve()}

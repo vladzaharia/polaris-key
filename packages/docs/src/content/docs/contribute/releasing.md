@@ -1,58 +1,95 @@
 ---
 title: "Releasing"
-description: "The Changesets flow for the JS SDKs, the Python and Swift tag releases, and how the worker deploys — gated, D1-migrated, and smoke-checked."
+description: "How every SDK publishes itself to its feed on pkg.plrs.im, in lockstep with the server, on each push to main and each v* tag, and how the worker deploys — gated, D1-migrated, smoke-checked, and registering its own packages."
 sidebar:
   order: 6
 ---
 
-Four release surfaces, independent of each other: the JS SDKs (Changesets, on merge to `main`),
-the Python SDK (a `python-v*` tag), the Swift SDK (a `swift-v*` tag), and the worker itself (a
-`v*` tag). None of them is a single "cut a release" step — each has its own trigger, its own
-workflow, and its own tag namespace.
+One version for everything. Every SDK this repository ships is versioned in **lockstep with the
+server** and published **automatically** to Polaris Key's own feeds on `pkg.plrs.im` (owner decision
+2026-10-04):
 
-All packages are currently at **`0.0.0`** — nothing has published yet.
+| Trigger          | What every SDK publishes                                                                                                                                                            | Channel                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| a push to `main` | a prerelease of the next version: semver `<next>-main.<N>` (npm, Swift, Maven, Godot, the `pkey` image) and PEP 440 `<next>.dev<N>` (PyPI)                                          | `main` (npm dist-tag `main`)                     |
+| a `v*` tag       | exactly the tag's version (`v0.9.0` → `0.9.0` everywhere; `v1.0.0-rc.1` → `1.0.0-rc.1`, PyPI `1.0.0rc1`), after the worker that tag deploys is live and its packages are registered | `stable` (`latest`), `beta` for a prerelease tag |
 
-## JS SDKs: Changesets
+`<next>` is the patch after the newest `v*` tag reachable from the commit (`v0.8.12` → `0.8.13`;
+after a prerelease tag, the version it heads for), and `<N>` is the number of commits since that tag,
+so every push to `main` publishes a version none before it took, and it always sorts after the last
+release and before the next one. Nobody chooses or edits a version: there are no Changesets, no
+version PRs and no per-SDK tags. A prerelease tag must be one PyPI can spell too: `-alpha.N`,
+`-beta.N` or `-rc.N` (`deploy.yml` refuses any other tag before it deploys). In SemVer order a
+`<next>-main.<N>` build sorts above `<next>-beta.<N>` and below `<next>-rc.<N>`; that is harmless,
+because `main` and `beta` are separate channels and the drift check compares a build only with
+builds of its own kind.
 
-1. Add a changeset describing the user-facing change: `pnpm changeset` picks the affected
-   `@polaris-key/*` packages and a semver bump, and writes a markdown file under `.changeset/`.
-   Write it for consumers — the "why", not a diff summary.
-2. On every push to `main`, `.github/workflows/release.yml` first repeats the green gate
-   (`build`, `typecheck`, `test`, `lint`) and then runs `changesets/action`, which opens or
-   updates a **"Version Packages"** PR (`pnpm version-packages`, i.e. `changeset version` —
-   bumps versions and writes changelogs from the pending changesets).
-3. Merging that PR runs `pnpm changeset publish`, authenticated to `npm.pkg.github.com` (GitHub
-   Packages, not the public npm registry) via the workflow's `GITHUB_TOKEN`.
-   `.changeset/config.json` sets `access: "restricted"` and `baseBranch: "main"`; internal
-   `@polaris-key/*` cross-dependencies bump by `patch` automatically.
+The SDKs go to Polaris Key's own feeds and **nowhere else**: no npmjs, GitHub Packages, PyPI,
+Maven Central, Swift Package Index, Docker Hub, GHCR, Godot store or GitHub Release. The operator
+steps (the `package-registry` environment, Swift signing, what to do when a publish or the drift
+check fails) are in `docs/RUNBOOK.md`, "Releasing our SDKs to the feeds", mirrored on
+[Operating](/docs/admin/kek/); how adopters install each SDK is
+[Installing the SDKs from the feeds](/docs/build/install-from-feeds/).
 
-Keep changesets focused — one logical change each. As of this writing there are sixteen pending:
-`boot-stage-machine`, `canonical-headers-config-matrix`, `channel-vocabulary`, `ci-publishing`, `core-caps`, `device-code-edge-mint`,
-`distribution-service`, `edge-mint-hardening`, `fingerprint-storage-fixes`,
-`free-tier-and-relicensing`, `hardware-fingerprinting`, `initial-release`,
-`p1b07-license-config-release-gaps`, `pkey-init-validate`, `sdk-constants` and `service-table`,
-together covering `@polaris-key/protocol`, `@polaris-key/jws`, `@polaris-key/catalog`,
-`@polaris-key/manifest`, `@polaris-key/client-core`, `@polaris-key/cli`, `@polaris-key/node`,
-`@polaris-key/react`, and the private `@polaris-key/worker` and `@polaris-key/admin`.
+## The version: derived from git, stamped by CI
 
-`release.yml` also checks the `polaris-key/publish` Action bundle is fresh
-(`pnpm --filter @polaris-key/cli bundle:action -- --check`) and, when Changesets publishes
-`@polaris-key/cli`, attaches the standalone `pkey.mjs` to that GitHub release.
+`tools/sdk-version.mjs derive` computes the version from the ref being built (and, for `main`, from
+`git describe` and `git rev-list --count`; the job checks out the whole history). `tools/sdk-version.mjs
+stamp` then writes it into every SDK's version file, after that SDK's tests have run on the
+committed tree: every public `packages/*/package.json` (and `pnpm pack` rewrites each `workspace:*`
+range to it, so the packages depend on each other at exactly this version),
+`sdks/python/pyproject.toml` (in its PEP 440 spelling), `POLARIS_SDK_VERSION` in Swift and Kotlin,
+`version` in `sdks/kotlin/build.gradle.kts` (the Godot Android binding shares it), and the Godot
+addon's `plugin.cfg` and `SDK_VERSION`, and `SDK_VERSION` in `packages/sdk-react/src/version.ts`
+(the browser bundle cannot read its `package.json`, so the npm job rebuilds after stamping). Each
+of those lines must exist exactly once, so a moved
+version line fails the publish instead of shipping a wrong version. The stamp is never committed:
+the versions in the tree are placeholders.
 
-## Python SDK: `python-v*` tags
+## Publishing: `publish-sdks.yml`, then one trusted publisher
 
-`.github/workflows/release-python.yml` triggers on a `python-v*` tag push. It refuses to
-publish if the tag doesn't match `sdks/python/pyproject.toml`'s version (`python-v$VERSION`),
-then runs the full pytest suite from a clean venv, builds the sdist/wheel, and publishes with
-`pypa/gh-action-pypi-publish` over PyPI's trusted-publisher OIDC flow (`id-token: write`,
-`environment: pypi` — no long-lived PyPI token stored in the repo).
+`.github/workflows/publish-sdks.yml` runs on every push to `main`, and `deploy.yml` calls it on
+every `v*` tag once the worker is deployed. One job derives the version; then, per SDK, a job tests,
+stamps, builds and packs it, and uploads its files as a workflow artifact:
 
-## Swift SDK: `swift-v*` tags
+- **npm** — every public `@polaris-key/*` package, `pnpm pack`ed into its own directory;
+- **PyPI** — `polaris-key`'s wheel and sdist (`python -m build`);
+- **Swift** — `polaris-key.PolarisKey`, signed on macOS in the `package-registry` environment by
+  `sdks/swift/tools/sign-registry-release.sh` (`swift package-registry publish --dry-run` with the
+  signing flags, so no registry is contacted). It refuses to run without the three
+  `SWIFT_REGISTRY_*` secrets and never falls back to unsigned; an `always()` step deletes the key
+  files;
+- **Maven** — every publication of the Kotlin SDK and the Godot Android binding
+  (`./gradlew publishAllPublicationsToLocalRepository`, group `im.plrs.key`), checked against the
+  twelve artifacts `.pkey/release` declares;
+- **Godot** — the addon's reproducible zip (`sdks/godot/tools/package.py`), after the test runner
+  on the 4.7.2 editor and release template and a clean install on 4.4.1 and 4.7.2;
+- **OCI** — the `pkey` image (`packages/cli/image/Dockerfile`, the committed CLI bundle on
+  `node:22-slim`) for `linux/amd64` and `linux/arm64`, as an OCI image layout.
 
-`.github/workflows/release-swift.yml` triggers on a `swift-v*` tag push, validates the tag is
-semver, runs `swift test`, and creates a GitHub release with `gh release create`. There is no
-package-registry step — SwiftPM resolves dependencies straight from git tags, so the tag and
-the GitHub release **are** the release.
+Each package is then published by `.github/workflows/publish-package.yml`, the system product
+`polaris-key`'s one trusted publisher: it runs in the `package-registry` environment, refuses a ref
+other than `main` or a `v*` tag, a commit that is not on `main`, or a channel that does not fit the
+version, exchanges the job's OIDC token for a short-lived CI token and runs `pkey release publish`
+(the committed `polaris-key/publish` Action) for one deliverable of the root `.pkey/release`. The
+repository stores no publishing secret. A version is unique forever: a failed publish that never
+landed can be re-run, a landed one cannot be replaced (yank it; the next push or tag publishes the
+next version).
+
+Last, the **drift check** (`tools/feed-drift.mjs`) reads every package's version listing back from
+its feed, as a client would, and fails the run unless each one's newest version of this build's kind
+is this build's version (and npm's dist-tag and the image's tag for the channel name it), retrying
+for up to ten minutes while the feeds' render queue catches up.
+
+## Proving it locally
+
+`pnpm --filter @polaris-key/worker registry:self-publish` runs the whole pipeline against a local
+worker (`wrangler dev --env test`), for a `main` round and a `v*` round: the version derivation, the
+stamp, every SDK built as CI builds it (Swift signed by a throwaway CA), the deploy hook through the
+script `deploy.yml` runs, every package published with the CLI's own `publishPackage` through the
+real trusted-publishing exchange, the drift check, and each SDK installed back with its real client
+(npm, uv, SwiftPM with signature verification, Gradle, the Godot feed plus a real Godot clean install,
+crane and `docker run`). Only GitHub's OIDC issuer and R2's S3 endpoint are stand-ins.
 
 ## The worker: `v*` tags
 

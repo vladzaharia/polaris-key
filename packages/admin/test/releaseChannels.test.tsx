@@ -302,7 +302,7 @@ describe("Channels lanes — what each channel serves (CHN-2, CHN-4)", () => {
       expect(hashQuery().get("deliverable")).toBe("textures"),
     );
     const stable = await lane("stable");
-    expect(within(stable).getByText(/contentApi 3: ≥/)).toBeTruthy();
+    expect(within(stable).getByText(/Content API 3: ≥/)).toBeTruthy();
     expect(within(stable).getByText("1.2.0")).toBeTruthy();
     expect(screen.queryByRole("region", { name: "beta" })).toBeNull();
     // Promote on a pack lane offers the pack's releases.

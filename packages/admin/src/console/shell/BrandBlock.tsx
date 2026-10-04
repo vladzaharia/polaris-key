@@ -39,7 +39,7 @@ export function BrandBlock({
       <LogoMark size={48} section={section} title="" />
       <span
         aria-hidden
-        className="hidden text-base font-bold tracking-tight sm:inline"
+        className="hidden whitespace-nowrap text-base font-bold tracking-tight sm:inline"
       >
         Polaris Key
       </span>

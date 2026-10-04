@@ -152,14 +152,20 @@ function decisionLine(d: SimulateResponse["decision"]): {
   if (!d) return { label: "No decision", reason: null, tone: "neutral" };
   const reason = typeof d.reason === "string" ? d.reason : null;
   const action = String(d.action);
+  // "none" offers nothing: neutral, not a green success; only "up-to-date" is good news.
   const tone =
-    action === "none" || action === "up-to-date"
+    action === "up-to-date"
       ? "success"
-      : action === "block" || typeof d.contentBlock === "string"
-        ? "danger"
-        : "warning";
+      : action === "none"
+        ? "neutral"
+        : action === "block" || typeof d.contentBlock === "string"
+          ? "danger"
+          : "warning";
   return {
-    label: action.replace(/[-_]/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
+    label:
+      action === "none"
+        ? "No update"
+        : action.replace(/[-_]/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
     reason,
     tone,
   };
@@ -283,7 +289,7 @@ function Result({ r: res }: { r: SimulateResponse }): React.ReactElement {
               res.selector.outlet ? `via ${res.selector.outlet.id}` : null,
               `channel ${res.selector.channel}`,
               res.selector.contentApi !== null
-                ? `contentApi ${res.selector.contentApi}`
+                ? `Content API ${res.selector.contentApi}`
                 : null,
               res.selector.engine,
             ]
@@ -508,7 +514,7 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
           />
         }
         title="Update simulator"
-        description="Runs the update check a fresh device runs, the same code the SDKs use, against what each channel serves now. Nothing is stored."
+        description="Nothing is stored."
         meta={<HowToRead />}
         tabs={<CompatTabs slug={slug} value="simulator" />}
       />
@@ -529,7 +535,6 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
                 </span>
               </>
             }
-            help="The version the device runs. Every release in the store is listed."
             value={draft.app || null}
             onChange={(v: string | null) =>
               setDraft((d) => ({ ...d, app: v ?? "", platform: "" }))
@@ -560,7 +565,7 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
             help={
               app && platforms.length === 0
                 ? "This release declares no builds; type the platform."
-                : "From the release's builds."
+                : undefined
             }
             value={draft.platform}
             onChange={(v: string | null) => set("platform", v ?? "")}
@@ -608,7 +613,6 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
           <FormField
             name="sim-channel"
             label="Channel"
-            help="The channel the device follows (stable when left empty)."
             value={draft.channel || null}
             onChange={(v: string | null) => set("channel", v ?? "")}
           >
@@ -629,14 +633,11 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
               <legend className="text-sm font-bold text-fg-strong">
                 Variant
               </legend>
-              <p className="text-xs text-fg-muted">
-                The device's variant per axis, as the packs declare them.
-              </p>
               {[...axes].map(([axis, values]) => (
                 <FormField
                   key={axis}
                   name={`sim-axis-${axis}`}
-                  label={axis}
+                  label={axis.replace(/^\w/, (c) => c.toUpperCase())}
                   value={draft.axes[axis] ?? null}
                   onChange={(v: string | null) =>
                     setDraft((d) => ({
@@ -669,8 +670,9 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
           )}
           <FormField
             name="sim-device"
-            label="Device id"
-            help="Optional. Puts the device in its rollout bucket, as the SDK's device id would."
+            label="Device ID"
+            optional
+            help="Puts the device in its rollout bucket."
             value={draft.device}
             onChange={(v: string) => set("device", v)}
           >
@@ -679,7 +681,8 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
           <FormField
             name="sim-packset"
             label="Reported pack set"
-            help="Optional. The pack set id a device reported, to compare with the expected one."
+            optional
+            help="Compared with the expected pack set."
             value={draft.packSet}
             onChange={(v: string) => set("packSet", v)}
             error={packSetError}

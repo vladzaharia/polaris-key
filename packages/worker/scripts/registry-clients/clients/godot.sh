@@ -76,8 +76,23 @@ if fetch "$URL" "$tmp/zip" && [ "$(shasum -a 256 "$tmp/zip" | cut -d' ' -f1)" = 
   ok "≤4.6 the zip behind download_url hashes to download_hash (what the editor compares)"
 else bad "≤4.6 download_hash"; fi
 ICON="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["icon_url"])' "$tmp/asset")"
-if fetch "$ICON" "$tmp/icon" && grep -qi '^content-type: image/png' "$tmp/h"; then
-  ok "≤4.6 icon_url serves image/png"
+if fetch "$ICON" "$tmp/icon" && grep -qi '^content-type: image/png' "$tmp/h" &&
+  python3 - "$tmp/icon" <<'PY'
+# What Godot's PNG loader enforces: the signature and every chunk's CRC-32 (a bad IDAT CRC made the
+# 4.6 editor drop the icon, F-09's manual editor check).
+import struct, sys, zlib
+d = open(sys.argv[1], "rb").read()
+assert d[:8] == b"\x89PNG\r\n\x1a\n"
+p = 8
+while p < len(d):
+    n, t = struct.unpack(">I4s", d[p:p + 8])
+    body = d[p + 8:p + 8 + n]
+    crc = struct.unpack(">I", d[p + 8 + n:p + 12 + n])[0]
+    assert crc == zlib.crc32(t + body), t
+    p += 12 + n
+PY
+then
+  ok "≤4.6 icon_url serves a valid image/png (chunk CRCs)"
 else bad "icon"; fi
 
 # ── Godot 4.7+: the Asset Store API (base $BASE/store/api/v1) ──────────────────────────────────
@@ -91,8 +106,8 @@ check "4.7 search/query/: the editor's query" \
 check "4.7 assets/<publisher>/<asset>/" \
   'd["slug"]=="smoke_addon" and set(d) >= {"name","slug","store_url","license_type","reviews_score","body_bbcode","source","publisher"}' \
   "$S/assets/$PUBLISHER/$NAME/"
-check "4.7 releases/…: newest first, yanked 1.0.1 absent, stable flags, deprecation note" \
-  '[r["version"] for r in d]==["1.2.0-beta.1","1.1.0","1.0.0"] and [r["stable"] for r in d]==[False,True,True] and d[2]["notes"].startswith("Deprecated") and all(set(r) >= {"download_url","version","stable","min_godot_version","max_godot_version"} for r in d)' \
+check "4.7 releases/…: stable first (the editor preselects the first), yanked 1.0.1 absent, deprecation note" \
+  '[r["version"] for r in d]==["1.1.0","1.0.0","1.2.0-beta.1"] and [r["stable"] for r in d]==[True,True,False] and d[1]["notes"].startswith("Deprecated") and all(set(r) >= {"download_url","version","stable","min_godot_version","max_godot_version"} for r in d)' \
   "$S/releases/$PUBLISHER/$NAME/"
 check "4.7 releases/?stable_only=true" '[r["version"] for r in d]==["1.1.0","1.0.0"]' \
   "$S/releases/$PUBLISHER/$NAME/?stable_only=true"

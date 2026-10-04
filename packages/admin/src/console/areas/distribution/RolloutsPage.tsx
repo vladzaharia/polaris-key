@@ -252,13 +252,20 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
         <PageHeader
           title="Rollouts"
           titleAside={
-            rollouts.data ? (
-              <span className="text-sm tabular-nums text-fg-muted">
-                {rows.length}
+            rollouts.data && rows.length > 0 ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="text-sm tabular-nums text-fg-muted">
+                  {rows.length}
+                </span>
+                {halted > 0 ? (
+                  <StatusPill tone="danger" size="sm">
+                    {halted} halted
+                  </StatusPill>
+                ) : null}
               </span>
             ) : undefined
           }
-          description="Every staged rollout of this product, per outlet and channel. A halt or pause reaches devices on their next feed check."
+          description="A halt or pause reaches devices on their next feed check."
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}
@@ -269,15 +276,6 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
           }
           refetching={rollouts.isFetching && !rollouts.isPending}
         />
-      }
-      summary={
-        halted > 0 ? (
-          <div className="col-span-2 lg:col-span-4">
-            <StatusPill tone="danger">
-              {halted} {halted === 1 ? "rollout is" : "rollouts are"} halted
-            </StatusPill>
-          </div>
-        ) : undefined
       }
     >
       <DataTable<Rollout>

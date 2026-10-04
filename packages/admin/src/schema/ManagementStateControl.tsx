@@ -7,8 +7,9 @@ import { MANAGEMENT_STATES } from "./entry.js";
 
 /**
  * The management state of one managed key (SCF-5): the kit's `SegmentedControl`, a real radio
- * group (one tab stop, arrows move and select, Home/End, a disabled option is skipped), with the
- * chosen state's meaning shown once beneath it.
+ * group (one tab stop, arrows move and select, Home/End, a disabled option is skipped). The chosen
+ * state's meaning is its accessible description and the help icon's tooltip, not a paragraph
+ * repeated under every row.
  */
 export function ManagementStateControl({
   value,
@@ -44,13 +45,14 @@ export function ManagementStateControl({
           target="_blank"
           rel="noreferrer"
           aria-label="Management states (docs)"
+          title={help}
           className="rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
         >
           <CircleHelp aria-hidden className="size-3.5" />
         </a>
       </span>
       {help ? (
-        <p id={helpId} className="max-w-prose text-xs text-fg-muted">
+        <p id={helpId} className="sr-only">
           {help}
         </p>
       ) : null}

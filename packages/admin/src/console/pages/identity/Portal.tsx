@@ -20,6 +20,7 @@ import { JsonViewer } from "../../../ui/JsonViewer.js";
 import { SaveBar } from "../../../ui/SaveBar.js";
 import { Select } from "../../../ui/Select.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
+import { StatusPill } from "../../../ui/StatusPill.js";
 import { Switch } from "../../../ui/Switch.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
@@ -97,29 +98,10 @@ const AUTO_LINK_OPTIONS: {
   },
 ];
 
-const SIGN_IN_ROWS: { key: ToggleKey; label: string; help: string }[] = [
-  {
-    key: "oidcEnabled",
-    label: "OIDC access",
-    help: "Allow portal account linking from the shared OIDC subject.",
-  },
-  {
-    key: "magicEnabled",
-    label: "Email magic links",
-    help: "Allow verified email sign-in to link matching licenses.",
-  },
-  {
-    key: "licenseKeyClaimEnabled",
-    label: "License-key claim",
-    help: "Allow customers to add a license by entering a valid key.",
-  },
-];
-
-const SECTIONS = [
-  { id: "portal-access", title: "Availability" },
-  { id: "portal-sign-in", title: "Sign-in methods" },
-  { id: "portal-modules", title: "Modules" },
-  { id: "portal-branding", title: "Branding" },
+const SIGN_IN_ROWS: { key: ToggleKey; label: string }[] = [
+  { key: "oidcEnabled", label: "OIDC access" },
+  { key: "magicEnabled", label: "Email magic links" },
+  { key: "licenseKeyClaimEnabled", label: "License-key claim" },
 ];
 
 const PORTAL_OFF = "Turn on the customer portal to change this.";
@@ -139,23 +121,17 @@ export function PortalPage({ slug }: { slug: string }): React.ReactElement {
   const header = (
     <PageHeader
       title="Portal"
-      description={
-        <>
-          What the customer portal offers{" "}
-          {product.data?.name ?? <span className="font-mono">{slug}</span>}
-          {"’s"} customers, and how they sign in to it.
-        </>
-      }
-      meta={
+      titleAside={
         settings.data ? (
           // `modifiedAt` 0: no row was ever written, so these are the defaults.
           settings.data.modifiedAt && settings.data.modifiedAt > 0 ? (
-            <span>
-              Last changed{" "}
-              <Timestamp at={fromSeconds(settings.data.modifiedAt)} />
-            </span>
+            <StatusPill tone="info" icon={false}>
+              Edited <Timestamp at={fromSeconds(settings.data.modifiedAt)} />
+            </StatusPill>
           ) : (
-            <span>Never changed: these are the defaults.</span>
+            <StatusPill tone="neutral" icon={false}>
+              Defaults
+            </StatusPill>
           )
         ) : null
       }
@@ -251,17 +227,20 @@ function PortalForm({
   ): React.ReactElement => {
     const id = `portal-${slug}-${key}`;
     return (
-      <SettingsRow key={key} label={label} htmlFor={id} help={help}>
-        <div className="flex lg:justify-end">
-          <Switch
-            id={id}
-            checked={Boolean(values[key])}
-            disabled={disabled}
-            readOnly={readOnly}
-            aria-describedby={`${id}-help`}
-            onCheckedChange={(c) => set(key, c)}
-          />
-        </div>
+      <SettingsRow
+        key={key}
+        label={label}
+        htmlFor={id}
+        help={help ? <span id={`${id}-help`}>{help}</span> : undefined}
+      >
+        <Switch
+          id={id}
+          checked={Boolean(values[key])}
+          disabled={disabled}
+          readOnly={readOnly}
+          aria-describedby={help ? `${id}-help` : undefined}
+          onCheckedChange={(c) => set(key, c)}
+        />
       </SettingsRow>
     );
   };
@@ -269,42 +248,20 @@ function PortalForm({
   const autoLinkId = `portal-${slug}-autoLinkEnabled`;
 
   return (
-    <SettingsTemplate header={header} sections={SECTIONS}>
+    // Four short sections: no "On this page" rail.
+    <SettingsTemplate header={header} sections={[]}>
       <Form form={form} aria-label="Portal settings" className="space-y-6">
-        <SettingsSection
-          id="portal-access"
-          title="Availability"
-          description="The root portal where customers see their licenses, devices and downloads."
-        >
-          {toggle(
-            "portalEnabled",
-            "Customer portal",
-            <span id={`portal-${slug}-portalEnabled-help`}>
-              Show this product’s licenses to verified customers.
-            </span>,
-            false,
-          )}
+        <SettingsSection id="portal-access" title="Availability">
+          {toggle("portalEnabled", "Customer portal", null, false)}
         </SettingsSection>
 
         <SettingsSection
           id="portal-sign-in"
           title="Sign-in methods"
-          description={
-            <>
-              {
-                "How a customer proves who they are, and how their licenses find them."
-              }
-              {portalOn ? null : <span> {PORTAL_OFF}</span>}
-            </>
-          }
+          description={portalOn ? undefined : PORTAL_OFF}
         >
           {SIGN_IN_ROWS.map((row) =>
-            toggle(
-              row.key,
-              row.label,
-              <span id={`portal-${slug}-${row.key}-help`}>{row.help}</span>,
-              !portalOn,
-            ),
+            toggle(row.key, row.label, null, !portalOn),
           )}
           <SettingsRow
             label="Automatic license linking"
@@ -330,32 +287,23 @@ function PortalForm({
         <SettingsSection
           id="portal-modules"
           title="Modules"
-          description={
-            <>
-              {"What a signed-in customer can do in the portal."}
-              {portalOn ? null : <span> {PORTAL_OFF}</span>}
-            </>
-          }
+          description={portalOn ? undefined : PORTAL_OFF}
         >
           {toggle(
             "releasesEnabled",
             "Release downloads",
-            <span id={`portal-${slug}-releasesEnabled-help`}>
-              Expose entitled release artifacts in the customer portal.
-              {releaseOff ? (
-                <>
-                  {" "}
-                  Release is off for this product, so there is nothing to
-                  download.{" "}
-                  <Link
-                    to={r.services(slug)}
-                    className="text-accent-fg underline underline-offset-2"
-                  >
-                    Open Services
-                  </Link>
-                </>
-              ) : null}
-            </span>,
+            releaseOff ? (
+              <>
+                Release is off for this product, so there is nothing to
+                download.{" "}
+                <Link
+                  to={r.services(slug)}
+                  className="text-accent-fg underline underline-offset-2"
+                >
+                  Open Services
+                </Link>
+              </>
+            ) : null,
             !portalOn || releaseOff,
           )}
         </SettingsSection>
@@ -367,12 +315,11 @@ function PortalForm({
         />
       </Form>
 
-      <SettingsSection
-        id="portal-branding"
-        title="Branding"
-        description="The logo, name and colours the portal shows for this product's licenses."
-      >
-        <SettingsRow label="Current branding">
+      <SettingsSection id="portal-branding" title="Branding">
+        <SettingsRow
+          label="Current branding"
+          align={settings.branding == null ? "end" : "stretch"}
+        >
           {settings.branding == null ? (
             <p className="text-fg-muted">
               None. The portal shows the product name in the Polaris Key theme.

@@ -15,7 +15,7 @@ export function Skeleton({
   return (
     <div
       aria-hidden
-      className={cn("rounded-md bg-surface-sunken", className)}
+      className={cn("rounded-md bg-hover", className)}
       {...props}
     />
   );

@@ -176,7 +176,7 @@ export function DialogFooter({
   return (
     <div
       className={cn(
-        "mt-2 flex shrink-0 flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-end [&>*]:w-full sm:[&>*]:w-auto",
+        "mt-2 flex shrink-0 flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-end [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
         className,
       )}
       {...props}

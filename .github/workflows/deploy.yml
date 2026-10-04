@@ -16,6 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'vladzaharia/polaris-key'
     environment: production
+    # id-token: write is for "Register the platform packages" only: the deploy hook
+    # (POST /webhooks/deploy) authenticates this job by its GitHub OIDC token, so no
+    # registration secret exists anywhere. The token names this workflow, this environment and
+    # this tag; the Worker admits nothing else.
+    permissions:
+      contents: read
+      id-token: write
     concurrency:
       group: deploy-production
       cancel-in-progress: false
@@ -40,8 +47,10 @@ jobs:
           REF: ${{ github.ref }}
         run: |
           TAG="${REF#refs/tags/}"
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Production deploy tags must be semver vMAJOR.MINOR.PATCH" >&2
+          # The prerelease suffixes every SDK ecosystem can carry (tools/sdk-version.mjs: PyPI
+          # has no other spelling), so a tag that deploys is a tag every SDK publishes at.
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc|a|b)\.(0|[1-9][0-9]*))?$ ]]; then
+            echo "Production deploy tags are vMAJOR.MINOR.PATCH, optionally -alpha.N, -beta.N or -rc.N" >&2
             exit 1
           fi
           # R7-04: the tag NAME was the only gate, so a tag pointing at any commit — one
@@ -184,6 +193,19 @@ jobs:
             sleep 5
           done
           echo "Smoke check OK: data plane is serving a non-empty JWKS."
+      # F-10 automation (owner decision 2026-10-04): keep the platform's own SDKs registered on
+      # its package feeds, on every deploy and safe to rerun. The deploy hook bootstraps the system
+      # product polaris-key (idempotent: a service, packageFeeds or a feed an operator turned off
+      # stays off), links it to this repository and applies the root .pkey/ of this tag: the
+      # package deliverables every SDK publish is checked against and the trusted publisher
+      # (publish-package.yml, package-registry). After the smoke check, so it talks to the new
+      # version; a failure fails the deploy loudly (rerun the job once the cause is fixed).
+      - name: Register the platform packages
+        env:
+          ORIGIN: https://key.plrs.im
+        run: |
+          cd packages/worker
+          node scripts/register-platform.mjs
       # A-11: one platform_deploys row for the console's Deployment page (tag, commit, run URL,
       # time, environment, both Cloudflare version ids, the smoke outcome). LAST, and it can never
       # fail the deploy: continue-on-error, and a miss prints a ::warning:: annotation instead.
@@ -208,3 +230,14 @@ jobs:
         run: |
           cd packages/worker
           node scripts/record-deploy.mjs
+
+  # F-10 automation: every SDK at exactly this tag's version, published to the feeds once the
+  # Worker that serves them is live and the root .pkey/ of this tag is registered (the step
+  # above). Pushes to main publish their prereleases from publish-sdks.yml directly.
+  publish-sdks:
+    name: Publish SDKs
+    needs: deploy-worker
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-sdks.yml

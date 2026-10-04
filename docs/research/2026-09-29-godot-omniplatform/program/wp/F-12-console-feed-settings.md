@@ -35,6 +35,13 @@ use the client's strict router ([S-12 §8.3](../../notes/S-12-package-feeds.md#8
 
 - [`plans/F-01.md`](../plans/F-01.md) §6.4 (`ext_json`, `namespace_json`), §6.7 (strict routers), §6.9.
 - The F-04 to F-09 docs sections, which list each feed's snippet inputs.
+- **[correction, feed-adapter contract]** Each feed now declares its snippet inputs and clients
+  in its `FeedAdapter` (`packages/worker/src/services/distribution/registry/<ecosystem>/index.ts`,
+  `setup.inputs` and `setup.clients`), its namespace fields in `@polaris-key/manifest`
+  `PACKAGE_ECOSYSTEM_RULES`, and its capabilities (which the admin API exposes) in
+  `capabilities`. Render from those declarations rather than from a per-ecosystem table, and
+  fill the console's `FEED_PANELS` slot without switching on the ecosystem where a declaration
+  answers. See `/docs/contribute/package-feeds/`.
 
 ## Scope
 

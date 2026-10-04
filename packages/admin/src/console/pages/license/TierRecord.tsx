@@ -224,7 +224,7 @@ function TierOverview({
       <SettingsSection
         id="tier-overview"
         title="Policy"
-        description="Licenses on this tier get these. A blank number uses the product default."
+        description="A blank number uses the product default."
       >
         <div className="px-5 py-4">
           <TierFields slug={slug} heldChannels={values.channels} />

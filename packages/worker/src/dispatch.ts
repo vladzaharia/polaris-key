@@ -28,12 +28,14 @@ import { handleDocs } from "./docs.js";
 // stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
 import { handlePortal } from "./services/identity/index.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
+import { handleDeployHook } from "./platformDeploy.js";
 import { notFound } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
 import { handleAttest, handleAttestChallenge } from "./core/attestation.js";
 import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 import { dispatchRegistryHost, isRegistryHost } from "./core/registryHost.js";
+import { drainRenderQueue, watchRenderEnqueues } from "./core/registryQueue.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "discovery",
@@ -58,7 +60,20 @@ export async function dispatch(
   db: Db,
   exec?: DispatchExecution,
 ): Promise<Response> {
-  return dispatchWith(req, env, db, Math.floor(Date.now() / 1000), exec);
+  const now = Math.floor(Date.now() / 1000);
+  if (!exec) return dispatchWith(req, env, db, now, exec);
+  // The package-feed render queue (plans/F-01.md §6.5): a request whose writes enqueued a render
+  // (a package publish, yank or channel move; a feed settings write) drains the queue once it has
+  // answered, so the feed's documents are re-rendered within the request's `waitUntil`. Every
+  // other request costs nothing. The cron drains too (`scheduled.ts`), and the stamp-checked read
+  // path covers the moment in between.
+  const watched = watchRenderEnqueues(db);
+  const res = await dispatchWith(req, env, watched.db, now, exec);
+  if (watched.enqueued())
+    exec.waitUntil(
+      drainRenderQueue(SERVICES, { env, db, now }).catch(() => undefined),
+    );
+  return res;
 }
 
 /**
@@ -121,6 +136,9 @@ export async function dispatchWith(
   switch (route.kind) {
     case "githubWebhook":
       return handleGithubWebhook(req, env, db, now);
+    // F-10 automation: deploy.yml's registration of the platform's own packages.
+    case "deployHook":
+      return handleDeployHook(req, env, db, now);
     // The gated docs site: session-checked inside the handler (docs.ts), for every path
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":

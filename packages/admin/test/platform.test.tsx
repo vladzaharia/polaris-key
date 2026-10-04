@@ -269,9 +269,7 @@ describe("Deployment", () => {
     });
     const page = await deploymentPage();
     expect(
-      await within(page).findByText(
-        "The database's migration table could not be read.",
-      ),
+      await within(page).findByText("The migration table could not be read."),
     ).toBeTruthy();
     expect(within(page).getByText("Could not be checked")).toBeTruthy();
   });

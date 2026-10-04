@@ -48,9 +48,69 @@ function safeRoute(route: string | undefined, fallback: string): string {
   return route && route.startsWith("#/") ? route : fallback;
 }
 
-/** One product's attention items, from its setup state's next actions. */
+/**
+ * One product's attention items: its setup state's next actions, plus every missing required
+ * secret and an unexplained "needs attention" status, so Home, Products and the product's
+ * Overview checklist (which reads the same setup state) never disagree.
+ */
 export function attentionFor(p: ProductDetail): ProductAttention[] {
   const product = { slug: p.slug, name: p.name || p.slug };
+  const items = fromActions(p, product);
+  const ids = new Set(items.map((i) => i.id));
+  const missing = new Set([
+    ...(p.setup?.missingSecrets ?? []),
+    ...(p.setup?.secrets ?? []).filter((s) => !s.configured).map((s) => s.name),
+  ]);
+  for (const name of missing) {
+    const id = `${p.slug}:secret:${name}`;
+    if (ids.has(id)) continue;
+    items.push({
+      id,
+      product,
+      kind: "secret.missing",
+      tone: "warning",
+      reason: `Missing required secret ${name}`,
+      action: { label: "Set secret", href: r.keys(p.slug) },
+    });
+  }
+  const modules = Array.isArray(p.setup?.modules) ? p.setup.modules : [];
+  for (const m of modules as unknown as Record<string, unknown>[]) {
+    if (m.id !== "edgeMint") continue;
+    for (const recipe of (m.pendingApproval as string[] | undefined) ?? []) {
+      const id = `${p.slug}:edge-mint:${recipe}`;
+      if (ids.has(id)) continue;
+      items.push({
+        id,
+        product,
+        kind: "mint.pending",
+        tone: "warning",
+        reason: `Edge-mint recipe ${recipe} awaits approval`,
+        action: { label: "Review recipe", href: r.edgeMint(p.slug) },
+      });
+    }
+  }
+  const status = p.setup?.status;
+  if (
+    items.length === 0 &&
+    status &&
+    !["ok", "complete", "healthy"].includes(status)
+  ) {
+    items.push({
+      id: `${p.slug}:setup`,
+      product,
+      kind: "onboarding.next",
+      tone: "info",
+      reason: "Setup is not finished",
+      action: { label: "Open", href: r.overview(p.slug) },
+    });
+  }
+  return items;
+}
+
+function fromActions(
+  p: ProductDetail,
+  product: { slug: string; name: string },
+): ProductAttention[] {
   return actionsOf(p).map((a, i): ProductAttention => {
     const id = a.id ?? `action-${i}`;
     const base = { id: `${p.slug}:${id}`, product };

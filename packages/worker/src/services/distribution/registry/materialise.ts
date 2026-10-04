@@ -14,16 +14,24 @@
  *     package's rows, and the render's own record (`.render/<deliverable>.json`, listing its
  *     keys) carries it too. The cron's self-check compares that record's stamp with D1.
  *   - ATOMICITY AND RECOVERY: a render writes every object, then its record. A drain deletes
- *     the queue rows it consumed only after that, matched on `enqueued_at ≤ start`, so a crash
- *     leaves them queued and the next drain retries (`drainRegistry`).
+ *     the queue rows it consumed only after that, and only while each row's `generation` is still
+ *     the one it read (`core/registryQueue.ts` `stmtConsumeRender`), so an enqueue that lands
+ *     mid-render is never lost and a crash leaves the rows queued for the next drain
+ *     (`drainRegistry`). A row whose render fails stays queued with its attempt counted, behind
+ *     fresh rows, so it cannot block the head of the queue.
  *   - READ PATH: a missing object is rendered from D1 on read, written back and counted
  *     (`registryCounters.renderMiss`), so a lost object heals itself (`readRegistryObject`).
  *
- * THE TRIGGER is F-03's: Release enqueues into the Core-owned `registry_render_queue` in the
- * same D1 batch as each publish, yank or channel move, and the composition root drains it after
- * the request and on every cron run. Until F-03 creates that table and wires the drain, the
- * drain is reachable only through the `RegistryQueue` interface below, and Release state only
- * through `PackageSource` (F-03 implements it over `releaseCatalog.packageVersions`).
+ * THE TRIGGER: Release enqueues into the Core-owned `registry_render_queue` in the same D1 batch
+ * as each publish, yank or channel move (F-03), and so do the feed settings writes. The drain is
+ * wired (feed-adapter contract): `core/registryQueue.ts` `drainRenderQueue` reads the queue and
+ * hands each owner's rows to Distribution's `registryMaterialiser` descriptor member
+ * (`../registryMaterialiser.ts`), which runs `drainRegistry` below. `dispatch.ts` runs it after
+ * every request that enqueued a render (`watchRenderEnqueues`, in `waitUntil`) and `scheduled.ts`
+ * on every cron tick, followed by the
+ * bounded `selfCheck`. The stamp-checked read path (`catalogSource.ts` `freshRegistryObject`,
+ * `readFreshRegistryObject`) stays as the fallback, so a feed is never stale between a write and
+ * the drain.
  */
 
 import type {
@@ -109,7 +117,7 @@ export interface RenderContext {
   readonly feed?: RenderFeed | null;
 }
 
-/** One ecosystem's renderer and routes (F-04 to F-09). */
+/** One ecosystem's renderer and routes (F-04 to F-09; `adapter.ts` `rendererOf` builds it). */
 export interface RegistryRenderer {
   readonly ecosystem: RegistryEcosystem;
   render(
@@ -117,6 +125,12 @@ export interface RegistryRenderer {
     ctx: RenderContext,
   ): readonly RenderedObject[] | Promise<readonly RenderedObject[]>;
   readonly routes: readonly RegistryRoute[];
+  /**
+   * What the render stamp covers (`FeedAdapter.renderer.stamp`): `package` stamps the rows alone
+   * even when `MaterialiseDeps.feed` is given, so a feed whose documents never read the settings
+   * is not made stale by a settings write. Absent: the settings whenever they are given (F-09).
+   */
+  readonly stamp?: "package" | "package+feed";
 }
 
 /** Release's package state, read-only (F-03: `releaseCatalog.packageVersions`). */
@@ -126,6 +140,8 @@ export interface PackageSource {
     product: string,
     deliverableId: string,
   ): Promise<RegistryPackage | null>;
+  /** Every package deliverable of `product` (the drain's full render, the self-check). */
+  deliverables?(product: string): Promise<string[]>;
 }
 
 /** Everything a render touches. */
@@ -211,12 +227,16 @@ export async function renderStamp(
   return (await sha256Hex(canonical(seen))).slice(0, 32);
 }
 
-/** The feed settings `deps` supplies for `pkg`, or `undefined` when it supplies none. */
+/**
+ * The feed settings `deps` supplies for `pkg` and its stamp, or `undefined` when it supplies none
+ * or the ecosystem's renderer stamps the package alone (`RegistryRenderer.stamp`).
+ */
 async function feedFor(
   deps: MaterialiseDeps,
   product: string,
   ecosystem: RegistryEcosystem,
 ): Promise<RenderFeed | null | undefined> {
+  if (deps.renderers.get(ecosystem)?.stamp === "package") return undefined;
   return deps.feed ? deps.feed(product, ecosystem) : undefined;
 }
 
@@ -381,16 +401,30 @@ export async function selfCheck(
 /** One queued render (`registry_render_queue`, Core-owned, created by F-03). */
 export interface RegistryQueueItem {
   readonly product: string;
+  /** One package deliverable, or `RENDER_ALL_PACKAGES` for every package of the owner. */
   readonly deliverableId: string;
   readonly enqueuedAt: number;
+  /** Core's coalescing counter (`core/registryQueue.ts`): consumed only while unchanged. */
+  readonly generation?: number;
 }
+
+/** The queue's "every package of the owner" row (`core/registryQueue.ts` `RENDER_ALL`). */
+export const RENDER_ALL_PACKAGES = "*";
 
 /** The queue as the drain sees it. F-03 implements it over `core/registryQueue.ts`. */
 export interface RegistryQueue {
   /** Up to `limit` queued rows, oldest first. */
   pending(limit: number): Promise<RegistryQueueItem[]>;
-  /** Delete the rows of one package enqueued at or before `upTo`. */
-  consumed(product: string, deliverableId: string, upTo: number): Promise<void>;
+  /**
+   * Delete the rows of one package enqueued at or before `upTo`. `item` is the row the drain read,
+   * for a queue that matches on its own token (Core's: the row's `generation`).
+   */
+  consumed(
+    product: string,
+    deliverableId: string,
+    upTo: number,
+    item: RegistryQueueItem,
+  ): Promise<void>;
 }
 
 /**
@@ -414,8 +448,15 @@ export async function drainRegistry(
     seen.add(id);
     const start = now();
     try {
-      await materialise(deps, item.product, item.deliverableId);
-      await queue.consumed(item.product, item.deliverableId, start);
+      // A full render (a rebuild, a settings write, a `packageFeeds` toggle): every package of
+      // the owner, then the one row. A failure on any leaves the row for the next drain.
+      const ids =
+        item.deliverableId === RENDER_ALL_PACKAGES
+          ? ((await deps.source.deliverables?.(item.product)) ?? [])
+          : [item.deliverableId];
+      for (const deliverableId of ids)
+        await materialise(deps, item.product, deliverableId);
+      await queue.consumed(item.product, item.deliverableId, start, item);
       rendered++;
     } catch {
       failed++;

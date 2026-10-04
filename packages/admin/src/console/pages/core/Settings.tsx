@@ -32,7 +32,6 @@ import {
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
-import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Form, FormField, diffValues, useAdminForm } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
@@ -60,9 +59,6 @@ import {
   SettingsTemplate,
 } from "../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
-
-/** The row's own label is visible; the field's stays for assistive tech only. */
-const HIDE_LABEL = "[&>div:first-child]:sr-only";
 
 interface Draft extends Record<string, unknown> {
   name: string;
@@ -99,7 +95,6 @@ export function SettingsPage({ slug }: { slug: string }): React.ReactElement {
   const header = (
     <PageHeader
       title="Settings"
-      description="This product's name, license defaults, repository, storage and deletion."
       refetching={product.isFetching && !product.isPending}
     />
   );
@@ -182,17 +177,11 @@ function SettingsBody({
   return (
     <SettingsTemplate header={header} sections={sections}>
       <Form form={form} aria-label="Product settings" className="space-y-6">
-        <SettingsSection
-          id="settings-general"
-          title="General"
-          description="How this product is named across the console."
-        >
-          <SettingsRow
-            label="Display name"
-            help="Shown in the console and the customer portal."
-          >
+        <SettingsSection id="settings-general" title="General">
+          <SettingsRow label="Display name">
             <FormField
-              className={HIDE_LABEL}
+              className="w-full sm:w-80"
+              hideLabel
               name="name"
               label="Display name"
               required
@@ -205,7 +194,8 @@ function SettingsBody({
             help="Metadata only. It grants nothing: console access is platform-wide. Clear it to remove the group."
           >
             <FormField
-              className={HIDE_LABEL}
+              className="w-full sm:w-80"
+              hideLabel
               name="adminGroup"
               label="Admin group"
             >
@@ -215,14 +205,11 @@ function SettingsBody({
         </SettingsSection>
 
         {licenseOn ? (
-          <SettingsSection
-            id="settings-license"
-            title="License defaults"
-            description="What a new license inherits when neither it nor its tier says otherwise."
-          >
+          <SettingsSection id="settings-license" title="License defaults">
             <SettingsRow label="Default max offline days">
               <FormField
-                className={HIDE_LABEL}
+                className="w-44"
+                hideLabel
                 name="defaultMaxOfflineDays"
                 label="Default max offline days"
                 required
@@ -235,19 +222,16 @@ function SettingsBody({
             </SettingsRow>
             <SettingsRow label="Default device limit">
               <FormField
-                className={HIDE_LABEL}
+                className="w-44"
+                hideLabel
                 name="defaultDeviceLimit"
                 label="Default device limit"
                 required
-                help="How many devices one license may authorize."
               >
                 {(f) => <NumberInput {...f} integer min={1} unit="devices" />}
               </FormField>
             </SettingsRow>
-            <SettingsRow
-              label="Compatibility window"
-              help="Which app versions this product supports is set with the update feed."
-            >
+            <SettingsRow label="Compatibility window">
               {product.services?.update?.enabled ? (
                 <Link
                   to={r.feed(slug)}
@@ -310,7 +294,6 @@ function RepositorySection({
     <SettingsSection
       id="settings-repository"
       title="Repository"
-      description="Where this product's .pkey/ manifest comes from."
       actions={
         <Button
           variant="outline"
@@ -325,42 +308,32 @@ function RepositorySection({
         </Button>
       }
     >
-      <div className="px-5 py-4">
-        <DescriptionList
-          columns={3}
-          items={[
-            {
-              term: "Source",
-              detail: linked ? "Linked GitHub repository" : "Manual",
-              help: linked
-                ? "Pushes to the repository re-apply its .pkey/ manifest."
-                : "Settings are edited here; nothing syncs from a repository.",
-            },
-            {
-              term: "Last sync",
-              detail: sync?.lastSyncedAt ? (
-                <Timestamp
-                  at={fromSeconds(sync.lastSyncedAt)}
-                  format="detail"
-                />
-              ) : (
-                "Never"
-              ),
-            },
-            {
-              term: "Sync status",
-              detail: !sync ? (
-                <StatusPill tone="neutral">Not run</StatusPill>
-              ) : sync.status === "error" ? (
-                <StatusPill tone="danger">Failed</StatusPill>
-              ) : (
-                <StatusPill tone="success">In sync</StatusPill>
-              ),
-              help: sync?.message ?? undefined,
-            },
-          ]}
-        />
-      </div>
+      <SettingsRow
+        label="Source"
+        help={
+          linked
+            ? "Pushes to the repository re-apply its .pkey/ manifest."
+            : undefined
+        }
+      >
+        {linked ? "Linked GitHub repository" : "Manual"}
+      </SettingsRow>
+      <SettingsRow label="Last sync">
+        {sync?.lastSyncedAt ? (
+          <Timestamp at={fromSeconds(sync.lastSyncedAt)} format="detail" />
+        ) : (
+          <span className="text-fg-muted">Never</span>
+        )}
+      </SettingsRow>
+      <SettingsRow label="Sync status" help={sync?.message ?? undefined}>
+        {!sync ? (
+          <StatusPill tone="neutral">Not run</StatusPill>
+        ) : sync.status === "error" ? (
+          <StatusPill tone="danger">Failed</StatusPill>
+        ) : (
+          <StatusPill tone="success">In sync</StatusPill>
+        )}
+      </SettingsRow>
       {result ? (
         <div className="px-5 pb-4">
           <ResyncResultPanel
@@ -450,21 +423,23 @@ function StorageSection({ slug }: { slug: string }): React.ReactElement {
     <SettingsSection
       id="settings-storage"
       title="Storage"
-      description="What the nightly blob collector would remove for this product. Nothing here deletes anything."
+      description="What the nightly blob collector would remove. Nothing here deletes anything."
     >
-      <div className="px-5 py-4">
-        {gc.isPending ? (
+      {gc.isPending ? (
+        <div className="px-5 py-4">
           <Skeleton className="h-16 w-full" />
-        ) : gc.isError ? (
+        </div>
+      ) : gc.isError ? (
+        <div className="px-5 py-4">
           <ErrorState
             compact
             error={gc.error}
             onRetry={() => void gc.refetch()}
           />
-        ) : (
-          <StorageFacts dry={gc.data} />
-        )}
-      </div>
+        </div>
+      ) : (
+        <StorageFacts dry={gc.data} />
+      )}
     </SettingsSection>
   );
 }
@@ -472,33 +447,33 @@ function StorageSection({ slug }: { slug: string }): React.ReactElement {
 function StorageFacts({ dry }: { dry: BlobGcDryRun }): React.ReactElement {
   const drops = dry.drops.packObject + dry.drops.packUpload;
   return (
-    <DescriptionList
-      columns={3}
-      items={[
-        {
-          term: "Collector",
-          detail: dry.enabled ? (
-            <StatusPill tone="success">On</StatusPill>
-          ) : (
-            <StatusPill tone="neutral">Off on this deployment</StatusPill>
-          ),
-          help: `Unreferenced objects are kept ${formatDuration(dry.graceSeconds * 1000)} before deletion.`,
-        },
-        {
-          term: "Eligible for removal",
-          detail: `${formatCount(drops)}${dry.drops.truncated ? "+" : ""} ${drops === 1 ? "object" : "objects"}`,
-          help: `${formatCount(dry.drops.packObject)} pack objects, ${formatCount(dry.drops.packUpload)} abandoned uploads${dry.restores.count ? `; ${formatCount(dry.restores.count)} would be restored` : ""}.`,
-        },
-        {
-          term: "Earliest deletion",
-          detail: dry.earliestDeletion ? (
-            <Timestamp at={fromSeconds(dry.earliestDeletion)} format="detail" />
-          ) : (
-            "None scheduled"
-          ),
-        },
-      ]}
-    />
+    <>
+      <SettingsRow label="Collector">
+        {dry.enabled ? (
+          <StatusPill tone="success">
+            On · {formatDuration(dry.graceSeconds * 1000).replace(/^for /, "")}{" "}
+            grace
+          </StatusPill>
+        ) : (
+          <StatusPill tone="neutral">Off on this deployment</StatusPill>
+        )}
+      </SettingsRow>
+      <SettingsRow
+        label="Eligible for removal"
+        help={`${formatCount(dry.drops.packObject)} pack objects, ${formatCount(dry.drops.packUpload)} abandoned uploads${dry.restores.count ? `; ${formatCount(dry.restores.count)} would be restored` : ""}.`}
+      >
+        <span className="tabular-nums">
+          {`${formatCount(drops)}${dry.drops.truncated ? "+" : ""} ${drops === 1 ? "object" : "objects"}`}
+        </span>
+      </SettingsRow>
+      <SettingsRow label="Earliest deletion">
+        {dry.earliestDeletion ? (
+          <Timestamp at={fromSeconds(dry.earliestDeletion)} format="detail" />
+        ) : (
+          <span className="text-fg-muted">None scheduled</span>
+        )}
+      </SettingsRow>
+    </>
   );
 }
 

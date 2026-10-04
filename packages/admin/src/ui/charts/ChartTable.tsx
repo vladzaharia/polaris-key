@@ -78,9 +78,12 @@ export function ChartFrame({
   table,
   children,
   className,
+  titleHidden = false,
 }: {
   title: string;
   description?: React.ReactNode;
+  /** The caption is read by AT only: a heading right above already shows it. */
+  titleHidden?: boolean;
   table: ChartTableData;
   children: React.ReactNode;
   className?: string;
@@ -90,7 +93,11 @@ export function ChartFrame({
     <figure className={cn("space-y-3", className)}>
       <div className="flex items-start gap-2">
         <figcaption className="min-w-0 flex-1">
-          <span className="block text-sm font-bold text-fg-strong">
+          <span
+            className={
+              titleHidden ? "sr-only" : "block text-sm font-bold text-fg-strong"
+            }
+          >
             {title}
           </span>
           {description ? (

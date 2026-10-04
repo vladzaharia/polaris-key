@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the Polaris Key Godot addon as release zips, reproducibly (P1-12).
+"""Package the Polaris Key Godot addon as its release zip, reproducibly (P1-12, F-10).
 
     python3 sdks/godot/tools/package.py [--tag godot-vX.Y.Z] [--out DIR] [--allow-dirty]
     python3 sdks/godot/tools/package.py --check-version [--tag godot-vX.Y.Z]
@@ -7,33 +7,29 @@
 
 Writes, into DIR (default sdks/godot/build/release):
 
-    polaris-key-godot-vX.Y.Z.zip           the canonical artefact: addons/polaris_key/** only
-    polaris-key-godot-vX.Y.Z-assetlib.zip  the same files under one wrapper directory, for the
-                                           legacy Asset Library (see below)
-    SHA256SUMS                             both zips' SHA-256, `sha256sum -c` format
+    polaris-key-godot-vX.Y.Z.zip   the canonical artefact: addons/polaris_key/** only
+    SHA256SUMS                     its SHA-256, `sha256sum -c` format
 
-The version is one value in four places: plugin.cfg's `version`, `PolarisKey.SDK_VERSION`
-(polaris_key.gd, also sent as `X-PKey-SDK-Version`), the tag `godot-vX.Y.Z` and the zip names. The
-script fails, writing nothing, unless plugin.cfg and SDK_VERSION agree, the version is SemVer, and
-(with --tag) the tag names the same version.
+The version is one value in three places: plugin.cfg's `version`, `PolarisKey.SDK_VERSION`
+(polaris_key.gd, also sent as `X-PKey-SDK-Version`) and the zip name. CI stamps it from git
+(tools/sdk-version.mjs, in lockstep with the server, F-10) before packaging, which is why the
+publish workflow passes --allow-dirty; `--tag godot-vX.Y.Z` only asserts the version. The script
+fails, writing nothing, unless plugin.cfg and SDK_VERSION agree, the version is SemVer, and (with
+--tag) the tag names the same version.
 
 The file list is `git ls-files addons/polaris_key`: committed files only, so build products (the
 iOS xcframework, the Android AARs) and anything git-ignored never ship. Every `.gd` must travel
 with its `.gd.uid` (Godot 4.4+ references scripts by UID), and the addon folder must hold
-plugin.cfg, LICENSE and README.md (the Asset Store wants the licence and a readme inside the
-plugin folder). A tracked file with uncommitted changes refuses the build unless --allow-dirty.
+plugin.cfg, LICENSE and README.md. A tracked file with uncommitted changes refuses the build unless
+--allow-dirty.
 
 Reproducible: entries in byte order of their paths, every timestamp 1980-01-01 00:00 (the ZIP
 epoch), files 0644 and directories 0755, no extra fields, deflate level 9. Two runs over one
 commit give byte-identical zips on the same zlib; SHA256SUMS records them.
 
-Why two zips: Godot's asset installer drops a zip's single top-level directory by default when
-it installs from the Asset Library. 4.7 exempts a top-level `addons/` (editor_asset_installer.cpp,
-"Don't skip "addons" by default"); 4.4, 4.5 and 4.6, the only editors the legacy Asset Library
-reaches, do not, and would install an `addons/`-rooted zip at res://polaris_key/. The assetlib
-zip wraps the same tree in `polaris-key-godot-vX.Y.Z/`, which those editors drop, so the files
-land at res://addons/polaris_key/ there too. The canonical zip is the one to unzip by hand, to
-upload to the Asset Store and to attach to the GitHub Release.
+The zip is published to Polaris Key's Godot feed (pkg.plrs.im/godot/polaris-key) by
+.github/workflows/publish-sdks.yml and nowhere else: no GitHub Release, no Asset Store or legacy
+Asset Library upload (owner decision 2026-10-04). The feed serves both editor shapes itself.
 """
 
 from __future__ import annotations
@@ -177,13 +173,12 @@ def main(argv: list[str]) -> int:
         if a.check_version:
             print(f"package: version {version} agrees (plugin.cfg, SDK_VERSION{', ' + a.tag if a.tag else ''})")
             return 0
-        changelog_notes(version)  # a release without notes is refused before anything is written
         files = addon_files(a.allow_dirty)
         base = f"polaris-key-godot-v{version}"
         out = Path(a.out)
         out.mkdir(parents=True, exist_ok=True)
         sums = []
-        for name, prefix in ((f"{base}.zip", ""), (f"{base}-assetlib.zip", f"{base}/")):
+        for name, prefix in ((f"{base}.zip", ""),):
             data = build_zip(files, prefix)
             (out / name).write_bytes(data)
             digest = hashlib.sha256(data).hexdigest()

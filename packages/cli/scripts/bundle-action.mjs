@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Writes `actions/publish/dist/index.js` (P2-06): one esbuild bundle of the `pkey` CLI that is
- * both the `polaris-key/publish` GitHub Action and the standalone `pkey.mjs` attached to the
- * monorepo's GitHub releases. The file is GENERATED and committed (an Action runs its committed
+ * both the `polaris-key/publish` GitHub Action and the standalone `pkey.mjs` the `pkey` image
+ * ships (packages/cli/image). The file is GENERATED and committed (an Action runs its committed
  * `dist/`, with no install step); `--check` rebuilds it in memory and fails on any difference,
  * so a CLI change that forgets to rebundle fails CI instead of shipping a stale Action.
  *

@@ -16,11 +16,14 @@ per-service-sub-client shape, and fails closed the same way when a capability is
 | ------- | ----------------------------------------------------------- | ---------------------------------------------- |
 | Node    | `@polaris-key/node`                                         | [Node](/docs/build/sdks/node/)                 |
 | React   | `@polaris-key/react`                                        | [React](/docs/build/sdks/react/)               |
-| Python  | `polaris-key` (PyPI)                                        | [Python](/docs/build/sdks/python/)             |
-| Swift   | `PolarisKey` (SwiftPM)                                      | [Swift](/docs/build/sdks/swift/)               |
-| Godot   | the `addons/polaris_key` addon (GitHub Release zip)         | [Godot](/docs/build/sdks/godot/)               |
+| Python  | `polaris-key` (Polaris Key's PyPI feed)                     | [Python](/docs/build/sdks/python/)             |
+| Swift   | `polaris-key.PolarisKey` (Polaris Key's Swift registry)     | [Swift](/docs/build/sdks/swift/)               |
+| Godot   | the `addons/polaris_key` addon (Polaris Key's Godot feed)   | [Godot](/docs/build/sdks/godot/)               |
 | Kotlin  | `sdks/kotlin` (`polaris-key-sdk`; Polaris Key's Maven feed) | `sdks/kotlin/README.md` (in progress, P6-05)   |
 | CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script     | shipped inside the Node and Python pages above |
+
+Every package is published to Polaris Key's own feeds on `pkg.plrs.im`, and nowhere else:
+[Installing the SDKs from the feeds](/docs/build/install-from-feeds/) has each client's snippet.
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
 trust, config-resolution and boot-stage logic, `@polaris-key/client-core`, rather than each reimplementing

@@ -1,0 +1,192 @@
+# yaml-language-server: $schema=../packages/shared-manifest/schemas/v1/release.schema.json
+#
+# The system product's package deliverables (F-10, plans/F-01.md §5.1): every SDK this repository
+# ships, each published automatically by CI to its feed on pkg.plrs.im with `pkey release publish`
+# (the polaris-key/publish Action in actions/publish/) and nowhere else: no npmjs, PyPI, Maven
+# Central, Swift Package Index or Godot store (owner decision 2026-10-04, feeds only).
+#
+# Each `match` is a file-name glob over the publish step's --dir (the base name, never a path).
+# .github/workflows/publish-sdks.yml builds every one of them, in lockstep with the server
+# (tools/sdk-version.mjs): on each push to main a `<next>-main.<N>` prerelease (PEP 440
+# `<next>.dev<N>`) on the `main` channel, on each v* tag exactly that version on `stable` (`beta`
+# for a prerelease tag), and hands each to .github/workflows/publish-package.yml, the one trusted
+# publisher. deploy.yml applies this file to the system product on every deploy (the deploy hook,
+# packages/worker/src/platformDeploy.ts): edit it here and the next deploy registers the change.
+apiVersion: pkey.dev/v1
+release:
+  provider:
+    type: github
+    owner: "vladzaharia"
+    repo: "polaris-key"
+  # The channel every push to main publishes to (npm's `main` dist-tag, the image's `main` tag),
+  # beside the built-in stable and beta. The regex is the version shape of those builds; no app
+  # release of this product is tagged that way.
+  manualChannels:
+    - name: main
+      regex: 'v?[0-9]+\.[0-9]+\.[0-9]+-main\.[0-9]+'
+  # P2-02 trusted publishing: the reusable workflow publish-sdks.yml calls for every package, in
+  # the `package-registry` environment (its deployment policy admits main and v* tags). GitHub
+  # names the called workflow in the OIDC token's job_workflow_ref, so this one entry covers
+  # every caller.
+  publishing:
+    trustedPublisher:
+      workflow: .github/workflows/publish-package.yml
+      environment: package-registry
+  deliverables:
+    npm.brand:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/brand"
+      artifacts:
+        tarball: { match: "polaris-key-brand-*.tgz" }
+    npm.catalog:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/catalog"
+      artifacts:
+        tarball: { match: "polaris-key-catalog-*.tgz" }
+    npm.cli:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/cli"
+      artifacts:
+        tarball: { match: "polaris-key-cli-*.tgz" }
+    npm.client-core:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/client-core"
+      artifacts:
+        tarball: { match: "polaris-key-client-core-*.tgz" }
+    npm.jws:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/jws"
+      artifacts:
+        tarball: { match: "polaris-key-jws-*.tgz" }
+    npm.manifest:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/manifest"
+      artifacts:
+        tarball: { match: "polaris-key-manifest-*.tgz" }
+    npm.node:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/node"
+      artifacts:
+        tarball: { match: "polaris-key-node-*.tgz" }
+    npm.protocol:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/protocol"
+      artifacts:
+        tarball: { match: "polaris-key-protocol-*.tgz" }
+    npm.react:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/react"
+      artifacts:
+        tarball: { match: "polaris-key-react-*.tgz" }
+    npm.zstd-wasm:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/zstd-wasm"
+      artifacts:
+        tarball: { match: "polaris-key-zstd-wasm-*.tgz" }
+    pypi.polaris-key:
+      kind: package
+      ecosystem: pypi
+      name: polaris-key
+      artifacts:
+        wheel: { match: "polaris_key-*.whl" }
+        sdist: { match: "polaris_key-*.tar.gz" }
+    swift.polariskey:
+      kind: package
+      ecosystem: swift
+      name: polaris-key.PolarisKey
+      artifacts:
+        archive: { match: "*.zip" }
+    maven.core:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-core"
+      artifacts:
+        files: { match: "polaris-key-core-*" }
+    maven.license:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-license"
+      artifacts:
+        files: { match: "polaris-key-license-*" }
+    maven.config:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-config"
+      artifacts:
+        files: { match: "polaris-key-config-*" }
+    maven.identity:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-identity"
+      artifacts:
+        files: { match: "polaris-key-identity-*" }
+    maven.release:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-release"
+      artifacts:
+        files: { match: "polaris-key-release-*" }
+    maven.update:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-update"
+      artifacts:
+        files: { match: "polaris-key-update-*" }
+    maven.packs:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-packs"
+      artifacts:
+        files: { match: "polaris-key-packs-*" }
+    maven.sdk:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-sdk"
+      artifacts:
+        files: { match: "polaris-key-sdk-*" }
+    maven.platform-play:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-platform-play"
+      artifacts:
+        files: { match: "polaris-key-platform-play-*" }
+    maven.platform-direct:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-platform-direct"
+      artifacts:
+        files: { match: "polaris-key-platform-direct-*" }
+    maven.godot-play:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-godot-play"
+      artifacts:
+        files: { match: "polaris-key-godot-play-*" }
+    maven.godot-direct:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-godot-direct"
+      artifacts:
+        files: { match: "polaris-key-godot-direct-*" }
+    godot.polaris-key:
+      kind: package
+      ecosystem: godot
+      name: polaris_key
+      artifacts:
+        zip: { match: "polaris-key-godot-v*.zip" }
+    oci.pkey:
+      kind: package
+      ecosystem: oci
+      name: pkey
+      artifacts:
+        layout: { match: "index.json" }

@@ -77,6 +77,14 @@ gates to keep in step. Generalising it once leaves one.
   `FeedOp` support; the per-protocol table in `admin/lib/feedModel.ts` is replaced by these
   declarations, so `unsupported_by_ecosystem` becomes a declared `unsupported` with its reason. The
   admin API's error code does not change.
+  **[correction, feed-adapter contract (`wp/feed-adapter-contract`)]** Already done there:
+  `core/adapters/contract.ts` exists with S-15 §6.1's `Adapter`, `Capabilities`, `Support`,
+  `RateSpec`, `SpecPin` and `Plane` (types only), `FeedAdapter` extends `Adapter<E, FeedOp>`
+  (`services/distribution/registry/adapter.ts`, built per feed with `defineFeedAdapter`), every
+  feed declares its `FeedOp` support with reasons, `feedModel.ts` reads the declarations, and
+  `test/feedAdapters.test.ts` is the feeds' conformance suite. A-18a adds the storefront side to
+  the existing base (and may move the feeds' checks into its shared harness) rather than creating
+  it.
 - `test/storefront/conformance.test.ts`: the harness of S-15 §6.6, items 1–10, running over the
   Apple adapter (and the Play lease item as a skipped placeholder until A-18e), and items 3 and 7
   over every `FeedAdapter`.

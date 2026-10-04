@@ -24,12 +24,11 @@ const CANONICAL = new RegExp(CHANNEL_NAME_PATTERN);
 /** The legacy spelling of `beta`; a grant of it also covers `beta`. */
 const LEGACY_BETA = "staging";
 
-export const HINT_PR = "every PR build";
-export const HINT_MANUAL_STAGING = "manual; the grant also covers beta";
-export const HINT_LEGACY_STAGING = "legacy alias of beta";
-export const HINT_DEV =
-  "dev builds: skips the version window and channel checks (R3-01)";
-export const HINT_NOT_OFFERED = "not offered";
+export const HINT_PR = "Every PR build";
+export const HINT_MANUAL_STAGING = "Manual; the grant also covers beta";
+export const HINT_LEGACY_STAGING = "Legacy alias of beta";
+export const HINT_DEV = "Skips the version window and channel checks";
+export const HINT_NOT_OFFERED = "Not offered";
 
 /**
  * The picker's options, each name once, in order:

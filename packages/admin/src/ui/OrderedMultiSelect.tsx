@@ -153,7 +153,10 @@ export function OrderedMultiSelect({
           ))}
         </ol>
       )}
-      {orderHint ? <p className="text-xs text-fg-muted">{orderHint}</p> : null}
+      {/* Order only matters with two or more picked. */}
+      {orderHint && chosen.length >= 2 ? (
+        <p className="text-xs text-fg-muted">{orderHint}</p>
+      ) : null}
       {locked ? null : (
         <Combobox
           ref={ref}

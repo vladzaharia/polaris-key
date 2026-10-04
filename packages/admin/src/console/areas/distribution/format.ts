@@ -64,7 +64,8 @@ export function actorLabel(by: string | null | undefined): string {
     by.startsWith("repo:")
   )
     return "CI";
-  if (by === "system" || by.startsWith("system:")) return "Automatic";
+  if (by === "system" || by.startsWith("system:"))
+    return "Polaris Key (auto-halt)";
   return by;
 }
 

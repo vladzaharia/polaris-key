@@ -14,6 +14,8 @@ export interface FunnelProps {
   failures?: readonly FunnelStep[];
   /** The figure caption ("2.4.0 on stable, last 24 h"). */
   label: string;
+  /** The caption is for AT only (the caller shows the same title above the figure). */
+  labelHidden?: boolean;
   description?: React.ReactNode;
   className?: string;
 }
@@ -60,6 +62,7 @@ export function Funnel({
   steps,
   failures = [],
   label,
+  labelHidden = false,
   description,
   className,
 }: FunnelProps): React.ReactElement {
@@ -79,6 +82,7 @@ export function Funnel({
   return (
     <ChartFrame
       title={label}
+      titleHidden={labelHidden}
       description={description}
       table={table}
       className={className}

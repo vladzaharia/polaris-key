@@ -151,15 +151,11 @@ export function TierFields({
           required
           help="The id licenses and the manifest refer to. It can't be changed later."
         >
-          {(f) => <Input {...f} mono autoFocus placeholder="pro" />}
+          {(f) => <Input {...f} mono autoFocus placeholder="e.g. pro" />}
         </FormField>
       ) : null}
-      <FormField
-        name="label"
-        label="Label"
-        help="What operators and the customer portal see."
-      >
-        {(f) => <Input {...f} placeholder="Pro" />}
+      <FormField name="label" label="Label">
+        {(f) => <Input {...f} placeholder="e.g. Pro" />}
       </FormField>
       <FormField
         name="profile"

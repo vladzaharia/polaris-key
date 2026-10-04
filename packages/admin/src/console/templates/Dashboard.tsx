@@ -5,7 +5,8 @@
  *   PageHeader (no breadcrumb; the description states scope and freshness)
  *   Attention list (only when non-empty)
  *   2–4 StatTiles (each its own query: its own skeleton or error)
- *   Primary panel (2/3) | Side panel (1/3)   ← the side panel drops below under 1024 px
+ *   Primary panel (2/3) | Side panel (1/3)   ← `split`: 2-1 (default) or 1-1; the side panel
+ *                                              drops below under 1024 px
  *   Further full-width panels (tables: deploy history, cron runs…)
  *
  * The template is layout only. Each tile and panel loads independently, so one failing query
@@ -27,11 +28,12 @@ export function DashboardTemplate({
   side,
   children,
   firstRun,
+  split = "2-1",
 }: {
   header: React.ReactNode;
   /** An `AttentionList`; render nothing when it is empty. */
   attention?: React.ReactNode;
-  /** 2–4 `StatTile`s: 4 → 2 → 1 columns. */
+  /** 2–4 `StatTile`s: one row from 1280 px, two per row below. */
   tiles?: React.ReactNode;
   primary?: React.ReactNode;
   side?: React.ReactNode;
@@ -39,7 +41,10 @@ export function DashboardTemplate({
   children?: React.ReactNode;
   /** When the scope has nothing yet, a first-run `EmptyState` replaces tiles and panels. */
   firstRun?: React.ReactNode;
+  /** The primary/side ratio at ≥ 1024 px: 2/3 + 1/3, or 50/50 for two equal-weight panels. */
+  split?: "2-1" | "1-1";
 }): React.ReactElement {
+  const half = split === "1-1";
   return (
     <div className="space-y-6" data-template="dashboard">
       {header}
@@ -47,17 +52,27 @@ export function DashboardTemplate({
       {firstRun ?? (
         <>
           {tiles ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            // Two per row on a phone; from 1280 px as many equal columns as there are tiles.
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
               {tiles}
             </div>
           ) : null}
           {primary || side ? (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div
+              className={cn(
+                "grid grid-cols-1 items-start gap-6",
+                half ? "lg:grid-cols-2" : "lg:grid-cols-3",
+              )}
+            >
               {primary ? (
                 <div
                   className={cn(
                     "min-w-0",
-                    side ? "lg:col-span-2" : "lg:col-span-3",
+                    half
+                      ? !side && "lg:col-span-2"
+                      : side
+                        ? "lg:col-span-2"
+                        : "lg:col-span-3",
                   )}
                 >
                   {primary}
@@ -100,8 +115,10 @@ export function Panel({
         className,
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border px-4 py-3">
-        <div className="min-w-0">
+      {/* The title takes the free width and the action stays top-right; only an action wider
+          than what is left (a phone) wraps under the title. */}
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="min-w-0 flex-1">
           <Heading id={id} className="text-base font-bold text-fg-strong">
             {title}
           </Heading>
@@ -109,7 +126,7 @@ export function Panel({
             <p className="text-sm text-fg-muted">{description}</p>
           ) : null}
         </div>
-        {action}
+        {action ? <div className="max-w-full">{action}</div> : null}
       </div>
       <div className="p-4">{children}</div>
     </section>
@@ -178,15 +195,15 @@ export function AttentionList({
         <h2 id={id} className="text-sm font-bold text-fg-strong">
           {title}
         </h2>
-        <span className="text-sm tabular-nums text-fg-muted">
+        <StatusPill tone="warning" icon={false} size="sm">
           {items.length}
-        </span>
+        </StatusPill>
       </div>
       <ul className="divide-y divide-border">
         {shown.map((item) => (
           <li
             key={item.id}
-            className="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center"
+            className="flex flex-col items-start gap-2 px-4 py-2.5 sm:flex-row sm:items-center"
           >
             <StatusPill tone={item.tone}>{TONE_WORD[item.tone]}</StatusPill>
             <span className="shrink-0 text-sm font-bold text-fg-strong">

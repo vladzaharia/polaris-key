@@ -4233,14 +4233,14 @@
       "planMode": false,
       "gates": ["cli-bundle", "docs-links", "ci"],
       "humanInputs": [
-        "trusted-publisher registration of vladzaharia/polaris-key for the polaris-key system product in each environment",
-        "the X.509 code-signing certificate and private key for Swift registry releases, as CI secrets"
+        "the package-registry GitHub environment (deployment policy: the main branch and v* tags), branch protection on main and a v* tag ruleset",
+        "the X.509 code-signing certificate and private key for Swift registry releases, as package-registry secrets"
       ],
       "repo": "polaris-key",
       "optional": false,
       "refs": ["notes/S-12 §6.4", "plans/F-01.md §5"],
       "brief": "wp/F-10-sdks-onto-feeds.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-11",

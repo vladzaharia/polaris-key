@@ -236,16 +236,14 @@ describe("Identity → Portal", () => {
 
   it("says when the settings were last changed, and when they never were", async () => {
     renderPortal();
-    expect(await screen.findByText(/Last changed/)).toBeTruthy();
+    expect(await screen.findByText(/^Edited/)).toBeTruthy();
     cleanup();
     resetCache();
     portalSettings.mockResolvedValue({
       settings: { ...PORTAL, modifiedAt: 0 },
     });
     renderPortal();
-    expect(
-      await screen.findByText("Never changed: these are the defaults."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Defaults")).toBeTruthy();
   });
 
   it("offers no Save until a module actually moves", async () => {
@@ -542,7 +540,24 @@ describe("Identity → Sign-in", () => {
     ).toBeTruthy();
   });
 
+  it("with Identity on but no identity block, shows the platform OIDC default", async () => {
+    edgeMintRecipes.mockResolvedValue(mintResponse(null));
+    renderSignIn();
+    expect(await screen.findByText("Platform OIDC")).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Identity is off for this product",
+      }),
+    ).toBeNull();
+  });
+
   it("shows the service-off state when Identity is off", async () => {
+    product.mockResolvedValue({
+      product: {
+        ...PRODUCT,
+        services: { ...PRODUCT.services!, identity: { enabled: false } },
+      },
+    });
     edgeMintRecipes.mockResolvedValue(mintResponse(null));
     renderSignIn();
     expect(

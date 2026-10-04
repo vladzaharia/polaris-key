@@ -616,9 +616,7 @@ describe("Compatibility matrix (T5, CMP-1 to CMP-7, CMP-11)", () => {
     }));
     mountMatrix();
     await row("1.5.0");
-    expect(
-      screen.getByText(/releases 1–10 of each channel, of 5/),
-    ).toBeTruthy();
+    expect(screen.getByText(/1–10 of each channel \(5 in all\)/)).toBeTruthy();
     const newer = screen.getByRole("button", { name: "‹ Newer" });
     expect(newer.getAttribute("aria-disabled")).toBe("true");
     await userEvent.click(screen.getByRole("button", { name: "Older ›" }));
@@ -739,10 +737,10 @@ describe("Update simulator (T6, CMP-8 to CMP-10)", () => {
     await userEvent.click(screen.getByRole("combobox", { name: /Channel/ }));
     await userEvent.click(await screen.findByRole("option", { name: "beta" }));
     // Variant per axis, from the packs' declarations.
-    await userEvent.click(screen.getByRole("combobox", { name: "texture" }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Texture" }));
     await userEvent.click(await screen.findByRole("option", { name: "etc2" }));
     await userEvent.type(
-      screen.getByRole("textbox", { name: /Device id/ }),
+      screen.getByRole("textbox", { name: /Device ID/ }),
       "dev-1",
     );
     await userEvent.type(
@@ -774,7 +772,7 @@ describe("Update simulator (T6, CMP-8 to CMP-10)", () => {
       name: "Simulation result",
     });
     expect(within(result).getByTestId("sim-decision").textContent).toMatch(
-      /None/,
+      /No update/,
     );
     expect(within(result).getByText("Because: up-to-date")).toBeTruthy();
     expect(within(result).getByText(/target 1\.5\.0/)).toBeTruthy();
@@ -806,7 +804,7 @@ describe("Update simulator (T6, CMP-8 to CMP-10)", () => {
     mountSimulator(`?app=${encodeURIComponent("app@1.5.0")}&platform=android`);
     await screen.findByRole("region", { name: "Simulation result" });
     await userEvent.type(
-      screen.getByRole("textbox", { name: /Device id/ }),
+      screen.getByRole("textbox", { name: /Device ID/ }),
       "x",
     );
     expect(

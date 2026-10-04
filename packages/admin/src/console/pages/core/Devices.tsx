@@ -196,11 +196,10 @@ export function DevicesPage({
               </span>
             ) : null
           }
-          description="Every device of this product, licensed or license-free. Last seen is the latest check-in."
           refetching={list.isRefetching}
           secondaryActions={[
             {
-              label: "Export loaded (CSV)",
+              label: "Export CSV",
               icon: <Download aria-hidden />,
               onSelect: exportLoaded,
               disabledReason: rows.length ? undefined : "Nothing is loaded.",
@@ -209,7 +208,8 @@ export function DevicesPage({
         />
       }
       summary={
-        s ? (
+        // No devices at all: four zero tiles that filter nothing would only add noise.
+        s && count("authorized") + count("deauthorized") > 0 ? (
           <>
             <FacetTile
               label="Authorized"
@@ -362,9 +362,11 @@ function FacetTile({
       <span className="text-2xl font-bold tabular-nums text-fg-strong">
         {formatCount(value)}
       </span>
-      <span className="text-xs text-fg-muted">
-        {pressed ? "Filtering · select to clear" : "Select to filter"}
-      </span>
+      {pressed ? (
+        <span className="text-xs text-fg-muted">
+          Filtering · select to clear
+        </span>
+      ) : null}
     </button>
   );
 }

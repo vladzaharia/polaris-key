@@ -372,8 +372,8 @@ function setupFacts(
     if (v !== null && v !== undefined && v !== "")
       facts.push({ term, detail: mono(v) });
   };
-  add("App Store app id", s.appleId);
-  add("Bundle id", s.bundleId);
+  add("App Store app ID", s.appleId);
+  add("Bundle ID", s.bundleId);
   add("App Store outlet", s.appStoreOutlet);
   add("TestFlight outlet", s.testflightOutlet);
   add("API key credential", s.apiKeyCredential);
@@ -423,7 +423,7 @@ export function ConnectorCard({
   const has = (c: string) => connector.controls.includes(c);
   const tone = blocked ? (connector.inert ? "warning" : "neutral") : "success";
   const state = connector.inert
-    ? `Not running: ${humanize(connector.inert.reason)}`
+    ? `Not running: ${humanize(connector.inert.reason).toLowerCase()}`
     : connector.configured
       ? "Connected"
       : "Not configured";
@@ -571,7 +571,10 @@ export function ConnectorCard({
         <StatusPill tone={tone}>{state}</StatusPill>
       </div>
       {connector.inert ? (
-        <p className="text-sm text-fg-muted">{connector.inert.message}</p>
+        <p className="text-sm text-fg-muted">
+          {/* The server's next-action sentence, sentence-cased for display. */}
+          {connector.inert.message.replace(/^\w/, (c) => c.toUpperCase())}
+        </p>
       ) : null}
       {setupFacts(connector).length ? (
         <DescriptionList columns={2} items={setupFacts(connector)} />
@@ -597,11 +600,6 @@ export function ConnectorCard({
             </Button>
           ))}
         </div>
-      ) : connector.kind === "ms-store" ? (
-        <p className="text-xs text-fg-muted">
-          The Microsoft Store connector reads submissions and availability; it
-          has no controls.
-        </p>
       ) : null}
 
       <ControlConfirm

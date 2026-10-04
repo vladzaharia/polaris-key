@@ -1,4 +1,11 @@
 import * as React from "react";
+import {
+  Code2,
+  FileCode2,
+  PencilLine,
+  Server,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { formatDate } from "../lib/format.js";
 import { Button } from "./Button.js";
@@ -24,6 +31,16 @@ const LABEL: Record<Source, string> = {
   default: "Code default",
   deploy: "Deploy var",
   runtime: "Set in console",
+};
+
+// Each source names its owner by glyph, never the neutral tone's hollow circle (which reads as an
+// unchecked radio).
+const ICON: Record<Source, LucideIcon> = {
+  manifest: FileCode2,
+  admin: PencilLine,
+  default: Code2,
+  deploy: Server,
+  runtime: PencilLine,
 };
 
 const TONE: Record<Source, Tone> = {
@@ -104,7 +121,7 @@ export function SourceBadge({
             className,
           )}
         >
-          <StatusPill tone={TONE[source]}>
+          <StatusPill tone={TONE[source]} icon={ICON[source]}>
             {LABEL[source]}
             <span className="sr-only">: what this means</span>
           </StatusPill>

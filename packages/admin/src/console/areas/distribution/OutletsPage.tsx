@@ -180,13 +180,20 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
       header: "Outlet",
       accessorKey: "outletId",
       meta: { priority: 1, primary: true },
+      cell: ({ getValue }) => (
+        <span className="whitespace-nowrap">{getValue() as string}</span>
+      ),
     },
     {
       id: "kind",
       header: "Kind",
       accessorKey: "kind",
       meta: { priority: 1, csv: (o) => outletKindLabel(o.kind) },
-      cell: ({ row }) => outletKindLabel(row.original.kind),
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">
+          {outletKindLabel(row.original.kind)}
+        </span>
+      ),
     },
     {
       id: "transport",
@@ -220,7 +227,10 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
       meta: { priority: 2 },
       cell: ({ row }) => (
         <span className="flex flex-col items-start gap-1">
-          <span className="text-xs text-fg">
+          <span
+            className="line-clamp-2 max-w-[22rem] text-sm text-fg"
+            title={capabilitySummary(row.original)}
+          >
             {capabilitySummary(row.original)}
           </span>
           {row.original.capabilitiesSource === "admin" ? (
@@ -261,7 +271,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
             </span>
           ) : undefined
         }
-        description="The places a release reaches, what each one permits, and the storefront feeds Polaris Key publishes for them. Outlets come from .pkey/distribution."
+        description="Outlets come from .pkey/distribution."
         meta={
           <Popover
             label="Feed listing rules"
@@ -435,7 +445,7 @@ function OutletDrawer({
                         outlet.defaultCapabilities[k] !==
                           outlet.capabilities![k]
                           ? `Kind default: ${capabilityValue(k, outlet.defaultCapabilities[k])}`
-                          : CAPABILITY_HELP[k],
+                          : undefined,
                     }))}
                   />
                 ) : (
@@ -779,7 +789,7 @@ function KeysSection({
   return (
     <Panel
       title="Distribution keys"
-      description="The signing keys your builds and stores are expected to carry. CI reports the keys it sees; one that matches no entry is flagged until you add or dismiss it."
+      description="CI flags any key it sees that matches no entry here."
       action={
         <Button
           size="sm"
@@ -848,6 +858,7 @@ function KeysSection({
         <DataTable<DistributionKeyDto>
           id="keys"
           caption="Distribution keys"
+          mobile="cards"
           data={keys.data?.keys ?? []}
           columns={columns}
           getRowId={(k) => `${k.purpose}:${k.sha256}`}

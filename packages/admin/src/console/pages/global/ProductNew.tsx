@@ -331,7 +331,6 @@ export function ProductNew(): React.ReactElement {
           />
         }
         title="New product"
-        description="Register an app or game on this instance."
       />
       {step !== "result" ? (
         <Stepper

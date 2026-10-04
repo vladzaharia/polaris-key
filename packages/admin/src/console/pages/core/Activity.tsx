@@ -167,7 +167,6 @@ export function ActivityPage({ slug }: { slug: string }): React.ReactElement {
       header={
         <PageHeader
           title="Activity"
-          description="Every change made in the console, and the security events the runtime records, newest first."
           freshness={{
             updatedAt,
             refreshing: feed.isRefetching,
@@ -178,7 +177,7 @@ export function ActivityPage({ slug }: { slug: string }): React.ReactElement {
           }}
           secondaryActions={[
             {
-              label: "Export loaded (CSV)",
+              label: "Export CSV",
               icon: <Download aria-hidden />,
               onSelect: exportLoaded,
               disabledReason: visible.length ? undefined : "Nothing is loaded.",
@@ -402,16 +401,13 @@ function FilterField({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="flex min-w-[10rem] flex-1 flex-col gap-1 sm:max-w-[14rem]">
+    <div className="relative flex min-w-[10rem] flex-1 flex-col sm:max-w-[14rem]">
       {htmlFor ? (
-        <label htmlFor={htmlFor} className="text-xs font-bold text-fg-muted">
+        // The controls name themselves ("Anyone", "Any action"); the label is for AT only.
+        <label htmlFor={htmlFor} className="sr-only">
           {label}
         </label>
-      ) : (
-        <span aria-hidden className="text-xs font-bold text-fg-muted">
-          {label}
-        </span>
-      )}
+      ) : null}
       {children}
     </div>
   );

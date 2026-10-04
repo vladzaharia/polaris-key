@@ -40,6 +40,12 @@ export interface EmptyStateProps {
   onClearFilters?: () => void;
   /** Heading level for the title (default: a paragraph; use 2 on a page whose body this is). */
   headingLevel?: 2 | 3;
+  /**
+   * `inline` sits inside a card (a settings section, a panel, a table): compact and left-aligned,
+   * with no illustration, no dashed border of its own and the docs as a text link, so it never
+   * nests a box inside a box. It adds no side padding: the card's body pads it.
+   */
+  variant?: "default" | "inline";
   className?: string;
 }
 
@@ -82,18 +88,77 @@ export function EmptyState({
   filters,
   onClearFilters,
   headingLevel,
+  variant = "default",
   className,
 }: EmptyStateProps): React.ReactElement {
   const Title = headingLevel ? (`h${headingLevel}` as const) : "p";
+  const inline = variant === "inline";
+  if (inline && kind !== "service-off") {
+    // In a card: one compact, left-aligned block (title, a line of context, actions), never the
+    // large centred page-level state.
+    return (
+      <div
+        data-empty={kind}
+        className={cn("flex flex-col items-start gap-2 py-1", className)}
+      >
+        <div className="space-y-0.5">
+          <Title className="text-sm font-bold text-fg-strong">
+            {title}
+            {kind === "no-results" && filters ? (
+              <>
+                {" "}
+                <span className="rounded-sm bg-surface-sunken px-1 font-mono text-xs">
+                  {filters}
+                </span>
+              </>
+            ) : null}
+          </Title>
+          {description || docs ? (
+            <p className="text-sm text-fg-muted">
+              {description}
+              {description && docs ? " " : null}
+              {docs ? (
+                <a
+                  href={docs}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 whitespace-nowrap text-accent-fg underline-offset-2 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <BookOpen aria-hidden className="size-3.5" />
+                  Docs
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+        {primaryAction ||
+        secondaryAction ||
+        (kind === "no-results" && onClearFilters) ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {kind === "no-results" && onClearFilters ? (
+              <Button variant="outline" size="sm" onClick={onClearFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+            {primaryAction}
+            {secondaryAction}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <div
       data-empty={kind}
       className={cn(
-        "flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border px-6 py-12 text-center",
+        "flex flex-col items-center justify-center text-center",
+        inline
+          ? "gap-3 px-4 py-6"
+          : "gap-4 rounded-lg border border-dashed border-border px-6 py-12",
         className,
       )}
     >
-      {kind === "first-run" ? <StationaryStar /> : null}
+      {kind === "first-run" && !inline ? <StationaryStar /> : null}
       {kind === "service-off" && service ? (
         <span
           data-service={service}

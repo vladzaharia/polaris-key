@@ -59,7 +59,6 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
   const header = (
     <PageHeader
       title="Keys & secrets"
-      description={`Signing keys, write-only product secrets and CI publishing credentials for ${name}.`}
       refetching={product.isFetching && !product.isPending}
     />
   );
@@ -152,7 +151,6 @@ function SigningKeysSection({
     <SettingsSection
       id="keys-signing"
       title="Signing keys"
-      description="The active key signs every document this product hands a client."
       source={<SignedGlyph size={12} />}
       actions={
         <Button
@@ -198,12 +196,14 @@ function SigningKeysSection({
       </div>
       <div className="space-y-2 px-5 py-4 text-sm">
         {jwks ? (
-          <p className="flex flex-wrap items-center gap-2">
-            <span className="text-fg-muted">JWKS</span>
-            <code className="break-all font-mono text-xs text-fg-strong">
+          <p className="flex items-start gap-2">
+            <span className="shrink-0 text-fg-muted">JWKS</span>
+            <code className="min-w-0 break-all font-mono text-xs text-fg-strong">
               {jwks}
             </code>
-            <CopyButton value={jwks} label="Copy the JWKS URL" />
+            <span className="shrink-0">
+              <CopyButton value={jwks} label="Copy the JWKS URL" />
+            </span>
           </p>
         ) : null}
         {releaseOn ? (
@@ -275,9 +275,10 @@ function SigningKeyRow({
       : 0;
   const status = k.status as "active" | "staged" | "retired" | "revoked";
   return (
-    <li className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 lg:flex-row lg:items-start">
-      <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
+    <li className="space-y-2 py-3 first:pt-0 last:pb-0">
+      {/* Name, status and actions on one line; the public key gets the full width under it. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {k.status === "active" || k.status === "staged" ? (
             <SignedGlyph size={12} />
           ) : (
@@ -299,95 +300,91 @@ function SigningKeyRow({
           </StatusPill>
           <span className="text-xs text-fg-muted">{k.alg}</span>
         </div>
-        <p className="text-xs text-fg-muted">
-          {status === "active" && k.activatedAt ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {status === "staged" ? (
             <>
-              Active since{" "}
-              <Timestamp at={fromSeconds(k.activatedAt)} format="date" />
+              {/* Until the trust window ends the countdown says when; no dead button. */}
+              {ready ? (
+                <Button size="sm" onClick={() => onAction("activate")}>
+                  Activate…
+                </Button>
+              ) : null}
+              <ActionMenu
+                label={`More actions for ${k.kid}`}
+                items={[
+                  ...(ready
+                    ? []
+                    : [
+                        {
+                          label: "Activate now (break-glass)…",
+                          onSelect: () => onAction("breakGlass"),
+                          tone: "danger" as const,
+                        },
+                      ]),
+                  {
+                    label: "Retire…",
+                    onSelect: () => onAction("retire"),
+                    tone: "danger" as const,
+                  },
+                ]}
+              />
             </>
-          ) : status === "staged" ? (
-            ready ? (
-              "Ready to activate: its trust window has ended."
-            ) : (
-              <span aria-live="off">
-                Activatable in {formatSpan(Math.ceil(wait) * 1000)}, after
-                clients refresh their trust.
-              </span>
-            )
-          ) : status === "retired" && k.retiredAt ? (
-            <>
-              Retired <Timestamp at={fromSeconds(k.retiredAt)} format="date" />
-            </>
-          ) : status === "revoked" && k.revokedAt ? (
-            <>
-              Revoked <Timestamp at={fromSeconds(k.revokedAt)} format="date" />
-            </>
-          ) : (
-            <>
-              Created <Timestamp at={fromSeconds(k.createdAt)} format="date" />
-            </>
-          )}
-        </p>
-        <KeyDisplay label="Public key" kind="public" value={k.publicKey} />
-      </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {status === "staged" ? (
-          <>
-            <Button
-              size="sm"
-              variant={ready ? "primary" : "outline"}
-              disabledReason={
-                ready ? undefined : "Its trust window has not ended yet."
-              }
-              onClick={() => onAction("activate")}
-            >
-              Activate…
-            </Button>
+          ) : status === "retired" ? (
             <ActionMenu
               label={`More actions for ${k.kid}`}
               items={[
-                ...(ready
-                  ? []
-                  : [
-                      {
-                        label: "Activate now (break-glass)…",
-                        onSelect: () => onAction("breakGlass"),
-                        tone: "danger" as const,
-                      },
-                    ]),
                 {
-                  label: "Retire…",
-                  onSelect: () => onAction("retire"),
+                  label: "Revoke…",
+                  onSelect: () => onAction("revoke"),
                   tone: "danger" as const,
                 },
               ]}
             />
-          </>
-        ) : status === "retired" ? (
-          <ActionMenu
-            label={`More actions for ${k.kid}`}
-            items={[
-              {
-                label: "Revoke…",
-                onSelect: () => onAction("revoke"),
-                tone: "danger" as const,
-              },
-            ]}
-          />
-        ) : status === "active" ? (
-          <ActionMenu
-            label={`More actions for ${k.kid}`}
-            items={[
-              {
-                label: "Retire…",
-                onSelect: () => undefined,
-                disabledReason:
-                  "Retire is unavailable for the active key. Activate another key first.",
-              },
-            ]}
-          />
-        ) : null}
+          ) : status === "active" ? (
+            <ActionMenu
+              label={`More actions for ${k.kid}`}
+              items={[
+                {
+                  label: "Retire…",
+                  onSelect: () => undefined,
+                  disabledReason:
+                    "Retire is unavailable for the active key. Activate another key first.",
+                },
+              ]}
+            />
+          ) : null}
+        </div>
       </div>
+      <p className="text-xs text-fg-muted">
+        {status === "active" && k.activatedAt ? (
+          <>
+            Active since{" "}
+            <Timestamp at={fromSeconds(k.activatedAt)} format="date" />
+          </>
+        ) : status === "staged" ? (
+          ready ? (
+            "Ready to activate: its trust window has ended."
+          ) : (
+            <span aria-live="off">
+              Activatable in {formatSpan(Math.ceil(wait) * 1000)}, after clients
+              refresh their trust.
+            </span>
+          )
+        ) : status === "retired" && k.retiredAt ? (
+          <>
+            Retired <Timestamp at={fromSeconds(k.retiredAt)} format="date" />
+          </>
+        ) : status === "revoked" && k.revokedAt ? (
+          <>
+            Revoked <Timestamp at={fromSeconds(k.revokedAt)} format="date" />
+          </>
+        ) : (
+          <>
+            Created <Timestamp at={fromSeconds(k.createdAt)} format="date" />
+          </>
+        )}
+      </p>
+      <KeyDisplay label="Public key" kind="public" value={k.publicKey} />
     </li>
   );
 }

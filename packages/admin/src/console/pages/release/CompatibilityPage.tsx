@@ -220,10 +220,10 @@ function RowHeader({
               a.live && levels.has(a.contentApi) ? "text-success" : undefined
             }
           >
-            contentApi {a.contentApi}
+            Content API {a.contentApi}
           </span>
         ) : (
-          <span>no contentApi</span>
+          <span>No Content API</span>
         )}
         {a.live ? <span>· live on {a.liveOn.join(", ")}</span> : null}
         {a.unsatisfied.length ? (
@@ -485,7 +485,6 @@ export function CompatibilityPage({
   const header = (
     <PageHeader
       title="Compatibility"
-      description="Which pack release each app release runs with, as resolution computes it."
       meta={<HowToRead />}
       tabs={<CompatTabs slug={slug} value="matrix" />}
       refetching={compat.isFetching && !compat.isPending}
@@ -593,7 +592,7 @@ export function CompatibilityPage({
                 onChange={(v) => setChannel(v ?? "")}
               />
             </div>
-            <div className="flex h-9 items-center">
+            <div className="flex h-9 items-center self-end">
               <Checkbox
                 checked={liveOnly === "1"}
                 onCheckedChange={(v) => setLiveOnly(v ? "1" : "")}
@@ -619,46 +618,13 @@ export function CompatibilityPage({
               />
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Legend />
-            <div className="flex items-center gap-2 text-xs text-fg-muted">
-              <span aria-live="polite">
-                Live app releases, then releases {data.offset + 1}–
-                {data.offset + data.limit} of each channel, of {appTotal}; pack
-                columns show the releases relevant to these.
-              </span>
-              <Button
-                variant="outline"
-                size="xs"
-                disabledReason={
-                  data.offset === 0
-                    ? "These are the newest releases."
-                    : undefined
-                }
-                onClick={() =>
-                  setOffset(Math.max(0, data.offset - COMPAT_PAGE))
-                }
-              >
-                ‹ Newer
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                disabledReason={
-                  hasOlder ? undefined : "There are no older releases."
-                }
-                onClick={() => setOffset(data.offset + COMPAT_PAGE)}
-              >
-                Older ›
-              </Button>
-            </div>
-          </div>
+          <Legend />
           {Object.keys(data.liveLevels).length ? (
             <p
               className="text-xs text-fg-muted"
               aria-label="Live contentApi levels"
             >
-              Live contentApi levels:{" "}
+              Live Content API levels:{" "}
               {Object.entries(data.liveLevels)
                 .map(([c, ls]) => `${c} ${ls.join(", ")}`)
                 .join(" · ")}
@@ -744,6 +710,36 @@ export function CompatibilityPage({
               }
             />
           )}
+          {/* Paging sits under the matrix, where the reader ends up. */}
+          <nav
+            aria-label="Compatibility pages"
+            className="flex flex-wrap items-center justify-end gap-2 text-sm text-fg-muted"
+          >
+            <span aria-live="polite" className="mr-auto">
+              Live app releases, then {data.offset + 1}–
+              {data.offset + data.limit} of each channel ({appTotal} in all)
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabledReason={
+                data.offset === 0 ? "These are the newest releases." : undefined
+              }
+              onClick={() => setOffset(Math.max(0, data.offset - COMPAT_PAGE))}
+            >
+              ‹ Newer
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabledReason={
+                hasOlder ? undefined : "There are no older releases."
+              }
+              onClick={() => setOffset(data.offset + COMPAT_PAGE)}
+            >
+              Older ›
+            </Button>
+          </nav>
         </>
       )}
       <CellDrawer

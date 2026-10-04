@@ -56,8 +56,9 @@ const INLINE_SECONDARY = 2;
  * (focus lands on it after a navigation, ADMIN.md §5.6), one primary action, up to two secondary
  * actions and the rest in "More actions", with danger actions last.
  *
- * Below 640 px every secondary action moves into "More actions" and the primary action becomes a
- * full-width button under the title.
+ * Below 640 px every secondary action moves into "More actions" (on the title row) and the primary
+ * action becomes a full-width button under the title. Freshness ("Updated … · Refresh") sits in the
+ * action cluster, never inline with the description.
  */
 export function PageHeader({
   eyebrow,
@@ -108,10 +109,19 @@ export function PageHeader({
     return () => io.disconnect();
   }, [sticky]);
 
+  const hasCluster =
+    Boolean(freshness) ||
+    inline.length > 0 ||
+    desktopMenu.length > 0 ||
+    mobileMenu.length > 0;
+
   return (
-    <header className={cn("space-y-3", className)}>
+    <header className={cn("relative space-y-3", className)}>
       {eyebrow}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      {/* Title left; freshness, secondary actions and the primary action right. Below 640 px the
+          "More actions" menu stays on the title row and the primary action takes its own
+          full-width row. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h1
@@ -123,33 +133,31 @@ export function PageHeader({
             </h1>
             {titleAside}
           </div>
-          {description || meta || freshness ? (
+          {description || meta ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
               {description ? <p>{description}</p> : null}
               {meta}
-              {freshness ? (
-                <span className="inline-flex items-center gap-1">
-                  <span>
-                    Updated {formatRelative(freshness.updatedAt, freshness.now)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    loading={freshness.refreshing}
-                    iconStart={<RefreshCw aria-hidden />}
-                    onClick={freshness.onRefresh}
-                  >
-                    Refresh
-                  </Button>
-                </span>
-              ) : null}
             </div>
           ) : null}
         </div>
-        {primaryAction ||
-        secondaryActions.length > 0 ||
-        dangerActions.length > 0 ? (
-          <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:items-center">
+        {hasCluster ? (
+          <div className="flex shrink-0 items-center justify-end gap-2">
+            {freshness ? (
+              <span className="inline-flex items-center gap-1 text-sm text-fg-muted">
+                <span className="hidden whitespace-nowrap sm:inline">
+                  Updated {formatRelative(freshness.updatedAt, freshness.now)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  loading={freshness.refreshing}
+                  iconStart={<RefreshCw aria-hidden />}
+                  onClick={freshness.onRefresh}
+                >
+                  Refresh
+                </Button>
+              </span>
+            ) : null}
             {inline.map((a) => (
               <Button
                 key={a.label}
@@ -168,37 +176,36 @@ export function PageHeader({
               </span>
             ) : null}
             {mobileMenu.length > 0 ? (
-              <span className="inline-flex justify-end sm:hidden">
+              <span className="inline-flex sm:hidden">
                 <ActionMenu label="More actions" items={mobileMenu} />
               </span>
             ) : null}
-            {primaryAction ? (
-              <div className="[&>*]:w-full sm:[&>*]:w-auto">
-                {primaryAction}
-              </div>
-            ) : null}
+          </div>
+        ) : null}
+        {primaryAction ? (
+          <div className="col-span-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto">
+            {primaryAction}
           </div>
         ) : null}
       </div>
       {tabs ? <div className="border-b border-border">{tabs}</div> : null}
-      <RefetchBar active={refetching} />
-      {sticky ? (
-        <>
-          <div ref={sentinel} aria-hidden className="h-px" />
-          {condensed ? (
-            <div
-              data-condensed-header=""
-              className="fixed inset-x-0 top-16 z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w)"
-            >
-              <span aria-hidden className="truncate font-bold text-fg-strong">
-                {title}
-              </span>
-              {primaryAction ? (
-                <span className="shrink-0">{primaryAction}</span>
-              ) : null}
-            </div>
-          ) : null}
-        </>
+      {/* Out of the flow, so neither adds space under the header. */}
+      <div className="pointer-events-none absolute inset-x-0 top-full">
+        <RefetchBar active={refetching} />
+        {sticky ? <div ref={sentinel} aria-hidden className="h-px" /> : null}
+      </div>
+      {/* The condensed bar exists for its primary action; a bare title would cost 48 px for
+          nothing. */}
+      {sticky && condensed && primaryAction ? (
+        <div
+          data-condensed-header=""
+          className="fixed inset-x-0 top-16 z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w)"
+        >
+          <span aria-hidden className="truncate font-bold text-fg-strong">
+            {title}
+          </span>
+          <span className="shrink-0">{primaryAction}</span>
+        </div>
       ) : null}
     </header>
   );

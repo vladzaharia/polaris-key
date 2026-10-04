@@ -312,14 +312,33 @@ describe("DataTable", () => {
     expect(screen.getByText("Loading licenses…")).toBeTruthy();
   });
 
+  it("offers Columns and density only where they earn their row", () => {
+    // A small table with nothing hidden: no Columns, no density (and no count footer).
+    const { unmount } = render(<Harness />);
+    expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Row density" })).toBeNull();
+    expect(screen.queryByText(/^Showing/)).toBeNull();
+    unmount();
+    render(<Harness chrome="full" />);
+    expect(screen.getByRole("button", { name: "Columns" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Row density" })).toBeTruthy();
+  });
+
+  it("shows only the first-run state when nothing exists and nothing is filtered", () => {
+    render(<Harness data={[]} empty={<p>Create your first license</p>} />);
+    expect(screen.getByText("Create your first license")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+  });
+
   it("hides a column from the Columns menu and remembers it", async () => {
     const user = userEvent.setup();
-    const { unmount } = render(<Harness />);
+    const { unmount } = render(<Harness chrome="full" />);
     await user.click(screen.getByRole("button", { name: "Columns" }));
     await user.click(await screen.findByRole("checkbox", { name: "Seats" }));
     expect(screen.queryByRole("columnheader", { name: /Seats/ })).toBeNull();
     unmount();
-    render(<Harness />);
+    render(<Harness chrome="full" />);
     expect(screen.queryByRole("columnheader", { name: /Seats/ })).toBeNull();
   });
 

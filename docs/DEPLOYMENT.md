@@ -211,6 +211,51 @@ queues for the request Worker's `DELTA_QUEUE` producer (Queues Read), and the la
 Edit. The deploy job's "Queues preflight" step (`wrangler queues info` on both queues) fails before
 any migration runs when the permission or a queue is missing.
 
+### GitHub environment `package-registry` (F-10)
+
+Our SDKs are published to the package feeds automatically, in lockstep with the server (owner
+decision 2026-10-04): `.github/workflows/publish-sdks.yml` runs on every push to `main` (a
+`<next>-main.<N>` pre-release of every SDK) and, called by `deploy.yml` after the Worker is live, on
+every `v*` tag (every SDK at exactly that version). Each package goes through the reusable
+`.github/workflows/publish-package.yml`, which is the `polaris-key` system product's trusted
+publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub environment
+**`package-registry`**. In `vladzaharia/polaris-key` → Settings:
+
+1. **Environments → New environment** `package-registry`. Under **Deployment branches and tags**
+   choose **Selected branches and tags** and add the **branch** rule `main` and the **tag** rule
+   `v*`, nothing else. Optionally require a reviewer (every push to `main` then waits for one).
+2. **Environment secrets** on `package-registry`, for the signed Swift registry releases
+   (plans/F-01.md §5.3). Until they exist, the Swift job stops with
+   `Swift registry releases are signed (owner decision 2026-10-04). Set …`, and never publishes
+   unsigned; they reach the signing script through its environment only and are never echoed:
+   - `SWIFT_REGISTRY_SIGNING_KEY`: the signing certificate's private key, PEM, then base64
+     (`base64 -i key.pem | tr -d '\n'`);
+   - `SWIFT_REGISTRY_SIGNING_CERT`: the leaf certificate, DER, then base64;
+   - `SWIFT_REGISTRY_CERT_CHAIN`: the intermediates and the root, each DER and base64, separated
+     by commas.
+3. **Branch protection on `main`** and a **tag ruleset on `v*`** (restricting creation, update
+   and deletion to maintainers). The trusted publisher requires `ref_protected` (P2-02), so an
+   unprotected ref cannot publish. The `production` environment's deploy job (deploy.yml) relies
+   on the same tag ruleset.
+4. Nothing to register by hand. `deploy.yml`'s "Register the platform packages" step calls the
+   deploy hook (`POST /webhooks/deploy`, `packages/worker/src/platformDeploy.ts`) on every
+   production deploy, authenticated by the deploy job's own GitHub OIDC token (the job has
+   `id-token: write`; no secret exists for it). The hook bootstraps the system product (as
+   `POST /manage/api/platform/feeds/bootstrap` does; a service, `packageFeeds` or a feed an
+   operator turned off stays off), links it to this repository and applies the root `.pkey/` of
+   the tag being deployed: the package deliverables every publish is checked against, the `main`
+   channel, and the trusted publisher with the repository's numeric ids. The Worker admits only
+   this repository's `deploy.yml`, in the `production` environment, at a protected `v*` tag: the
+   prod `[env.prod.vars]` `PLATFORM_REPOSITORY`, `PLATFORM_REPOSITORY_ID` and
+   `PLATFORM_REPOSITORY_OWNER_ID` (GitHub's numeric ids,
+   `gh api repos/vladzaharia/polaris-key --jq '.id, .owner.id'`) say which. An environment without
+   those vars has no deploy hook (staging and dev today); bootstrap there from the console and
+   claim the publisher (`PUT /manage/api/products/polaris-key/ci-publisher`) if it should publish.
+
+No other publishing credential exists: there is no npm, PyPI, Maven Central or Docker Hub token,
+and no workflow publishes to GitHub Packages, PyPI or a GitHub Release (owner decision 2026-10-04,
+feeds only). Operating it: RUNBOOK, "Releasing our SDKs to the feeds".
+
 ## 3. Cloudflare resources
 
 Create the prod D1 database and KV namespace:
@@ -883,6 +928,10 @@ Validate portal email:
 - DJDL product secrets are configured.
 - DJDL SDK/app has the returned trust key pinned.
 - CI deploys production from semver tags only.
+- The GitHub environment `package-registry` admits the `main` branch and `v*` tags, holds the
+  three `SWIFT_REGISTRY_*` secrets, `main` is protected and a tag ruleset covers `v*` (§3); `polaris-key`'s trusted
+  publisher is `publish-package.yml` in `package-registry`, and it holds the root `.pkey/`
+  package deliverables.
 
 ## 12. Common failure modes
 

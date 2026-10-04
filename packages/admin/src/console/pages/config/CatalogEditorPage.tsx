@@ -12,6 +12,7 @@ import { errorCopy } from "../../../lib/errorCopy.js";
 import { KIND_LABELS } from "../../../lib/labels.js";
 import {
   UNCATEGORISED,
+  categoryLabel,
   catalogDiagnostics,
   catalogIssues,
   type CatalogIssue,
@@ -29,6 +30,7 @@ import { SegmentedControl } from "../../../ui/SegmentedControl.js";
 import { Select } from "../../../ui/Select.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../ui/SourceBadge.js";
+import { StatusPill } from "../../../ui/StatusPill.js";
 import { toast } from "../../../ui/toast.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { PageHeader } from "../../components/PageHeader.js";
@@ -287,13 +289,18 @@ function Editor({
         slug={slug}
         title="Edit catalog"
         aside={
-          <span className="text-sm text-fg-muted">
-            {draft.baseVersion > 0
-              ? `v${draft.baseVersion} → v${nextVersion} (draft)`
-              : `v${nextVersion} (draft)`}
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <StatusPill tone="neutral" icon={false} size="sm">
+              {draft.baseVersion > 0
+                ? `v${draft.baseVersion} → v${nextVersion}`
+                : `v${nextVersion}`}
+            </StatusPill>
+            <StatusPill tone="accent" icon={false} size="sm">
+              Draft
+            </StatusPill>
+            <SourceBadge source={source} path={CATALOG_PATH} />
           </span>
         }
-        meta={<SourceBadge source={source} path={CATALOG_PATH} />}
       />
 
       {stale ? (
@@ -382,8 +389,13 @@ function Editor({
           }
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <nav aria-label="Catalog entries" className="space-y-4">
+        // An explicit single track below 1024 px, so a long key truncates instead of widening
+        // the page; there the list scrolls in a short box so the form is reached quickly.
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <nav
+            aria-label="Catalog entries"
+            className="min-w-0 max-h-64 space-y-4 overflow-y-auto rounded-lg border border-border p-2 pk-scroll lg:max-h-none lg:overflow-visible lg:rounded-none lg:border-0 lg:p-0"
+          >
             {visible.length === 0 ? (
               <EmptyState
                 kind="no-results"
@@ -412,7 +424,7 @@ function Editor({
                 return (
                   <section key={category} className="space-y-1">
                     <h2 className="flex items-center gap-2 px-2 text-xs font-bold text-fg-muted">
-                      <span className="flex-1">{category}</span>
+                      <span className="flex-1">{categoryLabel(category)}</span>
                       <span className="tabular-nums">{items.length}</span>
                       {changed ? (
                         <span className="inline-flex items-center gap-0.5 text-accent-fg">
@@ -544,12 +556,7 @@ function Editor({
                 Discard this draft? Nothing has been published.
               </span>
             ) : (
-              <>
-                {summary}
-                <span className="block text-xs text-fg-muted">
-                  The draft stays in this tab until you publish or discard it.
-                </span>
-              </>
+              summary
             )}
           </p>
           {confirmDiscard ? (
@@ -641,7 +648,7 @@ function JsonMode({
   const labelId = React.useId();
   return (
     <div className="space-y-2">
-      <p id={labelId} className="text-sm text-fg-muted">
+      <p id={labelId} className="sr-only">
         The whole catalog as JSON. Changes apply to the draft while the text is
         valid JSON with an entries array; the version is assigned when you
         publish.
@@ -770,11 +777,7 @@ function ReviewDrawer({
           ? "The catalog changed since you started"
           : `Publish version ${draft.baseVersion + 1}`
       }
-      description={
-        stale || conflict
-          ? undefined
-          : "What changes for every client when this version is published."
-      }
+      description={undefined}
     >
       <DrawerBody>
         <div className="space-y-6">

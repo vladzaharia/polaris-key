@@ -96,7 +96,8 @@ Berry and Bun install from it unchanged.
   in `yarn.lock` on the first install and checks that afterwards.
 - **Tags.** `dist-tags` come from the release channels: `stable` is `latest`, and any other
   channel is a tag of its own name (`beta`, `pr-12`). Promoting or pinning a channel moves its
-  tag.
+  tag. With nothing on `stable`, `latest` is the newest release version, else the newest
+  pre-release that no other channel's tag names: a channel's pre-release is never `latest` too.
 - **Yank and deprecate.** npm has no yank. A yanked version stays in the packument and installs
   by exact version, so existing lockfiles keep working, but it leaves every tag and carries
   `deprecated` with the yank reason, so clients warn and range resolution prefers another
@@ -382,13 +383,18 @@ Add the URL with no trailing slash: the editor appends its own paths. Each packa
 ```
 
 - **What a listing shows.** A package appears at its `latest` version (the `stable` channel's
-  head). The 4.7 release list shows every version, newest first, with `stable` false for a
+  head). The 4.7 release list shows every version, the stable releases first (newest first) and then
+  the pre-releases, because the 4.7 editor preselects the first release; `stable` is false for a
   pre-release on another channel. A **yanked** version is removed from every listing; its zip
   stays downloadable at its content-addressed URL. Godot has no deprecation: a **deprecated**
   version stays listed, and its message leads the description and the release notes.
 - **Integrity.** Godot 4.6 and earlier compare the zip with `download_hash`, its SHA-256, which
   the feed always sends. **Godot 4.7 and later verify no hash: an install relies on TLS alone.**
   The Polaris Key SDK's own update path still verifies signed records, not the store download.
+- **Archive layout.** An addon zip holds `addons/<name>/…` (what GodotEnv's `subfolder` and the
+  4.7 installer expect). The 4.4 to 4.6 installer's **Ignore asset root** option is ticked by
+  default and strips that first `addons/` folder, installing at `res://<name>/`; untick it to
+  install at `res://addons/<name>/`. The 4.7 installer has no such option.
 - **Feed settings.** The publisher (`namespace.publisher`, the 4.7 store path's publisher) is
   required. The extensions are `categoryId` (an Asset Library addon category, default `5`,
   Tools), `supportLevel` (`official`, `community` or `testing`, default `community`), `license`

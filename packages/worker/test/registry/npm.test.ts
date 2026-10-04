@@ -258,7 +258,7 @@ describe("dist-tags and negotiation", () => {
     expect(channelTag("pr-5")).toBe("pr-5");
   });
 
-  it("latest falls back to the newest non-yanked release, then the newest non-yanked prerelease", () => {
+  it("latest falls back to the newest non-yanked release, then (with no channel tags) the newest non-yanked prerelease", () => {
     const f = fixture();
     expect(distTags(fixture({ tags: {} }), f.versions)).toEqual({
       latest: "1.0.0",
@@ -268,6 +268,28 @@ describe("dist-tags and negotiation", () => {
       latest: "1.2.0-beta.1",
     });
     expect(distTags(fixture({ tags: {} }), [f.versions[2]!])).toEqual({});
+    // F-10: a prerelease a channel's tag names stays that channel's, never `latest` as well
+    // (our SDKs' `-main.N` builds before the first stable release).
+    expect(
+      distTags(fixture({ tags: { beta: "1.2.0-beta.1" } }), onlyPre),
+    ).toEqual({ beta: "1.2.0-beta.1" });
+    // Two main builds before any stable release: the older one is not promoted either.
+    const mainBuild = (n: number) => ({
+      ...f.versions[3]!,
+      version: `0.8.13-main.${n}`,
+      publishedAt: 1_790_000_300 + n,
+    });
+    const mains = [mainBuild(58), mainBuild(59)];
+    expect(
+      distTags(fixture({ tags: { main: "0.8.13-main.59" } }), mains),
+    ).toEqual({ main: "0.8.13-main.59" });
+    // Nor when the channel's own target has been yanked.
+    expect(
+      distTags(fixture({ tags: { main: "0.8.13-main.59" } }), [
+        mains[0]!,
+        { ...mains[1]!, state: "yanked" },
+      ]),
+    ).toEqual({});
     // A tag naming a version that is not listed is dropped.
     expect(
       distTags(

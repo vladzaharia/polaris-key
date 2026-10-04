@@ -4,14 +4,13 @@ import type { Catalog } from "@polaris-key/catalog";
 import type { ConfigEntry, ManagementState } from "../api.js";
 import { cn } from "../lib/cn.js";
 import { fromSeconds } from "../lib/format.js";
-import { KIND_LABELS, MANAGEMENT_LABELS } from "../lib/labels.js";
+import { KIND_LABELS } from "../lib/labels.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
 import { StatusPill } from "../ui/StatusPill.js";
 import { Timestamp } from "../ui/Timestamp.js";
 import {
   KIND_TONE,
-  STATE_TONE,
   entryDefault,
   formatValue,
   isSecretEntry,
@@ -104,7 +103,8 @@ export function ManagedField({
         data-row={entry.key}
         className="rounded-md border border-dashed border-border bg-surface-page p-3"
       >
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        {/* Label left, pills and the action right, on every width (never wrapping left). */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
           <div className="min-w-0 space-y-1">
             <p>{header}</p>
             {entry.description ? (
@@ -121,11 +121,11 @@ export function ManagedField({
               ) : fallback !== undefined ? (
                 <> · clients fall back to {formatValue(fallback)}.</>
               ) : (
-                <> · this key contributes nothing.</>
+                <>.</>
               )}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {kind}
             <Button
               type="button"
@@ -146,9 +146,6 @@ export function ManagedField({
   const aside = (
     <span className="flex shrink-0 flex-wrap items-center gap-1.5">
       {kind}
-      <StatusPill tone={STATE_TONE[state]} icon={null} size="sm">
-        {MANAGEMENT_LABELS[state] ?? state}
-      </StatusPill>
       {secret ? (
         <StatusPill
           domain="secret"
@@ -189,11 +186,7 @@ export function ManagedField({
         labelAside={aside}
         error={error}
         secretConfigured={secret ? secretConfigured : undefined}
-        help={
-          secret
-            ? "Write-only: the server never returns a stored secret."
-            : entry.description || undefined
-        }
+        help={entry.description || undefined}
       />
 
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-t border-border pt-2.5">

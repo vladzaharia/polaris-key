@@ -24,6 +24,7 @@ import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 import { REGISTRY_ROUTES } from "../src/mount.js";
+import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
@@ -48,6 +49,7 @@ const NARRATIVE_ONLY = new Set([
   "portalDownload",
   "products",
   "githubWebhook",
+  "deployHook",
   "docs",
   "notFound",
 ]);
@@ -186,102 +188,24 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  * The registry host's paths (F-02, plans/F-01.md §6.10): `pkg.plrs.im` answers only these, each
  * documented under a path-level `servers` override with tag `registry`. The third column names
  * what answers: `host` for the dispatcher's own fixed answers (the landing page, OCI's `/v2/`
- * root), else the `REGISTRY_ROUTES` entry by name. F-04 to F-09 add a row per route.
+ * root, Swift's login, OCI's token endpoint), else the `REGISTRY_ROUTES` entry by name.
+ *
+ * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
+ * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
+ * below runs against them unchanged. `test/feedAdapters.test.ts` checks each adapter's rows
+ * against its own routes.
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
 const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
-  // F-04: npm (both spellings of a scoped name; the escaped one carries %2f in {escapedName}).
-  ["/npm/{owner}/{escapedName}", ["get", "head"], "npm.packument"],
-  ["/npm/{owner}/{scope}/{name}", ["get", "head"], "npm.packument"],
-  ["/npm/{owner}/{escapedName}/-/{tarball}", ["get", "head"], "npm.tarball"],
-  ["/npm/{owner}/{scope}/{name}/-/{tarball}", ["get", "head"], "npm.tarball"],
-  // F-05 (PyPI)
-  ["/pypi/{owner}/simple/", ["get", "head"], "pypi.simple.index"],
-  ["/pypi/{owner}/simple/{project}/", ["get", "head"], "pypi.simple.project"],
-  ["/pypi/{owner}/files/{sha256}/{filename}", ["get", "head"], "pypi.files"],
-  // F-06: the Swift registry (SwiftPM Registry.md §4); login is the host dispatcher's 501.
-  ["/swift/{owner}/{scope}/{name}", ["get", "head"], "swift.releases"],
-  ["/swift/{owner}/{scope}/{name}/{version}", ["get", "head"], "swift.release"],
-  [
-    "/swift/{owner}/{scope}/{name}/{version}/Package.swift",
-    ["get", "head"],
-    "swift.manifest",
-  ],
-  [
-    "/swift/{owner}/{scope}/{name}/{version}.zip",
-    ["get", "head"],
-    "swift.archive",
-  ],
-  ["/swift/{owner}/identifiers", ["get", "head"], "swift.identifiers"],
-  ["/swift/{owner}/login", ["post"], "host"],
-  // Maven (F-07)
-  [
-    "/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml",
-    ["get", "head"],
-    "mavenMetadata",
-  ],
-  [
-    "/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}",
-    ["get", "head"],
-    "mavenMetadata",
-  ],
-  [
-    "/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}",
-    ["get", "head"],
-    "mavenFile",
-  ],
-  // F-08: OCI pull. `/v2/token` is the dispatcher's OCI not-found until F-21 issues tokens.
-  ["/v2/token", ["get", "head"], "host"],
-  [
-    "/v2/{owner}/{repository}/manifests/{reference}",
-    ["get", "head"],
-    "oci.manifests",
-  ],
-  ["/v2/{owner}/{repository}/blobs/{digest}", ["get", "head"], "oci.blobs"],
-  ["/v2/{owner}/{repository}/tags/list", ["get", "head"], "oci.tags"],
-  // F-09: the Godot feed (≤ 4.6 Asset Library, 4.7+ Asset Store, GodotEnv index, bytes).
-  [
-    "/godot/{owner}/asset-library/api/configure",
-    ["get", "head"],
-    "godotLegacyConfigure",
-  ],
-  [
-    "/godot/{owner}/asset-library/api/asset",
-    ["get", "head"],
-    "godotLegacySearch",
-  ],
-  [
-    "/godot/{owner}/asset-library/api/asset/{id}",
-    ["get", "head"],
-    "godotLegacyAsset",
-  ],
-  ["/godot/{owner}/store/api/v1/", ["get", "head"], "godotStoreOverview"],
-  ["/godot/{owner}/store/api/v1/tags/", ["get", "head"], "godotStoreTags"],
-  [
-    "/godot/{owner}/store/api/v1/licenses/",
-    ["get", "head"],
-    "godotStoreLicenses",
-  ],
-  [
-    "/godot/{owner}/store/api/v1/search/query/",
-    ["get", "head"],
-    "godotStoreSearch",
-  ],
-  [
-    "/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/",
-    ["get", "head"],
-    "godotStoreAsset",
-  ],
-  [
-    "/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/",
-    ["get", "head"],
-    "godotStoreReleases",
-  ],
-  ["/godot/{owner}/index.json", ["get", "head"], "godotIndex"],
-  ["/godot/{owner}/files/{sha256}/{file}", ["get", "head"], "godotZip"],
-  ["/godot/{owner}/icons/{sha256}.png", ["get", "head"], "godotIcon"],
+  ...FEED_ADAPTERS.flatMap((a) =>
+    a.openapi.map(([path, methods, owner]): [string, string[], string] => [
+      path,
+      [...methods],
+      owner,
+    ]),
+  ),
 ];
 
 function specMethods(path: string): string[] {

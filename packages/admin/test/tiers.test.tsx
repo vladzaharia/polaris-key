@@ -261,7 +261,7 @@ describe("tier record", () => {
     const group = within(f)
       .getAllByRole("group", { name: "Release channels" })
       .at(-1)!;
-    expect(within(group).getByText("not offered")).toBeTruthy();
+    expect(within(group).getByText("Not offered")).toBeTruthy();
     await userEvent.click(within(group).getByLabelText("dev"));
     await userEvent.click(screen.getByRole("button", { name: "Save tier" }));
     await waitFor(() => expect(writes(log)).toHaveLength(1));
@@ -354,6 +354,6 @@ describe("tier channel picker", () => {
     );
     expect(within(group).queryByLabelText("dev")).toBeNull();
     expect(within(group).queryByLabelText("Nightly")).toBeNull();
-    expect(within(group).getByText("every PR build")).toBeTruthy();
+    expect(within(group).getByText("Every PR build")).toBeTruthy();
   });
 });
