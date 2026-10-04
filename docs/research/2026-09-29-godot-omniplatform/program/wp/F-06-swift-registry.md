@@ -62,17 +62,76 @@ SwiftPM installs from the registry with an archive whose `Package.swift` is at t
 
 ## Acceptance criteria
 
-- [ ] Matrix green: the swiftlang compatibility suite; `swift package resolve` and `swift build` on macOS with `onUnsigned: error`; a Linux container build.
-- [ ] Yank, deprecate and channel-tag behaviour match plan §6.7 and the protocol.
-- [ ] The headers of plan §6.7 are on every answer. Nothing outside `REGISTRY_HOST_TYPES` is served.
-- [ ] `routeCoverage` passes. The green gate passes (`AGENTS.md`).
+- [x] Matrix green: the swiftlang compatibility suite; `swift package resolve` and `swift build` on macOS with `onUnsigned: error`; a Linux container build.
+- [x] Yank, deprecate and channel-tag behaviour match plan §6.7 and the protocol.
+- [x] The headers of plan §6.7 are on every answer. Nothing outside `REGISTRY_HOST_TYPES` is served.
+- [x] `routeCoverage` passes. The green gate passes (`AGENTS.md`).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/worker test -- registry/swift routeCoverage
+mise exec node@22 -- pnpm --filter @polaris-key/worker test -- registrySwift routeCoverage
 gh workflow run registry-clients.yml -f ecosystem=swift
 ```
+
+## Corrections (recorded while implementing, against the code)
+
+Where the brief or plans/F-01.md disagreed with the code, the code was the fact. No wire shape,
+corpus file or `PROTOCOL_VERSION` changes.
+
+1. **`POST /login` (501) and Swift's 405 live in `core/registryHost.ts`.** The host dispatcher
+   answers every non-GET/HEAD method before any route runs (F-02), so a route cannot answer a
+   POST. `registryMethodNotAllowed` gained Swift's branch: 501 for `POST /swift/<owner>/login`,
+   405 `problem+json` for anything else, both with `Content-Version: 1` and decided from the
+   path alone, before an owner loads. Swift's not-found carries `Content-Version: 1` too.
+   `REGISTRY_PATHS` documents login as a `host` row.
+2. **`RenderContext.bucket`** (optional, additive) lets the Swift renderer embed the CMS
+   signature (base64) in the release metadata and read each `Package@swift-*.swift`'s declared
+   tools version for the `alternate` links. `materialise` passes its bucket.
+3. **No URL is rendered.** The list omits each release's optional `url` (§4.1 lets the client
+   expand the template on the host it asked) and every `Link` header is built from
+   `PKG_ORIGIN` when answering, so renders never depend on the origin.
+4. **Yank, deprecate, channels.** A yanked version keeps its list entry with a `problem` (410
+   Gone), which SwiftPM treats as unavailable; its metadata, manifests and archive stay served,
+   because a Swift archive never changes after publish (TOFU, plan §6.7). The protocol has no
+   deprecation, so a deprecated version is listed as available. `latest-version` names the
+   `latest` tag (the stable channel's head) when it is available, else the highest stable
+   version; a beta prerelease resolves only for a prerelease requirement (SwiftPM's rule). A
+   declared package with nothing published is the not-found.
+5. **The `requireSigned` refusal was already F-03's** (`swift-unsigned`, `ingest.ts`, tested in
+   `packageReleases.test.ts`); F-06 added no ingest code.
+6. **`/identifiers` reads `ext_json.repositoryUrls` as `{"scope.Name": [url, …]}`**, compared
+   without scheme, user, `.git` or case, and lists only packages the feed holds that the reader
+   may read. F-12 owns writing the setting.
+7. **Versions match case-insensitively** (the swiftlang compatibility suite flips the case of
+   the whole path, the version included).
+8. **The compatibility suite's upstream manifest no longer resolves** (its example server's
+   Vapor/postgres-nio/service-lifecycle pins conflict). `clients/swift-compat.sh` builds the
+   pinned commit `5d873abb` with `swift/compat-Package.swift`, which keeps only the CLI's
+   dependencies. `create-package-release` is not run (publishing is F-22's).
+9. **The harness seeds through wrangler's platform proxy**, not `pkey release publish`: the
+   local Worker cannot presign uploads against a real R2 account. `clients/swift.seed.mjs` signs
+   the fixtures with SwiftPM's own `--dry-run` signer and a throwaway CA generated per run, then
+   writes the rows and SHA-256-checked blobs ingest would. `run.mjs` gained a per-client seed hook
+   (`clients/<client>.seed.mjs`, or its family's), and F-02's base seed gained the active
+   `product_keys` row `loadProductPublic` needs (without it every ecosystem route was the
+   not-found).
+10. **Q1, answered empirically for a private root.** A chain of a throwaway EC P-256 root and a
+    `codeSigning` leaf verifies with `onUnsigned: error` and `onUntrustedCertificate: error` on
+    SwiftPM 6.4 (macOS 27) and in `swift:6.2` (Linux) once the root is trusted, and is refused
+    ("the signer … is not trusted") when it is not. The production certificate chain still needs
+    the owner's certificate to test. For F-10: `--private-key-path` takes a **PKCS#8 DER** key and
+    `--cert-chain-paths` DER certificates, so `SWIFT_REGISTRY_SIGNING_KEY` (plan §5.3: PEM) must be
+    converted (`openssl pkcs8 -topk8 -nocrypt -outform DER`) before signing; `--url` is required even
+    with `--dry-run`, and the scratch directory must exist.
+11. **Verify.** The worker suite is `test/registrySwift.test.ts`, so the filter is
+    `registrySwift` (not `registry/swift`). `registry-clients.yml` had no `ecosystem` input; it
+    gained one (a client-name prefix), so `gh workflow run registry-clients.yml -f ecosystem=swift`
+    runs the three Swift rows (`swift`, `swift-compat` on macOS, `swift-linux` on Ubuntu).
+12. **The render queue is not drained yet** (F-02 shipped `drainRegistry` behind an interface and
+    F-03 the queue; neither wired `dispatch.ts`/`scheduled.ts`). Swift documents are rendered on
+    a miss, but after a publish, yank or channel move an existing render stays stale until the
+    drain is wired. Proposed follow-up below; F-06 does not touch the composition root.
 
 ## Hand-off
 

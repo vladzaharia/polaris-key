@@ -90,6 +90,17 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}.zip` | registry | A Swift package release's source archive (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}.zip` | registry | A Swift package release's source archive, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}/Package.swift` | registry | A Swift package release's manifest (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}/Package.swift` | registry | A Swift package release's manifest, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL, headers only (registry host only) |
+| POST | `https://pkg.plrs.im/swift/{owner}/login` | registry | SwiftPM registry login, not supported yet (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint, headers only (registry host only) |
 | GET | `/{product}/release/changelog` | release | Release changelog |

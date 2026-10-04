@@ -1042,6 +1042,22 @@ and PyPI fragment hashes give integrity, not authenticity.
 **Kill switches.** Per ecosystem, `dist_registry_policy.enabled`; per owner, `packageFeeds`;
 per feed, `enabled`. Each takes effect within the settings window.
 
+**The Swift feed (F-06).** SwiftPM pins an archive's checksum on first use (TOFU) and verifies
+the `cms-1.0.0` signature the registry relays; the Worker checks only that a signed release
+carries a signature of that format, never the certificate chain, so authenticity rests on the
+client's trust roots and `onUnsigned`/`onUntrustedCertificate` settings, which the setup page
+recommends as `error`. Mitigations on our side: an unsigned release is refused at ingest when the
+feed requires signing (always for the system product); the manifests served are the signed
+copies the publisher uploaded, by SHA-256, never re-extracted from the archive; a version's
+archive, manifests and signature never change after publish, and a yank only marks it
+unavailable in the release list (`problem` 410), so a pinned checksum never breaks or moves. The
+`text/x-swift` manifests always leave as attachments under the sandbox CSP. `/identifiers` lists
+only packages the feed holds and the reader may read, mapped by the operator-owned
+`repositoryUrls` setting, so a publisher cannot claim another project's repository URL.
+`POST …/login` (501) and `PUT` (405) are decided from the path alone, before any owner is
+loaded, so neither probes an owner. Review trigger: Worker-side signature verification, or any
+change that lets a version's bytes change after publish.
+
 ### App-updater feeds (P3-09)
 
 **What arrived.** Update renders the native updaters' feeds from the CI-signed release records and
