@@ -5,7 +5,7 @@
 | Phase       | P5: Distribution connectors and native plugins                                                                                                                                                             |
 | Size        | 0.5–1 engineer-weeks                                                                                                                                                                                       |
 | Depends on  | [P5-01](P5-01-outlet-credentials.md), [P2b-03](P2b-03-availability-keys.md), [S-07](S-07-policy-recheck.md)                                                                                                |
-| Unblocks    | none                                                                                                                                                                                                       |
+| Unblocks    | [A-18f](A-18f-msstore-adapter.md)                                                                                                                                                                          |
 | Role        | `pkey-implementer`                                                                                                                                                                                         |
 | Plan mode   | no                                                                                                                                                                                                         |
 | Gates       | none listed; it stores a new credential kind, so update the threat model's outlet-credential row. No public route                                                                                          |

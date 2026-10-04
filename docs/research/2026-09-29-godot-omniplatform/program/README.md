@@ -244,6 +244,13 @@ Edit `workpackages.json` and the affected briefs in one PR. Then run, in this or
 4. `node check.mjs`.
 
 New packages take the next free id in their phase and a brief copied from `wp/_TEMPLATE.md`. Keep ids stable: never renumber a package that has started.
+Packages split from one row of a spike's breakdown keep that row's number plus a lower-case letter
+(phase A: A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11); `check.mjs` accepts the suffix.
+
+Phase I (the Identity service) carries notes/S-16 §8's I-01…I-22 unchanged: ids follow the note,
+so I-20…I-22 sit beside I-01…I-19. I-18 and I-19 are optional (S-16 phase 4, outside the owner's
+phases 0–3 scope). I-08 executes I-04's plan (`planRef`); the other ⚑ Identity packages get their
+own plans.
 
 ---
 
