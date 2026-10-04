@@ -156,16 +156,11 @@ function VersionPrompt(
         logo={screenLogo(theme, "delivery")}
         onRetry={act}
         retryLabel={theme.copy.updateActionLabel}
-        extra={
-          <div style={{ marginTop: "8px" }}>
-            <Button
-              variant="ghost"
-              style={{ fontSize: "14px" }}
-              onClick={dismiss}
-            >
-              {theme.copy.updateDismissLabel}
-            </Button>
-          </div>
+        retryVariant="primary"
+        secondaryAction={
+          <Button variant="ghost" onClick={dismiss}>
+            {theme.copy.updateDismissLabel}
+          </Button>
         }
         data-polaris-update="dialog"
       />
@@ -349,17 +344,15 @@ function DecisionPrompt(
         body={body}
         logo={screenLogo(theme, "delivery")}
         {...(act ? { onRetry: act, retryLabel: label } : {})}
-        extra={
-          <div style={{ marginTop: "8px" }}>
-            <Button
-              variant="ghost"
-              style={{ fontSize: "14px" }}
-              onClick={dismiss}
-              data-polaris-update-dismiss=""
-            >
-              {c.updateDismissLabel}
-            </Button>
-          </div>
+        retryVariant="primary"
+        secondaryAction={
+          <Button
+            variant="ghost"
+            onClick={dismiss}
+            data-polaris-update-dismiss=""
+          >
+            {c.updateDismissLabel}
+          </Button>
         }
         data-polaris-update={decision.action}
       />

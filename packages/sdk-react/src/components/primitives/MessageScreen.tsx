@@ -28,7 +28,16 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Button } from "./buttons.js";
+import { Button, type ButtonVariant } from "./buttons.js";
+
+/** The centred, wrapping row a screen's actions sit in. */
+const actionRow: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  justifyContent: "center",
+  gap: "8px",
+  marginTop: "20px",
+};
 import { fullWindow, messageCard, mutedText, titleText } from "./card.js";
 
 export interface MessageScreenProps {
@@ -39,6 +48,12 @@ export interface MessageScreenProps {
   logo?: ReactNode;
   /** Extra content between the body and the retry action. */
   extra?: ReactNode;
+  /** A second action rendered after the retry action, in the same centred row (a dialog's
+   *  "Not now"). */
+  secondaryAction?: ReactNode;
+  /** The retry action's weight: "quiet" (default) for a recovery, "primary" when it is the
+   *  screen's main action (an update dialog's "Get the update"). */
+  retryVariant?: ButtonVariant;
   /** Render a retry action wired to this handler. */
   onRetry?: () => void;
   /** The retry button's label (and its accessible name). */
@@ -58,6 +73,8 @@ export function MessageScreen(props: MessageScreenProps): JSX.Element {
     body = "",
     logo,
     extra,
+    secondaryAction,
+    retryVariant = "quiet",
     onRetry,
     retryLabel = "Try again",
     transient,
@@ -111,15 +128,21 @@ export function MessageScreen(props: MessageScreenProps): JSX.Element {
           </p>
         ) : null}
         {extra}
-        {onRetry ? (
-          <Button
-            ref={retryRef}
-            variant="quiet"
-            label={retryLabel}
-            onClick={onRetry}
-          >
-            {retryLabel}
-          </Button>
+        {onRetry || secondaryAction ? (
+          <div style={actionRow}>
+            {onRetry ? (
+              <Button
+                ref={retryRef}
+                variant={retryVariant}
+                label={retryLabel}
+                onClick={onRetry}
+                style={{ marginTop: 0 }}
+              >
+                {retryLabel}
+              </Button>
+            ) : null}
+            {secondaryAction}
+          </div>
         ) : null}
       </div>
     </div>

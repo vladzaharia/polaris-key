@@ -282,10 +282,11 @@ export const defaultTheme: PolarisTheme = {
   scheme: "dark",
   tokens: neutralDarkTokens,
   copy: {
-    productName: "Polaris Key",
+    productName: "This app",
     signInTitle: "Sign in",
     signInSubtitle: "Authenticate to unlock this app.",
-    oidcButtonLabel: "Continue with Polaris Key",
+    // Neutral: the host's sign-in, not ours (no Polaris Key name on a neutral screen).
+    oidcButtonLabel: "Continue to sign in",
     keyEntryLabel: "Have a license key?",
     keyEntryPlaceholder: "Paste your key",
     keySubmitLabel: "Activate",
@@ -378,6 +379,12 @@ export interface PartialTheme {
   poweredBy?: boolean | PoweredByLayout;
 }
 
+/** The copy that names Polaris Key, used only under the Polaris Key branding. */
+const POLARIS_KEY_COPY: Partial<PolarisThemeCopy> = {
+  productName: "Polaris Key",
+  oidcButtonLabel: "Continue with Polaris Key",
+};
+
 /** The one-option preset for the Polaris Key brand: `theme={polarisKeyTheme}`. */
 export const polarisKeyTheme: PartialTheme = { branding: "polaris-key" };
 
@@ -395,6 +402,10 @@ export function mergeTheme(
     branding,
     scheme,
     tokens: baseTokens(branding, scheme),
+    copy:
+      branding === "polaris-key"
+        ? { ...defaultTheme.copy, ...POLARIS_KEY_COPY }
+        : defaultTheme.copy,
   };
   if (!partial) return base;
   const perScheme =

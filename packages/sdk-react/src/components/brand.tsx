@@ -109,7 +109,14 @@ export function PoweredBy(
   return (
     <div
       className={className}
-      style={{ display: "flex", justifyContent: "center" }}
+      // The badge never shrinks below its minimum (BRAND.md §1.5); on a screen narrower than
+      // that it scrolls rather than crop or push the page sideways.
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        maxWidth: "100%",
+        overflowX: "auto",
+      }}
       data-polaris-powered-by={layout}
     >
       <PoweredByBadge

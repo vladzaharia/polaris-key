@@ -142,6 +142,19 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
     }
   });
 
+  it("the neutral copy never names Polaris Key; the brand's copy does", () => {
+    for (const text of Object.values(mergeTheme().copy))
+      expect(text).not.toMatch(/Polaris Key/);
+    expect(mergeTheme(polarisKeyTheme).copy.oidcButtonLabel).toBe(
+      "Continue with Polaris Key",
+    );
+    // An integrator's copy wins under either branding.
+    expect(
+      mergeTheme({ ...polarisKeyTheme, copy: { oidcButtonLabel: "Go" } }).copy
+        .oidcButtonLabel,
+    ).toBe("Go");
+  });
+
   it('`branding: "polaris-key"` (or the preset) switches to the brand tokens', () => {
     expect(mergeTheme(polarisKeyTheme).tokens).toEqual(darkTokens);
     expect(mergeTheme(polarisKeyTheme, "light").tokens).toEqual(lightTokens);
