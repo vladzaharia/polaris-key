@@ -14,8 +14,11 @@
  *     package's rows, and the render's own record (`.render/<deliverable>.json`, listing its
  *     keys) carries it too. The cron's self-check compares that record's stamp with D1.
  *   - ATOMICITY AND RECOVERY: a render writes every object, then its record. A drain deletes
- *     the queue rows it consumed only after that, matched on `enqueued_at ≤ start`, so a crash
- *     leaves them queued and the next drain retries (`drainRegistry`).
+ *     the queue rows it consumed only after that, and only while each row's `generation` is still
+ *     the one it read (`core/registryQueue.ts` `stmtConsumeRender`), so an enqueue that lands
+ *     mid-render is never lost and a crash leaves the rows queued for the next drain
+ *     (`drainRegistry`). A row whose render fails stays queued with its attempt counted, behind
+ *     fresh rows, so it cannot block the head of the queue.
  *   - READ PATH: a missing object is rendered from D1 on read, written back and counted
  *     (`registryCounters.renderMiss`), so a lost object heals itself (`readRegistryObject`).
  *
@@ -24,7 +27,8 @@
  * wired (feed-adapter contract): `core/registryQueue.ts` `drainRenderQueue` reads the queue and
  * hands each owner's rows to Distribution's `registryMaterialiser` descriptor member
  * (`../registryMaterialiser.ts`), which runs `drainRegistry` below. `dispatch.ts` runs it after
- * every mutating request (in `waitUntil`) and `scheduled.ts` on every cron tick, followed by the
+ * every request that enqueued a render (`watchRenderEnqueues`, in `waitUntil`) and `scheduled.ts`
+ * on every cron tick, followed by the
  * bounded `selfCheck`. The stamp-checked read path (`catalogSource.ts` `freshRegistryObject`,
  * `readFreshRegistryObject`) stays as the fallback, so a feed is never stale between a write and
  * the drain.

@@ -465,13 +465,21 @@ export async function runConnectorPolls(
   return report;
 }
 
+/** The step the package-feed renders are recorded under (with `registry:<detail>` names). */
+export const REGISTRY_STEP = "registry";
+
 /**
  * The package-feed renders, on EVERY cron tick (plans/F-01.md §6.5): drain the render queue
  * (`core/registryQueue.ts` `drainRenderQueue`, into Distribution's `registryMaterialiser`), then
  * the self-check, which re-renders up to `SELF_CHECK_BUDGET` packages whose stored render stamp
  * differs from D1, across every live product. Both are idempotent and fault-isolated: a failure
- * is recorded as its own step and the tick's other work stands. Counts land in `report` as
- * `registry:rendered`, `registry:dropped` and `registry:selfCheck`.
+ * is recorded under the `registry` step (`registry`, `registry:selfCheck:<slug>`) and the tick's
+ * other work stands. Counts land in `report` as `registry:rendered`, `registry:dropped`,
+ * `registry:failed` and `registry:selfCheck`.
+ *
+ * A failed render is not lost: its row stays queued with its attempt counted, behind fresh rows
+ * (`core/registryQueue.ts`), and the next tick retries it. `handleScheduled` therefore never fails
+ * a connector-poll tick for the `registry` step; the nightly maintenance tick reports it.
  */
 export async function runRegistryRenders(
   env: Env,
@@ -484,12 +492,12 @@ export async function runRegistryRenders(
     const drained = await drainRenderQueue(SERVICES, { env, db, now });
     report.counts["registry:rendered"] = drained.rendered;
     report.counts["registry:dropped"] = drained.dropped;
+    report.counts["registry:failed"] = drained.failed;
     if (drained.failed > 0)
-      report.failures["registry:drain"] =
+      report.failures[REGISTRY_STEP] =
         `${drained.failed} render(s) failed and stay queued`;
   } catch (e) {
-    report.failures["registry:drain"] =
-      e instanceof Error ? e.message : String(e);
+    report.failures[REGISTRY_STEP] = e instanceof Error ? e.message : String(e);
   }
   try {
     const slugs = (await listProducts(db)).map((p) => p.slug);
@@ -501,7 +509,7 @@ export async function runRegistryRenders(
     report.failures["registry:selfCheck"] =
       e instanceof Error ? e.message : String(e);
   }
-  (report.timings ??= {})["registry"] = {
+  (report.timings ??= {})[REGISTRY_STEP] = {
     startedAt,
     durationMs: Date.now() - startedAt,
   };
@@ -572,7 +580,16 @@ export async function handleScheduled(
   const report = poll
     ? await runConnectorPolls(env, db, now)
     : await runScheduledMaintenance(db, now, env);
-  await runRegistryRenders(env, db, now, report);
+  const registry: MaintenanceReport = { counts: {}, failures: {} };
+  await runRegistryRenders(env, db, now, registry);
+  Object.assign(report.counts, registry.counts);
+  Object.assign((report.timings ??= {}), registry.timings);
+  // A render failure stays queued and is retried every tick, so it is not the connector poll's
+  // failure (the Operations page reads a poll tick's failed steps as connector failures). The
+  // nightly maintenance tick carries it, under the `registry` step.
+  if (!poll) Object.assign(report.failures, registry.failures);
+  else
+    report.counts["registry:failures"] = Object.keys(registry.failures).length;
   await recordTick(env, db, {
     job: poll ? "connectorPoll" : "maintenance",
     cron: cron ?? null,

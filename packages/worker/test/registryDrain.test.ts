@@ -8,10 +8,12 @@
  *   - Distribution's materialiser renders through the adapters' renderers into R2 (one package,
  *     and `*` for every package), and consumes without rendering when nothing can render;
  *   - `dispatch` drains in `waitUntil` after a request that enqueued, and only then;
- *   - the cron (`runRegistryRenders`) drains and self-checks.
+ *   - a failing row counts its attempts and sits behind fresh rows;
+ *   - the cron (`runRegistryRenders`) drains and self-checks, and a render failure is the
+ *     `registry` step's, never the connector-poll tick's.
  */
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { NOW, TEST_KEK, seedProduct } from "./seed.js";
@@ -24,7 +26,9 @@ import type {
   ServiceRegistry,
 } from "../src/core/registry.js";
 import {
+  ENQUEUE_SQL,
   RENDER_ALL,
+  type RenderReason,
   drainRenderQueue,
   readRenderQueue,
   selfCheckRenders,
@@ -34,6 +38,9 @@ import {
 import { SERVICES } from "../src/mount.js";
 import { dispatch } from "../src/dispatch.js";
 import {
+  CONNECTOR_POLL_CRON,
+  MAINTENANCE_CRON,
+  handleScheduled,
   runRegistryRenders,
   type MaintenanceReport,
 } from "../src/scheduled.js";
@@ -131,6 +138,27 @@ const queued = async () =>
 const rendered = () => r2.keys().filter((k) => k.startsWith("registry/"));
 
 describe("watchRenderEnqueues", () => {
+  it("watches the exact SQL stmtEnqueuePackageRender writes (ENQUEUE_SQL)", () => {
+    const reasons: RenderReason[] = [
+      "publish",
+      "yank",
+      "unyank",
+      "deprecate",
+      "undeprecate",
+      "channel",
+      "settings",
+      "package-feeds",
+      "rebuild",
+    ];
+    for (const reason of reasons)
+      expect(
+        ENQUEUE_SQL.test(
+          stmtEnqueuePackageRender(OWNER, RENDER_ALL, reason, NOW).sql,
+        ),
+      ).toBe(true);
+    expect(ENQUEUE_SQL.test("DELETE FROM registry_render_queue")).toBe(false);
+  });
+
   it("flags a run or a batch that writes the render queue, and nothing else", async () => {
     const w = watchRenderEnqueues(db);
     await w.db.first("SELECT 1");
@@ -208,6 +236,49 @@ describe("Core's drain (drainRenderQueue)", () => {
     );
     expect(out.failed).toBe(1);
     expect(await queued()).toEqual(["a"]);
+  });
+
+  it("counts a failed row's attempts and reads it behind fresh rows; an enqueue resets it", async () => {
+    await enqueue("stuck", NOW - 100);
+    const failing = fake(async (_ctx, rows, consume) => {
+      for (const r of rows) if (r.deliverableId !== "stuck") await consume(r);
+      return { rendered: rows.length - 1, failed: 1 };
+    });
+    await drainRenderQueue(failing, { env, db, now: NOW });
+    await drainRenderQueue(failing, { env, db, now: NOW });
+    await enqueue("fresh", NOW);
+    const rows = await readRenderQueue(db, 100);
+    expect(rows.map((r) => [r.deliverableId, r.attempts])).toEqual([
+      ["fresh", 0],
+      ["stuck", 2],
+    ]);
+    // A batch of one renders the fresh row, not the older failing one.
+    const seen: string[] = [];
+    await drainRenderQueue(
+      fake(async (_ctx, list, consume) => {
+        for (const r of list) {
+          seen.push(r.deliverableId);
+          await consume(r);
+        }
+        return { rendered: list.length, failed: 0 };
+      }),
+      { env, db, now: NOW },
+      { limit: 1 },
+    );
+    expect(seen).toEqual(["fresh"]);
+    await enqueue("stuck", NOW + 1);
+    expect((await readRenderQueue(db, 100))[0]?.attempts).toBe(0);
+  });
+
+  it("counts every row of a product whose drain threw", async () => {
+    await enqueue("a");
+    await drainRenderQueue(
+      fake(async () => {
+        throw new Error("R2 down");
+      }),
+      { env, db, now: NOW },
+    );
+    expect((await readRenderQueue(db, 100))[0]?.attempts).toBe(1);
   });
 });
 
@@ -329,5 +400,22 @@ describe("the triggers", () => {
     });
     expect(report.timings?.registry).toBeDefined();
     expect(await queued()).toEqual([]);
+  });
+
+  it("a render failure is the registry step's: it never fails a connector-poll tick", async () => {
+    await seedNpmPackage("npm.sdk", "@acme/sdk");
+    await enqueue("npm.sdk");
+    vi.spyOn(r2, "put").mockRejectedValue(new Error("R2 down"));
+    const report = await handleScheduled(env, db, CONNECTOR_POLL_CRON);
+    expect(Object.keys(report.failures)).toEqual([]);
+    expect(report.counts).toMatchObject({
+      "registry:failed": 1,
+      "registry:failures": 1,
+    });
+    expect(await queued()).toEqual(["npm.sdk"]);
+    // The nightly maintenance tick reports it, under the `registry` step.
+    await expect(handleScheduled(env, db, MAINTENANCE_CRON)).rejects.toThrow(
+      /registry: 1 render\(s\) failed and stay queued/,
+    );
   });
 });

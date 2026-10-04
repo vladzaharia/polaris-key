@@ -14,6 +14,10 @@
  * rows with their generations, renders, and deletes each row only if its generation is still the
  * one it read (`stmtConsumeRender`), so an enqueue that lands mid-render is never lost and a crash
  * leaves the row for the next drain.
+ *
+ * A row whose render fails stays queued with its `attempts` counted (`stmtRenderFailed`), and the
+ * drain reads fewest-attempts first, so a package that keeps failing never holds the head of the
+ * queue ahead of fresh changes; an enqueue resets the count (0058_f).
  */
 
 import type { Env } from "../env.js";
@@ -54,7 +58,8 @@ export function stmtEnqueuePackageRender(
           ON CONFLICT(product, deliverable_id) DO UPDATE SET
             reason = excluded.reason,
             enqueued_at = excluded.enqueued_at,
-            generation = registry_render_queue.generation + 1`,
+            generation = registry_render_queue.generation + 1,
+            attempts = 0`,
     params: [product, deliverableId, reason, now],
   };
 }
@@ -77,9 +82,14 @@ export interface QueuedRender {
   reason: string;
   enqueuedAt: number;
   generation: number;
+  /** Failed renders of this row since it was last enqueued. */
+  attempts: number;
 }
 
-/** The oldest queued renders, at most `limit` (the drain's batch). */
+/**
+ * The next queued renders, at most `limit` (the drain's batch): rows that have failed least
+ * first, then oldest first, so failing rows sit behind fresh ones and cannot block the head.
+ */
 export async function readRenderQueue(
   db: Db,
   limit: number,
@@ -90,10 +100,11 @@ export async function readRenderQueue(
     reason: string;
     enqueued_at: number;
     generation: number;
+    attempts: number;
   }>(
-    `SELECT product, deliverable_id, reason, enqueued_at, generation
+    `SELECT product, deliverable_id, reason, enqueued_at, generation, attempts
        FROM registry_render_queue
-      ORDER BY enqueued_at ASC, product ASC, deliverable_id ASC
+      ORDER BY attempts ASC, enqueued_at ASC, product ASC, deliverable_id ASC
       LIMIT ?`,
     limit,
   );
@@ -103,6 +114,7 @@ export async function readRenderQueue(
     reason: r.reason,
     enqueuedAt: r.enqueued_at,
     generation: r.generation,
+    attempts: r.attempts,
   }));
 }
 
@@ -110,6 +122,18 @@ export async function readRenderQueue(
 export function stmtConsumeRender(q: QueuedRender): DbStatement {
   return {
     sql: `DELETE FROM registry_render_queue
+           WHERE product = ? AND deliverable_id = ? AND generation = ?`,
+    params: [q.product, q.deliverableId, q.generation],
+  };
+}
+
+/**
+ * Count a failed render on a row, only if nothing re-enqueued it since the drain read
+ * `generation` (a re-enqueue already reset the count and names a new state).
+ */
+export function stmtRenderFailed(q: QueuedRender): DbStatement {
+  return {
+    sql: `UPDATE registry_render_queue SET attempts = attempts + 1
            WHERE product = ? AND deliverable_id = ? AND generation = ?`,
     params: [q.product, q.deliverableId, q.generation],
   };
@@ -164,9 +188,22 @@ export async function drainRenderQueue(
     if (list) list.push(r);
     else byProduct.set(r.product, [r]);
   }
+  const consumed = new Set<QueuedRender>();
   const consume = async (row: QueuedRender): Promise<void> => {
     const s = stmtConsumeRender(row);
     await ctx.db.run(s.sql, ...s.params);
+    consumed.add(row);
+  };
+  // Every row of a product the drain did not consume failed: count it, so it moves behind fresh
+  // rows. Best effort; a write that fails here only leaves the row where it was.
+  const countFailures = async (
+    list: readonly QueuedRender[],
+  ): Promise<void> => {
+    for (const row of list) {
+      if (consumed.has(row)) continue;
+      const s = stmtRenderFailed(row);
+      await ctx.db.run(s.sql, ...s.params).catch(() => undefined);
+    }
   };
   for (const [slug, list] of byProduct) {
     try {
@@ -190,8 +227,10 @@ export async function drainRenderQueue(
       );
       report.rendered += out.rendered;
       report.failed += out.failed;
+      await countFailures(list);
     } catch {
       report.failed += 1;
+      await countFailures(list);
     }
   }
   return report;
@@ -233,7 +272,7 @@ export async function selfCheckRenders(
   return { rerendered: budget - left, failures };
 }
 
-const ENQUEUE_SQL = /^\s*INSERT\s+INTO\s+registry_render_queue\b/i;
+export const ENQUEUE_SQL = /^\s*INSERT\s+INTO\s+registry_render_queue\b/i;
 
 /**
  * `db`, watched for render enqueues: `enqueued()` answers whether any statement run through it
