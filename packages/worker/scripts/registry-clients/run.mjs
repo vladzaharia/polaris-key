@@ -6,7 +6,8 @@
  *   node scripts/registry-clients/run.mjs [--client <name>]... [--port <n>]
  *
  *   1. a fresh local state directory (D1, R2, KV) under the OS temp dir;
- *   2. `seed.mjs`: every migration, then the fixture owner;
+ *   2. `seed.mjs`: every migration, then the fixture owner; then every ecosystem's fixture
+ *      packages (`fixtures.mjs`, `fixtures/<ecosystem>.mjs`);
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
  *      request the clients make arrives on the registry host (`core/registryHost.ts`);
  *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin)
@@ -23,6 +24,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
+import { seedFixtures } from "./fixtures.mjs";
 import { FIXTURE_OWNER, seed } from "./seed.mjs";
 
 const CLIENTS = join(WORKER, "scripts", "registry-clients", "clients");
@@ -73,6 +75,7 @@ let dev = null;
 let failed = 0;
 try {
   seed(state);
+  await seedFixtures(state, FIXTURE_OWNER);
   dev = spawn(
     WRANGLER,
     [

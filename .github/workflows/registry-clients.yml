@@ -38,6 +38,14 @@ jobs:
         include:
           - client: curl
             os: ubuntu-latest
+          # Maven feed (F-07): Gradle 8.x and 9.x through exclusiveContent, Maven 3.9 with
+          # checksum policy fail. Each runs in its official container (Docker on the runner).
+          - client: gradle8
+            os: ubuntu-latest
+          - client: gradle9
+            os: ubuntu-latest
+          - client: maven
+            os: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       # No `version:` here: the action reads `packageManager` from package.json.
