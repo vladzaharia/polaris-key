@@ -39,7 +39,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class StageMatrixTest {
+class StageMatrixTest : ConformanceSuite() {
     private val matrix = Corpus.v2("stage-matrix.json")
 
     private fun strings(e: JsonElement?) = e!!.arrayValue!!.map { it.stringValue!! }

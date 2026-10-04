@@ -4,9 +4,11 @@
 //     :core         polaris-key-core: JWS + Ed25519 verification, the signed-document types, the
 //                   trust set, the verified cache and clock floor, transport, discovery, sync,
 //                   capabilities, the boot stage machine and the generated constants (P6-06)
-//     :license :config :identity :release      (P6-07)
+//     :license :config :identity :release      (P6-07) the service modules; each depends on :core
+//                   only, never on a sibling (checkModuleBoundaries)
 //     :update :packs                            (P6-08)
-//     :sdk          the umbrella client          (P6-07)
+//     :sdk          polaris-key-sdk, the umbrella PolarisKeyClient (P6-07): the one place the
+//                   service modules meet, re-exported through `api`, so it is the one-line dependency
 //   Android libraries:
 //     :platform     polaris-key-platform-{play,direct}, the shared Android backend (install
 //                   source, Keystore, Play Integrity, and per flavour Play In-App Updates + Play
@@ -43,6 +45,11 @@ dependencyResolutionManagement {
 rootProject.name = "polaris-key-kotlin"
 
 include(":core")
+include(":license")
+include(":config")
+include(":identity")
+include(":release")
+include(":sdk")
 include(":conformance")
 
 val jvmOnly = providers.gradleProperty("pkey.jvmOnly").orNull == "true"

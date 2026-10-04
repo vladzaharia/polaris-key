@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonNull
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class FingerprintTest {
+class FingerprintTest : ConformanceSuite() {
     private val corpus = Corpus.v2("fingerprint.json")
 
     private fun rows(name: String) = corpus[name]!!.arrayValue!!.map { it.obj }

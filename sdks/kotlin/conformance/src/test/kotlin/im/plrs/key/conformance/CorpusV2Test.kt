@@ -50,14 +50,13 @@ import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Test
 
-class CorpusV2Test {
+class CorpusV2Test : ConformanceSuite() {
     companion object {
         private lateinit var corpus: JsonObject
 
         @BeforeClass
         @JvmStatic
         fun load() {
-            Corpus.backend
             corpus = Corpus.v2("cases.json")
         }
 

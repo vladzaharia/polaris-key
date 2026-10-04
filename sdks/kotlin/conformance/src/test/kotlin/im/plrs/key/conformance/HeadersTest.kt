@@ -22,7 +22,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class HeadersTest {
+class HeadersTest : ConformanceSuite() {
     private val corpus = Corpus.v2("headers.json")
 
     private fun fold(s: String) = buildString { for (c in s) append(if (c in 'A'..'Z') c + 32 else c) }

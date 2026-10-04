@@ -384,14 +384,16 @@ jobs:
             sdks/godot/build/ios_export_check/logs/
             sdks/godot/build/logs/
 
-  # The Kotlin SDK's JVM modules (sdks/kotlin, P6-06): :core's unit suites and the :conformance
+  # The Kotlin SDK's JVM modules (sdks/kotlin, P6-06, P6-07): the unit suites of :core, the service
+  # modules (:license, :config, :identity, :release) and the umbrella :sdk, and the :conformance
   # runner, which reads conformance/corpus/v2/ and conformance/transcripts/ in place and runs every
   # suite on the JCA Ed25519 backend and again with Tink forced. JDK 17 only: -Ppkey.jvmOnly leaves
-  # the Android modules out, so no Android SDK is needed. checkModuleBoundaries proves :core has no
-  # Android dependency (the android job proves :platform depends on no SDK module), and the
-  # local maven-publish step writes build/repo only (no signing, no remote repository).
+  # the Android modules out, so no Android SDK is needed. checkModuleBoundaries proves no JVM module
+  # has an Android dependency and each service module sees :core only (the android job proves
+  # :platform depends on no SDK module), and the local maven-publish step writes build/repo only
+  # (no signing, no remote repository).
   kotlin:
-    name: Kotlin SDK (core + conformance runner)
+    name: Kotlin SDK (JVM modules + conformance runner)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -406,18 +408,20 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-      - name: Core tests, conformance (JCA and Tink), module boundaries, local publish
+      - name: Module tests, conformance (JCA and Tink), module boundaries, local publish
         working-directory: sdks/kotlin
         run: >-
-          ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :conformance:test checkModuleBoundaries
-          :core:publishCorePublicationToLocalRepository
+          ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
+          :release:test :sdk:test :conformance:test checkModuleBoundaries
+          :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
+          :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
+          :release:publishReleasePublicationToLocalRepository :sdk:publishSdkPublicationToLocalRepository
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: kotlin-reports
           path: |
-            sdks/kotlin/core/build/reports/
-            sdks/kotlin/conformance/build/reports/
+            sdks/kotlin/*/build/reports/
 
   # P5-06/P6-09: the Android platform AAR (sdks/kotlin :platform, polaris-key-platform-{play,direct})
   # and the Godot Android binding (sdks/godot/native/android, built as :godot), on JDK 17 and the
