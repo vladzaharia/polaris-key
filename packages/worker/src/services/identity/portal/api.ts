@@ -1,4 +1,4 @@
-import { platformFromFileName } from "@polaris-key/manifest";
+import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
@@ -62,7 +62,16 @@ import {
   handleDeviceRename,
   handleKeyReissue,
 } from "./selfService.js";
-import { portalEmailConfigured, sendPortalNotice } from "./email.js";
+import {
+  portalEmailConfigured,
+  sendNotice,
+  sendSecurityNotice,
+} from "./email.js";
+import {
+  accountDeletedNotice,
+  deviceRemovedNotice,
+  downloadLinkEmail,
+} from "./notices.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
@@ -467,13 +476,14 @@ async function handleMeDelete(
     5,
   );
   if (limited) return limited;
-  await sendPortalNotice(
+  // Every verified address hears about it, like any security change (PORTAL.md §6.3): the
+  // recipients are read here, while the rows that name them still exist.
+  await sendSecurityNotice(
     env,
+    db,
+    session.accountId,
     account.primary_email ?? session.email,
-    "Your Polaris Key account has been deleted",
-    "Your Polaris Key portal account, its email addresses and its license links have been " +
-      "erased at your request. Licenses issued to you by a product remain that product's " +
-      "records; contact the product's support to have those erased.",
+    accountDeletedNotice({ origin: new URL(req.url).origin }),
   );
   await deletePortalAccount(db, session.accountId, now);
   return portalJson({ ok: true, deleted: session.accountId }, 200, {
@@ -586,11 +596,19 @@ async function handleDeviceDelete(
     summary: `Disconnected device ${deviceId}`,
     now,
   });
-  await sendPortalNotice(
+  // A security notice (PORTAL.md §6.3): every verified address, the device by its label and
+  // the product by its name, never the ids.
+  await sendSecurityNotice(
     env,
+    db,
+    session.accountId,
     session.email,
-    "Device disconnected",
-    `Device ${deviceId} was disconnected from your ${product} license.`,
+    deviceRemovedNotice({
+      deviceLabel: device.label,
+      productName: (await getProduct(db, product))?.name,
+      productSlug: product,
+      origin: new URL(req.url).origin,
+    }),
   );
   return portalJson({ ok: true, deviceId });
 }
@@ -770,6 +788,78 @@ async function handleReleases(
   return portalJson({ url: `/download/${encodeURIComponent(token)}` }, 201);
 }
 
+/**
+ * `POST /api/products/<product>/email-download` `{ platform }` — G23, "Email me the download".
+ *
+ * Someone browsing on a phone asks for the desktop build; the Worker mails the account's own
+ * address a deep link to `#/p/<product>/download?platform=<platform>`. The link is the app
+ * route, not a download token: it carries no credential, works only for whoever signs in, and
+ * so cannot be replayed from a forwarded or leaked email.
+ *
+ * Gated like the downloads it points at — portal on, release downloads on, the product running
+ * Release, a license for it linked to the account — and every refusal before the send is the
+ * same 404, so the route says nothing about products the caller has no license for. The rate
+ * limit lands after ownership is proven (R5-05), in the product's shard, and is small and
+ * hourly: it is a mail-sending surface, so its bucket fails closed (`core/rateLimit.ts`).
+ */
+async function handleEmailDownload(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  product: string,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "POST") return err(405, "method_not_allowed");
+  const body = await readBody(req);
+  const platform = typeof body.platform === "string" ? body.platform : "";
+  if (!(RELEASE_PLATFORMS as readonly string[]).includes(platform)) {
+    return err(422, ErrorCode.BadRequest, "unknown platform");
+  }
+  const productRow = await getProduct(db, product);
+  if (!productRow) return notFound();
+  const settings = await getPortalProductSettings(db, product);
+  if (
+    settings.portal_enabled !== 1 ||
+    settings.releases_enabled !== 1 ||
+    !releaseServiceEnabled(productRow.services_json)
+  ) {
+    return notFound();
+  }
+  if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
+    return notFound();
+  }
+  if (!portalEmailConfigured(env)) {
+    return err(503, "email_not_configured", "email is not configured");
+  }
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalEmailDownload",
+    now,
+    EMAIL_DOWNLOAD_PER_HOUR,
+    product,
+    3600,
+  );
+  if (limited) return limited;
+  const account = await getPortalAccount(db, session.accountId);
+  await sendNotice(
+    env,
+    account?.primary_email ?? session.email,
+    downloadLinkEmail({
+      productName: productRow.name,
+      productSlug: product,
+      platform,
+      origin: new URL(req.url).origin,
+    }),
+  );
+  return portalJson({ ok: true }, 202);
+}
+
+/** "Email me the download" sends per account, per product, per hour. */
+export const EMAIL_DOWNLOAD_PER_HOUR = 5;
+
 export async function handlePortalApi(
   req: Request,
   env: Env,
@@ -894,6 +984,14 @@ export async function handlePortalApi(
       now,
       hooksFor,
     );
+  if (
+    head === "products" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "email-download"
+  ) {
+    return handleEmailDownload(req, env, db, session, rest[0], now);
+  }
   return notFound();
 }
 

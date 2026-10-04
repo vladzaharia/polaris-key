@@ -216,6 +216,35 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   the R6 audit findings' `R6-12` for the redirect allowlist, and
   the R9 audit findings' `R9-05b` (the redemption used to be read-then-write, not
   compare-and-swap) for the atomic single-use fix.
+- **`POST /api/products/<product>/email-download`** — `{ "platform": "macos" }` (one of
+  `macos`, `ios`, `android`, `windows`, `linux`, `web`). Emails the account's own address a link
+  to that product's download for that platform, so someone browsing on a phone can pick it up on
+  their computer. The link is the signed-in app's `#/p/<product>/download?platform=…` route, never
+  a download token, so a forwarded email opens a sign-in and nothing more. It needs a license for
+  the product linked to the account, portal release downloads on and the Release service on
+  (otherwise `404`, the same answer as an unknown product). It answers `422` for an unknown
+  platform, `503 email_not_configured` without an `EMAIL` binding, and `202` when sent. Limited
+  to 5 an hour per account and product; the bucket fails closed.
+
+## Emails
+
+Every email is from **Polaris Key** (`PORTAL_EMAIL_FROM`, default `Polaris Key <noreply@plrs.im>`)
+and calls the service "Polaris Key", never "the portal". It names the product and the device by
+their names, not their slugs or ids, and links to the exact section of the signed-in app:
+
+| Email                | Subject (example)                           | Links to                           | Goes to                |
+| -------------------- | ------------------------------------------- | ---------------------------------- | ---------------------- |
+| Sign-in link         | Sign in to Polaris Key                      | `/magic/verify?token=…`            | the address typed      |
+| License added by key | Mossgarden is in your library               | `#/p/<product>`                    | the session's address  |
+| Download link        | Download Mossgarden for macOS               | `#/p/<product>/download?platform=` | the account's address  |
+| Device removed       | Studio PC was removed from Tidewater Studio | `#/p/<product>/devices`            | every verified address |
+| Account deleted      | Your Polaris Key account has been deleted   | nothing                            | every verified address |
+
+The security notices (a device removed, and the sign-in method and new-device templates the
+identity-linking work sends) carry "Wasn't you? Secure your account" and go to **every verified
+email on the account**, one message per address. No link but the sign-in link carries a token.
+Each message has a plain-text part and a branded HTML part (table layout, inline colours, a dark
+palette for clients that honour `prefers-color-scheme`).
 
 ## Per-product portal settings
 

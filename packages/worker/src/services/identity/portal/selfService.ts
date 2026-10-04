@@ -59,7 +59,13 @@ import {
   type PortalLicenseRow,
 } from "./repo.js";
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
-import { sendPortalNotice } from "./email.js";
+import { sendNotice } from "./email.js";
+import {
+  licenseAddedNotice,
+  licenseAttachedNotice,
+  licenseKeyReplacedNotice,
+  type NoticeMessage,
+} from "./notices.js";
 import {
   err,
   notFound,
@@ -380,23 +386,26 @@ export async function handleClaimKey(
     summary: "Claimed license with a license key",
     now,
   });
-  await sendPortalNotice(
+  // The claim has committed: a mail failure must not turn it into an error (PX-W7 review).
+  const origin = new URL(req.url).origin;
+  await sendQuietly(
     env,
     session.email,
-    "License added to your Polaris Key account",
-    `A license for ${product.name} was added to your Polaris Key account.`,
+    licenseAddedNotice({
+      productName: product.name,
+      productSlug: product.slug,
+      origin,
+    }),
   );
   // S-16: each attach notifies the licence's own email too, when it is a different address.
   if (
     license.email &&
     normalizeEmail(license.email) !== normalizeEmail(session.email)
   ) {
-    await sendPortalNotice(
+    await sendQuietly(
       env,
       license.email,
-      "Your license was added to a Polaris Key account",
-      `Your ${product.name} license was added to a Polaris Key account with its license key. ` +
-        "If that wasn't you, contact the developer.",
+      licenseAttachedNotice({ productName: product.name, origin }),
     );
   }
   const portalRow = await getPortalLicense(
@@ -564,27 +573,32 @@ export async function handleKeyReissue(
     summary: `Issued a new license key; ${revoked} old key${revoked === 1 ? "" : "s"} revoked`,
     now,
   });
-  const notice =
-    `A new license key for ${license.product_name} was made in your Polaris Key account. ` +
-    "The old key no longer activates new devices; devices already using the product keep working. " +
-    "If this wasn't you, sign in and get a new key again, then contact the developer.";
-  await sendPortalNotice(
-    env,
-    session.email,
-    "Your license has a new key",
-    notice,
-  );
+  const notice = licenseKeyReplacedNotice({
+    productName: license.product_name,
+    productSlug: product,
+    origin: new URL(req.url).origin,
+  });
+  await sendQuietly(env, session.email, notice);
   if (
     license.email &&
     normalizeEmail(license.email) !== normalizeEmail(session.email)
   ) {
-    await sendPortalNotice(
-      env,
-      license.email,
-      "Your license has a new key",
-      notice,
-    );
+    await sendQuietly(env, license.email, notice);
   }
   // Shown ONCE: the raw key is in this response and nowhere else; only its hash is stored.
   return portalJson({ key, hash, revokedKeys: revoked, createdAt: now }, 201);
+}
+
+/** A notice after a committed change: a failed send is swallowed (the worker has no console
+ *  logging, R12), so mail trouble never reports a done change as failed. */
+async function sendQuietly(
+  env: Env,
+  to: string | null | undefined,
+  message: NoticeMessage,
+): Promise<void> {
+  try {
+    await sendNotice(env, to, message);
+  } catch {
+    // Deliberately ignored; see above.
+  }
 }

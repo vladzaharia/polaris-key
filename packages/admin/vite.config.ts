@@ -31,6 +31,18 @@ const BRAND_WEB_FILES: readonly string[] = [
 ];
 
 /**
+ * The kit's horizontal Polaris Key lockup as 2x PNGs, for the Worker's branded emails
+ * (packages/worker/src/services/identity/portal/email.ts; BRAND.md §2 "Emails": mail clients do
+ * not render SVG reliably, so email uses the kit PNGs). Served next to the web identity, from
+ * `@polaris-key/brand/lockups/key/`: `light` (for light grounds) is the default, `dark` (for dark
+ * grounds) is swapped in by the email's dark palette.
+ */
+const BRAND_LOCKUP_FILES: readonly string[] = [
+  "key-horizontal-light-944.png",
+  "key-horizontal-dark-944.png",
+];
+
+/**
  * Rubik (the brand package's WOFF2 files and their licence) at a stable, unhashed path, for the
  * Worker's server-rendered pages (packages/worker/src/core/brandHtml.ts): their stylesheet is a
  * build constant allowed by its hash, so it cannot follow Vite's content-hashed font names. The
@@ -55,6 +67,12 @@ const brandWebKey = dirname(
   ),
 );
 
+const brandLockupKey = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/lockups/key/key-horizontal-light-944.png",
+  ),
+);
+
 const CONTENT_TYPES: Record<string, string> = {
   svg: "image/svg+xml",
   ico: "image/x-icon",
@@ -70,6 +88,7 @@ const BRAND_DIRS: readonly {
   from: string;
 }[] = [
   { dir: BRAND_WEB_DIR, files: BRAND_WEB_FILES, from: brandWebKey },
+  { dir: BRAND_WEB_DIR, files: BRAND_LOCKUP_FILES, from: brandLockupKey },
   { dir: BRAND_FONT_DIR, files: BRAND_FONT_FILES, from: brandFonts },
 ];
 

@@ -4000,6 +4000,38 @@ CSRF header like every other portal mutation.
   control or format characters (no bidirectional overrides that make one name render as another);
   owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
 
+### Portal emails: security notices and "Email me the download" (PX-W7)
+
+The portal mails its account holders when something changes (`services/identity/portal/
+notices.ts`), and on request mails them a download link (`POST /api/products/<p>/email-download`,
+PORTAL.md G23). Assets: the account (A6) and the shared sender's reputation and quota.
+
+- **Security notices go to every verified address.** A device removed from a license, and the
+  sign-in-method and new-device templates the identity-linking work wires (PX-W12, PX-W14), go
+  to every address in `portal_account_emails` with `verified_at > 0`, one message each, so no
+  recipient learns the others. Someone who has taken over one inbox, or a live session, cannot
+  make a change the account's other addresses do not hear about. Account deletion does the same,
+  reading the recipients before the rows are erased. A failed send is caught per recipient (the
+  worker has no console logging; the helper returns how many went out), so mail trouble never fails the removal or deletion it reports.
+  Residual: the session's own address is also mailed, and after an IdP sign-in that address may
+  not be a verified `portal_account_emails` row (a brand-new account may have none yet), so an
+  unverified address can receive a security notice, as before this change.
+- **No credential in any link.** Every notice links to a route of the signed-in app (`#/p/<p>`,
+  `#/p/<p>/devices`, `#/p/<p>/download?platform=`, `#/account/methods`). The emailed download
+  link is the app route, not a `/download/<token>`: a forwarded, logged or leaked email opens a
+  sign-in, never a file or a session. Only the magic link carries a token, unchanged (I-02).
+- **Display values are hostile.** A device label is whatever an app sent, and a product name the
+  operator's. `displayValue` removes control, line-separator and bidirectional-override
+  characters and bounds the length before a value reaches a subject or sentence; `renderEmail`
+  HTML-escapes on top. Residual: a label can still say something misleading in plain words
+  ("Polaris Key support"), within 64 characters; the fixed copy around it does not change.
+- **The download mailer is not a mail cannon.** The recipient is always the session account's own
+  primary address, never one from the request; the route needs a session, the CSRF header, a
+  license for the product linked to the account and the product's release downloads on, and
+  answers each of those refusals with the same 404. Sends are limited to 5 an hour per account
+  and product, charged after ownership is proven, in the `portalEmailDownload` bucket, which
+  fails closed (a limiter outage refuses the send).
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

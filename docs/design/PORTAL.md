@@ -1159,6 +1159,16 @@ accounts were joined". Security emails (method added or removed, device approved
 always go to every verified email on the account and carry "Wasn't you? Secure your account". The
 emails use the kit PNG lockup and no "Powered by" badge.
 
+PX-W7 implementation note (2026-10-04): the header is the kit's horizontal lockup PNG,
+`/lockups/key/key-horizontal-{light,dark}-944.png` shown at 472 × 160 with `alt="Polaris Key"`
+(BRAND.md §2 "Emails"), served from the console origin's `/assets/branding/key/`
+(`packages/admin/vite.config.ts` emits it next to the web icons). The email ground is light, so
+the `light` variant (for light backgrounds) is the default, and the email's dark palette swaps in
+the `dark` variant for the clients that apply `prefers-color-scheme` (BRAND.md's example names
+the `dark` file; on the light ground its white wordmark would vanish). A client that inverts the
+ground without honouring the palette can still dim the `light` wordmark; that is the residual
+risk. With no usable `https` origin a text wordmark stands in.
+
 ### 6.4 Error copy
 
 Errors say what happened, in the user's terms, and the next step. Map every flat error code the API
@@ -1244,8 +1254,12 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
 `DELETE /api/licenses/:p/:id/devices/:deviceId`, `GET /api/releases`,
 `POST /api/releases/:p/:r/artifacts/:a/token`, `GET /download/<token>`, plus `/login`,
 `/callback`, `/logout`, `/magic/verify` and `POST /api/magic/start`. All are root paths on
-`key.plrs.im`; the routes are in the OpenAPI spec and `routeCoverage` (`portalApi`,
-`portalDownload`, …), so **rule 10 applies to every new route**.
+`key.plrs.im`; the route kinds are in `routeCoverage` (`portalApi`,
+`portalDownload`, …) as **narrative-only**: the OpenAPI spec covers the product-scoped wire and
+must not list `/api/*` (the coverage test fails on a path outside its expected set), so **rule 10
+for every new portal route means documenting it on the docs site's portal page**
+(`packages/docs/src/content/docs/services/identity/portal.md`) (corrected by PX-W7 against the
+code).
 
 ### 10.2 Gaps the Worker must close
 

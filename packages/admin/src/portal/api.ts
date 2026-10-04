@@ -253,6 +253,12 @@ export const portalApi = {
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
   releases: () => call<{ releases: PortalRelease[] }>("/api/releases"),
+  /** G23: email the account's own address a link to this product's download for `platform`. */
+  emailDownload: (product: string, platform: string) =>
+    call<{ ok: true }>(`/api/products/${enc(product)}/email-download`, {
+      method: "POST",
+      body: JSON.stringify({ platform }),
+    }),
   downloadToken: (product: string, releaseId: string, artifactId: string) =>
     call<{ url: string }>(
       `/api/releases/${enc(product)}/${enc(releaseId)}/artifacts/${enc(artifactId)}/token`,
