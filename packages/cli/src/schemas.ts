@@ -4,8 +4,8 @@
  * editor in a repository with no `node_modules` — a Godot project — can point its
  * `yaml-language-server: $schema=` header at a vendored copy.
  *
- * Two sources, one answer: the standalone bundle (`actions/publish/dist/index.js`, attached to
- * GitHub releases as `pkey.mjs`) carries the schemas inlined at bundle time as
+ * Two sources, one answer: the standalone bundle (`actions/publish/dist/index.js`, shipped in the
+ * `pkey` image as `pkey.mjs`) carries the schemas inlined at bundle time as
  * `__PKEY_EMBEDDED_SCHEMAS__`; the npm-installed CLI reads them from the installed
  * `@polaris-key/manifest` package.
  */

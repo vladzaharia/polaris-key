@@ -104,18 +104,27 @@ refusal fails the step with the server's reason as an error annotation.
 
 ### Without the Action
 
-The same command runs anywhere Node 20 or later does. In a repository with no `node_modules` (a
-Godot project), download `pkey.mjs` from the `@polaris-key/cli` GitHub release and run it
-directly; it is the Action's own bundle:
+The same command runs anywhere Node 20 or later does. The CLI is published to Polaris Key's own
+package feeds (see [Install from the feeds](/docs/build/install-from-feeds/)), so a repository
+with no `node_modules` (a Godot project) points the `@polaris-key` scope at the npm feed and runs
+it with `npx`:
 
 ```sh
-node pkey.mjs release publish --product your-product --tag "$GITHUB_REF_NAME" \
-  --channel beta --dir dist --meta builds.json
+echo "@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/" >> ~/.npmrc
+npx --yes -p @polaris-key/cli pkey release publish --product your-product \
+  --tag "$GITHUB_REF_NAME" --channel beta --dir dist --meta builds.json
 ```
 
-`node pkey.mjs validate` checks `.pkey/` locally the same way, and
-`node pkey.mjs manifest schemas --out .pkey/schemas` vendors the manifest JSON Schemas, so an
-editor's `yaml-language-server: $schema=` header can point at a local copy.
+Pin a version with `-p @polaris-key/cli@<version>`. `npx -p @polaris-key/cli pkey validate` checks
+`.pkey/` locally the same way, and `npx -p @polaris-key/cli pkey manifest schemas --out
+.pkey/schemas` vendors the manifest JSON Schemas, so an editor's `yaml-language-server: $schema=`
+header can point at a local copy.
+
+The [`pkey` image](/docs/build/install-from-feeds/#the-pkey-image),
+`pkg.plrs.im/polaris-key/pkey`, carries the same CLI with Node 22 for jobs that run containers:
+mount the project at `/work` (`docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest
+validate`). To publish from inside it, pass the job's `GITHUB_*` and `ACTIONS_ID_TOKEN_REQUEST_*`
+variables through, since the OIDC exchange reads them.
 
 ## What the step does
 

@@ -878,8 +878,8 @@ Validate portal email:
 - DJDL product secrets are configured.
 - DJDL SDK/app has the returned trust key pinned.
 - CI deploys production from semver tags only.
-- The GitHub environment `package-registry` admits only the release tag patterns, holds the three
-  `SWIFT_REGISTRY_*` secrets, and a tag ruleset protects those patterns; `polaris-key`'s trusted
+- The GitHub environment `package-registry` admits the `main` branch and `v*` tags, holds the
+  three `SWIFT_REGISTRY_*` secrets, `main` is protected and a tag ruleset covers `v*` (§3); `polaris-key`'s trusted
   publisher is `publish-package.yml` in `package-registry`, and it holds the root `.pkey/`
   package deliverables.
 

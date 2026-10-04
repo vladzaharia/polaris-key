@@ -47,8 +47,10 @@ jobs:
           REF: ${{ github.ref }}
         run: |
           TAG="${REF#refs/tags/}"
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Production deploy tags must be semver vMAJOR.MINOR.PATCH" >&2
+          # The prerelease suffixes every SDK ecosystem can carry (tools/sdk-version.mjs: PyPI
+          # has no other spelling), so a tag that deploys is a tag every SDK publishes at.
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc|a|b)\.(0|[1-9][0-9]*))?$ ]]; then
+            echo "Production deploy tags are vMAJOR.MINOR.PATCH, optionally -alpha.N, -beta.N or -rc.N" >&2
             exit 1
           fi
           # R7-04: the tag NAME was the only gate, so a tag pointing at any commit — one

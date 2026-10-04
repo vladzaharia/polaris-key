@@ -19,7 +19,10 @@ after a prerelease tag, the version it heads for), and `<N>` is the number of co
 so every push to `main` publishes a version none before it took, and it always sorts after the last
 release and before the next one. Nobody chooses or edits a version: there are no Changesets, no
 version PRs and no per-SDK tags. A prerelease tag must be one PyPI can spell too: `-alpha.N`,
-`-beta.N` or `-rc.N`.
+`-beta.N` or `-rc.N` (`deploy.yml` refuses any other tag before it deploys). In SemVer order a
+`<next>-main.<N>` build sorts above `<next>-beta.<N>` and below `<next>-rc.<N>`; that is harmless,
+because `main` and `beta` are separate channels and the drift check compares a build only with
+builds of its own kind.
 
 The SDKs go to Polaris Key's own feeds and **nowhere else**: no npmjs, GitHub Packages, PyPI,
 Maven Central, Swift Package Index, Docker Hub, GHCR, Godot store or GitHub Release. The operator
@@ -37,7 +40,9 @@ committed tree: every public `packages/*/package.json` (and `pnpm pack` rewrites
 range to it, so the packages depend on each other at exactly this version),
 `sdks/python/pyproject.toml` (in its PEP 440 spelling), `POLARIS_SDK_VERSION` in Swift and Kotlin,
 `version` in `sdks/kotlin/build.gradle.kts` (the Godot Android binding shares it), and the Godot
-addon's `plugin.cfg` and `SDK_VERSION`. Each of those lines must exist exactly once, so a moved
+addon's `plugin.cfg` and `SDK_VERSION`, and `SDK_VERSION` in `packages/sdk-react/src/version.ts`
+(the browser bundle cannot read its `package.json`, so the npm job rebuilds after stamping). Each
+of those lines must exist exactly once, so a moved
 version line fails the publish instead of shipping a wrong version. The stamp is never committed:
 the versions in the tree are placeholders.
 

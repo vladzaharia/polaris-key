@@ -527,7 +527,14 @@ nothing to bump and no per-SDK tag:
 - **Drift:** the last job (`tools/feed-drift.mjs`) reads every package's listing back from its
   feed and fails unless its newest version of the build's kind is the build's version (npm's
   dist-tag and the image's tag included), naming each package that is behind. A failed publish
-  shows up here too; rerun the failed jobs, then the drift job.
+  shows up here too; rerun the failed jobs, then the drift job. npm's `latest` must be a stable
+  release: a prerelease there (no stable release yet) fails a `main` or `beta` build's check.
+- **Expected red, until the next `v*` deploy:** registration runs only from `deploy.yml` on a
+  tag (staging and dev have no deploy hook). So `main` pushes publish nothing that depends on a
+  registration no deploy has made yet: before the first deploy that registers the platform
+  packages every package publish is refused and the drift job is red, and after a `main` commit
+  adds a deliverable that one package is. Both go green with the next tag's deploy; nothing to
+  fix by hand.
 - **Swift signing:** the Swift job refuses to run without the three `SWIFT_REGISTRY_*` secrets
   and never publishes unsigned. To rotate the certificate, replace the secrets: new releases are
   signed with the new certificate, old releases keep their signatures, and adopters who trust
