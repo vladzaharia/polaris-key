@@ -1,7 +1,7 @@
 extends SceneTree
 ## Writes addons/polaris_key/ui/theme/pkey_theme.tres, the UI kit's default Theme, from the same
-## palette as React's `defaultTheme` (packages/sdk-react/src/components/theme.ts): deep-slate
-## surfaces, an indigo accent, and a 2 px focus ring on every interactive control so a gamepad or
+## deep-slate surfaces and indigo accent React's `defaultTheme` used before the 2026-10-04 neutral
+## default (packages/sdk-react/src/components/theme.ts), and a 2 px focus ring on every interactive control so a gamepad or
 ## TV player always sees where focus is. Editor only:
 ##
 ##   godot --headless --path sdks/godot --script tools/gen_theme.gd

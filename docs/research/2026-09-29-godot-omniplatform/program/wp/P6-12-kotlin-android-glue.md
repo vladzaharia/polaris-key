@@ -1,16 +1,16 @@
 # P6-12 Kotlin SDK Android glue: Keystore store, device inputs, outlet readers, update driver and Play pack transport
 
-| Field       | Value |
-| ----------- | ----- |
-| Phase       | P6: Commerce, ops, web |
-| Size | 1–1.5 engineer-weeks |
-| Depends on | [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md) |
-| Unblocks | [P6-05](P6-05-kotlin-sdk.md) |
-| Role | `pkey-sdk-porter` |
-| Plan mode   | no |
+| Field       | Value                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| Phase       | P6: Commerce, ops, web                                                                                 |
+| Size        | 1–1.5 engineer-weeks                                                                                   |
+| Depends on  | [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md)                        |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md)                                                                           |
+| Role        | `pkey-sdk-porter`                                                                                      |
+| Plan mode   | no                                                                                                     |
 | Gates       | `parity:check`, Robolectric and fake-based unit tests, the `android` CI job, `tools/check_flavours.sh` |
-| Human input | test devices and a Play Console internal test track for the device rows (recorded in the PR) |
-| Repo        | `vladzaharia/polaris-key` |
+| Human input | test devices and a Play Console internal test track for the device rows (recorded in the PR)           |
+| Repo        | `vladzaharia/polaris-key`                                                                              |
 
 Slice g of [P6-05](P6-05-kotlin-sdk.md). It is not in the owner's first sketch; the sketch left no
 home for the rows that need both the core and the platform module, and putting them in either
