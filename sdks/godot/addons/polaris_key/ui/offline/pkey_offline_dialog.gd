@@ -66,6 +66,7 @@ func _build() -> void:
 	_drop = label(box, "DropHint", "PKeyMuted")
 	_message = label(box, "Message")
 	var actions := hbox(box, "Actions")
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	_import = button(actions, "Import", _on_import, "PKeyPrimary")
 	_close = button(actions, "Close", func(): closed.emit())
 

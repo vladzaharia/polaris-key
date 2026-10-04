@@ -154,12 +154,6 @@ export function worthKeeping(
   return max !== null && frameBytes <= max;
 }
 
-/** The per-side cap from the `LAZY_DELTA_MAX_BYTES` var (a positive integer), else 32 MiB. */
-export function maxBytesFrom(raw: string | undefined): number {
-  const n = Number((raw ?? "").trim());
-  return Number.isSafeInteger(n) && n > 0 ? n : DEFAULT_LAZY_DELTA_MAX_BYTES;
-}
-
 /** The descriptor of a generated delta: the record's payload-delta shape plus `to`, `size` and
  *  the window. What the feed's delta menu will carry once its shape is planned (P4-17's
  *  Corrections: the menu is a wire change). */

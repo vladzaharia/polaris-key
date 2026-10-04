@@ -19,7 +19,9 @@ import {
   platformSettings,
   refreshPlatformSettings,
   resolveSetting,
+  isHardOffVar,
   settingConfirmLevel,
+  unrecognisedCeilingVars,
   validateSettingValue,
   type PlatformSettingDef,
 } from "../src/core/platformSettings.js";
@@ -674,7 +676,8 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
       value: 45,
       source: "deploy",
       stored: null,
-      version: 0,
+      // A tombstone keeps the count going: the version is never reused.
+      version: 2,
     });
     expect(await platformSetting(env, db, "BLOB_GC_GRACE_DAYS")).toBe(45);
     const latest = (await listPlatformAudit(db, { limit: 10 })).find(
@@ -731,5 +734,177 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
     expect(wrongMethod.status).toBe(405);
     expect(await db.all("SELECT key FROM platform_settings")).toEqual([]);
     expect(await listPlatformAudit(db, { limit: 10 })).toEqual([]);
+  });
+});
+
+describe("A-13 hardening", () => {
+  const row = (value: unknown) => ({
+    value,
+    version: 1,
+    updatedAt: NOW,
+    updatedBy: "admin-1",
+  });
+
+  it("ceiling: an unrecognised [vars] value is a hard off; `runtime`, `on` and unset are not", () => {
+    const d = def("LAZY_DELTAS");
+    for (const raw of ["false", "0", "disabled", "of", "no"]) {
+      expect(isHardOffVar(d, raw)).toBe(true);
+      expect(resolveSetting(d, raw, row("on"), true)).toMatchObject({
+        value: "off",
+        source: "deploy",
+        forcedOff: true,
+      });
+    }
+    for (const raw of ["runtime", " Runtime ", "on", undefined])
+      expect(isHardOffVar(d, raw)).toBe(false);
+    // A tunable is never hard-off by its var.
+    expect(isHardOffVar(def("BLOB_GC_GRACE_DAYS"), "false")).toBe(false);
+    expect(unrecognisedCeilingVars({ LAZY_DELTAS: "false" })).toEqual([
+      "LAZY_DELTAS",
+    ]);
+    expect(
+      unrecognisedCeilingVars({ LAZY_DELTAS: "off", BLOB_GC_MODE: "runtime" }),
+    ).toEqual([]);
+  });
+
+  it("the inventory warns on an unrecognised kill-switch value and the setting stays off", async () => {
+    const db = makeTestDb();
+    const env = adminEnv({ BLOB_GC_MODE: "disabled" });
+    await storeRow(db, "BLOB_GC_MODE", "on");
+    const res = await call(env, db, "/api/platform/settings");
+    const w = (res.body.warnings as { code: string; names: string[] }[]).find(
+      (x) => x.code === "ceiling_value_unrecognised",
+    );
+    expect(w?.names).toEqual(["BLOB_GC_MODE"]);
+    expect(
+      (res.body.settings as { key: string; value: unknown }[]).find(
+        (x) => x.key === "BLOB_GC_MODE",
+      )?.value,
+    ).toBe("off");
+  });
+
+  it("a stale expectedVersion from before a DELETE cannot pass (the version is never reused)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    const path = "/api/platform/settings/BLOB_GC_GRACE_DAYS";
+    await call(env, db, path, {
+      method: "PATCH",
+      body: { value: 3, expectedVersion: 0 },
+    });
+    await call(env, db, `${path}?expectedVersion=1`, { method: "DELETE" });
+    // The tombstone is at version 2; a client still holding 1 (or 0) is refused.
+    for (const stale of [0, 1]) {
+      const r = await call(env, db, path, {
+        method: "PATCH",
+        body: { value: 9, expectedVersion: stale },
+      });
+      expect(r.status).toBe(409);
+      expect(r.body.currentVersion).toBe(2);
+    }
+    // A reverted tombstone cannot be reverted again, and a fresh write carries the tombstone's version.
+    expect(
+      (await call(env, db, `${path}?expectedVersion=2`, { method: "DELETE" }))
+        .status,
+    ).toBe(404);
+    const ok = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: 9, expectedVersion: 2 },
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body.version).toBe(3);
+    expect(await platformSetting(env, db, "BLOB_GC_GRACE_DAYS")).toBe(9);
+  });
+
+  it("a tombstone is not applied and is listed with its version", async () => {
+    const db = makeTestDb();
+    const env = adminEnv({ BLOB_GC_GRACE_DAYS: "45" });
+    await db.run(
+      "INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by) VALUES ('BLOB_GC_GRACE_DAYS', 'null', 4, ?, 'seed')",
+      NOW,
+    );
+    const r = (await platformSettings(env, db, { fresh: true }))
+      .BLOB_GC_GRACE_DAYS;
+    expect(r).toMatchObject({
+      value: 45,
+      source: "deploy",
+      stored: null,
+      version: 4,
+    });
+  });
+
+  it("a write whose version moved before the read answers 409 and records no audit row", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    await storeRow(db, "BLOB_GC_GRACE_DAYS", 5, 3);
+    const r = await call(env, db, "/api/platform/settings/BLOB_GC_GRACE_DAYS", {
+      method: "PATCH",
+      body: { value: 7, expectedVersion: 2 },
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.currentVersion).toBe(3);
+    expect(await listPlatformAudit(db, { limit: 10 })).toHaveLength(0);
+  });
+
+  it("the setting and its audit row commit together: a failing audit insert rolls the write back", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    await db.run("DROP TABLE platform_audit");
+    await expect(
+      call(env, db, "/api/platform/settings/BLOB_GC_GRACE_DAYS", {
+        method: "PATCH",
+        body: { value: 7, expectedVersion: 0 },
+      }),
+    ).rejects.toThrow();
+    expect(
+      await db.first(
+        "SELECT 1 FROM platform_settings WHERE key = 'BLOB_GC_GRACE_DAYS'",
+      ),
+    ).toBeNull();
+  });
+
+  it("settingConfirmLevel and the confirm_required branch honour L2 and L3 on a synthetic definition", () => {
+    const sw = {
+      ...def("LAZY_DELTAS"),
+      confirm: { on: "L3", off: "L2" },
+    } as PlatformSettingDef;
+    expect(settingConfirmLevel(sw, "off", "on")).toBe("L3");
+    expect(settingConfirmLevel(sw, "on", "off")).toBe("L2");
+    expect(settingConfirmLevel(sw, "on", "on")).toBe("L0");
+    const int = {
+      ...def("BLOB_GC_GRACE_DAYS"),
+      confirm: { raise: "L2", lower: "L3" },
+    } as PlatformSettingDef;
+    expect(settingConfirmLevel(int, 10, 20)).toBe("L2");
+    expect(settingConfirmLevel(int, 20, 10)).toBe("L3");
+  });
+
+  it("an L2 definition 400s confirm_required until the key is typed", async () => {
+    // The handler resolves the entry through the registry's own object: swap its confirm levels
+    // in place for the duration of the test.
+    const real = platformSettingDef("BLOB_GC_GRACE_DAYS") as {
+      confirm: { raise: string; lower: string };
+    };
+    const original = real.confirm;
+    real.confirm = { raise: "L2", lower: "L3" };
+    try {
+      const db = makeTestDb();
+      const env = adminEnv();
+      const path = "/api/platform/settings/BLOB_GC_GRACE_DAYS";
+      const refused = await call(env, db, path, {
+        method: "PATCH",
+        body: { value: 60, expectedVersion: 0 },
+      });
+      expect(refused.status).toBe(400);
+      expect(refused.body.reason ?? refused.body.details?.reason).toBe(
+        "confirm_required",
+      );
+      const ok = await call(env, db, path, {
+        method: "PATCH",
+        body: { value: 60, expectedVersion: 0, confirm: "BLOB_GC_GRACE_DAYS" },
+      });
+      expect(ok.status).toBe(200);
+    } finally {
+      real.confirm = original;
+    }
   });
 });
