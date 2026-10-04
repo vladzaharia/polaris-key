@@ -101,7 +101,7 @@ Where the code disagreed with the brief or the plan, the code was the fact:
   list and archive with and without the token), and SwiftPM's own authenticated resolution is to
   be verified against `pkg-staging` over HTTPS after the deploy. The swiftlang compatibility
   suite has no credential option and runs against public feeds only.
-- The migration is `0062_registry_tokens.sql` (the next free number), and `LATEST_MIGRATION`
+- The migration is `0063_registry_tokens.sql` (the next free number after main's `0062_store_operations_plane.sql`), and `LATEST_MIGRATION`
   follows.
 
 ## Hand-off

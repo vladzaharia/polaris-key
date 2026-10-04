@@ -2,7 +2,7 @@
  * Building one App Store Connect connector run (P5-02): the setup, a client whose bearer token
  * comes from P5-01's `ascToken` (memoised per isolate, the credential opened — and audited under
  * `use` — only on a miss), and the per-key rate budget kept in KV between runs (Core's meter,
- * `core/asc/budget.ts`).
+ * `core/storefront/budget.ts`).
  */
 
 import type { Db, Env } from "../../../../core/platform.js";
@@ -16,7 +16,7 @@ import {
   AscWriteDenied,
   type FetchImpl,
 } from "../../../../core/asc/client.js";
-import { writeRate } from "../../../../core/asc/budget.js";
+import { writeRate } from "../../../../core/storefront/budget.js";
 import type { AscRun } from "./apply.js";
 import { ASC_PLATFORM_CREDENTIAL, type AscSetup } from "./setup.js";
 
@@ -63,14 +63,21 @@ export function ascRun(o: AscRunOptions): AscRun {
 }
 
 // ── The rate budget ──────────────────────────────────────────────────────────────────────────
-// The meter itself is Core's (`core/asc/budget.ts`, A-17a), shared with the platform team key's
+// The meter itself is Core's (`core/storefront/budget.ts`, A-17a), shared with the platform team key's
 // listing and A-17's provisioning flows; a product key's slot and the team key's one slot are
 // chosen there from the setup's credential reference.
 
 /** Record a run's outcome on the credential's health columns and keep its rate budget. */
 export async function finishRun(run: AscRun, error: unknown): Promise<void> {
   const cred = run.setup.credential;
-  await writeRate(run.env, run.product, cred, run.client.lastRate, run.now);
+  await writeRate(
+    run.env,
+    "app-store",
+    run.product,
+    cred,
+    run.client.lastRate,
+    run.now,
+  );
   // A write-gate refusal is the Worker's own decision, not the credential's health.
   if (run.client.calls === 0 && (!error || error instanceof AscWriteDenied))
     return;

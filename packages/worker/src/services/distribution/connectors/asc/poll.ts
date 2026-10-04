@@ -73,7 +73,7 @@ import {
   isBackgroundAssetInstanceType,
 } from "./map.js";
 import { ascRun, finishRun } from "./run.js";
-import { pollBudget, readRate } from "../../../../core/asc/budget.js";
+import { pollBudget, readRate } from "../../../../core/storefront/budget.js";
 import { ASC_CONNECTOR, resolveAscSetup } from "./setup.js";
 
 /** How many App Store versions / builds one tick reads (newest first). */
@@ -102,7 +102,7 @@ export async function pollAsc(ctx: ConnectorContext): Promise<PollOutcome> {
     };
 
   const budget = pollBudget(
-    await readRate(env, product.slug, setup.credential, now),
+    await readRate(env, "app-store", product.slug, setup.credential, now),
   );
   if (budget === "skip") return { ...out, skipped: "rate-budget" };
 

@@ -4,8 +4,8 @@
  * the write gate, the operation ledger and the budget meter, so Distribution's connector and the
  * platform's provisioning share one client.
  *
- *   - **The write gate (A-17a).** Every request is admitted by `checkAscRequest`
- *     (`writeGate.ts`) BEFORE the token thunk runs: a write outside the deny-by-default allow
+ *   - **The write gate (A-17a, generalised by A-18a).** Every request is admitted by
+ *     `checkAscRequest` (`core/storefront/rules/appStore.ts`, on the store-agnostic engine) BEFORE the token thunk runs: a write outside the deny-by-default allow
  *     table, a read of user records, or a typed-confirmation operation sent without the handler's
  *     assertion throws `AscWriteDenied`, so no token is minted and nothing is sent. The gate is
  *     the only barrier between the Worker's Admin team key and Apple's user, certificate and
@@ -35,13 +35,17 @@
  */
 
 import { isRedirect, readCappedText } from "../readCapped.js";
+import { StoreVendorError } from "../storefront/errors.js";
 import {
   AscWriteDenied,
   checkAscRequest,
   type AscGateContext,
-} from "./writeGate.js";
+} from "../storefront/rules/appStore.js";
 
-export { AscWriteDenied, type AscGateContext } from "./writeGate.js";
+export {
+  AscWriteDenied,
+  type AscGateContext,
+} from "../storefront/rules/appStore.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
 export type FetchImpl = (
@@ -89,14 +93,14 @@ export interface AscRate {
  * `errors[].code` when the error body carried one (an enum-like token such as
  * `ENTITY_ERROR.ATTRIBUTE.INVALID`, A-17h), never the body's free text (`title`, `detail`).
  */
-export class AscError extends Error {
+export class AscError extends StoreVendorError {
   constructor(
-    readonly status: number,
+    status: number,
     readonly method: string,
     readonly path: string,
-    readonly code: string | null = null,
+    code: string | null = null,
   ) {
-    super(`App Store Connect ${method} ${path}: HTTP ${status}`);
+    super(status, code, `App Store Connect ${method} ${path}: HTTP ${status}`);
     this.name = "AscError";
   }
 }

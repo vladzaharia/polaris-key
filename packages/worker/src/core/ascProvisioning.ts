@@ -37,8 +37,11 @@ import {
   type AscClient,
   type AscResource,
 } from "./asc/client.js";
-import { performAscWrite, type AscWriteResult } from "./asc/ledger.js";
-import { GATE_CAPABILITY_TYPES } from "./asc/writeGate.js";
+import {
+  performStoreWrite,
+  type StoreWriteResult,
+} from "./storefront/ledger.js";
+import { GATE_CAPABILITY_TYPES } from "./storefront/rules/appStore.js";
 
 // ── The wizard's capability list ─────────────────────────────────────────────────────────────
 
@@ -453,9 +456,10 @@ export interface TeamWriteContext {
 export function registerBundleId(
   c: TeamWriteContext,
   input: { identifier: string; name: string; platform: BundlePlatform },
-): Promise<AscWriteResult> {
-  return performAscWrite(c.db, {
+): Promise<StoreWriteResult> {
+  return performStoreWrite(c.db, {
     key: {
+      store: "app-store",
       scope: "team",
       product: null,
       op: "bundle_id.register",
@@ -490,7 +494,7 @@ export function registerBundleId(
 export function enableCapability(
   c: TeamWriteContext,
   input: { bundleResourceId: string; identifier: string; type: string },
-): Promise<AscWriteResult> {
+): Promise<StoreWriteResult> {
   if (!ENABLEABLE_CAPABILITIES.includes(input.type))
     throw new Error(`capability ${input.type} is not offered`);
   const id = capabilityId(input.bundleResourceId, input.type);
@@ -500,8 +504,9 @@ export function enableCapability(
       input.bundleResourceId,
       input.type,
     );
-  return performAscWrite(c.db, {
+  return performStoreWrite(c.db, {
     key: {
+      store: "app-store",
       scope: "team",
       product: null,
       op: "capability.enable",

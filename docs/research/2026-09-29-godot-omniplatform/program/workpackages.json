@@ -4527,7 +4527,7 @@
       "optional": false,
       "refs": ["notes/S-14 §10 (A-17f)", "notes/S-15 §11 (changes to A-17f)"],
       "brief": "wp/A-17f-console-asc-new-app.md",
-      "status": "todo"
+      "status": "dropped"
     },
     {
       "id": "A-17g",
@@ -4574,7 +4574,7 @@
         "notes/S-15 §13 decisions 2, 3"
       ],
       "brief": "wp/A-18a-storefront-adapter-layer.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18b",

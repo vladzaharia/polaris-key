@@ -51,6 +51,7 @@ interface Job {
   if?: string;
   name?: string;
   needs?: string | string[];
+  "runs-on"?: string;
   environment?: string | { name: string };
   permissions?: Record<string, string>;
   strategy?: { matrix?: Record<string, unknown> };
@@ -452,6 +453,30 @@ describe("Swift releases are signed or not published (plans/F-01.md §5.3)", () 
     const cleanup = steps.find((s) => s.if === "always()");
     expect(cleanup?.run).toContain('rm -rf "$RUNNER_TEMP/swift-registry-keys"');
     expect(wf.jobs.swift!.needs).toEqual(["version", "swift-sign"]);
+  });
+
+  it("tests and signs on ci.yml's toolchain: macos-26, Xcode 26.6, Swift 6.3 or later", () => {
+    const guard = "sdks/swift/tools/select-xcode-26.sh";
+    const text = readFileSync(path.join(ROOT, guard), "utf8");
+    expect(text).toContain("xcode-select -s /Applications/Xcode_26.6.app");
+    expect(text).toContain("is below 6.3");
+    for (const id of ["swift-test", "swift-sign"]) {
+      const job = wf.jobs[id]!;
+      expect(job["runs-on"], id).toBe("macos-26");
+      const steps = job.steps ?? [];
+      const at = steps.findIndex((s) => s.run === guard);
+      const swift = steps.findIndex((s) =>
+        /swift test|sign-registry-release/.test(s.run ?? ""),
+      );
+      expect(at, `${id} selects Xcode 26.6`).toBeGreaterThanOrEqual(0);
+      expect(at, `${id} selects Xcode before running Swift`).toBeLessThan(
+        swift,
+      );
+    }
+    // CI's apple job runs the same guard.
+    const apple = workflow("ci.yml").jobs.apple!;
+    expect(apple["runs-on"]).toBe("macos-26");
+    expect((apple.steps ?? []).some((s) => s.run === guard)).toBe(true);
   });
 
   it("runs SwiftPM's signer in dry-run mode only, never unsigned", () => {

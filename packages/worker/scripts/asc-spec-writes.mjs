@@ -9,7 +9,7 @@
 //   node scripts/asc-spec-writes.mjs /tmp/openapi.oas.json            # refuses an unpinned spec
 //   node scripts/asc-spec-writes.mjs /tmp/openapi.oas.json --accept    # a NEW spec version: also
 //                                                                      # bump ASC_SPEC_PIN in
-//                                                                      # core/asc/writeGate.ts
+//                                                                      # core/storefront/rules/appStore.ts
 //
 // The output is generated: never edit it by hand. A spec bump is a THREAT-MODEL §9 review
 // trigger, and the classification test fails until every new write operation is classified.
