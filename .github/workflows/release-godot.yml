@@ -33,7 +33,18 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      # As deploy.yml (R7-04): the tag name alone is no gate, so a tag on a commit that never
+      # landed on main (unreviewed, pushed from a laptop) must not publish. A dry run checks the
+      # dispatched commit the same way, so run it from main.
+      - name: The commit is on main
+        run: |
+          git fetch --no-tags --depth=100 origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Refusing to release: $GITHUB_SHA is not an ancestor of origin/main." >&2
+            echo "Tag a commit that has landed on main." >&2
+            exit 1
+          fi
       - id: version
         name: Tag, plugin.cfg and SDK_VERSION agree
         run: |
@@ -50,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pkey-godot/4.7.2
@@ -61,7 +72,7 @@ jobs:
           GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" sdks/godot/tools/run_tests.sh
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: godot-release-test-logs
           path: sdks/godot/build/logs/
@@ -71,7 +82,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the zips (twice, to prove they are reproducible)
         run: |
           python3 sdks/godot/tools/package.py --tag "$TAG" --out build/a
@@ -81,16 +92,21 @@ jobs:
       - name: The canonical zip holds addons/polaris_key/** only
         run: |
           zip="build/a/polaris-key-godot-v${TAG#godot-v}.zip"
-          unzip -Z1 "$zip" | grep -vE '^addons/(polaris_key/.*)?$' && { echo "entries outside addons/polaris_key/" >&2; exit 1; } || true
+          # The listing is read once into a variable: no `unzip | grep -q` pipeline that pipefail
+          # can fail when grep exits early and unzip takes SIGPIPE.
+          listing="$(unzip -Z1 "$zip")"
+          outside="$(printf '%s\n' "$listing" | grep -vE '^addons/(polaris_key/.*)?$' || true)"
+          [ -z "$outside" ] || { echo "entries outside addons/polaris_key/: $outside" >&2; exit 1; }
           for f in plugin.cfg LICENSE README.md polaris_key.gd polaris_key.gd.uid; do
-            unzip -Z1 "$zip" | grep -qx "addons/polaris_key/$f" || { echo "missing $f" >&2; exit 1; }
+            case $'\n'"$listing"$'\n' in *$'\n'"addons/polaris_key/$f"$'\n'*) ;; *) echo "missing $f" >&2; exit 1 ;; esac
           done
-          for gd in $(unzip -Z1 "$zip" | grep '\.gd$'); do
-            unzip -Z1 "$zip" | grep -qx "$gd.uid" || { echo "missing $gd.uid" >&2; exit 1; }
-          done
-          unzip -Z1 "$zip" | grep -E '(^|/)(tests|\.godot|build)/' && { echo "test or build files in the zip" >&2; exit 1; } || true
-          echo "$(unzip -Z1 "$zip" | grep -vc '/$') files"
-      - uses: actions/upload-artifact@v4
+          while IFS= read -r gd; do
+            case $'\n'"$listing"$'\n' in *$'\n'"$gd.uid"$'\n'*) ;; *) echo "missing $gd.uid" >&2; exit 1 ;; esac
+          done < <(printf '%s\n' "$listing" | grep '\.gd$' || true)
+          bad="$(printf '%s\n' "$listing" | grep -E '(^|/)(tests|\.godot|build)/' || true)"
+          [ -z "$bad" ] || { echo "test or build files in the zip: $bad" >&2; exit 1; }
+          echo "$(printf '%s\n' "$listing" | grep -vc '/$') files"
+      - uses: actions/upload-artifact@v7
         with:
           name: polaris-key-godot-${{ needs.validate.outputs.version }}
           path: build/a/
@@ -106,7 +122,7 @@ jobs:
       matrix:
         godot: ["4.4.1", "4.7.2"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           name: polaris-key-godot-${{ needs.validate.outputs.version }}
@@ -129,7 +145,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           name: polaris-key-godot-${{ needs.validate.outputs.version }}

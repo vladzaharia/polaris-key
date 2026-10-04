@@ -47,7 +47,9 @@ func run(t: PKeyTestContext) -> void:
 	var base_format := int(dir["header"]["formatVersion"])
 	var engine_format := PKeyPck.helper_version()
 	var before := {}
-	if base_format <= engine_format:
+	var mounted := base_format <= engine_format
+	var base_kind := "mounted base" if mounted else "unmounted base"
+	if mounted:
 		t.check("bake: the base mounts", PKeyPck.mount(base_path, true))
 		before = _reads(dir["entries"])
 		t.check("bake: the mounted base's entries read through res://", before.size() >= 10 and not before.values().has("<unreadable>"), "%d entries" % before.size())
@@ -80,11 +82,14 @@ func run(t: PKeyTestContext) -> void:
 	var r := PKeyPackApply.apply_delta(variant, payload_k, PKeyByteSource.file(base_path), {"objects": objects, "zstd": z, "sink": sink})
 	sink.close()
 	var ms := (Time.get_ticks_usec() - started) / 1000.0
-	t.check("bake: the payload delta over the mounted base gives CI's v2", r["verdict"].get("ok") == true and r["verdict"].get("sha256") == v2sha and PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(sink.path)) == v2sha, S.canon(r["verdict"]))
+	t.check("bake: the payload delta over the %s gives CI's v2" % base_kind, r["verdict"].get("ok") == true and r["verdict"].get("sha256") == v2sha and PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(sink.path)) == v2sha, S.canon(r["verdict"]))
 	t.check("bake: it went through a trailer on the base (not a copy)", z.stats["trailers"] >= 1 and notes.size() == 2 and notes[0][0] == base_path and notes[0][1] == v1.size() and notes[1][1] == -1, S.canon(notes))
 	t.info("bake: payload delta %.1f ms (%s)" % [ms, S.canon(z.stats)])
 	t.check("bake: the base is restored byte for byte (SHA-256 re-checked)", PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(base_path)) == v1sha)
-	S.check_same(t, "bake: the running session's reads of the mounted base are unchanged", _reads(dir["entries"]), before)
+	if mounted:
+		S.check_same(t, "bake: the running session's reads of the mounted base are unchanged", _reads(dir["entries"]), before)
+	else:
+		t.info("bake: no mounted base on this engine, so no running-session reads to compare")
 
 	# 2. The files delta (per-entry frames), its bases ranges of the mounted store file.
 	var installed: Array = []
@@ -98,11 +103,12 @@ func run(t: PKeyTestContext) -> void:
 	var r2 := PKeyPackApply.apply_file(variant, files_k, installed, {"objects": objects, "zstd": z, "sink": sink2})
 	sink2.close()
 	ms = (Time.get_ticks_usec() - started) / 1000.0
-	t.check("bake: the files delta over the mounted base gives CI's v2", r2["verdict"].get("ok") == true and r2["verdict"].get("sha256") == v2sha and int(r2["verdict"].get("deltaFiles", 0)) >= 1 and PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(sink2.path)) == v2sha, S.canon(r2["verdict"]))
+	t.check("bake: the files delta over the %s gives CI's v2" % base_kind, r2["verdict"].get("ok") == true and r2["verdict"].get("sha256") == v2sha and int(r2["verdict"].get("deltaFiles", 0)) >= 1 and PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(sink2.path)) == v2sha, S.canon(r2["verdict"]))
 	t.check("bake: one trailer for every entry frame (one mount pair)", notes.size() == 2 and notes[0][0] == base_path, S.canon(notes))
 	t.info("bake: files delta %.1f ms (%s)" % [ms, S.canon(z.stats)])
 	t.check("bake: the base is restored byte for byte again", PKeyPackClaims.sha256_hex(FileAccess.get_file_as_bytes(base_path)) == v1sha)
-	S.check_same(t, "bake: the mounted base still reads the same", _reads(dir["entries"]), before)
+	if mounted:
+		S.check_same(t, "bake: the mounted base still reads the same", _reads(dir["entries"]), before)
 	t.check("bake: no bake journal is left behind", not FileAccess.file_exists(storage.bake_journal_path("bake-test")))
 
 	# 3. A crash between the trailer and the truncation: the journal repairs it at the next load.

@@ -439,15 +439,15 @@ jobs:
   # `jwsCases`, read from the generator-owned res:// mirror. PARITY requires the runner on the
   # editor AND an exported release template, because official 4.6+ templates ignore `--path`,
   # `--script` and `--main-pack`; the runner is the project's main loop, so both run it the same
-  # way. Four Linux legs, one per supported engine (P1-12): the 4.7.2, 4.6.3 and 4.5.2 editors each
+  # way. Four Linux legs, one per supported engine (P1-12): the 4.7.2, 4.6.3 and 4.5.2 editors, each
   # with its official linux_release.x86_64 template, and the 4.4.1 editor (the source-compatible
-  # floor). The README's tested matrix names exactly these engines. run_tests.sh also exports the harness preset
-  # headless with PKEY_BUILD_OUTLET=steam, PKEY_BUILD_CHANNEL=beta and PKEY_BUILD_NUMBER=42 (the
-  # P1-11 build stamp): the export_stamps suite checks the stamps in the editor and the
-  # build_stamp suite asserts the stamp and the pkey_* feature tags on the release template. No
-  # path filter: a required check behind a filter never reports. Only first-party actions; every
-  # engine download is checked against the upstream SHA-512 in sdks/godot/tools/godot.sha512,
-  # which also keys the cache.
+  # floor). The README's tested matrix names exactly these engines. run_tests.sh also exports the
+  # harness preset headless with PKEY_BUILD_OUTLET=steam, PKEY_BUILD_CHANNEL=beta and
+  # PKEY_BUILD_NUMBER=42 (the P1-11 build stamp): the export_stamps suite checks the stamps in the
+  # editor and the build_stamp suite asserts the stamp and the pkey_* feature tags on the release
+  # template. No path filter: a required check behind a filter never reports. Only first-party
+  # actions; every engine download is checked against the upstream SHA-512 in
+  # sdks/godot/tools/godot.sha512, which also keys the cache.
   godot:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
