@@ -4857,7 +4857,7 @@
         "design/PORTAL §11.1 PX-01"
       ],
       "brief": "wp/PX-01-portal-shell.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-02",
@@ -4880,7 +4880,7 @@
         "design/PORTAL §11.1 PX-02"
       ],
       "brief": "wp/PX-02-library-today.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-03",
@@ -4905,7 +4905,7 @@
         "design/PORTAL §12 Q-3"
       ],
       "brief": "wp/PX-03-library-scale.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-04",
@@ -4928,7 +4928,7 @@
         "design/PORTAL §11.1 PX-04"
       ],
       "brief": "wp/PX-04-product-page-today.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-05",
@@ -4950,7 +4950,7 @@
         "design/PORTAL §11.1 PX-05"
       ],
       "brief": "wp/PX-05-login-card-today.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-06",
@@ -4973,7 +4973,7 @@
         "design/PORTAL §11.1 PX-06"
       ],
       "brief": "wp/PX-06-activate-modal.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-07",
@@ -4991,7 +4991,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.26", "design/PORTAL §11.1 PX-07"],
       "brief": "wp/PX-07-account-v1.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-W1",
@@ -5021,7 +5021,7 @@
         "design/PORTAL §12 Q-2 Q-4"
       ],
       "brief": "wp/PX-W1-library-api-media.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-W2",
@@ -5039,7 +5039,7 @@
       "optional": false,
       "refs": ["design/PORTAL §10.2 G2 G4", "design/PORTAL §11.2 PX-W2"],
       "brief": "wp/PX-W2-downloads-stores.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-W3",
@@ -5103,7 +5103,7 @@
       "optional": false,
       "refs": ["design/PORTAL §10.2 G6 G7 G22", "design/PORTAL §11.2 PX-W5"],
       "brief": "wp/PX-W5-rename-newkey-preview.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-W6",
@@ -5143,7 +5143,7 @@
         "design/PORTAL §11.2 PX-W7"
       ],
       "brief": "wp/PX-W7-emails.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-W8",
