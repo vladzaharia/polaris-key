@@ -5,7 +5,7 @@
 | Phase       | P1b: SDK parity                                                                                                                                                                                         |
 | Size        | 2–3 engineer-weeks                                                                                                                                                                                      |
 | Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                                                                                                     |
-| Unblocks | [P1b-06](P1b-06-reregister-401.md), [P1b-07](P1b-07-license-config-release-gaps.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md), [P6-06](P6-06-kotlin-core-runner.md), [X-01](X-01-dotnet-sdk.md) |
+| Unblocks    | [P1b-06](P1b-06-reregister-401.md), [P1b-07](P1b-07-license-config-release-gaps.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md), [P6-06](P6-06-kotlin-core-runner.md), [X-01](X-01-dotnet-sdk.md)    |
 | Role        | `pkey-implementer`                                                                                                                                                                                      |
 | Plan mode   | no (transcripts are not the signed corpus; nothing here changes the wire)                                                                                                                               |
 | Gates       | a new drift gate (`pnpm gen:transcripts -- --check` plus a Worker freshness test); all SDKs replay; a generator-owned Swift mirror; the `parity:check` extension. No new route, so rule 10 is untouched |
