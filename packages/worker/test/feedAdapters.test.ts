@@ -744,7 +744,7 @@ describe("feed adapters: the harness", () => {
   it("every client script and matrix row belongs to exactly one adapter (or the host)", () => {
     const owned = new Map<string, string>();
     for (const a of FEED_ADAPTERS)
-      for (const c of a.harness.clients) {
+      for (const c of [...a.harness.clients, ...(a.harness.local ?? [])]) {
         expect(owned.has(c), `${c} claimed twice`).toBe(false);
         owned.set(c, a.ecosystem);
       }
@@ -753,6 +753,18 @@ describe("feed adapters: the harness", () => {
       if (HOST_CLIENTS.includes(r.client)) continue;
       expect(owned.get(r.client), `matrix row ${r.client}`).toBe(r.ecosystem);
     }
+    // A local-only client has its script and no matrix row (CI lacks its tool).
+    for (const a of FEED_ADAPTERS)
+      for (const c of a.harness.local ?? []) {
+        expect(
+          existsSync(join(CLIENTS_DIR, `${c}.sh`)),
+          `clients/${c}.sh`,
+        ).toBe(true);
+        expect(
+          rows.some((r) => r.client === c),
+          `${c} is local-only but has a matrix row`,
+        ).toBe(false);
+      }
     for (const f of readdirSync(CLIENTS_DIR).filter((s) => s.endsWith(".sh"))) {
       const name = f.slice(0, -3);
       if (HOST_CLIENTS.includes(name)) continue;

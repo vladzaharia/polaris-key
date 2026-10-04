@@ -89,7 +89,8 @@ export const GODOT_ADAPTER: FeedAdapter<"godot"> = defineFeedAdapter({
     ["/godot/{owner}/files/{sha256}/{file}", ["get", "head"], "godotZip"],
     ["/godot/{owner}/icons/{sha256}.png", ["get", "head"], "godotIcon"],
   ],
-  harness: { clients: ["godot"] },
+  // `godot-editor` drives real 4.6 and 4.7 editors, which CI does not have.
+  harness: { clients: ["godot"], local: ["godot-editor"] },
 });
 
 /** The materialiser's view of the adapter. */

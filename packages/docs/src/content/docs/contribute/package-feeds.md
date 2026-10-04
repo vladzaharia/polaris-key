@@ -110,8 +110,10 @@ one fails CI.
    ingest rules.
 9. **The harness.** Add `packages/worker/scripts/registry-clients/clients/<client>.sh` for each
    real client (plus a fixture or seed), and a matrix row with `ecosystem: <ecosystem>` in
-   `.github/workflows/registry-clients.yml`. List the clients in `harness.clients`. The harness
-   runs against a local Worker only: nothing is ever published to a public registry.
+   `.github/workflows/registry-clients.yml`. List the clients in `harness.clients`. A client
+   whose tool CI cannot run (a desktop editor) goes in `harness.local` instead: it keeps its
+   script, has no matrix row, and its run is recorded on the PR. The harness runs against a
+   local Worker only: nothing is ever published to a public registry.
 10. **Conformance data.** Add a sample package to `SAMPLES` and the path-parameter samples to
     `PARAMS` in `test/feedAdapters.test.ts`. The suite fails without them.
 11. **Golden documents.** Write the feed's own tests under `packages/worker/test/registry/`,

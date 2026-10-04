@@ -167,8 +167,15 @@ export interface FeedAdapter<
   };
   /** The feed's OpenAPI paths; `routeCoverage` reads them as its registry table (rule 10). */
   readonly openapi: readonly FeedOpenApiRow[];
-  /** The registry-clients harness: each `clients/<name>.sh` is a matrix row of this ecosystem. */
-  readonly harness: { readonly clients: readonly string[] };
+  /**
+   * The registry-clients harness: each of `clients` is a `clients/<name>.sh` and a CI matrix row
+   * of this ecosystem; each of `local` is a `clients/<name>.sh` that needs a tool CI does not
+   * have (a desktop editor, say), run by hand and recorded on the PR, with no matrix row.
+   */
+  readonly harness: {
+    readonly clients: readonly string[];
+    readonly local?: readonly string[];
+  };
 }
 
 /** A version-state operation the protocol has, or why it has none. */
