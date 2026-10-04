@@ -13,7 +13,14 @@ import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { useAdapterState, useCtx, usePolarisTheme } from "../react/hooks.js";
 import type { DeviceInfo } from "../core/index.js";
 import { Button } from "./primitives/buttons.js";
-import { Panel, dangerText, mutedText } from "./primitives/card.js";
+import {
+  Panel,
+  chipStyle,
+  dangerText,
+  mutedText,
+  titleText,
+} from "./primitives/card.js";
+import { themePoweredBy } from "./brand.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
 import { TextField } from "./primitives/input.js";
 import type { PolarisTheme } from "./theme.js";
@@ -44,14 +51,7 @@ const rowStyle = {
   borderBottom: "1px solid var(--pk-border)",
 };
 
-const badgeStyle = {
-  display: "inline-block",
-  padding: "2px 8px",
-  borderRadius: "999px",
-  border: "1px solid var(--pk-border)",
-  color: "var(--pk-text-muted)",
-  fontSize: "11px",
-} as const;
+const badgeStyle = { ...chipStyle, display: "inline-block" } as const;
 
 export function DeviceManager(props: DeviceManagerProps): JSX.Element {
   const theme = usePolarisTheme();
@@ -117,7 +117,7 @@ export function DeviceManager(props: DeviceManagerProps): JSX.Element {
       aria-labelledby={titleId}
     >
       <div>
-        <h2 id={titleId} style={{ margin: "0 0 4px", fontSize: "20px" }}>
+        <h2 id={titleId} style={titleText}>
           {theme.copy.devicesTitle}
         </h2>
         <p style={mutedText}>{theme.copy.devicesSubtitle}</p>
@@ -181,6 +181,7 @@ export function DeviceManager(props: DeviceManagerProps): JSX.Element {
           ))}
         </ul>
       )}
+      {themePoweredBy(theme)}
     </Panel>
   );
 }
@@ -212,7 +213,7 @@ function DeviceRow(props: {
   return (
     <>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <span style={{ fontSize: "14px", fontWeight: 600 }}>
+        <span style={{ fontSize: "14px", fontWeight: 700 }}>
           {device.label || device.id}
         </span>
         {device.current ? (
@@ -221,7 +222,7 @@ function DeviceRow(props: {
           </span>
         ) : null}
       </div>
-      <span style={{ ...mutedText, fontSize: "13px" }}>
+      <span style={{ ...mutedText, fontSize: "14px" }}>
         {[device.platform, device.arch, device.appVersion]
           .filter(Boolean)
           .join(" · ") || device.status}
@@ -253,7 +254,7 @@ function DeviceRow(props: {
               type="submit"
               busy={busy}
               disabled={busy}
-              style={{ fontSize: "13px" }}
+              style={{ fontSize: "14px" }}
             >
               {theme.copy.deviceRenameSubmitLabel}
             </Button>
@@ -263,7 +264,7 @@ function DeviceRow(props: {
           variant="ghost"
           busy={busy}
           disabled={busy}
-          style={{ fontSize: "13px", color: "var(--pk-danger)" }}
+          style={{ fontSize: "14px", color: "var(--pk-danger)" }}
           label={`${theme.copy.deviceDisconnectLabel} ${device.label || device.id}`}
           onClick={() => void run(props.onDisconnect)}
           data-polaris-device-disconnect={device.id}

@@ -57,16 +57,16 @@ the features, because "done" means "done in every SDK".
 
 ## 1. SDKs, runtimes and shared native backends
 
-| SDK                    | Package                                   | Runtimes                                                              | State            | Native backends it uses                                                               |
-| ---------------------- | ----------------------------------------- | --------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------- |
-| **Node**               | `@polaris-key/node`                       | Node servers and CLIs (incl. single-executable builds), Electron main | exists           | keyring addon (optional), Steamworks and WinRT bindings where used                    |
-| **React / web**        | `@polaris-key/react` over `client-core`   | browsers, Electron renderer, Tauri webview                            | exists           | none; WASM zstd                                                                       |
-| **Python**             | `polaris-key` (PyPI, CPython ≥ 3.9)       | desktop tools, servers, ML tooling                                    | exists           | `keyring`, `cryptography`; `zstandard` below 3.14                                     |
-| **Swift**              | SwiftPM, `PolarisKey*` targets            | macOS, iOS and iPadOS                                                 | exists           | Sparkle; libzstd; the **Apple plugin package** others reuse                           |
-| **Godot**              | `addons/polaris_key` (GDScript)           | every Godot export target                                             | README P1        | optional: the Apple plugin package, the Kotlin AAR, GodotSteam                        |
-| **Kotlin**             | AAR + JVM artifact                        | Android apps, JVM desktop                                             | optional (P6)    | zstd-jni; is itself the **Android backend** for Godot, Unity and MAUI                 |
-| **C# / .NET**          | NuGet, `netstandard2.0` + `net8.0`        | .NET desktop, MAUI, Unity, Godot C#                                   | proposed (later) | BouncyCastle or NSec (no Ed25519 in the BCL); `ZstdSharp.Port` below .NET 11          |
-| **Tauri** (an adapter) | a first-party Rust plugin + the React SDK | Tauri 2 desktop and mobile                                            | proposed (later) | the Rust plugin for keyring, fingerprint and updater hand-off; React SDK for the rest |
+| SDK                    | Package                                   | Runtimes                                                              | State                                     | Native backends it uses                                                               |
+| ---------------------- | ----------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Node**               | `@polaris-key/node`                       | Node servers and CLIs (incl. single-executable builds), Electron main | exists                                    | keyring addon (optional), Steamworks and WinRT bindings where used                    |
+| **React / web**        | `@polaris-key/react` over `client-core`   | browsers, Electron renderer, Tauri webview                            | exists                                    | none; WASM zstd                                                                       |
+| **Python**             | `polaris-key` (PyPI, CPython ≥ 3.9)       | desktop tools, servers, ML tooling                                    | exists                                    | `keyring`, `cryptography`; `zstandard` below 3.14                                     |
+| **Swift**              | SwiftPM, `PolarisKey*` targets            | macOS, iOS and iPadOS                                                 | exists                                    | Sparkle; libzstd; the **Apple plugin package** others reuse                           |
+| **Godot**              | `addons/polaris_key` (GDScript)           | every Godot export target                                             | README P1                                 | optional: the Apple plugin package, the Kotlin AAR, GodotSteam                        |
+| **Kotlin**             | AAR + JVM artifact                        | Android apps, JVM desktop                                             | P6 (build now, owner decision 2026-10-04) | zstd-jni; is itself the **Android backend** for Godot, Unity and MAUI                 |
+| **C# / .NET**          | NuGet, `netstandard2.0` + `net8.0`        | .NET desktop, MAUI, Unity, Godot C#                                   | proposed (later)                          | BouncyCastle or NSec (no Ed25519 in the BCL); `ZstdSharp.Port` below .NET 11          |
+| **Tauri** (an adapter) | a first-party Rust plugin + the React SDK | Tauri 2 desktop and mobile                                            | proposed (later)                          | the Rust plugin for keyring, fingerprint and updater hand-off; React SDK for the rest |
 
 - **Build the platform edges once.** Two native packages are shared backends, not per-SDK work:
   - an **Apple plugin package** (Swift): `AppDistributor`, `AppTransaction`, Background Assets
@@ -534,8 +534,10 @@ lacks it:
    language with no crypto primitives (Ed25519 and SHA-512 in pure GDScript, notes/A5).
 2. **The Apple plugin package and the Kotlin AAR** (with P5). They serve Godot first, then every
    later runtime on those platforms.
-3. **Kotlin (optional, +6–8 weeks).** Worth it if native Android apps are in scope; its AAR is
-   needed either way.
+3. **Kotlin (required; owner decision 2026-10-04, P6-05 and its children P6-06 to P6-12).** A
+   full-parity SDK for native Android and, where sensible, JVM, plus a Jetpack Compose UI kit; the
+   Godot Android binding is rebuilt on its platform module only. Distributed through Polaris Key's
+   own Maven feed, never Maven Central.
 4. **C# / .NET (optional, about 10–14 weeks).** One package covers .NET desktop, MAUI, Unity and
    Godot C#. Unity adds a Unity-specific layer (UI Toolkit, Addressables provider). Ed25519 needs
    BouncyCastle or NSec; zstd needs `ZstdSharp.Port` below .NET 11.

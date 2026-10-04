@@ -311,7 +311,7 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
     await waitFor(() => expect(oidc.getAttribute("aria-busy")).toBe("true"));
     // It keeps an accessible name even while the busy glyph shows (aria-label is set).
     expect(
-      within(container).getByRole("button", { name: /continue with polaris/i }),
+      within(container).getByRole("button", { name: /continue to sign in/i }),
     ).toBe(oidc);
     adapter.dispose();
   });
