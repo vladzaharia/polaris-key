@@ -31,8 +31,24 @@ function* htmlFiles(dir) {
 const SCRIPT_RE = /<script(?<attrs>[^>]*)>(?<body>[\s\S]*?)<\/script>/gi;
 const STYLE_RE = /<style[^>]*>(?<body>[\s\S]*?)<\/style>/gi;
 
+// `style="…"` attributes (Expressive Code's per-token colours, Starlight's `--sl-icon-size` and
+// `--depth`) are covered by `style-src-attr 'unsafe-hashes'` with the hash of each attribute's
+// value, not by `'unsafe-inline'`. The value is hashed as the browser sees it, entities decoded.
+const STYLE_ATTR_RE = /<[a-z][^>]*?\sstyle="(?<value>[^"]*)"/gi;
+const ENTITIES = {
+  "&quot;": '"',
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&#39;": "'",
+  "&#x27;": "'",
+};
+const decode = (v) =>
+  v.replace(/&(?:quot|amp|lt|gt|#39|#x27);/g, (m) => ENTITIES[m]);
+
 const scriptHashes = new Set();
 const styleHashes = new Set();
+const styleAttrHashes = new Set();
 let pages = 0;
 
 for (const file of htmlFiles(dist)) {
@@ -43,6 +59,10 @@ for (const file of htmlFiles(dist)) {
     const body = match.groups?.body ?? "";
     if (/\ssrc\s*=/i.test(attrs) || body.length === 0) continue;
     scriptHashes.add(cspHash(body));
+  }
+  for (const match of html.matchAll(STYLE_ATTR_RE)) {
+    const value = decode(match.groups?.value ?? "");
+    if (value.length > 0) styleAttrHashes.add(cspHash(value));
   }
   for (const match of html.matchAll(STYLE_RE)) {
     const body = match.groups?.body ?? "";
@@ -72,9 +92,13 @@ export const DOCS_SCRIPT_HASHES: readonly string[] = ${JSON.stringify(sorted(scr
 
 /** CSP source expressions for every inline <style> the docs build emits. */
 export const DOCS_STYLE_HASHES: readonly string[] = ${JSON.stringify(sorted(styleHashes), null, 2)};
+
+/** CSP source expressions for every \`style="…"\` attribute value the docs build emits (used with
+ *  \`'unsafe-hashes'\` in \`style-src-attr\`, so Expressive Code's syntax colours render). */
+export const DOCS_STYLE_ATTR_HASHES: readonly string[] = ${JSON.stringify(sorted(styleAttrHashes), null, 2)};
 `;
 
 writeFileSync(outFile, banner);
 console.log(
-  `collect-csp-hashes: ${pages} pages -> ${scriptHashes.size} script + ${styleHashes.size} style hashes -> ${relative(process.cwd(), outFile)}`,
+  `collect-csp-hashes: ${pages} pages -> ${scriptHashes.size} script + ${styleHashes.size} style + ${styleAttrHashes.size} style-attribute hashes -> ${relative(process.cwd(), outFile)}`,
 );

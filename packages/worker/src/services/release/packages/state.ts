@@ -33,8 +33,9 @@ export type PackageStateOp = "yank" | "unyank" | "deprecate" | "undeprecate";
 
 /**
  * The statements that move a package version's state for `op`, and enqueue its render; `[]` when
- * `releaseId` is not a package version. A yank overrides a deprecation; an unyank returns the
- * version to `live`; deprecate applies only to a live version and undeprecate only to a
+ * `releaseId` is not a package version. A yank overrides a deprecation (its text is kept in
+ * `deprecation_message`); an unyank returns the version to what it was, `deprecated` again if it
+ * was; deprecate applies only to a live version and undeprecate only to a
  * deprecated one (the caller refuses the others first).
  */
 export async function packageStateStatements(
@@ -47,27 +48,42 @@ export async function packageStateStatements(
 ): Promise<DbStatement[]> {
   const pkg = await packageReleaseOf(db, product, releaseId);
   if (!pkg) return [];
-  const [state, from] =
-    op === "yank"
-      ? (["yanked", ["live", "deprecated", "yanked"]] as const)
-      : op === "unyank"
-        ? (["live", ["yanked"]] as const)
-        : op === "deprecate"
-          ? (["deprecated", ["live", "deprecated"]] as const)
-          : (["live", ["deprecated"]] as const);
+  const where = `WHERE product = ? AND release_id = ?`;
+  let update: DbStatement;
+  if (op === "yank") {
+    // A yank overrides a deprecation, and keeps its text aside for the unyank.
+    update = {
+      sql: `UPDATE release_packages
+               SET deprecation_message = CASE WHEN state = 'deprecated' THEN state_message
+                                              ELSE deprecation_message END,
+                   state = 'yanked', state_message = ?
+             ${where} AND state IN ('live', 'deprecated', 'yanked')`,
+      params: [message, product, releaseId],
+    };
+  } else if (op === "unyank") {
+    // An unyank returns to what the version was before: deprecated again when it was.
+    update = {
+      sql: `UPDATE release_packages
+               SET state = CASE WHEN deprecation_message IS NULL THEN 'live' ELSE 'deprecated' END,
+                   state_message = deprecation_message, deprecation_message = NULL
+             ${where} AND state = 'yanked'`,
+      params: [product, releaseId],
+    };
+  } else if (op === "deprecate") {
+    update = {
+      sql: `UPDATE release_packages SET state = 'deprecated', state_message = ?
+             ${where} AND state IN ('live', 'deprecated')`,
+      params: [message, product, releaseId],
+    };
+  } else {
+    update = {
+      sql: `UPDATE release_packages SET state = 'live', state_message = NULL
+             ${where} AND state = 'deprecated'`,
+      params: [product, releaseId],
+    };
+  }
   return [
-    {
-      sql: `UPDATE release_packages SET state = ?, state_message = ?
-             WHERE product = ? AND release_id = ?
-               AND state IN (SELECT value FROM json_each(?))`,
-      params: [
-        state,
-        state === "live" ? null : message,
-        product,
-        releaseId,
-        JSON.stringify(from),
-      ],
-    },
+    update,
     stmtEnqueuePackageRender(product, pkg.deliverableId, op, now),
   ];
 }

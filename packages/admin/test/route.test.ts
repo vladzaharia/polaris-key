@@ -496,6 +496,7 @@ describe("the nav model (nav.ts)", () => {
       "platform-operations",
       "platform-stores",
       "platform-feeds",
+      "package-feeds",
       "overview",
       "services",
       "devices",
@@ -702,24 +703,103 @@ describe("global pages", () => {
       "platform-deployment",
       "platform-operations",
       "platform-stores",
+      "platform-feeds",
     ]);
   });
 
-  it("#/platform redirects to Settings; a page still to come follows on to Deployment", () => {
+  it("#/platform redirects to Settings; every Platform page is built", () => {
     expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
     expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
     expect(parseLocation("#/platform/operations").redirect).toBeUndefined();
     expect(
       parseLocation("#/platform/store-connections").redirect,
     ).toBeUndefined();
-    expect(parseLocation("#/platform/feeds").redirect).toBe(
-      "#/platform/deployment",
-    );
+    expect(parseLocation("#/platform/feeds").redirect).toBeUndefined();
     expect(r.platform()).toBe("#/platform");
     expect(r.platformDeployment()).toBe("#/platform/deployment");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");
     const wizard = parseLocation("#/products/new?via=manual&step=basics");
     expect(wizard.redirect).toBeUndefined();
     expect(wizard.route).toMatchObject({ kind: "global", page: "product-new" });
+  });
+});
+
+describe("package feeds (F-11): a feed under a page, a package under a feed, in both scopes", () => {
+  it("parses a feed, its tab, and a package with its tab, in product scope", () => {
+    expect(parseLocation("#/p/djdl/distribution/feeds").route).toMatchObject({
+      kind: "product",
+      page: "package-feeds",
+    });
+    expect(
+      parseLocation("#/p/djdl/distribution/feeds/npm/settings").route,
+    ).toMatchObject({ page: "package-feeds", id: "npm", tab: "settings" });
+    // `packages` alone is the feed's Packages tab; with a name after it, a package.
+    expect(
+      parseLocation("#/p/djdl/distribution/feeds/npm/packages").route,
+    ).toMatchObject({ id: "npm", tab: "packages" });
+    const pkg = parseLocation(
+      "#/p/djdl/distribution/feeds/npm/packages/%40acme%2Fsdk/history",
+    ).route;
+    expect(pkg).toMatchObject({
+      page: "package-feeds",
+      id: "npm",
+      child: { ids: ["@acme/sdk"], tab: "history" },
+    });
+    expect(hrefFor(pkg)).toBe(
+      "#/p/djdl/distribution/feeds/npm/packages/%40acme%2Fsdk/history",
+    );
+    expect(r.packageFeedPackage("djdl", "npm", "@acme/sdk")).toBe(
+      "#/p/djdl/distribution/feeds/npm/packages/%40acme%2Fsdk",
+    );
+    // An unknown package tab is not a page.
+    expect(
+      parseLocation("#/p/djdl/distribution/feeds/npm/packages/x/nope").route
+        .kind,
+    ).toBe("not-found");
+  });
+
+  it("parses the platform scope, where a package is owner and name", () => {
+    expect(parseLocation("#/platform/feeds/pypi/activity").route).toMatchObject(
+      { kind: "global", page: "platform-feeds", id: "pypi", tab: "activity" },
+    );
+    const pkg = parseLocation(
+      "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",
+    ).route;
+    expect(pkg).toMatchObject({
+      kind: "global",
+      page: "platform-feeds",
+      id: "npm",
+      child: { ids: ["polaris-key", "@polaris-key/node"] },
+    });
+    expect(hrefFor(pkg)).toBe(
+      "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",
+    );
+    expect(r.platformFeed("oci", "setup")).toBe("#/platform/feeds/oci/setup");
+    // One name is not enough in platform scope: the URL names nothing.
+    expect(
+      parseLocation("#/platform/feeds/npm/packages/polaris-key").route.kind,
+    ).toBe("not-found");
+  });
+
+  it("remounts on a new feed or package, not on a tab", () => {
+    const a = parseLocation("#/platform/feeds/npm/settings").route;
+    const b = parseLocation("#/platform/feeds/npm/activity").route;
+    const c = parseLocation("#/platform/feeds/pypi").route;
+    const d = parseLocation("#/platform/feeds/npm/packages/o/n").route;
+    expect(viewKey(a)).toBe(viewKey(b));
+    expect(viewKey(a)).not.toBe(viewKey(c));
+    expect(viewKey(a)).not.toBe(viewKey(d));
+  });
+
+  it("lists Package feeds in Distribution only while the product has them on", () => {
+    const distribution = SECTIONS.find((s) => s.key === "distribution")!;
+    const labels = (f: { packageFeeds: boolean } | null) =>
+      navItems(distribution, f).map((p) => p.label);
+    expect(labels({ packageFeeds: false })).not.toContain("Package feeds");
+    expect(labels({ packageFeeds: true })).toContain("Package feeds");
+    // While the product loads, the item shows (the nav does not jump).
+    expect(labels(null)).toContain("Package feeds");
+    expect(docsFor("package-feeds")).toBe("/docs/admin/feeds/");
+    expect(docsFor("platform-feeds")).toBe("/docs/admin/feeds/");
   });
 });

@@ -55,6 +55,9 @@ export interface RegistryFeed {
 
 /** The three rows for one (product, ecosystem); `null` = no row. */
 export interface RegistrySettings {
+  /** The owner's `products.status` (`null` = no row). Absent only from a test fake that does
+   *  not model it; the D1 source always sets it, and anything but `active` refuses the read. */
+  readonly productStatus?: string | null;
   readonly policy: RegistryPolicy | null;
   readonly owner: RegistryOwner | null;
   readonly feed: RegistryFeed | null;
@@ -111,6 +114,10 @@ export function d1RegistrySettings(db: Db): RegistrySettingsSource {
   }
   return {
     async settings(product, ecosystem) {
+      const product_ = await read<{ status: string }>(
+        "SELECT COALESCE(status, 'active') AS status FROM products WHERE slug = ?",
+        product,
+      );
       const policy = await read<{
         enabled: number;
         max_package_bytes_ceiling: number;
@@ -129,6 +136,7 @@ export function d1RegistrySettings(db: Db): RegistrySettingsSource {
         ecosystem,
       );
       return {
+        productStatus: product_ ? product_.status : null,
         policy: policy && {
           ecosystem,
           enabled: policy.enabled === 1,

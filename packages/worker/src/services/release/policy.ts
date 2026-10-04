@@ -97,6 +97,16 @@ export function actorId(actor: PolicyActor): string {
     : ciActor(actor.principal);
 }
 
+/**
+ * The audit action and target a caller records a yank, unyank or deprecation under instead of
+ * Release's own (`release.yank`, …). The Feeds console (F-11, plans/F-01.md §6.9) acts on a
+ * package version and audits `package.version.*` against the package, through the same write.
+ */
+export interface AuditAs {
+  action: string;
+  target: { kind: string; id: string };
+}
+
 /** A refusal, in terms both the console and the CI routes can render. */
 export interface PolicyRefusal {
   ok: false;
@@ -817,6 +827,7 @@ export async function yank(
   reason: unknown,
   actor: PolicyActor,
   now: number,
+  auditAs?: AuditAs,
 ): Promise<PolicyResult<{ yank: YankView; packSets: StoreOutcome }>> {
   if (typeof reason !== "string" || !reason.trim())
     return refuse(422, "bad_reason", "a yank needs a reason", ["reason"]);
@@ -854,8 +865,8 @@ export async function yank(
     product,
     actor,
     now,
-    "release.yank",
-    { kind: "release", id: releaseId },
+    auditAs?.action ?? "release.yank",
+    auditAs?.target ?? { kind: "release", id: releaseId },
     `Yanked ${releaseId}: ${reason.trim()}`,
   );
   await bumpReleaseGeneration(env, product, now);
@@ -875,6 +886,7 @@ export async function unyank(
   releaseId: string,
   actor: PolicyActor,
   now: number,
+  auditAs?: AuditAs,
 ): Promise<PolicyResult<{ yank: YankView; packSets: StoreOutcome }>> {
   // plans/P4-13.md §6.2: a revocation is permanent; its yank is never lifted.
   if (await isRevoked(db, product, releaseId))
@@ -898,8 +910,8 @@ export async function unyank(
     product,
     actor,
     now,
-    "release.unyank",
-    { kind: "release", id: releaseId },
+    auditAs?.action ?? "release.unyank",
+    auditAs?.target ?? { kind: "release", id: releaseId },
     `Lifted the yank on ${releaseId}`,
   );
   await bumpReleaseGeneration(env, product, now);
@@ -936,6 +948,7 @@ export async function setPackageDeprecation(
   message: unknown,
   actor: PolicyActor,
   now: number,
+  auditAs?: AuditAs,
 ): Promise<PolicyResult<{ deprecation: DeprecationView }>> {
   const pkg = await packageReleaseOf(db, product, releaseId);
   if (!pkg)
@@ -982,8 +995,9 @@ export async function setPackageDeprecation(
     product,
     actor,
     now,
-    lifting ? "release.package.undeprecate" : "release.package.deprecate",
-    { kind: "release", id: releaseId },
+    auditAs?.action ??
+      (lifting ? "release.package.undeprecate" : "release.package.deprecate"),
+    auditAs?.target ?? { kind: "release", id: releaseId },
     lifting
       ? `Lifted the deprecation of ${releaseId}`
       : `Deprecated ${releaseId}: ${text}`,

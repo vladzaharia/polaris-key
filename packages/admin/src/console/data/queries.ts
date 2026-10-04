@@ -20,6 +20,7 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query";
+import type { FeedEcosystem, FeedScope } from "../../api.js";
 
 const product = (slug: string, ...rest: (string | number)[]): QueryKey => [
   "product",
@@ -50,6 +51,37 @@ export const qk = {
     "apps",
     tracks ? "tracks" : "plain",
   ],
+  /**
+   * Package feeds (F-11), in either scope: `["platform", "feeds", …]` or
+   * `["product", slug, "distribution", "feeds", …]`. As a prefix, a scope's whole Feeds area.
+   */
+  pkgFeeds: (scope: FeedScope): QueryKey =>
+    scope.kind === "platform"
+      ? ["platform", "feeds"]
+      : product(scope.slug, "distribution", "feeds"),
+  pkgFeed: (scope: FeedScope, eco: FeedEcosystem): QueryKey => [
+    ...qkFeeds(scope),
+    eco,
+  ],
+  pkgFeedPackages: (
+    scope: FeedScope,
+    eco: FeedEcosystem,
+    q: string,
+    owner: string,
+  ): QueryKey => [...qkFeeds(scope), eco, "packages", "list", q, owner],
+  pkgFeedPackage: (
+    scope: FeedScope,
+    eco: FeedEcosystem,
+    owner: string,
+    name: string,
+  ): QueryKey => [...qkFeeds(scope), eco, "packages", "record", owner, name],
+  pkgFeedActivity: (scope: FeedScope, eco: FeedEcosystem): QueryKey => [
+    ...qkFeeds(scope),
+    eco,
+    "activity",
+  ],
+  /** Every product's queries (a platform-wide write that changes what each product shows). */
+  allProducts: (): QueryKey => ["product"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
 
@@ -153,6 +185,9 @@ export const qk = {
   outlets: (slug: string) => product(slug, "distribution", "outlets"),
   distributionKeys: (slug: string) => product(slug, "distribution", "keys"),
   connectors: (slug: string) => product(slug, "distribution", "connectors"),
+  /** The operator-owned `packageFeeds` switch (F-11; Core → Services). */
+  packageFeedsSwitch: (slug: string) =>
+    product(slug, "distribution", "package-feeds"),
 
   // update
   feed: (slug: string) => product(slug, "update", "feed"),
@@ -160,3 +195,7 @@ export const qk = {
   // identity
   portal: (slug: string) => product(slug, "identity", "portal"),
 };
+
+function qkFeeds(scope: FeedScope): QueryKey {
+  return qk.pkgFeeds(scope);
+}

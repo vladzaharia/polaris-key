@@ -35,6 +35,8 @@ export const DOCS_LINKS = {
   compatSimulator: "/docs/services/release/compatibility/",
   rolloutControl: "/docs/admin/distribution-matrix/",
   storeConnections: "/docs/admin/store-connections/",
+  packageFeeds: "/docs/admin/feeds/",
+  packageFeedsHost: "/docs/services/distribution/package-feeds/",
   platformSecrets: "/docs/admin/deploy/",
   // Inline explainer callouts
   manifestNote: "/docs/build/manifest/",

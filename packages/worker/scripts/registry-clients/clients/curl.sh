@@ -42,7 +42,7 @@ check "console is absent"           404 GET  "/manage" '"error":"not_found"'
 check "docs are absent"             404 GET  "/docs/" '"error":"not_found"'
 check "discovery is absent"         404 GET  "/$OWNER/.well-known/polaris.json" '"error":"not_found"'
 check "byte routes are absent"      404 GET  "/$OWNER/distribution/blobs/sha256/$(printf 'a%.0s' {1..64})"
-check "feed off reads as absent"    404 GET  "/npm/$OWNER/@$OWNER%2fsdk" '"error":"not_found"'
+check "unknown package is absent"   404 GET  "/npm/$OWNER/@$OWNER%2fsdk" '"error":"not_found"'
 check "unknown owner"               404 GET  "/npm/nobody-here/@x%2fy" '"error":"not_found"'
 check "reserved ecosystem"          404 GET  "/cargo/$OWNER/index/config.json"
 check "no preflight"                405 OPTIONS "/npm/$OWNER/x"

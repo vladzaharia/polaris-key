@@ -8,18 +8,24 @@
  * owner `registry-smoke` with Distribution on. Nothing here touches a deployed environment:
  * every wrangler call is `--local --env test`, and `[env.test]` has no routes.
  *
- * F-03 extends it: it creates the feed rows (`dist_registry_*`) and publishes the fixture
- * packages through the real `pkey release publish` path under a test trusted publisher, which
- * is what the ecosystem client matrices (F-04 to F-09) install from.
+ * Then each ecosystem's fixture packages (`fixtures/*.mjs`, F-04 onwards): its feed rows
+ * (`dist_registry_*`), its package releases as the ingest writes them, and their bytes in the
+ * local bucket. They are written directly, not through `pkey release publish`: the publish path
+ * hands out R2 temporary credentials for the S3 API, which local R2 does not serve.
  */
 
-import { writeFileSync } from "node:fs";
+import { readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { argValue, wrangler } from "./lib.mjs";
+import { pathToFileURL } from "node:url";
+import { WORKER, argValue, wrangler } from "./lib.mjs";
+
+/** The local blob bucket of `[env.test]` (wrangler.toml). */
+export const FIXTURE_BUCKET = "polaris-key-blobs-registry-clients";
+const FIXTURES = join(WORKER, "scripts", "registry-clients", "fixtures");
 
 export const FIXTURE_OWNER = "registry-smoke";
 
-export function seed(persistTo) {
+export async function seed(persistTo) {
   wrangler([
     "d1",
     "migrations",
@@ -40,15 +46,21 @@ export function seed(persistTo) {
     identity: { enabled: false },
   };
   const now = Math.floor(Date.now() / 1000);
-  // A product row is all loadProductPublic needs; no route signs anything, so the signing key
-  // columns hold inert placeholders and no product key is sealed.
+  // `loadProductPublic` needs the product row AND an active `product_keys` row (without one the
+  // owner reads as unknown, so every feed route answered the not-found; found by F-04 to F-09's clients).
+  // No registry route signs anything, so both carry inert placeholders and nothing is sealed.
   const sql = [
     `INSERT OR IGNORE INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
        default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
        created_at, modified_at)
      VALUES ('${FIXTURE_OWNER}', 'Registry smoke', 'registry-smoke-kid', 'AAAA', '0.0.0', '99.0.0',
        30, 5, NULL, NULL, NULL, ${now}, ${now});`,
+    `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status,
+       created_at)
+     VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
     `UPDATE products SET services_json = '${JSON.stringify(services)}' WHERE slug = '${FIXTURE_OWNER}';`,
+    `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at)
+     VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
   ].join("\n");
   const file = join(persistTo, "registry-clients-seed.sql");
   writeFileSync(file, sql);
@@ -64,6 +76,65 @@ export function seed(persistTo) {
     "--file",
     file,
   ]);
+  await seedFixtures(persistTo, now);
+}
+
+/**
+ * Every ecosystem's fixture packages (`fixtures/<ecosystem>.mjs`, F-04 onwards). Each module
+ * exports `seedFixture(ctx)`, which writes its rows with `ctx.sql(text)` and its bytes with
+ * `ctx.putObject(key, file)`, under `ctx.owner`, before the Worker starts.
+ */
+async function seedFixtures(persistTo, now) {
+  let files = [];
+  try {
+    files = readdirSync(FIXTURES).filter((f) => f.endsWith(".mjs"));
+  } catch {
+    return;
+  }
+  const ctx = {
+    persistTo,
+    owner: FIXTURE_OWNER,
+    now,
+    sql(text) {
+      const file = join(
+        persistTo,
+        `fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.sql`,
+      );
+      writeFileSync(file, text);
+      wrangler([
+        "d1",
+        "execute",
+        "DB",
+        "--local",
+        "--env",
+        "test",
+        "--persist-to",
+        persistTo,
+        "--file",
+        file,
+      ]);
+    },
+    putObject(key, file) {
+      wrangler([
+        "r2",
+        "object",
+        "put",
+        `${FIXTURE_BUCKET}/${key}`,
+        "--file",
+        file,
+        "--local",
+        "--env",
+        "test",
+        "--persist-to",
+        persistTo,
+      ]);
+    },
+  };
+  for (const f of files.sort()) {
+    const mod = await import(pathToFileURL(join(FIXTURES, f)).href);
+    // The other style, `seedWithBindings(env, ctx)` over getPlatformProxy, runs from fixtures.mjs.
+    if (typeof mod.seedFixture === "function") await mod.seedFixture(ctx);
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -72,5 +143,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error("usage: seed.mjs --persist-to <dir>");
     process.exit(2);
   }
-  seed(persistTo);
+  await seed(persistTo);
 }

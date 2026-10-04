@@ -1,0 +1,119 @@
+{
+  "_id": "@acme/sdk",
+  "name": "@acme/sdk",
+  "description": "The Acme SDK 1.0.0",
+  "dist-tags": {
+    "latest": "1.0.0",
+    "beta": "1.2.0-beta.1"
+  },
+  "versions": {
+    "0.9.0": {
+      "description": "The Acme SDK 0.9.0",
+      "license": "MIT",
+      "exports": {
+        ".": "./index.js"
+      },
+      "dependencies": {
+        "@acme/core": "^1.0.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "name": "@acme/sdk",
+      "version": "0.9.0",
+      "_id": "@acme/sdk@0.9.0",
+      "deprecated": "use 1.x",
+      "dist": {
+        "integrity": "sha512-Tp1h9ZV4Y/Gh2iEsRrLBkqzaXFEeboKqu0u5QetCXTB48zF3hAHD8At3Tn+GdFdKJZXWQupt2LUnJUhKR2ScDw==",
+        "shasum": "30ed87037bb853484bce84a67801affcc261c33f",
+        "tarball": "https://pkg.example.test/npm/acme/@acme/sdk/-/sdk-0.9.0.tgz"
+      }
+    },
+    "1.0.0": {
+      "description": "The Acme SDK 1.0.0",
+      "license": "MIT",
+      "keywords": ["acme"],
+      "exports": {
+        ".": "./index.js"
+      },
+      "bin": {
+        "acme": "./cli.js"
+      },
+      "dependencies": {
+        "@acme/core": "^1.0.0"
+      },
+      "devDependencies": {
+        "vitest": "^3.0.0"
+      },
+      "peerDependencies": {
+        "react": ">=18"
+      },
+      "optionalDependencies": {
+        "fsevents": "^2.3.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "os": ["darwin", "linux"],
+      "cpu": ["arm64", "x64"],
+      "name": "@acme/sdk",
+      "version": "1.0.0",
+      "_id": "@acme/sdk@1.0.0",
+      "dist": {
+        "integrity": "sha512-1z0Vs1Qy0VxF2s+DUv3fNjrIcIyiO5mBLCnYvv743tYFFAA7Z97GiMwcLHIGIZz5NNVvc+MgS3uvgBK21h9iXA==",
+        "shasum": "98a34095204356890a44ecd3424026dbb7c68463",
+        "tarball": "https://pkg.example.test/npm/acme/@acme/sdk/-/sdk-1.0.0.tgz"
+      }
+    },
+    "1.1.0": {
+      "description": "The Acme SDK 1.1.0",
+      "license": "MIT",
+      "exports": {
+        ".": "./index.js"
+      },
+      "dependencies": {
+        "@acme/core": "^1.0.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "name": "@acme/sdk",
+      "version": "1.1.0",
+      "_id": "@acme/sdk@1.1.0",
+      "deprecated": "broken build",
+      "dist": {
+        "integrity": "sha512-DBd+0C809wOtXqHVdZGtBgg1VeZTaz7bermyRGuk0ORfzOWGmSgayHpsHl1BbLNiWzbSUabrMSX3yr61NTA2OQ==",
+        "shasum": "c9e71cdb9aa642955b70482494ae7ff968a2f91f",
+        "tarball": "https://pkg.example.test/npm/acme/@acme/sdk/-/sdk-1.1.0.tgz"
+      }
+    },
+    "1.2.0-beta.1": {
+      "description": "The Acme SDK 1.2.0-beta.1",
+      "license": "MIT",
+      "exports": {
+        ".": "./index.js"
+      },
+      "dependencies": {
+        "@acme/core": "^1.0.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "name": "@acme/sdk",
+      "version": "1.2.0-beta.1",
+      "_id": "@acme/sdk@1.2.0-beta.1",
+      "dist": {
+        "integrity": "sha256-IqJuUKrvg4gUhdgtM5Kl5BO2wecm/6v78qNaxdklQhs=",
+        "tarball": "https://pkg.example.test/npm/acme/@acme/sdk/-/sdk-1.2.0-beta.1.tgz"
+      }
+    }
+  },
+  "time": {
+    "created": "2026-09-21T14:13:20.000Z",
+    "modified": "2026-09-21T14:18:20.000Z",
+    "0.9.0": "2026-09-21T14:13:20.000Z",
+    "1.0.0": "2026-09-21T14:15:00.000Z",
+    "1.1.0": "2026-09-21T14:16:40.000Z",
+    "1.2.0-beta.1": "2026-09-21T14:18:20.000Z"
+  }
+}
