@@ -101,7 +101,9 @@ async function open(): Promise<Page> {
   });
   const page = await ctx.newPage();
   await page.goto(`${base}/`);
-  await page.locator("#root *").first().waitFor();
+  // The shell has rendered (signed out: the login card's one h1). Not `#root *`: the first
+  // element can be the toaster's hidden live region, which never becomes visible.
+  await page.getByRole("heading", { level: 1 }).first().waitFor();
   return page;
 }
 

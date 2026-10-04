@@ -41,6 +41,7 @@ Owner decision: import profile data from identity providers ([PORTAL.md §4.30](
 ## Design notes
 
 - **Rule 10:** every new public route gets its OpenAPI operation and a `routeCoverage` entry in the same change (`test/routeCoverage.test.ts`).
+- **Slug:** `avatar` is already a reserved product slug (portal wave 1 integration), so `/media/avatar/:asset` cannot collide with a product's `/media/<product>/<asset>`.
 - **THREAT-MODEL:** SSRF on fetch (allowlist `lh3.googleusercontent.com`, `avatars.steamstatic.com`), image-parser bugs, storage abuse; profile claims are untrusted display data.
 - **Overlap with the re-cut S-16/S-17 graph:** I-07 also names profile import with avatars in R2. PORTAL.md is the approved UI and API spec for this surface; whichever package lands first owns the shared code and the other narrows its scope to what is left (the lead reconciles the briefs).
 - **Dependency ids.** PORTAL.md §10.3 and §11 were written against the first revision of phase I; the graph maps them onto the re-cut S-16 ids (see README §8, phase PX): portal I-06 → I-05 (accounts, links, pairwise subjects), I-05 and I-20 (Google, Apple) and I-12's web Steam → I-06, I-08 (email login) → I-07, I-14 (passkeys) → I-16, I-13 (native redirect) → I-15, I-15 (sessions) → I-07, I-16 (per-product issuer) → I-08 for layer 1 (I-21 later), S-17 → U-05.

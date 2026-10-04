@@ -209,7 +209,9 @@ export function ActivateDialog({
                 : "Download it, see your license and manage devices on its page. You won't need the key again."}
             </p>
           </DialogBody>
-          <DialogFooter className="flex-col border-0 sm:flex-col sm:justify-start sm:[&>*]:w-full">
+          {/* §8: side by side when both fit, primary last (right); otherwise stacked full
+              width, primary last (bottom, nearest the thumb). */}
+          <DialogFooter className="flex-row flex-wrap border-0 sm:flex-row sm:justify-start [&>*]:flex-[1_1_11rem]">
             <Button
               variant="outline"
               size="lg"
@@ -378,13 +380,22 @@ function ConfirmStep({
             <PlatformGlyphs platforms={platforms} className="ml-auto" />
           </div>
         ) : null}
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-sunken px-3 py-2">
-          <code className="min-w-0 flex-1 break-all font-mono text-sm text-fg-strong">
-            {licenseKey}
+        <div className="flex items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2.5">
+          <code className="min-w-0 flex-1 font-mono text-[0.8125rem] leading-5 [overflow-wrap:anywhere]">
+            <span className="text-fg-subtle">pkey_</span>
+            <span className="font-bold text-accent-fg">{p.slug}</span>
+            <span className="text-fg-subtle">_</span>
+            <span className="text-fg-strong">
+              {licenseKey.slice(`pkey_${p.slug}_`.length)}
+            </span>
           </code>
-          <Button variant="quiet" size="md" onClick={onBack}>
+          <button
+            type="button"
+            onClick={onBack}
+            className="shrink-0 rounded-sm text-sm font-bold text-accent-fg hover:underline"
+          >
             Change key
-          </Button>
+          </button>
         </div>
       </DialogBody>
       <DialogFooter>

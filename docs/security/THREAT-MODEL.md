@@ -3951,7 +3951,8 @@ wrote (docs/design/PORTAL.md G1, G5, G16).
   this origin or be rendered as a document.
 - **Refusals say nothing.** Every refusal is the same uncached `404` (an unknown product, the
   portal off, no listing, an off-allowlist source, an upstream error, a wrong type), so the route
-  does not tell a visitor why. It is public, because listing art is public store-page metadata
+  does not tell a visitor why; the one exception is a rate-limited cache miss (`429`), which says
+  only that. It is public, because listing art is public store-page metadata
   (the download page shows it too); upstream fetches are charged to `portalMedia` (per product and
   client IP, fail open) on a cache miss only, and the cached bytes are keyed by the source's hash,
   never by a visitor's query.
@@ -3996,9 +3997,21 @@ CSRF header like every other portal mutation.
   until passkeys (S-16 I-14) a recent sign-in is the strongest presence check the portal has; an
   attacker who can complete a fresh sign-in (a mailbox compromise) can replace the key, which the
   notice to the licence email surfaces.
+  Browser sessions opened earlier with the old key (`browserSession.ts`) are not revoked
+  either; like device tokens they run to their own expiry, and the reissue notice is the signal.
 - **Device names are display text, held to plain text.** At most 64 characters, trimmed, with no
   control or format characters (no bidirectional overrides that make one name render as another);
   owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
+
+### Key-bearing deep links: `/activate?key=` (PX-01)
+
+`/activate?key=<license key>` (an app at its entry limit, an email, a printed card) puts a whole
+key in a server-visible query string: it reaches edge and Worker request logs, and when the visitor
+is signed out it rides along in the OIDC `return_to` and the magic link's return URL. Accepted by
+the design (PORTAL.md §4.18); mitigated by `Referrer-Policy: no-referrer` on every page (the key
+never leaves in a `Referer`), by the SPA moving it into the hash (`#/?activate=`) on load, and by a
+key alone only ever adding a licence through the claim rules (no ownership move, verified-email
+gate, one rate bucket with the preview). Revisit when PX-17 or PX-W8 adds `manageUrl`.
 
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 

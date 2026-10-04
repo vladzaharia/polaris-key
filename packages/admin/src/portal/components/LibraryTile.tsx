@@ -48,7 +48,7 @@ export function LibraryTile({
       <div
         className={cn("flex flex-1 flex-col px-5 pb-5", compact && "px-4 pb-4")}
       >
-        <div className="-mt-7 flex items-end gap-3">
+        <div className="-mt-7 flex items-start gap-3">
           <ProductIcon
             slug={product.slug}
             name={product.name}
@@ -57,7 +57,8 @@ export function LibraryTile({
             size={64}
             className="relative border-[3px] border-surface-raised shadow-elevation-2"
           />
-          <div className="min-w-0 pb-0.5">
+          {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. */}
+          <div className="min-w-0 pt-9">
             <h3
               id={`tile-${product.slug}`}
               className={cn(

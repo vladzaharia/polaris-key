@@ -40,7 +40,11 @@ export function GetItPanel({
     );
   const model =
     (downloads.data ? getItFromDownloads(downloads.data, device) : null) ??
-    getItModel(product.releases, device);
+    getItModel(
+      product.releases,
+      device,
+      product.licenses.some((l) => l.usable),
+    );
   if (!model) return null;
   const { latest } = model;
   const describe = (r: FileRowModel) =>

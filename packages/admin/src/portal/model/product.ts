@@ -105,18 +105,35 @@ function archTitle(a: PortalArtifact, platform: PlatformKey | null): string {
   return arch === "x86_64" ? "x86_64" : arch === "arm64" ? "ARM64" : arch;
 }
 
-/** The reason a file isn't downloadable, in words (never only a tooltip, PA-6). */
-export function notIncludedReason(a: PortalArtifact): string | null {
+/**
+ * The reason a file isn't downloadable, in words (never only a tooltip, PA-6). The per-product
+ * downloads view (PX-W2) says why; `/api/releases` only says "no", and its "no" also covers a
+ * file nothing here can serve yet (no redirectable source, G3), so without a reason the words
+ * claim no more than is known: a usable licence on a `licensed` file, or any `entitled` file, is
+ * "Not available here yet", never "your license doesn't include this".
+ */
+export function notIncludedReason(
+  a: PortalArtifact,
+  licenseUsable = true,
+): string | null {
   if (a.canDownload) return null;
-  if (a.access === "licensed") return "Needs an active license";
-  if (a.access === "entitled")
-    return "Your license doesn't include this version";
+  switch (a.reason) {
+    case "license_inactive":
+      return "Needs an active license";
+    case "not_entitled":
+      return "Your license doesn't include this version";
+    case "not_hosted":
+      return "Not available here yet";
+  }
+  if (a.access === "licensed" && !licenseUsable)
+    return "Needs an active license";
   return "Not available here yet";
 }
 
 export function fileRow(
   a: PortalArtifact,
   release: PortalRelease,
+  licenseUsable = true,
 ): FileRowModel {
   const platform = normalisePlatform(a.platform);
   return {
@@ -127,7 +144,7 @@ export function fileRow(
     meta: [release.version, ext(a.name), formatSize(a.sizeBytes)]
       .filter(Boolean)
       .join(" · "),
-    notIncluded: notIncludedReason(a),
+    notIncluded: notIncludedReason(a, licenseUsable),
   };
 }
 
@@ -162,8 +179,11 @@ const GROUP_ORDER: readonly PlatformKey[] = [
 ];
 
 /** All platforms grouped by OS, then Extras (§4.20). */
-export function groupFiles(r: PortalRelease): PlatformGroup[] {
-  return groupRows(r.artifacts.map((a) => fileRow(a, r)));
+export function groupFiles(
+  r: PortalRelease,
+  licenseUsable = true,
+): PlatformGroup[] {
+  return groupRows(r.artifacts.map((a) => fileRow(a, r, licenseUsable)));
 }
 
 function groupRows(rows: FileRowModel[]): PlatformGroup[] {
@@ -198,12 +218,14 @@ export interface GetItModel {
 export function getItModel(
   releases: readonly PortalRelease[],
   device: DeviceInHand,
+  /** Whether any of the account's licences for the product is usable (status, expiry). */
+  licenseUsable = true,
 ): GetItModel | null {
   const newest = releases[0];
   if (!newest) return null;
   const covered = releases.find((r) => r.artifacts.some((a) => a.canDownload));
   const release = covered ?? newest;
-  const groups = groupFiles(release);
+  const groups = groupFiles(release, licenseUsable);
   const recommended =
     device.os && !device.phone
       ? (groups.find((g) => g.platform === device.os)?.rows ?? []).filter(

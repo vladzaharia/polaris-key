@@ -87,7 +87,8 @@ function ProductBody({
   requested: string | null;
   device: ReturnType<typeof useLibrary>["device"];
 }): React.ReactElement {
-  const releasesOn = capabilitiesOrNone(useCapabilities()).modules.releases;
+  const caps = capabilitiesOrNone(useCapabilities());
+  const releasesOn = caps.modules.releases;
   const selected =
     product.licenses.find((l) => l.id === requested) ?? product.best;
   const detail = useLicense(product.slug, selected.id);
@@ -209,6 +210,7 @@ function ProductBody({
               <div className="order-3">
                 <DevicesCard
                   productName={product.name}
+                  emailConfigured={caps.auth.magic}
                   seatLimit={
                     selected.id === product.best.id
                       ? product.seats?.limit

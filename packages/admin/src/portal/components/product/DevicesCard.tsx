@@ -21,6 +21,7 @@ import { SectionCard } from "./Card.js";
 export function DevicesCard({
   productName,
   seatLimit,
+  emailConfigured = false,
   detail,
   loading,
   error,
@@ -29,6 +30,8 @@ export function DevicesCard({
   productName: string;
   /** The licence's seat limit as activation enforces it, when the Worker sent it. */
   seatLimit?: number | null;
+  /** The Worker can send mail (`capabilities.auth.magic`): only then promise a notice. */
+  emailConfigured?: boolean;
   detail: PortalLicenseDetail | undefined;
   loading: boolean;
   error: unknown;
@@ -75,6 +78,7 @@ export function DevicesCard({
                   productName={productName}
                   inUse={active.length}
                   seatLimit={seatLimit}
+                  emailConfigured={emailConfigured}
                 />
               ))}
             </ul>
@@ -114,12 +118,14 @@ export function DeviceRow({
   productName,
   inUse,
   seatLimit,
+  emailConfigured = false,
 }: {
   device: PortalDevice;
   detail: PortalLicenseDetail;
   productName: string;
   inUse: number;
   seatLimit?: number | null;
+  emailConfigured?: boolean;
 }): React.ReactElement {
   const [confirming, setConfirming] = React.useState(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -185,7 +191,7 @@ export function DeviceRow({
               {productName} on that device asks to be activated the next time it
               starts.
             </li>
-            <li>We'll email you to confirm.</li>
+            {emailConfigured ? <li>We'll email you to confirm.</li> : null}
           </ul>
           {remove.error ? (
             <p role="alert" className="text-sm text-danger">

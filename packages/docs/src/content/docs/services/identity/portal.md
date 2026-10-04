@@ -151,7 +151,7 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   yours; the license detail says which with `canGetNewKey`). The sign-in must be at most 5 minutes
   old, otherwise `401 { "error": "step_up_required", "maxAgeSeconds": 300 }` and the customer signs
   in again. Every active key of the license is revoked and the new one inserted in one batch;
-  the response (`201`, `no-store`) carries the raw key once, `{ key, hash, revokedKeys, createdAt }`,
+  the response (`201`, `no-store`) carries the raw key once, `{ key, revokedKeys, createdAt }`,
   and it is never readable again. Devices already activated keep working; the old key only stops
   activating new ones. 5 per hour in the product's shard; the account and the license's own email
   get a notice.

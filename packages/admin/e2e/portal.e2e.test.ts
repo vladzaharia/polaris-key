@@ -159,7 +159,8 @@ const SCREENS: {
   {
     name: "library-12",
     scenario: "twelve",
-    path: "/#/?view=grid",
+    // No forced view: the desktop default grid, the phone default list (§8, mockup 21).
+    path: "/",
     ready: (p) => h1(p, "Your library"),
   },
   {

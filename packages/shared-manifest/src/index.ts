@@ -1183,6 +1183,9 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "media",
   // PX-01: the portal's `/activate?key=` deep link.
   "activate",
+  // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
+  // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
+  "avatar",
 ];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",

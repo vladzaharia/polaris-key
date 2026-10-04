@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import {
   artifact,
   axeViolations,
+  CAPS_ALL,
   DAY,
   detail,
   device,
@@ -196,9 +197,12 @@ describe("product page on today's data (PX-04)", () => {
       within(get).getByText(/Runs on Apple silicon and Intel/),
     ).toBeTruthy();
     expect(within(get).getByText("Not included")).toBeTruthy();
+    // /api/releases says "no" without saying why (it may just not be servable yet): no claim
+    // about the license's coverage.
+    expect(within(get).getByText("Not available here yet")).toBeTruthy();
     expect(
-      within(get).getByText("Your license doesn't include this version"),
-    ).toBeTruthy();
+      within(get).queryByText("Your license doesn't include this version"),
+    ).toBeNull();
     expect(within(get).getByText("Extras")).toBeTruthy();
     expect(
       within(get).getAllByRole("button", { name: /Copy SHA-256/ }).length,
@@ -208,6 +212,142 @@ describe("product page on today's data (PX-04)", () => {
       within(news).getByText("New Photo Mode with free camera."),
     ).toBeTruthy();
     expect(within(news).getByText("1.4.1")).toBeTruthy();
+  });
+
+  it("uses the downloads view (PX-W2): the older covered release, reasons and store links", async () => {
+    const f = (over: Record<string, unknown>) => ({
+      releaseId: "r18",
+      artifactId: "a",
+      version: "1.8",
+      name: "Nightfall.dmg",
+      buildId: null,
+      platform: "macos",
+      arch: "universal",
+      format: "dmg",
+      role: "payload",
+      sizeBytes: 1_000_000,
+      sha256: null,
+      minOs: null,
+      canDownload: true,
+      reason: null,
+      ...over,
+    });
+    const old = f({ artifactId: "old-mac" });
+    const newer = f({
+      artifactId: "new-mac",
+      releaseId: "r20",
+      version: "2.0",
+      canDownload: false,
+      reason: "not_entitled",
+    });
+    mockFetch(
+      routes({
+        "/api/products/nightfall/downloads": {
+          product: { slug: "nightfall", name: "Nightfall" },
+          channel: "stable",
+          available: true,
+          access: "entitled",
+          detected: { platform: "macos", arch: null, touchAmbiguous: false },
+          latest: {
+            releaseId: "r20",
+            version: "2.0",
+            title: null,
+            publishedAt: NOW_S - DAY,
+          },
+          recommended: {
+            platform: "macos",
+            label: "macOS",
+            releaseId: "r18",
+            version: "1.8",
+            universal: true,
+            latest: false,
+            files: [old],
+          },
+          platforms: [
+            {
+              platform: "macos",
+              label: "macOS",
+              recommended: null,
+              files: [newer],
+            },
+          ],
+          extras: [],
+          stores: [
+            {
+              id: "steam:main",
+              kind: "steam",
+              outletId: "main",
+              platforms: ["macos"],
+              label: "Steam",
+              url: "https://store.steampowered.com/app/1/",
+              deepLink: null,
+              command: null,
+              activateUrl: null,
+              live: true,
+              version: "2.0",
+            },
+          ],
+        },
+      }),
+    );
+    renderPortal();
+    await page();
+    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    await within(get).findByText(/Version 2.0 isn't included in your license/);
+    expect(get.textContent).toContain("Your license covers 1.8");
+    expect(
+      within(get).getByText("Your license doesn't include this version"),
+    ).toBeTruthy();
+    expect(within(get).getByRole("link", { name: /Steam/ })).toBeTruthy();
+    expect(
+      within(get).getByRole("button", {
+        name: "Download Nightfall 1.8 for macOS Universal",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("shows the seat limit from the library (G5)", async () => {
+    mockFetch(
+      routes({
+        "/api/library": {
+          products: [
+            {
+              product: "nightfall",
+              name: "Nightfall",
+              developerName: "Kiln Games",
+              tintColor: null,
+              website: null,
+              iconUrl: null,
+              headerUrl: null,
+              support: null,
+              status: "active",
+              license: {
+                id: "lic_nightfall",
+                tier: "deluxe",
+                status: "active",
+                licenseStatus: "active",
+                activatedAt: NOW_S,
+                expiresAt: null,
+                maxOfflineDays: 30,
+                deviceLimit: 3,
+                activeSeatCount: 2,
+                deviceCount: 2,
+                dormantCount: 0,
+              },
+              licenseCount: 1,
+              addedAt: NOW_S,
+            },
+          ],
+        },
+      }),
+    );
+    renderPortal();
+    await page();
+    expect(screen.getByText("by", { exact: false }).textContent).toContain(
+      "Kiln Games",
+    );
+    const devices = screen.getByRole("region", { name: "Devices" });
+    expect(devices.textContent).toContain("2 of 3 devices in use");
   });
 
   it("removes a device inline: consequences, focus on the heading, Keep it, then Remove", async () => {
@@ -235,6 +375,10 @@ describe("product page on today's data (PX-04)", () => {
         "Its seat is free straight away: 1 device in use.",
       ),
     ).toBeTruthy();
+    // Mail is configured in this fixture (capabilities.auth.magic), so the notice is promised.
+    expect(
+      within(devices).getByText("We'll email you to confirm."),
+    ).toBeTruthy();
     await userEvent.click(
       within(devices).getByRole("button", { name: "Keep it" }),
     );
@@ -253,6 +397,29 @@ describe("product page on today's data (PX-04)", () => {
       ),
     );
     expect(await screen.findByText("Studio PC was removed")).toBeTruthy();
+  });
+
+  it("promises no confirmation email when the Worker can't send mail", async () => {
+    mockFetch(
+      signedIn(
+        [nightfall],
+        {
+          "/api/releases": { releases },
+          "/api/licenses/nightfall/lic_nightfall": nightfallDetail,
+        },
+        { ...CAPS_ALL, auth: { oidc: true, magic: false } },
+      ),
+    );
+    renderPortal();
+    await page();
+    const devices = screen.getByRole("region", { name: "Devices" });
+    await userEvent.click(
+      within(devices).getByRole("button", { name: "Remove Studio PC" }),
+    );
+    await within(devices).findByRole("heading", { name: "Remove Studio PC?" });
+    expect(
+      within(devices).queryByText("We'll email you to confirm."),
+    ).toBeNull();
   });
 
   it("switches between several licenses for one product", async () => {

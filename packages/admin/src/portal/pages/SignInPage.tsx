@@ -293,7 +293,7 @@ function SentStep({
     setError(null);
     try {
       await portalApi.startMagic(email);
-      setStatus("We sent a new link. The old one no longer matters.");
+      setStatus("We sent a new link. Either one works for 10 minutes.");
       setWait(RESEND_AFTER_S);
     } catch (err) {
       setError(magicErrorText(err));

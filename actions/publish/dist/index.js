@@ -1236,7 +1236,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   ],
   "$defs": {
     "slug": {
-      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate).",
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate, avatar).",
       "type": "string",
       "pattern": "^[a-z0-9-]{1,64}$",
       "not": {
@@ -1253,7 +1253,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "webhooks",
           "well-known",
           "media",
-          "activate"
+          "activate",
+          "avatar"
         ]
       }
     },
@@ -14332,7 +14333,10 @@ var RESERVED_PRODUCT_SLUGS = [
   // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
   "media",
   // PX-01: the portal's `/activate?key=` deep link.
-  "activate"
+  "activate",
+  // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
+  // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
+  "avatar"
 ];
 var SECRET_DELIVERY_VALUES = [
   "serverOnly",

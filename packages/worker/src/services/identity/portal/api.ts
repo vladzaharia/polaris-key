@@ -15,11 +15,7 @@ import {
 } from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
-import {
-  getDevice,
-  getProduct,
-  setDeviceStatus,
-} from "../../../core/data.js";
+import { getDevice, getProduct, setDeviceStatus } from "../../../core/data.js";
 import { licenseUsable } from "../../../core/devices.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
@@ -546,7 +542,7 @@ async function handleLicenses(
   return portalJson({
     ...(await shapeLicenseDetail(db, row, now)),
     // PX-W5 (G7): whether "Get a new key" is offered for this licence — the product's opt-in.
-    canGetNewKey: settings.key_reissue_enabled === 1,
+    canGetNewKey: settings.key_reissue_enabled === 1 && row.status === "active",
   });
 }
 

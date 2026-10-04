@@ -61,7 +61,7 @@ product would be permanently shadowed, every one of its routes unreachable. Both
 refuse the same list:
 
 `docs` · `manage` · `api` · `assets` · `login` · `logout` · `callback` · `magic` · `download` ·
-`webhooks` · `well-known` · `media` · `activate`
+`webhooks` · `well-known` · `media` · `activate` · `avatar`
 
 The link-repo path gets this for free from manifest validation (`reserved_slug` — see
 [Manifest validation codes](/docs/reference/validation-codes/)); manual create checks the same

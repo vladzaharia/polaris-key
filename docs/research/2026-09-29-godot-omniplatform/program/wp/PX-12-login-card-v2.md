@@ -41,6 +41,7 @@ The full sign-in experience ([PORTAL.md §4.1](../../../../design/PORTAL.md#41-t
 
 - **Providers** (owner decisions): one login card for every entry; the provider row is logo-only Apple, Google and Steam, filtered per product by where it ships; no Discord anywhere.
 - **License keys** are the real format `pkey_<product>_<22 base64url>`; `KeyField` never groups or changes case and trims whitespace only.
+- **Email field autocomplete:** wave 1 (PX-05) ships `autocomplete="email"`; with passkeys this changes to `username webauthn` (§4.1) so conditional UI can offer them.
 - **THREAT-MODEL note (G30):** the hint is never derived from a server lookup (no enumeration).
 - **Dependency ids.** PORTAL.md §10.3 and §11 were written against the first revision of phase I; the graph maps them onto the re-cut S-16 ids (see README §8, phase PX): portal I-06 → I-05 (accounts, links, pairwise subjects), I-05 and I-20 (Google, Apple) and I-12's web Steam → I-06, I-08 (email login) → I-07, I-14 (passkeys) → I-16, I-13 (native redirect) → I-15, I-15 (sessions) → I-07, I-16 (per-product issuer) → I-08 for layer 1 (I-21 later), S-17 → U-05.
 

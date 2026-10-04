@@ -557,9 +557,10 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
     expect(res.headers.get("cache-control")).toBe("no-store");
     const body = (await res.json()) as {
       key: string;
-      hash: string;
       revokedKeys: number;
     };
+    // Only the raw key: the stored hash is not the portal's business.
+    expect(body).not.toHaveProperty("hash");
     expect(body.key).toMatch(/^pkey_djdl_[A-Za-z0-9_-]{22}$/);
     expect(body.key).not.toBe(key);
     expect(body.revokedKeys).toBe(1);
@@ -567,7 +568,9 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
     expect((await getKey(db, "djdl", await hashKey(key)))?.status).toBe(
       "revoked",
     );
-    expect((await getKey(db, "djdl", body.hash))?.status).toBe("active");
+    expect((await getKey(db, "djdl", await hashKey(body.key)))?.status).toBe(
+      "active",
+    );
     expect((await activate(env, db, key, "dev-2")).status).toBe(401);
     expect((await activate(env, db, body.key, "dev-2")).status).toBe(200);
     // The device activated with the old key keeps its token.
@@ -639,6 +642,20 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
     expect(
       (await call(env, db, "POST", path, fresh, undefined, later)).status,
     ).toBe(201);
+  });
+
+  it("gives a suspended licence no new key", async () => {
+    const { db, env, key, owner, path, sent } = await fixture();
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = ?",
+      "djdl",
+    );
+    const before = sent.length;
+    expect((await call(env, db, "POST", path, owner)).status).toBe(404);
+    expect(sent.length).toBe(before);
+    expect((await getKey(db, "djdl", await hashKey(key)))?.status).toBe(
+      "active",
+    );
   });
 
   it("dates a session issued before iat existed from its expiry", async () => {

@@ -224,7 +224,7 @@ table, `tools/services.json`.
 - [ ] `product.slug` must not collide with a platform route the worker matches before
       `/<product>/…`. The refused list (`RESERVED_PRODUCT_SLUGS`) is: `docs`, `manage`, `api`,
       `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known`, `media`,
-      `activate`.
+      `activate`, `avatar`.
       A product registered under one would be permanently shadowed; the validator emits
       `reserved_slug` and the console's manual-create path checks the same list.
 

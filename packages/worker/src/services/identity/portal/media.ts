@@ -45,7 +45,8 @@
  * cached for five minutes. Fetched bytes are kept in the Workers Cache API under the source's
  * hash, so a popular icon is fetched once per data centre, and the upstream fetch is charged to
  * the `portalMedia` rate-limit bucket (per product and client IP) only on a miss. A refusal is
- * never cached and always the same `404`, so it says nothing about why.
+ * never cached and always the same `404`, so it says nothing about why — with one deliberate
+ * exception: a rate-limited cache miss is `429 rate_limited`, so a client can back off.
  */
 
 import {

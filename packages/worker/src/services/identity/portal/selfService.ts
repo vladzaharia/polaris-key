@@ -527,7 +527,9 @@ export async function handleKeyReissue(
     product,
     licenseId,
   );
-  if (!license) return notFound();
+  // A suspended or revoked licence gets no new key (it could not activate anything, and the
+  // notice would mislead): the same 404 as a licence that is not yours.
+  if (!license || license.status !== "active") return notFound();
   const limited = await requireActionRateLimit(
     req,
     env,
@@ -586,7 +588,7 @@ export async function handleKeyReissue(
     await sendQuietly(env, license.email, notice);
   }
   // Shown ONCE: the raw key is in this response and nowhere else; only its hash is stored.
-  return portalJson({ key, hash, revokedKeys: revoked, createdAt: now }, 201);
+  return portalJson({ key, revokedKeys: revoked, createdAt: now }, 201);
 }
 
 /** A notice after a committed change: a failed send is swallowed (the worker has no console

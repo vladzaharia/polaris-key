@@ -147,12 +147,26 @@ export function tierLabel(tier: string | null): string | null {
   return words ? words[0]!.toUpperCase() + words.slice(1) : null;
 }
 
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** "14 Sep 2026" (the spec's form; `Intl`'s en-GB writes "Sept"), in the viewer's time zone. */
 export function formatDay(epochSeconds: number, withYear = true): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    ...(withYear ? { year: "numeric" } : {}),
-  }).format(new Date(epochSeconds * 1000));
+  const d = new Date(epochSeconds * 1000);
+  const day = `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return withYear ? `${day} ${d.getFullYear()}` : day;
 }
 
 /** "2 devices", or "2 of 3 devices" when the seat limit is known (G5). */

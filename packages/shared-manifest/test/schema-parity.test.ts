@@ -549,6 +549,13 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).product.slug = "media"),
   },
   {
+    code: "reserved_slug",
+    file: "product",
+    schema: "rejects",
+    // PX-W16 (G33): `/media/avatar/<asset>` must never be a product's media path.
+    mutate: (d) => (p(d).product.slug = "avatar"),
+  },
+  {
     code: "missing_name",
     file: "product",
     schema: "rejects",

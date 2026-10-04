@@ -175,6 +175,47 @@ const RELEASES = [
       art("t-win", "Tidewater-2.4.1.msi", "windows", "x86_64"),
     ],
   },
+  // Expired, with an update window that covered 1.8 but not 2.0 (§5.4: "Download 1.8").
+  {
+    product: "ember-tactics",
+    productName: "Ember Tactics",
+    releaseId: "rel_200",
+    version: "2.0",
+    title: null,
+    notes: "New campaign: The Ashen Coast.",
+    publishedAt: NOW - 10 * DAY,
+    sourceUrl: null,
+    artifacts: [
+      art("e2-mac", "EmberTactics-2.0.dmg", "macos", "universal", {
+        access: "entitled",
+        canDownload: false,
+      }),
+      art("e2-win", "EmberTactics-2.0.exe", "windows", "x86_64", {
+        access: "entitled",
+        canDownload: false,
+      }),
+    ],
+  },
+  {
+    product: "ember-tactics",
+    productName: "Ember Tactics",
+    releaseId: "rel_180",
+    version: "1.8",
+    title: null,
+    notes: null,
+    publishedAt: NOW - 60 * DAY,
+    sourceUrl: null,
+    artifacts: [
+      art("e18-mac", "EmberTactics-1.8.dmg", "macos", "universal", {
+        access: "entitled",
+        sizeBytes: 1_900_000_000,
+      }),
+      art("e18-win", "EmberTactics-1.8.exe", "windows", "x86_64", {
+        access: "entitled",
+        sizeBytes: 2_000_000_000,
+      }),
+    ],
+  },
   {
     product: "hollow-pines",
     productName: "Hollow Pines",
@@ -197,17 +238,19 @@ const PRESENTATION: Record<
   { developerName: string; deviceLimit: number; support?: string }
 > = {
   nightfall: {
+    developerName: "Lanternworks",
+    deviceLimit: 3,
+    support: "https://lanternworks.example/support",
+  },
+  tidewater: { developerName: "Harbor Audio", deviceLimit: 3 },
+  "ember-tactics": {
     developerName: "Kiln Games",
     deviceLimit: 3,
-    support: "https://kiln.example/support",
-  },
-  tidewater: { developerName: "Harbor Audio", deviceLimit: 2 },
-  "ember-tactics": {
-    developerName: "Ashfall Studio",
-    deviceLimit: 3,
-    support: "https://ashfall.example/renew",
+    support: "https://kiln.example/renew",
   },
   mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
+  // At its limit: the 12-product shelf shows "Free up a device" (§4.15, mockup 35).
+  "orbit-survey": { developerName: "Parallax Labs", deviceLimit: 2 },
   glyphsmith: {
     developerName: "Northpaw Type",
     deviceLimit: 2,
@@ -459,8 +502,8 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
           },
           entries: null,
           license: {
-            tier: "lifetime",
-            tierLabel: "Lifetime",
+            tier: "standard",
+            tierLabel: "Standard",
             status: "active",
             usable: true,
             expiresAt: null,
