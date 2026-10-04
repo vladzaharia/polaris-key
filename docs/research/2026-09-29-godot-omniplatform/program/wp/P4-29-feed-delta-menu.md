@@ -123,10 +123,15 @@ mise exec node@22 -- pnpm test:browser
   its own `nonWireIntegers`), so the check result gains `content`.
   - Node: `UpdateClient` keeps the menu after `decide()` and `feed()`. It also reads the
     committed feed from the cache, through `reloadFeeds` and with no freshness check, when the
-    pack engine starts.
+    pack engine starts. Since the follow-up, `feed({ channel })` keeps the menu only when
+    `channel` is the configured one.
   - React: `decideBrowserUpdate` returns `feedDeltas`. The adapter hands them to
     `BrowserPacks.recordFeedDeltas`, and `BrowserPacksOptions.feedDeltas` lets a host supply its
-    own.
+    own. Since the follow-up, the adapter also seeds the facet at construction
+    (`BrowserPacks.seedFeedDeltas`) with the menu of the most recently committed feed in its
+    cache (highest `issuedAt` that re-verifies, no freshness check), and the engine's start waits
+    for it. The adapter has no configured channel, so it takes the newest feed rather than the
+    canonical channel's.
   - The desktop bridge needs nothing: its host runs `@polaris-key/node`.
 - **A runner line outside the new sections.** In the Node runner, `delegationCases`' `feed` mode
   compared `r.content` with an `expect.content` of three members. It now compares the three and
