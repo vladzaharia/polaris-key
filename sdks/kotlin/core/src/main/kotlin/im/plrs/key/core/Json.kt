@@ -164,7 +164,18 @@ public class StrictParse(public val value: JsonObject, public val nonWireInteger
 /** The JWS header and payload parser (V4 §1.2). */
 public object StrictJson {
     /** Validate one header or payload byte for byte; null when it is refused. */
-    public fun validate(bytes: ByteArray): StrictParse? = StrictScanner(bytes).run()
+    public fun validate(bytes: ByteArray): StrictParse? = StrictScanner(bytes).run()?.let { (v, nw) ->
+        (v as? JsonObject)?.let { StrictParse(it, nw) }
+    }
+
+    /**
+     * The same rules over ANY top-level value: duplicate or U+0000 member names refused, names
+     * compared by scalar value, every number judged from its digits, nesting capped at
+     * [MAX_JSON_DEPTH], strict UTF-8 with no lone surrogate, RFC 8259 whitespace only. Null when
+     * refused. The config resolver's environment rule (WIRE-CONTRACT-V3 §2.2.1 rule 2) reads
+     * values through it.
+     */
+    public fun parseValue(bytes: ByteArray): JsonElement? = StrictScanner(bytes, anyTop = true).run()?.first
 
     /**
      * V4 §1.2 rule 8: a number token is in range when its exponent part has at most six
@@ -223,7 +234,7 @@ public object StrictJson {
     private const val MAX_EXPONENT_DIGITS = 6
 }
 
-private class StrictScanner(private val b: ByteArray) {
+private class StrictScanner(private val b: ByteArray, private val anyTop: Boolean = false) {
     private var i = 0
     private val nonWire = NonWireIntegers()
 
@@ -232,12 +243,12 @@ private class StrictScanner(private val b: ByteArray) {
     private val segs = ArrayList<String>()
     private val ids = ArrayList<Int>()
 
-    fun run(): StrictParse? {
+    fun run(): Pair<JsonElement, NonWireIntegers>? {
         ws()
-        if (i >= b.size || b[i] != '{'.code.toByte()) return null
+        if (i >= b.size || (!anyTop && b[i] != '{'.code.toByte())) return null
         val value = value(0) ?: return null
         ws()
-        return if (i == b.size) StrictParse(value as JsonObject, nonWire) else null
+        return if (i == b.size) value to nonWire else null
     }
 
     private fun record() {

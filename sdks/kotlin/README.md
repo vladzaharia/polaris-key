@@ -2,29 +2,36 @@
 
 The Kotlin SDK for native Android apps and JVM desktop apps (P6-05), and the shared Android
 backend that the Godot SDK, and later Unity and MAUI, bind. It is built in slices: P6-06 landed the
-verified core and the conformance runner; licence, config, identity and release (P6-07), update and
-packs (P6-08), the platform module's stable API (P6-09), the Compose UI kit (P6-11) and the
+verified core and the conformance runner, P6-07 the licence, config, devices, identity and release
+services and the umbrella client; update and packs (P6-08), the platform module's stable API (P6-09), the Compose UI kit (P6-11) and the
 Android glue (P6-12) follow. `parity.json` says which features are implemented today; the
 docs' parity page renders it.
 
 | Module         | Kind                  | What                                                                                                                                                                      |
 | -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `:core`        | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants |
+| `:license`     | JVM library (JAR)     | the licence gate, activation, enrolment, entitlements, channels, deactivation                                                                                             |
+| `:config`      | JVM library (JAR)     | layered config resolution, the user-visible list, secrets, the catalog fetch, edge-mint                                                                                   |
+| `:identity`    | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure)                                                                                            |
+| `:release`     | JVM library (JAR)     | the changelog, download and install URLs, release-record verification                                                                                                     |
+| `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                     |
 | `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
 | `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform`, singleton `PolarisKeyAndroid` (`../godot/native/android/`)                                                                |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
 
-Planned modules: `:license`, `:config`, `:identity`, `:release`, `:update`, `:packs` and the
-umbrella `:sdk` (JVM), `:android` (the only module that sees both `:core` and `:platform`) and
-`:ui` (Compose). `:core` has no Android dependency and `:platform` depends on no SDK module:
-`./gradlew checkModuleBoundaries` fails otherwise, in CI.
+Planned modules: `:update` and `:packs` (JVM, P6-08), `:android` (the only module that sees both
+`:core` and `:platform`, P6-12) and `:ui` (Compose, P6-11). No JVM module has an Android
+dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
+place they meet) and `:platform` depends on no SDK module: `./gradlew checkModuleBoundaries` fails
+otherwise, in CI.
 
 Coordinates are `im.plrs.key:polaris-key-<module>`, except `:platform`, which publishes one
 artifact per flavour: `polaris-key-platform-play` and `polaris-key-platform-direct` (see below).
 Kotlin artifacts reach adopters only through Polaris Key's own Maven feed (F-07, F-10); there is
 no Maven Central publication, no signing configuration and no remote repository in this build. `maven-publish` writes to
-`build/repo` only (`./gradlew :core:publishCorePublicationToLocalRepository`,
+`build/repo` only (`./gradlew :core:publishCorePublicationToLocalRepository` and the same task
+per JVM module, e.g. `:sdk:publishSdkPublicationToLocalRepository`,
 `./gradlew :platform:publishAllPublicationsToLocalRepository`).
 
 Versions follow Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
@@ -60,6 +67,50 @@ for Ed25519 (`compileOnly` in `:core`; the JCA's Ed25519 serves JDK 15+ and Andr
 
 `Constants.generated.kt` and `ServiceSlug.generated.kt` are written by `pnpm gen:constants` and
 `pnpm gen:services`; never edit them by hand.
+
+## The services and PolarisKeyClient
+
+`polaris-key-sdk` is the one-line dependency: `PolarisKeyClient` composes `:core` with one
+sub-client per service, and every public call is `suspend` (licence changes stream as a `Flow`,
+`licenseChanges`). Errors are `:core`'s `PolarisException` with a registry code; a call to a
+service the product does not run throws `service-unavailable` before any request (D-21).
+
+```kotlin
+val client = PolarisKeyClient.create(
+    PolarisKeyClientOptions(
+        core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
+    ),
+)
+client.activate(key)                       // license: stores the token, then syncs (forced)
+if (!isUsable(client.status())) showGate()
+val theme = client.config("ui.theme", JsonPrimitive("dark"))
+val notes = client.release.changelog()
+val prompt = client.identity.beginSignIn("Living room TV")  // RFC 8628; show prompt.userCode
+client.identity.waitForSignIn(prompt)
+```
+
+- **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
+  floor), `activate`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
+  `entitlements`, `isEntitled`, `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
+  `["stable"]`). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
+  for a registered-without-licence device (P1b-06).
+- **`:config`**: `ConfigClient.config(key, default)` and `configSource` (enforced or hidden, then
+  local, environment, remote default, fallback), `listUserConfig`, `secret`, `fetchSchema` (null
+  on any failure), `mintToken` (edge-mint, cached in memory only and bound to the device token).
+  `ConfigResolution` is the pure resolver `config-matrix.json` pins.
+- **Devices** (in `:core`, as the registry files them): `registerDevice`, `listDevices`,
+  `renameDevice`, `deauthorizeDevice`, the report, and two ports: `FingerprintSource`
+  (`JvmFingerprintSource` on a desktop) and `DeviceFactsSource` (`JvmDeviceFactsSource`); the
+  Android implementations are P6-12's.
+- **`:identity`**: `beginSignIn`, `pollSignIn` (once), `waitForSignIn` (paced, cancellable).
+- **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
+  (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
+  update engine shares).
+
+**Typed catalog mirror.** `pnpm gen:mirrors --catalog catalog.json --out-dir <dir> --lang kotlin
+--kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
+`ProductCatalog` object (keys, entries, each entry's JSON schema and default; a secret's default is
+never compiled in). The `:config` tests compile a sample of it.
 
 ## :platform
 
@@ -155,7 +206,8 @@ permissions into play builds (notes/S-10 §2).
 ```sh
 cd sdks/kotlin
 # JVM modules (JDK 17; no Android SDK needed with -Ppkey.jvmOnly=true)
-./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test checkModuleBoundaries
+./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test \
+          :sdk:test :conformance:test checkModuleBoundaries
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
@@ -168,9 +220,11 @@ tools/check_publication.sh     # both flavours in build/repo with POM, sources a
 `:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository
 in place. Its `test` task depends on `testTink`, so every suite runs on the JCA Ed25519 backend
 and again with Tink forced: `cases.json` (the JWS, licence, config, trust, clock-floor and bundle
-families and their pointer sets), `headers.json`, `fingerprint.json`, `stage-matrix.json`,
+families and their pointer sets, and `releaseRecordCases`), `gate-matrix.json`, `config-matrix.json`,
+`headers.json`, `fingerprint.json`, `stage-matrix.json`,
 `outlet-matrix.json`, and every transcript `parity.json` makes applicable (replayed by
-`TranscriptReplay.kt`, a port of the Node engine). The `kotlin` job in `.github/workflows/ci.yml`
+`TranscriptReplay.kt`, a port of the Node engine, driving `PolarisKeyClient`). Every suite extends
+`ConformanceSuite`, which installs the backend the task names before the suite runs. The `kotlin` job in `.github/workflows/ci.yml`
 runs the JVM line.
 
 The Android modules need the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`) with

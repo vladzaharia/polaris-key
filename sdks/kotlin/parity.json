@@ -4,6 +4,11 @@
   "runtimes": ["android", "jvm"],
   "testRoots": [
     "sdks/kotlin/core/src/test",
+    "sdks/kotlin/license/src/test",
+    "sdks/kotlin/config/src/test",
+    "sdks/kotlin/identity/src/test",
+    "sdks/kotlin/release/src/test",
+    "sdks/kotlin/sdk/src/test",
     "sdks/kotlin/conformance/src/test"
   ],
   "features": {
@@ -22,28 +27,34 @@
       "except": [{ "runtime": "jvm", "reason": "dependency" }],
       "note": "P6-06 ships InMemoryStore and the 0600 FileStore (the JVM's store, which supports() reports as dependency); P6-12 adds the Android Keystore store over :platform's SecureStore."
     },
-    "license.gate": { "status": "planned", "wp": "P6-07" },
-    "license.activate": { "status": "planned", "wp": "P6-07" },
-    "license.enroll": { "status": "planned", "wp": "P6-07" },
-    "license.deactivate": { "status": "planned", "wp": "P6-07" },
-    "license.entitlements": { "status": "planned", "wp": "P6-07" },
-    "license.channels": { "status": "planned", "wp": "P6-07" },
-    "license.reregister": { "status": "planned", "wp": "P6-07" },
-    "config.resolve": { "status": "planned", "wp": "P6-07" },
-    "config.list": { "status": "planned", "wp": "P6-07" },
-    "config.secret": { "status": "planned", "wp": "P6-07" },
-    "config.schema": { "status": "planned", "wp": "P6-07" },
-    "config.mint": { "status": "planned", "wp": "P6-07" },
-    "config.mirror": { "status": "planned", "wp": "P6-07" },
+    "license.gate": { "status": "implemented" },
+    "license.activate": { "status": "implemented" },
+    "license.enroll": { "status": "implemented" },
+    "license.deactivate": { "status": "implemented" },
+    "license.entitlements": { "status": "implemented" },
+    "license.channels": { "status": "implemented" },
+    "license.reregister": { "status": "implemented" },
+    "config.resolve": { "status": "implemented" },
+    "config.list": { "status": "implemented" },
+    "config.secret": { "status": "implemented" },
+    "config.schema": { "status": "implemented" },
+    "config.mint": { "status": "implemented" },
+    "config.mirror": {
+      "status": "implemented",
+      "note": "The Kotlin mirror is rendered by tools/gen-mirrors.ts (--lang kotlin); the :config tests compile the committed sample."
+    },
     "devices.fingerprint": {
       "status": "planned",
       "wp": "P6-12",
       "note": "P6-06's :core derives fingerprints and device ids from supplied inputs and passes every fingerprint.json section in :conformance; P6-12 adds Android's inputs (the app-scoped id and the Keystore anchor)."
     },
-    "devices.facts": { "status": "planned", "wp": "P6-07" },
-    "devices.register": { "status": "planned", "wp": "P6-07" },
-    "devices.manage": { "status": "planned", "wp": "P6-07" },
-    "devices.report": { "status": "planned", "wp": "P6-07" },
+    "devices.facts": {
+      "status": "implemented",
+      "note": "JvmDeviceFactsSource reads a JVM desktop; Android's inputs (Build, package-manager probes) arrive through the same DeviceFactsSource port from P6-12."
+    },
+    "devices.register": { "status": "implemented" },
+    "devices.manage": { "status": "implemented" },
+    "devices.report": { "status": "implemented" },
     "devices.attest": {
       "status": "planned",
       "unowned": true,
@@ -55,10 +66,10 @@
       "unowned": true,
       "note": "Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07)."
     },
-    "identity.devicecode": { "status": "planned", "wp": "P6-07" },
-    "release.changelog": { "status": "planned", "wp": "P6-07" },
-    "release.download": { "status": "planned", "wp": "P6-07" },
-    "release.record": { "status": "planned", "wp": "P6-07" },
+    "identity.devicecode": { "status": "implemented" },
+    "release.changelog": { "status": "implemented" },
+    "release.download": { "status": "implemented" },
+    "release.record": { "status": "implemented" },
     "update.check": { "status": "planned", "wp": "P6-08" },
     "update.feed": { "status": "planned", "wp": "P6-08" },
     "update.decide": { "status": "planned", "wp": "P6-08" },

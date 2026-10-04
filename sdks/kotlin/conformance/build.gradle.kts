@@ -1,10 +1,12 @@
 // The Kotlin conformance runner (P6-06): internal, test-only, never published. It reads
 // conformance/corpus/v2/ and conformance/transcripts/ IN PLACE (no mirror) from the repository
-// root and drives :core through every case the core owns; later slices add their corpus files
-// and transcripts to the same runner.
+// root and drives :core and, through the umbrella PolarisKeyClient (:sdk, P6-07), every service
+// module through the cases and transcripts they own; later slices add theirs to the same runner.
 //
 // Every Ed25519 verdict is reached twice: `test` runs the suite on the JCA backend and depends on
-// `testTink`, the same suite with the Tink backend forced, so the two can never disagree.
+// `testTink`, the same suite with the Tink backend forced, so the two can never disagree. Every
+// suite extends ConformanceSuite, whose @BeforeClass installs the backend this task names and
+// checks it, so no suite can run on whatever backend an earlier one left behind.
 plugins {
     alias(libs.plugins.kotlin.jvm)
 }
@@ -14,7 +16,7 @@ kotlin {
 }
 
 dependencies {
-    testImplementation(project(":core"))
+    testImplementation(project(":sdk"))
     testImplementation(libs.junit)
     testImplementation(libs.tink)
     testImplementation(libs.kotlinx.coroutines.test)
