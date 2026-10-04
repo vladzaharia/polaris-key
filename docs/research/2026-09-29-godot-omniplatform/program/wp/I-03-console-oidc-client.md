@@ -5,12 +5,14 @@
 | Phase       | I: Identity service (S-16) (phase-0, MVI)                                                                                        |
 | Size        | 0.2–0.3 engineer-weeks                                                                                                           |
 | Depends on  | none                                                                                                                             |
-| Unblocks    | [I-09](I-09-pocket-id-migration.md)                                                                                              |
+| Unblocks    | [I-17](I-17-pocket-id-migration.md)                                                                                              |
 | Role        | `pkey-implementer`                                                                                                               |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                         |
 | Gates       | THREAT-MODEL; `check:links`                                                                                                      |
 | Human input | owner creates a second OIDC client for the console in Pocket ID (id.plrs.im) and sets the `ADMIN_OIDC_*` secrets per environment |
 | Repo        | `vladzaharia/polaris-key`                                                                                                        |
+
+> Forward references re-mapped to the re-cut S-16 table on 2026-10-04 ([S-16 §8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)); scope unchanged.
 
 ## Goal
 
@@ -40,7 +42,7 @@ One Pocket ID client serves console admin, the root portal and every `provider: 
 
 **Out** (and where it belongs instead):
 
-- Moving end users off Pocket ID (→ I-09).
+- Moving end users off Pocket ID (→ I-17).
 - Any change to operator authorisation (`PLATFORM_ADMIN_GROUP` stays).
 
 ## Design notes
@@ -80,7 +82,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 ## Hand-off
 
-- I-09 can move end users off Pocket ID once operators no longer depend on the shared client.
+- I-17 can move end users off Pocket ID once operators no longer depend on the shared client.
 
 The role agent sets `--set I-03 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
