@@ -881,6 +881,14 @@ function deps(source: Map<string, RegistryPackage>): TestDeps {
 }
 
 describe("the materialiser", () => {
+  it("every feed package's ecosystem has its renderer and routes (F-04 to F-09)", () => {
+    expect([...RENDERERS.keys()].sort()).toEqual(
+      ["godot", "maven", "npm", "oci", "pypi", "swift"].sort(),
+    );
+    for (const [ecosystem, renderer] of RENDERERS)
+      expect(renderer.routes.length, ecosystem).toBeGreaterThan(0);
+  });
+
   it("every registry route belongs to a registered renderer of its own ecosystem", () => {
     // F-02 shipped none; each feed package (F-04 to F-09) registers one renderer.
     expect(DISTRIBUTION_REGISTRY_ROUTES).toEqual(
