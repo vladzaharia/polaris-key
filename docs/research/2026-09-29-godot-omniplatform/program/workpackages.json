@@ -2453,7 +2453,7 @@
       "optional": false,
       "refs": ["notes/S-12 §5–§8", "notes/S-12 §10", "README §3.8"],
       "brief": "wp/F-01-feeds-plan.md",
-      "status": "awaiting-approval"
+      "status": "done"
     },
     {
       "id": "F-02",
