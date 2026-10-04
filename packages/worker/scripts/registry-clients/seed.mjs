@@ -40,14 +40,17 @@ export function seed(persistTo) {
     identity: { enabled: false },
   };
   const now = Math.floor(Date.now() / 1000);
-  // A product row is all loadProductPublic needs; no route signs anything, so the signing key
-  // columns hold inert placeholders and no product key is sealed.
+  // `loadProductPublic` needs the product row AND an active `product_keys` row (without one the
+  // owner reads as unknown, so every feed route answered the not-found; found by F-05's clients).
+  // No registry route signs anything, so both carry inert placeholders and nothing is sealed.
   const sql = [
     `INSERT OR IGNORE INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
        default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
        created_at, modified_at)
      VALUES ('${FIXTURE_OWNER}', 'Registry smoke', 'registry-smoke-kid', 'AAAA', '0.0.0', '99.0.0',
        30, 5, NULL, NULL, NULL, ${now}, ${now});`,
+    `INSERT OR IGNORE INTO product_keys (product, kid, public_b64url, enc_private_json, status, created_at)
+     VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'AAAA', '{}', 'active', ${now});`,
     `UPDATE products SET services_json = '${JSON.stringify(services)}' WHERE slug = '${FIXTURE_OWNER}';`,
   ].join("\n");
   const file = join(persistTo, "registry-clients-seed.sql");

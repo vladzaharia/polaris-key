@@ -58,10 +58,10 @@ pip and uv refuse plain `application/json`; the exact PEP 691 type is required. 
 
 ## Acceptance criteria
 
-- [ ] Matrix green: pip current and 22.2, uv with `explicit = true`, Poetry 2.
-- [ ] Yank, deprecate and channel-tag behaviour match plan §6.7 and the protocol.
-- [ ] The headers of plan §6.7 are on every answer. Nothing outside `REGISTRY_HOST_TYPES` is served.
-- [ ] `routeCoverage` passes. The green gate passes (`AGENTS.md`).
+- [x] Matrix green: pip current and 22.2, uv with `explicit = true`, Poetry 2.
+- [x] Yank, deprecate and channel-tag behaviour match plan §6.7 and the protocol.
+- [x] The headers of plan §6.7 are on every answer. Nothing outside `REGISTRY_HOST_TYPES` is served.
+- [x] `routeCoverage` passes. The green gate passes (`AGENTS.md`).
 
 ## Verify
 
@@ -69,6 +69,54 @@ pip and uv refuse plain `application/json`; the exact PEP 691 type is required. 
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- registry/pypi routeCoverage
 gh workflow run registry-clients.yml -f ecosystem=pypi
 ```
+
+## Corrections from the code (recorded during implementation)
+
+- **pip 22.2 is not "the HTML path".** pip 22.2 is the first pip with PEP 691 and, like uv and
+  Poetry 2, lists the JSON type first, so it gets JSON. pip before 22.2 asks only for `text/html`,
+  which the host never serves (the HTML page goes out as `application/vnd.pypi.simple.v1+html`),
+  so those pips are unsupported. The matrix runs pip 22.2 (on Python 3.11, which it supports)
+  through install, yank and hash checks over JSON, and exercises the HTML page with pip 22.2's own
+  link parser (`parse_links`): every file, its hash, the yank reason and `Requires-Python`.
+- **Negotiation.** JSON whenever `Accept` lists `…simple.v1+json` or `…simple.latest+json` with a
+  non-zero q; otherwise HTML. With `htmlFallback` off, a client that admits JSON only through a
+  wildcard (or sends no `Accept`) still gets JSON, and only a client that cannot take JSON gets 406.
+- **Deprecate and channels have no PyPI form.** A deprecated version is listed as live (PEP 592
+  has only yank; PEP 792 markers are per project), and the page maps no channel tag: pre-releases
+  are chosen by PEP 440 version. `RegistryPackage.tags` is `{}` for PyPI, so the read path never
+  pays for `packageChannelHeads`.
+- **The project list is computed on read**, not rendered into R2: `render(pkg)` sees one package,
+  and the list spans the owner. It goes through `serveFeedRead` (list decision) and the Cache API,
+  and omits a project whose own delivery access is stricter than the feed's.
+- **The render-on-write drain is not wired** (F-02's corrections give it to F-03, F-03's give it
+  to F-02). So the project-page read compares the stored render record's stamp with the state it
+  just read from `releaseCatalog` and re-renders a stale or missing page (answered from memory,
+  written back via `waitUntil`). A yank therefore shows up at the next Cache API miss (≤ 60 s)
+  without the drain; once the drain lands this is a one-`head` safety net. Proposed follow-up below.
+- **Relative file URLs** (`../../files/<sha256>/<filename>`), so a stored page never bakes in the
+  host. The PEP 714 `core-metadata` key only; the old `dist-info-metadata` is not sent.
+- **Unknown names never become an oracle**: a path naming no project or file runs the feed-level
+  check (`deliverableId: null`) before the not-found, so a non-public feed answers 401 for known
+  and unknown names alike, and a feed that is off answers 404 for both, redirects included.
+- **Files** are found by filename prefix among the owner's PyPI deliverables (longest name first)
+  and served only when name and hash match a listed file and the owner holds the blob ref; served
+  by Core's `blobResponse` (`application/octet-stream`, `attachment`, `Repr-Digest`, ranges). Its
+  immutable `Cache-Control` adds `no-transform` to §6.7's value.
+- **The harness owner could not load.** `seed.mjs` inserted no active `product_keys` row, so
+  `loadProductPublic` returned null and every feed route answered the not-found (F-02's curl smoke
+  only probed not-founds). Fixed in `seed.mjs`. The PyPI fixture is seeded as the rows
+  `pkey release publish` writes, plus checksummed R2 objects through wrangler's platform proxy,
+  because a local Worker cannot mint upload tickets; the real ingest path is covered by
+  `test/registry/pypi.test.ts`, which publishes through the submit route. `run.mjs` gained
+  per-client fixtures (`clients/<name>.seed.mjs`).
+- **Miniflare and 304s.** Under `wrangler dev`, Miniflare's compression emulation adds
+  `Content-Encoding: gzip` to any answer without a `Content-Type` when the client accepts gzip, a
+  body-less 304 included; Poetry's HTTP cache then fails to decode its stored body. The Poetry
+  client uses a fresh cache per command. Whether the production edge does the same is unverified.
+- **Tests** live in `test/registry/pypi.test.ts` (the Verify filter `registry/pypi` matches it) with
+  goldens under `test/fixtures/registry/pypi/` (`UPDATE_PYPI_GOLDENS=1`, prettier-ignored). F-02's
+  "no routes yet" assertions in `registryFeeds.test.ts` and `registryHost.test.ts` now check that
+  every route belongs to a renderer of its own ecosystem.
 
 ## Hand-off
 

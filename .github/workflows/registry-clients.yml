@@ -38,6 +38,14 @@ jobs:
         include:
           - client: curl
             os: ubuntu-latest
+          # F-05: pip current and 22.2, uv (explicit index), Poetry 2. Each bootstraps its tool
+          # (and, for pip 22.2, a Python 3.11 through uv) from PyPI into a throwaway environment.
+          - client: pip
+            os: ubuntu-latest
+          - client: uv
+            os: ubuntu-latest
+          - client: poetry
+            os: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       # No `version:` here: the action reads `packageManager` from package.json.
