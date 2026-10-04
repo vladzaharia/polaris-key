@@ -26,9 +26,12 @@ serialization = "1.8.1"
 okhttp = "4.12.0"
 tink = "1.17.0"
 # zstd for pack deltas, chunks and zstd-coded objects (P6-08, notes/E9): the JNI binding to libzstd
-# 1.5.7. The JAR carries the desktop natives; the Android AAR of the same version (16 KB page
-# aligned, tools/check_16k_alignment.py) is what the :android glue links (P6-12).
+# 1.5.7. The JAR carries the desktop natives. :android links the Android AAR instead (16 KB page
+# aligned, tools/check_16k_alignment.py), and at 1.5.7-12: every AAR from 1.5.7-13 on declares
+# minCompileSdk 37, which compileSdk 36 under AGP 8.6.1 (Godot 4.7.2's template) cannot consume
+# (P6-12). The zstd-jni API :packs calls is the same in both builds.
 zstdJni = "1.5.7-21"
+zstdJniAndroid = "1.5.7-12"
 # The Compose UI kit (:ui, P6-11): the Compose BOM whose libraries are built for Kotlin 2.1 and
 # compile SDK 35+ (Compose 1.8, Material 3 1.3), the Compose compiler plugin at the Kotlin version,
 # ZXing's core encoder for the sign-in QR code (pure Java, no Android dependency, no camera), and
@@ -70,7 +73,10 @@ roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose"
 roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
+# The Ed25519 backend below Android API 33 in :android (P6-12): the same Tink, built for Android.
+tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
+zstd-jni-android = { module = "com.github.luben:zstd-jni", version.ref = "zstdJniAndroid" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }

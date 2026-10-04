@@ -180,7 +180,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P6-09](wp/P6-09-kotlin-platform-module.md) ✋          | Kotlin SDK platform module: P5-06's :platform in the SDK structure, with Play Integrity                       | P6-06, P5-06, P6-02                             | implementer    | 1.5–2 | done      |
 | [P6-10](wp/P6-10-godot-android-binding-on-kotlin.md) ✋ | Godot Android binding rebuilt on the Kotlin SDK platform module                                               | P6-09, P5-08                                    | godot-engineer | 1–1.5 | done      |
 | [P6-11](wp/P6-11-kotlin-compose-ui-kit.md)              | Kotlin SDK Jetpack Compose UI kit                                                                             | P6-07, P6-08                                    | implementer    | 2–3   | in-review |
-| [P6-12](wp/P6-12-kotlin-android-glue.md) ✋             | Kotlin SDK Android glue: Keystore store, device inputs, outlet readers, update driver and Play pack transport | P6-08, P6-09                                    | sdk-porter     | 1–1.5 | todo      |
+| [P6-12](wp/P6-12-kotlin-android-glue.md) ✋             | Kotlin SDK Android glue: Keystore store, device inputs, outlet readers, update driver and Play pack transport | P6-08, P6-09                                    | sdk-porter     | 1–1.5 | in-review |
 
 ## F: Package feeds (pkg.plrs.im)
 

@@ -34,17 +34,20 @@ if (findProject(":platform") != null) {
 // Android dependency; each service module (:license, :config, :identity, :release, :update, :packs) depends on
 // :core only, never on a sibling, and :sdk is the one place they meet (P6-07). :platform is
 // standalone (the Godot binding links it alone), so it never depends on :core. The one module
-// allowed to see both core and platform is :android (P6-12). `./gradlew checkModuleBoundaries`
-// fails on any edge that breaks this; the kotlin and android CI jobs run it.
+// allowed to see both core and platform is :android (P6-12), and it is a leaf: no module but the
+// :boundary probe depends on it. `./gradlew checkModuleBoundaries` fails on any edge that breaks
+// this; the kotlin and android CI jobs run it.
 val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":update", ":packs", ":sdk")
 val serviceModules = listOf(":license", ":config", ":identity", ":release", ":update", ":packs")
 val checkModuleBoundaries by tasks.registering {
     group = "verification"
-    description = "Fails when a JVM module reaches Android, a service module reaches a sibling, or :platform reaches an SDK module."
+    description = "Fails when a JVM module reaches Android, a service module reaches a sibling, :platform reaches an SDK module, or a module other than :android sees both :core and :platform."
     val jvmProjects = jvmModules.map { project(it) }
     val serviceProjects = serviceModules.map { project(it) }
     val platformProject = findProject(":platform")
     val uiProject = findProject(":ui")
+    val androidProject = findProject(":android")
+    val everyProject = rootProject.subprojects.toList()
     doLast {
         val problems = mutableListOf<String>()
         val forbiddenPlugins = listOf("com.android.library", "com.android.application")
@@ -98,6 +101,49 @@ val checkModuleBoundaries by tasks.registering {
                 }
             }
         }
+        // P6-12: only :android sees both the SDK core and :platform. Every project's resolvable
+        // classpaths are walked (project components, and the platform's published coordinates, which
+        // resolve to :platform in this build); a module reaching both, other than :android, fails.
+        // And :android is a leaf: no module but the :boundary probe declares a dependency on it.
+        if (platformProject != null) {
+            val platformCoordinates = Regex("^polaris-key-platform-(play|direct)$")
+            for (p in everyProject) {
+                if (p == androidProject || p == platformProject) continue
+                var seesCore = false
+                var seesPlatform = false
+                for (config in p.configurations.filter { it.isCanBeResolved && it.name.endsWith("Classpath") && !it.name.contains("UnitTest") && !it.name.contains("AndroidTest") }) {
+                    val result = try {
+                        config.incoming.resolutionResult.allComponents
+                    } catch (e: Exception) {
+                        continue
+                    }
+                    for (c in result) {
+                        val id = c.id
+                        if (id is org.gradle.api.artifacts.component.ProjectComponentIdentifier && id.build.isCurrentBuild) {
+                            if (id.projectPath == ":core") seesCore = true
+                            if (id.projectPath == ":platform") seesPlatform = true
+                        }
+                        if (id is org.gradle.api.artifacts.component.ModuleComponentIdentifier && id.group == "im.plrs.key") {
+                            if (id.module == "polaris-key-core") seesCore = true
+                            if (platformCoordinates.matches(id.module)) seesPlatform = true
+                        }
+                    }
+                }
+                if (seesCore && seesPlatform && p.path != ":boundary") {
+                    problems += "${p.path} sees both :core and :platform (only :android may)"
+                }
+            }
+            if (androidProject != null) {
+                for (p in everyProject) {
+                    if (p == androidProject || p.path == ":boundary") continue
+                    for (config in p.configurations) {
+                        for (dep in config.dependencies.withType(ProjectDependency::class.java)) {
+                            if (dep.name == androidProject.name) problems += "${p.path} ${config.name} depends on :android (a leaf)"
+                        }
+                    }
+                }
+            }
+        }
         if (problems.isNotEmpty()) {
             throw GradleException("module boundary violations:\n  " + problems.joinToString("\n  "))
         }
@@ -105,7 +151,8 @@ val checkModuleBoundaries by tasks.registering {
             "module boundaries hold: no JVM module has an Android dependency; each service module sees :core only" +
                 (if (platformProject != null) "; :platform depends on no SDK module" else
                     " (:platform not included in this build)") +
-                (if (uiProject != null) "; :ui reaches neither :platform nor :android" else ""),
+                (if (uiProject != null) "; :ui reaches neither :platform nor :android" else "") +
+                (if (androidProject != null) "; only :android sees both :core and :platform, and nothing depends on it" else ""),
         )
     }
 }

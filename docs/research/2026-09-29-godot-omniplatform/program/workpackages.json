@@ -2250,7 +2250,7 @@
       "optional": false,
       "refs": ["PARITY §2.2", "notes/E2 §A2 §A3"],
       "brief": "wp/P6-12-kotlin-android-glue.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-01",

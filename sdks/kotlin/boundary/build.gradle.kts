@@ -1,5 +1,6 @@
 // The flavour-boundary probe (never published): an empty app per flavour that packages the
-// platform AAR and the Godot binding exactly as an export does. tools/check_flavours.sh reads its
+// platform AAR and the Godot binding exactly as an export does, and the Kotlin SDK's Android glue
+// (:android, P6-12, with :sdk and every JVM module behind it) exactly as a native app does. tools/check_flavours.sh reads its
 // release APKs: the play APK's merged manifest has no install permission and its dex no
 // PackageInstaller session creation or commit and no direct-flavour class; the direct APK's dex has
 // no Play Core and no play-flavour class.
@@ -49,4 +50,5 @@ kotlin {
 dependencies {
     implementation(project(":platform"))
     implementation(project(":godot"))
+    implementation(project(":android"))
 }

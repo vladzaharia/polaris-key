@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No permission and no component: the app decides (the direct flavour's install-status receiver
+     arrives from polaris-key-platform-direct). -->
+<manifest />

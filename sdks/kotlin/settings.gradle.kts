@@ -67,6 +67,7 @@ val androidSdk =
 
 if (!jvmOnly && androidSdk) {
     include(":platform")
+    include(":android")
     include(":godot")
     project(":godot").projectDir = file("../godot/native/android")
     include(":boundary")

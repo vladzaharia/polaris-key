@@ -10,7 +10,8 @@ JAR, or a bare .so) and fails on any 64-bit library with a PT_LOAD segment align
 
     python3 tools/check_16k_alignment.py <archive-or-so> [...]
 
-With no argument it resolves the zstd-jni Android AAR the version catalog pins from the Gradle
+With no argument it resolves the zstd-jni Android AAR the version catalog pins (zstdJniAndroid, the
+AAR :android links, P6-12) from the Gradle
 cache (~/.gradle) or Maven Central, so the `kotlin` CI job can run it with a JDK and Python only.
 Exits 0 when every 64-bit library passes, 1 on a violation, 2 when nothing was checked.
 """
@@ -88,9 +89,9 @@ def check_path(path):
 
 def pinned_version():
     with open(os.path.join(HERE, "..", "gradle", "libs.versions.toml")) as f:
-        m = re.search(r'^zstdJni\s*=\s*"([^"]+)"', f.read(), re.M)
+        m = re.search(r'^zstdJniAndroid\s*=\s*"([^"]+)"', f.read(), re.M)
     if not m:
-        raise SystemExit("check_16k_alignment: no zstdJni version in libs.versions.toml")
+        raise SystemExit("check_16k_alignment: no zstdJniAndroid version in libs.versions.toml")
     return m.group(1)
 
 

@@ -1279,7 +1279,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.headers" to CapabilityRow("implemented", "core", listOf()),
     "core.errors" to CapabilityRow("implemented", "core", listOf()),
     "core.caps" to CapabilityRow("implemented", "core", listOf()),
-    "core.store" to CapabilityRow("planned", "core", listOf(CapabilityNa("jvm", "dependency"))),
+    "core.store" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "dependency"))),
     "license.gate" to CapabilityRow("implemented", "license", listOf()),
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
@@ -1293,7 +1293,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "config.schema" to CapabilityRow("implemented", "config", listOf()),
     "config.mint" to CapabilityRow("implemented", "config", listOf()),
     "config.mirror" to CapabilityRow("implemented", "config", listOf()),
-    "devices.fingerprint" to CapabilityRow("planned", "core", listOf()),
+    "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
     "devices.register" to CapabilityRow("implemented", "core", listOf()),
     "devices.manage" to CapabilityRow("implemented", "core", listOf()),
@@ -1308,9 +1308,9 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "update.feed" to CapabilityRow("implemented", "update", listOf()),
     "update.decide" to CapabilityRow("implemented", "update", listOf()),
     "update.content" to CapabilityRow("implemented", "update", listOf()),
-    "update.driver" to CapabilityRow("planned", "update", listOf(CapabilityNa("jvm", "runtime"))),
+    "update.driver" to CapabilityRow("implemented", "update", listOf(CapabilityNa("jvm", "runtime"))),
     "update.bootguard" to CapabilityRow("implemented", "update", listOf()),
-    "outlet.detect" to CapabilityRow("planned", "update", listOf()),
+    "outlet.detect" to CapabilityRow("implemented", "update", listOf()),
     "packs.record" to CapabilityRow("implemented", "release", listOf()),
     "packs.revoke" to CapabilityRow("implemented", "release", listOf()),
     "packs.delegation" to CapabilityRow("implemented", "release", listOf()),
@@ -1331,7 +1331,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "packs.type.ml.model" to CapabilityRow("implemented", "release", listOf()),
     "packs.provides" to CapabilityRow("implemented", "release", listOf()),
     "packs.transport.apple" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
-    "packs.transport.play" to CapabilityRow("planned", "distribution", listOf(CapabilityNa("jvm", "runtime"))),
+    "packs.transport.play" to CapabilityRow("implemented", "distribution", listOf(CapabilityNa("jvm", "runtime"))),
     "packs.transport.steam" to CapabilityRow("planned", "distribution", listOf(CapabilityNa("android", "runtime"))),
     "packs.transport.msix" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "packs.transport.flatpak" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
@@ -1341,4 +1341,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "9df5ebd657f5f2c476ecea449a7085f16954e45ccfec603d100dcb9659f7f921"
+public const val CAPABILITY_DIGEST: String = "d7430e47fb7630468315e393921b7bc3cc5f325d0347a6d45d95501c7da02553"
