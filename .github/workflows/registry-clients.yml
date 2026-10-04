@@ -38,6 +38,10 @@ jobs:
         include:
           - client: curl
             os: ubuntu-latest
+          # F-09: the Godot feed. GodotEnv ("source": "zip") plus HTTP contract checks of both
+          # editor API shapes; the manual editor installs are recorded on the PR.
+          - client: godot
+            os: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       # No `version:` here: the action reads `packageManager` from package.json.
@@ -49,4 +53,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The Worker imports the built workspace packages (brand, manifest, protocol, …).
       - run: pnpm build
+      # F-09: GodotEnv is a .NET tool; the godot client fails rather than skips without it here.
+      - if: matrix.client == 'godot'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - if: matrix.client == 'godot'
+        run: |
+          dotnet tool install --global Chickensoft.GodotEnv
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          echo "REQUIRE_GODOTENV=1" >> "$GITHUB_ENV"
       - run: pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}

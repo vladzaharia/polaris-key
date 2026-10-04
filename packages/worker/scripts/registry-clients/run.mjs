@@ -6,7 +6,8 @@
  *   node scripts/registry-clients/run.mjs [--client <name>]... [--port <n>]
  *
  *   1. a fresh local state directory (D1, R2, KV) under the OS temp dir;
- *   2. `seed.mjs`: every migration, then the fixture owner;
+ *   2. `seed.mjs`: every migration, then the fixture owner; then each selected client's own
+ *      `clients/<name>.seed.ts`, when it has one (its fixture packages, before the Worker starts);
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
  *      request the clients make arrives on the registry host (`core/registryHost.ts`);
  *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin)
@@ -18,11 +19,17 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
+import { TSX, WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
 import { FIXTURE_OWNER, seed } from "./seed.mjs";
 
 const CLIENTS = join(WORKER, "scripts", "registry-clients", "clients");
@@ -73,6 +80,21 @@ let dev = null;
 let failed = 0;
 try {
   seed(state);
+  // A client may publish its own fixture packages before the Worker starts: `clients/<name>.seed.ts`
+  // runs (under tsx) with the state directory and the origin. The Worker is not running yet, so
+  // the seed has the local D1 and R2 to itself.
+  for (const client of clients) {
+    const clientSeed = join(CLIENTS, `${client}.seed.ts`);
+    if (!existsSync(clientSeed)) continue;
+    console.log(`\n── registry client seed: ${client} ──`);
+    const r = spawnSync(
+      TSX,
+      [clientSeed, "--persist-to", state, "--origin", origin],
+      { cwd: WORKER, stdio: "inherit" },
+    );
+    if (r.status !== 0)
+      throw new Error(`seed for ${client} failed (exit ${r.status})`);
+  }
   dev = spawn(
     WRANGLER,
     [
