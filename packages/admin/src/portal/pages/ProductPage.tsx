@@ -99,7 +99,9 @@ function ProductBody({
 
   // After adding this product, focus its heading (§9.4).
   React.useEffect(() => {
-    if (consumeHeadingFocus(product.slug)) headingRef.current?.focus();
+    // After the dialog has closed and handed focus back to its opener.
+    if (consumeHeadingFocus(product.slug))
+      requestAnimationFrame(() => headingRef.current?.focus());
   }, [product.slug]);
 
   // A section deep link scrolls there once.
