@@ -1,0 +1,25 @@
+{
+  "result": [
+    {
+      "asset_id": "2082422150",
+      "title": "Acme [Addon] <b>",
+      "author": "Acme Games",
+      "author_id": "1720454917",
+      "category": "Scripts",
+      "category_id": "6",
+      "godot_version": "4.4",
+      "rating": "0",
+      "cost": "MIT",
+      "support_level": "community",
+      "icon_url": "https://pkg.example.test/godot/djdl/icons/8e85d7527379589e16278a50671f0f31db1fb5feadd217a34144157423f84b5c.png",
+      "version": "3",
+      "version_string": "1.1.0",
+      "modify_date": "2023-11-14 21:40:00"
+    }
+  ],
+  "page": 0,
+  "pages": 1,
+  "page_length": 10,
+  "total_items": 1,
+  "total": 1
+}

@@ -1,0 +1,35 @@
+{
+  "count": "1",
+  "hits": [
+    {
+      "asset": {
+        "slug": "acme_addon",
+        "publisher": {
+          "slug": "acme",
+          "name": "acme",
+          "thumbnail": "",
+          "store_url": "https://pkg.example.test/godot/djdl/index.json",
+          "verified": false
+        },
+        "name": "Acme [Addon] <b>",
+        "type": 0,
+        "description": "Licence checks for Godot.",
+        "price_cent": 0,
+        "license_type": "MIT",
+        "license_url": "",
+        "thumbnail": "https://pkg.example.test/godot/djdl/icons/8e85d7527379589e16278a50671f0f31db1fb5feadd217a34144157423f84b5c.png",
+        "reviews_score": 0,
+        "tags": [],
+        "store_url": "https://pkg.example.test/godot/djdl/store/api/v1/assets/acme/acme_addon/"
+      },
+      "highlights": {
+        "name": null,
+        "description": null,
+        "body": null,
+        "publisher_name": null
+      }
+    }
+  ],
+  "tag_filters": [],
+  "scroll": null
+}

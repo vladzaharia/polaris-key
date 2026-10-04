@@ -5,6 +5,7 @@ import { Box, Search } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import {
   navItems,
+  type NavFeatures,
   platformItems,
   platformLinks,
   visibleSections,
@@ -40,6 +41,7 @@ export function navigationSource(
   slug: string | null,
   productName: string | null,
   services: ServiceState,
+  features: NavFeatures = null,
 ): PaletteItem[] {
   const items: PaletteItem[] = platformLinks().map((p) => {
     const Icon = p.icon;
@@ -68,7 +70,7 @@ export function navigationSource(
   }
   if (!slug) return items;
   for (const section of visibleSections(services)) {
-    for (const p of navItems(section)) {
+    for (const p of navItems(section, features)) {
       const Icon = p.icon;
       items.push({
         id: `nav:${slug}:${p.page}`,

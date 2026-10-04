@@ -1,0 +1,19 @@
+{
+  "categories": [
+    {
+      "id": "8",
+      "name": "Templates",
+      "type": "1"
+    },
+    {
+      "id": "9",
+      "name": "Projects",
+      "type": "1"
+    },
+    {
+      "id": "10",
+      "name": "Demos",
+      "type": "1"
+    }
+  ]
+}

@@ -22,6 +22,7 @@ import {
   portalProductSettingsView,
 } from "../../services/identity/portal/repo.js";
 import { shipsDmgs } from "../../services/release/config.js";
+import { packageFeedsOf } from "../../services/distribution/registryFeeds.js";
 import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
@@ -200,6 +201,9 @@ export async function productView(
     // F-03: the platform's own product (the package-feeds owner of our SDKs). The console keeps it
     // out of the product switcher and the Products registry; it is reached from Platform.
     system: p.system === 1,
+    // F-11: the operator-owned `packageFeeds` sub-capability (`dist_registry_owners`). The shell
+    // shows Distribution → Package feeds only while it is on, so it rides the row the shell loads.
+    packageFeeds: (await packageFeedsOf(db, p.slug)).enabled,
     releaseSource: p.release_source ?? "manual",
     signingKid,
     jwksUrl,
