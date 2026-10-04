@@ -24,8 +24,8 @@ export const playConnector: DistributionConnector = {
   outletKinds: PLAY_OUTLET_KINDS,
   poll: pollPlay,
   controls: PLAY_CONTROLS,
-  async status({ db, product }) {
-    const { setup, inert } = await resolvePlaySetup(db, product);
+  async status({ env, db, product }) {
+    const { setup, inert } = await resolvePlaySetup(env, db, product);
     const settings = await readPlaySettings(db, product);
     const tracks = await listObjects(db, product, PLAY_CONNECTOR, {
       types: [TRACK_OBJECT],

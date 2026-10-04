@@ -40,7 +40,7 @@
  */
 
 import type { Env } from "../env.js";
-import type { Db } from "../db/types.js";
+import type { Db, DbStatement } from "../db/types.js";
 import { open, seal, type SealContext } from "../keyvault.js";
 import { appendAudit } from "../repo.js";
 import { randomId, sha256Hex } from "../crypto.js";
@@ -551,6 +551,30 @@ export async function listOutletCredentials(
   return rows.map(toInfo);
 }
 
+/** Every ACTIVE credential of `kind` across all products that carries a pin — metadata only.
+ *  The platform store connection (A-16) reads it to refuse assigning an app another product's
+ *  own credential is already pinned to, and to show who holds each app. */
+export async function listOutletCredentialPins(
+  db: Db,
+  kind: OutletCredentialKind,
+): Promise<Array<{ product: string; credentialId: string; pin: string }>> {
+  const rows = await db.all<{
+    product: string;
+    credential_id: string;
+    meta_json: string;
+  }>(
+    "SELECT product, credential_id, meta_json FROM outlet_credentials WHERE kind = ? AND status = 'active' ORDER BY product, credential_id",
+    kind,
+  );
+  const out: Array<{ product: string; credentialId: string; pin: string }> = [];
+  for (const r of rows) {
+    const pin = outletCredentialPin({ kind, meta: parseMeta(r.meta_json) });
+    if (pin !== null)
+      out.push({ product: r.product, credentialId: r.credential_id, pin });
+  }
+  return out;
+}
+
 // ── write ────────────────────────────────────────────────────────────────────────────────────
 
 export interface PutOutletCredentialInput {
@@ -759,6 +783,66 @@ export async function pinOutletCredential(
     pinChange:
       before === p.value ? null : { field: spec.field, before, after: p.value },
   };
+}
+
+/**
+ * Plan a re-pin of every ACTIVE credential of `kind` the product holds to `pin`, as statements for
+ * one atomic batch (A-16's app assignment), without writing anything. `account` decides, per
+ * credential, whether its key belongs to the same store account as the platform's team key:
+ * `same` is re-pinned, `different` is returned in `refused` (the caller refuses the whole
+ * assignment), `unknown` is left alone and returned in `skipped`. Named only by this module and
+ * the Core admin handler (the reach test's writer allowlist).
+ */
+export async function planOutletCredentialRepin(
+  db: Db,
+  product: string,
+  kind: OutletCredentialKind,
+  pin: string,
+  account: (meta: OutletCredentialMeta) => "same" | "different" | "unknown",
+): Promise<{
+  writes: DbStatement[];
+  changes: Array<{ id: string; field: string; before: string | null }>;
+  skipped: Array<{ id: string; reason: string }>;
+  refused: Array<{ id: string; reason: string }>;
+}> {
+  const spec = OUTLET_CREDENTIAL_PINS[kind];
+  const out = {
+    writes: [] as DbStatement[],
+    changes: [] as Array<{ id: string; field: string; before: string | null }>,
+    skipped: [] as Array<{ id: string; reason: string }>,
+    refused: [] as Array<{ id: string; reason: string }>,
+  };
+  if (!spec) return out;
+  const rows = await db.all<{ credential_id: string; meta_json: string }>(
+    "SELECT credential_id, meta_json FROM outlet_credentials WHERE product = ? AND kind = ? AND status = 'active' ORDER BY credential_id",
+    product,
+    kind,
+  );
+  for (const r of rows) {
+    const meta = parseMeta(r.meta_json);
+    const before = outletCredentialPin({ kind, meta });
+    if (before === pin) continue;
+    const a = account(meta);
+    if (a === "different") {
+      out.refused.push({ id: r.credential_id, reason: "other_account" });
+      continue;
+    }
+    if (a === "unknown") {
+      out.skipped.push({ id: r.credential_id, reason: "account_unverified" });
+      continue;
+    }
+    out.writes.push({
+      sql: "UPDATE outlet_credentials SET meta_json = ? WHERE product = ? AND credential_id = ? AND meta_json = ?",
+      params: [
+        JSON.stringify({ ...meta, [spec.field]: pin }),
+        product,
+        r.credential_id,
+        r.meta_json,
+      ],
+    });
+    out.changes.push({ id: r.credential_id, field: spec.field, before });
+  }
+  return out;
 }
 
 /** Delete one credential. `true` when a row was removed. */

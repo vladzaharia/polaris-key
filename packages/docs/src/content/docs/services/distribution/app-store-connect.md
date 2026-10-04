@@ -62,6 +62,11 @@ and the webhook route answers not-found, exactly as it does with Distribution of
 `GET …/distribution/connectors/asc` says why in `inert` (`no_outlet`, `no_api_key`,
 `pin_missing` or `pin_mismatch`, with a sentence on what to do).
 
+**The platform's team key.** A product with no `asc-api-key` of its own falls back to the platform's
+team-level credential for this store, only for the app a platform admin assigned to the product
+(the same `pin_missing` / `pin_mismatch` reasons, with `credentialSource: "platform"`). A key of
+the product's own always wins. See [Store connections](/docs/admin/store-connections/).
+
 ## Pinning the app
 
 An App Store Connect API key is a team key: it can read, and its controls can change, every app in

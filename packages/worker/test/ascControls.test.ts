@@ -428,6 +428,8 @@ describe("the console reads", () => {
       appStoreOutlet: "app-store",
       testflightOutlet: "testflight",
       apiKeyCredential: "asc",
+      credentialSource: "product",
+      platformSource: null,
       webhookSecretCredential: "asc-webhook",
     });
     expect(JSON.stringify(body)).not.toContain("PRIVATE KEY");

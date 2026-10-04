@@ -33,7 +33,14 @@ import {
   checkOutletCredentialPin,
   listOutletCredentials,
 } from "../../../core/outletCredentials.js";
-import { appStoreServerToken } from "../../../core/outletTokens.js";
+import {
+  appStoreServerToken,
+  platformAppStoreServerToken,
+} from "../../../core/outletTokens.js";
+import {
+  platformPin,
+  resolvePlatformCredential,
+} from "../../../core/platformCredentials.js";
 import { X509Error, base64ToBytes, verifyChain } from "../../../core/x509.js";
 import { APPLE_ROOT_CA_G3_DER } from "./appleRoot.js";
 import type { AppStoreSettings } from "./settings.js";
@@ -235,20 +242,40 @@ export function checkTransaction(
 
 // ── the App Store Server API ─────────────────────────────────────────────────────────────────
 
-/** The `app-store-server-key` credential pinned to `bundleId` (lowest id), or null. Metadata
- *  only: nothing is opened. */
+/** The handle `appStoreCredential` answers when the product falls back to the platform team
+ *  In-App Purchase key (A-16). A `:` cannot appear in a product credential id, so it never
+ *  names one. */
+export const PLATFORM_APP_STORE_SERVER_CREDENTIAL =
+  "platform:app-store.in-app-purchase-key";
+
+/**
+ * The `app-store-server-key` credential pinned to `bundleId` (lowest id), or null. Metadata
+ * only: nothing is opened.
+ *
+ * A-16: a product with NO active `app-store-server-key` of its own falls back to the platform's
+ * team In-App Purchase key (console credential, else `PLATFORM_APP_STORE_SERVER_KEY`) — but only
+ * when the product's platform pin on it is `bundleId`; the answer is then
+ * `PLATFORM_APP_STORE_SERVER_CREDENTIAL`. A product's own key wins, and an own key pinned
+ * elsewhere never falls through to the team key.
+ */
 export async function appStoreCredential(
+  env: Env,
   db: Db,
   product: string,
   bundleId: string,
 ): Promise<string | null> {
-  const creds = (await listOutletCredentials(db, product)).filter(
-    (c) =>
-      c.status === "active" &&
-      c.kind === "app-store-server-key" &&
-      checkOutletCredentialPin(c, bundleId).ok,
+  const own = (await listOutletCredentials(db, product)).filter(
+    (c) => c.status === "active" && c.kind === "app-store-server-key",
   );
-  return creds[0]?.id ?? null;
+  if (own.length > 0)
+    return (
+      own.find((c) => checkOutletCredentialPin(c, bundleId).ok)?.id ?? null
+    );
+  const id = "app-store.in-app-purchase-key";
+  if (!(await resolvePlatformCredential(env, db, id))) return null;
+  return (await platformPin(db, id, product)) === bundleId
+    ? PLATFORM_APP_STORE_SERVER_CREDENTIAL
+    : null;
 }
 
 export interface AppleContext {
@@ -271,15 +298,25 @@ export async function fetchTransaction(
   use: string,
 ): Promise<AppleTransaction> {
   if (!TX_ID.test(transactionId)) reject("invalid_jws");
-  const token = await appStoreServerToken(
-    ctx.env,
-    ctx.db,
-    ctx.product,
-    ctx.credentialId,
-    ctx.settings.bundleId,
-    use,
-    ctx.now,
-  );
+  const token =
+    ctx.credentialId === PLATFORM_APP_STORE_SERVER_CREDENTIAL
+      ? await platformAppStoreServerToken(
+          ctx.env,
+          ctx.db,
+          ctx.product,
+          ctx.settings.bundleId,
+          use,
+          ctx.now,
+        )
+      : await appStoreServerToken(
+          ctx.env,
+          ctx.db,
+          ctx.product,
+          ctx.credentialId,
+          ctx.settings.bundleId,
+          use,
+          ctx.now,
+        );
   if (!token) throw new StoreUnavailable("app-store credential", 401);
   const origin =
     environment === "Sandbox"

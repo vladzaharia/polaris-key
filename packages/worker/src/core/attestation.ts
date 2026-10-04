@@ -72,7 +72,11 @@ import {
   verifyAppAttestation,
 } from "./appAttest.js";
 import { checkPlayVerdict, PLAY_INTEGRITY_SCOPE } from "./playIntegrity.js";
-import { googleAccessToken, type FetchImpl } from "./outletTokens.js";
+import { googleAccessTokenFor, type FetchImpl } from "./outletTokens.js";
+import {
+  platformAppleTeamId,
+  platformPlayIntegrityProjectNumber,
+} from "./platformStoreSettings.js";
 import { isRedirect, readCappedText } from "./readCapped.js";
 
 export const ATTEST_CHALLENGE_TTL = 5 * 60;
@@ -172,6 +176,11 @@ export async function handleAttestChallenge(
     },
   );
   const policy = trustPolicyOf(product);
+  // A-16: an explicit project number wins; omitted, the platform's applies.
+  const cloudProjectNumber = policy.playIntegrity
+    ? (policy.playIntegrity.cloudProjectNumber ??
+      (await platformPlayIntegrityProjectNumber(env, db)))
+    : null;
   return json({
     challenge,
     requestHash: await attestRequestHash(
@@ -180,11 +189,7 @@ export async function handleAttestChallenge(
       challenge,
     ),
     expiresAt,
-    ...(policy.playIntegrity
-      ? {
-          play: { cloudProjectNumber: policy.playIntegrity.cloudProjectNumber },
-        }
-      : {}),
+    ...(cloudProjectNumber !== null ? { play: { cloudProjectNumber } } : {}),
   });
 }
 
@@ -281,6 +286,8 @@ interface Outcome {
 
 async function verifyAppAttest(
   body: Extract<AttestBody, { kind: "app-attest" }>,
+  env: Env,
+  db: Db,
   product: Product,
   hooks: ServiceHooks,
   requestHash: string,
@@ -289,7 +296,16 @@ async function verifyAppAttest(
 ): Promise<Outcome> {
   const policy = trustPolicyOf(product);
   const targets = await hooks.delivery()?.attestationTargets?.();
-  if (!policy.appAttest || !targets || targets.appleBundleIds.length === 0)
+  // A-16: an explicit Team ID wins; omitted, the platform's Apple Team ID applies.
+  const teamId = policy.appAttest
+    ? (policy.appAttest.teamId ?? (await platformAppleTeamId(env, db)))
+    : null;
+  if (
+    !policy.appAttest ||
+    teamId === null ||
+    !targets ||
+    targets.appleBundleIds.length === 0
+  )
     return {
       attested: false,
       summary: { kind: "app-attest", outcome: "unavailable" },
@@ -311,7 +327,6 @@ async function verifyAppAttest(
       new TextEncoder().encode(requestHash),
     ),
   );
-  const teamId = policy.appAttest.teamId;
   const result = await verifyAppAttestation({
     attestation,
     keyId: body.keyId,
@@ -377,11 +392,14 @@ async function verifyPlay(
 
   let access: string | null;
   try {
-    access = await googleAccessToken(
+    // A product on the platform's Play service account (A-16) gets its token through the pinned
+    // platform path; the pin is the package being verified.
+    access = await googleAccessTokenFor(
       env,
       db,
       product.slug,
       play.credentialId,
+      play.packageName,
       [PLAY_INTEGRITY_SCOPE],
       "play:integrity",
       now,
@@ -525,7 +543,16 @@ export async function handleAttest(
 
   const outcome =
     body.kind === "app-attest"
-      ? await verifyAppAttest(body, product, hooks, requestHash, now, deps)
+      ? await verifyAppAttest(
+          body,
+          env,
+          db,
+          product,
+          hooks,
+          requestHash,
+          now,
+          deps,
+        )
       : await verifyPlay(body, env, db, product, hooks, requestHash, now, deps);
 
   if (outcome.unavailable)

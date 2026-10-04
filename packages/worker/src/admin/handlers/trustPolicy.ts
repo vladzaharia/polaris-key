@@ -37,7 +37,7 @@ function describe(p: TrustPolicy): string {
   const ops = (["mint", "gatedDelivery", "commerceClaim"] as const)
     .map((op) => `${op}=${p[op]}`)
     .join(", ");
-  return `${ops}; ${p.enforce ? "enforced" : "log-only"}; appAttest=${p.appAttest ? `${p.appAttest.teamId}/${p.appAttest.environment}` : "off"}; playIntegrity=${p.playIntegrity ? `${p.playIntegrity.cloudProjectNumber}${p.playIntegrity.allowTestingResponses ? " (testing responses allowed)" : ""}` : "off"}`;
+  return `${ops}; ${p.enforce ? "enforced" : "log-only"}; appAttest=${p.appAttest ? `${p.appAttest.teamId ?? "(platform team id)"}/${p.appAttest.environment}` : "off"}; playIntegrity=${p.playIntegrity ? `${p.playIntegrity.cloudProjectNumber ?? "(platform project)"}${p.playIntegrity.allowTestingResponses ? " (testing responses allowed)" : ""}` : "off"}`;
 }
 
 export async function handleTrustPolicy(

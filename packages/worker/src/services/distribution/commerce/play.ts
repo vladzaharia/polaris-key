@@ -37,7 +37,13 @@ import {
   checkOutletCredentialPin,
   listOutletCredentials,
 } from "../../../core/outletCredentials.js";
-import { googleAccessToken } from "../../../core/outletTokens.js";
+import {
+  googleAccessToken,
+  platformGoogleAccessToken,
+} from "../../../core/outletTokens.js";
+import { parsePlatformCredentialHandle } from "../../../core/platformCredentials.js";
+import { resolvePlatformStoreSetting } from "../../../core/platformStoreSettings.js";
+import { platformFallback } from "../connectors/platformFallback.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
@@ -138,6 +144,11 @@ export async function verifyPushJwt(
   settings: PlaySettings,
   now: number,
 ): Promise<{ ok: true } | { ok: false; reason: PushRejection }> {
+  // Fail closed when no push identity is configured (neither the product's nor the platform's).
+  if (settings.pushAudience === null)
+    return { ok: false, reason: "wrong_audience" };
+  if (settings.pushServiceAccount === null)
+    return { ok: false, reason: "wrong_account" };
   const m = authorization?.match(/^Bearer ([A-Za-z0-9_.-]{1,8192})$/);
   if (!m) return { ok: false, reason: "no_token" };
   const token = m[1]!;
@@ -162,7 +173,7 @@ export async function verifyPushJwt(
       createLocalJWKSet({ keys: jwks.keys }),
       {
         issuer: GOOGLE_PUSH_ISSUERS,
-        audience: settings.pushAudience,
+        audience: settings.pushAudience as string,
         algorithms: ["RS256"],
         clockTolerance: CLOCK_SKEW_SECONDS,
         currentDate: new Date(now * 1000),
@@ -286,17 +297,52 @@ export function isPlaySku(v: unknown): v is string {
 
 /** The `google-service-account` credential pinned to `packageName` (lowest id), or null. */
 export async function playCredential(
+  env: Env,
   db: Db,
   product: string,
   packageName: string,
 ): Promise<string | null> {
-  const creds = (await listOutletCredentials(db, product)).filter(
-    (c) =>
-      c.status === "active" &&
-      c.kind === "google-service-account" &&
-      checkOutletCredentialPin(c, packageName).ok,
+  const own = (await listOutletCredentials(db, product)).filter(
+    (c) => c.status === "active" && c.kind === "google-service-account",
   );
-  return creds[0]?.id ?? null;
+  if (own.length > 0)
+    return (
+      own.find((c) => checkOutletCredentialPin(c, packageName).ok)?.id ?? null
+    );
+  // A-16: no key of the product's own — the platform service account, for the pinned package.
+  const f = await platformFallback(
+    env,
+    db,
+    product,
+    "google-play.service-account",
+    packageName,
+  );
+  return f.ok ? f.handle : null;
+}
+
+/** The product's Play settings with the platform's RTDN push identity filled in where the
+ *  product leaves it unset (A-16). A product's own value always wins. */
+export async function effectivePlaySettings(
+  env: Env,
+  db: Db,
+  settings: PlaySettings,
+): Promise<PlaySettings> {
+  const pushAudience =
+    settings.pushAudience ??
+    (await resolvePlatformStoreSetting(env, db, "google-play.pushAudience"))
+      ?.value ??
+    null;
+  const pushServiceAccount =
+    settings.pushServiceAccount ??
+    (
+      await resolvePlatformStoreSetting(
+        env,
+        db,
+        "google-play.pushServiceAccount",
+      )
+    )?.value ??
+    null;
+  return { ...settings, pushAudience, pushServiceAccount };
 }
 
 export interface PlayContext {
@@ -316,15 +362,24 @@ export function playPurchasesClient(
     origin: ANDROID_PUBLISHER_ORIGIN,
     packageName: ctx.settings.packageName,
     token: () =>
-      googleAccessToken(
-        ctx.env,
-        ctx.db,
-        ctx.product,
-        ctx.credentialId,
-        [ANDROID_PUBLISHER_SCOPE],
-        use,
-        ctx.now,
-      ),
+      parsePlatformCredentialHandle(ctx.credentialId)
+        ? platformGoogleAccessToken(
+            ctx.env,
+            ctx.db,
+            { product: ctx.product, pin: ctx.settings.packageName },
+            [ANDROID_PUBLISHER_SCOPE],
+            use,
+            ctx.now,
+          )
+        : googleAccessToken(
+            ctx.env,
+            ctx.db,
+            ctx.product,
+            ctx.credentialId,
+            [ANDROID_PUBLISHER_SCOPE],
+            use,
+            ctx.now,
+          ),
   });
 }
 

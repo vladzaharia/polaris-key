@@ -224,7 +224,9 @@ describe("the pin decides whether the connector runs", () => {
 
   it("the manifest changing its appleId after linking: inert until a platform admin re-pins (audited)", async () => {
     const w = await ascWorld();
-    expect((await resolveAscSetup(w.db, SLUG)).setup?.appleId).toBe(APPLE_ID);
+    expect((await resolveAscSetup(w.env, w.db, SLUG)).setup?.appleId).toBe(
+      APPLE_ID,
+    );
 
     // A repo writer points the product at another app the team key can see.
     await manifestNames(w, OTHER_APP);
@@ -276,7 +278,7 @@ describe("the pin decides whether the connector runs", () => {
       now: NOW,
     });
     expect(r.ok).toBe(true);
-    const { setup, inert } = await resolveAscSetup(w.db, SLUG);
+    const { setup, inert } = await resolveAscSetup(w.env, w.db, SLUG);
     expect(setup).toBeNull();
     expect(inert).toMatchObject({
       reason: "pin_mismatch",
@@ -307,7 +309,7 @@ describe("custody of the pin", () => {
       keyId: "ABC123DEFG",
       issuerId: "69a6de7f-0000-47e3-e053-5b8c7c11a4d1",
     });
-    expect((await resolveAscSetup(w.db, SLUG)).inert?.reason).toBe(
+    expect((await resolveAscSetup(w.env, w.db, SLUG)).inert?.reason).toBe(
       "pin_missing",
     );
 
@@ -353,7 +355,9 @@ describe("custody of the pin", () => {
         now: NOW,
       });
     expect(await rotate()).toMatchObject({ ok: true, pinChange: null });
-    expect((await resolveAscSetup(w.db, SLUG)).setup?.appleId).toBe(APPLE_ID);
+    expect((await resolveAscSetup(w.env, w.db, SLUG)).setup?.appleId).toBe(
+      APPLE_ID,
+    );
     expect(await rotate(APPLE_ID)).toMatchObject({ ok: true, pinChange: null });
     expect(await rotate(OTHER_APP)).toMatchObject({
       ok: true,
@@ -439,7 +443,9 @@ describe("custody of the pin", () => {
       }),
     ).toMatchObject({ ok: false, status: 422, field: "pin" });
     // Nothing above moved the stored pin.
-    expect((await resolveAscSetup(w.db, SLUG)).setup?.appleId).toBe(APPLE_ID);
+    expect((await resolveAscSetup(w.env, w.db, SLUG)).setup?.appleId).toBe(
+      APPLE_ID,
+    );
   });
 
   it("checkOutletCredentialPin: exact match only", () => {
@@ -575,6 +581,8 @@ describe("the admin API", () => {
     expect(
       (await audits(w.db)).filter((a) => a.action === "outlet_credential.pin"),
     ).toEqual([]);
-    expect((await resolveAscSetup(w.db, SLUG)).setup?.appleId).toBe(APPLE_ID);
+    expect((await resolveAscSetup(w.env, w.db, SLUG)).setup?.appleId).toBe(
+      APPLE_ID,
+    );
   });
 });
