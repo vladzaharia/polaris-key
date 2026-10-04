@@ -29,7 +29,7 @@ import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
 import type { AdminSession } from "../session.js";
 import { ADMIN_SESSION_TTL_SECONDS } from "../session.js";
-import { platformAudit } from "../audit.js";
+import { platformAuditStatementFor } from "../audit.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
 import {
   deletePlatformSetting,
@@ -41,6 +41,8 @@ import {
   resolveSetting,
   SETTINGS_CACHE_MS,
   settingConfirmLevel,
+  TOMBSTONE_JSON,
+  unrecognisedCeilingVars,
   validateSettingValue,
   writePlatformSetting,
   type PlatformSettingDef,
@@ -207,6 +209,14 @@ export function settingsWarnings(env: Env): Warning[] {
         "PORTAL_SESSION_SECRET is not set, so customer portal sessions are signed with ADMIN_SESSION_SECRET and the two realms share key material.",
       names: ["PORTAL_SESSION_SECRET"],
     });
+  const badCeiling = unrecognisedCeilingVars(env);
+  if (badCeiling.length > 0)
+    out.push({
+      code: "ceiling_value_unrecognised",
+      message:
+        'A kill-switch [vars] value is neither "on", "off" nor "runtime", so it is treated as a hard off and the console cannot turn the setting on. Set it to "runtime" to hand the setting to the console.',
+      names: badCeiling,
+    });
   return out;
 }
 
@@ -271,8 +281,9 @@ function settingView(def: PlatformSettingDef, r: ResolvedSetting) {
           updatedBy: r.stored.updatedBy,
         }
       : null,
-    // The `expectedVersion` the next write must carry (0: no runtime value).
-    version: r.stored?.version ?? 0,
+    // The `expectedVersion` the next write must carry (0: the key never had a runtime value; a
+    // removed value keeps counting, so this is not 0 after a revert).
+    version: r.version,
     confirm: def.confirm,
   };
 }
@@ -326,7 +337,7 @@ function parseStored(raw: string | undefined): unknown {
 function snapshot(r: ResolvedSetting) {
   return {
     stored: r.stored ? (r.stored.value ?? null) : null,
-    version: r.stored?.version ?? 0,
+    version: r.version,
     effective: r.value,
     source: r.source,
   };
@@ -370,6 +381,9 @@ async function write(
     );
 
   const before = await resolvedNow(env, db, def);
+  // The row is already past the version the caller loaded: refuse before anything is recorded, so
+  // the audit snapshot below is always of the state the write replaces.
+  if (before.version !== expected) return conflict(before.version);
   const level = settingConfirmLevel(def, before.value, value);
   if ((level === "L2" || level === "L3") && body.confirm !== def.key)
     return err(400, ErrorCode.BadRequest, `type ${def.key} to confirm`, {
@@ -377,6 +391,13 @@ async function write(
       level,
     });
 
+  const afterRow = {
+    value,
+    version: expected + 1,
+    updatedAt: now,
+    updatedBy: session.sub,
+  };
+  const after = resolveSetting(def, env[def.varName], afterRow, true);
   const res = await writePlatformSetting(
     db,
     def.key,
@@ -384,19 +405,17 @@ async function write(
     expected,
     now,
     session.sub,
+    platformAuditStatementFor(
+      session,
+      now,
+      "platform.setting.set",
+      { kind: "setting", id: def.key },
+      `Set ${def.key} to ${String(value)}`,
+      { before: snapshot(before), after: snapshot(after) },
+    ),
   );
   if (!res.ok) return conflict(res.currentVersion);
   invalidatePlatformSettings(env, db);
-  const after = await resolvedNow(env, db, def);
-  await platformAudit(
-    db,
-    session,
-    now,
-    "platform.setting.set",
-    { kind: "setting", id: def.key },
-    `Set ${def.key} to ${String(value)}`,
-    { before: snapshot(before), after: snapshot(after) },
-  );
   return adminJson(settingView(def, after));
 }
 
@@ -420,19 +439,36 @@ async function revert(
     });
   const before = await resolvedNow(env, db, def);
   if (!before.stored) return notFound();
-  const res = await deletePlatformSetting(db, def.key, expected);
+  if (before.version !== expected) return conflict(before.version);
+  const after = resolveSetting(
+    def,
+    env[def.varName],
+    {
+      value: undefined,
+      deleted: true,
+      version: expected + 1,
+      updatedAt: now,
+      updatedBy: session.sub,
+    },
+    true,
+  );
+  const res = await deletePlatformSetting(
+    db,
+    def.key,
+    expected,
+    now,
+    session.sub,
+    platformAuditStatementFor(
+      session,
+      now,
+      "platform.setting.revert",
+      { kind: "setting", id: def.key },
+      `Reverted ${def.key} to ${after.source === "deploy" ? "the deploy value" : "the code default"} (${String(after.value)})`,
+      { before: snapshot(before), after: snapshot(after) },
+    ),
+  );
   if (!res.ok) return conflict(res.currentVersion);
   invalidatePlatformSettings(env, db);
-  const after = await resolvedNow(env, db, def);
-  await platformAudit(
-    db,
-    session,
-    now,
-    "platform.setting.revert",
-    { kind: "setting", id: def.key },
-    `Reverted ${def.key} to ${after.source === "deploy" ? "the deploy value" : "the code default"} (${String(after.value)})`,
-    { before: snapshot(before), after: snapshot(after) },
-  );
   return adminJson(settingView(def, after));
 }
 
@@ -449,6 +485,7 @@ async function resolvedNow(
     row
       ? {
           value: parseStored(row.value_json),
+          deleted: row.value_json === TOMBSTONE_JSON,
           version: row.version,
           updatedAt: row.updated_at,
           updatedBy: row.updated_by,

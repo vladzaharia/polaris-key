@@ -6,7 +6,13 @@
 // `platform_audit` instead, read by `GET /manage/api/platform/activity`.
 
 import type { Db } from "../db/types.js";
-import { appendAudit, appendPlatformAudit } from "../repo.js";
+import {
+  appendAudit,
+  appendPlatformAudit,
+  platformAuditStatement,
+  type PlatformAuditRow,
+} from "../repo.js";
+import type { DbStatement } from "../db/types.js";
 import { randomId } from "../crypto.js";
 import type { AdminSession } from "./session.js";
 
@@ -40,16 +46,15 @@ export async function audit(
  * stored as JSON so the activity feed can show what changed; a caller must never pass a secret,
  * key material or anything derived from one (a hash, a length) in either.
  */
-export async function platformAudit(
-  db: Db,
+function platformAuditRow(
   session: AdminSession,
   now: number,
   action: string,
   target: { kind: string; id: string } | null,
   summary: string,
-  change: { before?: unknown; after?: unknown } = {},
-): Promise<void> {
-  await appendPlatformAudit(db, {
+  change: { before?: unknown; after?: unknown },
+): PlatformAuditRow {
+  return {
     id: randomId("paud"),
     at: now,
     actor_sub: session.sub,
@@ -63,5 +68,34 @@ export async function platformAudit(
       change.before === undefined ? null : JSON.stringify(change.before),
     after_json:
       change.after === undefined ? null : JSON.stringify(change.after),
-  });
+  };
+}
+
+export async function platformAudit(
+  db: Db,
+  session: AdminSession,
+  now: number,
+  action: string,
+  target: { kind: string; id: string } | null,
+  summary: string,
+  change: { before?: unknown; after?: unknown } = {},
+): Promise<void> {
+  await appendPlatformAudit(
+    db,
+    platformAuditRow(session, now, action, target, summary, change),
+  );
+}
+
+/** `platformAudit` as a statement, for a batch that commits it with the change it records. */
+export function platformAuditStatementFor(
+  session: AdminSession,
+  now: number,
+  action: string,
+  target: { kind: string; id: string } | null,
+  summary: string,
+  change: { before?: unknown; after?: unknown } = {},
+): DbStatement {
+  return platformAuditStatement(
+    platformAuditRow(session, now, action, target, summary, change),
+  );
 }
