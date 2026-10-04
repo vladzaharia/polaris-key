@@ -40,7 +40,9 @@ From left to right:
 **Home** and **Products** always come first, then the **Platform** section: pages about this
 instance as a whole rather than any product, such as **Deployment** (the build it runs, its deploy
 history, database migrations, bindings and the platform activity log) and **Operations** (cron runs,
-queue backlog, storage and store connectors; see [Operations](/docs/admin/operations/)). On Home, Products and the
+queue backlog, storage and store connectors; see [Operations](/docs/admin/operations/)) and
+**Package feeds** (the platform's own packages and the feed policy; see
+[Package feeds](/docs/admin/feeds/)). On Home, Products and the
 Platform pages no product is in scope, so nothing else is shown. Inside a product, one section
 follows per service:
 
@@ -127,6 +129,7 @@ Shown when the product runs **Distribution**, which requires Release (see
 | **Rollouts**           | `distribution/rollouts`    | The recorded outlet rollouts, with the release-to-update chain this product runs.                                                   |
 | **Outlets & feeds**    | `distribution/outlets`     | Until it is built, this URL opens the Matrix.                                                                                       |
 | **Access**             | `distribution/access`      | Who may download each deliverable. Until it moves here, this URL opens Update → Feed, where delivery access is set.                 |
+| **Package feeds**      | `distribution/feeds`       | The product's package feeds on the registry host, while package feeds are on in Services. See [Package feeds](/docs/admin/feeds/).  |
 | **Health**             | `distribution/health`      | Update health: funnels, auto-halt and Sentry candidates.                                                                            |
 | **Outlet credentials** | `distribution/credentials` | Until it moves here, this URL opens Keys & secrets.                                                                                 |
 

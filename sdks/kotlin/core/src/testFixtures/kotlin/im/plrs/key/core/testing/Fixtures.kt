@@ -30,9 +30,9 @@ public class TestSigner(public val kid: String = "test-key") {
     /** The trust set that pins this key. */
     public val trust: TrustSet = mapOf(kid to publicKey)
 
-    /** A compact JWS over [payload] with header `{alg, typ, kid}`. */
-    public fun sign(typ: String, payload: JsonObject): String {
-        val header = JsonObject(mapOf("alg" to JsonPrimitive("EdDSA"), "typ" to JsonPrimitive(typ), "kid" to JsonPrimitive(kid)))
+    /** A compact JWS over [payload] with header `{alg, typ, kid}` ([headerKid] overrides the kid, as a delegated content key's `pkd1-` kid). */
+    public fun sign(typ: String, payload: JsonObject, headerKid: String = kid): String {
+        val header = JsonObject(mapOf("alg" to JsonPrimitive("EdDSA"), "typ" to JsonPrimitive(typ), "kid" to JsonPrimitive(headerKid)))
         val input = Base64Url.encode(header.toString()) + "." + Base64Url.encode(payload.toString())
         val signature = Signature.getInstance("Ed25519").run {
             initSign(privateKey)

@@ -7409,6 +7409,241 @@ paths:
       responses:
         "200":
           description: "`text/html; charset=utf-8`, `cache-control: public, max-age=3600`."
+  # ── PyPI (F-05) ───────────────────────────────────────────────────────────────
+  /pypi/{owner}/simple/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+    get:
+      operationId: pypiSimpleIndex
+      tags: [registry]
+      summary: PyPI project list (registry host only)
+      description: >
+        F-05. The owner's project list in the Simple Repository API
+        (https://packaging.python.org/en/latest/specifications/simple-repository-api/), API
+        version 1.1. PEP 691 JSON (`application/vnd.pypi.simple.v1+json`, the exact type pip and
+        uv require) whenever `Accept` lists the JSON type; otherwise the inert PEP 503 HTML form
+        (`application/vnd.pypi.simple.v1+html`, the registry host's one HTML answer: every value
+        escaped, no script, form or style, served under `sandbox; default-src 'none';
+        frame-ancestors 'none'; base-uri 'none'; form-action 'none'`). With the feed's
+        `htmlFallback` off, a client that cannot take JSON gets 406. A project whose delivery
+        access is stricter than the feed's is omitted. `/pypi/{owner}/simple` answers 301 here.
+        The feed's access check runs first: a feed that is off (or an unknown owner) is the
+        not-found, a non-public feed the `Basic` challenge.
+      responses:
+        "200":
+          description: >
+            The project list. `Vary: Accept`; `cache-control: public, max-age=60,
+            stale-while-revalidate=60` and a strong ETag (the body's SHA-256) on a public feed.
+          content:
+            application/vnd.pypi.simple.v1+json:
+              schema:
+                type: object
+                required: [meta, projects]
+                properties:
+                  meta:
+                    {
+                      type: object,
+                      properties:
+                        { api-version: { type: string, const: "1.1" } },
+                    }
+                  projects:
+                    type: array
+                    items:
+                      {
+                        type: object,
+                        required: [name],
+                        properties: { name: { type: string } },
+                      }
+            application/vnd.pypi.simple.v1+html:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401": { description: "A non-public feed (`WWW-Authenticate: Basic`)." }
+        "404": { description: "The not-found (`no-store`)." }
+        "406":
+          {
+            description: "The feed's `htmlFallback` is off and `Accept` admits no JSON type.",
+          }
+    head:
+      operationId: pypiSimpleIndexHead
+      tags: [registry]
+      summary: PyPI project list, headers only (registry host only)
+      description: F-05. As `GET /pypi/{owner}/simple/`, with no body.
+      responses:
+        "200": { description: "The project list's headers." }
+        "404": { description: "The not-found." }
+  /pypi/{owner}/simple/{project}/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: project,
+          in: path,
+          required: true,
+          description: "The PEP 503 normalised project name.",
+          schema: { type: string },
+        }
+    get:
+      operationId: pypiSimpleProject
+      tags: [registry]
+      summary: PyPI project page (registry host only)
+      description: >
+        F-05. One project's page in the Simple Repository API, API version 1.1 (PEP 691, PEP 700),
+        negotiated as the project list is. Each wheel and sdist of every version is listed with
+        `hashes.sha256` (the `#sha256=` fragment in HTML; corruption protection only),
+        `requires-python`, `size`, `upload-time` and, for a wheel published with its
+        `*.dist-info/METADATA`, `core-metadata: {sha256}` (PEP 714; `data-core-metadata` in
+        HTML). A yanked version's files carry PEP 592's `yanked` with the reason and stay
+        fetchable; PyPI has no deprecation or channel tags, so a deprecated version is listed
+        as live and pre-releases are chosen by their PEP 440 version. File URLs are relative to
+        the page (`../../files/{sha256}/{filename}`). Any non-normalised name, and a name without
+        its trailing slash, answers 301 to this URL (PEP 503). Rendered when a package changes
+        and kept under `registry/` in the blob bucket.
+      responses:
+        "200":
+          description: >
+            The project page. `Vary: Accept`; `cache-control: public, max-age=60,
+            stale-while-revalidate=60` and a strong ETag (the body's SHA-256) on a public feed.
+          content:
+            application/vnd.pypi.simple.v1+json:
+              schema:
+                type: object
+                required: [meta, name, versions, files]
+                properties:
+                  meta:
+                    {
+                      type: object,
+                      properties:
+                        { api-version: { type: string, const: "1.1" } },
+                    }
+                  name: { type: string }
+                  versions: { type: array, items: { type: string } }
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      required: [filename, url, hashes, yanked, size]
+                      properties:
+                        filename: { type: string }
+                        url: { type: string }
+                        hashes:
+                          {
+                            type: object,
+                            properties: { sha256: { type: string } },
+                          }
+                        requires-python: { type: string }
+                        core-metadata:
+                          {
+                            type: object,
+                            properties: { sha256: { type: string } },
+                          }
+                        yanked: { oneOf: [{ type: boolean }, { type: string }] }
+                        size: { type: integer }
+                        upload-time: { type: string }
+            application/vnd.pypi.simple.v1+html:
+              schema: { type: string }
+        "301":
+          {
+            description: "To the PEP 503 normalised name with its trailing slash.",
+          }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or project (`WWW-Authenticate: Basic`).",
+          }
+        "404":
+          {
+            description: "The not-found (`no-store`), whether the project or the feed is absent.",
+          }
+        "406":
+          {
+            description: "The feed's `htmlFallback` is off and `Accept` admits no JSON type.",
+          }
+    head:
+      operationId: pypiSimpleProjectHead
+      tags: [registry]
+      summary: PyPI project page, headers only (registry host only)
+      description: F-05. As `GET /pypi/{owner}/simple/{project}/`, with no body.
+      responses:
+        "200": { description: "The project page's headers." }
+        "301": { description: "To the normalised name." }
+        "404": { description: "The not-found." }
+  /pypi/{owner}/files/{sha256}/{filename}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: sha256,
+          in: path,
+          required: true,
+          description: "The file's SHA-256 (lower-case hex).",
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" },
+        }
+      - {
+          name: filename,
+          in: path,
+          required: true,
+          description: "The file's name, or a wheel's name plus `.metadata`.",
+          schema: { type: string },
+        }
+    get:
+      operationId: pypiFile
+      tags: [registry]
+      summary: PyPI file or PEP 658 metadata (registry host only)
+      description: >
+        F-05. A wheel or sdist a project page lists, named by its SHA-256, so the URL is
+        immutable. `{wheel}.metadata` answers that wheel's core metadata (PEP 658, advertised as
+        `core-metadata`). The name and the hash must both match a file of the owner's package,
+        and the owner must hold the blob's reference; anything else is the not-found. Served
+        as `application/octet-stream` with `attachment`, `ETag: "<sha256>"`, `Repr-Digest`,
+        `Accept-Ranges: bytes` and, on a public feed, `cache-control: public, max-age=31536000,
+        immutable, no-transform`.
+      responses:
+        "200":
+          description: The bytes.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: "A satisfiable `Range`." }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or project (`WWW-Authenticate: Basic`).",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+        "416": { description: "An unsatisfiable `Range`." }
+    head:
+      operationId: pypiFileHead
+      tags: [registry]
+      summary: PyPI file or PEP 658 metadata, headers only (registry host only)
+      description: F-05. As `GET /pypi/{owner}/files/{sha256}/{filename}`, with no body.
+      responses:
+        "200": { description: "The file's headers." }
+        "404": { description: "The not-found." }
   /v2/:
     servers:
       - url: https://pkg.plrs.im
@@ -7446,6 +7681,1826 @@ paths:
           headers:
             Docker-Distribution-API-Version:
               schema: { type: string, const: registry/2.0 }
+  # ── npm (F-04) ──
+  /npm/{owner}/{escapedName}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmPackument
+      tags: [registry]
+      summary: npm packument (registry host only)
+      description: >
+        F-04. The package metadata document of the npm registry API
+        (https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md), for a
+        scoped name escaped the way npm clients send it (`@scope%2fname`; `%2f` and `%2F` are
+        one document, and `/npm/{owner}/{scope}/{name}` is the same route unescaped). Scoped names
+        only, and the scope must be the feed's; anything else is the not-found. The full document
+        (`application/json`) by default; the abbreviated one
+        (`application/vnd.npm.install-v1+json`) when `Accept` lists it first, as installers do.
+        `dist.tarball` is absolute on this host, `dist.integrity` is SHA-512 SRI (SHA-256 when the
+        ingest had no SHA-512), `dist.shasum` SHA-1; `dist-tags` come from the release channels
+        (`stable` is `latest`). npm has no yank: a yanked version stays listed and installable by
+        exact version, leaves every dist-tag and carries `deprecated` (the reason); a deprecated
+        one carries its message. Every read runs the feed's access check before the edge cache.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - name: escapedName
+          in: path
+          required: true
+          description: The scoped package name with its slash escaped, `@scope%2fname`.
+          schema:
+            {
+              type: string,
+              pattern: "^@[a-z0-9][a-z0-9._~-]*%2[fF][a-z0-9][a-z0-9._~-]*$",
+            }
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { $ref: "#/components/responses/NpmPackument" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmPackumentHead
+      tags: [registry]
+      summary: npm packument, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{escapedName}`, with no body.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - {
+            name: escapedName,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { description: The packument's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
+  /npm/{owner}/{scope}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmPackumentUnescaped
+      tags: [registry]
+      summary: npm packument, unescaped name (registry host only)
+      description: >
+        F-04. The same document as `/npm/{owner}/{escapedName}`, for a client that sends the
+        scoped name with a literal slash (`@scope/name`).
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { $ref: "#/components/responses/NpmPackument" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmPackumentUnescapedHead
+      tags: [registry]
+      summary: npm packument, unescaped name, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{scope}/{name}`, with no body.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { description: The packument's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
+  /npm/{owner}/{scope}/{name}/-/{tarball}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmTarball
+      tags: [registry]
+      summary: npm tarball (registry host only)
+      description: >
+        F-04. A version's tarball, at the URL its packument's `dist.tarball` names
+        (`name-<version>.tgz`, the conventional path Yarn Berry rebuilds). The content-addressed
+        blob, `application/octet-stream` as an attachment, immutable for a year with the
+        SHA-256 as ETag; clients verify it against `dist.integrity`. A yanked version's tarball
+        is still served (npm has no yank). Also answered under the escaped spelling,
+        `/npm/{owner}/{escapedName}/-/{tarball}`.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { $ref: "#/components/responses/NpmTarball" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmTarballHead
+      tags: [registry]
+      summary: npm tarball, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{scope}/{name}/-/{tarball}`, with no body and its `Content-Length`.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { description: The tarball's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
+  /npm/{owner}/{escapedName}/-/{tarball}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmTarballEscaped
+      tags: [registry]
+      summary: npm tarball, escaped name (registry host only)
+      description: >
+        F-04. The same tarball as `/npm/{owner}/{scope}/{name}/-/{tarball}`, under the escaped
+        spelling of the scoped name (`@scope%2fname`).
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - {
+            name: escapedName,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { $ref: "#/components/responses/NpmTarball" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmTarballEscapedHead
+      tags: [registry]
+      summary: npm tarball, escaped name, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{escapedName}/-/{tarball}`, with no body.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - {
+            name: escapedName,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { description: The tarball's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
+  # ── Swift package registry (F-06) ─────────────────────────────────────────────────────────
+  #
+  # SwiftPM's registry protocol (SE-0292, https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/PackageRegistry/Registry.md)
+  # under `/swift/<owner>/`, the URL `swift package-registry set --scope <scope>` takes. Every
+  # answer carries `Content-Version: 1`; errors are `application/problem+json`; `Accept` naming
+  # an invalid registry version or media type is 400, an unsupported one 415. The not-found is
+  # the same for an unknown owner, package or version and a feed that is off.
+  /swift/{owner}/{scope}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: The owner (product slug).,
+        }
+      - {
+          name: scope,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: The package scope (case-insensitive).,
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The package name (case-insensitive); a `.json` suffix is accepted.",
+        }
+    get:
+      operationId: swiftListReleases
+      tags: [registry]
+      summary: List a Swift package's releases (registry host only)
+      description: >
+        F-06, Registry.md §4.1. Every version in precedence order; a yanked one carries a
+        `problem` (410 Gone), so SwiftPM never resolves it. No `url` is listed: a client expands
+        `/{scope}/{name}/{version}` on this host. `Link: <…>; rel="latest-version"` names the
+        `latest` tag (the stable channel's head) when it is available, else the highest stable
+        version. Index caching: `public, max-age=60, stale-while-revalidate=60` and a strong
+        ETag.
+      responses:
+        "200":
+          description: The release list.
+          headers:
+            Content-Version: { schema: { type: string, const: "1" } }
+            Link: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [releases]
+                properties:
+                  releases:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        problem: { type: object }
+        "400":
+          { description: "Invalid API version in `Accept` (problem+json)." }
+        "401":
+          {
+            description: "A non-public feed (tier 1): `WWW-Authenticate: Basic` (problem+json).",
+          }
+        "404": { description: "Not found (problem+json)." }
+        "415":
+          {
+            description: "Unsupported API version or media type in `Accept` (problem+json).",
+          }
+    head:
+      operationId: swiftListReleasesHead
+      tags: [registry]
+      summary: List a Swift package's releases, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The release list's headers. }
+  /swift/{owner}/{scope}/{name}/{version}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: scope, in: path, required: true, schema: { type: string } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - {
+          name: version,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The semver version; a `.json` suffix is accepted.",
+        }
+    get:
+      operationId: swiftReleaseInfo
+      tags: [registry]
+      summary: A Swift package release's metadata (registry host only)
+      description: >
+        F-06, Registry.md §4.2. `id`, `version`, the `source-archive` resource with its SHA-256
+        `checksum` and, for a signed release, `signing {signatureBase64Encoded,
+        signatureFormat: cms-1.0.0}`, `metadata` and `publishedAt`. `Link` carries
+        `latest-version`, `predecessor-version` and `successor-version`. A yanked version's
+        metadata stays served (an archive never changes after publish). Index caching.
+      responses:
+        "200":
+          description: The release metadata.
+          headers:
+            Content-Version: { schema: { type: string, const: "1" } }
+            Link: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, version, resources, metadata]
+                properties:
+                  id: { type: string }
+                  version: { type: string }
+                  resources: { type: array, items: { type: object } }
+                  metadata: { type: object }
+                  publishedAt: { type: string, format: date-time }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftReleaseInfoHead
+      tags: [registry]
+      summary: A Swift package release's metadata, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The release metadata's headers. }
+  /swift/{owner}/{scope}/{name}/{version}/Package.swift:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: scope, in: path, required: true, schema: { type: string } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: version, in: path, required: true, schema: { type: string } }
+      - {
+          name: swift-version,
+          in: query,
+          required: false,
+          schema: { type: string },
+          description: "Selects `Package@swift-<v>.swift`.",
+        }
+    get:
+      operationId: swiftManifest
+      tags: [registry]
+      summary: A Swift package release's manifest (registry host only)
+      description: >
+        F-06, Registry.md §4.3. The SIGNED manifest copy the publisher uploaded (never one taken
+        from the archive), `text/x-swift` as an attachment, immutable. The unqualified manifest
+        lists every `Package@swift-*.swift` as `Link: <…?swift-version=X>; rel="alternate";
+        filename=…; swift-tools-version=…`. A `swift-version` with no such manifest is 303 to
+        the unqualified one.
+      responses:
+        "200":
+          description: The manifest.
+          content:
+            text/x-swift:
+              schema: { type: string }
+        "303":
+          {
+            description: No manifest for that swift-version; `Location` is the unqualified manifest.,
+          }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftManifestHead
+      tags: [registry]
+      summary: A Swift package release's manifest, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The manifest's headers. }
+  /swift/{owner}/{scope}/{name}/{version}.zip:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: scope, in: path, required: true, schema: { type: string } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: version, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: swiftSourceArchive
+      tags: [registry]
+      summary: A Swift package release's source archive (registry host only)
+      description: >
+        F-06, Registry.md §4.4. The zip by its SHA-256 (ETag, `Repr-Digest`), `application/zip`
+        as `attachment; filename="<Name>-<version>.zip"`, immutable for a year, with `Range`
+        support. A signed release adds `X-Swift-Package-Signature-Format: cms-1.0.0` and
+        `X-Swift-Package-Signature` (base64 CMS).
+      responses:
+        "200":
+          description: The source archive.
+          headers:
+            X-Swift-Package-Signature-Format: { schema: { type: string } }
+            X-Swift-Package-Signature: { schema: { type: string } }
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "206": { description: A byte range of the archive. }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftSourceArchiveHead
+      tags: [registry]
+      summary: A Swift package release's source archive, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The archive's headers. }
+  /swift/{owner}/identifiers:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - {
+          name: url,
+          in: query,
+          required: true,
+          schema: { type: string },
+          description: A source repository URL.,
+        }
+    get:
+      operationId: swiftIdentifiers
+      tags: [registry]
+      summary: Swift package identifiers for a repository URL (registry host only)
+      description: >
+        F-06, Registry.md §4.5. The packages the feed's `repositoryUrls` setting maps the URL to
+        (compared without scheme, user, `.git` or case), limited to packages the feed holds and
+        the reader may read. None is 404; a missing `url` is 400.
+      responses:
+        "200":
+          description: The identifiers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [identifiers]
+                properties:
+                  identifiers: { type: array, items: { type: string } }
+        "400": { description: "Missing `url` (problem+json)." }
+        "404": { description: "Not found (problem+json)." }
+    head:
+      operationId: swiftIdentifiersHead
+      tags: [registry]
+      summary: Swift package identifiers for a repository URL, headers only (registry host only)
+      description: F-06. As the GET, with no body.
+      responses:
+        "200": { description: The identifiers' headers. }
+  /swift/{owner}/login:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: swiftLogin
+      tags: [registry]
+      summary: SwiftPM registry login, not supported yet (registry host only)
+      description: >
+        F-06. `swift package-registry login` posts here. Registry credentials arrive with F-21;
+        until then the host answers 501 (problem+json, `Content-Version: 1`) for every owner,
+        decided from the path alone. Publishing (`PUT`, Registry.md §4.6) is 405 until F-22.
+      responses:
+        "501": { description: "Login is not supported yet (problem+json)." }
+  # ── Maven (F-07) ──
+  /maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: mavenMetadata
+      tags: [registry]
+      summary: Maven artifact metadata, maven-metadata.xml (registry host only)
+      description: >
+        F-07. The artifact-level `maven-metadata.xml` of the Maven repository layout
+        (https://maven.apache.org/repository/layout.html,
+        https://maven.apache.org/ref/current/maven-repository-metadata/repository-metadata.html),
+        rendered from Release's package state, never uploaded. `versions` lists every version
+        that is not yanked, oldest publication first; `release` is the `stable` channel's head
+        (Maven's `RELEASE`), omitted when it serves nothing; `latest` the newest listed version of
+        any channel (`LATEST`); `lastUpdated` the newest listed version's publication time. A
+        yanked version leaves the index but its files stay downloadable by exact coordinates; a
+        deprecated one stays listed (Maven has neither state). Sent as
+        `application/octet-stream` with `Content-Disposition: attachment`, never as XML.
+        `Cache-Control: public, max-age=60, stale-while-revalidate=60` with a strong ETag of the
+        body's SHA-256 (`If-None-Match` answers 304); a feed that is not public answers 401 with
+        `WWW-Authenticate: Basic` and `private, no-store`. An unknown owner, artifact or a feed
+        that is off answers the plain not-found.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+      responses:
+        "200":
+          description: The metadata document.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304": { description: Not modified (the ETag matched). }
+        "401":
+          {
+            description: The feed is not public (tier 1 has no credentials yet).,
+          }
+        "404": { description: No such owner, feed or artifact. }
+    head:
+      operationId: mavenMetadataHead
+      tags: [registry]
+      summary: Maven artifact metadata, headers only (registry host only)
+      description: F-07. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+      responses:
+        "200": { description: The metadata document's headers. }
+        "404": { description: No such owner, feed or artifact. }
+  /maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: mavenMetadataChecksum
+      tags: [registry]
+      summary: A checksum sidecar of maven-metadata.xml (registry host only)
+      description: >
+        F-07. The lowercase hex digest of the artifact's current `maven-metadata.xml`, rendered
+        with it (https://maven.apache.org/repository/layout.html). `md5`, `sha1`, `sha256` and
+        `sha512`; anything else is the not-found. Same caching as the metadata.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - $ref: "#/components/parameters/MavenChecksum"
+      responses:
+        "200":
+          description: The hex digest.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, artifact or algorithm. }
+    head:
+      operationId: mavenMetadataChecksumHead
+      tags: [registry]
+      summary: A checksum sidecar of maven-metadata.xml, headers only (registry host only)
+      description: F-07. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - $ref: "#/components/parameters/MavenChecksum"
+      responses:
+        "200": { description: The sidecar's headers. }
+        "404": { description: No such owner, feed, artifact or algorithm. }
+  /maven/{owner}/{groupPath}/{artifactId}/{version}/{file}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: mavenFile
+      tags: [registry]
+      summary: A file of a Maven publication, or its checksum sidecar (registry host only)
+      description: >
+        F-07. One file of a published version, at the path the Maven repository layout fixes
+        (`<artifactId>-<version>[-<classifier>].<extension>`,
+        https://maven.apache.org/repository/layout.html): the POM, the Gradle module metadata
+        (`.module`, https://github.com/gradle/gradle/blob/master/platforms/documentation/docs/src/docs/design/gradle-module-metadata-latest-specification.md),
+        the jar or AAR and any classified file the publication carried. The bytes come from the
+        blob store by SHA-256: `ETag: "<sha256>"`, `Range` (206), and
+        `Cache-Control: public, max-age=31536000, immutable, no-transform` (a version is never
+        republished). `<file>.md5`, `.sha1`, `.sha256` and `.sha512` answer the file's digest as
+        lowercase hex, from the digests Release computed at ingest (immutable, ETag of the
+        body's SHA-256). Every answer is `application/octet-stream` with
+        `Content-Disposition: attachment`: a POM or `.module` is never served as XML or JSON.
+        A yanked version's files stay downloadable. Signatures (`.asc`), version-level metadata
+        and directory listings are not served.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - name: file
+          in: path
+          required: true
+          description: The file name, optionally followed by `.md5`, `.sha1`, `.sha256` or `.sha512`.
+          schema: { type: string }
+      responses:
+        "200":
+          description: The file's bytes, or its hex digest.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: The requested range of the file. }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404":
+          {
+            description: No such owner,
+            feed,
+            artifact,
+            version,
+            file or digest.,
+          }
+        "416": { description: The range cannot be satisfied. }
+    head:
+      operationId: mavenFileHead
+      tags: [registry]
+      summary: A file of a Maven publication, headers only (registry host only)
+      description: F-07. As the GET, with no body (`Content-Length` is the file's size).
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - { name: file, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: The file's headers. }
+        "404":
+          {
+            description: No such owner,
+            feed,
+            artifact,
+            version,
+            file or digest.,
+          }
+  # F-08: OCI pull (the read side of the OCI Distribution Specification). `{repository}` is a
+  # path of one or more `/`-separated components under the owner, so these templates stand for
+  # every depth (`/v2/acme/tools/app/manifests/latest`).
+  /v2/token:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: ociToken
+      tags: [registry]
+      summary: OCI token endpoint, reserved (registry host only)
+      description: >
+        F-08. The realm a non-public OCI feed's Bearer challenge names
+        (`WWW-Authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im",scope="repository:<owner>/<repository>:pull"`,
+        https://distribution.github.io/distribution/spec/auth/token/). Tier 1 issues no
+        registry credentials, so it always answers OCI's not-found (`NAME_UNKNOWN`), `no-store`,
+        until F-21.
+      responses:
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociTokenHead
+      tags: [registry]
+      summary: OCI token endpoint, reserved, headers only (registry host only)
+      description: F-08. As `GET /v2/token`, with no body.
+      responses:
+        "404":
+          description: Not issued until F-21.
+  /v2/{owner}/{repository}/manifests/{reference}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: reference
+        in: path
+        required: true
+        description: A tag (a version, `latest`, or a channel name) or a `sha256:` digest.
+        schema:
+          {
+            type: string,
+            pattern: "^([A-Za-z0-9_][A-Za-z0-9._-]{0,127}|sha256:[0-9a-f]{64})$",
+          }
+    get:
+      operationId: ociManifest
+      tags: [registry]
+      summary: OCI manifest or image index by tag or digest (registry host only)
+      description: >
+        F-08. Pulling manifests
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
+        The body is the stored manifest or image index, byte for byte, with its own media type
+        (`application/vnd.oci.image.manifest.v1+json`, `…index.v1+json`, or Docker's schema 2
+        manifest and manifest list) and `Docker-Content-Digest`. Version tags never move; `latest`
+        (the stable channel) and other channel tags do; a yanked version has no tag but still
+        pulls by digest; a deprecated version is served as live. By digest the answer is
+        immutable (`public, max-age=31536000, immutable`); by tag it is an index document
+        (`public, max-age=60, stale-while-revalidate=60`). An `Accept` that lists only other
+        manifest types answers `MANIFEST_UNKNOWN`. A non-public feed answers 401 with the Bearer
+        challenge (no credentials until F-21).
+      responses:
+        "200":
+          description: The manifest.
+          headers:
+            Docker-Content-Digest: { schema: { type: string } }
+            Docker-Distribution-API-Version:
+              schema: { type: string, const: registry/2.0 }
+          content:
+            application/vnd.oci.image.manifest.v1+json:
+              schema: { type: object }
+            application/vnd.oci.image.index.v1+json:
+              schema: { type: object }
+            application/vnd.docker.distribution.manifest.v2+json:
+              schema: { type: object }
+            application/vnd.docker.distribution.manifest.list.v2+json:
+              schema: { type: object }
+        "304":
+          description: "`If-None-Match` named the manifest's digest."
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociManifestHead
+      tags: [registry]
+      summary: OCI manifest existence check (registry host only)
+      description: >
+        F-08. As `GET`, with no body: `Content-Type`, `Content-Length` and
+        `Docker-Content-Digest` only.
+      responses:
+        "200":
+          description: The manifest exists.
+          headers:
+            Docker-Content-Digest: { schema: { type: string } }
+        "401":
+          description: The feed is not public.
+        "404":
+          description: Unknown manifest, repository or owner.
+  /v2/{owner}/{repository}/blobs/{digest}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: digest
+        in: path
+        required: true
+        description: The blob's `sha256:` digest, one of the repository's published files.
+        schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+    get:
+      operationId: ociBlob
+      tags: [registry]
+      summary: OCI blob by digest, with Range (registry host only)
+      description: >
+        F-08. Pulling blobs
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-blobs).
+        `application/octet-stream` as an attachment, `Docker-Content-Digest`, a strong ETag of
+        the SHA-256 and `public, max-age=31536000, immutable, no-transform`. A single `Range`
+        answers 206 with `Content-Range`; one that selects nothing answers 416. `If-Range` and
+        `If-None-Match` are honoured. Only a digest the repository published is served
+        (`BLOB_UNKNOWN` otherwise). Blobs are up to 5 GiB and bypass the Cache API.
+      responses:
+        "200":
+          description: The blob.
+          headers:
+            Docker-Content-Digest: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: The requested range.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304":
+          description: "`If-None-Match` named the blob's digest."
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "416":
+          description: "The range selects nothing (`Content-Range: bytes */<size>`)."
+    head:
+      operationId: ociBlobHead
+      tags: [registry]
+      summary: OCI blob existence and size (registry host only)
+      description: F-08. As `GET`, with no body; `Content-Length` is the blob's size.
+      responses:
+        "200":
+          description: The blob exists.
+        "401":
+          description: The feed is not public.
+        "404":
+          description: Unknown blob, repository or owner.
+  /v2/{owner}/{repository}/tags/list:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: "n"
+        in: query
+        required: false
+        description: At most this many tags (capped at 1000).
+        schema: { type: integer, minimum: 0 }
+      - name: last
+        in: query
+        required: false
+        description: Only tags lexically after this one.
+        schema: { type: string }
+    get:
+      operationId: ociTags
+      tags: [registry]
+      summary: OCI tag list, paginated (registry host only)
+      description: >
+        F-08. Listing tags
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-tags):
+        `{"name": "<owner>/<repository>", "tags": [...]}` in lexical order, rendered from the
+        package's state (every version that is not yanked, `latest` and each channel tag). With
+        `n`, a `Link: <…?n=&last=>; rel="next"` header names the next page. An index document
+        (`public, max-age=60, stale-while-revalidate=60`).
+      responses:
+        "200":
+          description: The tags.
+          headers:
+            Link:
+              description: The next page, when there is one.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, tags]
+                properties:
+                  name: { type: string }
+                  tags: { type: array, items: { type: string } }
+              examples:
+                tags:
+                  value:
+                    {
+                      name: acme/tools/app,
+                      tags: ["1.0.0", "1.1.0-beta.1", beta, latest],
+                    }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociTagsHead
+      tags: [registry]
+      summary: OCI tag list, headers only (registry host only)
+      description: F-08. As `GET`, with no body.
+      responses:
+        "200":
+          description: The repository exists.
+        "404":
+          description: Unknown repository or owner.
+  # ── Godot feed (F-09) ─────────────────────────────────────────────────────────
+  #
+  # plans/F-01.md §6.8: both editor API shapes (≤ 4.6 Asset Library under
+  # `asset-library/api`, 4.7+ Asset Store under `store/api/v1`), the GodotEnv index and the
+  # content-addressed zips and icons. Every path answers GET and HEAD only.
+  /godot/{owner}/asset-library/api/configure:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotLegacyConfigure
+      tags: [registry]
+      summary: "Godot ≤ 4.6 Asset Library: categories (registry host only)"
+      description: >
+        F-09. `GET configure?type=(addon|project|any)` of godotengine/godot-asset-library `API.md`
+        (https://github.com/godotengine/godot-asset-library/blob/master/API.md): the official
+        library's category ids (addon categories when `type` is absent). Through `serveFeedRead`
+        (the access ladder, then the Cache API): a disabled feed, `packageFeeds` off or the platform
+        kill switch is the not-found; a non-public mode is 401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: type,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Asset type: addon (default), project or any.",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotLegacyConfigureHead
+      tags: [registry]
+      summary: "Godot ≤ 4.6 Asset Library: categories, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/asset-library/api/configure`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: type,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Asset type: addon (default), project or any.",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/asset-library/api/asset:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotLegacySearch
+      tags: [registry]
+      summary: "Godot ≤ 4.6 Asset Library: search (registry host only)"
+      description: >
+        F-09. `GET asset?…` of godotengine/godot-asset-library `API.md`
+        (https://github.com/godotengine/godot-asset-library/blob/master/API.md), filtered in memory
+        over the owner's short list: `type`, `category`, `support` (`+`-joined), `filter`, `user`,
+        `cost`, `godot_version`, `max_results`, `page` or `offset`, `sort`, `reverse`. Yanked
+        versions are never listed; a package's shown version is its `latest` tag. The answer adds
+        `total` (what the ≤ 4.6 editor's pager reads) to `total_items`. Through `serveFeedRead` (the
+        access ladder, then the Cache API): a disabled feed, `packageFeeds` off or the platform kill
+        switch is the not-found; a non-public mode is 401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - { name: type, in: query, required: false, schema: { type: string } }
+        - {
+            name: category,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: support,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: filter, in: query, required: false, schema: { type: string } }
+        - { name: user, in: query, required: false, schema: { type: string } }
+        - { name: cost, in: query, required: false, schema: { type: string } }
+        - {
+            name: godot_version,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: max_results,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: page, in: query, required: false, schema: { type: string } }
+        - { name: offset, in: query, required: false, schema: { type: string } }
+        - { name: sort, in: query, required: false, schema: { type: string } }
+        - {
+            name: reverse,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotLegacySearchHead
+      tags: [registry]
+      summary: "Godot ≤ 4.6 Asset Library: search, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/asset-library/api/asset`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - { name: type, in: query, required: false, schema: { type: string } }
+        - {
+            name: category,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: support,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: filter, in: query, required: false, schema: { type: string } }
+        - { name: user, in: query, required: false, schema: { type: string } }
+        - { name: cost, in: query, required: false, schema: { type: string } }
+        - {
+            name: godot_version,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: max_results,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: page, in: query, required: false, schema: { type: string } }
+        - { name: offset, in: query, required: false, schema: { type: string } }
+        - { name: sort, in: query, required: false, schema: { type: string } }
+        - {
+            name: reverse,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/asset-library/api/asset/{id}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotLegacyAsset
+      tags: [registry]
+      summary: "Godot ≤ 4.6 Asset Library: one asset (registry host only)"
+      description: >
+        F-09. `GET asset/{id}` of godotengine/godot-asset-library `API.md`
+        (https://github.com/godotengine/godot-asset-library/blob/master/API.md): the shown version
+        with `download_url` (the content-addressed zip), `download_hash` (its SHA-256, which the ≤
+        4.6 editor compares with the download) and `download_provider: Custom`. `id` is a stable
+        31-bit number derived from the deliverable id. Through `serveFeedRead` (the access ladder,
+        then the Cache API): a disabled feed, `packageFeeds` off or the platform kill switch is the
+        not-found; a non-public mode is 401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: id,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The asset id (decimal).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotLegacyAssetHead
+      tags: [registry]
+      summary: "Godot ≤ 4.6 Asset Library: one asset, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/asset-library/api/asset/{id}`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: id,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The asset id (decimal).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/store/api/v1/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotStoreOverview
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: API overview (registry host only)"
+      description: >
+        F-09. `GET /` of the Godot Asset Store API, OpenAPI 1.1.0
+        (https://store.godotengine.org/api/v1/openapi.json): the overview the 4.7 editor requests to
+        verify a repository (`version: 1.1.0`). Also answers without the trailing slash. Through
+        `serveFeedRead` (the access ladder, then the Cache API): a disabled feed, `packageFeeds` off
+        or the platform kill switch is the not-found; a non-public mode is 401 `WWW-Authenticate:
+        Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreOverviewHead
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: API overview, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/store/api/v1/`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/store/api/v1/tags/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotStoreTags
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: tags (registry host only)"
+      description: >
+        F-09. `GET tags/` of the Godot Asset Store API, OpenAPI 1.1.0
+        (https://store.godotengine.org/api/v1/openapi.json). Always `[]`: the feed's assets carry no
+        tags. Through `serveFeedRead` (the access ladder, then the Cache API): a disabled feed,
+        `packageFeeds` off or the platform kill switch is the not-found; a non-public mode is 401
+        `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: featured_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreTagsHead
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: tags, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/store/api/v1/tags/`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: featured_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/store/api/v1/licenses/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotStoreLicenses
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: licenses in use (registry host only)"
+      description: >
+        F-09. `GET licenses/` of the Godot Asset Store API, OpenAPI 1.1.0
+        (https://store.godotengine.org/api/v1/openapi.json): the feed's license (`ext.license`) with
+        the number of listed assets. Through `serveFeedRead` (the access ladder, then the Cache
+        API): a disabled feed, `packageFeeds` off or the platform kill switch is the not-found; a
+        non-public mode is 401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreLicensesHead
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: licenses in use, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/store/api/v1/licenses/`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/store/api/v1/search/query/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotStoreSearch
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: search (registry host only)"
+      description: >
+        F-09. `GET search/query/?…` of the Godot Asset Store API, OpenAPI 1.1.0
+        (https://store.godotengine.org/api/v1/openapi.json), filtered in memory over the owner's
+        short list: `query` (a `#tag` term matches nothing), `type`, `featured_only`, `stable_only`,
+        `compatibility`, `licenses`, `sort`, `page`, `batch_size`. No `scroll` token (`scroll:
+        null`). Through `serveFeedRead` (the access ladder, then the Cache API): a disabled feed,
+        `packageFeeds` off or the platform kill switch is the not-found; a non-public mode is 401
+        `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - { name: query, in: query, required: false, schema: { type: string } }
+        - { name: type, in: query, required: false, schema: { type: string } }
+        - {
+            name: featured_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: require_release,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: stable_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: compatibility,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: sort, in: query, required: false, schema: { type: string } }
+        - {
+            name: licenses,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: page, in: query, required: false, schema: { type: string } }
+        - {
+            name: batch_size,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreSearchHead
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: search, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/store/api/v1/search/query/`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - { name: query, in: query, required: false, schema: { type: string } }
+        - { name: type, in: query, required: false, schema: { type: string } }
+        - {
+            name: featured_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: require_release,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: stable_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: compatibility,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: sort, in: query, required: false, schema: { type: string } }
+        - {
+            name: licenses,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - { name: page, in: query, required: false, schema: { type: string } }
+        - {
+            name: batch_size,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/store/api/v1/assets/{publisher}/{asset}/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotStoreAsset
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: one asset (registry host only)"
+      description: >
+        F-09. `GET assets/{publisher}/{asset}/` of the Godot Asset Store API, OpenAPI 1.1.0
+        (https://store.godotengine.org/api/v1/openapi.json) (`AssetDataDetailed`). `publisher` is
+        the feed's `namespace.publisher`, `asset` the addon id. `body_bbcode` and `body_html` carry
+        the description escaped. Rendered into R2 on write and re-rendered when its stamp no longer
+        matches D1. Through `serveFeedRead` (the access ladder, then the Cache API): a disabled
+        feed, `packageFeeds` off or the platform kill switch is the not-found; a non-public mode is
+        401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: publisher,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The feed's publisher.",
+          }
+        - {
+            name: asset,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The addon id.",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreAssetHead
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: one asset, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/store/api/v1/assets/{publisher}/{asset}/`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: publisher,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The feed's publisher.",
+          }
+        - {
+            name: asset,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The addon id.",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/store/api/v1/releases/{publisher}/{asset}/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotStoreReleases
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: an asset's releases (registry host only)"
+      description: >
+        F-09. `GET releases/{publisher}/{asset}/` of the Godot Asset Store API, OpenAPI 1.1.0
+        (https://store.godotengine.org/api/v1/openapi.json) (`ReleaseData[]`): every listed version,
+        newest first, with `download_url`. `stable_only` and `compatibility` filter. The 4.7+ editor
+        verifies no hash: an install relies on TLS alone (THREAT-MODEL §3). Through `serveFeedRead`
+        (the access ladder, then the Cache API): a disabled feed, `packageFeeds` off or the platform
+        kill switch is the not-found; a non-public mode is 401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: publisher,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The feed's publisher.",
+          }
+        - {
+            name: asset,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The addon id.",
+          }
+        - {
+            name: stable_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: compatibility,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreReleasesHead
+      tags: [registry]
+      summary: "Godot 4.7+ Asset Store: an asset's releases, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/store/api/v1/releases/{publisher}/{asset}/`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: publisher,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The feed's publisher.",
+          }
+        - {
+            name: asset,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The addon id.",
+          }
+        - {
+            name: stable_only,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: compatibility,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/index.json:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotIndex
+      tags: [registry]
+      summary: "Godot feed index for GodotEnv and scripted installs (registry host only)"
+      description: >
+        F-09. Every listed package of the owner's Godot feed (`format: pkey-godot-index/1`):
+        versions with the zip URL, SHA-256 and size, the channel tags, and a GodotEnv `addons.json`
+        entry (`"source": "zip"`, `subfolder: addons/<id>`; https://github.com/chickensoft-
+        games/GodotEnv). Through `serveFeedRead` (the access ladder, then the Cache API): a disabled
+        feed, `packageFeeds` off or the platform kill switch is the not-found; a non-public mode is
+        401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+          content:
+            application/json:
+              schema: {}
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotIndexHead
+      tags: [registry]
+      summary: "Godot feed index for GodotEnv and scripted installs, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/index.json`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+      responses:
+        "200":
+          description: "`application/json`; `cache-control: public, max-age=60, stale-while-revalidate=60` and a strong `ETag` (the body's SHA-256); 304 on `If-None-Match`."
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/files/{sha256}/{file}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotZip
+      tags: [registry]
+      summary: "Godot addon zip, content-addressed (registry host only)"
+      description: >
+        F-09. One version's addon zip, named by its SHA-256 (immutable by construction). A yanked
+        version's zip stays fetchable; it is only removed from the listings. Through `serveFeedRead`
+        (the access ladder, then the Cache API): a disabled feed, `packageFeeds` off or the platform
+        kill switch is the not-found; a non-public mode is 401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: sha256,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The zip's SHA-256 (64 lowercase hex).",
+          }
+        - {
+            name: file,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The zip's file name (`<id>-<version>.zip`).",
+          }
+      responses:
+        "200":
+          description: '`cache-control: public, max-age=31536000, immutable, no-transform`, `ETag: "<sha256>"`, `Content-Disposition: attachment`; `Range` (206), `If-None-Match` (304).'
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "206": { description: A single byte range. }
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotZipHead
+      tags: [registry]
+      summary: "Godot addon zip, content-addressed, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/files/{sha256}/{file}`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: sha256,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The zip's SHA-256 (64 lowercase hex).",
+          }
+        - {
+            name: file,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The zip's file name (`<id>-<version>.zip`).",
+          }
+      responses:
+        "200":
+          description: '`cache-control: public, max-age=31536000, immutable, no-transform`, `ETag: "<sha256>"`, `Content-Disposition: attachment`; `Range` (206), `If-None-Match` (304).'
+        "206": { description: A single byte range. }
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/icons/{sha256}.png:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: godotIcon
+      tags: [registry]
+      summary: "Godot addon icon, content-addressed (registry host only)"
+      description: >
+        F-09. One version's PNG icon, named by its SHA-256 (the `icon_url` and `thumbnail` of the
+        editor documents). Through `serveFeedRead` (the access ladder, then the Cache API): a
+        disabled feed, `packageFeeds` off or the platform kill switch is the not-found; a non-public
+        mode is 401 `WWW-Authenticate: Basic`.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: sha256,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The icon's SHA-256 (64 lowercase hex).",
+          }
+      responses:
+        "200":
+          description: '`cache-control: public, max-age=31536000, immutable, no-transform`, `ETag: "<sha256>"`, `Content-Disposition: attachment`; `Range` (206), `If-None-Match` (304).'
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        "206": { description: A single byte range. }
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotIconHead
+      tags: [registry]
+      summary: "Godot addon icon, content-addressed, headers only (registry host only)"
+      description: F-09. As `GET /godot/{owner}/icons/{sha256}.png`, with no body.
+      parameters:
+        - {
+            name: owner,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+            description: "The owner (product slug).",
+          }
+        - {
+            name: sha256,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The icon's SHA-256 (64 lowercase hex).",
+          }
+      responses:
+        "200":
+          description: '`cache-control: public, max-age=31536000, immutable, no-transform`, `ETag: "<sha256>"`, `Content-Disposition: attachment`; `Range` (206), `If-None-Match` (304).'
+        "206": { description: A single byte range. }
+        "304": { description: Not modified. }
+        "401":
+          {
+            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
 components:
   securitySchemes:
     ciToken:
@@ -7487,6 +9542,20 @@ components:
         The value is an opaque base64url token with no prefix — unlike `pkeyt_` device
         tokens.
   parameters:
+    OciOwner:
+      name: owner
+      in: path
+      required: true
+      description: F-08. The feed's owner (a product slug), the first component of the repository name.
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    OciRepository:
+      name: repository
+      in: path
+      required: true
+      description: >
+        F-08. The repository path under the owner: one or more lower-case components joined by
+        `/` (the OCI name grammar), at most 255 characters with the owner.
+      schema: { type: string }
     PolicyChannel:
       name: channel
       in: path
@@ -7615,6 +9684,31 @@ components:
       in: header
       description: Forwarded to the artifact origin; a satisfiable range yields 206.
       schema: { type: string }
+    # Maven feed (F-07)
+    MavenOwner:
+      name: owner
+      in: path
+      required: true
+      description: The feed's owner, a product slug (`polaris-key` for the platform's own packages).
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    MavenGroupPath:
+      name: groupPath
+      in: path
+      required: true
+      description: >
+        The groupId with each `.` as a `/` (`im/plrs/key`): one or more path segments, matched
+        case-sensitively against the declared `groupId:artifactId`.
+      schema: { type: string }
+    MavenArtifactId:
+      name: artifactId
+      in: path
+      required: true
+      schema: { type: string }
+    MavenChecksum:
+      name: checksum
+      in: path
+      required: true
+      schema: { type: string, enum: [md5, sha1, sha256, sha512] }
   headers:
     ETag:
       description: >
@@ -7632,7 +9726,60 @@ components:
       description: The same cookie with an empty value and `Max-Age=0`.
       schema: { type: string }
       example: pkey_djdl_session=; Path=/djdl; Max-Age=0; HttpOnly; Secure; SameSite=Lax
+    # ── npm (F-04, the registry host) ──
+    NpmOwner:
+      name: owner
+      in: path
+      required: true
+      description: The feed's owner, a product slug (`polaris-key` for the platform's own packages).
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]*$" }
+    NpmScope:
+      name: scope
+      in: path
+      required: true
+      description: The package's scope with its `@`; it must be the feed's scope.
+      schema: { type: string, pattern: "^@[a-z0-9][a-z0-9._~-]*$" }
+    NpmName:
+      name: name
+      in: path
+      required: true
+      description: The package name without its scope.
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9._~-]*$" }
+    NpmTarballFile:
+      name: tarball
+      in: path
+      required: true
+      description: "`<name>-<version>.tgz`, as the packument's `dist.tarball` names it."
+      schema: { type: string, pattern: "^[^/]+\\.tgz$" }
+    NpmAccept:
+      name: Accept
+      in: header
+      required: false
+      description: >
+        `application/vnd.npm.install-v1+json` listed first (at a quality at least that of an
+        explicit `application/json`) selects the abbreviated packument; anything else the full
+        one.
+      schema: { type: string }
   responses:
+    OciError:
+      description: >
+        OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
+        `BLOB_UNKNOWN`, `UNAUTHORIZED` (401, with the Bearer challenge) or `UNSUPPORTED` (405),
+        `no-store`, with `Docker-Distribution-API-Version: registry/2.0`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [errors]
+            properties:
+              errors:
+                type: array
+                items:
+                  type: object
+                  required: [code, message]
+                  properties:
+                    code: { type: string }
+                    message: { type: string }
     ChannelPolicyChanged:
       description: The channel's policy after the change.
       content:
@@ -7875,6 +10022,39 @@ components:
                     message: release metadata is temporarily unavailable,
                   },
               }
+    # ── npm (F-04, the registry host) ──
+    NpmPackument:
+      description: >
+        The packument. `Vary: Accept`; `cache-control: public, max-age=60,
+        stale-while-revalidate=60` and a strong ETag of the body's SHA-256 on a public feed
+        (`private, no-store` and no ETag otherwise).
+      content:
+        application/json:
+          schema: { type: object, required: [name, dist-tags, versions] }
+        application/vnd.npm.install-v1+json:
+          schema: { type: object, required: [name, dist-tags, versions] }
+    NpmTarball:
+      description: >
+        The tarball's bytes. `content-disposition: attachment`; `cache-control: public,
+        max-age=31536000, immutable` and the SHA-256 as ETag on a public feed.
+      content:
+        application/octet-stream:
+          schema: { type: string, format: binary }
+    NpmNotModified:
+      description: "`If-None-Match` named the answer's ETag."
+    NpmBasicChallenge:
+      description: >
+        The feed is not public, and tier 1 issues no registry credentials:
+        `WWW-Authenticate: Basic realm="pkg.plrs.im"` (the deployment's own registry host name),
+        `cache-control: no-store`.
+      headers:
+        WWW-Authenticate:
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/FlatError" }
+          examples:
+            unauthorized: { value: { error: unauthorized } }
   schemas:
     CompactJws:
       type: string

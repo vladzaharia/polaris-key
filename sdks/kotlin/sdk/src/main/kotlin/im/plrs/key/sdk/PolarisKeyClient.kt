@@ -16,7 +16,11 @@
 // SECURITY (wire contract v3): every security-relevant value this client holds is DERIVED from a
 // signature it has just checked; the cache stores compact JWSs and nothing else (§4.1).
 //
-// The update and packs facets are added by P6-08.
+// The update and packs facets (P6-08): `update` is the update client (check, signed feed, decide,
+// install) and `packs` the pack facet; the facade hands the packs facet to the update client as its
+// content host, so the decision sees the running pack set and the engine sees the feed's delta menu,
+// while :update and :packs never depend on each other. The packs facet is also the source of the
+// device report's `content.packSetId`.
 
 package im.plrs.key.sdk
 
@@ -62,7 +66,15 @@ import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClient
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.license.LicenseEndpoints
+import im.plrs.key.packs.FeedMenu
+import im.plrs.key.packs.PacksClient
+import im.plrs.key.packs.PacksOptions
 import im.plrs.key.release.ReleaseClient
+import im.plrs.key.update.UpdateClient
+import im.plrs.key.update.UpdateClientOptions
+import im.plrs.key.core.RuntimeFamily
+import im.plrs.key.core.boundChannels
+import im.plrs.key.core.reloadFeeds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -93,6 +105,13 @@ public data class PolarisKeyClientOptions(
      * traffic and wakeups to every shipped integration. `close()` stops it.
      */
     val refreshIntervalSeconds: Double? = null,
+    /**
+     * Wire v4 update options (`pinnedReleaseKeys`, the outlet, methods, the install driver). Null: the
+     * update client answers `check()` only, and `decide()` raises `not-configured`.
+     */
+    val update: UpdateClientOptions? = null,
+    /** Packs: the content stamp, embedded baselines, variant preferences and the store directory. */
+    val packs: PacksOptions = PacksOptions(),
 )
 
 /** One snapshot of everything a UI layer renders from. `doc` is the LICENCE document. */
@@ -140,6 +159,18 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val license: LicenseClient = LicenseClient(core, options.license) { syncAfterAcquisition() }
     public val config: ConfigClient = ConfigClient(core, options.config, reacquire)
     public val release: ReleaseClient = ReleaseClient(core)
+
+    /**
+     * The pack facet (`ensure`, `state`, `registerHandler`, progress events). Pack records verify
+     * against the update options' `pinnedReleaseKeys`, never the product trust set.
+     */
+    public val packs: PacksClient = PacksClient(
+        core, options.update?.pinnedReleaseKeys ?: emptyMap(), options.packs,
+        loadFeedDeltas = { committedFeedMenu(options.update) },
+    )
+
+    /** The update client: `check()`, and with `update` options the signed decision. */
+    public val update: UpdateClient = options.update?.let { UpdateClient(core, it, packs) } ?: UpdateClient(core)
 
     /** Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity. */
     public val identity: IdentityClient = IdentityClient(core, onAcquired = { syncAfterAcquisition() })
@@ -231,7 +262,21 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         body["entitlements"] = core.entitlementValues()
         // `caps` rides EVERY report: the Worker overwrites the stored report each time (P1b-10).
         body["caps"] = JsonArray(caps().map { JsonPrimitive(it) })
+        // The running pack set (plans/P4-01.md §2.9), omitted when this host has no packs.
+        core.packSetId()?.let { body["content"] = JsonObject(mapOf("packSetId" to JsonPrimitive(it))) }
         return core.reportSnapshot(JsonObject(body).toString().toByteArray(Charsets.UTF_8))
+    }
+
+    /**
+     * plans/P4-29.md §2.4 step 1: before any check this process, the delta menu of the committed feed
+     * of the configured channel, re-verified on the reload path (no freshness: a stale menu only falls
+     * back). No cache or no committed feed is no menu.
+     */
+    private suspend fun committedFeedMenu(update: UpdateClientOptions?): FeedMenu? {
+        val platform = update?.platform ?: RuntimeFamily.platformHeader ?: return null
+        val committed = reloadFeeds(core.updateSlices().feeds, core.trust(), core.product, platform)
+        for (k in boundChannels(core.channel)) committed.feeds[k]?.let { return FeedMenu(it.feed.content.deltas) }
+        return null
     }
 
     /** The bridge contract, assembled from the managers that own each piece. */

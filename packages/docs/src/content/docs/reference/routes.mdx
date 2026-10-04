@@ -90,8 +90,71 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset` | registry | Godot ≤ 4.6 Asset Library: search (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset` | registry | Godot ≤ 4.6 Asset Library: search, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/configure` | registry | Godot ≤ 4.6 Asset Library: categories (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/configure` | registry | Godot ≤ 4.6 Asset Library: categories, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/files/{sha256}/{file}` | registry | Godot addon zip, content-addressed (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/files/{sha256}/{file}` | registry | Godot addon zip, content-addressed, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/icons/{sha256}.png` | registry | Godot addon icon, content-addressed (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/icons/{sha256}.png` | registry | Godot addon icon, content-addressed, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/index.json` | registry | Godot feed index for GodotEnv and scripted installs (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/index.json` | registry | Godot feed index for GodotEnv and scripted installs, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/` | registry | Godot 4.7+ Asset Store: API overview (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/` | registry | Godot 4.7+ Asset Store: API overview, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: one asset (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: one asset, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/licenses/` | registry | Godot 4.7+ Asset Store: licenses in use (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/licenses/` | registry | Godot 4.7+ Asset Store: licenses in use, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: an asset's releases (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: an asset's releases, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/search/query/` | registry | Godot 4.7+ Asset Store: search (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/search/query/` | registry | Godot 4.7+ Asset Store: search, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/tags/` | registry | Godot 4.7+ Asset Store: tags (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/tags/` | registry | Godot 4.7+ Asset Store: tags, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, or its checksum sidecar (registry host only) |
+| HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml (registry host only) |
+| HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, maven-metadata.xml (registry host only) |
+| HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name (registry host only) |
+| HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/pypi/{owner}/files/{sha256}/{filename}` | registry | PyPI file or PEP 658 metadata (registry host only) |
+| HEAD | `https://pkg.plrs.im/pypi/{owner}/files/{sha256}/{filename}` | registry | PyPI file or PEP 658 metadata, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/pypi/{owner}/simple/{project}/` | registry | PyPI project page (registry host only) |
+| HEAD | `https://pkg.plrs.im/pypi/{owner}/simple/{project}/` | registry | PyPI project page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/pypi/{owner}/simple/` | registry | PyPI project list (registry host only) |
+| HEAD | `https://pkg.plrs.im/pypi/{owner}/simple/` | registry | PyPI project list, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}.zip` | registry | A Swift package release's source archive (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}.zip` | registry | A Swift package release's source archive, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}/Package.swift` | registry | A Swift package release's manifest (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}/Package.swift` | registry | A Swift package release's manifest, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL (registry host only) |
+| HEAD | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL, headers only (registry host only) |
+| POST | `https://pkg.plrs.im/swift/{owner}/login` | registry | SwiftPM registry login, not supported yet (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob by digest, with Range (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob existence and size (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest or image index by tag or digest (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest existence check (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, paginated (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/v2/token` | registry | OCI token endpoint, reserved (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/token` | registry | OCI token endpoint, reserved, headers only (registry host only) |
 | GET | `/{product}/release/changelog` | release | Release changelog |
 | POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
 | POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |

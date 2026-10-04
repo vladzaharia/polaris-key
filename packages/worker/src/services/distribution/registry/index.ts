@@ -4,8 +4,8 @@
  * Each ecosystem package (F-04 npm, F-05 PyPI, F-06 Swift, F-07 Maven, F-08 OCI, F-09 Godot)
  * adds one `RegistryRenderer` from its own `registry/<ecosystem>/` directory to `RENDERERS`;
  * its routes reach the host through `DISTRIBUTION_REGISTRY_ROUTES`, which `mount.ts` spreads
- * into `REGISTRY_ROUTES`. F-02 ships the framework and no ecosystem, so the host answers its
- * landing page, OCI's `/v2/` root and the not-found.
+ * into `REGISTRY_ROUTES`. F-02 shipped the framework and no ecosystem; each feed package adds
+ * its own line below.
  */
 
 import type {
@@ -13,10 +13,23 @@ import type {
   RegistryRoute,
 } from "../../../core/registryHost.js";
 import type { RegistryRenderer } from "./materialise.js";
+import { NPM_RENDERER } from "./npm/index.js";
+import { PYPI_RENDERER } from "./pypi/index.js";
+import { SWIFT_RENDERER } from "./swift/index.js";
+import { MAVEN_RENDERER } from "./maven/index.js";
+import { OCI_RENDERER } from "./oci/index.js";
+import { GODOT_RENDERER } from "./godot/index.js";
 
 /** Every renderer this build carries, one per ecosystem. */
 export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
-  new Map<RegistryEcosystem, RegistryRenderer>([]);
+  new Map<RegistryEcosystem, RegistryRenderer>([
+    ["npm", NPM_RENDERER], // F-04
+    ["pypi", PYPI_RENDERER], // F-05
+    ["swift", SWIFT_RENDERER], // F-06
+    ["maven", MAVEN_RENDERER], // F-07
+    ["oci", OCI_RENDERER], // F-08: OCI pull at /v2/
+    ["godot", GODOT_RENDERER], // F-09: both editor API shapes and the GodotEnv index
+  ]);
 
 /** Every registry route, in renderer order. */
 export const DISTRIBUTION_REGISTRY_ROUTES: readonly RegistryRoute[] = [
@@ -35,11 +48,13 @@ export {
 export {
   drainRegistry,
   materialise,
+  readFreshRegistryObject,
   readRegistryObject,
   selfCheck,
   type PackageSource,
   type RegistryPackage,
   type RegistryQueue,
   type RegistryRenderer,
+  type RenderFeed,
 } from "./materialise.js";
-export { serveFeedRead } from "./serve.js";
+export { feedRoute, serveFeedRead, type FeedRouteDef } from "./serve.js";

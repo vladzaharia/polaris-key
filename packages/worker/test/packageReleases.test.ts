@@ -442,6 +442,40 @@ describe("publishing a package release (F-03)", () => {
     expect(notPkg.status).toBe(404);
   });
 
+  it("an unyank restores an earlier deprecation instead of dropping it", async () => {
+    expect((await publish(npmDescriptor())).res.status).toBe(200);
+    const rel = encodeURIComponent("npm.sdk@1.4.0");
+    const base = `/products/${SLUG}/release/releases/${rel}`;
+    expect(
+      (
+        await admin(env, db, "POST", `${base}/deprecate`, {
+          message: "use 2.x",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await admin(env, db, "POST", `${base}/yank`, { reason: "bad build" }))
+        .status,
+    ).toBe(200);
+    expect(await pkgRow("1.4.0")).toMatchObject({
+      state: "yanked",
+      state_message: "bad build",
+    });
+    expect((await admin(env, db, "DELETE", `${base}/yank`)).status).toBe(200);
+    expect(await pkgRow("1.4.0")).toMatchObject({
+      state: "deprecated",
+      state_message: "use 2.x",
+    });
+    // And it can still be undeprecated afterwards.
+    expect((await admin(env, db, "DELETE", `${base}/deprecate`)).status).toBe(
+      200,
+    );
+    expect(await pkgRow("1.4.0")).toMatchObject({
+      state: "live",
+      state_message: null,
+    });
+  });
+
   it("a channel move of a package queues its render", async () => {
     expect((await publish(npmDescriptor())).res.status).toBe(200);
     await db.run("DELETE FROM registry_render_queue");

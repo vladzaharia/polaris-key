@@ -112,15 +112,34 @@ public class Capabilities(
 
     public companion object {
         /**
-         * This SDK's detectors. The conditional N/A in `parity.json` is `core.store` on the JVM
+         * This SDK's detectors. The conditional N/As in `parity.json`: `core.store` on the JVM
          * (`except jvm:dependency`): a JVM process reaches no OS keyring without a native library,
-         * so the token lives in a 0600 file and `supports(core.store)` says `dependency`.
+         * so the token lives in a 0600 file and `supports(core.store)` says `dependency`; and
+         * `packs.apply.delta` on Android and the JVM (`dependency`) when zstd-jni cannot load.
          */
         public val sdkDetectors: Map<String, CapabilityDetector> = mapOf(
             capabilityDetectorKey(Feature.coreStore, UnsupportedReason.dependency) to {
                 "a JVM process reaches no OS keyring without a native library; the token lives in a 0600 file (keyring-unavailable)"
             },
+            // P6-08: deltas decode through zstd-jni's native libzstd (:packs' LibZstd). Where that
+            // library cannot load (an OS or arch it ships no binary for, an Android build without
+            // the AAR's natives), `packs.apply.delta` is `dependency`, never `runtime`. Probed by
+            // reflection: :core never links the zstd binding.
+            capabilityDetectorKey(Feature.packsApplyDelta, UnsupportedReason.dependency) to {
+                if (zstdNativeLoads) null else "zstd-jni's native libzstd does not load on this runtime"
+            },
         )
+
+        /** Whether zstd-jni's native library loads here (probed once, by reflection). */
+        private val zstdNativeLoads: Boolean by lazy {
+            try {
+                val native = Class.forName("com.github.luben.zstd.util.Native")
+                native.getMethod("load").invoke(null)
+                native.getMethod("isLoaded").invoke(null) == true
+            } catch (e: Throwable) {
+                false
+            }
+        }
 
         /** The engine for this process. */
         public fun sdk(): Capabilities = Capabilities(sdkDetectors)
