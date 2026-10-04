@@ -18,10 +18,12 @@ with `jose`, asymmetric algorithms only.
 
 - **`platform`** (the default when the column is unset) — the operator-configured IdP shared by
   every product that has not linked its own, read from the `PLATFORM_OIDC_ISSUER` /
-  `PLATFORM_OIDC_CLIENT_ID` / `PLATFORM_OIDC_CLIENT_SECRET` Worker secrets (falling back to the
-  older `ADMIN_OIDC_*` names). This is the **same** IdP client the customer portal's root
-  `/login` uses — see [Customer portal](/docs/services/identity/portal/) — so a
-  platform-issuer product and the portal share one trust boundary.
+  `PLATFORM_OIDC_CLIENT_ID` / `PLATFORM_OIDC_CLIENT_SECRET` Worker secrets. This is the **same**
+  IdP client the customer portal's root `/login` uses — see
+  [Customer portal](/docs/services/identity/portal/) — so a platform-issuer product and the
+  portal share one trust boundary. The console signs operators in through its own client
+  (`ADMIN_OIDC_*`, falling back to `PLATFORM_OIDC_*` until it is set); a product or the portal
+  never reads the `ADMIN_OIDC_*` names.
 - **`custom`** — a provider the product links itself: `issuer`, `client_id`, and a
   product-secret-sealed `client_secret`, fed by `.pkey/product`'s `oidc:` block through repo link
   and resync. `redirect_uris_json`, when set, is an allowlist the computed redirect URI must

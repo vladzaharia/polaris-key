@@ -115,6 +115,9 @@ PLATFORM_ADMIN_GROUP=admins
 PLATFORM_OIDC_ISSUER=https://id.plrs.im
 PLATFORM_OIDC_CLIENT_ID
 PLATFORM_OIDC_CLIENT_SECRET
+ADMIN_OIDC_ISSUER=https://id.plrs.im   # the console's own client (I-03)
+ADMIN_OIDC_CLIENT_ID
+ADMIN_OIDC_CLIENT_SECRET
 GITHUB_APP_ID
 GITHUB_APP_PRIVATE_KEY
 GITHUB_WEBHOOK_SECRET
@@ -134,6 +137,33 @@ from "someone deleted all the products". Read the rotation procedure below befor
 
 Product secrets are not Worker secrets. Set them through the admin UI/API so they are sealed
 into `product_secrets`; values are write-only and never echoed back.
+
+### The console's Pocket ID client (I-03)
+
+The console signs operators in through its own Pocket ID client, separate from the platform
+client that the customer portal and `provider: platform` products use.
+
+| Who reads it                          | Secrets           | Pocket ID callback URL                |
+| ------------------------------------- | ----------------- | ------------------------------------- |
+| Console (`/manage/login`)             | `ADMIN_OIDC_*`    | `https://key.plrs.im/manage/callback` |
+| Portal and `provider: platform` users | `PLATFORM_OIDC_*` | `/callback`, `/<slug>/identity/...`   |
+
+- **Precedence.** The console uses `ADMIN_OIDC_*` when both `ADMIN_OIDC_ISSUER` and
+  `ADMIN_OIDC_CLIENT_ID` are set, with `ADMIN_OIDC_CLIENT_SECRET` (never the platform secret).
+  Otherwise it falls back to the whole `PLATFORM_OIDC_*` trio. The portal and products read
+  `PLATFORM_OIDC_*` only and never fall back to `ADMIN_OIDC_*`.
+- **While it falls back,** Platform → Settings shows the warning _The console shares the
+  customer sign-in client_ (`console_oidc_shared`), naming the admin variables still unset.
+- **Setting it up.** Create one console client per environment in Pocket ID (DEPLOYMENT.md §2,
+  PocketID), then set all three secrets in one `wrangler secret bulk` call per environment
+  (DEPLOYMENT.md §4). Sign in at `/manage` in a private window before closing your current
+  session, then remove `/manage/callback` from the platform client.
+- **Rotating the console secret.** Regenerate the secret on the console client in Pocket ID and
+  `wrangler secret put ADMIN_OIDC_CLIENT_SECRET --env <env>` at once: sign-ins fail with
+  _Sign-in could not be verified_ between the two steps. Existing console sessions are not
+  affected (they are signed with `ADMIN_SESSION_SECRET`).
+- **Rolling back.** `wrangler secret delete ADMIN_OIDC_CLIENT_ID --env <env>` returns the console
+  to the platform client, which then needs `/manage/callback` back in its callback URLs.
 
 ### Platform store connections (A-16)
 
@@ -677,9 +707,9 @@ for those paths in branch protection.
 
 Admin login fails before redirect:
 
-- Check `PLATFORM_OIDC_ISSUER`, `PLATFORM_OIDC_CLIENT_ID`, and
-  `PLATFORM_OIDC_CLIENT_SECRET`.
-- Confirm the PocketID platform client allows `https://key.plrs.im/manage/callback`.
+- Check `ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID` and `ADMIN_OIDC_CLIENT_SECRET`, or, while
+  they are unset (Platform → Settings warns), the `PLATFORM_OIDC_*` trio.
+- Confirm the PocketID client the console is using allows `https://key.plrs.im/manage/callback`.
 
 Admin login succeeds but access is denied:
 

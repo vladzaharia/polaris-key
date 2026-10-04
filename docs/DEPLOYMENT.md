@@ -91,16 +91,44 @@ Use the PocketID instance at `https://id.plrs.im`.
 Create or confirm the `admins` group, and add every operator who needs Polaris Key admin
 access. PocketID ID tokens must include a `groups` claim containing group names as strings.
 
-Create a platform OIDC client for Polaris Key admin, the root customer portal, and every
-product that uses platform OIDC (the default):
+Polaris Key uses two Pocket ID OIDC clients: one for the console (operators only) and one for
+customers (the root portal and every product that uses platform OIDC). Pocket ID supports a
+separate client per app. Keeping them apart means a leaked customer-client secret, or a group
+mistake on that client, cannot reach the console (I-03, S-16 §5.4).
+
+**The console client.** In Pocket ID's admin UI, open OIDC Clients and add a client:
+
+| Field        | Value                                             |
+| ------------ | ------------------------------------------------- |
+| Name         | `Polaris Key console (prod)`, one per environment |
+| Callback URL | `https://key.plrs.im/manage/callback`             |
+| Scopes       | `openid email profile groups`                     |
+| PKCE         | on (the console always sends an S256 challenge)   |
+
+Use one client per environment, each with only its own callback URL:
+`https://key-staging.plrs.im/manage/callback` for staging and
+`https://key-dev.plrs.im/manage/callback` for dev. If your Pocket ID version can restrict a
+client to user groups, allow only `admins`. The console checks `PLATFORM_ADMIN_GROUP` either
+way. Record the client ID and client secret. They become the Worker secrets
+`ADMIN_OIDC_ISSUER` (`https://id.plrs.im`), `ADMIN_OIDC_CLIENT_ID` and
+`ADMIN_OIDC_CLIENT_SECRET` (§4).
+
+Until those three are set, the console falls back to the platform client below, so a deploy
+without them keeps working. The portal and products never read `ADMIN_OIDC_*`.
+
+**The platform client.** Create it for the root customer portal and every product that uses
+platform OIDC (the default):
 
 | Field        | Value                                             |
 | ------------ | ------------------------------------------------- |
 | Issuer       | `https://id.plrs.im`                              |
-| Redirect URI | `https://key.plrs.im/manage/callback`             |
 | Redirect URI | `https://key.plrs.im/callback`                    |
 | Redirect URI | `https://key.plrs.im/djdl/identity/auth/callback` |
 | Scopes       | `openid email profile groups`                     |
+
+Once the console client is live, remove `https://key.plrs.im/manage/callback` from this
+client, so an operator sign-in can no longer go through it. Leave it in place until then: it is
+what the fallback uses.
 
 Each additional product using platform OIDC adds its own `/<slug>/identity/auth/callback` to
 this client. Products with `oidc.provider: custom` use a separate client and do not need an
@@ -522,11 +550,27 @@ npx wrangler secret put GITHUB_APP_PRIVATE_KEY --env prod
 npx wrangler secret put GITHUB_WEBHOOK_SECRET --env prod
 ```
 
+Set the console client's three secrets (§2, PocketID) in **one** call, so no deployed version
+sees half of them. Each `wrangler secret put` deploys a new version, and while only some are
+set the console stays on the platform client:
+
+```sh
+# admin-oidc.json, kept out of the repo and deleted afterwards:
+# { "ADMIN_OIDC_ISSUER": "https://id.plrs.im",
+#   "ADMIN_OIDC_CLIENT_ID": "<console client id>",
+#   "ADMIN_OIDC_CLIENT_SECRET": "<console client secret>" }
+npx wrangler secret bulk admin-oidc.json --env prod
+rm admin-oidc.json
+```
+
+Repeat with the staging and dev console clients for `--env staging` and `--env dev`.
+
 Use these literal values where applicable:
 
 ```text
 PLATFORM_ADMIN_GROUP=admins
 PLATFORM_OIDC_ISSUER=https://id.plrs.im
+ADMIN_OIDC_ISSUER=https://id.plrs.im
 ```
 
 Paste the complete GitHub App private key PEM for `GITHUB_APP_PRIVATE_KEY`, including the
@@ -723,8 +767,13 @@ https://key.plrs.im/manage
 
 Sign in through PocketID. If login fails:
 
-- Confirm `PLATFORM_OIDC_ISSUER=https://id.plrs.im`.
-- Confirm the platform client allows `https://key.plrs.im/manage/callback`.
+- Confirm `ADMIN_OIDC_ISSUER=https://id.plrs.im` and that the console client allows
+  `https://key.plrs.im/manage/callback`.
+- If the `ADMIN_OIDC_*` secrets are not set yet, the console uses the platform client: confirm
+  `PLATFORM_OIDC_ISSUER=https://id.plrs.im` and that the platform client still allows
+  `https://key.plrs.im/manage/callback`.
+- Platform → Settings warns _The console shares the customer sign-in client_ while the
+  fallback is in use.
 - Confirm your ID token has `groups` and includes `admins`.
 - Confirm `PLATFORM_ADMIN_GROUP=admins`.
 - Confirm D1 migrations were applied before deploy.
@@ -838,7 +887,13 @@ Validate portal email:
 
 `Admin sign-in is not configured.`
 
-- `PLATFORM_OIDC_ISSUER` or `PLATFORM_OIDC_CLIENT_ID` is missing.
+- Neither `ADMIN_OIDC_ISSUER` + `ADMIN_OIDC_CLIENT_ID` nor `PLATFORM_OIDC_ISSUER` +
+  `PLATFORM_OIDC_CLIENT_ID` is set.
+
+`Sign-in could not be verified.` right after setting the console client
+
+- `ADMIN_OIDC_CLIENT_SECRET` does not match the console client, or the console client is
+  missing this environment's `/manage/callback` URL.
 
 `Your account is not an administrator of any product.`
 

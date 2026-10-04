@@ -705,7 +705,9 @@ describe("the read-only inventory", () => {
         "Not set: the console uses the platform client",
       ),
     ).toHaveLength(2);
-    expect(within(identity).getByText("https://login.example.com")).toBeTruthy();
+    expect(
+      within(identity).getByText("https://login.example.com"),
+    ).toBeTruthy();
     expect(within(identity).getByText("auth.acme.dev")).toBeTruthy();
     expect(within(identity).getByText("8 hours")).toBeTruthy();
     const delivery = await section("Delivery");

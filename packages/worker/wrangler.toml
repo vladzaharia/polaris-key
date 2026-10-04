@@ -337,6 +337,9 @@ PKEY_ENVIRONMENT = "test"
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
 # Optional portal-specific secret:
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
+# Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
+#   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
+#   console signs in through PLATFORM_OIDC_*; the portal never reads them.
 # Customer portal email:
 #   prod binds Cloudflare Email Service as EMAIL and restricts senders to noreply@plrs.im.
 #   Set PORTAL_EMAIL_FROM if the default sender should not be "Polaris Key <noreply@plrs.im>".
