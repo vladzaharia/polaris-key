@@ -10,6 +10,8 @@ deploy-time: they live in `wrangler.toml` or as Worker secrets and change only w
 Four background-job settings can also be changed at runtime, without a deploy, and every change
 is recorded in the [platform trail](/docs/admin/activity/#the-platform-trail).
 
+In the console this is **Platform → Settings** (`#/platform/settings`; `#/platform` opens it).
+
 ## The runtime settings
 
 | Setting                | What it does                                                                   | Values                                     |
@@ -47,6 +49,49 @@ source, and the settings list shows the stored value as invalid.
 
 Changes reach every Worker isolate within 30 seconds. The nightly cron and the delta consumer
 read the settings fresh at the start of each run.
+
+## In the console
+
+Platform → Settings has these sections, top to bottom.
+
+- **Warnings.** Each warning the API returns (legacy `ADMIN_OIDC_*` names, `PLATFORM_KEK_ID` set,
+  `PORTAL_SESSION_SECRET` unset) is shown first.
+- **Background jobs.** The four runtime settings. Each row shows the effective value and a source
+  badge: _Code default_, _Deploy var_ or _Set in console_ (with who set it and when). Each row
+  saves on its own:
+  - The two switches apply when you flip them. Turning a job **on** asks first and lists what
+    changes. Turning one **off** applies at once, with **Undo** in the confirmation toast.
+  - The two numbers have their own Save bar. The size cap is entered in MiB, from 1 to 32. It can
+    only lower the measured 32 MiB ceiling, so a larger value is refused before it is sent.
+    Raising the cap or lowering the collector's grace asks first. The other direction saves at
+    once, with Undo.
+  - A switch whose deploy var is `off` is **locked**. The row says that the deploy var is a hard
+    off. If a console value is stored, the row says it applies once the deploy var allows it.
+  - **Revert…** removes the console value after a confirmation that names the value you get
+    back: the deploy var's, or the code default.
+  - A stored value outside the bounds is flagged as not applied.
+  - If the settings store cannot be read, the switches show _Off: store unreadable_ and nothing
+    can be saved.
+- **Identity & access**, **Delivery** and **Email.** The deploy-time values, read-only. A value
+  that came from a legacy name says so.
+- **Limits.** The code constants: retention, the bucket's age lock, the collector's shortest
+  grace and the delta size ceiling. Collapsed until you open it.
+- **Keyring.** The KEK keyring, read-only: which KEK secrets are set, the `PLATFORM_KEK_ACTIVE`
+  and `PLATFORM_KEK_ID` kid names, the active key, every key in the ring with how many values it
+  seals, and the re-seal progress. Values under a key that has left the ring are flagged as
+  unopenable. When the ring does not parse, the section says the keyring is unusable. Rotation
+  and the re-seal sweep follow the [KEK runbook](/docs/admin/kek/).
+- **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
+  unset means.
+- **History.** Each settings change from the platform trail, with who made it and the value
+  before and after, newest first.
+
+### When someone else saved first
+
+Every save sends the version the page loaded. If someone changed the setting since, nothing is
+changed and the row says so, with a **Reload** button. Reload shows the current value and who set
+it. A number you typed stays in its field: press Save to apply it on top of the new value, or
+Discard to keep the current one.
 
 ## The API
 
@@ -100,5 +145,6 @@ It is version-guarded in the same way, and answers `404` when there is no runtim
 
 ## Reference
 
+- [KEK runbook](/docs/admin/kek/): the keyring the Keyring section reads.
 - [Activity](/docs/admin/activity/#the-platform-trail): the platform trail these changes write.
 - [Deploying to production](/docs/admin/deploy/): where the deploy-time values are set.

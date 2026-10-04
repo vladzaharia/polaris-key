@@ -2275,6 +2275,44 @@ deleted.
   confirm level, a URL round trip and an axe pass. `queryKeyShapes.test.ts` now requires the
   registry list to have exactly one reader, the shell's `useProducts`.
 
+#### Chunk 4P-1 as built (2026-10-04)
+
+**Platform → Settings** (`#/platform/settings`, T4) is built on A-13's settings API, and
+`platform-settings` is `ready` in `nav.ts`, so `#/platform` now lands on Settings. The page is
+`src/console/pages/platformSettings.tsx`, in the Platform lazy chunk. Its help link is
+`/docs/admin/platform-settings/`, and the Keyring section links `/docs/admin/kek/`.
+
+- **Background jobs.** Each of the four settings is its own save scope:
+  - The source badge shows _Code default_, _Deploy var_ or _Set in console_ (by whom and when).
+  - Switches apply on flip. Integers use a per-row `SaveBar`. The byte cap is entered in MiB and
+    bounded to [1, 32], so it can only be lowered.
+  - Confirm levels come from the registry's `confirm` for each direction. An L0 change applies at
+    once, with Undo in the toast: Undo restores the previous runtime value or deletes the new
+    one. L1 is a caution `ConfirmDialog` that lists the consequences. L2 and above would send
+    `confirm: <key>`, and L3 adds the typed key; no setting uses either yet.
+  - Revert is always confirmed (L1 at least) and names the value that comes back.
+  - Every write sends `expectedVersion`. On a 409 the row offers **Reload**. A typed number
+    survives the reload (`keepMine`), and Save retries it with the new version.
+  - A ceiling hard off shows as _Locked off by deploy var_ with the reason. An unreadable store
+    shows as _Off: store unreadable_ and disables the controls.
+- **Read-only inventory.** Identity & access, Delivery and Email list the deploy-time values,
+  each flagged when a legacy name supplied it. Limits holds the code constants and starts
+  collapsed. The API's warnings are shown above the sections.
+- **Keyring.** This closes the "KEK has no console UI" gap, read-only. It shows KEK secret
+  presence, the `PLATFORM_KEK_ACTIVE` and `PLATFORM_KEK_ID` kid names, and from
+  `GET /products/kek` the active kid, the ring with per-kid counts and the re-seal progress
+  (remaining, unopenable). A 503 shows "The platform keyring is unusable". The L3 re-seal sweep
+  is not in this chunk: it stays the runbook's `POST`.
+- **Secrets.** Presence only, with what each secret is for and what being unset means.
+- **History.** The `platform.setting.*` rows of `GET /platform/activity`, filtered on the client.
+  Each fetch reads up to 5 pages until it has 10 matches. The rows show the value before and
+  after. The query key is `["platform", "activity", "settings"]`, so a settings write's
+  invalidation of the platform trail also refreshes Deployment's activity panel. That panel now
+  words the two setting actions.
+- **Tests.** The new `platformSettings.test.tsx` has 20 tests. `platform.test.tsx`,
+  `route.test.ts`, `palette.test.tsx` and the CSP e2e follow the new `ready` entry. The CSP e2e
+  also opens a setting's confirmation and records zero violations.
+
 #### Chunk 11 · Docs, a11y sweep, visual baseline, cleanup
 
 **IDs closed.** DOC-1 to DOC-6.
