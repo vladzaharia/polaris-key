@@ -368,6 +368,7 @@ There are two scopes, and they map onto the existing layers.
   - submit for App Store review;
   - release;
   - an IAP price change;
+  - completing a phased release (added at integration, see the last Corrections section);
   - enabling a capability on a bundle id that another product's app uses.
 
   Everything else uses a plain confirm.
@@ -1068,3 +1069,25 @@ Where the build departs from §7, §8.3 and §10 above, the code is the fact:
   (`LATEST_MIGRATION` and the generated data model follow). It has not reached production.
   Superseded at integration: main also took `0060`, and the ledger merged as
   `0061_store_operations.sql`.
+
+## Corrections (integration of A-17a–e, 2026-10-04)
+
+A-17a to A-17e merged together on `integ/asc-kotlin`, with three owner decisions applied on the
+way. Where they depart from the sections above, the code is the fact:
+
+- **The ledger is `store_operations`** (S-15 owner decision 3), not `asc_operations`. Migration
+  `0061_store_operations.sql`: main had taken both `0059` (`0059_portal_identity_issuer.sql`) and
+  `0060` (`0060_render_queue_attempts.sql`), so the ledger takes the next free number and
+  `LATEST_MIGRATION` follows. The table gains `store` (`'app-store'` for every A-17 row, never
+  empty) and names Apple's status and code `vendor_status` and `vendor_code`. `op_id` is unchanged
+  (A-18a adds the store to it, with `plane`). `core/asc/ledger.ts` exports `StoreOperationRow`,
+  `beginStoreOperation`, `getStoreOperation`, `finishStoreOperation` and `listStoreOperations`;
+  `performAscWrite` keeps its name until A-18a. API answers still say `appleStatus`/`appleCode`.
+- **Completing a phased release is typed** (owner decision, 2026-10-04). §7.1's typed list did
+  not name it, so it fell under "everything else uses a plain confirm", but completing releases the
+  version to every user, so it is a release. The gate refuses `PATCH appStoreVersionPhasedReleases/{id}` with `COMPLETE` unless the
+  handler asserts `typedConfirmation`; P5-02's `phased-release/complete` requires `confirm`, refuses
+  a blank one before any Apple call (422 `confirmation_required`), compares it with the app's name
+  as Apple reports it now (`checkTypedConfirmation`, 422 `confirmation_mismatch`) and only then
+  asserts it. Pause and resume stay plain. The console's **Release to everyone…** is L3
+  (`connector.phasedComplete`) and its dialog asks for the app's name.

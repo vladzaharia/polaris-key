@@ -600,6 +600,31 @@ describe("confirmation levels", () => {
     ).toBeNull();
   });
 
+  it("completing a phased release is typed; pausing and resuming are not (owner decision (b))", () => {
+    const p = "/v1/appStoreVersionPhasedReleases/phr1";
+    const phased = (phasedReleaseState: string) => ({
+      data: {
+        type: "appStoreVersionPhasedReleases",
+        id: "phr1",
+        attributes: { phasedReleaseState },
+      },
+    });
+    expect(denial("PATCH", p, phased("COMPLETE"))).toBe(
+      "typed_confirmation_required",
+    );
+    expect(denial("PATCH", p, phased("COMPLETE"), { initial: true })).toBe(
+      "typed_confirmation_required",
+    );
+    expect(
+      denial("PATCH", p, phased("COMPLETE"), { typedConfirmation: true }),
+    ).toBeNull();
+    expect(denial("PATCH", p, phased("PAUSED"))).toBeNull();
+    expect(denial("PATCH", p, phased("ACTIVE"))).toBeNull();
+    expect(
+      denial("PATCH", p, phased("INACTIVE"), { typedConfirmation: true }),
+    ).toBe("value_not_allowed");
+  });
+
   it("app availability is a first-time set only", () => {
     const avail = {
       data: {

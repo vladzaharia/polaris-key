@@ -200,15 +200,16 @@ In the console API, under `/manage/api/products/<slug>/distribution/connectors/a
 | ------------------------- | -------------------------- | ----------------------------------------------------------------- |
 | `phased-release/pause`    | `{ releaseId }`            | `PATCH /v1/appStoreVersionPhasedReleases/{id}` → `PAUSED`         |
 | `phased-release/resume`   | `{ releaseId }`            | the same → `ACTIVE`                                               |
-| `phased-release/complete` | `{ releaseId }`            | the same → `COMPLETE` (everyone, now)                             |
+| `phased-release/complete` | `{ releaseId, confirm }`   | the same → `COMPLETE` (everyone, now)                             |
 | `release`                 | `{ releaseId, confirm }`   | `POST /v1/appStoreVersionReleaseRequests` (a held version only)   |
 | `testflight/public-link`  | `{ betaGroupId, enabled }` | `PATCH /v1/betaGroups/{id}` `publicLinkEnabled`                   |
 | `webhook`                 | `{}`                       | `POST /v1/webhooks` (all 12 events), then `POST /v1/webhookPings` |
 
-**Releasing is typed.** `release` cannot be undone, so `confirm` must be the app's name exactly as
-App Store Connect shows it (the control reads it from Apple before sending). Without it the answer
-is 422 `confirmation_required`; with a different name, 422 `confirmation_mismatch`. Nothing is sent
-either way.
+**Releasing is typed.** `release` and `phased-release/complete` cannot be undone, and both put the
+version in front of every user, so `confirm` must be the app's name exactly as App Store Connect
+shows it (the control reads it from Apple before sending). Without it the answer is 422
+`confirmation_required`; with a different name, 422 `confirmation_mismatch`. Nothing is sent
+either way. Pausing and resuming a phased release are not typed.
 
 **Only on the pinned app.** The controls act on the app whose `appleId` the setup shows in
 `GET …/distribution/connectors/asc`, which is always the app the key is pinned to. While the key

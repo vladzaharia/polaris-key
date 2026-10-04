@@ -484,11 +484,17 @@ export const ASC_WRITE_ALLOW: readonly AscAllowRule[] = [
     attributes: ["phasedReleaseState"],
     relationships: {},
     confirm: "plain",
-    check: (d) =>
-      oneOf(attrs(d).phasedReleaseState, ["PAUSED", "ACTIVE", "COMPLETE"])
-        ? null
-        : "value_not_allowed",
-    why: "P5-02's pause, resume and complete controls",
+    check: (d, ctx) => {
+      const state = attrs(d).phasedReleaseState;
+      if (!oneOf(state, ["PAUSED", "ACTIVE", "COMPLETE"]))
+        return "value_not_allowed";
+      // Completing releases the version to every user at once: it is a release, so it is typed
+      // (owner decision (b), 2026-10-04). Pausing and resuming stay a plain confirm.
+      if (state === "COMPLETE" && ctx.typedConfirmation !== true)
+        return "typed_confirmation_required";
+      return null;
+    },
+    why: "P5-02's pause and resume controls, and complete (typed: it releases to everyone)",
   },
   {
     method: "POST",

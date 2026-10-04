@@ -65,9 +65,10 @@ describe("phased release controls", () => {
         w,
         "POST",
         `/distribution/connectors/asc/phased-release/${verb}`,
-        {
-          releaseId: "v1.1.0",
-        },
+        // Completing is a release to everyone: typed (owner decision (b), 2026-10-04).
+        verb === "complete"
+          ? { releaseId: "v1.1.0", confirm: "djdl" }
+          : { releaseId: "v1.1.0" },
       );
       expect(res.status).toBe(200);
       expect(w.fake.writes()).toEqual([
@@ -250,6 +251,72 @@ describe("release takes a typed confirmation (A-17a)", () => {
       true,
     );
     expect(await controlAudits(w)).toEqual([]);
+  });
+});
+
+describe("completing a phased release takes a typed confirmation (owner decision (b))", () => {
+  async function phasedWorld(): Promise<AscWorld> {
+    const w = await ascWorld();
+    w.fake.set("appStoreVersions", "asv-110", {
+      appVersionState: "READY_FOR_DISTRIBUTION",
+    });
+    w.fake.set("appStoreVersionPhasedReleases", "phr-110", {
+      phasedReleaseState: "ACTIVE",
+      currentDayNumber: 2,
+    });
+    await withFetch(w, () => runConnectorPolls(w.env, w.db, NOW));
+    w.fake.requests.length = 0;
+    return w;
+  }
+
+  it("refuses without confirm, before any request to Apple", async () => {
+    const w = await phasedWorld();
+    const res = await admin(
+      w,
+      "POST",
+      "/distribution/connectors/asc/phased-release/complete",
+      { releaseId: "v1.1.0" },
+    );
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({
+      reason: "confirmation_required",
+      fields: ["confirm"],
+    });
+    expect(w.fake.requests).toEqual([]);
+    expect(await controlAudits(w)).toEqual([]);
+  });
+
+  it("refuses a confirm that is not the app's name in App Store Connect, sending no write", async () => {
+    const w = await phasedWorld();
+    const res = await admin(
+      w,
+      "POST",
+      "/distribution/connectors/asc/phased-release/complete",
+      { releaseId: "v1.1.0", confirm: "DJDL!" },
+    );
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { reason: string }).reason).toBe(
+      "confirmation_mismatch",
+    );
+    expect(w.fake.writes()).toEqual([]);
+    expect(w.fake.requests.some((r) => r.path === "/v1/apps/1234567890")).toBe(
+      true,
+    );
+    expect(await controlAudits(w)).toEqual([]);
+  });
+
+  it("pause and resume stay a plain confirm", async () => {
+    const w = await phasedWorld();
+    const res = await admin(
+      w,
+      "POST",
+      "/distribution/connectors/asc/phased-release/pause",
+      { releaseId: "v1.1.0" },
+    );
+    expect(res.status).toBe(200);
+    expect(w.fake.requests.some((r) => r.path === "/v1/apps/1234567890")).toBe(
+      false,
+    );
   });
 });
 

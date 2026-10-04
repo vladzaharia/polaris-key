@@ -6,7 +6,7 @@
  *
  *     phased-release/pause     PATCH /v1/appStoreVersionPhasedReleases/{id}  PAUSED
  *     phased-release/resume    PATCH …                                       ACTIVE
- *     phased-release/complete  PATCH …                                       COMPLETE
+ *     phased-release/complete  PATCH …                                       COMPLETE (typed)
  *     release                  POST  /v1/appStoreVersionReleaseRequests  (a version held in
  *                                                                         PENDING_DEVELOPER_RELEASE;
  *                                                                         typed confirmation, A-17a)
@@ -240,6 +240,9 @@ const PHASED_TARGET = {
   complete: "COMPLETE",
 } as const;
 
+/** What the typed confirmation of `phased-release/complete` names in its refusal. */
+const COMPLETE_ACTION = "release the version to every user";
+
 function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
   return (c, body) =>
     withRun(c, async (run, setup) => {
@@ -248,6 +251,19 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
         return refuse(422, "invalid_body", "releaseId is required", [
           "releaseId",
         ]);
+      // Completing releases the version to every user at once, so it is a release: typed like
+      // `release` (owner decision (b), 2026-10-04). Pause and resume stay plain.
+      const typed = verb === "complete";
+      if (
+        typed &&
+        (typeof body.confirm !== "string" || body.confirm.trim() === "")
+      )
+        return refuse(
+          422,
+          "confirmation_required",
+          `type the app's name in confirm to ${COMPLETE_ACTION}`,
+          ["confirm"],
+        );
       const known = await proveVersion(run, setup, releaseId);
       if (!known)
         return refuse(
@@ -262,6 +278,15 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
           "no_phased_release",
           `the App Store version of ${releaseId} has no phased release`,
         );
+      if (typed) {
+        const unconfirmed = await checkTypedConfirmation(
+          run,
+          setup,
+          body.confirm,
+          COMPLETE_ACTION,
+        );
+        if (unconfirmed) return unconfirmed;
+      }
       const state = PHASED_TARGET[verb];
       await run.client.patch(
         ascPath("appStoreVersionPhasedReleases", phasedId),
@@ -272,6 +297,8 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
             attributes: { phasedReleaseState: state },
           },
         },
+        // Asserted only after the comparison above; the gate refuses COMPLETE without it.
+        typed ? { typedConfirmation: true } : {},
       );
       await auditControl(
         c,

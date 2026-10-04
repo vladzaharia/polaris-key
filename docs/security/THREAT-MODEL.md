@@ -1568,10 +1568,14 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   is found under the pinned app by `filter[productId]`; an IAP version or Background Asset version
   offered to a submission is walked back to the pinned app (version → IAP → mapped product id →
   the pinned app's IAP; version → asset → `include=app`) before the submission is touched.
-- **(d) Typed confirmation.** Release, submit for review and price changes require the operator to
-  type the app's name; the handler compares it with Apple's current value and only then asserts
-  `typedConfirmation` to the gate, which refuses those operations without it. A first price
-  schedule or availability needs the handler's `initial` assertion (its pre-read found none).
+- **(d) Typed confirmation.** Release, completing a phased release, submit for review and price
+  changes require the operator to type the app's name; the handler compares it with Apple's
+  current value and only then asserts `typedConfirmation` to the gate, which refuses those
+  operations without it. A first price schedule or availability needs the handler's `initial`
+  assertion (its pre-read found none). Owner decision (2026-10-04): `PATCH
+appStoreVersionPhasedReleases` with `COMPLETE` releases the version to every user, so the gate
+  treats it as a release (pause and resume stay plain), and P5-02's `phased-release/complete`
+  control and its console dialog (L3) ask for the name.
   P5-02's `release` control takes `confirm` since A-17a, and the console's **Release this
   version** is an L3 action whose dialog asks for the app's name. A-17d's `distribute/submit`
   uses the same server-side comparison before it opens or touches a review submission;
@@ -1631,8 +1635,8 @@ same gate, ledger and audit, with these choices of their own (`test/ascProvision
 
 **Attack tree: stolen admin session → Apple account.** With the gate in place a stolen session
 stays inside A-17's surface: it CAN register bundle ids and enable the gate's capability types,
-create TestFlight groups and add testers, create non-consumable IAPs, submit and release (typing the
-app's name, which it can read), and point the notification URL and webhook at the product's own
+create TestFlight groups and add testers, create non-consumable IAPs, submit, release and complete a
+phased release (typing the app's name, which it can read), and point the notification URL and webhook at the product's own
 `/<slug>/distribution/hooks/…` path on a Worker host. It CANNOT add or change users, mint or revoke
 certificates, register devices, delete anything, or send any request the allow table does not name.
 
@@ -4091,7 +4095,7 @@ Poison the release channel
 ```
 Use the Worker's Admin App Store Connect key (A11b)
 ├── Steal an admin session (AT-2)
-│   ├── CAN submit, release (typing the app's name), add testers, create non-consumable IAPs, register bundle ids
+│   ├── CAN submit, release, complete a phased release (typing the app's name), add testers, create non-consumable IAPs, register bundle ids
 │   ├── CAN point the notification URL and webhook only at /<slug>/distribution/hooks/… on a Worker host
 │   └── CANNOT invite users, mint or revoke certificates, register devices, delete anything (write gate, deny by default)
 ├── Add a route or handler that forwards a request ──► refused in review: no generic proxy; the gate checks every write anyway
