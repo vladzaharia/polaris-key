@@ -576,7 +576,7 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: ServerCog,
     docs: "/docs/admin/kek/",
     inNav: true,
-    // The settings store (A-13) and its page (4P-1) land later; until then, Deployment.
+    // The settings store API (A-13) has landed; its page (4P-1) has not. Until then, Deployment.
     ready: false,
     host: "platform-deployment",
     group: "platform",
@@ -598,7 +598,7 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: Gauge,
     docs: "/docs/admin/deploy/",
     inNav: true,
-    // Self-reported operations data (A-14) and its page (4P-3) land later.
+    // The operations API (A-14) has landed; its page (4P-3) has not. Until then, Deployment.
     ready: false,
     host: "platform-deployment",
     group: "platform",
@@ -610,6 +610,7 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: PlugZap,
     docs: "/docs/services/distribution/",
     inNav: true,
+    // The store connections API (A-16) has landed; its page has not. Until then, Deployment.
     ready: false,
     host: "platform-deployment",
     group: "platform",
