@@ -131,39 +131,34 @@ export const stories: Story[] = [
       "First run (the stationary star), no results with the active filters, a service that is off, not found.",
     render: () => (
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <EmptyState
-            kind="first-run"
-            title="No licenses yet"
-            description="Issue a license to let a customer activate the product."
-            primaryAction={<Button iconStart={<Plus />}>New license</Button>}
-            docs="https://docs.polaris-key.dev/admin/licenses-and-devices"
-          />
-        </Card>
-        <Card>
-          <EmptyState
-            kind="no-results"
-            title="No licenses match"
-            filters="status: expired · tier: Pro"
-            onClearFilters={() => undefined}
-          />
-        </Card>
-        <Card>
-          <EmptyState
-            kind="service-off"
-            service="config"
-            title="Config is off for this product"
-            description="Enable it to publish a catalog and profiles."
-            primaryAction={<Button>Enable Config</Button>}
-          />
-        </Card>
-        <Card>
-          <EmptyState
-            kind="not-found"
-            title="Release 2.4.0 was not found"
-            description="It may have been deleted, or the link belongs to another product."
-          />
-        </Card>
+        <EmptyState
+          kind="first-run"
+          title="No licenses yet"
+          description="Issue a license to let a customer activate the product."
+          primaryAction={<Button iconStart={<Plus />}>New license</Button>}
+          docs="https://docs.polaris-key.dev/admin/licenses-and-devices"
+        />
+
+        <EmptyState
+          kind="no-results"
+          title="No licenses match"
+          filters="status: expired · tier: Pro"
+          onClearFilters={() => undefined}
+        />
+
+        <EmptyState
+          kind="service-off"
+          service="config"
+          title="Config is off for this product"
+          description="Enable it to publish a catalog and profiles."
+          primaryAction={<Button>Enable Config</Button>}
+        />
+
+        <EmptyState
+          kind="not-found"
+          title="Release 2.4.0 was not found"
+          description="It may have been deleted, or the link belongs to another product."
+        />
       </div>
     ),
   },

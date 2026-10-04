@@ -54,6 +54,7 @@ afterAll(async () => {
 async function open(
   theme: "dark" | "light",
   viewport = { width: 1440, height: 900 },
+  consoleErrors?: string[],
 ): Promise<Page> {
   const ctx = await browser.newContext({
     viewport,
@@ -80,6 +81,10 @@ async function open(
     return route.fulfill({ response: res, headers });
   });
   const page = await ctx.newPage();
+  page.on("console", (m) => {
+    if (m.type() === "error") consoleErrors?.push(m.text());
+  });
+  page.on("pageerror", (e) => consoleErrors?.push(e.message));
   await page.goto(`${base}/manage.html#/__kit`);
   await page
     .getByRole("heading", { level: 1, name: "Component gallery" })
@@ -126,10 +131,12 @@ async function check(
 
 describe("the kit gallery's overlays under the Worker's CSP", () => {
   for (const theme of ["dark", "light"] as const) {
-    it(`${theme}: the gallery loads with no violations`, async () => {
-      const page = await open(theme);
+    it(`${theme}: the gallery loads with no violations or console errors`, async () => {
+      const errors: string[] = [];
+      const page = await open(theme, undefined, errors);
       await page.waitForTimeout(300);
       expect(await violations(page)).toEqual([]);
+      expect(errors).toEqual([]);
       await page.context().close();
     });
   }

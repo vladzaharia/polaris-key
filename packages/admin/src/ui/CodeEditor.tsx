@@ -39,8 +39,9 @@ export interface CodeEditorImplProps extends Omit<
 /**
  * CodeMirror 6, loaded on first use (components.md §3.3): the catalog and payload JSON editors
  * only, so the editor never reaches the main bundle. Until it loads, a read-only textarea shows
- * the text. CodeMirror styles itself through constructable stylesheets (style-mod's
- * `adoptedStyleSheets`), never a `<style>` element, so it runs under the Worker's CSP.
+ * the text. CodeMirror styles itself through a constructable stylesheet (style-mod's
+ * `adoptedStyleSheets`, which `vite.config.ts` turns on for the document too), never a `<style>`
+ * element, so it runs under the Worker's CSP (e2e/kit.e2e.test.ts).
  */
 const Impl = React.lazy(() => import("./CodeEditorImpl.js"));
 
@@ -118,7 +119,18 @@ export function CodeEditor({
           ) : null}
         </div>
       ) : null}
-      <React.Suspense fallback={<CodeEditorFallback {...props} />}>
+      <React.Suspense
+        fallback={
+          <CodeEditorFallback
+            value={props.value}
+            heightClass={props.heightClass}
+            id={props.id}
+            aria-label={props["aria-label"]}
+            aria-labelledby={props["aria-labelledby"]}
+            aria-describedby={props["aria-describedby"]}
+          />
+        }
+      >
         <Impl {...props} onDiagnostics={setProblems} />
       </React.Suspense>
     </div>

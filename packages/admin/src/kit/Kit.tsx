@@ -26,7 +26,11 @@ function Choice<T extends string>({
   onChange: (v: T) => void;
 }): React.ReactElement {
   return (
-    <div role="group" aria-label={label} className="flex items-center gap-1">
+    <div
+      role="group"
+      aria-label={label}
+      className="flex flex-wrap items-center gap-1"
+    >
       <span className="mr-1 text-xs text-fg-muted">{label}</span>
       {options.map((o) => (
         <button
