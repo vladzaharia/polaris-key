@@ -25,6 +25,11 @@
  * `/login`, `/callback`, `/api/*`, `/download/<token>` are ROOT paths — one account spans every
  * tenant, so there is no product to scope them under. They stay platform routes dispatched from
  * `index.ts`; only their implementation lives here (`portal/`). See `portal/index.ts`.
+ *
+ * For the same reason the `identity` flag does NOT gate the portal (S-16 G10, owner decision D7):
+ * the portal is a platform concern that runs for every product, governed by
+ * `portal_product_settings`, never by `services_json`. "No `/identity/*` surface" above means
+ * the product-scoped routes only.
  */
 
 import type {

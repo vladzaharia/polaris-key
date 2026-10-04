@@ -25,6 +25,15 @@ same shape manifest ingest already takes elsewhere: a platform-owned pipeline di
 service-owned rows. What moved into `services/identity/portal/` is the code; the routes stayed
 exactly where they were.
 
+## The Identity flag does not gate the portal
+
+The portal is a platform concern: it runs for every product, whether or not that product has the
+Identity service turned on. A product with Identity off has no `/identity/*` routes, but its
+customers still see its licenses in the portal, can claim them by key and can manage their
+devices. What decides that is the product's portal settings (below), never `services_json`'s
+`identity` flag. The one service flag the portal does read is Release's: release downloads need
+both `releasesEnabled` and the Release service on.
+
 ## Signing in
 
 | Route                   | What it does                                                                |
@@ -150,6 +159,11 @@ the portal itself proved (a magic link it sent, or an `email_verified: true` cla
 **platform** issuer specifically) can drive a link at all, and only a platform-issuer subject may
 match a license's `sub`, so subjects minted by mutually untrusted custom IdPs can never collide
 across products (the R5 audit findings, `R5-01` and `R5-02`).
+
+A portal account's OIDC identities are keyed by the issuer that minted the subject (the
+configured platform issuer URL), not by a provider kind, so a second issuer's subjects can never
+land in the platform issuer's namespace. Rows written before migration `0059` carried the literal
+`oidc`; the Worker re-keys them to the platform issuer at the next portal OIDC sign-in.
 
 **In the console**, these settings are **Identity → Portal**. The sign-in methods and modules
 are read-only while the portal switch is off, and **Release downloads** is read-only while the
