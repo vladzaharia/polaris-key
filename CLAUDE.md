@@ -23,6 +23,16 @@ Prefix every JS/TS command with the pinned Node: `mise exec node@22 -- pnpm <cmd
 Node major, `better-sqlite3` fails to build and the entire worker package fails to _collect_ —
 the failure will not look like the change you made.
 
+## Waiting on long jobs
+
+Minimise idle time. Sleep as little as reasonable:
+
+- Prefer a background job that notifies on exit (`run_in_background`) over `sleep` + poll loops.
+- When polling is unavoidable, use short intervals matched to the job (seconds, not minutes) and
+  check the actual completion signal (exit status, a log's final line).
+- Never sleep "just in case". While a gate or build runs, do other independent work in the task
+  instead of waiting.
+
 ## Plan mode
 
 Enter plan mode before any wire-touching change — `shared-protocol`, `shared-jws`, `client-core`,
