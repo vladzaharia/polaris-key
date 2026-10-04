@@ -4860,6 +4860,28 @@ paths:
         current app release's `releaseId`, `version`, `contentApi` and fingerprint (`previous`,
         null when the channel serves none), which `pkey release publish --content-interface`
         compares.
+        F-03 (plans/F-01.md §3.2, §6.10): a PACKAGE release is a descriptor of `kind: package`
+        (no `builds`, `tag` or `content`; a `package` block of `ecosystem`, `name`, `files` with
+        `r2` locations only, and the CLI-extracted `metadata`), for a `kind: package` deliverable
+        of `.pkey/release`. Its release id is `<deliverable>@<version>`. It is never signed: a
+        submit carrying a `record` with it is refused `release_record_rejected`, reason
+        `package-unsigned` (400), and so is `contentInterface` (`bad_body`). It is refused
+        `invalid_descriptor` with reason `package-shape` (the validator's findings in
+        `errors`; `unsupported_deliverable_kind` when the descriptor's kind and the
+        deliverable's disagree), `maven-snapshot` (a Maven `-SNAPSHOT` version),
+        `package-namespace` (no feed of the ecosystem is configured for the product, or the
+        name is outside the feed's namespace), `package-too-large` (over the feed's size
+        ceiling, never above the platform's: per release, per blob for OCI) or `swift-unsigned`
+        (a Swift release without its `cms-1.0.0` signature on a feed that requires one, the
+        default); `release_exists` with reason `package-version-taken` (409) when the version
+        was ever published, in any state — a yanked or deprecated version is never published
+        again, and only the identical descriptor of a live version answers `outcome:
+        unchanged`; `distribution_disabled` (409) while Distribution is off. After promotion
+        the Worker reads each npm tarball and Maven file once for its SHA-512, SHA-1 (and MD5)
+        digests. The answer is the app answer without `record`, `packSets` or
+        `contentInterface`. Package releases are served only by the package feeds: no
+        device-facing route (the channel feed, the update decision, builds, files, blobs, the
+        appcast, the records route, the download page, the storefront feeds) ever shows one.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }

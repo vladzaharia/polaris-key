@@ -49,6 +49,30 @@ The link-repo path gets this for free from manifest validation (`reserved_slug` 
 [Manifest validation codes](/docs/reference/validation-codes/)); manual create checks the same
 list explicitly.
 
+### The system product
+
+`polaris-key` is the platform's own product: it owns the platform packages (our SDKs and the
+`pkey` image) on the package feeds. It is not a reserved slug — its `.pkey/` at the root of this
+repository is an ordinary manifest — but neither creation path makes it: manual create and
+link-repo both refuse the slug. Only the package-feeds bootstrap creates it, idempotently:
+
+```http
+POST /manage/api/platform/feeds/bootstrap
+```
+
+Platform admins only. The bootstrap runs the same creation path as a manual create (a signing
+key generated and sealed under `PLATFORM_KEK`, the empty catalog), marks the row as the system
+product, turns Release and Distribution on, turns its package feeds on and seeds one feed per
+ecosystem with the platform's namespaces (`@polaris-key`, `polaris-key`, `im.plrs.key`, the
+PyPI name `polaris-key`, the Godot publisher `polaris-key`; Swift releases must be signed). A
+second run creates nothing and leaves an operator's later feed settings alone. It is audited as
+`feed.bootstrap` in the [platform trail](/docs/admin/activity/#the-platform-trail) and answers
+`{ ok, slug, created }`; a product of that slug that is not the system product is refused (409,
+`slug_taken`).
+
+The system product cannot be deleted or renamed (409, `system_product`), and the console keeps it
+out of the product switcher and the Products list.
+
 ### The `adminGroup` field is metadata, not a grant
 
 Both dialogs, and Settings, carry an "Admin group" field labeled _metadata only_. It's recorded

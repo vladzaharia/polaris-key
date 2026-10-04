@@ -262,8 +262,8 @@ The release truth store's nouns (see [Truth store](/docs/services/release/truth-
 here names only the deliverable kind `app`, the product's own executable; it is never a synonym
 for product.
 
-- **deliverable** — something a product releases: its `app` (kind `app`, id `app`) or a pack
-  (kind `pack`, with a pack type). Ids are lower-case, dot-separated segments of at most 64
+- **deliverable** — something a product releases: its `app` (kind `app`, id `app`), a pack
+  (kind `pack`, with a pack type) or a package (kind `package`, see [Packages](#packages)). Ids are lower-case, dot-separated segments of at most 64
   characters (`app`, `diceroll.core3d`). Every release belongs to exactly one deliverable, and
   carries a **seq**: its position in that deliverable's publication order (not version order, so
   a backport can have a higher seq than a newer version).
@@ -342,6 +342,30 @@ Content packs are deliverables like the app (see [Packs](/docs/services/release/
   1.3.4 for contentApi 3"), set by an operator, so a fix can be backported to an older line.
 - **delivery gate** — the licence flag (`entitlement`) of a pack's own `dist_access` row, set by
   an operator: the only thing that gates a pack. `.pkey/release` may assert it, never set it.
+
+### Packages
+
+A package is a library or image that other software installs from a **package feed**; our own
+SDKs are packages of the system product. Packages never reach a device through Polaris Key's
+device-facing routes.
+
+- **package (deliverable kind)** — a deliverable of kind `package`, declared in `.pkey/release`
+  with an **ecosystem** (`npm`, `pypi`, `swift`, `maven`, `oci` or `godot`), a **name** in that
+  ecosystem's grammar (`@scope/name`, `scope.Name`, `groupId:artifactId`, …) and an `artifacts`
+  map of file-name globs. A product may declare packages and no app.
+- **package version** — one release of a package, `<deliverable>@<version>`, published by `pkey
+release publish --deliverable <id>`. It is never signed (no release record), and its version is
+  **unique forever**: a yanked or deprecated version stays, as a tombstone, and is never
+  published again. Its files and the metadata `pkey` extracted from them are stored by Release;
+  the Worker never unpacks a package.
+- **package feed** — Distribution's serving of one ecosystem's packages for one owner (product)
+  on `pkg.plrs.im`, in that ecosystem's own registry protocol. Feeds are operator-owned settings
+  (never manifest-writable): an owner's **package feeds** switch, a **namespace** per feed (the
+  only names it takes, against dependency confusion), a size ceiling, and the platform's
+  per-ecosystem kill switch. Not an **outlet** (which delivers an app) and not a storefront feed.
+- **system product** — `polaris-key`, the platform's own product, which owns the platform
+  packages. Only the package-feeds bootstrap creates it; it cannot be created by hand, deleted or
+  renamed, and the console keeps it out of the product switcher.
 
 ## Distribution model
 
