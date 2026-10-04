@@ -84,6 +84,16 @@ export interface RenderedObject {
   readonly contentType: string;
 }
 
+/**
+ * The feed settings a renderer may read (F-09): the feed's namespace and per-ecosystem
+ * extensions (`dist_registry_feeds.namespace_json` / `ext_json`). Godot's documents carry the
+ * publisher and the category, which live there, not in the package rows.
+ */
+export interface RenderFeed {
+  readonly namespace: Readonly<Record<string, unknown>>;
+  readonly ext: Readonly<Record<string, unknown>>;
+}
+
 /** What a renderer needs besides the package. */
 export interface RenderContext {
   /** `PKG_ORIGIN`'s origin, for absolute URLs (npm `dist.tarball`). */
@@ -91,6 +101,12 @@ export interface RenderContext {
   /** The blob bucket, read-only, for a renderer that embeds a small blob it cannot get from D1
    *  (F-06: a Swift release's CMS signature, a signed manifest's tools version). */
   readonly bucket?: R2Bucket;
+  /**
+   * The feed's settings, when the caller supplied a `MaterialiseDeps.feed` source (`null`: the
+   * feed has no row). Absent for a caller that does not; a renderer that needs it renders
+   * nothing then, and the read path's freshness check renders it again with the settings.
+   */
+  readonly feed?: RenderFeed | null;
 }
 
 /** One ecosystem's renderer and routes (F-04 to F-09). */
@@ -118,6 +134,14 @@ export interface MaterialiseDeps {
   readonly renderers: ReadonlyMap<RegistryEcosystem, RegistryRenderer>;
   readonly source: PackageSource;
   readonly origin: string;
+  /**
+   * Optional (F-09): the feed settings a render reads (`RenderContext.feed`). When given, they
+   * are part of the render stamp too, so a settings change makes the stored render stale.
+   */
+  readonly feed?: (
+    product: string,
+    ecosystem: RegistryEcosystem,
+  ) => Promise<RenderFeed | null>;
 }
 
 /** Per-isolate counters (`registry.render_miss`). No request data. */
@@ -174,9 +198,26 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-/** The render stamp of a package: a hash of everything a renderer can see. */
-export async function renderStamp(pkg: RegistryPackage): Promise<string> {
-  return (await sha256Hex(canonical(pkg))).slice(0, 32);
+/**
+ * The render stamp of a package: a hash of everything a renderer can see — the package, and the
+ * feed settings when the render was given them (`feed` omitted hashes the package alone, as
+ * before F-09).
+ */
+export async function renderStamp(
+  pkg: RegistryPackage,
+  feed?: RenderFeed | null,
+): Promise<string> {
+  const seen = feed === undefined ? pkg : { package: pkg, feed };
+  return (await sha256Hex(canonical(seen))).slice(0, 32);
+}
+
+/** The feed settings `deps` supplies for `pkg`, or `undefined` when it supplies none. */
+async function feedFor(
+  deps: MaterialiseDeps,
+  product: string,
+  ecosystem: RegistryEcosystem,
+): Promise<RenderFeed | null | undefined> {
+  return deps.feed ? deps.feed(product, ecosystem) : undefined;
 }
 
 export type MaterialiseResult =
@@ -200,12 +241,24 @@ export async function materialise(
 ): Promise<MaterialiseResult> {
   const pkg = await deps.source.package(product, deliverableId);
   if (pkg === null) return { status: "absent" };
+  return renderPackage(deps, pkg, await feedFor(deps, product, pkg.ecosystem));
+}
+
+/** Render one loaded package (and the feed settings it was read with) into R2. */
+async function renderPackage(
+  deps: MaterialiseDeps,
+  pkg: RegistryPackage,
+  feed: RenderFeed | null | undefined,
+): Promise<MaterialiseResult> {
+  const product = pkg.product;
+  const deliverableId = pkg.deliverableId;
   const renderer = deps.renderers.get(pkg.ecosystem);
   if (!renderer) return { status: "no-renderer" };
-  const stamp = await renderStamp(pkg);
+  const stamp = await renderStamp(pkg, feed);
   const objects = await renderer.render(pkg, {
     origin: deps.origin,
     bucket: deps.bucket,
+    ...(feed !== undefined ? { feed } : {}),
   });
   const keys: string[] = [];
   for (const obj of objects) {
@@ -262,6 +315,30 @@ export async function readRegistryObject(
   return deps.bucket.get(key);
 }
 
+/**
+ * One rendered object, checked FRESH against D1 (F-09): the package (and its feed settings) are
+ * read and stamped, and an object that is missing or carries another stamp is rendered again
+ * first and counted as a miss. A route uses it where a stale document must never be served even
+ * though no drain has re-rendered it yet. `null` when the package does not render the key.
+ */
+export async function readFreshRegistryObject(
+  deps: MaterialiseDeps,
+  ref: RegistryObjectRef,
+): Promise<R2ObjectBody | null> {
+  const key = registryObjectKey(ref.ecosystem, ref.owner, ref.key);
+  const pkg = await deps.source.package(ref.owner, ref.deliverableId);
+  if (pkg === null || pkg.ecosystem !== ref.ecosystem) return null;
+  const feed = await feedFor(deps, ref.owner, pkg.ecosystem);
+  const stamp = await renderStamp(pkg, feed);
+  const hit = await deps.bucket.get(key);
+  if (hit && hit.customMetadata?.[RENDER_STAMP_META] === stamp) return hit;
+  if (hit) await hit.body.cancel().catch(() => undefined);
+  registryCounters.renderMiss++;
+  const result = await renderPackage(deps, pkg, feed);
+  if (result.status !== "rendered" || !result.keys.includes(key)) return null;
+  return deps.bucket.get(key);
+}
+
 /** Is the stored render of a package out of date with D1 (or missing)? */
 export async function renderIsStale(
   deps: MaterialiseDeps,
@@ -273,7 +350,10 @@ export async function renderIsStale(
   const head = await deps.bucket.head(
     renderRecordKey(pkg.ecosystem, product, deliverableId),
   );
-  return head?.customMetadata?.[RENDER_STAMP_META] !== (await renderStamp(pkg));
+  return (
+    head?.customMetadata?.[RENDER_STAMP_META] !==
+    (await renderStamp(pkg, await feedFor(deps, product, pkg.ecosystem)))
+  );
 }
 
 /** The most packages one self-check re-renders (§6.5). */

@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       ecosystem:
-        description: "Run only this ecosystem's clients (curl, npm, pypi, swift, maven, oci, …); empty runs every job."
+        description: "Run only this ecosystem's clients (curl, npm, pypi, swift, maven, oci, godot); empty runs every job."
         required: false
         default: ""
 
@@ -130,6 +130,11 @@ jobs:
           - client: oci-podman
             ecosystem: oci
             os: ubuntu-latest
+          # F-09: the Godot feed. GodotEnv ("source": "zip") plus HTTP contract checks of both
+          # editor API shapes; the manual editor installs are recorded on the PR.
+          - client: godot
+            ecosystem: godot
+            os: ubuntu-latest
     # A dispatch with `ecosystem` set runs only that ecosystem's rows; the others pass, empty. (A
     # job-level `if:` cannot read `matrix`, so the filter is a step condition.)
     env:
@@ -164,6 +169,16 @@ jobs:
       # The Worker imports the built workspace packages (brand, manifest, protocol, …).
       - run: pnpm build
         if: env.PICKED == 'true'
+      # F-09: GodotEnv is a .NET tool; the godot client fails rather than skips without it here.
+      - if: env.PICKED == 'true' && matrix.client == 'godot'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - if: env.PICKED == 'true' && matrix.client == 'godot'
+        run: |
+          dotnet tool install --global Chickensoft.GodotEnv
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          echo "REQUIRE_GODOTENV=1" >> "$GITHUB_ENV"
       - name: Run the client
         if: env.PICKED == 'true'
         run: |

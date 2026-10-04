@@ -7,7 +7,8 @@
  *
  *   1. a fresh local state directory (D1, R2, KV) under the OS temp dir;
  *   2. `seed.mjs`: every migration, the fixture owner, then each `fixtures/<ecosystem>.mjs`
- *      (`seedFixture(ctx)` from seed.mjs, `seedWithBindings(env, ctx)` from `fixtures.mjs`);
+ *      (`seedFixture(ctx)` from seed.mjs, `seedWithBindings(env, ctx)` from `fixtures.mjs`), every
+ *      `seeds/*.ts`, and each selected client's own seed (see below);
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
  *      request the clients make arrives on the registry host (`core/registryHost.ts`);
  *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin),
@@ -105,22 +106,32 @@ try {
     if (r.status !== 0)
       throw new Error(`seed ${file} failed (exit ${r.status})`);
   }
-  // Per-client fixtures (F-05 onwards): `clients/<client>.seed.mjs`, or the seed of the client's
-  // family (`swift-compat` → `swift.seed.mjs`), each run once, as a script with STATE (the state
-  // directory) and OWNER in its environment, before the Worker starts.
+  // Per-client fixtures (F-05 onwards): `clients/<client>.seed.{mjs,ts}`, or the seed of the
+  // client's family (`swift-compat` → `swift.seed.mjs`), each run once before the Worker starts,
+  // so it has the local D1 and R2 to itself. A `.mjs` seed is a script with STATE (the state
+  // directory) and OWNER in its environment; a `.ts` seed runs under tsx with `--persist-to` and
+  // `--origin` (it imports the Worker's TypeScript sources).
   const seeded = new Set();
   for (const client of clients) {
     const seedFile = [client, client.split("-")[0]]
-      .map((n) => join(CLIENTS, `${n}.seed.mjs`))
+      .flatMap((n) => [`${n}.seed.mjs`, `${n}.seed.ts`])
+      .map((f) => join(CLIENTS, f))
       .find((f) => existsSync(f));
     if (!seedFile || seeded.has(seedFile)) continue;
     seeded.add(seedFile);
-    const r = spawnSync(process.execPath, [seedFile], {
-      cwd: WORKER,
-      stdio: "inherit",
-      env: { ...process.env, STATE: state, OWNER: FIXTURE_OWNER },
-    });
-    if (r.status !== 0) throw new Error(`seed ${seedFile} failed`);
+    console.log(`\n── registry client seed: ${client} ──`);
+    const r = seedFile.endsWith(".ts")
+      ? spawnSync(TSX, [seedFile, "--persist-to", state, "--origin", origin], {
+          cwd: WORKER,
+          stdio: "inherit",
+        })
+      : spawnSync(process.execPath, [seedFile], {
+          cwd: WORKER,
+          stdio: "inherit",
+          env: { ...process.env, STATE: state, OWNER: FIXTURE_OWNER },
+        });
+    if (r.status !== 0)
+      throw new Error(`seed ${seedFile} failed (exit ${r.status})`);
   }
   dev = spawn(
     WRANGLER,

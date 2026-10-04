@@ -241,6 +241,47 @@ const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ],
   ["/v2/{owner}/{repository}/blobs/{digest}", ["get", "head"], "oci.blobs"],
   ["/v2/{owner}/{repository}/tags/list", ["get", "head"], "oci.tags"],
+  // F-09: the Godot feed (≤ 4.6 Asset Library, 4.7+ Asset Store, GodotEnv index, bytes).
+  [
+    "/godot/{owner}/asset-library/api/configure",
+    ["get", "head"],
+    "godotLegacyConfigure",
+  ],
+  [
+    "/godot/{owner}/asset-library/api/asset",
+    ["get", "head"],
+    "godotLegacySearch",
+  ],
+  [
+    "/godot/{owner}/asset-library/api/asset/{id}",
+    ["get", "head"],
+    "godotLegacyAsset",
+  ],
+  ["/godot/{owner}/store/api/v1/", ["get", "head"], "godotStoreOverview"],
+  ["/godot/{owner}/store/api/v1/tags/", ["get", "head"], "godotStoreTags"],
+  [
+    "/godot/{owner}/store/api/v1/licenses/",
+    ["get", "head"],
+    "godotStoreLicenses",
+  ],
+  [
+    "/godot/{owner}/store/api/v1/search/query/",
+    ["get", "head"],
+    "godotStoreSearch",
+  ],
+  [
+    "/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/",
+    ["get", "head"],
+    "godotStoreAsset",
+  ],
+  [
+    "/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/",
+    ["get", "head"],
+    "godotStoreReleases",
+  ],
+  ["/godot/{owner}/index.json", ["get", "head"], "godotIndex"],
+  ["/godot/{owner}/files/{sha256}/{file}", ["get", "head"], "godotZip"],
+  ["/godot/{owner}/icons/{sha256}.png", ["get", "head"], "godotIcon"],
 ];
 
 function specMethods(path: string): string[] {

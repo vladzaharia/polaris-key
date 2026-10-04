@@ -1,0 +1,6 @@
+{
+  "version": "1.1.0",
+  "openapi_spec": "https://store.godotengine.org/api/v1/openapi.json",
+  "docs_swagger": "https://store.godotengine.org/api/v1/swagger",
+  "docs_redoc": "https://store.godotengine.org/api/v1/redoc"
+}

@@ -223,9 +223,11 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("every registry route is Distribution's and names a known ecosystem", () => {
+  it("every registry route is Distribution's, names a known live ecosystem and has a unique name", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
     expect(REGISTRY_ROUTES.length).toBeGreaterThan(0);
+    const names = REGISTRY_ROUTES.map((r) => r.name);
+    expect(new Set(names).size).toBe(names.length);
     for (const r of REGISTRY_ROUTES) {
       expect(r.service).toBe("distribution");
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
@@ -391,7 +393,8 @@ describe("registry host: isolation", () => {
       // `/pypi/…` has routes since F-05 (its unknown owners: test/registry/pypi.test.ts).
       // Maven has routes (F-07): its unknown owners and repositories are pinned, with a
       // database, in test/registry/maven.test.ts.
-      "/godot/djdl/index.json",
+      // No Godot route matches this path (F-09's routes are pinned in test/registry/godot.test.ts).
+      "/godot/djdl/no-such-document.json",
     ]) {
       const res = await worker.fetch(new Request(PKG + path), env(PKG));
       expect(res.status, path).toBe(404);

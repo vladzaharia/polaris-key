@@ -355,6 +355,48 @@ three values: the registry host (`pkg.plrs.im`, or the environment's), the owner
 repository; the fully qualified reference `<host>/<owner>/<repository>:<tag>` is the whole
 setup, because an OCI client never falls back to another registry for a qualified name.
 
+## Godot
+
+The Godot feed serves both editor API shapes, because the SDK supports Godot 4.4 to 4.7, and an
+index for GodotEnv:
+
+| Client                      | Setting                                                                           | Value                                                      |
+| --------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Godot 4.4 to 4.6 editor     | Editor Settings → `asset_library/available_urls` (Asset Library → Available URLs) | `https://pkg.plrs.im/godot/<owner>/asset-library/api`      |
+| Godot 4.7 and later         | Editor Settings → `asset_store/available_urls`                                    | `https://pkg.plrs.im/godot/<owner>/store/api/v1`           |
+| GodotEnv, scripted installs | `addons.json`, an entry with `"source": "zip"`                                    | copied from `https://pkg.plrs.im/godot/<owner>/index.json` |
+
+Add the URL with no trailing slash: the editor appends its own paths. Each package's
+`index.json` entry carries a ready `addons.json` entry, for example:
+
+```json
+{
+  "addons": {
+    "polaris_key": {
+      "url": "https://pkg.plrs.im/godot/<owner>/files/<sha256>/polaris_key-1.4.0.zip",
+      "source": "zip",
+      "subfolder": "addons/polaris_key"
+    }
+  }
+}
+```
+
+- **What a listing shows.** A package appears at its `latest` version (the `stable` channel's
+  head). The 4.7 release list shows every version, newest first, with `stable` false for a
+  pre-release on another channel. A **yanked** version is removed from every listing; its zip
+  stays downloadable at its content-addressed URL. Godot has no deprecation: a **deprecated**
+  version stays listed, and its message leads the description and the release notes.
+- **Integrity.** Godot 4.6 and earlier compare the zip with `download_hash`, its SHA-256, which
+  the feed always sends. **Godot 4.7 and later verify no hash: an install relies on TLS alone.**
+  The Polaris Key SDK's own update path still verifies signed records, not the store download.
+- **Feed settings.** The publisher (`namespace.publisher`, the 4.7 store path's publisher) is
+  required. The extensions are `categoryId` (an Asset Library addon category, default `5`,
+  Tools), `supportLevel` (`official`, `community` or `testing`, default `community`), `license`
+  (shown as the asset's license, default `Unspecified`) and `minGodotVersion` (for example
+  `4.4`; editors older than it, or of another major version, see nothing).
+- **Search** is filtered in memory over the owner's packages. Tags are not supported: a
+  `#tag` search term matches nothing.
+
 ## Local testing
 
 `pnpm --filter @polaris-key/worker registry:clients` stands up a seeded local Worker on the
