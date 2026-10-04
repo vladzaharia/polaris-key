@@ -177,6 +177,7 @@ export function Grid<R, C>({
                       if (el) cells.current.set(key, el);
                       else cells.current.delete(key);
                     }}
+                    role="gridcell"
                     tabIndex={isActive ? 0 : -1}
                     aria-label={cellLabel(row, col)}
                     data-active={isActive || undefined}
