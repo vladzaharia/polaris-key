@@ -18,7 +18,6 @@ import type {
   MatrixCellDto,
   MatrixRolloutDto,
 } from "../../../api.js";
-import { errorCopy } from "../../../lib/errorCopy.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
 import { formatCount, fromSeconds } from "../../../lib/format.js";
 import { statusOf } from "../../../lib/status.js";
@@ -714,9 +713,4 @@ function ReleaseCards({
       </ul>
     </div>
   );
-}
-
-/** For the cell drawer's not-found copy. */
-export function cellError(e: unknown): string {
-  return errorCopy(e, { area: "distribution" }).description;
 }
