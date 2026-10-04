@@ -7,8 +7,8 @@
 // and Android API 33+) and Tink below that. Tink is compileOnly here: a JVM desktop always has
 // the JCA, and the Android glue (P6-12) brings tink-android for API 24–32.
 //
-// maven-publish writes to build/repo ONLY (no signing, no remote repository): Kotlin artifacts
-// reach adopters through Polaris Key's own Maven feed (F-07, F-10), never Maven Central.
+// maven-publish writes to build/repo ONLY (unsigned, no remote repository): Kotlin artifacts
+// reach adopters through Polaris Key's own Maven feed (F-07, F-10) and nowhere else.
 plugins {
     alias(libs.plugins.kotlin.jvm)
     `java-library`

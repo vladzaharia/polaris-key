@@ -45,6 +45,8 @@ val checkModuleBoundaries by tasks.registering {
         if (platformProject != null) {
             for (config in platformProject.configurations) {
                 for (dep in config.dependencies.withType(ProjectDependency::class.java)) {
+                    // AGP wires a module's own test configurations to the module itself.
+                    if (dep.name == platformProject.name) continue
                     problems += ":platform ${config.name} depends on project :${dep.name}"
                 }
             }
