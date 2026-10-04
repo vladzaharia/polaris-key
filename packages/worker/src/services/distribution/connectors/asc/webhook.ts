@@ -49,7 +49,7 @@ import {
   type ConnectorEventOutcome,
 } from "../state.js";
 import { eventOutcomeOf, syncEventInstance, type AscRun } from "./apply.js";
-import type { FetchImpl } from "./client.js";
+import type { FetchImpl } from "../../../../core/asc/client.js";
 import {
   ASC_EVENT_EFFECTS,
   ASC_PING_TYPE,

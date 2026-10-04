@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listAudit, setServices } from "../src/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { ASC_WEBHOOK_EVENT_TYPES } from "../src/services/distribution/connectors/asc/map.js";
-import type { AscResource } from "../src/services/distribution/connectors/asc/client.js";
+import type { AscResource } from "../src/core/asc/client.js";
 import { webhookFixture } from "./ascFake.js";
 import {
   ascWorld,

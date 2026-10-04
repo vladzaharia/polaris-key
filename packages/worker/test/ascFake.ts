@@ -30,7 +30,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AscResource } from "../src/services/distribution/connectors/asc/client.js";
+import type { AscResource } from "../src/core/asc/client.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ASC_FIXTURES = join(HERE, "fixtures", "asc");
@@ -51,7 +51,7 @@ export interface RecordedRequest {
 export class AscFake {
   readonly requests: RecordedRequest[] = [];
   readonly foreignHost: string[] = [];
-  private readonly store = new Map<string, AscResource>();
+  protected readonly store = new Map<string, AscResource>();
   rate = { limit: 3500, remaining: 3000 };
   private pending429 = 0;
   private nextWebhook = 1;
@@ -131,7 +131,7 @@ export class AscFake {
     });
   };
 
-  private include(
+  protected include(
     primary: AscResource[],
     include: string | null,
   ): AscResource[] {
@@ -150,7 +150,7 @@ export class AscFake {
   }
 
   /** A resource as the API shows it: relationship `data` only for the `included` names. */
-  private view(r: AscResource, included: ReadonlySet<string>): AscResource {
+  protected view(r: AscResource, included: ReadonlySet<string>): AscResource {
     if (!r.relationships) return r;
     const relationships: NonNullable<AscResource["relationships"]> = {};
     for (const [name, rel] of Object.entries(r.relationships)) {
@@ -162,7 +162,10 @@ export class AscFake {
     return { ...r, relationships };
   }
 
-  private list(type: string, pred: (r: AscResource) => boolean): AscResource[] {
+  protected list(
+    type: string,
+    pred: (r: AscResource) => boolean,
+  ): AscResource[] {
     return [...this.store.values()]
       .filter((r) => r.type === type && pred(r))
       .sort((a, b) =>
@@ -174,12 +177,12 @@ export class AscFake {
       );
   }
 
-  private appOf(r: AscResource): string | null {
+  protected appOf(r: AscResource): string | null {
     const d = r.relationships?.app?.data;
     return d && !Array.isArray(d) ? d.id : null;
   }
 
-  private route(
+  protected route(
     method: string,
     url: URL,
     body: unknown,

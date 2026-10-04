@@ -28,7 +28,7 @@ sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
   godot/             Godot addon               pure-GDScript verify and a headless runner
-  kotlin/            Gradle build              :core + the service modules + :update + :packs + :sdk (JVM), the :conformance runner; :platform (Android)
+  kotlin/            Gradle build              :core + the service modules + :update + :packs + :sdk (JVM), the :conformance runner; :platform, :android (Android)
 conformance/          corpus/v2 ONLY (one signer's golden vectors) + the Node runner
 tools/                sign-corpus.ts · gen-mirrors.ts
 products/             per-product data (catalog.json + product.json) + gen-seed

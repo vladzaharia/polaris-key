@@ -27,7 +27,7 @@ base { archivesName.set("polaris-key-packs") }
 dependencies {
     api(project(":core"))
     // zstd for deltas, chunks and zstd-coded objects (LibZstd, behind ZstdPort). On Android the
-    // :android glue swaps in the AAR of the same version (16 KB aligned natives, P6-12).
+    // :android glue swaps in zstd-jni's Android AAR (zstdJniAndroid, 16 KB aligned natives, P6-12).
     implementation(libs.zstd.jni)
     // The default pack object transport streams blobs through OkHttp (the HTTP client :core uses).
     implementation(libs.okhttp)

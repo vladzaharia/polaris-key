@@ -102,6 +102,8 @@ release off every surface, yank it or pin the channel under **Release → Releas
   **Store connectors** cards show each connector's state, which key it uses (the product's own or
   the platform's team key, see [Store connections](/docs/admin/store-connections/)) and its
   configuration actions: App Store Connect **Release this version**, **TestFlight public link**
-  and **Webhook setup**; Google Play **Update priority** and **Settings**.
+  and **Webhook setup**; Google Play **Update priority** and **Settings**. **Release this
+  version** cannot be undone, so it asks you to type the app's name exactly as App Store Connect
+  shows it; the Worker checks the name against App Store Connect before it releases.
 
 The release × outlet readiness also appears on **Release → Compatibility**.

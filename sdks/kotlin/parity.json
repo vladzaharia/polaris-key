@@ -10,8 +10,12 @@
     "sdks/kotlin/release/src/test",
     "sdks/kotlin/update/src/test",
     "sdks/kotlin/packs/src/test",
+    "sdks/kotlin/ui/src/test",
     "sdks/kotlin/sdk/src/test",
-    "sdks/kotlin/conformance/src/test"
+    "sdks/kotlin/conformance/src/test",
+    "sdks/kotlin/android/src/test",
+    "sdks/kotlin/android/src/testPlay",
+    "sdks/kotlin/android/src/testDirect"
   ],
   "features": {
     "core.verify": {
@@ -42,15 +46,14 @@
       "status": "implemented"
     },
     "core.store": {
-      "status": "planned",
-      "wp": "P6-12",
+      "status": "implemented",
       "except": [
         {
           "runtime": "jvm",
           "reason": "dependency"
         }
       ],
-      "note": "P6-06 ships InMemoryStore and the 0600 FileStore (the JVM's store, which supports() reports as dependency); P6-12 adds the Android Keystore store over :platform's SecureStore."
+      "note": "Android: :android's AndroidKeystoreStore, the token and device id wrapped by :platform's SecureStore (an AndroidKeyStore AES-256-GCM key, StrongBox where present), the verified cache in a noBackup file; a FileStore's token and device id migrate in, a failed Keystore call throws and status() reports keyring-error, a lost key drops the token and keeps the device id (AndroidKeystoreStoreTest). The JVM keeps P6-06's 0600 FileStore, which supports() reports as dependency."
     },
     "license.gate": {
       "status": "implemented"
@@ -93,13 +96,12 @@
       "note": "The Kotlin mirror is rendered by tools/gen-mirrors.ts (--lang kotlin); the :config tests compile the committed sample."
     },
     "devices.fingerprint": {
-      "status": "planned",
-      "wp": "P6-12",
-      "note": "P6-06's :core derives fingerprints and device ids from supplied inputs and passes every fingerprint.json section in :conformance; P6-12 adds Android's inputs (the app-scoped id and the Keystore anchor)."
+      "status": "implemented",
+      "note": ":core derives fingerprints and device ids from supplied inputs (every fingerprint.json section in :conformance); on Android :android's AndroidFingerprintSource reads ANDROID_ID (else a random anchor kept in the Keystore), Build.MODEL and the RAM bucket, checked against the corpus vectors, ramBuckets and deviceIds (AndroidFingerprintTest)."
     },
     "devices.facts": {
       "status": "implemented",
-      "note": "JvmDeviceFactsSource reads a JVM desktop; Android's inputs (Build, package-manager probes) arrive through the same DeviceFactsSource port from P6-12."
+      "note": "JvmDeviceFactsSource reads a JVM desktop; :android's AndroidDeviceFactsSource reads Build and answers the product's declared android probes one package at a time through PackageManager (no enumeration; AndroidFactsTest)."
     },
     "devices.register": {
       "status": "implemented"
@@ -155,24 +157,22 @@
       "note": ":core's feedContent, holdsOf (stampHolds), selectPackRows and decideUpdate with UpdateContentInput; runUpdateCheck runs P4-13 §2.5 steps 10–14 with the packs facet as the UpdateContentHost (every feedContentCases vector and contentRows row, ContentDecisionTest)."
     },
     "update.driver": {
-      "status": "planned",
-      "wp": "P6-12",
+      "status": "implemented",
       "except": [
         {
           "runtime": "jvm",
           "reason": "runtime"
         }
       ],
-      "note": "The InstallDriver port is :update's (UpdateClient.install); Play In-App Updates and PackageInstaller are P6-12's. A JVM desktop build has none: JvmInstallDriver throws the typed runtime N/A."
+      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). A JVM desktop build has none: JvmInstallDriver throws the typed runtime N/A. The internal-track and self-update device runs are the owner's (P6-12 brief)."
     },
     "update.bootguard": {
       "status": "implemented",
       "note": ":update's BootGuard over the host's UpdateSlots port (Godot P3-10's semantics: apply-staged and roll-back with skipVersion, failedBoots counted while an applied update is active, the stage-matrix v2 confirmation rows; BootGuardTest); the launch decision is stage-matrix.json's guard and confirm rows (StageMatrixTest). With no slots (a platform-installed Android app, a JVM desktop build) nothing is counted."
     },
     "outlet.detect": {
-      "status": "planned",
-      "wp": "P6-12",
-      "note": "P6-06's :core holds detectOutlet and passes every outlet-matrix.json row in :conformance; P6-12 adds the readers over :platform's install source."
+      "status": "implemented",
+      "note": ":core's detectOutlet passes every outlet-matrix.json row in :conformance; on Android :android's AndroidOutletSignalReader turns :platform's InstallSource into android.installSource and android.installerMismatch, and every Android row of the matrix replays through it (AndroidOutletTest). A JVM desktop observes no signal (NoOutletSignals): detection falls to the stamp."
     },
     "packs.record": {
       "status": "implemented",
@@ -220,7 +220,7 @@
         {
           "runtime": "android",
           "reason": "dependency",
-          "note": "Where zstd-jni's native libzstd cannot load (an Android build without the AAR's natives, P6-12 links the AAR); supports() reports dependency."
+          "note": "Where zstd-jni's native libzstd cannot load; :android links zstd-jni's Android AAR (1.5.7-12, 16 KB aligned: later AARs need compileSdk 37), and supports() reports dependency without it."
         },
         {
           "runtime": "jvm",
@@ -270,14 +270,14 @@
       "reason": "runtime"
     },
     "packs.transport.play": {
-      "status": "planned",
-      "wp": "P6-12",
+      "status": "implemented",
       "except": [
         {
           "runtime": "jvm",
           "reason": "runtime"
         }
-      ]
+      ],
+      "note": ":android's PadPackTransport (play) over :platform's AssetPacks: the Play asset pack named by the pack id with dots and hyphens as underscores, its assetsPath re-read on every call and never persisted (pkey/ or a pkey#tcf_* directory), handed to :packs as embedded baselines that the marker, record and stamp pin verify; ensure() to COMPLETED with a confirm hook before Play's dialog. The direct build answers Unsupported (outlet). Fake-proven (PadPackTransportTest); a pack delivered mid-session mounts at the facet's next start, and the fast-follow device run is the owner's."
     },
     "packs.transport.steam": {
       "status": "planned",
@@ -305,8 +305,8 @@
       "note": ":core's bootTransition; every stage-matrix.json row, probe, guard and confirm case in :conformance."
     },
     "ui.kit": {
-      "status": "planned",
-      "wp": "P6-11"
+      "status": "implemented",
+      "note": "P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
     },
     "commerce.receipt": {
       "status": "planned",

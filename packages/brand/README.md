@@ -1,7 +1,7 @@
 # @polaris-key/brand
 
 The Polaris Key design system, as a package: brand tokens for every consumer (CSS, Tailwind v4,
-TypeScript, JSON, GDScript, Swift), the Rubik web fonts, the **Pinned K** and **Star Cut** marks
+TypeScript, JSON, GDScript, Swift, Kotlin for Compose), the Rubik web fonts, the **Pinned K** and **Star Cut** marks
 (the Star Cut is the **Polaris Key Delivery** service mark on our surfaces), wordmark lockups and "Powered by Polaris Key" badges (React and framework-free), and the
 launch-kit assets (favicons, PWA icons, Godot glyphs, social cards).
 

@@ -234,6 +234,59 @@ describe("Distribution → Matrix", () => {
     );
   });
 
+  it("completes an App Store phased release only with the app's name typed (owner decision (b))", async () => {
+    // rel_240 on app-store as a mirrored, active App Store phased release.
+    const matrix = structuredClone(MATRIX) as typeof MATRIX;
+    const cell = matrix.cells.find(
+      (c) => c.releaseId === "rel_240" && c.outletId === "app-store",
+    )!;
+    const play = matrix.cells.find(
+      (c) => c.releaseId === "rel_240" && c.outletId === "play",
+    )!;
+    (cell as { rollouts: unknown[] }).rollouts = [
+      {
+        ...play.rollouts[0]!,
+        outletId: "app-store",
+        source: "asc",
+        updatedBy: "asc",
+      },
+    ];
+    const { calls } = bootWith(`${MATRIX_HASH}?cell=rel_240:app-store`, {
+      [P("/distribution/matrix")]: matrix,
+      [`POST ${P("/distribution/connectors/asc/phased-release/complete")}`]: {
+        ok: true,
+      },
+    });
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on app-store",
+    });
+    await userEvent.click(
+      await within(drawer).findByRole("button", {
+        name: "Release to everyone…",
+      }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    const go = within(confirm).getByRole("button", { name: "Release 2.4.0" });
+    expect((go as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.click(go);
+    expect(writes(calls)).toEqual([]);
+    const name = within(confirm).getByRole("textbox", { name: /App name/ });
+    await userEvent.type(name, "   ");
+    expect((go as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.clear(name);
+    await userEvent.type(name, " DJDL Mobile ");
+    expect((go as HTMLButtonElement).disabled).toBe(false);
+    await userEvent.click(go);
+    await waitFor(() =>
+      expect(writes(calls)).toContainEqual(
+        expect.objectContaining({
+          path: P("/distribution/connectors/asc/phased-release/complete"),
+          body: { releaseId: "rel_240", confirm: "DJDL Mobile" },
+        }),
+      ),
+    );
+  });
+
   it("overrides a readiness hold only with a reason (MTX-2)", async () => {
     const { calls } = bootWith(`${MATRIX_HASH}?cell=rel_240:altstore`, {
       [`POST ${P("/distribution/readiness/rel_240/altstore/override")}`]: {

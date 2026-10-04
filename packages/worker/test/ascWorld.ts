@@ -95,6 +95,8 @@ export async function ascWorld(
     outlets?: boolean;
     /** The operator's pin on the `asc-api-key` (default: the outlets' app; `null`: none). */
     pin?: string | null;
+    /** A fake with more routes (A-17d's `DistributeFake`); a plain `AscFake` by default. */
+    fake?: AscFake;
   } = {},
 ): Promise<AscWorld> {
   const db = makeTestDb();
@@ -142,7 +144,7 @@ export async function ascWorld(
     await putCredential(w, "asc-webhook", "asc-webhook-secret", {
       secret: WEBHOOK_SECRET,
     });
-  const fake = new AscFake();
+  const fake = opts.fake ?? new AscFake();
   const fetchImpl = (input: string, init?: RequestInit) =>
     new URL(input).hostname === "api.appstoreconnect.apple.com"
       ? fake.fetchImpl(input, init)
@@ -176,6 +178,7 @@ export async function admin(
   method: string,
   path: string,
   body?: unknown,
+  headers: Record<string, string> = {},
 ): Promise<Response> {
   const { token, session } = await issueSession(
     w.env,
@@ -193,12 +196,14 @@ export async function admin(
           cookie: `${ADMIN_COOKIE}=${token}`,
           [CSRF_HEADER]: session.csrf,
           "content-type": "application/json",
+          ...headers,
         },
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       }),
       w.env,
       w.db,
-      full,
+      // The router sees the path; a query (a connector read's) stays on the URL.
+      full.split("?")[0]!,
       { now: NOW },
     );
   } finally {
