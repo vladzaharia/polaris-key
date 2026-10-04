@@ -188,3 +188,10 @@ package, and every decision in §8.1 that names it as owner, override this brief
 
 The approved [`plans/P4-19.md`](../plans/P4-19.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Amendment (S-12, package feeds)
+
+Spike S-12 ([note](../../notes/S-12-package-feeds.md)) sets the rule that an ecosystem with a
+shipped Polaris Key SDK must also have a Polaris Key package feed. If the owner says go on this
+package, the NuGet v3 feed (proposed F-32, deferred until then) becomes required, and this
+package's packages are published to it as well as to nuget.org.
