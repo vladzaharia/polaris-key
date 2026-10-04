@@ -1259,7 +1259,7 @@ describe("autoIssue policy validation", () => {
 
 describe("reserved product slugs", () => {
   it("refuses slugs the platform router owns", () => {
-    for (const slug of ["docs", "manage", "api", "well-known"]) {
+    for (const slug of ["docs", "manage", "api", "well-known", "activate"]) {
       expect(
         validateManifestDocuments({
           product: { slug, name: "X" },

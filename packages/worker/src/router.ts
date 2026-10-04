@@ -129,7 +129,14 @@ export function matchRoute(pathname: string): Route {
   if (path === "/docs" || path.startsWith("/docs/")) return { kind: "docs" };
 
   // Root customer portal. These are reserved before product slugs.
-  if (path === "/" || path === "/index.html" || path.startsWith("/assets/"))
+  // `/activate?key=…` is the printable path form of the Activate license deep link (PORTAL.md
+  // §3.3): the SPA shell rewrites it to `#/?activate=…` before its first render.
+  if (
+    path === "/" ||
+    path === "/index.html" ||
+    path === "/activate" ||
+    path.startsWith("/assets/")
+  )
     return { kind: "portalSpa" };
   if (path === "/login") return { kind: "portalLogin" };
   if (path === "/callback") return { kind: "portalCallback" };

@@ -1181,6 +1181,8 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "well-known",
   // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
   "media",
+  // PX-01: the portal's `/activate?key=` deep link.
+  "activate",
 ];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",

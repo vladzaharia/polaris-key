@@ -185,7 +185,7 @@
   ],
   "$defs": {
     "slug": {
-      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media).",
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate).",
       "type": "string",
       "pattern": "^[a-z0-9-]{1,64}$",
       "not": {
@@ -201,7 +201,8 @@
           "download",
           "webhooks",
           "well-known",
-          "media"
+          "media",
+          "activate"
         ]
       }
     },

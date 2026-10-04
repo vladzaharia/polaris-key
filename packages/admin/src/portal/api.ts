@@ -9,11 +9,29 @@ export interface PortalMe {
   csrf: string;
 }
 
+/** The sign-in providers the login card can show (PORTAL.md §4.1), in display order. */
+export type PortalProvider = "apple" | "google" | "steam";
+
 export interface PortalCapabilities {
   auth: {
     oidc: boolean;
     magic: boolean;
+    /**
+     * The single sign-on provider's display name. Not sent by today's Worker (G11): the card
+     * falls back to "Continue with single sign-on".
+     */
+    oidcName?: string;
+    /**
+     * Apple, Google and Steam for this context (G11, S-16). Not sent by today's Worker: the
+     * provider row renders only when the list is present and non-empty.
+     */
+    providers?: PortalProvider[];
   };
+  /**
+   * The product named by `?product=`, for the login card's context header (G1/G28). Not sent by
+   * today's Worker: without it the card shows no header rather than a slug.
+   */
+  product?: { slug: string; name: string; developerName?: string | null };
   modules: {
     licensing: boolean;
     claim: boolean;
@@ -52,6 +70,11 @@ export interface PortalLicenseSummary {
 
 export interface PortalKey {
   hash: string;
+  /**
+   * The key's last 4 characters (PORTAL.md §4.17 masked display). Not stored by today's Worker
+   * (G7, PX-W5): without it the mask is `pkey_<slug>_…`.
+   */
+  last4?: string;
   status: string;
   label: string | null;
   createdAt: number;
@@ -197,11 +220,17 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set(CSRF_HEADER, csrf);
     if (init.body) headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(path, {
-    ...init,
-    headers,
-    credentials: "same-origin",
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      ...init,
+      headers,
+      credentials: "same-origin",
+    });
+  } catch {
+    // Offline, DNS, a dropped connection: "Can't reach Polaris Key", never "signed out".
+    throw new PortalApiError(0, "network");
+  }
   if (!res.ok) {
     let code: string | undefined;
     let message: string | undefined;
@@ -226,8 +255,15 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 const enc = encodeURIComponent;
 
 export const portalApi = {
-  capabilities: () => call<PortalCapabilities>("/api/capabilities"),
+  capabilities: (product?: string | null) =>
+    call<PortalCapabilities>(
+      product
+        ? `/api/capabilities?product=${enc(product)}`
+        : "/api/capabilities",
+    ),
   me: () => call<PortalMe>("/api/me"),
+  deleteMe: () =>
+    call<{ ok: true; deleted: string }>("/api/me", { method: "DELETE" }),
   licenses: () => call<{ licenses: PortalLicenseSummary[] }>("/api/licenses"),
   license: (product: string, id: string) =>
     call<PortalLicenseDetail>(`/api/licenses/${enc(product)}/${enc(id)}`),

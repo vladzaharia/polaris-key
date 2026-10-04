@@ -1236,7 +1236,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   ],
   "$defs": {
     "slug": {
-      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media).",
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate).",
       "type": "string",
       "pattern": "^[a-z0-9-]{1,64}$",
       "not": {
@@ -1252,7 +1252,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "download",
           "webhooks",
           "well-known",
-          "media"
+          "media",
+          "activate"
         ]
       }
     },
@@ -14329,7 +14330,9 @@ var RESERVED_PRODUCT_SLUGS = [
   "webhooks",
   "well-known",
   // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
-  "media"
+  "media",
+  // PX-01: the portal's `/activate?key=` deep link.
+  "activate"
 ];
 var SECRET_DELIVERY_VALUES = [
   "serverOnly",
