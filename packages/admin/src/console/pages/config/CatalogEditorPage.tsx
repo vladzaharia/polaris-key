@@ -770,7 +770,11 @@ function ReviewDrawer({
           ? "The catalog changed since you started"
           : `Publish version ${draft.baseVersion + 1}`
       }
-      description={diffSummary(diff)}
+      description={
+        stale || conflict
+          ? undefined
+          : "What changes for every client when this version is published."
+      }
     >
       <DrawerBody>
         <div className="space-y-6">
