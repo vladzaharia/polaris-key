@@ -9,6 +9,10 @@
  *                                   build's newest, missing required indexes, binding presence
  *                                   (A-11).
  *   GET /api/platform/activity    — `platform_audit`, keyset-paginated, newest first (A-12).
+ *   GET /api/platform/operations  — the self-reported Operations snapshot (A-14,
+ *                                   `core/operations.ts`): binding probes, queue and DLQ
+ *                                   backlog, cron runs, heartbeats, storage, indexes,
+ *                                   connectors, recent errors.
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's
  * NARRATIVE_ONLY): no OpenAPI entry. Nothing here is secret (THREAT-MODEL "Platform settings and
@@ -28,6 +32,7 @@ import {
 import { consoleEnvironment } from "./me.js";
 import { missingRequiredIndexes } from "../../scheduled.js";
 import { listPlatformAudit, listPlatformDeploys } from "../../repo.js";
+import { operationsSnapshot } from "../../core/operations.js";
 
 /** The bindings the Deployment page lists. Presence only. */
 const BINDINGS = [
@@ -37,6 +42,7 @@ const BINDINGS = [
   "UPDATE_HEALTH",
   "BLOBS",
   "DELTA_QUEUE",
+  "DELTA_DLQ",
   "EMAIL",
   "ASSETS",
   "CF_VERSION_METADATA",
@@ -158,6 +164,7 @@ export async function handlePlatform(
   db: Db,
   session: AdminSession,
   rest: string[],
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
   if (!isPlatformAdmin(env, session))
     return forbidden("platform admin required");
@@ -166,12 +173,19 @@ export async function handlePlatform(
   if (
     resource !== "version" &&
     resource !== "deployment" &&
-    resource !== "activity"
+    resource !== "activity" &&
+    resource !== "operations"
   )
     return notFound();
   if (req.method !== "GET")
     return err(405, "method_not_allowed", "method not allowed");
   if (resource === "version") return adminJson(identity(env));
   if (resource === "deployment") return deployment(req, env, db);
+  if (resource === "operations")
+    return adminJson(
+      await operationsSnapshot(env, db, now, {
+        missingIndexes: missingRequiredIndexes,
+      }),
+    );
   return activity(req, db);
 }

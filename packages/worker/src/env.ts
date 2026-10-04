@@ -47,6 +47,14 @@ export interface Env {
    */
   DELTA_QUEUE?: Queue<unknown>;
   /**
+   * The lazy-delta dead-letter queue (A-14; `pkey-deltas-dlq-<env>`), bound to the request Worker
+   * as a producer ONLY so `GET /manage/api/platform/operations` can read its backlog through
+   * `metrics()`. Nothing sends to it (the consumer Worker's `dead_letter_queue` setting is what
+   * fills it); `test/platformOperations.test.ts` asserts no source file calls `.send` or
+   * `.sendBatch` on it. OPTIONAL: unbound, the Operations page reports the DLQ as not bound.
+   */
+  DELTA_DLQ?: Queue<unknown>;
+  /**
    * The consumer's per-side cap in bytes (default 33,554,432 = 32 MiB, notes/S-08 §4.2): a pair
    * with either payload larger is refused as `over-worker-cap`. A `[vars]` value.
    */

@@ -2380,6 +2380,38 @@ privilege level.
   holds no secret by construction. The per-product `kek.reseal` rows stay, so each product's own
   log still shows the sweep.
 
+### Self-reported operations (A-14)
+
+`GET /manage/api/platform/operations` (A-14, notes/S-13 §7.2 phase 1) sits behind the same
+dispatcher and platform-admin check as the routes above. It reads only what the Worker can see
+itself: binding probes (D1 `SELECT 1`, a KV `get` and an R2 `head` of a fixed absent key), the
+two queues' `metrics()`, D1's `meta.size_after`, `blob_objects` totals, the required-index check,
+the connector tables, and two new Core tables the Worker writes about itself. **Phase 1 adds no
+credential and no outbound host.**
+
+- **`platform_job_runs` holds cron failure reasons.** One run per cron tick, persisted from the
+  `MaintenanceReport` `handleScheduled` already builds: successful per-product steps folded by
+  family, each failed step under its full name with the caught exception's message truncated to
+  300 characters. These are the strings the thrown aggregate already writes to Cloudflare's
+  invocation logs, now admin-readable for 30 days (pruned nightly). No request data reaches a
+  cron step, and the R12 posture keeps exception messages secret-free. This is **not** an
+  unhandled-exception ring: nothing in a request path writes free text to D1.
+- **`platform_heartbeats` holds one row per script.** `main` on every cron tick and `deltas` (the
+  lazy-delta consumer) after every batch: time, the validated release tag, the Cloudflare
+  version id, a truncated outcome label and, for the consumer, the queue backlog after the batch.
+  Nothing in it is secret.
+- **`DELTA_DLQ` is a send-capable binding used only to read.** The request Worker binds the
+  dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
+  `metrics()`; Cloudflare offers no read-only queue binding. A source check
+  (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
+  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`) and the
+  binding-presence list name it. The residual risk, accepted: code running in the request Worker
+  could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
+  It reaches no device and no signed document.
+- **Probes are bounded.** Each binding probe has a 3-second limit and is fault-isolated, so a
+  hung binding degrades one panel, not the admin plane. Error text in the snapshot is truncated
+  and comes from caught exceptions; binding presence is a boolean, never a resource id.
+
 ### The compatibility matrix and the device simulator (P4-15)
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
@@ -3409,4 +3441,7 @@ Platform section (A-11, A-12), a Worker path starts writing `platform_deploys`, 
 step gains a credential or a permission beyond the deploy token's D1 edit, a platform route starts
 reporting a binding's resource id or any secret-derived value, a route updates or deletes a
 `platform_audit` row, or a writer puts a secret (or a hash or length of one) in `before_json` or
-`after_json`.
+`after_json`; or, for self-reported operations (A-14), the `DELTA_DLQ` binding is used for
+anything but `metrics()`, a request path starts persisting free-text error capture, a job-run or
+heartbeat writer stores request data or an untruncated message, or the Operations route gains an
+outbound host or a credential.
