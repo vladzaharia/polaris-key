@@ -181,7 +181,8 @@ export const PACKAGE_METADATA_KEYS: Readonly<
   pypi: ["summary", "requiresPython", "license"],
   swift: ["toolsVersions", "signatureFormat"],
   maven: ["groupId", "artifactId", "packaging"],
-  oci: ["mediaType", "platforms"],
+  // `root`: the digest of the manifest or index the version's tag points to.
+  oci: ["mediaType", "platforms", "root"],
   godot: ["displayName", "author", "description", "script"],
 };
 

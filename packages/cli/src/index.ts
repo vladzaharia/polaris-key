@@ -29,6 +29,7 @@ import {
 } from "./publish.js";
 import { parseRemoves } from "./saveCompat.js";
 import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
+import { isPackageDeliverable, publishPackage } from "./package/publish.js";
 import { publishPack } from "./packPublish.js";
 import { CONTENT_STAMP_USAGE, writeContentStampFile } from "./contentStamp.js";
 import {
@@ -93,6 +94,15 @@ export {
   type PublishResult,
 } from "./publish.js";
 export { movePointer, yankRelease, CHANNEL_USAGE } from "./channels.js";
+export {
+  isPackageDeliverable,
+  isPrePackageWorker,
+  publishPackage,
+  PREDATES_PACKAGES,
+  type PackagePublishOptions,
+  type PackagePublishResult,
+} from "./package/publish.js";
+export { extractPackage } from "./package/extract.js";
 export {
   publishPack,
   STAGE_ROUND_OBJECTS,
@@ -793,6 +803,51 @@ async function cmdRelease(
           )
         : undefined;
       const delegation = flagString(parsed, "delegation");
+      // F-03: a package release (a `kind: package` deliverable): extracted, never signed.
+      if (
+        deliverable &&
+        deliverable !== "app" &&
+        (await isPackageDeliverable(cwd, deliverable))
+      ) {
+        refuseFlags(
+          parsed,
+          [
+            "tag",
+            "source",
+            "meta",
+            "release-key-file",
+            "min-supported-seq",
+            "content-stamp",
+            "embedded",
+            "pin",
+            "content-interface",
+            "provides",
+            "removes",
+            "out",
+            "bases",
+            "content-key-file",
+            "delegation",
+            "script-extensions",
+            "script-types",
+          ],
+          `--deliverable ${deliverable} is a package: its files are extracted from --dir, its release id is <deliverable>@<version>, and it is never signed`,
+        );
+        if (flagBool(parsed, "no-record"))
+          throw new Error(
+            "--no-record does not apply to a package: a package release never carries a record.",
+          );
+        await publishPackage({
+          ...common,
+          cwd,
+          product,
+          dir,
+          deliverable,
+          version: flagString(parsed, "version"),
+          channel: flagString(parsed, "channel"),
+          dryRun: flagBool(parsed, "dry-run"),
+        });
+        return 0;
+      }
       if (deliverable && deliverable !== "app") {
         refuseFlags(
           parsed,
