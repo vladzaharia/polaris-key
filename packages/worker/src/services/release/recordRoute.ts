@@ -87,7 +87,9 @@ export async function handleRecordRoute(
 
   // 2. An unknown hash: the plain not-found.
   const row = await getRecordByHash(db, product.slug, rawHash);
-  if (!row) return harden(notFound());
+  // A package version is never signed (F-03): no record of one is ever served, even a row that
+  // claims it.
+  if (!row || row.kind === "package") return harden(notFound());
 
   // 3. Under `entitled`, the record's own release's stored version, pinned. Not for a pack
   //    record (P4-02) or a revocation (P4-13): the version window is an APP version rule, so the

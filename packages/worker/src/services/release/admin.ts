@@ -10,6 +10,8 @@
  *     POST   …/release/channels/<channel>/revert        hand the row back to the manifest
  *     POST   …/release/releases/<releaseId>/yank        { "reason": "…" }
  *     DELETE …/release/releases/<releaseId>/yank
+ *     POST   …/release/releases/<releaseId>/deprecate   { "message": "…" } (F-03, a package version)
+ *     DELETE …/release/releases/<releaseId>/deprecate
  *
  * and the pack read model (P4-09, `packs/adminView.ts`):
  *
@@ -67,6 +69,7 @@ import {
   knownChannels,
   policyView,
   revertChannelPolicy,
+  setPackageDeprecation,
   unyank,
   updateChannelPolicy,
   yank,
@@ -652,6 +655,28 @@ async function handlePolicyRoutes(
         : policyRefusal(result);
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  }
+
+  // F-03: a package version's deprecation (npm `deprecated`), package versions only.
+  if (rest.length === 3 && rest[0] === "releases" && rest[2] === "deprecate") {
+    const releaseId = segment(rest[1] as string);
+    if (releaseId === null) return adminNotFound();
+    if (req.method !== "POST" && req.method !== "DELETE")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const message =
+      req.method === "POST" ? (await readBody(req)).message : null;
+    const result = await setPackageDeprecation(
+      env,
+      db,
+      slug,
+      releaseId,
+      req.method === "POST" ? (message ?? "") : null,
+      actor,
+      now,
+    );
+    return result.ok
+      ? adminJson({ ok: true, deprecation: result.deprecation })
+      : policyRefusal(result);
   }
 
   return null;

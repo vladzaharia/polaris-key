@@ -190,3 +190,70 @@ export function npmScope(name: string): string | null {
   const m = /^(@[^/]+)\//.exec(name);
   return m ? m[1]! : null;
 }
+
+/**
+ * Why `name` falls outside a feed's namespace, or null when it is inside (plans/F-01.md §6.7, the
+ * dependency-confusion rule ingest enforces). `namespace` is `dist_registry_feeds.namespace_json`:
+ * npm `{scope}`, Swift `{scope}`, Maven `{groupPrefixes[]}`, PyPI `{prefixes[], names[]}`, OCI `{}`
+ * (the repository sits under the owner in every URL), Godot `{publisher}` (the store path's
+ * publisher; an addon id carries none, so the feed only has to name one). An empty namespace is a
+ * problem: a feed cannot take packages before its operator sets one.
+ */
+export function packageNamespaceProblem(
+  ecosystem: PackageEcosystem,
+  name: string,
+  namespace: unknown,
+): string | null {
+  const ns =
+    namespace !== null &&
+    typeof namespace === "object" &&
+    !Array.isArray(namespace)
+      ? (namespace as Record<string, unknown>)
+      : {};
+  const strings = (v: unknown): string[] =>
+    Array.isArray(v)
+      ? v.filter((x): x is string => typeof x === "string" && x !== "")
+      : [];
+  switch (ecosystem) {
+    case "npm": {
+      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
+      if (!scope) return "the npm feed has no scope set";
+      return npmScope(name.toLowerCase()) === scope
+        ? null
+        : `${name} is not under the feed's scope ${scope}`;
+    }
+    case "swift": {
+      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
+      if (!scope) return "the Swift feed has no scope set";
+      return name.split(".")[0]!.toLowerCase() === scope
+        ? null
+        : `${name} is not under the feed's scope ${scope}`;
+    }
+    case "maven": {
+      const prefixes = strings(ns.groupPrefixes).map((p) => p.toLowerCase());
+      if (prefixes.length === 0) return "the Maven feed has no group prefixes";
+      const group = name.split(":")[0]!.toLowerCase();
+      return prefixes.some((p) => group === p || group.startsWith(`${p}.`))
+        ? null
+        : `${name}'s groupId is not under ${prefixes.join(", ")}`;
+    }
+    case "pypi": {
+      const norm = packageNameNorm("pypi", name);
+      const names = strings(ns.names).map((n) => packageNameNorm("pypi", n));
+      const prefixes = strings(ns.prefixes).map((n) =>
+        packageNameNorm("pypi", n),
+      );
+      if (names.length === 0 && prefixes.length === 0)
+        return "the PyPI feed has no names or prefixes";
+      return names.includes(norm) || prefixes.some((p) => norm.startsWith(p))
+        ? null
+        : `${name} is not one of the feed's names or prefixes`;
+    }
+    case "oci":
+      return null;
+    case "godot":
+      return typeof ns.publisher === "string" && ns.publisher !== ""
+        ? null
+        : "the Godot feed has no publisher set";
+  }
+}
