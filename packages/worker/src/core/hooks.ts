@@ -42,7 +42,9 @@
  * submissions and the key inventory; P4-02 added the pack functions to `ReleaseCatalog` and the
  * delivery gate (`entitlement`) to `Delivery`; P4-14 added `rollouts` and `reportedAvailability` to
  * `Delivery` and the optional `packChunks` hook point to `ReleaseCatalog` (P4-22 implements it);
- * P4-18 added the optional `packPayload` (Distribution's payload URL).
+ * P4-18 added the optional `packPayload` (Distribution's payload URL). F-03 added the package
+ * readers to `ReleaseCatalog` (`packageDeliverables`, `packageVersions`, `packageChannelHeads`) and
+ * `packageFeed` to `Delivery`.
  * P2b-05, P2b-06, P3-03, P4-02 (Release's publish routes read `delivery.entitlement`), P4-05,
  * P4-09, P4-14 (Core's blob collector reads both hooks) and P6-03 consume.
  */
@@ -434,8 +436,57 @@ export interface CatalogRevocation {
  * bytes rather than records — still read-only, and the only way bytes behind Release's GitHub
  * token leave Release.
  */
+/** One declared package deliverable (F-03): what a package feed serves. */
+export interface CatalogPackageDeliverable {
+  id: string;
+  /** One of @polaris-key/manifest's PACKAGE_ECOSYSTEMS. */
+  ecosystem: string;
+  /** The declared name, in the ecosystem's grammar. */
+  name: string;
+}
+
+/** One file of a package version (`release_packages.files_json`). */
+export interface CatalogPackageFile {
+  name: string;
+  /** The ecosystem's file type (`npm-tarball`, `wheel`, `oci-manifest`, …). */
+  type: string;
+  sha256: string;
+  size: number;
+  mediaType?: string;
+  classifier?: string;
+  extension?: string;
+  /** Worker-computed at ingest: npm and Maven files. */
+  sha1?: string;
+  sha512?: string;
+  /** Worker-computed at ingest: Maven files. */
+  md5?: string;
+}
+
+/** One version of a package deliverable (F-03): a `release_packages` row with its release's
+ *  seq and channel. Unique forever: a yanked or deprecated version stays, with its state. */
+export interface CatalogPackageVersion {
+  deliverableId: string;
+  releaseId: string;
+  ecosystem: string;
+  name: string;
+  /** The uniqueness key: PEP 503 for PyPI, lower case for npm, Swift and Maven. */
+  nameNorm: string;
+  version: string;
+  seq: number | null;
+  /** The channel it was published to (`stable` maps to the `latest` tag in the feeds). */
+  channel: string | null;
+  state: "live" | "yanked" | "deprecated";
+  /** The yank reason or the deprecation message. */
+  stateMessage: string | null;
+  files: CatalogPackageFile[];
+  /** The CLI extractor's validated output. */
+  metadata: Record<string, unknown>;
+  publishedAt: number;
+}
+
 export interface ReleaseCatalog {
-  /** Every deliverable, `app` first, then packs by id. */
+  /** Every deliverable, `app` first, then packs by id. Never a package (F-03): package versions
+   *  reach only the package feeds, through `packageDeliverables` and `packageVersions`. */
   deliverables(): Promise<CatalogDeliverable[]>;
   /** A deliverable's releases, newest publication first. */
   releases(deliverableId: string): Promise<CatalogRelease[]>;
@@ -498,6 +549,22 @@ export interface ReleaseCatalog {
    * Core's report path bounds update telemetry with it.
    */
   knownChannels(): Promise<string[]>;
+
+  // ── Packages (F-03): what the package feeds render (F-04 to F-09) and F-11 shows ──
+  /** The declared package deliverables, by id. */
+  packageDeliverables(): Promise<CatalogPackageDeliverable[]>;
+  /** Every version of one package deliverable, oldest publication first, in every state. `[]`
+   *  for an id that is not a package. */
+  packageVersions(deliverableId: string): Promise<CatalogPackageVersion[]>;
+  /**
+   * Where each channel of one package deliverable points (the feeds' moving tags: `stable` →
+   * `latest`, any other channel → a tag of its name): the newest version each channel serves under
+   * Release's resolution rules (membership, a pointer, yanks removed). Channels serving nothing are
+   * omitted. `[]` for an id that is not a package.
+   */
+  packageChannelHeads(
+    deliverableId: string,
+  ): Promise<{ channel: string; releaseId: string; version: string }[]>;
 
   // ── Packs (P4-02): what P4-05 serves, P4-09 shows and update reads ──
   /** The declared pack deliverables, by id. */
@@ -982,6 +1049,14 @@ export interface Delivery {
     { releaseId: string; outletId: string; state: string }[]
   >;
   /**
+   * F-03: one ecosystem's package-feed settings for this owner (`dist_registry_feeds`, under the
+   * owner's `packageFeeds` switch and the platform's per-ecosystem policy), or `null` when no
+   * feed of that ecosystem is configured. Release's package ingest reads it for the namespace
+   * rule, the size ceiling and the Swift signing requirement (plans/F-01.md §6.7) — the settings
+   * are operator-owned and Distribution's, so Release asks through the hook, never the table.
+   */
+  packageFeed(ecosystem: string): Promise<PackageFeedSettings | null>;
+  /**
    * P6-02: what a device attestation is verified against — the bundle ids of the product's LIVE
    * `app-store` and `testflight` outlets (App Attest's RP ID is `<TeamID>.<bundleId>`), and the
    * Play package with the `google-service-account` credential PINNED to it (Distribution's own
@@ -997,6 +1072,23 @@ export interface AttestationTargets {
   play:
     | { packageName: string; credentialId: string }
     | { packageName: null; credentialId: null; inert: string };
+}
+
+/** What `Delivery.packageFeed` answers (F-03). */
+export interface PackageFeedSettings {
+  ecosystem: string;
+  /** The feed's own switch. */
+  enabled: boolean;
+  /** The owner's `packageFeeds` sub-capability (`dist_registry_owners.enabled`). */
+  ownerEnabled: boolean;
+  /** The platform's per-ecosystem kill switch (`dist_registry_policy.enabled`). */
+  policyEnabled: boolean;
+  /** `namespace_json`, parsed (`{}` when unreadable). */
+  namespace: Record<string, unknown>;
+  /** The feed's ceiling, never above the platform's (`min(max_package_bytes, ceiling)`). */
+  maxPackageBytes: number;
+  /** `ext_json`, parsed (`{}` when unreadable). */
+  ext: Record<string, unknown>;
 }
 
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────

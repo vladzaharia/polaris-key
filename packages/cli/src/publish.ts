@@ -61,6 +61,7 @@ import {
   type DescriptorBuild,
   type DescriptorManifest,
   type ManifestArtifactEntry,
+  type ManifestPackageDeliverable,
   type ManifestReleaseKey,
   type ReleaseDescriptor,
 } from "@polaris-key/manifest";
@@ -95,7 +96,7 @@ import { packContext, requirePacksDiscovery } from "./packManifest.js";
 
 export const PUBLISH_USAGE =
   "Usage: pkey release publish --product <slug> --version <v> --dir <path> " +
-  "[--deliverable app|<packId>] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] " +
+  "[--deliverable app|<packId>|<packageId>] [--tag vX.Y.Z] [--channel <c>] [--source r2|github] " +
   "[--meta builds.json] [--base-url <url>] [--release-key-file <pem>] " +
   "[--min-supported-seq <n>] [--no-record] " +
   "[--content-stamp <file> | --embedded <dir> --pin <packId>@<version> ...] " +
@@ -488,7 +489,11 @@ export function descriptorManifestOf(docs: {
   schema?: unknown;
   release?: unknown;
   distribution?: unknown;
-}): DescriptorManifest & { releaseKeys: ManifestReleaseKey[] } {
+}): DescriptorManifest & {
+  releaseKeys: ManifestReleaseKey[];
+  /** F-03: the declared package deliverables, whole (their artifacts globs included). */
+  packageDeliverables: ManifestPackageDeliverable[];
+} {
   const files: Record<string, string> = {};
   for (const [name, doc] of Object.entries(docs))
     if (doc !== undefined) files[name] = JSON.stringify(doc);
@@ -503,8 +508,15 @@ export function descriptorManifestOf(docs: {
       // P4-02: the declared pack ids, the context a descriptor's `content` and `embeds` are
       // checked against (plans/P4-01.md decision 37).
       packs: (res.manifest.release?.packDeliverables ?? []).map((p) => p.id),
+      // F-03: the declared packages, the context a `kind: package` descriptor is checked against.
+      packages: (res.manifest.release?.packageDeliverables ?? []).map((p) => ({
+        id: p.id,
+        ecosystem: p.ecosystem,
+        name: p.name,
+      })),
     },
     releaseKeys: res.manifest.release?.releaseKeys ?? [],
+    packageDeliverables: res.manifest.release?.packageDeliverables ?? [],
   };
 }
 

@@ -49,6 +49,22 @@ export interface ReleaseDeliverableRow {
   def_source: string;
   created_at: number;
   modified_at: number;
+  /** A package's ecosystem and declared name (F-03, 0058_b); NULL for the app and packs. */
+  ecosystem?: string | null;
+  package_name?: string | null;
+}
+
+/**
+ * SQL true when release row `alias` (a `release_metadata` alias) is NOT a release of a package
+ * deliverable (F-03). Every device-facing read that can reach a release by id or digest — the
+ * byte routes' file and blob resolution, the changelog, the records route — filters with it, so a
+ * package version is served only by its feed. No parameters.
+ */
+export function notPackageReleaseSql(alias: string): string {
+  return `NOT EXISTS (SELECT 1 FROM release_deliverables pkgd
+                      WHERE pkgd.product = ${alias}.product
+                        AND pkgd.deliverable_id = ${alias}.deliverable_id
+                        AND pkgd.kind = 'package')`;
 }
 
 export interface ReleaseBuildRow {
@@ -169,6 +185,9 @@ export interface DeliverableInput {
   packType?: string | null;
   defJson?: string | null;
   defSource?: string;
+  /** A package's ecosystem and declared name (F-03); required for, and only for, a package. */
+  ecosystem?: string | null;
+  packageName?: string | null;
 }
 
 export async function listDeliverables(
@@ -204,16 +223,26 @@ export function stmtUpsertDeliverable(
     throw new ReleaseModelError(`unknown deliverable kind: ${d.kind}`);
   if (d.kind === "app" && d.packType)
     throw new ReleaseModelError("an app deliverable has no pack type");
+  const isPackage = d.kind === "package";
+  if (isPackage !== Boolean(d.ecosystem && d.packageName))
+    throw new ReleaseModelError(
+      "a package deliverable has an ecosystem and a name, and only a package does",
+    );
+  if (isPackage && d.packType)
+    throw new ReleaseModelError("a package deliverable has no pack type");
   return {
     sql: `INSERT INTO release_deliverables
-            (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at)
-          VALUES (?,?,?,?,?,?,?,?)
+            (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at,
+             ecosystem, package_name)
+          VALUES (?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT(product, deliverable_id) DO UPDATE SET
             kind = excluded.kind,
             pack_type = excluded.pack_type,
             def_json = excluded.def_json,
             def_source = excluded.def_source,
-            modified_at = excluded.modified_at`,
+            modified_at = excluded.modified_at,
+            ecosystem = excluded.ecosystem,
+            package_name = excluded.package_name`,
     params: [
       d.product,
       d.deliverableId,
@@ -223,6 +252,8 @@ export function stmtUpsertDeliverable(
       d.defSource ?? "manifest",
       now,
       now,
+      isPackage ? d.ecosystem! : null,
+      isPackage ? d.packageName! : null,
     ],
   };
 }

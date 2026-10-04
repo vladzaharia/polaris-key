@@ -17,6 +17,7 @@ import {
   APP_DELIVERABLE_ID,
   type ManifestAppDeliverable,
   type ManifestPackDeliverable,
+  type ManifestPackageDeliverable,
 } from "@polaris-key/manifest";
 import type { DbStatement } from "../../core/platform.js";
 import { stmtSetChannelPolicy, stmtUpsertDeliverable } from "./model.js";
@@ -26,6 +27,7 @@ export function manifestDeliverableStatements(
   app: ManifestAppDeliverable | null,
   now: number,
   packs: readonly ManifestPackDeliverable[] = [],
+  packages: readonly ManifestPackageDeliverable[] = [],
 ): DbStatement[] {
   const stmts: DbStatement[] = [
     stmtUpsertDeliverable(
@@ -63,6 +65,60 @@ export function manifestDeliverableStatements(
     ],
   });
   stmts.push(...packDeliverableStatements(product, packs, now));
+  stmts.push(...packageDeliverableStatements(product, packages, now));
+  return stmts;
+}
+
+/**
+ * The package rows (F-03): upsert each declared package unless an operator owns its row or the
+ * id is held by another kind, then drop the manifest-owned rows of packages no longer declared —
+ * except one with any release. A package version is unique forever (`release_packages` is never
+ * deleted), so its deliverable row stays for the feeds to keep serving its history; and a
+ * package's ecosystem and name never change under its released versions (`release_exists` is
+ * the ingest's answer to a re-declared name, which publishes under the old one).
+ */
+function packageDeliverableStatements(
+  product: string,
+  packages: readonly ManifestPackageDeliverable[],
+  now: number,
+): DbStatement[] {
+  const stmts: DbStatement[] = packages.map((p) => {
+    const upsert = stmtUpsertDeliverable(
+      {
+        product,
+        deliverableId: p.id,
+        kind: "package",
+        defJson: JSON.stringify(p),
+        defSource: "manifest",
+        ecosystem: p.ecosystem,
+        packageName: p.name,
+      },
+      now,
+    );
+    return {
+      sql: `${upsert.sql}
+          WHERE release_deliverables.def_source = 'manifest'
+            AND release_deliverables.kind = 'package'
+            AND (NOT EXISTS (SELECT 1 FROM release_packages rp
+                              WHERE rp.product = release_deliverables.product
+                                AND rp.deliverable_id = release_deliverables.deliverable_id)
+                 OR (release_deliverables.ecosystem = excluded.ecosystem
+                     AND release_deliverables.package_name = excluded.package_name))`,
+      params: upsert.params,
+    };
+  });
+  stmts.push({
+    sql: `DELETE FROM release_deliverables
+           WHERE product = ? AND kind = 'package' AND def_source = 'manifest'
+             AND deliverable_id NOT IN (SELECT value FROM json_each(?))
+             AND NOT EXISTS (SELECT 1 FROM release_metadata m
+                              WHERE m.product = release_deliverables.product
+                                AND m.deliverable_id = release_deliverables.deliverable_id)
+             AND NOT EXISTS (SELECT 1 FROM release_channel_policy c
+                              WHERE c.product = release_deliverables.product
+                                AND c.deliverable_id = release_deliverables.deliverable_id)`,
+    params: [product, JSON.stringify(packages.map((p) => p.id))],
+  });
   return stmts;
 }
 

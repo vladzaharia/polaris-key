@@ -286,3 +286,18 @@ whose chunk index cannot be read keeps every `pack-upload` ref that night.
 - [Artifacts, changelog & install](/docs/services/release/artifacts/) — what each byte route
   resolves and serves.
 - [Public route table](/docs/reference/routes/) — every canonical route and alias.
+
+## Package feeds switch
+
+Each product has an operator-owned **package feeds** switch (F-03): on, its
+[package feeds](/docs/start/concepts/#packages) answer on `pkg.plrs.im`; off, every feed read
+for that product stops at once and looks like an unknown owner. A manifest never sets it.
+
+```http
+GET /manage/api/products/<product>/distribution/package-feeds
+PUT /manage/api/products/<product>/distribution/package-feeds   {"enabled": true, "expectedVersion": 0}
+```
+
+`expectedVersion` is the version the operator read (0 before it was ever set); a stale one is a
+409 (`version_conflict`) carrying the current state. Turning it on queues a full render of the
+product's feeds. Each change is audited as `distribution.package_feeds.update`.

@@ -355,3 +355,56 @@ describe("the v4 move to @polaris-key/protocol (P3-02)", () => {
     ]);
   });
 });
+
+describe("package deliverables never get a transport (F-03, plans/F-01.md §3.3)", () => {
+  it("routes skip a package, and a transport naming one is refused", () => {
+    const releaseDoc = {
+      release: {
+        ghOwner: "acme",
+        ghRepo: "desktop",
+        binaryName: "acme",
+        deliverables: {
+          "npm.sdk": {
+            kind: "package",
+            ecosystem: "npm",
+            name: "@acme/sdk",
+            artifacts: { tarball: { match: "*.tgz" } },
+          },
+        },
+      },
+    };
+    const base = {
+      product: JSON.stringify({
+        slug: "dice",
+        name: "Dice",
+        modules: {
+          release: { enabled: true },
+          distribution: { enabled: true },
+        },
+      }),
+      schema: JSON.stringify(schema),
+      release: JSON.stringify(releaseDoc),
+    };
+    const ok = parseManifest({
+      ...base,
+      distribution: JSON.stringify({ outlets: { web: { kind: "web" } } }),
+    });
+    expect(ok.ok ? [] : ok.errors).toEqual([]);
+    if (!ok.ok) return;
+    expect(
+      ok.manifest.distribution!.routes.map((r) => r.deliverableId),
+    ).not.toContain("npm.sdk");
+    const refused = parseManifest({
+      ...base,
+      distribution: JSON.stringify({
+        outlets: { web: { kind: "web" } },
+        transports: { deliverables: { "npm.sdk": { web: "pkey-cdn" } } },
+      }),
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.errors.join("\n")).toContain(
+      "packages are served only by package feeds",
+    );
+  });
+});

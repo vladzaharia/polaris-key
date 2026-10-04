@@ -53,7 +53,8 @@ export function Deliverables({ slug }: { slug: string }): React.ReactElement {
       accessor: (d) => d.id,
       sortable: true,
       cell: (d) =>
-        d.kind === "app" ? (
+        // The app has no detail page here, and a package's record is its feed's (F-11).
+        d.kind !== "pack" ? (
           <span className="font-mono text-xs">{d.id}</span>
         ) : (
           <button
@@ -76,7 +77,15 @@ export function Deliverables({ slug }: { slug: string }): React.ReactElement {
       accessor: (d) => d.kind,
       sortable: true,
       cell: (d) => (
-        <Badge variant={d.kind === "app" ? "primary" : "outline"}>
+        <Badge
+          variant={
+            d.kind === "app"
+              ? "primary"
+              : d.kind === "package"
+                ? "default"
+                : "outline"
+          }
+        >
           {d.kind}
         </Badge>
       ),

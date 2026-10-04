@@ -176,7 +176,10 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     ? (me.products.find((p) => p.slug === slug) ?? null)
     : null;
   const product: ProductLike | null = productQuery.data ?? productRef;
-  const productList: ProductLike[] = products.data ?? me.products;
+  // The system product (F-03) is the platform's, reached from Platform, never switched to.
+  const productList: ProductLike[] = (products.data ?? me.products).filter(
+    (p) => !(p as { system?: boolean }).system,
+  );
   const productName = product?.name ?? null;
 
   const section = page ? sectionOf(page) : null;

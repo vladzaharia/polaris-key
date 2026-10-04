@@ -100,6 +100,60 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 mise exec node@22 -- pnpm gen:corpus -- --check && mise exec node@22 -- pnpm gen:transcripts -- --check
 ```
 
+## Corrections (recorded while implementing, against the code)
+
+Where the code disagreed with plans/F-01.md, the code was the fact. None of these changes a wire
+shape, the corpus or `PROTOCOL_VERSION`.
+
+1. **Migration numbers.** `0058_a_products_system`, `0058_b_release_deliverables_kind`,
+   `0058_c_release_packages`, `0058_d_registry` (after main's highest at the final merge, `0057_platform_operations`). `LATEST_MIGRATION`
+   follows.
+2. **The `release_deliverables` rebuild sets the child rows aside** instead of relying on
+   `PRAGMA defer_foreign_keys = ON`: SQLite counts the violations the DROP's implicit DELETE makes
+   and never recounts them when the renamed copy brings the parent rows back, so a deferred
+   transaction still fails at its end whenever `release_channel_policy` or `release_pack_floors`
+   has a row. The children are copied to `_f03` tables, removed, and restored after the rename;
+   every step converges on a replay (the 0017 discipline). A package's `ecosystem` and
+   `package_name` are required by `stmtUpsertDeliverable`, not a CHECK, so even a full replay over
+   a migrated database keeps every row. The R11 "additive only" test lists the file beside 0016
+   and 0017.
+3. **`registry_render_queue` coalesces and is product-first**: primary key `(product,
+deliverable_id)` (`'*'` = every package of the owner) with a `generation` that an enqueue bumps
+   and a drain's delete matches, instead of matching on `enqueued_at ≤ start` (seconds-resolution
+   timestamps would drop an enqueue landing in the render's second; R11-05 requires product-first
+   keys). F-03 ships the enqueue and the read/consume helpers (`core/registryQueue.ts`); the drain,
+   `registryMaterialiser` and the cron hook are F-02's framework.
+4. **Digests use `node:crypto`'s streaming `createHash`** (the Worker runs with `nodejs_compat`;
+   `ed25519Stream.ts` already streams SHA-512 through it), which covers SHA-1, SHA-512 and MD5 in
+   workerd and Node alike, so no per-algorithm `DigestStream` fallback is needed.
+5. **The hook signatures are product-scoped by `HookContext`**, like every other reader:
+   `packageDeliverables()`, `packageVersions(deliverableId)`, plus `packageChannelHeads(deliverableId)`
+   (each channel's head, which the renderers turn into `latest` and channel tags). `deliverables()`
+   never lists a package, so every Distribution consumer (readiness, rollouts, the matrix, the
+   download page, the storefront feeds, connectors, the blob collector's pack walk) excludes them
+   at one place; `release()`, file and blob resolution and `channelPolicies()` exclude them too.
+6. **Release reads feed settings through a new `delivery.packageFeed(ecosystem)` hook**
+   (namespace, ceiling under the platform policy, `ext`), because the namespace, size and Swift
+   signing rules read Distribution's `dist_registry_*` tables (rule 6). No configured feed for the
+   ecosystem is `package-namespace`; Distribution off is `distribution_disabled` (409).
+7. **Feed-level rules are the Worker's, not the validator's**: `maven-snapshot`,
+   `package-namespace`, `package-too-large` and `swift-unsigned` read operator settings, so the
+   descriptor validator emits only the existing codes (`invalid_descriptor`,
+   `unsupported_deliverable_kind`, `unknown_deliverable`, …) and the Worker maps its findings to
+   `package-shape`. The GitHub-sync descriptor path refuses a package descriptor.
+8. **There is no Release admin delete** to refuse, and no slug rename: "rename" is a `PATCH` of the
+   system product's `name`, refused (409 `system_product`) like its delete. The bootstrap audits to
+   A-12's `platform_audit` (landed) as `feed.bootstrap`.
+9. **Deprecate is a Release admin route**, `POST|DELETE …/release/releases/:id/deprecate`, beside
+   yank: Distribution (F-11's feeds pages) cannot write Release state, so F-11 calls it. Yank and
+   unyank update `release_packages.state` in their own batch.
+10. **Vocabulary details**: a package's `artifacts` is a map of 1–16 `{ match }` entries; OCI
+    metadata gains `root` (the digest the version's tag points to); Swift and OCI releases need
+    `--version` (their archives carry none); the Swift extractor takes the `*.sig` beside the
+    archive and the `Package*.swift` manifests of the scratch directory (F-06 confirms SwiftPM's
+    file names). The console lists packages with a `package` badge and no pack-detail link, and
+    keeps the system product out of the switcher and the Products list.
+
 ## Hand-off
 
 - The ecosystem packages read `releaseCatalog.packageVersions`.

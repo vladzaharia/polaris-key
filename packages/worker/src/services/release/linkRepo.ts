@@ -18,6 +18,7 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import {
   generateEd25519,
   seal,
@@ -230,6 +231,14 @@ export async function linkRepo(
       errors: result.errors,
     };
   const manifest = result.manifest;
+
+  // F-03: the system product is created only by the platform bootstrap (`ensureSystemProduct`,
+  // `POST /manage/api/platform/feeds/bootstrap`), never by registering a repository.
+  if (manifest.product.slug === SYSTEM_PRODUCT_SLUG)
+    return {
+      ok: false,
+      error: `reserved slug: ${SYSTEM_PRODUCT_SLUG} is the platform's own product, created by the package-feeds bootstrap`,
+    };
 
   if (await getProduct(db, manifest.product.slug)) {
     return {
@@ -487,6 +496,7 @@ async function registerFromManifest(
         rel.app,
         now,
         rel.packDeliverables,
+        rel.packageDeliverables,
       ),
     );
 

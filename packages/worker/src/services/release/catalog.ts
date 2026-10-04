@@ -46,6 +46,8 @@ import {
 } from "./resolve.js";
 import { installScript, openSource, parseLocations } from "./source.js";
 import { packCatalog } from "./packs/catalog.js";
+import { packageCatalog } from "./packages/catalog.js";
+import { notPackageReleaseSql } from "./model.js";
 
 type ReleaseRow = Pick<
   ReleaseMetadataRow,
@@ -132,12 +134,17 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
   const config = () => (cfgRead ??= getReleaseConfig(db, slug));
   return {
     ...packCatalog({ db, env: ctx.env, slug, now: ctx.now }),
+    ...packageCatalog({ db, slug }),
     async deliverables(): Promise<CatalogDeliverable[]> {
-      return (await listDeliverables(db, slug)).map((d) => ({
-        id: d.deliverable_id,
-        kind: d.kind,
-        packType: d.pack_type,
-      }));
+      // Never a package (F-03): every consumer of this list is device-facing (readiness,
+      // rollouts, the matrix, the download page, the storefront feeds) or a pack walk.
+      return (await listDeliverables(db, slug))
+        .filter((d) => d.kind !== "package")
+        .map((d) => ({
+          id: d.deliverable_id,
+          kind: d.kind,
+          packType: d.pack_type,
+        }));
     },
 
     async releases(deliverableId: string): Promise<CatalogRelease[]> {
@@ -169,7 +176,7 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
                 EXISTS (SELECT 1 FROM release_yanks y
                          WHERE y.product = m.product AND y.release_id = m.release_id) AS yanked
            FROM release_metadata m
-          WHERE m.product = ? AND m.release_id = ?`,
+          WHERE m.product = ? AND m.release_id = ? AND ${notPackageReleaseSql("m")}`,
         slug,
         releaseId,
       );
@@ -210,15 +217,26 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
     async channelPolicies(
       deliverableId?: string,
     ): Promise<CatalogChannelPolicy[]> {
-      return (await listChannelPolicies(db, slug, deliverableId)).map((p) => ({
-        deliverableId: p.deliverable_id,
-        channel: p.channel,
-        pointerReleaseId: p.pointer_release_id,
-        pinned: p.pinned === 1,
-        includes: parseIncludes(p.includes_json),
-        minSupported: p.min_supported,
-        critical: p.critical === 1,
-      }));
+      // All of them: never a package's (F-03), unless that package is asked for by id.
+      const packages =
+        deliverableId === undefined
+          ? new Set(
+              (await listDeliverables(db, slug))
+                .filter((d) => d.kind === "package")
+                .map((d) => d.deliverable_id),
+            )
+          : new Set<string>();
+      return (await listChannelPolicies(db, slug, deliverableId))
+        .filter((p) => !packages.has(p.deliverable_id))
+        .map((p) => ({
+          deliverableId: p.deliverable_id,
+          channel: p.channel,
+          pointerReleaseId: p.pointer_release_id,
+          pinned: p.pinned === 1,
+          includes: parseIncludes(p.includes_json),
+          minSupported: p.min_supported,
+          critical: p.critical === 1,
+        }));
     },
 
     async yanks(): Promise<CatalogYank[]> {
@@ -342,8 +360,8 @@ async function resolveTarget(
         "deliverable_id" | "release_id" | "version" | "channel"
       >
     >(
-      `SELECT deliverable_id, release_id, version, channel FROM release_metadata
-        WHERE product = ? AND release_id = ?`,
+      `SELECT deliverable_id, release_id, version, channel FROM release_metadata m
+        WHERE product = ? AND release_id = ? AND ${notPackageReleaseSql("m")}`,
       slug,
       q.releaseId,
     );
@@ -383,7 +401,7 @@ async function resolveTarget(
        FROM release_artifacts a
        JOIN release_metadata m
          ON m.product = a.product AND m.release_id = a.release_id
-      WHERE a.product = ? AND a.sha256 = ?
+      WHERE a.product = ? AND a.sha256 = ? AND ${notPackageReleaseSql("m")}
       ORDER BY m.version ASC, m.release_id ASC
       LIMIT ${BLOB_RELEASES_CHECKED}`,
     slug,

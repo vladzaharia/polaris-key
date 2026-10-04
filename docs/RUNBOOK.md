@@ -472,6 +472,36 @@ and never roll back the migration. Devices that already learned a revocation kee
 target. Every SDK release note must state that SDKs older than P4-13 keep using revoked content
 until upgraded.
 
+### Package feeds (F-03)
+
+Package feeds serve versions of `kind: package` deliverables (our SDKs among them) on
+`pkg.plrs.im`. F-03 ships the data side; the registry host (F-02), the ecosystem renderers (F-04
+to F-09) and the console pages (F-11) follow.
+
+- **Bootstrap the system product** after deploying F-03, in each environment (dev, staging,
+  production), as a platform admin:
+  `POST /manage/api/platform/feeds/bootstrap` (idempotent; audited `feed.bootstrap` in the
+  platform trail). It creates `polaris-key`, turns Release, Distribution and its package feeds on
+  and seeds one feed per ecosystem with the platform namespaces. Registering the monorepo's
+  trusted publisher for it is F-10's step.
+- **Turn a product's feeds on or off:** `PUT /manage/api/products/<slug>/distribution/package-feeds
+{"enabled": true|false, "expectedVersion": <n>}`. Off stops every read for the owner at once.
+- **Yank or deprecate a version:** the release's yank (`…/release/releases/<id>/yank`) is its feed
+  state; deprecate is `POST|DELETE …/release/releases/<id>/deprecate {"message"}`. Neither frees
+  the version: a package version is never published again.
+- **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
+  first; a Worker older than F-03 is reported as such and nothing is uploaded.
+
+### Do not roll back past 0058_b with package rows
+
+`0058_b_release_deliverables_kind.sql` rebuilds `release_deliverables` to admit `kind = 'package'`
+(forward-only, like 0016). An older Worker reads and writes the table unchanged, so rolling the
+CODE back is safe. Rolling the SCHEMA back past it (recreating the old `CHECK (kind IN ('app',
+'pack'))`) needs the package rows gone first: `release_packages`, then the `release_metadata`,
+`release_artifacts` and `blob_refs` rows of package releases, then the `release_deliverables` rows
+of kind `package`. Package versions are meant to be unique forever, so do this only for an
+environment that is being abandoned.
+
 ### Content keys (delegation, P4-19)
 
 A content key may sign data-only pack releases (`files.tree`, `data.json`, `l10n.table`) of

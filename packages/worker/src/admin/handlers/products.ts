@@ -21,7 +21,10 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
-import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
+import {
+  RESERVED_PRODUCT_SLUGS,
+  SYSTEM_PRODUCT_SLUG,
+} from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
@@ -214,6 +217,15 @@ export async function handleProducts(
     return adminJson({ product: await productView(env, db, row) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
+    // F-03: the system product keeps its name (it is the platform's, and the feeds and the
+    // console name it).
+    if (row.system === 1 && body.name !== undefined && body.name !== row.name)
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "the system product cannot be renamed",
+        { fields: ["name"], reason: "system_product" },
+      );
     // plans/P3-01.md §2.2: the default offline-day count becomes `graceUntil`, so it takes the
     // bundle mint's rule, an integer from 1 to 365.
     const refused = new WriteChecks()
@@ -268,6 +280,14 @@ export async function handleProducts(
     return adminJson({ ok: true, slug });
   }
   if (req.method === "DELETE") {
+    // F-03: the system product owns the platform packages, whose versions are unique forever.
+    if (row.system === 1)
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "the system product cannot be deleted",
+        { reason: "system_product" },
+      );
     const body = await readBody(req);
     if (body.confirmSlug !== slug) {
       return err(422, ErrorCode.BadRequest, "confirmSlug must match product", {
@@ -317,6 +337,13 @@ async function manualCreate(
   if (RESERVED_PRODUCT_SLUGS.includes(slug))
     return err(422, ErrorCode.BadRequest, "reserved slug", {
       fields: ["slug"],
+    });
+  // F-03: the system product is created only by the package-feeds bootstrap
+  // (`ensureSystemProduct`), never by hand.
+  if (slug === SYSTEM_PRODUCT_SLUG)
+    return err(422, ErrorCode.BadRequest, "reserved slug", {
+      fields: ["slug"],
+      reason: "reserved_slug",
     });
   if (await getProduct(db, slug))
     return err(409, ErrorCode.BadRequest, "product exists", {
