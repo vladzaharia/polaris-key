@@ -522,6 +522,59 @@ to F-09) and the console pages (F-11) follow.
 - **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
   first; a Worker older than F-03 is reported as such and nothing is uploaded.
 
+### Releasing our SDKs to the feeds (F-10)
+
+Every SDK this repository ships is a package deliverable of the system product, declared in the
+root `.pkey/release`, and is published only to its feed on `pkg.plrs.im` (owner decision
+2026-10-04: no npmjs, GitHub Packages, PyPI, Maven Central, Swift Package Index, Docker Hub,
+Godot store or GitHub Release). Publishing is automatic and in lockstep with the server; there is
+nothing to bump and no per-SDK tag:
+
+| Trigger          | Workflow                                       | Every SDK is published at                                 | Channel                 |
+| ---------------- | ---------------------------------------------- | --------------------------------------------------------- | ----------------------- |
+| a push to `main` | `publish-sdks.yml`                             | `<next>-main.<N>` (PyPI `<next>.dev<N>`)                  | `main` (npm dist-tag)   |
+| a `v*` tag       | `deploy.yml` → `publish-sdks.yml` after deploy | exactly the tag's version (`v0.9.0` → `0.9.0` everywhere) | `stable`, `beta` if pre |
+
+- **The version** comes from git (`tools/sdk-version.mjs derive`): `<next>` is the patch after the
+  newest `v*` tag, `<N>` the commits since it. CI stamps it into every SDK's version file after
+  the tests (`tools/sdk-version.mjs stamp`) and never commits it. A prerelease tag must be
+  `-alpha.N`, `-beta.N` or `-rc.N` (PyPI has to spell it too); anything else fails the run.
+- **To release:** tag a commit on `main` `vX.Y.Z` and push the tag. `deploy.yml` deploys the
+  Worker, registers the platform packages (below), then publishes every SDK at `X.Y.Z`.
+- **Registration** (`deploy.yml`, "Register the platform packages"): the deploy hook bootstraps the
+  system product, links it to this repository and applies the root `.pkey/` of the tag: the
+  package deliverables, the `main` channel and the trusted publisher (DEPLOYMENT §2). It is
+  idempotent and leaves an operator's switches and claimed publisher alone. If it fails, the
+  deploy fails after the Worker is live: fix the cause (its `::error::` names the Worker's reason:
+  `policy_mismatch` with the claim, `invalid_manifest` with the validator's errors,
+  `wrong_manifest`) and rerun the job. A new deliverable in `.pkey/release` is registered by the
+  next deploy, so the first tag that adds one publishes it; a push to `main` before that deploy
+  is refused for that one package (`invalid_descriptor`) and the drift check names it.
+- **Publishing:** each package goes through `publish-package.yml`, the one trusted publisher, in
+  the `package-registry` environment (DEPLOYMENT §2), from `main` or a `v*` tag only. A version
+  is unique forever: a failed publish of a version that never landed can be re-run, a landed one
+  cannot be replaced (yank it; the next push publishes the next version).
+- **Drift:** the last job (`tools/feed-drift.mjs`) reads every package's listing back from its
+  feed and fails unless its newest version of the build's kind is the build's version (npm's
+  dist-tag and the image's tag included), naming each package that is behind. A failed publish
+  shows up here too; rerun the failed jobs, then the drift job. npm's `latest` must be a stable
+  release: a prerelease there (no stable release yet) fails a `main` or `beta` build's check.
+- **Expected red, until the next `v*` deploy:** registration runs only from `deploy.yml` on a
+  tag (staging and dev have no deploy hook). So `main` pushes publish nothing that depends on a
+  registration no deploy has made yet: before the first deploy that registers the platform
+  packages every package publish is refused and the drift job is red, and after a `main` commit
+  adds a deliverable that one package is. Both go green with the next tag's deploy; nothing to
+  fix by hand.
+- **Swift signing:** the Swift job refuses to run without the three `SWIFT_REGISTRY_*` secrets
+  and never publishes unsigned. To rotate the certificate, replace the secrets: new releases are
+  signed with the new certificate, old releases keep their signatures, and adopters who trust
+  the root see no change.
+- **Dry runs:** locally, `pnpm --filter @polaris-key/worker registry:self-publish` runs the whole
+  pipeline (derive, stamp, build, register, publish, drift, install with each real client)
+  against a local Worker. `pkey release publish --product polaris-key --deliverable <id> --dir
+<packed files> --dry-run` without a CI credential extracts and validates one package and stops
+  before the server.
+
 ### Do not roll back past 0058_b with package rows
 
 `0058_b_release_deliverables_kind.sql` rebuilds `release_deliverables` to admit `kind = 'package'`

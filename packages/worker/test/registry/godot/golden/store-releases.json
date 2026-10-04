@@ -1,18 +1,5 @@
 [
   {
-    "id": 4,
-    "version": "1.2.0-beta.1",
-    "stable": false,
-    "size": 0.000035,
-    "created": "2023-11-14",
-    "min_godot_version": "4.4",
-    "max_godot_version": null,
-    "notes": "",
-    "changes_html": "",
-    "changes_bbcode": "",
-    "download_url": "https://pkg.example.test/godot/djdl/files/ba63c736f97d98ad15f8711b74b619b45aec8d5ed1345db997454d216a0fffa0/acme_addon-1.2.0-beta.1.zip"
-  },
-  {
     "id": 3,
     "version": "1.1.0",
     "stable": true,
@@ -37,5 +24,18 @@
     "changes_html": "",
     "changes_bbcode": "",
     "download_url": "https://pkg.example.test/godot/djdl/files/627062240e0394d6cccb41e1a9995ada3c5503a7a2820504dc077dfaa9fdd422/acme_addon-1.0.0.zip"
+  },
+  {
+    "id": 4,
+    "version": "1.2.0-beta.1",
+    "stable": false,
+    "size": 0.000035,
+    "created": "2023-11-14",
+    "min_godot_version": "4.4",
+    "max_godot_version": null,
+    "notes": "",
+    "changes_html": "",
+    "changes_bbcode": "",
+    "download_url": "https://pkg.example.test/godot/djdl/files/ba63c736f97d98ad15f8711b74b619b45aec8d5ed1345db997454d216a0fffa0/acme_addon-1.2.0-beta.1.zip"
   }
 ]

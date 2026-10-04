@@ -616,7 +616,8 @@ export interface ReleaseConfigInput {
   product: string;
   ghOwner: string;
   ghRepo: string;
-  ghInstallationId: number;
+  /** NULL for the system product, linked by the deploy hook rather than through the App. */
+  ghInstallationId: number | null;
   channelWorkflow: string | null;
   betaBranch: string;
   binaryName: string;

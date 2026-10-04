@@ -2389,10 +2389,29 @@ export interface FeedPolicy {
   updatedBy: string | null;
 }
 
+/**
+ * What one ecosystem's protocol can express: the feed adapter's declaration (worker
+ * `services/distribution/registry/adapter.ts` `FeedCapabilities`), exposed on every feed and
+ * package. Read it instead of switching on the ecosystem's name.
+ */
 export interface FeedCapabilities {
   yank: boolean;
   deprecate: boolean;
   yankPolicy: boolean;
+  /** How Release channels surface: npm dist-tags, tags, only "latest", or not at all. */
+  channels: "dist-tags" | "tags" | "latest" | "none";
+  /** The protocol carries a package signature (the feed's `requireSigned` setting applies). */
+  signing: boolean;
+  immutableVersions: boolean;
+  delete: boolean;
+  search: boolean;
+  /** The challenge a non-public feed answers an anonymous client with. */
+  authChallenge: "basic" | "oci-bearer";
+  /**
+   * One entry per operation (`render`, `serve`, `auth`, `yank`, `unyank`, `deprecate`, `setup`),
+   * in the shared adapter base's shape: `{mode: "api", …}` or `{mode: "unsupported", reason}`.
+   */
+  ops?: Record<string, { mode: string; reason?: string }>;
 }
 
 export interface FeedDetailDto extends FeedsHead {

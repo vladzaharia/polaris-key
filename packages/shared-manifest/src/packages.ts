@@ -8,9 +8,31 @@
  * validators (`index.ts`'s `validateDeliverables`, `descriptor.ts`'s package branch,
  * `distribution.ts`'s transport refusal), whose codes the schema-parity sweep reads.
  *
- * Nothing here imports another module of this package, so `index.ts` and `descriptor.ts` can both
- * read it at their top level without the cycle their own NOTE describes.
+ * Nothing here imports another module of this package but the per-ecosystem rule files
+ * (`ecosystems/*.ts`, which import nothing but each other's `rules.ts`), so `index.ts` and
+ * `descriptor.ts` can both read it at their top level without the cycle their own NOTE describes.
+ * Each ecosystem declares its rules once, in its own `ecosystems/<ecosystem>.ts`; the tables
+ * below are derived from `PACKAGE_ECOSYSTEM_RULES`.
  */
+
+import { GODOT_PACKAGE_RULES } from "./ecosystems/godot.js";
+import { MAVEN_PACKAGE_RULES } from "./ecosystems/maven.js";
+import { NPM_PACKAGE_RULES } from "./ecosystems/npm.js";
+import { OCI_PACKAGE_RULES } from "./ecosystems/oci.js";
+import { PYPI_PACKAGE_RULES } from "./ecosystems/pypi.js";
+import {
+  namespaceIsEmpty,
+  type PackageEcosystemRules,
+} from "./ecosystems/rules.js";
+import { SWIFT_PACKAGE_RULES } from "./ecosystems/swift.js";
+
+export { npmScope } from "./ecosystems/npm.js";
+export {
+  namespaceIsEmpty,
+  namespaceStrings,
+  type PackageEcosystemRules,
+  type PackageNamespaceField,
+} from "./ecosystems/rules.js";
 
 /**
  * The ecosystems a package feed serves (tier 1). Open for `cargo`, `go` and `nuget` in tier 3:
@@ -58,35 +80,38 @@ export const PACKAGE_REFUSED_FIELDS = [
   "packType",
 ] as const;
 
+/**
+ * Every ecosystem's ingest rules, one declaration each (`ecosystems/<ecosystem>.ts`, through the
+ * `PackageEcosystemRules` entry point). The mapped type makes a new `PACKAGE_ECOSYSTEMS` entry a
+ * compile error until its rules exist. Every table below is derived from this one.
+ */
+export const PACKAGE_ECOSYSTEM_RULES: {
+  readonly [E in PackageEcosystem]: PackageEcosystemRules<E>;
+} = {
+  npm: NPM_PACKAGE_RULES,
+  pypi: PYPI_PACKAGE_RULES,
+  swift: SWIFT_PACKAGE_RULES,
+  maven: MAVEN_PACKAGE_RULES,
+  oci: OCI_PACKAGE_RULES,
+  godot: GODOT_PACKAGE_RULES,
+};
+
+function perEcosystem<T>(
+  pick: (rules: PackageEcosystemRules) => T,
+): Readonly<Record<PackageEcosystem, T>> {
+  return Object.fromEntries(
+    PACKAGE_ECOSYSTEMS.map((e) => [e, pick(PACKAGE_ECOSYSTEM_RULES[e])]),
+  ) as Record<PackageEcosystem, T>;
+}
+
 /** The name grammar of each ecosystem (plans/F-01.md §3.1), anchored. */
 export const PACKAGE_NAME_PATTERNS: Readonly<Record<PackageEcosystem, RegExp>> =
-  {
-    // A scoped npm name, lower case (unscoped names are refused: the scope is the namespace).
-    npm: /^@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*$/,
-    // PEP 508: letters, digits, `.`, `_` and `-`, starting and ending with a letter or digit.
-    pypi: /^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/,
-    // SE-0292: `scope.Name`, scope 1-39 of [A-Za-z0-9-], name 1-100 of [A-Za-z0-9_-], each
-    // starting with a letter or digit.
-    swift: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\.[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/,
-    // Maven `groupId:artifactId`.
-    maven: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*:[A-Za-z0-9_][A-Za-z0-9_.-]*$/,
-    // An OCI repository path under the owner: lower-case components joined by `/`.
-    oci: /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/,
-    // A Godot addon id.
-    godot: /^[a-z0-9_]{1,64}$/,
-  };
+  perEcosystem((r) => r.name.pattern);
 
 /** The longest name of each ecosystem. */
 export const PACKAGE_NAME_MAX_LENGTH: Readonly<
   Record<PackageEcosystem, number>
-> = {
-  npm: 214,
-  pypi: 128,
-  swift: 140,
-  maven: 255,
-  oci: 255,
-  godot: 64,
-};
+> = perEcosystem((r) => r.name.maxLength);
 
 export function isPackageEcosystem(value: unknown): value is PackageEcosystem {
   return (
@@ -117,16 +142,7 @@ export function packageNameNorm(
   ecosystem: PackageEcosystem,
   name: string,
 ): string {
-  switch (ecosystem) {
-    case "pypi":
-      return name.toLowerCase().replace(/[-_.]+/g, "-");
-    case "npm":
-    case "swift":
-    case "maven":
-      return name.toLowerCase();
-    default:
-      return name;
-  }
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].name.norm(name);
 }
 
 /**
@@ -135,18 +151,11 @@ export function packageNameNorm(
  */
 export const PACKAGE_FILE_TYPES: Readonly<
   Record<PackageEcosystem, readonly string[]>
-> = {
-  npm: ["npm-tarball"],
-  pypi: ["wheel", "sdist", "core-metadata"],
-  swift: ["source-archive", "manifest", "source-archive-signature"],
-  maven: ["maven-file"],
-  oci: ["oci-blob", "oci-manifest", "oci-index"],
-  godot: ["godot-zip", "godot-icon"],
-};
+> = perEcosystem((r) => r.fileTypes);
 
 /** At most this many files in one package release: 4,096 for OCI (an image's blobs), else 64. */
 export function maxPackageFiles(ecosystem: PackageEcosystem): number {
-  return ecosystem === "oci" ? 4096 : 64;
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].maxFiles;
 }
 
 /** The largest `package.metadata`, serialised (16 KiB). */
@@ -159,38 +168,7 @@ export const MAX_PACKAGE_METADATA_BYTES = 16 * 1024;
  */
 export const PACKAGE_METADATA_KEYS: Readonly<
   Record<PackageEcosystem, readonly string[]>
-> = {
-  npm: [
-    "description",
-    "license",
-    "dependencies",
-    "devDependencies",
-    "peerDependencies",
-    "optionalDependencies",
-    "engines",
-    "bin",
-    "exports",
-    "main",
-    "types",
-    "os",
-    "cpu",
-    "keywords",
-    "homepage",
-    "repository",
-  ],
-  pypi: ["summary", "requiresPython", "license"],
-  swift: ["toolsVersions", "signatureFormat"],
-  maven: ["groupId", "artifactId", "packaging"],
-  // `root`: the digest of the manifest or index the version's tag points to.
-  oci: ["mediaType", "platforms", "root"],
-  godot: ["displayName", "author", "description", "script"],
-};
-
-/** The npm scope of a scoped name (`@polaris-key/node` → `@polaris-key`), else null. */
-export function npmScope(name: string): string | null {
-  const m = /^(@[^/]+)\//.exec(name);
-  return m ? m[1]! : null;
-}
+> = perEcosystem((r) => r.metadataKeys);
 
 /**
  * Why `name` falls outside a feed's namespace, or null when it is inside (plans/F-01.md §6.7, the
@@ -211,50 +189,13 @@ export function packageNamespaceProblem(
     !Array.isArray(namespace)
       ? (namespace as Record<string, unknown>)
       : {};
-  const strings = (v: unknown): string[] =>
-    Array.isArray(v)
-      ? v.filter((x): x is string => typeof x === "string" && x !== "")
-      : [];
-  switch (ecosystem) {
-    case "npm": {
-      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
-      if (!scope) return "the npm feed has no scope set";
-      return npmScope(name.toLowerCase()) === scope
-        ? null
-        : `${name} is not under the feed's scope ${scope}`;
-    }
-    case "swift": {
-      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
-      if (!scope) return "the Swift feed has no scope set";
-      return name.split(".")[0]!.toLowerCase() === scope
-        ? null
-        : `${name} is not under the feed's scope ${scope}`;
-    }
-    case "maven": {
-      const prefixes = strings(ns.groupPrefixes).map((p) => p.toLowerCase());
-      if (prefixes.length === 0) return "the Maven feed has no group prefixes";
-      const group = name.split(":")[0]!.toLowerCase();
-      return prefixes.some((p) => group === p || group.startsWith(`${p}.`))
-        ? null
-        : `${name}'s groupId is not under ${prefixes.join(", ")}`;
-    }
-    case "pypi": {
-      const norm = packageNameNorm("pypi", name);
-      const names = strings(ns.names).map((n) => packageNameNorm("pypi", n));
-      const prefixes = strings(ns.prefixes).map((n) =>
-        packageNameNorm("pypi", n),
-      );
-      if (names.length === 0 && prefixes.length === 0)
-        return "the PyPI feed has no names or prefixes";
-      return names.includes(norm) || prefixes.some((p) => norm.startsWith(p))
-        ? null
-        : `${name} is not one of the feed's names or prefixes`;
-    }
-    case "oci":
-      return null;
-    case "godot":
-      return typeof ns.publisher === "string" && ns.publisher !== ""
-        ? null
-        : "the Godot feed has no publisher set";
-  }
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.problem(name, ns);
+}
+
+/** Is a feed's namespace empty, so the feed cannot be enabled? (OCI's never is.) */
+export function packageNamespaceEmpty(
+  ecosystem: PackageEcosystem,
+  namespace: Readonly<Record<string, unknown>>,
+): boolean {
+  return namespaceIsEmpty(PACKAGE_ECOSYSTEM_RULES[ecosystem], namespace);
 }

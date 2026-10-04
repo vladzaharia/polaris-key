@@ -200,6 +200,13 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-prod"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+# F-10 automation: the deploy hook (src/platformDeploy.ts, POST /webhooks/deploy). Only this
+# repository's .github/workflows/deploy.yml, in the `production` environment, at a protected
+# v* tag, may call it with its GitHub OIDC token; the ids are GitHub's numeric repository and
+# owner ids (`gh api repos/vladzaharia/polaris-key --jq '.id, .owner.id'`), pinned against renames.
+PLATFORM_REPOSITORY = "vladzaharia/polaris-key"
+PLATFORM_REPOSITORY_ID = "1278490640"
+PLATFORM_REPOSITORY_OWNER_ID = "79390"
 [[env.prod.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@plrs.im"]

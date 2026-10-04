@@ -27,7 +27,7 @@
  * sit behind the Cache API for 60 s. The per-package documents are rendered into R2
  * (`render.ts`) and read through `readFreshRegistryObject`, which re-renders one whose stamp no
  * longer matches D1 and the feed settings, so a publish, yank or settings change is never hidden
- * behind a stale render (no drain is wired yet; see the brief's corrections).
+ * behind a stale render (the registry render-queue drain renders ahead of reads).
  *
  * A package stricter than the feed (its own `dist_access` mode) is left out of every list
  * (§6.6 step 3), and its own documents answer the ladder's refusal.
@@ -73,7 +73,6 @@ import {
 import {
   jsonBody,
   legacyAssetKey,
-  renderGodot,
   storeAssetKey,
   storeReleasesKey,
 } from "./render.js";
@@ -81,6 +80,9 @@ import {
   catalogPackageSource,
   loadRegistryPackages,
 } from "../catalogSource.js";
+// `index.ts` imports this module for `GODOT_ROUTES`; `GODOT_RENDERER` is only read per request,
+// after both modules have evaluated, so the cycle is safe.
+import { GODOT_RENDERER } from "./index.js";
 
 const ECO = "godot" as const;
 const OWNER = "([a-z0-9-]{1,64})";
@@ -148,9 +150,9 @@ async function godotRead(
     deps: bucket
       ? {
           bucket,
-          renderers: new Map([
-            [ECO, { ecosystem: ECO, render: renderGodot, routes: [] }],
-          ]),
+          // The adapter's own renderer (its `stamp` included), so a read re-renders exactly
+          // when the drain would.
+          renderers: new Map([[ECO, GODOT_RENDERER]]),
           source: catalogPackageSource(catalog, owner, ECO),
           origin,
           feed: feedOf,

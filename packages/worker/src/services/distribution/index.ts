@@ -55,6 +55,7 @@ import type { ParsedManifest } from "@polaris-key/manifest";
 import type { DbStatement } from "../../core/platform.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
+import { registryMaterialiser } from "./registryMaterialiser.js";
 import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
 import { delivery } from "./delivery.js";
 import { accessIngestStatements } from "./access.js";
@@ -231,6 +232,8 @@ export const distributionService: ServiceDescriptor = {
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */
   scheduled,
+  /** The package-feed render queue's consumer (`registryMaterialiser.ts`, plans/F-01.md §6.5). */
+  registryMaterialiser,
 };
 
 export { DISTRIBUTION_BYTE_ROUTES } from "./bytes.js";

@@ -52,8 +52,8 @@ jobs:
       # packages/brand/src/tokens/ and the launch-kit copy (packages/brand/scripts/gen.ts).
       - run: pnpm gen:brand -- --check
       # Action-bundle drift (P2-06): actions/publish/dist/index.js is the committed esbuild bundle
-      # of @polaris-key/cli that the polaris-key/publish Action runs (and the standalone pkey.mjs
-      # attached to releases). Rebuilt in memory from the built workspace; exit 1 on any difference.
+      # of @polaris-key/cli that the polaris-key/publish Action runs (and the pkey image ships as
+      # pkey.mjs). Rebuilt in memory from the built workspace; exit 1 on any difference.
       - run: pnpm --filter @polaris-key/cli bundle:action -- --check
       # Mirror drift: a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
       # tools/gen-mirrors.ts supports --check, but it REQUIRES --catalog <path> and

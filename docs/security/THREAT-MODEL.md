@@ -962,6 +962,7 @@ package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI and
 `REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
 and the framework, F-03 the tables and ingest, F-04 to F-09 one feed each (npm, PyPI, Swift,
 Maven, OCI, Godot) and F-11 the console's Feeds pages; each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
+`test/feedAdapters.test.ts` (the adapter conformance suite), `test/registryDrain.test.ts`,
 `test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
 
 **Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
@@ -1043,6 +1044,35 @@ empty, `.` or `..` segment), so it cannot leave its `registry/<ecosystem>/<owner
 lost object is re-rendered on read; the self-check re-renders a package whose stored stamp
 differs from D1.
 
+**The render drain (feed-adapter contract).** The queue Release and the feed settings write
+(`registry_render_queue`, Core's) is consumed by Core's `drainRenderQueue`, which hands each
+owner's rows to Distribution's `registryMaterialiser` descriptor member. It runs in two places,
+neither of which answers anyone: `dispatch.ts` after a request whose own statements enqueued a
+render (detected by `watchRenderEnqueues` from the SQL text alone: it reads no data and adds no
+query to any other request), inside `waitUntil`; and every cron tick, followed by the self-check
+(at most `SELF_CHECK_BUDGET` = 50 re-renders per tick, and only for owners whose `packageFeeds` is
+on). A render reads Release only through the `releaseCatalog` hook, writes only under its
+`registry/<ecosystem>/<owner>/` prefix, and deletes a queue row only while its `generation` is the
+one it read, so a concurrent publish is never lost. A row whose owner is gone, or has Distribution
+off, is dropped: no request reaches a disabled service, and the next settings or `packageFeeds`
+write enqueues a full render. A drain that fails leaves its rows queued and records the tick as
+failed. The drain is an optimisation of freshness, never the guarantee: every read still compares
+the stored render's stamp with D1 (`freshRegistryObject`, `readFreshRegistryObject`), so a slow,
+failed or racing drain can delay a re-render but cannot make a feed serve a yanked version's
+listing or a superseded tag.
+
+**One adapter contract per feed.** Every feed is a `FeedAdapter`
+(`registry/adapter.ts`): its routes (`feedRoute` only), renderer, ingest rules (its one
+declaration in `@polaris-key/manifest`), settings, capabilities, OpenAPI rows and harness clients.
+`test/feedAdapters.test.ts` runs the same checks against every adapter: each route carries the
+`feedRoute` mark and answers under its own prefix; an unknown owner and a feed that is off answer
+the host's one not-found byte for byte on every route; a non-public feed answers every route with
+the challenge the adapter declares (and that `challengeFor` sends); a renderer stamped `package`
+must render identically whatever the feed settings, so no stamp can hide a settings change; a
+render's keys and types are ones the host admits. A new feed that skips any of this fails CI,
+which turns the review of a new ecosystem into reviewing its own protocol code rather than
+re-checking the shared gate.
+
 **Every route is built by `feedRoute`.** `registry/serve.ts` `feedRoute` is the only way to
 build a registry route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
 name to its deliverable), then `serveFeedRead` (the access ladder, then the Cache API, then the
@@ -1087,6 +1117,40 @@ symbol); review catches the rest.
   refuse the slug; delete and rename refuse the row), published by trusted publishing only. Its
   Swift feed requires signed releases (`swift-unsigned`, never relaxed for the system product);
   the Worker checks presence and the `cms-1.0.0` format, SwiftPM verifies the chain.
+- **Our release pipeline (F-10, automated 2026-10-04).** One reusable workflow,
+  `publish-package.yml`, is the system product's only trusted publisher: `publish-sdks.yml` calls
+  it for every package, GitHub names it in `job_workflow_ref`, and its job runs in the
+  `package-registry` environment, whose deployment policy admits `main` and `v*` tags only; the job
+  also refuses any other ref, any commit not on main and a channel that does not fit the version,
+  and the publisher requires a ruleset-protected ref. Every push to `main` publishes a `-main.N`
+  pre-release on the `main` channel (never npm's `latest`), so branch protection on `main` is now
+  a publishing control as much as the `v*` tag ruleset. No workflow holds an npm, PyPI, Maven
+  Central or registry token, so a compromised dependency of a PR job has nothing to publish with.
+  The version is derived from git and stamped in CI; nothing a pull request writes chooses it. The
+  Swift signing key lives only in `package-registry`'s secrets: the signing job decodes it into
+  the runner's temp directory, never echoes it, and deletes it in an `always()` step; without it
+  the job stops rather than publish unsigned. Residual: anyone who can push to `main` or push a
+  protected release tag can publish a version (branch protection and the ruleset are the
+  controls), and a version once published is immutable, so a bad release is yanked and
+  superseded, never replaced.
+- **The deploy hook (`POST /webhooks/deploy`, F-10 automation).** It bootstraps the system
+  product, links it to the monorepo and applies the root `.pkey/` sent in its body: the package
+  deliverables and the trusted publisher every SDK publish relies on. It is authenticated by the
+  production deploy job's own GitHub Actions OIDC token, verified like a publisher's (RS256
+  against GitHub's JWKS, the fixed issuer, `aud = <origin>/webhooks/deploy`, single-use `jti`
+  through `idx_ci_tokens_jti`) and held to a policy only the Worker's configuration sets:
+  `PLATFORM_REPOSITORY_ID` and `PLATFORM_REPOSITORY_OWNER_ID` (numeric, against renames), that
+  repository's `.github/workflows/deploy.yml` at the triggering ref, a `refs/tags/v*` ref,
+  `ref_protected`, a GitHub-hosted runner, the `production` environment. Without those vars the
+  route does not exist. The body cannot name another repository (the manifest's provider must be
+  the configured one, and the publisher's numeric ids come from the configuration, never the
+  manifest), cannot touch another product (the slug must be the system product's, checked before
+  anything is written), cannot re-enable a service, `packageFeeds` or a feed an operator switched
+  off (the bootstrap only creates), and cannot overwrite an operator-claimed publisher or claimed
+  access modes. A per-IP limit (fail closed) bounds unverified calls. Residual: the trust is the
+  deploy job's, which already holds `CLOUDFLARE_API_TOKEN`; a token captured from that job could
+  be replayed with a different body within its lifetime only if it was never used, and the job
+  uses it at once.
 
 **What remains (F-03, F-10).** Strict-router setup snippets keep each feed the only source of
 its names. The owner publishes nothing to public registries and claims the public names at
@@ -3942,7 +4006,10 @@ folded into `mintIsPublic` or into the edge-mint approval's recorded state — `
 package feeds (F-03), a package version becomes deletable or republishable, a feed takes a name
 outside its namespace or proxies an upstream, a package release gains a signed record or reaches a
 device-facing route, the Worker starts unpacking a package, or anything but the platform bootstrap
-creates the system product; or, for
+creates the system product; a feed adapter is added to `FEED_ADAPTERS`, declares
+`capabilities.delete` or a non-`feedRoute` route, or a check of `test/feedAdapters.test.ts` is
+relaxed; the render drain starts answering a request, reading Release outside the
+`releaseCatalog` hook or writing outside `registry/`; or, for
 content-key delegation (P4-19), `DELEGABLE_PACK_TYPES` or `DATA_ONLY_EXTENSIONS` grows, a delegation
 gains a scope dimension, the delegated path is allowed on a surface beyond a compatible or
 standalone pack's feed target and the reload of a stored delegated install, any SDK or handler

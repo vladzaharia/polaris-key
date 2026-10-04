@@ -7,7 +7,9 @@ and it runs on every platform Godot exports to, web included, with no GDExtensio
 sixth language of the conformance corpus: the addon reaches the same verdict as the Node, React,
 Python and Swift SDKs on every vector, in the editor and on an exported release template.
 
-- **Package:** the `addons/polaris_key/` folder, released as `polaris-key-godot-vX.Y.Z.zip`.
+- **Package:** the `addons/polaris_key/` folder, published as `polaris-key-godot-vX.Y.Z.zip` to
+  Polaris Key's Godot feed, at the server's version (lockstep; every push to `main` publishes a
+  `-main.N` pre-release).
 - **Engines:** Godot 4.4 or later; 4.6 or later recommended (see
   [Supported engines](#supported-engines)).
 - **Licence:** MIT, like the rest of the repository. Changes: `sdks/godot/CHANGELOG.md`.
@@ -16,17 +18,14 @@ Python and Swift SDKs on every vector, in the editor and on an exported release 
 
 ## Install
 
-Pick one. Each puts the addon at `res://addons/polaris_key/`.
+Install it from **Polaris Key's Godot feed**, the one place the addon is published; it lands at
+`res://addons/polaris_key/`. In the editor's AssetLib tab, add the feed under Editor Settings,
+with no trailing slash: `https://pkg.plrs.im/godot/polaris-key/asset-library/api` in **Asset
+Library → Available URLs** up to 4.6, or `https://pkg.plrs.im/godot/polaris-key/store/api/v1`
+in `asset_store/available_urls` from 4.7. Then search for "Polaris Key" and install the addon.
+GodotEnv and scripted installs: [Installing the SDKs from the feeds](/docs/build/install-from-feeds/).
 
-- **Release zip** (canonical). Download `polaris-key-godot-vX.Y.Z.zip` from the repository's
-  GitHub Releases (tags `godot-v*`) and unzip it at your project's root; it holds only
-  `addons/polaris_key/`. Up to 4.6, the editor's **AssetLib → Import…** takes the same zip
-  (leave **Ignore asset root** unticked).
-- **Godot Asset Store** (Godot 4.7's in-editor store, or the website): search for
-  "Polaris Key" and install the addon.
-- **Asset Library** (the legacy library, for editors up to 4.6): search for "Polaris Key". Its
-  download is the `-assetlib` zip, which wraps the same files in one directory that the installer
-  drops, so keep **Ignore asset root** ticked.
+The addon is not on the public Godot Asset Store or Asset Library.
 
 Then open **Project → Project Settings → Plugins** and enable **Polaris Key**. That registers the
 `PolarisKey` autoload (`res://addons/polaris_key/polaris_key.gd`), the export plugin and the
@@ -458,8 +457,8 @@ The addon is written to 4.4 syntax and feature-detects newer engine APIs:
 
 Every engine above runs the full test runner in the `godot` CI job (the corpus, every service
 suite, packs, the UI kit), on the editor and, from 4.5, on the official Linux release template;
-the release workflow adds the clean-install smoke test (unzip into an empty project, enable the
-plugin, run it) on 4.4.1 and 4.7.2. The Asset Store version entry declares 4.4 as its minimum.
+the publish workflow adds the clean-install smoke test (unzip into an empty project, enable the
+plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
 
 ## Platform caveats
 

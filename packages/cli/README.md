@@ -9,6 +9,14 @@ operator runs from a terminal.
 
 ## Install
 
+The `@polaris-key` packages are published to Polaris Key's npm feed only (not npmjs). Route the
+scope to it once, in the project's `.npmrc` (Yarn, Bun and the rest:
+[Installing the SDKs from the feeds](/docs/build/install-from-feeds/)):
+
+```ini
+@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
+```
+
 ```sh
 pnpm add -D @polaris-key/cli
 # or run it without installing:
@@ -17,6 +25,8 @@ pnpm dlx @polaris-key/cli --help
 
 Node 22+. The package exposes one binary, `pkey` (`./dist/bin/pkey.js`), and the same command
 core as a library (`import { runPkey } from "@polaris-key/cli"`) for embedding in another tool.
+Without Node, the same CLI is an image: `docker run --rm -v "$PWD:/work"
+pkg.plrs.im/polaris-key/pkey:latest validate`.
 
 ## Commands
 

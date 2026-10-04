@@ -1,16 +1,68 @@
 /**
- * The OCI feed (F-08, plans/F-01.md §6.8): its renderer (`render.ts`, the tag list and the tag
- * pointers) and its pull routes under `/v2/` (`routes.ts`). Publishing is the CLI's: `pkey
- * release publish` reads an OCI image layout and uploads every blob through upload tickets
- * (`packages/cli/src/package/oci.ts`).
+ * The OCI feed (F-08, plans/F-01.md §6.8) as a `FeedAdapter` (`../adapter.ts`): its renderer
+ * (`render.ts`, the tag list and the tag pointers) and its pull routes under `/v2/` (`routes.ts`).
+ * Publishing is the CLI's: `pkey release publish` reads an OCI image layout and uploads every blob
+ * through upload tickets (`packages/cli/src/package/oci.ts`).
  */
 
+import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import {
+  extInteger,
+  rendererOf,
+  defineFeedAdapter,
+  type FeedAdapter,
+} from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderOci } from "./render.js";
 import { OCI_ROUTES } from "./routes.js";
 
-export const OCI_RENDERER: RegistryRenderer = {
+export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
   ecosystem: "oci",
-  render: (pkg) => renderOci(pkg),
+  label: "OCI",
+  // The protocol fixes the root at `/v2/`; the repository sits under the owner.
+  hostPrefix: "/v2/",
+  feedPath: (owner) => `/v2/${owner}/`,
   routes: OCI_ROUTES,
-};
+  renderer: { render: (pkg) => renderOci(pkg), stamp: "package" },
+  ingest: PACKAGE_ECOSYSTEM_RULES.oci,
+  settings: { ext: { retainUntaggedDays: extInteger(0, 3650) } },
+  capabilities: {
+    // A yank removes the version tag; the image stays pullable by digest.
+    yank: true,
+    deprecate: { unsupported: "OCI has no deprecation state" },
+    yankPolicy: false,
+    channels: "tags",
+    signing: false,
+    immutableVersions: true,
+    delete: false,
+    search: false,
+    authChallenge: "oci-bearer",
+  },
+  setup: {
+    clients: ["docker", "podman", "crane"],
+    inputs: ["registryHost", "owner", "package.name", "package.version"],
+  },
+  openapi: [
+    // `/v2/token` is the dispatcher's OCI not-found until F-21 issues tokens.
+    ["/v2/token", ["get", "head"], "host"],
+    [
+      "/v2/{owner}/{repository}/manifests/{reference}",
+      ["get", "head"],
+      "oci.manifests",
+    ],
+    ["/v2/{owner}/{repository}/blobs/{digest}", ["get", "head"], "oci.blobs"],
+    ["/v2/{owner}/{repository}/tags/list", ["get", "head"], "oci.tags"],
+  ],
+  harness: {
+    clients: [
+      "oci",
+      "oci-conformance",
+      "oci-crane",
+      "oci-docker",
+      "oci-podman",
+    ],
+  },
+});
+
+/** The materialiser's view of the adapter. */
+export const OCI_RENDERER: RegistryRenderer = rendererOf(OCI_ADAPTER);

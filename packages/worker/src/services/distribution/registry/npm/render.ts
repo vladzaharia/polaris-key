@@ -29,7 +29,8 @@
  * DIST-TAGS come from the channels (`stable` → `latest`, any other channel → a tag of its name;
  * `catalogSource.ts`). A tag pointing at a yanked or unknown version is dropped. npm clients
  * expect a `latest` tag; when no channel provides one, it is the newest non-yanked release
- * version (no prerelease), else the newest non-yanked version, else absent.
+ * version (no prerelease); else, for a package with no channel tags at all, the newest non-yanked
+ * prerelease; else absent (a channel's prereleases are never promoted to `latest`).
  *
  * TARBALL URLS are absolute on `PKG_ORIGIN` and conventional,
  * `<origin>/npm/<owner>/@scope/name/-/name-<version>.tgz`: Yarn Berry rebuilds that exact path
@@ -198,7 +199,12 @@ export function distTags(
   if (tags.latest === undefined) {
     const live = servable.filter((v) => v.state !== "yanked");
     const release = live.filter((v) => !PRERELEASE.test(v.version));
-    const newest = (release.length ? release : live).at(-1);
+    // A prerelease becomes `latest` only for a package with no channel tags at all. Once any
+    // channel names a version (even one since yanked), its prereleases, the older ones included,
+    // stay that channel's: making one `latest` would promote a build nobody promoted (F-10: our
+    // SDKs' `-main.N` builds are `main`, never `latest`, even before the first stable release).
+    const hasChannel = Object.keys(pkg.tags).length > 0;
+    const newest = (release.length ? release : hasChannel ? [] : live).at(-1);
     if (newest) tags.latest = newest.version;
   }
   return Object.fromEntries(
