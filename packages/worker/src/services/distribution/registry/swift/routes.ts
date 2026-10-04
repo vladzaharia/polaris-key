@@ -210,15 +210,28 @@ async function readRouting(
   }
 }
 
-/** The version a path names: exactly, or without a trailing `.json` (§4.2 allows the suffix). */
+/**
+ * The version a path names: exactly, else case-insensitively (identifiers are case-insensitive
+ * in SwiftPM, and the swiftlang compatibility suite flips the case of the whole path, version
+ * included), and for the metadata endpoint also without a trailing `.json` (§4.2).
+ */
 function resolveVersion(
   routing: SwiftRouting,
   raw: string | undefined,
+  allowJsonSuffix = false,
 ): string | null {
   if (raw === undefined) return null;
-  if (Object.hasOwn(routing.versions, raw)) return raw;
-  const bare = raw.endsWith(".json") ? raw.slice(0, -5) : null;
-  return bare !== null && Object.hasOwn(routing.versions, bare) ? bare : null;
+  const candidates = [raw];
+  if (allowJsonSuffix && raw.toLowerCase().endsWith(".json"))
+    candidates.push(raw.slice(0, -5));
+  for (const c of candidates) {
+    if (Object.hasOwn(routing.versions, c)) return c;
+    const folded = Object.keys(routing.versions).filter(
+      (v) => v.toLowerCase() === c.toLowerCase(),
+    );
+    if (folded.length === 1) return folded[0]!;
+  }
+  return null;
 }
 
 // ── The endpoints ────────────────────────────────────────────────────────────────────────────
@@ -250,7 +263,7 @@ async function releaseInfo(
 ): Promise<Response> {
   return packageRead(req, ctx, "json", [], async (read, t, cache) => {
     const routing = await readRouting(read, ctx);
-    const version = routing && resolveVersion(routing, t.version);
+    const version = routing && resolveVersion(routing, t.version, true);
     if (!routing || !version) return registryNotFound("swift");
     const obj = await readObject(
       read,
@@ -284,10 +297,7 @@ async function manifest(
     ["swift-version"],
     async (read, t, cache) => {
       const routing = await readRouting(read, ctx);
-      const version =
-        routing && t.version && Object.hasOwn(routing.versions, t.version)
-          ? t.version
-          : null;
+      const version = routing && resolveVersion(routing, t.version);
       if (!routing || !version) return registryNotFound("swift");
       const route = routing.versions[version]!;
       const unqualified = route.manifests[""];
@@ -365,10 +375,7 @@ async function sourceArchive(
 ): Promise<Response> {
   return packageRead(req, ctx, "zip", [], async (read, t, _cache) => {
     const routing = await readRouting(read, ctx);
-    const version =
-      routing && t.version && Object.hasOwn(routing.versions, t.version)
-        ? t.version
-        : null;
+    const version = routing && resolveVersion(routing, t.version);
     const route = version ? routing!.versions[version]! : null;
     if (!routing || !version || !route?.archive)
       return registryNotFound("swift");

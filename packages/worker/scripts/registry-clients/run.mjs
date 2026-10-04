@@ -9,8 +9,10 @@
  *   2. `seed.mjs`: every migration, then the fixture owner;
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
  *      request the clients make arrives on the registry host (`core/registryHost.ts`);
- *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin)
- *      and OWNER (the fixture owner) in its environment; a non-zero exit fails the run.
+ *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin),
+ *      OWNER (the fixture owner) and STATE in its environment; a non-zero exit fails the run.
+ *      A client's `clients/<name>.seed.mjs` (or its family's, `swift-linux` → `swift`) runs
+ *      after step 2, before the Worker starts, to publish that ecosystem's fixtures.
  *
  * F-02 ships one smoke client, `curl`. F-04 to F-09 add their ecosystem's clients (npm, pip,
  * SwiftPM, Gradle, docker, GodotEnv) as further `clients/*.sh` and matrix rows in
@@ -18,7 +20,13 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -73,6 +81,22 @@ let dev = null;
 let failed = 0;
 try {
   seed(state);
+  // Per-ecosystem fixtures (F-04 to F-09): `clients/<client>.seed.mjs`, or the seed of the
+  // client's family (`swift-compat` → `swift.seed.mjs`), each run once, before the Worker starts.
+  const seeded = new Set();
+  for (const client of clients) {
+    const seedFile = [client, client.split("-")[0]]
+      .map((n) => join(CLIENTS, `${n}.seed.mjs`))
+      .find((f) => existsSync(f));
+    if (!seedFile || seeded.has(seedFile)) continue;
+    seeded.add(seedFile);
+    const r = spawnSync(process.execPath, [seedFile], {
+      cwd: WORKER,
+      stdio: "inherit",
+      env: { ...process.env, STATE: state, OWNER: FIXTURE_OWNER },
+    });
+    if (r.status !== 0) throw new Error(`seed ${seedFile} failed`);
+  }
   dev = spawn(
     WRANGLER,
     [
@@ -105,7 +129,12 @@ try {
     console.log(`\n── registry client: ${client} ──`);
     const r = spawnSync("bash", [join(CLIENTS, `${client}.sh`)], {
       stdio: "inherit",
-      env: { ...process.env, REGISTRY: origin, OWNER: FIXTURE_OWNER },
+      env: {
+        ...process.env,
+        REGISTRY: origin,
+        OWNER: FIXTURE_OWNER,
+        STATE: state,
+      },
     });
     if (r.status !== 0) {
       failed++;

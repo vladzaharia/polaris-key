@@ -49,6 +49,11 @@ export function seed(persistTo) {
      VALUES ('${FIXTURE_OWNER}', 'Registry smoke', 'registry-smoke-kid', 'AAAA', '0.0.0', '99.0.0',
        30, 5, NULL, NULL, NULL, ${now}, ${now});`,
     `UPDATE products SET services_json = '${JSON.stringify(services)}' WHERE slug = '${FIXTURE_OWNER}';`,
+    // loadProductPublic needs an active key row to load the owner at all (F-06 found the
+    // ecosystem routes answering the not-found without it). Inert: the public half is a
+    // placeholder and nothing is sealed, because no registry route signs.
+    `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at)
+     VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
   ].join("\n");
   const file = join(persistTo, "registry-clients-seed.sql");
   writeFileSync(file, sql);

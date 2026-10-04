@@ -591,6 +591,12 @@ describe("Swift registry routes (F-06)", () => {
     const b1 = await publishSwift("1.0.0");
     await publishSwift("1.1.0");
     await publishSwift("2.0.0-beta.1", "beta");
+    // The compatibility suite flips the case of the whole path, the version included.
+    const flipped = await get(`${BASE}/ACME/aCMEkIT/2.0.0-BETA.1`);
+    expect(flipped.status).toBe(200);
+    expect(((await flipped.json()) as { version: string }).version).toBe(
+      "2.0.0-beta.1",
+    );
     for (const path of [
       `${BASE}/acme/AcmeKit/1.1.0`,
       `${BASE}/acme/acmekit/1.1.0.json`,
