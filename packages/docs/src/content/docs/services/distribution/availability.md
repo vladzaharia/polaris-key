@@ -66,7 +66,10 @@ A **pack release** derives by its own rule, per its transport on the outlet:
   each unyanked app release that pins the pack release and has a build the outlet carries that
   embeds the pack (its `embeds`, or every `baseline: embedded` pack when it says nothing), with
   `detail: {appReleaseId, buildIds}`. The SDK still verifies the marker and hash on the device.
-- any other transport: nothing; it is stored and shown "not supported yet".
+- `apple-ba`, `play-pad`, `steam-depot`: nothing derived; the store moves the bytes, so only CI
+  reports (`pkey transport …`) and the App Store Connect connector say where a pack release
+  stands ([Platform pack transports](/docs/build/pack-transports/)).
+- any other transport: nothing; it is stored and listed as unsupported.
 
 Every other kind — `app-store`, `testflight`, `play`, `steam`, `itch`, … — shows **nothing until
 it is reported**, whatever its transport: every outlet's default transport is `pkey-cdn`, so the
@@ -111,6 +114,9 @@ receives to that pack release by those ids (only when the asset pack's name maps
 release's pack id), so an App Store release reaching `READY_FOR_DISTRIBUTION` becomes `live` and
 readiness turns `ready`, while `REJECTED` leaves it `blocked`. An event that arrives before the
 upload's report is linked by the report and applied on the connector's next read.
+Each asset pack keeps its own availability row (its `buildId` is the asset-pack id, from the CI
+report and the connector alike), so one pack release bound at two content levels on one outlet
+keeps a state per level.
 `GET …/asset-packs` lists the product's asset packs with their level, newest version and states,
 marks those whose level no app channel has live as **retire candidates**, and shows Apple's
 quotas (200 asset packs, 200 GB per app). Archiving is irreversible and an archived id can never

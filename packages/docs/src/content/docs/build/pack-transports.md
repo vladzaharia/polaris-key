@@ -49,6 +49,10 @@ at once, before anything is written or uploaded, and the step fails with a typed
 - the id is longer than 64 characters with its `-c<contentApi>` suffix
   (`asset-pack-id-too-long`).
 
+These collisions are checked only among the product's current `apple-ba` packs. Across time (a
+renamed or removed pack, an asset pack someone created by hand), the guard is
+`.pkey/asset-packs.json`, described below.
+
 ### Package (macOS runner)
 
 ```sh
@@ -89,6 +93,10 @@ every later upload refuses to proceed when the asset pack found by id is not the
 (`asset-pack-resource-mismatch`), when an asset pack exists that nothing recorded
 (`asset-pack-unrecorded`; confirm it is yours, then pass `--expect-resource <id>`), or when the
 recorded one has disappeared (`asset-pack-missing`).
+
+The upload also re-hashes the packaged files against what the package step recorded, and with
+`--from <cache>` against the signed record (its payload and marker), so nothing edited after
+packaging is uploaded.
 
 It reports `processing` on your TestFlight outlets and `pending` on the App Store, with the asset
 pack's ids. The [App Store Connect connector](/docs/services/distribution/availability/#outlet-readiness)
@@ -192,10 +200,12 @@ PolarisKey.update.packs.platform_transport = t
 At every boot, the transport reads the platform's copy fresh, because platform paths change between
 launches and are never stored. The engine then verifies the marker and the bytes like an embedded
 baseline. A copy the platform delivered may be a newer release of the pack than the build's pin on
-Apple and Steam, where packs float. On Play the copy must be exactly the pinned release. When a pack
+Apple and Steam, where packs float: such a copy counts as current for the pin, so `ensure` does not
+fail when Apple has auto-updated an asset pack. On Play the copy must be exactly the pinned release. When a pack
 bound to the transport is not current, `ensure` asks the platform for it (Apple's
 `ensureLocalAvailability`, Play's fetch, Steam's DLC install), then verifies what arrived. If the
-platform holds a different release, the answer is `record-mismatch`. If the plugin is missing, the
+platform holds an older release, or a different one than a decision's exact target, the answer
+is `record-mismatch`. If the plugin is missing, the
 transport answers `unsupported` and the pack fails with `plan-transport-unsupported`. There is never
 a silent fallback to the CDN.
 

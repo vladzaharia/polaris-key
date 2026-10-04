@@ -301,6 +301,45 @@ ba-package` (`PKEY_REAL_BA_PACKAGE=1`). It also runs `suite_transports` beside t
   - **PAD texture suffix stripping** is not configured. The transport reads `pkey/` and any
     `pkey#tcf_*` directory, so it works either way.
 
+- **Review round 1.**
+  - **A copy that floated in is current.** A platform copy that `load_state` accepted under the
+    float rule against the stamp's pin counts as current for that pin, so `ensure()` succeeds when
+    Apple has auto-updated an installed asset pack. `_ensure_platform` applies the same platform pin
+    rule when the target is the stamp's pin. A decision's exact target still takes only that
+    release. An older copy, or a float the rule refused (Play, or a revoked release), fails closed
+    with `record-mismatch`. The `noop` edge is closed: a `noop` onto a platform copy returns that
+    copy and commits nothing.
+  - **One availability row per asset pack.** An apple-ba row's `build_id` is now its asset-pack
+    id, from both the connector (`syncBackgroundAsset`) and the CI report.
+    - The CI report keeps its request shape. The Worker keys a pack report on an outlet whose
+      transport for that pack is `apple-ba`, and whose `platformRef.assetPackIdentifier` maps back
+      to the pack. The OpenAPI description of `POST /{product}/distribution/report` says so.
+    - Readiness and the asset-pack listing find a level's row by that key. A whole-release row
+      (`''`) still counts when it names the level's asset pack, or names none.
+    - No migration: production holds no pack releases, so no existing apple-ba row needed re-keying.
+  - **`apple-ba upload` re-hashes the packaged content** against the package step's
+    `payloadSha256`. With `--from <cache>` it also checks the content against the signed record:
+    the record hash, the variant's payload and the marker. Any mismatch is refused with
+    `asset-pack-inputs-mismatch` before any request.
+  - **Docs and threat model.**
+    - THREAT-MODEL.md has a "Platform pack transports (P5-08)" section, and platform copies are
+      listed among the release-key surfaces.
+    - `transport.ts` explains why the CLI does not verify the cached record's JWS.
+    - The adopter docs say collisions are checked only among the current apple-ba packs, and that
+      `.pkey/asset-packs.json` is the guard across time.
+    - D-05's brief notes the full-id convention.
+
+- **What "supported" means.** `SUPPORTED_TRANSPORTS` (`outlets.ts`) means "Polaris Key acts on
+  it", and now lists `pkey-cdn`, `web`, `embedded`, `apple-ba`, `play-pad` and `steam-depot`.
+  - `DERIVED_TRANSPORTS` (`availability.ts`) is its own list, `pkey-cdn`, `web` and `embedded`,
+    with a test keeping it a subset. Availability is still derived only for transports Polaris Key
+    delivers. The store transports get theirs from CI reports and the connector.
+  - `msix-optional` and `flatpak-ext` stay unsupported.
+  - The device's `plan-transport-unsupported` does not depend on this list. It applies whenever
+    the build has no transport for a pack's binding.
+  - `Matrix.tsx` is untouched (a separate branch rewords its label). Only the `supported` comment
+    in `admin/src/api.ts` changed.
+
 ### Owner checklist (device, accounts; not run)
 
 1. **Apple.** Use an app with Apple-hosted asset packs enabled and a CI App Store Connect key with

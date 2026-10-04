@@ -13,6 +13,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { reportDistribution } from "@polaris-key/cli";
 import { dispatch } from "../src/dispatch.js";
 import { readinessReader } from "../src/services/distribution/readiness.js";
+import { DERIVED_TRANSPORTS } from "../src/services/distribution/availability.js";
+import {
+  SUPPORTED_TRANSPORTS,
+  transportSupported,
+} from "../src/services/distribution/outlets.js";
 import { appContent, CONSOLE, FOES, packWorld, SLUG } from "./packWorld.js";
 import type { PackWorld, Published } from "./packWorld.js";
 import { AscFake, APPLE_ID, webhookFixture } from "./ascFake.js";
@@ -254,6 +259,85 @@ describe("asc → readiness (P5-08)", () => {
     expect((await readiness(w, app)).state).toBe("ready");
   });
 
+  it("keeps one row per asset pack: a level-3 reconcile never overwrites level 4 on the same outlet", async () => {
+    const { w, fake, foes, app } = await world();
+    // The same pack release is also live as level 3's asset pack (another ASC resource).
+    fake.put({
+      type: "backgroundAssets",
+      id: "ba-c3",
+      attributes: { assetPackIdentifier: "djdl-foes-c3", archived: false },
+      relationships: { app: { data: { type: "apps", id: APPLE_ID } } },
+    });
+    fake.put({
+      type: "backgroundAssetVersions",
+      id: "bav-c3",
+      attributes: { version: "5", state: "COMPLETE", platforms: ["IOS"] },
+      relationships: {
+        backgroundAsset: { data: { type: "backgroundAssets", id: "ba-c3" } },
+      },
+    });
+    fake.put({
+      type: "backgroundAssetVersionAppStoreReleases",
+      id: "bavas-c3",
+      attributes: { state: "READY_FOR_DISTRIBUTION" },
+      relationships: {
+        backgroundAssetVersion: {
+          data: { type: "backgroundAssetVersions", id: "bav-c3" },
+        },
+      },
+    });
+    const c3Report = (state: string) =>
+      reportDistribution({
+        ...cli(w),
+        type: "availability",
+        outlet: "app-store",
+        version: foes.version,
+        deliverable: FOES,
+        state,
+        platformRef: JSON.stringify({
+          assetPackIdentifier: "djdl-foes-c3",
+          ascBackgroundAssetId: "ba-c3",
+          ascBackgroundAssetVersionId: "bav-c3",
+          ascVersion: 5,
+          contentApi: 3,
+        }),
+      });
+    // c3 approved, c4 pending: two rows on app-store, and level 4 is still blocked.
+    expect((await c3Report("approved")).ok).toBe(true);
+    expect((await uploadReport(w, foes, "app-store", "pending")).ok).toBe(true);
+    const rows = async () =>
+      w.db.all<{ build_id: string; state: string }>(
+        "SELECT build_id, state FROM dist_availability WHERE product = ? AND release_id = ? AND outlet_id = 'app-store' ORDER BY build_id",
+        SLUG,
+        foes.releaseId,
+      );
+    expect(await rows()).toEqual([
+      { build_id: "djdl-foes-c3", state: "approved" },
+      { build_id: "djdl-foes-c4", state: "pending" },
+    ]);
+    expect((await readiness(w, app)).state).toBe("blocked");
+
+    // c4 reaches READY_FOR_DISTRIBUTION: ready.
+    fake.set("backgroundAssetVersionAppStoreReleases", "bavas-1", {
+      state: "READY_FOR_DISTRIBUTION",
+    });
+    await deliver(w, fake, webhookFixture(APP_STORE_EVENT));
+    expect((await readiness(w, app)).state).toBe("ready");
+
+    // A reconcile of level 3's asset pack writes only its own row; level 4 stays ready.
+    const c3Event = webhookFixture(APP_STORE_EVENT)
+      .replace("000000000009", "000000000031")
+      .replaceAll("bavas-1", "bavas-c3");
+    const res = await deliver(w, fake, c3Event);
+    expect(res.status).toBeLessThan(300);
+    expect(await rows()).toEqual([
+      { build_id: "djdl-foes-c3", state: "live" },
+      { build_id: "djdl-foes-c4", state: "live" },
+    ]);
+    expect((await readiness(w, app)).state).toBe("ready");
+    expect(await snapshot(w, app)).toEqual({ state: "ready" });
+  });
+
   it("never resolves an asset pack whose identifier maps to another pack", async () => {
     // The report names djdl.foes's release, but ASC's asset pack is foes-c4 (the old leaf
     // convention, or another pack's): the base does not match, so nothing is linked.
@@ -336,5 +420,59 @@ describe("asset packs and retire candidates (P5-08)", () => {
         },
       },
     });
+  });
+});
+
+describe("which transports Polaris Key acts on (P5-08)", () => {
+  it("lists the store transports as supported, derives availability only for its own", async () => {
+    expect([...SUPPORTED_TRANSPORTS].sort()).toEqual(
+      [
+        "apple-ba",
+        "embedded",
+        "pkey-cdn",
+        "play-pad",
+        "steam-depot",
+        "web",
+      ].sort(),
+    );
+    expect(
+      DERIVED_TRANSPORTS.every((t) => SUPPORTED_TRANSPORTS.includes(t)),
+    ).toBe(true);
+    for (const t of ["apple-ba", "play-pad", "steam-depot"]) {
+      expect(transportSupported(t)).toBe(true);
+      expect(DERIVED_TRANSPORTS).not.toContain(t);
+    }
+    // No work package implements these yet: stored and listed, unsupported.
+    for (const t of ["msix-optional", "flatpak-ext", "made-up"])
+      expect(transportSupported(t)).toBe(false);
+
+    // The console's outlet listing marks djdl.foes's apple-ba binding supported, and no
+    // availability is derived for it: only reports (CI, the connector) say where it stands.
+    const { w, foes } = await world();
+    const res = await w.admin("GET", "/distribution/outlets");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      outlets: Array<{
+        outletId: string;
+        transports: Array<{
+          deliverableId: string;
+          transport: string;
+          supported: boolean;
+        }>;
+      }>;
+    };
+    const store = body.outlets.find((o) => o.outletId === "app-store")!;
+    expect(store.transports.find((t) => t.deliverableId === FOES)).toEqual({
+      deliverableId: FOES,
+      transport: "apple-ba",
+      supported: true,
+    });
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM dist_availability WHERE product = ? AND release_id = ?",
+        SLUG,
+        foes.releaseId,
+      ),
+    ).toBeNull();
   });
 });

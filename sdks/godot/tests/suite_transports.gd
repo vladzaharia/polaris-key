@@ -394,18 +394,72 @@ func _planner(t: PKeyTestContext) -> void:
 	t.check("plan: platform progress reaches the engine's progress", progress.size() == 1 and progress[0]["phase"] == "download" and progress[0]["packId"] == PACK, S.canon(progress))
 	S.remove_tree(root)
 
-	# The platform delivers another release than the target: record-mismatch.
+	# The platform delivers an OLDER release than the stamp's pin: record-mismatch (fail closed).
 	root = S.scratch("transports-plan-mismatch")
 	made = _apple_transport(root.path_join("staging"))
 	var v2 := _tree("1.1.0", 2)
+	e = _engine(root, [v1, v2], [v2], made[0])
+	await e.load_state([], [])
+	_write_tree(_apple_dir(root.path_join("staging")), v1)
+	r = await e.ensure([PACK])
+	t.check("plan: a delivered release older than the pin is refused (record-mismatch)", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and not e.running.has(PACK), str(r))
+	# A decision targeting exactly v1 takes it.
+	r = await e.ensure_releases([{"pack": PACK, "release": {"sha256": v1["recordSha256"], "seq": 1, "version": "1.0.0"}}])
+	t.check("plan: a decision's exact target takes the delivered release", r.ok and e.running.get(PACK, {}).get("recordSha256") == v1["recordSha256"], str(r))
+	S.remove_tree(root)
+
+	# A newer release the platform delivers during ensure floats in for the stamp's pin (Apple).
+	root = S.scratch("transports-plan-float-ensure")
+	made = _apple_transport(root.path_join("staging"))
 	e = _engine(root, [v1, v2], [v1], made[0])
 	await e.load_state([], [])
 	_write_tree(_apple_dir(root.path_join("staging")), v2)
 	r = await e.ensure([PACK])
-	t.check("plan: a delivered release that is not the target is refused (record-mismatch)", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and not e.running.has(PACK), str(r))
-	# A decision targeting exactly v2 takes it.
-	r = await e.ensure_releases([{"pack": PACK, "release": {"sha256": v2["recordSha256"], "seq": 2, "version": "1.1.0"}}])
-	t.check("plan: a decision's exact target takes the delivered release", r.ok and e.running.get(PACK, {}).get("recordSha256") == v2["recordSha256"], str(r))
+	t.check("plan: a newer delivered release floats in for the pin (apple)", r.ok and e.running.get(PACK, {}).get("recordSha256") == v2["recordSha256"], str(r))
+	# A decision's exact target is never satisfied by another release.
+	r = await e.ensure_releases([{"pack": PACK, "release": {"sha256": v1["recordSha256"], "seq": 1, "version": "1.0.0"}}])
+	t.check("plan: a decision's exact target refuses the floated release (record-mismatch)", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH, str(r))
+	S.remove_tree(root)
+
+	# (a) A copy that floated in at boot is current for the pin: ensure is ok, nothing re-fetched.
+	root = S.scratch("transports-plan-float-boot")
+	made = _apple_transport(root.path_join("staging"))
+	_write_tree(_apple_dir(root.path_join("staging")), v2)
+	e = _engine(root, [v1, v2], [v1], made[0])
+	var copies: Array = await made[0].installed()
+	var loaded: Dictionary = await e.load_state([], copies)
+	t.check("plan: the floated copy was accepted at boot", loaded["refused"].is_empty() and e._embedded.get(PACK, {}).get("recordSha256") == v2["recordSha256"], S.canon(loaded))
+	r = await e.ensure([PACK])
+	t.check("plan: a copy floated in at boot makes ensure ok (current), no platform delivery", r.ok and made[1].ensured.is_empty() and e.running.get(PACK, {}).get("recordSha256") == v2["recordSha256"], str(r))
+	t.check("plan: the floated copy is never written to the state document", not e.doc["active"].has(PACK))
+	S.remove_tree(root)
+
+	# (b) A float refused at boot (Play stays pinned) still fails closed at ensure.
+	root = S.scratch("transports-plan-float-refused")
+	made = _play_transport(root.path_join("assets"))
+	made[1].packs = {"djdl_foes": 4}
+	_write_tree(_play_dir(root.path_join("assets")), v2)
+	e = _engine(root, [v1, v2], [v1], made[0])
+	copies = await made[0].installed()
+	loaded = await e.load_state([], copies)
+	t.check("plan: a play copy newer than the pin is refused at boot (pin)", loaded["refused"].size() == 1 and loaded["refused"][0]["step"] == "pin" and not e._embedded.has(PACK), S.canon(loaded))
+	r = await e.ensure([PACK])
+	t.check("plan: after a refused float, ensure fails closed (record-mismatch)", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and not e.running.has(PACK), str(r))
+	S.remove_tree(root)
+
+	# The noop edge: a platform copy holding the target's payload under another record is used as
+	# the install, never committed to the state.
+	root = S.scratch("transports-plan-noop")
+	made = _apple_transport(root.path_join("staging"))
+	var same_files := {"foes/goblin.json": "{\"hp\": 1}", "foes/orc.json": "{\"hp\": 9}"}
+	var a := F.tree_pack(PACK, "1.0.0", 1, same_files)
+	var b := F.tree_pack(PACK, "1.0.1", 2, same_files)
+	_write_tree(_apple_dir(root.path_join("staging")), b)
+	e = _engine(root, [a, b], [a], made[0])
+	copies = await made[0].installed()
+	await e.load_state([], copies)
+	r = await e.ensure_releases([{"pack": PACK, "release": {"sha256": a["recordSha256"], "seq": 1, "version": "1.0.0"}}])
+	t.check("plan: a noop onto a platform copy returns it and commits nothing", r.ok and not e.doc["active"].has(PACK) and made[1].ensured.is_empty(), str(r) + " " + S.canon(e.doc["active"]))
 	S.remove_tree(root)
 
 	# A tampered delivery: marker-rejected at payload.

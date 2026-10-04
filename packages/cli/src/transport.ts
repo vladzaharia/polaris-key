@@ -49,7 +49,7 @@ import { reportDistribution } from "./distribution.js";
 export const TRANSPORT_USAGE =
   "Usage: pkey transport apple-ba package --deliverable <packId> --release <v> --from <dir> [--content-api n]\n" +
   "              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]\n" +
-  "       pkey transport apple-ba upload --deliverable <packId> --release <v> --dir <package out> [--content-api n]\n" +
+  "       pkey transport apple-ba upload --deliverable <packId> --release <v> --dir <package out> [--from <dir>] [--content-api n]\n" +
   "              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]\n" +
   "       pkey transport play-pad modules --deliverable <packId> --release <v> --from <dir> --project <gradle dir>\n" +
   "              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]\n" +
@@ -102,7 +102,14 @@ export interface LoadedTransportPack extends TransportProduct {
 export const sha256Hex = (b: Uint8Array | string): string =>
   createHash("sha256").update(b).digest("hex");
 
-/** The decoded payload of a compact JWS (not verified: the cache is CI's own output). */
+/**
+ * The decoded payload of a compact JWS. Its signature is deliberately not verified here: the cache
+ * is this CI's own `pkey release publish --out` output (a record the publish signed, checked with
+ * `checkSignedRecord` and submitted), the release key is often not available to a later job, and
+ * nothing here grants trust. Each payload is re-hashed against this record, and the device verifies
+ * the marker (this record) against its pinned release keys before anything mounts, so a tampered
+ * cache can only make the device refuse the pack.
+ */
 function jwsPayload(jws: string): unknown {
   const parts = jws.split(".");
   if (parts.length !== 3) throw new Error("record.jws is not a compact JWS.");

@@ -154,7 +154,7 @@ export function outletView(
       .map((t) => ({
         deliverableId: t.deliverable_id,
         transport: t.transport,
-        // Stored and listed whatever it is; only the v1 transports are acted on (P4-05).
+        // Stored and listed whatever it is; only SUPPORTED_TRANSPORTS are acted on (P4-05, P5-08).
         supported: transportSupported(t.transport),
       })),
     removedAt: row.removed_at,

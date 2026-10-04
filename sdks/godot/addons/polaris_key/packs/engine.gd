@@ -29,10 +29,12 @@ extends RefCounted
 ## embedded baselines). For a pack the platform carries, the planner gets a target bound to the
 ## platform's transport and lists that transport only while the platform is available, so the plan
 ## is `noop`, `platform` or `plan-transport-unsupported`, never a silent CDN fallback. `platform`
-## asks the transport to deliver, re-reads its copy, and accepts it only when it is EXACTLY the
-## target release (`record-mismatch` otherwise; a bad marker or payload is `marker-rejected` with
-## the step). A platform copy is never written to the state document: its path is re-resolved at
-## every boot.
+## asks the transport to deliver, re-reads its copy, and accepts it for the stamp's pin under the
+## same platform pin rule (a floated later release is current), and for a decision's exact target
+## only when it is EXACTLY that release (`record-mismatch` otherwise; a bad marker or payload is
+## `marker-rejected` with the step). A copy that floated in at boot is current for the pin. A
+## platform copy is never written to the state document (a `noop` onto one returns it as is): its
+## path is re-resolved at every boot.
 ##
 ## The install state is hardened exactly as P4-06's: a state read answers "missing" ONLY when
 ## there is no file and anything else makes the state `unreadable` (nothing is written, fetched or
@@ -989,11 +991,22 @@ func _verify_platform(e: Dictionary, exact: Variant = null) -> Dictionary:
 		if pin is Dictionary and not PKeyPackClaims.same(pin["release"].get("sha256"), m["recordSha256"]):
 			var floats: bool = e.get("floats", platform.floats() if platform != null and platform.has_method("floats") else false) == true
 			var pin_seq = pin["release"].get("seq")
-			if not floats or not PKeyClaims.is_number(pin_seq) or float(m["record"]["seq"]) <= float(pin_seq):
-				return {"ok": false, "step": "pin"}
+			if not floats or not PKeyClaims.is_number(pin_seq) or float(m["record"]["seq"]) <= float(pin_seq) or is_revoked(m["recordSha256"]):
+				return {"ok": false, "step": "pin", "mismatch": true, "recordSha256": m["recordSha256"], "version": m["version"]}
 	var install := _baseline_install(m, match["variant"], e["location"])
 	install["platform"] = String(e.get("transport", platform.id() if platform != null else ""))
 	return {"ok": true, "install": install}
+
+
+## P5-08: whether a platform copy is a later release than the stamp pin `pin` that the platform
+## transport may float to (`floats()`), and is not revoked.
+func _platform_floated(copy: Dictionary, pin: Dictionary) -> bool:
+	if platform == null or not platform.has_method("floats") or not platform.floats():
+		return false
+	if is_revoked(copy["recordSha256"]):
+		return false
+	var pin_seq = pin["release"].get("seq")
+	return PKeyClaims.is_number(pin_seq) and PKeyClaims.is_number(copy.get("seq")) and float(copy["seq"]) > float(pin_seq)
 
 
 ## The installs of a pack the planner can reuse: active, the embedded copy and previous.
@@ -1041,6 +1054,12 @@ func _preflight(pack_id: String, want: Variant = null) -> Dictionary:
 	if emb is Dictionary and _embedded_refused(emb):
 		emb = null
 	if emb is Dictionary and emb["recordSha256"] == pin_sha and not (current is Dictionary):
+		return {"kind": "current", "install": emb}
+	# P5-08: a platform copy that floated in at boot (load_state accepted it under the float rule
+	# against this very pin: same pack, higher seq, not refused) is current for the stamp's pin. A
+	# decision's exact target (`want`) is never satisfied by another release.
+	if emb is Dictionary and emb.get("platform") is String and not (want is Dictionary) and not (current is Dictionary) \
+			and _platform_floated(emb, pin):
 		return {"kind": "current", "install": emb}
 	# A release the boot guard rolled back is not installed again while the stamp still pins it;
 	# the restored install (or the embedded baseline) stands in for it.
@@ -1201,7 +1220,7 @@ func _platform_preflight(pack_id: String, pin_sha: String, body_text: String, re
 ## accepted only as exactly the target release, registered as this pack's baseline and activated
 ## (hot now; restart when its id is not mounted yet in this process). Nothing is committed to the
 ## state document: the copy's path is the platform's and is re-read at every boot. A coroutine.
-func _ensure_platform(pack_id: String, record_sha256: String) -> Dictionary:
+func _ensure_platform(pack_id: String, record_sha256: String, is_pin := false) -> Dictionary:
 	var forward := func(pid: String, bytes: int, total: int) -> void:
 		_emit({"packId": pid, "phase": "download", "done": bytes, "total": total})
 	var has_signal: bool = platform.has_signal("pack_progress")
@@ -1217,7 +1236,9 @@ func _ensure_platform(pack_id: String, record_sha256: String) -> Dictionary:
 		return _err(String(PKeyErrors.PLATFORM_ERROR), "%s reports %s ready but holds no copy of it." % [platform.id(), pack_id], pack_id)
 	if b.has("error"):
 		return _err(PKeyConstants.ErrorCode.MARKER_REJECTED, "%s's copy from %s cannot be read as a pack." % [pack_id, platform.id()], pack_id, {"step": String(b["error"])})
-	var v: Dictionary = await _verify_platform(b, record_sha256)
+	# The stamp's pin takes the platform pin rule (a floated later release is accepted); a decision's
+	# exact target takes only that release.
+	var v: Dictionary = await _verify_platform(b, null if is_pin else record_sha256)
 	if not v["ok"]:
 		if v.get("mismatch") == true:
 			return _err(String(PKeyErrors.RECORD_MISMATCH), "%s holds %s@%s, not the target release." % [platform.id(), pack_id, str(v.get("version"))], pack_id, {"recordSha256": v["recordSha256"]})
@@ -1367,6 +1388,10 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 			if i["payloadSha256"] == variant["payload"]["sha256"]:
 				same = i
 				break
+		# P5-08: a platform copy is never committed to the state (its path is the platform's and is
+		# re-read at every boot); it stands as the install.
+		if same is Dictionary and same.get("platform") is String:
+			return {"install": same}
 		# plans/P4-19.md Amendment A1: a delegated release that reuses an install holding the same
 		# payload re-sniffs that install's files, so the rule holds whatever admitted the bytes.
 		if delegation != null:
@@ -1382,7 +1407,7 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 	if p["strategy"] == "platform":
 		if platform == null:
 			return _err(PKeyConstants.ErrorCode.PLAN_TRANSPORT_UNSUPPORTED, "%s is platform-bound." % pack_id, pack_id)
-		return await _ensure_platform(pack_id, pre["recordSha256"])
+		return await _ensure_platform(pack_id, pre["recordSha256"], not (target is Dictionary))
 
 	# 5–6. Each candidate in turn: journal, fetch, apply.
 	var first_failure = null

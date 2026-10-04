@@ -1200,6 +1200,7 @@ async function cmdTransport(
       await baUpload({
         ...common,
         dir: flagString(parsed, "dir"),
+        from: flagString(parsed, "from"),
         contentApi: flagString(parsed, "content-api"),
         expectResource: flagString(parsed, "expect-resource"),
         lock: flagString(parsed, "lock"),
@@ -1325,7 +1326,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
   pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
               [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
-  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--content-api n]
+  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
               [--expect-resource id] [--lock file] [--wait minutes] [--no-report]
   pkey transport play-pad modules --deliverable packId --release v --from dir --project dir
               [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]

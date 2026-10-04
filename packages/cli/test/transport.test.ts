@@ -771,6 +771,50 @@ describe("pkey transport apple-ba upload", () => {
     }
   });
 
+  it("re-hashes the packaged content against the package step and, with --from, the signed record", async () => {
+    const w = await packaged();
+    const content = path.join(
+      w.cwd,
+      "build/pkey-transport/apple-ba/diceroll-core3d-c4/pkey/diceroll-core3d-c4",
+    );
+    // With --from and untouched files, the upload goes ahead.
+    const ok = fakeAsc();
+    expect(await uploadWith(w, ok, { from: "cache" }).run()).toMatchObject({
+      created: true,
+    });
+
+    // A marker edited after packaging: the payload still matches the inputs, the record does not.
+    const markerFile = path.join(content, "diceroll-core3d-c4.pck.pkey.json");
+    const marker = await readFile(markerFile, "utf8");
+    await writeFile(
+      markerFile,
+      marker.replace('"version": "1.0.0"', '"version": "9.9.9"'),
+    );
+    const m = fakeAsc();
+    const e1 = await uploadWith(w, m, { from: "cache" })
+      .run()
+      .catch((x) => x);
+    expect(e1).toBeInstanceOf(AscUploadError);
+    expect(e1.code).toBe("asset-pack-inputs-mismatch");
+    expect(m.calls).toEqual([]);
+    await writeFile(markerFile, marker);
+
+    // A payload edited after packaging is refused with or without --from, before any request.
+    const pck = path.join(content, "diceroll-core3d-c4.pck");
+    const bytes = new Uint8Array(await readFile(pck));
+    bytes[bytes.length - 1] = bytes[bytes.length - 1]! ^ 1;
+    await writeFile(pck, bytes);
+    for (const over of [{}, { from: "cache" }]) {
+      const asc = fakeAsc();
+      const e = await uploadWith(w, asc, over)
+        .run()
+        .catch((x) => x);
+      expect(e.code).toBe("asset-pack-inputs-mismatch");
+      expect(e.message).toMatch(/the packaged content/);
+      expect(asc.calls).toEqual([]);
+    }
+  });
+
   it("refuses without credentials, and when the package step's inputs do not match", async () => {
     const w = await packaged();
     const asc = fakeAsc();

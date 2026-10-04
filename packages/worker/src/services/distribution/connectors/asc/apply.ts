@@ -771,7 +771,10 @@ export async function syncBackgroundAsset(
     id: r.id,
     outletId: outlet,
     releaseId: resolved ?? undefined,
-    buildId: "",
+    // P5-08: one availability row per asset pack. A pack release bound at two content levels has
+    // two asset packs on the same outlet (`<pack>-c3`, `<pack>-c4`); keyed by the asset pack, a
+    // reconcile of one never overwrites the other's state.
+    buildId: assetPackIdentifier ?? "",
     storeState,
     state,
     ref: stripNulls({

@@ -42,6 +42,9 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveAssetPackIds } from "@polaris-key/manifest";
+import { treeDigest } from "@polaris-key/client-core/packs";
+import { MARKER_SUFFIX, TREE_MARKER_PATH } from "@polaris-key/protocol/packs";
+import { readTree } from "./packArtifacts.js";
 import { defaultSleep, type Sleep } from "./ci.js";
 import {
   contentLevel,
@@ -317,6 +320,11 @@ export interface BaUploadOptions extends TransportCommon {
   /** The asset pack's App Store Connect resource id, when the lock does not hold it yet. */
   expectResource?: string;
   lock?: string;
+  /**
+   * The publish cache (`pkey release publish --out`): when given, the packaged files are also
+   * checked against the signed record there (the record hash, the variant's payload, the marker).
+   */
+  from?: string;
   /** Poll the version this many minutes for COMPLETE or FAILED (default 0: the connector tracks it). */
   waitMinutes?: number;
   now?: () => number;
@@ -389,6 +397,30 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
       `${path.relative(o.cwd, aar)} is missing: package on macOS (without --no-archive) first.`,
     );
   });
+  // The packaged content, re-hashed: it must be the payload the package step recorded (and, with
+  // --from, the payload and marker the signed record pins), so nothing edited after packaging is
+  // uploaded. The archive itself is not reproducible and is never hashed.
+  const content = path.join(dir, assetPackId, "pkey", assetPackId);
+  const packaged = await packagedPayload(content, assetPackId);
+  if (packaged.sha256 !== inputs.payloadSha256)
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `the packaged content under ${path.relative(o.cwd, content) || content} hashes to ${packaged.sha256.slice(0, 12)}…, not the payload ${String(inputs.payloadSha256).slice(0, 12)}… the package step recorded: package again.`,
+    );
+  if (o.from !== undefined) {
+    const loaded = await loadTransportPack(o, o.from);
+    const variant = loaded.variants.find((v) => v.key === inputs.variant);
+    if (
+      inputs.recordSha256 !== loaded.recordSha256 ||
+      !variant ||
+      variant.payload.sha256 !== packaged.sha256 ||
+      packaged.marker !== loaded.marker
+    )
+      throw new AscUploadError(
+        "asset-pack-inputs-mismatch",
+        `the packaged content of ${assetPackId} is not ${product.pack.id}@${o.version}'s signed record in ${o.from} (record, payload or marker differ): package again from that cache.`,
+      );
+  }
   const appId = appIdOf(product, outlets, o.env);
   const lockFile = path.resolve(o.cwd, o.lock ?? DEFAULT_ASSET_PACK_LOCK);
   const lock = await readLock(lockFile);
@@ -533,6 +565,37 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
     versionId: version.id,
     ascVersion,
     state,
+  };
+}
+
+/** The payload `package` placed (a container `<id>.pck|.zip`, else the tree) and its marker text. */
+async function packagedPayload(
+  content: string,
+  name: string,
+): Promise<{ sha256: string; marker: string | null }> {
+  for (const ext of [".pck", ".zip"]) {
+    const file = path.join(content, `${name}${ext}`);
+    const bytes = await readFile(file).catch(() => null);
+    if (bytes)
+      return {
+        sha256: sha256Hex(bytes),
+        marker: await readFile(`${file}${MARKER_SUFFIX}`, "utf8").catch(
+          () => null,
+        ),
+      };
+  }
+  const tree = await readTree(content).catch(() => null);
+  if (!tree || tree.errors.length || !tree.files.length)
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `no packaged payload under ${content}: run pkey transport apple-ba package first.`,
+    );
+  return {
+    sha256: await treeDigest(tree.files),
+    marker: await readFile(
+      path.join(content, ...TREE_MARKER_PATH.split("/")),
+      "utf8",
+    ).catch(() => null),
   };
 }
 

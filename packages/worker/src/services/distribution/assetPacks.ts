@@ -198,18 +198,23 @@ export async function listAssetPacks(
     );
   for (const row of await db.all<{
     release_id: string;
+    build_id: string;
     outlet_id: string;
     state: string;
     platform_ref_json: string | null;
     updated_at: number;
   }>(
-    `SELECT release_id, outlet_id, state, platform_ref_json, updated_at FROM dist_availability
-      WHERE product = ? AND json_extract(platform_ref_json, '$.assetPackIdentifier') IS NOT NULL
+    `SELECT release_id, build_id, outlet_id, state, platform_ref_json, updated_at FROM dist_availability
+      WHERE product = ? AND (json_extract(platform_ref_json, '$.assetPackIdentifier') IS NOT NULL
+        OR (transport = 'apple-ba' AND build_id != ''))
       ORDER BY updated_at`,
     product,
   ))
+    // P5-08: an apple-ba row is keyed by its asset pack (`build_id`); that key names the level.
     await note(
-      obj(row.platform_ref_json),
+      row.build_id !== ""
+        ? { ...obj(row.platform_ref_json), assetPackIdentifier: row.build_id }
+        : obj(row.platform_ref_json),
       row.release_id,
       `availability:${row.outlet_id}`,
       row.state,

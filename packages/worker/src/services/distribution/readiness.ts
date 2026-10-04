@@ -338,10 +338,11 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
   const reports = memo(async (releaseId: string) =>
     db.all<{
       outlet_id: string;
+      build_id: string;
       state: string;
       platform_ref_json: string | null;
     }>(
-      `SELECT outlet_id, state, platform_ref_json FROM dist_availability
+      `SELECT outlet_id, build_id, state, platform_ref_json FROM dist_availability
         WHERE product = ? AND release_id = ?`,
       product,
       releaseId,
@@ -406,6 +407,10 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
         if (r.outlet_id !== outlet.outlet_id) return false;
         if (!APPROVED_STATES.includes(r.state)) return false;
         if (t !== "apple-ba" || level === null) return true;
+        // P5-08: apple-ba rows are keyed by their asset pack (`build_id`), one row per level; a
+        // whole-release row (`''`, a hand-made report) counts when it names this asset pack or
+        // none.
+        if (r.build_id !== "") return r.build_id === wanted;
         const named = objectOf(r.platform_ref_json).assetPackIdentifier;
         return typeof named !== "string" || named === wanted;
       });
