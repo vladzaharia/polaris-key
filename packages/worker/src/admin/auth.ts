@@ -10,8 +10,9 @@
  *
  * The token-exchange + ID-token verification is delegated to an injectable `IdTokenVerifier`
  * so tests can drive the flow without a live IdP (production wires the jose-backed verifier).
- * The platform IdP config comes from env vars (ADMIN_OIDC_*), keeping admin auth independent
- * of any single product's OIDC client.
+ * The IdP config comes from `adminOidcConfig` (I-03): the console's own client (`ADMIN_OIDC_*`)
+ * when it is set, else the shared platform client (`PLATFORM_OIDC_*`). Either way admin auth is
+ * independent of any single product's OIDC client.
  */
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -25,7 +26,7 @@ import {
   putArtefact,
   type ArtefactRef,
 } from "../core/singleUse.js";
-import { platformOidcConfig } from "../platformOidc.js";
+import { adminOidcConfig } from "../platformOidc.js";
 import { brandedHtmlSecurityHeaders } from "../securityHeaders.js";
 import { escapeHtml, renderBrandPage } from "../core/brandHtml.js";
 import { hasAnyAdminGrant } from "./authz.js";
@@ -148,7 +149,7 @@ function mapClaims(payload: Record<string, unknown>): SessionIdentity {
 /** The production verifier: token exchange against the IdP + jose JWKS verification. */
 const joseIdTokenVerifier: IdTokenVerifier = {
   async verify({ code, flow, env }) {
-    const cfg = platformOidcConfig(env);
+    const cfg = adminOidcConfig(env);
     if (!cfg) return null;
     const tokenRes = await fetch(
       `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
@@ -234,7 +235,7 @@ export async function handleAdminLogin(
       429,
       "Too many sign-in attempts. Please wait and try again.",
     );
-  const cfg = platformOidcConfig(env);
+  const cfg = adminOidcConfig(env);
   if (!cfg) return htmlError(500, "Admin sign-in is not configured.");
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));

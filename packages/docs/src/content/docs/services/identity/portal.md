@@ -46,7 +46,8 @@ both `releasesEnabled` and the Release service on.
 
 **OIDC.** `/login` uses the same `platformOidcConfig` a `platform`-provider product uses (see
 [Product OIDC](/docs/services/identity/oidc/)) — the portal and every platform-issuer product
-share one IdP client and one trust boundary. Rate-limited to 20 requests per minute per IP; PKCE,
+share one IdP client and one trust boundary. The console has its own client (`ADMIN_OIDC_*`),
+so operators and customers do not share one. Rate-limited to 20 requests per minute per IP; PKCE,
 `state`, and `nonce` follow the same shape as the product flow, with the redirect URI fixed to
 `<origin>/callback` rather than a product-scoped path.
 

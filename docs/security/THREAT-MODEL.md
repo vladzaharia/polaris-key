@@ -2807,8 +2807,9 @@ is no new privilege level and no outbound call.
   not credentials (the environment, the admin group name, the IdP issuer and client id, the
   parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
   and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
-  when the legacy `ADMIN_OIDC_*` names are what resolved, when `PLATFORM_KEK_ID` is set, and
-  when `PORTAL_SESSION_SECRET` is unset (the portal then signs with `ADMIN_SESSION_SECRET`).
+  when the console still borrows the platform IdP client (`ADMIN_OIDC_*` unset, I-03), when
+  `PLATFORM_KEK_ID` is set, and when `PORTAL_SESSION_SECRET` is unset (the portal then signs with
+  `ADMIN_SESSION_SECRET`).
 - **Propagation.** Each isolate caches the table for 30 s; the cron handler and the lazy-delta
   consumer re-read it at the start of each invocation. A setting that must take effect instantly
   does not belong in this store.
@@ -3598,6 +3599,33 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   tester's configured answer, not a check of the device, and is refused (`testing_response`)
   unless the operator sets `playIntegrity.allowTestingResponses: true` for internal testing; the
   flag is recorded in the verdict summary either way.
+
+### The console's own IdP client (I-03)
+
+Operators sign in to the console through their own Pocket ID client (`ADMIN_OIDC_*`); the
+customer portal and every `provider: platform` product sign in through the platform client
+(`PLATFORM_OIDC_*`). Before I-03 one client served all three, so a leaked client secret or a
+group-assignment mistake on that client crossed from customer to operator (notes/S-16 §5.4 item
+1).
+
+- **The split is one-way by construction.** `platformOidcConfig` reads `PLATFORM_OIDC_*` only;
+  it no longer falls back to the `ADMIN_OIDC_*` names. A customer sign-in therefore never goes
+  through the operators' client, whatever the deploy sets.
+- **The console falls back whole.** `adminOidcConfig` takes the admin trio when both its issuer
+  and client id are set, and its secret only from `ADMIN_OIDC_CLIENT_SECRET`; otherwise the whole
+  platform trio. No field is mixed across clients, so a half-set admin trio is ignored rather than
+  pairing one client's id with the other's secret.
+- **The fallback is visible.** While the console borrows the platform client, Platform → Settings
+  shows `console_oidc_shared`, naming the admin variables still unset. Until the owner sets them
+  the pre-I-03 exposure stands: the residual this package closes only once the secrets are set
+  and `/manage/callback` is removed from the platform client (DEPLOYMENT §2).
+- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` (or a product
+  admin group) in the ID token's `groups` (§5). A separate client narrows who can obtain a token
+  for the console's audience; it does not change what the token grants. Where Pocket ID can
+  restrict a client to user groups, allowing only the admin group on the console client adds a
+  second check at the IdP.
+- **Residual.** Both clients live in one Pocket ID directory: a compromise of Pocket ID itself, or
+  of its admin account, still reaches both. Moving end users out of Pocket ID is I-09.
 
 ### Boundaries that are weaker than they look
 

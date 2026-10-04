@@ -154,6 +154,13 @@ export interface Env {
   PLATFORM_OIDC_ISSUER?: string;
   PLATFORM_OIDC_CLIENT_ID?: string;
   PLATFORM_OIDC_CLIENT_SECRET?: string;
+  /** The console's own operator sign-in client (I-03). Read by `adminOidcConfig` only; when the
+   *  issuer or client id is unset the console falls back to `PLATFORM_OIDC_*`. The portal and
+   *  `provider: platform` products never read these. Set all three in ONE `wrangler secret
+   *  bulk` call so no deployed version sees half a trio. */
+  ADMIN_OIDC_ISSUER?: string;
+  ADMIN_OIDC_CLIENT_ID?: string;
+  ADMIN_OIDC_CLIENT_SECRET?: string;
   PORTAL_EMAIL_FROM?: string;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
