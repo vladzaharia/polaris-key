@@ -6,7 +6,7 @@ name: Registry clients
 # packages/worker/scripts/registry-clients/run.mjs. F-02 ships the smoke client (curl), which pins
 # the host's isolation contract over real HTTP; F-04 to F-09 add their ecosystem's clients as
 # matrix rows (npm, pnpm, Yarn, Bun; pip, uv, Poetry; SwiftPM on macOS; Gradle and Maven; docker,
-# podman and crane; GodotEnv).
+# podman and crane; GodotEnv). `workflow_dispatch -f ecosystem=<name>` runs one ecosystem's rows.
 #
 # Making it a required check on pull requests that touch these paths is a branch-protection
 # setting (DEPLOYMENT §7).
@@ -23,6 +23,11 @@ on:
       - "packages/cli/src/package/**"
       - ".github/workflows/registry-clients.yml"
   workflow_dispatch:
+    inputs:
+      ecosystem:
+        description: "Run only this ecosystem's clients (e.g. oci); empty runs every client."
+        required: false
+        default: ""
 
 # Least privilege: the jobs only read the checkout.
 permissions:
@@ -37,16 +42,58 @@ jobs:
       matrix:
         include:
           - client: curl
+            ecosystem: host
             os: ubuntu-latest
+          # F-08: OCI pull. `oci` is the curl contract; then the OCI conformance suite (pull
+          # workflow, built from distribution-spec v1.1.1), crane, docker and podman, each pulling
+          # both platforms of the seeded multi-arch image. The runner image ships docker and
+          # podman; crane and the suite need Go.
+          - client: oci
+            ecosystem: oci
+            os: ubuntu-latest
+          - client: oci-conformance
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
+          - client: oci-crane
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
+          - client: oci-docker
+            ecosystem: oci
+            os: ubuntu-latest
+          - client: oci-podman
+            ecosystem: oci
+            os: ubuntu-latest
+    # A client whose tool is missing fails rather than skipping (clients/oci.inc `need`).
+    env:
+      REGISTRY_CLIENTS_REQUIRE: "1"
+      SELECTED: ${{ !inputs.ecosystem || inputs.ecosystem == matrix.ecosystem }}
     steps:
       - uses: actions/checkout@v7
+        if: env.SELECTED == 'true'
       # No `version:` here: the action reads `packageManager` from package.json.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: env.SELECTED == 'true'
       - uses: actions/setup-node@v7
+        if: env.SELECTED == 'true'
         with:
           node-version: 22
           cache: pnpm
+      - uses: actions/setup-go@v6
+        if: env.SELECTED == 'true' && matrix.go
+        with:
+          go-version: stable
+          cache: false
+      - name: Install crane
+        if: env.SELECTED == 'true' && matrix.client == 'oci-crane'
+        run: |
+          go install github.com/google/go-containerregistry/cmd/crane@v0.20.6
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
+        if: env.SELECTED == 'true'
       # The Worker imports the built workspace packages (brand, manifest, protocol, …).
       - run: pnpm build
+        if: env.SELECTED == 'true'
       - run: pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}
+        if: env.SELECTED == 'true'
