@@ -11,7 +11,7 @@ docs' parity page renders it.
 | -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `:core`        | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants |
 | `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
-| `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone             |
+| `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform`, singleton `PolarisKeyAndroid` (`../godot/native/android/`)                                                                |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
 
