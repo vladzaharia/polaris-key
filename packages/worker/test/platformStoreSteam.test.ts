@@ -101,7 +101,7 @@ describe("platform Steam", () => {
 
   it("lists the group's apps plus the operator-entered ones; the operator list alone serves a key without the listing permission", async () => {
     const w = await world();
-    await api(w, "PUT", "/steam/settings/appIds", { value: "1234560" });
+    await api(w, "PUT", "/steam/settings/appIds", { value: "7654320" });
     const res = await api(w, "GET", "/steam/apps");
     expect(res.status).toBe(200);
     const body = (await bodyOf(res)) as {
@@ -119,7 +119,7 @@ describe("platform Steam", () => {
           status: expect.objectContaining({ source: "steam" }),
         }),
         expect.objectContaining({
-          appId: "1234560",
+          appId: "7654320",
           status: { source: "operator" },
         }),
       ]),
@@ -217,5 +217,49 @@ describe("platform Steam", () => {
       SLUG,
     );
     expect(await steamCredential(w.env, w.db, SLUG, STEAM_APP)).toBeNull();
+  });
+
+  it("a claim for an app the product never mapped is refused like a non-owner, before Steam is asked", async () => {
+    // With the product's own key and with the group key alike.
+    for (const own of [true, false]) {
+      cw?.close();
+      cw = await commerceWorld({ credentials: own });
+      const w = cw;
+      if (!own) {
+        (w.env as Record<string, unknown>).PLATFORM_STEAM_PUBLISHER_KEY =
+          JSON.stringify({ key: STEAM_KEY });
+        await setPlatformPin(w.db, {
+          id: "steam.publisher-key",
+          product: SLUG,
+          pin: STEAM_APP,
+          actor: "x",
+          now: NOW,
+        });
+      }
+      w.fakes.steam.tickets.set(TICKET, {
+        steamid: STEAMID,
+        identity: await bindingOf(w, w.tokenA),
+      });
+      w.fakes.steam.owns.set(`${STEAMID}:7654320`, {
+        ownsapp: true,
+        ownersteamid: STEAMID,
+      });
+      const res = await route(w, "POST", "/distribution/commerce/claim", {
+        token: w.tokenA,
+        body: { store: "steam", ticket: TICKET, dlcAppId: "7654320" },
+      });
+      const notOwned = await route(w, "POST", "/distribution/commerce/claim", {
+        token: w.tokenA,
+        body: { store: "steam", ticket: TICKET, dlcAppId: STEAM_DLC },
+      });
+      expect(res.status, `own=${own}`).toBe(403);
+      // Same answer as a mapped app the player does not own.
+      expect(await bodyOf(res)).toEqual(await bodyOf(notOwned));
+      expect(
+        w.fakes.steam.requests.some(
+          (r) => r.url.searchParams.get("appid") === "7654320",
+        ),
+      ).toBe(false);
+    }
   });
 });

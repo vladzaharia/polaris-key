@@ -84,6 +84,7 @@ import { readCommerceSettings, type CommerceSettings } from "./settings.js";
 import {
   bindingFor,
   getPurchase,
+  getStoreProduct,
   isStoreProductId,
   listStoreProducts,
   parseDetail,
@@ -454,6 +455,11 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
         return bad("bad_body", "ticket (hex) and dlcAppId are required");
       if (!isStoreProductId("steam", body.dlcAppId))
         return bad("bad_body", "dlcAppId must be a Steam app id");
+      // A-16: only an app this product mapped is ever asked about. Without this a device could
+      // use the product's (or the platform group's) publisher key as an ownership oracle for any
+      // app the key may query. The refusal is the same as a non-owner's, so it says nothing.
+      if (!(await getStoreProduct(db, product.slug, "steam", body.dlcAppId)))
+        return refusal("not_owned");
       purchase = await verifySteamClaim(
         storeCtx as SteamContext,
         body.ticket,
