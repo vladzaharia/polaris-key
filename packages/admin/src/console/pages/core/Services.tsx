@@ -589,8 +589,8 @@ function PackageFeedsSection({
           title="Package feeds"
           description={
             <>
-              Serve this product's packages to npm, pip, docker, SwiftPM, Gradle
-              and Godot from the registry host.{" "}
+              npm, pip, docker, SwiftPM, Gradle and Godot, from the registry
+              host.{" "}
               <a
                 href={docsUrl("packageFeeds")}
                 target="_blank"
@@ -623,11 +623,13 @@ function PackageFeedsSection({
           }
         >
           {query.isError ? (
-            <ErrorState
-              compact
-              error={query.error}
-              onRetry={() => void query.refetch()}
-            />
+            <div className="px-5 py-4">
+              <ErrorState
+                compact
+                error={query.error}
+                onRetry={() => void query.refetch()}
+              />
+            </div>
           ) : (
             <SettingsRow
               label={
@@ -643,19 +645,14 @@ function PackageFeedsSection({
                   : "Needs Distribution: with Distribution off, no feed answers whatever this says."
               }
             >
-              <div className="flex flex-wrap items-center gap-3">
-                <Switch
-                  id="service-package-feeds"
-                  checked={enabled}
-                  readOnly={form.isSubmitting || query.isPending}
-                  onCheckedChange={(c) =>
-                    form.rhf.setValue("enabled", c, { shouldDirty: true })
-                  }
-                />
-                <span className="text-sm text-fg-muted">
-                  {enabled ? "On" : "Off"}
-                </span>
-              </div>
+              <Switch
+                id="service-package-feeds"
+                checked={enabled}
+                readOnly={form.isSubmitting || query.isPending}
+                onCheckedChange={(c) =>
+                  form.rhf.setValue("enabled", c, { shouldDirty: true })
+                }
+              />
             </SettingsRow>
           )}
         </SettingsSection>

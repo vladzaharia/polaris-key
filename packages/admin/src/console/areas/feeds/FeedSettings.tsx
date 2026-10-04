@@ -101,7 +101,6 @@ export function FeedSettingsTab({
       <SettingsSection
         id="feed-upstream"
         title="Upstream"
-        description="Where the feed looks for a name it does not hold."
       >
         <SettingsRow
           label="Upstream registry"
@@ -152,7 +151,6 @@ function GeneralSection({
       <SettingsSection
         id="feed-general"
         title="General"
-        description="Whether the feed answers at all."
         footer={
           <>
             <SubmitError
@@ -167,7 +165,7 @@ function GeneralSection({
           label="Serving"
           help="Off, every client gets the registry's not-found, the same answer as a feed that does not exist."
         >
-          <FormField<boolean> name="enabled" label="Enabled">
+          <FormField<boolean> name="enabled" label="Enabled" hideLabel>
             {(field) => (
               <Switch
                 id={field.id}
@@ -246,10 +244,19 @@ function AccessSection({
           </>
         }
       >
-        <SettingsRow label="Who may install">
-          <FormField<string> name="accessMode" label="Mode" group>
+        <SettingsRow label="Who may install" align="block">
+          <FormField<string>
+            name="accessMode"
+            label="Who may install"
+            hideLabel
+            group
+          >
             {(field) => (
-              <RadioCards<string> {...field} columns={2} options={options} />
+              <RadioCards<string>
+                {...field}
+                columns={options.length >= 4 ? 4 : 2}
+                options={options}
+              />
             )}
           </FormField>
         </SettingsRow>
@@ -373,7 +380,12 @@ function NamespaceSection({
           </SettingsRow>
         ) : eco === "npm" || eco === "swift" ? (
           <SettingsRow label="Package scope" help={NAMESPACE_HELP[eco]}>
-            <FormField<string> name="scope" label="Scope">
+            <FormField<string>
+              name="scope"
+              label="Scope"
+              hideLabel
+              className="w-full sm:w-64"
+            >
               {(field) => (
                 <Input
                   {...field}
@@ -387,7 +399,12 @@ function NamespaceSection({
           </SettingsRow>
         ) : eco === "godot" ? (
           <SettingsRow label="Addon publisher" help={NAMESPACE_HELP[eco]}>
-            <FormField<string> name="publisher" label="Publisher">
+            <FormField<string>
+              name="publisher"
+              label="Publisher"
+              hideLabel
+              className="w-full sm:w-64"
+            >
               {(field) => (
                 <Input
                   {...field}
@@ -400,8 +417,16 @@ function NamespaceSection({
             </FormField>
           </SettingsRow>
         ) : eco === "maven" ? (
-          <SettingsRow label="Maven groups" help={NAMESPACE_HELP[eco]}>
-            <FormField<string> name="groupPrefixes" label="Group prefixes">
+          <SettingsRow
+            align="stretch"
+            label="Maven groups"
+            help={NAMESPACE_HELP[eco]}
+          >
+            <FormField<string>
+              name="groupPrefixes"
+              label="Group prefixes"
+              hideLabel
+            >
               {(field) => (
                 <Textarea
                   {...field}
@@ -415,8 +440,12 @@ function NamespaceSection({
           </SettingsRow>
         ) : (
           <>
-            <SettingsRow label="Project names" help={NAMESPACE_HELP.pypi}>
-              <FormField<string> name="names" label="Names">
+            <SettingsRow
+              align="stretch"
+              label="Project names"
+              help={NAMESPACE_HELP.pypi}
+            >
+              <FormField<string> name="names" label="Names" hideLabel>
                 {(field) => (
                   <Textarea
                     {...field}
@@ -428,8 +457,12 @@ function NamespaceSection({
                 )}
               </FormField>
             </SettingsRow>
-            <SettingsRow label="Name prefixes" help="One per line.">
-              <FormField<string> name="prefixes" label="Prefixes">
+            <SettingsRow
+              align="stretch"
+              label="Name prefixes"
+              help="One per line."
+            >
+              <FormField<string> name="prefixes" label="Prefixes" hideLabel>
                 {(field) => (
                   <Textarea
                     {...field}
@@ -496,7 +529,12 @@ function LimitsSection({
           label="Largest package"
           help={`The platform's ceiling for this ecosystem is ${bytesToMiB(ceiling)} MiB.`}
         >
-          <FormField<number | null> name="mib" label="Size">
+          <FormField<number | null>
+            name="mib"
+            label="Size"
+            hideLabel
+            className="w-44"
+          >
             {(field) => (
               <NumberInput
                 {...field}
@@ -569,7 +607,7 @@ function YankSection({
             label="Hide yanked versions"
             help="Leave a yanked version out of maven-metadata.xml, so version ranges stop resolving to it. Exact coordinates still download."
           >
-            <FormField<boolean> name="hide" label="Hide">
+            <FormField<boolean> name="hide" label="Hide" hideLabel>
               {(field) => (
                 <Switch
                   id={field.id}
@@ -640,7 +678,7 @@ function PolicySection({
           label="Serve this ecosystem"
           help="Off, every owner's feed of this ecosystem answers not-found, whatever its own settings say."
         >
-          <FormField<boolean> name="enabled" label="Served">
+          <FormField<boolean> name="enabled" label="Served" hideLabel>
             {(field) => (
               <Switch
                 id={field.id}
@@ -655,7 +693,12 @@ function PolicySection({
           label="Size ceiling"
           help="No feed of this ecosystem may accept a larger package, whatever its own limit."
         >
-          <FormField<number | null> name="mib" label="Ceiling">
+          <FormField<number | null>
+            name="mib"
+            label="Ceiling"
+            hideLabel
+            className="w-44"
+          >
             {(field) => (
               <NumberInput {...field} unit="MiB" min={0.01} step="any" />
             )}
