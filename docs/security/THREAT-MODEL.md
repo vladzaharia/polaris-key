@@ -1361,6 +1361,29 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   at 20 % left and the poller at 5 %, while an operator's control is never refused, so one
   product's flow cannot starve every other product's poller.
 
+**Product app setup (A-17c, `connectors/asc/provision.ts`).** The setup controls run under the
+same gate, ledger and audit, with these choices of their own (`test/ascProvision.test.ts`):
+
+- **The app is the pin's.** A control targets the app `resolveAscSetup` names. With no Apple outlet
+  declared yet (the New-app wizard) and no key of the product's own, the platform team key's pin
+  for the product names it; a manifest that names an app still wins and a mismatch stays refused.
+  A beta group a request names is re-read with `include=app` before a tester is added to it.
+- **The notification URL is fixed server-side** as
+  `<request origin>/<slug>/distribution/hooks/app-store` (and the gate admits nothing else). Apple
+  answers the `PATCH` without keeping it (A-17h), so the control trusts only its verification
+  re-read and otherwise answers the App Information deep link; it never reports an echo as
+  success.
+- **Testers' emails are sent to Apple once and stored nowhere.** A tester's ledger natural key and
+  request hash carry an HMAC of the email keyed with `KEY_HASH_PEPPER` and the never-stored
+  Idempotency-Key; the answer and the audit summary name no address.
+- **The test notification** calls the App Store Server API (`api.storekit(-sandbox).apple.com`)
+  through `commerce/apple.ts` with the In-App Purchase key pinned to the bundle id Apple reports
+  for the pinned app; it is audited (`distribution.asc.notifications.test`). It can only make Apple
+  send a `TEST` to the URL already configured.
+- **Defaults are only set, never changed.** Availability (every territory) and the free price are
+  sent only when the pre-read finds none (`initial`); an existing price or availability is left
+  alone.
+
 **Attack tree: stolen admin session → Apple account.** With the gate in place a stolen session
 stays inside A-17's surface: it CAN register bundle ids and enable the gate's capability types,
 create TestFlight groups and add testers, create non-consumable IAPs, submit and release (typing the

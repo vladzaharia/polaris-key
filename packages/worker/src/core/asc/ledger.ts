@@ -23,7 +23,7 @@
  */
 
 import type { Db } from "../platform.js";
-import { sha256Hex } from "../../crypto.js";
+import { hashKey, sha256Hex } from "../../crypto.js";
 import type { AdminSession } from "../adminApi.js";
 import { AscError, AscWriteDenied, type AscResource } from "./client.js";
 import {
@@ -89,6 +89,25 @@ function validateKey(k: AscOpKey): void {
   // Testers' emails are not stored at all (S-14 corrections): no email-shaped natural key.
   if (k.naturalKey.includes("@"))
     throw new Error("an ASC natural key must not carry an email");
+}
+
+/**
+ * A keyed digest of a TestFlight tester's email, for a natural key and a request hash (A-17c; the
+ * S-14 corrections: testers' emails are never stored). HMAC-SHA-256 keyed with the deployment's
+ * `KEY_HASH_PEPPER` and the intent's `Idempotency-Key`, which is never stored either: the row's
+ * value cannot be confirmed by guessing an email. The same email under the same key gives the
+ * same digest, so a retried intent replays instead of inviting twice. 32 hex characters.
+ */
+export async function ascTesterDigest(
+  pepper: string | undefined,
+  idempotencyKey: string,
+  email: string,
+): Promise<string> {
+  const digest = await hashKey(
+    email.trim().toLowerCase(),
+    `asc-tester|${pepper ?? ""}|${idempotencyKey}`,
+  );
+  return digest.slice(0, 32);
 }
 
 /** The derived `op_id` (hex SHA-256 of an unambiguous JSON array). */

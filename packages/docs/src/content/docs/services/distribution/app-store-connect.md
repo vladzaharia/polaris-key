@@ -18,7 +18,9 @@ App Store Connect API with the product's API key and keeps three things current:
   objects until a pack release claims them.
 
 It never uploads a build or an asset pack, and it never submits anything for review. Those stay
-with CI and Apple's tools.
+with CI and Apple's tools. Its setup controls can also prepare a new app: server notifications,
+TestFlight groups and testers, and the free price and availability defaults (see
+[Setting up the app](#setting-up-the-app)).
 
 ## Setting it up
 
@@ -222,6 +224,59 @@ change, a version that is not held — the answer is `store_refused` with Apple'
 `GET …/distribution/connectors` (or `…/connectors/asc`) shows the setup (credential ids only) or
 why there is none (`inert`: the manifest's app id, the chosen key and the app it is pinned to),
 the objects the connector tracks, unresolved ones flagged, and the latest webhook deliveries.
+
+## Setting up the app
+
+The `setup/…` controls do the API side of a new app's setup on the product's pinned app: server
+notifications, TestFlight groups and testers, and the free price and availability defaults. The
+**New app** wizard in Platform → Store connections drives them; they work on their own too. Each one
+that writes needs an `Idempotency-Key` header, a UUID per intent: retrying with the same key
+answers the stored result (`outcome: "replayed"`) instead of writing twice, and a different body
+under a used key is 409 `idempotency_conflict`. Without the header the answer is 422
+`idempotency_key_required`, and nothing is sent.
+
+| `POST`                            | Body                                             | What it does                                                                                                |
+| --------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `setup/notifications-url`         | `{}`                                             | Sets the App Store Server Notifications URL (production and sandbox, Version 2), then reads it back         |
+| `setup/notifications-url/verify`  | `{}`                                             | Reads the URL Apple has for each environment (no key needed)                                                |
+| `setup/notifications-test`        | `{ environment }`                                | Asks Apple to send a test notification (`"sandbox"` or `"production"`); answers a `testNotificationToken`   |
+| `setup/notifications-test/status` | `{ environment, testNotificationToken, since? }` | Apple's delivery attempts, and whether the hook stored a `TEST` notification since `since`                  |
+| `setup/beta-group`                | `{ name, kind }`                                 | Creates a TestFlight group: `internal` (all builds) or `external`. A group with that name is reused         |
+| `setup/beta-testers`              | `{ betaGroupId, emails }`                        | Adds up to 25 testers to one of the app's groups: invites a new address, links a tester the app already has |
+| `setup/availability`              | `{}`                                             | Makes the app available in every territory and in new ones, only if it has no availability yet              |
+| `setup/price`                     | `{ baseTerritory? }`                             | Sets the app's price to free (base territory `USA` by default), only if it has no price yet                 |
+| `setup/checklist`                 | `{ item, done }`                                 | Ticks or unticks a portal-only step (no Apple call, no key needed)                                          |
+
+**The notification URL needs the portal.** The URL is always this product's own hook,
+`https://<this host>/<slug>/distribution/hooks/app-store`; nothing in the request can change it.
+App Store Connect accepts the API change but, in our live check, did not keep it. So the control
+reads the app back after the write: when Apple did not keep the URL, the answer has
+`persisted: false` and a `fallback` with a link to App Information and the URL to paste. Paste it
+as both the Production and the Sandbox Server URL, choose Version 2 and save. Then check it with
+`setup/notifications-url/verify` and prove delivery with a test notification. The test uses the
+In-App Purchase key pinned to the app's bundle id (the product's own `app-store-server-key`, or the
+platform's). If no URL is configured for that environment, the answer is 409
+`notification_url_missing`. The proof is the `TEST` notification the hook stores.
+
+**Testers' addresses are not kept.** They are sent to Apple once. Polaris Key stores only a keyed
+digest in the operation record, and neither the answer nor the activity log names an address.
+`results` gives one outcome per address, in the request's order after duplicates are removed:
+`written`, `existing` (already in the group), `replayed`, or `failed` with Apple's status and code.
+
+**Defaults never overwrite.** If the app already has availability or a price, the control leaves
+it alone (`outcome: "existing"`). Changing a price is a separate, typed action.
+
+**Portal checklist.** These steps have no API: App Privacy (`app_privacy`), agreements, tax and
+banking (`agreements`), App Group and iCloud identifiers (`capability_identifiers`), App
+Information (`app_information`) and screenshots (`screenshots`). A tick is your own statement, and
+nobody checks it. `GET …/distribution/connectors/asc` shows the checklist under `provisioning`,
+with a link for each step, together with the newest setup operations and their state.
+
+**Before the repo names the app.** The wizard runs before `.pkey/distribution` declares an Apple
+outlet. Until then, the app assigned to the product in Platform → Store connections is the app the
+setup controls act on. This needs the platform team key and no `asc-api-key` of the product's own.
+Once the manifest names an app, the manifest's app must be the pinned one, as for every other
+control.
 
 ## Security
 

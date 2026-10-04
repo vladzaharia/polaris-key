@@ -75,6 +75,11 @@ export interface ControlContext {
   session: AdminSession;
   /** The origin the console was reached on: the webhook URL is built from it. */
   origin: string;
+  /**
+   * The request's `Idempotency-Key` header (A-17a/A-17c: one per user intent), or null. The
+   * ledger-backed setup controls (`provision.ts`) require it; the P5-02 controls ignore it.
+   */
+  idempotencyKey?: string | null;
   fetchImpl?: FetchImpl;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -94,7 +99,7 @@ export type ConnectorControl = (
   body: Record<string, unknown>,
 ) => Promise<ControlResult>;
 
-const refuse = (
+export const refuse = (
   status: 404 | 409 | 422 | 502,
   reason: string,
   message: string,

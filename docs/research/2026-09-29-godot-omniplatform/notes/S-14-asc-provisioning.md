@@ -890,3 +890,42 @@ A-17a landed the substrate in `packages/worker/src/core/asc/`. Where the build d
 - **The gate's capability types** (`GATE_CAPABILITY_TYPES`) are a superset for A-17b's wizard:
   `IN_APP_PURCHASE`, `PUSH_NOTIFICATIONS`, `GAME_CENTER`, `ICLOUD`, `APP_GROUPS`,
   `ASSOCIATED_DOMAINS`, `APPLE_ID_AUTH`, `DATA_PROTECTION`. There is no `APP_ATTEST` (A-17h).
+
+## Corrections (A-17c as built, 2026-10-04)
+
+A-17c landed the product setup controls in `connectors/asc/provision.ts`, merged into P5-02's
+control table, so the routes are `…/distribution/connectors/asc/setup/<op>` (all `POST`). Where
+the build departs from §7 and §8.1, the code is the fact:
+
+- **The ASN URL step follows A-17h.** `setup/notifications-url` still sends the gated `PATCH` (the
+  four attributes, the URL fixed server-side to the request's origin), but only its verification
+  re-read decides: when Apple did not keep the URL, the answer is `persisted: false` with the App
+  Information deep link and the URL to paste. `setup/notifications-url/verify` repeats the read
+  after the operator pastes it. The test notification (`setup/notifications-test`, then
+  `…/status`) reports Apple's delivery attempts and P6-01's stored `TEST` event; a 404 is
+  `notification_url_missing`.
+- **The app before the manifest names it.** §6 puts product-scope writes behind "the product's
+  pin". The wizard runs before `.pkey/distribution` declares an Apple outlet, so with no outlet
+  at all and no `asc-api-key` of the product's own, the platform team key's pin for the product
+  names the app. A manifest that names an app still wins, and a mismatch stays refused.
+- **Group names are operator input.** §8.1 step 8 names the internal group "from a platform
+  setting". No such A-13 setting exists, and adding one is not A-17c's scope, so `name` is required
+  in the request (A-17f's wizard supplies the default). A name with `@` is refused, because a
+  natural key never carries one. A same-named group of the other kind is 409
+  `beta_group_name_taken`.
+- **Testers.** Emails only (Apple's optional first and last names are not accepted), 1–25 per
+  request, one ledger step each. The natural key is `<groupId>:<digest>`, where the digest
+  (`ascTesterDigest` in `core/asc/ledger.ts`) is an HMAC of the email keyed with `KEY_HASH_PEPPER`
+  and the Idempotency-Key, which is never stored. A tester the app already has joins by the
+  `POST` linkage; Apple's 4xx for one address is reported per address and the rest carry on.
+- **Defaults.** Availability lists every territory from `GET /v1/territories` (the gate caps
+  `included` at 200, so a future list over 200 would be refused, not truncated). The free price is
+  the price point of `customerPrice` 0 in the base territory (`USA` unless the request names one).
+  An existing schedule or availability is "existing", never changed.
+- **Checklist storage.** The ticks live in `dist_connector_settings` under `asc-setup`, not in a
+  new table: no migration. `GET …/connectors/asc` adds `provisioning` (the checklist with deep links
+  and the product's newest `asc_operations` rows).
+- **Deep links** live in `ASC_DEEP_LINKS` in `provision.ts`; A-17f may move them into its own
+  table.
+- **`Idempotency-Key`** reaches a control through `ControlContext.idempotencyKey`, from the request
+  header, in Distribution's admin dispatcher.

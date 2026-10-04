@@ -7,15 +7,21 @@
 import type { DistributionConnector } from "../index.js";
 import { eventView, listEvents, listObjects, objectView } from "../state.js";
 import { ASC_CONTROLS } from "./controls.js";
+import { ASC_SETUP_CONTROLS, provisioningView } from "./provision.js";
 import { pollAsc } from "./poll.js";
 import { readRate } from "../../../../core/asc/budget.js";
+import { platformPin } from "../../../../core/platformCredentials.js";
 import {
   ASC_CONNECTOR,
+  ASC_PLATFORM_CREDENTIAL,
   ASC_LABEL,
   ASC_OUTLET_KINDS,
   resolveAscSetup,
 } from "./setup.js";
 import { handleAscWebhook } from "./webhook.js";
+
+/** P5-02's controls and A-17c's setup controls, one table. */
+const CONTROLS = { ...ASC_CONTROLS, ...ASC_SETUP_CONTROLS };
 
 export const ascConnector: DistributionConnector = {
   kind: ASC_CONNECTOR,
@@ -23,7 +29,7 @@ export const ascConnector: DistributionConnector = {
   outletKinds: ASC_OUTLET_KINDS,
   poll: pollAsc,
   webhook: handleAscWebhook,
-  controls: ASC_CONTROLS,
+  controls: CONTROLS,
   async status({ env, db, product, now }) {
     const { setup, inert } = await resolveAscSetup(env, db, product);
     const objects = await listObjects(db, product, ASC_CONNECTOR);
@@ -57,7 +63,15 @@ export const ascConnector: DistributionConnector = {
       objects: objects.map(objectView),
       unresolved: objects.filter((o) => o.release_id === null).length,
       events: (await listEvents(db, product, ASC_CONNECTOR)).map(eventView),
-      controls: Object.keys(ASC_CONTROLS),
+      controls: Object.keys(CONTROLS),
+      // A-17c: the app-setup progress (the ledger's rows) and the portal checklist.
+      // Before an Apple outlet is declared, the platform pin names the app (the New-app wizard).
+      provisioning: await provisioningView(
+        db,
+        product,
+        setup?.appleId ??
+          (await platformPin(db, ASC_PLATFORM_CREDENTIAL, product)),
+      ),
     };
   },
 };

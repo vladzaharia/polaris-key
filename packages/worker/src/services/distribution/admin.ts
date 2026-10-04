@@ -756,6 +756,7 @@ async function handleConnectorsAdmin(
       now,
       session,
       origin: new URL(req.url).origin,
+      idempotencyKey: req.headers.get("Idempotency-Key"),
     },
     body,
   );

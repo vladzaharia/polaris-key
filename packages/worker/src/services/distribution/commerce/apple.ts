@@ -287,6 +287,45 @@ export interface AppleContext {
   credentialId: string;
 }
 
+/** What an App Store Server API call needs: the credential `appStoreCredential` chose for
+ *  `bundleId` (the token's `bid`; the custody checks the pin again when it opens the key). */
+export interface AppleServerContext {
+  env: Env;
+  db: Db;
+  product: string;
+  now: number;
+  credentialId: string;
+  bundleId: string;
+}
+
+/** A bearer token for the App Store Server API. Throws `StoreUnavailable` (401) when unusable. */
+async function serverApiToken(
+  ctx: AppleServerContext,
+  use: string,
+): Promise<string> {
+  const token =
+    ctx.credentialId === PLATFORM_APP_STORE_SERVER_CREDENTIAL
+      ? await platformAppStoreServerToken(
+          ctx.env,
+          ctx.db,
+          ctx.product,
+          ctx.bundleId,
+          use,
+          ctx.now,
+        )
+      : await appStoreServerToken(
+          ctx.env,
+          ctx.db,
+          ctx.product,
+          ctx.credentialId,
+          ctx.bundleId,
+          use,
+          ctx.now,
+        );
+  if (!token) throw new StoreUnavailable("app-store credential", 401);
+  return token;
+}
+
 /**
  * Re-read one transaction from the App Store Server API and verify Apple's copy. Throws
  * `AppleRejected` (`unknown_transaction`, a chain or JWS failure) or `StoreUnavailable`.
@@ -298,26 +337,10 @@ export async function fetchTransaction(
   use: string,
 ): Promise<AppleTransaction> {
   if (!TX_ID.test(transactionId)) reject("invalid_jws");
-  const token =
-    ctx.credentialId === PLATFORM_APP_STORE_SERVER_CREDENTIAL
-      ? await platformAppStoreServerToken(
-          ctx.env,
-          ctx.db,
-          ctx.product,
-          ctx.settings.bundleId,
-          use,
-          ctx.now,
-        )
-      : await appStoreServerToken(
-          ctx.env,
-          ctx.db,
-          ctx.product,
-          ctx.credentialId,
-          ctx.settings.bundleId,
-          use,
-          ctx.now,
-        );
-  if (!token) throw new StoreUnavailable("app-store credential", 401);
+  const token = await serverApiToken(
+    { ...ctx, bundleId: ctx.settings.bundleId },
+    use,
+  );
   const origin =
     environment === "Sandbox"
       ? APP_STORE_SERVER_API_SANDBOX
@@ -424,4 +447,118 @@ export async function verifyAppleNotification(
         ? data.signedTransactionInfo
         : null,
   };
+}
+
+// ── test notifications (A-17c) ───────────────────────────────────────────────────────────────
+
+/** The App Store Server API environment a test notification is requested in. Apple sends it to
+ *  the URL configured for that environment (production or sandbox). */
+export type AppleServerEnvironment = "Production" | "Sandbox";
+
+const serverOrigin = (environment: AppleServerEnvironment) =>
+  environment === "Sandbox"
+    ? APP_STORE_SERVER_API_SANDBOX
+    : APP_STORE_SERVER_API;
+
+/** Apple's test-notification token: opaque, but only these characters ever go into a path. */
+const TEST_TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
+
+export function isTestNotificationToken(v: unknown): v is string {
+  return typeof v === "string" && TEST_TOKEN.test(v);
+}
+
+export type TestNotificationRequest =
+  | { status: "sent"; token: string }
+  /** 404: no App Store Server Notifications URL is configured for that environment. */
+  | { status: "url_missing" }
+  /** 400: Apple refused the request (its numeric `errorCode`, never the message). */
+  | { status: "refused"; errorCode: number | null };
+
+const errorCodeOf = (body: Record<string, unknown> | null): number | null =>
+  typeof body?.errorCode === "number" && Number.isSafeInteger(body.errorCode)
+    ? body.errorCode
+    : null;
+
+/**
+ * "Request a Test Notification" (`POST /inApps/v1/notifications/test`): Apple sends a `TEST`
+ * notification (always V2) to the URL configured for `environment`, which the hook stores as an
+ * event (`APP_STORE_EVENTS`, type `TEST`). Throws `StoreUnavailable` on a transport failure.
+ */
+export async function requestTestNotification(
+  ctx: AppleServerContext,
+  environment: AppleServerEnvironment,
+  use: string,
+): Promise<TestNotificationRequest> {
+  const token = await serverApiToken(ctx, use);
+  const res = await storeJson(
+    `${serverOrigin(environment)}/inApps/v1/notifications/test`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    },
+    "app-store notifications.test",
+    [400, 404],
+  );
+  if (res.status === 404) return { status: "url_missing" };
+  if (res.status === 400)
+    return { status: "refused", errorCode: errorCodeOf(res.body) };
+  const t = res.body?.testNotificationToken;
+  if (!isTestNotificationToken(t))
+    throw new StoreUnavailable("app-store notifications.test", 502);
+  return { status: "sent", token: t };
+}
+
+/** One delivery attempt Apple reports: when, and its result token (`SUCCESS`, `TIMED_OUT`…). */
+export interface TestNotificationAttempt {
+  at: number | null;
+  result: string;
+}
+
+export type TestNotificationStatus =
+  | { found: true; attempts: TestNotificationAttempt[] }
+  | { found: false };
+
+const RESULT = /^[A-Z][A-Z_]{0,63}$/;
+
+/**
+ * "Get Test Notification Status" (`GET /inApps/v1/notifications/test/{token}`): Apple's delivery
+ * attempts for one test notification. The signed payload Apple returns is not kept here: the
+ * hook's own stored `TEST` event is the proof that it arrived.
+ */
+export async function getTestNotificationStatus(
+  ctx: AppleServerContext,
+  environment: AppleServerEnvironment,
+  testToken: string,
+  use: string,
+): Promise<TestNotificationStatus> {
+  if (!isTestNotificationToken(testToken)) return { found: false };
+  const token = await serverApiToken(ctx, use);
+  const res = await storeJson(
+    `${serverOrigin(environment)}/inApps/v1/notifications/test/${encodeURIComponent(testToken)}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    },
+    "app-store notifications.test.get",
+    [400, 404],
+  );
+  if (res.status !== 200) return { found: false };
+  const raw = Array.isArray(res.body?.sendAttempts)
+    ? res.body.sendAttempts
+    : [];
+  const attempts: TestNotificationAttempt[] = [];
+  for (const a of raw.slice(0, 20)) {
+    const o = a && typeof a === "object" ? (a as Record<string, unknown>) : {};
+    const result = o.sendAttemptResult;
+    if (typeof result !== "string" || !RESULT.test(result)) continue;
+    const at = o.attemptDate;
+    attempts.push({
+      at:
+        typeof at === "number" && Number.isFinite(at)
+          ? Math.floor(at / 1000)
+          : null,
+      result,
+    });
+  }
+  return { found: true, attempts };
 }
