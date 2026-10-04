@@ -1243,8 +1243,12 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
 `DELETE /api/licenses/:p/:id/devices/:deviceId`, `GET /api/releases`,
 `POST /api/releases/:p/:r/artifacts/:a/token`, `GET /download/<token>`, plus `/login`,
 `/callback`, `/logout`, `/magic/verify` and `POST /api/magic/start`. All are root paths on
-`key.plrs.im`; the routes are in the OpenAPI spec and `routeCoverage` (`portalApi`,
-`portalDownload`, …), so **rule 10 applies to every new route**.
+`key.plrs.im`; the route kinds are in `routeCoverage` (`portalApi`,
+`portalDownload`, …) as **narrative-only**: the OpenAPI spec covers the product-scoped wire and
+must not list `/api/*` (the coverage test fails on a path outside its expected set), so **rule 10
+for every new portal route means documenting it on the docs site's portal page**
+(`packages/docs/src/content/docs/services/identity/portal.md`) (corrected by PX-W7 against the
+code).
 
 ### 10.2 Gaps the Worker must close
 
