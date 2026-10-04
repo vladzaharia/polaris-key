@@ -11,7 +11,8 @@
  * `@polaris-key` (npm), `polaris-key` (Swift scope), `im.plrs.key` (Maven), the PyPI name
  * `polaris-key` and the Godot publisher `polaris-key`; OCI repositories sit under the owner. Swift
  * releases must be signed (owner decision 2026-10-04). A second run creates nothing and leaves an
- * operator's later settings alone; it re-asserts the flags and queues a full render.
+ * operator's later settings alone (a service or `packageFeeds` switched off stays off); it
+ * fills in any missing feed row and queues a full render.
  *
  * This lives in the admin layer, beside the manual create it mirrors: it writes Core's product
  * rows and Distribution's feed rows in one batch, which Core itself may not (rule 6).
@@ -119,24 +120,22 @@ export async function ensureSystemProduct(
       }),
     );
   }
-  const services = parseServices(existing?.services_json ?? null);
-  services.services.release = { enabled: true };
-  services.services.distribution = { enabled: true };
-  stmts.push(
-    {
+  if (!existing) {
+    // First run only: the services start on. A later run never turns back on what an operator
+    // switched off.
+    const services = parseServices(null);
+    services.services.release = { enabled: true };
+    services.services.distribution = { enabled: true };
+    stmts.push({
       sql: `UPDATE products SET system = 1, services_json = ?, services_source = 'admin',
                                 modified_at = ?
              WHERE slug = ?`,
       params: [serializeServices(services), now, slug],
-    },
-    // `packageFeeds` on: created at version 1 if absent, else switched on in place.
+    });
+  }
+  stmts.push(
+    // `packageFeeds`: created ON if there is no row; an existing row (an operator's off) stays.
     stmtSetPackageFeeds(slug, true, 0, by, now),
-    {
-      sql: `UPDATE dist_registry_owners
-               SET enabled = 1, version = version + 1, updated_at = ?, updated_by = ?
-             WHERE product = ? AND enabled = 0`,
-      params: [now, by, slug],
-    },
     ...SYSTEM_FEEDS.map((f) =>
       stmtEnsureFeed(slug, f.ecosystem, f.namespace, f.ext, by, now),
     ),

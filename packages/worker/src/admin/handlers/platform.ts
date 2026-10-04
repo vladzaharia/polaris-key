@@ -1,6 +1,6 @@
 /**
  * The Platform section's admin API (notes/S-13 §9.2): instance-wide, product-less, read-only so
- * far except the settings store and the package-feeds bootstrap. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
+ * far except the settings store, the package-feeds bootstrap and the Feeds writes. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
  * limiter and CSRF check.
  *
  *   GET /api/platform/version     — build identity (A-11). Cheap: the SPA's skew check calls it.
@@ -19,6 +19,7 @@
  *   POST /api/platform/feeds/bootstrap — create (or re-assert) the system product that owns the
  *                                   platform packages (F-03, `../systemProduct.ts`); idempotent,
  *                                   audited `feed.bootstrap` in `platform_audit`.
+ *   /api/platform/feeds/…         — the Feeds admin API in platform scope (F-11, `feeds.ts`).
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's
  * NARRATIVE_ONLY): no OpenAPI entry. Nothing here is secret (THREAT-MODEL "Platform settings and
@@ -46,6 +47,7 @@ import { consoleEnvironment } from "./me.js";
 import { missingRequiredIndexes } from "../../scheduled.js";
 import { listPlatformAudit, listPlatformDeploys } from "../../repo.js";
 import { ensureSystemProduct } from "../systemProduct.js";
+import { handleFeedsAdmin } from "./feeds.js";
 import { platformAudit } from "../audit.js";
 import { operationsSnapshot } from "../../core/operations.js";
 
@@ -188,6 +190,24 @@ export async function handlePlatform(
     if (req.method !== "POST")
       return err(405, "method_not_allowed", "method not allowed");
     return bootstrapFeeds(env, db, session, now);
+  }
+  // F-11: the Feeds admin API in platform scope (the system product's feeds and the policy).
+  if (rest[0] === "feeds") {
+    try {
+      return await handleFeedsAdmin(
+        req,
+        env,
+        db,
+        session,
+        { kind: "platform" },
+        rest.slice(1),
+        now,
+      );
+    } catch (e) {
+      if (e instanceof AdminBodyError)
+        return err(e.status, e.code, e.message, e.extra);
+      throw e;
+    }
   }
   if (rest[0] === "settings") {
     try {

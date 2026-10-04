@@ -30,6 +30,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+/** The wire-v4 update slices Core holds (`CoreContext.updateSlices`). */
+public data class UpdateSlices(val feeds: Map<String, String>, val releaseRecords: Map<String, String>)
+
 /** Set by a bundle import (§7). */
 public data class ImportedBundle(val bundleId: String, val importedAt: Long)
 

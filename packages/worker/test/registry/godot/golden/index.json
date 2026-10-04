@@ -1,0 +1,55 @@
+{
+  "format": "pkey-godot-index/1",
+  "owner": "djdl",
+  "publisher": "acme",
+  "assetLibrary": "https://pkg.example.test/godot/djdl/asset-library/api",
+  "assetStore": "https://pkg.example.test/godot/djdl/store/api/v1",
+  "packages": [
+    {
+      "name": "acme_addon",
+      "title": "Acme [Addon] <b>",
+      "author": "Acme Games",
+      "description": "Licence checks for Godot.",
+      "latest": "1.1.0",
+      "tags": {
+        "beta": "1.2.0-beta.1",
+        "latest": "1.1.0"
+      },
+      "versions": [
+        {
+          "version": "1.2.0-beta.1",
+          "stable": false,
+          "url": "https://pkg.example.test/godot/djdl/files/ba63c736f97d98ad15f8711b74b619b45aec8d5ed1345db997454d216a0fffa0/acme_addon-1.2.0-beta.1.zip",
+          "sha256": "ba63c736f97d98ad15f8711b74b619b45aec8d5ed1345db997454d216a0fffa0",
+          "size": 35,
+          "publishedAt": "2023-11-14T21:56:40Z"
+        },
+        {
+          "version": "1.1.0",
+          "stable": true,
+          "url": "https://pkg.example.test/godot/djdl/files/2dc1c93d88d7ccb468b8246c318f8cb3cda4f39b7724aa2fe6b47165126ec2a7/acme_addon-1.1.0.zip",
+          "sha256": "2dc1c93d88d7ccb468b8246c318f8cb3cda4f39b7724aa2fe6b47165126ec2a7",
+          "size": 28,
+          "icon": "https://pkg.example.test/godot/djdl/icons/8e85d7527379589e16278a50671f0f31db1fb5feadd217a34144157423f84b5c.png",
+          "publishedAt": "2023-11-14T21:40:00Z"
+        },
+        {
+          "version": "1.0.0",
+          "stable": true,
+          "url": "https://pkg.example.test/godot/djdl/files/627062240e0394d6cccb41e1a9995ada3c5503a7a2820504dc077dfaa9fdd422/acme_addon-1.0.0.zip",
+          "sha256": "627062240e0394d6cccb41e1a9995ada3c5503a7a2820504dc077dfaa9fdd422",
+          "size": 28,
+          "publishedAt": "2023-11-14T21:06:40Z",
+          "deprecated": "use 1.1.0"
+        }
+      ],
+      "godotenv": {
+        "acme_addon": {
+          "url": "https://pkg.example.test/godot/djdl/files/2dc1c93d88d7ccb468b8246c318f8cb3cda4f39b7724aa2fe6b47165126ec2a7/acme_addon-1.1.0.zip",
+          "source": "zip",
+          "subfolder": "addons/acme_addon"
+        }
+      }
+    }
+  ]
+}

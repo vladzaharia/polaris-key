@@ -83,7 +83,10 @@ class CapabilitiesTest {
             Capabilities(emptyMap(), runtime = "jvm")
             fail("a missing detector must be refused")
         } catch (e: CapabilityTableException) {
-            assertTrue(e.problems.single().contains("core.store dependency on jvm"))
+            // Every conditional N/A on the JVM needs its detector: core.store's and (P6-08) packs.apply.delta's.
+            assertEquals(2, e.problems.size)
+            assertTrue(e.problems.any { it.contains("core.store dependency on jvm") })
+            assertTrue(e.problems.any { it.contains("packs.apply.delta dependency on jvm") })
         }
         try {
             Capabilities(Capabilities.sdkDetectors + ("nope#outlet" to { null }), runtime = "jvm")

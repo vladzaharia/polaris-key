@@ -29,13 +29,13 @@ if (findProject(":platform") != null) {
 }
 
 // The module boundaries (P6-05): :core and the JVM service modules are plain JVM libraries with no
-// Android dependency; each service module (:license, :config, :identity, :release) depends on
+// Android dependency; each service module (:license, :config, :identity, :release, :update, :packs) depends on
 // :core only, never on a sibling, and :sdk is the one place they meet (P6-07). :platform is
 // standalone (the Godot binding links it alone), so it never depends on :core. The one module
 // allowed to see both core and platform is :android (P6-12). `./gradlew checkModuleBoundaries`
 // fails on any edge that breaks this; the kotlin and android CI jobs run it.
-val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":sdk")
-val serviceModules = listOf(":license", ":config", ":identity", ":release")
+val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":update", ":packs", ":sdk")
+val serviceModules = listOf(":license", ":config", ":identity", ":release", ":update", ":packs")
 val checkModuleBoundaries by tasks.registering {
     group = "verification"
     description = "Fails when a JVM module reaches Android, a service module reaches a sibling, or :platform reaches an SDK module."

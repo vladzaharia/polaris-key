@@ -10,6 +10,9 @@ export const WORKER = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 /** The local wrangler binary. */
 export const WRANGLER = join(WORKER, "node_modules", ".bin", "wrangler");
 
+/** The repository's tsx, for the TypeScript seeds (`seeds/*.ts`). */
+export const TSX = join(WORKER, "..", "..", "node_modules", ".bin", "tsx");
+
 /** Run a wrangler command in the worker directory, non-interactively, inheriting output. */
 export function wrangler(args) {
   execFileSync(WRANGLER, args, {

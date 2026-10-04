@@ -10,7 +10,7 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test --filter=!@polaris-key/conformance-browser",
-    "test:all": "turbo run test --filter=!@polaris-key/conformance-browser && (cd sdks/python && .venv/bin/python -m pytest -q) && (cd sdks/swift && swift test) && sdks/godot/tools/run_tests.sh && (cd sdks/kotlin && ./gradlew -q -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test :sdk:test :conformance:test)",
+    "test:all": "turbo run test --filter=!@polaris-key/conformance-browser && (cd sdks/python && .venv/bin/python -m pytest -q) && (cd sdks/swift && swift test) && sdks/godot/tools/run_tests.sh && (cd sdks/kotlin && ./gradlew -q -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test :update:test :packs:test :sdk:test :conformance:test)",
     "test:browser": "turbo run test --filter=@polaris-key/conformance-browser",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
@@ -40,6 +40,8 @@
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "husky": "^9.1.7",
     "prettier": "^3.5.0",
     "tsup": "^8.4.0",
