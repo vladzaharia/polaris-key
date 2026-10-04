@@ -19,6 +19,7 @@ import {
   handlePortalCallback,
   portalFlowKey,
 } from "../src/services/identity/portal/auth.js";
+import { artefacts } from "./singleUseMock.js";
 
 const idp = vi.hoisted(() => ({ jwks: { keys: [] as unknown[] } }));
 
@@ -65,7 +66,7 @@ async function callbackWith(
   env.PLATFORM_OIDC_CLIENT_ID = CLIENT_ID;
   env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
 
-  await kv.put(
+  await artefacts(env).put(
     await portalFlowKey(env, STATE),
     JSON.stringify({
       verifier: "v".repeat(43),

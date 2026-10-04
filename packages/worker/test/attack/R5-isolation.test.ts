@@ -783,9 +783,13 @@ describe("REFUTED: KV namespace confusion via crafted state / device_code / toke
         expect(deviceFlow).not.toBe(tokenKey);
         expect(browser).not.toBe(tokenKey);
       }
-      // Nor can it reach the platform-global admin/portal namespaces.
-      expect(flow.startsWith("admin:flow:")).toBe(false);
-      expect(flow.startsWith("portal:magic:")).toBe(false);
+      // Nor can it reach the platform-global admin/portal kinds (I-02: flow records are
+      // single-use store artefacts whose KIND is fixed by the derivation, never by input, and
+      // whose id is the product plus a hex hash).
+      expect(flow.kind).toBe("oidc-flow");
+      expect(deviceFlow.kind).toBe("device-flow");
+      expect(flow.id).toMatch(new RegExp(`^${ACME}:[0-9a-f]{64}$`));
+      expect(deviceFlow.id).toMatch(new RegExp(`^${ACME}:[0-9a-f]{64}$`));
     }
   });
 

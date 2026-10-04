@@ -32,6 +32,7 @@ import {
   sendPortalNotice,
 } from "../src/services/identity/portal/email.js";
 import type { Env } from "../src/env.js";
+import { artefacts } from "./singleUseMock.js";
 
 /**
  * The Worker's branded pages and email (docs/design/BRAND.md): every server-rendered page on the
@@ -192,7 +193,7 @@ describe("every server-rendered page on the console host uses the shell", () => 
     env.HOT = asKv(kv);
     await seedProduct(db, "djdl");
     const product = (await loadProduct(env, db, "djdl"))!;
-    await kv.put(
+    await artefacts(env).put(
       await deviceFlowKey(env, "djdl", "dc"),
       JSON.stringify({
         state: "s",
