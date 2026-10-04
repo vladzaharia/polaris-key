@@ -2146,7 +2146,7 @@
         "plans/P4-29.md §2.4 §5"
       ],
       "brief": "wp/P6-08-kotlin-update-packs.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P6-09",
@@ -2648,7 +2648,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-04-npm-feed.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-05",
@@ -2666,7 +2666,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-05-pypi-feed.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-06",
@@ -2684,7 +2684,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §5.3, §6.8"],
       "brief": "wp/F-06-swift-registry.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-07",
@@ -2702,7 +2702,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-07-maven-feed.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-08",
@@ -2720,7 +2720,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "notes/S-12 §9", "plans/F-01.md §6.8"],
       "brief": "wp/F-08-oci-registry.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-09",
@@ -2738,7 +2738,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-09-godot-feed.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-10",
@@ -2777,7 +2777,7 @@
       "optional": false,
       "refs": ["notes/S-12 §10.1–§10.2", "plans/F-01.md §6.9", "notes/S-13 §7"],
       "brief": "wp/F-11-console-feeds.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-12",
