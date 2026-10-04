@@ -63,6 +63,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@polaris-key/brand": "workspace:*",
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
