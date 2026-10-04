@@ -770,7 +770,10 @@
       "family": "packs",
       "title": "Chunk sync from seeds, request runs",
       "service": "release",
-      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-10" }],
+      "proof": [
+        { "kind": "corpus", "file": "content/", "wp": "P4-10" },
+        { "kind": "transcript", "wp": "P4-32" }
+      ],
       "allowedNa": []
     },
     {

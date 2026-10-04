@@ -3,6 +3,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
+// @pkey-feature packs.apply.chunk
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -22,12 +23,18 @@
 // `installed.version` as `CoreOptions.version` — and its `cache` seeds the store's record. A
 // transcript with `initial.update` and no `initial.services` runs with Release, Distribution and
 // Update expected; one that loads no discovery itself is served the Worker's standard document.
+//
+// `chunkRange` (P4-32, plans/P4-32.md §5) is `chunkRangeFetch` over `PacksClient.fetchObject`
+// (internal, reached through `@testable import PolarisKeyPacks`) with the client's own
+// `CoreContext`, against the blobs template the last discover returned, and the replay server
+// behind the `PackObjectTransport` seam (`ReplayPackObjectTransport`).
 
 import Foundation
 import PolarisKey
 import PolarisKeyCore
 import PolarisKeyIdentity
 import PolarisKeyLicense
+@testable import PolarisKeyPacks
 import PolarisKeyRelease
 import PolarisKeyUpdate
 import XCTest
@@ -59,10 +66,31 @@ enum SwiftReplay {
     /// THE mapping from transcript verbs and `expect` keys onto the Swift SDK. Kept in one place.
     static func act(
         _ client: PolarisKeyClient, store: InMemoryStore, step: Transcript.Step,
-        session: ReplaySession, update: UpdateClient? = nil
+        session: ReplaySession, update: UpdateClient? = nil,
+        objects: (any PackObjectTransport)? = nil
     ) async throws -> [String: JSONValue] {
         var out: [String: JSONValue] = [:]
         switch step.action {
+        case "chunkRange":
+            guard let objects else { throw ReplayError("chunkRange without a pack object transport") }
+            let core = client.core
+            let fetchRange = chunkRangeFetch { req in
+                try await PacksClient.fetchObject(core, objects, req)
+            }
+            let r = try await fetchRange(
+                ChunkRangeRequest(
+                    bundle: step.args["bundle"]?.stringValue ?? "",
+                    offset: step.args["offset"]?.intValue ?? 0,
+                    length: step.args["length"]?.intValue ?? 0))
+            switch r {
+            case .refused:
+                out["range"] = .string("refused")
+            case .ok(let chunks):
+                var bytes: [UInt8] = []
+                for try await c in chunks { bytes.append(contentsOf: c) }
+                out["range"] = .string("ok")
+                out["bytes"] = .string(String(decoding: bytes, as: UTF8.self))
+            }
         case "updateDecide":
             guard let update else { throw ReplayError("updateDecide without initial.update") }
             var staged: StagedUpdate?
@@ -273,7 +301,8 @@ enum SwiftReplay {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
             let observed = try await act(
-                client, store: store, step: step, session: session, update: update)
+                client, store: store, step: step, session: session, update: update,
+                objects: ReplayPackObjectTransport(server: server))
             try await server.endStep()
             for (key, want) in step.expect.sorted(by: { $0.key < $1.key }) {
                 guard let got = observed[key], got == want else {
@@ -365,5 +394,17 @@ final class TranscriptTests: XCTestCase {
         u.steps[1].exchanges.items.append(u.steps[0].exchanges.items[1])
         await assertReplayFails(
             u, matching: "expected request not sent: GET /djdl/release/records/")
+    }
+
+    /// `packs-chunk-range` passes only when the SDK reads the exact run: a recorded
+    /// `Content-Range` altered to another range must be refused, so the step fails. (Keys are
+    /// compared in sorted order, so the first to fail is `bytes`: a refused fetch returns none.)
+    func testAChunkRangeWithAnotherContentRangeFails() async throws {
+        var t = try XCTUnwrap(try transcripts().first { $0.id == "packs-chunk-range" })
+        for i in t.steps[1].exchanges.items.indices {
+            t.steps[1].exchanges.items[i].response.headers["content-range"] = "bytes 17-40/64"
+        }
+        await assertReplayFails(
+            t, matching: "step 1 (chunkRange): bytes: expected string(\"ghijklmnopqrstuvwxyzABCD\"), got nil")
     }
 }

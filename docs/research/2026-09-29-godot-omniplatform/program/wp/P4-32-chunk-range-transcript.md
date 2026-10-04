@@ -69,12 +69,14 @@ fixes the chunk-run rule.
 
 ## Acceptance
 
-- [ ] `pnpm gen:transcripts -- --check` passes. The only new files are
+- [x] `pnpm gen:transcripts -- --check` passes. The only new files are
       `packs-chunk-range.json` and its Swift and Godot mirrors. Existing transcripts are
       byte-identical.
-- [ ] `pnpm parity:check` passes with `packs.apply.chunk` proven by its transcript in Node,
-      React, Python, Swift and Godot.
-- [ ] Each of the five replayers passes the transcript and fails its doctored `content-range`
+- [x] `pnpm parity:check` passes with `packs.apply.chunk` proven by its transcript in Node,
+      React, Python, Swift and Godot (and Kotlin, below).
+- [x] Each of the five replayers passes the transcript and fails its doctored `content-range`
       case.
-- [ ] Kotlin's `:conformance:test` passes and lists the transcript as skipped.
-- [ ] `pnpm --filter @polaris-key/docs gen:check` passes, and the full green gate passes.
+- [x] Kotlin's `:conformance:test` passes. Per the owner's approval of the plan, P6-08 (merged
+      into this branch) implements `packs.apply.chunk`, so Kotlin replays the transcript instead
+      of skipping it, with the same doctored `content-range` case.
+- [x] `pnpm --filter @polaris-key/docs gen:check` passes, and the full green gate passes.
