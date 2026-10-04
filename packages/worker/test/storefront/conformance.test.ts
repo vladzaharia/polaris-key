@@ -656,7 +656,7 @@ for (const a of STOREFRONT_ADAPTERS) {
             {
               field,
               locale: "en-US",
-              code: "too_long",
+              issue: "too_long",
               limit: spec.maxChars,
               actual: spec.maxChars + 1,
             },

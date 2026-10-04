@@ -35,7 +35,7 @@ export interface ListingIssue {
   readonly field: string;
   /** The locale of a per-locale field; null for an app-level one. */
   readonly locale: string | null;
-  readonly code: "too_long" | "missing" | "unknown_field";
+  readonly issue: "too_long" | "missing" | "unknown_field";
   readonly limit: number | null;
   readonly actual: number | null;
 }
@@ -62,7 +62,7 @@ export function fitListing(
         issues.push({
           field,
           locale,
-          code: "unknown_field",
+          issue: "unknown_field",
           limit: null,
           actual: null,
         });
@@ -73,7 +73,7 @@ export function fitListing(
         issues.push({
           field,
           locale,
-          code: "too_long",
+          issue: "too_long",
           limit: spec.maxChars,
           actual: value.length,
         });
@@ -87,7 +87,7 @@ export function fitListing(
         issues.push({
           field,
           locale,
-          code: "missing",
+          issue: "missing",
           limit: null,
           actual: null,
         });

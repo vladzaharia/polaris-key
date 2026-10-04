@@ -387,14 +387,14 @@ describe("the listing fit", () => {
       {
         field: "nmae",
         locale: "en-US",
-        code: "unknown_field",
+        issue: "unknown_field",
         limit: null,
         actual: null,
       },
       {
         field: "name",
         locale: "en-US",
-        code: "missing",
+        issue: "missing",
         limit: null,
         actual: null,
       },
