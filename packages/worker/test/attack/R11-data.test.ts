@@ -604,6 +604,12 @@ describe("R11-05 product scoping", () => {
       // the typed `PLATFORM_SETTINGS` registry (background-job switches and tunables, no tenant
       // data). Written and read only by the platform-admin settings endpoint and the resolver.
       "platform_settings",
+      // 0057 (A-14) — self-reported operations: one row per cron step family or failed step
+      // (`platform_job_runs`) and one heartbeat per Worker script (`platform_heartbeats`). Both
+      // describe the deployment's own background work, are written only by the cron and the
+      // lazy-delta consumer, and are read only by the platform-admin Operations endpoint.
+      "platform_job_runs",
+      "platform_heartbeats",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

@@ -152,6 +152,13 @@ bucket_name = "polaris-key-blobs-prod"
 [[env.prod.queues.producers]]
 binding = "DELTA_QUEUE"
 queue = "pkey-deltas-prod"
+# A-14: the lazy-delta dead-letter queue, bound as a producer ONLY so the Operations page can read
+# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/platformOperations.test.ts
+# asserts no source file calls `.send`/`.sendBatch` on it (THREAT-MODEL "Platform settings and
+# operations").
+[[env.prod.queues.producers]]
+binding = "DELTA_DLQ"
+queue = "pkey-deltas-dlq-prod"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.prod.version_metadata]
@@ -200,6 +207,13 @@ bucket_name = "polaris-key-blobs-staging"
 [[env.staging.queues.producers]]
 binding = "DELTA_QUEUE"
 queue = "pkey-deltas-staging"
+# A-14: the lazy-delta dead-letter queue, bound as a producer ONLY so the Operations page can read
+# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/platformOperations.test.ts
+# asserts no source file calls `.send`/`.sendBatch` on it (THREAT-MODEL "Platform settings and
+# operations").
+[[env.staging.queues.producers]]
+binding = "DELTA_DLQ"
+queue = "pkey-deltas-dlq-staging"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.staging.version_metadata]
@@ -245,6 +259,13 @@ bucket_name = "polaris-key-blobs-dev"
 [[env.dev.queues.producers]]
 binding = "DELTA_QUEUE"
 queue = "pkey-deltas-dev"
+# A-14: the lazy-delta dead-letter queue, bound as a producer ONLY so the Operations page can read
+# its backlog (`DELTA_DLQ.metrics()`). Nothing sends to it: test/platformOperations.test.ts
+# asserts no source file calls `.send`/`.sendBatch` on it (THREAT-MODEL "Platform settings and
+# operations").
+[[env.dev.queues.producers]]
+binding = "DELTA_DLQ"
+queue = "pkey-deltas-dlq-dev"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.dev.version_metadata]

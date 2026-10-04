@@ -644,6 +644,24 @@ After the first deploy that includes A-11, confirm on the Deployment endpoint th
 binding on hosted D1, which the workerd lane shows only for local D1. If it is `null`, the page
 reports migrations as unknown and nothing else is affected.
 
+**Self-reported operations (A-14).** `GET /manage/api/platform/operations` (platform admins
+only) returns what the Worker can see about itself, with no Cloudflare token: `probes` (D1, KV and
+R2 answer, with latency), `queues` (the lazy-delta queue and its dead-letter queue: backlog count,
+bytes and oldest message, plus the consumer's fixed settings), `heartbeats` (when the cron and the
+lazy-delta consumer last ran, and on which build), `jobs` (each cron's latest run with its steps,
+recent runs and failed steps), `storage` (D1 size, committed R2 bytes by kind), `indexes`,
+`connectors` (per store connector: products, tracked objects, last poll, last webhook, failed
+webhooks in the last day) and `recentErrors`. A section that cannot be read is `null`; the rest
+still answers. It needs nothing new provisioned. The request Worker binds the existing dead-letter queue `pkey-deltas-dlq-<env>` as a
+producer, `DELTA_DLQ`, used only for `metrics()` (the deploy's queues preflight already checks the
+queue exists, and the token's Queues Edit already covers the binding). After the first deploy that
+includes A-14, confirm on the Operations endpoint that `queues.deadLetter.ok` is `true`: that
+proves `metrics()` answers on a producer-only binding to a queue with no consumer on hosted
+Queues, which the workerd lane shows only for local queues. If it is `false`, the page shows the
+reason and the dead-letter backlog as unknown, and nothing else is affected. The cron and the
+lazy-delta consumer write `platform_job_runs` and `platform_heartbeats`; the nightly sweep prunes
+both after 30 days.
+
 CI does not deploy on `main` pushes. PRs and `main` still run `.github/workflows/ci.yml`.
 
 ## 8. First admin login
