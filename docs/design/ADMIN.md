@@ -1992,11 +1992,15 @@ unchanged; add `me` fields), `main.tsx` (`QueryClientProvider`), and the worker 
 
 - **Owner requirements added in this chunk.**
   - Sidebar section headers are collapsible disclosure buttons (Radix Collapsible: `aria-expanded`,
-    `aria-controls`, Enter and Space). Collapsed sections persist per operator in `localStorage`
-    (`pk-admin-nav-collapsed:<sub>`, best-effort). The section holding the current page is always
-    open (its header is `aria-disabled`), and entering a section removes it from the collapsed
-    set. The open and close animation uses `--pk-duration-base` and `--pk-ease-standard`, with
-    `motion-reduce:animate-none`. A collapsed header keeps its accent rule.
+    `aria-controls`, Enter and Space). **Only the active section is open** (owner, 2026-10-03): the
+    section holding the current page is always open and cannot be collapsed (its header is
+    `aria-disabled`), and every other section starts collapsed. Expanding a collapsed section by
+    hand is a temporary peek: it lasts while you move between pages of the active section, and
+    entering another section collapses every peek and opens the new one. Nothing is persisted (an
+    earlier build stored collapsed sections under `pk-admin-nav-collapsed:<sub>`; that key is no
+    longer read or written). The open and close animation uses `--pk-duration-base` and
+    `--pk-ease-standard`, with `motion-reduce:animate-none`. A collapsed header keeps its accent
+    rule.
   - **Section headers carry no icon** (owner clarification, overriding §2.4's "section glyph" and
     components.md §1.4's group-label glyph). Every nav item has a lucide icon, including
     Deliverables, Compatibility, Matrix and Health (SH-4). `route.test.ts` fails if any page lacks

@@ -200,7 +200,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
-  const { collapsed, toggle } = useNavCollapse(me.sub, section?.key ?? null);
+  const { expanded, toggle } = useNavCollapse(section?.key ?? null);
 
   const key = viewKey(route);
   React.useEffect(() => {
@@ -255,7 +255,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     services,
     activePage: page,
     activeSection: section?.key ?? null,
-    collapsed,
+    expanded,
     onToggleSection: toggle,
     onPrefetch: prefetchSection,
   };
