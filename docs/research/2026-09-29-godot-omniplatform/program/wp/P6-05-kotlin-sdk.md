@@ -1,16 +1,16 @@
 # P6-05 The Kotlin SDK at full parity (umbrella)
 
-| Field       | Value |
-| ----------- | ----- |
-| Phase       | P6: Commerce, ops, web |
-| Size | 0.1 engineer-weeks |
-| Depends on | [P6-06](P6-06-kotlin-core-runner.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md), [P6-10](P6-10-godot-android-binding-on-kotlin.md), [P6-11](P6-11-kotlin-compose-ui-kit.md), [P6-12](P6-12-kotlin-android-glue.md) |
-| Unblocks | none |
-| Role | `pkey-sdk-porter` |
-| Plan mode   | no (an umbrella: it has no code of its own; a corpus case a child finds missing goes to `pkey-wire-planner`) |
-| Gates       | none of its own; the children's gates, and the closing checks below |
-| Human input | none. Decided 2026-10-04: build now; Kotlin artifacts ship only through Polaris Key's own Maven feed, with no Maven Central account or signing key |
-| Repo        | `vladzaharia/polaris-key` |
+| Field       | Value                                                                                                                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web                                                                                                                                                                                                                                                                                     |
+| Size        | 0.1 engineer-weeks                                                                                                                                                                                                                                                                                         |
+| Depends on  | [P6-06](P6-06-kotlin-core-runner.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md), [P6-10](P6-10-godot-android-binding-on-kotlin.md), [P6-11](P6-11-kotlin-compose-ui-kit.md), [P6-12](P6-12-kotlin-android-glue.md) |
+| Unblocks    | none                                                                                                                                                                                                                                                                                                       |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                                                          |
+| Plan mode   | no (an umbrella: it has no code of its own; a corpus case a child finds missing goes to `pkey-wire-planner`)                                                                                                                                                                                               |
+| Gates       | none of its own; the children's gates, and the closing checks below                                                                                                                                                                                                                                        |
+| Human input | none. Decided 2026-10-04: build now; Kotlin artifacts ship only through Polaris Key's own Maven feed, with no Maven Central account or signing key                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                  |
 
 This package is an **umbrella**. It owns no branch and no pull request. It is `done` when all of its
 children are `done` and the closing checks below pass; the lead then sets it with
@@ -20,15 +20,15 @@ children are `done` and the closing checks below pass; the lead then sets it wit
 The graph's id pattern has no letter suffix, so the slices have their own ids, and the original
 sketch's letters map as below.
 
-| Slice | Package                                                                 | Role                  | Size (weeks) | Depends on                                                                                  |
-| ----- | ----------------------------------------------------------------------- | --------------------- | ------------ | ------------------------------------------------------------------------------------------- |
-| a     | [P6-06](P6-06-kotlin-core-runner.md) core module, runner, parity        | `pkey-sdk-porter`     | 1.5–2        | P1b-01, P1b-02, P1b-03, P3-02, P5-06                                                        |
-| b     | [P6-07](P6-07-kotlin-license-config-identity.md) licence, config, devices, identity, release | `pkey-sdk-porter` | 1.5–2        | P6-06                                                                                       |
-| c     | [P6-08](P6-08-kotlin-update-packs.md) update and packs                  | `pkey-sdk-porter`     | 2–3          | P6-06, P6-07, P4-11, P4-29                                                                  |
-| d     | [P6-09](P6-09-kotlin-platform-module.md) platform module, Integrity     | `pkey-implementer`    | 1.5–2        | P6-06, P5-06, P6-02                                                                         |
-| e     | [P6-10](P6-10-godot-android-binding-on-kotlin.md) Godot binding on platform | `pkey-godot-engineer` | 1–1.5     | P6-09, P5-08                                                                                |
-| f     | [P6-11](P6-11-kotlin-compose-ui-kit.md) Compose UI kit                  | `pkey-implementer`    | 2–3          | P6-07, P6-08                                                                                |
-| g     | [P6-12](P6-12-kotlin-android-glue.md) Android glue (added)              | `pkey-sdk-porter`     | 1–1.5        | P6-08, P6-09                                                                                |
+| Slice | Package                                                                                      | Role                  | Size (weeks) | Depends on                           |
+| ----- | -------------------------------------------------------------------------------------------- | --------------------- | ------------ | ------------------------------------ |
+| a     | [P6-06](P6-06-kotlin-core-runner.md) core module, runner, parity                             | `pkey-sdk-porter`     | 1.5–2        | P1b-01, P1b-02, P1b-03, P3-02, P5-06 |
+| b     | [P6-07](P6-07-kotlin-license-config-identity.md) licence, config, devices, identity, release | `pkey-sdk-porter`     | 1.5–2        | P6-06                                |
+| c     | [P6-08](P6-08-kotlin-update-packs.md) update and packs                                       | `pkey-sdk-porter`     | 2–3          | P6-06, P6-07, P4-11, P4-29           |
+| d     | [P6-09](P6-09-kotlin-platform-module.md) platform module, Integrity                          | `pkey-implementer`    | 1.5–2        | P6-06, P5-06, P6-02                  |
+| e     | [P6-10](P6-10-godot-android-binding-on-kotlin.md) Godot binding on platform                  | `pkey-godot-engineer` | 1–1.5        | P6-09, P5-08                         |
+| f     | [P6-11](P6-11-kotlin-compose-ui-kit.md) Compose UI kit                                       | `pkey-implementer`    | 2–3          | P6-07, P6-08                         |
+| g     | [P6-12](P6-12-kotlin-android-glue.md) Android glue (added)                                   | `pkey-sdk-porter`     | 1–1.5        | P6-08, P6-09                         |
 
 ## Goal
 
