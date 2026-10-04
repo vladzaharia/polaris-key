@@ -35,9 +35,8 @@ inputs:
     description: The directory of built files, searched recursively, relative to the workspace. For a pack, each declared variant's payload sits at <dir>/<variant key or "default">/ (one .pck file, or the tree).
     required: true
   source:
-    description: Where the bytes live. `r2` uploads them to Polaris Key; `github` locates them on the tagged, immutable GitHub release.
+    description: App only. Where the bytes live. `r2` (the default) uploads them to Polaris Key; `github` locates them on the tagged, immutable GitHub release. No `default:` here on purpose, because GitHub passes every defaulted input, and a package publish or a transport step refuses this one; the Action applies `r2` for the app itself.
     required: false
-    default: r2
   meta:
     description: 'A JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}, relative to the workspace.'
     required: false
