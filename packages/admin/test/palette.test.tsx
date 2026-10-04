@@ -114,6 +114,24 @@ describe("the palette in the console", () => {
     ).toBeTruthy();
   });
 
+  it("⌘K or Ctrl+K pressed again, from inside the open palette, closes it (owner, 2026-10-03)", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await screen.findByRole("navigation", { name: "Console" });
+
+    // Typed into the palette's own input, as an operator would: the event bubbles to the shell.
+    await openPalette();
+    await userEvent.keyboard("{Meta>}k{/Meta}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await screen.findByRole("dialog", { name: "Command palette" });
+    await userEvent.keyboard("{Control>}k{/Control}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // And it opens again afterwards: the shortcut toggles, it does not latch.
+    await openPalette();
+  });
+
   it("lists navigation and products, and filters as you type with a live count", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });

@@ -80,7 +80,7 @@ export function ProductSwitcher({
           {p.name}{" "}
           <span className="font-mono text-xs text-fg-muted">{p.slug}</span>
         </span>
-        <ServiceDots product={p} />
+        <ServiceDots product={p} className="ml-2" />
         {attention > 0 ? (
           <span
             className="rounded-full bg-warning-subtle px-1.5 text-xs font-bold text-warning"
@@ -114,7 +114,10 @@ export function ProductSwitcher({
           <span className="hidden font-mono text-xs text-fg-muted md:inline">
             {current.slug}
           </span>
-          <ServiceDots product={current} className="hidden md:inline-flex" />
+          <ServiceDots
+            product={current}
+            className="ml-2 hidden md:inline-flex"
+          />
           <ChevronsUpDown
             aria-hidden
             className="size-3.5 shrink-0 text-fg-muted"

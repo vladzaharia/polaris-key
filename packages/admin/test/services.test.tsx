@@ -144,6 +144,24 @@ describe("Services — what the product runs", () => {
     expect(within(policies).getByText("requires-license")).toBeTruthy();
   });
 
+  it("colours each service row with its own section accent (owner, 2026-10-03)", async () => {
+    renderServices();
+    await waitFor(() => expect(checked(toggle("License"))).toBe(true));
+    // Each row is scoped with its service's `data-service`, so its icon tile, icon and switch
+    // take that service's accent instead of the page's core violet.
+    for (const [label, accent] of [
+      ["License", "license"],
+      ["Config", "config"],
+      ["Release", "release"],
+      ["Distribution", "distribution"],
+      ["Update", "update"],
+      ["Identity", "identity"],
+    ] as const) {
+      const row = toggle(label).closest("[data-service]");
+      expect(row?.getAttribute("data-service")).toBe(accent);
+    }
+  });
+
   it("names the declared policy instead of the derived affordance once one is set", async () => {
     services.mockResolvedValue(state({ registration: "open" }));
     renderServices();
