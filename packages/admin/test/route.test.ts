@@ -701,6 +701,7 @@ describe("global pages", () => {
       "platform-settings",
       "platform-deployment",
       "platform-operations",
+      "platform-stores",
     ]);
   });
 
@@ -708,6 +709,7 @@ describe("global pages", () => {
     expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
     expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
     expect(parseLocation("#/platform/operations").redirect).toBeUndefined();
+    expect(parseLocation("#/platform/store-connections").redirect).toBeUndefined();
     expect(parseLocation("#/platform/feeds").redirect).toBe(
       "#/platform/deployment",
     );

@@ -589,11 +589,9 @@ const PLATFORM_PAGES: NavPage[] = [
     label: "Store connections",
     path: "platform/store-connections",
     icon: PlugZap,
-    docs: "/docs/services/distribution/",
+    docs: "/docs/admin/store-connections/",
     inNav: true,
-    // The store connections API (A-16) has landed; its page has not. Until then, Deployment.
-    ready: false,
-    host: "platform-deployment",
+    ready: true,
     group: "platform",
   },
   {

@@ -70,6 +70,9 @@ export const ACTION_LEVELS = {
   "connector.webhook": 1,
   "connector.priority": 1,
   "connector.settings": 1,
+  // Store connections (A-16)
+  "storeApp.assign": 1,
+  "storeApp.release": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,

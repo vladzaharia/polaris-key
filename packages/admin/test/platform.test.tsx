@@ -152,7 +152,7 @@ describe("the Platform section in the sidebar", () => {
     const settings = within(nav()).getByRole("link", { name: "Settings" });
     expect(settings.getAttribute("href")).toBe("#/platform/settings");
     // Pages still to come are not listed: they would only redirect.
-    for (const name of ["Store connections", "Package feeds"]) {
+    for (const name of ["Package feeds"]) {
       expect(
         within(nav())
           .queryAllByRole("link", { name })
@@ -187,7 +187,7 @@ describe("Platform URLs", () => {
     );
   });
 
-  for (const path of ["store-connections", "feeds"]) {
+  for (const path of ["feeds"]) {
     it(`#/platform/${path} redirects to Deployment`, async () => {
       boot(`#/platform/${path}`, { extra: platformRoutes() });
       await deploymentPage();

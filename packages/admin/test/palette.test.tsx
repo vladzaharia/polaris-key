@@ -65,6 +65,7 @@ describe("the sources", () => {
       "Settings",
       "Deployment",
       "Operations",
+      "Store connections",
     ]);
   });
 
