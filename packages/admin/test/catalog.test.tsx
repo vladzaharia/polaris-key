@@ -480,6 +480,15 @@ describe("Catalog editor", () => {
     expect((await labelBox()).value).toBe("Both modes");
   });
 
+  it("explains a failed catalog load instead of opening an empty draft", async () => {
+    bootConfig("#/p/djdl/config/catalog/edit", {
+      [`${P}/config/catalog`]: apiError(500),
+    });
+    expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.queryByText("No entries yet")).toBeNull();
+    expect(window.sessionStorage.getItem("pk-catalog-draft:djdl")).toBeNull();
+  });
+
   it("passes axe", async () => {
     await openEditor();
     await labelBox();

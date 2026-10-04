@@ -378,6 +378,10 @@ describe("Edge mint page", () => {
       await screen.findByText("Signing in also hands out device tokens"),
     ).toBeTruthy();
     expect(screen.getAllByText("https://id.example")).toHaveLength(1);
+    // Where that trust is set is one link away (EMR-5).
+    expect(
+      screen.getByRole("link", { name: "Identity" }).getAttribute("href"),
+    ).toBe("#/p/djdl/identity/portal");
     const drawer = await openApprove();
     expect(within(drawer).queryByText("https://id.example")).toBeNull();
     await userEvent.click(

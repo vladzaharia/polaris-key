@@ -351,7 +351,14 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
                 <p>
                   An approval covers this identity provider and group map. When
                   they change, every recipe stops minting until it is approved
-                  again.
+                  again. They are set in{" "}
+                  <Link
+                    to={r.portal(slug)}
+                    className="text-accent-fg underline-offset-4 hover:underline"
+                  >
+                    Identity
+                  </Link>
+                  .
                 </p>
                 <IdentityList identity={data.identity} />
               </div>
