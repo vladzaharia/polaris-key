@@ -42,7 +42,7 @@ import {
   entryDefault,
   isSecretEntry,
   type InheritedValue,
-} from "../../../SchemaForm.js";
+} from "../../../schema/index.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
 import { EmptyState } from "../../../ui/EmptyState.js";

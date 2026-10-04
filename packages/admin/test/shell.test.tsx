@@ -708,9 +708,11 @@ describe("old URLs and history", () => {
   });
 
   it("sends a page that is not built yet to the page that holds it today", async () => {
-    boot("#/p/djdl/config/edge-mint", { services: ALL_ON });
+    boot("#/p/djdl/identity/sign-in", { services: ALL_ON });
     await ready();
-    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/keys"));
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/identity/portal"),
+    );
   });
 });
 

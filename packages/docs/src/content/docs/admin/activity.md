@@ -24,7 +24,7 @@ Grouped by what triggers them:
 | Licenses                  | `license.create`, `license.update`, `license.tier.change`, `license.overrides`, `license.enable`, `license.disable` |
 | License keys              | `key.create`, `key.revoke` — see the note below                                                                     |
 | Devices (operator-driven) | `device.deauthorize`, `device.fingerprint.reset`                                                                    |
-| Config                    | `schema.publish`, `profile.create`, `profile.delete`, `profile.overrides`                                           |
+| Config                    | `schema.publish`, `profile.create`, `profile.update`, `profile.delete`, `profile.overrides`                         |
 | Tiers                     | `tier.create`, `tier.update`, `tier.delete`                                                                         |
 | Release                   | `release.resync`, `release.channel.floor`                                                                           |
 | Update                    | `update.settings.update`                                                                                            |

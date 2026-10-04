@@ -444,10 +444,11 @@ describe("license record: Config overrides", () => {
   it("shows enforced and hidden states and submits a batch", async () => {
     const log = bootLicense(`${REC}/config`);
     expect(await screen.findByText("feature.timeout")).toBeTruthy();
-    expect(screen.getByText("enforced")).toBeTruthy();
-    expect(screen.getByText("hidden")).toBeTruthy();
+    // The secret's and the flag's states (a badge and the selected radio each; chunk 7's editor).
+    expect(screen.getAllByText("Enforced").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Hidden").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByRole("button", { name: /Save overrides/ })).toBeNull();
-    const timeout = screen.getByLabelText("Timeout");
+    const timeout = screen.getByLabelText(/^Timeout/);
     await userEvent.clear(timeout);
     await userEvent.type(timeout, "60");
     await userEvent.click(
@@ -466,17 +467,15 @@ describe("license record: Config overrides", () => {
 
   it("refuses a value the catalog rejects, with the server's own wording", async () => {
     const log = bootLicense(`${REC}/config`);
-    const timeout = await screen.findByLabelText("Timeout");
+    const timeout = await screen.findByLabelText(/^Timeout/);
     await userEvent.clear(timeout);
     await userEvent.type(timeout, "500");
     expect(await screen.findByText(/must be <= 120/)).toBeTruthy();
-    expect(
-      (
-        (await screen.findByRole("button", {
-          name: /Save overrides/,
-        })) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    // Save is refused while the changed row is invalid: it jumps to the error instead (MPE-2).
+    expect(screen.getByText(/fix 1 error to save/)).toBeTruthy();
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Save overrides/ }),
+    );
     expect(writes(log)).toEqual([]);
   });
 
@@ -492,7 +491,7 @@ describe("license record: Config overrides", () => {
         ),
       },
     });
-    const timeout = await screen.findByLabelText("Timeout");
+    const timeout = await screen.findByLabelText(/^Timeout/);
     await userEvent.clear(timeout);
     await userEvent.type(timeout, "60");
     await userEvent.click(

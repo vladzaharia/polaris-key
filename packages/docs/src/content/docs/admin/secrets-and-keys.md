@@ -42,28 +42,14 @@ current_ never changes what it may sign, and a change of usage is audited on its
 
 ### Edge-mint recipes
 
-While Config is on, products that declare edge-mint recipes get an **Edge-mint recipes** card in
-the page's last section. A
-recipe arrives from the linked repo, so it mints only once you have **approved it exactly as it
-stands**: each recipe shows as _Pending approval_, _Approved_, or _Changed since approval_ (with
-the approved value beside each changed field), next to its signing secret's usage. **Approve**
-shows the full recipe once more and records exactly those values; if a push changed it in the
-meantime the approval is refused and the card reloads. **Revoke** drops the approval. When the
-mint is public — the product's registration is open, auto-issue allows anonymous enrolment, or
-Identity is on with an OIDC default tier — the card warns that an approved recipe is a public token mint, and approval needs an explicit
-acknowledgement. The acknowledgement belongs to the approval: if the mint becomes public after you
-approved without it, the recipe shows _Changed since approval_ and stops minting until you
-re-approve it. When Identity is on, the card also shows the identity provider and group map an
-approval covers, because signing in is how people get device tokens without a key; a push that
-changes them makes the recipe _Changed since approval_ too, with the approved values beside the new
-ones, and so does turning License off after an approval given with it on. When the change arrives
-by a manifest push, the ingest also drops the approval (audited as `config.mint.invalidate`), so
-the recipe returns to _Pending approval_ and a later push that reverts the change does not restore
-it: review the licences and devices issued in between before you re-approve. While License is
-off the card and the approve dialog warn that the mint does not check device licences, so an
-approval given then (recorded as such) lets a disabled or expired licence mint. The setup checklist lists each recipe awaiting approval
-and each recipe secret not yet marked edge-mint. The full rule, the admin endpoints and the
-upgrade backfill are in [Edge-mint](/docs/services/config/edge-mint/#two-operator-conditions).
+Edge-mint recipes are approved on their own page, **Config → Edge mint**. A recipe arrives from
+the linked repo, so it mints only once its signing secret, set here with usage _Edge-mint signing
+key_, is marked edge-mint and you have **approved the recipe exactly as it stands** there. The
+setup checklist lists each recipe awaiting approval and each recipe secret not yet marked
+edge-mint. The full rule (public mints, sign-in trust, License checks and why a widening is
+permanent), the admin endpoints and the console page are on
+[Edge mint](/docs/services/config/edge-mint/#approving-a-recipe); the upgrade backfill is in
+[Two operator conditions](/docs/services/config/edge-mint/#two-operator-conditions).
 
 :::note[A different, related mechanism]
 Catalog-declared **managed secrets** — a config entry with `kind: "secret"`, or `secret: true` —

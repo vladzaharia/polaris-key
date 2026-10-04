@@ -84,11 +84,18 @@ the device-facing contract is unchanged: 404 means "not available here".
 
 ### Approving a recipe
 
-The console's **Secrets** view has an _Edge-mint recipes_ card listing each recipe as
-`approved`, `pending` or `changed` (with the approved value beside each changed field), its signing
-secret's usage, the product's effective registration policy, whether anonymous enrolment or an
-OIDC default tier is on, and — when Identity is on — the identity provider and group map an
-approval would cover. Behind it is Config's admin API:
+The console's **Config → Edge mint** page lists every recipe the manifest declares, with its
+status (**Approved**, **Needs approval** or **Changed since approval**), its signing secret and
+that secret's usage (linked to Keys & secrets), and what changed since the last approval. The page
+header says when the mint is public (open registration, anonymous enrolment or an OIDC default
+tier) and, when Identity is on, shows the identity provider and group map an approval would cover.
+With no recipes, the page explains what a recipe is and where it is authored.
+
+**Approve…** opens a drawer with the recipe's fields read-only beside the values the last approval
+recorded, the public-mint acknowledgement when it applies, and Approve. If the recipe, its sign-in
+trust or License changed while the drawer was open, the server answers `409`; the drawer stays
+open, says so and reloads the fields, so an operator approves only what they have seen. **Revoke
+approval…** asks first. Behind the page is Config's admin API:
 
 | Endpoint                                                    | Does                                                                                                                                                                                                                                                                     |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

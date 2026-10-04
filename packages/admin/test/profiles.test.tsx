@@ -1,324 +1,494 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { configureAxe } from "vitest-axe";
 import type {
   ProductCatalog,
-  ProfileDetail as ProfileDetailDto,
+  ProfileDetail,
   ProfileSummary,
 } from "../src/api.js";
-import { resetCache } from "../src/context.js";
-import { Toaster } from "../src/components/ui/index.js";
-import { Profiles } from "../src/views/Profiles.js";
-import { ProfileDetail } from "../src/views/profiles/ProfileDetail.js";
+import { resetConsole } from "./consoleHarness.js";
+import { apiError, bootConfig } from "./configHarness.js";
 
-// The Profiles views are the only units under test; `api` is fully mocked so we assert rendering
-// + which methods each flow calls (list / create / payload-edit via putProfilePayload / delete).
-vi.mock("../src/api.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/api.js")>();
-  return {
-    ...actual,
-    api: {
-      profiles: vi.fn(),
-      profile: vi.fn(),
-      createProfile: vi.fn(),
-      putProfilePayload: vi.fn(),
-      deleteProfile: vi.fn(),
-      schema: vi.fn(),
-    },
-  };
+/**
+ * Config → Profiles and the profile record (docs/design/ADMIN.md §6.6.3), driven through the
+ * whole console. Pins PRF-1 to PRF-8: edit details (A-7), Delete disabled while used, the id
+ * shown once, the row as the link, create errors told apart, the guarded Back, the description on
+ * two lines, and "Used by" with links to the tiers and licenses.
+ */
+
+const axe = configureAxe({
+  rules: {
+    "color-contrast": { enabled: false },
+    region: { enabled: false },
+  },
 });
 
-import { api, ApiError } from "../src/api.js";
-
-const mockApi = api as unknown as {
-  profiles: ReturnType<typeof vi.fn>;
-  profile: ReturnType<typeof vi.fn>;
-  createProfile: ReturnType<typeof vi.fn>;
-  putProfilePayload: ReturnType<typeof vi.fn>;
-  deleteProfile: ReturnType<typeof vi.fn>;
-  schema: ReturnType<typeof vi.fn>;
-};
+const P = "/manage/api/products/djdl";
 
 const PROFILES: ProfileSummary[] = [
   {
-    id: "default",
-    name: "Default",
-    description: "Baseline config",
+    id: "base-pro",
+    name: "Base (Pro)",
+    description: "Baseline config for Pro licenses.",
     modifiedBy: "ada@x.io",
     modifiedAt: 1_700_000_000,
+    usedBy: { tiers: 1, licenses: 2 },
   },
-  { id: "vip", name: "VIP" },
+  { id: "spare", name: "Spare", usedBy: { tiers: 0, licenses: 0 } },
 ];
 
 const CATALOG: ProductCatalog = {
   schemaVersion: 2,
   entries: [
     {
-      key: "theme",
+      key: "ui.theme",
       kind: "config",
       category: "appearance",
       label: "Theme",
       description: "UI theme",
-      schema: { type: "string" },
+      schema: { type: "string", enum: ["dark", "light"] },
     },
     {
-      key: "beta_features",
+      key: "beta",
       kind: "flag",
       category: "flags",
       label: "Beta features",
-      description: "Enable beta",
+      description: "",
       schema: { type: "boolean" },
     },
   ],
 };
 
-const DETAIL: ProfileDetailDto = {
-  id: "default",
-  name: "Default",
-  description: "Baseline config",
+const DETAIL: ProfileDetail = {
+  id: "base-pro",
+  name: "Base (Pro)",
+  description: "Baseline config for Pro licenses.",
+  modifiedBy: "ada@x.io",
+  modifiedAt: 1_700_000_000,
   payload: {
-    config: {
-      theme: { state: "default", value: "dark", updatedAt: 1_700_000_000 },
-    },
+    config: { "ui.theme": { value: "dark", state: "enforced", updatedAt: 1 } },
     secrets: {},
-    entitlements: {
-      beta_features: { state: "default", value: false, updatedAt: 0 },
-    },
+    entitlements: {},
+  },
+  usedBy: {
+    tiers: [{ id: "pro", label: "Pro" }],
+    licenses: [{ id: "lic_1", name: "Ada Lovelace", email: "ada@x.io" }],
   },
 };
 
-function renderProfiles() {
-  return render(
-    <Toaster>
-      <Profiles slug="djdl" />
-    </Toaster>,
-  );
-}
+const UNUSED: ProfileDetail = {
+  ...DETAIL,
+  id: "spare",
+  name: "Spare",
+  description: undefined,
+  usedBy: { tiers: [], licenses: [] },
+};
 
-function renderDetail() {
-  return render(
-    <Toaster>
-      <ProfileDetail slug="djdl" id="default" />
-    </Toaster>,
-  );
-}
-
-beforeEach(() => {
-  resetCache();
-  vi.clearAllMocks();
-  window.location.hash = "";
-  mockApi.profiles.mockResolvedValue({ profiles: PROFILES });
-  mockApi.profile.mockResolvedValue(DETAIL);
-  mockApi.schema.mockResolvedValue(CATALOG);
-  // jsdom lacks these Radix-needed APIs.
-  (
-    Element.prototype as unknown as { hasPointerCapture: () => boolean }
-  ).hasPointerCapture = () => false;
-  (
-    Element.prototype as unknown as { scrollIntoView: () => void }
-  ).scrollIntoView = () => undefined;
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
-    class {
-      observe(): void {}
-      unobserve(): void {}
-      disconnect(): void {}
-    };
+beforeEach(resetConsole);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
 });
 
-afterEach(cleanup);
+async function axeClean(): Promise<void> {
+  const results = await axe(document.querySelector("main")!);
+  expect(
+    results.violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+    ),
+  ).toEqual([]);
+}
 
-describe("Profiles view", () => {
-  it("lists profiles with id, name, description, and last-modified", async () => {
-    renderProfiles();
-    expect(await screen.findByText("Default")).toBeTruthy();
-    expect(screen.getByText("VIP")).toBeTruthy();
-    expect(screen.getByText("Baseline config")).toBeTruthy();
-    // Last-modified shows the actor.
-    expect(screen.getByText(/ada@x\.io/)).toBeTruthy();
+const listRoutes = (extra: Record<string, unknown> = {}) => ({
+  [`${P}/config/profiles`]: { profiles: PROFILES },
+  [`${P}/config/catalog`]: CATALOG,
+  ...extra,
+});
+
+// ── the list ───────────────────────────────────────────────────────────────────────────────────
+
+describe("Profiles page", () => {
+  it("lists profiles with what uses them; the row is the link (PRF-4)", async () => {
+    bootConfig("#/p/djdl/config/profiles", listRoutes());
+    const link = await screen.findByRole("link", { name: "Base (Pro)" });
+    expect(link.getAttribute("href")).toBe("#/p/djdl/config/profiles/base-pro");
+    const row = link.closest("tr")!;
+    expect(within(row).getByText("1 tier · 2 licenses")).toBeTruthy();
+    expect(within(row).getByText("base-pro")).toBeTruthy();
+    // The description wraps to two lines rather than being cut to one (PRF-7).
+    expect(
+      within(row).getByText("Baseline config for Pro licenses.").className,
+    ).toContain("line-clamp-2");
+    expect(screen.queryByRole("button", { name: /Edit base-pro/ })).toBeNull();
   });
 
-  it("shows the empty state when there are no profiles", async () => {
-    mockApi.profiles.mockResolvedValue({ profiles: [] });
-    renderProfiles();
+  it("shows a skeleton while loading, and the first-run state when there are none", async () => {
+    let release: (v: unknown) => void = () => undefined;
+    bootConfig(
+      "#/p/djdl/config/profiles",
+      listRoutes({
+        [`${P}/config/profiles`]: () =>
+          new Promise((r) => {
+            release = r;
+          }),
+      }),
+    );
+    await screen.findByRole("heading", { level: 1, name: "Profiles" });
+    await waitFor(() =>
+      expect(document.querySelector('tr[aria-hidden="true"]')).not.toBeNull(),
+    );
+    release({ profiles: [] });
     expect(await screen.findByText("No profiles yet")).toBeTruthy();
   });
 
-  it("surfaces an error state with a retry affordance", async () => {
-    mockApi.profiles.mockRejectedValue(new Error("boom"));
-    renderProfiles();
-    expect(await screen.findByText("Could not load profiles")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Retry/ })).toBeTruthy();
-  });
-
-  it("links each row to the profile's own detail route", async () => {
-    // Editing is a routed page, not a modal — so a profile has a URL an operator can share.
-    renderProfiles();
-    const link = (await screen.findByText("Default")) as HTMLAnchorElement;
-    expect(link.getAttribute("href")).toBe("#/p/djdl/config/profiles/default");
-  });
-
-  it("creates a profile via createProfile, then goes straight to its editor", async () => {
-    mockApi.createProfile.mockResolvedValue({ ok: true, id: "trial" });
-    renderProfiles();
-    await screen.findByText("Default");
-
-    await userEvent.click(screen.getByRole("button", { name: /New profile/ }));
-    const dialog = await screen.findByRole("dialog");
-
-    // One pane, three fields — the create step only collects identity.
-    expect(within(dialog).queryByRole("tab")).toBeNull();
-    await userEvent.type(
-      within(dialog).getByRole("textbox", { name: /^Id/ }),
-      "trial",
+  it("explains a failed load and retries", async () => {
+    let fail = true;
+    bootConfig(
+      "#/p/djdl/config/profiles",
+      listRoutes({
+        [`${P}/config/profiles`]: () =>
+          fail ? apiError(500) : { profiles: PROFILES },
+      }),
     );
-    await userEvent.type(within(dialog).getByLabelText("Name"), "Trial");
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    fail = false;
+    await userEvent.click(retry);
+    expect(await screen.findByRole("link", { name: "Spare" })).toBeTruthy();
+  });
+
+  it("round-trips the search through the URL, with a no-results state", async () => {
+    bootConfig("#/p/djdl/config/profiles?q=spare", listRoutes());
+    expect(await screen.findByRole("link", { name: "Spare" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Base (Pro)" })).toBeNull();
+    const search = screen.getByRole("searchbox", { name: /Search/ });
+    await userEvent.clear(search);
+    await userEvent.type(search, "zzz");
+    await waitFor(() => expect(window.location.hash).toContain("q=zzz"));
+    expect(await screen.findByText(/No .*match/)).toBeTruthy();
+  });
+
+  it("creates a profile in a drawer, then opens it", async () => {
+    const backend = bootConfig(
+      "#/p/djdl/config/profiles",
+      listRoutes({
+        [`POST ${P}/config/profiles`]: { ok: true, id: "studio" },
+        [`${P}/config/profiles/studio`]: {
+          ...UNUSED,
+          id: "studio",
+          name: "Studio",
+        },
+      }),
+    );
+    await screen.findByRole("link", { name: "Spare" });
+    await userEvent.click(screen.getByRole("button", { name: "New profile" }));
+    const drawer = await screen.findByRole("dialog", { name: "New profile" });
     await userEvent.type(
-      within(dialog).getByLabelText("Description"),
-      "Time-limited",
+      within(drawer).getByRole("textbox", { name: /^Id/ }),
+      "studio",
+    );
+    await userEvent.type(
+      within(drawer).getByRole("textbox", { name: /^Name/ }),
+      "Studio",
     );
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /Create & configure/ }),
+      within(drawer).getByRole("button", { name: "Create profile" }),
     );
-
-    await waitFor(() => expect(mockApi.createProfile).toHaveBeenCalledTimes(1));
-    const [slug, body] = mockApi.createProfile.mock.calls[0]!;
-    expect(slug).toBe("djdl");
-    expect(body).toMatchObject({
-      id: "trial",
-      name: "Trial",
-      description: "Time-limited",
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/config/profiles/studio"),
+    );
+    expect(backend.writes()[0]).toMatchObject({
+      method: "POST",
+      body: { id: "studio", name: "Studio" },
     });
-    // Create THEN edit: the payload is set on the profile's own page.
+    // The create invalidated the list.
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/p/djdl/config/profiles/trial"),
+      expect(backend.reads(`${P}/config/profiles`)).toBeGreaterThan(1),
     );
   });
 
-  it("confirms before deleting and calls deleteProfile on confirm", async () => {
-    mockApi.deleteProfile.mockResolvedValue({ ok: true, id: "vip" });
-    renderProfiles();
-    await screen.findByText("VIP");
-
-    await userEvent.click(screen.getByRole("button", { name: "Delete vip" }));
-    const confirmDialog = await screen.findByRole("alertdialog");
-    expect(
-      within(confirmDialog).getByText(/Delete profile “vip”\?/),
-    ).toBeTruthy();
-    expect(mockApi.deleteProfile).not.toHaveBeenCalled();
-
+  it("tells a taken id apart from other create failures (PRF-5)", async () => {
+    bootConfig(
+      "#/p/djdl/config/profiles",
+      listRoutes({
+        [`POST ${P}/config/profiles`]: apiError(409, {
+          reason: "profile_exists",
+        }),
+      }),
+    );
+    await screen.findByRole("link", { name: "Spare" });
+    await userEvent.click(screen.getByRole("button", { name: "New profile" }));
+    const drawer = await screen.findByRole("dialog", { name: "New profile" });
+    const id = within(drawer).getByRole("textbox", { name: /^Id/ });
+    // Known locally first.
+    await userEvent.type(id, "spare");
+    expect(within(drawer).getByText("That id is already in use.")).toBeTruthy();
+    // Taken on the server since the list loaded.
+    await userEvent.clear(id);
+    await userEvent.type(id, "fresh");
     await userEvent.click(
-      within(confirmDialog).getByRole("button", { name: "Delete profile" }),
+      within(drawer).getByRole("button", { name: "Create profile" }),
+    );
+    expect(
+      await within(drawer).findByText("That id is already in use."),
+    ).toBeTruthy();
+  });
+
+  it("asks for a catalog before a profile can be created (PRF-5)", async () => {
+    bootConfig(
+      "#/p/djdl/config/profiles",
+      listRoutes({ [`${P}/config/catalog`]: apiError(404) }),
+    );
+    await screen.findByRole("link", { name: "Spare" });
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "New profile" })
+          .getAttribute("aria-disabled"),
+      ).toBe("true"),
+    );
+    expect(screen.getByText(/Publish a catalog first/)).toBeTruthy();
+  });
+
+  it("deletes only an unused profile, after an L2 confirmation (PRF-2)", async () => {
+    const backend = bootConfig(
+      "#/p/djdl/config/profiles",
+      listRoutes({
+        [`DELETE ${P}/config/profiles/spare`]: { ok: true, id: "spare" },
+      }),
+    );
+    await screen.findByRole("link", { name: "Spare" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for Base (Pro)" }),
+    );
+    const used = await screen.findByRole("menuitem", { name: /Delete/ });
+    expect(used.getAttribute("aria-disabled")).toBe("true");
+    expect(used.textContent).toContain("Used by 1 tier, 2 licenses");
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for Spare" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Delete/ }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    expect(within(confirm).getByText("Delete profile spare?")).toBeTruthy();
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Delete profile" }),
     );
     await waitFor(() =>
-      expect(mockApi.deleteProfile).toHaveBeenCalledWith("djdl", "vip"),
+      expect(backend.writes()).toEqual([
+        expect.objectContaining({
+          method: "DELETE",
+          path: `${P}/config/profiles/spare`,
+        }),
+      ]),
     );
+    await waitFor(() =>
+      expect(backend.reads(`${P}/config/profiles`)).toBeGreaterThan(1),
+    );
+  });
+
+  it("passes axe", async () => {
+    bootConfig("#/p/djdl/config/profiles", listRoutes());
+    await screen.findByRole("link", { name: "Spare" });
+    await axeClean();
   });
 });
 
-describe("Profile detail — the routed payload editor", () => {
-  it("renders the profile header with a way back to the list", async () => {
-    renderDetail();
-    expect(await screen.findByText("Default")).toBeTruthy();
+// ── the record ─────────────────────────────────────────────────────────────────────────────────
+
+const recordRoutes = (extra: Record<string, unknown> = {}) =>
+  listRoutes({
+    [`${P}/config/profiles/base-pro`]: DETAIL,
+    [`${P}/config/profiles/spare`]: UNUSED,
+    ...extra,
+  });
+
+describe("Profile record", () => {
+  it("shows the profile once, with its tabs (PRF-3)", async () => {
+    bootConfig("#/p/djdl/config/profiles/base-pro", recordRoutes());
+    await screen.findByRole("heading", { level: 1, name: "Base (Pro)" });
+    expect(screen.getAllByText("base-pro")).toHaveLength(1);
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(
-      (
-        screen.getByRole("link", {
-          name: /Back to profiles/,
-        }) as HTMLAnchorElement
-      ).getAttribute("href"),
+      within(crumbs)
+        .getByRole("link", { name: "Profiles" })
+        .getAttribute("href"),
     ).toBe("#/p/djdl/config/profiles");
-    expect(mockApi.profile).toHaveBeenCalledWith("djdl", "default");
-  });
-
-  it("groups the catalog-driven editor by category", async () => {
-    renderDetail();
+    const tabs = screen.getByRole("navigation", { name: "Profile" });
     expect(
-      await screen.findByRole("button", { name: /appearance/ }),
-    ).toBeTruthy();
-    expect(screen.getByRole("button", { name: /flags/ })).toBeTruthy();
-    expect(await screen.findByLabelText("Theme")).toBeTruthy();
+      within(tabs)
+        .getByRole("link", { name: /Payload/ })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+    expect(
+      within(tabs).getByRole("link", { name: /Used by/ }).textContent,
+    ).toContain("2");
   });
 
-  it("edits its managed payload via putProfilePayload", async () => {
-    mockApi.putProfilePayload.mockResolvedValue({ ok: true, id: "default" });
-    renderDetail();
-
-    const theme = (await screen.findByLabelText("Theme")) as HTMLInputElement;
-    await userEvent.clear(theme);
-    await userEvent.type(theme, "light");
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Save payload/ }),
-    );
-
-    await waitFor(() =>
-      expect(mockApi.putProfilePayload).toHaveBeenCalledTimes(1),
-    );
-    const [slug, id, updates] = mockApi.putProfilePayload.mock.calls[0]!;
-    expect(slug).toBe("djdl");
-    expect(id).toBe("default");
-    // A set row always carries its state, so a later demotion to Default cannot delete it.
-    expect(updates).toEqual([
-      { key: "theme", state: "default", value: "light" },
-    ]);
-  });
-
-  it("shows an unset catalog key as 'Not set' rather than as a blank value", async () => {
-    // `beta_features` IS in the payload; add a key the payload does not mention.
-    mockApi.schema.mockResolvedValue({
-      ...CATALOG,
-      entries: [
-        ...CATALOG.entries,
-        {
-          key: "telemetry",
-          kind: "config",
-          category: "privacy",
-          label: "Telemetry",
-          description: "Send usage data",
-          schema: { type: "boolean" },
-          default: false,
-        },
-      ],
+  it("lists what uses it, linked to each tier and license (PRF-8)", async () => {
+    bootConfig("#/p/djdl/config/profiles/base-pro/used-by", recordRoutes());
+    const table = await screen.findByRole("table", {
+      name: /What uses this profile/,
     });
-    renderDetail();
-    expect(await screen.findByText("Not set")).toBeTruthy();
-    expect(screen.queryByLabelText("Telemetry")).toBeNull();
+    expect(
+      within(table).getByRole("link", { name: "Pro" }).getAttribute("href"),
+    ).toBe("#/p/djdl/license/tiers/pro");
+    expect(
+      within(table)
+        .getByRole("link", { name: "Ada Lovelace" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/license/licenses/lic_1");
   });
 
-  it("maps a 422's catalog-validated fields back onto the rows that caused them", async () => {
-    mockApi.putProfilePayload.mockRejectedValue(
-      new ApiError(422, ['theme must be one of "dark", "light"']),
+  it("edits the name and description (A-7, PRF-1)", async () => {
+    const backend = bootConfig(
+      "#/p/djdl/config/profiles/base-pro",
+      recordRoutes({
+        [`PATCH ${P}/config/profiles/base-pro`]: { ok: true, id: "base-pro" },
+      }),
     );
-    renderDetail();
-
-    const theme = (await screen.findByLabelText("Theme")) as HTMLInputElement;
-    await userEvent.clear(theme);
-    await userEvent.type(theme, "chartreuse");
+    await screen.findByRole("heading", { level: 1, name: "Base (Pro)" });
     await userEvent.click(
-      await screen.findByRole("button", { name: /Save payload/ }),
+      screen.getAllByRole("button", { name: /Edit details/ })[0]!,
     );
+    const drawer = await screen.findByRole("dialog", { name: "Edit details" });
+    const name = within(drawer).getByRole("textbox", { name: /^Name/ });
+    await userEvent.clear(name);
+    await userEvent.type(name, "Pro baseline");
+    await userEvent.clear(
+      within(drawer).getByRole("textbox", { name: /^Description/ }),
+    );
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Save details" }),
+    );
+    await waitFor(() => expect(backend.writes()).toHaveLength(1));
+    expect(backend.writes()[0]!.body).toEqual({
+      name: "Pro baseline",
+      description: null,
+    });
+    await waitFor(() =>
+      expect(backend.reads(`${P}/config/profiles/base-pro`)).toBeGreaterThan(1),
+    );
+  });
 
-    // Inline on the row, not a toast that names no control.
+  it("keeps Delete disabled while the profile is used, with the reason (PRF-2)", async () => {
+    bootConfig("#/p/djdl/config/profiles/base-pro", recordRoutes());
+    await screen.findByRole("heading", { level: 1, name: "Base (Pro)" });
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "More actions" })[0]!,
+    );
+    const del = await screen.findByRole("menuitem", { name: /Delete/ });
+    expect(del.getAttribute("aria-disabled")).toBe("true");
+    expect(del.textContent).toContain("Used by 1 tier, 1 license");
+  });
+
+  it("deletes an unused profile and returns to the list", async () => {
+    const backend = bootConfig(
+      "#/p/djdl/config/profiles/spare",
+      recordRoutes({
+        [`DELETE ${P}/config/profiles/spare`]: { ok: true, id: "spare" },
+      }),
+    );
+    await screen.findByRole("heading", { level: 1, name: "Spare" });
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "More actions" })[0]!,
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Delete/ }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Delete profile" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/config/profiles"),
+    );
+    expect(backend.writes()[0]).toMatchObject({ method: "DELETE" });
+  });
+
+  it("saves the payload and puts a 422 back on its row", async () => {
+    let reject = true;
+    const backend = bootConfig(
+      "#/p/djdl/config/profiles/base-pro",
+      recordRoutes({
+        [`PUT ${P}/config/profiles/base-pro`]: () =>
+          reject
+            ? apiError(422, {
+                fields: ['ui.theme must be one of "dark", "light"'],
+              })
+            : { ok: true, id: "base-pro" },
+      }),
+    );
+    await screen.findByText("ui.theme");
+    await userEvent.click(screen.getByRole("radio", { name: "Hidden" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save payload" }));
     expect(
       await screen.findByText('must be one of "dark", "light"'),
     ).toBeTruthy();
+    expect(backend.writes()[0]!.body).toEqual({
+      updates: [{ key: "ui.theme", state: "hidden", value: "dark" }],
+    });
+    // The draft survived the refusal.
+    expect(screen.getByText(/1 unsaved change/)).toBeTruthy();
+    // Editing the refused row retires the server's message; the save goes through.
+    reject = false;
+    await userEvent.click(screen.getByRole("radio", { name: "Default" }));
+    await waitFor(() =>
+      expect(screen.queryByText('must be one of "dark", "light"')).toBeNull(),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save payload" }));
+    await waitFor(() => expect(backend.writes()).toHaveLength(2));
+    await waitFor(() =>
+      expect(backend.reads(`${P}/config/profiles/base-pro`)).toBeGreaterThan(1),
+    );
   });
 
-  it("points at the catalog when the product declares no config keys", async () => {
-    mockApi.schema.mockResolvedValue({ schemaVersion: 1, entries: [] });
-    renderDetail();
+  it("asks before leaving with unsaved payload edits (PRF-6)", async () => {
+    bootConfig("#/p/djdl/config/profiles/base-pro", recordRoutes());
+    await screen.findByText("ui.theme");
+    await userEvent.click(screen.getByRole("radio", { name: "Hidden" }));
+    await screen.findByText(/1 unsaved change/);
+    await userEvent.click(
+      within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole(
+        "link",
+        { name: "Profiles" },
+      ),
+    );
+    const confirm = await screen.findByRole("alertdialog");
     expect(
-      await screen.findByText("This product has no config catalog"),
+      within(confirm).getByText("Discard unsaved changes to this profile?"),
     ).toBeTruthy();
+    expect(window.location.hash).toBe("#/p/djdl/config/profiles/base-pro");
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Discard" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/config/profiles"),
+    );
   });
 
-  it("surfaces a catalog load failure with a retry", async () => {
-    mockApi.schema.mockRejectedValue(new Error("nope"));
-    renderDetail();
-    expect(await screen.findByText("Could not load the catalog")).toBeTruthy();
+  it("asks for a catalog when the product has none (PRF-7)", async () => {
+    bootConfig(
+      "#/p/djdl/config/profiles/base-pro",
+      recordRoutes({ [`${P}/config/catalog`]: apiError(404) }),
+    );
+    expect(await screen.findByText("Publish a catalog first")).toBeTruthy();
+    expect(screen.queryByText("Could not load the catalog")).toBeNull();
+  });
+
+  it("says when the profile does not exist", async () => {
+    bootConfig(
+      "#/p/djdl/config/profiles/gone",
+      recordRoutes({ [`${P}/config/profiles/gone`]: apiError(404) }),
+    );
+    expect(await screen.findByText("Profile not found")).toBeTruthy();
+  });
+
+  it("passes axe", async () => {
+    bootConfig("#/p/djdl/config/profiles/base-pro", recordRoutes());
+    await screen.findByText("ui.theme");
+    await axeClean();
   });
 });

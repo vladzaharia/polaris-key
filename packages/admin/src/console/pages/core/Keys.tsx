@@ -8,8 +8,8 @@
  *   behind a disclosure, L3, with the trust-cache risk stated (SET-1, OVR-3).
  * - **Secrets**: the union of what is stored (A-5) and what the configuration requires (SEC-2).
  * - **CI publishing**: the trusted publisher and static CI tokens.
- * - Edge mint and store credentials keep a section at the end until their own pages exist under
- *   Config and Distribution; each shows only while its service is on.
+ * - Store credentials keep a section at the end until their own page exists under Distribution;
+ *   it shows only while Distribution is on. Edge mint has its own page under Config.
  */
 
 import * as React from "react";
@@ -37,7 +37,6 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
-import { EdgeMintRecipes } from "../../../views/EdgeMintRecipes.js";
 import { OutletCredentials } from "../../../views/OutletCredentials.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
@@ -86,9 +85,7 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
     );
   }
   const p = product.data;
-  const configOn = p.services?.config?.enabled ?? false;
   const distributionOn = p.services?.distribution?.enabled ?? false;
-  const elsewhere = configOn || distributionOn;
   return (
     <SettingsTemplate
       header={header}
@@ -96,15 +93,15 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
         { id: "keys-signing", title: "Signing keys" },
         { id: "keys-secrets", title: "Secrets" },
         { id: "keys-ci", title: "CI publishing" },
-        ...(elsewhere
-          ? [{ id: "keys-services", title: "Edge mint and store credentials" }]
+        ...(distributionOn
+          ? [{ id: "keys-services", title: "Store credentials" }]
           : []),
       ]}
     >
       <SigningKeysSection slug={slug} product={p} />
       <SecretsSection slug={slug} product={p} />
       <CiPublishingSection slug={slug} />
-      {elsewhere ? (
+      {distributionOn ? (
         <section
           id="keys-services"
           tabIndex={-1}
@@ -116,18 +113,14 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
               id="keys-services-heading"
               className="text-base font-bold text-fg-strong"
             >
-              Edge mint and store credentials
+              Store credentials
             </h2>
             <p className="text-sm text-fg-muted">
-              {configOn && distributionOn
-                ? "Edge-mint approvals are a Config decision; store credentials are how Distribution reaches each store."
-                : configOn
-                  ? "Edge-mint approvals are a Config decision: a recipe mints only once approved as it stands."
-                  : "Store credentials are how Distribution reaches each store on this product's behalf."}
+              Store credentials are how Distribution reaches each store on this
+              product&apos;s behalf.
             </p>
           </div>
-          {configOn ? <EdgeMintRecipes slug={slug} /> : null}
-          {distributionOn ? <OutletCredentials slug={slug} /> : null}
+          <OutletCredentials slug={slug} />
         </section>
       ) : null}
     </SettingsTemplate>

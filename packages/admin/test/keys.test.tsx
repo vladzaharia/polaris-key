@@ -459,10 +459,11 @@ describe("Keys & secrets → CI publishing", () => {
 });
 
 describe("Keys & secrets → the page", () => {
-  it("mounts edge mint and store credentials only for the services that use them (SEC-1)", async () => {
+  it("mounts store credentials only while Distribution is on, and no edge mint (SEC-1)", async () => {
     mount();
     await screen.findByText("djdl-a");
-    expect(screen.queryByText("Edge mint and store credentials")).toBeNull();
+    expect(screen.queryByText("Store credentials")).toBeNull();
+    expect(screen.queryByText("Edge-mint recipes")).toBeNull();
     cleanup();
     resetCore();
     fns.product.mockResolvedValue({
@@ -473,7 +474,7 @@ describe("Keys & secrets → the page", () => {
     mount();
     expect(
       await screen.findByRole("heading", {
-        name: "Edge mint and store credentials",
+        name: "Store credentials",
       }),
     ).toBeTruthy();
     expect(await screen.findByText("Outlet credentials")).toBeTruthy();
