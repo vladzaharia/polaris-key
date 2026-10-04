@@ -10,6 +10,24 @@ allprojects {
     version = "0.1.0"
 }
 
+// :platform publishes one coordinate per flavour (polaris-key-platform-play, -direct; P6-09), and a
+// consumer that is itself published (the Godot binding, P6-10) declares that coordinate so its POM
+// names the right flavour. Inside this build the coordinate IS the :platform project; variant-aware
+// matching picks the flavour from the consumer's `channel` attribute.
+if (findProject(":platform") != null) {
+    allprojects {
+        configurations.configureEach {
+            resolutionStrategy.dependencySubstitution {
+                for (flavour in listOf("play", "direct")) {
+                    substitute(module("im.plrs.key:polaris-key-platform-$flavour"))
+                        .using(project(":platform"))
+                        .because("polaris-key-platform-$flavour is published from :platform in this build")
+                }
+            }
+        }
+    }
+}
+
 // The module boundaries (P6-05): :core is a plain JVM library with no Android dependency, and
 // :platform is standalone (the Godot binding links it alone), so it never depends on :core. The
 // one module allowed to see both is :android (P6-12). `./gradlew checkModuleBoundaries` fails on

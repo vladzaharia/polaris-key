@@ -344,7 +344,7 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("export: play carries both play AARs", E.libraries("play") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-play-release.aar", "polaris_key/native/android/bin/polaris-key-godot-play-release.aar"]))
 	t.check("export: direct carries both direct AARs", E.libraries("direct") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-direct-release.aar", "polaris_key/native/android/bin/polaris-key-godot-direct-release.aar"]))
 	t.check("export: none carries nothing", E.libraries("none").is_empty() and E.dependencies("none").is_empty() and E.manifest_elements("none") == "")
-	t.check("export: play depends on Play Core", E.dependencies("play") == PackedStringArray(["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0"]))
+	t.check("export: play depends on Play Core (In-App Updates, Asset Delivery, Integrity)", E.dependencies("play") == PackedStringArray(["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"]))
 	t.check("export: direct depends on no Play Core", E.dependencies("direct").is_empty())
 	var direct := E.manifest_elements("direct")
 	t.check("export: a direct preset gets REQUEST_INSTALL_PACKAGES", direct.contains("<uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />"))

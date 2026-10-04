@@ -1,19 +1,26 @@
-# PolarisKeyAndroid — the Godot Android plugin (P5-06)
+# PolarisKeyAndroid — the Godot Android plugin (P5-06, P6-10)
 
-A Godot Android plugin (v2) over `polaris-key-platform` (sdks/kotlin). Godot instantiates
+A Godot Android plugin (v2) over `polaris-key-platform` (sdks/kotlin `:platform`) and nothing else
+from the Kotlin SDK: verification, the licence client, the updater and the pack engine stay in the
+Godot SDK's GDScript core, as on every other target (Godot on iOS likewise links only Swift's
+`PolarisKeyPlatform`). The binding is a JSON layer: every Android edge (install source, Keystore,
+In-App Updates, Play Asset Delivery, Play Integrity, PackageInstaller) is the platform module's
+code, and `./gradlew :godot:checkPlatformOnly` (part of `check`, run by the `android` CI job) fails
+if any other SDK module (a project or an `im.plrs.key` module) enters any of its classpaths. Godot instantiates
 `im.plrs.key.godot.PolarisKeyAndroidPlugin` at start-up and registers it as the Engine singleton
 `PolarisKeyAndroid`; the GDScript facade is `addons/polaris_key/native/pkey_android.gd`
 (`PKeyAndroid`). Needs Godot 4.2+ with the Gradle build (`gradle_build/use_gradle_build`).
 
-| Path              | What                                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------- |
-| `src/main/`       | the plugin class, `Commands` (the JSON surface), the event queue, the v2 manifest entry     |
-| `src/play/`       | `PlayCommands`: In-App Updates, Play Asset Delivery and Play Integrity                      |
-| `src/direct/`     | `DirectCommands`: the verified PackageInstaller self-update                                 |
-| `src/test*/`      | Robolectric tests of the command surface per flavour                                        |
-| `build.sh`        | builds both flavours and installs the AARs into `addons/polaris_key/native/android/bin/`    |
-| `export_check.sh` | headless Gradle exports of `e2e/game` per flavour, their checks, and an optional device run |
-| `e2e/game/`       | the device probe project                                                                    |
+| Path               | What                                                                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build.gradle.kts` | the `:godot` project: depends on `im.plrs.key:polaris-key-platform-<flavour>` only (substituted by `:platform`), `checkPlatformOnly`, the local publication |
+| `src/main/`        | the plugin class, `Commands` (the JSON surface), the event queue, the v2 manifest entry                                                                     |
+| `src/play/`        | `PlayCommands`: In-App Updates, Play Asset Delivery and Play Integrity                                                                                      |
+| `src/direct/`      | `DirectCommands`: the verified PackageInstaller self-update                                                                                                 |
+| `src/test*/`       | Robolectric tests of the command surface per flavour                                                                                                        |
+| `build.sh`         | publishes both flavours of platform and binding to `sdks/kotlin/build/repo` and installs those AARs into `addons/polaris_key/native/android/bin/`           |
+| `export_check.sh`  | headless Gradle exports of `e2e/game` per flavour, their checks, and an optional device run                                                                 |
+| `e2e/game/`        | the device probe project                                                                                                                                    |
 
 ## Surface
 
@@ -39,6 +46,16 @@ The other flavour's ops answer `{ok: false, unsupported: true, reason: "outlet"}
 and a failure `{error: "integrity", errorCode, exception, message}`. `PolarisKey.devices.attest()`
 posts the token to `POST /<product>/devices/attest`.
 
+## Publication
+
+Per flavour, `im.plrs.key:polaris-key-godot-play` and `im.plrs.key:polaris-key-godot-direct`
+(AAR, POM, sources jar, Gradle module metadata), each depending on
+`im.plrs.key:polaris-key-platform-<same flavour>` and on no other SDK module, written to the
+local repository `sdks/kotlin/build/repo` only: no signing, no Maven Central, no remote
+repository. `sdks/kotlin/tools/check_publication.sh` checks them, and that the export plugin's
+Play Core list equals the libraries the platform play POM names. The Godot addon itself ships on
+its own feed (F-09); a game gets the AARs through `build.sh`.
+
 ## Building into a game
 
 ```sh
@@ -47,8 +64,9 @@ sdks/godot/native/android/build.sh          # JDK 17+, the Android SDK
 
 In the Android export preset set `polaris_key/android_flavor` (`play` by default, `direct`, or
 `none`; `PKEY_ANDROID_FLAVOR` in CI) and turn on the Gradle build. The export plugin
-(`addons/polaris_key/native/android_export_plugin.gd`) then adds the flavour's two AARs, Play Core
-from Maven for `play`, and for `direct` only the manifest entries `REQUEST_INSTALL_PACKAGES` and
+(`addons/polaris_key/native/android_export_plugin.gd`) then adds the flavour's two AARs (the
+platform module's and this thin binding), Play Core (app-update, asset-delivery, integrity) from
+Maven for `play`, and for `direct` only the manifest entries `REQUEST_INSTALL_PACKAGES` and
 `UPDATE_PACKAGES_WITHOUT_USER_ACTION`. Without the Gradle build or the AARs the export carries no
 plugin, warns, and PKeyAndroid answers `dependency`.
 
@@ -72,3 +90,10 @@ the next launch reads the journaled `success` and an install source of `selfUpda
 `packageSource` 0; In-App Updates `outlet` for a non-Play install; an on-demand pack under
 `--local-testing` fetched (PENDING → DOWNLOADING → TRANSFERRING → COMPLETED), located under
 `files/assetpacks/probeod/1/1/assets/` and mounted in 1.8 ms.
+
+Re-run on 2026-10-04 after the binding was rebuilt on the platform module alone (P6-10; the same
+emulator image, JDK 17, Godot 4.7.2): headless exports 7–15 s; the SDK classes in each export are
+only `im.plrs.key.godot` and `im.plrs.key.platform` (69 in direct, 114 in play), and the play
+export now carries the Play Integrity library; Keystore round trip 11–13 ms; refusals 116–285 ms;
+the silent v1 → v2 self-update through the update driver 0.6 s; the on-demand pack fetched and
+mounted in 2.3 ms. Every check green.
