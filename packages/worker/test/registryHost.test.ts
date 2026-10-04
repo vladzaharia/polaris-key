@@ -12,6 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
+import { feedRoute } from "../src/services/distribution/registry/serve.js";
 import worker from "../src/index.js";
 import { REGISTRY_ROUTES } from "../src/mount.js";
 import {
@@ -25,6 +26,7 @@ import {
   registryEcosystemOf,
   registryHostname,
   registryOrigin,
+  FEED_READ_ROUTE,
   type RegistryRoute,
 } from "../src/core/registryHost.js";
 import { inertDocumentPolicy } from "../src/core/bytesHost.js";
@@ -567,6 +569,34 @@ describe("registry host: the landing page at /", () => {
 });
 
 // ── Dispatch through fake routes ─────────────────────────────────────────────────────────────
+
+describe("registry host: the access ladder cannot be skipped", () => {
+  it("every REGISTRY_ROUTES entry is built by feedRoute (serveFeedRead around its work)", () => {
+    for (const route of REGISTRY_ROUTES)
+      expect(route[FEED_READ_ROUTE], `${route.name} skips the ladder`).toBe(
+        true,
+      );
+  });
+
+  it("feedRoute marks its routes and a hand-written route is not marked", () => {
+    const built = feedRoute({
+      name: "x",
+      ecosystem: "npm",
+      match: () => null,
+      deliverableId: () => null,
+      serve: async () => new Response(""),
+    });
+    expect(built[FEED_READ_ROUTE]).toBe(true);
+    const handWritten: RegistryRoute = {
+      name: "y",
+      service: "distribution",
+      ecosystem: "npm",
+      match: () => null,
+      handle: async () => new Response(""),
+    };
+    expect(handWritten[FEED_READ_ROUTE]).toBeUndefined();
+  });
+});
 
 describe("registry host: dispatch", () => {
   const SLUG = "djdl";

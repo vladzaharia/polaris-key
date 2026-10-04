@@ -103,6 +103,14 @@ export async function deleteProduct(
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
     },
+    // F-hardening: a deleted product's package feeds go off (the read path also refuses a
+    // product whose status is not active, so this is belt and braces for a re-created slug).
+    {
+      sql: `UPDATE dist_registry_owners
+               SET enabled = 0, version = version + 1, updated_at = ?
+             WHERE product = ? AND enabled = 1`,
+      params: [now, slug],
+    },
     // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
     // which frees the app for another product.
     {

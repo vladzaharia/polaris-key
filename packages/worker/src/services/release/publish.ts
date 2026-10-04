@@ -1120,7 +1120,7 @@ async function finishPackageSubmit(
       target_kind: "release",
       target_id: result.releaseId,
       parent_id: null,
-      summary: `Published package ${result.descriptor.package.name} ${result.descriptor.version} (${result.releaseId}) through trusted publishing`,
+      summary: `Published package ${result.descriptor.package.name} ${result.descriptor.version} (${result.releaseId}, ${result.outcome}) ${s.holder.kind === "oidc" ? "through trusted publishing" : "with a CI upload token"}`,
     });
     await bumpReleaseGeneration(env, product.slug, now);
   }
