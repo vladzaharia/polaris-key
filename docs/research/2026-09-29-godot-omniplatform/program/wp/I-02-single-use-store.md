@@ -5,12 +5,14 @@
 | Phase       | I: Identity service (S-16) (phase-0, MVI)                                                |
 | Size        | 0.6–0.85 engineer-weeks                                                                  |
 | Depends on  | none                                                                                     |
-| Unblocks    | [I-08](I-08-email-login.md), [I-21](I-21-email-delivery.md)                              |
+| Unblocks    | [I-07](I-07-login-card-email.md), [I-18](I-18-email-delivery.md)                         |
 | Role        | `pkey-implementer`                                                                       |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package |
 | Gates       | `test:workerd`; `wrangler.toml` bindings; THREAT-MODEL                                   |
 | Human input | none                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                |
+
+> Forward references re-mapped to the re-cut S-16 table on 2026-10-04 ([S-16 §8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)); scope unchanged.
 
 ## Goal
 
@@ -18,7 +20,7 @@ Every single-use Identity artefact (portal magic links, email codes, OIDC flow r
 
 ## Why
 
-KV `get` then `delete` is not atomic across regions (G15), and the `_portal` shard is a global chokepoint (R10-04a). Email sign-in (I-08) and its delivery operations (I-21) need the attempt counters and send limits from day one ([S-16 §3.2](../../notes/S-16-identity-service.md#32-gaps), [S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) items 4 and 8).
+KV `get` then `delete` is not atomic across regions (G15), and the `_portal` shard is a global chokepoint (R10-04a). Email sign-in (I-07) and its delivery operations (I-18) need the attempt counters and send limits from day one ([S-16 §3.2](../../notes/S-16-identity-service.md#32-gaps), [S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) items 4 and 8).
 
 ## Read first
 
@@ -36,18 +38,18 @@ KV `get` then `delete` is not atomic across regions (G15), and the `_portal` sha
 - A single-use Durable Object, sharded by artefact hash: `put(kind, hash, payload, ttl)`, `consume(kind, hash)` (atomic, at most once), `attempt(kind, hash)` (counts failures and kills the artefact at the cap).
 - Move today's portal magic links, OIDC flow records and device codes onto it.
 - Shard the `_portal` and `_admin` rate-limit buckets (R10-04a).
-- Reusable email send limiters: per recipient (hashed) 5 an hour and 20 a day; per IP and per network; per device 3 starts an hour; per product daily cap (the value is configurable, I-21 sets the operational default).
-- The verify-side limiter primitives I-08 uses: 6-digit codes, 10-minute lifetime, death after 5 wrong attempts, a new code for the same recipient and flow invalidating the old one, and a 15-minute recipient lockout after 10 wrong attempts across codes in an hour.
+- Reusable email send limiters: per recipient (hashed) 5 an hour and 20 a day; per IP and per network; per device 3 starts an hour; per product daily cap (the value is configurable, I-18 sets the operational default).
+- The verify-side limiter primitives I-07 uses: 6-digit codes, 10-minute lifetime, death after 5 wrong attempts, a new code for the same recipient and flow invalidating the old one, and a 15-minute recipient lockout after 10 wrong attempts across codes in an hour.
 
 **Out** (and where it belongs instead):
 
-- The email routes and pages themselves (→ I-08).
-- Sending infrastructure, suppression and DNS (→ I-21).
+- The email routes and pages themselves (→ I-07).
+- Sending infrastructure, suppression and DNS (→ I-18).
 
 ## Design notes
 
-- **Safety defaults carried from S-16 §5.4 item 4.** The numbers above are the specified defaults; with them an attacker gets at most 5 guesses in a million per code and about 10 codes a day per victim. Keep them as named constants that I-08 and its tests import.
-- A lockout answers exactly like success (enumeration safety is I-08's, but the primitive must not leak state through its return shape to callers that echo it).
+- **Safety defaults carried from S-16 §5.4 item 4.** The numbers above are the specified defaults; with them an attacker gets at most 5 guesses in a million per code and about 10 codes a day per victim. Keep them as named constants that I-07 and its tests import.
+- A lockout answers exactly like success (enumeration safety is I-07's, but the primitive must not leak state through its return shape to callers that echo it).
 - workerd forbids runtime code generation; run `test:workerd`.
 
 ## Steps
@@ -73,7 +75,7 @@ KV `get` then `delete` is not atomic across regions (G15), and the `_portal` sha
   tag `v3`, 64 shards.
 - **Per-IP and per-network send numbers** are not in S-16; the defaults chosen are 10 an hour per
   client address and 30 an hour per network (IPv4 /24, IPv6 /48), named constants in
-  `src/core/emailLimits.ts`. The per-product daily cap defaults to 1,000 until I-21 sets it.
+  `src/core/emailLimits.ts`. The per-product daily cap defaults to 1,000 until I-18 sets it.
 - **Rate-limit sharding** keeps a product's own limiter as one object (tenant-scoped already) and
   splits `_portal`, `_admin` and every `email*` bucket over 32 objects by a hash of
   `(bucket, id)`.
@@ -97,9 +99,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 
 ## Hand-off
 
-- I-08 uses `consume`/`attempt` and the verify limits for email codes and magic links.
-- I-21 sets the per-product daily cap value and hooks throttling to `email_unavailable`.
-- I-14 and I-16 store WebAuthn challenges and auth codes here.
+- I-07 uses `consume`/`attempt` and the verify limits for email codes and magic links.
+- I-18 sets the per-product daily cap value and hooks throttling to `email_unavailable`.
+- I-16 and I-21 store WebAuthn challenges and auth codes here.
 
 The role agent sets `--set I-02 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
