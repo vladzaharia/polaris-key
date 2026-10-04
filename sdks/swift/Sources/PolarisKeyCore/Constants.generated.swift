@@ -1278,7 +1278,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.revoke": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.delegation": CapabilityRow(status: "implemented", service: "release", na: []),
-    "packs.delta.feed": CapabilityRow(status: "planned", service: "release", na: []),
+    "packs.delta.feed": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.plan": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.files": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.chunks": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1305,4 +1305,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "a01bed922eef8e90abe53f9610bd4c22aef28c7c253d08c6be43a49a8fef8d33"
+public let CAPABILITY_DIGEST = "39196ca5fb7e86afaba4632d79fcdcf670ef15765a434d90b7192815604cbe4a"
