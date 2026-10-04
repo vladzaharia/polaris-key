@@ -386,6 +386,7 @@ const TABLE_OWNERS = {
   ],
   distribution: [
     "dist_outlets",
+    "dist_listing",
     "dist_transports",
     "dist_rollouts",
     "dist_access",

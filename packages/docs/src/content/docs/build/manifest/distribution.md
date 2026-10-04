@@ -195,8 +195,17 @@ is served or derived for it ([Pack transports](/docs/services/distribution/deliv
 Store-page metadata, every field optional: `name`, `subtitle`, `category`, `developerName`
 (one line each, at most 200 characters), `description` (at most 4000, newlines allowed),
 `iconUrl`, `headerUrl`, `website` (https URLs), `screenshots` (up to 16 https URLs) and
-`tintColor` (`#rrggbb`). An outlet may carry its own `listing`, merged over the document's for
-that outlet. A malformed listing is `invalid_listing`.
+`tintColor` (`#rrggbb`), plus the two support links the customer portal shows: `supportUrl` (an
+https URL) and `supportEmail` (one address, at most 254 characters). An outlet may carry its own
+`listing`, merged over the document's for that outlet. A malformed listing is `invalid_listing`.
+
+The **document's** listing (not an outlet's) is also the product's presentation in the customer
+portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `iconUrl` and
+`headerUrl` as art. The portal never loads that art from the developer's host: it serves it
+same-origin through its media proxy (`/media/<product>/icon` and `/media/<product>/header`), which
+fetches only from GitHub-hosted URLs (`github.com`, `*.githubusercontent.com`), only PNG, JPEG,
+WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else is
+not shown; the portal falls back to the product's initial on its tint.
 
 ## Capabilities are not here
 

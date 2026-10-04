@@ -102,6 +102,77 @@ export interface PortalRelease {
   artifacts: PortalArtifact[];
 }
 
+// ── Library and product views (PX-W1; docs/design/PORTAL.md G1, G5, G16) ──────────────────
+
+/** A product's status from its best licence (§5.3, the statuses the Worker decides today). */
+export type PortalStatus =
+  | "suspended"
+  | "expired"
+  | "device_limit"
+  | "expires_soon"
+  | "active";
+
+/** A product's presentation; art is always a same-origin `/media/…` URL or null. */
+export interface PortalPresentation {
+  name: string;
+  developerName: string | null;
+  tintColor: string | null;
+  website: string | null;
+  iconUrl: string | null;
+  headerUrl: string | null;
+  support: { url: string | null; email: string | null } | null;
+}
+
+/** One licence with its seats (G5). */
+export interface PortalLicenseSeats {
+  id: string;
+  tier: string | null;
+  status: PortalStatus;
+  licenseStatus: string;
+  activatedAt: number | null;
+  expiresAt: number | null;
+  maxOfflineDays: number | null;
+  deviceLimit: number;
+  activeSeatCount: number;
+  deviceCount: number;
+  dormantCount: number;
+}
+
+export interface PortalLibraryItem extends PortalPresentation {
+  product: string;
+  status: PortalStatus;
+  license: PortalLicenseSeats;
+  licenseCount: number;
+  addedAt: number | null;
+}
+
+export interface PortalProductDevice {
+  deviceId: string;
+  label: string | null;
+  platform: string | null;
+  arch: string | null;
+  appVersion: string | null;
+  firstSeen: number;
+  lastSeen: number;
+  /** Past the dormancy window: holds no seat. */
+  dormant: boolean;
+}
+
+export interface PortalProduct extends PortalPresentation {
+  product: string;
+  /** Each service's own toggle (e.g. `identity`); a section shows only for a service that is on. */
+  services: Record<string, boolean>;
+  status: PortalStatus;
+  addedAt: number | null;
+  /** Best first. */
+  licenses: Array<
+    PortalLicenseSeats & {
+      entitlements: PortalEntitlement[];
+      devices: PortalProductDevice[];
+    }
+  >;
+}
+
 export class PortalApiError extends Error {
   constructor(
     public readonly status: number,
@@ -178,6 +249,9 @@ export const portalApi = {
       `/api/licenses/${enc(product)}/${enc(id)}/devices/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
+  library: () => call<{ products: PortalLibraryItem[] }>("/api/library"),
+  product: (product: string) =>
+    call<PortalProduct>(`/api/products/${enc(product)}`),
   releases: () => call<{ releases: PortalRelease[] }>("/api/releases"),
   downloadToken: (product: string, releaseId: string, artifactId: string) =>
     call<{ url: string }>(

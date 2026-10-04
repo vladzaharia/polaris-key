@@ -47,6 +47,8 @@ const NARRATIVE_ONLY = new Set([
   "portalLogout",
   "portalMagicVerify",
   "portalDownload",
+  // `portalApi` stays narrative as a kind: its PX-W1 library and product routes are pinned in
+  // PORTAL_KIND_PATHS below; the rest of `/api/*` is documented on the docs site.
   "products",
   "githubWebhook",
   "deployHook",
@@ -67,6 +69,20 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   register: [["/{product}/devices/register", ["post"]]],
   attestChallenge: [["/{product}/devices/attest/challenge", ["post"]]],
   attest: [["/{product}/devices/attest", ["post"]]],
+};
+
+/**
+ * Root portal routes the spec documents (PX-W1, rule 10), by route kind. `portalMedia` is
+ * documented whole; `portalApi` is narrative as a kind, and only the routes listed here are in
+ * the spec. None of them is product-scoped or CORS-covered: they share this origin with the
+ * portal session cookie.
+ */
+const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
+  portalMedia: [["/media/{product}/{asset}", ["get"]]],
+  portalApi: [
+    ["/api/library", ["get"]],
+    ["/api/products/{product}", ["get"]],
+  ],
 };
 
 /**
@@ -222,7 +238,11 @@ describe("router → spec", () => {
       (m) => m[1]!,
     );
     expect(kinds.length).toBeGreaterThan(15);
-    const documented = new Set([...Object.keys(CORE_KIND_PATHS), "service"]);
+    const documented = new Set([
+      ...Object.keys(CORE_KIND_PATHS),
+      ...Object.keys(PORTAL_KIND_PATHS),
+      "service",
+    ]);
     const unhandled = [...new Set(kinds)].filter(
       (kind) => !documented.has(kind) && !NARRATIVE_ONLY.has(kind),
     );
@@ -238,6 +258,22 @@ describe("router → spec", () => {
         for (const method of methods) {
           expect(specMethods(path), `${method} ${path}`).toContain(method);
         }
+      }
+    });
+  }
+
+  for (const [kind, paths] of Object.entries(PORTAL_KIND_PATHS)) {
+    it(`portal kind "${kind}" routes are documented, tagged portal, and route there`, () => {
+      for (const [path, methods] of paths) {
+        expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+        for (const method of methods) {
+          const op = spec.paths[path]![method] as { tags?: string[] };
+          expect(op.tags, `${method} ${path}`).toEqual(["portal"]);
+        }
+        expect(spec.paths[path]?.options, path).toBeUndefined();
+        const route = matchRoute(concrete(path));
+        expect(route.kind, path).toBe(kind);
+        expect(isCorsCoveredRoute(route), path).toBe(false);
       }
     });
   }
@@ -267,6 +303,7 @@ describe("spec → router", () => {
         ...SERVICE_PATHS,
         ...ALIAS_PATHS,
         ...REGISTRY_PATHS,
+        ...Object.values(PORTAL_KIND_PATHS).flat(),
       ].map(([path]) => path),
     );
     const phantom = Object.keys(spec.paths).filter(
@@ -497,6 +534,8 @@ describe("CORS preflight (P0-05)", () => {
       "/docs/",
       "/webhooks/github",
       "/download/tok",
+      "/media/acme/icon",
+      "/api/library",
     ]) {
       expect(isCorsCoveredRoute(matchRoute(path)), path).toBe(false);
     }

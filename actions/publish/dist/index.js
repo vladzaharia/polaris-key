@@ -1032,6 +1032,18 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "type": "string",
           "maxLength": 200,
           "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$"
+        },
+        "supportUrl": {
+          "description": "Where a customer gets help with the product: the customer portal's Help card and its renewal action.",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\\\s\\\\u0000-\\\\u001f\\\\u007f]+$"
+        },
+        "supportEmail": {
+          "description": "The product's support address, shown as text in the customer portal.",
+          "type": "string",
+          "maxLength": 254,
+          "pattern": "^[^\\\\s@<>\\\\u0000-\\\\u001f\\\\u007f]+@[^\\\\s@<>\\\\u0000-\\\\u001f\\\\u007f]+\\\\.[^\\\\s@<>\\\\u0000-\\\\u001f\\\\u007f]+$"
         }
       }
     }
@@ -1224,7 +1236,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   ],
   "$defs": {
     "slug": {
-      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known).",
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media).",
       "type": "string",
       "pattern": "^[a-z0-9-]{1,64}$",
       "not": {
@@ -1239,7 +1251,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "magic",
           "download",
           "webhooks",
-          "well-known"
+          "well-known",
+          "media"
         ]
       }
     },
@@ -12243,7 +12256,12 @@ var LISTING_TEXT_FIELDS = [
   "category",
   "developerName"
 ];
-var LISTING_URL_FIELDS = ["iconUrl", "headerUrl", "website"];
+var LISTING_URL_FIELDS = [
+  "iconUrl",
+  "headerUrl",
+  "website",
+  "supportUrl"
+];
 var MAX_LISTING_TEXT = 200;
 var MAX_LISTING_DESCRIPTION = 4e3;
 var MAX_LISTING_URL = 2048;
@@ -12252,6 +12270,8 @@ var TINT_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
 var LINE_RE = /^[^\u0000-\u001f\u007f]+$/;
 var PROSE_RE = /^[^\u0000-\u0008\u000b-\u001f\u007f]+$/;
 var HTTPS_URL_RE = /^https:\/\/[^\s\u0000-\u001f\u007f]+$/;
+var MAX_LISTING_EMAIL = 254;
+var LISTING_EMAIL_RE = /^[^\s@<>\u0000-\u001f\u007f]+@[^\s@<>\u0000-\u001f\u007f]+\.[^\s@<>\u0000-\u001f\u007f]+$/;
 function isListingUrl(v) {
   if (typeof v !== "string" || v.length > MAX_LISTING_URL || !HTTPS_URL_RE.test(v))
     return false;
@@ -12277,6 +12297,8 @@ function listingProblem(raw) {
   }
   if (raw.tintColor !== void 0 && (typeof raw.tintColor !== "string" || !TINT_COLOR_RE.test(raw.tintColor)))
     return "tintColor must be a #rrggbb colour";
+  if (raw.supportEmail !== void 0 && (typeof raw.supportEmail !== "string" || raw.supportEmail.length > MAX_LISTING_EMAIL || !LISTING_EMAIL_RE.test(raw.supportEmail)))
+    return `supportEmail must be one email address of at most ${MAX_LISTING_EMAIL} characters`;
   const shots = raw.screenshots;
   if (shots !== void 0 && (!Array.isArray(shots) || shots.length > MAX_SCREENSHOTS || !shots.every(isListingUrl)))
     return `screenshots must be a list of at most ${MAX_SCREENSHOTS} https URLs`;
@@ -12696,7 +12718,8 @@ function normalizeListing(raw) {
     ...LISTING_TEXT_FIELDS,
     "description",
     ...LISTING_URL_FIELDS,
-    "tintColor"
+    "tintColor",
+    "supportEmail"
   ]) {
     if (typeof r[f] === "string") out[f] = r[f];
   }
@@ -14304,7 +14327,9 @@ var RESERVED_PRODUCT_SLUGS = [
   "magic",
   "download",
   "webhooks",
-  "well-known"
+  "well-known",
+  // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
+  "media"
 ];
 var SECRET_DELIVERY_VALUES = [
   "serverOnly",

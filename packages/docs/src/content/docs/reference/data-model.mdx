@@ -96,6 +96,7 @@ this page or fails the freshness gate.
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
 | `dist_outlets` | 0036_distribution_outlets.sql | `product`, `outlet_id`, `kind`, `identity_json`, `capabilities_json`, `listing_json`, `capabilities_source`, `removed_at`, `created_at`, `modified_at` |
+| `dist_listing` | 0063_dist_listing.sql | `product`, `listing_json`, `modified_at` |
 | `dist_transports` | 0036_distribution_outlets.sql | `product`, `deliverable_id`, `outlet_id`, `transport`, `config_json` |
 | `dist_rollouts` | 0038_distribution_rollouts_access.sql | `product`, `deliverable_id`, `outlet_id`, `channel`, `release_id`, `rollout_bp`, `rollout_salt`, `state`, `mirrored`, `source`, `started_at`, `updated_at`, `updated_by` |
 | `dist_access` | 0038_distribution_rollouts_access.sql | `product`, `deliverable_id`, `mode`, `entitlement`, `source`, `modified_at` |

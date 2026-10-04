@@ -51,6 +51,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+import type { ManifestListing } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { FeedDelta } from "@polaris-key/protocol/update";
 import type { Env } from "../env.js";
@@ -970,6 +971,12 @@ export interface Delivery {
   keys(q?: { purpose?: string }): Promise<KeyRecord[]>;
   /** The product's live outlets, by id (P3-03, the signed feed's outlet entries). */
   outlets(): Promise<DeliveryOutlet[]>;
+  /**
+   * The product's own store listing (PX-W1): the `.pkey/distribution` document's root `listing`,
+   * never an outlet's merged override, or `null` when it declares none. The customer portal's
+   * product presentation (name, developer, tint, website, art URLs, support links) reads this.
+   */
+  listing(): Promise<ManifestListing | null>;
   /** The rollout on one outlet's channel for a deliverable, or `null` when there is none. */
   rollout(q: {
     deliverable: string;
