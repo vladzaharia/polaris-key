@@ -9,9 +9,10 @@
  *     shared `freshRegistryObject` (`../catalogSource.ts`): a stored page is served only when its
  *     render stamp matches the state just read; a stale or missing page is rendered again from
  *     that state, answered from memory and written back (after the answer when the runtime
- *     allows). The queue drain that re-renders on publish is not wired into the composition root
- *     yet, so this check is what keeps a yank or a new version from being hidden behind an old
- *     object. Without a blob store the page is rendered and served from memory.
+ *     allows). The queue drain re-renders on publish once the request has answered (and on every
+ *     cron tick); this check covers the moment in between, so a yank or a new version is never
+ *     hidden behind an old object. Without a blob store the page is rendered and served from
+ *     memory.
  */
 
 import type { RegistryRouteContext } from "../../../../core/registryHost.js";
