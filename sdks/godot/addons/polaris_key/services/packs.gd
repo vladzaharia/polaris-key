@@ -9,7 +9,8 @@ extends RefCounted
 ##              Range/If-Range, gzip off, redirects followed by hand, the bearer only to the
 ##              control plane's origin; PKeyPackEmbeddedTransport: the baselines in
 ##              `res://pkey_packs/` (each with its marker), verified once per process and then
-##              installed state and delta bases
+##              installed state and delta bases; `platform_transport` (P5-08): `apple-ba`,
+##              `play-pad` or `steam-depot`, whose copies are verified the same way
 ##   storage    PKeyPackStorage under `user://pkey` (staging, `store/<sha256>.pck`,
 ##              `trees/<sha256>/`, `content/state.json`)
 ##   zstd       PackedByteArray.decompress for plain frames; the engine's own GDDL delta decoder
@@ -55,6 +56,11 @@ const WEB_CAP_DESKTOP := 300 * 1000 * 1000
 var stamp_path := DEFAULT_STAMP_PATH
 ## Where embedded baselines live (`res://pkey_packs/`).
 var embedded_dir := PKeyPackTransport.EMBEDDED_DIR
+## P5-08: the store transport carrying some packs on this install (PKeyPackAppleBaTransport,
+## PKeyPackPlayPadTransport or PKeyPackSteamTransport, with its `packs`), or null. Set it before
+## start(): its copies are verified at boot like embedded baselines, and a pack it carries is
+## planned only through it (`plan-transport-unsupported` while it is unavailable).
+var platform_transport: PKeyPackPlatformTransport = null
 ## Where staging, the store and the state live (`user://pkey`; on web a MEMFS path such as
 ## `/pkey` keeps large packs out of the IndexedDB mirror, A6 §2.6).
 var root := "user://pkey"
@@ -204,7 +210,15 @@ func start() -> PKeyResult:
 	e.progress.connect(_on_progress)
 	var emb := PKeyPackEmbeddedTransport.new(embedded_dir)
 	var baselines: Array = await PKeyPackJob.run(emb.embedded, "PolarisKey embedded packs")
-	var loaded: Dictionary = await e.load_state(baselines)
+	# P5-08: the copies a store transport holds now (paths re-read at every boot).
+	var copies: Array = []
+	if platform_transport != null:
+		if platform_transport.content_api < 0 and content is Dictionary and PKeyClaims.is_number(content.get("contentApi")):
+			platform_transport.content_api = int(content["contentApi"])
+		e.platform = platform_transport
+		if platform_transport.availability().ok:
+			copies = await platform_transport.installed()
+	var loaded: Dictionary = await e.load_state(baselines, copies)
 	refused_embedded = loaded["refused"]
 	engine = e
 	_starting = false

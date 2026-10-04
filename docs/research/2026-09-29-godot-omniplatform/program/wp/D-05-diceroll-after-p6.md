@@ -81,7 +81,7 @@ TestFlight and App Store installs can be told apart only at run time, through `A
 
 ## Design notes
 
-- **Asset-pack ids carry the content level** (`foes-c1`; App Store Connect rejects dots, notes/S-01), because a live asset-pack version switches
+- **Asset-pack ids carry the content level** (`<pack>-c<contentApi>` over the FULL pack id with each `.` written as `-`, P5-08: `diceroll.foes` at level 1 is `diceroll-foes-c1`; `foes-c1` is right only for an undotted pack id `foes`; App Store Connect rejects dots, notes/S-01), because a live asset-pack version switches
   every installed app version ([CONTENT §6.6](../../CONTENT.md#66-transport-imposed-binding-per-outlet)).
   Distribution holds an app release on the App Store until its level's packs are approved, and old
   levels' packs must be retired within the 200-pack and 200 GB quotas.

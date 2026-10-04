@@ -16,6 +16,10 @@ import type { CiEnv } from "./oidc.js";
 import { publishRelease, type PublishSource } from "./publish.js";
 import { publishPack } from "./packPublish.js";
 import { MIN_ZSTD_VERSION, versionAtLeast } from "./packArtifacts.js";
+import type { TransportCommon } from "./transport.js";
+import { baPackage, baUpload } from "./transportAppleBa.js";
+import { padModules, type PadDelivery } from "./transportPlayPad.js";
+import { steamVdf } from "./transportSteam.js";
 
 /** The Action's inputs, in `action.yml` order. */
 export const ACTION_INPUTS = [
@@ -40,6 +44,25 @@ export const ACTION_INPUTS = [
   "script-extensions",
   "script-types",
   "dry-run",
+  "transport",
+  "content-api",
+  "variant",
+  "transport-out",
+  "gradle-project",
+  "pad-delivery",
+  "steam-depot",
+  "steam-branch",
+  "steam-setlive",
+  "asc-expect-resource",
+  "transport-report",
+] as const;
+
+/** P5-08: the `transport` input's steps, onto `pkey transport …`. */
+export const ACTION_TRANSPORT_STEPS = [
+  "apple-ba-package",
+  "apple-ba-upload",
+  "play-pad-modules",
+  "steam-depot-vdf",
 ] as const;
 
 /** One input's value, or undefined when empty (GitHub passes an unset input as ""). */
@@ -167,6 +190,30 @@ export async function runAction(io: ActionIo): Promise<number> {
       throw new Error(
         "content-key and delegation apply only to a pack deliverable: a content key never signs an app record.",
       );
+    const transport = input("transport");
+    const given0 = (names: readonly (typeof ACTION_INPUTS)[number][]) =>
+      names.filter((n) => input(n) !== undefined);
+    if (transport !== undefined) {
+      await runTransportStep(io, input, given0, product, dir, transport);
+      return 0;
+    }
+    const transportOnly = given0([
+      "content-api",
+      "variant",
+      "transport-out",
+      "gradle-project",
+      "pad-delivery",
+      "steam-depot",
+      "steam-branch",
+      "steam-setlive",
+      "asc-expect-resource",
+    ]);
+    if (input("transport-report") === "false")
+      transportOnly.push("transport-report");
+    if (transportOnly.length)
+      throw new Error(
+        `${transportOnly.join(", ")} ${transportOnly.length === 1 ? "applies" : "apply"} only with the transport input.`,
+      );
     const minSupportedSeq =
       input("min-supported-seq") !== undefined
         ? Number(input("min-supported-seq"))
@@ -250,6 +297,136 @@ export async function runAction(io: ActionIo): Promise<number> {
     );
     io.stderr.write(`${(e as Error).message}\n`);
     return 1;
+  }
+}
+
+/**
+ * P5-08: one `pkey transport …` step for a pack release the Action published earlier: `dir` is
+ * that publish's `out` (for `apple-ba-upload`, the package step's `transport-out`).
+ * Publish-only inputs are refused, not ignored.
+ */
+async function runTransportStep(
+  io: ActionIo,
+  input: (name: (typeof ACTION_INPUTS)[number]) => string | undefined,
+  given: (names: readonly (typeof ACTION_INPUTS)[number][]) => string[],
+  product: string,
+  dir: string,
+  step: string,
+): Promise<void> {
+  if (!(ACTION_TRANSPORT_STEPS as readonly string[]).includes(step))
+    throw new Error(
+      `transport must be one of ${ACTION_TRANSPORT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`,
+    );
+  const deliverable = input("deliverable");
+  const version = input("version");
+  if (!deliverable || deliverable === "app")
+    throw new Error(
+      "transport needs a pack deliverable: set deliverable to the pack id.",
+    );
+  if (!version)
+    throw new Error("transport needs version: the pack release to package.");
+  const wrong = given([
+    "tag",
+    "source",
+    "meta",
+    "release-key",
+    "content-key",
+    "delegation",
+    "min-supported-seq",
+    "content-stamp",
+    "embedded",
+    "pins",
+    "out",
+    "bases",
+    "script-extensions",
+    "script-types",
+  ]);
+  if (wrong.length)
+    throw new Error(
+      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a transport step (${step}): it packages a release published earlier.`,
+    );
+  const dryRun = input("dry-run");
+  if (dryRun !== undefined && dryRun !== "false")
+    throw new Error("dry-run does not apply to a transport step.");
+  const report = input("transport-report");
+  if (report !== undefined && report !== "true" && report !== "false")
+    throw new Error(
+      `transport-report must be true or false (got ${JSON.stringify(report)}).`,
+    );
+  const setlive = input("steam-setlive");
+  if (setlive !== undefined && setlive !== "true" && setlive !== "false")
+    throw new Error(
+      `steam-setlive must be true or false (got ${JSON.stringify(setlive)}).`,
+    );
+  const common: TransportCommon = {
+    cwd: io.cwd,
+    deliverable,
+    version,
+    product,
+    baseUrl: input("base-url"),
+    env: io.env,
+    stdout: io.stdout,
+    stderr: io.stderr,
+    fetchImpl: io.fetchImpl,
+    sleep: io.sleep,
+    report: report !== "false",
+  };
+  const platform = io.platform ?? process.platform;
+  switch (step) {
+    case "apple-ba-package":
+      await baPackage({
+        ...common,
+        from: dir,
+        out: input("transport-out"),
+        contentApi: input("content-api"),
+        variant: input("variant"),
+        platform,
+      });
+      return;
+    case "apple-ba-upload":
+      if (input("transport-out") !== undefined)
+        throw new Error(
+          "apple-ba-upload reads the package step's output from dir; transport-out does not apply.",
+        );
+      await baUpload({
+        ...common,
+        dir,
+        contentApi: input("content-api"),
+        expectResource: input("asc-expect-resource"),
+      });
+      return;
+    case "play-pad-modules": {
+      const project = input("gradle-project");
+      if (!project)
+        throw new Error(
+          "play-pad-modules needs gradle-project: the Godot Android Gradle build (android/build).",
+        );
+      await padModules({
+        ...common,
+        from: dir,
+        project,
+        delivery: input("pad-delivery") as PadDelivery | undefined,
+        variant: input("variant"),
+      });
+      return;
+    }
+    default: {
+      const depot = input("steam-depot");
+      if (!depot)
+        throw new Error(
+          "steam-depot-vdf needs steam-depot: the pack's depot id.",
+        );
+      await steamVdf({
+        ...common,
+        from: dir,
+        depot,
+        branch: input("steam-branch"),
+        channel: input("channel"),
+        setlive: setlive === "true",
+        out: input("transport-out"),
+        variant: input("variant"),
+      });
+    }
   }
 }
 

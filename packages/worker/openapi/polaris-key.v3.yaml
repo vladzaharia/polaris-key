@@ -3125,7 +3125,11 @@ paths:
         removed; the release and build must exist. A report may move a state backwards (a
         rejection after review): the row keeps the current state and every change is audited as
         `ci:<subject>`. Store-assigned ids go in `platformRef` (availability only); omit it to
-        keep the stored one, `null` to clear it. Self-hosted outlets need no report: their
+        keep the stored one, `null` to clear it. A pack release's report on an outlet whose
+        transport for the pack is `apple-ba`, with `platformRef.assetPackIdentifier` naming an
+        asset pack of that pack (`<pack>-c<contentApi>`), is stored per asset pack (as if
+        `buildId` were that identifier), so one release bound at two content levels keeps a
+        state per level (P5-08). Self-hosted outlets need no report: their
         availability is derived from Release's truth. `type: key` reports the SHA-256 fingerprint
         (64 lower-case hex) CI signed with for a purpose (`android-app-signing`,
         `android-upload`, `android-sideload`, `fdroid-repo`, `sparkle-ed25519`, `release`,
