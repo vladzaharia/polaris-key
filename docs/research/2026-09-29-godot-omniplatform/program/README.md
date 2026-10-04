@@ -245,12 +245,21 @@ Edit `workpackages.json` and the affected briefs in one PR. Then run, in this or
 
 New packages take the next free id in their phase and a brief copied from `wp/_TEMPLATE.md`. Keep ids stable: never renumber a package that has started.
 Packages split from one row of a spike's breakdown keep that row's number plus a lower-case letter
-(phase A: A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11); `check.mjs` accepts the suffix.
+(phase A: A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11; I-10a and I-10b from notes/S-16 §8;
+U-11a…c, U-15a…c and U-24a…b from notes/S-17 §6); `check.mjs` accepts the suffix.
 
-Phase I (the Identity service) carries notes/S-16 §8's I-01…I-22 unchanged: ids follow the note,
-so I-20…I-22 sit beside I-01…I-19. I-18 and I-19 are optional (S-16 phase 4, outside the owner's
-phases 0–3 scope). I-08 executes I-04's plan (`planRef`); the other ⚑ Identity packages get their
-own plans.
+Phase I (Identity) follows notes/S-16 §8 after its restructure around one Polaris Key account
+(owner decision 2026-10-04). I-01…I-03 keep their meaning; I-04 is the layer 1 account contract
+plan; I-05…I-25 were re-cut from the note's table, so their ids now mean different work than the
+first revision's (none had started). The SDK row is split by toolchain into I-10a and I-10b; the
+old I-10 brief is kept with status `dropped` because its id is not reused. I-08, I-09, I-10a and
+I-10b execute I-04's plan (`planRef`); I-21 and I-22 execute I-20's (layer 2); I-13, I-15, I-24 and
+I-25 get their own plans. I-24 and I-25 are optional (S-16 "later").
+
+Phase U (Cloud Sync) follows notes/S-17 §6. Ids follow the note; its U-11, U-15 and U-24 rows, each
+split into halves by phase in the note, become U-11a…c, U-15a…c and U-24a…b so the graph can
+express their phase dependencies. U-26 is retired in the note and has no package. The ⚑ packages
+execute U-01's plan, except the optional U-14, U-16 and U-17, which get their own.
 
 ---
 
