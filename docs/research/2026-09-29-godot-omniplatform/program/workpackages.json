@@ -2720,7 +2720,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "notes/S-12 §9", "plans/F-01.md §6.8"],
       "brief": "wp/F-08-oci-registry.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-09",
