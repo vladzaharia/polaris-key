@@ -19,6 +19,7 @@ import {
   REGISTRY_CSP,
   REGISTRY_ECOSYSTEMS,
   REGISTRY_HOST_TYPES,
+  RESERVED_ECOSYSTEMS,
   dispatchRegistryHost,
   isRegistryHost,
   refusedRegistryType,
@@ -220,10 +221,12 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("registers no ecosystem routes yet; every route is Distribution's and names a known ecosystem", () => {
+  it("every registry route is Distribution's, names a known live ecosystem and has a unique name", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
-    expect(REGISTRY_ROUTES).toEqual([]);
+    const names = REGISTRY_ROUTES.map((r) => r.name);
+    expect(new Set(names).size).toBe(names.length);
     for (const r of REGISTRY_ROUTES) {
+      expect(RESERVED_ECOSYSTEMS.has(r.ecosystem), r.name).toBe(false);
       expect(r.service).toBe("distribution");
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
     }
@@ -384,7 +387,8 @@ describe("registry host: isolation", () => {
       "/npm/djdl/@djdl%2fsdk",
       "/pypi/djdl/simple/",
       "/maven/djdl/im/plrs/key/sdk/maven-metadata.xml",
-      "/godot/djdl/index.json",
+      // No Godot route matches this path (F-09's routes are pinned in test/registry/godot.test.ts).
+      "/godot/djdl/no-such-document.json",
     ]) {
       const res = await worker.fetch(new Request(PKG + path), env(PKG));
       expect(res.status, path).toBe(404);

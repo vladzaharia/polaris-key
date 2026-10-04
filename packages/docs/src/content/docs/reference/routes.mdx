@@ -90,6 +90,30 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset` | registry | Godot ≤ 4.6 Asset Library: search (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset` | registry | Godot ≤ 4.6 Asset Library: search, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/configure` | registry | Godot ≤ 4.6 Asset Library: categories (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/configure` | registry | Godot ≤ 4.6 Asset Library: categories, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/files/{sha256}/{file}` | registry | Godot addon zip, content-addressed (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/files/{sha256}/{file}` | registry | Godot addon zip, content-addressed, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/icons/{sha256}.png` | registry | Godot addon icon, content-addressed (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/icons/{sha256}.png` | registry | Godot addon icon, content-addressed, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/index.json` | registry | Godot feed index for GodotEnv and scripted installs (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/index.json` | registry | Godot feed index for GodotEnv and scripted installs, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/` | registry | Godot 4.7+ Asset Store: API overview (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/` | registry | Godot 4.7+ Asset Store: API overview, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: one asset (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: one asset, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/licenses/` | registry | Godot 4.7+ Asset Store: licenses in use (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/licenses/` | registry | Godot 4.7+ Asset Store: licenses in use, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: an asset's releases (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/` | registry | Godot 4.7+ Asset Store: an asset's releases, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/search/query/` | registry | Godot 4.7+ Asset Store: search (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/search/query/` | registry | Godot 4.7+ Asset Store: search, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/tags/` | registry | Godot 4.7+ Asset Store: tags (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/tags/` | registry | Godot 4.7+ Asset Store: tags, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint, headers only (registry host only) |
 | GET | `/{product}/release/changelog` | release | Release changelog |

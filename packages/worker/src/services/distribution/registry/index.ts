@@ -13,10 +13,14 @@ import type {
   RegistryRoute,
 } from "../../../core/registryHost.js";
 import type { RegistryRenderer } from "./materialise.js";
+import { GODOT_RENDERER } from "./godot/index.js";
 
 /** Every renderer this build carries, one per ecosystem. */
 export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
-  new Map<RegistryEcosystem, RegistryRenderer>([]);
+  new Map<RegistryEcosystem, RegistryRenderer>([
+    // F-09: the Godot feed (both editor API shapes and the GodotEnv index).
+    ["godot", GODOT_RENDERER],
+  ]);
 
 /** Every registry route, in renderer order. */
 export const DISTRIBUTION_REGISTRY_ROUTES: readonly RegistryRoute[] = [
@@ -35,11 +39,13 @@ export {
 export {
   drainRegistry,
   materialise,
+  readFreshRegistryObject,
   readRegistryObject,
   selfCheck,
   type PackageSource,
   type RegistryPackage,
   type RegistryQueue,
   type RegistryRenderer,
+  type RenderFeed,
 } from "./materialise.js";
 export { serveFeedRead } from "./serve.js";
