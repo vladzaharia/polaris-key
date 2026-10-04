@@ -167,6 +167,16 @@ describe("the deploy hook (F-10 automation)", () => {
       SYSTEM_PRODUCT_SLUG,
     );
     expect(cfg).toEqual({ gh_owner: "vladzaharia", gh_repo: "polaris-key" });
+    // The `main` channel every push to main publishes to is a declared manual channel.
+    const channels = await db.first<{ manual_channels_json: string }>(
+      "SELECT manual_channels_json FROM release_config WHERE product = ?",
+      SYSTEM_PRODUCT_SLUG,
+    );
+    expect(
+      (JSON.parse(channels!.manual_channels_json) as { name: string }[]).map(
+        (c) => c.name,
+      ),
+    ).toEqual(["main"]);
     // Every package the committed manifest declares is now what a publish is checked against.
     const ids = await packageIds();
     expect(ids).toEqual(body.packages);
@@ -231,6 +241,27 @@ describe("the deploy hook (F-10 automation)", () => {
       SYSTEM_PRODUCT_SLUG,
     );
     expect(owner?.enabled).toBe(0);
+  });
+
+  it("a later deploy re-applies the manifest-owned release settings, and keeps an operator's", async () => {
+    expect((await hook(await token())).status).toBe(200);
+    await db.run(
+      `UPDATE release_config SET manual_channels_json = NULL, gh_installation_id = 99,
+              access_source = 'admin', artifacts_access = 'entitled' WHERE product = ?`,
+      SYSTEM_PRODUCT_SLUG,
+    );
+    expect((await hook(await token())).status).toBe(200);
+    const cfg = await db.first<{
+      manual_channels_json: string | null;
+      gh_installation_id: number | null;
+      artifacts_access: string;
+    }>(
+      "SELECT manual_channels_json, gh_installation_id, artifacts_access FROM release_config WHERE product = ?",
+      SYSTEM_PRODUCT_SLUG,
+    );
+    expect(cfg?.manual_channels_json).toContain('"main"');
+    expect(cfg?.gh_installation_id).toBe(99);
+    expect(cfg?.artifacts_access).toBe("entitled");
   });
 
   it("links a system product the console bootstrapped earlier", async () => {

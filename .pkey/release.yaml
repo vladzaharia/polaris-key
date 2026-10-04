@@ -1,28 +1,33 @@
 # yaml-language-server: $schema=../packages/shared-manifest/schemas/v1/release.schema.json
 #
 # The system product's package deliverables (F-10, plans/F-01.md §5.1): every SDK this repository
-# ships, each published by CI to its feed on pkg.plrs.im with `pkey release publish` (the
-# polaris-key/publish Action in actions/publish/) and nowhere else: no npmjs, PyPI, Maven Central,
-# Swift Package Index or Godot store (owner decision 2026-10-04, feeds only).
+# ships, each published automatically by CI to its feed on pkg.plrs.im with `pkey release publish`
+# (the polaris-key/publish Action in actions/publish/) and nowhere else: no npmjs, PyPI, Maven
+# Central, Swift Package Index or Godot store (owner decision 2026-10-04, feeds only).
 #
 # Each `match` is a file-name glob over the publish step's --dir (the base name, never a path).
-# The workflows that build each one:
-#   npm.*     .github/workflows/release.yml        tag @polaris-key/<name>@<version> (changeset tag)
-#   pypi.*    .github/workflows/release-python.yml tag python-v<version>
-#   swift.*   .github/workflows/release-swift.yml  tag swift-v<version>, signed (§5.3)
-#   maven.*   .github/workflows/release-kotlin.yml tag kotlin-v<version>
-#   godot.*   .github/workflows/release-godot.yml  tag godot-v<version>
-#   oci.*     .github/workflows/release-image.yml  tag @polaris-key/cli@<version>
-# and each hands its files to .github/workflows/publish-package.yml, the one trusted publisher.
+# .github/workflows/publish-sdks.yml builds every one of them, in lockstep with the server
+# (tools/sdk-version.mjs): on each push to main a `<next>-main.<N>` prerelease (PEP 440
+# `<next>.dev<N>`) on the `main` channel, on each v* tag exactly that version on `stable` (`beta`
+# for a prerelease tag), and hands each to .github/workflows/publish-package.yml, the one trusted
+# publisher. deploy.yml applies this file to the system product on every deploy (the deploy hook,
+# packages/worker/src/platformDeploy.ts): edit it here and the next deploy registers the change.
 apiVersion: pkey.dev/v1
 release:
   provider:
     type: github
     owner: "vladzaharia"
     repo: "polaris-key"
-  # P2-02 trusted publishing: the reusable workflow every release workflow calls, in the
-  # `package-registry` environment (its deployment policy admits tags only). GitHub names the
-  # called workflow in the OIDC token's job_workflow_ref, so this one entry covers every caller.
+  # The channel every push to main publishes to (npm's `main` dist-tag, the image's `main` tag),
+  # beside the built-in stable and beta. The regex is the version shape of those builds; no app
+  # release of this product is tagged that way.
+  manualChannels:
+    - name: main
+      regex: 'v?[0-9]+\.[0-9]+\.[0-9]+-main\.[0-9]+'
+  # P2-02 trusted publishing: the reusable workflow publish-sdks.yml calls for every package, in
+  # the `package-registry` environment (its deployment policy admits main and v* tags). GitHub
+  # names the called workflow in the OIDC token's job_workflow_ref, so this one entry covers
+  # every caller.
   publishing:
     trustedPublisher:
       workflow: .github/workflows/publish-package.yml

@@ -225,8 +225,9 @@ export function systemManifestProblem(
  * Link the system product to `repo` and apply its root `.pkey/` (already parsed and validated by
  * the caller). Idempotent, one batch:
  *
- *   - `release_source = 'github'` and `release_config`'s GitHub coordinates (an existing row keeps
- *     its installation id and every other column: only the coordinates are re-asserted);
+ *   - `release_source = 'github'` and `release_config`: the GitHub coordinates and the
+ *     manifest-owned columns, the manual channels among them (an existing row keeps its
+ *     installation id, the operator-only policy, the release keys and claimed access modes);
  *   - the declared deliverables (`manifestDeliverableStatements`, the same rows link and resync
  *     write; a package with releases is never dropped);
  *   - the manifest-owned trusted publisher, with the repository's numeric ids from `repo` (never
@@ -265,6 +266,15 @@ export async function linkSystemProduct(
       params: [now, slug],
     },
   ];
+  const manualChannelsJson = rel.manualChannels.length
+    ? JSON.stringify(rel.manualChannels)
+    : null;
+  const artifactPolicyJson = rel.artifactPolicy
+    ? JSON.stringify(rel.artifactPolicy)
+    : null;
+  const ignoreTagsJson = rel.ignoreTags.length
+    ? JSON.stringify(rel.ignoreTags)
+    : null;
   const config = stmtInsertReleaseConfig({
     product: slug,
     ghOwner: owner,
@@ -275,19 +285,36 @@ export async function linkSystemProduct(
     binaryName,
     sparkleEd25519Pub: rel.sparkleEd25519Pub || null,
     summaryMarker: rel.summaryMarker || "pkey:summary",
+    manualChannelsJson,
+    artifactPolicyJson,
     metadataAccess: rel.access.metadata,
     artifactsAccess: rel.access.artifacts,
     accessSource: "manifest",
     stableTagPattern: rel.stableTagPattern,
-    ignoreTagsJson: rel.ignoreTags.length
-      ? JSON.stringify(rel.ignoreTags)
-      : null,
+    ignoreTagsJson,
   });
+  // A first link inserts the row; a later one re-applies the manifest-owned columns exactly as a
+  // resync does (`resync.ts`): the manual channels a package publish's `channel` is checked
+  // against among them. The installation id, the operator-only policy, the release keys and the
+  // access modes once an operator claimed them (`access_source = 'admin'`) are never touched.
   stmts.push({
     sql: `${config.sql}
           ON CONFLICT(product) DO UPDATE SET
             gh_owner = excluded.gh_owner,
-            gh_repo = excluded.gh_repo`,
+            gh_repo = excluded.gh_repo,
+            channel_workflow = excluded.channel_workflow,
+            beta_branch = excluded.beta_branch,
+            binary_name = excluded.binary_name,
+            sparkle_ed25519_pub = excluded.sparkle_ed25519_pub,
+            summary_marker = excluded.summary_marker,
+            manual_channels_json = excluded.manual_channels_json,
+            artifact_policy_json = excluded.artifact_policy_json,
+            stable_tag_pattern = excluded.stable_tag_pattern,
+            ignore_tags_json = excluded.ignore_tags_json,
+            metadata_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
+                                   THEN excluded.metadata_access ELSE release_config.metadata_access END,
+            artifacts_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
+                                    THEN excluded.artifacts_access ELSE release_config.artifacts_access END`,
     params: config.params,
   });
   stmts.push(
