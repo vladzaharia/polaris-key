@@ -393,6 +393,13 @@ export interface FormFieldProps<V = any> {
   group?: boolean;
   /** Trailing content beside the label (a SourceBadge). */
   labelAside?: React.ReactNode;
+  /**
+   * The label is for assistive tech only: a settings row's own label already names the control
+   * on screen, and a second visible label would repeat it.
+   */
+  hideLabel?: boolean;
+  /** Marks an optional field among required siblings ("Optional", outside the accessible name). */
+  optional?: boolean;
   className?: string;
   disabled?: boolean;
   // Controlled use outside a Form:
@@ -423,6 +430,8 @@ function FieldFrame({
   required,
   group,
   labelAside,
+  hideLabel = false,
+  optional = false,
   error,
   announce,
   dirty,
@@ -435,6 +444,8 @@ function FieldFrame({
   required?: boolean;
   group?: boolean;
   labelAside?: React.ReactNode;
+  hideLabel?: boolean;
+  optional?: boolean;
   error?: string;
   announce: boolean;
   dirty: boolean;
@@ -444,12 +455,17 @@ function FieldFrame({
   const LabelTag = group ? "span" : "label";
   return (
     <div
-      className={cn("flex flex-col gap-1.5", className)}
+      className={cn("flex min-w-0 flex-col gap-1.5", className)}
       data-field={id}
       role={group ? "group" : undefined}
       aria-labelledby={group ? `${id}-label` : undefined}
     >
-      <div className="flex min-h-5 items-center justify-between gap-2">
+      <div
+        className={cn(
+          "flex min-h-5 items-center justify-between gap-2",
+          hideLabel && "sr-only",
+        )}
+      >
         <LabelTag
           id={`${id}-label`}
           {...(group ? {} : { htmlFor: id })}
@@ -466,6 +482,9 @@ function FieldFrame({
             </span>
           ) : null}
         </LabelTag>
+        {optional ? (
+          <span className="mr-auto text-xs text-fg-subtle">Optional</span>
+        ) : null}
         {labelAside}
       </div>
       {children}
@@ -528,6 +547,8 @@ export function FormField<V = any>(
         required={props.required}
         group={props.group}
         labelAside={props.labelAside}
+        hideLabel={props.hideLabel}
+        optional={props.optional}
         error={error}
         announce={Boolean(props.announceError)}
         dirty={Boolean(props.dirty)}
@@ -565,6 +586,8 @@ export function FormField<V = any>(
             required={props.required}
             group={props.group}
             labelAside={props.labelAside}
+            hideLabel={props.hideLabel}
+            optional={props.optional}
             error={error}
             announce={form.submitted}
             dirty={fieldState.isDirty}

@@ -64,7 +64,7 @@ export function StatTile({
       aria-labelledby={labelId}
       aria-busy={loading || undefined}
       className={cn(
-        "flex min-h-28 flex-col gap-1 rounded-lg border border-border bg-surface-raised p-4",
+        "flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-surface-raised p-3 sm:p-4",
         className,
       )}
     >

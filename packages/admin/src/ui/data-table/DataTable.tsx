@@ -302,6 +302,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     empty,
     mobile = "scroll",
     toolbarActions,
+    chrome = "auto",
     className,
   } = props;
 
@@ -683,6 +684,15 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     .filter((c) => !c.columnDef.meta?.alwaysVisible && c.id !== primaryId);
 
   const csvEnabled = (props.exportCsv ?? true) && pagination.mode === "client";
+  // Columns and density earn their row only on a table big enough to tune, and never over cards.
+  // A table with a hidden column keeps Columns, or that column could never come back.
+  const minimalChrome =
+    chrome === "minimal" ||
+    (chrome === "auto" &&
+      pagination.mode === "client" &&
+      data.length < 10 &&
+      hidden.length === 0);
+  const showViewControls = !minimalChrome && !isMobileCards;
   const exportCsv = (): void => {
     const visibleDefs = columns.filter((c) => !hidden.includes(columnId(c)));
     const sorted = allRows.map((r) => r.original);
@@ -752,7 +762,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         actions={
           <>
             {toolbarActions}
-            {hideable.length > 0 ? (
+            {showViewControls && hideable.length > 0 ? (
               <Popover
                 label="Columns"
                 trigger={
@@ -790,26 +800,28 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 </fieldset>
               </Popover>
             ) : null}
-            <div
-              role="group"
-              aria-label="Row density"
-              className="inline-flex rounded-md border border-border-strong p-0.5"
-            >
-              {(["comfortable", "compact"] as const).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  aria-pressed={density === d}
-                  onClick={() => setDensity(d)}
-                  className={cn(
-                    "h-7 rounded-sm px-2 text-xs capitalize text-fg-muted",
-                    density === d && "bg-hover font-bold text-fg-strong",
-                  )}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
+            {showViewControls ? (
+              <div
+                role="group"
+                aria-label="Row density"
+                className="inline-flex rounded-md border border-border-strong p-0.5"
+              >
+                {(["comfortable", "compact"] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={density === d}
+                    onClick={() => setDensity(d)}
+                    className={cn(
+                      "h-7 rounded-sm px-2 text-xs capitalize text-fg-muted",
+                      density === d && "bg-hover font-bold text-fg-strong",
+                    )}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {csvEnabled ? (
               <Button
                 variant="outline"
@@ -841,6 +853,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
 
   const showSkeleton = loading && data.length === 0 && !error;
   const noResults = !loading && !error && pageRows.length === 0;
+  // First run: nothing exists yet and nothing is filtered. The empty state stands alone, with no
+  // toolbar, header row or table border around it.
+  const firstRun = noResults && data.length === 0 && !isFiltered;
 
   const noResultsState = isFiltered ? (
     <EmptyState
@@ -1049,13 +1064,17 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   let footer: React.ReactNode = null;
   if (!error && !showSkeleton && pageRows.length > 0) {
     if (pagination.mode === "client") {
-      footer = (
+      // Unfiltered, the count only repeats what the rows show, unless the rows are virtualized
+      // and never all on screen.
+      footer = isFiltered ? (
         <p className="text-xs text-fg-muted tabular-nums">
-          {isFiltered
-            ? `Showing ${formatCount(allRows.length)} of ${formatCount(data.length)}`
-            : `Showing ${formatCount(allRows.length)}`}
+          {`Showing ${formatCount(allRows.length)} of ${formatCount(data.length)}`}
         </p>
-      );
+      ) : virtual ? (
+        <p className="text-xs text-fg-muted tabular-nums">
+          {`Showing ${formatCount(allRows.length)}`}
+        </p>
+      ) : null;
     } else if (pagination.mode === "cursor") {
       footer = (
         <div className="flex flex-wrap items-center gap-3">
@@ -1138,9 +1157,25 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     }
   }
 
+  if (firstRun) {
+    return (
+      <div className={cn("space-y-3", className)} data-table-id={id}>
+        {noResultsState}
+      </div>
+    );
+  }
+
+  const hasToolbar =
+    (selectedCount > 0 && selection) ||
+    Boolean(search) ||
+    facets.length > 0 ||
+    Boolean(toolbarActions) ||
+    csvEnabled ||
+    showViewControls;
+
   return (
     <div className={cn("space-y-3", className)} data-table-id={id}>
-      {toolbar}
+      {hasToolbar ? toolbar : null}
       {/* The keyboard handler serves j/k/Enter/x on the rows inside; it is not itself a control. */}
       {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div onKeyDown={onKeyDown}>
@@ -1150,7 +1185,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           <div
             ref={scrollRef}
             className={cn(
-              "overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
+              "relative overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
               virtual && "max-h-[70vh]",
             )}
           >

@@ -40,6 +40,11 @@ export interface EmptyStateProps {
   onClearFilters?: () => void;
   /** Heading level for the title (default: a paragraph; use 2 on a page whose body this is). */
   headingLevel?: 2 | 3;
+  /**
+   * `inline` sits inside a card (a settings section, a panel): no illustration and no dashed
+   * border of its own, so it never nests a box inside a box.
+   */
+  variant?: "default" | "inline";
   className?: string;
 }
 
@@ -82,18 +87,23 @@ export function EmptyState({
   filters,
   onClearFilters,
   headingLevel,
+  variant = "default",
   className,
 }: EmptyStateProps): React.ReactElement {
   const Title = headingLevel ? (`h${headingLevel}` as const) : "p";
+  const inline = variant === "inline";
   return (
     <div
       data-empty={kind}
       className={cn(
-        "flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border px-6 py-12 text-center",
+        "flex flex-col items-center justify-center text-center",
+        inline
+          ? "gap-3 px-4 py-6"
+          : "gap-4 rounded-lg border border-dashed border-border px-6 py-12",
         className,
       )}
     >
-      {kind === "first-run" ? <StationaryStar /> : null}
+      {kind === "first-run" && !inline ? <StationaryStar /> : null}
       {kind === "service-off" && service ? (
         <span
           data-service={service}
