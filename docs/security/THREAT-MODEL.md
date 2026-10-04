@@ -2858,6 +2858,19 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   the quota degrades attestation to `503` (devices stay `basic`; log-only policies are unaffected).
   (4) `basic` is not suspicious: enforcing `attested` for an operation removes it from every web,
   desktop and sideloaded install.
+  (5) `attested` rides on a bearer token. The level is bound to the device row, which is reached
+  with the `pkeyt_` token; anyone who lifts an attested device's token (from its store, a backup
+  of a rooted device, or a debugger) presents an attested device from anywhere, until the token is
+  rotated away or the device re-registered. Per-request App Attest assertions (and a Play request
+  per sensitive call) are the fix; they are out of this package. (6) One handset can attest many
+  device ids. The id is client-chosen and the `attest` budget (4/hour) is per device id, so a
+  genuine handset can register and attest any number of ids in turn; attestation proves "a
+  genuine install exists", not "one device per id". Bounding attestations per App Attest key or per
+  Play device would need state this package does not keep.
+- **Play testing responses.** A verdict Google marks `testingDetails.isTestingResponse` is a license
+  tester's configured answer, not a check of the device, and is refused (`testing_response`)
+  unless the operator sets `playIntegrity.allowTestingResponses: true` for internal testing; the
+  flag is recorded in the verdict summary either way.
 
 ### Boundaries that are weaker than they look
 

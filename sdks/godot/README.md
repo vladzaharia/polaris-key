@@ -1126,6 +1126,13 @@ challenge's `play.cloudProjectNumber`, else `PKeyOptions.play_cloud_project_numb
   it. A key the system no longer knows (reinstall, device migration, restore) answers
   `invalid_key`; `attest()` drops it and attests a fresh key in the same call. On
   `server_unavailable` the generated key is kept for the retry, as Apple advises.
+- **Call it after activation.** Activating (or re-activating) a licence key, or a keyless
+  re-registration, mints a new device token and resets the device to `basic` on the Worker. Call
+  `attest()` once the device holds its final token — after `activate`/`enroll`/`register`, not
+  before. A token refresh keeps the level.
+- **A rare 422.** Challenges live in KV; very occasionally the attest request reaches a Cloudflare
+  location the challenge has not propagated to yet and answers `attestation_rejected`. Call
+  `attest()` again (it fetches a fresh challenge).
 - **Errors.** The Worker's codes come back verbatim (`unauthorized`, `rate_limited` — a few per
   hour per device —, `attestation_unavailable`, `attestation_rejected`); a plugin failure is
   `platform-error` with the plugin's reply as `detail` (Play's `errorCode`, App Attest's `error`).

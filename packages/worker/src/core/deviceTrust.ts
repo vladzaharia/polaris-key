@@ -59,7 +59,12 @@ export interface TrustPolicy {
   } | null;
   /** Play Integrity: the Google Cloud project number the app's standard requests use. Handed to
    *  the client with the challenge; the verifier itself needs only the pinned Play credential. */
-  playIntegrity: { cloudProjectNumber: string } | null;
+  playIntegrity: {
+    cloudProjectNumber: string;
+    /** Accept a verdict Google marks `testingDetails.isTestingResponse` (a license tester's
+     *  configured response, not a real device check). Off unless set: for internal testing only. */
+    allowTestingResponses?: true;
+  } | null;
 }
 
 export const DEFAULT_TRUST_POLICY: TrustPolicy = Object.freeze({
@@ -155,7 +160,7 @@ export function validateTrustPolicy(input: unknown): Validation {
         field: "playIntegrity",
       };
     for (const k of Object.keys(p))
-      if (k !== "cloudProjectNumber")
+      if (k !== "cloudProjectNumber" && k !== "allowTestingResponses")
         return {
           ok: false,
           message: `unknown member playIntegrity.${k}`,
@@ -171,7 +176,21 @@ export function validateTrustPolicy(input: unknown): Validation {
           "playIntegrity.cloudProjectNumber must be the Google Cloud project number (digits)",
         field: "playIntegrity.cloudProjectNumber",
       };
-    policy.playIntegrity = { cloudProjectNumber: p.cloudProjectNumber };
+    if (
+      p.allowTestingResponses !== undefined &&
+      typeof p.allowTestingResponses !== "boolean"
+    )
+      return {
+        ok: false,
+        message: "playIntegrity.allowTestingResponses must be a boolean",
+        field: "playIntegrity.allowTestingResponses",
+      };
+    policy.playIntegrity = {
+      cloudProjectNumber: p.cloudProjectNumber,
+      ...(p.allowTestingResponses === true
+        ? { allowTestingResponses: true as const }
+        : {}),
+    };
   }
   return { ok: true, policy };
 }

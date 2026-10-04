@@ -14,6 +14,9 @@
  *   - `appIntegrity.appRecognitionVerdict` is `PLAY_RECOGNIZED`;
  *   - `deviceIntegrity.deviceRecognitionVerdict` contains `MEETS_DEVICE_INTEGRITY`.
  *
+ * A response Google marks `testingDetails.isTestingResponse` (a license tester's configured
+ * verdict) is refused unless the trust policy sets `playIntegrity.allowTestingResponses`.
+ *
  * The licensing verdict (`accountDetails.appLicensingVerdict`) is RECORDED, not required: an
  * unlicensed account on a genuine device is a commerce question, not a device-trust one.
  */
@@ -32,7 +35,8 @@ export type PlayVerdictFailure =
   | "request_hash"
   | "stale"
   | "app_unrecognized"
-  | "device_integrity";
+  | "device_integrity"
+  | "testing_response";
 
 export interface PlayVerdictSummary {
   appRecognitionVerdict: string;
@@ -40,6 +44,8 @@ export interface PlayVerdictSummary {
   appLicensingVerdict: string | null;
   timestampMillis: number;
   versionCode: string | null;
+  /** `testingDetails.isTestingResponse`: Google answered a license tester's configured verdict. */
+  isTestingResponse: boolean;
 }
 
 export type PlayVerdictResult =
@@ -59,7 +65,13 @@ function str(v: unknown): string | null {
 /** Check a decoded `decodeIntegrityToken` response body against the issued challenge. */
 export function checkPlayVerdict(
   body: unknown,
-  expected: { packageName: string; requestHash: string; now: number },
+  expected: {
+    packageName: string;
+    requestHash: string;
+    now: number;
+    /** Accept a testing response (the trust policy's `allowTestingResponses`). Default false. */
+    allowTestingResponses?: boolean;
+  },
 ): PlayVerdictResult {
   const payload = obj(obj(body)?.tokenPayloadExternal);
   const request = obj(payload?.requestDetails);
@@ -89,6 +101,7 @@ export function checkPlayVerdict(
     appLicensingVerdict: str(account?.appLicensingVerdict),
     timestampMillis: ts,
     versionCode: str(app.versionCode),
+    isTestingResponse: obj(payload.testingDetails)?.isTestingResponse === true,
   };
 
   if (
@@ -105,5 +118,9 @@ export function checkPlayVerdict(
     return { ok: false, reason: "app_unrecognized", summary };
   if (!deviceVerdicts.includes("MEETS_DEVICE_INTEGRITY"))
     return { ok: false, reason: "device_integrity", summary };
+  // A testing response is whatever verdict a license tester configured in Play Console, not a
+  // check of this device: never attested unless the operator allows it for internal testing.
+  if (summary.isTestingResponse && expected.allowTestingResponses !== true)
+    return { ok: false, reason: "testing_response", summary };
   return { ok: true, summary };
 }

@@ -443,6 +443,8 @@ async function verifyPlay(
     packageName: play.packageName,
     requestHash,
     now,
+    allowTestingResponses:
+      trustPolicyOf(product).playIntegrity?.allowTestingResponses === true,
   });
   const summary = verdict.summary
     ? {
@@ -450,6 +452,7 @@ async function verifyPlay(
         deviceRecognitionVerdict: verdict.summary.deviceRecognitionVerdict,
         appLicensingVerdict: verdict.summary.appLicensingVerdict,
         versionCode: verdict.summary.versionCode,
+        isTestingResponse: verdict.summary.isTestingResponse,
         verdictAt: Math.floor(verdict.summary.timestampMillis / 1000),
       }
     : {};

@@ -33,6 +33,10 @@ Both routes are Core routes, authenticated with the device bearer token:
 The Godot SDK wraps all three as `PolarisKey.devices.attest()`. It answers Unsupported with reason
 `runtime` on desktop and web, and `outlet` on a sideloaded or non-Play install.
 
+Challenges are stored in KV. On rare occasions a challenge issued at one Cloudflare location has
+not yet propagated to the location that receives the attest request a moment later; the attempt
+answers `422 attestation_rejected`. Fetch a new challenge and retry.
+
 Each device may ask for 10 challenges and make 4 attempts an hour. A failed attempt is recorded on
 the device (the console's **Last verdict**) and never changes its level; an attested device stays
 attested through a failed retry.
@@ -58,6 +62,11 @@ new key and attests again; that is expected, not fraud. A keyless re-registratio
 or a licence (re)bind, drops the device back to `basic` until it attests again, because a new
 token minted without the old one is not proof of the same install.
 
+**Attest after licence activation.** Because activating a licence key (or re-activating it) on a
+device id mints a new token, it resets the device to `basic`. Call `attest()` after the device
+holds its final token: after activation or enrollment, not before. A token refresh
+(`/license/token`) keeps the level.
+
 ## The trust policy
 
 The policy is operator-owned: only a platform admin sets it, never a manifest or a resync.
@@ -78,8 +87,10 @@ PUT /manage/api/products/<slug>/trust-policy
 `basic`, `enforce: false`, nothing configured.
 
 - `mint`, `gatedDelivery` and `commerceClaim` say which operations need an `attested` device.
-  `gatedDelivery` covers downloads behind a licence (`licensed` and `entitled` access modes) and
-  pack delivery gates; `commerceClaim` is consulted once the commerce bridge lands.
+  `gatedDelivery` covers every surface that answers through a licence: Release's release records
+  and artifacts (changelog, record and artifact routes) and Distribution's byte routes, appcasts
+  and feeds when their access mode is `licensed` or `entitled`, and pack delivery gates.
+  `commerceClaim` is consulted once the commerce bridge lands.
 - `enforce: false` (the default) is **log-only**: a basic device that the policy would refuse
   proceeds, and one `device.trust.would_refuse` audit row per device and operation per hour
   records it. Watch the activity log, then set `enforce: true` to answer

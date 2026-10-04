@@ -201,3 +201,10 @@ base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`; App Attes
   and React as runtime N/As.
 - **Migration number.** The migrations are `0053_a`–`0053_e` (lead decision: P4-17 keeps 0051,
   P6-01 takes 0052).
+- **Review follow-ups (lead decisions).** A Play verdict marked `testingDetails.isTestingResponse`
+  is refused (`testing_response`) unless the policy sets `playIntegrity.allowTestingResponses:
+true`; the flag is recorded in the verdict summary. The threat model also records that
+  `attested` rides on a liftable bearer token and that one handset can attest many client-chosen
+  device ids. The operator page and the Godot README say to attest after licence activation, and
+  that a rare 422 from KV propagation is retried. The switch to P6-01's `core/x509.ts` and the
+  commerce-claim call site follow once P6-01 is on main.

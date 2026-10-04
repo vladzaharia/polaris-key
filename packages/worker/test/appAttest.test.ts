@@ -315,6 +315,15 @@ describe("checkPlayVerdict", () => {
         expected,
       ),
     ).toMatchObject({ ok: false, reason: "app_unrecognized" });
+    const testing = good({ testingDetails: { isTestingResponse: true } });
+    expect(checkPlayVerdict(testing, expected)).toMatchObject({
+      ok: false,
+      reason: "testing_response",
+      summary: { isTestingResponse: true },
+    });
+    expect(
+      checkPlayVerdict(testing, { ...expected, allowTestingResponses: true }),
+    ).toMatchObject({ ok: true, summary: { isTestingResponse: true } });
     expect(checkPlayVerdict({}, expected)).toMatchObject({
       ok: false,
       reason: "malformed",

@@ -44,6 +44,10 @@ import {
 } from "../src/core/entitledAccess.js";
 import { buildHooks, type ServiceHooks } from "../src/core/hooks.js";
 import { handleMintToken } from "../src/services/config/mint.js";
+import {
+  handleActivate,
+  handleToken,
+} from "../src/services/license/activation.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import {
@@ -113,6 +117,7 @@ async function appleWorld(
   policy: Record<string, unknown> | null = {
     appAttest: { teamId: TEAM, environment: "production" },
   },
+  services: ServicesMap = CONFIG_ONLY,
 ): Promise<World & { chain: Awaited<ReturnType<typeof makeTestChain>> }> {
   const db = makeTestDb();
   const env = makeEnv(new KvMock(), ["djdl"]);
@@ -120,7 +125,7 @@ async function appleWorld(
   await setServices(
     db,
     "djdl",
-    serializeServices({ services: CONFIG_ONLY }),
+    serializeServices({ services }),
     "manifest",
     NOW,
   );
@@ -400,6 +405,67 @@ describe("POST /<p>/devices/attest — app-attest", () => {
   });
 });
 
+// ── 6b. a licence (re)bind resets, a token rotation keeps ────────────────────────────────────
+
+describe("the trust level across licence activation and token rotation", () => {
+  const LICENSED: ServicesMap = { ...CONFIG_ONLY, license: { enabled: true } };
+
+  async function activate(w: World, key: string): Promise<string> {
+    const res = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": DEVICE,
+      }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { token: string }).token;
+  }
+
+  it("re-activating the same device id with a licence key drops it back to basic", async () => {
+    const w = await appleWorld(undefined, LICENSED);
+    const { key } = await seedLicenseWithKey(w.db, "djdl");
+    const token = await activate(w, key);
+    expect((await attest(w, token, await appAttestBody(w, token))).status).toBe(
+      200,
+    );
+    expect(await levelOf(w)).toBe("attested");
+    // POST /license/activate again for the same device id: a new token minted without the old one.
+    await activate(w, key);
+    const row = (await getDevice(w.db, "djdl", DEVICE))!;
+    expect(row.trust_level).toBe("basic");
+    expect(row.attested_at).toBeNull();
+  });
+
+  it("POST /license/token rotation, which presents the old token, keeps attested", async () => {
+    const w = await appleWorld(undefined, LICENSED);
+    const { key } = await seedLicenseWithKey(w.db, "djdl");
+    const token = await activate(w, key);
+    expect((await attest(w, token, await appAttestBody(w, token))).status).toBe(
+      200,
+    );
+    const res = await handleToken(
+      mkReq("POST", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-device": DEVICE,
+      }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    const rotated = ((await res.json()) as { token: string }).token;
+    expect(rotated).not.toBe(token);
+    const row = (await getDevice(w.db, "djdl", DEVICE))!;
+    expect(row.trust_level).toBe("attested");
+    expect(row.attested_at).toBe(NOW);
+  });
+});
+
 // ── 4. the rate limit ─────────────────────────────────────────────────────────────────────────
 
 describe("the per-device attestation rate limit", () => {
@@ -443,7 +509,9 @@ function integrityToken(
   return `itok.${btoa(JSON.stringify({ requestHash, atMs, over }))}`;
 }
 
-async function playAttestWorld(opts: { pin?: string | null } = {}) {
+async function playAttestWorld(
+  opts: { pin?: string | null; policy?: Record<string, unknown> } = {},
+) {
   const pw = await playWorld(opts.pin === undefined ? {} : { pin: opts.pin });
   await setServices(
     pw.db,
@@ -500,6 +568,8 @@ async function playAttestWorld(opts: { pin?: string | null } = {}) {
       headers: { "content-type": "application/json" },
     });
   };
+  if (opts.policy)
+    await setTrustPolicy(pw.db, PLAY_SLUG, JSON.stringify(opts.policy), NOW);
   const product = (await loadProduct(pw.env, pw.db, PLAY_SLUG))!;
   const w: World = {
     db: pw.db,
@@ -636,6 +706,46 @@ describe("POST /<p>/devices/attest — play-integrity", () => {
     expect(r.status).toBe(503);
     expect(r.body.error).toEqual({ code: "attestation_unavailable" });
     expect(await levelOf(w)).toBe("basic");
+  });
+
+  it("a testing response (a license tester's configured verdict) is not attested by default", async () => {
+    const { w } = await playAttestWorld();
+    const token = await register(w);
+    const r = await attest(
+      w,
+      token,
+      await playBody(w, token, { testingDetails: { isTestingResponse: true } }),
+    );
+    expect(r.status).toBe(422);
+    expect(await levelOf(w)).toBe("basic");
+    expect(
+      JSON.parse((await getDevice(w.db, w.slug, DEVICE))!.attestation_json!),
+    ).toMatchObject({
+      outcome: "rejected",
+      reason: "testing_response",
+      isTestingResponse: true,
+    });
+  });
+
+  it("a testing response is attested only when the policy allows testing responses", async () => {
+    const { w } = await playAttestWorld({
+      policy: {
+        playIntegrity: {
+          cloudProjectNumber: "123456789012",
+          allowTestingResponses: true,
+        },
+      },
+    });
+    const token = await register(w);
+    const r = await attest(
+      w,
+      token,
+      await playBody(w, token, { testingDetails: { isTestingResponse: true } }),
+    );
+    expect(r.status).toBe(200);
+    expect(
+      JSON.parse((await getDevice(w.db, w.slug, DEVICE))!.attestation_json!),
+    ).toMatchObject({ outcome: "attested", isTestingResponse: true });
   });
 
   it("never decodes with an unpinned or mispinned credential (409, nothing sent)", async () => {
