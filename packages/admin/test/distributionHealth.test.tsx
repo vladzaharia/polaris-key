@@ -56,6 +56,28 @@ describe("Distribution → Health", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("counts reports from undeclared outlets apart, never judged", async () => {
+    bootWith(HASH, {
+      [P("/distribution/update-health")]: {
+        ...HEALTH,
+        unknown: [
+          {
+            deliverable: "app",
+            releaseId: "rel_239",
+            outlet: "unknown",
+            devices: {
+              ...HEALTH.rollouts[0]!.devices,
+              update_applied: 40,
+              update_reverted: 2,
+            },
+          },
+        ],
+      },
+    });
+    await loaded();
+    expect(screen.getByText(/2\.3\.9: 40 applied, 2 reverted/)).toBeTruthy();
+  });
+
   it("round-trips the window through the URL and asks the server for it (UHL-2)", async () => {
     const { calls } = bootWith(`${HASH}?window=6`);
     await loaded();
