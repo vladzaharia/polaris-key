@@ -175,6 +175,24 @@ export function platformCredentialForKind(
   return null;
 }
 
+/**
+ * A connector or commerce context that names its credential by a string id (P5-03, P5-04, P6-01)
+ * names a platform credential by its HANDLE, `platform:<id>`. A `:` cannot appear in a product
+ * credential id (`isOutletCredentialId`), so a handle never names a product credential.
+ */
+export function platformCredentialHandle(id: PlatformCredentialId): string {
+  return `platform:${id}`;
+}
+
+/** The platform credential a handle names, or `null` for a product credential id. */
+export function parsePlatformCredentialHandle(
+  handle: string,
+): PlatformCredentialId | null {
+  if (!handle.startsWith("platform:")) return null;
+  const id = handle.slice("platform:".length);
+  return isPlatformCredentialId(id) ? id : null;
+}
+
 /** The product slot every platform credential is sealed under. No slug can spell it. */
 export const PLATFORM_SEAL_PRODUCT = "_platform";
 

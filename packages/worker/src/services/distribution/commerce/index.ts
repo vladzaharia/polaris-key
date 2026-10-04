@@ -63,6 +63,7 @@ import {
   getProductPurchase,
   isPlaySku,
   isPurchaseToken,
+  effectivePlaySettings,
   playCredential,
   playPurchase,
   playPurchasesClient,
@@ -313,6 +314,7 @@ export async function playContext(
 ): Promise<PlayContext | null> {
   if (!settings.play) return null;
   const credentialId = await playCredential(
+    ctx.env,
     ctx.db,
     ctx.product.slug,
     settings.play.packageName,
@@ -323,7 +325,8 @@ export async function playContext(
     db: ctx.db,
     product: ctx.product.slug,
     now: ctx.now,
-    settings: settings.play,
+    // A-16: the platform's RTDN push identity where the product leaves it unset.
+    settings: await effectivePlaySettings(ctx.env, ctx.db, settings.play),
     credentialId,
   };
 }

@@ -93,7 +93,7 @@ async function setupOf(
     ),
     play: await one(
       settings.play !== null,
-      () => playCredential(ctx.db, slug, settings.play!.packageName),
+      () => playCredential(ctx.env, ctx.db, slug, settings.play!.packageName),
       "google-service-account",
     ),
     steam: await one(

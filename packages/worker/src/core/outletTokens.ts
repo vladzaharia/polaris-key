@@ -46,6 +46,7 @@ import {
 } from "./outletCredentials.js";
 import {
   openPlatformCredential,
+  PLATFORM_SEAL_PRODUCT,
   platformPin,
   resolvePlatformCredential,
   type PlatformCredentialId,
@@ -325,16 +326,47 @@ export async function googleAccessToken(
     now,
   });
   if (!cred) return null;
-  const { client_email, private_key } = cred.value;
+  const { token, ttl } = await googleTokenExchange(
+    cred.value,
+    scope,
+    now,
+    fetchImpl,
+  );
+  await writeSealedToken(
+    env,
+    outletTokenSlot(
+      product,
+      credentialId,
+      await outletTokenSlotHash(scope, cred.version),
+    ),
+    token,
+    ttl,
+    now,
+  );
+  return token;
+}
+
+/**
+ * The JWT-bearer exchange itself: an RS256 assertion for `scope`, posted to Google's one token
+ * endpoint with `redirect: "manual"`, the answer read through `readCappedText`. Answers the
+ * access token and how long it may be cached. THROWS on a failed exchange with a status line
+ * only — never the response body or anything from the key.
+ */
+async function googleTokenExchange(
+  value: { client_email: string; private_key: string },
+  scope: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<{ token: string; ttl: number }> {
   const assertion = await signJwtRs256(
     {
-      iss: client_email,
+      iss: value.client_email,
       scope,
       aud: GOOGLE_TOKEN_URI,
       iat: now,
       exp: now + GOOGLE_ASSERTION_LIFETIME,
     },
-    private_key,
+    value.private_key,
   );
   const res = await fetchImpl(GOOGLE_TOKEN_URI, {
     method: "POST",
@@ -371,19 +403,10 @@ export async function googleAccessToken(
     !(body.expires_in > 0)
   )
     throw new Error("google token exchange returned no token");
-
-  await writeSealedToken(
-    env,
-    outletTokenSlot(
-      product,
-      credentialId,
-      await outletTokenSlotHash(scope, cred.version),
-    ),
-    body.access_token,
-    body.expires_in - GOOGLE_CACHE_MARGIN,
-    now,
-  );
-  return body.access_token;
+  return {
+    token: body.access_token,
+    ttl: body.expires_in - GOOGLE_CACHE_MARGIN,
+  };
 }
 
 // ── platform (team-level) credentials (A-16) ────────────────────────────────────────────────
@@ -471,5 +494,47 @@ export async function platformAppStoreServerToken(
     token,
     exp,
   });
+  return token;
+}
+
+/**
+ * A Google OAuth access token minted from the PLATFORM service account
+ * (`google-play.service-account`) at `scopes`, for a product acting on its pinned package
+ * (`{product, pin: packageName}`) or a team-wide read (`{team}`). The pin is checked before the
+ * sealed KV cache (slot under `_platform`, keyed by scope and credential version); only a miss
+ * opens (and audits) the key. `null` when unusable; THROWS on a failed exchange (status only).
+ */
+export async function platformGoogleAccessToken(
+  env: Env,
+  db: Db,
+  purpose: PlatformOpenPurpose,
+  scopes: readonly string[],
+  use: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<string | null> {
+  const id = "google-play.service-account";
+  const scope = [...new Set(scopes)].sort().join(" ");
+  if (scope.length === 0) throw new Error("google token: no scopes requested");
+  if (!(await platformPurposeAllowed(db, id, purpose))) return null;
+  const ref = await resolvePlatformCredential(env, db, id);
+  if (!ref) return null;
+  const slotFor = async (version: string) =>
+    outletTokenSlot(
+      PLATFORM_SEAL_PRODUCT,
+      id,
+      await outletTokenSlotHash(scope, version),
+    );
+  const cached = await readSealedToken(env, await slotFor(ref.version), now);
+  if (cached) return cached.token;
+  const cred = await openPlatformCredential(env, db, id, use, purpose, now);
+  if (!cred) return null;
+  const { token, ttl } = await googleTokenExchange(
+    cred.value,
+    scope,
+    now,
+    fetchImpl,
+  );
+  await writeSealedToken(env, await slotFor(cred.version), token, ttl, now);
   return token;
 }
